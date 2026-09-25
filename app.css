@@ -110,18 +110,33 @@
 --st-study:#94500E;--st-study-bg:#FCEEDF;
 --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
 /* A MEETING'S KIND, in the General Court's own colours, because staff read
-   its schedule by them: blue a hearing, green a meeting (work sessions,
-   study and statutory committees), orange an executive session, red a
-   committee of conference. The floor, which that schedule does not colour,
-   is violet. Their own tokens rather than the status ones, which mean what
-   happened to a bill and would drift with it. Each ink draws a bar and a
-   chip's edge, so it holds 3:1 against the card and the page, and 4.5:1 as
-   text on its own tint; preflight measures all of them. */
+   its schedule by them: blue a hearing, green a work session, orange an
+   executive session, red a committee of conference. The floor, which that
+   schedule does not colour, is violet. Their own tokens rather than the
+   status ones, which mean what happened to a bill and would drift with it.
+   Each ink draws a bar and a chip's edge, so it holds 3:1 against the card
+   and the page, and 4.5:1 as text on its own tint; preflight measures all
+   of them.
+   STUDY AND STATUTORY COMMITTEES ARE RASPBERRY (25 September 2026). That
+   schedule greens them with the work sessions; the person asked for the
+   two apart, because the colours are now the Calendar's filter too. The
+   hue is the widest gap the other five leave -- between the floor's violet
+   and the conference's red -- at their lightness and chroma, chosen by
+   measurement rather than by eye, once, on 25 September: in CIEDE2000 it is
+   17.5 from its nearest neighbour here (the violet) and 15.2 in the dark
+   palette, where the closest pairs of the five are 18.0 and 16.6 apart;
+   under simulated protanopia, deuteranopia and tritanopia (Machado 2009) it
+   keeps at least 6.1 from every other kind, the brand's pine and the
+   neutral grey, where the blue and the violet come within 1.5 to 3.7 of
+   each other. A teal would have sat on the pine of the selected day, and an
+   olive between orange and green for a reader who cannot tell those apart.
+   Preflight measures its contrast with the rest; the distances it does not. */
 --cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;
 --cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
 --cal-exec:#94500E;--cal-exec-bg:#FCEEDF;
 --cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
 --cal-floor:#6B3FA0;--cal-floor-bg:#EFE9F7;
+--cal-study:#9C276C;--cal-study-bg:#F9E8F0;
 /* The home page's session box when the House is between sittings. These two
    were literals in build_pages.py's stylesheet -- the last pair of colours
    outside the palette, and so the last pair nothing could measure or
@@ -219,6 +234,7 @@ color-scheme:light}
 --cal-exec:#EDAE6E;--cal-exec-bg:#402C14;
 --cal-conf:#F0938C;--cal-conf-bg:#43211F;
 --cal-floor:#C4A6EE;--cal-floor-bg:#30264A;
+--cal-study:#F5A3CD;--cal-study-bg:#472436;
 --wait:#E0BE7C;--wait-bg:#3A3116;
 --rep:#E88E86;--dem:#8FB4E8;--ind:#B9A9E0;
 --rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
@@ -266,6 +282,7 @@ color-scheme:dark}
 --cal-exec:#EDAE6E;--cal-exec-bg:#402C14;
 --cal-conf:#F0938C;--cal-conf-bg:#43211F;
 --cal-floor:#C4A6EE;--cal-floor-bg:#30264A;
+--cal-study:#F5A3CD;--cal-study-bg:#472436;
 --wait:#E0BE7C;--wait-bg:#3A3116;
 --rep:#E88E86;--dem:#8FB4E8;--ind:#B9A9E0;
 --rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
@@ -556,6 +573,8 @@ box-shadow:inset 0 0 0 1px var(--cal-exec)}
 box-shadow:inset 0 0 0 1px var(--cal-conf)}
 .calkind.k-floor{background:var(--cal-floor-bg);color:var(--cal-floor);
 box-shadow:inset 0 0 0 1px var(--cal-floor)}
+.calkind.k-study{background:var(--cal-study-bg);color:var(--cal-study);
+box-shadow:inset 0 0 0 1px var(--cal-study)}
 /* THE DAY'S KINDS, DOWN THE EDGE. One entry is one committee on one day, so
    a day holding a hearing and then an executive session is one card -- and
    the bar says at a glance that it is doing more than one thing, divided into
@@ -575,13 +594,16 @@ border-radius:var(--r-out) 0 0 var(--r-out)}
 .calmix .k-exec{background:var(--cal-exec)}
 .calmix .k-conf{background:var(--cal-conf)}
 .calmix .k-floor{background:var(--cal-floor)}
+.calmix .k-study{background:var(--cal-study)}
 /* A kind the table does not name borrows no colour that means something
    else; it is the neutral edge grey. */
 .calmix .k-other{background:var(--edge)}
 
 /* THE KEY, under a week's heading: each colour once, with the word the chips
    use. The chips still name every kind on every card, so this is a guide to
-   the bars rather than the only place a meaning is given. */
+   the bars rather than the only place a meaning is given. With script the
+   Calendar puts its row of boxes here instead, which is the key and the
+   filter at once; this is what a reader without script is given. */
 .calkey{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-6);list-style:none;
 margin:0 0 var(--sp-6);padding:0;font-size:var(--t-sm);color:var(--ink-2)}
 .calkey li{display:inline-flex;align-items:center;gap:var(--sp-3)}
@@ -591,6 +613,7 @@ margin:0 0 var(--sp-6);padding:0;font-size:var(--t-sm);color:var(--ink-2)}
 .calkey .k-exec{background:var(--cal-exec)}
 .calkey .k-conf{background:var(--cal-conf)}
 .calkey .k-floor{background:var(--cal-floor)}
+.calkey .k-study{background:var(--cal-study)}
 .calmeet > summary{padding-left:calc(var(--sp-6) + 5px)}
 
 /* One line of the day's schedule, above the bills it took. Only drawn when
@@ -3306,7 +3329,8 @@ grid-template-areas:"side head" "side main";column-gap:var(--sp-9);align-items:s
 max-height:calc(100vh - var(--sp-9));overflow-y:auto;overflow-x:hidden;
 padding:var(--sp-1) var(--sp-2) var(--sp-6) var(--sp-1);overscroll-behavior:contain;
 scrollbar-width:thin;scrollbar-color:var(--rule-2) transparent}
-.calside[hidden],.calbar[hidden],.calreset[hidden],.cplist[hidden],.calpeek[hidden]{display:none}
+.calside[hidden],.calbar[hidden],.calreset[hidden],.cplist[hidden],.calpeek[hidden],
+.calcats[hidden],.calkey[hidden]{display:none}
 /* Past the month and the filters, for a keyboard: out of sight until it has
    focus, like the page's own skip link. */
 .calskip{position:absolute;left:-9999px;top:0}
@@ -3353,6 +3377,7 @@ font-size:var(--t-ui);font-weight:500}
 .cmdots .k-exec{background:var(--cal-exec)}
 .cmdots .k-conf{background:var(--cal-conf)}
 .cmdots .k-floor{background:var(--cal-floor)}
+.cmdots .k-study{background:var(--cal-study)}
 /* The selected week a band, the selected day solid, today a ring. The band
    is pine mixed into the page rather than --pine-soft, which on the light
    page is about 1.0:1 against it -- a band nobody could see. */
@@ -3371,7 +3396,9 @@ font-size:var(--t-ui);font-weight:500}
 .cmgrid td.cmoff{cursor:default;background:none}
 .cmgrid td.cmoff .cmn{opacity:.4}
 
-/* THE FILTERS: who is meeting and what kind of sitting, as two questions. */
+/* THE DETAILED FILTERS, down the side: a bill or a committee typed, one
+   chamber, and committees chosen by name. Which kinds of meeting to show is
+   the row of boxes above the schedule (.calcats), since 25 September 2026. */
 .cfhead{display:flex;align-items:baseline;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);
 margin:0 0 var(--sp-4);padding-top:var(--sp-5);border-top:1px solid var(--rule)}
 .cfhead h2{font-size:var(--t-lead);line-height:1.2;margin:0 auto 0 0}
@@ -3381,19 +3408,12 @@ margin:0 0 var(--sp-4);padding-top:var(--sp-5);border-top:1px solid var(--rule)}
 .calfs legend,.calside .wkfind{font-size:var(--t-body);font-weight:600;letter-spacing:0;
 text-transform:none;color:var(--ink);padding:0;margin:0 0 var(--sp-3)}
 .calside .wkfind{display:flex;margin:0 0 var(--sp-6)}
-/* The two combinations the person named, a click each, in the chamber
-   buttons' shape: pressed is filled, as there. */
-.calquick{margin:0 0 var(--sp-6)}
+/* A committee in the picker's list. */
 .calchk{display:flex;align-items:center;gap:var(--sp-4);min-height:32px;padding:var(--sp-1) 0;
 font-size:var(--t-ui);line-height:1.3;color:var(--ink);cursor:pointer}
 .calchk input{flex:none;width:18px;height:18px;margin:0;accent-color:var(--pine)}
-.calchk:has(input:disabled){color:var(--ink-2);cursor:default}
-.calchk i{flex:none;width:8px;height:14px;border-radius:2px;background:var(--edge)}
-.calchk .k-hearing{background:var(--cal-hear)}
-.calchk .k-meet{background:var(--cal-meet)}
-.calchk .k-exec{background:var(--cal-exec)}
-.calchk .k-conf{background:var(--cal-conf)}
 .calhint{margin:var(--sp-2) 0 0;font-size:var(--t-sm);line-height:1.4;color:var(--ink-2)}
+.calhint[hidden]{display:none}
 /* Empty, it takes no room; it stays in the page, because the picker's is a
    live region and one that appears from nothing can go unannounced. */
 .calhint:empty{margin:0}
@@ -3418,8 +3438,8 @@ background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-i
 .cpopt input{margin-top:1px}
 .cpwho{font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
 
-/* THE VIEW SWITCH, THE COUNT AND THE ONE WAY BACK TO EVERYTHING, above the
-   schedule they act on, with the key to the colours under them. */
+/* THE VIEW SWITCH, THE COUNT AND THE ONE WAY BACK TO THE DEFAULTS, above
+   the schedule they act on, with the boxes of the colours under them. */
 .calbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-6);
 margin:0 0 var(--sp-5)}
 .calviews{display:inline-flex;flex:none;border:1px solid var(--edge);
@@ -3435,6 +3455,38 @@ font-weight:600;color:var(--ink-2);background:var(--surface);border-left:1px sol
 .calreset{min-height:40px;padding:var(--sp-3) var(--sp-5);font-size:var(--t-ui);font-weight:600;
 color:var(--pine);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
 .calreset:hover{background:var(--wash)}
+
+/* THE KINDS OF MEETING, EACH A BOX IN ITS COLOUR (25 September 2026): the
+   key to the bars and the filter at once, under the view switch, where the
+   key was. Unticked, a box is its colour's outline -- Study Committee starts
+   unticked, and is still the key to its colour -- and ticked it is filled,
+   with the tick in the card's own ground, which holds 3:1 on all six in
+   both themes because each ink holds 3:1 on the card (preflight's palette
+   check). The drawing is a span beside a real checkbox, which lies over the
+   whole label and cannot be seen: a pointer, a finger, Space and a screen
+   reader all reach the control itself, and a box drawn on an input's own
+   pseudo-element is not drawn by every browser. The row reaches 4px left
+   so a box sits on the column's edge and its hover still has room. */
+.calcats{border:0;margin:0 0 var(--sp-6);padding:0;min-width:0}
+.calcatrow{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4);margin-left:calc(-1 * var(--sp-2))}
+.calcat{position:relative;display:inline-flex;align-items:center;gap:var(--sp-3);min-height:32px;
+padding:0 var(--sp-3) 0 var(--sp-2);font-size:var(--t-ui);font-weight:600;line-height:1.3;
+color:var(--ink);border-radius:var(--r-in);cursor:pointer}
+.calcat:hover{background:var(--wash)}
+.calcat input{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.cbx{flex:none;display:grid;place-items:center;width:18px;height:18px;
+border:2px solid var(--cat);border-radius:var(--r-in);background:var(--surface)}
+.cbx::after{content:"";width:5px;height:9px;margin-top:-2px;border:solid var(--surface);
+border-width:0 2px 2px 0;transform:rotate(45deg);visibility:hidden}
+.calcat input:checked + .cbx{background:var(--cat)}
+.calcat input:checked + .cbx::after{visibility:visible}
+.calcat input:focus-visible + .cbx{outline:2px solid var(--pine);outline-offset:2px}
+.calcat.k-hearing{--cat:var(--cal-hear)}
+.calcat.k-exec{--cat:var(--cal-exec)}
+.calcat.k-meet{--cat:var(--cal-meet)}
+.calcat.k-conf{--cat:var(--cal-conf)}
+.calcat.k-floor{--cat:var(--cal-floor)}
+.calcat.k-study{--cat:var(--cal-study)}
 .calview{scroll-margin-top:var(--sp-6)}
 .calview:focus{outline:none}
 .calview:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
@@ -3538,7 +3590,9 @@ box-shadow:0 6px 20px var(--shadow);pointer-events:none}
 .pkbar .k-exec{background:var(--cal-exec)}
 .pkbar .k-conf{background:var(--cal-conf)}
 .pkbar .k-floor{background:var(--cal-floor)}
-.pkt{flex:none;min-width:3.2em;font-weight:600;font-variant-numeric:tabular-nums}
+.pkbar .k-study{background:var(--cal-study)}
+/* Wide enough for "12:45 PM", so the names line up under one another. */
+.pkt{flex:none;min-width:4.6em;font-weight:600;font-variant-numeric:tabular-nums}
 .pkn{min-width:0}
 .pkn em{font-style:normal;color:var(--ink-2)}
 .pkmore{margin:var(--sp-3) 0 0;color:var(--ink-2)}

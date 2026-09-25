@@ -63,10 +63,18 @@ lists the study commissions, boards and statutory committees that sit with no
 bill before them -- seven of them in the week of 21 September 2026, against
 two sittings shown. They come from the database copy in db/
 (StatStudMeetings.psv, with StatStudDetails.psv for each committee's name and
-whether it is a study or a statutory one), drawn as their own cards in the
-meeting colour, and a reader can hide them with a toggle. NOTHING REFRESHES
-THAT COPY YET -- it is a fetch_*_db.py run, which is the person's to start --
-so the page states the date it was taken.
+whether it is a study or a statutory one), drawn as their own cards in a
+colour of their own, and shown when a reader ticks Study Committee, which is
+off until they do (25 September 2026). NOTHING REFRESHES THAT COPY YET -- it
+is a fetch_*_db.py run, which is the person's to start -- so the build says
+on every run which copy it read. The page said so too until the person asked
+on 25 September for that explanation to come off it.
+
+ONE ADDRESS (25 September 2026). Every week keeps its own page, which is what
+the sitemap lists and a canonical link names; moving about the calendar with
+the script keeps the reader on /calendar, with the week, the day, the view
+and the filters in the query -- /calendar?week=2026-W28 -- so a reload or a
+link sent opens what was on the screen. WEEK_JS says how.
 """
 
 import argparse
@@ -403,8 +411,10 @@ def study_name(bill, term, names):
 # left, with a few dots on each day in the kinds' colours, today marked, the
 # selected week a band and past days greyed; a panel that shows the selected
 # day's week as a list, as the week at a glance or as the one day in full;
-# a preview of a day's meetings when the pointer rests on it; and filters of
-# who is meeting and what kind of sitting it is, which combine.
+# a preview of a day's meetings when the pointer rests on it; and filters,
+# which combine: since 25 September 2026 a row of boxes in the kinds'
+# colours, which is also their key, and down the side a search, a chamber
+# and committees chosen by name.
 #
 # IT COMPOSES NO CARD. The cards are build_pages.cal_days's, in this page for
 # its own week and in calendar/data/<month>.json for every other: the script
@@ -435,12 +445,21 @@ WEEK_JS = r"""
   var DAYNAME=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   var MONTH=["January","February","March","April","May","June","July",
              "August","September","October","November","December"];
-  var WHO=["standing","study","floor"];
-  var WHAT=["hearing","exec","work","conf"];
-  // A card's kinds are its bar's colours; the "what" boxes take them in four.
-  // Floor is not a kind of committee meeting and is the "who" box's to decide.
-  var WHAT_OF={hearing:"hearing",exec:"exec",meet:"work",other:"work",conf:"conf"};
-  var BAR_ORDER=["hearing","meet","exec","conf","floor","other"];
+  // THE KINDS OF MEETING A READER SHOWS OR HIDES, in the order of the row of
+  // boxes above the schedule (build_calendar.CATEGORIES), which is the key to
+  // the colours and the filter at once. All of them are on for a new reader
+  // except the study and statutory committees, as the person asked on 25
+  // September 2026: "each one is selected on by default aside from study
+  // committees".
+  var CATS=["hearing","exec","work","conf","floor","study"];
+  var CAT_ON=["hearing","exec","work","conf","floor"];
+  // A card's kinds are its bar's colours, and each answers to one box. A
+  // kind the table does not name is one of the committee's other meetings,
+  // which Work Session has always covered.
+  var CAT_OF={hearing:"hearing",exec:"exec",meet:"work",other:"work",conf:"conf",
+              floor:"floor",study:"study"};
+  // The grid's dots in the order of the boxes.
+  var BAR_ORDER=["hearing","exec","meet","conf","floor","study","other"];
   var VIEWS=["list","week","day"];
   // A CARD'S OPENING TAG, NEVER WRITTEN WHOLE HERE. The checks count cards,
   // links and the empty day's sentence in a built page's text, and this
@@ -504,6 +523,19 @@ WEEK_JS = r"""
     return off===0?"today":off===1?"tomorrow":(off>0&&off<=14)?"in "+off+" days":"";
   }
   function plural(n,w){ return n+" "+w+(n===1?"":"s"); }
+  // TWELVE HOURS, AS A READER SAYS A TIME: "9:00 AM", "1:30 PM", noon
+  // "12:00 PM" -- build_pages.clock, which draws the cards, and app.js's;
+  // preflight holds the three to one answer. The cards' data-time keeps the
+  // record's "13:30", which is what this reads. A no-break space keeps AM or
+  // PM with its time where a column wraps.
+  function clock(t){
+    var m=/^(\d{1,2}):(\d\d)/.exec(String(t||""));
+    if(!m||+m[1]>23) return String(t||"");
+    var h=+m[1];
+    return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"AM":"PM");
+  }
+  // An hour of the week at a glance: "9 AM", "1 PM".
+  function hourWord(h){ var n=+h; return (n%12||12)+"\u00a0"+(n<12?"AM":"PM"); }
   function esc(s){
     return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
       .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -552,47 +584,53 @@ WEEK_JS = r"""
 
   // ---- the filters -------------------------------------------------------------
   function defaults(){
-    return {v:"list", who:WHO.slice(), what:WHAT.slice(), body:"", picks:[], q:""};
+    return {v:"list", cats:CAT_ON.slice(), body:"", picks:[], q:""};
   }
   // "HB 1234", "hb1234" and "1234" all mean the same bill to a person typing
   // it, and none of them is what the attribute holds.
   function norm(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
-  // WHO AND WHAT, AND THE REST. Committees chosen by name replace the "who"
-  // boxes; an entry holding several kinds matches when any of them is ticked
-  // and is shown whole; the floor answers to "who" alone.
-  function matches(e,f){
-    if(f.picks.length ? f.picks.indexOf(e.pick)<0 : f.who.indexOf(e.who)<0) return false;
-    if(e.who!=="floor" && e.kinds.length && !e.kinds.some(function(k){
-        return f.what.indexOf(WHAT_OF[k]||"work")>=0; })) return false;
-    if(f.body && e.body.indexOf(f.body)<0) return false;
-    var q=String(f.q||"").trim();
-    if(!q) return true;
+  // WHICH BOXES A CARD ANSWERS TO. The floor is Floor Session. A study or
+  // statutory committee is Study Committee whatever kind of meeting it held
+  // -- a hearing, a regular meeting -- which its card still says in words. A
+  // chamber's committee is each kind its items are, so a day of hearings and
+  // then an executive session answers to both boxes.
+  function catsOf(e){
+    if(e.who==="floor") return ["floor"];
+    if(e.who==="study") return ["study"];
+    var out=[];
+    e.kinds.forEach(function(k){ var c=CAT_OF[k]||"work"; if(out.indexOf(c)<0) out.push(c); });
+    return out.length?out:["work"];
+  }
+  function found(e,q){
     if(e.cmte.indexOf(q.toLowerCase())>=0) return true;
     var n=norm(q);
     return !!n && e.bills.some(function(b){ return norm(b).indexOf(n)===0; });
   }
-  // THE TWO COMBINATIONS THE PERSON NAMED, one click each: standing
-  // committees only, and public hearings only. Each sets the boxes, which
-  // stay the model -- the reader can see exactly what was ticked, and change
-  // it. A hearing is a committee's, so "public hearings only" takes the
-  // floor off as well.
-  var QUICK={standing:{who:["standing"],what:WHAT.slice()},
-             hearing:{who:["standing","study"],what:["hearing"]}};
-  function quickOf(f){
-    if(f.picks.length) return "";
-    for(var k in QUICK){
-      var q=QUICK[k];
-      if(q.who.join()===WHO.filter(function(x){ return f.who.indexOf(x)>=0; }).join()
-         && q.what.join()===WHAT.filter(function(x){ return f.what.indexOf(x)>=0; }).join()) return k;
-    }
-    return "";
+  // THE BOXES, AND THE REST. An entry holding several kinds shows when any
+  // of them is ticked, and shows whole. Committees chosen by name show only
+  // those committees, still in the kinds ticked -- except that a committee
+  // ASKED FOR BY NAME, chosen or found by the search, shows while Study
+  // Committee is unticked: that box is off for a reader who has not asked,
+  // and somebody who picks the Commission on Aging wants the commission.
+  function matches(e,f){
+    if(f.picks.length && f.picks.indexOf(e.pick)<0) return false;
+    if(f.body && e.body.indexOf(f.body)<0) return false;
+    var q=String(f.q||"").trim();
+    if(q && !found(e,q)) return false;
+    var named=!!f.picks.length||!!q;
+    return catsOf(e).some(function(c){ return f.cats.indexOf(c)>=0 || (named&&c==="study"); });
   }
-  // How many things narrow the schedule now: what the reset control and the
-  // folded filters' button say.
+  function sameSet(a,b){
+    return a.length===b.length && a.every(function(x){ return b.indexOf(x)>=0; });
+  }
+  // How far the filters are from where a new reader starts, which is what
+  // the reset control answers to...
   function narrowed(f){
-    return (f.who.length!==WHO.length)+(f.what.length!==WHAT.length)+(!!f.body)
-      +(!!f.picks.length)+(!!String(f.q||"").trim());
+    return (!sameSet(f.cats,CAT_ON))+(!!f.body)+(!!f.picks.length)+(!!String(f.q||"").trim());
   }
+  // ...and how many of them are down the side, which is what that panel's
+  // own button says when a phone folds it away.
+  function sideOn(f){ return (!!f.body)+(!!f.picks.length)+(!!String(f.q||"").trim()); }
   // A CANCELLED MEETING IS SHOWN AND NOT COUNTED, as the week's lead counts:
   // "22 sittings" of a week in which 21 met was a wrong number.
   function tally(entries,f){
@@ -666,38 +704,88 @@ WEEK_JS = r"""
 
   // ---- the address ---------------------------------------------------------------
   //
-  // THE VIEW, THE DAY AND THE FILTERS LIVE IN THE HASH of the week's own
-  // address -- /calendar/2026-W11#d=2026-03-11&v=day&what=hearing -- so a view
-  // can be sent to somebody and Back undoes a step. A hash, not a query: the
-  // page is a file on a CDN and the week is already in the path.
-  function readHash(h){
-    var p=new URLSearchParams(String(h||"").replace(/^#/,"")), s={}, any=false;
-    function list(k,ok){ return (p.get(k)||"").split(",").filter(function(x){ return ok.indexOf(x)>=0; }); }
-    // A DAY THE CALENDAR HAS. "2026-02-30" has the shape of a date and is
-    // not one: taken at its word it opened a Day view of nothing, stuck on
-    // "Loading". A day is kept only if it comes back from the arithmetic as
-    // itself; an address that names no real day opens the week as usual.
-    var d=p.get("d")||"";
-    if(/^\d{4}-\d\d-\d\d$/.test(d) && iso(+d.slice(0,4),+d.slice(5,7),+d.slice(8,10))===d){ s.d=d; any=true; }
-    if(VIEWS.indexOf(p.get("v"))>=0){ s.v=p.get("v"); any=true; }
-    if(p.has("who")){ s.who=list("who",WHO); any=true; }
-    if(p.has("what")){ s.what=list("what",WHAT); any=true; }
-    if(p.get("b")==="H"||p.get("b")==="S"){ s.body=p.get("b"); any=true; }
-    var c=p.getAll("c").filter(Boolean);
+  // ONE ADDRESS, WITH THE WEEK IN ITS QUERY (25 September 2026):
+  //   /calendar?week=2026-W28&day=2026-07-09&view=day&kinds=hearing,exec
+  // Moving to another week used to push that week's own page's address,
+  // /calendar/2026-W12#d=..., so the address a reader reloaded, shared or
+  // went Back to named a different page from the one they were reading. The
+  // person asked for it to stay put, "for things like indexing and reloading
+  // the page": now the calendar keeps its own address and says in the query
+  // which week, which day (only where it is not the day the week opens on),
+  // which view (only where it is not the list) and which filters (only
+  // where a new reader's would differ). The week's own page is what gets
+  // indexed and cited, and the canonical link, the og tags, the structured
+  // data and the citation go on naming it (rename).
+  //
+  // A DAY THE CALENDAR HAS. "2026-02-30" has the shape of a date and is not
+  // one: taken at its word it opened a Day view of nothing, stuck on
+  // "Loading". A day is kept only if it comes back from the arithmetic as
+  // itself, and a week only if it is a week; an address that names neither
+  // opens as the tab does.
+  function isDay(d){
+    return /^\d{4}-\d\d-\d\d$/.test(d||"") && iso(+d.slice(0,4),+d.slice(5,7),+d.slice(8,10))===d;
+  }
+  function isWeek(k){ return /^\d{4}-W\d\d$/.test(k||"") && weekKey(keyMonday(k))===k; }
+  var CHAMBER_OF={house:"H",senate:"S",h:"H",s:"S"}, CHAMBER_WORD={H:"house",S:"senate"};
+  function uniq(a){ return a.filter(function(x,i){ return a.indexOf(x)===i; }); }
+  function readQuery(search){
+    var p=new URLSearchParams(String(search||"").replace(/^\?/,"")), s={}, any=false;
+    var k=String(p.get("week")||"").toUpperCase(), d=p.get("day")||"";
+    if(isWeek(k)){ s.week=k; any=true; }
+    if(isDay(d)){ s.d=d; any=true; }
+    if(VIEWS.indexOf(p.get("view"))>=0){ s.v=p.get("view"); any=true; }
+    if(p.has("kinds")){
+      s.cats=uniq(String(p.get("kinds")).split(",").filter(function(x){ return CATS.indexOf(x)>=0; }));
+      any=true;
+    }
+    var b=CHAMBER_OF[String(p.get("chamber")||"").toLowerCase()];
+    if(b){ s.body=b; any=true; }
+    var c=uniq(p.getAll("committee").filter(Boolean));
     if(c.length){ s.picks=c; any=true; }
     if(p.get("q")){ s.q=p.get("q"); any=true; }
     return any?s:null;
   }
-  function writeHash(f,d){
+  // `day` is left out by the caller where it is the day the week opens on.
+  // Commas are the lists' own and are left as commas: kinds=hearing,exec
+  // reads, and URLSearchParams takes a comma back as itself.
+  function writeQuery(f,week,day){
     var p=new URLSearchParams();
-    p.set("d",d);
-    if(f.v!=="list") p.set("v",f.v);
-    if(f.who.length!==WHO.length) p.set("who",f.who.join(","));
-    if(f.what.length!==WHAT.length) p.set("what",f.what.join(","));
-    if(f.body) p.set("b",f.body);
-    f.picks.forEach(function(c){ p.append("c",c); });
+    p.set("week",week);
+    if(day) p.set("day",day);
+    if(f.v!=="list") p.set("view",f.v);
+    if(!sameSet(f.cats,CAT_ON))
+      p.set("kinds",CATS.filter(function(c){ return f.cats.indexOf(c)>=0; }).join(","));
+    if(f.body) p.set("chamber",CHAMBER_WORD[f.body]);
+    f.picks.forEach(function(c){ p.append("committee",c); });
     if(String(f.q||"").trim()) p.set("q",String(f.q).trim());
-    return "#"+p.toString();
+    return "?"+p.toString().replace(/%2C/gi,",");
+  }
+  // THE ADDRESS AS IT WAS WRITTEN UNTIL 25 SEPTEMBER, in the hash of a week's
+  // own page -- /calendar/2026-W11#d=2026-03-11&v=day&what=hearing -- is
+  // still read, so a link sent before then opens what it showed, and the
+  // page then writes it into the query. Its filters were two questions, who
+  // is meeting and what kind of committee meeting, and they come across as
+  // the boxes that answer them now. A hash that said nothing about who
+  // leaves Study Committee off, as it is for anybody who has not asked.
+  var OLD_WHO=["standing","study","floor"], OLD_WHAT=["hearing","exec","work","conf"];
+  function readHash(h){
+    var p=new URLSearchParams(String(h||"").replace(/^#/,"")), s={}, any=false;
+    function list(k,ok){ return String(p.get(k)||"").split(",").filter(function(x){ return ok.indexOf(x)>=0; }); }
+    var d=p.get("d")||"";
+    if(isDay(d)){ s.d=d; any=true; }
+    if(VIEWS.indexOf(p.get("v"))>=0){ s.v=p.get("v"); any=true; }
+    if(p.has("who")||p.has("what")){
+      var who=p.has("who")?list("who",OLD_WHO):null, what=p.has("what")?list("what",OLD_WHAT):OLD_WHAT;
+      s.cats=OLD_WHAT.filter(function(c){ return what.indexOf(c)>=0 && (!who||who.indexOf("standing")>=0); });
+      if(!who||who.indexOf("floor")>=0) s.cats.push("floor");
+      if(who&&who.indexOf("study")>=0) s.cats.push("study");
+      any=true;
+    }
+    if(p.get("b")==="H"||p.get("b")==="S"){ s.body=p.get("b"); any=true; }
+    var c=uniq(p.getAll("c").filter(Boolean));
+    if(c.length){ s.picks=c; any=true; }
+    if(p.get("q")){ s.q=p.get("q"); any=true; }
+    return any?s:null;
   }
 
   // ---- the month grid and the preview ----------------------------------------------
@@ -755,7 +843,7 @@ WEEK_JS = r"""
     h+='<ul class="pklist">'+vis.slice(0,cap).map(function(e){
       return '<li><span class="pkbar">'+(e.kinds.length?e.kinds:["other"]).map(function(k){
           return '<i class="k-'+k+'"></i>'; }).join("")+'</span>'
-        +'<span class="pkt">'+esc(e.time)+'</span>'
+        +'<span class="pkt">'+esc(clock(e.time))+'</span>'
         +'<span class="pkn">'+esc(e.name)+(e.cancelled?' <em>cancelled</em>':"")+'</span></li>';
     }).join("")+'</ul>';
     if(vis.length>cap) h+='<p class="pkmore">and '+(vis.length-cap)+' more</p>';
@@ -779,11 +867,12 @@ WEEK_JS = r"""
   var CORE={iso:iso, addDays:addDays, weekday:weekday, monday:monday, weekKey:weekKey,
     keyMonday:keyMonday, month:month, addMonths:addMonths, monthRows:monthRows,
     shiftMonth:shiftMonth, dayWords:dayWords, weekLabel:weekLabel, relWord:relWord, parseCard:parseCard,
-    parseDay:parseDay, dayHtml:dayHtml, defaults:defaults, matches:matches,
-    narrowed:narrowed, tally:tally, countLine:countLine, listDates:listDates,
-    weekCols:weekCols, weekRows:weekRows, firstDay:firstDay, readHash:readHash,
-    writeHash:writeHash, barsOf:barsOf, cellHtml:cellHtml, gridHtml:gridHtml,
-    peekHtml:peekHtml, stepKey:stepKey, quickOf:quickOf, QUICK:QUICK, WHO:WHO, WHAT:WHAT};
+    parseDay:parseDay, dayHtml:dayHtml, defaults:defaults, catsOf:catsOf, matches:matches,
+    narrowed:narrowed, sideOn:sideOn, tally:tally, countLine:countLine, listDates:listDates,
+    weekCols:weekCols, weekRows:weekRows, firstDay:firstDay, clock:clock, hourWord:hourWord,
+    isDay:isDay, isWeek:isWeek, readQuery:readQuery, writeQuery:writeQuery, readHash:readHash,
+    barsOf:barsOf, cellHtml:cellHtml, gridHtml:gridHtml,
+    peekHtml:peekHtml, stepKey:stepKey, CATS:CATS, CAT_ON:CAT_ON};
   G.GRCAL=CORE;
 
   // ==== THE PAGE ===================================================================
@@ -793,9 +882,10 @@ WEEK_JS = r"""
   function all(root,sel){ return [].slice.call(root.querySelectorAll(sel)); }
   var side=$("calside"), bar=$("calbar"), view=$("calview"), grid=$("cmgrid"),
       mtitle=$("cmtitle"), count=$("wkcount"), form=$("wkfilter"), find=$("wkfind"),
-      study=$("wkstudy"), peek=$("calpeek"), reset=$("calreset"), cpfind=$("cpfind"),
-      cplist=$("cplist"), cpchosen=$("cpchosen"), cpall=$("cpall"), cpstat=$("cpstat"),
-      whohint=$("whohint"), mfold=$("cmfold"), ffold=$("cffold"),
+      cats=$("calcats"), key=app.querySelector(".calkey"), peek=$("calpeek"),
+      reset=$("calreset"), cpfind=$("cpfind"), cplist=$("cplist"), cpchosen=$("cpchosen"),
+      cpall=$("cpall"), cpstat=$("cpstat"), pickhint=$("pickhint"),
+      mfold=$("cmfold"), ffold=$("cffold"),
       head=app.querySelector(".calhead"), h1=head.querySelector("h1"),
       lead=head.querySelector("p.src");
   var HERE=app.getAttribute("data-here"), PAGEWEEK=app.getAttribute("data-week"),
@@ -808,10 +898,17 @@ WEEK_JS = r"""
   var DAYS={}, WEEKS={}, MONTHS={}, OPEN={list:{},week:{},day:{}}, NAMES=null;
   function inRange(d){ return d>=FIRST&&d<=LAST; }
   function clamp(d){ return d<FIRST?FIRST:d>LAST?LAST:d; }
-  // Where a week lives: build_calendar.href_for, which puts the week the
-  // build called this one at /calendar.
+  // Where a week's own page lives: build_calendar.href_for, which puts the
+  // week the build called this one at /calendar. It is what the canonical
+  // link and the citation name, and where the arrows go opened in a new tab.
   function hrefFor(k){ return k===HERE?"/calendar":"/calendar/"+k; }
   function pathWeek(){ var m=/\/calendar\/(\d{4}-W\d\d)/.exec(location.pathname); return m?m[1]:HERE; }
+  // THE CALENDAR'S OWN ADDRESS, which a move keeps the reader on: /calendar,
+  // which Cloudflare Pages answers with calendar.html whatever the query.
+  // Where the page was reached by its file's name -- a preview served
+  // straight from the folder, which knows nothing of /calendar --
+  // /calendar.html, so that a reload there finds the page too.
+  var TAB=/\.html$/.test(location.pathname)?"/calendar.html":"/calendar";
   function weekDates(){
     var m=monday(SEL), out=[];
     for(var i=0;i<7;i++){ var d=addDays(m,i); if(inRange(d)) out.push(d); }
@@ -825,26 +922,60 @@ WEEK_JS = r"""
   WEEKS[PAGEWEEK]={label:h1.textContent.replace(/^The week of /,""), lead:lead?lead.textContent:""};
 
   // ---- where the reader is -------------------------------------------------------
-  var SKEY="gr.calendar.study", S, SEL, VIEWM, FOCUS;
-  function fromLocation(){
-    var h=readHash(location.hash);
-    S=defaults();
-    if(h) ["v","who","what","body","picks","q"].forEach(function(k){ if(k in h) S[k]=h[k]; });
-    // STUDY AND STATUTORY COMMITTEES, on unless the reader turned them off
-    // here before. The choice is a convenience kept in this browser; storage
-    // that is blocked or empty leaves the default, which is on. An address
-    // that says who to show wins over it.
-    if(study && !(h&&h.who)){
-      try{ if(localStorage.getItem(SKEY)==="0") S.who=S.who.filter(function(x){ return x!=="study"; }); }catch(e){}
-    }
-    // The tab, /calendar, opens on the reader's today; a week's own address
-    // on that week.
-    var onTab=!/\/calendar\/\d{4}-W\d\d/.test(location.pathname);
-    SEL=h&&h.d&&inRange(h.d) ? h.d
-      : onTab&&inRange(TODAY) ? TODAY
-      : firstDay(pathWeek(),DAYS,TODAY,FIRST,LAST);
-    VIEWM=month(SEL); FOCUS=SEL;
+  //
+  // AUTO: the day selected is the one its week opens on, not one the reader
+  // chose, so the address leaves it out and it follows the week's days as
+  // they arrive -- a week named by the address whose month file is still on
+  // its way opens on its Monday for a moment, then on its first sitting.
+  // A new key for the Study Committee box: the one before it remembered
+  // turning study committees OFF, when they were on for everybody.
+  var SKEY="gr.calendar.showstudy", S, SEL, VIEWM, FOCUS, AUTO;
+  function opening(k){ return clamp(firstDay(k,DAYS,TODAY,FIRST,LAST)); }
+  // Every day of the week the calendar has is here, so what it opens on is
+  // settled. The page's own week is whole as it came: a Saturday or Sunday
+  // it does not draw is one with nothing on it.
+  function whole(k){
+    if(k===PAGEWEEK) return true;
+    var mon=keyMonday(k);
+    for(var i=0;i<7;i++){ var d=addDays(mon,i); if(inRange(d)&&!DAYS[d]) return false; }
+    return true;
   }
+  // Where the reader is, from the address: the query, else the hash a link
+  // sent before 25 September carries, else the page itself -- a week's own
+  // page opens on its week, and the tab on the reader's today. Returns what
+  // the state was read from, "" where the address held none.
+  function fromLocation(){
+    var q=readQuery(location.search), h=q?null:readHash(location.hash), st=q||h||{};
+    S=defaults();
+    ["v","cats","body","picks","q"].forEach(function(k){ if(k in st) S[k]=st[k]; });
+    // STUDY AND STATUTORY COMMITTEES ARE OFF for anybody who has not asked
+    // for them, and a reader who ticked the box is remembered in this
+    // browser. Storage that is blocked or empty leaves them off; an address
+    // that says which kinds to show wins over it.
+    if(!("cats" in st)){
+      try{ if(localStorage.getItem(SKEY)==="1") S.cats.push("study"); }catch(e){}
+    }
+    var k=st.week||(st.d?weekKey(st.d):"");
+    if(k){
+      // A week outside the calendar's range is the nearest one it has.
+      k=weekKey(clamp(keyMonday(k)));
+      if(st.d&&weekKey(st.d)===k&&inRange(st.d)){ SEL=st.d; AUTO=false; }
+      else{ SEL=opening(k); AUTO=true; }
+    }else if(/\/calendar\/\d{4}-W\d\d/.test(location.pathname)){
+      SEL=opening(pathWeek()); AUTO=true;
+    }else{
+      SEL=inRange(TODAY)?TODAY:opening(HERE); AUTO=true;
+    }
+    VIEWM=month(SEL); FOCUS=SEL;
+    return q?"query":h?"hash":"";
+  }
+  // The day for the address: none where it is the one the week opens on.
+  function dayParam(){
+    if(AUTO) return "";
+    var k=weekKey(SEL);
+    return whole(k)&&SEL===opening(k)?"":SEL;
+  }
+  function address(){ return TAB+writeQuery(S,weekKey(SEL),dayParam()); }
 
   // ---- the month files -------------------------------------------------------------
   function load(m){
@@ -865,6 +996,17 @@ WEEK_JS = r"""
     }).catch(function(){ MONTHS[m]="fail"; landed(true); });
   }
   function landed(panel){
+    // THE DAY A WEEK OPENS ON FOLLOWS ITS DAYS: its first sitting is known
+    // only once they are here. The address does not change, because it
+    // never named the day.
+    if(AUTO&&whole(weekKey(SEL))){
+      var d=opening(weekKey(SEL));
+      if(d!==SEL){
+        if(VIEWM===month(SEL)) VIEWM=month(d);
+        if(FOCUS===SEL) FOCUS=d;
+        SEL=d; panel=true;
+      }
+    }
     drawGrid(); drawHead();
     if(panel) drawPanel(); else drawCount();
     if(peekD) showPeek(peekD,peekFrom);
@@ -1049,7 +1191,7 @@ WEEK_JS = r"""
       h+='<tr><td class="wknone" colspan="'+(cols.length+1)+'">'
         +(any?"Nothing this week matches the filters.":"Nothing is scheduled this week.")+'</td></tr>';
     rows.forEach(function(r){
-      h+='<tr><th scope="row" class="wkhr">'+(r.h?r.h+":00":"No time given")+'</th>'
+      h+='<tr><th scope="row" class="wkhr">'+(r.h?hourWord(r.h):"No time given")+'</th>'
         +r.cells.map(function(c,i){
           return '<td data-d="'+cols[i]+'">'+c.map(function(e){ return e.html; }).join("")+'</td>'; }).join("")
         +'</tr>';
@@ -1118,19 +1260,24 @@ WEEK_JS = r"""
     var r=t.getBoundingClientRect();
     if(r.top<0||r.top>(window.innerHeight||0)*0.75) t.scrollIntoView({block:"start"});
   }
-  function commit(push){
-    var wk=weekKey(SEL), path=pathWeek()===wk?location.pathname:hrefFor(wk),
-        url=path+writeHash(S,SEL);
-    if(url===location.pathname+location.hash) return;
+  // The address for where the reader is, on the calendar's own: pushed for a
+  // week, a day or a view, so Back undoes it; put in place of the last for a
+  // filter, so Back is not a walk back through every box ticked. A week's own
+  // page that the reader moves on from is left behind in the history, and
+  // Back returns to it.
+  function commit(push,frag){
+    var url=address()+(frag||"");
+    if(url===location.pathname+location.search+location.hash) return;
     try{ history[push?"pushState":"replaceState"](null,"",url); }catch(e){}
     skipTo();
   }
   // The shell's skip link names the page's own address, and the address may
-  // now be another week's. Left as it was, following it loaded the week the
-  // page was opened on as a new page and threw the reader's place away.
+  // now be another. Left as it was, following it loaded the page as it was
+  // first opened and threw the reader's place away; with the query in it, it
+  // is a step within this page.
   function skipTo(){
     var s=document.querySelector("a.skip");
-    if(s) s.setAttribute("href",location.pathname+"#results");
+    if(s) s.setAttribute("href",location.pathname+location.search+"#results");
   }
   // A KEY PRESSED ON A CONTROL KEEPS THAT CONTROL IN VIEW. A click brings
   // the chosen day into view, which is what a pointer came for. A key press
@@ -1145,38 +1292,38 @@ WEEK_JS = r"""
     var r=el.getBoundingClientRect();
     if(r.top<0||r.bottom>(window.innerHeight||0)) el.scrollIntoView({block:"nearest"});
   }
-  function select(d,how,kb){
-    SEL=clamp(d); FOCUS=SEL; VIEWM=month(SEL);
+  // `auto`: the day is the one its week opens on rather than one chosen.
+  function select(d,how,kb,auto){
+    SEL=clamp(d); FOCUS=SEL; VIEWM=month(SEL); AUTO=!!auto;
     need(); drawGrid(how==="key"); drawHead(); drawPanel(); commit(true);
     if(how==="grid"||how==="key"||how==="nav"||how==="today") reveal();
     if(kb||how==="key") keepInView(document.activeElement);
   }
+  // A WEEK, NOT A DAY. The arrows and This week open a week on the day its
+  // address would -- today in the current week, else its first sitting --
+  // so moving week to week reads /calendar?week=2026-W12 and no more. In the
+  // Day view the reader is reading a day, and keeps its weekday.
+  function toWeek(step,how,kb){
+    if(S.v==="day"){ select(addDays(SEL,step),how,kb); return; }
+    select(opening(weekKey(clamp(addDays(SEL,step)))),how,kb,true);
+  }
 
   // ---- the controls ---------------------------------------------------------------
-  function values(name){
-    return all(form,'input[name="'+name+'"]').filter(function(i){ return i.checked; })
-      .map(function(i){ return i.value; });
-  }
   function syncControls(){
-    all(form,'input[name="who"]').forEach(function(i){
-      i.checked=S.who.indexOf(i.value)>=0; i.disabled=!!S.picks.length; });
-    whohint.hidden=!S.picks.length;
-    all(form,'input[name="what"]').forEach(function(i){ i.checked=S.what.indexOf(i.value)>=0; });
+    all(cats,'input[name="cat"]').forEach(function(i){ i.checked=S.cats.indexOf(i.value)>=0; });
     all(form,"[data-body]").forEach(function(b){
       b.setAttribute("aria-pressed",(b.getAttribute("data-body")||"")===S.body?"true":"false"); });
     if(find.value!==S.q) find.value=S.q;
-    var qk=quickOf(S);
-    all(form,"[data-quick]").forEach(function(b){
-      b.setAttribute("aria-pressed",b.getAttribute("data-quick")===qk?"true":"false"); });
     all(bar,"[data-view]").forEach(function(b){
       b.setAttribute("aria-pressed",b.getAttribute("data-view")===S.v?"true":"false"); });
     cpchosen.innerHTML=S.picks.map(function(n){
       return '<button type="button" class="cpchip" data-name="'+esc(n)+'">'+esc(n)
         +'<span class="sr">: stop showing only this committee</span><span aria-hidden="true"> &times;</span></button>';
     }).join("");
+    pickhint.hidden=!S.picks.length;
     all(cplist,"input").forEach(function(i){ i.checked=S.picks.indexOf(i.value)>=0; });
-    var n=narrowed(S);
-    reset.hidden=!n;
+    reset.hidden=!narrowed(S);
+    var n=sideOn(S);
     ffold.textContent=(side.classList.contains("ffolded")?"Show the filters":"Hide the filters")
       +(n?" ("+n+" on)":"");
   }
@@ -1294,9 +1441,12 @@ WEEK_JS = r"""
     var venue=m.getAttribute("data-venue")||"";
     var bills=(m.getAttribute("data-bills")||"").split(" ").filter(Boolean);
     var last=m.getAttribute("data-last");
+    // The times in the words the card uses; the entry's own start and end
+    // below are the machine's.
+    var said=function(t){ return clock(t).replace(/\u00a0/g," "); };
     var note="New Hampshire General Court. "+(kinds||"Meeting")+
       (bills.length? ". Bills: "+bills.join(", ") : "")+
-      (last && last!==time ? ". Items are scheduled from "+time+" to "+last : "")+
+      (last && last!==time ? ". Items are scheduled from "+said(time)+" to "+said(last) : "")+
       ". The General Court does not publish an end time, so this entry is "+
       "one hour long. Source: graniterecord.org";
     // "Legislative Administration (Executive Session)". This goes into
@@ -1351,8 +1501,11 @@ WEEK_JS = r"""
   }
 
   // ---- wiring ------------------------------------------------------------------------
-  fromLocation();
-  side.hidden=false; bar.hidden=false;
+  var came=fromLocation();
+  // The row of boxes takes the place of the key a reader without script is
+  // given, and says the same six things.
+  side.hidden=false; bar.hidden=false; cats.hidden=false;
+  if(key) key.hidden=true;
   app.classList.add("on");
   view.tabIndex=-1;
   // A phone opens on the selected week alone, and the filters shut; a
@@ -1361,8 +1514,16 @@ WEEK_JS = r"""
   try{ folded=localStorage.getItem("gr.calendar.fold"); }catch(e){}
   var narrow=!!(window.matchMedia&&window.matchMedia("(max-width:640px)").matches);
   setFold(folded===null?narrow:folded==="1");
-  setFilterFold(!!(window.matchMedia&&window.matchMedia("(max-width:1023px)").matches)&&!narrowed(S));
+  setFilterFold(!!(window.matchMedia&&window.matchMedia("(max-width:1023px)").matches)&&!sideOn(S));
   need(); drawAll();
+  // An address from before 25 September is written again as the one the
+  // calendar uses now, and a query in its own spelling -- keeping a fragment
+  // that is not a state, the skip link's #results -- while a week's own page,
+  // or the tab, opened plainly, is left as it is until the reader moves. The
+  // skip link is pointed at the address either way: the shell wrote it for
+  // the page's own, and from /calendar?week=2026-W28 that was another page.
+  if(came) commit(false,came==="query"&&location.hash&&!readHash(location.hash)?location.hash:"");
+  skipTo();
 
   grid.addEventListener("click",function(e){
     var td=cellOf(e.target);
@@ -1450,8 +1611,9 @@ WEEK_JS = r"""
   $("cmprev").addEventListener("click",function(){ turn(-1); });
   $("cmnext").addEventListener("click",function(){ turn(1); });
   // A click that no pointer made -- Enter or Space on the control -- has a
-  // detail of 0, and is the keyboard's.
-  $("cmnow").addEventListener("click",function(e){ select(clamp(TODAY),"today",e.detail===0); });
+  // detail of 0, and is the keyboard's. Today is the day its week opens on;
+  // after the calendar's last week, the last day it has is a day chosen.
+  $("cmnow").addEventListener("click",function(e){ select(clamp(TODAY),"today",e.detail===0,inRange(TODAY)); });
   mfold.addEventListener("click",function(){
     var on=!side.classList.contains("folded");
     setFold(on,true);
@@ -1469,43 +1631,38 @@ WEEK_JS = r"""
       S.v=v; syncControls(); drawPanel(); commit(true);
     });
   });
+  // BACK TO WHERE A NEW READER STARTS: every box ticked but Study
+  // Committee, no chamber, no committee chosen and nothing typed. The view
+  // and the day stay, being where the reader is rather than a filter.
   reset.addEventListener("click",function(){
     var v=S.v; S=defaults(); S.v=v;
-    try{ localStorage.setItem(SKEY,"1"); }catch(e){}
+    try{ localStorage.setItem(SKEY,"0"); }catch(e){}
     cpfind.value=""; drawList(); apply();
     // The control goes away with what it undid; the view switch keeps the
     // reader's place rather than dropping focus on the page.
     (bar.querySelector('[aria-pressed="true"]')||view).focus();
   });
+  // The row of boxes. The Study Committee box is remembered in this browser;
+  // the others are a moment's choice, and the address carries them all.
+  cats.addEventListener("change",function(e){
+    var t=e.target;
+    if(!t||t.name!=="cat") return;
+    S.cats=all(cats,'input[name="cat"]').filter(function(i){ return i.checked; })
+      .map(function(i){ return i.value; });
+    if(t.value==="study"){ try{ localStorage.setItem(SKEY,t.checked?"1":"0"); }catch(e2){} }
+    apply();
+  });
   form.addEventListener("submit",function(e){ e.preventDefault(); });
   form.addEventListener("change",function(e){
     var t=e.target;
-    if(t.name==="who"){
-      S.who=values("who");
-      // A page built without the database copy offers no study box, and a
-      // box that is not there cannot have been unticked.
-      if(!study) S.who.push("study");
-      if(t===study){ try{ localStorage.setItem(SKEY, study.checked?"1":"0"); }catch(e2){} }
-    }else if(t.name==="what") S.what=values("what");
-    else if(cplist.contains(t)){
-      var i=S.picks.indexOf(t.value);
-      if(t.checked&&i<0) S.picks.push(t.value);
-      if(!t.checked&&i>=0) S.picks.splice(i,1);
-    }else return;
+    if(!cplist.contains(t)) return;
+    var i=S.picks.indexOf(t.value);
+    if(t.checked&&i<0) S.picks.push(t.value);
+    if(!t.checked&&i>=0) S.picks.splice(i,1);
     apply();
   });
   all(form,"[data-body]").forEach(function(b){
     b.addEventListener("click",function(){ S.body=b.getAttribute("data-body")||""; apply(); });
-  });
-  // A quick choice pressed again undoes itself, back to every box ticked.
-  all(form,"[data-quick]").forEach(function(b){
-    b.addEventListener("click",function(){
-      var k=b.getAttribute("data-quick"), on=quickOf(S)===k;
-      S.who=on?WHO.slice():QUICK[k].who.slice();
-      S.what=on?WHAT.slice():QUICK[k].what.slice();
-      S.picks=[];
-      apply();
-    });
   });
   var findT=0;
   find.addEventListener("input",function(){
@@ -1542,20 +1699,25 @@ WEEK_JS = r"""
       if(hd){ hd.tabIndex=-1; hd.focus(); }
     }else if(b.hasAttribute("data-step")) select(addDays(SEL,+b.getAttribute("data-step")),"step");
   });
-  // The week's arrows move the selection by a week, in place, keeping the
-  // view and the filters; opened in a new tab they are plain links still.
+  // The week's arrows move to the week before or after in place, keeping
+  // the view and the filters, on the calendar's own address; opened in a new
+  // tab they are plain links to the week's own page still.
   app.addEventListener("click",function(e){
     var a=e.target.closest&&e.target.closest(".wknav a");
     if(!a||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||e.button) return;
     e.preventDefault();
-    if(a.hasAttribute("data-today")) select(clamp(TODAY),"nav",e.detail===0);
-    else select(addDays(SEL,+a.getAttribute("data-step")||0),"nav",e.detail===0);
+    if(a.hasAttribute("data-today")) select(clamp(TODAY),"nav",e.detail===0,true);
+    else toWeek(+a.getAttribute("data-step")||0,"nav",e.detail===0);
   });
+  // BACK AND FORWARD. Where the address has not changed what is shown -- the
+  // skip link's #results is a step in the history too -- nothing is drawn
+  // again, and the month the reader had paged to stays. An entry from before
+  // 25 September is written as the address the calendar uses now.
   window.addEventListener("popstate",function(){
-    // A bare fragment -- the skip link's #results -- is not a state, and
-    // leaves the reader's filters where they were.
-    if(location.hash && !readHash(location.hash)) return;
-    hidePeek(); fromLocation(); need(); drawAll(); skipTo();
+    var was=address(), keep=[S,SEL,VIEWM,FOCUS,AUTO], came=fromLocation();
+    if(address()===was){ S=keep[0]; SEL=keep[1]; VIEWM=keep[2]; FOCUS=keep[3]; AUTO=keep[4]; return; }
+    hidePeek(); need(); drawAll(); skipTo();
+    if(came==="hash") commit(false);
   });
 })();
 """
@@ -1942,57 +2104,83 @@ def week_facts(key, weeks, today):
 # whole answer to no filter at all; a control that does nothing is worse than
 # no control.
 #
-# WHO AND WHAT ARE TWO QUESTIONS, and the form asks them as two. The person's
-# description on 24 September 2026 named five ways to narrow the schedule --
-# everything with the study committees, standing committees only, public
-# hearings, one committee, or any combination -- and those are one choice of
-# who is meeting and one of what kind of sitting it is, taken together. A card
-# holding several kinds matches when any of its items does, and stays whole.
-# The floor is not a kind of COMMITTEE meeting, so the "what" boxes say
-# nothing about it; the "who" box for it does.
+# THE COLOURS ARE THE FILTER (25 September 2026). The person, having used
+# the page: "Maybe change the selector to checkboxes on the color code, so
+# each one is selected on by default aside from study committees and the
+# checkbox matches the color of the meeting type. The more detailed filter
+# would remain on the sidebar." So the key under the view switch became a
+# row of six boxes, one per kind of meeting, each in its colour, named in
+# title case; and the side keeps the search, the chamber and the committees
+# chosen by name. The "who is meeting" and "what kind of committee meeting"
+# questions, and the two quick choices that set them, are gone: the boxes
+# ask the one question they were two halves of.
 #
-# Choosing committees by name REPLACES the "who" boxes rather than narrowing
-# them: somebody who picks the Commission on Aging wants that commission, and
-# an unticked "study and statutory" box hiding it would read as a fault. The
-# form says so while any are chosen.
-WHAT_BOXES = (("hearing", "k-hearing", "Public hearings"),
-              ("exec", "k-exec", "Executive sessions"),
-              ("work", "k-meet", "Work sessions and other meetings"),
-              ("conf", "k-conf", "Committees of conference"))
+# `value` is what the script and the address call a box (WEEK_JS's CATS, in
+# the same order); the class is the colour, build_pages.MEET_LEGEND's; the
+# last field is whether it starts ticked. A study or statutory committee is
+# Study Committee whatever kind of meeting it held, and a work session no
+# longer shares a box, or a colour, with one.
+CATEGORIES = (("hearing", "k-hearing", True),
+              ("exec", "k-exec", True),
+              ("work", "k-meet", True),
+              ("conf", "k-conf", True),
+              ("floor", "k-floor", True),
+              ("study", "k-study", False))
 
 
-def side_html(study_note):
-    """The month grid's frame and the filters, down the left of the page.
+def cats_html():
+    """The row of boxes, hidden until the script shows it, and the key a
+    reader without script is given in its place, which the script hides.
+
+    A real checkbox in a label, laid over a box drawn in its colour (app.css,
+    .calcat): the drawing is the key, the checkbox the filter. The key is
+    the same six names and colours, so the page reads the same either way.
+    """
+    names = dict(BP.MEET_LEGEND)
+    assert [c for _v, c, _on in CATEGORIES] == [c for c, _w in BP.MEET_LEGEND], (
+        "the Calendar's boxes and build_pages.MEET_LEGEND name the kinds differently")
+    boxes = "".join(f'<label class="calcat {c}"><input type="checkbox" name="cat" '
+                    f'value="{v}"{" checked" if on else ""}>'
+                    f'<span class="cbx" aria-hidden="true"></span>{S.E(names[c])}</label>'
+                    for v, c, on in CATEGORIES)
+    return ('<fieldset class="calcats" id="calcats" hidden>'
+            '<legend class="sr">Kinds of meeting to show</legend>'
+            f'<div class="calcatrow">{boxes}</div></fieldset>'
+            '<ul class="calkey" aria-label="What the colours mean">'
+            + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(w)}</li>'
+                      for c, w in BP.MEET_LEGEND)
+            + "</ul>")
+
+
+def side_html():
+    """The month grid's frame and the detailed filters, down the left.
 
     The grid's days are the script's to draw -- which of them is today, and
     so which are past, is the reader's clock and not the build's -- so the
-    table is emitted empty. `study_note` empty means the database copy was
-    not on disk, and then the page offers no box for committees it lacks.
+    table is emitted empty.
+
+    THE CHAMBER STAYS. Kept on 25 September 2026 when the kinds of meeting
+    moved to the boxes: "only the House" is the question a clerk or a member
+    of one chamber asks first, and choosing every House committee by name
+    would be thirty ticks for it. Study committees are no chamber's, and a
+    committee of conference is both chambers'.
     """
     find = ('<label class="wkfind" for="wkfind">Bill or committee'
             '<input type="search" id="wkfind" autocomplete="off" '
             'placeholder="HB 1234, or Judiciary"></label>')
-    # The two combinations the person named, a click each; they set the
-    # boxes below, which remain the whole of the model.
-    quick = ('<div class="wkchips calquick" role="group" aria-label="Quick choices">'
-             '<button type="button" data-quick="standing" aria-pressed="false">'
-             'Standing committees only</button>'
-             '<button type="button" data-quick="hearing" aria-pressed="false">'
-             'Public hearings only</button></div>')
-    # ON UNLESS THE READER TURNS IT OFF, and the script remembers which. With
-    # no script the whole week is shown, which is every box's default anyway.
-    who = ('<fieldset class="calfs"><legend>Who is meeting</legend>'
-           '<label class="calchk"><input type="checkbox" name="who" value="standing" '
-           'checked>Standing committees and committees of conference</label>'
-           + ('<label class="calchk" for="wkstudy"><input type="checkbox" id="wkstudy" '
-              'checked name="who" value="study">Study and statutory committees</label>'
-              if study_note else "")
-           + '<label class="calchk"><input type="checkbox" name="who" value="floor" '
-           'checked>Floor sessions of the House and Senate</label>'
-           '<p class="calhint" id="whohint" hidden>Showing only the committees '
-           'chosen below.</p></fieldset>')
+    chamber = ('<fieldset class="calfs"><legend>Chamber</legend><div class="wkchips">'
+               '<button type="button" data-body="" aria-pressed="true">Both chambers</button>'
+               '<button type="button" data-body="H" aria-pressed="false">House</button>'
+               '<button type="button" data-body="S" aria-pressed="false">Senate</button>'
+               '</div></fieldset>')
+    # Committees chosen by name show only those committees, in the kinds
+    # ticked in the row of boxes -- which a reader choosing here cannot see
+    # from the side on a desktop, so it is said while any are chosen.
     pick = ('<fieldset class="calfs cpick"><legend>Only these committees</legend>'
             '<div class="cpchosen" id="cpchosen"></div>'
+            '<p class="calhint" id="pickhint" hidden>Only the committees chosen '
+            'here are shown, in the kinds of meeting ticked above the schedule. '
+            'A study committee chosen here is shown either way.</p>'
             '<label class="wkfind" for="cpfind">Find a committee'
             '<input type="search" id="cpfind" autocomplete="off" '
             'placeholder="Name of a committee" aria-controls="cplist"></label>'
@@ -2002,20 +2190,6 @@ def side_html(study_note):
             'aria-label="Committees to show" hidden></div>'
             '<p class="calhint" id="cpstat" role="status" aria-live="polite"></p>'
             '</fieldset>')
-    what = ('<fieldset class="calfs"><legend>What kind of committee meeting</legend>'
-            + "".join(f'<label class="calchk"><input type="checkbox" name="what" '
-                      f'value="{v}" checked><i class="{c}" aria-hidden="true"></i>'
-                      f'{S.E(w)}</label>' for v, c, w in WHAT_BOXES)
-            # Said where the boxes are, because ticking only Public hearings
-            # and still seeing the House sit reads as a fault otherwise.
-            + '<p class="calhint">A floor session is not a committee meeting: '
-            'show or hide it under Who is meeting.</p>'
-            + '</fieldset>')
-    chamber = ('<fieldset class="calfs"><legend>Chamber</legend><div class="wkchips">'
-               '<button type="button" data-body="" aria-pressed="true">Both chambers</button>'
-               '<button type="button" data-body="H" aria-pressed="false">House</button>'
-               '<button type="button" data-body="S" aria-pressed="false">Senate</button>'
-               '</div></fieldset>')
     return ('<div class="calside" id="calside" hidden>'
             # Past the month and the filters to the schedule, which is a long
             # run of tab stops to cross by keyboard. A button, because it only
@@ -2038,7 +2212,7 @@ def side_html(study_note):
             '<button type="button" class="calfold" id="cffold" aria-expanded="true" '
             'aria-controls="wkfilter">Hide the filters</button></div>'
             '<form class="wkfilter" id="wkfilter" role="search" aria-labelledby="wkfhead">'
-            + find + quick + who + pick + what + chamber
+            + find + chamber + pick
             + '</form></section></div>')
 
 
@@ -2051,15 +2225,23 @@ BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
             '<button type="button" data-view="day" aria-pressed="false">Day</button>'
             '</div>'
             '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
+            # "Show everything" while the defaults were everything; they are
+            # everything but the study committees now, so it says what it does.
             '<button type="button" class="calreset" id="calreset" hidden>'
-            'Show everything</button></div>')
+            'Reset filters</button></div>')
 
 
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
-              today, sessions=frozenset(), study_note="", docs=None):
-    """Write one week's page. `study_note` says where the study and
-    statutory committee meetings come from; empty when there are none, and
-    then neither the toggle nor the description mentions them."""
+              today, sessions=frozenset(), study=False, docs=None):
+    """Write one week's page. `study` is whether the calendar holds the study
+    and statutory committees' meetings from the database copy; the page's
+    description claims them only then.
+
+    NO NOTE OF WHERE THEY COME FROM. The page said under its key that they
+    come "from the General Court's own database, as copied on 8 September
+    2026", and that nothing had refreshed the copy; the person asked on 25
+    September 2026 for the explanation to go. The build still says which
+    copy it read, every run (main), so it is not silent about it."""
     w = week_facts(key, weeks, today)
     label, lead, days, meets, n = w["label"], w["lead"], w["days"], w["meets"], w["n"]
 
@@ -2089,20 +2271,16 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # which was the same week. The copy is rewritten on every build and names
     # /calendar as the page it copies, so there is one page to index.
     copies = [path] + ([f"/calendar/{key}.html"] if path == "/calendar.html" else [])
-    # THE KEY TO THE COLOURS, which are the General Court's own for each kind
-    # of meeting. On every week, empty ones included, so the page reads the
-    # same wherever a reader lands.
-    key_html = ('<ul class="calkey" aria-label="What the colours mean">'
-                + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(w)}</li>'
-                          for c, w in BP.MEET_LEGEND)
-                + "</ul>")
     # THE PAGE IS THE WEEK AS A LIST, AND THE SCRIPT MAKES IT A CALENDAR.
     # Without script this reads exactly as it did: the week's heading, its
-    # lead, the arrows, the key and every day in order. With it, the month
-    # grid and the filters come up down the left and the list becomes one of
-    # three views over the same cards. The attributes are what the script
-    # needs to know about the page it is on: which week it holds, which week
-    # the build called this one, and the first and last weeks there are.
+    # lead, the arrows, the key to the colours and every day in order. With
+    # it, the month grid and the filters come up down the left, the key
+    # becomes the row of boxes that is also the filter, and the list becomes
+    # one of three views over the same cards. On every week, empty ones
+    # included, so the page reads the same wherever a reader lands. The
+    # attributes are what the script needs to know about the page it is on:
+    # which week it holds, which week the build called this one, and the
+    # first and last weeks there are.
     block = ('<div id="results">'
              f'<div class="wkpage calapp" id="calapp" data-week="{key}" '
              f'data-here="{here}" data-first="{order[0]}" data-last="{order[-1]}">'
@@ -2111,11 +2289,10 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              f'<p class="src">{lead}</p>'
              f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
              '</div>'
-             + side_html(study_note)
+             + side_html()
              + '<div class="calmain">'
              + BAR_HTML
-             + key_html
-             + (f'<p class="src calsrc">{S.E(study_note)}</p>' if study_note else "")
+             + cats_html()
              + f'<div class="calview" id="calview">{body}</div>'
              f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
              '</div>'
@@ -2136,7 +2313,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                       description=("Hearings, work sessions, executive sessions, "
                                    "floor sittings"
                                    + (" and study and statutory committee meetings"
-                                      if study_note else "")
+                                      if study else "")
                                    + f" of the New Hampshire General Court, {label}."),
                       og_title=f"The week of {label}",
                       globals={"GR_STATIC": True}, noscript="",
@@ -2268,19 +2445,6 @@ def main():
     # SILENCE IS NOT SUCCESS: no weeks is a Calendar tab pointing at nothing,
     # and a build that said so only by printing a zero.
     assert weeks, f"no proceedings dated {FROM} or later; the calendar would be empty"
-    study_note = ""
-    if study_rows:
-        when = fetched
-        try:
-            x = datetime.date.fromisoformat(fetched)
-            when = f"{x.day} {MONTH[x.month - 1]} {x.year}"
-        except ValueError:
-            pass
-        study_note = ("Study and statutory committee meetings come from the "
-                      "General Court's own database, as copied on "
-                      f"{when or 'an unrecorded date'}. Nothing has refreshed "
-                      "that copy since, so a meeting set, moved or cancelled "
-                      "after that date is not shown here.")
 
     today = datetime.date.today()
     here = week_key(today)
@@ -2312,7 +2476,7 @@ def main():
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits,
-                           study_note=study_note, docs=docs)
+                           study=bool(study_rows), docs=docs)
 
     # THE MONTH FILES, which the page's month grid and its other weeks read.
     # SILENCE IS NOT SUCCESS: a run that wrote weeks and no months is a

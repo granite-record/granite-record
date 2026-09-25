@@ -4141,10 +4141,20 @@ const MEET_KIND={"public hearing":["Public hearing","k-hearing"],
                  "work session":["Work session","k-meet"],
                  "subcommittee work session":["Subcommittee work session","k-meet"],
                  "full committee work session":["Full committee work session","k-meet"],
-                 "study committee":["Study committee","k-meet"],
-                 "statutory committee":["Statutory committee","k-meet"],
+                 "study committee":["Study committee","k-study"],
+                 "statutory committee":["Statutory committee","k-study"],
                  "committee of conference":["Committee of conference","k-conf"],
                  "floor debate":["Floor session","k-floor"]};
+
+// "13:30" -> "1:30 PM", as a reader says a time: build_pages.clock, and the
+// Calendar page's own, which preflight holds this to. A no-break space keeps
+// AM or PM with its time; anything that is not a time comes back as it was.
+function clock(t){
+  const m=/^(\d{1,2}):(\d\d)/.exec(String(t||""));
+  if(!m||+m[1]>23)return String(t||"");
+  const h=+m[1];
+  return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"AM":"PM");
+}
 
 // THE MARKUP HERE MUST MATCH build_pages.py's calendar_html(). Both emit the
 // same component against one set of rules in app.css's SHARED region, and
@@ -4198,11 +4208,12 @@ function calendarBlock(rows,heading){
     ks.forEach(k=>{
       const [,cmte]=k.split("\u0000");
       const bills=meets.get(k);
-      // First bill to last, which is how the General Court prints a meeting.
+      // First bill to last, which is how the General Court prints a meeting,
+      // in the twelve-hour clock the rest of the site's calendars use.
       const slots=bills.map(b=>b.time||"").filter(Boolean).sort();
       const time=!slots.length?""
-        :(slots[0]===slots[slots.length-1]?slots[0]
-          :slots[0]+"\u2013"+slots[slots.length-1]);
+        :(slots[0]===slots[slots.length-1]?clock(slots[0])
+          :clock(slots[0])+"\u2013"+clock(slots[slots.length-1]));
       // The day's items in order, each keeping the time, kind and room
       // it was set for.
       const byslot=new Map();
@@ -4243,7 +4254,7 @@ function calendarBlock(rows,heading){
         if(!oneSlot){
           const [w,c]=kindWord(q[1]);
           out.push(`<p class="calslot">`
-            +(q[0]?`<span class="caltime">${esc(q[0])}</span>`:"")
+            +(q[0]?`<span class="caltime">${esc(clock(q[0]))}</span>`:"")
             +`<span class="calkind ${c}">${esc(w)}</span>`
             +(q[2]&&!venue?`<span class="calwhere">${esc(q[2])}</span>`:"")
             +`</p>`);

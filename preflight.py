@@ -3843,8 +3843,11 @@ def _palette():
     BOUND = [("edge", "surface"), ("edge", "paper"),
              ("pine", "surface"), ("pine", "paper")]
     # A meeting's kind: its ink is the chip's text on its tint, and it is also
-    # the card's edge bar and the chip's edge on the card and the page.
-    for k in ("hear", "meet", "exec", "conf", "floor"):
+    # the card's edge bar and the chip's edge on the card and the page -- and,
+    # since 25 September 2026, the Calendar's box for that kind, whose tick
+    # is drawn in the card's own ground on the ink, so the same 3:1 holds it.
+    # The sixth, study and statutory committees, joined the five that day.
+    for k in ("hear", "meet", "exec", "conf", "floor", "study"):
         TEXT += [(f"cal-{k}", f"cal-{k}-bg")]
         BOUND += [(f"cal-{k}", "surface"), (f"cal-{k}", "paper")]
 
@@ -13554,7 +13557,7 @@ def _meet_kind_agrees():
     return "ok", f"{len(table)} meeting kinds, the same in both renderers"
 
 
-@check("frontend", "a meeting takes the General Court's colour for its kind, and the week carries the key")
+@check("frontend", "a meeting takes the General Court's colour for its kind, a study committee its own, and the week carries the key")
 def _meet_kind_colours():
     """Work sessions, conferences and the floor were all orange.
 
@@ -13566,35 +13569,52 @@ def _meet_kind_colours():
     committees of conference and 60 floor sittings, and every work session,
     wore the colour that means executive session there. No page carried a key.
 
+    STUDY AND STATUTORY COMMITTEES ARE THEIR OWN COLOUR since 25 September
+    2026. They were green with the work sessions, as the General Court's
+    schedule has them, until the person asked for the two not to be grouped:
+    the colours became the Calendar's filter, and one box can no longer mean
+    both. So this now wants them in k-study, on its own --cal-study token,
+    with the other five as they were.
+
     This holds each kind that occurs in the record to its class, each class
-    to a chip rule, a bar rule and a key rule in app.css drawn from its own
-    --cal- token, the key to every class, and a built week to the key.
+    to a chip rule, a bar rule, a key rule, a grid dot, a preview bar and a
+    box in app.css, each drawn from its own --cal- token; the key to every
+    class, in the order of the Calendar's boxes and named in title case; and
+    a built week to the key and the boxes.
     """
     import build_pages as BP
     want = {"public hearing": "k-hearing", "hearing": "k-hearing",
             "executive session": "k-exec", "work session": "k-meet",
             "subcommittee work session": "k-meet",
             "full committee work session": "k-meet",
-            "study committee": "k-meet", "statutory committee": "k-meet",
+            "study committee": "k-study", "statutory committee": "k-study",
             "committee of conference": "k-conf", "floor debate": "k-floor"}
     got = {k: BP.MEET_KIND.get(k, ("", ""))[1] for k in want}
     assert got == want, ("meeting kinds take the wrong colour: "
                          + ", ".join(f"{k} is {got[k]!r}, not {want[k]!r}"
                                      for k in want if got[k] != want[k]))
     css = Path("app.css").read_text(encoding="utf-8")
-    tok = {"k-hearing": "hear", "k-meet": "meet", "k-exec": "exec",
-           "k-conf": "conf", "k-floor": "floor"}
+    tok = {"k-hearing": "hear", "k-exec": "exec", "k-meet": "meet",
+           "k-conf": "conf", "k-floor": "floor", "k-study": "study"}
     for cls, t in tok.items():
         for rule in (rf"\.calkind\.{cls}\{{[^}}]*var\(--cal-{t}\)",
                      rf"\.calmix \.{cls}\{{background:var\(--cal-{t}\)\}}",
-                     rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}"):
+                     rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.cmdots \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.pkbar \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.calcat\.{cls}\{{--cat:var\(--cal-{t}\)\}}"):
             assert re.search(rule, css), (
                 f"app.css has no rule matching {rule!r}: the {cls} colour is "
                 "not drawn from its own --cal- token")
     assert re.search(r"\.calmix \.k-other\{background:var\(--edge\)\}", css), (
         "a kind the table does not name borrows a colour instead of the neutral edge")
     legend = [c for c, _w in BP.MEET_LEGEND]
-    assert sorted(legend) == sorted(tok), f"the key names {legend}, not {sorted(tok)}"
+    assert legend == list(tok), f"the key names {legend}, not {list(tok)}, in that order"
+    names = [w for _c, w in BP.MEET_LEGEND]
+    assert names == ["Public Hearing", "Executive Session", "Work Session",
+                     "Committee of Conference", "Floor Session", "Study Committee"], (
+        f"the key's names are {names}: one per kind, work sessions and study "
+        "committees apart, in title case")
 
     import contextlib
     import datetime as _dt
@@ -13608,7 +13628,10 @@ def _meet_kind_colours():
             for k, t, c in (("floor debate", "", ""),
                             ("committee of conference", "", ""),
                             ("subcommittee work session", "10:00", "Commerce"))]
-    weeks = BC.weeks_from(rows)
+    rows.append({"study": True, "bill": "", "kind": "statutory committee",
+                 "date": "2026-03-05", "time": "13:00",
+                 "committee": "Commission on Aging", "venue": "", "note": ""})
+    weeks = BC.weeks_from(rows, names={})
     order = sorted(weeks)
     tmp = Path(tempfile.mkdtemp(prefix="gr-kinds-"))
     try:
@@ -13621,13 +13644,27 @@ def _meet_kind_colours():
         t = (site / "calendar" / f"{order[0]}.html").read_text(encoding="utf-8")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    assert 'class="calkey"' in t, "a week's page carries no key to its colours"
+    key = re.search(r'<ul class="calkey"[^>]*>(.*?)</ul>', t)
+    assert key, "a week's page carries no key to its colours for a reader without script"
+    assert re.findall(r'<i class="(k-[a-z]+)"', key.group(1)) == list(tok), (
+        "the key is not the six colours in the boxes' order")
+    boxes = re.findall(r'<label class="calcat (k-[a-z]+)"><input type="checkbox" name="cat" '
+                       r'value="([a-z]+)"( checked)?><span class="cbx" aria-hidden="true">'
+                       r'</span>([^<]*)</label>', t)
+    assert [(c, w) for c, _v, _on, w in boxes] == list(BP.MEET_LEGEND), (
+        f"the row of boxes is {boxes}: one per colour, each labelled as the key names it")
+    assert '<fieldset class="calcats" id="calcats" hidden>' in t, (
+        "the row of boxes is not written hidden for the script to show")
     bars = re.findall(r'<span class="calmix" aria-hidden="true">(.*?)</span>', t)
     seen = set(re.findall(r'<i class="(k-[a-z]+)"></i>', "".join(bars)))
-    assert seen == {"k-floor", "k-conf", "k-meet"}, (
-        f"a floor sitting, a conference and a work session drew bars {sorted(seen)}")
-    return "ok", (f"{len(want)} kinds on five colours, each from its own token, "
-                  "and the key on the week")
+    assert seen == {"k-floor", "k-conf", "k-meet", "k-study"}, (
+        f"a floor sitting, a conference, a work session and a statutory "
+        f"committee drew bars {sorted(seen)}")
+    chip = re.search(r'<span class="calkind (k-[a-z]+)">Statutory committee</span>', t)
+    assert chip and chip.group(1) == "k-study", (
+        "a statutory committee's chip does not wear the study committees' colour")
+    return "ok", (f"{len(want)} kinds on six colours, each from its own token, "
+                  "study committees apart from work sessions, and the key and the boxes on the week")
 
 
 # Every kind app.js ranks, two it does not, and the pairs text sorts wrongly:
@@ -13958,7 +13995,7 @@ def _calendar_every_weekday():
 const C=globalThis.GRCAL, j=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8")), days={};
 Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d]));
 const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i));
-const none=Object.assign(C.defaults(),{who:[],picks:["nobody"]});
+const none=Object.assign(C.defaults(),{cats:[],picks:["nobody"]});
 process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDates(wk,days,none)]));
 """, encoding="utf-8")
             r = _run([node, str(go), str(site / "calendar" / "data" / "2026-01.json")],
@@ -13976,7 +14013,7 @@ process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDat
                   "Saturday only where it holds a sitting")
 
 
-@check("frontend", "study and statutory committees are on the calendar, named, dated to their source, and can be hidden")
+@check("frontend", "study and statutory committees are on the calendar, named, and off until a reader ticks them")
 def _calendar_study_committees():
     """The week of 21 September 2026 showed two sittings; the database held nine.
 
@@ -13992,9 +14029,16 @@ def _calendar_study_committees():
     labelled study or statutory from CommitteeStatus; a cancelled one marked,
     and not offered for anybody's calendar; the docket's committee-less row
     for the bill named from the committee the bill set up and folded into its
-    meeting's card; the week page carrying the toggle, the source note with
-    the copy's date and a description that no longer says "Every"; and the
-    toggle's memory wrapped so a blocked storage leaves the page whole.
+    meeting's card; the week page carrying a Study Committee box and a
+    description that no longer says "Every"; and the box's memory wrapped so
+    a blocked storage leaves the page whole.
+
+    CHANGED ON 25 SEPTEMBER 2026, at the person's word: the box starts
+    unticked ("each one is selected on by default aside from study
+    committees"), and the page no longer says under its key which copy of the
+    database the meetings came from ("you can remove the explanation"). So
+    this wants the box off, and that sentence gone from the page -- the build
+    still prints which copy it read.
     """
     import contextlib
     import datetime as _dt
@@ -14123,8 +14167,6 @@ def _calendar_study_committees():
         assert {(r["time"], r["venue"]) for r in day[one]} == {
             ("10:00", "GP Room 230")}, "the docket's row did not take its meeting's time and room"
 
-        note = ("Study and statutory committee meetings come from the General "
-                "Court's own database, as copied on 8 September 2026.")
         site = tmp / "site"
         site.mkdir()
         shutil.copy(here / "bills.html", site / "bills.html")
@@ -14132,11 +14174,13 @@ def _calendar_study_committees():
         with contextlib.redirect_stdout(io.StringIO()):
             for i, k in enumerate(order):
                 BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
-                             {}, {}, {}, [], _dt.date(2026, 9, 24), set(),
-                             study_note=note)
+                             {}, {}, {}, [], _dt.date(2026, 9, 24), set(), study=True)
         t = (site / "calendar.html").read_text(encoding="utf-8")
-        assert 'id="wkstudy" checked' in t, "the week has no study committee toggle, on by default"
-        assert "as copied on 8 September 2026" in t, "the week does not date its study committee data"
+        assert re.search(r'<label class="calcat k-study"><input type="checkbox" name="cat" '
+                         r'value="study"><span class="cbx"', t), (
+            "the week has no Study Committee box, or it starts ticked")
+        assert "as copied on" not in t and "calsrc" not in t and "come from the General" not in t, (
+            "the week still says which copy of the database its study committees came from")
         desc = re.search(r'name="description" content="([^"]*)"', t).group(1)
         assert "Every" not in desc and "study and statutory" in desc, (
             f"the description reads {desc!r}")
@@ -14170,13 +14214,16 @@ def _calendar_study_committees():
 const C=globalThis.GRCAL, t=require("fs").readFileSync(process.argv[2],"utf8");
 const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wknav wkfoot"'));
 const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
-process.stdout.write(C.countLine(C.tally(cards,C.defaults()),"this week"));
+const on=Object.assign(C.defaults(),{cats:C.CATS.slice()});
+process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
+  +C.countLine(C.tally(cards,C.defaults()),"this week"));
 """, encoding="utf-8")
             r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
-            assert r.stdout == "1 sitting this week.", (
-                f"the week script counts {r.stdout!r} with one meeting cancelled")
+            assert r.stdout == "1 sitting this week. | The one sitting this week does not match.", (
+                f"the week script counts {r.stdout!r} with one meeting cancelled, with the "
+                "study committees shown and then as a new reader sees the week")
         js = BC.WEEK_JS
         assert re.search(r"try\{\s*if\(localStorage\.getItem", js) and \
             re.search(r"try\{\s*localStorage\.setItem", js), (
@@ -14188,7 +14235,7 @@ process.stdout.write(C.countLine(C.tally(cards,C.defaults()),"this week"));
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("three meetings read from the copy, named and labelled; a "
                   "cancelled one marked; HB 1763's row folded into its "
-                  "committee's card; the toggle, the dated note and a true description")
+                  "committee's card; the box, off, no note of the copy, and a true description")
 
 
 @check("frontend", "a calendar card links the calendar that first printed its notice, and a sitting its own journal")
@@ -14609,16 +14656,116 @@ process.stdout.write(JSON.stringify({count: (h.match(/<span class="calcount">([^
                   "covers HB 511 once")
 
 
+@check("frontend", "every time the Calendar, Coming up and a committee's Upcoming session print reads 9:00 AM, alike in all three renderers")
+def _calendar_clock():
+    """"I'd also prefer if times were listed with AM and PM instead of 13:00."
+
+    The person, 25 September 2026. A time is printed by three renderers --
+    build_pages.cal_days for the week pages, the month files and the home
+    page's Coming up; the Calendar page's own script for the week at a
+    glance and the preview; app.js's calendarBlock for a committee page --
+    so each carries a clock(), and this holds the three to one answer: noon
+    is 12:00 PM, midnight 12:00 AM, a span 10:00 AM-12:15 PM, and anything
+    that is not a time comes back as it was. Then it reads what the fixture's
+    pages print and wants every time in that form, while the record's own
+    "13:30" stays in data-time and data-last, where the script and the
+    add-to-calendar links read it.
+    """
+    import contextlib
+    import datetime as _dt
+    import html as _h
+    import io
+    import build_pages as BP
+    nb = "\u00a0"
+    cases = {"00:00": "12:00 AM", "00:30": "12:30 AM", "09:05": "9:05 AM",
+             "9:30": "9:30 AM", "11:59": "11:59 AM", "12:00": "12:00 PM",
+             "12:15": "12:15 PM", "13:30": "1:30 PM", "23:59": "11:59 PM",
+             "": "", "TBA": "TBA", "24:00": "24:00"}
+    want = {k: re.sub(r" (AM|PM)$", nb + r"\1", v) for k, v in cases.items()}
+    got = {k: BP.clock(k) for k in cases}
+    assert got == want, "build_pages.clock: " + ", ".join(
+        f"{k!r} is {got[k]!r}" for k in cases if got[k] != want[k])
+    assert BP.clock_span("10:00", "12:15") == f"10:00{nb}AM\u201312:15{nb}PM" \
+        and BP.clock_span("09:00", "09:00") == f"9:00{nb}AM", BP.clock_span("10:00", "12:15")
+    shape = re.compile(r"^\d{1,2}:\d\d" + nb + r"(AM|PM)(\u2013\d{1,2}:\d\d" + nb + r"(AM|PM))?$")
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-calclock-"))
+    try:
+        site, _w, _o, _u, _m = _cal_fixture(root)
+        texts = {"the week page": (site / "calendar.html").read_text(encoding="utf-8")}
+        for f in sorted((site / "calendar" / "data").glob("2026-*.json")):
+            texts[f"calendar/data/{f.name}"] = "".join(
+                json.loads(f.read_text(encoding="utf-8"))["days"].values())
+        with contextlib.redirect_stdout(io.StringIO()):
+            texts["Coming up"] = BP.calendar_html(site, today=_dt.date(2026, 3, 10), rows=_cal_rows())
+        seen = 0
+        for where, t in texts.items():
+            printed = [_h.unescape(x) for x in re.findall(r'<span class="caltime">([^<]*)</span>', t)]
+            bad = [x for x in printed if not shape.match(x)]
+            assert printed and not bad, f"{where} prints a time as {bad or 'nothing'}"
+            seen += len(printed)
+            stamps = re.findall(r' data-(?:time|last)="([^"]*)"',
+                                "".join(re.findall(r'<details class="calmeet"[^>]*>', t)))
+            assert stamps and all(re.fullmatch(r"\d\d:\d\d", x) for x in stamps), (
+                f"{where}'s cards no longer carry the record's own time for the script: {stamps[:4]}")
+        assert f"10:00{nb}AM\u20131:00{nb}PM" in texts["the week page"], (
+            "House Judiciary's hearing at 10:00 and vote at 13:00 are not one span, 10:00 AM-1:00 PM")
+        node = _cal_node()
+        js, stub = Path("app.js"), Path("dom_stub.js")
+        if not (node and js.exists() and stub.exists()):
+            return "ok", f"{seen} times in three kinds of page; node not on PATH, so the scripts were not run"
+        import build_calendar as BC
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "week.js").write_text(BC.WEEK_JS, encoding="utf-8")
+        (root / "cases.json").write_text(json.dumps(list(cases)), encoding="utf-8")
+        up = [{"date": "2026-03-10", "time": t, "bill": b, "term": "2025-2026", "committee": "Judiciary",
+               "what": k, "venue": "LOB 206"}
+              for b, k, t in (("HB1", "public hearing", "10:00"), ("HB2", "executive session", "13:00"))]
+        (root / "up.json").write_text(json.dumps(up), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({clock, calendarBlock});"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+// The Calendar's script in a world of its own, with no page for its second half.
+const vm = require("vm"), ctx = vm.createContext({document: {getElementById: () => null}, URLSearchParams});
+vm.runInContext(fs.readFileSync("./week.js", "utf8"), ctx);
+const W = ctx.GRCAL, cases = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const h = s.calendarBlock(JSON.parse(fs.readFileSync("./up.json", "utf8")), "Upcoming session");
+process.stdout.write(JSON.stringify({app: cases.map(s.clock), week: cases.map(W.clock),
+  hours: ["00", "09", "12", "13", "23"].map(W.hourWord),
+  block: [...h.matchAll(/<span class="caltime">([^<]*)<\\/span>/g)].map(m => m[1])}));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+        out = json.loads(r.stdout)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    listed = [want[k] for k in cases]
+    assert out["app"] == listed, f"app.js's clock differs: {out['app']}"
+    assert out["week"] == listed, f"the Calendar page's clock differs: {out['week']}"
+    assert out["hours"] == [f"12{nb}AM", f"9{nb}AM", f"12{nb}PM", f"1{nb}PM", f"11{nb}PM"], (
+        f"the week at a glance names its hours {out['hours']}")
+    assert out["block"] == [f"10:00{nb}AM\u20131:00{nb}PM", f"10:00{nb}AM", f"1:00{nb}PM"], (
+        f"a committee page's Upcoming session prints {out['block']}")
+    return "ok", (f"{len(cases)} times alike in build_pages, the Calendar's script and app.js; "
+                  f"{seen} printed on the week page, its month files and Coming up, all as a reader "
+                  "says them, the record's own in data-time")
+
+
 # The page's own picker, for _calendar_chambers, on _CAL_DOM.
 _CAL_CHAMBER_DRIVE = r"""const {makeWorld}=require("./minidom.js");
 const fs=require("fs"), vm=require("vm"), path=require("path");
 const SITE=process.argv[2], fails=[];
 const ok=(c,m)=>{ if(!c) fails.push(m); };
-async function open(page,pathname,hash){
+async function open(page,pathname,o){
   const text=fs.readFileSync(path.join(SITE,page),"utf8");
   const a=text.indexOf('<div id="results">'), s=text.indexOf("<script>",a), e=text.indexOf("</script>",s);
-  const W=makeWorld({today:[2025,1,28], path:pathname, hash:hash||"",
-    files:(url)=>{ const f=path.join(SITE,url.replace(/^\//,"")); return fs.existsSync(f)?fs.readFileSync(f,"utf8"):null; }});
+  const W=makeWorld(Object.assign({today:[2025,1,28], path:pathname,
+    files:(url)=>{ const f=path.join(SITE,url.replace(/^\//,"")); return fs.existsSync(f)?fs.readFileSync(f,"utf8"):null; }},o||{}));
   W.doc.body.innerHTML=text.slice(a,s);
   vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
   await W.settle(); W.advance(700); await W.settle();
@@ -14637,18 +14784,19 @@ async function open(page,pathname,hash){
   ok(fin.every(l=>!W.Q(".cpwho",l)), "a committee whose name says its chamber is labelled with it again");
   const h=fin.map(l=>W.Q("input",l)).find(i=>i.value==="House Finance");
   if(h){ h.checked=true; h.dispatchEvent(W.ev("change")); await W.settle(); }
-  ok(W.keys().join()==="House Finance" && /c=House\+Finance/.test(W.G.location.hash),
-     "picking House Finance shows "+W.keys()+" at "+W.G.location.hash);
+  ok(W.keys().join()==="House Finance" && /committee=House\+Finance/.test(W.G.location.search),
+     "picking House Finance shows "+W.keys()+" at "+W.G.location.search);
   if(h){ h.checked=false; h.dispatchEvent(W.ev("change")); await W.settle(); }
   const co=await W.find("conference");
   ok(co.length===1 && W.Q("input",co[0]).value==="Committee of conference"
      && (W.Q(".cpwho",co[0])||{textContent:""}).textContent==="House and Senate",
      "the committees of conference are not one entry, said to be both chambers': "+co.map(l=>l.textContent));
-  const J=await open("calendar/2025-W25.html","/calendar/2025-W25","#d=2025-06-16&c=Committee+of+conference");
+  const J=await open("calendar.html","/calendar",{search:"?week=2025-W25&day=2025-06-16&committee=Committee+of+conference"});
   ok(J.keys().join()==="Committee of conference on SB 14,Committee of conference on HB 1,Committee of conference on HB 2,"
      +"Committee of conference on HB 1709",
      "picking the committees of conference shows "+J.keys());
-  const S=await open("calendar/2025-W25.html","/calendar/2025-W25","#d=2025-06-16&c=Senate+Judiciary");
+  // A link written before 25 September, in the hash of the week's own page.
+  const S=await open("calendar/2025-W25.html","/calendar/2025-W25",{hash:"#d=2025-06-16&c=Senate+Judiciary"});
   ok(S.keys().join()==="Senate Judiciary", "picking Senate Judiciary on 16 June shows "+S.keys());
   if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
   console.log("the picker lists House and Senate Finance apart, picks one, and holds the conferences as one");
@@ -14665,8 +14813,6 @@ async function open(page,pathname,hash){
 # conference, an executive session, a statutory committee, and a cancelled
 # meeting on a Saturday; Monday the 9th is empty.
 CAL_TODAY = (2026, 3, 11)
-CAL_STUDY_NOTE = ("Study and statutory committee meetings come from the General "
-                  "Court's own database, as copied on 8 September 2026.")
 
 
 def _cal_rows():
@@ -14709,7 +14855,7 @@ def _cal_fixture(root):
     with contextlib.redirect_stdout(io.StringIO()):
         for i, k in enumerate(order):
             BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
-                         {}, {}, {}, urls, today, set(), study_note=CAL_STUDY_NOTE)
+                         {}, {}, {}, urls, today, set(), study=True)
         months = BC.month_files(site, weeks, order, {}, {}, {}, today)
     return site, weeks, order, urls, months
 
@@ -14757,25 +14903,29 @@ def _calendar_page_shape():
         # Hidden without script, all of it.
         for frag in ('<div class="calside" id="calside" hidden>',
                      '<div class="calbar" id="calbar" hidden>',
+                     '<fieldset class="calcats" id="calcats" hidden>',
                      '<div class="calpeek" id="calpeek" role="tooltip" hidden>',
                      '<button type="button" class="calreset" id="calreset" hidden>'):
             assert frag in t, f"not emitted hidden: {frag}"
-        for legend in ("Who is meeting", "Only these committees",
-                       "What kind of committee meeting", "Chamber"):
+        # THE COLOURS ARE THE FILTER (25 September 2026): a row of boxes, one
+        # per kind in its colour, every one ticked but Study Committee; down
+        # the side only the search, the chamber and the committees by name.
+        # The "who" and "what" questions and the quick choices are gone.
+        for legend in ("Only these committees", "Chamber"):
             assert f"<legend>{legend}</legend>" in t, f"no fieldset with the legend {legend!r}"
-        who = re.findall(r'<input type="checkbox"(?: id="wkstudy")? checked name="who" value="([a-z]+)"'
-                         r'|<input type="checkbox" name="who" value="([a-z]+)" checked', t)
-        assert sorted(a or b for a, b in who) == ["floor", "standing", "study"], (
-            f"the who boxes are {who}, each on by default")
-        what = re.findall(r'<input type="checkbox" name="what" value="([a-z]+)" checked>', t)
-        assert what == ["hearing", "exec", "work", "conf"], f"the what boxes are {what}"
-        # What each question covers, in words where the boxes are: the
-        # standing box shows the committees of conference too, and the floor
-        # answers to who, so ticking only hearings still shows it.
-        assert 'value="standing" checked>Standing committees and committees of conference</label>' in t, (
-            "the standing committees' box does not say it covers the committees of conference")
-        assert "show or hide it under Who is meeting" in t, (
-            "the kinds of meeting do not say that the floor is chosen under who")
+        for gone in ("Who is meeting", "What kind of committee meeting", 'data-quick=',
+                     'name="who"', 'name="what"', "calsrc", "Show everything"):
+            assert gone not in t, f"the week's page still carries {gone!r}"
+        boxes = re.findall(r'<input type="checkbox" name="cat" value="([a-z]+)"( checked)?>', t)
+        assert boxes == [("hearing", " checked"), ("exec", " checked"), ("work", " checked"),
+                         ("conf", " checked"), ("floor", " checked"), ("study", "")], (
+            f"the row of boxes is {boxes}: six, every one on but Study Committee")
+        assert re.search(r'<legend class="sr">[^<]+</legend><div class="calcatrow">', t), (
+            "the row of boxes has no name for a screen reader to give the group")
+        assert '<ul class="calkey" aria-label="What the colours mean">' in t, (
+            "a reader without script is given no key to the colours")
+        assert '<p class="calhint" id="pickhint" hidden>' in t, (
+            "the committees chosen by name do not say they are still shown in the kinds ticked")
         views = re.findall(r'<button type="button" data-view="([a-z]+)" aria-pressed="([a-z]+)">', t)
         assert views == [("list", "true"), ("week", "false"), ("day", "false")], (
             f"the view switch is {views}")
@@ -14795,7 +14945,13 @@ def _calendar_page_shape():
         assert who_of["house judiciary"] == ("standing", "hearing exec"), who_of
         assert who_of["house floor"] == ("floor", "floor"), who_of["house floor"]
         assert who_of["committee of conference on hb 3"] == ("standing", "conf"), who_of
-        assert who_of["commission on aging"][0] == "study", who_of
+        # Two cards of the commission, the one that met and the one cancelled:
+        # both study, the one that met drawn in the study committees' colour.
+        aging = sorted((re.search(r'data-date="([^"]*)"', c).group(1),
+                        re.search(r'data-who="([^"]*)"', c).group(1),
+                        re.search(r'data-kinds="([^"]*)"', c).group(1))
+                       for c in cards if 'data-cmte="commission on aging"' in c)
+        assert aging == [("2026-03-13", "study", "study"), ("2026-03-14", "study", "other")], aging
         # The script the page carries.
         js = re.search(r"<script>(\(function\(\)\{.*?)</script>", t, re.S)
         assert js, "the week's page carries no calendar script"
@@ -14859,7 +15015,7 @@ def _calendar_page_shape():
         assert all("/calendar/data" not in u for u in urls), "a data file went into the sitemap"
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", (f"frame, fieldsets, view switch and grid emitted hidden; {n_cards} cards "
+    return "ok", (f"frame, boxes, side filters, view switch and grid emitted hidden; {n_cards} cards "
                   f"in {n_months} month files, byte for byte the week pages' own")
 
 
@@ -14874,19 +15030,27 @@ def _calendar_core():
     half. This loads that half against the fixture's month files and holds
     each to the rule it implements:
 
-      who and what are two questions, combined; a card holding several kinds
-      matches if any does and stays whole; committees picked by name replace
-      the who boxes; the floor answers to who alone; the two quick choices
-      set the boxes; a cancelled meeting is shown and never counted;
-      an empty weekday is drawn under any filter, a busy day the filters
-      emptied is not, and a weekend day only when something shown is on it
-      (this replaces a check that the old script's source said
-      ".calday:not(.calnone)", which the new script has no need to);
-      the week's rows are the hours something starts in, with a row for the
-      sittings the record gives no time; the grid starts on Monday, bands
-      the selected week, marks today and the past, and its dots and names
-      agree with the entries; the preview stops at five and says how many
-      more; and the address round-trips.
+      one box per kind of meeting, every one on but Study Committee for a
+      new reader; a card holding several kinds matches if any is ticked and
+      stays whole; the floor is Floor Session and a study or statutory
+      committee is Study Committee, whatever kind of meeting either held;
+      work sessions and study committees are two boxes; committees picked
+      by name show only those committees, still narrowed by the boxes, and a
+      committee asked for by name -- picked, or found by the search -- shows
+      with Study Committee unticked; a cancelled meeting is shown and never
+      counted; an empty weekday is drawn under any filter, a busy day the
+      filters emptied is not, and a weekend day only when something shown is
+      on it; the week's rows are the hours something starts in, named in the
+      twelve-hour clock, with a row for the sittings the record gives no
+      time; the grid starts on Monday, bands the selected week, marks today
+      and the past, and its dots and names agree with the entries; the
+      preview stops at five, says how many more and gives its times as a
+      reader says them; and the query round-trips, while an address from
+      before 25 September is read into the same boxes.
+
+    Until 25 September 2026 this held "who" and "what" as two questions and
+    the two quick choices that set them; the person replaced both with the
+    row of boxes, and the rules above are the ones the page now keeps.
     """
     node = _cal_node()
     if not node:
@@ -14939,58 +15103,108 @@ process.argv.slice(2).forEach(f=>{ const j=JSON.parse(fs.readFileSync(f,"utf8"))
 const week=[...Array(7).keys()].map(i=>C.addDays("2026-03-09",i));
 const all=[].concat(...week.map(d=>days[d].cards));
 const F=(o)=>Object.assign(C.defaults(),o);
+const ON=F({cats:C.CATS.slice()});
 const names=(f)=>all.filter(e=>C.matches(e,f)).map(e=>e.name).sort();
 const count=(f)=>C.countLine(C.tally(all,f),"this week");
+const NB="\u00a0";
 ok(all.length===7, "the week of 9 March parses to "+all.length+" cards");
 const jud=all.find(e=>e.name==="House Judiciary");
 ok(jud && jud.kinds.join()==="hearing,exec" && jud.who==="standing" && jud.body==="H" && jud.bills.join()==="HB1 HB2".split(" ").join(),
    "House Judiciary's card reads as "+JSON.stringify(jud&&{k:jud.kinds,w:jud.who,b:jud.body,bills:jud.bills}));
-// the combinations
-ok(count(F({}))==="6 sittings this week.", "unfiltered: "+count(F({})));
-ok(names(F({who:["standing","floor"]})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor,Senate Finance",
-   "study off keeps "+names(F({who:["standing","floor"]})));
-ok(count(F({who:["standing","floor"]}))==="5 of 6 sittings shown.", "study off counts "+count(F({who:["standing","floor"]})));
-ok(names(F({what:["hearing"]})).join()==="House Judiciary,House floor,Senate Finance",
-   "the hearing box alone keeps "+names(F({what:["hearing"]}))+" -- the floor answers to who, not what");
-const q=C.QUICK.hearing;
-ok(names(F({who:q.who,what:q.what})).join()==="House Judiciary,Senate Finance", "Public hearings only keeps "+names(F({who:q.who,what:q.what})));
-ok(C.quickOf(F({who:q.who,what:q.what}))==="hearing" && C.quickOf(F({}))==="" && C.quickOf(F({who:["standing"]}))==="standing",
-   "the quick choices are not recognised from the boxes");
-ok(names(F({who:["standing"],what:["hearing"]})).join()==="House Judiciary,Senate Finance", "standing plus hearings keeps "+names(F({who:["standing"],what:["hearing"]})));
-ok(names(F({who:[],picks:["Commission on Aging"]})).join()==="Commission on Aging,Commission on Aging",
-   "a picked committee is shown whatever the who boxes say: "+names(F({who:[],picks:["Commission on Aging"]})));
-ok(count(F({picks:["Commission on Aging"]}))==="1 of 6 sittings shown.", "a cancelled meeting is counted: "+count(F({picks:["Commission on Aging"]})));
+const aging=all.filter(e=>e.name==="Commission on Aging");
+ok(aging.length===2 && aging.every(e=>e.who==="study") && aging[0].kinds.join()==="study" && aging[1].kinds.join()==="other",
+   "the Commission on Aging's cards read as "+JSON.stringify(aging.map(e=>({w:e.who,k:e.kinds}))));
+// ---- the boxes ----
+ok(C.CATS.join()==="hearing,exec,work,conf,floor,study" && C.defaults().cats.join()==="hearing,exec,work,conf,floor",
+   "the boxes, and the ones a new reader starts with: "+C.CATS+" / "+C.defaults().cats);
+// WHICH BOX A CARD ANSWERS TO: work sessions and study committees apart; a
+// study committee is Study Committee whatever it held; a kind the table does
+// not name is one of a committee's other meetings, under Work Session.
+const cat=(who,kinds)=>C.catsOf({who,kinds}).join();
+ok(cat("standing",["meet"])==="work" && cat("study",["study"])==="study" && cat("study",["other"])==="study"
+   && cat("study",["hearing"])==="study" && cat("floor",["floor"])==="floor" && cat("standing",["other"])==="work"
+   && cat("standing",["hearing","exec","meet"])==="hearing,exec,work" && cat("standing",["conf"])==="conf"
+   && cat("standing",[])==="work",
+   "a card answers to the wrong box: "+[cat("standing",["meet"]),cat("study",["study"]),cat("study",["hearing"]),cat("standing",["other"])]);
+ok(count(F({}))==="5 of 6 sittings shown.", "a new reader's week: "+count(F({})));
+ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor,Senate Finance",
+   "a new reader's week holds "+names(F({})));
+ok(count(ON)==="6 sittings this week.", "every box ticked: "+count(ON));
+ok(names(F({cats:["hearing"]})).join()==="House Judiciary,Senate Finance",
+   "Public Hearing alone keeps "+names(F({cats:["hearing"]}))+" -- the floor answers to its own box");
+ok(names(F({cats:["exec"]})).join()==="House Commerce,House Judiciary", "Executive Session alone keeps "+names(F({cats:["exec"]})));
+ok(names(F({cats:["floor"]})).join()==="House floor", "Floor Session alone keeps "+names(F({cats:["floor"]})));
+ok(names(F({cats:["conf"]})).join()==="Committee of conference on HB 3", "Committee of Conference alone keeps "+names(F({cats:["conf"]})));
+ok(names(F({cats:["study"]})).join()==="Commission on Aging,Commission on Aging" && count(F({cats:["study"]}))==="1 of 6 sittings shown.",
+   "Study Committee alone keeps "+names(F({cats:["study"]}))+" and counts "+count(F({cats:["study"]})));
+ok(count(F({cats:["work"]}))==="None of the 6 sittings this week match.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
+// An entry holding two kinds stays while either is ticked, and whole.
+ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House floor,Senate Finance"
+   && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 sittings shown.",
+   "Executive Session unticked keeps "+names(F({cats:["hearing","work","conf","floor"]})));
+// Committees by name: only those, still in the kinds ticked, and a study
+// committee asked for by name whatever its box says.
+ok(names(F({picks:["House Judiciary"]})).join()==="House Judiciary", "one committee picked: "+names(F({picks:["House Judiciary"]})));
+ok(names(F({picks:["Commission on Aging"]})).join()==="Commission on Aging,Commission on Aging"
+   && count(F({picks:["Commission on Aging"]}))==="1 of 6 sittings shown.",
+   "a study committee picked with Study Committee unticked: "+names(F({picks:["Commission on Aging"]}))+" / "+count(F({picks:["Commission on Aging"]})));
+ok(names(F({picks:["Commission on Aging"],cats:[]})).length===2, "a picked study committee is hidden by the other boxes");
+ok(names(F({picks:["House Judiciary"],cats:["floor","study"]})).length===0 && names(F({picks:["House Judiciary"],cats:["exec"]})).join()==="House Judiciary",
+   "the boxes do not narrow a committee picked");
+ok(names(F({picks:["House Judiciary","Commission on Aging"],cats:["hearing"]})).join()==="Commission on Aging,Commission on Aging,House Judiciary",
+   "two committees picked, one a study committee: "+names(F({picks:["House Judiciary","Commission on Aging"],cats:["hearing"]})));
+ok(names(F({picks:["Committee of conference"]})).join()==="Committee of conference on HB 3",
+   "the committees of conference are not picked under one name: "+names(F({picks:["Committee of conference"]})));
 ok(names(F({body:"S",picks:["House Judiciary"]})).length===0 && names(F({body:"H",picks:["House Judiciary"]})).join()==="House Judiciary",
    "a chamber plus a committee");
 ok(count(F({body:"S",picks:["House Judiciary"]}))==="None of the 6 sittings this week match.", count(F({body:"S",picks:["House Judiciary"]})));
+ok(names(F({body:"H"})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor"
+   && names(Object.assign(F({body:"H"}),{cats:C.CATS.slice()})).indexOf("Commission on Aging")<0,
+   "the House alone: "+names(F({body:"H"}))+" -- a conference is both chambers', a study committee neither's");
+// The search: a bill, a committee, and a study committee found by name.
 ok(names(F({q:"hb 4"})).join()==="House Commerce" && names(F({q:"judic"})).join()==="House Judiciary", "the bill and committee search");
-// A committee of conference is picked as one committee, whichever bill's.
-ok(names(F({who:[],picks:["Committee of conference"]})).join()==="Committee of conference on HB 3",
-   "the committees of conference are not picked under one name: "+names(F({who:[],picks:["Committee of conference"]})));
+ok(names(F({q:"aging"})).join()==="Commission on Aging,Commission on Aging" && names(F({q:"hb 4",cats:["hearing"]})).length===0,
+   "the search: a study committee found by name with its box unticked, and a bill in an unticked kind: "+names(F({q:"aging"})));
 ok(C.countLine({total:1,shown:0,seen:0},"this week")==="The one sitting this week does not match.", "one sitting, none shown");
 ok(C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11"))==="2 sittings on Wednesday 11 March.",
    "the Day view's count: "+C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11")));
-ok(C.narrowed(F({}))===0 && C.narrowed(F({who:["standing"],q:"x"}))===2, "the count of narrowing filters");
-// the list's days
-const none=F({who:[],picks:["Nobody"]});
-ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
-   "the list draws "+C.listDates(week,days,F({})));
+ok(C.narrowed(F({}))===0 && C.narrowed(ON)===1 && C.narrowed(F({cats:["hearing"],q:"x"}))===2
+   && C.narrowed(F({cats:["exec","hearing","work","floor","conf"]}))===0,
+   "how far the filters are from a new reader's");
+ok(C.sideOn(F({}))===0 && C.sideOn(F({cats:[],body:"H"}))===1 && C.sideOn(F({picks:["x"],q:"y"}))===2,
+   "the side's own count takes in the boxes above the schedule");
+// ---- the list's days ----
+const none=F({cats:[],picks:["Nobody"]});
+ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12",
+   "a new reader's list draws "+C.listDates(week,days,F({}))+" -- Friday's only sitting is a study committee's");
+ok(C.listDates(week,days,ON).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
+   "every box ticked, the list draws "+C.listDates(week,days,ON));
 ok(C.listDates(week,days,none).join()==="2026-03-09", "under a filter matching nothing the list keeps the empty Monday only: "+C.listDates(week,days,none));
-ok(C.listDates(week,days,F({who:["standing","floor"]})).indexOf("2026-03-14")<0, "a Saturday whose one meeting is filtered away is still drawn");
-// the week at a glance
-const cols=C.weekCols(week,days,F({})), by={};
+// ---- the week at a glance ----
+const cols=C.weekCols(week,days,ON), by={};
 cols.forEach(d=>by[d]=days[d].cards);
 const rows=C.weekRows(cols,by);
 ok(cols.length===6 && cols[5]==="2026-03-14", "the week's columns: "+cols);
+ok(C.weekCols(week,days,F({})).length===5, "a Saturday whose one meeting is a study committee's is a column for a new reader");
 ok(rows.map(x=>x.h).join()==="09,10,", "the week's rows: "+rows.map(x=>x.h));
 ok([].concat(...rows.map(x=>[].concat(...x.cells))).length===7, "a card is missing from the week at a glance");
 ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference on HB 3,House floor", "the untimed row holds the floor and the conference");
-// the grid
+// ---- the clock ----
+const clocks={"09:05":"9:05 AM","9:30":"9:30 AM","00:30":"12:30 AM","12:00":"12:00 PM","12:15":"12:15 PM",
+  "13:30":"1:30 PM","23:59":"11:59 PM","":"","TBA":"TBA","24:00":"24:00"};
+const badClock=Object.keys(clocks).filter(t=>C.clock(t)!==clocks[t].replace(/ (AM|PM)$/,NB+"$1"));
+ok(!badClock.length, "the clock: "+badClock.map(t=>JSON.stringify(t)+" is "+JSON.stringify(C.clock(t))).join(", "));
+ok(C.hourWord("09")==="9"+NB+"AM" && C.hourWord("12")==="12"+NB+"PM" && C.hourWord("13")==="1"+NB+"PM" && C.hourWord("00")==="12"+NB+"AM",
+   "the week's hours: "+["09","12","13","00"].map(C.hourWord));
+// ---- the grid ----
 const g=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",
   first:"2026-03-02",last:"2026-04-05",days,f:F({})});
 const tr=g.split("<tr").slice(1);
-ok(/<th scope="col"><span aria-hidden="true">Mo</.test(g), "the grid does not start on Monday");
+ok(/<th scope="col"><span aria-hidden="true">Mo</.test(g) && /<th scope="col"><span aria-hidden="true">Su<\/span><span class="sr">Sunday<\/span><\/th><\/tr>/.test(g),
+   "the grid does not run Monday to Sunday");
 ok(tr.length===7 && tr.slice(1).every(r=>(r.match(/role="gridcell"/g)||[]).length===7), "the grid is not rows of seven");
+ok(C.monthRows("2026-03").every(r=>C.weekday(r[0])===0 && C.weekday(r[6])===6) && C.monthRows("2026-03")[0][0]==="2026-02-23",
+   "a month's rows do not start on a Monday");
 const band=tr.filter(r=>/^ class="cmrow cmsel"/.test(r));
 ok(band.length===1 && /data-d="2026-03-09"/.test(band[0]) && /data-d="2026-03-15"/.test(band[0]), "the selected week is not one band");
 ok((g.match(/aria-selected="true"/g)||[]).length===1 && /data-d="2026-03-10" tabindex="0" aria-selected="true"/.test(g), "the selected day");
@@ -14998,32 +15212,61 @@ ok(/data-d="2026-03-11" tabindex="-1" aria-selected="false" aria-current="date"/
 ok(/class="cmday cmpast" data-d="2026-03-09"/.test(g) && /class="cmday cmpast cmpick" data-d="2026-03-10"/.test(g)
    && /class="cmday" data-d="2026-03-12"/.test(g), "the past is not greyed, or the future is");
 ok(/data-d="2026-02-23"[^>]*aria-disabled="true"/.test(g), "a day before the calendar's first is offered");
-const cell=(d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(g); return m&&m[1]; };
-ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday 10 March 2026, 2 sittings</.test(cell("2026-03-10")),
-   "10 March in the grid: "+cell("2026-03-10"));
-ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Saturday 14 March 2026, no sittings, 1 cancelled</.test(cell("2026-03-14")),
-   "a cancelled meeting's day: "+cell("2026-03-14"));
-ok(/Monday 9 March 2026, no sittings/.test(cell("2026-03-09")), "an empty day: "+cell("2026-03-09"));
-const g2=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:F({who:["study"]})});
-ok(!/data-d="2026-03-10"[^>]*><span class="cmn" aria-hidden="true">10<\/span><span class="cmdots" aria-hidden="true"><i/.test(g2), "the grid's dots do not follow the filters");
-// the preview
+const cellOf=(h,d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(h); return m&&m[1]; };
+ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday 10 March 2026, 2 sittings</.test(cellOf(g,"2026-03-10")),
+   "10 March in the grid: "+cellOf(g,"2026-03-10"));
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday 13 March 2026, no sittings</.test(cellOf(g,"2026-03-13")),
+   "a study committee's day for a new reader: "+cellOf(g,"2026-03-13"));
+const gOn=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:ON});
+ok(/cmdots" aria-hidden="true"><i class="k-study"><\/i><\/span><span class="sr">Friday 13 March 2026, 1 sitting</.test(cellOf(gOn,"2026-03-13")),
+   "a study committee's dot: "+cellOf(gOn,"2026-03-13"));
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Saturday 14 March 2026, no sittings, 1 cancelled</.test(cellOf(gOn,"2026-03-14")),
+   "a cancelled meeting's day: "+cellOf(gOn,"2026-03-14"));
+ok(/Monday 9 March 2026, no sittings/.test(cellOf(g,"2026-03-09")), "an empty day: "+cellOf(g,"2026-03-09"));
+const g2=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:F({cats:["study"]})});
+ok(!/data-d="2026-03-10"[^>]*><span class="cmn" aria-hidden="true">10<\/span><span class="cmdots" aria-hidden="true"><i/.test(g2), "the grid's dots do not follow the boxes");
+ok(C.barsOf([{kinds:["other"]},{kinds:["study"]},{kinds:["floor"]},{kinds:["conf"]},{kinds:["meet"]},{kinds:["exec"]},{kinds:["hearing"]}]).join()
+   ==="hearing,exec,meet,conf,floor,study,other", "the grid's dots are not in the order of the boxes");
+// ---- the preview ----
 const many={head:"",cards:[...Array(7).keys()].map(i=>Object.assign({},jud,{name:"C"+i,time:"0"+(i+1)+":00"}))};
 const p=C.peekHtml("2026-03-10",{days:{"2026-03-10":many},f:F({})},5);
 ok((p.match(/<li>/g)||[]).length===5 && /and 2 more/.test(p), "the preview is not capped at five with the rest counted: "+p);
-ok(/<em>cancelled<\/em>/.test(C.peekHtml("2026-03-14",{days,f:F({})},5)), "the preview does not mark a cancelled meeting");
+ok(p.indexOf('<span class="pkt">1:00'+NB+'AM</span>')>=0 && !/<span class="pkt">0/.test(p), "the preview's times are not a reader's: "+p);
+ok(/<em>cancelled<\/em>/.test(C.peekHtml("2026-03-14",{days,f:ON},5)), "the preview does not mark a cancelled meeting");
+ok(/Nothing on this day matches the filters/.test(C.peekHtml("2026-03-13",{days,f:F({})},5)), "a day whose one meeting is hidden: "+C.peekHtml("2026-03-13",{days,f:F({})},5));
 ok(/Nothing is scheduled/.test(C.peekHtml("2026-03-09",{days,f:F({})},5)), "an empty day's preview");
-// the address
-const s=F({v:"week",who:["standing"],what:["hearing","exec"],body:"H",picks:["Health, Human Services and Elderly Affairs"],q:"HB 1"});
-const h=C.writeHash(s,"2026-03-10"), back=C.readHash(h);
-ok(back.d==="2026-03-10" && back.v==="week" && back.who.join()==="standing" && back.what.join()==="hearing,exec"
-   && back.body==="H" && back.picks[0]==="Health, Human Services and Elderly Affairs" && back.q==="HB 1", "the address does not round-trip: "+h);
-ok(C.writeHash(F({}),"2026-03-10")==="#d=2026-03-10", "defaults are written into the address: "+C.writeHash(F({}),"2026-03-10"));
+// ---- the address: the query ----
+const s=F({v:"week",cats:["hearing","exec"],body:"H",picks:["Health, Human Services and Elderly Affairs"],q:"HB 1"});
+const qs=C.writeQuery(s,"2026-W11","2026-03-10"), back=C.readQuery(qs);
+ok(qs==="?week=2026-W11&day=2026-03-10&view=week&kinds=hearing,exec&chamber=house&committee=Health,+Human+Services+and+Elderly+Affairs&q=HB+1",
+   "the query is written as "+qs);
+ok(back && back.week==="2026-W11" && back.d==="2026-03-10" && back.v==="week" && back.cats.join()==="hearing,exec"
+   && back.body==="H" && back.picks[0]==="Health, Human Services and Elderly Affairs" && back.q==="HB 1", "the query does not round-trip: "+JSON.stringify(back));
+ok(C.writeQuery(F({}),"2026-W11","")==="?week=2026-W11", "a new reader's filters are written into the address: "+C.writeQuery(F({}),"2026-W11",""));
+ok(C.writeQuery(ON,"2026-W11","")==="?week=2026-W11&kinds=hearing,exec,work,conf,floor,study"
+   && C.writeQuery(F({cats:[]}),"2026-W11","")==="?week=2026-W11&kinds=", "the boxes in the address: "+C.writeQuery(ON,"2026-W11",""));
+ok(C.readQuery("?week=2026-W11&kinds=").cats.length===0 && C.readQuery("?week=2026-W11&kinds=study,study,nonsense").cats.join()==="study",
+   "an empty or a doubled list of boxes read back wrong");
+ok(C.readQuery("")===null && C.readQuery("?utm_source=x")===null && C.readQuery("?week=2026-W99")===null
+   && C.readQuery("?week=2025-W53")===null && C.readQuery("?week=2026-W53").week==="2026-W53"
+   && C.readQuery("?week=2026-w11").week==="2026-W11" && C.readQuery("?day=2026-02-30")===null
+   && C.readQuery("?chamber=Senate").body==="S" && C.readQuery("?chamber=x")===null && C.readQuery("?view=month")===null,
+   "the query reads what is not a week, a day, a view or a chamber");
+ok(C.isWeek("2026-W01") && !C.isWeek("2026-W00") && C.isDay("2028-02-29") && !C.isDay("2026-02-29"), "weeks and days that are not");
+// ---- the address as it was written before 25 September ----
+const old=C.readHash("#d=2026-03-10&v=week&who=standing&what=hearing%2Cexec&b=H&c=Health%2C+Human+Services+and+Elderly+Affairs&q=HB+1");
+ok(old && old.d==="2026-03-10" && old.v==="week" && old.cats.join()==="hearing,exec" && old.body==="H"
+   && old.picks[0]==="Health, Human Services and Elderly Affairs" && old.q==="HB 1", "an old address reads as "+JSON.stringify(old));
+ok(C.readHash("#d=2026-03-10&what=hearing").cats.join()==="hearing,floor"
+   && C.readHash("#d=2026-03-10&who=standing,study,floor").cats.join()==="hearing,exec,work,conf,floor,study"
+   && C.readHash("#d=2026-03-10&who=floor").cats.join()==="floor" && C.readHash("#d=2026-03-10").cats===undefined,
+   "an old address's who and what do not come across as the boxes that answer them");
 ok(C.readHash("#results")===null, "the skip link's #results reads as a state");
 const bad=C.readHash("#d=2026-02-30&v=day");
 ok(bad && bad.d===undefined && bad.v==="day" && C.readHash("#d=2026-02-30")===null
    && C.readHash("#d=2026-13-01")===null && C.readHash("#d=2028-02-29").d==="2028-02-29",
    "a day the calendar does not have is read out of the address: "+JSON.stringify(bad));
-// dates and keys
+// ---- dates and keys ----
 ok(C.weekKey("2026-12-31")==="2026-W53" && C.weekKey("2027-01-03")==="2026-W53" && C.weekKey("2027-01-04")==="2027-W01"
    && C.weekKey("2025-12-29")==="2026-W01" && C.keyMonday("2026-W01")==="2025-12-29", "ISO weeks across a year's end");
 ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","Home")==="2026-03-09"
@@ -15032,7 +15275,7 @@ ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","H
 ok(C.relWord("2026-03-12","2026-03-11")==="tomorrow" && C.relWord("2026-03-25","2026-03-11")==="in 14 days"
    && C.relWord("2026-03-26","2026-03-11")==="" && C.relWord("2026-03-10","2026-03-11")==="", "the relative day words");
 if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-console.log("7 cards: 8 combinations, the list's days, the week's rows and columns, the grid's cells and dots, the preview, the address (impossible days refused) and ISO weeks");
+console.log("7 cards: the six boxes alone and together, picks and the search with Study Committee off, the list's days, the week's rows and columns, the clock, the grid's cells and dots, the preview, the query and the old hash");
 console.log("OK");
 """
 
@@ -15239,14 +15482,20 @@ function makeWorld(o){
     matchMedia:(q)=>({matches:!!(o.narrow&&/max-width/.test(q)), addEventListener(){}})};
   doc.defaultView=win;
   doc.documentElement.clientWidth=o.width||1440;
-  const loc={pathname:o.path||"/calendar", hash:o.hash||"", search:"", origin:"https://x"};
-  const hist=[{p:loc.pathname,h:loc.hash}];
+  // The address in three parts, as a browser's location has them: the path,
+  // the query ("?week=2026-W12", or "") and the hash. A reload is a new world
+  // opened at the same address and handed the same store.
+  const loc={pathname:o.path||"/calendar", search:o.search||"", hash:o.hash||"", origin:"https://x"};
+  const at=()=>({p:loc.pathname,s:loc.search,h:loc.hash});
+  const go=(url)=>{ const u=new URL(url,"https://x"+loc.pathname+loc.search); loc.pathname=u.pathname; loc.search=u.search; loc.hash=u.hash; };
+  const hist=[at()];
   const history={length:1,
-    pushState(_s,_t,url){ const u=new URL(url,"https://x"+loc.pathname); loc.pathname=u.pathname; loc.hash=u.hash; hist.push({p:loc.pathname,h:loc.hash}); this.length=hist.length; },
-    replaceState(_s,_t,url){ const u=new URL(url,"https://x"+loc.pathname); loc.pathname=u.pathname; loc.hash=u.hash; hist[hist.length-1]={p:loc.pathname,h:loc.hash}; },
-    back(){ if(hist.length<2) return; hist.pop(); this.length=hist.length; const t=hist[hist.length-1]; loc.pathname=t.p; loc.hash=t.h;
+    pushState(_s,_t,url){ go(url); hist.push(at()); this.length=hist.length; },
+    replaceState(_s,_t,url){ go(url); hist[hist.length-1]=at(); },
+    back(){ if(hist.length<2) return; hist.pop(); this.length=hist.length; const t=hist[hist.length-1];
+      loc.pathname=t.p; loc.search=t.s; loc.hash=t.h;
       N.prototype.dispatchEvent.call(win,new Ev("popstate",{bubbles:false})); }};
-  const store=new Map();
+  const store=o.store||new Map();
   const RealDate=Date;
   class FixedDate extends RealDate { constructor(...a){ if(a.length) super(...a); else super(o.today[0],o.today[1]-1,o.today[2],12,0,0); }
     static now(){ return now; } }
@@ -15269,6 +15518,10 @@ _CAL_DRIVE = r"""const {makeWorld}=require("./minidom.js");
 const fs=require("fs"), vm=require("vm"), path=require("path");
 const SITE=process.argv[2], fails=[];
 const ok=(c,m)=>{ if(!c) fails.push(m); };
+const NB=String.fromCharCode(160);
+// The file a server gives for an address: Cloudflare Pages answers /calendar
+// with calendar.html whatever the query, and a week's own address with its file.
+function fileFor(p){ p=p.replace(/^\//,""); return p==="calendar"||p==="calendar.html"?"calendar.html":p.replace(/(\.html)?$/,".html"); }
 function world(page,pathname,o){
   const text=fs.readFileSync(path.join(SITE,page),"utf8");
   const a=text.indexOf('<div id="results">'), s=text.indexOf("<script>",a), e=text.indexOf("</script>",s);
@@ -15291,38 +15544,61 @@ function world(page,pathname,o){
   W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".calcmte",m).textContent);
   W.sel=()=>{ const g=W.Q('td[aria-selected="true"]',W.$("cmgrid")); return g&&g.getAttribute("data-d"); };
   W.view=(v)=>W.QA("[data-view]",W.$("calbar")).find(b=>b.getAttribute("data-view")===v);
+  W.addr=()=>W.G.location.pathname+W.G.location.search+W.G.location.hash;
+  W.box=(v)=>W.QA('input[name="cat"]',W.$("calcats")).find(i=>i.value===v);
+  W.ticked=()=>W.QA('input[name="cat"]',W.$("calcats")).filter(i=>i.checked).map(i=>i.value).join();
+  W.tick=async(v,on)=>{ const b=W.box(v); b.checked=on; b.dispatchEvent(W.ev("change")); await W.settle(); };
+  W.step=async()=>{ await W.settle(); W.advance(700); await W.settle(); };
   return W;
 }
+// A reload: the same address opened again, in the same browser's storage.
+function reload(W,o){ const L=W.G.location;
+  return world(fileFor(L.pathname),L.pathname,Object.assign({search:L.search,hash:L.hash,store:W.store},o||{})); }
+const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(AM|PM))?$");
 (async()=>{
   // ---- the tab, on the reader's today ----
   const W=world("calendar.html","/calendar"), D=W.doc, $=W.$, Q=W.Q, QA=W.QA;
   const statik=W.keys();
   await W.run();
   const C=W.win.GRCAL;
-  ok(!$("calside").hidden && !$("calbar").hidden && $("calapp").classList.contains("on"), "the month and the filters did not come up");
+  ok(!$("calside").hidden && !$("calbar").hidden && !$("calcats").hidden && $("calapp").classList.contains("on"),
+     "the month, the filters and the boxes did not come up");
+  ok(Q(".calkey").hidden, "the key a reader without script is given is still shown beside the boxes");
   ok(W.sel()==="2026-03-11", "the tab did not open on the reader's today: "+W.sel());
   ok((Q('td[aria-current="date"]',$("cmgrid"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-11", "today is not aria-current=date");
   ok(QA("tr.cmsel td",$("cmgrid")).map(t=>t.getAttribute("data-d")).join()===[0,1,2,3,4,5,6].map(i=>C.addDays("2026-03-09",i)).join(),
      "the band is not Monday 9 to Sunday 15 March");
-  ok(W.keys().join()===statik.join(), "the list the script draws is not the page's own: "+W.keys());
-  ok($("wkcount").textContent==="6 sittings this week.", "the count reads "+$("wkcount").textContent);
-  ok(QA(".caladd",$("calview")).length===6, "add-to-calendar on "+QA(".caladd",$("calview")).length+" cards, not the 6 that sat");
+  ok(W.ticked()==="hearing,exec,work,conf,floor", "a new reader's boxes: "+W.ticked());
+  // STUDY COMMITTEES ARE OFF FOR A NEW READER: the page's own list, less the
+  // Commission on Aging's two cards.
+  const plain=statik.filter(k=>!/Aging/.test(k));
+  ok(plain.length===5 && W.keys().join()===plain.join(), "the list the script draws is not the page's own less the study committee: "+W.keys());
+  ok($("wkcount").textContent==="5 of 6 sittings shown.", "the count reads "+$("wkcount").textContent);
+  ok($("calreset").hidden, "the reset control shows over a new reader's own filters");
+  ok(QA(".caladd",$("calview")).length===5, "add-to-calendar on "+QA(".caladd",$("calview")).length+" cards, not the 5 shown that sat");
   ok($("cmprev").getAttribute("aria-disabled")==="true", "the month before the calendar's first is offered");
-  const c10=Q('td[data-d="2026-03-10"]',$("cmgrid"));
+  const c10=Q('td[data-d="2026-03-10"]',$("cmgrid")), c13=Q('td[data-d="2026-03-13"]',$("cmgrid"));
   ok(QA(".cmdots i",c10).map(i=>i.className).join()==="k-hearing,k-exec", "10 March's dots: "+QA(".cmdots i",c10).map(i=>i.className));
-  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days,in 3 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  ok(!QA(".cmdots i",c13).length, "a study committee's day has a dot while its box is unticked");
+  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  ok(W.addr()==="/calendar" && W.G.history.length===1, "opening the tab wrote an address: "+W.addr());
+  // EVERY TIME AS A READER SAYS IT, on the cards and on the items inside them.
+  const times=QA(".caltime",$("calview")).map(t=>t.textContent);
+  ok(times.length && times.every(t=>CLOCK.test(t)) && times.indexOf("10:00"+NB+"AM–1:00"+NB+"PM")>=0,
+     "a card's time does not read in the twelve-hour clock: "+JSON.stringify(times));
   // ---- another week, and back ----
   const h0=W.G.history.length;
-  Q('td[data-d="2026-03-18"]',$("cmgrid")).click(); await W.settle(); W.advance(700); await W.settle();
-  ok(W.G.location.pathname==="/calendar/2026-W12" && W.G.location.hash==="#d=2026-03-18", "the address: "+W.G.location.pathname+W.G.location.hash);
+  Q('td[data-d="2026-03-18"]',$("cmgrid")).click(); await W.step();
+  ok(W.addr()==="/calendar?week=2026-W12", "a day in another week, the one it opens on, is at "+W.addr());
   ok(W.G.history.length===h0+1, "choosing a day is not one step of history");
   ok(Q(".calhead h1").textContent==="The week of 16–22 March 2026", "the heading: "+Q(".calhead h1").textContent);
   ok(W.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "the week of 16 March lists "+W.keys());
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
   ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
      "the arrows: "+QA(".calhead .wknav a").map(a=>a.getAttribute("href")));
-  // The rest of the page names the week shown, not the week loaded: the
-  // citation's four forms, the canonical link, og:url and the skip link.
+  // The rest of the page names the week shown, by its own page's address,
+  // which is what is indexed: the citation's four forms, the canonical link,
+  // og:url; and the skip link stays on this page.
   const named=()=>({cite:QA(".pcite dd").map(d=>d.textContent).join(" | "),
     canon:Q('link[rel="canonical"]').getAttribute("href"), og:Q('meta[property="og:url"]').getAttribute("content"),
     ogt:Q('meta[property="og:title"]').getAttribute("content"), ld:Q('script[type="application/ld+json"]').textContent,
@@ -15333,83 +15609,122 @@ function world(page,pathname,o){
      && /@misc\{calendar-2026-W12,/.test(nm.cite) && !/9–15 March|calendar,|\/calendar\./.test(nm.cite)
      && /"@id":"https:\/\/graniterecord\.org\/calendar\/2026-W12"/.test(nm.ld) && !/9–15 March/.test(nm.ld) && nm.days===4,
      "another week's page still names the week it was loaded as: "+JSON.stringify(nm));
-  ok(nm.skip==="/calendar/2026-W12#results", "the skip link leads to the week the page was loaded as: "+nm.skip);
-  W.G.history.back(); await W.settle(); W.advance(700); await W.settle();
-  ok(W.sel()==="2026-03-11" && W.G.location.pathname==="/calendar" && Q(".calhead h1").textContent==="The week of 9–15 March 2026", "Back did not return to 11 March");
+  ok(nm.skip==="/calendar?week=2026-W12#results", "the skip link leaves the week shown: "+nm.skip);
+  // A day that is not the one its week opens on is named in the address.
+  Q('td[data-d="2026-03-19"]',$("cmgrid")).click(); await W.step();
+  ok(W.addr()==="/calendar?week=2026-W12&day=2026-03-19" && W.G.history.length===h0+2, "a day chosen is at "+W.addr());
+  W.G.history.back(); await W.step();
+  ok(W.addr()==="/calendar?week=2026-W12" && W.sel()==="2026-03-18", "Back did not return to 18 March: "+W.addr()+" "+W.sel());
+  W.G.history.back(); await W.step();
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The week of 9–15 March 2026", "Back did not return to 11 March");
   nm=named();
   ok(nm.canon==="https://graniterecord.org/calendar" && /“The week of 9–15 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
      && /@misc\{calendar,/.test(nm.cite) && nm.skip==="/calendar#results", "Back did not name this week again: "+JSON.stringify(nm));
   // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
   // week from the foot's: the same arrow in the new ones, and the heading
-  // where that arrow is gone.
+  // where that arrow is gone. Each is a week on the calendar's own address.
   const arrow=(where,cls)=>Q(where+" a."+cls);
-  arrow(".calhead .wknav","wknext").focus(); arrow(".calhead .wknav","wknext").click(); await W.settle(); W.advance(700); await W.settle();
-  ok(W.G.location.pathname==="/calendar/2026-W12" && D.activeElement===arrow(".calhead .wknav","wknext"),
-     "The week after dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className);
-  arrow(".wkfoot","wkhere").focus(); arrow(".wkfoot","wkhere").click(); await W.settle(); W.advance(700); await W.settle();
-  ok(W.sel()==="2026-03-11" && !arrow(".wkfoot","wkhere") && D.activeElement===Q(".calhead h1") && Q(".calhead h1").getAttribute("tabindex")==="-1",
-     "This week, which is gone on this week, dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className);
-  arrow(".wkfoot","wknext").focus(); arrow(".wkfoot","wknext").click(); await W.settle(); W.advance(700); await W.settle();
+  arrow(".calhead .wknav","wknext").focus(); arrow(".calhead .wknav","wknext").click(); await W.step();
+  ok(W.addr()==="/calendar?week=2026-W12" && D.activeElement===arrow(".calhead .wknav","wknext"),
+     "The week after dropped focus, or left the calendar's address: "+W.addr()+" "+D.activeElement.tagName+"."+D.activeElement.className);
+  ok(W.sel()==="2026-03-18", "The week after did not open the week on its first sitting: "+W.sel());
+  arrow(".wkfoot","wkhere").focus(); arrow(".wkfoot","wkhere").click(); await W.step();
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11" && !arrow(".wkfoot","wkhere")
+     && D.activeElement===Q(".calhead h1") && Q(".calhead h1").getAttribute("tabindex")==="-1",
+     "This week, which is gone on this week, dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className+" at "+W.addr());
+  arrow(".wkfoot","wknext").focus(); arrow(".wkfoot","wknext").click(); await W.step();
   ok(D.activeElement===arrow(".wkfoot","wknext"), "the foot's The week after dropped focus");
-  arrow(".calhead .wknav","wkprev").focus(); arrow(".calhead .wknav","wkprev").click(); await W.settle(); W.advance(700); await W.settle();
+  arrow(".calhead .wknav","wkprev").focus(); arrow(".calhead .wknav","wkprev").click(); await W.step();
   ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calhead .wknav","wkprev"), "The week before dropped focus");
   // ---- the week, the day ----
   W.view("week").click(); await W.settle();
-  ok(QA("tbody th",$("calview")).map(t=>t.textContent).join()==="09:00,10:00,No time given", "the week's rows: "+QA("tbody th",$("calview")).map(t=>t.textContent));
-  ok(QA("thead th",$("calview")).length===7, "not Monday to Friday and the Saturday that holds a meeting");
-  ok(W.keys().sort().join()===statik.slice().sort().join(), "the week at a glance does not hold the week's cards");
-  ok(/v=week/.test(W.G.location.hash), "the address does not say Week");
+  ok(QA("tbody th",$("calview")).map(t=>t.textContent).join()===["9"+NB+"AM","10"+NB+"AM","No time given"].join(),
+     "the week's rows: "+QA("tbody th",$("calview")).map(t=>t.textContent));
+  ok(QA("thead th",$("calview")).length===6, "not Monday to Friday: a Saturday whose one meeting is hidden is a column");
+  ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards");
+  ok(W.addr()==="/calendar?week=2026-W11&view=week", "the address does not say Week: "+W.addr());
   W.view("day").click(); await W.settle();
   ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House floor"
      && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
   ok($("wkcount").textContent==="2 sittings on Wednesday 11 March.", "the day's count: "+$("wkcount").textContent);
+  ok(W.addr()==="/calendar?week=2026-W11&view=day", "the Day view's address: "+W.addr());
   W.view("list").click(); await W.settle();
-  // ---- the filters ----
-  const study=$("wkstudy");
-  study.checked=false; study.dispatchEvent(W.ev("change")); await W.settle();
-  ok(W.store.get("gr.calendar.study")==="0", "turning study committees off is not remembered");
-  ok(!W.keys().some(k=>/Aging/.test(k)) && $("wkcount").textContent==="5 of 6 sittings shown.", "study off: "+$("wkcount").textContent);
-  ok(!$("calreset").hidden, "no way back to everything");
-  const qh=Q('[data-quick="hearing"]',$("wkfilter"));
-  qh.click(); await W.settle();
-  ok(qh.getAttribute("aria-pressed")==="true" && W.keys().sort().join()==="2026-03-10|House Judiciary,2026-03-10|Senate Finance", "Public hearings only lists "+W.keys());
-  ok(QA('input[name="what"]',$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing", "the boxes do not say what the quick choice did");
-  ok(QA(".cmdots i",$("cmgrid")).every(i=>/k-hearing|k-exec/.test(i.className)), "the grid's dots do not follow the filters");
-  qh.click(); await W.settle();
+  // ---- the boxes ----
+  const hb=W.G.history.length;
+  await W.tick("study",true);
+  ok(W.store.get("gr.calendar.showstudy")==="1", "ticking Study Committee is not remembered");
+  ok(W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)) && $("wkcount").textContent==="6 sittings this week.",
+     "Study Committee ticked: "+$("wkcount").textContent+" "+W.keys());
+  ok(QA(".cmdots i",Q('td[data-d="2026-03-13"]',$("cmgrid"))).map(i=>i.className).join()==="k-study", "a study committee's dot is not its colour");
+  ok(!$("calreset").hidden && W.addr()==="/calendar?week=2026-W11&kinds=hearing,exec,work,conf,floor,study"
+     && W.G.history.length===hb, "a box is not in the address, or took a step of history: "+W.addr());
+  await W.tick("study",false);
+  ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && $("calreset").hidden && W.addr()==="/calendar?week=2026-W11",
+     "Study Committee unticked again: "+W.addr());
+  await W.tick("exec",false);
+  ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 sittings shown.",
+     "Executive Session unticked: "+$("wkcount").textContent+" "+W.keys()+" -- a committee that also heard bills stays");
+  ok(!QA(".cmdots i",Q('td[data-d="2026-03-12"]',$("cmgrid"))).length, "the grid's dots do not follow the boxes");
+  ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor", "the address: "+W.addr());
+  await W.tick("exec",true);
+  await W.tick("floor",false);
+  ok(!W.keys().some(k=>/House floor/.test(k)) && $("wkcount").textContent==="4 of 6 sittings shown.", "Floor Session unticked: "+W.keys());
+  await W.tick("floor",true);
+  // ---- the side: a committee by name, a chamber, the search ----
   $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
   $("cpfind").value="jud"; $("cpfind").dispatchEvent(W.ev("input")); await W.settle();
   const box=QA("input",$("cplist")).find(i=>i.value==="House Judiciary");
   ok(box && QA("input",$("cplist")).length===1, "the picker does not find House Judiciary alone: "+QA("input",$("cplist")).map(i=>i.value));
   if(box){ box.checked=true; box.dispatchEvent(W.ev("change")); await W.settle(); }
   ok(W.keys().join()==="2026-03-10|House Judiciary", "one committee lists "+W.keys());
-  ok(QA('input[name="who"]',$("wkfilter")).every(i=>i.disabled) && !$("whohint").hidden, "the who boxes do not stand aside for a chosen committee");
-  ok(/c=House\+Judiciary/.test(W.G.location.hash) && QA(".cpchip",$("cpchosen")).length===1, "the chosen committee is not in the address, or not a chip");
+  ok(!$("pickhint").hidden && QA(".cpchip",$("cpchosen")).length===1, "a committee chosen is not a chip, or its hint is not said");
+  ok(W.addr()==="/calendar?week=2026-W11&committee=House+Judiciary", "the chosen committee is not in the address: "+W.addr());
+  await W.tick("hearing",false);
+  ok(W.keys().join()==="2026-03-10|House Judiciary", "a committee chosen went with one of its two kinds unticked");
+  await W.tick("exec",false);
+  ok(!W.keys().length && $("wkcount").textContent==="None of the 6 sittings this week match.", "the boxes do not narrow a committee chosen: "+W.keys());
+  await W.tick("hearing",true); await W.tick("exec",true);
   Q('[data-body="S"]',$("wkfilter")).click(); await W.settle();
   ok(!W.keys().length && $("wkcount").textContent==="None of the 6 sittings this week match.", "House Judiciary under the Senate: "+$("wkcount").textContent);
+  ok(W.addr()==="/calendar?week=2026-W11&chamber=senate&committee=House+Judiciary", "the chamber in the address: "+W.addr());
   $("calreset").click(); await W.settle();
-  ok(W.keys().join()===statik.join() && $("calreset").hidden && W.store.get("gr.calendar.study")==="1"
-     && W.G.location.hash==="#d=2026-03-11", "Show everything does not put everything back: "+W.G.location.hash);
-  ok(D.activeElement.getAttribute("data-view")==="list", "focus is not on the view switch after Show everything");
+  ok(W.keys().join()===plain.join() && $("calreset").hidden && W.store.get("gr.calendar.showstudy")==="0"
+     && W.addr()==="/calendar?week=2026-W11" && W.ticked()==="hearing,exec,work,conf,floor" && $("pickhint").hidden
+     && Q('[data-body=""]',$("wkfilter")).getAttribute("aria-pressed")==="true",
+     "Reset filters does not put a new reader's filters back: "+W.addr()+" "+W.ticked());
+  ok(D.activeElement.getAttribute("data-view")==="list", "focus is not on the view switch after Reset filters");
+  // A STUDY COMMITTEE ASKED FOR BY NAME shows with its box unticked: chosen,
+  // or found by the search.
+  $("cpfind").value="aging"; $("cpfind").dispatchEvent(W.ev("input")); await W.settle();
+  const ag=QA("input",$("cplist")).find(i=>i.value==="Commission on Aging");
+  if(ag){ ag.checked=true; ag.dispatchEvent(W.ev("change")); await W.settle(); }
+  ok(ag && W.keys().join()==="2026-03-13|Commission on Aging,2026-03-14|Commission on Aging" && $("wkcount").textContent==="1 of 6 sittings shown."
+     && !W.box("study").checked, "a study committee chosen with its box unticked: "+W.keys()+" / "+$("wkcount").textContent);
+  $("calreset").click(); await W.settle();
+  $("wkfind").value="aging"; $("wkfind").dispatchEvent(W.ev("input")); W.advance(200); await W.settle();
+  ok(W.keys().join()==="2026-03-13|Commission on Aging,2026-03-14|Commission on Aging" && /q=aging/.test(W.addr()),
+     "a study committee found by the search with its box unticked: "+W.keys()+" at "+W.addr());
+  $("calreset").click(); await W.settle();
+  ok($("wkfind").value==="" && W.keys().join()===plain.join(), "Reset filters left the search in place");
   // ---- the month's name is a live region, and is said once ----
   const mt=$("cmtitle"), tc=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(require("./minidom.js").E.prototype),"textContent");
   let said=0;
   Object.defineProperty(mt,"textContent",{configurable:true, get(){ return tc.get.call(this); }, set(v){ said++; tc.set.call(this,v); }});
   Q('[data-body="H"]',$("wkfilter")).click(); await W.settle(); Q('[data-body=""]',$("wkfilter")).click(); await W.settle();
-  Q('td[data-d="2026-03-12"]',$("cmgrid")).click(); await W.settle(); W.advance(700); await W.settle();
+  Q('td[data-d="2026-03-12"]',$("cmgrid")).click(); await W.step();
   ok(said===0, "the month's name, a live region, was written "+said+" times while the month did not change");
   $("cmnext").click(); await W.settle(); $("cmprev").click(); await W.settle();
   ok(said===2 && mt.textContent==="March 2026", "turning the month did not name it: "+said+" "+mt.textContent);
   delete mt.textContent;
-  Q('td[data-d="2026-03-11"]',$("cmgrid")).click(); await W.settle(); W.advance(700); await W.settle();
+  Q('td[data-d="2026-03-11"]',$("cmgrid")).click(); await W.step();
   // ---- a redraw keeps focus on the card that holds it ----
   const keep=QA(".calmeet",$("calview"))[0], kk=keep.getAttribute("data-date")+"|"+keep.getAttribute("data-cmte");
   Q("summary",keep).focus();
-  const conf=QA('input[name="what"]',$("wkfilter")).find(i=>i.value==="conf");
-  conf.checked=false; conf.dispatchEvent(W.ev("change")); await W.settle();
+  await W.tick("conf",false);
   const f=D.activeElement;
   ok(f.tagName==="SUMMARY" && f.parentNode!==keep && f.parentNode.getAttribute("data-date")+"|"+f.parentNode.getAttribute("data-cmte")===kk,
      "focus was lost when the panel was drawn again");
-  conf.checked=true; conf.dispatchEvent(W.ev("change")); await W.settle();
+  await W.tick("conf",true);
   // ---- the keyboard ----
   const t=Q('td[tabindex="0"]',$("cmgrid"));
   ok(t && t.getAttribute("data-d")==="2026-03-11" && QA('td[tabindex="0"]',$("cmgrid")).length===1, "the grid's one tab stop is not the selected day");
@@ -15417,10 +15732,11 @@ function world(page,pathname,o){
   ok(D.activeElement.getAttribute("data-d")==="2026-03-12", "ArrowRight");
   D.activeElement.dispatchEvent(W.ev("keydown",{key:"ArrowDown"})); await W.settle();
   ok(D.activeElement.getAttribute("data-d")==="2026-03-19" && W.sel()==="2026-03-11", "ArrowDown moves focus a week and selects nothing");
-  D.activeElement.dispatchEvent(W.ev("keydown",{key:"PageDown"})); await W.settle(); W.advance(700); await W.settle();
+  D.activeElement.dispatchEvent(W.ev("keydown",{key:"PageDown"})); await W.step();
   ok($("cmtitle").textContent==="April 2026" && D.activeElement.getAttribute("data-d")==="2026-04-05", "Page Down: "+$("cmtitle").textContent+" "+D.activeElement.getAttribute("data-d"));
-  D.activeElement.dispatchEvent(W.ev("keydown",{key:"Enter"})); await W.settle(); W.advance(700); await W.settle();
+  D.activeElement.dispatchEvent(W.ev("keydown",{key:"Enter"})); await W.step();
   ok(W.sel()==="2026-04-05" && W.keys().join()==="2026-04-01|House Education", "Enter does not select 5 April's week: "+W.keys());
+  ok(W.addr()==="/calendar?week=2026-W14&day=2026-04-05", "a day chosen by the keyboard is at "+W.addr());
   ok(D.activeElement.getAttribute("data-d")==="2026-04-05", "Enter took focus out of the grid");
   ok($("cmnext").getAttribute("aria-disabled")==="true", "the month after the calendar's last is offered");
   // ---- the preview ----
@@ -15429,6 +15745,7 @@ function world(page,pathname,o){
   Q(".cmn",cell("2026-04-01")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"}));
   W.advance(499); ok($("calpeek").hidden, "the preview opens before half a second's rest");
   W.advance(2); ok(!$("calpeek").hidden && /Wednesday 1 April/.test($("calpeek").textContent) && /Education/.test($("calpeek").textContent), "no preview after half a second: "+$("calpeek").textContent);
+  ok((Q(".pkt",$("calpeek"))||{textContent:""}).textContent==="10:00"+NB+"AM", "the preview's time is not a reader's: "+$("calpeek").textContent);
   Q(".cmn",cell("2026-04-02")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"}));
   ok(!$("calpeek").hidden, "the preview closed on the way to the next day");
   W.advance(81); ok(/Thursday 2 April/.test($("calpeek").textContent), "the preview does not follow the pointer");
@@ -15492,6 +15809,7 @@ function world(page,pathname,o){
   ok(W2.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
      && /^“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
      "the tab shows the reader's week and cites the build's: "+W2.QA(".pcite dd")[0].textContent);
+  ok(W2.addr()==="/calendar", "the tab opened on the reader's week wrote an address: "+W2.addr());
   // ---- a phone: the month folds to the week, and only the fold's own button is remembered ----
   const W4=world("calendar.html","/calendar",{narrow:true});
   await W4.run();
@@ -15499,6 +15817,7 @@ function world(page,pathname,o){
   ok(side4.classList.contains("folded"), "a phone does not open on the selected week alone");
   W4.$("cmnext").click(); await W4.settle();
   ok(!side4.classList.contains("folded") && !W4.store.has("gr.calendar.fold"), "a month arrow's unfolding was remembered as the reader's choice");
+  ok(W4.addr()==="/calendar", "turning the month moved the reader to another address: "+W4.addr());
   W4.$("cmfold").click(); await W4.settle();
   ok(side4.classList.contains("folded") && W4.store.get("gr.calendar.fold")==="1"
      && W4.$("cmtitle").textContent==="March 2026" && W4.QA("tr.cmsel td",W4.$("cmgrid")).length===7,
@@ -15514,34 +15833,34 @@ function world(page,pathname,o){
   const W5=world("calendar.html","/calendar",{layout:L});
   await W5.run();
   const seen5=(el)=>{ const r=el.getBoundingClientRect(); return r.top>=0 && r.bottom<=800; };
-  const press=async(el)=>{ el.focus(); el.dispatchEvent(W5.ev("click",{button:0,detail:0}));
-    await W5.settle(); W5.advance(700); await W5.settle(); };
+  const press=async(el)=>{ el.focus(); el.dispatchEvent(W5.ev("click",{button:0,detail:0})); await W5.step(); };
   await press(W5.Q(".calhead .wknav a.wknext"));
-  ok(W5.G.location.pathname==="/calendar/2026-W12" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wknext")
+  ok(W5.addr()==="/calendar?week=2026-W12" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wknext")
      && seen5(W5.doc.activeElement),
      "Enter on the head's The week after scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
   await press(W5.Q(".wkfoot a.wkprev"));
-  ok(W5.G.location.pathname==="/calendar" && W5.doc.activeElement===W5.Q(".wkfoot a.wkprev")
+  ok(W5.addr()==="/calendar?week=2026-W11" && W5.doc.activeElement===W5.Q(".wkfoot a.wkprev")
      && seen5(W5.doc.activeElement),
      "Enter on the foot's The week before scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
-  const nx5=W5.Q(".calhead .wknav a.wknext"); nx5.focus(); nx5.click(); await W5.settle(); W5.advance(700); await W5.settle();
+  const nx5=W5.Q(".calhead .wknav a.wknext"); nx5.focus(); nx5.click(); await W5.step();
   ok(W5.Q(".calday.calsel",W5.$("calview")).getBoundingClientRect().top===0,
      "a click on The week after no longer brings the day chosen into view");
   // ---- a month file that does not load ----
   // The address moves to the week asked for, and so does everything that
   // names it: the heading, the tab's title, the canonical link and the
-  // citation. The panel says which week it could not load, and links it.
+  // citation. The panel says which week it could not load, and links it;
+  // with no days to go by, the week is on its Monday.
   const W6=world("calendar.html","/calendar",{files:(url)=>/\/calendar\/data\/2026-/.test(url)?null
     :(fs.existsSync(path.join(SITE,url.replace(/^\//,"")))?fs.readFileSync(path.join(SITE,url.replace(/^\//,"")),"utf8"):null)});
   await W6.run();
   const n6=W6.Q(".calhead .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
-  await W6.settle(); W6.advance(700); await W6.settle();
+  await W6.step();
   const said6=W6.Q("p.calempty",W6.$("calview")), link6=said6&&W6.Q("a",said6);
-  ok(W6.G.location.pathname==="/calendar/2026-W12" && W6.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
+  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
      && W6.doc.title==="The week of 16–22 March 2026 | Granite Record"
      && W6.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
      && /“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
-     "a week whose file failed is at "+W6.G.location.pathname+" under the heading "+W6.Q(".calhead h1").textContent
+     "a week whose file failed is at "+W6.addr()+" under the heading "+W6.Q(".calhead h1").textContent
        +", canonical "+W6.Q('link[rel="canonical"]').getAttribute("href"));
   ok(W6.Q(".calhead p.src").textContent==="The sittings of this week could not be loaded here."
      && W6.$("wkcount").textContent==="The sittings could not be loaded.",
@@ -15551,16 +15870,98 @@ function world(page,pathname,o){
      "the panel of a week that did not load says "+(said6&&said6.textContent));
   W6.view("day").click(); await W6.settle();
   const day6=W6.Q("p.calempty",W6.$("calview"));
-  ok(day6 && day6.textContent==="Wednesday 18 March could not be loaded here. Open its week on its own page.",
+  ok(day6 && day6.textContent==="Monday 16 March could not be loaded here. Open its week on its own page.",
      "the Day view of a week that did not load says "+(day6&&day6.textContent));
-  // ---- an address carrying a day, a view and a filter ----
-  const W3=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
+  // ---- an address sent to somebody: a week, a day, a view and a box ----
+  const W3=world("calendar.html","/calendar",{search:"?week=2026-W10&day=2026-03-03&view=day&kinds=hearing"});
   await W3.run();
-  ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true"
-     && W3.QA('input[name="what"]',W3.$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing"
-     && W3.keys().join()==="2026-03-03|House Commerce", "a shared address does not open on its day, view and filter");
+  ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true" && W3.ticked()==="hearing"
+     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The week of 2–8 March 2026",
+     "a shared address does not open on its week, day, view and box: "+W3.sel()+" "+W3.keys());
+  ok(W3.addr()==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing" && W3.G.history.length===1,
+     "a shared address was rewritten: "+W3.addr());
+  // The shell wrote the skip link for /calendar, which from here is another
+  // page: it follows the address.
+  ok(W3.Q("a.skip").getAttribute("href")==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing#results",
+     "the skip link of a shared address leaves it: "+W3.Q("a.skip").getAttribute("href"));
+  // A fragment that is not a state -- the skip link's, reloaded -- is kept.
+  const W3b=world("calendar.html","/calendar",{search:"?week=2026-W12",hash:"#results"});
+  await W3b.run();
+  ok(W3b.addr()==="/calendar?week=2026-W12#results" && W3b.sel()==="2026-03-18", "a reload after the skip link: "+W3b.addr()+" "+W3b.sel());
+  // ---- reloading ----
+  // The same address opened again, in the same browser: the same week, day,
+  // view and filters, and the address as it was.
+  const W7=world("calendar.html","/calendar");
+  await W7.run();
+  W7.Q('td[data-d="2026-03-19"]',W7.$("cmgrid")).click(); await W7.step();
+  W7.view("week").click(); await W7.settle();
+  await W7.tick("study",true);
+  W7.Q('[data-body="H"]',W7.$("wkfilter")).click(); await W7.settle();
+  const before=W7.addr(), R=reload(W7);
+  await R.run();
+  ok(before==="/calendar?week=2026-W12&day=2026-03-19&view=week&kinds=hearing,exec,work,conf,floor,study&chamber=house",
+     "the address before the reload: "+before);
+  ok(R.addr()===before && R.sel()==="2026-03-19" && R.view("week").getAttribute("aria-pressed")==="true"
+     && R.ticked()==="hearing,exec,work,conf,floor,study" && R.Q('[data-body="H"]',R.$("wkfilter")).getAttribute("aria-pressed")==="true"
+     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The week of 16–22 March 2026",
+     "a reload does not open what was on the screen: "+R.addr()+" "+R.sel()+" "+R.keys());
+  // And Back after a reload is the browser's own: the calendar reads it.
+  // The Study Committee box, once ticked, is this browser's choice too: the
+  // plain tab opens with it ticked, and the reset control can take it off.
+  const R2=world("calendar.html","/calendar",{store:W7.store});
+  await R2.run();
+  ok(R2.ticked()==="hearing,exec,work,conf,floor,study" && !R2.$("calreset").hidden && R2.$("wkcount").textContent==="6 sittings this week.",
+     "the Study Committee box is not remembered in this browser: "+R2.ticked());
+  // ---- a link written before 25 September ----
+  // In a week's own page's hash: it opens what it showed, and is written
+  // into the query in place, as one entry of history.
+  const W8=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
+  await W8.run();
+  ok(W8.sel()==="2026-03-03" && W8.view("day").getAttribute("aria-pressed")==="true" && W8.ticked()==="hearing,floor"
+     && W8.keys().join()==="2026-03-03|House Commerce", "an old address does not open on its day, view and filter: "+W8.ticked()+" "+W8.keys());
+  ok(W8.addr()==="/calendar?week=2026-W10&view=day&kinds=hearing,floor" && W8.G.history.length===1,
+     "an old address is not written into the query: "+W8.addr());
+  // On the tab, naming another week and who was meeting.
+  const W9=world("calendar.html","/calendar",{hash:"#d=2026-03-18&v=week&who=standing,floor"});
+  await W9.run();
+  ok(W9.sel()==="2026-03-18" && W9.view("week").getAttribute("aria-pressed")==="true" && W9.ticked()==="hearing,exec,work,conf,floor"
+     && W9.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance"
+     && W9.addr()==="/calendar?week=2026-W12&day=2026-03-18&view=week",
+     "an old address on the tab: "+W9.addr()+" "+W9.keys());
+  // ---- a week's own page, and the first move from it ----
+  // /calendar/2026-W10 is what the sitemap lists: it opens on its own week
+  // and keeps its address; the first move goes to the calendar's own, and
+  // Back returns to it.
+  const WA=world("calendar/2026-W10.html","/calendar/2026-W10");
+  await WA.run();
+  ok(WA.sel()==="2026-03-03" && WA.addr()==="/calendar/2026-W10" && WA.Q("a.skip").getAttribute("href")==="/calendar/2026-W10#results",
+     "a week's own page does not open on its week at its own address: "+WA.sel()+" "+WA.addr());
+  const na=WA.Q(".calhead .wknav a.wknext"); na.focus(); na.click(); await WA.step();
+  ok(WA.addr()==="/calendar?week=2026-W11" && WA.sel()==="2026-03-11" && WA.G.history.length===2,
+     "the first move from a week's own page is at "+WA.addr());
+  WA.G.history.back(); await WA.step();
+  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The week of 2–8 March 2026"
+     && WA.keys().join()==="2026-03-03|House Commerce", "Back to a week's own page: "+WA.addr()+" "+WA.sel());
+  // Reached by its file's name, as a preview served from the folder has it,
+  // the calendar keeps to that name, so a reload there finds the page.
+  const WB=world("calendar/2026-W10.html","/calendar/2026-W10.html");
+  await WB.run();
+  const nb=WB.Q(".calhead .wknav a.wknext"); nb.focus(); nb.click(); await WB.step();
+  ok(WB.addr()==="/calendar.html?week=2026-W11", "a page reached by its file's name moved to "+WB.addr());
+  // ---- the skip link's step in the history ----
+  // A fragment is a step of history too. Back from it leaves the address
+  // what it was, so nothing is drawn again: the month the reader had paged
+  // to stays.
+  WA.$("cmnext").click(); await WA.settle();
+  WA.G.history.pushState(null,"",WA.G.location.pathname+WA.G.location.search+"#results");
+  WA.Q(".calhead .wknav a.wknext").click(); await WA.step();
+  WA.$("cmnext").click(); await WA.settle();
+  const shown=WA.keys().join();
+  WA.G.history.pushState(null,"",WA.G.location.pathname+WA.G.location.search+"#results");
+  WA.G.history.back(); await WA.step();
+  ok(WA.$("cmtitle").textContent==="April 2026" && WA.keys().join()===shown, "Back from the skip link drew the calendar again: "+WA.$("cmtitle").textContent);
   if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-  console.log("the tab, a dated week, a phone and a shared address: 3 views, 6 filters, Back, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, the arrows kept in view after a key, 6 keys, the fold, the preview's timings and a day moved under a still pointer, and a month file that failed");
+  console.log("the tab, a week's own page, a phone and shared, old and reloaded addresses: 3 views, the six boxes and the side's filters, Back, reloading, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, the arrows kept in view after a key, 6 keys, the fold, the preview's timings and a day moved under a still pointer, and a month file that failed");
   console.log("OK");
 })().catch(e=>{ console.log(fails.join("\n")); console.log("THREW "+e.stack); process.exit(2); });
 """
@@ -15603,6 +16004,13 @@ def _calendar_layout():
     shrinks and wraps too, and a committee's name has room for
     "Administration" -- summed here from the column and the paddings -- and
     hyphenates a longer word rather than splitting it without a hyphen.
+
+    And for the row of boxes that took the key's place the same day: it
+    wraps rather than widening a phone's page; each box is its kind's colour,
+    outlined when unticked and filled when ticked, with the tick in the
+    card's ground; the checkbox itself is there, invisible over its label
+    rather than removed, so a pointer, Space and a screen reader reach it;
+    the box shows where focus is; and the row is hidden without script.
     """
     css = Path("app.css").read_text(encoding="utf-8")
     a = css.find("/* THE CALENDAR, AS A CALENDAR")
@@ -15625,8 +16033,30 @@ def _calendar_layout():
         "a folded month does not keep the selected week")
     assert ".calfold{display:none" in block and ".calfold{display:inline-flex" in narrow, (
         "the folds are offered where there is room for the month")
-    assert ".calside[hidden],.calbar[hidden],.calreset[hidden],.cplist[hidden],.calpeek[hidden]{display:none}" in block, (
-        "a hidden control with a display rule of its own would show without script")
+    hid = re.search(r"((?:\.[\w-]+\[hidden\],?\s*)+)\{display:none\}", block)
+    hidden = set(re.findall(r"\.([\w-]+)\[hidden\]", hid.group(1))) if hid else set()
+    assert {"calside", "calbar", "calreset", "cplist", "calpeek", "calcats", "calkey"} <= hidden, (
+        "a hidden control with a display rule of its own would show without script: "
+        f"only {sorted(hidden)} are held to display:none while hidden")
+    # THE ROW OF BOXES (25 September 2026): the key and the filter at once.
+    row = _braced(block, ".calcatrow{")
+    assert "flex-wrap:wrap" in row, "the row of boxes does not wrap, and would widen a phone's page"
+    label = _braced(block, ".calcat{")
+    assert "min-height:32px" in label and "font-size:var(--t-ui)" in label, (
+        f"a box's label is not a tap target at the interface's size: {label}")
+    inp = _braced(block, ".calcat input{")
+    assert "opacity:0" in inp and "width:100%" in inp and "height:100%" in inp and "display:none" not in inp, (
+        "the checkbox is not left in the page over its label for a pointer, the keyboard and a "
+        f"screen reader: {inp}")
+    cbx = _braced(block, ".cbx{")
+    assert "border:2px solid var(--cat)" in cbx and "background:var(--surface)" in cbx, (
+        f"an unticked box is not its colour's outline: {cbx}")
+    assert re.search(r"\.calcat input:checked \+ \.cbx\{background:var\(--cat\)\}", block), (
+        "a ticked box is not filled with its colour")
+    assert "border:solid var(--surface)" in _braced(block, ".cbx::after{"), (
+        "the tick is not drawn in the card's ground, which is what holds 3:1 on every colour")
+    assert re.search(r"\.calcat input:focus-visible \+ \.cbx\{outline:2px solid var\(--pine\)", block), (
+        "a box does not show where the keyboard's focus is")
     wrap = _braced(block, ".wkgridwrap{")
     assert "overflow-x:auto" in wrap, "the week at a glance can widen the page"
     # ITS FRAME CLIPS WHAT IS POSITIONED INSIDE IT. The day buttons carry a

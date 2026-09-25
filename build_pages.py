@@ -282,32 +282,69 @@ RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">
                'See all recent activity &rarr;</a></p>')
 
 # THE COLOURS ARE THE GENERAL COURT'S OWN, because staff already read its
-# schedule by them: blue a hearing, green a meeting (work sessions, study and
-# statutory committees), orange an executive session, red a committee of
-# conference -- the legend fetch_schedule.py quotes. The floor, which that
-# schedule does not colour, has one of its own. Until 24 September a hearing
-# was gold and every work session, conference and floor sitting fell to the
-# orange that means executive session there. A kind not named here keeps the
-# neutral k-other rather than borrowing a colour that means something else.
+# schedule by them: blue a hearing, green a work session, orange an executive
+# session, red a committee of conference -- the legend fetch_schedule.py
+# quotes. The floor, which that schedule does not colour, has one of its own.
+# Until 24 September a hearing was gold and every work session, conference
+# and floor sitting fell to the orange that means executive session there. A
+# kind not named here keeps the neutral k-other rather than borrowing a colour
+# that means something else.
+#
+# STUDY AND STATUTORY COMMITTEES HAVE THEIR OWN COLOUR, a raspberry, though
+# the General Court's schedule greens them with the work sessions. The
+# person asked on 25 September 2026 for the two not to be grouped: the
+# Calendar's colours are now also its filter, and a study commission and a
+# House subcommittee's work session are different things for a reader to
+# show or hide. app.css says why the colour is that one.
 MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
              "hearing": ("Public hearing", "k-hearing"),
              "executive session": ("Executive session", "k-exec"),
              "work session": ("Work session", "k-meet"),
              "subcommittee work session": ("Subcommittee work session", "k-meet"),
              "full committee work session": ("Full committee work session", "k-meet"),
-             "study committee": ("Study committee", "k-meet"),
-             "statutory committee": ("Statutory committee", "k-meet"),
+             "study committee": ("Study committee", "k-study"),
+             "statutory committee": ("Statutory committee", "k-study"),
              "committee of conference": ("Committee of conference", "k-conf"),
              "floor debate": ("Floor session", "k-floor")}
 
-# The key under a week's heading: each colour once, in the order a reader
-# meets them, worded as the chips are.
-MEET_LEGEND = (("k-hearing", "Public hearing"),
-               # Most green cards say "Statutory committee", so the key names it.
-               ("k-meet", "Work session, study or statutory committee"),
-               ("k-exec", "Executive session"),
-               ("k-conf", "Committee of conference"),
-               ("k-floor", "Floor session"))
+# THE KEY, each colour once, in the order the Calendar's row of boxes has
+# them -- which is the key, and the filter, above its schedule. Names, so in
+# title case, as the person asked on 25 September 2026: "Public Hearing or
+# Executive Session". "Work Session" also covers the chamber committees'
+# other meetings, and "Study Committee" the statutory ones, whose chips
+# say which they are.
+MEET_LEGEND = (("k-hearing", "Public Hearing"),
+               ("k-exec", "Executive Session"),
+               ("k-meet", "Work Session"),
+               ("k-conf", "Committee of Conference"),
+               ("k-floor", "Floor Session"),
+               ("k-study", "Study Committee"))
+
+
+def clock(t):
+    """"13:30" -> "1:30 PM": a time as a reader says it.
+
+    Asked for on 25 September 2026: "I'd also prefer if times were listed
+    with AM and PM instead of 13:00." Noon is "12:00 PM" and midnight "12:00
+    AM". Only what is printed changes: a card's data-time keeps the record's
+    own "13:30", which the Calendar's script and the add-to-calendar links
+    read. A no-break space keeps AM or PM with its time when a narrow column
+    wraps the line. build_calendar's WEEK_JS and app.js each carry the same
+    function, and preflight holds the three to one answer. Anything that is
+    not a time is given back as it came.
+    """
+    m = re.match(r"^(\d{1,2}):(\d\d)", t or "")
+    if not m or int(m.group(1)) > 23:
+        return t or ""
+    h = int(m.group(1))
+    return f"{h % 12 or 12}:{m.group(2)}\u00a0{'AM' if h < 12 else 'PM'}"
+
+
+def clock_span(a, b):
+    """"10:00 AM–12:15 PM" -- a sitting from its first item to its last,
+    which is how the General Court prints one -- or one time where the two
+    are the same."""
+    return clock(a) if a == b else f"{clock(a)}–{clock(b)}"
 
 
 # What a calendar card is keyed on; see meeting_key. A named tuple so the
@@ -774,10 +811,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # THE SPAN, NOT A SLOT. Each row is one bill with its own place in
             # the meeting, so the meeting runs from the first to the last --
             # which is how the General Court prints it, 10:00am - 3:30pm. A
-            # meeting whose bills all share one slot states it once.
+            # meeting whose bills all share one slot states it once. In the
+            # twelve-hour clock a reader uses (clock); the record's own
+            # "10:00" stays in data-time and data-last below.
             slots = sorted(x for x in (r.get("time") or "" for r in rows) if x)
-            time = (slots[0] if len(set(slots)) == 1 else
-                    f"{slots[0]}–{slots[-1]}") if slots else ""
+            time = clock_span(slots[0], slots[-1]) if slots else ""
             # BILLS, NOT ROWS. A study or statutory committee's meeting is a
             # row with no bill, and counting rows called it "(1 bill)".
             # AND EACH BILL ONCE. A bill heard and then voted on the same day
@@ -873,7 +911,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                                            (wk.capitalize() if wk else "Meeting", ""))
                 if not one:
                     html.append('<p class="calslot">'
-                                + (f'<span class="caltime">{esc(tm)}</span>' if tm else "")
+                                + (f'<span class="caltime">{esc(clock(tm))}</span>' if tm else "")
                                 + f'<span class="calkind {kcls}">{esc(word)}</span>'
                                 + (f'<span class="calwhere">{esc(vn)}</span>'
                                    if vn and not venue else "") + "</p>")
