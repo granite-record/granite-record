@@ -221,6 +221,32 @@ def narrate(name, chamber, date, items, reports):
 NEVER_ARCHIVED = {"committee of conference"}
 
 
+def its_own_sitting(r):
+    """Is this proceedings row a sitting of the committee it names?
+
+    NOT A COMMITTEE OF CONFERENCE. A conference is the two chambers'
+    conferees on one bill, meeting jointly under House Rule 50, and not a
+    sitting of either chamber's standing committee -- the rule
+    build_pages.meeting_key already keeps on the Calendar, where SB 14's
+    conference drawn as a sitting of Senate Judiciary was the mistake it
+    records. A conference row carries a committee because a docket row for
+    the bill carried the committee it was referred to: the Senate's notice
+    names none -- "Committee of Conference Meeting: 06/16/2025, 12:00 pm,
+    Room 100, SH" -- and the House's names none either. Filed under that
+    name, this page said "The Committee on Finance met on June 12, 2025 for
+    committees of conference on HB 1 and HB 2", of a day House Finance did
+    not sit, and reading the House's notices (docket_parser) would have added
+    50 such days to 16 House committees in 2025-2026 alone. Before them, 1,031
+    conference rows were filed so, and 627 of the committee-days they made
+    held nothing else -- counted by chamber and name rather than by page, so
+    the pages' own count may differ by a renamed committee or two. The
+    conference stays on the bill's page and on the Calendar, where it is its
+    own card.
+    """
+    return bool((r.get("committee") or "").strip() and r.get("date")
+                and (r.get("kind") or "").strip().lower() != "committee of conference")
+
+
 def years(span):
     """["1989-1990", ..., "2023-2024"] -> "1989 to 2024"."""
     first, last = span[0][:4], span[-1][-4:]
@@ -562,9 +588,9 @@ def main():
         collections.Counter))
     names_at = collections.defaultdict(lambda: collections.defaultdict(set))
     for r in P.load():
-        cname = (r.get("committee") or "").strip()
-        if not cname or not r.get("date"):
+        if not its_own_sitting(r):
             continue
+        cname = (r.get("committee") or "").strip()
         code = code_of(cname, r.get("body"), r.get("term"))
         if not code:
             unmatched[f"{r.get('body') or '?'} {cname}"] += 1

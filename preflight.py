@@ -9193,6 +9193,58 @@ def _committee_tense(BC):
     return "ok", "future days scheduled, past days met"
 
 
+@check("build", "a committee of conference is not a sitting of the committee its bill was referred to",
+       needs=("build_committees",))
+def _committee_not_conference(BC):
+    """House Finance's page would have said it "met on June 12, 2025 for
+    committees of conference on HB 1 and HB 2".
+
+    A conference row of proceedings.csv carries the committee the bill was
+    referred to, because a docket row for the bill did -- the notice itself,
+    "Conference Committee Meeting: 06/12/2025 02:00 pm LOB 210-211", names
+    none. build_committees filed every row with a committee under that
+    committee's page, so reading the House's notices would have put 50
+    conference days on 16 House committees' pages in 2025-2026, days they did
+    not sit; the Senate's notices already did the same, Senate Finance
+    "met on May 22, 2026 for a committee of conference on SB 481-FN-A".
+    build_pages.meeting_key keeps the same rule on the Calendar.
+
+    The rows are proceedings.csv's own.
+    """
+    keep = [
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+         "date": "2025-03-12", "time": "14:00", "committee": "Finance",
+         "venue": "SH Reps Hall", "source": "docket"},
+        {"term": "2025-2026", "bill": "SB481", "body": "S", "kind": "hearing",
+         "date": "2026-01-13", "time": "13:20", "committee": "Finance",
+         "venue": "SH 103", "source": "docket"},
+    ]
+    drop = [
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "committee of conference",
+         "date": "2025-06-12", "time": "14:00", "committee": "Finance",
+         "venue": "LOB 210-211", "source": "docket"},
+        {"term": "2025-2026", "bill": "SB481", "body": "S", "kind": "committee of conference",
+         "date": "2026-05-22", "time": "13:00", "committee": "Finance",
+         "venue": "GP 159", "source": "docket"},
+        # And, as before, a row naming no committee, or no day.
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "committee of conference",
+         "date": "2025-06-12", "committee": "", "video_id": "aGy5YRZ4rdw"},
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+         "date": "", "committee": "Finance"},
+    ]
+    f = getattr(BC, "its_own_sitting", None)
+    assert f, "build_committees has no its_own_sitting"
+    wrong = [r for r in keep if not f(r)] + [r for r in drop if f(r)]
+    assert not wrong, ("filed under a committee's page wrongly, or left off it: "
+                       + "; ".join(f"{r['bill']} {r['kind']} {r['date']}" for r in wrong))
+    src = Path(BC.__file__).read_text(encoding="utf-8")
+    main_ = src[src.index("def main("):]
+    assert re.search(r"for r in P\.load\(\):\s+if not its_own_sitting\(r\):\s+continue",
+                     main_), "build_committees.main no longer files its rows through its_own_sitting"
+    return "ok", ("HB 1's conference of 12 June 2025 is not House Finance's sitting, nor "
+                  "SB 481's of 22 May 2026 Senate Finance's; their hearings are")
+
+
 @check("build", "committee names that reach no page stop the build past a stated ceiling",
        needs=("build_committees",))
 def _committee_unmatched_ceiling(BC):
