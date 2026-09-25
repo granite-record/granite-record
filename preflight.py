@@ -5116,6 +5116,88 @@ def _stream_start(build_site_v2, about_figures):
                     "and draw no player")
 
 
+@check("frontend", "a committee of conference noticed and recorded is one station, with the notice's time and room",
+       needs=("build_site_v2",))
+def _conference_folded(build_site_v2):
+    """HB 485's conference of 16 June 2025 was two stations on its page.
+
+    proceedings.csv holds a noticed and recorded conference twice: the
+    docket's row, 09:30 in LOB 206-208 with no recording, and the floor
+    index's, the recording dIumWRhMDrY with no time. station_for_floor drew
+    each, so the page said "No recording matched to this proceeding." over
+    the one sitting it then played -- and HB 1709's of 26 May 2026, which is
+    on two recordings, three times. 61 Senate bill-days were drawn so, SB
+    108's of 13 June 2025 among them, and reading the House's notices made it
+    159. fold_conference_notices folds the notice into the recording.
+
+    The rows are proceedings.csv's own, as build_site_v2 shapes them.
+    """
+    B = build_site_v2
+    fold = getattr(B, "fold_conference_notices", None)
+    assert fold, "build_site_v2 has no fold_conference_notices"
+    C, D = "committee of conference", "floor debate"
+
+    def row(date, kind, vid="", time="", venue="", whole=False, body="H"):
+        return {"date": date, "body": body, "video_id": vid, "motions": [],
+                "tallies": [], "kind": kind, "debate_end": None,
+                "window_start": None, "precise": False, "whole_video": whole,
+                "title": "", "time": time, "venue": venue}
+    cases = {
+        # (bill, its floor rows) -> what its conference stations should be
+        "HB485": [row("2025-06-05", D, "B747DpYcc9E"),
+                  row("2025-06-16", C, time="09:30", venue="LOB 206-208"),
+                  row("2025-06-16", C, "dIumWRhMDrY")],
+        "HB1709": [row("2026-05-14", D, "xkUhsgh3skk"),
+                   row("2026-05-26", C, time="14:45", venue="GP 234"),
+                   row("2026-05-26", C, "Pm-qXemJrHw"),
+                   row("2026-05-26", C, "F590FEiqVoA", whole=True),
+                   row("2026-06-04", D, "l_01QWYdAiw")],
+        "SB108": [row("2025-06-13", C, time="09:00", venue="SH 103", body="S"),
+                  row("2025-06-13", C, "OCmDvpG_NSg", body="S")],
+        # Noticed twice and recorded never: both stay, and say so.
+        "HB1541": [row("2026-05-27", C, time="10:40", venue="GP 228"),
+                   row("2026-05-28", C, time="10:00", venue="GP 228")],
+    }
+    want = {
+        "HB485": [("2025-06-16", "09:30", "LOB 206-208", "dIumWRhMDrY", "floor_dated")],
+        "HB1709": [("2026-05-26", "14:45", "GP 234", "Pm-qXemJrHw", "floor_dated"),
+                   ("2026-05-26", "14:45", "GP 234", "F590FEiqVoA", "whole_video")],
+        "SB108": [("2025-06-13", "09:00", "SH 103", "OCmDvpG_NSg", "floor_dated")],
+        "HB1541": [("2026-05-27", "10:40", "GP 228", "", "novideo"),
+                   ("2026-05-28", "10:00", "GP 228", "", "novideo")],
+    }
+    drawn = {}
+    for bid, rows in cases.items():
+        before = [dict(r) for r in rows]
+        sts = [B.station_for_floor(f, bid, {}) for f in fold(rows)]
+        assert rows == before, f"fold_conference_notices changed {bid}'s rows in place"
+        got = [(s["when"], s.get("time"), s.get("venue"), s.get("video_id") or "", s["state"])
+               for s in sts if s["what"] == C]
+        assert got == want[bid], f"{bid}'s conference stations are {got}; wanted {want[bid]}"
+        # A floor debate is never folded, and takes no time from a notice.
+        deb = [(s["when"], s.get("time"), s.get("venue")) for s in sts if s["what"] == D]
+        assert deb == [(r["date"], None, None) for r in rows if r["kind"] == D], (
+            f"{bid}'s floor debates came out as {deb}")
+        drawn[bid] = sts
+    # THE BUILDER CALLS IT. A fold nothing calls folds nothing.
+    src = Path(B.__file__).read_text(encoding="utf-8")
+    assert re.search(r"station_for_floor\(f, bid, marks\)\s+for f in "
+                     r"fold_conference_notices\(floor\.get\(\(term, bid\)", src), (
+        "build_bills no longer draws its floor stations through fold_conference_notices")
+    # THE PAGE. HB 485's one conference is drawn once, timed, and never as
+    # "No recording matched".
+    html_ = _app_js("scope.renderHearings({id:'HB485', n:'HB 485'}, {stations:"
+                    + json.dumps(drawn["HB485"]) + "})")
+    if html_ is not None:
+        assert "No recording matched" not in html_, (
+            "HB 485's page still says no recording matched its conference of 16 June 2025")
+        assert "2025-06-16 at 09:30 · LOB 206-208" in html_, (
+            "HB 485's conference is not headed with the time and room its notice gives")
+    return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
+                  "playing its recording; HB 1709's is one per recording and SB 108's one; "
+                  "HB 1541's two notices with no recording stand")
+
+
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
        "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
