@@ -3683,6 +3683,24 @@ def _j_in_term(day, term):
     return f"{int(m.group(1)) - 1}-11-01" <= day <= f"{m.group(2)}-12-31"
 
 
+def _j_year_slip(said, day, term):
+    """The day a row means where the one it states has the clerk's year:
+    the same month and day in the year of the row's own date, where that is
+    in the term and is the row's day or up to 60 days before it -- or "".
+
+    "Introduction and referring to Judiciary 1/28/98" was entered at 10:14
+    on 28 January 1999, the day the Senate sat (SB 66 of 1999); "Introduced
+    and Adopted, VV; 02/09/2016" on SR 8 of 2017 cites Senate Journal 5, of
+    9 February 2017; "Introduced and Adopted VV 01/06/2020" on HR 6 of 2021
+    cites House Journal 2, of 6 January 2021. A month and a day are the
+    clerk's; the year the row was entered in says which one."""
+    try:
+        got = _date(int(day[:4]), int(said[5:7]), int(said[8:10])).isoformat()
+    except (TypeError, ValueError):
+        return ""
+    return got if _j_in_term(got, term) and 0 <= _j_days(day, got) <= 60 else ""
+
+
 def _j_stated_day(text):
     """The first date a line states, "2007-06-11", or ""."""
     got = []
@@ -3722,12 +3740,14 @@ def _j_introduced(evs, bid, term=""):
     to Rule 36c 02/20/2025", HR 17 of 2025, entered on the 25th), else the
     day of the row.
 
-    A ROW THAT STATES A DAY OUTSIDE THE TERM GIVES NO DAY. "Introduction and
-    referring ... 1/28/98" on SB 53 of 1999, "Introduced and Adopted, VV;
-    02/09/2016" on SR 8 of 2017 and "Introduced 01/02/2014" on HB 214 of
-    2019 are the clerk's year, and the rail said each was introduced a year
-    or five before its term began. The row's own date is when it was
-    entered, which the row itself says is not the day, so the stop goes
+    A ROW THAT STATES A DAY OUTSIDE THE TERM STATES THE CLERK'S YEAR.
+    "Introduction and referring ... 1/28/98" on SB 53 of 1999, "Introduced
+    and Adopted, VV; 02/09/2016" on SR 8 of 2017 and "Introduced 01/02/2014"
+    on HB 214 of 2019 had the rail say each was introduced a year or five
+    before its term began. The month and day are taken in the year of the
+    row's own date where that is in the term and not after the row
+    (_j_year_slip) -- 28 January 1999, 9 February 2017, 2 January 2019, each
+    the day of the Journal the row cites -- and otherwise the stop goes
     undated rather than take either.
 
     IN ITS OWN CHAMBER. A bill is introduced twice, once in each chamber, and
@@ -3749,7 +3769,7 @@ def _j_introduced(evs, bid, term=""):
         d = e.get("date") or ""
         said = _j_stated_day(e.get("raw") or "")
         if said and not e.get("date_as_recorded") and (not d or said <= d):
-            d = said if _j_in_term(said, term) else ""
+            d = said if _j_in_term(said, term) else _j_year_slip(said, d, term)
         if d and _j_in_term(d, term):
             days.append(d)
     return min(days) if days else ""
@@ -4045,6 +4065,10 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
             if (said and got["act"] not in ("signed", "vetoed", "unsigned")
                     and not e.get("date_as_recorded")):
                 day = _j_iso(*said.groups())
+                # The clerk's year, as on an introduction: HR 6 of 2021's
+                # "Introduced and Adopted VV 01/06/2020", entered on 7 January.
+                if day and not _j_in_term(day, term):
+                    day = _j_year_slip(day, date, term)
                 back = _j_days(day, date) if day else 0
                 if day and _j_in_term(day, term) and (-60 <= back < 0 or (
                         got["act"] == "died" and back < 0 and not any(

@@ -4748,10 +4748,21 @@ def _journey_reads(build_site_v2):
              ev("S", "2021-09-09", "Inexpedient to Legislate, Senate Rule 3-23, Adjournment "
                                    "09/16/2021", "other"), term="2019-2020")[1][-1],
          ("", "S", "died", died), "HB201 2020")
-    # And an introduction whose row states the clerk's year is undated.
+    # And an introduction whose row states the clerk's year is dated in the
+    # year the row was entered, where that is in the term and not after the
+    # row: each of these is the day of the Journal the row cites.
     want(run("SB53", ev("S", "1999-01-28", "Introduction and referring Public Institutions, "
                                            "Health and Human Services 1/28/98", "introduced"),
-             term="1999-2000")[0], "", "SB53 1999 introduced")
+             term="1999-2000")[0], "1999-01-28", "SB53 1999 introduced")
+    want(run("HR6", ev("H", "2021-01-07", "Introduced and Adopted VV 01/06/2020", "other"),
+             term="2021-2022"),
+         ("2021-01-06", [("2021-01-06", "H", "passed", "Adopted on a voice vote")]),
+         "HR6 2021")
+    # Not a day after the row, nor one it cannot be: HB 214 of 2019's
+    # "Introduced 01/02/2014", entered on 27 December 2018, is no day of 2018.
+    want(run("HB214", ev("H", "2018-12-27", "Introduced 01/02/2014 and referred to Legislative "
+                                            "Administration", "introduced"),
+             term="2019-2020")[0], "", "HB214 2019 as entered")
 
     # A CONFERENCE REPORT FILED IS NOT A VOTE, and "As Passed by the House
     # {2199}" names the version it proposes. SB 32 of 2008 read as the House
