@@ -152,6 +152,10 @@ OFFICIAL = [
     ("H", 1989, 1996, "Public Protection and Veterans Affairs"),   # TEXT, RULES 1995
     ("H", 1989, 1994, "Public Works"),                             # TEXT
     ("H", 1995, 2026, "Public Works and Highways"),                # RULES 1995, TEXT, H20
+    # The petitions' committee. No text of a petition is on this disk; LIST
+    # names it for all 28 of 2011-2012's, in capitals, and so does STATUS
+    # 2012 PET 1 (see CODES).
+    ("H", 2011, 2012, "Redress of Grievances"),                    # LIST, H45
     ("H", 1989, 1996, "Regulated Revenues"),                       # TEXT, RULES 1995
     ("H", 1989, 2026, "Resources, Recreation and Development"),    # H22
     ("H", 1989, 2026, "Rules"),                                    # RULES, H23
@@ -464,7 +468,8 @@ ALIASES = [
     # 15 cards, TEXT 8 of 8 print "Finance Executive Committee" -- 1993's HB1,
     # the budget, went there -- and no Senate text of 1993-1994 prints plain
     # "Finance". 15 hearings, SAME 15 of 15. Whether it was the Senate's
-    # Finance under another name is not something this file claims.
+    # Finance under another name the texts do not say; the code the General
+    # Court files it under, Finance's, is in CODES.
     ("S", 1993, 1994, r"fin(?:ance)? exec(?:utive)?(?: comm(?:ittee)?)?",
      "Finance Executive Committee"),
     # 66 cards, TEXT 15 of 15 print "Fish & Game/Recreation" (the site writes
@@ -701,12 +706,14 @@ def official(name, chamber, term):
 # Only the General Court's own filing places a name here. Two witnesses:
 #
 #   STATUS  archive_samples/<year>/<bill>.html, the legacy bill-status page,
-#           which links a bill's committee of referral by its code
-#           (committeedetails.aspx?code=H26) and prints the name that code
-#           carries TODAY -- in capitals where the code is retired. So 1995's
+#           which links a bill's committee of referral by its code -- in the
+#           House's section committeedetails.aspx?code=H26, in the Senate's
+#           committee_details.aspx?cc=S20 -- and prints the name that code
+#           carries TODAY, in capitals where the code is retired. So 1995's
 #           HB 109, whose own text prints "COMMITTEE: Corrections and
 #           Criminal Justice", is filed under H26 and printed "Criminal
-#           Justice and Public Safety".
+#           Justice and Public Safety". A search for "code=" alone finds the
+#           House's code and misses the Senate's on the same page.
 #   LIST    archive_bills.json, the General Court's legacy search list of
 #           each term from 1997-1998, which prints beside every bill the name
 #           the code it is filed under carries today: mixed case for a code
@@ -724,31 +731,64 @@ def official(name, chamber, term):
 # runs, and the later one could be a new code under the old name: the
 # Senate's Internal Affairs of 1997-2006 and 2011-2012 and the House's Local
 # and Regulated Revenues of 2009-2010 print in capitals as S09 and H21 do,
-# and no page on this disk files a bill of those years under either, so they
-# are None until one does.
+# and they are None. No page on this disk files a bill of 1997-2006 or of
+# 2009-2010 under either code; one now files a bill of 2011-2012 under S09
+# (see that entry), and the run waits on the exception codes_problems would
+# need. The Senate's Wildlife and Recreation also stopped and came back, but
+# its code did not stop: STATUS 1995 files the name it carried in between,
+# Fish and Game/Recreation, under the same S20, so the later run is unbroken
+# in the code and LIST carries it.
 #
 # A name keeps its entry for every term official() gives it, where a witness
 # falls inside that run, and not past a witness that files the name's bills
 # under another code: LIST puts 2009's House "Commerce" bills under H43, so
 # H33's entry ends with 2008. A run no witness reaches is left out. So
-# 1989-1992's House Fish and Game, whose code is on no page on this disk,
-# links nowhere, while 2001-2008's is H08. Nothing here claims why a
-# committee stopped: the records show a code carrying a new name, or a code
-# stopping, and no more.
+# 2009-2010's House Fish and Game links nowhere, while 1989-1992's and
+# 2001-2008's are H08. Nor does a page place a name on a code that another
+# committee's name holds, across terms with nothing under it: see the
+# Senate's Development, Recreation and Environment, under S03 below. Nothing
+# here claims why a committee stopped: the records show a code carrying a
+# new name, or a code stopping, and no more.
 CODES = [
     # ---- renamed, and sitting today under the later name ----
+    # STATUS 1989 HB 36 and HB 244: both texts print "REFERRED TO: State
+    # Institutions and Housing", and both pages file that referral under H26
+    # and print "Criminal Justice and Public Safety". The code runs on without
+    # a break into 1993's Corrections and Criminal Justice, the next entry.
+    ("H", 1989, 1992, "State Institutions and Housing", "H26"),
     # STATUS 1995 HB 109 (see above); RULES 1995 names Corrections and
     # Criminal Justice, RULES 1997 Criminal Justice and Public Safety, and
     # neither names another committee on criminal justice.
     ("H", 1993, 1996, "Corrections and Criminal Justice", "H26"),
+    # STATUS 1989 HB 30, whose text prints "REFERRED TO: Public Works": filed
+    # under H20 and printed "Public Works and Highways", the name RULES 1995
+    # gives the committee.
+    ("H", 1989, 1994, "Public Works", "H20"),
+    # STATUS 1989 HB 223, whose text prints "REFERRED TO: State-Federal
+    # Relations": filed under H25 and printed "State-Federal Relations and
+    # Veterans Affairs", the name RULES 1997 gives the committee.
+    ("H", 1989, 1996, "State-Federal Relations", "H25"),
     # LIST: all 10 of the term's bills the list files with a special
     # committee are filed under H47, "...Pension Plans", as are 2015-2016's.
     # One code and one subject; the committee was formed again after a term
     # without it.
     ("H", 2011, 2012, "Special Committee on Public Employee Pensions Reform", "H47"),
+    # STATUS 1989 CACR 1, whose text prints "REFERRED TO: Executive
+    # Departments": the Senate's section files it under S06 and prints
+    # "Executive Departments and Administration", the name from 1993.
+    ("S", 1989, 1992, "Executive Departments", "S06"),
+    # STATUS 1993 HB 1, the budget: the Senate's section files its referral
+    # under S07 and prints "Finance".
+    ("S", 1993, 1994, "Finance Executive Committee", "S07"),
     # ---- retired: a code the General Court no longer lists ----
+    ("H", 1989, 1994, "Appropriations", "H01"),       # STATUS 1989 HB 11, 1993 HB 1
     ("H", 1989, 1994, "Children, Youth and Juvenile Justice", "H02"),  # STATUS 1989
     ("H", 1989, 1994, "Commerce, Small Business and Consumer Affairs", "H03"),  # STATUS 1992
+    ("H", 1989, 1996, "Constitutional and Statutory Revision", "H04"),  # STATUS 1989 CACR 1
+    # STATUS 1989 HB 27 and 1991 HB 41, whose texts print "REFERRED TO: Fish
+    # and Game": H08 from the first term on this record, and the code of the
+    # two entries after this one.
+    ("H", 1989, 1992, "Fish and Game", "H08"),
     # LIST: 14 of 14 of 1999-2000, filed under FISH AND GAME; the House
     # Calendar of 2006 (calendars/2006/HC064.txt) speaks of "the Fish and Game
     # Committee, formerly the Wildlife and Marine Resources Committee".
@@ -774,15 +814,38 @@ CODES = [
      "Commerce, Small Business, Consumer Affairs and Economic Development", "H33"),
     ("H", 1997, 2008, "Commerce", "H33"),             # STATUS 1997, 2002, 2005
     ("H", 1995, 1998, "Judiciary and Family Law", "H35"),  # STATUS 1995, 1998
+    # 2011-2012's three, one term each: STATUS 2011 HR 13, 2012 PET 1 and
+    # 2011 CACR 14, and LIST, which prints each code's name in capitals for
+    # 13 of 13, 28 of 28 and 11 of 11 (a fourteenth Constitutional Review
+    # bill went on to Commerce and Consumer Affairs, and LIST names that).
+    ("H", 2011, 2012, "Constitutional Review and Statutory Recodification", "H44"),
+    ("H", 2011, 2012, "Redress of Grievances", "H45"),
+    ("H", 2011, 2012, "Special Committee on Education Funding Reform", "H46"),
     ("S", 1989, 2004, "Banks", "S01"),                # STATUS 1992; LIST 24
+    # STATUS 1993 SB 30, whose text prints "REFERRED TO: Appropriations".
+    ("S", 1993, 1994, "Appropriations", "S03"),
+    # NOT 1989-1990's DEVELOPMENT, RECREATION AND ENVIRONMENT, though STATUS
+    # files it under S03 as well: 1989 HB 15 and HB 27, which the Senate's
+    # docket refers to "DEV,REC & ENV", are filed under S03 and printed
+    # "APPROPRIATIONS". One code for two committees four years apart, with
+    # nothing on this disk under S03 between them. Placed on it, 154 bills and
+    # 158 hearings would read as Appropriations' own, and codes_problems
+    # refuses the gap; so the name links nowhere until it is decided how a
+    # code the General Court used twice is shown.
     ("S", 1989, 2004, "Insurance", "S08"),            # STATUS 1992, 1995; LIST 100
-    ("S", 1989, 1992, "Internal Affairs", "S09"),     # STATUS 1992
+    ("S", 1989, 1992, "Internal Affairs", "S09"),     # STATUS 1989, 1992
     # LIST 168 and 27, INTERNAL AFFAIRS, after gaps of four years and of
     # four: S09 or a new code under its name. The Senate's own table
     # (db/Committees.psv) numbers the codes first used in 2011 with no slot
     # for S09, which leans against it for 2011-2012 and settles nothing.
+    # STATUS 2011 CACR 14, fetched on 25 September for the House's special
+    # committee, files its Senate referral -- the text prints "COMMITTEE:
+    # Internal Affairs" -- under S09: the first page to reach 2011-2012. It
+    # would settle that run, but codes_problems refuses a code on a run begun
+    # after a gap, and the exception its docstring names is not made here.
     ("S", 1997, 2006, "Internal Affairs", None),
     ("S", 2011, 2012, "Internal Affairs", None),
+    ("S", 1989, 2004, "Interstate Cooperation", "S11"),  # STATUS 1989 HB 244; LIST 10 of 10
     ("S", 1989, 2004, "Public Affairs", "S13"),       # STATUS 2002; LIST 165
     ("S", 1989, 2004, "Public Institutions, Health and Human Services", "S14"),  # STATUS 1989-1998; LIST 116
     # STATUS 1993: an Economic Development bill filed under S18, printed
@@ -790,14 +853,36 @@ CODES = [
     ("S", 1991, 1998, "Economic Development", "S18"),
     ("S", 1999, 2006, "Energy and Economic Development", "S18"),  # STATUS 2000; LIST 97
     ("S", 1991, 2004, "Environment", "S19"),          # STATUS 1991, 1992; LIST 86
+    # ONE CODE ACROSS A NAME THAT CAME BACK. STATUS 1991 HB 41 files
+    # Wildlife and Recreation under S20, printed "WILDLIFE & RECREATION", and
+    # STATUS 1995 HB 107 files the name of the one term between, Fish and
+    # Game/Recreation, under the same code. LIST prints WILDLIFE & RECREATION
+    # for 69 of 69 of 1999-2004's.
+    ("S", 1991, 1994, "Wildlife and Recreation", "S20"),
+    ("S", 1995, 1996, "Fish and Game/Recreation", "S20"),
+    ("S", 1997, 2004, "Wildlife and Recreation", "S20"),
+    # NOT S45. STATUS 2005 HCR 11 files 2005's under S22, printed "RULES AND
+    # ENROLLED BILLS", and LIST files both of 2005-2008's under that retired
+    # name; S45 is the committee formed later under it.
+    ("S", 2005, 2008, "Rules and Enrolled Bills", "S22"),
     ("S", 2005, 2006, "Banks and Insurance", "S23"),  # STATUS 2005; LIST 51
+    ("S", 2005, 2006, "Environment and Wildlife", "S24"),  # STATUS 2005 HB 55; LIST 56
+    # STATUS 2005 CACR 8; LIST 188 of 188.
+    ("S", 2005, 2010, "Transportation and Interstate Cooperation", "S25"),
+    # STATUS 2007 HB 81; LIST 146 of 146.
+    ("S", 2007, 2010, "Commerce, Labor and Consumer Protection", "S32"),
     # NOT S50. STATUS 2008 and LIST (46 of 46) file 2007-2008's under S33,
     # retired; S50 is the committee of the same name formed for 2017-2018.
     ("S", 2007, 2008, "Election Law and Internal Affairs", "S33"),
-    # NOT S45. LIST files both of 2005-2008's under a retired RULES AND
-    # ENROLLED BILLS, and no page on this disk gives that code, so they link
-    # nowhere rather than to the committee formed later under the name.
-    ("S", 2005, 2008, "Rules and Enrolled Bills", None),
+    # STATUS 2007 HB 56; LIST 127 of 127.
+    ("S", 2007, 2010, "Energy, Environment and Economic Development", "S34"),
+    # Two names on one code in 2007-2008: STATUS 2007 HB 59 and 2008 HB 172
+    # file both under S35, printed "WILDLIFE, FISH AND GAME AND AGRICULTURE",
+    # as LIST prints for 15 of 15 and 39 of 39.
+    ("S", 2007, 2008, "Wildlife, Fish and Game", "S35"),
+    ("S", 2007, 2010, "Wildlife, Fish and Game and Agriculture", "S35"),
+    ("S", 2009, 2010, "Election Law and Veterans' Affairs", "S36"),  # STATUS 2009 CACR 9; LIST 33
+    ("S", 2013, 2014, "Health, Education and Human Services", "S39"),  # STATUS 2013 HB 142; LIST 61
 ]
 
 _CODES_BY = {}

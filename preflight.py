@@ -9107,26 +9107,40 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
     strength of those capitals alone: 412 bills and 184 sittings on two
     archived pages, shown as one committee's record across gaps of four and
     ten years.
+
+    On 25 September 25 names still linked nowhere, and one bill-status page
+    was fetched for each. Those pages link the Senate's committee as
+    committee_details.aspx?cc=S20, not code=, which a search for the House's
+    form had missed: 24 of the 25 were settled by them, 2,686 card and 3,611
+    hearing mentions came to link, and none that linked before moved. The
+    25th is why a page is read and not just matched: 1989 HB 15 and HB 27 file
+    the Senate's Development, Recreation and Environment under S03, a code
+    that prints APPROPRIATIONS and is 1993's Appropriations -- two committees,
+    one code, a gap between -- so that name still links nowhere.
     """
     from collections import Counter as C
     CN, BC, B = committee_names, build_committees, build_site_v2
     bad = CN.codes_problems()
     assert not bad, "; ".join(bad[:4])
-    # And codes_problems is what says so, should an entry like those return.
-    CN.CODES.append(("S", 2011, 2012, "Internal Affairs", "S09"))
-    try:
-        back = CN.codes_problems()
-    finally:
-        CN.CODES.pop()
-    assert any(b.startswith("S09:") and "gap" in b for b in back), (
-        "a retired code put on a run begun after a gap is no longer refused: "
-        + "; ".join(back[:3]))
+    # And codes_problems is what says so, should an entry like those return,
+    # or 1989's Development, Recreation and Environment go onto S03.
+    for gap in (("S", 2011, 2012, "Internal Affairs", "S09"),
+                ("S", 1989, 1990, "Development, Recreation and Environment", "S03")):
+        CN.CODES.append(gap)
+        try:
+            back = CN.codes_problems()
+        finally:
+            CN.CODES.pop()
+        assert any(b.startswith(gap[4] + ":") and "gap" in b for b in back), (
+            f"{gap[4]} put on a run begun after a gap is no longer refused: "
+            + "; ".join(back[:3]))
     today = {(ch, CN._norm(nm)): code for ch, nm, code in (
         ("H", "Criminal Justice and Public Safety", "H26"),
         ("H", "Commerce and Consumer Affairs", "H43"),
         ("H", "Special Committee on Public Employee Pension Plans", "H47"),
         ("S", "Election Law and Internal Affairs", "S50"),
-        ("S", "Rules and Enrolled Bills", "S45"))}
+        ("S", "Rules and Enrolled Bills", "S45"),
+        ("S", "Executive Departments and Administration", "S06"))}
     for name, ch, term, want in (
             ("Corrections and Criminal Justice", "H", "1995-1996", "H26"),
             ("Corrections and Criminal Justice", "H", "1993-1994", "H26"),
@@ -9137,11 +9151,37 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
             ("Commerce and Consumer Affairs", "H", "2013-2014", "H43"),
             ("Election Law and Internal Affairs", "S", "2007-2008", "S33"),
             ("Election Law and Internal Affairs", "S", "2017-2018", "S50"),
-            ("Rules and Enrolled Bills", "S", "2005-2006", None),
+            # STATUS 2005 HCR 11 files 2005's under S22, RULES AND ENROLLED
+            # BILLS in capitals: the retired code, not the S45 formed later.
+            ("Rules and Enrolled Bills", "S", "2005-2006", "S22"),
+            ("Rules and Enrolled Bills", "S", "2007-2008", "S22"),
             ("Rules and Enrolled Bills", "S", "2023-2024", "S45"),
-            # A run no witness reaches links nowhere, however alike the name.
-            ("Fish and Game", "H", "1991-1992", None),
+            # A run no witness reaches links nowhere, however alike the name:
+            # 2009-2010's Fish and Game may be H08 or H42. 1989 HB 27 and 1991
+            # HB 41 file 1989-1992's under H08, FISH AND GAME.
+            ("Fish and Game", "H", "2009-2010", None),
+            ("Fish and Game", "H", "1991-1992", "H08"),
             ("Fish and Game", "H", "2005-2006", "H08"),
+            # The Senate's section of a page gives its code as cc=S20. 1991 HB
+            # 41 files Wildlife and Recreation under S20, printed WILDLIFE &
+            # RECREATION, and 1995 HB 107 files the name of the one term
+            # between under the same code, so the name's later run is S20 too.
+            ("Wildlife and Recreation", "S", "1991-1992", "S20"),
+            ("Fish and Game/Recreation", "S", "1995-1996", "S20"),
+            ("Wildlife and Recreation", "S", "2001-2002", "S20"),
+            # Today's pages, under the names the bills had: 1989 HB 36 and HB
+            # 244, whose texts print "REFERRED TO: State Institutions and
+            # Housing", are filed under H26; 1989 CACR 1's Senate referral,
+            # "Executive Departments", under S06.
+            ("State Institutions and Housing", "H", "1989-1990", "H26"),
+            ("Executive Departments", "S", "1991-1992", "S06"),
+            ("Executive Departments and Administration", "S", "1993-1994", "S06"),
+            # A page does not place a name on a code another committee's name
+            # holds: 1989 HB 15 and HB 27 file the Senate's Development,
+            # Recreation and Environment under S03, which prints APPROPRIATIONS
+            # and files 1993 SB 30's Appropriations.
+            ("Development, Recreation and Environment", "S", "1989-1990", None),
+            ("Appropriations", "S", "1993-1994", "S03"),
             ("Economic Development", "S", "1993-1994", "S18"),
             ("Economic Development", "H", "1993-1994", "H32"),
             # Witnessed by a bill-status page, and unbroken from it.
@@ -9156,6 +9196,12 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
     last = CN.retired()
     assert (last["H33"], last["S18"], last["H21"]) == (
         "Commerce", "Energy and Economic Development", "Local and Regulated Revenues"), last
+    # S20's archived page takes the name the General Court prints for the
+    # code, WILDLIFE & RECREATION, not the one of the term between; S35's
+    # the longer of its two 2007-2008 names, which ran on to 2010.
+    assert (last["S20"], last["S35"], last["S22"]) == (
+        "Wildlife and Recreation", "Wildlife, Fish and Game and Agriculture",
+        "Rules and Enrolled Bills"), last
 
     # meta.json's map, which the page's cmteLink reads.
     links = B.committee_links([
@@ -9166,7 +9212,11 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         {"term": "2017-2018", "committees": ["Senate Election Law and Internal Affairs"]},
         {"term": "2023-2024", "committees": ["Senate Rules and Enrolled Bills"]},
         {"term": "1991-1992", "committees": ["Senate Internal Affairs"]},
-        {"term": "2011-2012", "committees": ["Senate Internal Affairs"]}],
+        {"term": "2011-2012", "committees": ["Senate Internal Affairs"]},
+        {"term": "1991-1992", "committees": ["Senate Wildlife and Recreation"]},
+        {"term": "2001-2002", "committees": ["Senate Wildlife and Recreation"]},
+        {"term": "1989-1990", "committees": ["House State Institutions and Housing",
+                                             "Senate Development, Recreation and Environment"]}],
         {"House Criminal Justice and Public Safety": "H26",
          "Senate Election Law and Internal Affairs": "S50",
          "Senate Rules and Enrolled Bills": "S45"})
@@ -9174,8 +9224,11 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
                        ("House Commerce", "H33"),
                        ("House Criminal Justice and Public Safety", "H26"),
                        ("Senate Election Law and Internal Affairs", {"": "S50", "2007-2008": "S33"}),
-                       ("Senate Rules and Enrolled Bills", {"": "S45", "2005-2006": ""}),
-                       ("Senate Internal Affairs", {"": "", "1991-1992": "S09"})):
+                       ("Senate Rules and Enrolled Bills", {"": "S45", "2005-2006": "S22"}),
+                       ("Senate Internal Affairs", {"": "", "1991-1992": "S09"}),
+                       ("Senate Wildlife and Recreation", "S20"),
+                       ("House State Institutions and Housing", "H26"),
+                       ("Senate Development, Recreation and Environment", None)):
         assert links.get(full) == want, f"committee_codes[{full!r}] is {links.get(full)!r}, not {want!r}"
 
     # The committee's own page: the day under the name it had, the page head
@@ -9226,6 +9279,8 @@ const out = {
   none: scope.cmteLink(E), reb: scope.cmteLink("Senate Rules and Enrolled Bills", "2005-2006"),
   ia92: scope.cmteLink("Senate Internal Affairs", "1991-1992"),
   ia12: scope.cmteLink("Senate Internal Affairs", "2011-2012"),
+  wr: scope.cmteLink("Senate Wildlife and Recreation", "2001-2002"),
+  dre: scope.cmteLink("Senate Development, Recreation and Environment", "1989-1990"),
   card: scope.cmeta({term: "2007-2008", committees: [E, "House Commerce"]}),
   head: scope.renderCommitteeHead({code: "H26", name: "Criminal Justice and Public Safety",
     chamber: "H", names: [{name: "Corrections and Criminal Justice", years: "1993 to 1996"}]})};
@@ -9240,7 +9295,14 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
                           'Criminal Justice</a>'), out["old"]
     assert "committee/S33.html" in out["s33"] and "committee/S50.html" in out["s50"] \
         and "committee/S50.html" in out["none"], (out["s33"], out["s50"], out["none"])
-    assert "<a" not in out["reb"], "2005's Rules and Enrolled Bills links to S45: " + out["reb"]
+    assert "committee/S22.html" in out["reb"] and "S45" not in out["reb"], (
+        "2005's Rules and Enrolled Bills does not link to S22, the code its page "
+        "files it under: " + out["reb"])
+    assert out["wr"] == ('<a href="committee/S20.html">Senate Wildlife and '
+                         'Recreation</a>'), out["wr"]
+    assert "<a" not in out["dre"], (
+        "1989's Development, Recreation and Environment links, though its code is "
+        "another committee's: " + out["dre"])
     assert "committee/S09.html" in out["ia92"] and "<a" not in out["ia12"], (
         "the Senate's Internal Affairs links by name across its gap: "
         + out["ia92"] + " / " + out["ia12"])
@@ -9251,6 +9313,68 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         "the committee's page does not name what it was called before: " + head[:300])
     return "ok", (f"{len(CN.CODES)} older names placed on {len(last)} of the General "
                   "Court's own codes; linked by term, printed as the bill has them")
+
+
+@check("data", "no bill-status page on disk files a committee under another code than the table's",
+       needs=("committee_names",))
+def _committee_codes_pages(committee_names):
+    """committee_names.CODES cites the legacy bill-status pages in
+    archive_samples/ as its witness, and this reads every one of them against
+    it: the code a chamber's section links its committee of referral by must
+    be the code the table sends that bill's committee to, wherever the table
+    places the name at all.
+
+    Both forms of the link are read, code=H26 in the House's section and
+    cc=S20 in the Senate's. The 25 names that linked nowhere on 25 September
+    were read with the first alone, which found no Senate code on any page;
+    the pages fetched for them gave a Senate code for all 16 Senate names.
+    A code the table does not place yet is listed rather than failed: 1989 HB
+    15 files the Senate's Development, Recreation and Environment under S03,
+    Appropriations' code, and that is a decision, not a mistake to fix here.
+    """
+    CN = committee_names
+    root, fb, fc = Path("archive_samples"), Path("data/bills.json"), Path("data/committees.json")
+    if not (root.is_dir() and fb.exists() and fc.exists()):
+        return "skip", "archive_samples/, data/bills.json or data/committees.json not here"
+    bills = json.loads(fb.read_text(encoding="utf-8"))
+    today = {(c[:1].upper(), CN._norm(r.get("name") or "")): c
+             for c, r in json.loads(fc.read_text(encoding="utf-8")).items()
+             if (r.get("name") or "").strip() and c[:1].upper() in ("H", "S")}
+    sect = re.compile(r"(?i)\b(House|Senate) Status\s*</b>")
+    row = re.compile(r"(?is)Committee of Referral\s*</STRONG>(.*?)</tr>")
+    link = re.compile(r"(?i)[?&](?:code|cc)=([A-Za-z]+\d+)")
+    placed, differ, unplaced, pages = 0, [], [], 0
+    for f in sorted(root.glob("[12][0-9][0-9][0-9]/*.html")):
+        year, bill = f.parent.name, f.stem.upper()
+        y = int(year)
+        term = f"{y}-{y + 1}" if y % 2 else f"{y - 1}-{y}"
+        rec = (bills.get(term) or {}).get(bill)
+        if not rec or str(rec.get("lsr_year") or year) != year:
+            continue
+        pages += 1
+        parts = sect.split(f.read_text(encoding="utf-8", errors="replace"))
+        for word, body in zip(parts[1::2], parts[2::2]):
+            ch = word[:1].upper()
+            name = rec.get("house_committee" if ch == "H" else "senate_committee") or ""
+            m = row.search(body)
+            got = link.search(m.group(1)) if m else None
+            if not name or not got:
+                continue
+            want = CN.page_code(name, ch, term, today)
+            if want is None:
+                unplaced.append(f"{year} {bill} {ch} {name!r} {got.group(1)}")
+            elif want.upper() != got.group(1).upper():
+                differ.append(f"{year} {bill} {ch} {name!r}: the table says {want}, "
+                              f"the page {got.group(1)}")
+            else:
+                placed += 1
+    assert placed, (f"no committee of referral was read off {pages} status pages: "
+                    "the page's shape has changed, or this check has")
+    assert not differ, (f"{len(differ)} status pages file a committee under another "
+                        "code than committee_names gives it: " + "; ".join(differ[:4]))
+    return "ok", (f"{placed} committees of referral on {pages} pages filed where the "
+                  f"table puts them; {len(unplaced)} under a code it does not place"
+                  + (": " + "; ".join(unplaced) if unplaced else ""))
 
 
 @check("build", "a legislator's search description names the seat once and the places first",
