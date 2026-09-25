@@ -77,6 +77,9 @@ verification_manifest*.csv
 verification_manifest*.xlsx
 proceedings.csv
 candidate_segments.json
+# Where each recording's captions stop, written by segment_markers.py and
+# caption_span.py --write for the nightly's machine, which has no captions.
+caption_spans.json
 _captions_manifest.csv
 
 # ---- nightly.py's scratch folder, for a fetch that must arrive whole -------
@@ -246,5 +249,6 @@ assets/licensed/
 # Written on GitHub's machine each night and carried to the next by cloud.py.
 # Never committed: a tracked file changed on that machine stops the deploy,
 # and nobody commits there. The committed videos_*.csv stay the laptop's.
+# Its state is archive/livestreams.json, beside the project's other small
+# state (refused.json, census.json), and archive/ is ignored above.
 videos_*_livestreams.csv
-state/livestreams*

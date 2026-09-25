@@ -1152,6 +1152,20 @@ def main():
     if a.phrases:
         report_phrases(phrase_bag)
     Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
+    # WHERE EACH RECORDING'S CAPTIONS STOP, for the machine that has only the
+    # boundaries above and not the files they were read from. The nightly's
+    # machine is given candidate_segments.json and caption_spans.json and none
+    # of the 20 GB of captions, and build_site_v2 can withhold a track that
+    # runs an hour late only if the summary travels with the times read off
+    # it. Written here because this is the run that reads every caption file,
+    # so the two can never be from different days. Merged: caption_span.py.
+    if a.all and not a.gaps and not a.phrases:
+        import caption_span
+        n_read, n_kept = caption_span.write_summary(a.work)
+        print(f"\n  {caption_span.SUMMARY}: where the captions stop for "
+              f"{n_read:,} recordings read here"
+              + (f", and {n_kept:,} kept from where their captions are"
+                 if n_kept else ""))
     took = time.time() - t_start
     read_fresh = stats["recordings read"] - stats.get("unchanged since last run", 0)
     if unread:

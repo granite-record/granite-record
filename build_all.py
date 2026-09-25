@@ -45,6 +45,113 @@ BUILD_LOCK = Path(".build.lock")
 # interrupted build stops every later one until somebody deletes a file.
 STALE_AFTER = 180
 
+# OUTPUTS A BUILD READS BEFORE IT REWRITES THEM (25 September 2026), with what
+# must be on disk for each to matter and what goes wrong without it. On the
+# laptop each is simply the last build's copy. The nightly's machine starts
+# empty and is given them in its kit (cloud.py, cloud_kit.json), and a missing
+# one does not stop any step: text_sponsors.json absent, build_data labels
+# 174,588 ballots with the seat today's roster holds and exits 0. So where the
+# kit is in use a missing one stops the build before its first step, and
+# elsewhere it is named and the build goes on -- which is how the very first
+# build on a machine could ever happen at all. preflight holds this list and
+# the kit's to each other.
+CARRIED = [
+    ("text_sponsors.json", "legislation",
+     "build_data.py labels each ballot with the seat that term's bills print, "
+     "from this, before text_sponsors.py rewrites it; without it 174,588 "
+     "ballots take the seat today's roster holds"),
+    ("archive_text.json", "legislation",
+     "topic_model.py reads it before archive_text.py rewrites it"),
+    ("narratives.json", "Docket.txt",
+     "narrative.py and narrate_archive.py merge into it rather than rebuild it"),
+    ("verification_manifest.csv", "Docket.txt",
+     "build_manifest.py carries the hand-marked times forward from it"),
+    ("proceedings.csv", "verification_manifest.csv",
+     "build_proceedings.py refuses to lose a fifth of it; without it that "
+     "guard compares with nothing"),
+    ("candidate_segments.json", "work",
+     "the boundaries chairs stated, read off captions that are not all here"),
+    ("caption_spans.json", "work",
+     "where each recording's captions stop; without it no time read off "
+     "captions can be checked for a track that runs an hour late"),
+]
+
+# Written by cloud.py kit-down: this folder was filled from the kit, so the
+# kit's contract holds -- every carried output must have arrived.
+KIT_RECORD = Path("archive/cloud/kit-down.json")
+
+
+def kit_build():
+    """Whether this is a build from the nightly's kit rather than the laptop's
+    own disk: cloud.py kit-down filled the folder, or GitHub's runner is
+    running it (GITHUB_ACTIONS is set on every one of its machines)."""
+    return KIT_RECORD.exists() or os.environ.get("GITHUB_ACTIONS") == "true"
+
+
+def carried_problems():
+    """(strict, missing, unreadable): the carried outputs that are not here
+    and ought to be, [(path, why)], and the JSON ones that are here and will
+    not parse, [(path, error)].
+
+    Unreadable is worse than missing, and stops a build anywhere. The step
+    that reads one treats it as empty and writes back only what it made:
+    segment_markers, reading a few recordings on the nightly's machine, would
+    leave candidate_segments.json holding those few and nothing the laptop's
+    caption job found. Parsing all five takes about three seconds.
+    """
+    strict = kit_build()
+    missing = [(p, why) for p, source, why in CARRIED
+               if not Path(p).exists() and (strict or Path(source).exists())]
+    unreadable = []
+    for p, _, _ in CARRIED:
+        if p.endswith(".json") and Path(p).exists():
+            try:
+                with open(p, encoding="utf-8") as fh:
+                    json.load(fh)
+            except (ValueError, OSError) as e:
+                unreadable.append((p, str(e)[:120]))
+    return strict, missing, unreadable
+
+
+def captions_elsewhere(work="work"):
+    """Why the caption files are not all on this machine, or "".
+
+    segment_markers.py reads every caption file there is, merges what it reads
+    into candidate_segments.json recording by recording, and writes
+    caption_spans.json from the same files. Both are the laptop's: its caption
+    job makes them, and the kit carries them to the nightly's machine, which
+    holds none of the 20 GB of captions -- only, some nights, the few that
+    livestreams.py fetched, which `livestreams.py --markers` reads on its own.
+    There this step would read nothing and still rewrite two files another
+    machine owns, and CLAUDE.md wants no timestamp to move without being
+    scored first. So where most of the caption files are missing it does not
+    run, and the log says why.
+    """
+    import caption_span
+    spans = caption_span.load_summary()
+    w = Path(work)
+    if spans:
+        listed = {v: e.get("files") or {} for v, e in spans.items()
+                  if isinstance(e, dict) and e.get("files")}
+        here = sum(1 for v, files in listed.items()
+                   if any((w / v / n).exists() for n in files))
+        # Half, not all: the laptop that deleted a few caption files still
+        # holds the captions; the nightly's machine holds none of them, or
+        # only the night's newest few.
+        if here < len(listed) / 2:
+            return (f"{caption_span.SUMMARY} lists {len(listed):,} recordings "
+                    f"with caption files and {here:,} of them are on this "
+                    "machine; the chair's boundaries stay as the caption job "
+                    "left them in candidate_segments.json")
+        return ""
+    if not w.is_dir():
+        return ""
+    from segment_markers import WORK_FILES
+    if any((d / n).exists() for d in w.iterdir() if d.is_dir() for n in WORK_FILES):
+        return ""
+    return (f"no caption file under {work}/ at all; the chair's boundaries stay "
+            "as the caption job left them in candidate_segments.json")
+
 
 class building:
     """One build at a time. `with building(): ...`
@@ -403,7 +510,7 @@ def plan(a):
         # Asks nobody anything.
         Step("boundaries the chair stated on the night's new livestreams",
              ["livestreams.py", "--markers"],
-             needs=["state/livestreams.json", "proceedings.csv",
+             needs=["archive/livestreams.json", "proceedings.csv",
                     "data/bills.json"],
              produces=["candidate_segments.json"], optional=True,
              note="segment_markers over the recordings livestreams.py "
@@ -629,6 +736,33 @@ def main():
         steps = [s for s in steps if s not in held]
         print(f"  {'; '.join(gc_busy)}: skipping {len(held)} step(s) that "
               f"would ask the General Court -- " + ", ".join(s.name for s in held))
+    # THE CHAIR'S BOUNDARIES ARE READ WHERE THE CAPTIONS ARE, and the log says
+    # when they are not here: see captions_elsewhere.
+    marker = [s for s in steps if "segment_markers.py" in s.args[0]]
+    if marker:
+        why = captions_elsewhere()
+        if why:
+            steps = [s for s in steps if s not in marker]
+            print(f"  skipping '{marker[0].name}': {why}")
+    # AND WHAT THE LAST BUILD LEFT, which this one reads before rewriting it.
+    strict, missing, unreadable = carried_problems()
+    for p, why in missing:
+        print(f"  {'MISSING' if strict else 'WARNING'}: no {p} here -- {why}")
+    for p, err in unreadable:
+        print(f"  UNREADABLE: {p} will not parse ({err}); the step that reads it "
+              "would take it for empty and write back only what it made")
+    if (strict and missing) or unreadable:
+        print(f"\n{'WOULD STOP' if a.dry_run else 'STOPPED'}: "
+              + (f"this folder is built from the nightly's kit ({KIT_RECORD} is "
+                 f"here, or GITHUB_ACTIONS is set) and {len(missing)} of the "
+                 "outputs a build reads before it rewrites them did not arrive. "
+                 "cloud_kit.json lists them and the laptop's `cloud.py seed-kit` "
+                 "sends them. " if strict and missing else "")
+              + (f"{len(unreadable)} carried output(s) will not parse; restore "
+                 "them from the bucket's kit/ or replaced/. " if unreadable else "")
+              + "Built without them the site changes and nothing fails.")
+        if not a.dry_run:
+            sys.exit(1)
     # A STEP THAT CANNOT RUN SAYS SO. This one used to disappear without a
     # word -- `if not a.key: steps = [s for s in steps if
     # "fetch_channel_index.py" not in s.args[0]]`, no print -- four lines

@@ -1,0 +1,139 @@
+{
+  "_about": [
+    "The nightly's KIT: everything a machine that starts empty needs, beside the checkout, to build the site the laptop builds. Measured and argued in the cloud-move plan of 25 September 2026; read by cloud.py, and held to the build by preflight.",
+    "Paths are relative to the working folder, with / between folders. In a glob, * and ? stay inside one folder and ** crosses any number of them. Every entry must match something unless it says optional.",
+    "owner says who writes a file. A 'night' file is the nightly's own: the laptop sends it once, with seed-kit, and never over the night's copy after that. A 'laptop' file is made by the laptop's jobs: the night reads it and never sends it back. One writer per file, because two is how the older copy wins.",
+    "state is the handful of small files a night must remember. On a machine they live under archive/, the project's one place for small state (refused.json, census.json); in the bucket they live under state/. backup is the laptop's copy of everything git does not hold, less what it leaves out and why. never is what no command sends anywhere."
+  ],
+  "kit": [
+    {
+      "what": "The day's files, where the nightly installs them: the twelve of snapshot_gencourt.py's fourteen that git does not track. GeneralCodes.txt and BodyStatusCodes.txt arrive with the checkout.",
+      "owner": "night",
+      "paths": ["Docket.txt", "LSRs.txt", "LsrsOnly.txt", "LsrSponsors.txt", "legislators.txt", "Members.txt",
+                "RollCallSummary.txt", "RollCallHistory.txt", "Committees.txt", "SubjectCodes.txt",
+                "HouseDistricts.txt", "Counties.txt"]
+    },
+    {
+      "what": "Each day's copy of those files: what gc_changes.py compares the night's with.",
+      "owner": "night",
+      "globs": ["nh-archive/**"]
+    },
+    {
+      "what": "Past terms' dockets, fetched and dumped: narrate_archive.py, build_manifest.py and extract_chapters.py read them.",
+      "owner": "laptop",
+      "globs": ["Docket_*.txt"]
+    },
+    {
+      "what": "The database views the build reads, of the 31 in the dump.",
+      "owner": "laptop",
+      "paths": ["db/Docket.psv", "db/Legislation.psv", "db/LegislationText.psv", "db/DocumentVersion.psv",
+                "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json"]
+    },
+    {
+      "what": "The study and statutory committees -- their details, meetings and members, and the dump's temporary view of them -- and the dump's manifest, whose StatStudMeetings date the calendar reads. The night's study-committee refresh swaps all four views in whole.",
+      "owner": "night",
+      "paths": ["db/StatStudDetails.psv", "db/StatStudMeetings.psv", "db/StatStudMembers.psv",
+                "db/vStatStudTemp.psv", "db/_manifest.json"]
+    },
+    {
+      "what": "Who sits on each committee, who chairs it, and the members who have left; the night's weekly job refreshes them.",
+      "owner": "night",
+      "paths": ["data/committee_members.json", "committees.json", "former_members.json"]
+    },
+    {
+      "what": "The towns in each Senate district, which the build does not make.",
+      "owner": "laptop",
+      "paths": ["data/senate_towns.json"]
+    },
+    {
+      "what": "Outputs a build reads before it rewrites them: build_all.CARRIED. Without last night's copy each one changes the site without anything failing.",
+      "owner": "night",
+      "paths": ["text_sponsors.json", "archive_text.json", "narratives.json", "proceedings.csv",
+                "verification_manifest.csv"]
+    },
+    {
+      "what": "The archived terms' manifests, one per term, from build_manifest.py --docket.",
+      "owner": "laptop",
+      "globs": ["verification_manifest_*.csv"]
+    },
+    {
+      "what": "What the laptop's jobs make and the build reads.",
+      "owner": "laptop",
+      "paths": ["meetings.json", "schedule_pages/_events.json", "bill_status.json", "member_party.json",
+                "archive_bills.json", "bill_text.json", "amendments.json", "committee_reports.json",
+                "senate_reports.json", "testimony_db.json", "testimony.json", "journals.json",
+                "calendars.json", "past_members.json", "archive/queue.csv"]
+    },
+    {
+      "what": "The saved bill pages.",
+      "owner": "laptop",
+      "globs": ["legislation/**"]
+    },
+    {
+      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF.",
+      "owner": "laptop",
+      "globs": ["calendars/*/*.txt", "calendars_senate/*/*.txt", "journals/*/*.txt", "journals_senate/*/*.txt"]
+    },
+    {
+      "what": "Times read off the recordings, and where each recording's captions stop: the caption job's answers, not the 20 GB of captions it read them from.",
+      "owner": "laptop",
+      "paths": ["candidate_segments.json", "caption_spans.json"],
+      "globs": ["work/*/segments.json"]
+    },
+    {
+      "what": "The licensed logo the build lays over the clipart. Private: never in the repository, allowed in the bucket and on the build machine. brand/licensed/, which it is drawn from, goes to the backup only.",
+      "owner": "laptop",
+      "globs": ["assets/licensed/*"]
+    },
+    {
+      "what": "The one file of last night's site a build reads before it rewrites it: build_pages.py counts the committees with a roster for the home page out of site/committees.json, which build_committees.py writes later in the same build. A build from the kit alone on 25 September differed from the laptop's in this and in two sitemap addresses, of 54,975 files; build_bill_pages.py has since listed those addresses whatever is on disk.",
+      "owner": "night",
+      "optional": true,
+      "paths": ["site/committees.json"]
+    },
+    {
+      "what": "The night's new livestreams: the index rows the committed videos_*.csv do not carry. Their state is archive/livestreams.json, in the state list below. Optional: none exists before the first night that finds a livestream.",
+      "owner": "night",
+      "optional": true,
+      "paths": ["videos_house_livestreams.csv", "videos_senate_livestreams.csv"]
+    }
+  ],
+  "state": [
+    {"path": "archive/refused.json", "key": "refused.json",
+     "what": "A refusal on file: nothing asks the General Court, from either machine, until a person clears it."},
+    {"path": "archive/census.json", "key": "census.json",
+     "what": "The last accepted build's counts and fingerprint, which nightly.py's gates compare with."},
+    {"path": "archive/last-night.json", "key": "last-night.json",
+     "what": "The night's verdict, for the morning."},
+    {"path": "archive/last-weekly.json", "key": "last-weekly.json",
+     "what": "The Sunday job's verdict."},
+    {"path": "archive/livestreams.json", "key": "livestreams.json",
+     "what": "What livestreams.py has seen and waits for, and what it read off recordings the laptop has not yet read. The night writes it; the laptop's --catch-up only reads it."},
+    {"path": "reports/.cursor-production", "key": "cursor-production",
+     "what": "How far the reader reports have been pulled. A number, never a reader's words."}
+  ],
+  "logs": {
+    "what": "What kit-up sends to logs/<date>/: the night's logs and its what-changed report, written since kit-down.",
+    "globs": ["logs/*", "reports/gc-changes-*.md"]
+  },
+  "backup": {
+    "what": "Everything in the working folder that git does not track, except these.",
+    "leave_out": [
+      {"globs": [".git/**", ".claude/**"],
+       "why": "the repository itself, which GitHub holds, and the assistant's own state"},
+      {"globs": ["archive/cloud/**", "**/*.lock", "**/.lock", "**/*.tmp", "**/*.part"],
+       "why": "cloud.py's own record of this machine, locks, and files half written"},
+      {"globs": ["**/__pycache__/**", "**/*.pyc", ".wrangler/**", ".venv/**", "node_modules/**"],
+       "why": "caches any machine remakes"},
+      {"globs": ["logs/**"],
+       "why": "a night's log carries what the report pull printed, which can be a reader's own words; the About page promises those are gone within a week"},
+      {"globs": ["site/**"],
+       "why": "the built site, remade from the kit and the code every night; --with-site sends it"}
+    ]
+  },
+  "never": {
+    "what": "Sent by no command: not in the kit, the state or the backup, whatever else matches.",
+    "globs": ["secrets.json", ".env", ".dev.vars", "**/*.pem", "**/*.key",
+              "reports/issues-*.jsonl", "reports/triage-*.md"]
+  }
+}

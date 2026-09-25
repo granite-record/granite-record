@@ -53,7 +53,7 @@ WHAT IT WRITES, AND NOTHING ELSE
                                   title parser. Every reader globs videos_*.csv
                                   and takes the chamber from the file's name.
   work/<video>/captions*.json3    where segment_markers and caption_span look.
-  state/livestreams.json          what it has seen, what it waits for, and any
+  archive/livestreams.json        what it has seen, what it waits for, and any
                                   refusal still in force.
 
 Never a committed file: on GitHub's machine a changed tracked file stops the
@@ -143,8 +143,8 @@ from pathlib import Path
 import fetch_channel_index as FCI
 
 HERE = Path(__file__).resolve().parent
-STATE = Path("state/livestreams.json")
-LOCK = Path("state/livestreams.lock")
+STATE = Path("archive/livestreams.json")
+LOCK = Path("archive/livestreams.lock")
 # The laptop's own record of YouTube refusing it, under archive/ with the
 # General Court's: local, never carried.
 LAPTOP_REFUSAL = Path("archive/youtube.refused.json")
