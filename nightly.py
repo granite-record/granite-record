@@ -1010,9 +1010,8 @@ class Night:
         v["live_fingerprint"] = live
         already = live == fp
         if not stop:
-            write_json(CENSUS, {"census": after, "fingerprint": fp,
-                                             "day": self.day, "run_id": v["run_id"],
-                                             "sha": v["sha"]})
+            write_json(CENSUS, {"census": after, "fingerprint": fp, "day": self.day,
+                                "run_id": v["run_id"], "sha": v["sha"]})
             say(f"  tonight's counts are the baseline now: {CENSUS}")
         n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")

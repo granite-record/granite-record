@@ -19913,6 +19913,11 @@ def _workflows_parse():
         for m in re.finditer(r"^\s*(?:-\s+)?uses:\s*(\S+)", text, re.M):
             assert re.fullmatch(r"[\w.-]+/[\w.-]+(?:/[\w./-]+)?@[0-9a-f]{40}", m.group(1)), \
                 f"{f.name}: {m.group(1)} is not pinned to a full commit"
+        # PowerShell continues a line only when the backtick is its very last
+        # character; one space after it ends the command there, and the next
+        # line runs as a command of its own.
+        bad = [i for i, ln in enumerate(text.splitlines(), 1) if re.search(r"`[ \t]+$", ln)]
+        assert not bad, f"{f.name}: a line-continuation backtick is followed by a space, line(s) {bad}"
         jobs = _wf_jobs(text)
         assert jobs, f"{f.name}: no jobs where this check reads them (two spaces in, under jobs:)"
         for j, jl in jobs.items():
