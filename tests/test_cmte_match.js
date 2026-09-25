@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.3
+// GRANITE_VERSION: 2026-09-12.4
 // A MEETING BELONGS TO ONE COMMITTEE, AND THE NAME DOES NOT SAY WHICH.
 //
 // home.json's `upcoming` gives a committee NAME and no chamber, and seven

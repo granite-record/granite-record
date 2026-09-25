@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.30
+# GRANITE_VERSION: 2026-09-07.31
 """
 A page's worth of data for every committee.
 
