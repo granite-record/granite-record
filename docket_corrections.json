@@ -434,7 +434,7 @@
       "source_says": "Special Order next order of business (Rep. Luneau): MF RC 151-180 03/12/2026  HJ 7",
       "belongs_to": "HB1824",
       "belongs_to_says": "Special Order to next order of business (Rep. Damon): MF RC 151-180 03/11/2026  HJ 7  P. 103",
-      "why": "Filed under the wrong bill. The vote it records -- Rep. Luneau's motion to make a bill a special order, failing 151-180 -- is HB 1824's in the House Journal and in the roll call. The row was written at 3:27 PM on 12 March among the clerk's entries of the previous day's votes from House Journal 7, and like HB 1061's beside it carries the day it was written. No House Journal of 2026 names HB 1364 after its introduction.",
+      "why": "Filed under the wrong bill. The vote it records -- Rep. Luneau's motion to make a bill a special order, failing 151-180 -- is HB 1824's in the House Journal and in the roll call. The row was written at 3:27 PM on 12 March, while the clerk was entering that day's votes from House Journal 8 and some of the previous day's from House Journal 7; it follows HB 1061's three rows from House Journal 7 directly, and like the last of them carries the day it was written. No House Journal of 2026 names HB 1364 after its introduction.",
       "evidence": [
         "Docket.txt line 20027: '2026|3099|3/12/2026 3:27:24 PM|HB1364|H|Special Order next order of business (Rep. Luneau): MF RC 151-180 03/12/2026  HJ 7|3/13/2026 9:13:30 AM'",
         "RollCallSummary.txt line 150: '2026|H|150|3/11/2026 1:42:53 PM|HB1824|151|180|25|36|||Special Order|relative to school district financial distress.' -- the only 2026 House roll call of 151 to 180",

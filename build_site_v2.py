@@ -1062,9 +1062,9 @@ CLOSING = {
     "Died when the session ended": (
         ("session ended", "died when the session", "died on the table"),
         # "THE BILL ITSELF", because a vote on a motion about it is still a
-        # vote. HB 1559, HB 1420, HB 1223 and CACR 19 of 2026 each met a
-        # motion to take it up out of order that failed on a roll call or a
-        # division -- HB 1559's 156-195 -- and then nothing more, and
+        # vote. HB 1420, HB 1223 and CACR 19 of 2026 each met a motion to
+        # take it up out of order that failed on a division -- HB 1420's
+        # 141-203 -- and then nothing more, and
         # the page said "No vote was ever taken on it" over the tally. The
         # journey counts decisions on the bill, not procedural motions, so
         # the sentence claims exactly that much.
