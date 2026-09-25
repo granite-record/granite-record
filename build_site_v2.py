@@ -2533,17 +2533,42 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
     dates = sorted(x["date"] for x in out + docket if x.get("date"))
     between = []
     for a, z in zip(dates, dates[1:]):
-        for e in (narr or {}).get("events", []):
-            if e.get("cancelled") or e.get("type") == "report":
-                continue
-            # Strictly before the later report: an action on the same day
-            # is the floor acting on that report, not the reason for it.
-            if a < (e.get("date") or "") < z and REPORT_AGAIN.search(
-                    e.get("raw", "")):
-                between.append({"before": z, "date": e["date"],
-                                "text": e.get("raw", "")})
-                break
+        # Strictly before the later report: an action on the same day
+        # is the floor acting on that report, not the reason for it.
+        again = [e for e in (narr or {}).get("events", [])
+                 if not e.get("cancelled") and e.get("type") != "report"
+                 and a < (e.get("date") or "") < z and REPORT_AGAIN.search(e.get("raw", ""))]
+        # THE ONE THAT SENT IT BACK, not the first that names it: HB 75 of
+        # 1999 quoted "Sen. Russman moved Rerefer, Sen. Russman Withdrew
+        # Motion to Rerefer" over "Sen D'Allesandro Moved Rerefer, MA, VV",
+        # which carried. A motion that failed, was withdrawn or was not voted
+        # on is quoted only where nothing else between the reports is.
+        e = (next((e for e in again if _again_carried(e.get("raw", ""))), None)
+             or next((e for e in again if _again_carried(e.get("raw", "")) is None), None)
+             or (again[0] if again else None))
+        if e:
+            between.append({"before": z, "date": e["date"], "text": e.get("raw", "")})
     return out, docket, between
+
+
+def _again_carried(raw):
+    """True where a line sending a bill back to committee records it carried,
+    False where it records it failed, was withdrawn or was not voted on, None
+    where it says neither."""
+    m = REPORT_AGAIN.search(raw or "")
+    rest = (raw or "")[m.start():] if m else (raw or "")
+    if re.search(r"withdr[ae]w|not\s+voted\s+on", raw or "", re.I):
+        return False
+    if re.search(r"\b(?:MF|ML)\b|\bfail|\blost\b", rest):
+        return False
+    # The past tense is the outcome only where no one is said to have moved
+    # it: "Sen. Kelly moved to Rereferred to Committee" (HB 450 of 2009) is
+    # the motion, and its "MA, VV" is the next line.
+    if re.search(r"\bMA\b|\badopted\b|\bcarried\b", rest, re.I) or (
+            re.search(r"\b(?:re-?referred|recommitted|retained)\b", raw or "", re.I)
+            and not re.search(r"\bmov(?:ed|es?)\b", raw or "", re.I)):
+        return True
+    return None
 
 
 def hearing_testimony(e, tdb, scraped):

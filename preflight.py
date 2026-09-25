@@ -15097,6 +15097,44 @@ def _next_step_settled():
     return "ok", f"{n:,} laws and vetoes, each saying what became of it"
 
 
+@check("status", "between two reports, the Reports tab quotes the motion that sent the bill back",
+       needs=("build_site_v2",))
+def _reports_between(build_site_v2):
+    """"Between these reports the docket records" names why a committee
+    reported twice, and quoted the first line that mentioned it: HB 75 of
+    1999 showed a motion its mover withdrew, HB 450 of 2009 the motion with
+    no outcome, SB 96 of 2003 one "[Not Voted On]" -- each over the line
+    that carried. Real rows."""
+    B = build_site_v2
+
+    def ev(date, raw, typ="floor"):
+        return {"body": "S", "date": date, "raw": raw, "type": typ, "cancelled": False}
+
+    def rep(date):
+        return ev(date, "Committee Report, Ought to Pass", "report") | {
+            "recommendation": "Ought to Pass", "side": ""}
+
+    bad = []
+    for bid, rows, want in (
+            ("HB75", ["Sen. Russman moved Rerefer, Sen. Russman Withdrew Motion to Rerefer",
+                      "Sen D'Allesandro Moved Rerefer, MA, VV"],
+             "Sen D'Allesandro Moved Rerefer, MA, VV"),
+            ("HB450", ["Ought to Pass, MF, VV", "Sen. Kelly moved to Rereferred to Committee",
+                       "Rereferred to Committee, MA, VV"], "Rereferred to Committee, MA, VV"),
+            ("SB96", ["Rerefer to Committee [Not Voted On]", "Sen. O'Hearn Moved Recommit, MA, VV"],
+             "Sen. O'Hearn Moved Recommit, MA, VV"),
+            ("HB679", ["Rereferred to Committee, MF, VV; Sen. McCarley Moved Ought to Pass, MA, VV",
+                       "Sen. McCarley sub-motion Rereferred to Committee, MA, VV"],
+             "Sen. McCarley sub-motion Rereferred to Committee, MA, VV")):
+        narr = {"events": [rep("2009-05-01")] + [ev("2009-05-13", r) for r in rows]
+                + [rep("2010-01-07")]}
+        got = B.committee_reports([], narr, {}, "", "Judiciary")[2]
+        if [g["text"] for g in got] != [want]:
+            bad.append(f"{bid}: {[g['text'] for g in got]}")
+    assert not bad, "; ".join(bad)
+    return "ok", "a withdrawn, unvoted, failed or outcome-less motion gives way to the one that carried"
+
+
 @check("data", "a committee report cites the calendar of its own year")
 def _report_citations():
     """All 7,376 House report citations of 2013-2022 linked a 2023 or 2024
