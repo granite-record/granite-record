@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.1
+# GRANITE_VERSION: 2026-09-24.2
 """One name per committee: the name it had at the time.
 
     import committee_names as CN

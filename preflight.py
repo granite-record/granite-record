@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.242
+# GRANITE_VERSION: 2026-09-04.243
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4096,7 +4096,23 @@ def _stamps():
             bad.append(f"{name} is stamped {m.group(1)}, listed as {ver}")
     assert not bad, "; ".join(bad[:4]) + (f" (+{len(bad) - 4} more)" if len(bad) > 4 else "")
     assert not unstamped, "no stamp line in: " + ", ".join(unstamped[:5])
-    return "ok", f"{seen} files agree with the manifest"
+    # AND EVERY STAMPED FILE IS LISTED. bill_order.py was written on 24
+    # September with its own stamp and no line here, so this check -- which
+    # reads the manifest's list -- never looked at it, and its first edit went
+    # out unbumped. obsolete/ keeps its old stamps and is deliberately not
+    # listed.
+    r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat"],
+             capture_output=True, text=True)
+    unlisted = []
+    for name in (r.stdout or "").split():
+        if name.startswith("obsolete/") or name in want:
+            continue
+        head = Path(name).read_text(encoding="utf-8", errors="replace")[:3000] \
+            if Path(name).exists() else ""
+        if re.search(r"GRANITE_VERSION:\s*[0-9]", head):
+            unlisted.append(name)
+    assert not unlisted, "stamped but not in versions.json: " + ", ".join(unlisted[:6])
+    return "ok", f"{seen} files agree with the manifest, and no stamped file is left out of it"
 
 
 @check("files", "no generator writes the bench's record")
