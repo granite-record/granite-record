@@ -487,6 +487,16 @@ WEEK_JS = r"""
     return m+"-"+pad(Math.min(+s.slice(8),daysIn(m)));
   }
   function dayWords(s){ return DAYNAME[weekday(s)]+" "+(+s.slice(8))+" "+MONTH[+s.slice(5,7)-1]; }
+  // A week's name from its key alone: build_calendar.span_words, "9–15
+  // March 2026" or "30 March – 5 April 2026". For a week whose month
+  // file did not come, so the heading can still name the week the address
+  // does; preflight holds the two to the same words.
+  function weekLabel(k){
+    var a=keyMonday(k), b=addDays(a,6), ma=MONTH[+a.slice(5,7)-1], mb=MONTH[+b.slice(5,7)-1];
+    if(ma===mb) return (+a.slice(8))+"–"+(+b.slice(8))+" "+mb+" "+b.slice(0,4);
+    if(a.slice(0,4)===b.slice(0,4)) return (+a.slice(8))+" "+ma+" – "+(+b.slice(8))+" "+mb+" "+b.slice(0,4);
+    return (+a.slice(8))+" "+ma+" "+a.slice(0,4)+" – "+(+b.slice(8))+" "+mb+" "+b.slice(0,4);
+  }
   function monthWords(m){ return MONTH[+m.slice(5,7)-1]+" "+m.slice(0,4); }
   // build_calendar.day_words's rule, in the reader's clock.
   function relWord(s,today){
@@ -768,7 +778,7 @@ WEEK_JS = r"""
 
   var CORE={iso:iso, addDays:addDays, weekday:weekday, monday:monday, weekKey:weekKey,
     keyMonday:keyMonday, month:month, addMonths:addMonths, monthRows:monthRows,
-    shiftMonth:shiftMonth, dayWords:dayWords, relWord:relWord, parseCard:parseCard,
+    shiftMonth:shiftMonth, dayWords:dayWords, weekLabel:weekLabel, relWord:relWord, parseCard:parseCard,
     parseDay:parseDay, dayHtml:dayHtml, defaults:defaults, matches:matches,
     narrowed:narrowed, tally:tally, countLine:countLine, listDates:listDates,
     weekCols:weekCols, weekRows:weekRows, firstDay:firstDay, readHash:readHash,
@@ -893,13 +903,19 @@ WEEK_JS = r"""
   }
   var NAV=null;
   function drawHead(){
-    var k=weekKey(SEL), w=WEEKS[k];
-    if(w){
-      h1.textContent="The week of "+w.label;
-      if(lead) lead.textContent=w.lead;
-      document.title="The week of "+w.label+" | Granite Record";
-      rename(k);
-    }
+    // THE HEADING NAMES THE WEEK THE ADDRESS DOES, whether or not its month
+    // file came. It used to wait for the file, so while one loaded -- and for
+    // good when one failed -- the address was the new week while the
+    // heading, the tab's title, the citation and the canonical link kept the
+    // last week that loaded, over a panel saying "This week could not be
+    // loaded". A week's name follows from its key (weekLabel); its lead is
+    // the build's, and said plainly where the week is not here to count.
+    var k=weekKey(SEL), w=WEEKS[k], label=w?w.label:weekLabel(k);
+    h1.textContent="The week of "+label;
+    if(lead) lead.textContent=broken()?"The sittings of this week could not be loaded here."
+                                      :w?w.lead:"";
+    document.title="The week of "+label+" | Granite Record";
+    rename(k,label);
     // The arrows are written again only when they change -- against what was
     // last written here, not against innerHTML, which a browser hands back
     // with "&lsaquo;" decoded and so never matched. AND FOCUS STAYS ON THE
@@ -951,8 +967,8 @@ WEEK_JS = r"""
       else if(c.nodeType===1) swapText(c,pairs);
     }
   }
-  function rename(k){
-    var to={label:WEEKS[k].label, url:ORIGIN+hrefFor(k)};
+  function rename(k,label){
+    var to={label:label, url:ORIGIN+hrefFor(k)};
     to.key=citeKey(to.url);
     if(to.label===NAMED.label && to.url===NAMED.url) return;
     // The address first and whole: "/calendar" is the start of every week's.
@@ -981,10 +997,21 @@ WEEK_JS = r"""
       h+='<a class="wknext" data-step="7" href="'+hrefFor(weekKey(addDays(mon,7)))+'">The week after &rsaquo;</a>';
     return h;
   }
+  // The days the panel needs and does not have, and whether a month file
+  // that should have brought them failed.
+  function gone(){
+    return weekDates().filter(function(d){ return !DAYS[d] && (weekday(d)<5 || (S.v==="day"&&d===SEL)); });
+  }
+  function broken(){ return gone().some(function(d){ return MONTHS[month(d)]==="fail"; }); }
   function drawCount(){
     var dates=S.v==="day"?[SEL]:weekDates(), list=[];
     dates.forEach(function(d){ if(DAYS[d]) list=list.concat(DAYS[d].cards); });
-    var t=countLine(tally(list,S), S.v==="day"?"on "+dayWords(SEL):"this week");
+    // NOT A COUNT OF DAYS THAT ARE NOT HERE: "No sittings this week", said
+    // aloud by the live region while the week loaded or after it failed, was
+    // a count of nothing.
+    var t=broken()?"The sittings could not be loaded."
+      :gone().length?""
+      :countLine(tally(list,S), S.v==="day"?"on "+dayWords(SEL):"this week");
     // Said once: a live region repeats whatever it is given.
     if(count.textContent!==t) count.textContent=t;
   }
@@ -1052,12 +1079,15 @@ WEEK_JS = r"""
     (t||view).focus();
   }
   function drawPanel(){
-    var dates=weekDates(), mark=focusMark(), html;
-    var gone=dates.filter(function(d){ return !DAYS[d] && (weekday(d)<5 || (S.v==="day"&&d===SEL)); });
-    if(gone.length){
-      html=gone.some(function(d){ return MONTHS[month(d)]==="fail"; })
-        ? '<p class="calempty">This week could not be loaded here. <a href="'+hrefFor(weekKey(SEL))
-          +'">Open the week on its own page</a>.</p>'
+    var dates=weekDates(), mark=focusMark(), html, k=weekKey(SEL);
+    if(gone().length){
+      // Said of the week by its name, with the way to its own page, which
+      // holds it whole without this script.
+      html=broken()
+        ? '<p class="calempty">'+(S.v==="day"?esc(dayWords(SEL)):"The week of "
+            +esc(WEEKS[k]?WEEKS[k].label:weekLabel(k)))
+          +' could not be loaded here. <a href="'+hrefFor(k)+'">Open '
+          +(S.v==="day"?"its week":"it")+' on its own page</a>.</p>'
         : '<p class="calempty">Loading the week&hellip;</p>';
     }else if(S.v==="day") html=dayView();
     else if(S.v==="week") html=weekView(dates);
@@ -1102,10 +1132,24 @@ WEEK_JS = r"""
     var s=document.querySelector("a.skip");
     if(s) s.setAttribute("href",location.pathname+"#results");
   }
-  function select(d,how){
+  // A KEY PRESSED ON A CONTROL KEEPS THAT CONTROL IN VIEW. A click brings
+  // the chosen day into view, which is what a pointer came for. A key press
+  // leaves focus where it was -- on the arrow, the grid's day, Today -- and
+  // bringing the day into view scrolled that off the screen: after Enter on
+  // "The week before" at 1440px the focused arrow was out of sight seven
+  // presses in eight. So after a key the control is brought back into view,
+  // by the least scroll that shows it, which keeps as much of the day in
+  // view as the screen has room for.
+  function keepInView(el){
+    if(!el||el===document.body||!el.getBoundingClientRect) return;
+    var r=el.getBoundingClientRect();
+    if(r.top<0||r.bottom>(window.innerHeight||0)) el.scrollIntoView({block:"nearest"});
+  }
+  function select(d,how,kb){
     SEL=clamp(d); FOCUS=SEL; VIEWM=month(SEL);
     need(); drawGrid(how==="key"); drawHead(); drawPanel(); commit(true);
     if(how==="grid"||how==="key"||how==="nav"||how==="today") reveal();
+    if(kb||how==="key") keepInView(document.activeElement);
   }
 
   // ---- the controls ---------------------------------------------------------------
@@ -1353,8 +1397,22 @@ WEEK_JS = r"""
     }
   });
   grid.addEventListener("pointerdown",function(e){ if(e.pointerType==="touch") touchT=Date.now(); });
+  // A DAY THAT MOVES UNDER A STILL POINTER HAS NOT BEEN POINTED AT. A click
+  // on 12 March scrolled the list to that day; the month, which is sticky,
+  // moved up a row under a pointer that had not moved, the browser said the
+  // pointer was now over 19 March, and half a second later 19 March's
+  // preview opened. A pointer that really moves into a day is reported
+  // entering it before the move that took it there is reported (the UI
+  // Events order: pointerover, then pointermove), so a pointerover at the
+  // very spot of the last move or press is the page moving, not the reader,
+  // and is not a request for a preview.
+  var PX=null, PY=null;
+  function still(e){ return typeof e.clientX==="number" && e.clientX===PX && e.clientY===PY; }
+  function notePointer(e){ if(typeof e.clientX==="number"){ PX=e.clientX; PY=e.clientY; } }
+  document.addEventListener("pointermove",notePointer,{passive:true});
+  document.addEventListener("pointerdown",notePointer,{passive:true});
   grid.addEventListener("pointerover",function(e){
-    if(e.pointerType==="touch") return;
+    if(e.pointerType==="touch"||still(e)) return;
     var td=cellOf(e.target); if(td) wantPeek(td.getAttribute("data-d"),"pointer");
   });
   grid.addEventListener("pointerleave",function(){
@@ -1391,7 +1449,9 @@ WEEK_JS = r"""
   }
   $("cmprev").addEventListener("click",function(){ turn(-1); });
   $("cmnext").addEventListener("click",function(){ turn(1); });
-  $("cmnow").addEventListener("click",function(){ select(clamp(TODAY),"today"); });
+  // A click that no pointer made -- Enter or Space on the control -- has a
+  // detail of 0, and is the keyboard's.
+  $("cmnow").addEventListener("click",function(e){ select(clamp(TODAY),"today",e.detail===0); });
   mfold.addEventListener("click",function(){
     var on=!side.classList.contains("folded");
     setFold(on,true);
@@ -1488,8 +1548,8 @@ WEEK_JS = r"""
     var a=e.target.closest&&e.target.closest(".wknav a");
     if(!a||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||e.button) return;
     e.preventDefault();
-    if(a.hasAttribute("data-today")) select(clamp(TODAY),"nav");
-    else select(addDays(SEL,+a.getAttribute("data-step")||0),"nav");
+    if(a.hasAttribute("data-today")) select(clamp(TODAY),"nav",e.detail===0);
+    else select(addDays(SEL,+a.getAttribute("data-step")||0),"nav",e.detail===0);
   });
   window.addEventListener("popstate",function(){
     // A bare fragment -- the skip link's #results -- is not a state, and

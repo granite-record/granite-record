@@ -11478,6 +11478,9 @@ def _calendar_page_shape():
         body = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
         cards = re.findall(r'<details class="calmeet"[^>]*>', body)
         assert len(cards) == 7, f"the week of 9 March lists {len(cards)} cards, not 7"
+        # The language the week's hyphens:auto needs to hyphenate a committee's
+        # name rather than split it (_calendar_layout).
+        assert re.search(r'<html lang="en"', t), "the week's page does not say its language"
         who_of = {re.search(r'data-cmte="([^"]*)"', c).group(1): (
             re.search(r'data-who="([^"]*)"', c).group(1),
             re.search(r'data-kinds="([^"]*)"', c).group(1)) for c in cards}
@@ -11594,6 +11597,26 @@ def _calendar_core():
                  capture_output=True, text=True, timeout=120)
         out = (r.stdout or "") + (r.stderr or "")
         assert r.returncode == 0 and out.strip().endswith("OK"), out.strip()[-1500:]
+        # A WEEK'S NAME FROM ITS KEY, which the heading uses when the week's
+        # month file did not come: the same words span_words gives every
+        # week's own page, across month ends and a year's.
+        labels, d = {}, BC.datetime.date(2024, 12, 23)
+        while d <= BC.datetime.date(2028, 1, 10):
+            labels[BC.week_key(d)] = BC.span_words(d, d + BC.datetime.timedelta(days=6))
+            d += BC.datetime.timedelta(days=7)
+        (root / "labels.json").write_text(json.dumps(labels, ensure_ascii=False), encoding="utf-8")
+        prog2 = root / "labels.js"
+        prog2.write_text("globalThis.document={getElementById:function(){return null;}};\n"
+                         + BC.WEEK_JS + r"""
+const C=globalThis.GRCAL, want=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8"));
+const bad=Object.keys(want).filter(k=>C.weekLabel(k)!==want[k]).map(k=>k+": "+C.weekLabel(k)+" | "+want[k]);
+console.log(bad.length?bad.slice(0,5).join("\n"):"OK "+Object.keys(want).length);
+""", encoding="utf-8")
+        r2 = _run([node, str(prog2), str(root / "labels.json")], capture_output=True,
+                  text=True, encoding="utf-8", timeout=60)
+        assert r2.returncode == 0 and r2.stdout.startswith("OK"), (
+            "the script names a week otherwise than its page does: "
+            + ((r2.stdout or "") + (r2.stderr or "")).strip()[-600:])
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", out.strip().splitlines()[-2]
@@ -11741,6 +11764,15 @@ def _calendar_in_a_dom():
     not open its own preview again; and on a phone a month arrow or an arrow
     key opens the folded month without making that the reader's default,
     while folding over another month shows the selected week.
+
+    Added after the recheck of 25 September, on a DOM that now scrolls when
+    it is told where things are: Enter on a week's arrow, head or foot,
+    leaves that arrow on the screen, while a click still brings the day into
+    view; a day that moves under a pointer that has not moved does not open
+    its preview, and a preview still waiting when a day is clicked goes with
+    the click; and a week whose month file fails is named wherever the page
+    names a week -- heading, title, canonical link, citation -- with a panel
+    that says which week it could not load and links it.
     """
     node = _cal_node()
     if not node:
@@ -11830,8 +11862,17 @@ class E extends N {
   set tabIndex(v){ this.setAttribute("tabindex",v); }
   get name(){ return this.getAttribute("name")||""; }
   get offsetWidth(){ return 280; } get offsetHeight(){ return 120; }
-  getBoundingClientRect(){ return {top:100,left:40,right:80,bottom:140,width:40,height:40}; }
-  scrollIntoView(){ this.ownerDocument._scrolled.push(this); }
+  // Where an element is, if the world was given a layout: its page offset
+  // less the page's scroll. Without one every element is at 100px, as the
+  // checks written before scrolling mattered expect.
+  getBoundingClientRect(){ const d=this.ownerDocument, y=d._y?d._y(this):undefined;
+    if(y===undefined) return {top:100,left:40,right:80,bottom:140,width:40,height:40};
+    const top=y-d._sy; return {top,left:40,right:80,bottom:top+40,width:40,height:40}; }
+  scrollIntoView(o){ const d=this.ownerDocument; d._scrolled.push(this);
+    const y=d._y?d._y(this):undefined; if(y===undefined) return;
+    const top=y-d._sy, H=d.defaultView.innerHeight;
+    if(o&&o.block==="nearest"){ if(top<0) d._sy=y; else if(top+40>H) d._sy=y+40-H; }
+    else d._sy=y; }
   focus(){ const d=this.ownerDocument, was=d.activeElement; if(was===this) return;
     d.activeElement=this;
     if(was&&was!==d.body) was.dispatchEvent(new Ev("focusout",{relatedTarget:this}));
@@ -11879,6 +11920,7 @@ function makeWorld(o){
   const doc=new N(null); doc.nodeType=9; doc.ownerDocument=doc;
   const html=new E(doc,"html"), body=new E(doc,"body"); doc.appendChild(html); html.appendChild(body);
   doc.documentElement=html; doc.body=body; doc.activeElement=body; doc.title=""; doc._scrolled=[];
+  doc._y=o.layout||null; doc._sy=0;
   let now=o.now||0; const timers=[]; let seq=0; const later=[];
   doc._later=(f)=>later.push(f);
   doc.getElementById=(id)=>html.querySelector("#"+id);
@@ -12108,6 +12150,28 @@ function world(page,pathname,o){
   const mc=cell("2026-04-02");
   mc.dispatchEvent(W.ev("pointerover",{pointerType:"mouse"})); mc.focus(); mc.click(); await W.settle(); W.advance(900);
   ok(W.sel()==="2026-04-02" && $("calpeek").hidden, "a clicked day's preview came back half a second after the click");
+  // A DAY THAT MOVES UNDER A STILL POINTER IS NOT POINTED AT. The click
+  // scrolls the list, the sticky month moves up a row, and the browser says
+  // the pointer, which has not moved, is over another day: pointerover there
+  // at the very spot of the press. Its preview does not open; a real move
+  // into it, reported before the move itself, does.
+  const at=(x,y)=>({pointerType:"mouse",clientX:x,clientY:y});
+  cell("2026-04-01").dispatchEvent(W.ev("pointerover",at(300,420)));
+  cell("2026-04-01").dispatchEvent(W.ev("pointermove",at(300,420)));
+  cell("2026-04-01").dispatchEvent(W.ev("pointerdown",at(300,420)));
+  cell("2026-04-01").focus(); cell("2026-04-01").click(); await W.settle();
+  cell("2026-03-31").dispatchEvent(W.ev("pointerover",at(300,420))); W.advance(900);
+  ok(W.sel()==="2026-04-01" && $("calpeek").hidden,
+     "a day that moved under a still pointer after a click opened its preview: "+$("calpeek").textContent);
+  cell("2026-03-31").dispatchEvent(W.ev("pointerover",at(300,452))); W.advance(501);
+  ok(!$("calpeek").hidden && /Tuesday 31 March/.test($("calpeek").textContent),
+     "a real move into a day no longer opens its preview: "+$("calpeek").textContent);
+  $("cmgrid").dispatchEvent(W.ev("pointerleave",{bubbles:false})); W.advance(200);
+  // And a preview still waiting when a day is clicked is cancelled with it.
+  cell("2026-03-30").dispatchEvent(W.ev("pointerover",at(120,420))); W.advance(200);
+  cell("2026-04-03").dispatchEvent(W.ev("pointerdown",at(160,420)));
+  cell("2026-04-03").focus(); cell("2026-04-03").click(); await W.settle(); W.advance(900);
+  ok(W.sel()==="2026-04-03" && $("calpeek").hidden, "a preview waiting when a day was clicked opened after the click: "+$("calpeek").textContent);
   // ---- the reader's today, not the build's ----
   const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
   await W2.run();
@@ -12131,6 +12195,53 @@ function world(page,pathname,o){
   W4.store.delete("gr.calendar.fold");
   const t4=W4.Q('td[tabindex="0"]',W4.$("cmgrid")); t4.focus(); t4.dispatchEvent(W4.ev("keydown",{key:"ArrowDown"})); await W4.settle();
   ok(!side4.classList.contains("folded") && !W4.store.has("gr.calendar.fold"), "an arrow key's unfolding was remembered as the reader's choice");
+  // ---- a key on an arrow keeps the arrow in view; a click shows the day ----
+  // The head's arrows near the top of a long page, the foot's far down it,
+  // and the day chosen between them.
+  const L=(el)=>el.matches(".calhead .wknav a")?150:el.matches(".wkfoot a")?3000
+    :el.matches(".calday.calsel")?1400:undefined;
+  const W5=world("calendar.html","/calendar",{layout:L});
+  await W5.run();
+  const seen5=(el)=>{ const r=el.getBoundingClientRect(); return r.top>=0 && r.bottom<=800; };
+  const press=async(el)=>{ el.focus(); el.dispatchEvent(W5.ev("click",{button:0,detail:0}));
+    await W5.settle(); W5.advance(700); await W5.settle(); };
+  await press(W5.Q(".calhead .wknav a.wknext"));
+  ok(W5.G.location.pathname==="/calendar/2026-W12" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wknext")
+     && seen5(W5.doc.activeElement),
+     "Enter on the head's The week after scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
+  await press(W5.Q(".wkfoot a.wkprev"));
+  ok(W5.G.location.pathname==="/calendar" && W5.doc.activeElement===W5.Q(".wkfoot a.wkprev")
+     && seen5(W5.doc.activeElement),
+     "Enter on the foot's The week before scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
+  const nx5=W5.Q(".calhead .wknav a.wknext"); nx5.focus(); nx5.click(); await W5.settle(); W5.advance(700); await W5.settle();
+  ok(W5.Q(".calday.calsel",W5.$("calview")).getBoundingClientRect().top===0,
+     "a click on The week after no longer brings the day chosen into view");
+  // ---- a month file that does not load ----
+  // The address moves to the week asked for, and so does everything that
+  // names it: the heading, the tab's title, the canonical link and the
+  // citation. The panel says which week it could not load, and links it.
+  const W6=world("calendar.html","/calendar",{files:(url)=>/\/calendar\/data\/2026-/.test(url)?null
+    :(fs.existsSync(path.join(SITE,url.replace(/^\//,"")))?fs.readFileSync(path.join(SITE,url.replace(/^\//,"")),"utf8"):null)});
+  await W6.run();
+  const n6=W6.Q(".calhead .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
+  await W6.settle(); W6.advance(700); await W6.settle();
+  const said6=W6.Q("p.calempty",W6.$("calview")), link6=said6&&W6.Q("a",said6);
+  ok(W6.G.location.pathname==="/calendar/2026-W12" && W6.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
+     && W6.doc.title==="The week of 16–22 March 2026 | Granite Record"
+     && W6.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
+     && /“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
+     "a week whose file failed is at "+W6.G.location.pathname+" under the heading "+W6.Q(".calhead h1").textContent
+       +", canonical "+W6.Q('link[rel="canonical"]').getAttribute("href"));
+  ok(W6.Q(".calhead p.src").textContent==="The sittings of this week could not be loaded here."
+     && W6.$("wkcount").textContent==="The sittings could not be loaded.",
+     "the lead and the count of a week that did not load: "+W6.Q(".calhead p.src").textContent+" / "+W6.$("wkcount").textContent);
+  ok(said6 && said6.textContent==="The week of 16–22 March 2026 could not be loaded here. Open it on its own page."
+     && link6 && link6.getAttribute("href")==="/calendar/2026-W12",
+     "the panel of a week that did not load says "+(said6&&said6.textContent));
+  W6.view("day").click(); await W6.settle();
+  const day6=W6.Q("p.calempty",W6.$("calview"));
+  ok(day6 && day6.textContent==="Wednesday 18 March could not be loaded here. Open its week on its own page.",
+     "the Day view of a week that did not load says "+(day6&&day6.textContent));
   // ---- an address carrying a day, a view and a filter ----
   const W3=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
   await W3.run();
@@ -12138,7 +12249,7 @@ function world(page,pathname,o){
      && W3.QA('input[name="what"]',W3.$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing"
      && W3.keys().join()==="2026-03-03|House Commerce", "a shared address does not open on its day, view and filter");
   if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-  console.log("the tab, a dated week, a phone and a shared address: 3 views, 6 filters, Back, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, 6 keys, the fold and the preview's timings");
+  console.log("the tab, a dated week, a phone and a shared address: 3 views, 6 filters, Back, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, the arrows kept in view after a key, 6 keys, the fold, the preview's timings and a day moved under a still pointer, and a month file that failed");
   console.log("OK");
 })().catch(e=>{ console.log(fails.join("\n")); console.log("THREW "+e.stack); process.exit(2); });
 """
@@ -12163,7 +12274,7 @@ def _calendar_layout():
     own area -- and below 1024px it goes above the schedule, compact and
     foldable, with the DOM order the reading order at every width. The week at
     a glance keeps legible columns and scrolls inside its own frame rather than
-    widening the page: 56px of hours and five 120px days is 656px, which this
+    widening the page: 56px of hours and five 122px days is 666px, which this
     holds against the narrowest two-column panel (1024px less the shell's
     sides, a scrollbar, the month's column at its narrowest and the gap).
     Every colour is a token, so the dark palette re-grounds all of it; and a
@@ -12176,6 +12287,11 @@ def _calendar_layout():
     table a scrolling block; a kind chip in a column can shrink and wrap; a
     committee's name breaks between words first; and the selected week's
     band is at least 1.2:1 against the page in both themes.
+
+    Added after the recheck of 25 September: a chip inside an OPENED card
+    shrinks and wraps too, and a committee's name has room for
+    "Administration" -- summed here from the column and the paddings -- and
+    hyphenates a longer word rather than splitting it without a hyphen.
     """
     css = Path("app.css").read_text(encoding="utf-8")
     a = css.find("/* THE CALENDAR, AS A CALENDAR")
@@ -12220,8 +12336,49 @@ def _calendar_layout():
     chip = _braced(block, ".wkgrid .calmeet > summary .calkind{")
     assert "flex:0 1 auto" in chip and "max-width:100%" in chip, (
         "a kind chip in the week at a glance keeps its full width and spills out of its card")
-    assert "overflow-wrap:anywhere" not in _braced(block, ".wkgrid .calmeet > summary .calcmte{"), (
+    # AND IN AN OPENED CARD. The summary's rule was all there was, and with a
+    # card open "Subcommittee work session" ran 74px over the next day at
+    # 1024px, because the chips on the item lines are the body's.
+    inner = _braced(block, ".wkgrid .calbody .calkind{")
+    assert all(x in inner for x in ("flex:0 1 auto", "max-width:100%", "min-width:0",
+                                     "white-space:normal")), (
+        "a kind chip inside an opened card in the week keeps its full width and "
+        f"spills over the next day's column: {inner}")
+    name = _braced(block, ".wkgrid .calmeet > summary .calcmte{")
+    assert "overflow-wrap:anywhere" not in name, (
         "a committee's name in the week breaks mid-word before it breaks between words")
+    # A LONG WORD FITS, OR IS HYPHENATED. "Administration" broke as
+    # "Administratio / n" in the 89px the name had; the column and the
+    # paddings are summed here from the stylesheet itself, so a padding put
+    # back narrows the name and fails this. 99px is the estimate the rule's
+    # comment gives, from a screenshot and not from the font's metrics; a
+    # longer word is left to hyphens:auto, both spellings of it.
+    assert "-webkit-hyphens:auto" in name and re.search(r"(?<!-)hyphens:auto", name), (
+        f"a committee's name in the week is not hyphenated where it must break: {name}")
+    sp = {int(k): int(v) for k, v in re.findall(r"--sp-(\d+):(\d+)px", css)}
+
+    def px(v):
+        v = v.strip()
+        m_ = re.fullmatch(r"calc\(var\(--sp-(\d+)\) \+ (\d+)px\)", v)
+        if m_:
+            return sp[int(m_.group(1))] + int(m_.group(2))
+        m_ = re.fullmatch(r"var\(--sp-(\d+)\)", v)
+        return sp[int(m_.group(1))] if m_ else int(v.rstrip("px"))
+
+    def sides(decl):
+        """(right, left) of a padding shorthand of one to four values."""
+        p = [px(x) for x in re.findall(r"calc\(var\([^)]*\) \+ \d+px\)|var\([^)]*\)|\d+px|0", decl)]
+        p = {1: p * 4, 2: p * 2, 3: p + p[1:2], 4: p}[len(p)]
+        return p[1], p[3]
+    cell = re.search(r"padding:([^;}]*)", _braced(block, ".wkgrid th,.wkgrid td{")).group(1)
+    summ = re.search(r"padding:([^;}]*)", _braced(block, ".wkgrid .calmeet > summary{")).group(1)
+    card = re.search(r"border:(\d+)px", _braced(css, ".calmeet{")).group(1)
+    col = int(re.search(r"\.wkgrid\{[^}]*min-width:calc\(\d+px \+ var\(--cols,5\) \* (\d+)px\)",
+                        block).group(1))
+    measure = col - sum(sides(cell)) - 2 * int(card) - sum(sides(summ))
+    assert measure >= 99, (
+        f"a committee's name in the week has {measure}px ({col}px column, cell {cell}, "
+        f"card border {card}px, summary {summ}): \"Administration\" needs about 99")
     # THE SELECTED WEEK IS A BAND A READER CAN SEE, in both themes: pine mixed
     # into the page. --pine-soft was about 1.0:1 against the light page.
     band = re.search(r"\.cmrow\.cmsel td\{background:color-mix\(in srgb,var\(--pine\) (\d+)%,var\(--paper\)\)\}", block)
@@ -12254,7 +12411,8 @@ def _calendar_layout():
     assert "font-size:var(--t-ui)" in _braced(block, ".calchk{"), "the boxes are not at the interface size"
     return "ok", (f"month beside the schedule and sticky, above it below 1024px; a week "
                   f"needs {need}px of the {have}px it has, scrolls in its own frame and "
-                  f"keeps its chips; the tables stay tables on a phone; tokens only")
+                  f"keeps its chips, open or shut; a committee's name has {measure}px and "
+                  f"hyphens; the tables stay tables on a phone; tokens only")
 
 
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")

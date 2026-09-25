@@ -3275,7 +3275,7 @@ padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
    the week scrolls in .wkgridwrap, which is what that frame is for. */
 .calapp table{display:table;overflow:visible}
 /* The month's column gives up a little on a small desktop, so a five-day
-   week still fits beside it at 1024px without scrolling: 56 + 5 x 120. */
+   week still fits beside it at 1024px without scrolling: 56 + 5 x 122. */
 .calapp.on{display:grid;grid-template-columns:clamp(260px,25vw,292px) minmax(0,1fr);
 grid-template-areas:"side head" "side main";column-gap:var(--sp-9);align-items:start}
 .calapp.on > .calhead{grid-area:head;min-width:0}
@@ -3435,9 +3435,20 @@ color:var(--pine);text-align:left}
 .wkgridwrap{position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 var(--sp-6);
 background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
 .wkgridwrap:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
-.wkgrid{width:100%;min-width:calc(56px + var(--cols,5) * 120px);table-layout:fixed;
+/* A COMMITTEE'S LONGEST WORD FITS ITS COLUMN, or is hyphenated. At 120px
+   with 6px each side of the cell and of the card, a name had 89px, and
+   "Administration" -- on 133 of the calendar's cards in September 2026 --
+   broke after its thirteenth letter with no hyphen: "Administratio / n". So
+   the column is the 122px a five-day week can have beside the month at
+   1024px, and the cell and the card give up 2px a side, which leaves the
+   name 99px. That the word fits in 99px is an estimate from the recheck's
+   screenshot, not a measurement of the font. A longer word -- the Commission
+   on the Interdisciplinary Primary Care Workforce's -- still needs
+   hyphens:auto, which the page's lang="en" lets a browser with its
+   dictionary apply; -webkit- for Safari before 17. */
+.wkgrid{width:100%;min-width:calc(56px + var(--cols,5) * 122px);table-layout:fixed;
 border-collapse:collapse}
-.wkgrid th,.wkgrid td{padding:var(--sp-3);vertical-align:top;text-align:left;
+.wkgrid th,.wkgrid td{padding:var(--sp-3) var(--sp-2);vertical-align:top;text-align:left;
 border-bottom:1px solid var(--rule);border-left:1px solid var(--rule)}
 .wkgrid tr > :first-child{border-left:0}
 .wkgrid tbody tr:last-child > *{border-bottom:0}
@@ -3462,9 +3473,9 @@ color:var(--ink-2)}
 .wkgrid .calmeet{margin:0 0 var(--sp-3)}
 .wkgrid .calmeet:last-child{margin-bottom:0}
 .wkgrid .calmeet > summary{gap:var(--sp-1) var(--sp-3);min-height:0;
-padding:var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 5px)}
+padding:var(--sp-3) var(--sp-2) var(--sp-3) calc(var(--sp-2) + 5px)}
 .wkgrid .calmeet > summary .calcmte{flex:1 1 100%;order:0;min-width:0;font-size:var(--t-ui);
-line-height:1.3;overflow-wrap:break-word;hyphens:auto}
+line-height:1.3;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
 .wkgrid .calmeet > summary .caltime,
 .wkgrid .calmeet > summary .calcount{order:1;font-size:var(--t-sm)}
 /* A chip may shrink and wrap in a column: the chip's own flex:0 0 auto kept
@@ -3473,6 +3484,11 @@ line-height:1.3;overflow-wrap:break-word;hyphens:auto}
 .wkgrid .calmeet > summary .calkind{order:2;font-size:var(--t-xs);white-space:normal;
 flex:0 1 auto;min-width:0;max-width:100%}
 .wkgrid .calmeet > summary .calwhere{order:3;flex:1 1 100%;font-size:var(--t-xs);line-height:1.35}
+/* AND SO MAY ONE INSIDE AN OPENED CARD. The rule above reached the summary
+   only, so opening a card in the week put "Subcommittee work session" or
+   "Full committee work session" on its item lines at full width, up to 74px
+   past the card and over the next day's column. */
+.wkgrid .calbody .calkind{white-space:normal;flex:0 1 auto;min-width:0;max-width:100%}
 .wkgrid .calmeet .caret{display:none}
 .wkgrid .calbody{padding:0 var(--sp-3) var(--sp-3)}
 .wkgrid .calbills li{flex-direction:column;gap:var(--sp-1)}
