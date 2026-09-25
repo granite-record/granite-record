@@ -11233,6 +11233,13 @@ def _calendar_page_shape():
             f"the who boxes are {who}, each on by default")
         what = re.findall(r'<input type="checkbox" name="what" value="([a-z]+)" checked>', t)
         assert what == ["hearing", "exec", "work", "conf"], f"the what boxes are {what}"
+        # What each question covers, in words where the boxes are: the
+        # standing box shows the committees of conference too, and the floor
+        # answers to who, so ticking only hearings still shows it.
+        assert 'value="standing" checked>Standing committees and committees of conference</label>' in t, (
+            "the standing committees' box does not say it covers the committees of conference")
+        assert "show or hide it under Who is meeting" in t, (
+            "the kinds of meeting do not say that the floor is chosen under who")
         views = re.findall(r'<button type="button" data-view="([a-z]+)" aria-pressed="([a-z]+)">', t)
         assert views == [("list", "true"), ("week", "false"), ("day", "false")], (
             f"the view switch is {views}")
@@ -11449,6 +11456,10 @@ ok(back.d==="2026-03-10" && back.v==="week" && back.who.join()==="standing" && b
    && back.body==="H" && back.picks[0]==="Health, Human Services and Elderly Affairs" && back.q==="HB 1", "the address does not round-trip: "+h);
 ok(C.writeHash(F({}),"2026-03-10")==="#d=2026-03-10", "defaults are written into the address: "+C.writeHash(F({}),"2026-03-10"));
 ok(C.readHash("#results")===null, "the skip link's #results reads as a state");
+const bad=C.readHash("#d=2026-02-30&v=day");
+ok(bad && bad.d===undefined && bad.v==="day" && C.readHash("#d=2026-02-30")===null
+   && C.readHash("#d=2026-13-01")===null && C.readHash("#d=2028-02-29").d==="2028-02-29",
+   "a day the calendar does not have is read out of the address: "+JSON.stringify(bad));
 // dates and keys
 ok(C.weekKey("2026-12-31")==="2026-W53" && C.weekKey("2027-01-03")==="2026-W53" && C.weekKey("2027-01-04")==="2027-W01"
    && C.weekKey("2025-12-29")==="2026-W01" && C.keyMonday("2026-W01")==="2025-12-29", "ISO weeks across a year's end");
@@ -11458,7 +11469,7 @@ ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","H
 ok(C.relWord("2026-03-12","2026-03-11")==="tomorrow" && C.relWord("2026-03-25","2026-03-11")==="in 14 days"
    && C.relWord("2026-03-26","2026-03-11")==="" && C.relWord("2026-03-10","2026-03-11")==="", "the relative day words");
 if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-console.log("7 cards: 8 combinations, the list's days, the week's rows and columns, the grid's cells and dots, the preview, the address and ISO weeks");
+console.log("7 cards: 8 combinations, the list's days, the week's rows and columns, the grid's cells and dots, the preview, the address (impossible days refused) and ISO weeks");
 console.log("OK");
 """
 
@@ -11487,6 +11498,17 @@ def _calendar_in_a_dom():
     to the next day, presses Escape, leaves the grid, tabs to a day and taps
     one, wanting the preview to do what the page says it does. An address
     carrying a day, a view and a filter opens on them.
+
+    Added after the review of 24 September: the rest of the page -- the
+    citation's four forms, the canonical link, the og tags, the structured
+    data and the skip link -- names the week shown, not the week the page was
+    loaded as; the week's arrows, head and foot, keep focus on the arrow
+    pressed, or give it to the heading where that arrow is gone; the month's
+    name, a live region, is written only when the month changes; focus that
+    leaves the grid takes a pending preview with it, and a day clicked does
+    not open its own preview again; and on a phone a month arrow or an arrow
+    key opens the folded month without making that the reader's default,
+    while folding over another month shows the selected week.
     """
     node = _cal_node()
     if not node:
@@ -11517,7 +11539,8 @@ _CAL_DOM = r"""// A DOM small enough to read and real enough to run the Calendar
 // moves by hand.
 const VOID = new Set(["area","base","br","col","embed","hr","img","input","link","meta","source","track","wbr"]);
 const ENT = {amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",lsaquo:"‹",rsaquo:"›",
-             hellip:"…",times:"×",rarr:"→",ndash:"–",mdash:"—"};
+             hellip:"…",times:"×",rarr:"→",ndash:"–",mdash:"—",
+             ldquo:"“",rdquo:"”",lsquo:"‘",rsquo:"’"};
 function dec(s){ return String(s).replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,(m,e)=>{
   if(e[0]==="#") return String.fromCodePoint(e[1]==="x"||e[1]==="X"?parseInt(e.slice(2),16):+e.slice(1));
   return ENT[e]!==undefined?ENT[e]:m; }); }
@@ -11669,7 +11692,13 @@ function world(page,pathname,o){
   const a=text.indexOf('<div id="results">'), s=text.indexOf("<script>",a), e=text.indexOf("</script>",s);
   const W=makeWorld(Object.assign({today:[2026,3,11], path:pathname,
     files:(url)=>{ const f=path.join(SITE,url.replace(/^\//,"")); return fs.existsSync(f)?fs.readFileSync(f,"utf8"):null; }},o||{}));
-  W.doc.body.innerHTML=text.slice(a,s);
+  // The parts of the page outside the calendar that name its week: the
+  // head's canonical link, og tags and structured data, the shell's skip
+  // link, and the citation under the page.
+  const head=W.doc.createElement("head"); W.doc.documentElement.appendChild(head);
+  head.innerHTML=(text.match(/<link rel="canonical"[^>]*>|<meta (?:name|property)="[^"]*"[^>]*>|<script type="application\/ld\+json">[\s\S]*?<\/script>/g)||[]).join("");
+  W.doc.body.innerHTML=(text.match(/<a class="skip"[^>]*>[^<]*<\/a>/)||[""])[0]+text.slice(a,s)
+    +(text.match(/<section class="citewrap">[\s\S]*?<\/section>/)||[""])[0];
   W.run=async()=>{ vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
     await W.settle(); W.advance(700); await W.settle(); };
   const D=W.doc;
@@ -11707,8 +11736,38 @@ function world(page,pathname,o){
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
   ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
      "the arrows: "+QA(".calhead .wknav a").map(a=>a.getAttribute("href")));
+  // The rest of the page names the week shown, not the week loaded: the
+  // citation's four forms, the canonical link, og:url and the skip link.
+  const named=()=>({cite:QA(".pcite dd").map(d=>d.textContent).join(" | "),
+    canon:Q('link[rel="canonical"]').getAttribute("href"), og:Q('meta[property="og:url"]').getAttribute("content"),
+    ogt:Q('meta[property="og:title"]').getAttribute("content"), ld:Q('script[type="application/ld+json"]').textContent,
+    skip:Q("a.skip").getAttribute("href"), days:QA(".pcite .citeday").length});
+  let nm=named();
+  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The week of 16–22 March 2026"
+     && /“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
+     && /@misc\{calendar-2026-W12,/.test(nm.cite) && !/9–15 March|calendar,|\/calendar\./.test(nm.cite)
+     && /"@id":"https:\/\/graniterecord\.org\/calendar\/2026-W12"/.test(nm.ld) && !/9–15 March/.test(nm.ld) && nm.days===4,
+     "another week's page still names the week it was loaded as: "+JSON.stringify(nm));
+  ok(nm.skip==="/calendar/2026-W12#results", "the skip link leads to the week the page was loaded as: "+nm.skip);
   W.G.history.back(); await W.settle(); W.advance(700); await W.settle();
   ok(W.sel()==="2026-03-11" && W.G.location.pathname==="/calendar" && Q(".calhead h1").textContent==="The week of 9–15 March 2026", "Back did not return to 11 March");
+  nm=named();
+  ok(nm.canon==="https://graniterecord.org/calendar" && /“The week of 9–15 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
+     && /@misc\{calendar,/.test(nm.cite) && nm.skip==="/calendar#results", "Back did not name this week again: "+JSON.stringify(nm));
+  // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
+  // week from the foot's: the same arrow in the new ones, and the heading
+  // where that arrow is gone.
+  const arrow=(where,cls)=>Q(where+" a."+cls);
+  arrow(".calhead .wknav","wknext").focus(); arrow(".calhead .wknav","wknext").click(); await W.settle(); W.advance(700); await W.settle();
+  ok(W.G.location.pathname==="/calendar/2026-W12" && D.activeElement===arrow(".calhead .wknav","wknext"),
+     "The week after dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className);
+  arrow(".wkfoot","wkhere").focus(); arrow(".wkfoot","wkhere").click(); await W.settle(); W.advance(700); await W.settle();
+  ok(W.sel()==="2026-03-11" && !arrow(".wkfoot","wkhere") && D.activeElement===Q(".calhead h1") && Q(".calhead h1").getAttribute("tabindex")==="-1",
+     "This week, which is gone on this week, dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className);
+  arrow(".wkfoot","wknext").focus(); arrow(".wkfoot","wknext").click(); await W.settle(); W.advance(700); await W.settle();
+  ok(D.activeElement===arrow(".wkfoot","wknext"), "the foot's The week after dropped focus");
+  arrow(".calhead .wknav","wkprev").focus(); arrow(".calhead .wknav","wkprev").click(); await W.settle(); W.advance(700); await W.settle();
+  ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calhead .wknav","wkprev"), "The week before dropped focus");
   // ---- the week, the day ----
   W.view("week").click(); await W.settle();
   ok(QA("tbody th",$("calview")).map(t=>t.textContent).join()==="09:00,10:00,No time given", "the week's rows: "+QA("tbody th",$("calview")).map(t=>t.textContent));
@@ -11746,6 +11805,17 @@ function world(page,pathname,o){
   ok(W.keys().join()===statik.join() && $("calreset").hidden && W.store.get("gr.calendar.study")==="1"
      && W.G.location.hash==="#d=2026-03-11", "Show everything does not put everything back: "+W.G.location.hash);
   ok(D.activeElement.getAttribute("data-view")==="list", "focus is not on the view switch after Show everything");
+  // ---- the month's name is a live region, and is said once ----
+  const mt=$("cmtitle"), tc=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(require("./minidom.js").E.prototype),"textContent");
+  let said=0;
+  Object.defineProperty(mt,"textContent",{configurable:true, get(){ return tc.get.call(this); }, set(v){ said++; tc.set.call(this,v); }});
+  Q('[data-body="H"]',$("wkfilter")).click(); await W.settle(); Q('[data-body=""]',$("wkfilter")).click(); await W.settle();
+  Q('td[data-d="2026-03-12"]',$("cmgrid")).click(); await W.settle(); W.advance(700); await W.settle();
+  ok(said===0, "the month's name, a live region, was written "+said+" times while the month did not change");
+  $("cmnext").click(); await W.settle(); $("cmprev").click(); await W.settle();
+  ok(said===2 && mt.textContent==="March 2026", "turning the month did not name it: "+said+" "+mt.textContent);
+  delete mt.textContent;
+  Q('td[data-d="2026-03-11"]',$("cmgrid")).click(); await W.settle(); W.advance(700); await W.settle();
   // ---- a redraw keeps focus on the card that holds it ----
   const keep=QA(".calmeet",$("calview"))[0], kk=keep.getAttribute("data-date")+"|"+keep.getAttribute("data-cmte");
   Q("summary",keep).focus();
@@ -11791,12 +11861,44 @@ function world(page,pathname,o){
   ok($("calpeek").hidden, "focus shows the preview sooner than the pointer does");
   W.advance(2);
   ok(!$("calpeek").hidden && kf.getAttribute("aria-describedby")==="calpeek", "focus on a day does not show its preview");
+  // Focus that leaves the grid before the half second takes its preview
+  // with it, rather than leaving one to open beside nothing.
+  $("wkfind").focus(); ok($("calpeek").hidden, "focus leaving the grid left the preview open");
+  // The last preview shown was the pointer's, as it is for a reader who
+  // used the mouse before the keyboard: then only the pending one is left.
+  Q(".cmn",cell("2026-04-01")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"})); W.advance(501);
+  $("cmgrid").dispatchEvent(W.ev("pointerleave",{bubbles:false})); W.advance(200);
+  const k2=cell("2026-03-30"); k2.focus(); W.advance(200); $("wkfind").focus(); W.advance(600);
+  ok($("calpeek").hidden && !QA('[aria-describedby="calpeek"]',$("cmgrid")).length,
+     "tabbing through the grid left a preview to open after focus had gone");
+  // A day chosen with the mouse is on the panel; the focus its new cell is
+  // given does not open its preview again.
+  const mc=cell("2026-04-02");
+  mc.dispatchEvent(W.ev("pointerover",{pointerType:"mouse"})); mc.focus(); mc.click(); await W.settle(); W.advance(900);
+  ok(W.sel()==="2026-04-02" && $("calpeek").hidden, "a clicked day's preview came back half a second after the click");
   // ---- the reader's today, not the build's ----
   const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
   await W2.run();
   ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
      && W2.keys().join()==="2026-03-18|Judiciary,2026-03-18|Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
   ok(W2.Q('td[aria-current="date"]',W2.$("cmgrid")).getAttribute("data-d")==="2026-03-18", "today is the build's, not the reader's");
+  ok(W2.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
+     && /^“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
+     "the tab shows the reader's week and cites the build's: "+W2.QA(".pcite dd")[0].textContent);
+  // ---- a phone: the month folds to the week, and only the fold's own button is remembered ----
+  const W4=world("calendar.html","/calendar",{narrow:true});
+  await W4.run();
+  const side4=W4.$("calside");
+  ok(side4.classList.contains("folded"), "a phone does not open on the selected week alone");
+  W4.$("cmnext").click(); await W4.settle();
+  ok(!side4.classList.contains("folded") && !W4.store.has("gr.calendar.fold"), "a month arrow's unfolding was remembered as the reader's choice");
+  W4.$("cmfold").click(); await W4.settle();
+  ok(side4.classList.contains("folded") && W4.store.get("gr.calendar.fold")==="1"
+     && W4.$("cmtitle").textContent==="March 2026" && W4.QA("tr.cmsel td",W4.$("cmgrid")).length===7,
+     "folding while another month is shown does not show the selected week: "+W4.$("cmtitle").textContent);
+  W4.store.delete("gr.calendar.fold");
+  const t4=W4.Q('td[tabindex="0"]',W4.$("cmgrid")); t4.focus(); t4.dispatchEvent(W4.ev("keydown",{key:"ArrowDown"})); await W4.settle();
+  ok(!side4.classList.contains("folded") && !W4.store.has("gr.calendar.fold"), "an arrow key's unfolding was remembered as the reader's choice");
   // ---- an address carrying a day, a view and a filter ----
   const W3=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
   await W3.run();
@@ -11804,7 +11906,7 @@ function world(page,pathname,o){
      && W3.QA('input[name="what"]',W3.$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing"
      && W3.keys().join()==="2026-03-03|Commerce", "a shared address does not open on its day, view and filter");
   if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-  console.log("the tab, a dated week and a shared address: 3 views, 6 filters, Back, focus, 6 keys and the preview's timings");
+  console.log("the tab, a dated week, a phone and a shared address: 3 views, 6 filters, Back, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, 6 keys, the fold and the preview's timings");
   console.log("OK");
 })().catch(e=>{ console.log(fails.join("\n")); console.log("THREW "+e.stack); process.exit(2); });
 """

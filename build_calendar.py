@@ -656,7 +656,12 @@ WEEK_JS = r"""
   function readHash(h){
     var p=new URLSearchParams(String(h||"").replace(/^#/,"")), s={}, any=false;
     function list(k,ok){ return (p.get(k)||"").split(",").filter(function(x){ return ok.indexOf(x)>=0; }); }
-    if(/^\d{4}-\d\d-\d\d$/.test(p.get("d")||"")){ s.d=p.get("d"); any=true; }
+    // A DAY THE CALENDAR HAS. "2026-02-30" has the shape of a date and is
+    // not one: taken at its word it opened a Day view of nothing, stuck on
+    // "Loading". A day is kept only if it comes back from the arithmetic as
+    // itself; an address that names no real day opens the week as usual.
+    var d=p.get("d")||"";
+    if(/^\d{4}-\d\d-\d\d$/.test(d) && iso(+d.slice(0,4),+d.slice(5,7),+d.slice(8,10))===d){ s.d=d; any=true; }
     if(VIEWS.indexOf(p.get("v"))>=0){ s.v=p.get("v"); any=true; }
     if(p.has("who")){ s.who=list("who",WHO); any=true; }
     if(p.has("what")){ s.what=list("what",WHAT); any=true; }
@@ -867,7 +872,9 @@ WEEK_JS = r"""
     // The cell that takes Tab is one the grid is showing.
     if(month(FOCUS)!==VIEWM)
       FOCUS=month(SEL)===VIEWM?SEL:month(TODAY)===VIEWM&&inRange(TODAY)?TODAY:clamp(VIEWM+"-01");
-    mtitle.textContent=monthWords(VIEWM);
+    // A live region, so written only when the month changes: set on every
+    // redraw it would say the month again over the count.
+    if(mtitle.textContent!==monthWords(VIEWM)) mtitle.textContent=monthWords(VIEWM);
     // aria-disabled, not disabled: a button that disables itself under the
     // reader's finger drops their focus on the page.
     $("cmprev").setAttribute("aria-disabled",VIEWM<=month(FIRST)?"true":"false");
@@ -877,15 +884,83 @@ WEEK_JS = r"""
     grid.setAttribute("aria-busy",MONTHS[VIEWM]==="loading"?"true":"false");
     if(had){ var td=grid.querySelector('td[data-d="'+FOCUS+'"]'); if(td) td.focus(); }
   }
+  var NAV=null;
   function drawHead(){
     var k=weekKey(SEL), w=WEEKS[k];
     if(w){
       h1.textContent="The week of "+w.label;
       if(lead) lead.textContent=w.lead;
       document.title="The week of "+w.label+" | Granite Record";
+      rename(k);
     }
+    // The arrows are written again only when they change -- against what was
+    // last written here, not against innerHTML, which a browser hands back
+    // with "&lsaquo;" decoded and so never matched. AND FOCUS STAYS ON THE
+    // ARROW PRESSED. Paging week to week is the page's keyboard flow, and the
+    // link that had focus goes with the old arrows: left there, focus fell to
+    // the page, a screen reader said nothing, and Enter again did nothing. The
+    // same arrow in the new ones takes it; where that arrow is no more --
+    // "This week" on this week, "The week after" on the last -- the heading
+    // that names the week now shown takes it.
     var html=navHtml(k);
-    all(app,".wknav").forEach(function(n){ if(n.innerHTML!==html) n.innerHTML=html; });
+    if(html===NAV) return;
+    NAV=html;
+    var a=document.activeElement, navs=all(app,".wknav"), at=-1, cls="";
+    navs.forEach(function(n,i){ if(a&&a!==n&&n.contains(a)){ at=i; cls=(a.className||"").split(" ")[0]; } });
+    navs.forEach(function(n){ n.innerHTML=html; });
+    if(at>=0){
+      var t=cls?navs[at].querySelector("a."+cls):null;
+      if(!t){ h1.tabIndex=-1; t=h1; }
+      t.focus();
+    }
+  }
+  // THE PAGE NAMES THE WEEK IT SHOWS, not the week it was loaded as. Moving
+  // week in place changed the heading and the tab's title and left the rest
+  // naming the old week: "Cite this page" cited 9-15 March at its address
+  // while the reader looked at 16-22 March, and the canonical link and
+  // og:url -- what a phone's share sheet sends -- said the same. So the
+  // citation's four forms, the canonical link, the og tags, the description
+  // and the structured data follow the heading, with the address
+  // build_calendar gives that week. The citation is shell.py's and is not
+  // drawn again here: the week and its address are swapped in the text it
+  // already holds, which leaves the reader's own date app.js put in it alone.
+  var canon=document.querySelector('link[rel="canonical"]'),
+      CANON=canon?canon.getAttribute("href")||"":"",
+      ORIGIN=CANON.indexOf("/calendar")>0?CANON.slice(0,CANON.indexOf("/calendar")):location.origin;
+  // shell.cite_block's BibTeX key: the address, its slashes as hyphens.
+  function citeKey(url){
+    return url.slice(ORIGIN.length).replace(/^\/+/,"").replace(/\//g,"-").replace(/\./g,"")||"granite-record";
+  }
+  var NAMED={label:WEEKS[PAGEWEEK].label, url:CANON||ORIGIN+hrefFor(PAGEWEEK)};
+  NAMED.key=citeKey(NAMED.url);
+  function swap(s,pairs){
+    pairs.forEach(function(p){ if(p[0]&&p[0]!==p[1]) s=s.split(p[0]).join(p[1]); });
+    return s;
+  }
+  function swapText(n,pairs){
+    for(var i=0;i<n.childNodes.length;i++){
+      var c=n.childNodes[i];
+      if(c.nodeType===3){ var t=swap(c.data,pairs); if(t!==c.data) c.data=t; }
+      else if(c.nodeType===1) swapText(c,pairs);
+    }
+  }
+  function rename(k){
+    var to={label:WEEKS[k].label, url:ORIGIN+hrefFor(k)};
+    to.key=citeKey(to.url);
+    if(to.label===NAMED.label && to.url===NAMED.url) return;
+    // The address first and whole: "/calendar" is the start of every week's.
+    var pairs=[[NAMED.url,to.url],[NAMED.label,to.label],["{"+NAMED.key+",","{"+to.key+","]];
+    all(document,".pcite dd").forEach(function(dd){ swapText(dd,pairs); });
+    all(document,'script[type="application/ld+json"]').forEach(function(s){ swapText(s,pairs); });
+    [['link[rel="canonical"]',"href"],['meta[property="og:url"]',"content"],
+     ['meta[property="og:title"]',"content"],['meta[property="og:description"]',"content"],
+     ['meta[name="description"]',"content"]].forEach(function(x){
+      all(document,x[0]).forEach(function(el){
+        var v=el.getAttribute(x[1])||"", t=swap(v,pairs);
+        if(t!==v) el.setAttribute(x[1],t);
+      });
+    });
+    NAMED=to;
   }
   // The week's arrows, as week_page writes them, stepping from the day
   // selected: previous on the left, next on the right.
@@ -1011,6 +1086,14 @@ WEEK_JS = r"""
         url=path+writeHash(S,SEL);
     if(url===location.pathname+location.hash) return;
     try{ history[push?"pushState":"replaceState"](null,"",url); }catch(e){}
+    skipTo();
+  }
+  // The shell's skip link names the page's own address, and the address may
+  // now be another week's. Left as it was, following it loaded the week the
+  // page was opened on as a new page and threw the reader's place away.
+  function skipTo(){
+    var s=document.querySelector("a.skip");
+    if(s) s.setAttribute("href",location.pathname+"#results");
   }
   function select(d,how){
     SEL=clamp(d); FOCUS=SEL; VIEWM=month(SEL);
@@ -1047,7 +1130,7 @@ WEEK_JS = r"""
       +(n?" ("+n+" on)":"");
   }
   var CHAMBER={"H":"House","S":"Senate","H S":"House and Senate"};
-  var GROUP={standing:"Standing committees and conferences",study:"Study and statutory committees",
+  var GROUP={standing:"Standing committees and committees of conference",study:"Study and statutory committees",
              floor:"Floor sessions"};
   function drawList(){
     var q=cpfind.value.trim().toLowerCase(), open=cpall.getAttribute("aria-expanded")==="true";
@@ -1099,12 +1182,12 @@ WEEK_JS = r"""
   // grid closes it after a beat. It sits beside the day it describes, never on
   // it, and Escape puts it away. Focus shows the same preview after the same
   // wait. A touch has no hover: a tap selects the day, and that is all.
-  var peekD=null, peekFrom="", pendD=null, peekT=0, coolT=0, hushD=null, touchT=0;
+  var peekD=null, peekFrom="", pendD=null, pendFrom="", peekT=0, coolT=0, hushD=null, touchT=0;
   function cellOf(t){ return t&&t.closest?t.closest("td[data-d]"):null; }
   function wantPeek(d,from){
     clearTimeout(coolT);
     if(d===peekD||d===pendD||d===hushD) return;
-    hushD=null; pendD=d; clearTimeout(peekT);
+    hushD=null; pendD=d; pendFrom=from; clearTimeout(peekT);
     peekT=setTimeout(function(){ pendD=null; showPeek(d,from); }, peekD?80:500);
   }
   function showPeek(d,from){
@@ -1229,7 +1312,9 @@ WEEK_JS = r"""
   grid.addEventListener("click",function(e){
     var td=cellOf(e.target);
     if(!td||td.getAttribute("aria-disabled")) return;
-    hidePeek(); select(td.getAttribute("data-d"),"grid");
+    // The day just chosen is on the panel in full, so the focus the redraw
+    // gives its new cell does not open its preview again half a second on.
+    hidePeek(); hushD=td.getAttribute("data-d"); select(hushD,"grid");
   });
   grid.addEventListener("keydown",function(e){
     var td=cellOf(e.target);
@@ -1247,7 +1332,9 @@ WEEK_JS = r"""
     n=clamp(n); FOCUS=n;
     // Moving off the week a folded grid shows opens the month again, so the
     // focus never goes somewhere the reader cannot see.
-    if(side.classList.contains("folded")&&weekKey(n)!==weekKey(SEL)) setFold(false,true);
+    // Not remembered: the reader asked for a day, not for the month open on
+    // every visit. Only the fold's own button changes the default.
+    if(side.classList.contains("folded")&&weekKey(n)!==weekKey(SEL)) setFold(false);
     if(month(n)!==VIEWM){ VIEWM=month(n); need(); drawGrid(true); }
     else{
       all(grid,"td[data-d]").forEach(function(x){ x.tabIndex=x.getAttribute("data-d")===n?0:-1; });
@@ -1268,7 +1355,12 @@ WEEK_JS = r"""
     var td=cellOf(e.target); if(td) wantPeek(td.getAttribute("data-d"),"focus");
   });
   grid.addEventListener("focusout",function(e){
-    if(!e.relatedTarget||!grid.contains(e.relatedTarget)){ if(peekFrom==="focus") hidePeek(); }
+    if(e.relatedTarget&&grid.contains(e.relatedTarget)) return;
+    // Focus has left the grid, so a preview it asked for and was still
+    // waiting on goes too: tabbing through in under half a second left one
+    // to open beside a day that no longer had focus, and stay.
+    if(pendFrom==="focus"){ clearTimeout(peekT); pendD=null; }
+    if(peekFrom==="focus") hidePeek();
   });
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&peekD){ hushD=peekD; hidePeek(); } });
   // The preview is placed in the window, so anything that moves the day under
@@ -1280,14 +1372,22 @@ WEEK_JS = r"""
     var m=addMonths(VIEWM,n);
     if(m<month(FIRST)||m>LASTMONTH) return;
     VIEWM=m;
-    // The month is what was asked for, so a grid folded to one week opens.
-    if(side.classList.contains("folded")) setFold(false,true);
+    // The month is what was asked for, so a grid folded to one week opens --
+    // for now: one tap on an arrow is not a choice about every later visit,
+    // so it is not remembered. Only the fold's own button is.
+    if(side.classList.contains("folded")) setFold(false);
     need(); drawGrid();
   }
   $("cmprev").addEventListener("click",function(){ turn(-1); });
   $("cmnext").addEventListener("click",function(){ turn(1); });
   $("cmnow").addEventListener("click",function(){ select(clamp(TODAY),"today"); });
-  mfold.addEventListener("click",function(){ setFold(!side.classList.contains("folded"),true); });
+  mfold.addEventListener("click",function(){
+    var on=!side.classList.contains("folded");
+    setFold(on,true);
+    // Folded, the grid is the selected week's row, so it shows the month that
+    // holds that row: folded over another month it was a row of day names.
+    if(on && VIEWM!==month(SEL)){ VIEWM=month(SEL); FOCUS=SEL; need(); drawGrid(); }
+  });
   ffold.addEventListener("click",function(){ setFilterFold(!side.classList.contains("ffolded")); });
   $("calskip").addEventListener("click",function(){ view.focus(); view.scrollIntoView({block:"start"}); });
 
@@ -1384,7 +1484,7 @@ WEEK_JS = r"""
     // A bare fragment -- the skip link's #results -- is not a state, and
     // leaves the reader's filters where they were.
     if(location.hash && !readHash(location.hash)) return;
-    hidePeek(); fromLocation(); need(); drawAll();
+    hidePeek(); fromLocation(); need(); drawAll(); skipTo();
   });
 })();
 """
@@ -1790,7 +1890,7 @@ def side_html(study_note):
     # no script the whole week is shown, which is every box's default anyway.
     who = ('<fieldset class="calfs"><legend>Who is meeting</legend>'
            '<label class="calchk"><input type="checkbox" name="who" value="standing" '
-           'checked>Standing committees</label>'
+           'checked>Standing committees and committees of conference</label>'
            + ('<label class="calchk" for="wkstudy"><input type="checkbox" id="wkstudy" '
               'checked name="who" value="study">Study and statutory committees</label>'
               if study_note else "")
@@ -1813,6 +1913,10 @@ def side_html(study_note):
             + "".join(f'<label class="calchk"><input type="checkbox" name="what" '
                       f'value="{v}" checked><i class="{c}" aria-hidden="true"></i>'
                       f'{S.E(w)}</label>' for v, c, w in WHAT_BOXES)
+            # Said where the boxes are, because ticking only Public hearings
+            # and still seeing the House sit reads as a fault otherwise.
+            + '<p class="calhint">A floor session is not a committee meeting: '
+            'show or hide it under Who is meeting.</p>'
             + '</fieldset>')
     chamber = ('<fieldset class="calfs"><legend>Chamber</legend><div class="wkchips">'
                '<button type="button" data-body="" aria-pressed="true">Both chambers</button>'
