@@ -13758,7 +13758,8 @@ def _meet_kind_colours():
     assert seen == {"k-floor", "k-conf", "k-meet", "k-study"}, (
         f"a floor sitting, a conference, a work session and a statutory "
         f"committee drew bars {sorted(seen)}")
-    chip = re.search(r'<span class="calkind (k-[a-z]+)">Statutory committee</span>', t)
+    # Title case, as the boxes are (the person, 25 September 2026).
+    chip = re.search(r'<span class="calkind (k-[a-z]+)">Statutory Committee</span>', t)
     assert chip and chip.group(1) == "k-study", (
         "a statutory committee's chip does not wear the study committees' colour")
     return "ok", (f"{len(want)} kinds on six colours, each from its own token, "

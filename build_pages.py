@@ -296,16 +296,28 @@ RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">
 # Calendar's colours are now also its filter, and a study commission and a
 # House subcommittee's work session are different things for a reader to
 # show or hide. app.css says why the colour is that one.
-MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
-             "hearing": ("Public hearing", "k-hearing"),
-             "executive session": ("Executive session", "k-exec"),
-             "work session": ("Work session", "k-meet"),
-             "subcommittee work session": ("Subcommittee work session", "k-meet"),
-             "full committee work session": ("Full committee work session", "k-meet"),
-             "study committee": ("Study committee", "k-study"),
-             "statutory committee": ("Statutory committee", "k-study"),
-             "committee of conference": ("Committee of conference", "k-conf"),
-             "floor debate": ("Floor session", "k-floor")}
+MEET_KIND = {"public hearing": ("Public Hearing", "k-hearing"),
+             "hearing": ("Public Hearing", "k-hearing"),
+             "executive session": ("Executive Session", "k-exec"),
+             "work session": ("Work Session", "k-meet"),
+             "subcommittee work session": ("Subcommittee Work Session", "k-meet"),
+             "full committee work session": ("Full Committee Work Session", "k-meet"),
+             "study committee": ("Study Committee", "k-study"),
+             "statutory committee": ("Statutory Committee", "k-study"),
+             "committee of conference": ("Committee of Conference", "k-conf"),
+             "floor debate": ("Floor Session", "k-floor")}
+
+# THE CHIPS ARE NAMES TOO, in title case like the boxes above the schedule
+# (the person, 25 September 2026: capitalise the chips to match). A kind the
+# table does not know -- "cancelled", or a phrase the docket invents -- is
+# set the same way, its small words left small: "Committee of Conference".
+_SMALL = {"a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to"}
+
+
+def kind_title(k):
+    words = (k or "").split()
+    return " ".join(w if (i and w.lower() in _SMALL) or not w[:1].isalpha()
+                    else w[:1].upper() + w[1:] for i, w in enumerate(words)) or "Meeting"
 
 # THE KEY, each colour once, in the order the Calendar's row of boxes has
 # them -- which is the key, and the filter, above its schedule. Names, so in
@@ -899,7 +911,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                             + (f"({_bills})" if time else _bills) + "</span>")
             for k in kinds:
                 word, kcls = MEET_KIND.get(k.strip().lower(),
-                                           (k.capitalize() if k else "Meeting", ""))
+                                           (kind_title(k), ""))
                 html.append(f'<span class="calkind {kcls}">{esc(word)}</span>')
             if venue:
                 html.append(f'<span class="calwhere">{esc(venue)}</span>')
@@ -908,7 +920,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             one = len(slotted) == 1
             for (tm, wk, vn), items in slotted.items():
                 word, kcls = MEET_KIND.get(wk.strip().lower(),
-                                           (wk.capitalize() if wk else "Meeting", ""))
+                                           (kind_title(wk), ""))
                 if not one:
                     html.append('<p class="calslot">'
                                 + (f'<span class="caltime">{esc(clock(tm))}</span>' if tm else "")

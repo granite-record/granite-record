@@ -4166,16 +4166,22 @@ function plate(s){
   return s.length>3 ? s.slice(0,s.length-3)+"-"+s.slice(-3) : s;
 }
 
-const MEET_KIND={"public hearing":["Public hearing","k-hearing"],
-                 "hearing":["Public hearing","k-hearing"],
-                 "executive session":["Executive session","k-exec"],
-                 "work session":["Work session","k-meet"],
-                 "subcommittee work session":["Subcommittee work session","k-meet"],
-                 "full committee work session":["Full committee work session","k-meet"],
-                 "study committee":["Study committee","k-study"],
-                 "statutory committee":["Statutory committee","k-study"],
-                 "committee of conference":["Committee of conference","k-conf"],
-                 "floor debate":["Floor session","k-floor"]};
+const MEET_KIND={"public hearing":["Public Hearing","k-hearing"],
+                 "hearing":["Public Hearing","k-hearing"],
+                 "executive session":["Executive Session","k-exec"],
+                 "work session":["Work Session","k-meet"],
+                 "subcommittee work session":["Subcommittee Work Session","k-meet"],
+                 "full committee work session":["Full Committee Work Session","k-meet"],
+                 "study committee":["Study Committee","k-study"],
+                 "statutory committee":["Statutory Committee","k-study"],
+                 "committee of conference":["Committee of Conference","k-conf"],
+                 "floor debate":["Floor Session","k-floor"]};
+// Title case, as build_pages.kind_title: the chips are names, like the
+// Calendar's boxes, and a small word after the first stays small.
+const KIND_SMALL=new Set(["a","an","and","at","by","for","in","of","on","or","the","to"]);
+const kindTitle=k=>String(k||"").split(/\s+/).filter(Boolean)
+  .map((w,i)=>(i&&KIND_SMALL.has(w.toLowerCase()))||!/^[a-z]/i.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1))
+  .join(" ")||"Meeting";
 
 // "13:30" -> "1:30 PM", as a reader says a time: build_pages.clock, and the
 // Calendar page's own, which preflight holds this to. A no-break space keeps
@@ -4262,7 +4268,7 @@ function calendarBlock(rows,heading){
       kinds.forEach(k2=>{const c=(MEET_KIND[String(k2||"").trim().toLowerCase()]||["",""])[1]||"k-other";
         if(bars.indexOf(c)<0)bars.push(c);});
       const kindWord=k2=>MEET_KIND[String(k2||"").trim().toLowerCase()]
-        ||[k2?k2.charAt(0).toUpperCase()+k2.slice(1):"Meeting",""];
+        ||[kindTitle(k2),""];
       // EACH BILL ONCE, as build_pages.cal_days counts them. A bill heard
       // and then voted on the same day is two items and one bill, and
       // counting items put "13 bills" over a committee's eight.
