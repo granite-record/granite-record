@@ -4584,9 +4584,38 @@ def _journey_reads(build_site_v2):
              ev("H", "2025-03-13", "Referred to Executive Departments and Administration "
                 "03/13/2025", "rereferred"),
              ev("H", "2025-04-10", "Inexpedient to Legislate: MA DV 193-177 04/10/2025"))[1],
-         [("2025-03-13", "H", "referred", "Approved and sent to Executive Departments and "
-           "Administration on a voice vote"),
+         [("2025-03-13", "H", "referred", "Approved with an amendment and sent to Executive "
+           "Departments and Administration on a voice vote"),
           ("2025-04-10", "H", "killed", "Killed, 193–177")], "HB493 2025")
+    # THE AMENDMENT GOES TO FINANCE WITH THE BILL. SB 538 of 2026's House
+    # stop read "voice vote" beside the Senate refusing the House amendment.
+    want(run("SB538",
+             ev("H", "2026-04-23", "Amendment # 2026-1453h: AA VV 04/23/2026", "amendment"),
+             ev("H", "2026-04-23", "FLAM # 2026-1578h (Rep. Vose): AA VV 04/23/2026", "other"),
+             ev("H", "2026-04-23", "Ought to Pass with Amendment 2026-1453h and 2026-1578h: MA "
+                "VV 04/23/2026"),
+             ev("H", "2026-04-23", "Referred to Finance 04/23/2026", "rereferred"),
+             ev("H", "2026-05-14", "Ought to Pass: MA VV 05/14/2026"))[1],
+         [("2026-04-23", "H", "referred", "Approved with an amendment and sent to Finance on a "
+           "voice vote"),
+          ("2026-05-14", "H", "passed", "Passed with an amendment on a voice vote")],
+         "SB538 2026")
+    # And an amendment in the clause that passes the bill, before the third
+    # reading or after the motion, or in a row entered after the passage's.
+    want(run("HB117", ev("S", "1999-04-22", "Sen. Larsen Floor Amendment {0965}, AA, VV, "
+                                            "OT3rdg, RC 14Y-8N, MA", "amendment"))[1],
+         [("1999-04-22", "S", "passed", "Passed with an amendment, 14–8")], "HB117 1999")
+    want(run("HB626", ev("S", "1999-06-29", "Ought to Pass, MA, VV, Sen. Brown Floor Amendment, "
+                                            "{1865}, RC 14Y-8N, AA"))[1],
+         [("1999-06-29", "S", "passed", "Passed with an amendment, 14–8")], "HB626 1999")
+    want(run("SB336", ev("S", "2002-02-20", "Sen. Fernald Moved Ought to Pass, RC 22y - 1n, MA"),
+             ev("S", "2002-02-20", "Sen. Francoeur Floor Amendment {2837}, (New Title), RC 13y "
+                "- 10n, AA", "amendment"))[1],
+         [("2002-02-20", "S", "passed", "Passed with an amendment, 22–1")], "SB336 2002")
+    # Not a motion to pass it amended that failed before the one that carried.
+    want(run("HB546", ev("S", "1999-06-22", "Ought to Pass W/Amendment, {1683}, RC 6Y-16N, AF, "
+                                            "Ought to Pass, MA, VV, OT3rdg, RC 22Y-1N, MA"))[1],
+         [("1999-06-22", "S", "passed", "Passed, 22–1")], "HB546 1999")
     # Unless its chair waived the referral: HB 243 of 2025 passed the House.
     want(run("HB243",
              ev("H", "2025-02-20", "Ought to Pass: MA VV 02/20/2025"),
@@ -4635,7 +4664,8 @@ def _journey_reads(build_site_v2):
                                            "VV; REPS A TORR & TROMBLY SUSP"),
                               ev("H", "1996-02-21", "RULES TO REF TO FINANCE, MA 2/3VV; "
                                  "HJ30,P1078", "other"))[1]],
-         [("referred", "Approved and sent to Finance on a voice vote")], "HB1162 1996")
+         [("referred", "Approved with an amendment and sent to Finance on a voice vote")],
+         "HB1162 1996")
     # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE.
     want(run("HB131", ev("H", "2026-07-02", "Signed by Governor Ayotte 07/02/2026; Chapter 205; "
                          "eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026", "governor"),

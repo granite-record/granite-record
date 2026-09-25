@@ -3100,15 +3100,32 @@ J_ON_THE_TABLE = re.compile(r"\b(?:on\s+)?(?:all\s+)?bills\s+(?:LOT|(?:laid\s+)?
 # An amendment's own vote, not the bill's: "COMM AM, AA VV", "Committee
 # Amendment # 2025-2308s, RC 16Y-8N, AA", "Sen. Birdsell Floor Amendment #
 # 2026-1719s, AA, VV", "FLAM # 2025-1311h (Rep. McFarlane): AF DV 57-286".
-# Adopted, it tells the passage that follows it that day that the bill passed
-# amended.
+# Adopted, it tells that day's passage that the bill passed amended --
+# whichever of the two the clerk entered first: "Sen. Larsen moved OTP, MA,
+# VV; Sen. Larsen Fl. Amend. (0179) AA, VV" (SR 3 of 1999). And the clerks'
+# other ways of writing who offered it and what it was: "Sen. McCarley,
+# Floor Amendment., {1666}" (HB 265 of 1999), "Flr AM {1759h}, AA" (SB 310
+# of 2006).
 J_AMEND_SUBJ = re.compile(
-    r"^\s*(?:(?:Reps?|Sens?|Senator)\.?\s+[^,;:]*?\s+)?(?:adopt(?:ion\s+of)?\s+(?:the\s+)?)?"
+    r"^\s*(?:(?:Reps?|Sens?|Senator)[.,]?\s+[^,;:]*?,?\s+)?(?:adopt(?:ion\s+of)?\s+(?:the\s+)?)?"
     r"(?:prop(?:osed)?\s+)?(?:maj(?:ority)?\.?\s+|min(?:ority)?\.?\s+)?"
-    r"(?:comm(?:ittee)?\.?\s+|floor\s+|fl\.?\s+|senate\s+|house\s+|approp\s+)?"
+    r"(?:comm(?:ittee)?\.?\s+|floor\s+|flr?\.?\s+|senate\s+|house\s+|approp\s+)?"
     r"(?:am(?:end(?:ment)?)?s?\b|FLAM\b)", re.I)
-J_AMENDED = re.compile(r"\bw(?:ith|/)\s*am|\bas\s+amended|\bOTP\s*/\s*AM|\bOTPA\b|"
+# "Ought to Pass W/Majority Amendment, {1330}" (SB 108 of 1999), "Ought to
+# Pass with Part of AM #1223h" (SB 492 of 2008).
+J_AMENDED = re.compile(r"\bw(?:ith|/)\s*(?:part\s+of\s+)?(?:the\s+)?"
+                       r"(?:maj(?:ority)?\.?\s+|min(?:ority)?\.?\s+|comm(?:ittee)?\.?\s+|"
+                       r"floor\s+|fl\.?\s+)?am|\bas\s+amended|\bOTP\s*/\s*AM|\bOTPA\b|"
                        r"with\s+amendments?\b", re.I)
+# AN AMENDMENT ADOPTED IN THE CLAUSE THAT PASSES THE BILL. The Senate of
+# 1999-2002 wrote the two as one: "Sen. Larsen Floor Amendment {0965}, AA,
+# VV, OT3rdg, RC 14Y-8N, MA" (HB 117 of 1999) is the bill passing amended,
+# and it read "Passed, 14-8"; so is "Ought to Pass, MA, VV, Sen. Brown Floor
+# Amendment, {1865}, RC 14Y-8N, AA" (HB 626 of 1999), the amendment after
+# the motion. Adopted, with no other motion's code between the amendment
+# and its AA.
+J_AMEND_ADOPTED = re.compile(r"(?i:\bam(?:end(?:ment)?)?s?\b|\bFLAM\b)"
+                             r"(?:(?!\b(?:MA|MF|ML|AF|AL)\b)[^;])*?\bAA\b")
 # Past tense on the oldest lines is the outcome: "LAID ON THE TABLE",
 # "RE-REFERRED TO HEALTH", "REFERRED TO INTERIM STUDY", with no code after.
 J_DONE_VERB = re.compile(r"\b(?:laid|tabled|re-?referred|recommitted|referred|"
@@ -3370,14 +3387,16 @@ def _j_decide(seg, bid, rcs=(), date="", body=""):
     # sitting's motions in one clause: "REP HATCH SUBST ITL, ML RC
     # (149-201), PASSED/ADOPTED VV" (HB 18 of 1989) is a kill that failed
     # and then the bill passing. Each motion is read up to the next.
-    got = None
+    got, since = None, 0
     for i, (act, m) in enumerate(motions):
         end = motions[i + 1][1].start() if i + 1 < len(motions) else len(seg)
         begin = motions[i - 1][1].end() if i else 0
         one = _j_motion(seg, act, m, begin, end, len(motions) == 1,
-                        bid, (rcs, date, body))
+                        bid, (rcs, date, body), since)
         if one is not None:
             got = one
+            if one["act"] == "failed":
+                since = end
     # Killing every bill still on the table is how a chamber of the 1990s
     # and 2000s ended the ones it had tabled: "Reps. O'Neil and Craig move
     # ITL all bills on table, MA, VV" (HB 646 of 2006) -- a bill that died
@@ -3387,9 +3406,10 @@ def _j_decide(seg, bid, rcs=(), date="", body=""):
     return got
 
 
-def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", "")):
+def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", ""), since=0):
     """What one motion in a clause decided, or None: read from the clause
-    between its own words and the next motion's."""
+    between its own words and the next motion's. `since` is where the clause
+    starts to be about the motion that carried, after one that failed."""
     at = m.start()
     part = seg[at:end]
     if act == "accede" and not re.search(r"refus", seg, re.I):
@@ -3510,7 +3530,12 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", "")):
             out["act"] = "passed"
             if intro_adopt:
                 out["intro_adopt"] = True
-            out["amended"] = bool(J_AMENDED.search(seg[:end]))
+            # Not the words of a motion before it that failed: "Ought to Pass
+            # W/Amendment, {1683}, RC 6Y-16N, AF, Ought to Pass, MA, VV,
+            # OT3rdg, RC 22Y-1N, MA" (HB 546 of 1999) is the bill passing
+            # without the amendment, and read "Passed with an amendment".
+            out["amended"] = bool(J_AMENDED.search(seg[since:end])
+                                  or J_AMEND_ADOPTED.search(seg))
             # "Passed by Third Reading Resolution" (HB 118 of 2005, the day
             # after "Ought to Pass, RC 16Y-8N, MA") is the passage it names,
             # read a third time, and not a second one.
@@ -3574,7 +3599,8 @@ def _j_words(st, bid):
     if act == "referred":
         to = _j_second_committee(st.get("to"))
         money = to in {full for _rx, full in J_SECOND_COMMITTEE}
-        return (f"Approved and sent to {to or 'another committee'}" + long_,
+        return (("Approved with an amendment" if st.get("amended") else "Approved")
+                + f" and sent to {to or 'another committee'}" + long_,
                 f"to {to}" if money else "to committee")
     if act == "died":
         # The docket's words, not the status chip's: the rule killed it.
@@ -4051,11 +4077,19 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 # line says; the governor's act was the veto.
                 if got["act"] == "unsigned" and any(s["act"] == "override" for s in steps):
                     continue
-            if st["act"] == "passed" and (body, date) in amended:
-                st["amended"] = True
+            st["_row_day"] = date
             if st["act"] == "passed" and (body, date) in pending:
                 st["act"], st["to"] = "referred", pending.pop((body, date))
             steps.append(st)
+    # AN AMENDMENT ADOPTED THAT DAY AMENDS THAT DAY'S PASSAGE, whether the
+    # clerk entered it before the passage or after: "Sen. Fernald Moved Ought
+    # to Pass, RC 22y - 1n, MA" and then "Sen. Francoeur Floor Amendment
+    # {2837}, (New Title), RC 13y - 10n, AA" (SB 336 of 2002), the bill that
+    # went to the House amended.
+    for st in steps:
+        if st["act"] in ("passed", "referred") and (st["body"], st.get("_row_day")) in amended:
+            st["amended"] = True
+        st.pop("_row_day", None)
     # The governor's line where the history has none but the chapter's
     # line does: the same evidence, read the same way.
     if law_line and not any(s["body"] == "G" for s in steps):
@@ -4086,7 +4120,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
         keyed.append((carry, i, s))
     steps = [s for _d, _i, s in sorted(keyed, key=lambda x: (x[0], x[1]))]
     steps = _j_answers_after(steps, bid)
-    steps = _j_settle(steps)
+    steps = _j_settle(_j_amended_on(steps))
     # An introduction dated after the first decision on the bill is a date
     # the docket has wrong -- HB 113 of 2005's "Introduced and ref to Crim
     # Just & PSfty" stands at 1 December 2006, eleven months after the House
@@ -4156,6 +4190,26 @@ def _j_answers_after(steps, bid):
             continue
         out.insert(last, out.pop(i))
     return out
+
+
+def _j_amended_on(steps):
+    """Steps with a chamber's passage amended where the passage it sent to a
+    second committee was.
+
+    THE AMENDMENT GOES TO FINANCE WITH THE BILL. SB 538 of 2026 passed the
+    House "with Amendment 2026-1453h and 2026-1578h" on 23 April and went to
+    Finance, whose report the House passed on 14 May with no amendment of its
+    own -- and the rail's House stop read "voice vote", above the Senate
+    refusing "the House Amendment" that same day. The passage after the
+    second committee is the passage of the bill as the chamber amended it."""
+    held = set()
+    for s in steps:
+        if s["act"] == "referred" and s.get("amended"):
+            held.add(s["body"])
+        elif s["act"] == "passed" and s["body"] in held:
+            held.discard(s["body"])
+            s["amended"] = True
+    return steps
 
 
 def _j_merge(into, st):
