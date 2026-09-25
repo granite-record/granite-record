@@ -1,0 +1,353 @@
+# The nightly, on GitHub's machines: take the day's data from the General
+# Court, rebuild the whole site, check it, and publish only what passes.
+# reports/cloud/CLOUD_MOVE.md on the laptop is the plan this follows, and
+# nightly.py's docstring says what --runner changes. preflight.py holds this
+# file to its rules: only the secrets listed there, never echoed; the least
+# permission each job needs; production only behind its environment.
+#
+# THE SCHEDULE IS OFF until the person's supervised dry run has passed. To
+# turn it on, remove the "# " in front of the two schedule lines under "on:",
+# commit, and push to main. GitHub reads cron as UTC and has no time zone:
+# 06:17 UTC is 2:17 a.m. Eastern in summer (EDT) and 1:17 a.m. in winter
+# (EST). The :17 keeps away from the top of the hour, when scheduled runs start
+# late or are dropped.
+#
+# By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
+# its three boxes say; a scheduled night fetches, deploys a preview, and asks
+# for approval to publish.
+
+name: nightly
+run-name: >-
+  nightly ${{ github.event_name == 'schedule' && '(scheduled)'
+  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)') }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build and check; nothing goes to production"
+        type: boolean
+        default: true
+      fetch:
+        description: "Take the day's data from the General Court (website and database)"
+        type: boolean
+        default: false
+      preview:
+        description: "Deploy the build to nightly.graniterecord.pages.dev (needs the Pages token)"
+        type: boolean
+        default: true
+  # schedule:
+  #   - cron: "17 6 * * *"
+
+# The workflow's own token reads the repository and nothing else. The one job
+# that needs more, keepalive, asks for it itself.
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+  WRANGLER_SEND_METRICS: "false"
+  # A scheduled night fetches, previews, and may publish once approved. A run
+  # by hand does what its boxes say.
+  FETCH: ${{ github.event_name == 'schedule' || inputs.fetch }}
+  DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}
+  PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  night:
+    name: the night
+    runs-on: windows-2022
+    timeout-minutes: 240
+    # The preview's Pages token can live in this environment rather than in the
+    # repository's secrets; see the operator checklist.
+    environment:
+      name: preview
+      url: https://nightly.graniterecord.pages.dev
+    # One night at a time, and never beside the weekly job: a second start
+    # waits for the first rather than running beside it.
+    concurrency:
+      group: gc-night
+      cancel-in-progress: false
+    outputs:
+      built: ${{ steps.night.outputs.built }}
+      publishable: ${{ steps.night.outputs.publishable }}
+    steps:
+      - name: Tell Healthchecks the night has started
+        env:
+          HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
+        run: |
+          if (-not $env:HC_URL) {
+            Write-Output "No HEALTHCHECKS_URL secret, so no ping."
+            exit 0
+          }
+          curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL/start"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "Healthchecks did not answer. The night goes on without it."
+          }
+          exit 0
+
+      - name: Check out main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set the clock to New Hampshire's
+        run: |
+          tzutil /s "Eastern Standard Time"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Date -Format "yyyy-MM-dd HH:mm zzz"
+
+      - name: Python 3.14
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: "3.14"
+
+      - name: Node 24
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
+        with:
+          node-version: "24"
+
+      - name: The Python packages, at the laptop's versions
+        run: |
+          python -m pip install --disable-pip-version-check --no-input `
+            numpy==2.5.2 openpyxl==3.1.5 et-xmlfile==2.0.0 pdfplumber==0.11.10 `
+            pdfminer.six==20260107 pypdfium2==5.13.0 pillow==12.3.0 `
+            charset-normalizer==3.5.1 cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 `
+            PyYAML==6.0.3
+          exit $LASTEXITCODE
+
+      - name: Bring the state files down from R2 (the refusal record, last night's census)
+        id: statedown
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py state-down
+          exit $LASTEXITCODE
+
+      - name: Bring the kit down from R2
+        id: kitdown
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py kit-down
+          exit $LASTEXITCODE
+
+      # YouTube, not the General Court. An error fails the night, at its end,
+      # but does not stop the day's data being taken and built; YouTube having
+      # nothing new is not an error.
+      - name: New livestreams, from YouTube
+        id: livestreams
+        if: env.FETCH == 'true'
+        continue-on-error: true
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          if (-not (Test-Path livestreams.py)) {
+            Write-Output "livestreams.py is not in this commit yet, so this step does nothing."
+            exit 0
+          }
+          python livestreams.py --since-state
+          exit $LASTEXITCODE
+
+      - name: The night
+        id: night
+        run: |
+          $flags = @('--runner')
+          if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
+          if ($env:DRY_RUN -eq 'true') { $flags += '--dry-run' }
+          python nightly.py @flags
+          exit $LASTEXITCODE
+
+      # A refusal is a fact about the address, and the laptop has to know at
+      # once, not when the rest of the night has finished.
+      - name: A refusal goes to R2 at once
+        if: always() && steps.statedown.outcome == 'success' && hashFiles('archive/refused.json') != ''
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          Write-Output "A refusal is on file in archive/refused.json. It goes to R2's state/ now."
+          python cloud.py state-up
+          exit $LASTEXITCODE
+
+      - name: Deploy to the preview address
+        id: preview
+        if: always() && steps.night.outputs.built == 'true' && env.PREVIEW == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python nightly.py --runner --deploy-to preview
+          exit $LASTEXITCODE
+
+      - name: Pack the site for the publish job
+        id: pack
+        if: success() && steps.night.outputs.publishable == 'true' && env.DRY_RUN == 'false'
+        run: |
+          & "$env:SystemRoot\System32\tar.exe" -cf site.tar -C site .
+          exit $LASTEXITCODE
+
+      - name: Hand the site to the publish job
+        if: steps.pack.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: site-${{ github.run_id }}
+          path: site.tar
+          retention-days: 3
+          if-no-files-found: error
+
+      - name: Send what changed, and the logs, back to R2
+        id: kitup
+        if: always() && steps.kitdown.outcome == 'success'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py kit-up
+          exit $LASTEXITCODE
+
+      - name: The night's verdict
+        if: always()
+        run: |
+          python nightly.py --runner --close `
+            --outcome "state-down=${{ steps.statedown.outcome }}" `
+            --outcome "kit-down=${{ steps.kitdown.outcome }}" `
+            --outcome "livestreams=${{ steps.livestreams.outcome }}" `
+            --outcome "night=${{ steps.night.outcome }}" `
+            --outcome "preview=${{ steps.preview.outcome }}" `
+            --outcome "pack=${{ steps.pack.outcome }}" `
+            --outcome "kit-up=${{ steps.kitup.outcome }}"
+          exit $LASTEXITCODE
+
+      - name: Send the state files back to R2
+        if: always() && steps.statedown.outcome == 'success'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py state-up
+          exit $LASTEXITCODE
+
+      - name: Tell Healthchecks how the night ended
+        if: always()
+        env:
+          HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
+          ENDED: ${{ job.status }}
+        run: |
+          if (-not $env:HC_URL) {
+            Write-Output "No HEALTHCHECKS_URL secret, so no ping."
+            exit 0
+          }
+          $end = if ($env:ENDED -eq 'success') { '' } else { '/fail' }
+          curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL$end"
+          exit 0
+
+  # Production, and only through here. The "production" environment has the
+  # person as its required reviewer until five clean nights have passed, so
+  # this job waits for their approval; removing that rule is what makes
+  # publishing automatic. It deploys the very build the night checked (by
+  # fingerprint), and nightly.py refuses an older night's once a newer one
+  # has run.
+  publish:
+    name: publish to production
+    needs: night
+    if: needs.night.outputs.publishable == 'true' && (github.event_name == 'schedule' || inputs.dry_run == false)
+    runs-on: windows-2022
+    timeout-minutes: 60
+    environment:
+      name: production
+      url: https://graniterecord.org
+    steps:
+      - name: Check out main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set the clock to New Hampshire's
+        run: |
+          tzutil /s "Eastern Standard Time"
+          exit $LASTEXITCODE
+
+      - name: Python 3.14
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: "3.14"
+
+      - name: Node 24
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
+        with:
+          node-version: "24"
+
+      - name: Bring the state files down from R2, for the night's verdict
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py state-down
+          exit $LASTEXITCODE
+
+      - name: Tonight's site, from the night job
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16  # v4.1.8
+        with:
+          name: site-${{ github.run_id }}
+
+      - name: Unpack it
+        run: |
+          New-Item -ItemType Directory -Force site | Out-Null
+          & "$env:SystemRoot\System32\tar.exe" -xf site.tar -C site
+          exit $LASTEXITCODE
+
+      - name: Deploy to production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python nightly.py --runner --deploy-to production
+          exit $LASTEXITCODE
+
+  # GitHub switches a public repository's scheduled workflows off after 60
+  # days without activity in it. Each scheduled night re-enables this
+  # workflow through GitHub's own API, with the run's own token, which is the
+  # method keepalive tools use; Healthchecks' deadline catches the first
+  # missed night if it ever does not hold. It re-enables only itself, so a
+  # workflow the person switched off stays off.
+  keepalive:
+    name: keep the schedule alive
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable this workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if gh api --method PUT "repos/$REPO/actions/workflows/nightly.yml/enable" > /dev/null; then
+            echo "nightly.yml re-enabled"
+          else
+            echo "nightly.yml could not be re-enabled"
+            exit 1
+          fi

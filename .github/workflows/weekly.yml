@@ -1,0 +1,192 @@
+# Sunday night: the committee rosters, the members who have left, and the
+# study committees' members and bills -- the things the build reads that the
+# day's files do not carry. The same shape as the nightly (nightly.yml), in the
+# same concurrency group, so the two never run at once; it runs two hours
+# before Monday's night, which builds and publishes what it took. nightly.py's
+# weekly() says what each fetch is and how it is kept whole. It publishes
+# nothing and holds no Pages token.
+#
+# THE SCHEDULE IS OFF until the person turns it on, as for the nightly: remove
+# the "# " in front of the two schedule lines under "on:", commit, and push to
+# main. 04:17 UTC on Monday is 12:17 a.m. Eastern in summer (EDT) and
+# 11:17 p.m. on Sunday in winter (EST).
+
+name: weekly
+run-name: >-
+  weekly ${{ github.event_name == 'schedule' && '(scheduled)'
+  || (inputs.fetch && '(by hand, fetching)' || '(by hand, no fetch)') }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      fetch:
+        description: "Take the rosters and study committees from the General Court"
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+  FETCH: ${{ github.event_name == 'schedule' || inputs.fetch }}
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  weekly:
+    name: Sunday's fetches
+    runs-on: windows-2022
+    timeout-minutes: 120
+    concurrency:
+      group: gc-night
+      cancel-in-progress: false
+    steps:
+      - name: Check out main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set the clock to New Hampshire's
+        run: |
+          tzutil /s "Eastern Standard Time"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Date -Format "yyyy-MM-dd HH:mm zzz"
+
+      - name: Python 3.14
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: "3.14"
+
+      - name: Node 24, for preflight
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
+        with:
+          node-version: "24"
+
+      - name: The Python packages, at the laptop's versions
+        run: |
+          python -m pip install --disable-pip-version-check --no-input `
+            numpy==2.5.2 openpyxl==3.1.5 et-xmlfile==2.0.0 pdfplumber==0.11.10 `
+            pdfminer.six==20260107 pypdfium2==5.13.0 pillow==12.3.0 `
+            charset-normalizer==3.5.1 cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 `
+            PyYAML==6.0.3
+          exit $LASTEXITCODE
+
+      - name: Bring the state files down from R2 (the refusal record, last night's census)
+        id: statedown
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py state-down
+          exit $LASTEXITCODE
+
+      - name: Bring the kit down from R2
+        id: kitdown
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py kit-down
+          exit $LASTEXITCODE
+
+      - name: Sunday's fetches
+        id: weekly
+        run: |
+          $flags = @('--runner', '--weekly')
+          if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
+          python nightly.py @flags
+          exit $LASTEXITCODE
+
+      - name: A refusal goes to R2 at once
+        if: always() && steps.statedown.outcome == 'success' && hashFiles('archive/refused.json') != ''
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          Write-Output "A refusal is on file in archive/refused.json. It goes to R2's state/ now."
+          python cloud.py state-up
+          exit $LASTEXITCODE
+
+      - name: Send what changed, and the logs, back to R2
+        id: kitup
+        if: always() && steps.kitdown.outcome == 'success'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py kit-up
+          exit $LASTEXITCODE
+
+      - name: The weekly verdict
+        if: always()
+        run: |
+          python nightly.py --runner --weekly --close `
+            --outcome "state-down=${{ steps.statedown.outcome }}" `
+            --outcome "kit-down=${{ steps.kitdown.outcome }}" `
+            --outcome "weekly=${{ steps.weekly.outcome }}" `
+            --outcome "kit-up=${{ steps.kitup.outcome }}"
+          exit $LASTEXITCODE
+
+      - name: Send the state files back to R2
+        if: always() && steps.statedown.outcome == 'success'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python cloud.py state-up
+          exit $LASTEXITCODE
+
+      # Healthchecks' check expects the nightly each day, so the weekly job
+      # tells it only when it fails; a success here would stand in for a
+      # night that never ran.
+      - name: Tell Healthchecks the weekly job failed
+        if: failure()
+        env:
+          HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
+        run: |
+          if (-not $env:HC_URL) {
+            Write-Output "No HEALTHCHECKS_URL secret, so no ping."
+            exit 0
+          }
+          curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL/fail"
+          exit 0
+
+  # The 60-day pause, as in nightly.yml: this workflow re-enables itself each
+  # Sunday it runs, and only itself.
+  keepalive:
+    name: keep the schedule alive
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable this workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if gh api --method PUT "repos/$REPO/actions/workflows/weekly.yml/enable" > /dev/null; then
+            echo "weekly.yml re-enabled"
+          else
+            echo "weekly.yml could not be re-enabled"
+            exit 1
+          fi
