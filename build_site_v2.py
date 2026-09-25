@@ -4154,7 +4154,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
         carry = s["date"] or carry
         keyed.append((carry, i, s))
     steps = [s for _d, _i, s in sorted(keyed, key=lambda x: (x[0], x[1]))]
-    steps = _j_answers_after(steps, bid)
+    steps = _j_answers_after(_j_in_recess(steps), bid)
     steps = _j_settle(_j_amended_on(steps))
     # An introduction dated after the first decision on the bill is a date
     # the docket has wrong -- HB 113 of 2005's "Introduced and ref to Crim
@@ -4224,6 +4224,39 @@ def _j_answers_after(steps, bid):
             i += 1
             continue
         out.insert(last, out.pop(i))
+    return out
+
+
+def _j_in_recess(steps):
+    """Steps with an answer to the other chamber's amendment that the docket
+    dates before the amendment was made put after it, undated.
+
+    A CHAMBER IN RECESS DATES ITS BUSINESS BY THE SITTING IT RECESSED. "House
+    Non-Concurs and Requests Committee of Conference (Rep Hinch): MA VV (in
+    recess of 6/3/2015)" was entered on 5 June; the Senate passed the
+    amendments it refuses on the 4th, and the House Journal of the 3 June
+    sitting prints them "Amendments printed SJ 6-4-15". The 1999 and 2005
+    budgets' "6/23/1999 House Nonc with Sen Am" and "06/08/2005 House Nonc"
+    are the same, a day before the Senate's passage. The day the House acted
+    is after the Senate's and the row does not say it, so the line goes after
+    the passage it answers with no day, rather than a day before it. Only
+    within a week of that passage: HB 109 of 1999's refusal of 30 March is
+    the answer to a Senate passage of 25 March its docket writes in words
+    the journey does not read, not to the one of October."""
+    out = list(steps)
+    i = 0
+    while i < len(out):
+        s = out[i]
+        other = {"H": "S", "S": "H"}.get(s["body"])
+        later = [j for j, t in enumerate(out) if t["body"] == other
+                 and t["act"] == "passed" and t["date"]]
+        if (s["act"] in ("concurred", "nonconcurred") and s["date"] and later
+                and all(out[j]["date"] > s["date"] for j in later)
+                and _j_days(out[later[0]]["date"], s["date"]) <= 7 and later[0] > i):
+            s["date"] = ""
+            out.insert(later[0], out.pop(i))
+            continue
+        i += 1
     return out
 
 

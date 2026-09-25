@@ -4703,6 +4703,35 @@ def _journey_reads(build_site_v2):
                         "Report RC 17Y-7N, Non Adopt", "other"))[1],
          [("2001-06-26", "S", "conf_rejected", "Rejected the conference report, 17–7")],
          "SB69 2001")
+    # AN ANSWER DONE IN RECESS goes after the amendment it answers, with no
+    # day, where the docket dates it by the sitting the chamber recessed: HB
+    # 2 of 2015's House refused the Senate's amendments a day before the
+    # Senate made them. HB 25 of 1999's refusal, dated the day of the House's
+    # own passage, took that passage's place.
+    want(run("HB2", ev("H", "2015-04-01", "Ought to Pass with Amendment #1163h, 1224h, 1162h, "
+                                          "1196h: MA RC 194-179"),
+             ev("H", "2015-06-03", "House Non-Concurs and Requests Committee of Conference (Rep "
+                "Hinch): MA VV (in recess of 6/3/2015)"),
+             ev("S", "2015-06-04", "Ought to Pass with Amendments 1986s, 2005, and 2076s, RC "
+                "14Y-10N, MA; OT3rdg"))[1],
+         [("2015-04-01", "H", "passed", "Passed with an amendment, 194–179"),
+          ("2015-06-04", "S", "passed", "Passed with an amendment, 14–10"),
+          ("", "H", "nonconcurred", "Refused the Senate's amendment and asked for a committee "
+           "of conference on a voice vote")], "HB2 2015")
+    want([x[:3] for x in run(
+        "HB25", ev("H", "1999-06-23", "Fin Comm Am, AA VV; Passed with Am RC(273-18)"),
+        ev("S", "1999-06-24", "Senator Larsen offered a floor amendment (1818), AA, VV; OT3rdg, "
+           "RC 17Y - 4N, MA"),
+        ev("H", "1999-06-23", "6/23/1999 House Nonc with Sen Am req Conf Comm, Rep French MA"))[1]],
+         [("1999-06-23", "H", "passed"), ("1999-06-24", "S", "passed"),
+          ("", "H", "nonconcurred")], "HB25 1999")
+    # Not a week or more before the passage: HB 109 of 1999's refusal of 30
+    # March answers a Senate passage of 25 March, not the one of October.
+    want([x[:3] for x in run(
+        "HB109", ev("H", "1999-03-30", "Rep Kurk moved to nonconcur with Sen Am, MA RC(211-168)"),
+        ev("S", "1999-10-22", "Sen. Below Floor Amendment {2166} New Title RC, (15-8) AA, OT3rdg, "
+           "MA, VV", "amendment"))[1]],
+         [("1999-03-30", "H", "nonconcurred"), ("1999-10-22", "S", "passed")], "HB109 1999")
     # A semicolon in a list of amendments is not the end of the motion: HB
     # 1636 of 2018's refusal lost its count, and the failed motion before it
     # read as a refusal too.
