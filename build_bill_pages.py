@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.55
+# GRANITE_VERSION: 2026-09-04.56
 """
 Write a real address for every bill, and the sitemap that points at them.
 
