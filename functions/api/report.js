@@ -58,9 +58,11 @@ export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Videos", "Rep
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,
-// committees by code (H05, s100).
-const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3})$/;
-const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3})$/;
+// committees by code (H05, s100) -- or, for a committee the General Court
+// filed under a code it later gave a different one, by the code and the first
+// year of its run (S03-1989, 25 September), which no code of theirs can be.
+const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?)$/;
+const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?)$/;
 const BUILD = /^[0-9T:.+\-Z]{0,40}$/;
 // A legislator's address is the slug build_site_v2.member_slug writes: the
 // name, then the county or "sd", then the district, lowercased, with every run
