@@ -1673,8 +1673,21 @@ def weeks_from(rows, names=None):
                 # gives no time; the docket's notice gives the time and room.
                 # Where the bill's card has both, the untimed row is the same
                 # sitting again, and listed it would count the bill twice.
-                if BP.is_conference(key) and any(x["time"] for x in rs):
-                    rs[:] = [x for x in rs if x["time"]]
+                # AND TWO RECORDINGS OF ONE CONFERENCE ARE ONE LINE. HB 1709's
+                # conference on 26 May 2026 is in the floor index twice -- in
+                # a video of five bills' conferences and in one of its own --
+                # with no notice to give either a time, so neither was folded
+                # into a timed row, and its card listed HB 1709 twice and said
+                # "2 bills" under a title naming one. A card's line carries no
+                # video, so two identical lines are one line said twice.
+                if BP.is_conference(key):
+                    kept, seen = [], set()
+                    for x in [x for x in rs if x["time"]] or rs:
+                        sig = tuple(sorted(x.items()))
+                        if sig not in seen:
+                            seen.add(sig)
+                            kept.append(x)
+                    rs[:] = kept
                     continue
                 src = [x for x in rs if x.get("study") and x["what"] != "cancelled"]
                 if len(src) != 1:
