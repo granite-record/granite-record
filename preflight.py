@@ -618,6 +618,51 @@ def _unsigned_status(build_site_v2):
     return "ok", f"{label} / {build_site_v2.next_step(n, {})}"
 
 
+@check("status", "the status box never claims another kind of status than the chip",
+       needs=("build_site_v2",))
+def _next_step_agrees(build_site_v2):
+    """next_step() reads the last docket event, and that is often not the one
+    that decided the bill. HB 691 of 2025's last row is the House killing it,
+    190-156 -- a floor row, so the box read "Pending action in the other
+    chamber" under "Killed"; HB 675 of 2026's is a failed motion to
+    reconsider its kill; HR 24 of 2000's is a rules suspension, read as
+    "Adopted" under "In committee"; HB 542 of 2011, overridden and Chapter
+    271, read "The override failed". 130 records of 2025-2026 and two of
+    closed terms. The General Court's own field wording, and a line that
+    says the same thing as the chip in other words, are left as they are."""
+    B = build_site_v2
+    now = "2025-2026"
+    hb691 = _nar(_ev("H", "Committee Report: Inexpedient to Legislate 02/12/2025 (Vote 14-1; CC)",
+                     "report"),
+                 _ev("H", "Inexpedient to Legislate: MA RC 190-156 03/06/2025", "floor", "MA",
+                     "Inexpedient to Legislate"))
+    step = B.next_step(hb691, {}, "HB")
+    assert step.startswith("Pending"), (
+        f"HB 691's last row no longer reads as pending ({step!r}), so this "
+        "check no longer exercises the case it was written for")
+    bad = []
+    for step, status, term, kind, want in (
+            (step, "Killed", now, "done", "Killed"),
+            ("In progress", "In a committee of conference", now, "done",
+             "In a committee of conference"),
+            ("Adopted. A resolution of one chamber goes no further", "In committee",
+             "1999-2000", "done", "In committee"),
+            ("Vetoed. The override failed and the bill is dead",
+             "Veto overridden, became law", "2011-2012", "law", "Veto overridden, became law"),
+            # Left alone: the same claim in other words, the fields, a live bill.
+            ("Vetoed. The override failed and the bill is dead", "Vetoed, override failed",
+             now, "veto", None),
+            ("Became law without the governor's signature", "Became law unsigned", now, "law", None),
+            ("Died when the session ended", "Died on the table", now, "done", None),
+            ("House: INEXPEDIENT TO LEGISLATE", "Killed", now, "done", None),
+            ("Pending action in the other chamber", "Passed one chamber", now, "active", None)):
+        got = B.settled_step(step, status, term, now, kind)
+        if got != (want or step):
+            bad.append(f"{step[:30]!r} under {status!r}: {got!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", "a pending, adopted or vetoed line gives way to a chip of another kind"
+
+
 def _ev(body, raw, type_="other", motion=None, action=None, date="2026-01-01"):
     return {"body": body, "raw": raw, "type": type_, "motion": motion,
             "action": action, "cancelled": False, "date": date}

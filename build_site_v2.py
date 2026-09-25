@@ -5626,11 +5626,38 @@ def vote_note_for(narr, rollcalls):
 
 PENDING = re.compile(r"(In progress|In committee|Pending|Enrolled\.)", re.I)
 
+# WHAT A next_step() LINE CLAIMS, as the kind of status it would sit under.
+# next_step() reads the LAST event, and the last event is often not the one
+# that decided the bill: HB 691 of 2025's is the House killing it, 190-156, a
+# floor row, so it read "Pending action in the other chamber"; HB 675 of 2026's
+# is a failed motion to reconsider the kill; HR 24 of 2000's is a rules
+# suspension, which a one-chamber resolution read as "Adopted" under a chip
+# saying "In committee". The General Court's own field wording ("House:
+# INEXPEDIENT TO LEGISLATE") is not one of these and is left as it is. Most
+# specific first: "Vetoed, then overridden" is law, not a veto.
+STEP_CLAIM = [
+    (re.compile(r"(?:Signed into law|Became law|Vetoed, then overridden)"), "law"),
+    (re.compile(r"Vetoed"), "veto"),
+    (re.compile(r"(?:Adopted|Goes to the voters)"), "adopted"),
+    (re.compile(r"Died\b"), "done"),
+    (re.compile(r"(?:In progress|In committee|Pending|Enrolled\.|Retained)"), "active"),
+]
 
-def settled_step(step, status, term, current):
-    """The status box, with nothing left pending once a term has closed."""
+
+def settled_step(step, status, term, current, kind=""):
+    """The status box, with nothing left pending once a term has closed, and
+    never claiming what the status does not: a line that says the bill is
+    still moving, adopted, law or vetoed, under a status of another kind,
+    gives way to the status. Once the session was over, 130 records of
+    2025-2026 claimed another kind of status than their chip -- 93 of them
+    "Pending action in the other chamber" under "Killed", and HR 30
+    "Adopted" under "Killed" -- and two of closed terms did: HR 24 of 2000,
+    and HB 542 of 2011, overridden and Chapter 271, "The override failed"."""
     if term != current and PENDING.match(step or ""):
         return status or step
+    claim = next((k for rx, k in STEP_CLAIM if rx.match(step or "")), "")
+    if kind and status and claim and claim != kind:
+        return status
     return step
 
 
@@ -6027,10 +6054,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # box read "In progress" or "Pending a vote of the full chamber"
             # under a chip saying what became of the bill -- 488 bills once
             # the 1989-2016 histories arrived. The chip's own words are the
-            # answer there; the current term is untouched.
+            # answer there. In any term, a line claiming another kind of
+            # status than the chip's gives way to it (STEP_CLAIM).
             "next_step": settled_step(
                 bill_next_step(narr, b, prefix, st, settled, told),
-                status, term, current),
+                status, term, current, kind),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
             # "General Court docket" where a dated docket line decided the
