@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.2
+# GRANITE_VERSION: 2026-09-24.3
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.

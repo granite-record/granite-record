@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.7
+# GRANITE_VERSION: 2026-09-20.8
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
