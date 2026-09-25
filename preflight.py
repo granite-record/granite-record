@@ -194,8 +194,14 @@ def _upcoming_shape():
         assert not bad, (f"{len(bad)} of {len(up)} upcoming items do not "
                          "name a bill as a string: "
                          + json.dumps(bad[0])[:140])
+        # AND ITS CHAMBER. A committee page's Upcoming session tells House
+        # Judiciary's sitting from Senate Judiciary's by it, because a bill
+        # that crossed is on both committees' lists (_cmte_match_chamber).
+        nobody = [u for u in up if u.get("body") not in ("H", "S")]
+        assert not nobody, (f"{len(nobody)} of {len(up)} upcoming items do not say "
+                            "whose sitting they are: " + json.dumps(nobody[0])[:140])
         return "ok", (f"{len(up)} upcoming on the fixture, each naming a bill "
-                      "as a string -- the shape build_feeds.py needs")
+                      "as a string -- the shape build_feeds.py needs -- and its chamber")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -4244,6 +4250,67 @@ def _cmte_match():
     assert r.returncode == 0, (r.stdout or r.stderr).strip()[-400:]
     n = sum(1 for ln in r.stdout.splitlines() if "[ ok ]" in ln)
     return "ok", f"{n} cases, including both chambers' Finance"
+
+
+@check("frontend", "a committee page's Upcoming session shows its own chamber's sittings, on a bill both chambers list")
+def _cmte_match_chamber():
+    """House Judiciary's executive session on SB 519, 30 September 2026 at
+    10:00 in GP 230, was on Senate Judiciary's page.
+
+    cmteUpcoming matched a scheduled row on the committee's name and on a bill
+    from the committee's own list for the term, and a bill that crosses is on
+    both chambers' lists: SB 519 is Senate Judiciary's and House Judiciary's.
+    home.json's row named no chamber, so nothing else could tell them apart.
+    Replayed over every day of 2025-2026, 719 sittings were shown on the
+    other chamber's page, on 384 days; on the day this was found, three --
+    that one and House Ways and Means' two on SB 542, on Senate Ways and
+    Means's page.
+
+    tests/test_cmte_match.js runs the rule on the built committee records and
+    skips without them; this runs it on two records written here, so it holds
+    under --code. The function is read out of app.js by source text, as that
+    test reads it.
+    """
+    node = shutil.which("node") or shutil.which("node.exe")
+    js = Path("app.js")
+    if not (node and js.exists()):
+        return "skip", "app.js or node is not here"
+    m = re.search(r"function cmteUpcoming\(c\)\{[\s\S]*?\n\}", js.read_text(encoding="utf-8"))
+    assert m, "cmteUpcoming is not in app.js"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cmteup-"))
+    try:
+        (tmp / "fn.js").write_text(m.group(0), encoding="utf-8")
+        (tmp / "go.js").write_text(r"""
+const fs = require("fs");
+let UPCOMING = null;
+eval(fs.readFileSync("./fn.js", "utf8"));
+const H10 = {code: "H10", name: "Judiciary", chamber: "H",
+             bills: {"2025-2026": [{id: "SB519"}, {id: "HB88"}]}};
+const S10 = {code: "S10", name: "Judiciary", chamber: "S",
+             bills: {"2025-2026": [{id: "SB519"}]}};
+const row = {date: "2026-09-30", time: "10:00", bill: "SB519", term: "2025-2026",
+             committee: "Judiciary", what: "executive session", venue: "GP 230"};
+const out = {};
+UPCOMING = [Object.assign({body: "H"}, row)];
+out.house = cmteUpcoming(H10).map(u => u.bill);
+out.senate = cmteUpcoming(S10).map(u => u.bill);
+UPCOMING = [Object.assign({body: "S"}, row)];
+out.house_of_senate = cmteUpcoming(H10).map(u => u.bill);
+out.senate_of_senate = cmteUpcoming(S10).map(u => u.bill);
+process.stdout.write(JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=tmp, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+        got = json.loads(r.stdout)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    want = {"house": ["SB519"], "senate": [], "house_of_senate": [], "senate_of_senate": ["SB519"]}
+    assert got == want, (
+        f"House Judiciary's sitting on SB 519 of 30 September 2026 lands as {got}; wanted {want}: "
+        "a bill both chambers' committees list does not say whose sitting it is, and the row's "
+        "chamber does")
+    return "ok", ("House Judiciary's sitting on SB 519 is on House Judiciary's page and not on "
+                  "Senate Judiciary's, which lists SB 519 too")
 
 
 def _strip_js_comments(js):

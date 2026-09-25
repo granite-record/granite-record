@@ -7491,9 +7491,17 @@ def main():
         for pr in ps:
             d = pr.get("sched_date", "")
             if today <= d <= soon:
+                # THE CHAMBER, because the name does not say it. A committee
+                # page's Upcoming session (app.js cmteUpcoming) matched a row
+                # on the name and on a bill of its own list, and a bill both
+                # chambers' committees list matches both: House Judiciary's
+                # sitting on SB 519 of 30 September 2026 was on Senate
+                # Judiciary's page, and replayed over 2025-2026, 719 sittings
+                # were on the other chamber's page on 384 days.
                 upcoming.append({"date": d, "time": pr.get("sched_time"),
                                  "bill": bid, "term": term_,
                                  "committee": pr.get("committee"),
+                                 "body": pr.get("body"),
                                  "what": pr.get("proceeding"),
                                  "venue": pr.get("venue")})
     upcoming.sort(key=lambda x: (x["date"], x["time"] or ""))
