@@ -920,6 +920,21 @@ def _between_chambers(build_site_v2):
                  "floor", "MA"))
     d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026", term_over=True)
     want("One chamber did not concur", d.status, "SB34 2026")
+    # HB 549 of 1991: both chambers' fields say PASSED/ADOPTED, the Senate's
+    # WITH AMENDMENT, and the House never took the amendment up -- not
+    # "Passed one chamber". A House resolution the docket shows "Introduced
+    # and Adopted" (HR 13 of 2007) is not "In committee".
+    st = {"gen_status": "SENATE", "house_status": "PASSED/ADOPTED WITH AMENDMENT",
+          "senate_status": "PASSED/ADOPTED WITH AMENDMENT"}
+    n = _nar(_ev("H", "APPROP AM, AA VV; PASSED WITH AM VV; HJ65,P1476 + 1480", "floor", "MA",
+                 "Passed with Am"),
+             _ev("S", "FL AM (NEW TITLE), AA VV; SEN W. KING FL AM (NEW TITLE), AA VV; PASSED WITH "
+                      "AM VV; SJ34,P696-697 + 699", "floor", "MA", "Passed with Am"))
+    want("Died when the session ended", B.bill_disposition({}, "HB549", st, n, [], "1991-1992",
+                                                           "2025-2026").status, "HB549 1991")
+    want("Adopted by the House", B.bill_disposition(
+        {}, "HR13", {"gen_status": "HOUSE", "house_status": "", "senate_status": ""},
+        _nar(_ev("H", "Introduced and Adopted")), [], "2007-2008", "2025-2026").status, "HR13 2007")
     # HB 1432 of 2022: the conference asked for was refused, so none sat.
     n = _nar(_ev("H", "House Non-Concurs with Senate Amendment 2022-1837s and Requests CofC (Reps. McConkey, Milz, B. Boyd, Fedolfi): MA VV 05/05/2022", "floor", "MA"),
              _ev("S", "Sen. Birdsell Refused to Accede to House Request for Committee of Conference, MA, VV; 05/12/2022", "floor", "MA"))
@@ -4824,9 +4839,38 @@ def _journey_reads(build_site_v2):
              ev("H", "2025-03-13", "Referred to Executive Departments and Administration "
                 "03/13/2025", "rereferred"),
              ev("H", "2025-04-10", "Inexpedient to Legislate: MA DV 193-177 04/10/2025"))[1],
-         [("2025-03-13", "H", "referred", "Approved and sent to Executive Departments and "
-           "Administration on a voice vote"),
+         [("2025-03-13", "H", "referred", "Approved with an amendment and sent to Executive "
+           "Departments and Administration on a voice vote"),
           ("2025-04-10", "H", "killed", "Killed, 193–177")], "HB493 2025")
+    # THE AMENDMENT GOES TO FINANCE WITH THE BILL. SB 538 of 2026's House
+    # stop read "voice vote" beside the Senate refusing the House amendment.
+    want(run("SB538",
+             ev("H", "2026-04-23", "Amendment # 2026-1453h: AA VV 04/23/2026", "amendment"),
+             ev("H", "2026-04-23", "FLAM # 2026-1578h (Rep. Vose): AA VV 04/23/2026", "other"),
+             ev("H", "2026-04-23", "Ought to Pass with Amendment 2026-1453h and 2026-1578h: MA "
+                "VV 04/23/2026"),
+             ev("H", "2026-04-23", "Referred to Finance 04/23/2026", "rereferred"),
+             ev("H", "2026-05-14", "Ought to Pass: MA VV 05/14/2026"))[1],
+         [("2026-04-23", "H", "referred", "Approved with an amendment and sent to Finance on a "
+           "voice vote"),
+          ("2026-05-14", "H", "passed", "Passed with an amendment on a voice vote")],
+         "SB538 2026")
+    # And an amendment in the clause that passes the bill, before the third
+    # reading or after the motion, or in a row entered after the passage's.
+    want(run("HB117", ev("S", "1999-04-22", "Sen. Larsen Floor Amendment {0965}, AA, VV, "
+                                            "OT3rdg, RC 14Y-8N, MA", "amendment"))[1],
+         [("1999-04-22", "S", "passed", "Passed with an amendment, 14–8")], "HB117 1999")
+    want(run("HB626", ev("S", "1999-06-29", "Ought to Pass, MA, VV, Sen. Brown Floor Amendment, "
+                                            "{1865}, RC 14Y-8N, AA"))[1],
+         [("1999-06-29", "S", "passed", "Passed with an amendment, 14–8")], "HB626 1999")
+    want(run("SB336", ev("S", "2002-02-20", "Sen. Fernald Moved Ought to Pass, RC 22y - 1n, MA"),
+             ev("S", "2002-02-20", "Sen. Francoeur Floor Amendment {2837}, (New Title), RC 13y "
+                "- 10n, AA", "amendment"))[1],
+         [("2002-02-20", "S", "passed", "Passed with an amendment, 22–1")], "SB336 2002")
+    # Not a motion to pass it amended that failed before the one that carried.
+    want(run("HB546", ev("S", "1999-06-22", "Ought to Pass W/Amendment, {1683}, RC 6Y-16N, AF, "
+                                            "Ought to Pass, MA, VV, OT3rdg, RC 22Y-1N, MA"))[1],
+         [("1999-06-22", "S", "passed", "Passed, 22–1")], "HB546 1999")
     # Unless its chair waived the referral: HB 243 of 2025 passed the House.
     want(run("HB243",
              ev("H", "2025-02-20", "Ought to Pass: MA VV 02/20/2025"),
@@ -4875,7 +4919,8 @@ def _journey_reads(build_site_v2):
                                            "VV; REPS A TORR & TROMBLY SUSP"),
                               ev("H", "1996-02-21", "RULES TO REF TO FINANCE, MA 2/3VV; "
                                  "HJ30,P1078", "other"))[1]],
-         [("referred", "Approved and sent to Finance on a voice vote")], "HB1162 1996")
+         [("referred", "Approved with an amendment and sent to Finance on a voice vote")],
+         "HB1162 1996")
     # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE.
     want(run("HB131", ev("H", "2026-07-02", "Signed by Governor Ayotte 07/02/2026; Chapter 205; "
                          "eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026", "governor"),
@@ -4902,8 +4947,30 @@ def _journey_reads(build_site_v2):
     want(run("HB1650", ev("S", "2022-01-05", "Ought to Pass : MA, VV; OT3rdg; Read a Third Time, "
                           "and Final Passage in the early session, MA, VV; 01/05/2022"),
              ev("H", "2022-01-10", "Adopted and read a 3rd time MA VV 01/05/22", "other"))[1],
-         [("2022-01-05", "S", "passed", "Passed on a voice vote"),
-          ("2022-01-05", "H", "passed", "Passed on a voice vote")], "HB1650 2022")
+         # The House first: the bill's number names it, whatever order the
+         # two rows of that day were entered in.
+         [("2022-01-05", "H", "passed", "Passed on a voice vote"),
+          ("2022-01-05", "S", "passed", "Passed on a voice vote")], "HB1650 2022")
+    # And the sitting a row was entered ahead of: HB 1573 of 2024's Senate
+    # adopted the report on 13 June (Senate Journal 17), not the 12th, when
+    # it did not sit. Not a weekend: SB 152 of 2017's row states a Sunday.
+    want(run("HB1573", ev("S", "2024-06-12", "Conference Committee Report #2024-2290c , Adopted, "
+                                             "VV; 06/13/2024", "other"), term="2023-2024")[1],
+         [("2024-06-13", "S", "conf_adopted", "Adopted the conference report on a voice vote")],
+         "HB1573 2024")
+    want(run("SB152", ev("S", "2017-03-16", "Ought to Pass with Amendment 2017-0797s, MA, VV; "
+                                            "OT3rdg; 03/19/2017"), term="2017-2018")[1][0][0],
+         "2017-03-16", "SB152 2017")
+    # Nor after the governor acted: HB 377 of 2025's Senate adoption of 26
+    # June was entered on 3 November, three months after the signature.
+    want([x[:3] for x in run(
+        "HB377", ev("H", "2025-06-26", "Conference Committee Report 2025-2809c: Adopted, RC "
+                                       "202-161 06/26/2025", "other"),
+        ev("H", "2025-08-01", "Signed by Governor Ayotte 08/01/2025", "governor"),
+        ev("S", "2025-11-03", "Conference Committee Report # 2025-2809c; RC 16Y-8N, Adopted; "
+                              "06/26/2025", "other"), term="2025-2026")[1]],
+         [("2025-06-26", "H", "conf_adopted"), ("2025-06-26", "S", "conf_adopted"),
+          ("2025-08-01", "G", "signed")], "HB377 2025")
     # THE OPPOSITE OF THE DOCKET. The chair's ruling sustained is no veto.
     want([x[1:3] for x in run("HB1075", ev("H", "1998-05-14", "RULING OF CHR", "amendment"),
                               ev("H", "1998-05-14", "SUSTAINED VV; PASSED WITH AM RC(233-122); "
@@ -4913,6 +4980,158 @@ def _journey_reads(build_site_v2):
                         "Report RC 17Y-7N, Non Adopt", "other"))[1],
          [("2001-06-26", "S", "conf_rejected", "Rejected the conference report, 17–7")],
          "SB69 2001")
+    # AN ANSWER DONE IN RECESS goes after the amendment it answers, with no
+    # day, where the docket dates it by the sitting the chamber recessed: HB
+    # 2 of 2015's House refused the Senate's amendments a day before the
+    # Senate made them. HB 25 of 1999's refusal, dated the day of the House's
+    # own passage, took that passage's place.
+    want(run("HB2", ev("H", "2015-04-01", "Ought to Pass with Amendment #1163h, 1224h, 1162h, "
+                                          "1196h: MA RC 194-179"),
+             ev("H", "2015-06-03", "House Non-Concurs and Requests Committee of Conference (Rep "
+                "Hinch): MA VV (in recess of 6/3/2015)"),
+             ev("S", "2015-06-04", "Ought to Pass with Amendments 1986s, 2005, and 2076s, RC "
+                "14Y-10N, MA; OT3rdg"))[1],
+         [("2015-04-01", "H", "passed", "Passed with an amendment, 194–179"),
+          ("2015-06-04", "S", "passed", "Passed with an amendment, 14–10"),
+          ("", "H", "nonconcurred", "Refused the Senate's amendment and asked for a committee "
+           "of conference on a voice vote")], "HB2 2015")
+    want([x[:3] for x in run(
+        "HB25", ev("H", "1999-06-23", "Fin Comm Am, AA VV; Passed with Am RC(273-18)"),
+        ev("S", "1999-06-24", "Senator Larsen offered a floor amendment (1818), AA, VV; OT3rdg, "
+           "RC 17Y - 4N, MA"),
+        ev("H", "1999-06-23", "6/23/1999 House Nonc with Sen Am req Conf Comm, Rep French MA"))[1]],
+         [("1999-06-23", "H", "passed"), ("1999-06-24", "S", "passed"),
+          ("", "H", "nonconcurred")], "HB25 1999")
+    # Not a week or more before the passage: HB 109 of 1999's refusal of 30
+    # March answers a Senate passage of 25 March, not the one of October.
+    want([x[:3] for x in run(
+        "HB109", ev("H", "1999-03-30", "Rep Kurk moved to nonconcur with Sen Am, MA RC(211-168)"),
+        ev("S", "1999-10-22", "Sen. Below Floor Amendment {2166} New Title RC, (15-8) AA, OT3rdg, "
+           "MA, VV", "amendment"))[1]],
+         [("1999-03-30", "H", "nonconcurred"), ("1999-10-22", "S", "passed")], "HB109 1999")
+    # One made in recess answers the passage the other chamber made again
+    # after reconsidering the first: HB 1409 of 2014.
+    want([x[:3] for x in run(
+        "HB1409", ev("S", "2014-05-15", "Ought to Pass with Amendment 1733s, NT, MA, RC 23-1; "
+                                        "OT3rdg"),
+        ev("H", "2014-05-15", "Rep. Chandler moved to Non-Concur with Senate AM and request C of "
+           "C; MA VV (In recess of 5/15/2014)"),
+        ev("S", "2014-05-16", "Sen. Bradley Moved Reconsideration on Ought to Pass with "
+           "Amendment, MA, VV"),
+        ev("S", "2014-05-16", "Ought to Pass with Amendment 1733s, NT, MA, RC 24-0; OT3rdg"))[1]],
+         [("2014-05-15", "S", "passed"), ("2014-05-16", "S", "passed"),
+          ("", "H", "nonconcurred")], "HB1409 2014")
+    # A DECISION RECONSIDERED ON A LATER DAY says so. HB 628 of 1994's Senate
+    # refused a conference and, five days later, reconsidered and acceded;
+    # SCR 6 of 2006's House killed it 149-147 and a week later reconsidered.
+    want(run("HB628", ev("S", "1994-05-12", "SEN REFUSED TO ACCEDE TO REQ FOR CONF COMM, SEN "
+                                            "MACDONALD MA VV", "other"),
+             ev("S", "1994-05-17", "SEN MACDONALD MOVED TO RECONSIDER REQ TO ACCEDE, MA VV"),
+             ev("S", "1994-05-17", "SEN ACCEDED TO REQ FOR CONF COMM, SEN MACDONALD MA VV"))[1],
+         [("1994-05-12", "S", "conf_refused", "Refused a committee of conference on a voice "
+           "vote, reconsidered on 17 May")], "HB628 1994")
+    want(run("SCR6", ev("H", "2006-04-12", "ITL, MA, RC (149-147)"),
+             ev("H", "2006-04-19", "(Rep. Graham) Reconsideration, MA, Div (174-160)", "other"),
+             ev("H", "2006-04-19", "ITL, ML, RC (144-190)"),
+             ev("H", "2006-04-19", "Passed with AM {1725h}, MA, RC (198-140)"))[1],
+         [("2006-04-12", "H", "killed", "Killed, 149–147, reconsidered on 19 Apr"),
+          ("2006-04-19", "H", "passed", "Adopted with an amendment, 198–140")], "SCR6 2006")
+    # Not a decision the motion does not name, nor, where it names none, one
+    # the chamber has voted past: HB 1025 of 1992's House reconsidered its
+    # request for a new conference, and HR 1 of 1997's an amendment to its
+    # rules.
+    want([x[3] for x in run("HB1025", ev("H", "1992-05-06", "CONF COMM REPORT ADOPTED VV"),
+                            ev("H", "1992-05-07", "REP GROSS MOVED TO RECONSIDER REQ FOR NEW "
+                               "CONF COMM, MA VV; REP GROSS MOVED TO DISCHARGE CONF COMM & REQ "
+                               "NEW CONF COMM, ML VV"))[1]],
+         ["Adopted the conference report on a voice vote"], "HB1025 1992")
+    want([x[3] for x in run("HR1", ev("H", "1996-12-04", "29(B), AA VV; AM ADOPTED VV; PASSED WITH "
+                                                         "AM VV"),
+                            ev("H", "1997-01-08", "RULES COMM AM<0024>, AA VV", "amendment"),
+                            ev("H", "1997-01-29", "SEC 35(B), AL VV; SEC 45(C), AL RC(186-186); "
+                               "REP CHAMPAGNE MOVED TO RECONSIDER, MA RC(211-160)"))[1]],
+         ["Adopted with an amendment on a voice vote"], "HR1 1997")
+    # Nor one the chamber took something else up ahead of that day: a
+    # suspension of the rules it refused (HB 322 of 1991), a motion with no
+    # vote beside it (SB 796 of 1994), a concurrence in the same clause (SB
+    # 326 of 2000). Each marked a decision of weeks before as reconsidered.
+    want(run("HB322", ev("S", "1991-05-28", "COMM AM, AA VV; PASSED WITH AM VV; SJ28,P467-468 + 479"),
+             ev("H", "1991-05-29", "HOUSE NONC WITH SEN AM REQ CONF COMM, REP D. SYTEK MA VV; HJ86"),
+             ev("H", "1991-06-27", "REPS GROSS & CHAMBERS MOVED TO SUSP RULES, ML DIV(213-115); "
+                "HJ96, P2092"),
+             ev("H", "1991-06-27", "REP KURK MOVED TO RECONSIDER, MA VV; REPS GROSS & CHAMBERS SUSP"),
+             ev("H", "1991-06-27", "RULES TO CONSIDER, MA DIV(230-105); CONF COMM REPORT ADOPTED VV; "
+                "HJ96,P2092"))[1],
+         [("1991-05-28", "S", "passed", "Passed with an amendment on a voice vote"),
+          ("1991-05-29", "H", "nonconcurred", "Refused the Senate's amendment and asked for a "
+           "committee of conference on a voice vote"),
+          ("1991-06-27", "H", "conf_adopted", "Adopted the conference report on a voice vote")],
+         "HB322 1991")
+    want([x[3] for x in run("SB796", ev("H", "1994-04-14", "COMM AM, AA VV; PASSED WITH AM AND REF "
+                                                           "TO APPROP VV; HJ49,P1592"),
+                            ev("H", "1994-05-11", "REP LARSON SUBST ITL; VOTE TAKEN, INCORRECTLY, "
+                               "ON COMM AM; REP D HALL MOVED TO RECONSIDER, MA VV; REP LARSON SUBST "
+                               "ITL, MA VV; ITL REPORT ADOPTED VV; HJ64,P2054-2055"))[1]],
+         ["Approved with an amendment and sent to Appropriations on a voice vote",
+          "Killed on a voice vote"], "SB796 1994")
+    want([x[3] for x in run("SB326", ev("S", "2000-03-23", "Ought to Pass with Amendment{3829},"
+                                                           "[New Title], AA, VV; OT3rdg, MA, VV"),
+                            ev("S", "2000-05-18", "Sen. Squires Concur with House Amendment{4347}; "
+                               "Sen. Squires Motion Reconsideration, MA,VV"),
+                            ev("S", "2000-05-18", "Sen. Squires Non Concur with House Amt{4347},"
+                               "Request C of C; MA, VV"))[1]],
+         ["Passed with an amendment on a voice vote", "Refused the House's amendment and asked "
+          "for a committee of conference on a voice vote"], "SB326 2000")
+    # But a suspension refused on an earlier day is not what is reconsidered:
+    # HB 462 of 1989's House had its rules suspended on 25 April and
+    # reconsidered the recommittal of 16 March.
+    want([x[3] for x in run("HB462", ev("H", "1989-03-16", "RE-REFERRED TO CON & STAT; HJ47, P1266; "
+                                                           "DUE 11/23/89"),
+                            ev("H", "1989-04-13", "REPS PHELPS & CHAMBERS MOVED SUSP JNT RULES, ML "
+                               "DIV(200-145)"),
+                            ev("H", "1989-04-25", "REPS PALUMBO & CHAMBERS SUSP OF RULES MA VV BY "
+                               "NEC 2/3"),
+                            ev("H", "1989-04-25", "REP FLANAGAN RECONSIDER MA VV; REP FLANAGAN SUB "
+                               "OTP/AM MA VV"))[1]][:1],
+         ["Sent back to committee, reconsidered on 25 Apr"], "HB462 1989")
+    # A THIRD READING RECONSIDERED AND READ AGAIN THAT DAY is the passage it
+    # was: HB 1282 of 2012 kept its 180-133 and no "reconsidered". HB 1659,
+    # divided out of that third reading and sent to a second committee, was
+    # not passed by the vote on the bills that remained. And a referral after
+    # a passage the chamber reconsidered is not that passage's (HB 1331 of
+    # 1990).
+    want(run("HB1282", ev("H", "2012-03-14", "Ought to Pass (Rep L.Ober): MA RC 180-133"),
+             ev("H", "2012-03-15", "Reconsider Third Reading Motion of March 14 (Reps Jasper and "
+                "Norelli): MA VV"),
+             ev("H", "2012-03-15", "Third Reading: MA VV"))[1],
+         [("2012-03-14", "H", "passed", "Passed, 180–133")], "HB1282 2012")
+    want(run("HB1659", ev("H", "2012-03-14", "Ought to Pass with Amendment #0089h: MA RC 189-151"),
+             ev("H", "2012-03-15", "Reconsider Third Reading Motion of March 14 (Reps Jasper and "
+                "Norelli): MA VV"),
+             ev("H", "2012-03-15", "Divide Third Reading Motion to Remove HB1659 (Reps Jasper and "
+                "Norelli): Speaker Ordered", "other"),
+             ev("H", "2012-03-15", "Remaining Bills to Third Reading (Reps Jasper and Norelli): "
+                "MA VV"),
+             ev("H", "2012-03-15", "HB1659 Referred to Criminal Justice and Public Safety: Without "
+                "Objection", "other"),
+             ev("H", "2012-03-28", "Ought to Pass with Amendment #1482h: MA RC 185-138"))[1],
+         [("2012-03-14", "H", "passed", "Passed with an amendment, 189–151, reconsidered on "
+           "15 Mar"),
+          ("2012-03-28", "H", "passed", "Passed with an amendment, 185–138")], "HB1659 2012")
+    want(run("HB1331", ev("S", "1990-03-29", "PASSED/ADOPTED"),
+             ev("S", "1990-04-03", "MOTION OF RECONSIDERATION/ADOPTED", "other"),
+             ev("S", "1990-04-03", "REFERRED TO FINANCE (RULE 24)", "rereferred"))[1],
+         [("1990-03-29", "S", "passed", "Passed, reconsidered on 3 Apr")], "HB1331 1990")
+    # A semicolon in a list of amendments is not the end of the motion: HB
+    # 1636 of 2018's refusal lost its count, and the failed motion before it
+    # read as a refusal too.
+    want(run("HB1636", ev("H", "2018-05-10", "House Non-Concurs with Senate Amendment 1427s; "
+                          "1851s; 1898s; and 1925s and Requests CofC (Rep. Ladd): MF RC 168-173 "
+                          "05/10/2018"),
+             ev("H", "2018-05-10", "House Non-Concurs with Senate Amendment 1427s; 1851s; 1898s; "
+                "and 1925s (Rep. Kurk): MA RC 180-163 05/10/2018"))[1],
+         [("2018-05-10", "H", "nonconcurred", "Refused the Senate's amendment, 180–163")],
+         "HB1636 2018")
     want([x[2] for x in run("HB705",
                             ev("H", "2003-06-24", "Conf Comm Report Defeated RC(159-172)", "other"),
                             ev("H", "2003-06-24", "Rep Mock moved to Reconsider, MA VV"),
@@ -4958,10 +5177,26 @@ def _journey_reads(build_site_v2):
              ev("S", "2021-09-09", "Inexpedient to Legislate, Senate Rule 3-23, Adjournment "
                                    "09/16/2021", "other"), term="2019-2020")[1][-1],
          ("", "S", "died", died), "HB201 2020")
-    # And an introduction whose row states the clerk's year is undated.
+    # And an introduction whose row states the clerk's year is dated in the
+    # year the row was entered, where that is in the term and not after the
+    # row: each of these is the day of the Journal the row cites.
     want(run("SB53", ev("S", "1999-01-28", "Introduction and referring Public Institutions, "
                                            "Health and Human Services 1/28/98", "introduced"),
-             term="1999-2000")[0], "", "SB53 1999 introduced")
+             term="1999-2000")[0], "1999-01-28", "SB53 1999 introduced")
+    want(run("HR6", ev("H", "2021-01-07", "Introduced and Adopted VV 01/06/2020", "other"),
+             term="2021-2022"),
+         ("2021-01-06", [("2021-01-06", "H", "passed", "Adopted on a voice vote")]),
+         "HR6 2021")
+    # And the adoption the same row records, where the day is a clause of
+    # its own: SR 8 of 2017, Senate Journal 5 of 9 February 2017.
+    want(run("SR8", ev("S", "2017-02-15", "Introduced and Adopted, VV; 02/09/2016", "other"),
+             term="2017-2018"),
+         ("2017-02-09", [("2017-02-09", "S", "passed", "Adopted on a voice vote")]), "SR8 2017")
+    # Not a day after the row, nor one it cannot be: HB 214 of 2019's
+    # "Introduced 01/02/2014", entered on 27 December 2018, is no day of 2018.
+    want(run("HB214", ev("H", "2018-12-27", "Introduced 01/02/2014 and referred to Legislative "
+                                            "Administration", "introduced"),
+             term="2019-2020")[0], "", "HB214 2019 as entered")
 
     # A CONFERENCE REPORT FILED IS NOT A VOTE, and "As Passed by the House
     # {2199}" names the version it proposes. SB 32 of 2008 read as the House
@@ -4980,6 +5215,13 @@ def _journey_reads(build_site_v2):
     want(run("SB103", ev("H", "2021-06-16", "Conference Committee Report #2021-1946c Filed "
                                             "06/10/2021; Version Adopted by Senate", "other"))[1],
          [], "SB103 2021")
+    # A conference line no passage precedes is no conference: SB 200 of 1989
+    # was killed in February, and its docket has one adopted in May.
+    want(run("SB200", ev("S", "1989-02-08", "COMMITTEE REPORT ITL", "report",
+                         recommendation="Inexpedient to Legislate", side=""),
+             ev("S", "1989-02-09", "ITL REPORT ADOPTED"),
+             ev("S", "1989-05-24", "CONF COMM REPORT ADOPTED"))[1],
+         [("1989-02-09", "S", "killed", "Killed")], "SB200 1989")
     # A vote the clerk wrote in the same row as the filing is still a vote.
     want(run("HB25", ev("S", "1991-06-26", "CONF COMM REPORT (S AM + NEW AM) FILED; CONF COMM "
                                            "REPORT ADOPTED RC(19-3); SJ33,P661-665"))[1],
@@ -6793,6 +7035,38 @@ def _session_as_of_dates(N, V):
         ("HB189", "2001"): [
             "2001|0133|05/09/2001 09:37:36 AM|HB189|S|Special Order To [05/17/01], MA, "
             "VV; SJ 12, Pg.262|05/09/2001 09:37:36 AM"],
+        # AN ENROLMENT DONE IN RECESS is not told before the vote it enrolled:
+        # SB 48 of 2015 was "enrolled" on 9 April, six days before the House
+        # passed it. HB 1110 of 2014's, done in recess after both votes,
+        # keeps the day it names.
+        ("SB48", "2015"): [
+            "2015|0118|04/15/2015 11:02:16 AM|SB48|H|Ought to Pass: MA VV; HJ 34, PG. 1554"
+            "|04/15/2015 11:02:16 AM",
+            "2015|0118|04/29/2015 12:29:48 PM|SB48|S|Enrolled (In recess 4/9/2015); SJ 12"
+            "|04/29/2015 12:29:48 PM"],
+        ("HB1110", "2014"): [
+            "2014|2053|05/08/2014 11:20:14 AM|HB1110|S|Ought to Pass: MA, VV; OT3rdg; SJ 12"
+            "|05/08/2014 11:20:14 AM",
+            "2014|2053|05/22/2014 06:31:24 PM|HB1110|H|Enrolled (In recess of 5/15/2014)"
+            "|05/22/2014 06:31:24 PM"],
+        # Nor after the governor it went to: SB 447 of 2016 was entered five
+        # days after the signature, and is told on the day of the House vote
+        # before it. HB 273 of 2021's, entered the day the governor signed,
+        # keeps that day, ahead of the signature.
+        ("SB447", "2016"): [
+            "2016|2955|1/20/2016 12:00:00 AM|SB447|H|Ought to Pass : MA DV 275-71 01/20/2016 "
+            "HJ 8 P. 2|1/20/2016 12:00:00 AM",
+            "2016|2955|1/26/2016 12:00:00 AM|SB447|S|Enrolled (In recess 01/14/2016); SJ 2"
+            "|1/26/2016 12:00:00 AM",
+            "2016|2955|4/20/2016 12:00:00 AM|SB447|S|Signed by the Governor on 01/21/2016; "
+            "Chapter 0001 SJ 3|4/20/2016 12:00:00 AM"],
+        ("HB273", "2021"): [
+            "2021|0110|5/6/2021 12:00:00 AM|HB273|S|Ought to Pass : RC 23Y-0N, MA; OT3rdg; "
+            "05/06/2021; SJ 14|5/6/2021 12:00:00 AM",
+            "2021|0110|5/11/2021 12:00:00 AM|HB273|H|Enrolled (in recess of) 04/09/2021 HJ 7 "
+            "P. 103|5/11/2021 12:00:00 AM",
+            "2021|0110|5/12/2021 12:00:00 AM|HB273|H|Signed by Governor Sununu 05/11/2021; "
+            "Chapter 30; Eff: 05/11/2021|5/12/2021 12:00:00 AM"],
         # A DAY'S ROWS IN THE ORDER THEY WERE ENTERED, dated or not: the
         # House defeated HB 705's conference report at 5:07 PM, reconsidered
         # at 5:08 and adopted it at 5:14. The two floor rows are dated at
@@ -6808,7 +7082,7 @@ def _session_as_of_dates(N, V):
     }
     try:
         N.CORRECTIONS = []
-        got, every = {}, {}
+        got, every, dated = {}, {}, {}
         for (bill, session), lines in rows.items():
             recs = []
             for x in lines:
@@ -6819,6 +7093,7 @@ def _session_as_of_dates(N, V):
             N.TERM = N.P.term_of(session)
             evs = N.build(bill, recs)["events"]
             every[bill] = [e["raw"][:24] for e in evs]
+            dated[bill] = [(e["date"], e["raw"][:8]) for e in evs]
             got[bill] = [(e["body"], e["date"], e["raw"][:24])
                          for e in evs if e["type"] in ("floor", "veto_override")]
         assert [x[:20] for x in every["HB705"]] == [
@@ -6840,6 +7115,21 @@ def _session_as_of_dates(N, V):
             f"the House request it answered that morning: {got['HB369']}")
         assert [d for _, d, _ in got["HB189"]] == ["2001-05-09"], (
             f"a special order's date was read as the day it was done: {got['HB189']}")
+        enrolled = dated
+        assert enrolled["SB48"] == [("2015-04-15", "Ought to"), ("2015-04-29", "Enrolled")], (
+            "an enrolment done in recess was told before the House vote it "
+            f"enrolled: {enrolled['SB48']}")
+        assert enrolled["HB1110"][-1] == ("2014-05-15", "Enrolled"), (
+            "an enrolment done in recess after both votes lost the day it "
+            f"names: {enrolled['HB1110']}")
+        assert enrolled["SB447"] == [("2016-01-20", "Ought to"), ("2016-01-20", "Enrolled"),
+                                     ("2016-01-21", "Signed b")], (
+            "an enrolment done in recess was told after the governor signed "
+            f"the bill: {enrolled['SB447']}")
+        assert enrolled["HB273"] == [("2021-05-06", "Ought to"), ("2021-05-11", "Enrolled"),
+                                     ("2021-05-11", "Signed b")], (
+            "an enrolment entered the day the governor signed lost that day or "
+            f"its place ahead of the signature: {enrolled['HB273']}")
         return "ok", ("'done during' dates a veto vote; a day in recess, an "
                       "answer ahead of its request and a special order's "
                       "target date do not; a day's rows keep the order they "
@@ -15271,6 +15561,53 @@ def _next_step_settled():
     return "ok", f"{n:,} laws and vetoes, each saying what became of it"
 
 
+@check("status", "between two reports, the Reports tab quotes the motion that sent the bill back",
+       needs=("build_site_v2",))
+def _reports_between(build_site_v2):
+    """"Between these reports the docket records" names why a committee
+    reported twice, and quoted the first line that mentioned it: HB 75 of
+    1999 showed a motion its mover withdrew, HB 450 of 2009 the motion with
+    no outcome, SB 96 of 2003 one "[Not Voted On]" -- each over the line
+    that carried. Real rows."""
+    B = build_site_v2
+
+    def ev(date, raw, typ="floor"):
+        return {"body": "S", "date": date, "raw": raw, "type": typ, "cancelled": False}
+
+    def rep(date):
+        return ev(date, "Committee Report, Ought to Pass", "report") | {
+            "recommendation": "Ought to Pass", "side": ""}
+
+    bad = []
+    for bid, rows, want in (
+            ("HB75", ["Sen. Russman moved Rerefer, Sen. Russman Withdrew Motion to Rerefer",
+                      "Sen D'Allesandro Moved Rerefer, MA, VV"],
+             "Sen D'Allesandro Moved Rerefer, MA, VV"),
+            ("HB450", ["Ought to Pass, MF, VV", "Sen. Kelly moved to Rereferred to Committee",
+                       "Rereferred to Committee, MA, VV"], "Rereferred to Committee, MA, VV"),
+            ("SB96", ["Rerefer to Committee [Not Voted On]", "Sen. O'Hearn Moved Recommit, MA, VV"],
+             "Sen. O'Hearn Moved Recommit, MA, VV"),
+            ("HB679", ["Rereferred to Committee, MF, VV; Sen. McCarley Moved Ought to Pass, MA, VV",
+                       "Sen. McCarley sub-motion Rereferred to Committee, MA, VV"],
+             "Sen. McCarley sub-motion Rereferred to Committee, MA, VV")):
+        narr = {"events": [rep("2009-05-01")] + [ev("2009-05-13", r) for r in rows]
+                + [rep("2010-01-07")]}
+        got = B.committee_reports([], narr, {}, "", "Judiciary")[2]
+        if [g["text"] for g in got] != [want]:
+            bad.append(f"{bid}: {[g['text'] for g in got]}")
+    # Withdrawn or unvoted in a clause of its own before the recommittal is
+    # another motion, and the recommittal carried; in its own clause it is
+    # the recommittal's.
+    for raw, want in (("Inexpedient to Legislate [not voted on]; Sen. Boyce moved to Recommit, "
+                       "MA, VV; SJ 5, Pg.53", True),
+                      ("REP FLANAGAN WITHDREW OTP/AM MOTION; RE-REFERRED TO CON & STAT,", True),
+                      ("REP BUCKLEY WITHDREW RECOMMIT MOTION; ADOPTED VV", False)):
+        if B._again_carried(raw) is not want:
+            bad.append(f"{raw[:40]!r} read {B._again_carried(raw)}")
+    assert not bad, "; ".join(bad)
+    return "ok", "a withdrawn, unvoted, failed or outcome-less motion gives way to the one that carried"
+
+
 @check("data", "a committee report cites the calendar of its own year")
 def _report_citations():
     """All 7,376 House report citations of 2013-2022 linked a 2023 or 2024
@@ -15419,9 +15756,15 @@ def _rail():
 #      2022 "Referred for interim study" over "Inexpedient to Legislate: MA
 #      VV 03/15/2022", HR 13 of 2007 "In committee" over "Introduced and
 #      Adopted".
+# Five of those were then fixed rather than explained, which leaves 31: HR
+# 13's chip now reads its adoption; HB 549 of 1991, SB 1 of 2005 and HB 1534
+# of 2016, whose status fields say both chambers passed them, no longer read
+# "Passed one chamber"; and SB 200 of 1989's "CONF COMM REPORT ADOPTED", three
+# months after the Senate killed it, is not read as a conference no passage
+# could have called.
 # None is in the current term, which is held to none. A ceiling rather than a
 # list, so a regression anywhere in the archive fails.
-_JOURNEY_EXPLAINED = 36
+_JOURNEY_EXPLAINED = 31
 
 
 def _journey_story(records, rows, B):
