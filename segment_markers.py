@@ -1114,12 +1114,37 @@ def main():
             prior = json.loads(op.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             prior = {}
-    kept = len(set(prior) - set(result))
+    #
+    # AND THE TWO SIBLINGS OF THE RECORDINGS MERGE TOO, one recording at a
+    # time. _absent and _sequence are maps keyed on recording, and a
+    # top-level update replaced each of them whole with this run's: a run
+    # over one floor session left _absent holding that session alone, and
+    # every other floor recording's consent calendar -- which build_site_v2
+    # reads to say a bill passed without debate -- was gone. On 25 September
+    # _sequence held two of the file's 2,875 recordings for the same reason,
+    # and _absent's 59 carried 2,071 of the site's stations. A machine
+    # that holds only a few recordings' captions, as the nightly's does, is
+    # that subset every time it runs --all.
+    #
+    # A recording read this run answers for itself: its _absent is what this
+    # run found, or nothing. Its _sequence is written only by a fresh read, so
+    # one taken from the cache keeps the sequence it already had.
+    sides = ("_absent", "_sequence")
+    read_now = {k for k in result if k not in sides}
+    kept = len({k for k in prior if k not in sides} - read_now)
     if kept:
         print(f"\n{kept:,} recordings already in {op.name} were left alone; "
-              f"{len(result):,} updated")
+              f"{len(read_now):,} updated")
     merged = dict(prior)
-    merged.update(result)
+    merged.update({k: v for k, v in result.items() if k not in sides})
+    for side in sides:
+        was = prior.get(side) if isinstance(prior.get(side), dict) else {}
+        new = result.get(side) or {}
+        answers = read_now if side == "_absent" else set(new)
+        both = {v: x for v, x in was.items() if v not in answers}
+        both.update(new)
+        if both or side in prior:
+            merged[side] = both
     result = merged
 
     if not a.gaps and not a.phrases:

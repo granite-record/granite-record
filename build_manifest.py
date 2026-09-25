@@ -268,22 +268,38 @@ def load_videos(paths, roster=None):
     # The same recording can appear in two indexes whose date ranges overlap.
     # Counted twice it would look like a committee streamed the same sitting
     # on two channels, and the day would be treated as ambiguous.
-    out, seen, dupes = [], {}, 0
+    #
+    # The first file's row is kept -- UNLESS a later one knows more about
+    # the stream. The index lists a stream the day it is scheduled, so a row
+    # can say P0D with no start for a hearing that has since been held, or
+    # carry a start and P0D for one that was still live; livestreams.py
+    # writes the later answer into its own file rather than into a committed
+    # one, and that row has to win or the recording keeps no start, no length
+    # and no predicted offset. No two rows on disk on 25 September were in
+    # that relation, so this changed no manifest built that day.
+    out, seen, dupes, later = [], {}, 0, 0
     recovered, unreadable = 0, []
     for p in files:
         body = "S" if "senate" in str(p).lower() else "H"
         for v in _load_one(p, (roster or {}).get(body) or {}, unreadable):
-            if v["video_id"] in seen:
-                dupes += 1
-                continue
-            seen[v["video_id"]] = True
             v["body"] = body
             v["source"] = str(p)
+            if v["video_id"] in seen:
+                dupes += 1
+                i = seen[v["video_id"]]
+                if _aired(v) > _aired(out[i]):
+                    recovered += v["recovered"] - out[i]["recovered"]
+                    out[i] = v
+                    later += 1
+                continue
+            seen[v["video_id"]] = len(out)
             recovered += v["recovered"]
             out.append(v)
     print(f"  {len(out):,} videos from {len(files)} file(s)"
           + (f", {dupes:,} duplicates across overlapping ranges skipped"
-             if dupes else ""))
+             if dupes else "")
+          + (f", {later:,} of them in favour of a later row written after "
+             "the stream aired" if later else ""))
     # SAY WHAT WAS DROPPED. This loop discarded 554 rows across the twelve
     # indexes without a word, and the largest block of them -- the Senate from
     # May 2020 -- read as a chamber that had never been filmed.
@@ -307,6 +323,16 @@ def load_videos(paths, roster=None):
         for y, (lo, hi) in sorted(byyear.items()):
             print(f"    {y}: {lo} to {hi}")
     return out
+
+
+def _aired(v):
+    """How much an index row knows about its stream: 2 when it has the
+    length, which a row only has once the stream is over; 1 when it has only
+    the start, written while it was live; 0 when it has neither, written
+    while it was only scheduled."""
+    if (v.get("duration_iso") or "").strip() not in ("", "P0D"):
+        return 2
+    return 1 if v.get("start_eastern") else 0
 
 
 def _load_one(path, roster, unreadable):

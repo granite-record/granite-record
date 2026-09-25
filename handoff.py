@@ -128,13 +128,17 @@ def section_timestamps(out):
                    "`python3 segment_markers.py --all --data data`.\n")
         return
     absent = cs.get("_absent", {})
-    vids = [k for k in cs if k != "_absent"]
+    # _absent and _sequence are maps keyed on recording, beside the
+    # recordings. Counting _sequence as one added a recording, every item of
+    # every sequence it held as a proceeding, and its video ids as bills.
+    sides = ("_absent", "_sequence")
+    vids = [k for k in cs if k not in sides]
     # Proceedings, not bills: a bill heard in the morning and voted in the
     # afternoon is two, and the same bill on two recordings is two more. The
     # end count is per proceeding as well, so the two are comparable.
-    segs = [s for k, v in cs.items() if k != "_absent"
+    segs = [s for k, v in cs.items() if k not in sides
             for ss in v.values() for s in ss]
-    bills = {b for k, v in cs.items() if k != "_absent" for b in v}
+    bills = {b for k, v in cs.items() if k not in sides for b in v}
     ends = sum(1 for s in segs if s.get("end") is not None)
     out.append(f"- {n(len(segs))} proceedings with a boundary the chair "
                f"stated, on {n(len(vids))} recordings ({n(len(bills))} "

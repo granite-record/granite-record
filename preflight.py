@@ -2047,6 +2047,162 @@ def _verify_bands():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _json3(lines, start=5.0, step=4.0):
+    """A caption file in YouTube's json3 shape: the opening window event, then
+    one event per line with a word to a seg, as yt-dlp writes them."""
+    ev = [{"tStartMs": 0, "dDurationMs": int((start + step * len(lines)) * 1000),
+           "id": 1, "wpWinPosId": 1, "wsWinStyleId": 1}]
+    t = start
+    for line in lines:
+        segs = [{"utf8": w} if not i else {"utf8": " " + w, "tOffsetMs": i * 200}
+                for i, w in enumerate(line.split())]
+        ev.append({"tStartMs": int(t * 1000), "dDurationMs": int(step * 1000),
+                   "wWinId": 1, "segs": segs})
+        t += step
+    return {"wireMagic": "pb3", "events": ev}
+
+
+@check("markers", "segment_markers on a few recordings keeps every other "
+                  "one, their consent calendars and sequences included")
+def _markers_merge_siblings():
+    """A writer run on a subset must not destroy the rest.
+
+    segment_markers merged recordings one by one but replaced _absent and
+    _sequence whole, so a run over one floor session left _absent holding
+    that session alone. build_site_v2 reads _absent to say a bill passed on
+    the consent calendar -- 2,071 stations on 25 September -- and a machine
+    holding only a few recordings' captions, as the nightly's does, is that
+    subset on every run. The phrases below were spoken: the clerk's reading
+    is segment_markers' own quotation, the chair's is in tests/test_markers.
+    """
+    if not Path("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "data").mkdir()
+        (root / "data" / "bills.json").write_text(json.dumps(
+            {"2025-2026": {"SB408": {"id": "SB408", "title": "x"}}}),
+            encoding="utf-8")
+        cols = ["term", "bill", "body", "kind", "date", "time", "committee",
+                "venue", "video_id", "video_title", "stream_start",
+                "predicted_offset", "match", "debate_end", "window_start",
+                "precise", "motions", "tallies", "whole_video", "source"]
+        rows = [("SB408", "S", "floor debate", "PFFLOOR"),
+                ("SB409", "S", "floor debate", "PFFLOOR"),
+                ("HB1491", "H", "public hearing", "PFCOMM"),
+                ("HB77", "H", "public hearing", "PFOTHER")]
+        with open(root / "proceedings.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=cols)
+            w.writeheader()
+            for bill, body, kind, vid in rows:
+                w.writerow({"term": "2025-2026", "bill": bill, "body": body,
+                            "kind": kind, "date": "2026-03-05",
+                            "video_id": vid, "source": "docket"})
+        for vid, lines in (
+                ("PFFLOOR", ["the Senate will come to order"] * 3 + [
+                    "Majority of the Committee on Finance to which was "
+                    "referred Senate Bill 408, relative to insurance coverage "
+                    "for prosthetics, having considered the same, report the "
+                    "same with the following amendment"]
+                    + ["the ayes have it"] * 3),
+                ("PFCOMM", ["good morning"] * 3
+                 + ["I am opening the hearing on House Bill 1491"]
+                 + ["thank you mister chair"] * 4)):
+            (root / "work" / vid).mkdir(parents=True)
+            (root / "work" / vid / "captions.en.json3").write_text(
+                json.dumps(_json3(lines)), encoding="utf-8")
+        other = {"HB77": [{"start": 60.0, "end": None, "how": "number",
+                           "what": "hearing", "said": "x"}]}
+        prior = {"PFOTHER": other,
+                 "_absent": {"PFOTHER": ["HB88"], "PFFLOOR": ["SB408", "SB409"],
+                             "PFCOMM": ["HB5"]},
+                 "_sequence": {"PFOTHER": [{"bill": "HB77", "start": 60.0}]}}
+        (root / "candidate_segments.json").write_text(json.dumps(prior),
+                                                      encoding="utf-8")
+        env = dict(os.environ, GRANITE_PROCEEDINGS=str(root / "proceedings.csv"))
+        r = _run([sys.executable, str(Path("segment_markers.py").resolve()),
+                  "--transcript", "work/PFFLOOR", "work/PFCOMM", "--data", "data",
+                  "--quiet", "--cache", "cache.json"],
+                 cwd=str(root), env=env, capture_output=True, text=True,
+                 timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        assert got.get("PFOTHER") == other, "a recording not read was changed"
+        assert "SB408" in (got.get("PFFLOOR") or {}), \
+            f"the clerk's reading was not found: {got.get('PFFLOOR')}"
+        assert "HB1491" in (got.get("PFCOMM") or {}), got.get("PFCOMM")
+        ab = got.get("_absent") or {}
+        assert ab.get("PFOTHER") == ["HB88"], \
+            f"another recording's consent calendar went missing: {ab}"
+        assert ab.get("PFFLOOR") == ["SB409"], \
+            f"the re-read floor session's own answer did not replace its old one: {ab}"
+        assert "PFCOMM" not in ab, \
+            "a recording re-read with no absent bill kept its stale list"
+        sq = got.get("_sequence") or {}
+        assert sq.get("PFOTHER") == prior["_sequence"]["PFOTHER"], \
+            f"another recording's sequence went missing: {sorted(sq)}"
+        assert "PFFLOOR" in sq and "PFCOMM" in sq, sorted(sq)
+        return "ok", ("two recordings re-read; the third, its consent calendar "
+                      "and its sequence kept; a stale list replaced, one removed")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# ============================================= code: the video index's rows ==
+
+# fetch_channel_index.py's columns, for the checks that write an index.
+_INDEX_COLS = ["video_id", "title", "title_parsed", "parsed_committee",
+               "parsed_date", "date_from", "has_start_time", "start_eastern",
+               "actual_start_utc", "actual_end_utc", "duration_iso",
+               "published_at"]
+
+
+@check("pipeline", "a later row that knows the stream aired wins in "
+                   "build_manifest", needs=("build_manifest",))
+def _manifest_prefers_aired(build_manifest):
+    """The committed index lists a stream the day it is scheduled -- P0D, no
+    start -- and livestreams.py writes the aired row into its own file, which
+    sorts after it. First-file-wins kept the empty one."""
+    root = Path(tempfile.mkdtemp())
+    here = os.getcwd()
+    try:
+        base = {"video_id": "PFV", "title": "House Finance (09/17/2026)",
+                "title_parsed": "yes", "parsed_committee": "Finance",
+                "parsed_date": "2026-09-17", "date_from": "title",
+                "has_start_time": "NO", "start_eastern": "",
+                "actual_start_utc": "", "actual_end_utc": "",
+                "duration_iso": "P0D", "published_at": "2026-08-20T13:16:12Z"}
+        aired = dict(base, has_start_time="yes", start_eastern="2026-09-17 09:58:11",
+                     actual_start_utc="2026-09-17T13:58:11Z",
+                     actual_end_utc="2026-09-17T15:00:00Z", duration_iso="PT1H1M49S")
+        for name, row in (("videos_house_2026-07-01_to_2026-12-31.csv", base),
+                          ("videos_house_livestreams.csv", aired)):
+            with open(root / name, "w", newline="", encoding="utf-8") as fh:
+                w = csv.DictWriter(fh, fieldnames=_INDEX_COLS)
+                w.writeheader()
+                w.writerow(row)
+        os.chdir(root)
+        import io
+        import contextlib
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = build_manifest.load_videos(["videos_*.csv"])
+        assert len(got) == 1 and got[0]["start_eastern"] == "2026-09-17 09:58:11", got
+        # And never the other way: a row that knows it aired is kept.
+        (root / "videos_house_2026-07-01_to_2026-12-31.csv").rename(
+            root / "videos_house_2026-01-01_to_2026-06-30.csv")
+        with open(root / "videos_house_zz.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=_INDEX_COLS)
+            w.writeheader()
+            w.writerow(base)
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = build_manifest.load_videos(["videos_*.csv"])
+        assert got[0]["start_eastern"] == "2026-09-17 09:58:11", got
+        return "ok", "the aired row is taken over the pre-air one, in either order"
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
 # ============================================================ code: front end ==
 
 def page_source(name="bills.html"):
