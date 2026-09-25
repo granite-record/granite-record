@@ -6656,6 +6656,172 @@ def _session_recess_and_rule_days(SD, BSP):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("session", "recess business the docket does not mark is on its sitting "
+       "too, and claims no speech made at it",
+       needs=("session_days", "build_session_pages", "shell"))
+def _session_unmarked_recess(SD, BSP, shell):
+    """Two ways the recess fix of 24 September fell short.
+
+    Most recess business says nothing of a recess. The House's refusals of
+    Senate amendments entered on 24, 28 and 29 May 2024 cite HJ 14, and House
+    Journal 14 prints every one under RECESS after the House recessed on
+    23 May; the three days still built as sittings the House never held.
+    The rows below are real docket rows, and the ones that must stay are real
+    rows with one thing changed -- a count on the day, which a recess never
+    takes, or no page to say where the journal prints it. The Senate's own
+    refusals of 21 May 2008 cite SJ 18, the 15 May journal, and are printed
+    in the 21 May sitting.
+
+    And a moved row took the day's speeches. SB 389's accession, done in the
+    recess of 15 May 2014 with no debate at all, was the bill's only row that
+    day, so it claimed the five speeches made on the bill's floor amendments,
+    whose tallies were 219-72 and 110-177; SB 148's, beside the roll call
+    O'Brien and Tucker spoke on, made a second motion and pushed them off it.
+    """
+    def floor(date, body, raw, cite="", page=None, kind="VV", yeas=None,
+              nays=None):
+        return {"date": date, "body": body, "type": "floor", "raw": raw,
+                "action": raw.split(":")[0].split(",")[0], "motion": "MA",
+                "vote_kind": kind, "yeas": yeas, "nays": nays, "cite": cite,
+                "cite_page": page}
+    nc = "House Non-Concurs with Senate Amendment 2024-{}s and Requests CofC: MA VV {}"
+    otp = "Ought to Pass: MA VV"
+    narr = {
+        "2023-2024": {
+            "HB1": {"events": [floor("2024-05-23", "H", otp, "HJ 14", 10)]},
+            "HB2": {"events": [floor("2024-05-23", "H", otp, "HJ 14", 20)]},
+            "HB3": {"events": [floor("2024-05-23", "H", "Ought to Pass: MA RC 200-150",
+                                     "HJ 14", 173, "RC", 200, 150)]},
+            # entered the next day, no page: HJ 14 prints it on page 177
+            "HB1695": {"events": [floor("2024-05-24", "H", nc.format(1621, "05/24/2024"),
+                                        "HJ 14")]},
+            "HB1030": {"events": [floor("2024-05-24", "H", nc.format(1544, "05/24/2024"),
+                                        "HJ 14", 177)]},
+            # no journal cited at all, on a day of nothing else
+            "HB1521": {"events": [floor("2024-05-28", "H", nc.format(1968, "05/28/2024"))]},
+            "HB1069": {"events": [floor("2024-05-28", "H", nc.format(1966, "05/28/2024"),
+                                        "HJ 14", 178)]},
+            # a day with a count is a sitting: stays
+            "HB1593": {"events": [floor("2024-05-29", "H", nc.format(2117, "05/29/2024")
+                                        .replace("MA VV", "MA DV 200-100"), "HJ 14",
+                                        180, "DV", 200, 100)]},
+            # entered on the next sitting, which has a journal of its own
+            "HB1292": {"events": [floor("2024-05-30", "H", nc.format(2179, "05/30/2024"),
+                                        "HJ 14", 181)]},
+            # the same, at a page inside the sitting's own: stays
+            "HB468": {"events": [floor("2024-05-30", "H", nc.format(1525, "05/30/2024"),
+                                       "HJ 14", 100)]},
+            "HB4": {"events": [floor("2024-05-30", "H", otp, "HJ 15", 2)]},
+            "HB5": {"events": [floor("2024-05-30", "H", otp, "HJ 15", 3)]},
+            "HB6": {"events": [floor("2024-05-30", "H", otp, "HJ 15", 4)]}},
+        "1997-1998": {
+            "HB50": {"events": [floor("1997-05-28", "H", "PASSED VV; HJ70,P2010", "HJ 70")]},
+            "HB51": {"events": [floor("1997-05-28", "H", "PASSED VV; HJ70,P2011", "HJ 70")]},
+            "HB52": {"events": [floor("1997-05-28", "H", "PASSED VV; HJ70,P2012", "HJ 70")]},
+            "HB130": {"events": [floor("1997-05-29", "H", "HOUSE NONC WITH SEN AM REQ CONF "
+                                       "COMM, REP LOZEAU MA; HJ70,P2037", "HJ 70", kind="")]},
+            "SB122": {"events": [floor("1997-05-29", "H", "HOUSE ACCEDED TO REQ FOR CONF "
+                                       "COMM, REP LOZEAU MA; HJ70,P2038", "HJ 70", kind="")]}},
+        "2007-2008": {
+            "SB1": {"events": [floor("2008-05-15", "S", otp, "SJ 18")]},
+            "SB2": {"events": [floor("2008-05-15", "S", otp, "SJ 18")]},
+            "SB3": {"events": [floor("2008-05-15", "S", otp, "SJ 18")]},
+            "SB4": {"events": [floor("2008-05-21", "S", otp, "SJ 19")]},
+            "SB5": {"events": [floor("2008-05-21", "S", otp, "SJ 19")]},
+            "SB32": {"events": [floor("2008-05-21", "S", "Sen. Foster Moved Nonconcur with "
+                                      "House Am{2501}(NT); Requests C of C, MA, VV",
+                                      "SJ 18")]}},
+    }
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        days = SD.load(root / "narratives.json")
+
+        def bills(body, date):
+            d = days.get((body, date))
+            return [i.bill for i in d.items] if d else None
+        want = {("H", "2024-05-23"): ["HB1", "HB2", "HB3", "HB1030", "HB1695",
+                                      "HB1069", "HB1521", "HB1292"],
+                ("H", "2024-05-24"): None, ("H", "2024-05-28"): None,
+                ("H", "2024-05-29"): ["HB1593"],
+                ("H", "2024-05-30"): ["HB4", "HB5", "HB6", "HB468"],
+                ("H", "1997-05-28"): ["HB130", "HB50", "HB51", "HB52", "SB122"],
+                ("H", "1997-05-29"): None,
+                ("S", "2008-05-15"): ["SB1", "SB2", "SB3"],
+                ("S", "2008-05-21"): ["SB32", "SB4", "SB5"]}
+        got = {k: bills(*k) for k in want}
+        assert got == want, "sittings are not as the journal holds them: " + "; ".join(
+            f"{k[0]} {k[1]} has {got[k]}, want {want[k]}" for k in want if got[k] != want[k])
+        moved = {i.bill: (i.entered, i.recess) for d in days.values() for i in d.items
+                 if i.entered}
+        assert moved == {"HB1695": ("2024-05-24", False), "HB1030": ("2024-05-24", False),
+                         "HB1521": ("2024-05-28", False), "HB1069": ("2024-05-28", False),
+                         "HB1292": ("2024-05-30", False), "HB130": ("1997-05-29", False),
+                         "SB122": ("1997-05-29", False)}, (
+            f"a moved row lost the day the docket enters it, or claims the docket "
+            f"said recess: {moved}")
+        assert days[("H", "2024-05-23")].ordered, "the sitting no longer reads in order"
+
+        # The page: what the journal gives the bill that day is the sitting's.
+        Item = SD.Item
+        blank = {"type": "floor", "body": "H", "motion": "MA"}
+
+        def item(bill, seq, raw, entered=None, recess=False, **e):
+            ev = dict(blank, raw=raw, action=raw.split(":")[0], **e)
+            it = Item(bill, "2013-2014", ev, seq)
+            it.entered, it.recess = entered, recess
+            return it
+        acc = "House Accedes to Senate Request for C of C: MA VV"
+        s389 = item("SB389", 1, "Rep Almy moved to accede to request for C of C; MA VV "
+                    "(In recess of 5/15/14)", "2014-05-22", True, vote_kind="VV")
+        s148 = item("SB148", 2, "Ought to Pass with Amendment #1730h: MA RC 170-113",
+                    vote_kind="RC", yeas="170", nays="113")
+        s148r = item("SB148", 3, acc + " [Recess of 6/5/13]", "2013-06-13", True,
+                     vote_kind="VV")
+        s19 = item("SB19", 4, acc + " [06/05/13]", "2013-06-12", False, vote_kind="VV")
+        day = SD.Day("H", "2014-05-15", [s389, s148, s148r, s19])
+        # As journal_days reads them from HJ044 and HJ049: the journal's own
+        # tally for SB 148 is 166-119, so only the one-motion rule places it.
+        speech = [{"bill": "SB389", "side": "for", "names": ["Burt", "Wright"],
+                   "tally": (110, 177)},
+                  {"bill": "SB389", "side": "against", "names": ["Beaudoin"],
+                   "tally": (219, 72)},
+                  {"bill": "SB148-FN", "side": "against",
+                   "names": ["William O'Brien", "Tucker"], "tally": (166, 119)}]
+        narrative = {"attributions": speech, "unanimous_consent": [],
+                     "debates": [{"bill": "SB389", "speeches": [
+                         ("Rep. Burt", "I rise in support of the amendment.")]}]}
+        (root / "site").mkdir()
+        html, _ = BSP.render(day, narrative, {}, {}, BSP.Members(root / "site"), shell.E)
+        import html as H
+        cards = {re.search(r'class="sbill">([^<]+)<', c).group(1):
+                 H.unescape(re.sub(r"<[^>]+>", " ", c))
+                 for c in html.split('<article class="sitem">')[1:]}
+        assert not re.search(r"Burt|Wright|Beaudoin|Spoke|spoke", cards["SB 389"]), (
+            "SB 389's accession, done in recess with no debate, is drawn with the "
+            f"speeches on its floor amendments: {cards['SB 389'][:300]!r}")
+        assert re.search(r"Spoke against the motion\s+Rep\. William O'Brien\s*,\s*"
+                         r"Rep\. Tucker", cards["SB 148"]) \
+            and "Also spoke" not in cards["SB 148"], (
+            "SB 148's speakers were pushed off the roll call they spoke on by the "
+            f"recess row beside it: {cards['SB 148'][:400]!r}")
+        assert "Done in the recess of this sitting" in cards["SB 389"] and \
+            "Printed in the journal with this sitting" in cards["SB 19"] and \
+            "recess" not in cards["SB 19"], (
+            "a row the docket says was done in recess, or one placed only by the "
+            "journal it cites, is not described as the record has it")
+        tail = html.split("Also printed in the permanent journal")
+        assert len(tail) == 2 and "I rise in support" in tail[1], (
+            "a debate printed on SB 389 that day is drawn under its recess row "
+            "rather than among the debates on no motion of the day")
+        return "ok", ("unmarked recess days and rows on their sitting, in the "
+                      "journal's order, the counted day, the pageless row and the "
+                      "row inside the sitting's pages where they are; a recess "
+                      "row claims no speech and displaces none")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("session", "a sitting's page goes when its day does, never a term at once, "
        "and none is built ahead of today", needs=("build_session_pages",))
 def _session_pages_pruned(BSP):
@@ -14515,19 +14681,11 @@ def _no_empty_dates():
 # journal belongs to another sitting are listed as warnings -- almost all are
 # rows dated by the moment they were entered, which measured no worse than any
 # bulk re-dating (98.3% against roll calls). Remove a line when it is decided.
+#
+# Decided on 24 September 2026 and gone from the list: 24, 28 and 29 May 2024,
+# recess business now on the 23 May sitting (session_days.unmarked_recess),
+# and the joint-rule weekends of 1 July 1990 and 1995, which are no sitting.
 KNOWN_DOUBTFUL = {
-    ("H", "2024-05-24"): "business the House did in recess of its 23 May 2024 "
-                         "sitting, which HJ 14 prints under 23 May",
-    ("H", "2024-05-28"): "business the House did in recess of its 23 May 2024 "
-                         "sitting, which HJ 14 prints under 23 May",
-    ("H", "2024-05-29"): "business the House did in recess of its 23 May 2024 "
-                         "sitting, which HJ 14 prints under 23 May",
-    ("H", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
-                         "a disposition by rule dated to a Sunday",
-    ("S", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
-                         "a disposition by rule dated to a Sunday",
-    ("H", "1995-07-01"): "bills indefinitely postponed under Joint Rule 23-A, "
-                         "a disposition by rule dated to a Saturday",
     ("H", "2012-03-11"): "one row dated by the moment it was entered, a Sunday; "
                          "its journal is the 7 March 2012 sitting's",
 }

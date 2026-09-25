@@ -477,6 +477,15 @@ def render(day, narrative, titles, years, members, esc):
         ti = titles.get((term, bill)) or ""
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
         leftover = set()
+        # WHAT WAS DONE IN RECESS TAKES NO PART IN THE DAY'S DEBATE. The
+        # journal prints it with no speaker -- "Rep. Almy moved that the House
+        # accede. Adopted." -- so the speeches the journal gives the bill that
+        # day are the sitting's own motions', and a recess row neither claims
+        # them nor counts as a second motion that leaves them unplaced. Before
+        # this, SB 389's accession on 15 May 2014 took five speeches made on
+        # its floor amendments, and SB 148's on 5 June 2013 pushed Reps.
+        # O'Brien and Tucker off the roll call they spoke on.
+        own = [it for it in items if not it.entered]
         H.append('<article class="sitem">')
         H.append("<h3>" + bill_link(term, bill, num, years, esc, "sbill")
                  + (f'<span class="sbt">{esc(ti)}</span>' if ti else "") + "</h3>")
@@ -491,24 +500,28 @@ def render(day, narrative, titles, years, members, esc):
             # BUSINESS DONE IN RECESS is on the sitting the journal prints it
             # with (session_days.recess_sitting), and the bill's own history
             # keeps the day the docket entered it. Said here, so the two
-            # dates read as one fact rather than as a contradiction.
+            # dates read as one fact rather than as a contradiction. "Recess"
+            # only where the docket says it: a row placed by the journal it
+            # cites may be one entered late from the sitting itself.
             if it.entered:
-                H.append('<p class="swho">Done in the recess of this sitting, '
+                where = ("Done in the recess of this sitting" if it.recess
+                         else "Printed in the journal with this sitting")
+                H.append(f'<p class="swho">{where}, '
                          "and entered in the docket on "
                          f"{esc(words(it.entered))}, the date the bill&rsquo;s "
                          "own history gives it.</p>")
-
-            mine, rest = speakers_for(attrs, bill, it, sole=(len(items) == 1))
-            for side, label in (("for", "Spoke for the motion"),
-                                ("against", "Spoke against the motion")):
-                who = mine[side]
-                if who:
-                    H.append(f'<p class="sspoke"><span class="slab">{label}</span>'
-                             + ", ".join(member_html(body, n, members, esc)
-                                         for n in who) + "</p>")
-
-            leftover.update(rest["for"])
-            leftover.update(rest["against"])
+            else:
+                mine, rest = speakers_for(attrs, bill, it, sole=(len(own) == 1))
+                for side, label in (("for", "Spoke for the motion"),
+                                    ("against", "Spoke against the motion")):
+                    who = mine[side]
+                    if who:
+                        H.append(f'<p class="sspoke"><span class="slab">{label}'
+                                 "</span>"
+                                 + ", ".join(member_html(body, n, members, esc)
+                                             for n in who) + "</p>")
+                leftover.update(rest["for"])
+                leftover.update(rest["against"])
             p = vote_payload(it)
             if p:
                 i = len(payloads)
@@ -549,17 +562,20 @@ def render(day, narrative, titles, years, members, esc):
         # ONCE. A bill can hold the floor twice in a day with other business
         # between: HB 396 was vetoed at page 12, reconsidered at 38 and voted
         # again at 42, which is two runs, and the debate printed for it was
-        # drawn under both. There is one debate; it goes under the first run.
+        # drawn under both. There is one debate; it goes under the first run
+        # the sitting itself took up, and never under recess business alone.
         d = debates.get(base_bill(bill))
-        if d and d["speeches"] and id(d) not in drawn:
+        if d and d["speeches"] and own and id(d) not in drawn:
             drawn.add(id(d))
             H.append(_debate_html(d, body, members, esc))
         H.append("</article>")
     H.append("</section>")
 
     # Debates whose bill is not among the day's actions -- a motion to print
-    # can name a bill the House took no recorded vote on that day.
-    seen = {base_bill(b) for b, _ in runs(seq_items)}
+    # can name a bill the House took no recorded vote on that day -- or is
+    # there only for what was done in the sitting's recess.
+    seen = {base_bill(b) for b, its in runs(seq_items)
+            if any(not it.entered for it in its)}
     loose = [d for k, d in debates.items() if k and k not in seen and d["speeches"]]
     if loose:
         H.append('<section class="sday"><h2>Also printed in the permanent '
