@@ -1566,8 +1566,8 @@ function factsTable(b,d){
         ch.length} chapters</span><span class="open">Show fewer</span></summary>`
       +`<span class="rsaset">${ch.slice(RSA_SHOWN).map(rsaLink).join(", ")}</span>`
       +`</details>`);
-  if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee));
-  if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee));
+  if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee,b.term));
+  if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee,b.term));
   // THE TOPIC MODEL'S REFUSAL IS NOT A SUBJECT. "Miscellaneous" is what
   // topic_model.py returns below its confidence floor -- its own way of
   // declining to answer -- and the General Court's 46 subject codes do not
@@ -3133,8 +3133,17 @@ const termOfYear=y=>{
 // A committee named on a bill, as a link to its page where there is one.
 // 3,967 mentions across the site were plain text, so the reader who wanted
 // "what else did this committee do" had nowhere to click.
-function cmteLink(name){
-  const code=(META&&META.committee_codes||{})[name];
+//
+// THE NAME AS THE BILL CARRIES IT, TO THE COMMITTEE IT WAS. A name is not
+// always one committee: 1995's Corrections and Criminal Justice sits today as
+// Criminal Justice and Public Safety, and the Senate's Election Law and
+// Internal Affairs of 2007-2008 is not the committee of that name formed for
+// 2017-2018. meta.json carries such a name as {"": page, "<term>": page}, and
+// the term decides; the label is never changed to the later name.
+function cmteLink(name,term){
+  const v=(META&&META.committee_codes||{})[name];
+  const code=typeof v==="string"?v
+    :v?((term&&Object.prototype.hasOwnProperty.call(v,term))?v[term]:v[""]):"";
   return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
 }
 
@@ -3155,7 +3164,7 @@ function cmteLink(name){
 // bill and stays.
 function cmeta(b){
   return [esc(b.sponsor_label||b.sponsor||""),
-    ...(b.committees||[b.committee]).filter(Boolean).map(cmteLink),
+    ...(b.committees||[b.committee]).filter(Boolean).map(c=>cmteLink(c,b.term)),
     b.topic?esc(b.topic):""].filter(Boolean).join(" · ");
 }
 
@@ -3782,6 +3791,13 @@ function renderCommitteeHead(c){
     ${c.archived?`<p class="src">Not on the General Court&rsquo;s list of committees today.
       Its bills and sitting days on this record run ${esc(c.archived.years||"")}; the
       records do not say whether it was renamed, divided, merged or ended.</p>`:""}
+    ${/* The names it carried before, so a reader who followed an older name
+         here from a bill knows this is the committee it was. The bills and
+         sittings below keep the name they were given at the time. */
+      (c.names||[]).length?`<p class="src">Named ${c.names.map(n=>
+        `<b>${esc(n.name)}</b> (${esc(n.years||"")})`).join(" and ")} on this
+      record&rsquo;s earlier bills and sittings, which the General Court&rsquo;s
+      own records file under this committee.</p>`:""}
     <div class="cinfo">
       ${dl("cofficers",officers.map(o=>[o.role,
         o.slug?`<a href="legislator/${esc(o.slug)}.html">${esc(o.label||o.name)}</a>`

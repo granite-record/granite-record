@@ -7549,15 +7549,149 @@ def _committees_archived(BC):
         "archived" if "H57" in got(archived) else "live")
     assert got(live) == ["H07", "H30", "S99"], got(live)
     assert BC.years(["1989-1990", "2023-2024"]) == "1989 to 2024"
+    # By run: the Senate's Internal Affairs did not sit from 1993 to 1996.
+    assert BC.runs(["1989-1990", "1991-1992", "1997-1998", "2011-2012"]) == \
+        "1989 to 1992, 1997 to 1998 and 2011 to 2012"
     # And the committee's own page says it, since a reader from a search never
     # sees the listing.
     src = Path("build_committees.py").read_text(encoding="utf-8")
-    assert 'rec["archived"] = {"years": years(c["span"])}' in src, \
+    assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
     head = Path("app.js").read_text(encoding="utf-8")
     head = head[head.find("function renderCommitteeHead"):][:1200]
     assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
     return "ok", "not listed and ended before this term; no record means no claim"
+
+
+@check("build", "an older committee name links, as written, to the committee the General Court files it under",
+       needs=("committee_names", "build_committees", "build_site_v2"))
+def _committee_older_names(committee_names, build_committees, build_site_v2):
+    """The person decided on 24 September that a bill or a hearing naming a
+    committee by a name it has since lost prints that name and links to the
+    committee it was, and that committees the General Court no longer lists
+    get pages in the committees page's archived list.
+
+    Which committee a name was is the General Court's own filing, never the
+    names looking alike (committee_names.CODES). The case that shows why: the
+    Senate's Election Law and Internal Affairs of 2007-2008 is the retired
+    S33, and linked by name alone its 77 bills went to S50, formed under the
+    same name for 2017-2018 -- two committees shown as one. And 1995-2008's
+    House Commerce is H33, not 2009's Commerce and Consumer Affairs, H43.
+    """
+    from collections import Counter as C
+    CN, BC, B = committee_names, build_committees, build_site_v2
+    bad = CN.codes_problems()
+    assert not bad, "; ".join(bad[:4])
+    today = {(ch, CN._norm(nm)): code for ch, nm, code in (
+        ("H", "Criminal Justice and Public Safety", "H26"),
+        ("H", "Commerce and Consumer Affairs", "H43"),
+        ("H", "Special Committee on Public Employee Pension Plans", "H47"),
+        ("S", "Election Law and Internal Affairs", "S50"),
+        ("S", "Rules and Enrolled Bills", "S45"))}
+    for name, ch, term, want in (
+            ("Corrections and Criminal Justice", "H", "1995-1996", "H26"),
+            ("Corrections and Criminal Justice", "H", "1993-1994", "H26"),
+            ("Criminal Justice and Public Safety", "H", "2025-2026", "H26"),
+            ("Criminal Justice and Public Safety", "H", "", "H26"),
+            ("Special Committee on Public Employee Pensions Reform", "H", "2011-2012", "H47"),
+            ("Commerce", "H", "2003-2004", "H33"),
+            ("Commerce and Consumer Affairs", "H", "2013-2014", "H43"),
+            ("Election Law and Internal Affairs", "S", "2007-2008", "S33"),
+            ("Election Law and Internal Affairs", "S", "2017-2018", "S50"),
+            ("Rules and Enrolled Bills", "S", "2005-2006", None),
+            ("Rules and Enrolled Bills", "S", "2023-2024", "S45"),
+            # A run no witness reaches links nowhere, however alike the name.
+            ("Fish and Game", "H", "1991-1992", None),
+            ("Fish and Game", "H", "2005-2006", "H08"),
+            ("Economic Development", "S", "1993-1994", "S18"),
+            ("Economic Development", "H", "1993-1994", "H32")):
+        got = CN.page_code(name, ch, term, today)
+        assert got == want, f"page_code({name!r}, {ch}, {term!r}) is {got!r}, not {want!r}"
+    last = CN.retired()
+    assert (last["H33"], last["S18"], last["H21"]) == (
+        "Commerce", "Energy and Economic Development", "Local and Regulated Revenues"), last
+
+    # meta.json's map, which the page's cmteLink reads.
+    links = B.committee_links([
+        {"term": "1995-1996", "committees": ["House Corrections and Criminal Justice"]},
+        {"term": "2003-2004", "committees": ["House Commerce"]},
+        {"term": "2005-2006", "committees": ["Senate Rules and Enrolled Bills"]},
+        {"term": "2007-2008", "committees": ["Senate Election Law and Internal Affairs"]},
+        {"term": "2017-2018", "committees": ["Senate Election Law and Internal Affairs"]},
+        {"term": "2023-2024", "committees": ["Senate Rules and Enrolled Bills"]}],
+        {"House Criminal Justice and Public Safety": "H26",
+         "Senate Election Law and Internal Affairs": "S50",
+         "Senate Rules and Enrolled Bills": "S45"})
+    for full, want in (("House Corrections and Criminal Justice", "H26"),
+                       ("House Commerce", "H33"),
+                       ("House Criminal Justice and Public Safety", "H26"),
+                       ("Senate Election Law and Internal Affairs", {"": "S50", "2007-2008": "S33"}),
+                       ("Senate Rules and Enrolled Bills", {"": "S45", "2005-2006": ""})):
+        assert links.get(full) == want, f"committee_codes[{full!r}] is {links.get(full)!r}, not {want!r}"
+
+    # The committee's own page: the day under the name it had, the page head
+    # naming what it was called before, and main() asking by term.
+    assert BC.name_on_the_day("Criminal Justice and Public Safety",
+                              C({"Corrections and Criminal Justice": 3})) == \
+        "Corrections and Criminal Justice"
+    assert BC.name_on_the_day("Criminal Justice and Public Safety",
+                              C({"Criminal justice and public safety": 2})) == \
+        "Criminal Justice and Public Safety"
+    assert BC.former_names("Local and Regulated Revenues", {
+        "Regulated Revenues": {"1989-1990", "1991-1992", "1993-1994", "1995-1996"},
+        "Local and Regulated Revenues": {"1997-1998", "2009-2010"}}) == [
+        {"name": "Regulated Revenues", "years": "1989 to 1996"}]
+    assert BC.runs(["2009-2010", "1997-1998"]) == "1997 to 1998 and 2009 to 2010"
+    src = Path(BC.__file__).read_text(encoding="utf-8")
+    main_ = src[src.index("def main("):]
+    for said in ("CN.retired()", 'code_of(cname, r.get("body"), r.get("term"))',
+                 'code_of(nm, "", b.get("term"))', "name_on_the_day(name,"):
+        assert said in main_, f"build_committees.main no longer has {said}"
+
+    # And the page: the name as the bill carries it, to the page of its term.
+    ext, stub = Path("app.js"), Path("dom_stub.js")
+    if not (ext.exists() and stub.exists()) or not shutil.which("node"):
+        return "skip", "resolved and mapped; app.js, dom_stub.js or node not here to draw it"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(ext.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "links.json").write_text(json.dumps(links), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const src = fs.readFileSync("./page.js", "utf8");
+let scope;
+try { scope = (0, eval)(src + "; ({cmteLink, cmeta, renderCommitteeHead, setMeta: m => { META = m; }});"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+scope.setMeta({committee_codes: JSON.parse(fs.readFileSync("./links.json", "utf8"))});
+const E = "Senate Election Law and Internal Affairs";
+const out = {
+  old: scope.cmteLink("House Corrections and Criminal Justice", "1995-1996"),
+  s33: scope.cmteLink(E, "2007-2008"), s50: scope.cmteLink(E, "2017-2018"),
+  none: scope.cmteLink(E), reb: scope.cmteLink("Senate Rules and Enrolled Bills", "2005-2006"),
+  card: scope.cmeta({term: "2007-2008", committees: [E, "House Commerce"]}),
+  head: scope.renderCommitteeHead({code: "H26", name: "Criminal Justice and Public Safety",
+    chamber: "H", names: [{name: "Corrections and Criminal Justice", years: "1993 to 1996"}]})};
+fs.writeFileSync("./out.json", JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[:200]
+        out = json.loads((root / "out.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert out["old"] == ('<a href="committee/H26.html">House Corrections and '
+                          'Criminal Justice</a>'), out["old"]
+    assert "committee/S33.html" in out["s33"] and "committee/S50.html" in out["s50"] \
+        and "committee/S50.html" in out["none"], (out["s33"], out["s50"], out["none"])
+    assert "<a" not in out["reb"], "2005's Rules and Enrolled Bills links to S45: " + out["reb"]
+    assert "committee/S33.html" in out["card"] and "committee/H33.html" in out["card"] \
+        and "S50" not in out["card"], "a card does not link by its own term: " + out["card"]
+    head = re.sub(r"\s+", " ", out["head"])
+    assert "<b>Corrections and Criminal Justice</b> (1993 to 1996)" in head, (
+        "the committee's page does not name what it was called before: " + head[:300])
+    return "ok", (f"{len(CN.CODES)} older names placed on {len(last)} of the General "
+                  "Court's own codes; linked by term, printed as the bill has them")
 
 
 @check("build", "a legislator's search description names the seat once and the places first",
@@ -15401,7 +15535,11 @@ def _committee_attribution():
     total, bad = 0, []
     for f in sorted(root.glob("*.json")):
         c = json.loads(f.read_text(encoding="utf-8"))
-        want = (c.get("name") or "").strip().lower()
+        # Its own report under any name it had: 1999's reports of what is
+        # now H08, Fish and Game, are signed Wildlife and Marine Resources,
+        # and the page narrates those days under that name.
+        want = {(n or "").strip().lower() for n in
+                [c.get("name")] + [x.get("name") for x in c.get("names") or []]}
         for sess in c.get("sessions", []):
             narr = sess.get("narrative", "")
             for it in sess.get("items", []):
@@ -15413,8 +15551,8 @@ def _committee_attribution():
                     continue
                 total += 1
                 mine = any(
-                    want in [(r.get("committee") or "").strip().lower()
-                             for r in (rec.get("reports") or [])]
+                    want & {(r.get("committee") or "").strip().lower()
+                            for r in (rec.get("reports") or [])}
                     for rec in (reps.get(it.get("term"), {}) or {})
                     .get(it.get("bill"), []) or [])
                 if not mine:
