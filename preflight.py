@@ -795,6 +795,80 @@ def _between_chambers(build_site_v2):
                   "a retention moved past, the voters' answer, each from the docket")
 
 
+@check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
+       needs=("build_site_v2",))
+def _conferees_could_not_agree(build_site_v2):
+    """69 bills of 1989-2010 read "Conference committee report adopted", the
+    status fields' CONFERENCE REPORT ADOPTED, where every one's docket says
+    the conferees were unable to agree and the bill died: HB 42 of 1989, "CONF
+    COMM REPORT ADOPTED VV, UNABLE TO AGREE"; HB 431 of 2010, whose "Unable to
+    Reach Agreement" is on the row that files the report and not the one that
+    adopts it. The rows below are theirs. A report adopted where the
+    conferees agreed keeps its label, and so does one a new conference
+    replaced (HB 1210 of 2002, Chapter 230); one the other chamber refused to
+    replace does not (SB 69 of 2001)."""
+    B = build_site_v2
+    bad = []
+    conf = {"gen_status": "SENATE", "house_status": "CONFERENCE REPORT ADOPTED",
+            "senate_status": "CONFERENCE REPORT ADOPTED"}
+    otpa = "Ought to Pass with Amendment"
+    ask = _ev("H", "HOUSE NONCONCUR WITH SEN AM, REQ CONF COMM, REP WARD MA VV", "floor", "MA",
+              "Nonconcur", date="1989-05-12")
+    hb42 = _nar(_ev("H", "PASSED/ADOPTED WITH AM; HJ21, P337-338 + 347", "floor", "MA", otpa,
+                    date="1989-02-09"),
+                _ev("S", "PASSED/ADOPTED WITH AM", "floor", "MA", otpa, date="1989-05-09"),
+                ask, _ev("S", "SENATE ACCEDED TO REQ FOR CONF COMM", date="1989-05-16"),
+                _ev("S", "CONFEREES UNABLE TO AGREE", date="1989-05-23"),
+                _ev("H", "CONF COMM REPORT ADOPTED VV, UNABLE TO AGREE; HJ93, P2789", "floor",
+                    "MA", "Conference Committee Report", date="1989-05-23"))
+    hb431 = _nar(_ev("H", "Ought to Pass: MA DIV 251-92", "floor", "MA", "Ought to Pass",
+                     date="2010-03-24"),
+                 _ev("S", "Ought to Pass with Amendment 2063s, MA, VV; OT3rdg", "floor", "MA",
+                     "Ought to Pass with Amendment 2063s", date="2010-05-13"),
+                 _ev("H", "House Non-Concurs with Senate AM and Requests Comm of Conf (Rep Hess): MA VV",
+                     "floor", "MA", "House Non-Concurs with Senate AM and Requests Comm of Conf "
+                     "(Rep Hess)", date="2010-05-19"),
+                 _ev("H", "Conference Committee Report 2246; Unable to Reach Agreement, Filed",
+                     date="2010-05-27"),
+                 _ev("S", "Conference Committee Report 2246; Adopted, VV", date="2010-06-02"),
+                 _ev("H", "Conference Committee Report #2246 Adopted, VV", date="2010-06-02"))
+    for bid, term, n in (("HB42", "1989-1990", hb42), ("HB431", "2009-2010", hb431)):
+        d = B.bill_disposition({}, bid, conf, n, [], term, "2025-2026")
+        if (d.kind, d.status) != ("done", B.CONF_UNABLE) or not d.between:
+            bad.append(f"{bid} of {term}: {(d.kind, d.status, d.between)}")
+            continue
+        end = B.closing_stage(d.status, n) or {}
+        if not end.get("text") or "adopted" in end["text"].lower():
+            bad.append(f"{bid}: How it ended reads {end.get('text')!r}")
+        _intro, steps = B.journey(n, bid, [], "", "", term)
+        said = [s["text"] for s in steps if s["act"] == "conf_adopted"]
+        if not said or any("could not agree" not in t for t in said):
+            bad.append(f"{bid}: How it got here reads {said!r}")
+        rail = B.passage(n.get("stages"), d.kind, d.status, bid, {"H", "S"}, ["H", "S"])
+        why = B.journey_disagrees(steps, d.kind, d.status, rail, bid)
+        if why:
+            bad.append(f"{bid}: the journey disagrees with its status: {why}")
+    # Agreed, and a report replaced by a new conference: the label stands.
+    agreed = _nar(ask, _ev("S", "Conference Committee Report #2089c Adopted, VV; SJ 19"),
+                  _ev("H", "Conference Committee Report #2089c Adopted, VV; HJ52, PG.1675"))
+    renewed = _nar(ask, _ev("S", "Conference Committee Report [Not Signed]"),
+                   _ev("H", "CONF COMM REPORT (UNABLE TO AGREE) FILED"),
+                   _ev("H", "Rep Goulet Susp Rules for New Conf Comm, MA 2/3DIV(256-44); House Acceded to req"),
+                   _ev("H", "New Conf Comm Report{3763} Adopted VV; HJ40, p1487"))
+    for what, n in (("an agreed report", agreed), ("a report a new conference replaced", renewed)):
+        d = B.bill_disposition({}, "HB1210", conf, n, [], "2001-2002", "2025-2026")
+        if d.status != "Conference committee report adopted":
+            bad.append(f"{what}: {d.status!r}")
+    refused = [_ev("S", "Conf Comm Report (UNABLE TO AGREE) Filed"),
+               _ev("S", "Sen. Pignatelli Motion to Request New Committee of Conference MA, VV"),
+               _ev("H", "House Refused to Accede to req for New Conf Comm, Rep Mock MA VV; HJ61, p1797")]
+    if not B.conferees_disagreed(refused):
+        bad.append("SB69 of 2001: a new conference the House refused undid the report of no agreement")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{B.CONF_UNABLE!r}, with a closing paragraph and a journey that say so; "
+                  "an agreed or replaced report keeps its label")
+
+
 @check("status", "the constitution page counts each CACR of the term once",
        needs=("build_civics",))
 def _cacr_partition(build_civics):

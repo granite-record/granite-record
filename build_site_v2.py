@@ -1077,6 +1077,16 @@ CLOSING = {
         "The chamber voted to indefinitely postpone it. That ends the bill for "
         "the term and, under the rules, bars the same subject from being taken "
         "up again before the term is out."),
+    # CONF_UNABLE. The history says "adopted Conference Committee Report"
+    # and no more, which is the one reading this paragraph must not leave
+    # standing: what the chambers adopted was the conferees' word that they
+    # could not agree.
+    "Died: conferees could not agree": (
+        ("could not agree", "unable to agree"),
+        "The committee of conference -- members of both chambers named to settle "
+        "the differences between the House and Senate versions -- could not "
+        "agree on one, and reported that it was unable to agree. With no version "
+        "that both chambers had accepted, the bill went no further, and it died."),
     # "Killed" is deliberately NOT here. The status page reports it for bills
     # whose docket already says what ended them -- 28 were laid on the table
     # and died there, and the narrative says so in as many words -- so a
@@ -3861,6 +3871,12 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     """
     evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
     intro = _j_introduced(evs, bid, term)
+    # The day the conferees reported that they could not agree, where that is
+    # the last word of the bill's conferences: a report adopted from that day
+    # on is that report, and the line says what it said.
+    unable_day = (max((e.get("date") or "" for e in evs
+                       if CONF_UNABLE_RE.search(e.get("raw") or "")), default="")
+                  if conferees_disagreed(evs) else None)
     steps, amended = [], set()
     gov_raw, gov_more = "", []
     reports = [e for e in evs if e.get("type") == "report"]
@@ -4120,6 +4136,13 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                     "unsigned": ("Became law without signature", "unsigned")}[st["act"]]
             else:
                 st["text"], st["short"] = _j_words(st, bid)
+        # "Adopted the conference report" on HB 42 of 1989, whose report said
+        # "UNABLE TO AGREE", reads as the conferees having settled it.
+        if (st["act"] == "conf_adopted" and unable_day is not None
+                and (st.get("date") or "") >= unable_day):
+            st["text"] = st["text"].replace(
+                "Adopted the conference report",
+                "Adopted the conferees' report that they could not agree", 1)
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
                   "unanswered", "intro_adopt", "short_of"):
             st.pop(k, None)
@@ -4435,6 +4458,12 @@ def journey_disagrees(steps, kind, status, rail, bid):
             f"{status}, and no chamber decided")
     if status == "Conference committee report adopted":
         return "" if "conf_adopted" in acts else f"{status}, with no line adopting one"
+    # The conferees' report of no agreement need not have been voted on, but
+    # the bill must have gone to a conference: a chamber refused the other's
+    # version, or adopted a conference report.
+    if status == CONF_UNABLE:
+        return "" if acts & {"nonconcurred", "conf_adopted"} else (
+            f"{status}, with no line sending it to a conference")
     if status == "Passed one chamber":
         if last and last["act"] in J_ENDING:
             return f"{status}, and the last decision is {last['text'][:40]!r}"
@@ -4788,7 +4817,8 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
 # COMMITTEE and CONFERENCE REPORT ADOPTED got as far as the report. The
 # report's being adopted says nothing about whether the conferees agreed --
 # 1989's HB 42 was adopted "UNABLE TO AGREE" and died -- so the label says
-# only what the field says.
+# only what the field says, and between_chambers() then asks the docket,
+# which gives HB 42 its own ending (CONF_UNABLE).
 STAGE_STATED = [
     ("conference report adopted", "Conference committee report adopted"),
     ("conference committee", "In a committee of conference"),
@@ -4859,6 +4889,47 @@ NEW_CONF = re.compile(r"\bnew\s+(?:conf(?:erence)?\.?\s*comm(?:ittee)?\.?(?!\s*r
 # "Conf Comm Report Adopted RC(190-181); Rep Herman moved to Reconsider, ML".
 NEXT_MOTION = re.compile(r";\s*(?:rep|reps|sen|senator)\b|moved to reconsider", re.I)
 CONF_REJECTED = "Died when the conference report was rejected"
+
+# CONFEREES WHO COULD NOT AGREE, AND SAID SO. A committee of conference that
+# cannot settle the two versions files a report saying it is "unable to agree"
+# -- the docket's words from 1989 to 2010 run "CONF COMM REPORT (UNABLE TO
+# AGREE) ADOPTED VV" (HB 1181 of 1990), "CONF COMM REPORT (COMM UNABLE TO
+# REACH AGREEMENT) SIGNED" (HB 1332 of 1990) and "Conference Committee Report
+# 2246; Unable to Reach Agreement, Filed" (HB 431 of 2010) -- and the chambers
+# adopt that report, which ends the bill: there is no agreed version left to
+# pass. The status fields call it CONFERENCE REPORT ADOPTED, and 69 bills of
+# 1989-2010 read "Conference committee report adopted" as though the
+# conferees had settled it; every one of their dockets says they could not.
+# The House Calendar says it in prose where the committee reported it: "The
+# House and Senate members agreed to disagree" (SB 326, 2000).
+CONF_UNABLE = "Died: conferees could not agree"
+CONF_UNABLE_RE = re.compile(r"\bunable\s+to\s+(?:reach\s+)?agree", re.I)
+
+
+def conferees_disagreed(evs):
+    """Whether the bill's last committee of conference reported that it could
+    not agree. A new conference formed after it starts again: HB 1210 of 2002's
+    first report went unsigned, the chambers formed a new one, and its report
+    became Chapter 230. One the other chamber REFUSED leaves the earlier
+    report standing, as conference_outcome reads it (SB 69 of 2001: "House
+    Refused to Accede to req for New Conf Comm"). Within one row, whichever
+    comes later decides."""
+    said, saved = False, None
+    for e in evs:
+        raw = e.get("raw") or ""
+        unable = CONF_UNABLE_RE.search(raw)
+        new = NEW_CONF.search(raw)
+        if new and re.search(r"refus", raw, re.I):
+            if saved is not None:
+                said = saved
+            new = None
+        elif new and not (re.search(r"\bMA\b", raw) or re.search(r"\bacced", raw, re.I)):
+            new = None
+        if unable and (not new or unable.start() > new.start()):
+            said = True
+        elif new:
+            saved, said = said, False
+    return said
 
 
 def _conference_vote(said, e, raw, m):
@@ -4957,6 +5028,9 @@ def between_chambers(narr, status):
     conf = conference_outcome(evs)
     if status in BEFORE_CONFERENCE and "failed" in conf.values():
         return "done", CONF_REJECTED
+    # A report ADOPTED keeps its label only where the conferees agreed.
+    if status == "Conference committee report adopted" and conferees_disagreed(evs):
+        return "done", CONF_UNABLE
     # A committee of conference the other chamber REFUSED to form never sat:
     # SB 58 of 1990, "HOUSE REFUSED TO ACCEDE", and HB 1432 of 2022.
     if status == "In a committee of conference" and not conf:
