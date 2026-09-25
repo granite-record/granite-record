@@ -106,9 +106,11 @@ _DATE_OK = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}$")
 # "[06/09/05]" on accessions entered a week later: dated by them, the Senate
 # acceded to a House request six days before the House made it. Measured
 # over every database-era docket, the rule with those markers moved 91 rows
-# and put 68 of them before an action of the bill they answer. How a day in
-# recess is shown is the person's decision; this leaves those rows on the
-# day they were entered, and narrative.hold_in_order() refuses any as-of
+# and put 68 of them before an action of the bill they answer. So the bill's
+# history keeps those rows on the day they were entered, and the sitting
+# pages show them on the sitting they were done in the recess of, which the
+# person decided on 24 September 2026 (session_days.recess_sitting). Here,
+# narrative.hold_in_order() refuses any as-of
 # date that would still move an action ahead of one it followed. As it
 # stands it moves 14 rows, puts none ahead of anything, empties two pages
 # that held nothing else, creates none, and the five with a roll call agree

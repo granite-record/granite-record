@@ -321,7 +321,7 @@ class Item:
 
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
-                 "consent", "fifths")
+                 "consent", "fifths", "entered")
 
     def __init__(self, bill, term, e, seq):
         self.bill = bill
@@ -342,6 +342,9 @@ class Item:
         # Three fifths, whose count only the roll call's ballots give; load()
         # fills self.need from rollcalls.json where it can.
         self.fifths = False
+        # The day the docket enters a row load() placed on the sitting it
+        # was done in the recess of; None for every other row.
+        self.entered = None
         if e.get("type") == "veto_override":
             _veto(e, self)
             return
@@ -553,6 +556,109 @@ def _fifths_from_rollcalls(path=ROLLCALLS):
     return out
 
 
+# ------------------------------------------------- business done in recess --
+#
+# A SITTING DOES NOT END WITH ITS DAY. A chamber that recesses rather than
+# adjourns is still in that sitting when it next does business, and the
+# journal prints that business with the sitting: House Journal 49 of 5 June
+# 2013 prints under RECESS, at pages 1649 to 1653, the House refusing Senate
+# amendments on 11 to 13 June; the Senate Journal of 6 May 2004 prints at
+# page 466 its accession to a House request made on 13 May, and the Senate
+# came "Out of Recess" from 6 May only on the 25th. The docket enters each row
+# on the day it was done and says whose recess it was:
+#
+#   "... MA VV [Recess of 6/5/13]; HJ49, PG.1650"                  12 June 2013
+#   "... MA VV (In recess of 5/15/14)"                              21 May 2014
+#   "... MA VV; [Recessed from 5/17/2012 Session]"                  24 May 2012
+#   "Senator Peterson Accede to House Request for C of C,
+#    MA, VV [05/06/04]"                                             13 May 2004
+#
+# Dated by the entry, 79 such rows made ten pages of their own -- "The House,
+# Wednesday 12 June 2013" -- for days the chamber did not sit. The person
+# decided on 24 September 2026 that business done in recess is shown on the
+# sitting it belongs to, as the journal shows it, so load() puts it there and
+# the page says the day the docket enters it. The bill's own history keeps
+# the docket's date, and must: dated by the sitting, the House would refuse
+# a Senate amendment the day before the Senate made it (docket_vocab.as_of).
+#
+# The bare bracketed date is the clerk's as-of date, the shape docket_vocab
+# .AS_OF reads; narrative.hold_in_order refuses it for the bill's history
+# exactly when it would put an answer ahead of its question, which is what
+# recess business looks like, and every one of those rows cites the journal
+# of the sitting it names. Two of 2005 say "[06/09/04]" beside nine saying
+# "[06/09/05]" on the same afternoon's accessions, and the Senate Journal's
+# continuation of 9 June 2005 prints the two among the other nine: a slipped
+# year, read as the row's own.
+#
+# ONLY ONTO A SITTING THE RECORD ALREADY HOLDS, only a few weeks back, and
+# only where the row's own journal citation, if it has one, is that
+# sitting's. Anything else stays on the day the docket gives it.
+RECESS_OF = re.compile(
+    r"[\[(]\s*(?:in\s+)?recess(?:ed)?\s+(?:(?:of|from)\)?\s*)?"
+    r"(?P<d>\d{1,2}/\d{1,2}/\d{2,4})", re.I)
+AS_OF = re.compile(r"\[\s*(?P<d>\d{1,2}/\d{1,2}/\d{2,4})\s*\]"
+                   r"|\(\s*as\s+of\s+(?P<e>\d{1,2}/\d{1,2}/\d{2,4})\s*\)", re.I)
+AS_OF_NOT = re.compile(r"special order|deadline|reporting date|extended to|"
+                       r"rept date", re.I)
+RECESS_DAYS = 31
+
+
+def _mdy(s):
+    mo, dy, yr = (int(x) for x in s.split("/"))
+    if yr < 100:
+        yr += 2000 if yr < 50 else 1900
+    try:
+        return _date(yr, mo, dy)
+    except ValueError:
+        return None
+
+
+def recess_sitting(e):
+    """The earlier date of the sitting this floor row was done in the recess
+    of, as the docket states it, or None. load() decides whether to use it."""
+    raw = e.get("raw") or ""
+    try:
+        own = _date.fromisoformat((e.get("date") or "")[:10])
+    except ValueError:
+        return None
+    m = RECESS_OF.search(raw)
+    when, slip = (_mdy(m.group("d")), False) if m else (None, False)
+    if when is None and not AS_OF_NOT.search(raw):
+        m = AS_OF.search(raw)
+        when, slip = (_mdy(m.group("d") or m.group("e")), True) if m else (None, False)
+    if when is None:
+        return None
+    if slip and when.year == own.year - 1:
+        try:
+            when = when.replace(year=own.year)
+        except ValueError:
+            return None
+    if not 0 < (own - when).days <= RECESS_DAYS:
+        return None
+    return when.isoformat()
+
+
+# ------------------------------------------------ a rule's date, not a sitting --
+#
+# A BILL THAT DIES UNDER A JOINT RULE DIES ON A DATE, NOT AT A SITTING. The
+# joint rules kill what is not acted on by a deadline, and the docket enters
+# the death on the deadline: "INDEFINITELY POSTPONED BY JOINT RULE 24(B)" on
+# Sunday 1 July 1990 for fifteen House and three Senate bills, and "PER JT
+# RULE 23-A" on Saturday 1 July 1995 for eight. Each made a sitting page of
+# its own -- "The House, Sunday 1 July 1990" -- on a day neither chamber sat.
+# The person decided on 24 September 2026 that those days are not sittings;
+# the rows stay in their bills' histories, where a bill dying is a fact. A
+# weekday deadline is left alone, and so is a joint-rule row on a weekend
+# the chamber did sit, since it is then the day's business that makes the
+# sitting and not the rule.
+JOINT_RULE = re.compile(r"\b(?:by|per|under)\s+j(?:oin)?t\.?\s*rules?\b", re.I)
+
+
+def _rule_only_weekend(date, items):
+    return (_date.fromisoformat(date).weekday() >= 5
+            and all(JOINT_RULE.search(i.raw or i.action or "") for i in items))
+
+
 def load(path=NARRATIVES, rollcalls=ROLLCALLS):
     """Every sitting day, as {(body, date): Day}.
 
@@ -568,6 +674,7 @@ def load(path=NARRATIVES, rollcalls=ROLLCALLS):
     data = json.loads(p.read_text(encoding="utf-8"))
 
     grouped = collections.defaultdict(list)
+    recess = []
     seq = 0
     for term, bills in sorted(data.items()):
         for bill, rec in sorted(bills.items()):
@@ -578,7 +685,25 @@ def load(path=NARRATIVES, rollcalls=ROLLCALLS):
                     continue
                 seq += 1
                 it.seq = seq
-                grouped[(body, date)].append(it)
+                sitting = recess_sitting(e)
+                if sitting:
+                    recess.append((body, date, sitting, it))
+                else:
+                    grouped[(body, date)].append(it)
+
+    # Onto the sitting only where the record holds it, and where the row's
+    # journal is that sitting's journal.
+    for body, date, sitting, it in recess:
+        there = grouped.get((body, sitting))
+        cites = {i.cite for i in there or () if i.cite}
+        if there and (not it.cite or not cites or it.cite in cites):
+            it.entered = date
+            there.append(it)
+        else:
+            grouped[(body, date)].append(it)
+
+    for key in [k for k, items in grouped.items() if _rule_only_weekend(k[1], items)]:
+        del grouped[key]
 
     assert grouped, ("no floor events in narratives.json -- every sitting day "
                      "page would be empty, and the build would not say so")

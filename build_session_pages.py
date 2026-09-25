@@ -488,6 +488,15 @@ def render(day, narrative, titles, years, members, esc):
                                    .replace("Sen. ", ""), members, esc)}</span>'
                      if it.mover else "")
             H.append(f'<p class="smq">On the motion: <b>{esc(it.action)}</b>{moved}</p>')
+            # BUSINESS DONE IN RECESS is on the sitting the journal prints it
+            # with (session_days.recess_sitting), and the bill's own history
+            # keeps the day the docket entered it. Said here, so the two
+            # dates read as one fact rather than as a contradiction.
+            if it.entered:
+                H.append('<p class="swho">Done in the recess of this sitting, '
+                         "and entered in the docket on "
+                         f"{esc(words(it.entered))}, the date the bill&rsquo;s "
+                         "own history gives it.</p>")
 
             mine, rest = speakers_for(attrs, bill, it, sole=(len(items) == 1))
             for side, label in (("for", "Spoke for the motion"),
