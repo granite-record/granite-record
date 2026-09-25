@@ -4149,6 +4149,11 @@ function calendarBlock(rows,heading){
         if(bars.indexOf(c)<0)bars.push(c);});
       const kindWord=k2=>MEET_KIND[String(k2||"").trim().toLowerCase()]
         ||[k2?k2.charAt(0).toUpperCase()+k2.slice(1):"Meeting",""];
+      // EACH BILL ONCE, as build_pages.cal_days counts them. A bill heard
+      // and then voted on the same day is two items and one bill, and
+      // counting items put "13 bills" over a committee's eight.
+      const nb=new Set(bills.map(b=>String(b.bill||"").trim().toUpperCase())
+        .filter(Boolean)).size;
       out.push(`<details class="calmeet"><summary>`
         +`<span class="calmix" aria-hidden="true">`
         +bars.map(c=>`<i class="${c}"></i>`).join("")+`</span>`
@@ -4156,7 +4161,7 @@ function calendarBlock(rows,heading){
         +`<span class="calcmte">${esc(cmte)}</span>`
         +kinds.map(k2=>{const [w,c]=kindWord(k2);
           return `<span class="calkind ${c}">${esc(w)}</span>`;}).join("")
-        +`<span class="calcount">${bills.length} bill${bills.length===1?"":"s"}</span>`
+        +`<span class="calcount">${nb} bill${nb===1?"":"s"}</span>`
         +(venue?`<span class="calwhere">${esc(venue)}</span>`:"")
         +`<span class="caret"></span></summary>`
         +`<div class="calbody">`);

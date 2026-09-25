@@ -13066,6 +13066,137 @@ def _calendar_chambers():
                   "chambers', and not Senate Judiciary's; the picker lists each and picks one")
 
 
+@check("frontend", "a calendar card counts each bill once, however many items it has that day, and so does the week")
+def _calendar_counts_bills():
+    """House Housing on 21 January 2025 heard eight bills and voted on five
+    of them after, and its card said "(13 bills)" over the eight it listed.
+
+    build_pages.cal_days counted the day's rows, and a bill heard and then
+    voted on is two rows: 250 of the 1,883 cards on the Calendar, in its
+    month files and on the home page's Coming up stated more bills than they
+    held -- House Election Law the same day "(8 bills)" over four, House
+    Commerce on 18 February 2026 "(53 bills)" over 37. app.js's
+    calendarBlock, the committee page's Upcoming session, counted the same
+    way; and the week's lead counted a bill once a day, so HB 511, heard by
+    Criminal Justice on the 22nd and voted on the 24th, was two of the bills
+    the week "covered" -- 33 of 98 weeks' leads overstated. The rows below
+    are proceedings.csv's own for those days.
+
+    The items stay as they are -- each in its own slot, HB 60 under the
+    hearing and again under the executive session -- and only the count
+    changes. Run on the card, the week page, the month file, the home rail
+    and, where node is on PATH, calendarBlock.
+    """
+    import contextlib
+    import datetime as _dt
+    import html as _h
+    import io
+    import build_calendar as BC
+    import build_pages as BP
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+
+    def r(d, bill, kind, time, cmte, venue):
+        return {"term": "2025-2026", "bill": bill, "body": "H", "kind": kind,
+                "date": d, "time": time, "committee": cmte, "venue": venue}
+    H, E, X = "public hearing", "executive session", "LOB 210-211"
+    rows = [r("2025-01-21", b, k, t, "Housing", X) for b, k, t in (
+        ("HB60", H, "10:00"), ("HB60", E, "10:00"), ("HB351", H, "11:00"),
+        ("HB351", E, "11:00"), ("HB65", H, "11:30"), ("HB309", H, "13:00"),
+        ("HB309", E, "13:00"), ("HB296", H, "13:30"), ("HB342", H, "14:00"),
+        ("HB444", H, "14:30"), ("HB444", E, "14:30"), ("HB399", H, "15:00"),
+        ("HB399", E, "15:00"))]
+    rows += [r("2025-01-21", b, k, t, "Election Law", "LOB 306-308") for b, k, t in (
+        ("HB67", H, "10:20"), ("HB261", H, "10:50"), ("HB261", E, "10:50"),
+        ("HB340", H, "11:00"), ("HB160", H, "11:30"), ("HB160", E, "11:45"),
+        ("HB340", E, "11:45"), ("HB67", E, "11:45"))]
+    rows += [r("2025-01-22", "HB511", H, "15:30", "Criminal Justice and Public Safety", "LOB 301-303"),
+             r("2025-01-24", "HB511", E, "08:00", "Criminal Justice and Public Safety", "LOB 301-303")]
+    weeks = BC.weeks_from(rows, names={})
+
+    def card(html, name):
+        for m in re.finditer(r'<details class="calmeet"[^>]*>(.*?)</details>', html, re.S):
+            if f'<span class="calcmte">{name}</span>' in m.group(1):
+                c = m.group(1)
+                return (re.search(r'<span class="calcount">([^<]*)</span>', c).group(1),
+                        len(re.findall(r'<a class="cbn"', c)))
+        return None
+
+    day = weeks["2025-W04"]["2025-01-21"]
+    html, _m = BP.cal_days({"2025-01-21": BC.in_order(day)}, day, {}, {}, {},
+                           lambda d: (d, ""), _h.escape)
+    assert card(html, "House Housing") == ("(8 bills)", 13), (
+        f"House Housing on 21 January 2025 is {card(html, 'House Housing')}: "
+        "wanted '(8 bills)' over its thirteen items")
+    assert card(html, "House Election Law") == ("(4 bills)", 8), (
+        f"House Election Law on 21 January 2025 is {card(html, 'House Election Law')}")
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-calcount-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        today = _dt.date(2025, 1, 21)
+        BC.every_week(weeks, today)
+        wk = sorted(weeks)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(wk):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, wk, i,
+                             {}, {}, {}, [], today, set())
+            BC.month_files(site, weeks, wk, {}, {}, {}, today)
+        page = (site / "calendar.html").read_text(encoding="utf-8")
+        assert card(page, "House Housing") == ("(8 bills)", 13), (
+            f"the week page's House Housing is {card(page, 'House Housing')}")
+        lead = re.search(r'<p class="src">([^<]*)</p>', page).group(1)
+        assert lead.startswith("4 sittings on 3 days, covering 13 bills."), (
+            f"the week's lead reads {lead!r}: 8, 4 and HB 511 are 13 bills, "
+            "and HB 511 on two days is one of them")
+        month = json.loads((site / "calendar" / "data" / "2025-01.json").read_text(encoding="utf-8"))
+        assert card(month["days"]["2025-01-21"], "House Housing") == ("(8 bills)", 13), (
+            "the month file's House Housing is "
+            f"{card(month['days']['2025-01-21'], 'House Housing')}")
+        assert "covering 13 bills" in month["weeks"]["2025-W04"]["lead"], month["weeks"]["2025-W04"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            rail = BP.calendar_html(site, today=today, rows=rows)
+        assert card(rail, "House Housing") == ("(8 bills)", 13), (
+            f"Coming up's House Housing is {card(rail, 'House Housing')}")
+        assert "13 bills" not in rail and "(8 bills)" in rail, "Coming up still counts items"
+
+        node = _cal_node()
+        js, stub = here / "app.js", here / "dom_stub.js"
+        if not (node and js.exists() and stub.exists()):
+            return "ok", ("House Housing says (8 bills) over its thirteen items on the card, the "
+                          "week, the month file and Coming up; node not on PATH, so calendarBlock "
+                          "was not run")
+        up = [{"date": x["date"], "time": x["time"], "bill": x["bill"], "term": x["term"],
+               "committee": x["committee"], "what": x["kind"], "venue": x["venue"]}
+              for x in rows if x["committee"] == "Housing"]
+        (tmp / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (tmp / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (tmp / "up.json").write_text(json.dumps(up), encoding="utf-8")
+        (tmp / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({calendarBlock});"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const h = s.calendarBlock(JSON.parse(fs.readFileSync("./up.json", "utf8")), "Upcoming session");
+process.stdout.write(JSON.stringify({count: (h.match(/<span class="calcount">([^<]*)<\\/span>/) || [])[1] || "",
+  items: (h.match(/<a class="cbn"/g) || []).length}));
+""", encoding="utf-8")
+        rr = _run([node, "go.js"], cwd=tmp, capture_output=True, text=True, timeout=60)
+        assert rr.returncode == 0, (rr.stdout or rr.stderr).strip()[-300:]
+        got = json.loads(rr.stdout)
+        assert got == {"count": "8 bills", "items": 13}, (
+            f"a committee page's Upcoming session draws House Housing as {got}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("House Housing on 21 January 2025 says (8 bills) over its thirteen items on the "
+                  "card, the week, the month file, Coming up and a committee page; the week "
+                  "covers HB 511 once")
+
+
 # The page's own picker, for _calendar_chambers, on _CAL_DOM.
 _CAL_CHAMBER_DRIVE = r"""const {makeWorld}=require("./minidom.js");
 const fs=require("fs"), vm=require("vm"), path=require("path");
