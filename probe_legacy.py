@@ -43,6 +43,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import refusal
 from pathlib import Path
 
 URL = "https://gc.nh.gov/bill_status/legacy/bs2016/"
@@ -86,6 +87,7 @@ def main():
                     help="a session year, e.g. 2019. The form says 1989-Current")
     ap.add_argument("--raw", action="store_true", help="save the results page")
     a = ap.parse_args()
+    refusal.check("The legacy search probe")
 
     print(f"1/2  loading the search form: {URL}")
     try:

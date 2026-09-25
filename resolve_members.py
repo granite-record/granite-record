@@ -28,6 +28,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import refusal
 from collections import defaultdict
 from html.parser import HTMLParser
 from pathlib import Path
@@ -91,6 +92,7 @@ def main():
                     help="stop after this many, so a wrong assumption cannot "
                          "turn into an unbounded crawl")
     a = ap.parse_args()
+    refusal.check("The roll-call page lookup")
 
     d = Path(a.dir)
 

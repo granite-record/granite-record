@@ -111,6 +111,7 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+import refusal
 from pathlib import Path
 
 BASE = "https://gc.nh.gov/{chamber}/calendars_journals/"
@@ -289,6 +290,7 @@ def main():
                     help="which chamber's page to read")
     ap.add_argument("--raw", action="store_true", help="save the HTML")
     a = ap.parse_args()
+    refusal.check("The calendar probe")
     url = BASE.format(chamber=a.chamber)
 
     print(f"fetching {url}")

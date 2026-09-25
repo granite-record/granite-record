@@ -16790,10 +16790,21 @@ def _every_fetcher_checks_refusal():
     """
     import re as _re
     URL = _re.compile(r"""["']https?://gc\.nh\.gov""")
+    # NOT ONLY THE fetch_*.py SCRIPTS (25 September 2026). resolve_members.py,
+    # a network step of build_all, asks bill_status/legacy/bs2016/ for roll-call
+    # pages, and four probe scripts ask the General Court too; none consulted
+    # refusal.py, and this check, reading fetch_*.py alone, never looked. So it
+    # reads every script that holds a General Court URL AND makes a request --
+    # the pages that only write a link to the General Court are not asking it.
+    # netcheck.py is the one exception by design: it is what a person runs to
+    # diagnose a refusal, so a standing refusal must not stop it.
+    ASKS = _re.compile(r"urlopen|urllib\.request\.Request|requests\.(?:get|post)|http\.client")
     asks, missing = [], []
-    for p in sorted(Path(".").glob("fetch_*.py")):
+    for p in sorted(Path(".").glob("*.py")):
+        if p.name in ("netcheck.py", "preflight.py"):
+            continue
         src = p.read_text(encoding="utf-8", errors="replace")
-        if not URL.search(src):
+        if not URL.search(src) or (not p.name.startswith("fetch_") and not ASKS.search(src)):
             continue
         asks.append(p.name)
         if "import refusal" not in src:

@@ -32,6 +32,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+import refusal
 import child
 from collections import defaultdict
 from pathlib import Path
@@ -93,6 +94,7 @@ def main():
     ap.add_argument("--samples", default="HB1,HB100,CACR1",
                     help="bills to try per year")
     a = ap.parse_args()
+    refusal.check("The archive probe")
 
     bills = [b.strip().upper() for b in a.samples.split(",") if b.strip()]
     print(f"sampling {bills} for {a.y0}-{a.y1}\n")

@@ -42,6 +42,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import refusal
 from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
@@ -170,6 +171,7 @@ def main():
                     help="read what is already on disk and say nothing to the "
                          "server")
     a = ap.parse_args()
+    refusal.check("The archive shape probe")
 
     if a.report:
         return report()
