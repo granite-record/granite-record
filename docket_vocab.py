@@ -151,7 +151,8 @@ def as_of(desc, created, session=None):
         year = int(str(session)[:4])
     except (TypeError, ValueError):
         year = None
-    if year is not None and not (year - 1 <= when.year <= year + 1):
+    if year is not None and not narrative.session_keeps(
+            when.year, when.month, when.day, year):
         return None
     return when
 
@@ -189,7 +190,10 @@ def _ensure_date(d, created, session=None, desc=None):
     except (TypeError, ValueError):
         return d
     mo, dy, yr = (int(x) for x in d["date"].split("/"))
-    if not (year - 1 <= yr <= year + 1):
+    # narrative.session_keeps: within a year of the session, or anywhere in
+    # its term -- a retained bill's session is its second year, and its
+    # introduction was entered the December before its first.
+    if not narrative.session_keeps(yr, mo, dy, year):
         for y in (year, year - 1, year + 1):
             try:
                 d["date"] = _date(y, mo, dy).strftime("%m/%d/%Y")

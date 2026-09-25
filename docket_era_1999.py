@@ -153,6 +153,49 @@ FLOOR_CONF = re.compile(
     r"(?P<outcome>Adopted|adopted|Rejected|Not Adopted)"
     r"(?:" + MOVER_H + r"\s*,?\s*(?P<motion>MA|ML)\b)?" + HVOTE, re.I)
 
+# --- a senator's motion, read as the senator's -------------------------------
+# The Senate clerk names the senator who moved a question AFTER it, "Senate
+# Accedes to Req for Conference Committee, Sen. McCarley, MA, VV" (77 rows of
+# 1999-2000), or BEFORE it with the outcome in words, "Senator Johnson Accede
+# to House Request for C of C, Adopted [05/06/04]". FLOOR_S_ADOPTED took the
+# name for the question, it being the last clause before MA, so the Senate
+# "adopted 'Sen. McCarley'"; FLOOR_H_ADOPTED took the House's bare "Adopted"
+# -- passage -- after the comma, so 29 accessions and 28 nonconcurrences, four
+# special orders and three suspensions of the rules, 1999-2006, read "the
+# Senate voted to pass it" and their sitting pages "On the motion: Ought to
+# Pass ... it carried in this chamber". Both are read here, before either:
+# the question is the action and the senator its mover, which normalise()
+# hands on the way the 1989 era does, "(Sen. Johnson)". The name is matched
+# case-sensitively, so "Senate", "Sen Am" and "Sen. Floor Amendment" are not
+# a senator.
+S_NAME = (r"(?-i:Sen(?:ator\s+|\.\s*|\s+))"
+          r"(?!(?-i:Am|Amend\w*|Floor|Fl|Comm\w*|Committee|Enrolled|Moved)\b)"
+          r"(?:(?-i:[A-Z])\.\s*)?(?-i:[A-Z][\w'’\-]+)")
+S_SKIP = r"(?:\s*,?\s*(?:\{[^}]*\}|\[[^\]]*\]|\((?:\d\w*\s+)?New Title\)))*"
+# "Senate Concurs W/House Amendment, Sen. Pignatelli, MA, VV",
+# "Conf Comm Report {1921}, Sen Gordon, MA, VV"
+FLOOR_S_MOVER_AFTER = re.compile(
+    r"^" + S_DATE + r"(?P<action>[A-Z][^;{\[,]*?)" + S_SKIP +
+    r"\s*,\s*(?P<mover>" + S_NAME + r")\s*,?\s*"
+    r"(?=" + S_TOK + r"*(?:MA|MF|ML)\b)" + S_FACTS, re.I)
+# "Senator O'Hearn Nonconcur with House Am Requests Committee of Conference,
+# Adopted", "Sen. Burns Non Concur with House Am {2949},(New Title), RC 12y -
+# 9n, Adopted", "Sen. J. King Moved For Susp. of Rules, Adopted by 2/3rds vote"
+FLOOR_S_MOVER_FIRST = re.compile(
+    r"^" + S_DATE + r"(?P<mover>" + S_NAME + r")\s+(?:Moved\s+(?:to\s+|for\s+)?)?"
+    r"(?P<action>[A-Z][^;{,]*?)" + S_SKIP +
+    r"\s*[,;.]?\s*(?:(?:(?P<vote>RC|DV|Division|Roll\s+Call)\s*)?"
+    r"(?P<y>\d+)\s*Y\s*[-–]\s*(?P<n>\d+)\s*N\s*[,;]?\s*)?"
+    r"(?P<outcome>Adopted|Rejected|Not\s+Adopted)\b"
+    r"(?:\s*[,;]?\s*(?P<vote_after>VV|DV)\b)?", re.I)
+# The senator's name ahead of an abbreviated question that is the whole of
+# it: "Sen. Krueger OTP, MA, VV", "Sen. Gordon LOT; MA, VV" -- seven rows of
+# 1999-2000, whose motion read "Sen. Krueger OTP". normalise() splits the name off
+# where WORDS knows the abbreviation. A question in words after the name,
+# "Sen. Kenney Accede to House Request For Committee of Conference", already
+# says what it is, and is left as the clerk wrote it.
+LEAD_SENATOR = re.compile(r"^(?P<mover>" + S_NAME + r")\s+(?P<rest>(?-i:[A-Z][A-Z/]{1,5}))$", re.I)
+
 # --- introduced / vacated / re-referred ---------------------------------------
 _CMTE_END = (r"(?=\s*(?:[;<\[]|,?\s*\((?:See|also)|,?\s*(?:HJ|SJ|HC|SC)\s*\d|,\s*SJ\b"
              r"|,?\s*\d{1,2}/\d{1,2}/\d{2,4}|[,.\s]*$))")
@@ -327,6 +370,8 @@ OLD = [
     ("floor", FLOOR_CONF),
     ("floor", FLOOR_S_3RD),
     ("floor", FLOOR_S_OT3),
+    ("floor", FLOOR_S_MOVER_AFTER),
+    ("floor", FLOOR_S_MOVER_FIRST),
     ("floor", FLOOR_H_ADOPTED),
     ("floor", FLOOR_S_ADOPTED),
     ("floor", FLOOR_H_PROC),
@@ -433,19 +478,30 @@ def normalise(ev, created):
         ev["date"] = created.strftime("%m/%d/%Y")
     if ev.get("eff") and not re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", ev["eff"]):
         ev["eff"] = full_date(ev["eff"], created) or ev["eff"]
-    if (ev.get("vote") or "").upper() == "DIV":
-        ev["vote"] = "DV"
+    if t == "floor" and not ev.get("vote") and ev.get("vote_after"):
+        ev["vote"] = ev["vote_after"]
+    v = re.sub(r"\s+", " ", (ev.get("vote") or "")).upper()
+    if v in ("DIV", "DIVISION", "ROLL CALL"):
+        ev["vote"] = "RC" if v == "ROLL CALL" else "DV"
     if t == "floor":
-        a = ev.get("action") or ""
+        a = (ev.get("action") or "").strip()
+        mover = (ev.get("mover") or "").strip()
         if not ev.get("motion"):
-            o = (ev.get("outcome") or "").lower()
+            o = re.sub(r"\s+", " ", (ev.get("outcome") or "")).lower()
             if o in ("rejected", "not adopted"):
                 ev["motion"] = "ML"
             elif o == "adopted" or SELF_ADOPTING.match(a):
                 ev["motion"] = "MA"
         if (ev.get("motion") or "").upper() == "AA":
             ev["motion"] = "MA"            # "OTP/A {1234}, AA, VV" with no third-reading MA
+        lead = LEAD_SENATOR.match(a) if not mover else None
+        if lead and plain(lead.group("rest")) != lead.group("rest"):
+            mover, a = lead.group("mover"), lead.group("rest")
         ev["action"] = plain(a) if not re.match(r"^Sen", a) else a
+        if mover:
+            # "(Sen. Johnson)", which narrative.split_mover takes back off.
+            name = re.sub(r"^Sen(?:ator|\.)?\s*", "", mover)
+            ev["action"] = f"{ev['action']} (Sen. {name})"
     if t == "amendment" and re.match(r"(?:Comm|Maj|Min)\w*\.?\s+Am", ev.get("what") or "", re.I):
         ev["what"] = "Committee Amendment"
     if t == "report":

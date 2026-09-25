@@ -197,6 +197,35 @@ def fdate(d):
 ONE_DATE = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}$")
 
 
+def in_term(yr, mo, dy, session):
+    """Whether a day falls in the term a session year belongs to: from
+    1 November before the term's first year to the end of its second.
+
+    The House and Senate organise on the first Wednesday of December of the
+    even year, and the first bills are introduced that day -- the whole of
+    2005-2006's first batch is dated 1 December 2004. The line is drawn where
+    build_site_v2._j_in_term draws the rail's, so a date this keeps is one
+    the rail will print.
+    """
+    start = session if session % 2 else session - 1
+    return (start - 1, 11, 1) <= (yr, mo, dy) <= (start + 1, 12, 31)
+
+
+def session_keeps(yr, mo, dy, session):
+    """Whether a docket date belongs to a bill of this session year: within a
+    year of it, as the database glue has always allowed, or anywhere in its
+    term.
+
+    THE SESSION COLUMN IS THE BILL'S LAST YEAR, NOT ITS FIRST. A bill
+    retained into the second year of its term carries that year on every
+    row, so a year either side of it reaches back only to January of the
+    first -- and twelve introductions of 2005-2006 were entered at the
+    organisation of the term, the December before. They are the only dates
+    across the nineteen terms this keeps that the year either side did not.
+    """
+    return session - 1 <= yr <= session + 1 or in_term(yr, mo, dy, session)
+
+
 def clamp_year(ev, session):
     """A date outside the bill's own session, brought back into it.
 
@@ -216,6 +245,12 @@ def clamp_year(ev, session):
 
     ev["eff"] is deliberately untouched: a law of 2014 really can take effect
     in 2020, and two do.
+
+    A DATE IN THE BILL'S OWN TERM IS NOT OUTSIDE ITS SESSION, whatever the
+    session column says (session_keeps). A bill retained into its second
+    year carries that year on every row, its introduction included, so HB 113
+    of 2005-2006, introduced on organisation day, 1 December 2004, was brought
+    "back" to 1 December 2006 -- eleven months after the House killed it.
     """
     d = str(ev.get("date") or "")
     if not ONE_DATE.match(d):
@@ -225,7 +260,7 @@ def clamp_year(ev, session):
     except (TypeError, ValueError):
         return ev
     mo, dy, yr = (int(x) for x in d.split("/"))
-    if year - 1 <= yr <= year + 1:
+    if session_keeps(yr, mo, dy, year):
         return ev
     for y in (year, year - 1, year + 1):
         try:

@@ -8127,6 +8127,182 @@ def _session_as_of_dates(N, V):
         N.CORRECTIONS, N.TERM = saved
 
 
+def _docket_rows(lines):
+    """Docket.txt lines as the rows narrative.build() takes."""
+    from datetime import datetime as _dt
+    out = []
+    for x in lines:
+        p = x.split("|")
+        out.append({"lsr": f"{p[0]}-{p[1]}", "session": p[0], "body": p[4],
+                    "desc": p[5], "flags": [],
+                    "created": _dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p")})
+    return out
+
+
+@check("narrative", "a day in the bill's own term keeps its year, a retained "
+       "bill's introduction included, and the rail says the same day",
+       needs=("narrative", "docket_vocab", "build_site_v2"))
+def _history_term_dates(N, V, B):
+    """A retained bill's session column is its SECOND year, on every row.
+
+    HB 113 of 2005-2006 was introduced on organisation day, 1 December 2004,
+    and retained into 2006, so its rows carry 2006. The rule that brings a
+    clerk's slip back into the bill's session allowed a year either side of
+    that -- 2005 to 2007 -- and "corrected" the introduction to 1 December
+    2006: the history said the bill was introduced eleven months after the
+    House killed it, told the introduction last, and the rail, finding it
+    after the kill, left the Introduced stop undated. Twelve introductions of
+    2005-2006 were entered on that December's days. A day in the term -- from
+    the 1 November before it -- is the row's; a slip outside it is still
+    brought back, and both are real rows.
+    """
+    saved = (N.CORRECTIONS, N.TERM, N.MISFILED)
+    hb113 = [
+        "2006|0168|12/01/2004 12:36:10 PM|HB113|H|Introduced and ref to Crim Just & PSfty;  "
+        "HJ 6, p 83|12/01/2004 12:36:10 PM",
+        "2006|0168|01/05/2005 04:38:24 PM|HB113|H|Hearing   Jan 13   10:00   RM204,LOB"
+        "|01/05/2005 04:38:24 PM",
+        "2006|0168|03/23/2005 10:11:29 AM|HB113|H|Retained in committee|03/23/2005 10:11:29 AM",
+        "2006|0168|10/28/2005 10:39:45 AM|HB113|H|Comm Report for Jan 4, 2006; ITL  (vote "
+        "15-0; CC); HC 2, p 127|10/28/2005 10:39:45 AM",
+        "2006|0168|01/05/2006 09:13:33 AM|HB113|H|ITL [1/4/2006]  MA  HJ 7, pg 367"
+        "|01/05/2006 09:13:33 AM"]
+    # The clerk's slips, still brought back: a row stamped 1927 on a bill of
+    # 1997, and "Enrolled 04/26/2089" on HB 1484 of 2018.
+    hb685 = ["1997|0916|01/29/1927 06:31:47 PM|HB685|H|INTRODUCED AND REF TO CRIM JUST & "
+             "PSFTY; HJ17,P280|01/29/1927 06:31:47 PM"]
+    hb1484 = ["2018|2474|5/1/2018 12:00:00 AM|HB1484|H|Enrolled 04/26/2089|5/1/2018 12:00:00 AM"]
+    try:
+        N.CORRECTIONS, N.MISFILED = [], []
+        # The rule itself, at its edges.
+        assert N.in_term(2004, 12, 1, 2006) and N.in_term(2004, 11, 1, 2005), (
+            "the December before a term's first year is not in the term")
+        assert not N.in_term(2004, 10, 31, 2006) and not N.in_term(2007, 1, 1, 2006), (
+            "a day outside the term was read as in it")
+        assert N.session_keeps(2007, 6, 1, 2006) and not N.session_keeps(2004, 6, 1, 2006), (
+            "the year either side of the session is no longer what it was")
+        N.TERM = "2005-2006"
+        rec = N.build("HB113", _docket_rows(hb113))
+        evs = rec["events"]
+        assert evs[0]["type"] == "introduced" and evs[0]["date"] == "2004-12-01", (
+            "HB 113's introduction on 1 December 2004 is not its first event on "
+            f"that day: {[(e['date'], e['type']) for e in evs]}")
+        assert rec["narrative"].startswith("It was introduced on December 1, 2004"), (
+            f"HB 113's history does not open with its introduction: {rec['narrative'][:120]!r}")
+        assert "2006" not in rec["stages"][0]["text"].split(".")[0], (
+            f"HB 113's introduction still carries 2006: {rec['stages'][0]['text'][:120]!r}")
+        intro, _steps = B.journey(rec, "HB113", [], "", "", "2005-2006")
+        assert intro == "2004-12-01", (
+            f"the rail's Introduced stop for HB 113 reads {intro!r}, not the day "
+            "the history gives it")
+        N.TERM = "1997-1998"
+        e = N.build("HB685", _docket_rows(hb685))["events"][0]
+        assert e["date"] == "1997-01-29", f"a row stamped 1927 kept its year: {e['date']}"
+        N.TERM = "2017-2018"
+        e = N.build("HB1484", _docket_rows(hb1484))["events"][0]
+        assert e["type"] == "enrolled" and e["date"] == "2018-04-26", (
+            f"'Enrolled 04/26/2089' kept its year: {e['type']} {e['date']}")
+        return "ok", ("HB 113 is introduced on 1 December 2004 in its history "
+                      "and on its rail; slips of 1927 and 2089 are still "
+                      "brought back")
+    finally:
+        N.CORRECTIONS, N.TERM, N.MISFILED = saved
+
+
+@check("narrative", "a senator's motion is read as the senator's, never as passage",
+       needs=("narrative", "docket_vocab", "session_days"))
+def _senator_motions(N, V, SD):
+    """The Senate clerk of 1999-2004 names the mover of a question after it,
+    "Senate Accedes to Req for Conference Committee, Sen. McCarley, MA, VV",
+    or before it with the outcome in words, "Senator Johnson Accede to House
+    Request for C of C, Adopted [05/06/04]".
+
+    The first read as a motion called "Sen. McCarley", which the Votes tab
+    and the sitting page printed as the question put. The second read as the
+    House's bare "Adopted", which is passage: 29 accessions and 27
+    nonconcurrences of 2003-2004 said "the Senate voted to pass it", and the
+    sitting pages "On the motion: Ought to Pass ... it carried in this
+    chamber". Real rows, each shape once, and three that must not move.
+    """
+    saved = (N.CORRECTIONS, N.TERM, N.MISFILED)
+    rows = {
+        ("HB1148", "2003-2004"): [
+            "2004|2305|05/13/2004 12:03:30 PM|HB1148|H|House Nonconc with Sen Am req Conf "
+            "Comm, Rep Lawton MA VV;   HJ 39, p 1548|05/13/2004 12:03:30 PM",
+            "2004|2305|05/13/2004 04:46:45 PM|HB1148|S|Senator Johnson Accede to House "
+            "Request for C of C, Adopted [05/06/04]; SJ 15-A, Pg.469|05/13/2004 04:46:45 PM"],
+        ("HB384", "2003-2004"): [
+            "2004|0269|05/06/2004 03:25:13 PM|HB384|S|Senator Peterson Accede to House "
+            "Request for Committee of Conference; Adopted; SJ 15-A, Pg.466"
+            "|05/06/2004 03:25:13 PM"],
+        ("SB61", "2003-2004"): [
+            "2004|0278|05/06/2004 01:47:06 PM|SB61|S|Senator O'Hearn Nonconcur with House Am "
+            "Requests Committee of Conference, Adopted; SJ 15-A, Pg.452|05/06/2004 01:47:06 PM"],
+        ("HB265", "1999-2000"): [
+            "1999|0051|06/29/1999 11:02:48 AM|HB265|S|Senate Accedes to Req for Conference "
+            "Committee, Sen. McCarley, MA, VV|06/29/1999 11:02:48 AM",
+            "1999|0051|07/01/1999 03:40:14 PM|HB265|S|Con Comm Report, Sen McCarley, MA, VV; "
+            "SJ 27, P 758|07/01/1999 03:40:14 PM"],
+        ("HB284", "1999-2000"): [
+            "1999|0077|03/04/1999 02:08:23 PM|HB284|S|Sen. Krueger OTP, MA, VV; OT3rdg, MA, "
+            "VV; SJ 6, P 70|03/04/1999 02:08:23 PM"],
+        # Not to move: a question in words after the name, the House's own
+        # "Adopted" on a resolution, and the Senate's "Sen Am" in a House row.
+        ("HB733", "2003-2004"): [
+            "2003|0006|06/05/2003 10:50:52 PM|HB733|S|Sen. Kenney Accede to House Request For "
+            "Committee of Conference, MA, VV; SJ 19, Pg.662|06/05/2003 10:50:52 PM"],
+        ("HCR3", "2003-2004"): [
+            "2003|0227|01/30/2003 11:59:42 AM|HCR3|H|Adopted;  HJ 12, p221 + 231"
+            "|01/30/2003 11:59:42 AM"],
+        ("HB672", "2001-2002"): [
+            "2002|0851|04/25/2002 12:46:29 PM|HB672|H|Sen Am, MA DIV(187-140);  HJ38, "
+            "p1435-1437|04/25/2002 12:46:29 PM"],
+    }
+    try:
+        N.CORRECTIONS, N.MISFILED = [], []
+        floor = {}
+        for (bill, term), lines in rows.items():
+            N.TERM = term
+            rec = N.build(bill, _docket_rows(lines))
+            floor[bill] = [e for e in rec["events"] if e["type"] == "floor"]
+            floor[bill + " text"] = rec["narrative"]
+
+        def got(bill, i=-1):
+            e = floor[bill][i]
+            return e["action"], e["mover"], e["motion"]
+
+        assert got("HB1148") == ("Accede to House Request for C of C", "Sen. Johnson", "MA"), (
+            f"HB 1148's accession of 2004 reads {got('HB1148')}")
+        assert got("HB384") == ("Accede to House Request for Committee of Conference",
+                                "Sen. Peterson", "MA"), f"HB 384 of 2004 reads {got('HB384')}"
+        assert got("SB61") == ("Nonconcur", "Sen. O'Hearn", "MA"), (
+            f"SB 61 of 2004's nonconcurrence reads {got('SB61')}")
+        for b in ("HB1148", "HB384", "SB61"):
+            assert "voted to pass it" not in floor[b + " text"], (
+                f"{b}'s history still says the Senate passed it: {floor[b + ' text']!r}")
+        assert [got("HB265", i) for i in (0, 1)] == [
+            ("Senate Accedes to Req for Conference Committee", "Sen. McCarley", "MA"),
+            ("Con Comm Report", "Sen. McCarley", "MA")], (
+            f"HB 265 of 1999 reads {[got('HB265', i) for i in (0, 1)]}")
+        assert got("HB284") == ("Ought to Pass", "Sen. Krueger", "MA"), (
+            f"HB 284 of 1999 reads {got('HB284')}")
+        assert got("HB733") == ("Sen. Kenney Accede to House Request For Committee of "
+                                "Conference", "", "MA"), f"HB 733 of 2003 moved: {got('HB733')}"
+        assert got("HCR3") == ("Ought to Pass", "", "MA"), f"HCR 3 of 2003 moved: {got('HCR3')}"
+        assert got("HB672") == ("Sen Am", "", "MA"), f"HB 672 of 2002 moved: {got('HB672')}"
+        # And the sitting page's words for it.
+        it = SD.Item("HB1148", "2003-2004", floor["HB1148"][-1], 0)
+        assert it.action == "Accede to House Request for C of C" and it.mover == "Sen. Johnson", (
+            f"the sitting page's motion is {it.action!r}, moved by {it.mover!r}")
+        assert "carried in this chamber" not in it.outcome_words, (
+            f"the sitting page says an accession carried the bill: {it.outcome_words!r}")
+        return "ok", ("accessions and nonconcurrences of 2004 are the Senate's "
+                      "motions, moved by a senator; the 1999 mover after the "
+                      "question is the mover; three rows that must not move do not")
+    finally:
+        N.CORRECTIONS, N.TERM, N.MISFILED = saved
+
+
 @check("session", "business done in recess is on its sitting, a joint rule's "
        "weekend is no sitting, and neither leaves a link behind",
        needs=("session_days", "build_session_pages"))
