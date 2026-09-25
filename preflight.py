@@ -359,6 +359,41 @@ def _no_secrets():
                   "credentials are public by design.")
 
 
+@check("files", "the Clerks' corrections list stays out of git and out of its history")
+def _clerk_list_untracked():
+    """The list of errors in the General Court's own record is the person's to
+    take to the Clerks' offices, and on 24 September they chose to keep it out
+    of GitHub so that the Clerks hear of each error from them first.
+
+    The first version of it was committed all the same, ten minutes before
+    that answer, and a merge would have carried it into the history, where
+    deleting the file later does not take it back out. .gitignore stops a
+    `git add .` and not a `git add -f`, so this asks git what it tracks and
+    whether any commit on any ref has ever held the file."""
+    import subprocess
+    NAME = "CLERK_CORRECTIONS.md"
+    assert "/" + NAME in Path(".gitignore").read_text(encoding="utf-8"), \
+        f".gitignore no longer keeps {NAME} out of the repository"
+    try:
+        tracked = _run(["git", "ls-files", "--", NAME], capture_output=True,
+                       text=True, timeout=30)
+        history = _run(["git", "log", "--all", "--format=%h", "--", NAME],
+                       capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "skip", f"git would not say what it tracks ({e})"
+    if tracked.returncode != 0 or history.returncode != 0:
+        return "skip", "not a git repository"
+    assert not tracked.stdout.strip(), (
+        f"git tracks {NAME}, and the next push would publish the Clerks' list: "
+        f"`git rm --cached {NAME}` keeps the file and stops tracking it")
+    commits = history.stdout.split()
+    assert not commits, (
+        f"{len(commits)} commit(s) reachable from a ref hold {NAME} "
+        f"({', '.join(commits[:4])}); pushing any of them publishes the list, "
+        "so rewrite that branch before it is merged or pushed")
+    return "ok", f"{NAME} is gitignored, untracked, and in no commit on any ref"
+
+
 @check("files", "every listed script parses")
 def _parse_all():
     vp = Path("versions.json")

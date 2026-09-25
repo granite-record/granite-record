@@ -230,3 +230,11 @@ town_sites/
 # of them is ever tracked.
 brand/licensed/
 assets/licensed/
+
+# THE CLERKS' CORRECTIONS LIST (24 September 2026). The errors found in the
+# General Court's own record, with their evidence, for the person to take to
+# the House and Senate Clerks' offices. The person chose to keep it out of
+# GitHub, so that the Clerks hear about each error from them rather than find
+# it in a public repository. HANDOFF.md says what it is; preflight fails if
+# it is ever tracked.
+/CLERK_CORRECTIONS.md
