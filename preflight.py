@@ -4313,6 +4313,37 @@ process.stdout.write(JSON.stringify(out));
                   "Senate Judiciary's, which lists SB 519 too")
 
 
+@check("data", "every upcoming row on the built site says whose sitting it is")
+def _upcoming_rows_say_chamber():
+    """site/home.json's upcoming rows, each with the chamber cmteUpcoming
+    tells House Judiciary's sitting from Senate Judiciary's by.
+
+    A DATA CHECK, NOT A FRONTEND ONE, on purpose. It was an assertion in
+    tests/test_cmte_match.js, which _cmte_match runs under --code whenever
+    site/committee is built, and nightly.py gates itself on preflight --code
+    before build_all. Every home.json written before build_site_v2 wrote the
+    chamber -- the live one had 62 rows and none said it -- failed it, so the
+    nightly would have stopped before the one step that writes the chamber,
+    and stayed stopped until a person built by hand: the failure
+    _town_pages_built's docstring records. The builder's side is held under
+    --code by _upcoming_shape, on a fixture. This says whether the built site
+    has caught up, and the fix it names is a rebuild.
+    """
+    hp = Path("site/home.json")
+    if not hp.exists():
+        return "skip", "site/home.json is not built"
+    up = json.loads(hp.read_text(encoding="utf-8")).get("upcoming") or []
+    if not up:
+        return "ok", "nothing is scheduled in the fortnight, so no row to name a chamber"
+    nobody = [u for u in up if u.get("body") not in ("H", "S")]
+    assert not nobody, (
+        f"{len(nobody)} of {len(up)} upcoming rows in site/home.json do not say whose "
+        "sitting they are, so a committee page cannot tell House Judiciary's from "
+        "Senate Judiciary's on a bill both list -- rebuild with build_site_v2.py: "
+        + json.dumps(nobody[0])[:140])
+    return "ok", f"{len(up)} upcoming rows, each naming its chamber"
+
+
 def _strip_js_comments(js):
     js = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
     return "\n".join(re.sub(r"//.*$", "", ln) for ln in js.splitlines())

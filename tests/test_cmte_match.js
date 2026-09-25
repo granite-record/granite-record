@@ -119,7 +119,16 @@ if (code && fs.existsSync(`site/committee/${code}.json`)) {
   t("another committee gets none of them",
     cmteUpcoming(other).map(u => u.bill).filter(b => want.includes(b)), []);
   // And no committee page, of every one built, shows the other chamber's
-  // sitting. The rows say their chamber since 25 September 2026.
+  // sitting. The rows say their chamber since 25 September 2026; a row built
+  // before then says none and is not judged here.
+  //
+  // WHETHER EVERY ROW SAYS IT IS NOT ASKED HERE. This file runs under
+  // preflight --code, which nightly.py runs before build_all, and a home.json
+  // built before the builder wrote the chamber would fail it on the one night
+  // that would rebuild it -- so the nightly would stop, and stay stopped, until
+  // a person built by hand. That question is preflight's data check
+  // "every upcoming row on the built site says whose sitting it is", and the
+  // builder's side of it is _upcoming_shape, on a fixture, under --code.
   const every = fs.readdirSync("site/committee").filter(f => /^[HS]\d+\.json$/.test(f))
     .map(f => cmte(f.slice(0, -5)));
   const crossed = [];
@@ -128,7 +137,6 @@ if (code && fs.existsSync(`site/committee/${code}.json`)) {
       crossed.push(`${C.code} ${u.date} ${u.committee} ${u.bill} (${u.body})`);
   }));
   t("no committee page shows the other chamber's sitting", crossed, []);
-  t("every scheduled row says its chamber", upAll.filter(u => !u.body).length, 0);
 } else {
   console.log("  [ ok ] nothing is scheduled in the fortnight, so there is "
               + "nothing to route");
