@@ -1085,6 +1085,215 @@ def _conferees_could_not_agree(build_site_v2):
                   "an agreed or replaced report keeps its label")
 
 
+@check("status", "conferees who never signed a report end the bill too, and a report signed late does not",
+       needs=("build_site_v2",))
+def _conferees_never_signed(build_site_v2):
+    """Until 25 September 193 bills of 1989-2026, 24 of them this term, read
+    "In a committee of conference", "One chamber did not concur; a committee
+    of conference was asked for" or "Died when the session ended" where the
+    docket says their last conference never agreed: HB 1323 of 2026,
+    "Conference Committee Report; Not Signed Off" under fields that stop at
+    CONFERENCE COMMITTEE; HB 243 of 2025, the Senate's "Not Signed Off" and
+    the House's "Conference Committee Report: Not Filed" under DIED, SESSION
+    ENDED; SB 460 of 2026, "Not Filed" alone; HB 291 of 2021 under
+    NONCONCURRED REQUEST CONFERENCE; SB 65 of 1989, "DIED IN COMMITTEE OF
+    CONFERENCE". Each reads CONF_UNABLE, finished rather than stale, with a
+    closing paragraph that says what the docket says and no line of its
+    journey rewritten, since no chamber adopted a report. Kept as they are:
+    HB 1091 of 2026, whose conferees signed late and whose report the Senate
+    adopted before the House refused to take it up, 180-156; HB 1410 of
+    2002, whose Senate refused to allow a report after the deadline; HB 723
+    of 1997, whose report of no agreement was followed by a new conference
+    that never reported. The rows below are theirs."""
+    B = build_site_v2
+    bad = []
+    ev = _ev
+    hb1323 = _nar(
+        ev("H", "Ought to Pass: MA RC 197-157 02/12/2026", "floor", "MA", "Ought to Pass",
+           date="2026-02-12"),
+        ev("S", "Ought to Pass with Amendments #2026-1849s and #2026-1982s and #2026-1981s, MA, VV; "
+                "OT3rdg; 05/14/2026", "floor", "MA",
+           "Ought to Pass with Amendments #2026-1849s and #2026-1982s and #2026-1981s",
+           date="2026-05-14"),
+        ev("H", "House Non-Concurs with Senate Amendment 2026-1339s 2026-1849s 2026-1982s and "
+                "2026-1981s and Requests CofC (Rep. DeSimone): MA VV 05/14/2026", "floor", "MA",
+           "House Non-Concurs with Senate Amendment 2026-1339s 2026-1849s 2026-1982s and "
+           "2026-1981s and Requests CofC", date="2026-05-14"),
+        ev("S", "Sen. Abbas Accedes to House Request for Committee of Conference, MA, VV; 05/21/2026",
+           "floor", "MA", "Accedes to House Request for Committee of Conference", date="2026-05-21"),
+        ev("H", "Conference Committee Meeting: 05/26/2026 01:00 pm GP 232", "conference_meeting",
+           date="2026-05-26"),
+        ev("S", "Conference Committee Report; Not Signed Off", date="2026-06-02"))
+    hb243 = _nar(
+        ev("H", "Ought to Pass: MA VV 02/20/2025", "floor", "MA", "Ought to Pass", date="2025-02-20"),
+        ev("S", "Ought to Pass with Amendments #2025-2049s, #2025-2487S, #2025-2665s, and "
+                "#2025-2710s, MA, VV; OT3rdg; 06/05/2025", "floor", "MA",
+           "Ought to Pass with Amendments #2025-2049s, #2025-2487S, #2025-2665s, and #2025-2710s",
+           date="2025-06-05"),
+        ev("H", "House Non-Concurs with Senate Amendment 2025-2049s 2025-2487S 2025-2665s and "
+                "2025-2710s and Requests CofC (Rep. Kofalt): MA VV 06/05/2025", "floor", "MA",
+           "House Non-Concurs with Senate Amendment 2025-2049s 2025-2487S 2025-2665s and "
+           "2025-2710s and Requests CofC", date="2025-06-05"),
+        ev("S", "Sen. Abbas Accedes to House Request for Committee of Conference, MA, VV; "
+                "(In recess 06/05/2025)", "floor", "MA",
+           "Accedes to House Request for Committee of Conference", date="2025-06-05"),
+        ev("S", "Conference Committee Report; Not Signed Off", date="2025-06-19"),
+        ev("H", "Conference Committee Report: Not Filed", date="2025-07-08"))
+    sb460 = _nar(
+        ev("S", "Ought to Pass: MA, VV; OT3rdg; 02/05/2026", "floor", "MA", "Ought to Pass",
+           date="2026-02-05"),
+        ev("H", "Ought to Pass with Amendment 2026-1286h: MA VV 04/23/2026", "floor", "MA",
+           "Ought to Pass with Amendment 2026-1286h", date="2026-04-23"),
+        ev("S", "Sen. Gannon Moved Nonconcur with the House Amendment; Requests C of C, MA, VV; "
+                "(In Recess 04/23/2026)", "floor", "MA",
+           "Nonconcur with the House Amendment; Requests C of C", date="2026-04-23"),
+        ev("H", "House Accedes to Senate Request for CofC (Rep. Roy): MA VV 05/14/2026", "floor", "MA",
+           "House Accedes to Senate Request for CofC", date="2026-05-14"),
+        ev("H", "Conference Committee Report: Not Filed", date="2026-06-01"))
+    hb291 = _nar(
+        ev("H", "Ought to Pass : MA DV 191-179 04/08/2021", "floor", "MA", "Ought to Pass",
+           date="2021-04-08"),
+        ev("S", "Ought to Pass with Amendment 2021-1674s, MA, VV; OT3rdg; 05/27/2021", "floor", "MA",
+           "Ought to Pass with Amendment 2021-1674s", date="2021-05-27"),
+        ev("H", "House Non-Concurs with Senate Amendment 2021-1674s and Requests CofC (Reps. "
+                "Torosian, B. Griffin, Groen, Mooney): MA VV 06/04/2021", "floor", "MA",
+           "House Non-Concurs with Senate Amendment 2021-1674s and Requests CofC (Reps. Torosian, "
+           "B. Griffin, Groen, Mooney)", date="2021-06-04"),
+        ev("S", "Sen. Gray Accedes to House Request for Committee of Conference, MA, VV; 06/10/2021",
+           "floor", "MA", "Accedes to House Request for Committee of Conference", date="2021-06-10"),
+        ev("S", "Conference Committee Report; Not Signed Off", date="2021-06-23"))
+    sb65 = _nar(
+        ev("S", "PASSED/ADOPTED WITH AM", "floor", "MA", "Ought to Pass with Amendment",
+           date="1989-02-16"),
+        ev("H", "PASSED/ADOPTED WITH AM; HJ81, P2485-2486 + 2533", "floor", "MA",
+           "Ought to Pass with Amendment", date="1989-05-04"),
+        ev("S", "SENATE NONCONCUR WITH HOUSE AM, REQ CONF COMM", "floor", "MA", "Nonconcur",
+           date="1989-05-11"),
+        ev("H", "HOUSE ACCEDED TO REQ FOR CONF COMM, REP FRASER MA VV", "floor", "MA",
+           "Accede to Request for Committee of Conference", date="1989-05-16"),
+        ev("S", "DIED IN COMMITTEE OF CONFERENCE", date="1989-05-24"))
+    sitting = {"gen_status": "SENATE", "house_status": "CONFERENCE COMMITTEE",
+               "senate_status": "CONFERENCE COMMITTEE"}
+    ended = {"gen_status": "SENATE", "house_status": "DIED, SESSION ENDED",
+             "senate_status": "CONFERENCE COMMITTEE"}
+    for bid, term, st, n, was, says in (
+            ("HB1323", "2025-2026", {"gen_status": "SENATE", "senate_status": "CONFERENCE COMMITTEE"},
+             hb1323, "In a committee of conference", "no report was signed"),
+            ("HB243", "2025-2026", ended, hb243, "Died when the session ended", "no report was signed"),
+            ("SB460", "2025-2026", {"house_status": "DIED, SESSION ENDED"}, sb460,
+             "Died when the session ended", "no report was filed"),
+            ("HB291", "2021-2022", {"gen_status": "SENATE",
+                                    "house_status": "NONCONCURRED REQUEST CONFERENCE",
+                                    "senate_status": "CONFERENCE COMMITTEE"}, hb291,
+             "One chamber did not concur; a committee of conference was asked for",
+             "no report was signed"),
+            ("SB65", "1989-1990", sitting, sb65, "In a committee of conference",
+             "the bill died in the committee")):
+        # What the label was without the docket's word: the check is about
+        # these classes, so a fixture that stopped reaching them fails too.
+        without = [e for e in n["events"]
+                   if not re.search(r"not signed|not filed|died in comm", e["raw"], re.I)]
+        d = B.bill_disposition({}, bid, st, _nar(*without), [], term, "2025-2026",
+                               term_over=True)
+        if d.status != was:
+            bad.append(f"{bid} of {term} no longer starts from {was!r} ({d.status!r})")
+        d = B.bill_disposition({}, bid, st, n, [], term, "2025-2026", term_over=True)
+        if (d.kind, d.status) != ("done", B.CONF_UNABLE) or not d.between or d.stale:
+            bad.append(f"{bid} of {term}: {(d.kind, d.status, d.between, d.stale)}")
+            continue
+        end = (B.closing_stage(d.status, n, decided=True) or {}).get("text", "")
+        if says not in end or "reported" in end:
+            bad.append(f"{bid}: How it ended reads {end!r}")
+        _intro, steps = B.journey(n, bid, [], "", "", term)
+        if any("could not agree" in s["text"] for s in steps):
+            bad.append(f"{bid}: a line of How it got here was rewritten, and no chamber adopted a report")
+        passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+        rail = B.passage(n.get("stages"), d.kind, d.status, bid, passed, acted)
+        why = B.journey_disagrees(steps, d.kind, d.status, rail, bid)
+        if why:
+            bad.append(f"{bid}: the journey disagrees with its status: {why}")
+    # HB 1091 of 2026: "Not Signed Off" at the deadline, then report
+    # 2026-2022c filed and adopted by the Senate, and the House refusing to
+    # suspend its rules for the late report. Same-day rows are not reliably
+    # in order, so both orders are tried; and without the House's row, the
+    # Senate's adoption alone says a report was signed.
+    head = [ev("H", "Ought to Pass with Amendment 2026-0657h: MA VV 03/05/2026", "floor", "MA",
+               "Ought to Pass with Amendment 2026-0657h", date="2026-03-05"),
+            ev("S", "Ought to Pass with Amendment # 2026-1544s, MA, VV; OT3rdg; 04/23/2026", "floor",
+               "MA", "Ought to Pass with Amendment # 2026-1544s", date="2026-04-23"),
+            ev("H", "House Non-Concurs with Senate Amendment 2026-1544s and Requests CofC (Rep. Roy): "
+                    "MA VV 04/23/2026", "floor", "MA",
+               "House Non-Concurs with Senate Amendment 2026-1544s and Requests CofC",
+               date="2026-04-23"),
+            ev("S", "Sen. Gannon Accedes to House Request for Committee of Conference, MA, VV; "
+                    "(In recess 05/07/2026)", "floor", "MA",
+               "Accedes to House Request for Committee of Conference", date="2026-05-07")]
+    filed = ev("S", "Conference Committee Report Filed, # 2026-2022c; 06/04/2026", date="2026-06-04")
+    adopted = ev("S", "Conference Committee Report # 2026-2022c, Adopted, VV; 06/04/2026",
+                 date="2026-06-04")
+    unsigned = ev("S", "Conference Committee Report; Not Signed Off", date="2026-06-04")
+    refused = ev("H", "Rules suspension to consider late sign off report at the present time "
+                      "MF DV 180-156", date="2026-06-05")
+    for rows in ((filed, adopted, unsigned, refused), (unsigned, filed, adopted, refused),
+                 (filed, adopted, unsigned)):
+        n = _nar(*head, *rows)
+        d = B.bill_disposition({}, "HB1091", {"gen_status": "SENATE",
+                                             "house_status": "DIED, SESSION ENDED",
+                                             "senate_status": "CONFERENCE REPORT ADOPTED"},
+                               n, [], "2025-2026", "2025-2026", term_over=True)
+        if d.status != "Died when the session ended":
+            bad.append(f"HB1091 of 2026, whose conferees signed late: {d.status!r}")
+        _intro, steps = B.journey(n, "HB1091", [], "", "", "2025-2026")
+        said = [s["text"] for s in steps if s["act"] == "conf_adopted"]
+        if not said or any("could not agree" in t for t in said):
+            bad.append(f"HB1091 of 2026: the Senate's adoption of report 2026-2022c reads {said!r}")
+    # HB 1410 of 2002: "(Conf Comm Report Not Signed)", and the next day the
+    # Senate refused to allow a report after the deadline.
+    n = _nar(ev("H", "Comm Am, AA VV; Rep Gilmore Fl Am{2897}, AL DIV(117-162); Passed with Am VV; "
+                     "HJ26, p1085-1086", "floor", "MA", "Ought to Pass with Amendment",
+                date="2002-03-07"),
+             ev("S", "Ought to Pass with Amendment {3464},(New Title), Division 13y- 11n, AA", "floor",
+                "MA", "Ought to Pass with Amendment", date="2002-04-16"),
+             ev("H", "House Nonconc with Sen Am req Conf Comm, Rep Patten MA VV; HJ38, p1442", "floor",
+                "MA", "Nonconcur", date="2002-04-25"),
+             ev("S", "Sen. Roberge Accede to House Request for Committee of Conference, MA, VV",
+                "floor", "MA", "Sen. Roberge Accede to House Request for Committee of Conference",
+                date="2002-04-25"),
+             ev("H", "(Conf Comm Report Not Signed)", date="2002-05-01"),
+             ev("S", "Sen. Wheeler Rules Suspension; To Allow C of C Report After Deadline 2/3 nec., MF",
+                date="2002-05-02"))
+    d = B.bill_disposition({}, "HB1410", sitting, n, [], "2001-2002", "2025-2026")
+    if d.status != "In a committee of conference":
+        bad.append(f"HB1410 of 2002, a report the Senate would not allow late: {d.status!r}")
+    # HB 723 of 1997: its report of no agreement was rejected, and the new
+    # conference the chambers formed never reported. That one is the last.
+    n = _nar(ev("H", "HOUSE NONC WITH SEN AM REQ CONF COMM, REP A MERRILL MA; HJ70", "floor", "MA",
+                "Nonconcur and Request Committee of Conference", date="1997-05-29"),
+             ev("S", "SEN ACCEDED TO REQ FOR CONF COMM, SEN D WHEELER MA VV; SJ22,P484-", "floor",
+                "MA", "Accede to Request for Committee of Conference", date="1997-05-29"),
+             ev("S", "CONF COMM REPORT (UNABLE TO AGREE) FILED", date="1997-06-05"),
+             ev("S", "CONF COMM REPT, ML DIV(10-13); SEN MCCARLEY MOVED TO DISCHARGE",
+                date="1997-06-10"),
+             ev("S", "CONF COMM, REQ NEW CONF COMM, MA RC(13-10); SJ23(I),P552", date="1997-06-10"),
+             ev("H", "HOUSE ACCEDED TO REQ FOR NEW CONF COMM, REP R FOSTER MA VV; HJ73, P2092",
+                "floor", "MA", "Accede to Request for Committee of Conference", date="1997-06-10"),
+             ev("H", "CONF COMM MEETING JUN11 11:00 RM205,LOB", "conference_meeting",
+                date="1997-06-11"))
+    d = B.bill_disposition({}, "HB723", sitting, n, [], "1997-1998", "2025-2026")
+    if d.status != "In a committee of conference":
+        bad.append(f"HB723 of 1997, whose new conference never reported: {d.status!r}")
+    # And nothing after it may carry the bill on. Two of HB 1210 of 2002's
+    # rows, without the new conference that came between them: a report not
+    # signed, then the bill enrolled -- which is not a bill that died.
+    if B.conference_failure([ev("S", "Conference Committee Report [Not Signed]", date="2002-05-02"),
+                             ev("H", "Enrolled; HJ44, p1533", "enrolled", date="2002-05-02")]):
+        bad.append("an enrolled bill read as conferees who never signed a report")
+    assert not bad, "; ".join(bad)
+    return "ok", ("not signed, not filed and died in conference end the bill as a report of no "
+                  "agreement does; a late report and a new conference keep their labels")
+
+
 @check("status", "the constitution page counts each CACR of the term once",
        needs=("build_civics",))
 def _cacr_partition(build_civics):

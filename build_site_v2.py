@@ -1141,6 +1141,21 @@ CLOSING = {
     # would have been false on most of the bills it appeared under.
 }
 
+# The same ending where the conferees filed no report saying so: the paragraph
+# says what the docket says, which is that no report was signed, or none
+# filed, or that the bill died in the committee (conference_failure's word
+# for the row). "Reported that it was unable to agree" would be a report the
+# record does not have.
+CONF_UNABLE_CLOSING = {
+    how: ("The committee of conference -- members of both chambers named to "
+          "settle the differences between the House and Senate versions -- could "
+          f"not agree on one, and {said}. With no version that both chambers had "
+          f"accepted, {rest}")
+    for how, said, rest in (
+        ("unsigned", "no report was signed", "the bill went no further, and it died."),
+        ("unfiled", "no report was filed", "the bill went no further, and it died."),
+        ("died", "the bill died in the committee", "it went no further."))}
+
 
 # "No vote was ever taken on it" is a claim, and on 35 of the 111 bills of
 # 2025-2026 that carried it the docket records one: HB 243 passed both
@@ -1173,6 +1188,10 @@ def closing_stage(label, narr, decided=False):
         return None
     if decided and label == "Died when the session ended":
         text = SESSION_ENDED_AFTER_VOTES
+    if label == CONF_UNABLE:
+        failed = conference_failure([e for e in (narr or {}).get("events", [])
+                                     if not e.get("cancelled")])
+        text = CONF_UNABLE_CLOSING.get((failed or ("unable",))[0], text)
     return {"label": "How it ended", "text": text}
 
 
@@ -4305,10 +4324,13 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     intro = _j_introduced(evs, bid, term)
     # The day the conferees reported that they could not agree, where that is
     # the last word of the bill's conferences: a report adopted from that day
-    # on is that report, and the line says what it said.
+    # on is that report, and the line says what it said. Only a REPORT of no
+    # agreement: where the record says none was signed, a chamber adopted no
+    # report of that conference, and none of its lines is rewritten.
+    failed = conference_failure(evs)
     unable_day = (max((e.get("date") or "" for e in evs
                        if CONF_UNABLE_RE.search(e.get("raw") or "")), default="")
-                  if conferees_disagreed(evs) else None)
+                  if failed and failed[0] == "unable" else None)
     steps, amended = [], set()
     gov_raw, gov_more = "", []
     reports = [e for e in evs if e.get("type") == "report"]
@@ -5616,31 +5638,126 @@ CONF_REJECTED = "Died when the conference report was rejected"
 CONF_UNABLE = "Died: conferees could not agree"
 CONF_UNABLE_RE = re.compile(r"\bunable\s+to\s+(?:reach\s+)?agree", re.I)
 
+# AND CONFEREES WHO NEVER SIGNED A REPORT AT ALL. A conference's report is
+# signed off by its conferees, and where they did not settle the versions and
+# signed nothing, the clerks record that instead:
+# "(CONF COMM REPORT NOT SIGNED)" (HB 75 of 2000), "Conference Committee
+# Report [Not Signed Off]" (HB 109 of 2003), "Conference Committee; Not
+# Signed Off" (HB 1227 of 2004), "Conference Committee Report; Not Signed
+# Off" (HB 1323 of 2026); the House's clerk "Conference Committee Report: Not
+# Filed" (SB 625 of 2026); and in the oldest docket "NO CONF COMM REPORT
+# SIGNED" (HB 575 of 1990) and "DIED IN COMMITTEE OF CONFERENCE" (SB 65 of
+# 1989). The status fields stop at CONFERENCE COMMITTEE, NONCONCURRED REQUEST
+# CONFERENCE or DIED, SESSION ENDED, so these bills read "In a committee of
+# conference", "One chamber did not concur; a committee of conference was
+# asked for" or "Died when the session ended", the last on 20 bills of
+# 2025-2026 alone. Every such row in the record is about a conference; the
+# conference is still named in the pattern, so that a line saying something
+# else was not signed never reads as one.
+CONF_UNSIGNED_RE = re.compile(
+    r"(?:\bconf(?:erence)?|\bc\s?of\s?c)\b.*?\bnot\s+(?:signed|filed)\b"
+    r"|\bno\s+conf\w*\.?\s*comm\w*\.?\s*rep\w*\s+signed\b"
+    r"|\bdied\s+in\s+(?:the\s+)?comm\w*\s+of\s+conf", re.I)
+# A REPORT SIGNED AFTER ALL, too late. HB 1091 of 2026's conferees were "Not
+# Signed Off" at the deadline and then filed report 2026-2022c, which the
+# Senate adopted the same day; the House refused 180-156 to suspend its rules
+# "to consider late sign off report", and the bill died there -- not for want
+# of an agreement. HB 1410 of 2002's Senate voted down a motion "To Allow C of
+# C Report After Deadline" the day after its "(Conf Comm Report Not Signed)",
+# which says a report may have been signed late. Neither is read as conferees
+# who could not agree; both keep the label they have.
+CONF_LATE_RE = re.compile(
+    r"\blate\s+sign\w*[\s-]*off"
+    r"|\b(?:c\s?of\s?c|conf\w*\.?\s*comm\w*\.?)\s+rep\w*\s+after\s+(?:the\s+)?deadline", re.I)
 
-def conferees_disagreed(evs):
-    """Whether the bill's last committee of conference reported that it could
-    not agree. A new conference formed after it starts again: HB 1210 of 2002's
-    first report went unsigned, the chambers formed a new one, and its report
+
+FAILURE_RANK = {"unable": 3, "unsigned": 2, "died": 1, "unfiled": 1}
+
+
+def _failure_how(raw):
+    """What a docket row says of a conference that ended without an agreement:
+    "unable" (its report said so), "unsigned" or "unfiled" (no report was
+    signed, or none filed), "died" (it died there), or None."""
+    if CONF_UNABLE_RE.search(raw):
+        return "unable"
+    m = CONF_UNSIGNED_RE.search(raw)
+    if not m:
+        return None
+    said = m.group(0).lower()
+    return ("died" if said.startswith("died") else
+            "unfiled" if said.endswith("filed") else "unsigned")
+
+
+def conference_failure(evs):
+    """(how, day) where the bill's last committee of conference ended without
+    an agreement, or None. `how` is _failure_how's word for the row; a
+    report saying the conferees were unable to agree outranks a note that no
+    report was signed, in one conference.
+
+    A new conference formed after it starts again: HB 1210 of 2002's first
+    report went unsigned, the chambers formed a new one, and its report
     became Chapter 230. One the other chamber REFUSED leaves the earlier
-    report standing, as conference_outcome reads it (SB 69 of 2001: "House
-    Refused to Accede to req for New Conf Comm"). Within one row, whichever
-    comes later decides."""
-    said, saved = False, None
-    for e in evs:
+    conference standing, as conference_outcome reads it (SB 69 of 2001:
+    "House Refused to Accede to req for New Conf Comm"). Within one row,
+    whichever comes later decides.
+
+    And nothing after it may say the bill went on -- enrolled, to the
+    governor, a concurrence that carried -- nor anything in that conference
+    say a report was signed after all: a report signed late (CONF_LATE_RE),
+    or, where the only word is that none was signed, a chamber voting on one.
+    """
+    said, start, saved = None, 0, None
+
+    def keep(was, how, i):
+        # The conferees' own report of no agreement says the most, and that
+        # none was signed says more than that none was filed: HB 243 of
+        # 2025's Senate row is "Not Signed Off" and the House's, three weeks
+        # later, "Not Filed". Of two rows that say as much, the later.
+        if was and FAILURE_RANK[was[0]] > FAILURE_RANK[how]:
+            return was
+        return how, evs[i].get("date") or "", i
+
+    for i, e in enumerate(evs):
         raw = e.get("raw") or ""
-        unable = CONF_UNABLE_RE.search(raw)
+        how = _failure_how(raw)
+        hit = (CONF_UNABLE_RE.search(raw) or CONF_UNSIGNED_RE.search(raw)) if how else None
         new = NEW_CONF.search(raw)
         if new and re.search(r"refus", raw, re.I):
             if saved is not None:
-                said = saved
+                said, start = saved
             new = None
         elif new and not (re.search(r"\bMA\b", raw) or re.search(r"\bacced", raw, re.I)):
             new = None
-        if unable and (not new or unable.start() > new.start()):
-            said = True
+        if hit and new and hit.start() < new.start():
+            said = keep(said, how, i)
+            saved, said, start = (said, start), None, i
+        elif hit:
+            if new:
+                saved, said, start = (said, start), None, i
+            said = keep(said, how, i)
         elif new:
-            saved, said = said, False
-    return said
+            saved, said, start = (said, start), None, i
+    if not said:
+        return None
+    how, day, at = said
+    later = evs[at + 1:]
+    if any(e.get("type") in ("enrolled", "governor") or SIGNED_RE.search(e.get("raw") or "")
+           for e in later):
+        return None
+    went_on = concurrence_outcome(later)
+    if went_on and went_on[0] == "con":
+        return None
+    if any(CONF_LATE_RE.search(e.get("raw") or "") for e in evs[start:]):
+        return None
+    if how != "unable" and conference_outcome(evs):
+        return None
+    return how, day
+
+
+def conferees_disagreed(evs):
+    """Whether the bill's last committee of conference ended without an
+    agreement, as conference_failure reads it."""
+    return conference_failure(evs) is not None
 
 
 def _conference_vote(said, e, raw, m):
@@ -5731,6 +5848,12 @@ BEFORE_CONFERENCE = {
 BEFORE_CONCURRENCE = {
     "Passed one chamber", "In progress", "In committee", "Retained in committee",
     "Committee report filed"}
+# The labels the conferees' failure replaces: the stages before and in a
+# conference -- not "Passed, awaiting the governor", which says the bill went
+# on -- and the General Court's DIED, SESSION ENDED, which says only that the
+# term ran out where the docket says why the bill did not get there.
+BEFORE_UNABLE = (BEFORE_CONFERENCE - {"Passed, awaiting the governor"}) | {
+    "Died when the session ended"}
 
 
 def between_chambers(narr, status):
@@ -5739,8 +5862,11 @@ def between_chambers(narr, status):
     conf = conference_outcome(evs)
     if status in BEFORE_CONFERENCE and "failed" in conf.values():
         return "done", CONF_REJECTED
-    # A report ADOPTED keeps its label only where the conferees agreed.
-    if status == "Conference committee report adopted" and conferees_disagreed(evs):
+    # A report ADOPTED keeps its label only where the conferees agreed; a
+    # conference the fields still call sitting (HB 1323 of 2026), a request
+    # for one (HB 291 of 2021) and the term's end (HB 243 of 2025) give way
+    # where its conferees reported no agreement or never signed a report.
+    if status in BEFORE_UNABLE and conferees_disagreed(evs):
         return "done", CONF_UNABLE
     # A committee of conference the other chamber REFUSED to form never sat:
     # SB 58 of 1990, "HOUSE REFUSED TO ACCEDE", and HB 1432 of 2022.
