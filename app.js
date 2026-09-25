@@ -408,10 +408,19 @@ function facetVals(b,k){
   return [b[k]];
 }
 
+// NEWER TERM FIRST, which changes nothing in a list of one term and orders
+// the list on All terms: by number, two bills of one number (HB 1 is in
+// every term) run newest first; by best match, among bills that match
+// equally well, the newer term's come first and then by number. Without it
+// those came in whichever order the terms' indexes happened to arrive, and
+// /search's list of every term's bills (find.js's findBills, which orders
+// them this way) could not be the same list (24 September).
+const newerTerm=(a,b)=>{const x=String(a.term||""),y=String(b.term||"");
+  return x<y?1:x>y?-1:0;};
 function sortRows(rows){
   const by={
     num:(a,b)=>{const x=billKey(a),y=billKey(b);
-                return x[0]-y[0] || x[1]-y[1];},
+                return x[0]-y[0] || x[1]-y[1] || newerTerm(a,b);},
     recent:(a,b)=>(b.last_action||"").localeCompare(a.last_action||"")
                   || billKey(a)[1]-billKey(b)[1],
     // Bills still moving come first, because those are the ones a reader can
@@ -429,7 +438,7 @@ function sortRows(rows){
   if(sortBy==="best"){
     const sc=new Map(rows.map(b=>[b,scoreOf(b)]));
     const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
-    return rows.slice().sort((a,b)=>sc.get(b)-sc.get(a)||num(a,b));
+    return rows.slice().sort((a,b)=>sc.get(b)-sc.get(a)||newerTerm(a,b)||num(a,b));
   }
   return rows.slice().sort(by);
 }
@@ -573,11 +582,23 @@ function wantedTerm(m){
     const y=+mm[1], t=terms.find(x=>{const a=+String(x).slice(0,4);return y===a||y===a+1;});
     if(t)return t;
   }
+  // ...OR THE BILL SEARCH'S ADDRESS NAMES IT: ?term=all, which /search's
+  // "All 412 bills that mention bail" opens on since 24 September, when that
+  // page began counting every term's bills. A term the picker offers is
+  // taken too; anything else is ignored and the search opens as it always
+  // has, on the newest.
+  if(!mm&&!window.GR_STATIC&&!window.GR_MEMBER&&!window.GR_COMMITTEE){
+    const want=new URLSearchParams(location.search).get("term");
+    if(want===ALL_TERMS||terms.includes(want)
+       ||(m.requests&&want===m.requests.term))return want;
+  }
   return terms[0]||"";
 }
-// A term already in IDX is never fetched again.
+// A term already in IDX is never fetched again. All terms is every one of
+// them, which is what the picker's own "All terms" fetches.
 const LOADED=new Set();
 function ensureTerm(t){
+  if(t===ALL_TERMS)return Promise.all(((META&&META.terms)||[]).map(ensureTerm));
   if(!t||LOADED.has(t))return Promise.resolve();
   return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
     LOADED.add(t);
