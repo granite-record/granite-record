@@ -13705,7 +13705,10 @@ function world(page,pathname,o){
   const head=W.doc.createElement("head"); W.doc.documentElement.appendChild(head);
   head.innerHTML=(text.match(/<link rel="canonical"[^>]*>|<meta (?:name|property)="[^"]*"[^>]*>|<script type="application\/ld\+json">[\s\S]*?<\/script>/g)||[]).join("");
   W.doc.body.innerHTML=(text.match(/<a class="skip"[^>]*>[^<]*<\/a>/)||[""])[0]+text.slice(a,s)
-    +(text.match(/<section class="citewrap">[\s\S]*?<\/section>/)||[""])[0];
+    // Cite this page: the row above the heading since 25 September (Follow's
+    // row), the section at the foot before it.
+    +(text.match(/<div class="pageacts"[^>]*><details class="pcite">[\s\S]*?<\/details><\/div>/)
+      ||text.match(/<section class="citewrap">[\s\S]*?<\/section>/)||[""])[0];
   W.run=async()=>{ vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
     await W.settle(); W.advance(700); await W.settle(); };
   const D=W.doc;
