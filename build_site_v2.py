@@ -2013,6 +2013,198 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
     return out
 
 
+# What one ballot says about whether the member took part, in the order a
+# roll call is read when two of a member's numbers somehow both hold a ballot
+# on it: a vote cast outranks anything else the other ballot says.
+ATTENDANCE_KIND = {"Yea": "voted", "Nay": "voted", "Presiding": "presided",
+                   "Not Voting/Excused": "excused",
+                   "Not Voting/Not Excused": "not_excused"}
+_ATTENDANCE_RANK = ("voted", "presided", "conflict", "excused", "not_excused",
+                    "no_vote")
+# In the room without a Yea or a Nay: in the chair, or standing aside from
+# one question under the chamber's conflict rule.
+_ATTENDANCE_PRESENT = ("voted", "presided", "conflict")
+
+
+def _roll_call_key(v):
+    return f'{v.get("year")}-{v.get("body")}-{v.get("vote_number")}'
+
+
+def attendance_context(votes_by_member):
+    """{"dates": {roll call: day}, "chair": {roll call: member_id}, ...}.
+
+    Two things a member's own ballots cannot say about themselves, read once
+    off every ballot for member_attendance. Beside them, for the build's log,
+    the roll calls whose date was not trusted and the declared conflicts seen.
+
+    THE DAY A ROLL CALL WAS TAKEN, where its date breaks the order. The
+    numbers run in the order the votes were taken, and two dates do not: 1999
+    Senate roll call 109 is dated 10/22/2009 between two of 10/22/1999, and
+    2003 Senate roll call 24 is dated 4/4/2003 between 3/27 and 4/3, where the
+    journal prints it on the pages of 3 April. As they stand, each is a
+    sitting that never happened, attended by every senator on it. So a date
+    outside its term, or one its two neighbours keep in order while it
+    breaks it, is not trusted: where both neighbours fall on one day the roll
+    call is read on that day, having been taken between them, and otherwise
+    it is a roll call on no day. A run that breaks the order together --
+    2008 House 144-148, the veto day of 24 September, numbered before the
+    special session's eight of 4 June, 401-408 -- has neighbours out of order
+    with each other, and is left as it is.
+
+    WHO WAS IN THE CHAIR, where the record names nobody. The House codes its
+    presiding officer "Presiding" -- except that on some days no roll call
+    carries that ballot at all, and the Speaker is coded Excused or Not
+    Excused on every one: 2/11/2016, 1/3/2018, 1/2/2019 and 2/16/2022 among
+    them, each a day the journal puts the Speaker in the chair, and every
+    House roll call of 2021 from 7 April. So on a House day on which no roll
+    call names anyone presiding, the member the record puts in the chair most
+    often that year is read as presiding wherever they are coded absent. On
+    those days only: where the record names somebody else it is believed,
+    which is how the five days Speaker Packard was on leave in 2025-2026 stay
+    days absent. Not the Senate, whose President votes as a senator and is
+    recorded presiding on 195 ballots in twenty-eight years.
+    """
+    dates, chaired, conflicts = {}, set(), 0
+    in_chair = defaultdict(Counter)
+    for rows in votes_by_member.values():
+        for v in rows:
+            key = _roll_call_key(v)
+            conflicts += bool(v.get("conflict"))
+            if key not in dates:
+                dates[key] = vote_date(v.get("date"))
+            if v.get("vote") == "Presiding":
+                chaired.add(key)
+                in_chair[(str(v.get("year")), v.get("body"))][v.get("member_id")] += 1
+    runs = defaultdict(list)
+    for key in dates:
+        y, b, n = key.split("-", 2)
+        if n.isdigit():
+            runs[(y, b)].append((int(n), key))
+    none = (0, 0, 0)
+    trusted = dict(dates)
+    for (y, b), seq in runs.items():
+        seq.sort()
+        t = P.term_of(y)
+        span = {int(t[:4]), int(t[5:])} if t else set()
+        for i, (_, key) in enumerate(seq):
+            day = dates[key]
+            if day == none:
+                continue
+            prev = dates[seq[i - 1][1]] if i else none
+            nxt = dates[seq[i + 1][1]] if i + 1 < len(seq) else none
+            broken = (none not in (prev, nxt) and prev <= nxt
+                      and not prev <= day <= nxt)
+            if day[0] not in span or broken:
+                trusted[key] = prev if prev != none and prev == nxt else none
+    house_days = defaultdict(list)
+    for key, day in trusted.items():
+        if key.split("-")[1] == "H" and day != none:
+            house_days[day].append(key)
+    chair = {}
+    for day, keys in house_days.items():
+        if any(k in chaired for k in keys):
+            continue
+        for k in keys:
+            top = in_chair.get((k.split("-")[0], "H"))
+            if top:
+                chair[k] = top.most_common(1)[0][0]
+    return {"dates": trusted, "chair": chair, "conflicts": conflicts,
+            "redated": sorted(k for k in dates if trusted[k] != dates[k])}
+
+
+def member_attendance(votes, context=None):
+    """{term: {"chambers", "days", "attended", "roll_calls", "voted", ...}}.
+
+    ATTENDANCE, AS THE PERSON DEFINED IT (23-24 September): a day is a day the
+    member's chamber held at least one roll call while they held the seat, and
+    it counts as attended if they cast a vote on any roll call that day, with
+    no note about part days; beside that, how many of the roll calls held
+    while they sat they voted on.
+
+    WHILE THEY SAT is the ballots themselves. Every roll call from 1999 lists
+    the members seated for it, whatever they did -- 381 to 400 ballots on a
+    House roll call, 22 to 24 on a Senate one -- and between a member's first
+    and last ballot of a term, 8 of the 6,015 member-terms miss a roll call at
+    all. So a member who arrived at a special election is counted from the
+    roll call they first appear on and one who left stops at their last, with
+    no service dates to model and none to get wrong. The same rows the Votes
+    tab lists: `votes` is every number the member voted under.
+
+    ONE SEAT OUTLIVES ITS HOLDER. The 2017 Senate kept one member on every
+    roll call for three months after they had gone, each ballot code 7 with
+    nothing in it: 134 ballots on ten days, which counted as absences from a
+    seat nobody held. So a run of ballots recording nothing that ends a
+    member's term in a chamber is not counted. Only there, and only ballots
+    that record nothing: an excused ballot is a member who held the seat and
+    was away. No other member-term from 1999 ends in such a run.
+
+    PRESIDING COUNTS AS PRESENT. The Speaker is recorded "Presiding" on most
+    of a term's House roll calls and votes on few; on 98 days Terie Norelli
+    presided and cast no Yea or Nay at all. Reading that as absence would make
+    the person running the chamber its worst attender. The Votes tab already
+    tells a reader a presiding ballot "is not a missed vote", and this agrees
+    with it; the page says "presided over" where it happened. `context` is
+    attendance_context(), which also says who presided where the record
+    names nobody, and which day a misdated roll call was taken.
+
+    SO DOES A DECLARED CONFLICT OF INTEREST (rollcall_parser.CONFLICT): the
+    member was there and stood aside from one question under the chamber's
+    rule. On seven days a member declared a conflict and voted on nothing
+    else, and each read as a day absent.
+
+    "No vote recorded" otherwise -- database code 7 and an empty code -- is
+    not a vote cast, so it is missed.
+    """
+    ctx = context or {}
+    dates, chair = ctx.get("dates", {}), ctx.get("chair", {})
+    by_term = defaultdict(list)
+    for v in votes:
+        t = P.term_of(str(v.get("year") or ""))
+        if not t:
+            continue
+        kind = ATTENDANCE_KIND.get(v.get("vote"), "no_vote")
+        key = _roll_call_key(v)
+        if v.get("conflict"):
+            kind = "conflict"
+        elif (kind in ("excused", "not_excused")
+              and chair.get(key) == v.get("member_id")):
+            kind = "presided"
+        num = str(v.get("vote_number") or "")
+        by_term[t].append(((v.get("body"), str(v.get("year")),
+                            int(num) if num.isdigit() else 0), key, kind, v))
+    out = {}
+    for t in sorted(by_term):
+        kept = []
+        for body in sorted({b[0][0] for b in by_term[t]}, key=str):
+            run = sorted((b for b in by_term[t] if b[0][0] == body),
+                         key=lambda b: b[0])
+            while run and run[-1][2] == "no_vote":
+                run.pop()
+            kept += run
+        if not kept:
+            continue
+        calls, days, chambers = {}, {}, set()
+        for (body, _, _), key, kind, v in kept:
+            was = calls.get(key)
+            if was is None or _ATTENDANCE_RANK.index(kind) < _ATTENDANCE_RANK.index(was):
+                calls[key] = kind
+            if body in ("H", "S"):
+                chambers.add(body)
+            day = dates.get(key) or vote_date(v.get("date"))
+            # An undated ballot is still a roll call held while they sat; it
+            # cannot say which day, so it is left out of the days rather than
+            # lumped into one invented day with every other undated ballot.
+            if day != (0, 0, 0):
+                days[day] = days.get(day, False) or kind in _ATTENDANCE_PRESENT
+        kinds = Counter(calls.values())
+        out[t] = {"chambers": "".join(sorted(chambers)),
+                  "days": len(days),
+                  "attended": sum(1 for x in days.values() if x),
+                  "roll_calls": len(calls),
+                  **{k: kinds.get(k, 0) for k in _ATTENDANCE_RANK}}
+    return out
+
+
 def sponsored_in_order(rows):
     """A member's sponsored bills: prime first, then by year, oldest first,
     then by bill number in bills.html's order (bill_order)."""
@@ -2033,6 +2225,22 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     under in the other chamber.
     """
     lg, fm = [], []
+    # Read off every ballot once, because what one member's attendance needs
+    # to know about a roll call -- its day, its chair -- is not in their own.
+    attending = attendance_context(votes_by_member)
+    print(f"attendance: {len(attending['chair']):,} House roll call(s) naming nobody in "
+          f"the chair read as the year's presiding officer's; "
+          f"{len(attending['redated'])} misdated ({', '.join(attending['redated'][:4])}); "
+          f"{attending['conflicts']:,} declared conflict(s)")
+    # The record holds 411 of them, 1999-2019. None at all, over ballots
+    # from those years, is a member_votes.json written before build_data
+    # flagged them -- and then every one counts as an absence, silently.
+    if not attending["conflicts"] and any(
+            str(v.get("year") or "9999") < "2020"
+            for rows in votes_by_member.values() for v in rows):
+        print("  WARNING: no ballot is flagged as a declared conflict of interest; "
+              "data/member_votes.json predates rollcall_parser.ballot and counts each "
+              "as an absence. Rebuild it: python3 build_data.py")
     # ONE CODE PATH FOR BOTH POPULATIONS. The former members go through the
     # same member_labels, the same member_slug and the same per-member JSON as
     # the sitting roster, so every check that guards how a member is named --
@@ -2098,6 +2306,11 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                 if joined else {})
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
+            # In the member's own file and nowhere else: not in the `row`
+            # above, which is what the legislators page, the town pages and
+            # every other listing read. It is a figure on their own page, not
+            # a column anyone is sorted by.
+            "attendance": member_attendance(mv, attending),
             "n_sponsored": len(mine),
             "n_prime": sum(1 for x in mine if x["prime"]),
             "sponsored": mine,

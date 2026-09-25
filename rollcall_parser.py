@@ -197,9 +197,8 @@ def parse(path, want_bill=None):
 # Neither is a Yea or a Nay. The General Court's own roll call page for
 # 2017 SB 133 shows Sen. Scott McGilvray with the Vote column simply EMPTY,
 # and that ballot is code 7: the page says nothing was recorded, and so should
-# this site. Code 5 appears in 1999-2002 in both chambers and its meaning is
-# not established here; it is treated the same way, because whatever it means
-# it is not a vote cast either way.
+# this site. Code 5 is treated the same way on a roll call, because it is not a
+# vote cast either way.
 #
 # They are named rather than blanked so a reader can tell "the record shows no
 # vote" from a member who is simply absent from the list.
@@ -207,11 +206,34 @@ NO_VOTE = "No vote recorded"
 VOTE_WORDS = {"Yea", "Nay", "Not Voting/Excused", "Not Voting/Not Excused",
               "Presiding", ""}
 
+# CODE 5 IS A DECLARED CONFLICT OF INTEREST. It is in the House every year
+# from 1999 to 2013 and in the Senate to 2019, and the journals say what it
+# is: "Reps. Burling, Dalianis and Quandt declared conflicts of interest and
+# did not participate" (House, 12 July 2000), "Senator Foster Rule #42 on SB
+# 183-FN" (Senate, 2007), "Sen. Reagan asserts Rule 6-25 on HB 1116-FN"
+# (Senate, 7 April 2016) -- Rules 42, 2-15 and 6-25 being the Senate's
+# conflict rule under its successive numberings. Read against the journals on
+# this disk, 371 of the 385 code 5 ballots of a year that has one sit beside
+# the member's name and a conflict or that rule; the Senate's journals here
+# begin in 2003. The member was in the chamber and stood aside from one
+# question, which attendance must not count as an absence.
+CONFLICT = "5"
+
 
 def vote_word(raw):
     """One ballot as the site says it, with an unmapped code named honestly."""
     v = (raw or "").strip()
     return v if v in VOTE_WORDS else NO_VOTE
+
+
+def ballot(raw):
+    """A member vote row's own fields for one ballot: its word, and a flag
+    where it is a declared conflict -- which the word cannot carry, "No vote
+    recorded" being what an empty ballot is called too. Only on those rows."""
+    out = {"vote": vote_word(raw)}
+    if (raw or "").strip() == CONFLICT:
+        out["conflict"] = True
+    return out
 
 
 def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):

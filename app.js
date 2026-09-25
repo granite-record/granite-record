@@ -3474,6 +3474,76 @@ function serviceLine(m){
     .join(" &middot; ")}</p>`;
 }
 
+/* ATTENDANCE, AS THE PERSON DEFINED IT (23-24 September). Two figures, kept
+   apart: the days the member's chamber held at least one roll call while they
+   held the seat, attended where they voted on any of that day's roll calls;
+   and the roll calls held while they sat, against those they voted on.
+   build_site_v2.member_attendance counts both per term from the ballots, which
+   list every seated member, so an arrival at a special election starts at
+   their first roll call and a departure stops at their last.
+
+   A FIGURE ON THIS PAGE AND NOWHERE ELSE: not a column in any list, not a
+   rank, and not a colour -- ninety per cent is drawn exactly as a hundred is.
+   Presiding is counted as present, as the Votes tab already says it is ("not
+   a missed vote"), and so is a declared conflict of interest, a member in the
+   room standing aside from one question; each is named where it happened.
+   What is missed is not split into excused and not excused: the person chose
+   (24 September) that an absence is an absence here, and the Votes tab keeps
+   the two labels on each roll call. No note about part days: the person
+   asked for none. */
+const pctOf=(a,b)=>{
+  // Never a rounded 100 beside an absence, nor a rounded 0 beside a vote.
+  if(!b||!a)return 0;
+  if(a>=b)return 100;
+  return Math.max(1,Math.min(99,Math.round(100*a/b)));
+};
+// "a, b and c", "a or b".
+const joinList=(xs,and)=>xs.length>1?`${xs.slice(0,-1).join(", ")} ${and} ${xs[xs.length-1]}`
+  :(xs[0]||"");
+function attendanceBlock(att,t){
+  const terms=Object.keys(att||{}).sort();
+  if(!terms.length)return "";
+  const num=n=>Number(n||0).toLocaleString();
+  const span=x=>esc(String(x)).replace("-","&ndash;");
+  const sum=k=>terms.reduce((s,x)=>s+(Number(att[x][k])||0),0);
+  const took=r=>(r.voted||0)+(r.presided||0)+(r.conflict||0);
+  // `what` is "in 2025&ndash;2026" under a label that already says days or
+  // roll calls, and the noun itself on the line that totals every term.
+  const days=(r,what)=>`attended ${num(r.attended)} of ${num(r.days)} ${what} (${
+    pctOf(r.attended,r.days)}%)`;
+  const calls=(r,what)=>`${joinList([`voted on ${num(r.voted)}`,
+      ...(r.presided?[`presided over ${num(r.presided)}`]:[]),
+      ...(r.conflict?[`declared a conflict of interest on ${num(r.conflict)}`]:[])],"and")
+    } of ${num(r.roll_calls)} ${what} (${pctOf(took(r),r.roll_calls)}%)`;
+  const out=[];
+  const r=att[t];
+  if(r){
+    out.push(`<p><b>Days</b> ${days(r,`in ${span(t)}`)} &middot; absent ${
+      num(r.days-r.attended)}</p>`);
+    out.push(`<p><b>Roll calls</b> ${calls(r,`in ${span(t)}`)} &middot; missed ${
+      num((r.roll_calls||0)-took(r))}</p>`);
+  }else if(t){
+    // A term the member sponsored in and has no ballot for. Before 1999 that
+    // is every term, because the record of roll calls starts there.
+    out.push(`<p><b>Attendance</b> no roll call is on record for them in ${span(t)}${
+      parseInt(t,10)<1999?"; the record of roll calls begins in 1999":""}.</p>`);
+  }
+  if(terms.length>1){
+    const tot={days:sum("days"),attended:sum("attended"),roll_calls:sum("roll_calls"),
+               voted:sum("voted"),presided:sum("presided"),conflict:sum("conflict")};
+    out.push(`<p><b>All ${terms.length} terms</b> ${days(tot,"days")} &middot; ${
+      calls(tot,"roll calls")}</p>`);
+  }
+  const chs=new Set(terms.flatMap(x=>String(att[x].chambers||"").split("")).filter(Boolean));
+  const where=chs.size===1?(chs.has("S")?"the Senate":"the House"):"their chamber";
+  const acts=joinList(["voted on",...(sum("presided")?["presided over"]:[]),
+    ...(sum("conflict")?["declared a conflict of interest on"]:[])],"or");
+  out.push(`<p class="pattnote">A day counts when ${where} held at least one roll
+    call while they held the seat, and is attended if they ${acts} any roll call
+    that day. Voice votes record no names, so they are not counted.</p>`);
+  return `<div class="patt">${out.join("")}</div>`;
+}
+
 /* "2013 to 2026", from the first and last roll call the member appears in.
    The record's own answer to when somebody served, and the only one it can
    give: the roster carries no dates. One year where both ends fall in it,
@@ -3726,7 +3796,11 @@ function renderMember(m){
               ["Votes",memberVotes(m).length]];
   const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
               ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
-  return renderMemberHead(m) + termControl() + tabStrip(tabs) + pagePane(body());
+  // Attendance under the term control, because the term governs it as it
+  // governs the tabs, and above them, because it is about the member rather
+  // than about any one tab.
+  return renderMemberHead(m) + termControl() + attendanceBlock(m.attendance, pageTerm())
+    + tabStrip(tabs) + pagePane(body());
 }
 
 // ------------------------------------------------------------- committee ---
@@ -4214,7 +4288,11 @@ function recordTerms(kind,d){
   const t=new Set();
   if(kind==="member"){
     (d.sponsored||[]).forEach(b=>b.term&&t.add(b.term));
-    (d.votes||[]).forEach(v=>{const x=termOfYear(v.y);if(x)t.add(x);});
+    // The term the vote was cast in, as the Votes tab files it (voteYear): a
+    // member whose only ballots of a term are on rules questions, which carry
+    // no bill and so no bill year, otherwise had no term at all, and a page
+    // with no term drew its attendance as a note with no figures in it.
+    (d.votes||[]).forEach(v=>{const x=termOfYear(voteYear(v));if(x)t.add(x);});
   }else{
     Object.keys(d.bills||{}).forEach(x=>x&&t.add(x));
     (d.sessions||[]).forEach(s=>s.term&&t.add(s.term));

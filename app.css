@@ -2306,6 +2306,15 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .pformer{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0 0;
   line-height:1.6;border-left:3px solid var(--rule);padding-left:var(--sp-4)}
 .pserv .svc{white-space:nowrap}
+/* Attendance, under the term control and above the tabs. The head's labelled
+   lines, because it is the same kind of fact about the member, and plain ink
+   whatever the figure: it is a figure on their own page, not a flag. */
+.patt{margin:0 0 var(--sp-5)}
+.patt p{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-2) 0 0;line-height:1.6;
+  font-variant-numeric:tabular-nums}
+.patt b{font-size:var(--t-sm);letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
+.patt .pattnote{color:var(--ink-2)}
 /* FOLLOW, above a record's heading at the right, closed until asked for. The
    pane opens over the page rather than into it: in the flow it pushed the
    heading down a pane's height and stretched the button across the column. */
