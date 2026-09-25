@@ -7138,6 +7138,324 @@ def _session_as_of_dates(N, V):
         N.CORRECTIONS, N.TERM = saved
 
 
+@check("session", "business done in recess is on its sitting, a joint rule's "
+       "weekend is no sitting, and neither leaves a link behind",
+       needs=("session_days", "build_session_pages"))
+def _session_recess_and_rule_days(SD, BSP):
+    """Thirteen sitting pages were for days the chamber did not sit.
+
+    Ten were business done in the recess of an earlier sitting, which the
+    docket enters on the day it was done and the journal prints with the
+    sitting: "The House, Wednesday 12 June 2013" held sixteen refusals of
+    Senate amendments that House Journal 49 of 5 June prints at pages 1650 to
+    1653. Three were bills dying under a joint rule on a weekend deadline:
+    "The House, Sunday 1 July 1990". The person decided on 24 September 2026
+    that recess business goes on its sitting and a joint rule's date is no
+    sitting; the bill histories are not touched.
+
+    The rows are real docket wording, each form once, and the cases that must
+    NOT move are real rows with one thing changed: a recess naming a day the
+    chamber has no sitting on, one citing another journal than the sitting's,
+    a recess the same day, and a joint-rule death on a weekday. Then the pages
+    are built, over pages a
+    previous build left, and nothing -- a page, a sitemap entry, a previous
+    or next link -- may still point at a day that is gone.
+    """
+    def floor(date, body, raw, action, cite="", mover=""):
+        return {"date": date, "body": body, "type": "floor", "raw": raw,
+                "action": action, "motion": "MA", "vote_kind": "VV",
+                "cite": cite, "mover": mover}
+    nc = "House Non-Concurs with Senate AM #1947s and Requests C of C"
+    acc = "Accede to House Request for C of C"
+    ipjr = "Indefinitely Postpone"
+    narr = {
+        "2013-2014": {
+            "HB528": {"events": [floor("2013-06-05", "H", "House Concurs with Senate "
+                                       "AM #1486s (Rep J.MacKay): MA VV; HJ49, PG.1563",
+                                       "House Concurs with Senate AM", "HJ 49")]},
+            "HB224": {"events": [floor("2013-06-12", "H", nc + " (Rep. Shurtleff): MA "
+                                       "VV [Recess of 6/5/13]; HJ49, PG.1650", nc,
+                                       "HJ 49", "Rep. Shurtleff")]},
+            # another journal than the sitting's: stays where it is entered
+            "HB225": {"events": [floor("2013-06-13", "H", nc + " (Rep. Shurtleff): MA "
+                                       "VV [Recess of 6/5/13]; HJ50, PG.1700", nc,
+                                       "HJ 50", "Rep. Shurtleff")]},
+            "HB650": {"events": [floor("2014-05-15", "H", "Concur with Senate Amendment "
+                                       "#1339s (Rep. Bouchard) MA VV",
+                                       "Concur with Senate Amendment")]},
+            "HB498": {"events": [floor("2014-05-21", "H", "Rep. Chandler moved to "
+                                       "Non-Concur with Senate AM and request C of C; "
+                                       "MA VV (In recess of 5/15/14)", nc)]},
+            # a recess of a day with no sitting: stays
+            "HB499": {"events": [floor("2014-06-20", "H", "Rep. Chandler moved to "
+                                       "Non-Concur with Senate AM and request C of C; "
+                                       "MA VV (In recess of 6/18/14)", nc)]}},
+        "2003-2004": {
+            "HB369": {"events": [floor("2004-05-06", "S", "Ought to Pass as Amended"
+                                       "{1544},(New Title), MA, VV; OT3rdg",
+                                       "Ought to Pass as Amended", "SJ 15"),
+                                 floor("2004-05-13", "S", "Senator Peterson " + acc +
+                                       ", MA, VV [05/06/04]", acc, "SJ 15")]}},
+        "2005-2006": {
+            "HB114": {"events": [floor("2005-06-09", "S", "Sen. Kenney " + acc + ", MA, "
+                                       "VV", acc, "SJ 21")]},
+            # the clerk's slipped year, beside nine rows reading [06/09/05]
+            "HB433": {"events": [floor("2005-06-16", "S", "Senator Morse " + acc +
+                                       ", MA, VV, [06/09/04]", acc, "SJ 21")]}},
+        "2025-2026": {
+            "SB14": {"events": [floor("2025-06-05", "S", "Sen. Gannon Moved Nonconcur "
+                                      "with the House Amendment; Requests C of C, MA, "
+                                      "VV; (In Recess 06/05/2025)", "Nonconcur")]}},
+        "1989-1990": {
+            "HB381": {"events": [floor("1990-07-01", "H", "INDEFINITELY POSTPONED BY "
+                                       "JOINT RULE 24(B)", ipjr)]},
+            "HB575": {"events": [floor("1990-07-01", "H", "INDEFINITELY POSTPONED PER "
+                                       "JT. RULE 24 (B)", ipjr)]},
+            "HB1": {"events": [floor("1990-06-28", "H", "Ought to Pass: MA VV",
+                                     "Ought to Pass")]}},
+        "1995-1996": {
+            "HB222": {"events": [floor("1995-07-01", "H", "INDEFINITELY POSTPONED PER JT "
+                                       "RULE 23-A; HJ81,P2122", ipjr, "HJ 81")]},
+            # a weekday deadline is a day the chamber may have sat: kept
+            "HB1504": {"events": [floor("1996-06-13", "H", "INDEFINITELY POSTPONED PER "
+                                        "JT RULE 23-A", ipjr)]}},
+    }
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        days = SD.load(root / "narratives.json")
+
+        def bills(body, date):
+            d = days.get((body, date))
+            return sorted(i.bill for i in d.items) if d else None
+        want = {("H", "2013-06-05"): ["HB224", "HB528"],
+                ("H", "2013-06-12"): None, ("H", "2013-06-13"): ["HB225"],
+                ("H", "2014-05-15"): ["HB498", "HB650"], ("H", "2014-05-21"): None,
+                ("H", "2014-06-20"): ["HB499"],
+                ("S", "2004-05-06"): ["HB369", "HB369"], ("S", "2004-05-13"): None,
+                ("S", "2005-06-09"): ["HB114", "HB433"], ("S", "2005-06-16"): None,
+                ("S", "2025-06-05"): ["SB14"],
+                ("H", "1990-07-01"): None, ("H", "1995-07-01"): None,
+                ("H", "1990-06-28"): ["HB1"], ("H", "1996-06-13"): ["HB1504"]}
+        got = {k: bills(*k) for k in want}
+        assert got == want, "sittings are not as the journal holds them: " + "; ".join(
+            f"{k[0]} {k[1]} has {got[k]}, want {want[k]}" for k in want if got[k] != want[k])
+        entered = {i.bill: getattr(i, "entered", None)
+                   for d in days.values() for i in d.items}
+        assert entered["HB224"] == "2013-06-12" and entered["HB433"] == "2005-06-16" \
+            and entered["HB528"] is None and entered["SB14"] is None \
+            and entered["HB225"] is None, (
+            f"a moved row lost the day the docket enters it, or an unmoved one "
+            f"claims to have moved: {entered}")
+        assert not SD.JOINT_RULE.search("SEN CONCURS WITH HOUSE AM TO JT RULES"), (
+            "the Senate adopting joint rules was read as a bill dying under one")
+
+        here = Path(".").resolve()
+        if not (here / "bills.html").exists():
+            return "ok", "sittings as the journal holds them; no bills.html to build pages"
+        site = root / "site"
+        shutil.copy2(here / "bills.html", root / "bills.html")
+        base = "https://graniterecord.org"
+        gone = ["2013-06-12", "2014-05-21", "1990-07-01", "1995-07-01"]
+        (site / "session" / "H").mkdir(parents=True)
+        for d in gone:
+            (site / "session" / "H" / f"{d}.html").write_text("old", encoding="utf-8")
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0"?><urlset>\n' + "".join(
+                f"<url><loc>{base}/session/H/{d}.html</loc></url>\n" for d in gone)
+            + "</urlset>", encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_session_pages.py"), "--site", "site",
+                  "--base", base, "--body", "H"],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, "build_session_pages: " + (r.stderr or r.stdout)[-300:]
+        pages = {p.stem: p.read_text(encoding="utf-8")
+                 for p in (site / "session" / "H").glob("*.html")}
+        left = sorted(set(gone) & set(pages))
+        assert not left, f"a page for a day that is no sitting is still on disk: {left}"
+        sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+        dangling = [f"{d} from {k}" for k, html in pages.items() for d in gone
+                    if f"{d}.html" in html] + [f"{d} from sitemap.xml" for d in gone
+                                               if d in sm]
+        assert not dangling, f"a link still reaches a day that is gone: {dangling}"
+        page = pages.get("2013-06-05", "")
+        assert "Done in the recess of this sitting" in page and \
+            "Wednesday 12 June 2013" in page, (
+            "the 5 June 2013 page does not say HB 224 was done in its recess and "
+            "entered on 12 June, the date the bill's own history gives")
+        return "ok", ("recess rows on their sitting with the docket's date beside "
+                      "them, the guarded ones where they are; joint-rule weekends "
+                      "are no sitting; no page, sitemap entry or neighbour link "
+                      "reaches a day that went")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("session", "recess business the docket does not mark is on its sitting "
+       "too, and claims no speech made at it",
+       needs=("session_days", "build_session_pages", "shell"))
+def _session_unmarked_recess(SD, BSP, shell):
+    """Two ways the recess fix of 24 September fell short.
+
+    Most recess business says nothing of a recess. The House's refusals of
+    Senate amendments entered on 24, 28 and 29 May 2024 cite HJ 14, and House
+    Journal 14 prints every one under RECESS after the House recessed on
+    23 May; the three days still built as sittings the House never held.
+    The rows below are real docket rows, and the ones that must stay are real
+    rows with one thing changed -- a count on the day, which a recess never
+    takes, or no page to say where the journal prints it. The Senate's own
+    refusals of 21 May 2008 cite SJ 18, the 15 May journal, and are printed
+    in the 21 May sitting.
+
+    And a moved row took the day's speeches. SB 389's accession, done in the
+    recess of 15 May 2014 with no debate at all, was the bill's only row that
+    day, so it claimed the five speeches made on the bill's floor amendments,
+    whose tallies were 219-72 and 110-177; SB 148's, beside the roll call
+    O'Brien and Tucker spoke on, made a second motion and pushed them off it.
+    """
+    def floor(date, body, raw, cite="", page=None, kind="VV", yeas=None,
+              nays=None):
+        return {"date": date, "body": body, "type": "floor", "raw": raw,
+                "action": raw.split(":")[0].split(",")[0], "motion": "MA",
+                "vote_kind": kind, "yeas": yeas, "nays": nays, "cite": cite,
+                "cite_page": page}
+    nc = "House Non-Concurs with Senate Amendment 2024-{}s and Requests CofC: MA VV {}"
+    otp = "Ought to Pass: MA VV"
+    narr = {
+        "2023-2024": {
+            "HB1": {"events": [floor("2024-05-23", "H", otp, "HJ 14", 10)]},
+            "HB2": {"events": [floor("2024-05-23", "H", otp, "HJ 14", 20)]},
+            "HB3": {"events": [floor("2024-05-23", "H", "Ought to Pass: MA RC 200-150",
+                                     "HJ 14", 173, "RC", 200, 150)]},
+            # entered the next day, no page: HJ 14 prints it on page 177
+            "HB1695": {"events": [floor("2024-05-24", "H", nc.format(1621, "05/24/2024"),
+                                        "HJ 14")]},
+            "HB1030": {"events": [floor("2024-05-24", "H", nc.format(1544, "05/24/2024"),
+                                        "HJ 14", 177)]},
+            # no journal cited at all, on a day of nothing else
+            "HB1521": {"events": [floor("2024-05-28", "H", nc.format(1968, "05/28/2024"))]},
+            "HB1069": {"events": [floor("2024-05-28", "H", nc.format(1966, "05/28/2024"),
+                                        "HJ 14", 178)]},
+            # a day with a count is a sitting: stays
+            "HB1593": {"events": [floor("2024-05-29", "H", nc.format(2117, "05/29/2024")
+                                        .replace("MA VV", "MA DV 200-100"), "HJ 14",
+                                        180, "DV", 200, 100)]},
+            # entered on the next sitting, which has a journal of its own
+            "HB1292": {"events": [floor("2024-05-30", "H", nc.format(2179, "05/30/2024"),
+                                        "HJ 14", 181)]},
+            # the same, at a page inside the sitting's own: stays
+            "HB468": {"events": [floor("2024-05-30", "H", nc.format(1525, "05/30/2024"),
+                                       "HJ 14", 100)]},
+            "HB4": {"events": [floor("2024-05-30", "H", otp, "HJ 15", 2)]},
+            "HB5": {"events": [floor("2024-05-30", "H", otp, "HJ 15", 3)]},
+            "HB6": {"events": [floor("2024-05-30", "H", otp, "HJ 15", 4)]}},
+        "1997-1998": {
+            "HB50": {"events": [floor("1997-05-28", "H", "PASSED VV; HJ70,P2010", "HJ 70")]},
+            "HB51": {"events": [floor("1997-05-28", "H", "PASSED VV; HJ70,P2011", "HJ 70")]},
+            "HB52": {"events": [floor("1997-05-28", "H", "PASSED VV; HJ70,P2012", "HJ 70")]},
+            "HB130": {"events": [floor("1997-05-29", "H", "HOUSE NONC WITH SEN AM REQ CONF "
+                                       "COMM, REP LOZEAU MA; HJ70,P2037", "HJ 70", kind="")]},
+            "SB122": {"events": [floor("1997-05-29", "H", "HOUSE ACCEDED TO REQ FOR CONF "
+                                       "COMM, REP LOZEAU MA; HJ70,P2038", "HJ 70", kind="")]}},
+        "2007-2008": {
+            "SB1": {"events": [floor("2008-05-15", "S", otp, "SJ 18")]},
+            "SB2": {"events": [floor("2008-05-15", "S", otp, "SJ 18")]},
+            "SB3": {"events": [floor("2008-05-15", "S", otp, "SJ 18")]},
+            "SB4": {"events": [floor("2008-05-21", "S", otp, "SJ 19")]},
+            "SB5": {"events": [floor("2008-05-21", "S", otp, "SJ 19")]},
+            "SB32": {"events": [floor("2008-05-21", "S", "Sen. Foster Moved Nonconcur with "
+                                      "House Am{2501}(NT); Requests C of C, MA, VV",
+                                      "SJ 18")]}},
+    }
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        days = SD.load(root / "narratives.json")
+
+        def bills(body, date):
+            d = days.get((body, date))
+            return [i.bill for i in d.items] if d else None
+        want = {("H", "2024-05-23"): ["HB1", "HB2", "HB3", "HB1030", "HB1695",
+                                      "HB1069", "HB1521", "HB1292"],
+                ("H", "2024-05-24"): None, ("H", "2024-05-28"): None,
+                ("H", "2024-05-29"): ["HB1593"],
+                ("H", "2024-05-30"): ["HB4", "HB5", "HB6", "HB468"],
+                ("H", "1997-05-28"): ["HB130", "HB50", "HB51", "HB52", "SB122"],
+                ("H", "1997-05-29"): None,
+                ("S", "2008-05-15"): ["SB1", "SB2", "SB3"],
+                ("S", "2008-05-21"): ["SB32", "SB4", "SB5"]}
+        got = {k: bills(*k) for k in want}
+        assert got == want, "sittings are not as the journal holds them: " + "; ".join(
+            f"{k[0]} {k[1]} has {got[k]}, want {want[k]}" for k in want if got[k] != want[k])
+        moved = {i.bill: (i.entered, i.recess) for d in days.values() for i in d.items
+                 if i.entered}
+        assert moved == {"HB1695": ("2024-05-24", False), "HB1030": ("2024-05-24", False),
+                         "HB1521": ("2024-05-28", False), "HB1069": ("2024-05-28", False),
+                         "HB1292": ("2024-05-30", False), "HB130": ("1997-05-29", False),
+                         "SB122": ("1997-05-29", False)}, (
+            f"a moved row lost the day the docket enters it, or claims the docket "
+            f"said recess: {moved}")
+        assert days[("H", "2024-05-23")].ordered, "the sitting no longer reads in order"
+
+        # The page: what the journal gives the bill that day is the sitting's.
+        Item = SD.Item
+        blank = {"type": "floor", "body": "H", "motion": "MA"}
+
+        def item(bill, seq, raw, entered=None, recess=False, **e):
+            ev = dict(blank, raw=raw, action=raw.split(":")[0], **e)
+            it = Item(bill, "2013-2014", ev, seq)
+            it.entered, it.recess = entered, recess
+            return it
+        acc = "House Accedes to Senate Request for C of C: MA VV"
+        s389 = item("SB389", 1, "Rep Almy moved to accede to request for C of C; MA VV "
+                    "(In recess of 5/15/14)", "2014-05-22", True, vote_kind="VV")
+        s148 = item("SB148", 2, "Ought to Pass with Amendment #1730h: MA RC 170-113",
+                    vote_kind="RC", yeas="170", nays="113")
+        s148r = item("SB148", 3, acc + " [Recess of 6/5/13]", "2013-06-13", True,
+                     vote_kind="VV")
+        s19 = item("SB19", 4, acc + " [06/05/13]", "2013-06-12", False, vote_kind="VV")
+        day = SD.Day("H", "2014-05-15", [s389, s148, s148r, s19])
+        # As journal_days reads them from HJ044 and HJ049: the journal's own
+        # tally for SB 148 is 166-119, so only the one-motion rule places it.
+        speech = [{"bill": "SB389", "side": "for", "names": ["Burt", "Wright"],
+                   "tally": (110, 177)},
+                  {"bill": "SB389", "side": "against", "names": ["Beaudoin"],
+                   "tally": (219, 72)},
+                  {"bill": "SB148-FN", "side": "against",
+                   "names": ["William O'Brien", "Tucker"], "tally": (166, 119)}]
+        narrative = {"attributions": speech, "unanimous_consent": [],
+                     "debates": [{"bill": "SB389", "speeches": [
+                         ("Rep. Burt", "I rise in support of the amendment.")]}]}
+        (root / "site").mkdir()
+        html, _ = BSP.render(day, narrative, {}, {}, BSP.Members(root / "site"), shell.E)
+        import html as H
+        cards = {re.search(r'class="sbill">([^<]+)<', c).group(1):
+                 H.unescape(re.sub(r"<[^>]+>", " ", c))
+                 for c in html.split('<article class="sitem">')[1:]}
+        assert not re.search(r"Burt|Wright|Beaudoin|Spoke|spoke", cards["SB 389"]), (
+            "SB 389's accession, done in recess with no debate, is drawn with the "
+            f"speeches on its floor amendments: {cards['SB 389'][:300]!r}")
+        assert re.search(r"Spoke against the motion\s+Rep\. William O'Brien\s*,\s*"
+                         r"Rep\. Tucker", cards["SB 148"]) \
+            and "Also spoke" not in cards["SB 148"], (
+            "SB 148's speakers were pushed off the roll call they spoke on by the "
+            f"recess row beside it: {cards['SB 148'][:400]!r}")
+        assert "Done in the recess of this sitting" in cards["SB 389"] and \
+            "Printed in the journal with this sitting" in cards["SB 19"] and \
+            "recess" not in cards["SB 19"], (
+            "a row the docket says was done in recess, or one placed only by the "
+            "journal it cites, is not described as the record has it")
+        tail = html.split("Also printed in the permanent journal")
+        assert len(tail) == 2 and "I rise in support" in tail[1], (
+            "a debate printed on SB 389 that day is drawn under its recess row "
+            "rather than among the debates on no motion of the day")
+        return "ok", ("unmarked recess days and rows on their sitting, in the "
+                      "journal's order, the counted day, the pageless row and the "
+                      "row inside the sitting's pages where they are; a recess "
+                      "row claims no speech and displaces none")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("session", "a sitting's page goes when its day does, never a term at once, "
        "and none is built ahead of today", needs=("build_session_pages",))
 def _session_pages_pruned(BSP):
@@ -7312,6 +7630,179 @@ def _vote_category_text(BSP, shell):
                       "no contradicted claim and no reason; the leave note names "
                       "members only and allows for the ballots that vote or "
                       "disagree")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# Senate sittings as the Senate Journal prints them, cut down to the lines that
+# matter: journals_senate/2026/SJ 09 April 16, 2026.txt (the day's excused
+# senator, the roll call's own excused line, and one excused partway through);
+# 2003/SJ 9.txt (the date on the line the sitting opens with); 2012/SJ 15 May
+# 23, 2012.txt ("and" after the last comma, and the list again before a roll
+# call); 2024/SJ 08 April 5 2024.txt ("for the moment"); 2024/SJ 09 April 11
+# 2024.txt (a reason given); 2018/SJ005.txt (excused "for the day", after the
+# consent calendar); 2006/SJ 4.txt (a JOURNAL line misprinting the date, which
+# the masthead and running head correct), below a floor amendment's heading
+# in the shape 2018/SJ005.txt prints one, whose own date line is the trap.
+SENATE_JOURNALS = {
+    "2026/SJ 09 April 16, 2026.txt": (
+        "SENATE                                                       April 16, 2026\n"
+        "JOURNAL 9\n\n"
+        "The Senate reconvened at 9:00 a.m., a quorum being present.\n\n"
+        "The Reverend Mark Warren, Chaplain to the Senate, offered the following prayer:\n\n"
+        "Senator Watters led the Pledge of Allegiance.\n\n"
+        "Senator McConkey is excused.\n\n"
+        "                                         INTRODUCTION OF PAGES\n"
+        "(The Chair recognized Senator Pearl.)\n\n"
+        "HB 1215, relative to supporting the preferred method of communication of an "
+        "individual with a\ncommunication disability.\n\n"
+        "The following Senators voted Yes: Rochefort, Lang, Gray, Innis, Ward.\n\n"
+        "The following Senators were excused: McConkey.\n\n"
+        "Roll Call, Yeas: 15 - Nays: 8. Adopted, bill ordered to Third Reading.\n\n"
+        "Senator Watters is excused.\n"),
+    "2003/SJ 9.txt": (
+        "SENATE\nJOURNAL 9\n\n"
+        "The Senate met at 10:00 a.m.                                "
+        "              March 20, 2003\n\n"
+        "A quorum was present.\n\n"
+        "Senator Roberge led the Pledge of Allegiance.\n\n"
+        "Senator Prescott is excused for the day.\n\n"
+        "                                     INTRODUCTION OF GUESTS\n"),
+    "2012/SJ 15 May 23, 2012.txt": (
+        "SENATE                                                  May 23, 2012\n"
+        "JOURNAL 15\n\n"
+        "The Senate reconvened at 11 a.m., a quorum being present.\n\n"
+        "Sen. Boutin led the Pledge of Allegiance.\n\n"
+        "Sens. Forrester, Luther, Larsen, and Merrill are excused.\n"
+        "597  SENATE JOURNAL 23 MAY 2012\n\n"
+        "SB 372-FN-L, establishing an education tax credit.\n"
+        "Sen. Forsythe moves concurrence.\n"
+        "A roll call was requested by Sen. Houde, seconded by Sen. D'Allesandro.\n"
+        "Sens. Forrester, Luther, Larsen, and Merrill are excused.\n"),
+    "2024/SJ 08 April 5 2024.txt": (
+        "SENATE                                                        April 5, 2024\n"
+        "JOURNAL 8\n\n"
+        "The Senate reconvened at 10:00 a.m., a quorum being present.\n\n"
+        "Senator Gendreau led the Pledge of Allegiance.\n\n"
+        "Senator Ricciardi is excused for the moment.\n\n"
+        "                                          MOTION OF RECONSIDERATION\n"),
+    "2024/SJ 09 April 11 2024.txt": (
+        "SENATE                                                        April 11, 2024\n"
+        "JOURNAL 9\n\n"
+        "The Senate reconvened at 10:00 a.m., a quorum being present.\n\n"
+        "Senator Lang led the Pledge of Allegiance.\n\n"
+        "                                           INTRODUCTION OF GUESTS\n"
+        "I don't know if he's still there. And Ken Chamberlain.\n\n"
+        "Senator D'Allesandro is excused due to medical necessity.\n\n"
+        "                                             CONSENT CALENDAR\n"),
+    "2018/SJ005.txt": (
+        "                              February 22, 2018\n\n"
+        "The Senate reconvened at 10:00 a.m., a quorum being present.\n\n"
+        "Senator Hennessey led the Pledge of Allegiance.\n\n"
+        "                             INTRODUCTION OF GUESTS\n\n"
+        "SB 524-FN, relative to head injury policies for the community college\n"
+        "system of New Hampshire and the university system of New Hampshire.\n\n"
+        "The question is on the adoption of the Consent Calendar. Adopted.\n\n"
+        "Senators Carson and D'Allesandro are excused for the day.\n\n"
+        "                                  REGULAR CALENDAR\n"),
+    # Its JOURNAL line is misprinted: the sitting is 9 February, as the
+    # masthead and the running head say, and not the 2nd it is headed.
+    "2006/SJ 4.txt": (
+        "                                                   February 9, 2006\n"
+        "                                                   Nos. 3 - 4\n\n"
+        "        SENATE JOURNAL\n\n"
+        " ADJOURNMENT - FEBRUARY 2, 2006 SESSION\n"
+        "COMMENCEMENT - FEBRUARY 9, 2006 SESSION\n"
+        "80                     SENATE JOURNAL 2 FEBRUARY 2006\n\n"
+        "Sen. Hennessey, Dist 5\n"
+        "January 26, 2006\n"
+        "2006-0827s\n\n"
+        "Adjournment.\n\n"
+        "SENATE\n\n"
+        "JOURNAL 4                                              February 2, 2006\n\n"
+        "The Senate met at 10:00 a.m.\n\n"
+        "A quorum was present.\n\n"
+        "                           SENATE JOURNAL 9 FEBRUARY 2006                    81\n\n"
+        "Senator Letourneau led the Pledge of Allegiance.\n\n"
+        "Senator Kenney is excused for the day.\n\n"
+        "                                    INTRODUCTION OF GUESTS\n"),
+}
+# The other way round: 2005/SJ 9.txt is headed rightly and carries 2004 in
+# every running head, and its masthead agrees with the heading.
+SENATE_2005_SJ9 = (
+    " ADJOURNMENT - MARCH 10, 2005 SESSION\n"
+    "COMMENCEMENT - MARCH 17, 2005 SESSION\n"
+    "110                           SENATE JOURNAL 10 MARCH 2005\n\n"
+    "Adjournment.\n\n"
+    "SENATE\nJOURNAL 9\n\n"
+    "                                                   March 17, 2005\n\n"
+    "The Senate met at 10:00 a.m.\n\n"
+    "A quorum was present.\n\n"
+    "                             SENATE JOURNAL 17 MARCH 2004                 111\n\n"
+    "The Reverend David P. Jones, chaplain to the Senate, offered the prayer.\n")
+
+
+@check("session", "a Senate page names the senators excused for the day, and "
+       "only those, and never why", needs=("journal_days", "build_session_pages", "shell"))
+def _senate_excused(J, BSP, shell):
+    """Senate sitting pages named nobody as excused; the House's have for a
+    fortnight. The person asked on 24 September 2026 for the Senate's to
+    match -- the members excused for the day, and not those excused for part
+    of it, since a senator excused for the day sometimes comes back once the
+    obligation is done.
+
+    The Senate Journal has no LEAVES OF ABSENCE heading. It names the day's
+    excused senators as each sitting opens, and the same sentence later in the
+    day is a senator leaving partway or excused from one vote, so only the
+    opening is read. The wrongs this rules out are each real: a mid-day
+    excuse named as the day's, a roll call's own excused line, "for the
+    moment", "and Merrill" as a name, a date taken from a floor amendment
+    printed above the sitting, a heading's misprinted date believed over the
+    masthead and every running head (Senator Kenney, excused on 9 February
+    2006, was filed under the 2nd), and a reason printed on the page.
+    """
+    root = Path(tempfile.mkdtemp())
+    try:
+        for rel, text in SENATE_JOURNALS.items():
+            f = root / "journals_senate" / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(text, encoding="utf-8")
+        # A day's debate printed a second time is not read again.
+        (root / "journals_senate" / "2026" / "SJ 09 - Verbatim.txt").write_text(
+            SENATE_JOURNALS["2026/SJ 09 April 16, 2026.txt"].replace(
+                "McConkey is excused.", "Gray is excused."), encoding="utf-8")
+
+        def names(date):
+            got = J.read_senate_day(date, root / "journals_senate")
+            return [n for g in got["absences"] for n in g["names"]]
+        want = {"2026-04-16": ["McConkey"], "2003-03-20": ["Prescott"],
+                "2012-05-23": ["Forrester", "Luther", "Larsen", "Merrill"],
+                "2024-04-05": [], "2024-04-11": ["D'Allesandro"],
+                "2018-02-22": [], "2006-02-09": ["Kenney"],
+                "2006-02-02": [], "2006-01-26": []}
+        got = {d: names(d) for d in want}
+        assert got == want, (
+            "the Senate's excused senators are not the opening's: " + "; ".join(
+                f"{d} got {got[d]}, want {want[d]}" for d in want if got[d] != want[d]))
+        dated = [d for d, _ in J.senate_openings(SENATE_2005_SJ9)]
+        assert dated == ["2005-03-17"], (
+            f"a running head's misprinted year redated a sitting: {dated}")
+
+        members = BSP.Members(root)
+        html = BSP.absences_html(J.read_senate_day("2024-04-11", root / "journals_senate"),
+                                 "S", members, shell.E)
+        text = re.sub(r"<[^>]+>", " ", html)
+        assert "Allesandro" in text and "Sen. " in text and "1 senator " in text, (
+            f"the Senate's excused list is not drawn as a senator: {text[:200]!r}")
+        assert not re.search(r"medical|necessity|illness|business|family", text, re.I), (
+            "a Senate page gives the reason a senator was excused")
+        assert "may still have voted" in text and "does not always agree" in text, (
+            "the Senate's excused note claims more than the ballots allow: Senator "
+            "Carson, excused as the Senate opened on 7 May 2026, voted on all seven "
+            "of its roll calls")
+        return "ok", ("the opening's excused senators on six real sittings; no "
+                      "mid-day, roll call or part-day excuse, no verbatim copy, "
+                      "and no reason on the page")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -14851,19 +15342,11 @@ def _no_empty_dates():
 # journal belongs to another sitting are listed as warnings -- almost all are
 # rows dated by the moment they were entered, which measured no worse than any
 # bulk re-dating (98.3% against roll calls). Remove a line when it is decided.
+#
+# Decided on 24 September 2026 and gone from the list: 24, 28 and 29 May 2024,
+# recess business now on the 23 May sitting (session_days.unmarked_recess),
+# and the joint-rule weekends of 1 July 1990 and 1995, which are no sitting.
 KNOWN_DOUBTFUL = {
-    ("H", "2024-05-24"): "business the House did in recess of its 23 May 2024 "
-                         "sitting, which HJ 14 prints under 23 May",
-    ("H", "2024-05-28"): "business the House did in recess of its 23 May 2024 "
-                         "sitting, which HJ 14 prints under 23 May",
-    ("H", "2024-05-29"): "business the House did in recess of its 23 May 2024 "
-                         "sitting, which HJ 14 prints under 23 May",
-    ("H", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
-                         "a disposition by rule dated to a Sunday",
-    ("S", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
-                         "a disposition by rule dated to a Sunday",
-    ("H", "1995-07-01"): "bills indefinitely postponed under Joint Rule 23-A, "
-                         "a disposition by rule dated to a Saturday",
     ("H", "2012-03-11"): "one row dated by the moment it was entered, a Sunday; "
                          "its journal is the 7 March 2012 sitting's",
 }
