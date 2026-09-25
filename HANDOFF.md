@@ -229,9 +229,13 @@ Do not bulk-correct on the journal number alone.
 
 There is a running list of them, for the person to bring to the House and
 Senate Clerks' offices so each can be fixed at the source as well as here --
-asked for on 24 September. It holds only the General Court's own errors: a
-docket row, a database field, a roll-call file or a journal that the rest of
-the record contradicts. Each entry quotes what the record says and where, what
+asked for on 24 September. It holds only the General Court's own errors, and
+only errors of fact: a docket row, a database field, a roll-call file or a
+journal that the rest of the record contradicts -- a wrong date, a vote filed
+under the wrong bill, the wrong mover. Spelling slips stay off it (the person,
+25 September). A misfiled vote or a wrong mover goes on the list rather than
+being corrected on the site, unless the person approves a site correction for
+that case, as they did for HB 1364 of 2026. Each entry quotes what the record says and where, what
 the evidence shows, and where that evidence is, so the Clerk's staff can check
 it without redoing the work; evidence that is suggestive but not conclusive
 goes under "To check", with what would settle it.
