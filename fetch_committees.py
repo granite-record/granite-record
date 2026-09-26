@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Every standing committee, from the two pages that list them.
 
@@ -84,6 +84,29 @@ def clean(s):
     return WS.sub(" ", _html.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
 
 
+# Every label a committee page puts before a value, as this parser and
+# fetch_committee_details.py's read them; preflight holds the two lists to
+# each other and to every label either parser asks for. A label the page
+# leaves blank is followed by the next one, and the pattern in labelled()
+# skips the markup between them: on the House listing of 6 September, Rules
+# has a blank "Committee Assistant:" and "Researcher:", and its aide was read
+# as "Researcher:" and its researcher as "Location:".
+LABELS = ("Chairman", "Chairwoman", "Chair", "VChairman", "V Chairman",
+          "Vice Chairman", "Vice Chair", "Clerk", "Committee Assistant",
+          "Committee Asst", "Committee Aide", "Researcher", "Location", "Room",
+          "Phone")
+NEXT_LABEL = re.compile(
+    r"^(?:(?:" + "|".join(r"\s+".join(map(re.escape, lab.split()))
+                          for lab in sorted(LABELS, key=len, reverse=True))
+    + r")\s*:|Pursuant\s+to\b)", re.I)
+
+
+def not_a_value(v):
+    """Whether a label's reading is the page's next label rather than a value:
+    it ends in a colon, or begins with a label or with a committee's duty."""
+    return v.endswith(":") or bool(NEXT_LABEL.match(v))
+
+
 def labelled(block, *labels):
     """The value after one of these labels, however the page spaces it.
 
@@ -91,13 +114,15 @@ def labelled(block, *labels):
     "Committee Aide:"; the House writes "Committee Assistant:" and separates
     label from value with a literal &nbsp; rather than a space, which is why
     a pattern expecting whitespace found nothing on 27 House committees.
+
+    A label with nothing after it gives "", not the next label: see LABELS.
     """
     for lab in labels:
         m = re.search(re.escape(lab) + r"\s*:(?:&nbsp;|&#160;|\s|<[^>]+>)*"
                       r"([^<\n]{2,60})", block, re.I)
         if m:
             v = clean(m.group(1))
-            if v and v not in (":", "-"):
+            if v and v not in (":", "-") and not not_a_value(v):
                 return v
     return ""
 

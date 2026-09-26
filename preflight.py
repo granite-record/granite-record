@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.258
+# GRANITE_VERSION: 2026-09-04.259
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10835,10 +10835,15 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
     warn and build rather than stop, and whose page must lack them: that half
     is what shows the first half can see the loss.
 
-    Which file wins a field both carry is held too: the listing's chair
-    stands over the detail page's (the listing is read weekly, the detail
-    pages when a person asks), and the detail page's researcher fills in
-    where the listing has none.
+    Which file gives a field both pages carry is held too: committees.json
+    alone. The listing's chair stands over the detail page's (the listing is
+    read weekly, the detail pages when a person asks), and since 26 September
+    the detail page's researcher no longer fills in where the listing has
+    none, so the details file is a source of the clerk, the purpose and the
+    roster and of nothing else.
+
+    And a details file that is here and will not read stops the build with a
+    sentence saying what to do, rather than building every page without them.
     """
     here = Path(".").resolve()
     if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
@@ -10855,7 +10860,7 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
         "rule") == "House Rule 99", f"fetch_committee_details.parse misread the page: {rec}"
     duty = rec["purpose"]["text"]
     book = {}
-    CD.fold(book, "H", rows[0], rec)
+    CD.put(book, "H", rows[0], rec, "2026-09-26")
 
     root = Path(tempfile.mkdtemp(prefix="gr-cmte-details-"))
     try:
@@ -10873,11 +10878,13 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
         (root / "committees.json").write_text(json.dumps({"H": rows}), encoding="utf-8")
         CD.write_details(book, root / "committee_details.json")
 
-        def build():
+        def build(stops=False):
             r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
                       "--data", "data", "--base", "https://graniterecord.org"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             out = (r.stdout or "") + (r.stderr or "")
+            if stops:
+                return r.returncode, out
             assert r.returncode == 0, f"build_committees stopped: {out.strip()[-200:]}"
             page = root / "site" / "committee" / "H43.json"
             assert page.exists(), "build_committees wrote no page for the fixture's committee"
@@ -10898,11 +10905,23 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
         assert got.get("chair") == "Jane Doe", (
             f"the chair is {got.get('chair')!r}: the detail page's reading won over "
             "the listing's, which the weekly job keeps current")
-        assert got.get("researcher") == "Rae Search", (
-            "the detail page's researcher did not fill in where the listing has none")
+        assert not got.get("researcher"), (
+            f"the page's researcher is {got.get('researcher')!r}, which only the "
+            "details file carries: it is filling a field both pages carry, which "
+            "is committees.json's alone")
+
+        good = (root / "committee_details.json").read_bytes()
+        (root / "committee_details.json").write_bytes(good[:len(good) // 2])
+        shutil.rmtree(root / "site" / "committee")
+        rc, out = build(stops=True)
+        assert rc != 0 and "will not read" in out and "move it aside" in out, (
+            "a committee_details.json cut off half way did not stop the build with "
+            f"a sentence saying what to do (exit {rc}): {out.strip()[-200:]}")
+        assert not (root / "site" / "committee" / "H43.json").exists(), (
+            "the build stopped on an unreadable committee_details.json but wrote pages first")
 
         (root / "committee_details.json").unlink()
-        shutil.rmtree(root / "site" / "committee")
+        shutil.rmtree(root / "site" / "committee", ignore_errors=True)
         got, html, out = build()
         assert "committee_details.json is not here" in out, (
             "a build without committee_details.json said nothing about it")
@@ -10912,8 +10931,335 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("a committees.json of what the weekly writes, and committee_details.json, "
-                  "give a page its purpose, clerk and the listing's chair; without the "
-                  "details file the build warns and the page goes without")
+                  "give a page its purpose, clerk and the listing's chair and nothing "
+                  "else; an unreadable details file stops the build, and without one "
+                  "the build warns and the page goes without")
+
+
+@check("build", "with committee_details.json here, committees.json is no second source of a clerk, a purpose or a roster",
+       needs=("committee_details",))
+def _committee_details_one_source(CD):
+    """committees.json on the laptop, and the copy the first seed-kit put in
+    the bucket, still carry the clerk, the purpose and the web roster that
+    fetch_committee_details.py merged into it before 26 September. The join
+    used to start each row from committees.json and lay only the details'
+    non-empty values over it, so those old values were a hidden second
+    source: a clerk taken out of committee_details.json -- by hand, or by a
+    fetch of a page that no longer names one -- stayed on the committee page.
+
+    So, with a details file: the three come from it alone, and a row it has
+    nothing for goes without, with a warning that names the committee. The
+    details give no other field, not even to fill a gap. Only with no details
+    file at all does a row keep committees.json's values, and that warns too.
+    A details file that is here and will not read stops the reader with a
+    sentence saying what to do; an empty one is a file that says nothing.
+    """
+    import contextlib
+    import io
+    old_duty = {"rule": "House Rule 1", "text": "The old duty, which the details no longer say."}
+    new_duty = {"rule": "House Rule 99", "text": "The duty the committee's page says today."}
+    web = {"H": [
+        {"chamber": "H", "code": "43", "name": "Fixture Affairs", "chair": "Jane Doe",
+         "clerk": "Old Clerk", "purpose": old_duty,
+         "web_members": [{"name": "Jane Doe", "party_code": "R", "pid": "1"}]},
+        {"chamber": "H", "code": "44", "name": "Second Fixtures", "chair": "Sam Roe",
+         "clerk": "Also Old"}]}
+    details = {"H": {"43": {"name": "Fixture Affairs", "purpose": new_duty,
+                            "chair": "Old Chair", "researcher": "Rae Search",
+                            "fetched": "2026-09-26"}}}
+    frozen = json.dumps([web, details], sort_keys=True)
+    root = Path(tempfile.mkdtemp(prefix="gr-cmte-source-"))
+    try:
+        cj, dj = root / "committees.json", root / "committee_details.json"
+        cj.write_text(json.dumps(web), encoding="utf-8")
+
+        def read():
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                got = CD.read(str(cj), str(dj))
+            return {r["code"]: r for r in got["H"]}, err.getvalue()
+
+        dj.write_text(json.dumps(details), encoding="utf-8")
+        rows, said = read()
+        h43, h44 = rows["43"], rows["44"]
+        assert "clerk" not in h43 and "clerk" not in h44, (
+            f"a clerk committees.json still carries reached the page past a details "
+            f"file that names none: {h43.get('clerk')!r}, {h44.get('clerk')!r}")
+        assert h43.get("purpose") == new_duty and "purpose" not in h44, (
+            f"the purpose did not come from the details alone: {h43.get('purpose')}, "
+            f"{h44.get('purpose')}")
+        assert "web_members" not in h43, (
+            "committees.json's old web roster stood where the details have none")
+        assert h43.get("chair") == "Jane Doe" and "researcher" not in h43, (
+            f"the details gave a field both pages carry: chair {h43.get('chair')!r}, "
+            f"researcher {h43.get('researcher')!r}; those are committees.json's alone")
+        named = [ln for ln in said.splitlines() if "no record in" in ln]
+        assert named and named[0].split("purpose: ")[-1].split(".")[0] == "H44", (
+            f"a committee with no details record was not named in a warning: {said!r}")
+        assert json.dumps([web, details], sort_keys=True) == frozen, (
+            "the join changed the rows it was given")
+
+        dj.write_text("{}", encoding="utf-8")
+        rows, said = read()
+        assert not any(r.get(k) for r in rows.values() for k in CD.ONLY_HERE), (
+            "an empty committee_details.json let committees.json's clerk or purpose through")
+        assert "H43" in said and "H44" in said, f"an empty details file named nobody: {said!r}"
+
+        dj.unlink()
+        rows, said = read()
+        assert rows["43"].get("clerk") == "Old Clerk" and rows["43"].get("purpose") == old_duty, (
+            "with no details file, the build no longer falls back to committees.json")
+        assert "is not here" in said, "a build with no details file said nothing about it"
+
+        dj.write_text('{"H": {"43": {"clerk": "Kim', encoding="utf-8")
+        try:
+            read()
+        except SystemExit as e:
+            why = str(e.code)
+        else:
+            raise AssertionError("a committee_details.json that will not read was built from")
+        assert "will not read" in why and "Mend it" in why and "move it aside" in why, (
+            f"the stop on an unreadable details file does not say what to do: {why!r}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("with a details file, clerk, purpose and roster come from it alone and a "
+                  "committee without a record is named; no file falls back and warns; "
+                  "a file that will not read stops")
+
+
+@check("build", "committee_details.json is written whole or not at all", needs=("committee_details",))
+def _committee_details_atomic(CD):
+    """write_details wrote the file in place, so a write that stopped half way
+    -- a full disk, a killed process -- left a file that will not read, and a
+    build meeting that file now stops. It writes a sibling and moves it into
+    place: stopped before the move, the old file is untouched."""
+    root = Path(tempfile.mkdtemp(prefix="gr-cmte-atomic-"))
+    real = os.replace
+    try:
+        dj = root / "committee_details.json"
+        CD.write_details({"H": {"43": {"clerk": "Kim Clerk"}}}, dj)
+        first = dj.read_bytes()
+
+        def refused(*a, **k):
+            raise OSError("the move was stopped")
+        os.replace = refused
+        try:
+            CD.write_details({"H": {"43": {"clerk": "Someone Else"}}}, dj)
+        except OSError:
+            pass
+        finally:
+            os.replace = real
+        assert dj.read_bytes() == first, (
+            "committee_details.json changed although the write was stopped before "
+            "it finished: write_details writes the file in place")
+        CD.write_details({"S": {"30": {"clerk": "B"}}, "H": {"9": {}, "10": {}}}, dj)
+        assert json.loads(dj.read_text(encoding="utf-8")) == {
+            "H": {"10": {}, "9": {}}, "S": {"30": {"clerk": "B"}}}
+        assert list(json.loads(dj.read_text(encoding="utf-8"))) == ["H", "S"]
+        assert [p.name for p in root.iterdir()] == ["committee_details.json"], (
+            f"write_details left something beside the file: {[p.name for p in root.iterdir()]}")
+    finally:
+        os.replace = real
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "a write stopped before the move leaves the old file; a finished one leaves nothing beside it"
+
+
+@check("build", "a committee page read as one replaces its clerk, purpose and roster; a failed or empty one changes nothing",
+       needs=("committee_details", "fetch_committee_details"))
+def _committee_fetch_replaces(CD, FCD):
+    """The fetch merged into committee_details.json and set only non-empty
+    values, so no fetch could ever take off a clerk the General Court had
+    removed: a stale clerk stayed on the committee's page for good.
+
+    So a page that parses as a committee's -- a purpose or a roster came out
+    of it -- replaces that committee's clerk, purpose and roster with exactly
+    what it says, and the record carries the day it was read. A page that
+    failed, or parsed as nothing, changes nothing: an empty parse is a parser
+    that stopped matching. And a run that would take a field off every
+    committee it read that had one is refused, because a purpose pattern that
+    stopped matching while the roster still parses looks exactly like that.
+    --probe writes nothing, so it does not stop on a file that will not read.
+
+    Run through fetch_committee_details.main with get() stubbed and
+    urlopen made to fail: nothing is asked of anybody.
+    """
+    import contextlib
+    import datetime
+    import io
+    import urllib.error
+    rows = [{"chamber": "H", "code": str(c), "name": f"Fixture {c}",
+             "url": f"https://example.invalid/committee/{c}"} for c in (41, 42, 43, 44)]
+    duty = ("It shall be the duty of the Committee on Fixtures to consider matters "
+            "relating to fixtures, and such other matters as may be referred to it.")
+    on_file = {"H": {str(c): {"name": f"Fixture {c}", "clerk": f"Clerk {c}",
+                              "purpose": {"rule": "House Rule 9", "text": duty},
+                              "web_members": [{"name": "Old Member", "party_code": "D",
+                                               "pid": "9"}]}
+                     for c in (41, 42, 43, 44)}}
+    page = ("<html><body><div>Chairman:&nbsp;Jane Doe<br />Clerk:&nbsp;<br />"
+            "Researcher:&nbsp;Rae Search</div>"
+            "<a href='member.aspx?pid=1'>Jane Doe</a> (R) "
+            "<a href='member.aspx?pid=2'>John Roe</a> (D) "
+            f"<p>Pursuant to House Rule 31: {duty}</p>"
+            "<div>HELPFUL LINKS Committees of Conference</div></body></html>")
+    real_get, real_open = FCD.get, FCD.urllib.request.urlopen
+
+    def no_network(*a, **k):
+        raise AssertionError("fetch_committee_details opened a connection in preflight")
+    root = Path(tempfile.mkdtemp(prefix="gr-cmte-fetch-"))
+    try:
+        cj, dj = root / "committees.json", root / "committee_details.json"
+        cj.write_text(json.dumps({"H": rows}), encoding="utf-8")
+        FCD.urllib.request.urlopen = no_network
+
+        def run(args, answer):
+            asked = []
+
+            def get(url):
+                asked.append(url)
+                return answer(url)
+            FCD.get = get
+            argv = sys.argv
+            sys.argv = ["fetch_committee_details.py", "--file", str(cj), "--out", str(dj),
+                        "--delay", "0"] + args
+            out = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                    rc = FCD.main()
+            except SystemExit as e:
+                rc = e.code
+            finally:
+                sys.argv = argv
+            return rc, out.getvalue(), asked
+
+        def failed(url):
+            raise urllib.error.HTTPError(url, 500, "Server Error", {}, None)
+
+        CD.write_details(on_file, dj)
+        days = {datetime.date.today().isoformat()}
+        rc, out, asked = run(["--only", "H41"], lambda url: page)
+        days.add(datetime.date.today().isoformat())
+        got = json.loads(dj.read_text(encoding="utf-8"))["H"]
+        assert rc == 0 and asked == [rows[0]["url"]], f"the H41 run did not write: {out[-300:]}"
+        assert "clerk" not in got["41"], (
+            f"a committee page that names no clerk left the old one on file: {got['41']}")
+        assert got["41"].get("fetched") in days, f"the record is not stamped: {got['41']}"
+        assert got["41"]["purpose"]["rule"] == "House Rule 31" and [
+            m["name"] for m in got["41"]["web_members"]] == ["Jane Doe", "John Roe"], (
+            f"the purpose or roster is not what the page says: {got['41']}")
+        assert all(got[c] == on_file["H"][c] for c in ("42", "43", "44")), (
+            "an --only run changed another committee's record")
+
+        snap = dj.read_bytes()
+        rc, out, _ = run(["--only", "H42"], failed)
+        assert dj.read_bytes() == snap, "a page that failed changed committee_details.json"
+        rc, out, _ = run(["--only", "H42"], lambda url: "<html><body>Unavailable</body></html>")
+        assert json.loads(dj.read_text(encoding="utf-8"))["H"]["42"] == on_file["H"]["42"], (
+            "a page that parsed as nothing changed its committee's record")
+
+        snap = dj.read_bytes()
+        no_duty = page.replace("Pursuant to House Rule 31:", "Nothing to see:").replace(
+            "Clerk:&nbsp;<br />", "Clerk:&nbsp;A Clerk<br />")
+        rc, out, _ = run([], lambda url: no_duty)
+        assert rc == 1 and dj.read_bytes() == snap and "had a purpose on file would lose" in out, (
+            "a run that took the purpose off every committee it read was written: "
+            f"{out.strip()[-300:]}")
+
+        dj.write_bytes(snap[:40])
+        rc, out, _ = run(["--probe", "--only", "H43"], lambda url: page)
+        assert rc == 0 and dj.read_bytes() == snap[:40], (
+            f"--probe stopped on, or wrote to, a file that will not read: {out.strip()[-200:]}")
+        rc, out, asked = run(["--only", "H43"], lambda url: page)
+        assert rc not in (0, None) and not asked and dj.read_bytes() == snap[:40], (
+            "a fetch that will write went ahead over a committee_details.json that will not read")
+    finally:
+        FCD.get, FCD.urllib.request.urlopen = real_get, real_open
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a page read as a committee's takes off a clerk it no longer names and is "
+                  "stamped; a failed or empty page changes nothing; a run emptying a field "
+                  "everywhere is refused; --probe reads past a broken file")
+
+
+# The House listing's Rules committee on 6 September 2026, as the General Court
+# printed it: an assistant and a researcher labelled and left blank.
+_CMTE_BLANKS = (
+    "<h5 class=\"card-header\"><a href='committeedetails.aspx?id=14'>Rules</a></h5>"
+    "<div class=\"card-body\"><p class=\"card-text\">"
+    "Chairman:&nbsp;Sherman Packard<br />Vice Chairman:&nbsp;Steven Smith<br />"
+    "Committee Assistant:&nbsp;<br />Researcher:&nbsp;<br /><br />"
+    "Location:&nbsp;<span title='Granite Place'>GP&nbsp;Room&nbsp;000</span><br />"
+    "Phone:&nbsp;603-271-3661</p></div>" + "<!-- the committee's section -->" * 6)
+
+
+@check("build", "a label left blank on a committee page reads as blank, not as the next label",
+       needs=("fetch_committees", "fetch_committee_details"))
+def _committee_blank_labels(FC, FCD):
+    """Both committee parsers find a label and take what follows it, skipping
+    the markup between -- which is how they read the House's "Label:&nbsp;"
+    at all. A label the page leaves blank is followed by the next label, so
+    the House listing of 6 September gave Rules an aide called "Researcher:"
+    and a researcher called "Location:", and a blank "Clerk:" on a committee's
+    own page read the start of its duty as the clerk.
+
+    A reading that ends in a colon, or begins with a label or with the duty's
+    "Pursuant to", is empty now. The two parsers keep one list of the labels
+    between them, and it must name every label either asks for.
+    """
+    rows = FC.parse(_CMTE_BLANKS, "H")
+    assert len(rows) == 1, f"fetch_committees.parse no longer reads the Rules block: {rows}"
+    r = rows[0]
+    assert not r.get("aide") and not r.get("researcher"), (
+        f"a blank label on the listing read as the next one: aide {r.get('aide')!r}, "
+        f"researcher {r.get('researcher')!r}")
+    assert (r.get("chair"), r.get("vice_chair"), r.get("location"), r.get("phone")) == (
+        "Sherman Packard", "Steven Smith", "GP Room 000", "603-271-3661"), (
+        f"the labels that are filled in no longer read: {r}")
+
+    body = ("<div>Chairman:&nbsp;Jane Doe<br />Clerk:&nbsp;<br /></div><p>Pursuant to "
+            "House Rule 99: It shall be the duty of the Committee on Fixture Affairs to "
+            "consider matters relating to fixtures, and such other matters as may be "
+            "referred to it.</p><div>HELPFUL LINKS</div>")
+    rec = FCD.parse(body)
+    assert not rec.get("clerk"), f"a blank Clerk: read the duty as the clerk: {rec.get('clerk')!r}"
+    assert (rec.get("purpose") or {}).get("rule") == "House Rule 99", (
+        f"the duty after a blank clerk no longer reads: {rec.get('purpose')}")
+    rec = FCD.parse("Clerk:&nbsp;<br />Researcher:&nbsp;Rae Search<br />Phone:&nbsp;<br />")
+    assert not rec.get("clerk") and rec.get("researcher") == "Rae Search" and not rec.get(
+        "phone"), f"a blank label on a committee page read the next one: {rec}"
+    for mod in (FC, FCD):
+        assert mod.labelled("Location:&nbsp;Room 302<br />", "Location") == "Room 302", (
+            f"{mod.__name__} no longer reads a room that begins with the word Room")
+        assert mod.labelled("Chairman:&nbsp;Chairez Smith<br />", "Chairman") == "Chairez Smith"
+
+    # Which labels each parser asks for, from the parser itself: labelled() is
+    # wrapped and each parse run on a section that names nothing, so every
+    # fallback to a label is taken.
+    labels = {}
+    bare_section = ("<h3><a href='committeedetails.aspx?id=1'>Nothing Filled</a></h3>"
+                    + "<!-- the committee's section -->" * 8)
+    for mod, run in ((FC, lambda: FC.parse(bare_section, "H")),
+                     (FCD, lambda: FCD.parse(bare_section))):
+        asked, real = set(), mod.labelled
+
+        def listen(block, *labs, _real=real, _asked=asked):
+            _asked.update(labs)
+            return _real(block, *labs)
+        mod.labelled = listen
+        try:
+            run()
+        finally:
+            mod.labelled = real
+        assert asked, f"{mod.__name__}: its parser asked labelled() for nothing"
+        known = {x.lower() for x in mod.LABELS}
+        missing = sorted(x for x in asked if x.lower() not in known)
+        assert not missing, (f"{mod.__name__} asks for {missing}, which its LABELS does not "
+                             "name, so a blank label before one of them reads it as a value")
+        labels[mod.__name__] = set(mod.LABELS)
+    assert labels["fetch_committees"] == labels["fetch_committee_details"], (
+        "the two committee parsers' LABELS differ: "
+        f"{sorted(labels['fetch_committees'] ^ labels['fetch_committee_details'])}")
+    return "ok", ("the 6 September Rules block gives no aide and no researcher; a blank "
+                  "clerk is blank; both parsers share one list of labels")
 
 
 @check("files", "committee_details.json has one writer, fetch_committee_details.py, and it is the laptop's")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.5
+# GRANITE_VERSION: 2026-09-07.6
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -45,6 +45,17 @@ shared file that runs on a subset destroys the rest -- which has happened to
 three files on this project. It refuses to write a file with fewer committees
 than it read.
 
+Within one committee, the page is the answer. A page that parses as a
+committee's -- a purpose or a roster came out of it -- replaces that
+committee's record with exactly what it says, stamped "fetched" with the day,
+so a clerk the General Court has taken off the page comes off ours. A page
+that failed changes nothing, and one that parsed as nothing a committee page
+carries only adds and never blanks: that is a parser that no longer matches,
+not a committee without a clerk. And a run that would take the clerk, the
+purpose or the roster off every committee it read that had one (three or
+more) is refused, because a pattern that stopped matching one field while
+another still parses looks exactly like that.
+
 A committee_details.json that has never been fetched can be seeded, without
 asking anybody, from a committees.json that still carries the old merged
 fields: `python3 committee_details.py --from-committees`.
@@ -58,6 +69,7 @@ an idea of what the page looks like.
 """
 
 import argparse
+import datetime
 import html as _html
 import json
 import re
@@ -68,7 +80,7 @@ from pathlib import Path
 
 import committee_details as CD
 
-UA ={"User-Agent": "granite-record/1.0 (civic transparency project; "
+UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
 WS = re.compile(r"\s+")
 
@@ -85,6 +97,10 @@ MEMBER = re.compile(
     re.I)
 STRIP = re.compile(r"<(script|style)\b.*?</\1>", re.I | re.S)
 TAG = re.compile(r"<[^>]+>")
+# A run that takes a field off every committee it read that had one, when that
+# is at least this many, is refused: see main(). One committee's clerk leaving,
+# or an --only run, never reaches it.
+WIPE_FLOOR = 3
 
 
 def get(url):
@@ -97,12 +113,37 @@ def clean(s):
     return WS.sub(" ", _html.unescape(TAG.sub(" ", s or ""))).strip()
 
 
+# Every label a committee page puts before a value, as this parser and
+# fetch_committees.py's read them; preflight holds the two lists to each
+# other and to every label either parser asks for. A label the page leaves
+# blank is followed by the next one, and the pattern below skips the markup
+# between them -- so a blank "Clerk:" read the duty that follows it as the
+# clerk, and on the House listing a blank "Committee Assistant:" and
+# "Researcher:" read "Researcher:" and "Location:".
+LABELS = ("Chairman", "Chairwoman", "Chair", "VChairman", "V Chairman",
+          "Vice Chairman", "Vice Chair", "Clerk", "Committee Assistant",
+          "Committee Asst", "Committee Aide", "Researcher", "Location", "Room",
+          "Phone")
+NEXT_LABEL = re.compile(
+    r"^(?:(?:" + "|".join(r"\s+".join(map(re.escape, lab.split()))
+                          for lab in sorted(LABELS, key=len, reverse=True))
+    + r")\s*:|Pursuant\s+to\b)", re.I)
+
+
+def not_a_value(v):
+    """Whether a label's reading is the page's next label rather than a value:
+    it ends in a colon, or begins with a label or with the duty's opening."""
+    return v.endswith(":") or bool(NEXT_LABEL.match(v))
+
+
 def labelled(page, *labels):
     """The value after one of these labels, however the page spaces it.
 
     Lifted from fetch_committees.py, which learned it the hard way: the House
     separates a label from its value with a literal &nbsp; rather than a
     space, so a pattern expecting whitespace found nothing on 27 pages.
+
+    A label with nothing after it gives "", not the next label: see LABELS.
     """
     for lab in labels:
         m = re.search(re.escape(lab) + r"\s*:(?:&nbsp;|&#160;|\s|<[^>]+>)*"
@@ -112,8 +153,9 @@ def labelled(page, *labels):
             # A page with no clerk writes one. Matched case-insensitively
             # because it was not, and three committees published a clerk
             # named "n/a" -- a placeholder presented as a person.
-            if v and v.strip().lower() not in (":", "-", "na", "n/a", "none",
-                                               "tbd", "vacant", "."):
+            if (v and v.strip().lower() not in (":", "-", "na", "n/a", "none",
+                                                "tbd", "vacant", ".")
+                    and not not_a_value(v)):
                 return v
     return ""
 
@@ -242,8 +284,12 @@ def main():
                  "adds to what that wrote and cannot invent the list.")
     book = json.loads(path.read_text(encoding="utf-8"))
     # What is already on file, which this adds to. Absent the first time.
-    details = CD.load(a.out, quiet=True, strict=True)
+    # Strictly only when this run will write: a file that will not read must
+    # not be replaced by one run's findings, but --probe writes nothing and
+    # has no reason to stop on it.
+    details = CD.load(a.out, quiet=True, strict=not a.probe, writing=True) or {}
     before = CD.counts(details)[0]
+    day = datetime.date.today().isoformat()
 
     want = a.only.strip().lower()
     todo = []
@@ -262,6 +308,10 @@ def main():
     print(f"{len(todo)} committee page(s), {a.delay}s apart "
           f"-- about {len(todo) * a.delay / 60:.1f} minutes\n")
     got, failed = 0, []
+    # For each field only a committee's page carries: the committees read as
+    # one this run that had it on file, and those whose page no longer names it.
+    had = {k: [] for k in CD.ONLY_HERE}
+    dropped = {k: [] for k in CD.ONLY_HERE}
     for i, (chamber, code, row) in enumerate(todo):
         url = row["url"]
         try:
@@ -302,12 +352,25 @@ def main():
                           + ("..." if len(v["text"]) > 300 else ""))
                 else:
                     print(f"      {k}: {v}")
-        # MERGE, into committee_details.json under this committee's chamber
-        # and code. A field already on file is only replaced by a non-empty
-        # one: the listing pages and the detail pages disagree about spacing
-        # and occasionally about a name, and an empty parse must never blank a
-        # value that was there.
-        CD.fold(details, chamber, row, rec)
+        # Into committee_details.json under this committee's chamber and
+        # code. A page that parsed as a committee's is the answer and replaces
+        # the record, so a clerk it no longer names comes off; any other page
+        # only adds, because an empty parse must never blank a value that was
+        # there. committee_details.put says which is which.
+        key = str(row.get("code", ""))
+        old = dict((details.get(chamber) or {}).get(key) or {})
+        if CD.put(details, chamber, row, rec, day) == "replaced":
+            new = details[chamber][key]
+            gone = []
+            for k in CD.ONLY_HERE:
+                if old.get(k):
+                    had[k].append(code)
+                    if not new.get(k):
+                        dropped[k].append(code)
+                        gone.append(k)
+            if gone:
+                print(f"        the page no longer names its {', '.join(gone)}: "
+                      "taken off")
         if i + 1 < len(todo):
             time.sleep(a.delay)
 
@@ -316,6 +379,16 @@ def main():
     print(f"  {n_clerk} committees now have a clerk, {n_purp} a stated purpose")
     if failed:
         print(f"  {len(failed)} failed: " + "; ".join(failed[:3]))
+    for k in CD.ONLY_HERE:
+        if dropped[k]:
+            print(f"  {len(dropped[k])} of the {len(had[k])} read with a {k} on "
+                  f"file lost it: {', '.join(dropped[k])}")
+    # Every one of them, and more than a handful: that is a pattern that has
+    # stopped matching the page, and writing would take the field off every
+    # committee page. A genuine emptying -- a new term before the clerks are
+    # appointed -- is answered by moving the file aside and fetching afresh.
+    wiped = [k for k in CD.ONLY_HERE
+             if len(had[k]) >= WIPE_FLOOR and len(dropped[k]) == len(had[k])]
 
     if a.probe:
         print("\nNothing was written. Drop --probe once the fields above look "
@@ -331,10 +404,18 @@ def main():
               "clerk. Run with --probe --raw --only H24 and fix the patterns "
               "against the page.")
         return 1
+    if wiped:
+        print(f"\nNOT WRITING {a.out}: every committee read that had a "
+              f"{' and every one that had a '.join(wiped)} on file would lose "
+              "it. That is a pattern that no longer matches the page, not the "
+              "General Court emptying them all at once: run with --probe --raw "
+              "--only H24 and fix it against the page. If the pages really do "
+              "name none now, move the file aside and run this again.")
+        return 1
     assert after >= before, (
         f"{a.out} would go from {before} committees to {after}. This script "
-        "adds fields to committees and removes none, so a smaller file is a "
-        "bug in it, not a change at the General Court.")
+        "replaces a committee's fields and removes no committee, so a smaller "
+        "file is a bug in it, not a change at the General Court.")
     CD.write_details(details, a.out)
     print(f"-> {a.out} ({after} committees, {before} on file before)")
     print("\nRun build_committees.py to put the clerk and the purpose on the "

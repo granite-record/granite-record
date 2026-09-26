@@ -143,7 +143,9 @@ archive_sample_ids.json
 committees.json
 # fetch_committee_details.py's: 41 committee pages, re-fetchable, and in the
 # nightly's kit (cloud_kit.json), which only carries what git does not.
+# The .tmp is its write in progress, moved into place when it is whole.
 committee_details.json
+committee_details.json.tmp
 docket_pages/
 Docket_*.txt
 
