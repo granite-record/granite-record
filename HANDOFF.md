@@ -367,6 +367,15 @@ lifts the local one and says so, and `python3 cloud.py clear-refusal` lifts the
 bucket's. Both are a person's decision, after `netcheck.py`. Each night's full
 log is in the bucket under `logs/<date>/`.
 
+**Branches, since 26 September: `main` is what is live, `dev` is where work
+goes.** The nightly builds and publishes `main`, so a commit there reaches the
+site the next night. Commit and push work to `dev`, and merge worktree branches
+into `dev`. `dev` is merged into `main` only as a release the person has agreed
+to, after the checks `CONTRIBUTING.md` lists, because the person wants fewer,
+fuller releases rather than one per fix. The workflows stay on `main`, which
+is GitHub's default branch and the one schedules run from; a run started by
+hand from `dev` stops at its environment, which allows `main` only.
+
 ## What is running
 
 **No document can answer this, including this one.** The disk knows; a page only

@@ -52,6 +52,19 @@ not the web server that did the blocking. Still ask — it is still somebody
 else's server — but a refusal there is a different problem with a different
 cause.
 
+## Branches: work goes to `dev`, `main` is what is live
+
+The site is rebuilt from `main` every night on GitHub's machines and published
+from it, so `main` holds exactly what graniterecord.org runs, and a commit that
+reaches it goes live with the next night's build. Work happens on `dev`: open
+pull requests against `dev`, not `main`.
+
+A release is `dev` merged into `main` once the whole of it has been checked --
+`preflight.py`, a full `build_all.py --local`, `check_site.py`, and
+`probe_alignment.py` wherever a timestamp moved -- and the night after it lands
+publishes it. Releases are batched on purpose: fewer, complete updates rather
+than one per fix.
+
 ## Getting set up
 
 ```bash
