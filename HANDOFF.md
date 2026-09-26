@@ -347,6 +347,17 @@ docstring is the reference:
 Credentials come from `keys.r2()`: repository secrets on GitHub, `secrets.json`
 on the laptop. Nothing else reads them.
 
+**The night never reads a caption file.** The captions stay on the laptop, and
+what the night knows of them is two files the laptop owns in the kit:
+`candidate_segments.json` (the boundaries the chair stated) and
+`caption_spans.json` (where each recording's captions stop, which is how the
+night withholds a track that runs an hour late). So whenever the laptop re-reads
+captions -- a build after `segment_markers.py` or its patterns change, or a
+caption job -- run `python3 cloud.py seed-kit` afterwards, and check that the
+dry run lists only those files. Until it does, the night publishes the older
+boundaries. On 26 September that was two hearings, HB 748 and HB 752 of 2025,
+shown as approximate on GitHub's build and as stated on the laptop's.
+
 **Until the stand-down, the laptop's nightly is still the one.** `python3
 refusal.py --stand-down` writes `archive/runs-in-the-cloud.json`; from then on
 the laptop's nightly, snapshot, publish and the fetchers GitHub owns refuse with
