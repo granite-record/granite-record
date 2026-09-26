@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.260
+# GRANITE_VERSION: 2026-09-04.261
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21857,7 +21857,7 @@ def _past_fake_bridge(P, calls, how):
         n = how.get("rows", {}).get(view, 3)
         sent = max(0, n - how.get("short", {}).get(view, 0))
         cols = cat[view]
-        if script == P.PS_STREAM:
+        if script == P.PS_STREAM_COUNTED:
             with open(env["GR_OUT"], "w", encoding="utf-8", newline="") as fh:
                 for i in range(sent):
                     fh.write("|".join([f"{view}-{i}"] + ["x"] * (len(cols) - 1)) + "\r\n")
@@ -22056,7 +22056,7 @@ def _past_whole_or_nothing(FP, P, R):
             assert c["count"] == f"SELECT COUNT(*) AS n FROM {c['view']}", c["count"]
             FP.select_only(c["sql"])
             assert c["sql"].endswith(f" FROM {c['view']}") and "*" not in c["sql"], c["sql"][-80:]
-            want = P.PS_STREAM if FP.SPEC[c["view"]][1] == "psv" else P.PS_JSONL
+            want = P.PS_STREAM_COUNTED if FP.SPEC[c["view"]][1] == "psv" else P.PS_JSONL
             assert c["script"] == want, f"{c['view']} went through the wrong bridge"
         assert sleeps == [FP.PAUSE] * 5 and FP.PAUSE == 5, f"the pauses were {sleeps}"
         assert Path("db/_manifest.json").read_text(encoding="utf-8") == '{"Docket": {"rows": 1}}', \
@@ -22165,6 +22165,10 @@ def _past_whole_or_nothing(FP, P, R):
         with contextlib.redirect_stdout(io.StringIO()):
             got = P.run_to_file("conn", "SELECT 1", tmp / "x.psv")
         assert got == (4, None) and "GR_COUNT" not in seen, (got, sorted(seen))
+        # PS_STREAM is the nightly's and fetch_archive_db's, and stays what it was:
+        # the count question lives only in PS_STREAM_COUNTED.
+        assert "GR_COUNT" not in P.PS_STREAM and "GR_COUNT" in P.PS_STREAM_COUNTED, \
+            "PS_STREAM carries the count block; it belongs in PS_STREAM_COUNTED only"
     finally:
         os.chdir(here)
         P.run, P.child, FP.time, sys.argv = saved
@@ -22196,7 +22200,7 @@ def _past_bridge_in_powershell(P):
         return "skip", "no Windows PowerShell here"
     parse = r"""
 $bad = @()
-foreach ($k in 'GR_PS_RUN','GR_PS_STREAM','GR_PS_JSONL') {
+foreach ($k in 'GR_PS_RUN','GR_PS_STREAM','GR_PS_COUNTED','GR_PS_JSONL') {
   $t = $null; $e = $null
   [void][System.Management.Automation.Language.Parser]::ParseInput(
     [Environment]::GetEnvironmentVariable($k), [ref]$t, [ref]$e)
@@ -22206,7 +22210,7 @@ if ($bad.Count) { $bad -join ' | ' } else { 'PARSED' }
 """
     r = _run(["powershell", "-NoProfile", "-NonInteractive", "-Command", parse],
              capture_output=True, timeout=120,
-             env={"GR_PS_RUN": P.PS, "GR_PS_STREAM": P.PS_STREAM, "GR_PS_JSONL": P.PS_JSONL})
+             env={"GR_PS_RUN": P.PS, "GR_PS_STREAM": P.PS_STREAM, "GR_PS_COUNTED": P.PS_STREAM_COUNTED, "GR_PS_JSONL": P.PS_JSONL})
     assert (r.stdout or "").strip() == "PARSED", \
         f"a bridge script does not parse: {(r.stdout or r.stderr or '')[-300:]}"
 

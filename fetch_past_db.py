@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.1
+# GRANITE_VERSION: 2026-09-26.2
 """
 Six views of past sessions in the General Court's public database, onto this
 disk, each whole or not at all.
@@ -393,7 +393,9 @@ def fetch(view, cols, man, conn, allowed):
                         f"(the first is line {first:,})")
     if problems:
         return fail(view, man, "; ".join(problems), part)
-    os.replace(part, final)
+    err = replace_retrying(part, final)
+    if err:
+        return fail(view, man, err, part)
     entry = {"file": final.name, "format": fmt, "database": DATABASE,
              "rows": rows, "count": count, "bytes": size, "sha256": sha,
              "seconds": round(took, 1), "columns": names, "types": types,
@@ -412,6 +414,23 @@ def fetch(view, cols, man, conn, allowed):
     return True, rows, size
 
 
+def replace_retrying(part, final):
+    """Put the checked .part in place. On Windows a virus scanner or the search
+    indexer can hold a file it has just seen being written, and a finished
+    900 MB view should not be lost to that: try a few times before giving up,
+    and give up through fail(), which keeps the .part and says so."""
+    for attempt in range(6):
+        try:
+            os.replace(part, final)
+            return None
+        except PermissionError as e:
+            last = e
+            time.sleep(2)
+        except OSError as e:
+            return f"the checked file could not be put in place: {e}"
+    return f"the checked file could not be put in place after 6 tries: {last}"
+
+
 def fail(view, man, why, part):
     """Say what went wrong, keep what came, record it; the run stops here."""
     print(f"    FAILED: {why[:400]}", flush=True)
@@ -421,9 +440,14 @@ def fail(view, man, why, part):
             part.unlink()
         else:
             kept = part.as_posix()
+            if complete(view, man):
+                what = ("the complete file fetched "
+                        f"{(man.get(view) or {}).get('fetched')} is kept; a plain run "
+                        "leaves it be, and --refetch asks again")
+            else:
+                what = "the next run starts this view again and replaces it"
             print(f"    {kept} is left where it is ({part.stat().st_size:,} bytes) "
-                  "for a person to look at; the next run starts this view again "
-                  "and replaces it.", flush=True)
+                  f"for a person to look at; {what}.", flush=True)
     if not kept:
         print("    Nothing of this view was written.", flush=True)
     entry = dict(man.get(view) or {})
@@ -441,6 +465,8 @@ def pick(only):
     if not only:
         return list(NAMES)
     asked = [x.strip() for o in only for x in o.split(",") if x.strip()]
+    if not asked:
+        raise ValueError("--only named no view. They are " + ", ".join(NAMES) + ".")
     by = {n.lower(): n for n in NAMES}
     unknown = [x for x in asked if x.lower() not in by]
     if unknown:
@@ -470,6 +496,13 @@ def show_plan(views, man, refetch):
                   f"{str(e['last_error'].get('error'))[:120]}")
 
 
+def positive(v):
+    n = int(v)
+    if n <= 0:
+        raise argparse.ArgumentTypeError("--timeout is a number of seconds above 0")
+    return n
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Dump the six Past* views of NHLegislatureDB into db/past/.")
@@ -479,8 +512,9 @@ def main(argv=None):
                     help="a view, or several separated by commas; repeatable")
     ap.add_argument("--refetch", action="store_true",
                     help="ask again for a view whose file is already complete")
-    ap.add_argument("--timeout", type=int, default=0,
-                    help="seconds allowed for each view, in place of its own allowance")
+    ap.add_argument("--timeout", type=positive, default=0,
+                    help="seconds allowed for each view, in place of its own allowance "
+                         "(the bridge is killed 5 minutes after that)")
     a = ap.parse_args(argv)
 
     if os.environ.get("GITHUB_ACTIONS") == "true":
@@ -537,8 +571,12 @@ def main(argv=None):
                     if i:
                         time.sleep(PAUSE)
                     print(f"\n[{i + 1}/{len(wanted)}]", end="", flush=True)
-                    ok, n, b = fetch(view, cat.get(view), man, conn,
-                                     a.timeout or SPEC[view][4])
+                    try:
+                        ok, n, b = fetch(view, cat.get(view), man, conn,
+                                         a.timeout or SPEC[view][4])
+                    except Exception as e:                      # noqa: BLE001
+                        ok, n, b = fail(view, man, f"{type(e).__name__}: {e}",
+                                        part_for(view))
                     if not ok:
                         failed = view
                         break

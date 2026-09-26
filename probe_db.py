@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.12
+# GRANITE_VERSION: 2026-09-06.13
 """
 What is actually in the General Court's public database.
 
@@ -293,27 +293,12 @@ def run(connstr, queries):
 # It prints a count as it goes for the same reason everything here does: a step
 # that can produce nothing and still exit zero has to say which it did.
 #
-# GR_COUNT, when set, is a SELECT COUNT(*) asked on the same connection before
-# the rows, and answered as a COUNT line; run_to_file_counted sets it and
-# run_to_file never does, so every older caller runs what it always ran.
 PS_STREAM = r"""
 $ErrorActionPreference = 'Stop'
 $conn = New-Object System.Data.SqlClient.SqlConnection
 $conn.ConnectionString = $env:GR_CONNSTR
 try { $conn.Open() } catch {
   Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
-if ($env:GR_COUNT) {
-  try {
-    $cc = $conn.CreateCommand()
-    $cc.CommandText = $env:GR_COUNT
-    $cc.CommandTimeout = [int]$env:GR_TIMEOUT
-    $counted = $cc.ExecuteScalar()
-  } catch {
-    $conn.Close()
-    Write-Output ("QUERY_FAIL " + $_.Exception.Message); exit 4
-  }
-  Write-Output ("COUNT " + [string]$counted); [Console]::Out.Flush()
-}
 $cmd = $conn.CreateCommand()
 $cmd.CommandText = $env:GR_SQL
 $cmd.CommandTimeout = [int]$env:GR_TIMEOUT
@@ -348,6 +333,32 @@ $w.Close()
 $conn.Close()
 Write-Output ("DONE " + $n)
 """
+
+# PS_STREAM with a SELECT COUNT(*) asked first, on the same connection, and
+# answered as a COUNT line, for run_to_file_counted. Its own copy, so that
+# PS_STREAM -- which the nightly and fetch_archive_db.py run -- stays exactly
+# what it was, whatever the environment it inherits.
+PS_STREAM_COUNTED = PS_STREAM.replace(
+    """try { $conn.Open() } catch {
+  Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
+""",
+    """try { $conn.Open() } catch {
+  Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
+if ($env:GR_COUNT) {
+  try {
+    $cc = $conn.CreateCommand()
+    $cc.CommandText = $env:GR_COUNT
+    $cc.CommandTimeout = [int]$env:GR_TIMEOUT
+    $counted = $cc.ExecuteScalar()
+  } catch {
+    $conn.Close()
+    Write-Output ("QUERY_FAIL " + $_.Exception.Message); exit 4
+  }
+  Write-Output ("COUNT " + [string]$counted); [Console]::Out.Flush()
+}
+""", 1)
+assert PS_STREAM_COUNTED != PS_STREAM
+
 
 
 def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
@@ -618,7 +629,7 @@ def run_to_file_counted(connstr, count_sql, sql, path, timeout=1800,
            "GR_OUT": str(path.resolve()), "GR_TIMEOUT": str(int(timeout)),
            "GR_EVERY": str(int(every)), "GR_NEWLINE": newline}
     try:
-        rc, tail, late = _bridge(PS_STREAM, env, line, timeout + 300)
+        rc, tail, late = _bridge(PS_STREAM_COUNTED, env, line, timeout + 300)
     except (OSError, ValueError) as e:
         return got["count"], got["done"], f"{type(e).__name__}: {e}"
     return got["count"], got["done"], _verdict(got, rc, tail, late, timeout)
