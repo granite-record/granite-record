@@ -20,9 +20,15 @@
 # answer through refusal.classify, all of a night's files installed or none
 # (preflight: "the daily snapshot stops when told no, and installs all of
 # tonight's files or none").
-daily 02:00 snapshot_gencourt.py --dir nh-archive --into .
-daily 02:00 gc_changes.py --archive nh-archive --out reports/gc-changes-{date}.md
-daily 02:00 nightly.py --no-fetch
+#
+# SINCE 26 SEPTEMBER 2026 GITHUB RUNS THE NIGHTLY, and this laptop has stood
+# down (archive/runs-in-the-cloud.json): the snapshot and the nightly refuse
+# here, and gc_changes' report is written on GitHub's machine. The three daily
+# lines are kept, commented, for moving back. The lane is for one-off fetches
+# now, run in daytime, clear of GitHub's night (06:17 UTC, up to four hours).
+# daily 02:00 snapshot_gencourt.py --dir nh-archive --into .
+# daily 02:00 gc_changes.py --archive nh-archive --out reports/gc-changes-{date}.md
+# daily 02:00 nightly.py --no-fetch
 
 # 2015-2016: the 883 bills the database's Docket view does not reach. Stopped
 # at 09:51 on the 11th, 102 pages in, when a review found this fetcher cached

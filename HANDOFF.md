@@ -315,14 +315,18 @@ standing.
 
 ## The nightly on GitHub
 
-The nightly is moving off this PC to GitHub Actions, so that the site stays
-current whether or not the PC is on. `.github/workflows/nightly.yml` builds the
+Since 26 September the nightly runs on GitHub Actions, not on this PC, so
+that the site stays current whether or not the PC is on. `.github/workflows/nightly.yml` builds the
 site each night on a Windows machine GitHub lends free to public repositories,
 and deploys production only after the person approves the `production`
 environment. `weekly.yml` takes the committee rosters, the members who have
-left and the study committees early on Monday. Both schedules are commented
-out until the person turns them on; until then each runs only when started by
-hand from the Actions tab.
+left and the study committees early on Monday. The nightly's schedule is on
+(06:17 UTC, 2:17 a.m. Eastern in summer). The weekly's is still commented out:
+its swap of `committees.json` would drop the clerk and purpose fields
+`fetch_committee_details.py` adds, and it stays off until that is fixed. Either
+can be started by hand from the Actions tab; do not start one while a night is
+waiting for approval, because the newer run makes the waiting one
+unpublishable.
 
 GitHub's machine starts empty every night. `cloud.py` brings it what git does
 not hold, from the private R2 bucket (`keys.R2_BUCKET` names it), and its
@@ -358,10 +362,14 @@ dry run lists only those files. Until it does, the night publishes the older
 boundaries. On 26 September that was two hearings, HB 748 and HB 752 of 2025,
 shown as approximate on GitHub's build and as stated on the laptop's.
 
-**Until the stand-down, the laptop's nightly is still the one.** `python3
-refusal.py --stand-down` writes `archive/runs-in-the-cloud.json`; from then on
-the laptop's nightly, snapshot, publish and the fetchers GitHub owns refuse with
-exit 4 and a sentence saying why. After it, **the refusal that stops a night is
+**The laptop stood down on 26 September.** `python3 refusal.py --stand-down`
+wrote `archive/runs-in-the-cloud.json`, so the laptop's nightly, snapshot and
+the fetchers GitHub owns refuse with exit 4 and a sentence saying why, and
+`publish` refuses with exit 1 (`publish --check` still builds and checks).
+Other General Court fetchers still run here, and nothing yet keeps them out of
+GitHub's night window or carries a refusal between the machines, so a laptop
+fetch runs in daytime only, with the person's go-ahead. Since the stand-down
+**the refusal that stops a night is
 the bucket's `state/refused.json`**, not this machine's: `refusal.py --clear`
 lifts the local one and says so, and `python3 cloud.py clear-refusal` lifts the
 bucket's. Both are a person's decision, after `netcheck.py`. Each night's full
