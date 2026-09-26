@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.13
+# GRANITE_VERSION: 2026-09-06.14
 """
 What is actually in the General Court's public database.
 
@@ -50,6 +50,7 @@ import os
 import subprocess
 import sys
 import child
+import refusal
 from pathlib import Path
 
 # From gc.nh.gov/downloads/ODBC and Data Table Structure.pdf, which publishes
@@ -259,6 +260,13 @@ $out | ConvertTo-Json -Depth 6 -Compress
 
 def run(connstr, queries):
     """One PowerShell process, one connection, every query."""
+    # GITHUB'S NIGHT. The night takes the study committees' views from this
+    # host and the weekly job the rosters, so on a stood-down laptop no query
+    # starts inside its window. Every query of the host passes through run()
+    # or run_to_file(), which is why the check is here and not in each
+    # fetch_*_db.py. The window only: the web server's refusal record is a
+    # different host's (CLAUDE.md), so it does not govern this one.
+    refusal.window_check("A query of the General Court's database")
     payload = "~~".join(f"{n}::{q}" for n, q in queries)
     p = subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS],
@@ -377,6 +385,7 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
     a line break between two words is the only space between them.
     """
     import os
+    refusal.window_check("A query of the General Court's database")   # as run()
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     proc = child.popen(

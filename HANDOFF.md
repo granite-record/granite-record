@@ -380,14 +380,73 @@ shown as approximate on GitHub's build and as stated on the laptop's.
 wrote `archive/runs-in-the-cloud.json`, so the laptop's nightly, snapshot and
 the fetchers GitHub owns refuse with exit 4 and a sentence saying why, and
 `publish` refuses with exit 1 (`publish --check` still builds and checks).
-Other General Court fetchers still run here, and nothing yet keeps them out of
-GitHub's night window or carries a refusal between the machines, so a laptop
-fetch runs in daytime only, with the person's go-ahead. Since the stand-down
-**the refusal that stops a night is
-the bucket's `state/refused.json`**, not this machine's: `refusal.py --clear`
-lifts the local one and says so, and `python3 cloud.py clear-refusal` lifts the
-bucket's. Both are a person's decision, after `netcheck.py`. Each night's full
-log is in the bucket under `logs/<date>/`.
+Other General Court fetchers still run here, each with the person's go-ahead,
+and three things now keep them and the night apart.
+
+**GitHub's night window.** On a stood-down laptop no General Court request
+starts from 06:00 to 10:30 UTC daily (the night starts 06:17 and may run four
+hours) or from 04:00 UTC on Monday (the weekly, 04:17, two hours, then the
+night after it): 2:00 to 6:30 a.m. Eastern in summer, an hour earlier in
+winter. `refusal.NIGHT_WINDOWS` is the one definition. `refusal.check()`, which
+every General Court fetcher calls after parsing its arguments, exits 4 inside
+it with a sentence naming the window in Eastern time and when it ends;
+`watchers/gc_lane.py` stops before its next step the same way; and `probe_db`
+stops a query of the SQL host in it too, because the night takes the study
+committees' views from that host and the weekly the rosters (the window only:
+the web server's refusal record is not the SQL host's). Exit 4 and not 2,
+because the lane and the fetchers read 2 as the address refusing. A fetch
+already running when the window opens is not stopped by it -- `check()` warns
+in the hour before -- so a long one is best started after 6:30 a.m. The weak
+point is GitHub itself: a scheduled run can start late, and a night that
+started at 06:50 could still be asking at 10:40. `python3 refusal.py` prints
+the window and whether it is open.
+
+**Bringing the nights back: `python3 cloud.py pull`.** It is the laptop's only
+(it refuses on GitHub, where `kit-down` is the command), it only ever reads the
+bucket (preflight reads every function it reaches for a put, copy or delete),
+and it refuses beside a running build. It brings the night's own kit files down
+where the laptop's copy is still the one it last had in common with the bucket
+(`archive/cloud/pull.json` records that; before a file's first pull the
+bucket's own old manifests under `replaced/` settle it); a night's file the
+laptop changed since is named as a clash and pull exits 1, and `--take PATH`
+sets the laptop's copy aside under `archive/cloud/set-aside/<day>/` and takes
+the bucket's. A laptop build rewriting the carried outputs (`proceedings.csv`,
+`narratives.json` and the rest) is the usual clash. It never touches the
+laptop's own files, which go the other way with `seed-kit`, or `site/`. It
+brings the night's logs to `logs/` (so `preflight`'s nightly check reads
+them), its change lists to `reports/gc-changes-<day>.md` and
+`gc-changes-weekly-<day>.md`, and the verdicts to `archive/cloud/last-night.json`
+and `last-weekly.json` -- since the last pull, seven days at most, or `--day`.
+`--changes-only` is the morning triage's: the refusal, the verdicts and the
+change lists, nothing else. `--dry-run` writes nothing.
+
+**Refusals cross both ways.** Every pull reads the bucket's
+`state/refused.json` first: where the laptop has none it comes down as
+`archive/refused.json`, so a refusal the night met stops laptop fetches too;
+where both hold one the newer stands and the older is set aside, never
+dropped. And `refusal.check()` on a stood-down laptop refuses to start a
+General Court fetch until that record has been read since the last night
+window closed -- `python3 cloud.py pull --changes-only` is enough -- because
+otherwise a refusal met last night is invisible here. The other way, a refusal
+`refusal.note()` records on a stood-down laptop is sent to the bucket's
+`state/refused.json` at once when the bucket holds none, so the night stops
+too; if the bucket cannot be reached it says so loudly, `note()` still
+returns, and `archive/cloud/refusal-unsent.json` stays until `python3 cloud.py
+send-refusal` has sent it -- pull, `state-up` and `preflight` all report it.
+**The refusal that stops a night is the bucket's**: `refusal.py --clear` lifts
+the local one (and the unsent marker with it) and says so, and `python3
+cloud.py clear-refusal` lifts the bucket's; lifting only the local one brings
+the bucket's back at the next pull. Both are a person's decision, after
+`netcheck.py`.
+
+`preflight`'s nightly check, on a stood-down laptop, reads the pulled logs and
+`archive/cloud/last-night.json` rather than this machine's own logs, which
+stopped at the stand-down: it skips until the first pull, and fails once the
+newest pulled night is more than 48 hours old -- naming `python3 cloud.py pull`
+when the pull is what is old, and the Actions tab when the pull is fresh and
+the night is not. `preflight` itself sets `GRANITE_NO_BUCKET`, under which
+`cloud.py` refuses the real bucket, so no check can send a made-up refusal to
+the night.
 
 **Branches, since 26 September: `main` is what is live, `dev` is where work
 goes.** The nightly builds and publishes `main`, so a commit there reaches the
@@ -409,14 +468,22 @@ Look at these, in this order:
 archive\.lock          the lane's pid, touched every minute it runs.
                        A fresh mtime means a fetch is in flight RIGHT NOW.
 archive\refused.json   absent is what "no refusal in force" looks like.
+                       Since the stand-down, the bucket's state/refused.json
+                       is the night's: python3 cloud.py pull reads it here.
+archive\cloud\pull.json  when this laptop last read the bucket; python3
+                       refusal.py prints it, with GitHub's night window.
+archive\cloud\refusal-unsent.json  a refusal met here that the night has not
+                       been told of: python3 cloud.py send-refusal.
 logs\gc_lane.log       the lane's steps, newest last, each with its log file.
 logs\gc_lane.done      every queue line already finished.
 logs\gc_*.log          one per step, named for the time it started.
 ```
 
 and the `Get-CimInstance Win32_Process` one-liner in `watchers/README.md`,
-which prints every `watch|fetch_` process with its command line. That one-liner
-is the answer to "what is running".
+which prints every watcher, lane, nightly, fetch, snapshot, publish and
+`cloud.py` process with its command line, and pastes into `cmd` as it stands.
+That one-liner is the answer to "what is running" on this machine; GitHub's
+night is the Actions tab, and its window is in "The nightly on GitHub" above.
 
 `watchers/gc_lane.py` is **the one General Court worker**. It works
 `watchers/gc_lane.queue` step by step while holding `archive/.lock`, and writes
@@ -433,8 +500,11 @@ check until that morning, so anything written before it -- a note, a session
 summary, this paragraph in an older revision -- describes a wider gap than the
 one that is left. What is left is `fetch_committee_details.py`, which reads its
 addresses out of `committees.json` instead of carrying one, so it asks
-gc.nh.gov without the check seeing it. `python3 netcheck.py` then
-`python3 refusal.py --clear` is a person's decision.
+gc.nh.gov without the check seeing it -- and, since 26 September, without
+GitHub's night window or a refusal pulled from the bucket stopping it either,
+because both live in `refusal.check()`. Until it calls that, run it outside
+the window and after `python3 cloud.py pull --changes-only`. `python3
+netcheck.py` then `python3 refusal.py --clear` is a person's decision.
 
 **The HB/SB/CACR sweep of 1989-2024 is finished.** It ran on 19 September at
 the person's word -- `fetch_legislation.py --all --from 1989 --to 2024

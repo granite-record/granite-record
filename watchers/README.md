@@ -13,10 +13,54 @@ the next person finds out what is already running before starting a second
 copy of it.
 
 **Check before you start one.** Two of the same watcher is two fetchers.
+Pasted into `cmd` as it stands, this lists every watcher, the lane, a
+nightly, any fetch, the snapshot, a publish and a `cloud.py` transfer, each
+with its command line:
 
 ```
-python3 -c "import subprocess;print(subprocess.run(['powershell','-NoProfile','-Command','Get-CimInstance Win32_Process | ? { $_.CommandLine -match \"watch|fetch_\" } | Select ProcessId,CommandLine | Format-List'],capture_output=True,encoding='utf-8').stdout)"
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'gc_lane|nightly|fetch_|snapshot_gencourt|publish|_watch\.py|cloud\.py' } | Select ProcessId,CommandLine | Format-List"
 ```
+
+With nothing running it lists one process: itself. The one it replaces wrapped
+the same PowerShell in `python3 -c` with `\"` inside double quotes. `cmd` has
+no backslash escape, so it read that quote as the end of the string and the
+`|` after it as a pipe of its own. This one quotes only with `'` inside the
+`"`. It says `_watch\.py` rather than `watch`, which also matches the
+`gpu-watchdog` flag of every Edge and Teams process on the machine. It lists
+this machine only: GitHub's night is on the repository's Actions tab.
+
+## GitHub's night, and the laptop's fetches
+
+Since 26 September the nightly runs on GitHub, and this laptop has stood down
+(`archive/runs-in-the-cloud.json`). General Court fetches still run here --
+from the lane or by hand -- and the rule is still one fetch at a time, across
+both machines now. On a stood-down laptop:
+
+- **No General Court request starts in GitHub's night window**: 06:00 to
+  10:30 UTC every day, and from 04:00 UTC on Monday for the weekly job --
+  2:00 to 6:30 a.m. Eastern in summer, from midnight on Mondays, an hour
+  earlier in winter. `refusal.NIGHT_WINDOWS` is the one definition.
+  `refusal.check()`, which every General Court fetcher calls, exits 4 inside
+  it with the window in Eastern time and when it ends; the lane stops before
+  its next step (exit 4, the reason in `logs/gc_lane.log`, the lock released);
+  and a query of the SQL host stops in it too, because the night and the
+  weekly query that host. A step already running when the window opens is
+  not stopped, so queue a long one to start after it closes.
+- **No request starts until the bucket's refusal record has been read since
+  the last window closed**, because a refusal the night meets is recorded in
+  the bucket, not here. `python3 cloud.py pull --changes-only` reads it (a
+  full `python3 cloud.py pull` does too), and brings the refusal down as
+  `archive/refused.json` if the night met one -- which then stops the lane
+  and every fetch here, as a refusal met here always has.
+- **A refusal met here goes to the bucket at once** (`refusal.note()`), so the
+  night stops too. If the bucket cannot be reached the fetch says so loudly,
+  and `archive/cloud/refusal-unsent.json` stays until `python3 cloud.py
+  send-refusal` has sent it.
+
+`python3 refusal.py` says whether the window is open, when the bucket was last
+read, and whether a refusal is waiting to be sent. So a lane started in the
+morning Eastern time runs until 2 a.m.; the next morning it wants
+`python3 cloud.py pull --changes-only` and a restart.
 
 ---
 
@@ -32,8 +76,10 @@ the fetchers check with `refusal.hold()` that their parent is the lane that
 holds it -- because several fetchers never looked at the lock, and
 `fetch_calendar_archive` deletes one more than an hour old. A step marked
 `handover` takes the lock itself and is given it for that step. It stops on
-any step that exits non-zero, and before every step if
-`archive/refused.json` exists at all.
+any step that exits non-zero, before every step if `archive/refused.json`
+exists at all, and -- on a stood-down laptop -- before a step inside GitHub's
+night window or before the bucket's refusal record has been read since the
+last one (above).
 
 ```
 python3 watchers/gc_lane.py            # from the repository root

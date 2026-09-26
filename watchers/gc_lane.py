@@ -39,6 +39,21 @@ decides a refusal is over. Clearing one is a person's decision.
 No network of its own. It asks the General Court for nothing that the steps
 in its queue do not.
 
+GITHUB'S NIGHT (26 September 2026)
+
+Since the laptop stood down, GitHub's machine asks the General Court every
+night and early on Monday. On a stood-down laptop the lane asks
+refusal.gc_turn() before it starts each step, and stops at that boundary --
+exit 4, the stand-down's status, with the reason in its log -- inside GitHub's
+night window (refusal.NIGHT_WINDOWS, the one definition), or when this laptop
+has not read the bucket's refusal record since the last window closed, which
+`python3 cloud.py pull --changes-only` does. A refusal the night met is in the
+bucket, not here, until that read brings it down. It stops rather than waits:
+a lane that outlived a night would need that read anyway, and reading the
+bucket is a person's command here, not the lane's. A step already running
+when the window opens is not stopped by it; a long one is best queued after
+the window closes.
+
 DAILY STEPS
 
 A line written "daily HH:MM <step>" is not run once and done: it runs once a
@@ -78,6 +93,12 @@ import time
 ROOT = pathlib.Path.cwd()
 if not (ROOT / "refusal.py").exists():
     sys.exit(f"run this from the repository root; {ROOT} is not it")
+sys.path.insert(0, str(ROOT))
+try:
+    import refusal
+except Exception as e:                                          # noqa: BLE001
+    sys.exit(f"refusal.py will not import from {ROOT} ({type(e).__name__}: {e}); the "
+             "lane does not run without it, because it is what says whose turn it is")
 
 LOCK = ROOT / "archive" / ".lock"
 REFUSED = ROOT / "archive" / "refused.json"
@@ -263,6 +284,19 @@ def run_daily(due, n):
     return n
 
 
+def githubs_turn():
+    """True, having said why in the log, when this laptop must not start a
+    General Court step now: inside GitHub's night window, or before it has
+    read the bucket's refusal record since the last one (refusal.gc_turn).
+    Never on a laptop that has not stood down."""
+    turn = refusal.gc_turn()
+    if not turn:
+        return False
+    say("stopping before the next step, with the lock released: "
+        + " ".join(turn[1].split()) + f" (exit {refusal.STOOD_DOWN}, the stand-down's)")
+    return True
+
+
 def main():
     LOGS.mkdir(exist_ok=True)
     if LOCK.exists():
@@ -299,6 +333,8 @@ def main():
                 return 0
             due = daily_due()
             if due:
+                if githubs_turn():
+                    return refusal.STOOD_DOWN
                 n = run_daily(due, n)
                 # Back to the top: the refusal and lock checks come before
                 # anything else is asked.
@@ -316,6 +352,8 @@ def main():
                 time.sleep(300)
                 continue
             idle_since = None
+            if githubs_turn():
+                return refusal.STOOD_DOWN
             step = todo[0]
             handover = step.startswith("handover ")
             args = step[len("handover "):].split() if handover else step.split()
