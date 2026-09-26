@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.11
+# GRANITE_VERSION: 2026-09-06.13
 """
 What is actually in the General Court's public database.
 
@@ -43,7 +43,10 @@ name may not be needed, so both forms are tried, plainest first.
 """
 
 import argparse
+import base64
+import decimal
 import json
+import os
 import subprocess
 import sys
 import child
@@ -289,6 +292,7 @@ def run(connstr, queries):
 #
 # It prints a count as it goes for the same reason everything here does: a step
 # that can produce nothing and still exit zero has to say which it did.
+#
 PS_STREAM = r"""
 $ErrorActionPreference = 'Stop'
 $conn = New-Object System.Data.SqlClient.SqlConnection
@@ -329,6 +333,32 @@ $w.Close()
 $conn.Close()
 Write-Output ("DONE " + $n)
 """
+
+# PS_STREAM with a SELECT COUNT(*) asked first, on the same connection, and
+# answered as a COUNT line, for run_to_file_counted. Its own copy, so that
+# PS_STREAM -- which the nightly and fetch_archive_db.py run -- stays exactly
+# what it was, whatever the environment it inherits.
+PS_STREAM_COUNTED = PS_STREAM.replace(
+    """try { $conn.Open() } catch {
+  Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
+""",
+    """try { $conn.Open() } catch {
+  Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
+if ($env:GR_COUNT) {
+  try {
+    $cc = $conn.CreateCommand()
+    $cc.CommandText = $env:GR_COUNT
+    $cc.CommandTimeout = [int]$env:GR_TIMEOUT
+    $counted = $cc.ExecuteScalar()
+  } catch {
+    $conn.Close()
+    Write-Output ("QUERY_FAIL " + $_.Exception.Message); exit 4
+  }
+  Write-Output ("COUNT " + [string]$counted); [Console]::Out.Flush()
+}
+""", 1)
+assert PS_STREAM_COUNTED != PS_STREAM
+
 
 
 def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
@@ -372,6 +402,295 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
     if rows is None:
         return None, (proc.stderr.read() or "no output").strip()[:300]
     return rows, None
+
+
+# ---- counted streams, and text kept exactly ---------------------------------
+#
+# Two more bridges, written for fetch_past_db.py, which takes whole views and
+# has to show that each one arrived whole. Both ask COUNT(*) on the same
+# connection as the rows, just before them, so the number a file is checked
+# against is the server's own and not a figure remembered from a probe.
+#
+# run_to_file_counted is run_to_file with that count and nothing else: the
+# same PS_STREAM, the same pipe-delimited file, the same deleted line breaks.
+#
+# run_to_jsonl is for text that must come through EXACTLY. Bill text and
+# committee reports hold pipes, line breaks, tabs, quotes and characters
+# outside ASCII, and a pipe-delimited line can keep none of them. PowerShell
+# does not write this file, for two reasons found in Windows PowerShell 5.1:
+# its ConvertTo-Json writes a date as "\/Date(1136196000000)\/", and a
+# console pipe carries text in the console's code page, which is not UTF-8.
+# So PowerShell only reads. Each value crosses the pipe as base64 of its UTF-8
+# bytes -- plain ASCII, which no code page can damage -- or as "-" for NULL,
+# and Python decodes it and writes the JSON. Every byte of the text is then
+# Python's to get right, which is also what lets preflight test it without a
+# database.
+#
+# Neither holds more than one row in memory, on either side of the pipe, and
+# both print progress as they go.
+
+# The rows half of PS_JSONL is its own string so that preflight can run it
+# over an in-memory table: the part that encodes a value is then tested in
+# real PowerShell with no connection anywhere. It expects $o (the output
+# writer) and $rdr (any IDataReader), and leaves $n, the rows it read.
+PS_JSONL_ROWS = r"""
+  $inv = [System.Globalization.CultureInfo]::InvariantCulture
+  $utf8 = New-Object System.Text.UTF8Encoding($false)
+  $every = [int]$env:GR_EVERY
+  $f = $rdr.FieldCount
+  $cells = New-Object 'string[]' $f
+  for ($i = 0; $i -lt $f; $i++) {
+    $cells[$i] = [Convert]::ToBase64String($utf8.GetBytes($rdr.GetName($i)))
+  }
+  $o.WriteLine('COLUMNS ' + [string]::Join(',', $cells))
+  $n = 0
+  while ($rdr.Read()) {
+    for ($i = 0; $i -lt $f; $i++) {
+      $v = $rdr.GetValue($i)
+      if ($v -is [System.DBNull] -or $null -eq $v) { $cells[$i] = '-'; continue }
+      if ($v -is [datetime]) { $s = $v.ToString('yyyy-MM-ddTHH:mm:ss.fffffff', $inv) }
+      elseif ($v -is [System.DateTimeOffset]) { $s = $v.ToString('o', $inv) }
+      elseif ($v -is [bool]) { if ($v) { $s = '1' } else { $s = '0' } }
+      elseif ($v -is [double] -or $v -is [single]) { $s = $v.ToString('R', $inv) }
+      elseif ($v -is [System.IFormattable]) { $s = $v.ToString($null, $inv) }
+      else { $s = [string]$v }
+      $cells[$i] = [Convert]::ToBase64String($utf8.GetBytes($s))
+    }
+    $o.WriteLine('R ' + [string]::Join(',', $cells))
+    $n++
+    if ($every -gt 0 -and ($n % $every) -eq 0) { $o.WriteLine('PROGRESS ' + $n); $o.Flush() }
+  }
+  $rdr.Close()
+"""
+
+PS_JSONL_CLOSE = r"""
+} catch {
+  $o.WriteLine('QUERY_FAIL ' + ($_.Exception.Message -replace '[\r\n]+', ' ')); $o.Flush()
+  $conn.Close(); exit 4
+}
+$conn.Close()
+$o.WriteLine('DONE ' + $n); $o.Flush()
+"""
+
+PS_JSONL = r"""
+$ErrorActionPreference = 'Stop'
+$o = [Console]::Out
+$conn = New-Object System.Data.SqlClient.SqlConnection
+$conn.ConnectionString = $env:GR_CONNSTR
+try { $conn.Open() } catch {
+  $o.WriteLine('CONNECT_FAIL ' + ($_.Exception.Message -replace '[\r\n]+', ' ')); $o.Flush()
+  exit 3 }
+try {
+  $cc = $conn.CreateCommand()
+  $cc.CommandText = $env:GR_COUNT
+  $cc.CommandTimeout = [int]$env:GR_TIMEOUT
+  $o.WriteLine('COUNT ' + [string]$cc.ExecuteScalar()); $o.Flush()
+  $cmd = $conn.CreateCommand()
+  $cmd.CommandText = $env:GR_SQL
+  $cmd.CommandTimeout = [int]$env:GR_TIMEOUT
+  $rdr = $cmd.ExecuteReader()
+""" + PS_JSONL_ROWS + PS_JSONL_CLOSE
+
+# The SQL type, as INFORMATION_SCHEMA.COLUMNS names it, decides what a value
+# becomes in JSON. A bit is true or false, which is what SqlClient hands back
+# and what the pipe-delimited dumps print as True and False.
+JSON_INTS = {"tinyint", "smallint", "int", "bigint"}
+JSON_DECIMALS = {"decimal", "numeric", "money", "smallmoney"}
+JSON_FLOATS = {"float", "real"}
+JSON_DATETIMES = {"datetime", "smalldatetime", "datetime2"}
+
+
+def json_value(cell, sql_type=""):
+    """One value of a PS_JSONL row line, as what it stands for in JSON.
+
+    "-" is NULL. Anything else is base64 of UTF-8, decoded strictly: a value
+    that will not decode is an error, never a guess. Numbers become numbers
+    where the SQL type is numeric; a date or time becomes an ISO string, with
+    no fraction of a second where the server stored none.
+    """
+    if cell == "-":
+        return None
+    s = base64.b64decode(cell, validate=True).decode("utf-8")
+    ty = (sql_type or "").lower()
+    if ty in JSON_INTS:
+        return int(s)
+    if ty == "bit":
+        if s not in ("0", "1"):
+            raise ValueError(f"a bit that is neither 0 nor 1: {s[:40]!r}")
+        return s == "1"
+    if ty in JSON_DECIMALS:
+        d = decimal.Decimal(s)
+        return int(d) if d.as_tuple().exponent >= 0 else float(d)
+    if ty in JSON_FLOATS:
+        return float(s)
+    if ty == "date":
+        return s[:10]
+    if ty in JSON_DATETIMES:
+        whole, _, frac = s.partition(".")
+        frac = frac.rstrip("0")
+        return whole + ("." + frac if frac else "")
+    return s
+
+
+def json_line(row):
+    """One row as one line of JSON, UTF-8 left as it is.
+
+    json.dumps escapes every control character, so a line break inside a value
+    cannot end the line. It does not escape U+2028, U+2029 or U+0085, which
+    str.splitlines() treats as line ends; they are escaped here, so a reader
+    splitting on any line end still gets one row per line. The text a reader
+    decodes is the same either way.
+    """
+    s = json.dumps(row, ensure_ascii=False, separators=(",", ":"))
+    return (s.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+            .replace("\x85", "\\u0085") + "\n")
+
+
+def _bridge(script, env, on_line, budget):
+    """Run one bridge script, handing each line it prints to on_line.
+
+    Returns (exit status, the end of what it said on stderr, whether it was
+    stopped for running past `budget` seconds). stderr is drained as it comes,
+    so a chatty failure cannot fill the pipe and hang both processes; and if
+    on_line raises, or the run is interrupted, PowerShell is killed rather
+    than left reading a view nobody is listening to.
+    """
+    import collections
+    import threading
+    proc = child.popen(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    tail = collections.deque(maxlen=40)
+    drain = threading.Thread(target=lambda: tail.extend(proc.stderr), daemon=True)
+    drain.start()
+    late = threading.Event()
+
+    def stop():
+        late.set()
+        proc.kill()
+
+    timer = threading.Timer(budget, stop)
+    timer.daemon = True
+    timer.start()
+    whole = False
+    try:
+        for raw in proc.stdout:
+            on_line(raw.rstrip("\r\n"))
+        whole = True
+    finally:
+        timer.cancel()
+        if not whole and proc.poll() is None:
+            proc.kill()
+        try:
+            proc.wait(timeout=120)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        drain.join(timeout=10)
+    return proc.returncode, "".join(tail).strip()[-400:], late.is_set()
+
+
+def _verdict(got, rc, tail, late, timeout):
+    """The error a finished bridge run amounts to, or None."""
+    if late:
+        return f"TIMEOUT no answer inside {timeout:,}s; the bridge was stopped"
+    if got["err"]:
+        return got["err"]
+    if got["done"] is None:
+        return (tail or f"no output (exit {rc})")[:300]
+    if rc:
+        return f"the bridge exited {rc} after its last row: {tail[:200]}"
+    return None
+
+
+def run_to_file_counted(connstr, count_sql, sql, path, timeout=1800,
+                        every=20000, label="", newline=""):
+    """run_to_file, with COUNT(*) asked first on the same connection.
+
+    Returns (count, rows, error): the server's count, the rows PS_STREAM wrote,
+    and what went wrong. The file is run_to_file's in every byte.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    got = {"count": None, "done": None, "err": None}
+
+    def line(s):
+        s = s.strip()
+        if s.startswith("PROGRESS "):
+            print(f"    {label}{int(s[9:]):,} rows so far", flush=True)
+        elif s.startswith("COUNT "):
+            got["count"] = int(s[6:])
+        elif s.startswith("DONE "):
+            got["done"] = int(s[5:])
+        elif s.startswith(("CONNECT_FAIL", "QUERY_FAIL")):
+            got["err"] = got["err"] or s
+
+    env = {"GR_CONNSTR": connstr, "GR_SQL": sql, "GR_COUNT": count_sql,
+           "GR_OUT": str(path.resolve()), "GR_TIMEOUT": str(int(timeout)),
+           "GR_EVERY": str(int(every)), "GR_NEWLINE": newline}
+    try:
+        rc, tail, late = _bridge(PS_STREAM_COUNTED, env, line, timeout + 300)
+    except (OSError, ValueError) as e:
+        return got["count"], got["done"], f"{type(e).__name__}: {e}"
+    return got["count"], got["done"], _verdict(got, rc, tail, late, timeout)
+
+
+def run_to_jsonl(connstr, count_sql, sql, path, types=None, columns=None,
+                 timeout=3600, every=1000, label=""):
+    """Stream one SELECT to JSON Lines, every value exactly as the server holds it.
+
+    One object per line, the column names as keys in the order selected,
+    UTF-8. `types` maps a column to its SQL type (see json_value); a column it
+    does not name stays a string. `columns`, when given, is the list the
+    reader must name, in order. Returns (count, rows, error): the server's
+    COUNT(*), the rows written to `path`, and what went wrong.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    types = {k: (v or "").lower() for k, v in (types or {}).items()}
+    got = {"count": None, "done": None, "err": None, "cols": None, "rows": 0}
+    env = {"GR_CONNSTR": connstr, "GR_SQL": sql, "GR_COUNT": count_sql,
+           "GR_TIMEOUT": str(int(timeout)), "GR_EVERY": str(int(every))}
+    with open(path, "w", encoding="utf-8", newline="\n") as out:
+
+        def line(s):
+            if s.startswith("R "):
+                cols = got["cols"]
+                if cols is None:
+                    raise ValueError("a row arrived before the column names")
+                cells = s[2:].split(",")
+                if len(cells) != len(cols):
+                    raise ValueError(f"row {got['rows'] + 1:,} carries {len(cells)} "
+                                     f"values for {len(cols)} columns")
+                out.write(json_line({c: json_value(v, types.get(c))
+                                     for c, v in zip(cols, cells)}))
+                got["rows"] += 1
+            elif s.startswith("COLUMNS "):
+                got["cols"] = [base64.b64decode(x, validate=True).decode("utf-8")
+                               for x in s[8:].split(",")]
+                if columns is not None and got["cols"] != list(columns):
+                    raise ValueError(f"the reader named {got['cols']}, not {list(columns)}")
+            elif s.startswith("PROGRESS "):
+                out.flush()
+                size = os.fstat(out.fileno()).st_size
+                print(f"    {label}{got['rows']:,} rows so far, "
+                      f"{size / 1e6:,.1f} MB", flush=True)
+            elif s.startswith("COUNT "):
+                got["count"] = int(s[6:])
+            elif s.startswith("DONE "):
+                got["done"] = int(s[5:])
+            elif s.startswith(("CONNECT_FAIL", "QUERY_FAIL")):
+                got["err"] = got["err"] or s
+
+        try:
+            rc, tail, late = _bridge(PS_JSONL, env, line, timeout + 300)
+        except (OSError, ValueError, UnicodeDecodeError, decimal.InvalidOperation) as e:
+            return got["count"], got["rows"], f"{type(e).__name__}: {str(e)[:300]}"
+    err = _verdict(got, rc, tail, late, timeout)
+    if not err and got["done"] != got["rows"]:
+        err = (f"the reader read {got['done']:,} rows and {got['rows']:,} "
+               "were written")
+    return got["count"], got["rows"], err
 
 
 def show(results):
