@@ -5,12 +5,15 @@
 # file to its rules: only the secrets listed there, never echoed; the least
 # permission each job needs; production only behind its environment.
 #
-# THE SCHEDULE IS OFF until the person's supervised dry run has passed. To
-# turn it on, remove the "# " in front of the two schedule lines under "on:",
-# commit, and push to main. GitHub reads cron as UTC and has no time zone:
-# 06:17 UTC is 2:17 a.m. Eastern in summer (EDT) and 1:17 a.m. in winter
-# (EST). The :17 keeps away from the top of the hour, when scheduled runs start
-# late or are dropped.
+# THE SCHEDULE IS ON, since 26 September 2026, after three supervised dry
+# runs (the third fetched, and was clean and publishable) and the laptop's
+# stand-down. To pause it, Actions -> nightly -> "..." -> Disable workflow;
+# keepalive never re-enables a workflow the person switched off. To take it
+# out, put the "# " back in front of the two schedule lines under "on:" and
+# push to main. GitHub reads cron as UTC and has no time zone: 06:17 UTC is
+# 2:17 a.m. Eastern in summer (EDT) and 1:17 a.m. in winter (EST). The :17
+# keeps away from the top of the hour, when scheduled runs start late or are
+# dropped.
 #
 # By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
 # its three boxes say; a scheduled night fetches, deploys a preview, and asks
@@ -36,8 +39,8 @@ on:
         description: "Deploy the build to nightly.graniterecord.pages.dev (needs the Pages token)"
         type: boolean
         default: true
-  # schedule:
-  #   - cron: "17 6 * * *"
+  schedule:
+    - cron: "17 6 * * *"
 
 # The workflow's own token reads the repository and nothing else. The one job
 # that needs more, keepalive, asks for it itself.
