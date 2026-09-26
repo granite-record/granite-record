@@ -41,6 +41,11 @@
       "paths": ["data/committee_members.json", "committees.json", "former_members.json"]
     },
     {
+      "what": "What each committee's own page adds to that list: the clerk, the purpose under the chamber's rules, and the page's roster, from fetch_committee_details.py at a person's word. Its own file because the weekly job swaps committees.json in whole and the listing pages carry neither; build_committees.py joins the two through committee_details.py.",
+      "owner": "laptop",
+      "paths": ["committee_details.json"]
+    },
+    {
       "what": "The towns in each Senate district, which the build does not make.",
       "owner": "laptop",
       "paths": ["data/senate_towns.json"]

@@ -321,9 +321,18 @@ site each night on a Windows machine GitHub lends free to public repositories,
 and deploys production only after the person approves the `production`
 environment. `weekly.yml` takes the committee rosters, the members who have
 left and the study committees early on Monday. The nightly's schedule is on
-(06:17 UTC, 2:17 a.m. Eastern in summer). The weekly's is still commented out:
-its swap of `committees.json` would drop the clerk and purpose fields
-`fetch_committee_details.py` adds, and it stays off until that is fixed. Either
+(06:17 UTC, 2:17 a.m. Eastern in summer). The weekly's is still commented out,
+because its swap of `committees.json` would have dropped the clerk and the
+purpose; `fetch_committee_details.py` now writes those to their own
+`committee_details.json`, a laptop file in the kit that `build_committees.py`
+joins in (`committee_details.py` says how). So the weekly can go on once that
+change is on `main` and the laptop has written the file once, with `python3
+committee_details.py --from-committees`, and sent it with `python3 cloud.py
+seed-kit` -- before `dev` reaches `main`, since the kit now requires the file
+and a night's `kit-down` stops without it. Look at House Rules first, too: on
+the listing page saved on 6 September its assistant and researcher are blank,
+and `fetch_committees.py` reads the labels after them as the values, so the
+weekly would give that page an aide named `Researcher:`. Either
 can be started by hand from the Actions tab; do not start one while a night is
 waiting for approval, because the newer run makes the waiting one
 unpublishable.

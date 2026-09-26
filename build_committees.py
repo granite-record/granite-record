@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.32
+# GRANITE_VERSION: 2026-09-07.33
 """
 A page's worth of data for every committee.
 
@@ -15,6 +15,9 @@ all.
 WHERE EACH PART COMES FROM
 
   identity, leadership, room   committees.json          fetch_committees.py
+  clerk, purpose               committee_details.json   fetch_committee_details.py
+                               (joined by committee_details.read, which says
+                               which file wins which field)
   who sits on it               data/committee_members.json
                                                         fetch_committee_members_db.py
   bills referred               site/index.json          the search index
@@ -51,6 +54,7 @@ from pathlib import Path
 
 import proceedings as P
 import bill_order as BO
+import committee_details as CD
 import committee_names as CN
 import names
 import shell as S
@@ -451,7 +455,12 @@ def main():
     if not idx:
         raise SystemExit(f"{site}/index.json is not there. Run build_site_v2 "
                          "first -- the bills a committee heard come from it.")
-    web = load("committees.json", {})
+    # committees.json with committee_details.json joined in. Two files since
+    # 26 September, because GitHub's weekly job swaps committees.json in whole
+    # from the listing pages, which carry no clerk and no purpose: read alone,
+    # its first Sunday would have taken both off every page. A missing details
+    # file is a warning and a page without them, not a stopped build.
+    web = CD.read("committees.json", "committee_details.json")
     seats = load(data / "committee_members.json", {})
     codes = load(data / "committees.json", {})
     # THE COMMITTEES THE GENERAL COURT HAS RETIRED. Its committee table holds

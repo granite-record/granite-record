@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.257
+# GRANITE_VERSION: 2026-09-04.258
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10795,6 +10795,177 @@ def _committees_archived(BC):
     head = head[head.find("function renderCommitteeHead"):][:1200]
     assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
     return "ok", "not listed and ended before this term; no record means no claim"
+
+
+# A House listing block and a committee's own page, in the shapes the General
+# Court prints them: the listing separates a label from its value with a
+# literal &nbsp;, and the committee page runs its duty straight into the
+# site's navigation. Made up, and read by the real parsers.
+_CMTE_LISTING = (
+    "<h3><a href='committeedetails.aspx?id=43'>Fixture Affairs</a></h3>"
+    "<p>Chairman:&nbsp;Jane Doe<br />Vice Chairman:&nbsp;John Roe<br />"
+    "Committee Assistant:&nbsp;Pat Aide<br /><br />"
+    "Location:&nbsp;<span title='Legislative Office Building'>LOB&nbsp;Room&nbsp;302</span>"
+    "<br />Phone:&nbsp;603-271-3334</p>" + "<!-- the committee's section -->" * 6)
+_CMTE_PAGE = (
+    "<html><body><div>Chairman:&nbsp;Old Chair<br />Clerk:&nbsp;Kim Clerk<br />"
+    "Researcher:&nbsp;Rae Search<br /></div><p>Pursuant to House Rule 99: It shall "
+    "be the duty of the Committee on Fixture Affairs to consider matters relating "
+    "to fixtures, their care and their testing, and such other matters as may be "
+    "referred to it.</p><div>HELPFUL LINKS Committees of Conference</div></body></html>")
+
+
+@check("build", "a weekly committees.json and committee_details.json still give a committee page its purpose and clerk",
+       needs=("committee_details", "fetch_committees", "fetch_committee_details"))
+def _committee_details_survive_the_weekly(CD, FC, FCD):
+    """GitHub's weekly job swaps committees.json in whole, from the two pages
+    that list the committees, and those pages carry no clerk and no purpose.
+    Until 26 September fetch_committee_details.py wrote both INTO
+    committees.json, and build_committees read them from there, so the first
+    Sunday the weekly ran would have taken the clerk off 22 committee pages
+    and the purpose off 23, with nothing failing: a page without a purpose
+    renders perfectly.
+
+    So the details have their own file, committee_details.json, and
+    build_committees joins the two. This builds one committee page from a
+    committees.json made by fetch_committees.py's own parser -- so it holds
+    exactly what the weekly writes -- and a committee_details.json made the
+    way fetch_committee_details.py makes it, and asks the page for its
+    purpose and its clerk. And again without the details file, which must
+    warn and build rather than stop, and whose page must lack them: that half
+    is what shows the first half can see the loss.
+
+    Which file wins a field both carry is held too: the listing's chair
+    stands over the detail page's (the listing is read weekly, the detail
+    pages when a person asks), and the detail page's researcher fills in
+    where the listing has none.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
+        return "skip", "build_committees.py or bills.html not here"
+    rows = FC.parse(_CMTE_LISTING, "H")
+    assert len(rows) == 1 and rows[0]["chair"] == "Jane Doe", (
+        f"fetch_committees.parse no longer reads the fixture's listing: {rows}")
+    carried = sorted({k for r in rows for k in r} & set(CD.ONLY_HERE))
+    assert not carried, (f"fetch_committees.py now writes {carried} itself, so "
+                         "committee_details.json is no longer the only source of "
+                         "them; say which file wins in committee_details.py")
+    rec = FCD.parse(_CMTE_PAGE)
+    assert rec.get("clerk") == "Kim Clerk" and (rec.get("purpose") or {}).get(
+        "rule") == "House Rule 99", f"fetch_committee_details.parse misread the page: {rec}"
+    duty = rec["purpose"]["text"]
+    book = {}
+    CD.fold(book, "H", rows[0], rec)
+
+    root = Path(tempfile.mkdtemp(prefix="gr-cmte-details-"))
+    try:
+        (root / "site").mkdir()
+        (root / "data").mkdir()
+        shutil.copy2(here / "bills.html", root / "bills.html")
+        (root / "data" / "committees.json").write_text(json.dumps(
+            {"H43": {"code": "H43", "name": "Fixture Affairs", "abbr": "FIXTURE"}}),
+            encoding="utf-8")
+        (root / "site" / "index.json").write_text(json.dumps([
+            {"id": "HB1", "n": "HB 1", "term": "2025-2026", "year": "2026",
+             "title": "A fixture bill", "status": "In committee", "kind": "bill",
+             "committee": "House Fixture Affairs",
+             "committees": ["House Fixture Affairs"]}]), encoding="utf-8")
+        (root / "committees.json").write_text(json.dumps({"H": rows}), encoding="utf-8")
+        CD.write_details(book, root / "committee_details.json")
+
+        def build():
+            r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
+                      "--data", "data", "--base", "https://graniterecord.org"],
+                     cwd=root, capture_output=True, text=True, timeout=180)
+            out = (r.stdout or "") + (r.stderr or "")
+            assert r.returncode == 0, f"build_committees stopped: {out.strip()[-200:]}"
+            page = root / "site" / "committee" / "H43.json"
+            assert page.exists(), "build_committees wrote no page for the fixture's committee"
+            return (json.loads(page.read_text(encoding="utf-8")),
+                    (root / "site" / "committee" / "H43.html").read_text(encoding="utf-8"),
+                    out)
+
+        got, html, _ = build()
+        assert (got.get("purpose") or {}).get("text") == duty, (
+            "with committee_details.json beside a weekly committees.json, the page "
+            f"has no purpose: {got.get('purpose')!r}")
+        assert got.get("clerk") == "Kim Clerk" and any(
+            o.get("role") == "Clerk" and o.get("name") == "Kim Clerk"
+            for o in got.get("officers") or []), (
+            f"the page lost its clerk: clerk={got.get('clerk')!r}, "
+            f"officers={got.get('officers')}")
+        assert duty in html, "the page's noscript no longer quotes the committee's duty"
+        assert got.get("chair") == "Jane Doe", (
+            f"the chair is {got.get('chair')!r}: the detail page's reading won over "
+            "the listing's, which the weekly job keeps current")
+        assert got.get("researcher") == "Rae Search", (
+            "the detail page's researcher did not fill in where the listing has none")
+
+        (root / "committee_details.json").unlink()
+        shutil.rmtree(root / "site" / "committee")
+        got, html, out = build()
+        assert "committee_details.json is not here" in out, (
+            "a build without committee_details.json said nothing about it")
+        assert not got.get("purpose") and not got.get("clerk") and duty not in html, (
+            "without committee_details.json the page still carries a purpose or a "
+            "clerk, so this check could not tell the join from its absence")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a committees.json of what the weekly writes, and committee_details.json, "
+                  "give a page its purpose, clerk and the listing's chair; without the "
+                  "details file the build warns and the page goes without")
+
+
+@check("files", "committee_details.json has one writer, fetch_committee_details.py, and it is the laptop's")
+def _committee_details_one_writer():
+    """committees.json is fetch_committees.py's, swapped in whole by GitHub's
+    weekly job, and the night's in the kit. committee_details.json is
+    fetch_committee_details.py's, run on the laptop at a person's word, and
+    the laptop's in the kit. cloud_kit.json's rule is one writer per file,
+    because two is how the older copy wins -- and the reason the details have
+    their own file is that the second writer of committees.json was going to
+    lose to the first every Sunday.
+
+    So: no build_ or fetch_ script but fetch_committee_details.py writes
+    committee_details.json, or calls the one function that does; neither does
+    the night; fetch_committee_details.py no longer writes the committees it
+    reads; and the kit gives the two files the owners they have.
+    """
+    mine = Path("fetch_committee_details.py")
+    if not mine.exists() or not Path("committee_details.py").exists():
+        return "skip", "fetch_committee_details.py or committee_details.py not here"
+    stem = re.escape("committee_details.json")
+    bad = []
+    for f in (sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py"))
+              + [Path("nightly.py")]):
+        if f.name == mine.name or not f.exists():
+            continue
+        src = f.read_text(encoding="utf-8", errors="replace")
+        if re.search(r"\bwrite_details\s*\(", src) or \
+           re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wa]', src) or \
+           re.search(stem + r'[^\n]{0,60}(?:write_text|write_bytes|json\.dump)', src) or \
+           re.search(r'(?:write_text|json\.dump)[^\n]{0,60}' + stem, src):
+            bad.append(f.name)
+    assert not bad, (f"these write committee_details.json, which is "
+                     f"fetch_committee_details.py's alone: {', '.join(bad)}")
+    src = mine.read_text(encoding="utf-8")
+    assert re.search(r"\bCD\.write_details\s*\(", src), (
+        "fetch_committee_details.py no longer writes committee_details.json "
+        "through committee_details.write_details, so this check reads nothing")
+    assert not re.search(r"json\.dumps?\(\s*book\b", src), (
+        "fetch_committee_details.py writes the committees.json it reads again, "
+        "which GitHub's weekly job swaps in whole")
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8")) \
+        if Path("cloud_kit.json").exists() else {"kit": []}
+    owner = {p: e.get("owner") for e in kit.get("kit", []) for p in e.get("paths", [])}
+    if owner:
+        assert owner.get("committee_details.json") == "laptop", (
+            "cloud_kit.json does not carry committee_details.json as the laptop's: "
+            f"{owner.get('committee_details.json')!r}")
+        assert owner.get("committees.json") == "night", (
+            f"committees.json is {owner.get('committees.json')!r} in the kit, not the night's")
+    return "ok", ("committee_details.json: written by fetch_committee_details.py alone, "
+                  "the laptop's in the kit; committees.json the night's")
 
 
 @check("build", "an older committee name links, as written, to the committee the General Court files it under",
