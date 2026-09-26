@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.5
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -29,13 +29,25 @@ One request per committee, 41 of them, 1.5 seconds apart -- about a minute.
 That is the whole reason it is a separate script from fetch_committees.py,
 which costs two requests and is run often.
 
-IT MERGES
+ITS OWN FILE, AND IT MERGES
 
-committees.json is written by fetch_committees.py from the listing pages. This
-adds fields to the rows already there and never removes one, because a writer
-of a shared file that runs on a subset destroys the rest -- which has happened
-to three files on this project. It refuses to write a file with fewer
-committees than it read.
+It reads the committees and their addresses from committees.json, which
+fetch_committees.py writes from the listing pages, and writes what it finds to
+committee_details.json -- never to committees.json. Until 26 September it
+added its fields to committees.json's rows, and GitHub's weekly job now swaps
+committees.json in whole from the listing pages, so the first Sunday would
+have taken the clerk and the purpose off every committee page. One file, one
+writer: committee_details.py says how the two are joined and which wins.
+
+It merges into committee_details.json rather than replacing it: --only H24
+updates H24 and leaves the other forty as they were, because a writer of a
+shared file that runs on a subset destroys the rest -- which has happened to
+three files on this project. It refuses to write a file with fewer committees
+than it read.
+
+A committee_details.json that has never been fetched can be seeded, without
+asking anybody, from a committees.json that still carries the old merged
+fields: `python3 committee_details.py --from-committees`.
 
 WHAT --probe IS FOR
 
@@ -54,7 +66,9 @@ import time
 import urllib.request
 from pathlib import Path
 
-UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
+import committee_details as CD
+
+UA ={"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
 WS = re.compile(r"\s+")
 
@@ -208,7 +222,10 @@ def parse(page):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--file", default="committees.json",
-                    help="read the committees from here, and merge back into it")
+                    help="read the committees and their addresses from here "
+                         "(fetch_committees.py's file; never written)")
+    ap.add_argument("--out", default=CD.FILE,
+                    help="merge what the pages say into here")
     ap.add_argument("--only", default="",
                     help="one committee, by the code its page uses (H24, S30) "
                          "or by name")
@@ -224,7 +241,9 @@ def main():
         sys.exit(f"{path} is not there. Run fetch_committees.py first -- this "
                  "adds to what that wrote and cannot invent the list.")
     book = json.loads(path.read_text(encoding="utf-8"))
-    before = sum(len(v) for v in book.values())
+    # What is already on file, which this adds to. Absent the first time.
+    details = CD.load(a.out, quiet=True, strict=True)
+    before = CD.counts(details)[0]
 
     want = a.only.strip().lower()
     todo = []
@@ -283,19 +302,17 @@ def main():
                           + ("..." if len(v["text"]) > 300 else ""))
                 else:
                     print(f"      {k}: {v}")
-        # MERGE. A field already on file is only replaced by a non-empty one:
-        # the listing pages and the detail pages disagree about spacing and
-        # occasionally about a name, and an empty parse must never blank a
+        # MERGE, into committee_details.json under this committee's chamber
+        # and code. A field already on file is only replaced by a non-empty
+        # one: the listing pages and the detail pages disagree about spacing
+        # and occasionally about a name, and an empty parse must never blank a
         # value that was there.
-        for k, v in rec.items():
-            if v:
-                row[k] = v
+        CD.fold(details, chamber, row, rec)
         if i + 1 < len(todo):
             time.sleep(a.delay)
 
     print(f"\n{got} of {len(todo)} pages read")
-    n_clerk = sum(1 for v in book.values() for r in v if r.get("clerk"))
-    n_purp = sum(1 for v in book.values() for r in v if r.get("purpose"))
+    after, n_clerk, n_purp = CD.counts(details)
     print(f"  {n_clerk} committees now have a clerk, {n_purp} a stated purpose")
     if failed:
         print(f"  {len(failed)} failed: " + "; ".join(failed[:3]))
@@ -305,24 +322,24 @@ def main():
               "right.")
         return 0
     if not got:
-        print(f"\nNOT WRITING {a.file}: no page was read.")
+        print(f"\nNOT WRITING {a.out}: no page was read.")
         return 1
     if not (n_clerk or n_purp):
-        print(f"\nNOT WRITING {a.file}: {got} pages were read and neither a "
+        print(f"\nNOT WRITING {a.out}: {got} pages were read and neither a "
               "clerk nor a purpose came out of any of them. That is a parser "
               "that no longer matches the page, not 41 committees without a "
               "clerk. Run with --probe --raw --only H24 and fix the patterns "
               "against the page.")
         return 1
-    after = sum(len(v) for v in book.values())
     assert after >= before, (
-        f"{a.file} would go from {before} committees to {after}. This script "
-        "adds fields to rows and removes none, so a smaller file is a bug in "
-        "it, not a change at the General Court.")
-    path.write_text(json.dumps(book, indent=2), encoding="utf-8")
-    print(f"-> {a.file} ({after} committees, {before} read)")
+        f"{a.out} would go from {before} committees to {after}. This script "
+        "adds fields to committees and removes none, so a smaller file is a "
+        "bug in it, not a change at the General Court.")
+    CD.write_details(details, a.out)
+    print(f"-> {a.out} ({after} committees, {before} on file before)")
     print("\nRun build_committees.py to put the clerk and the purpose on the "
-          "pages.")
+          "pages, and `python3 cloud.py seed-kit` so the nightly's kit has "
+          "them.")
     return 0
 
 

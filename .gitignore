@@ -141,6 +141,9 @@ probe_legacy_*.html
 archive_samples/
 archive_sample_ids.json
 committees.json
+# fetch_committee_details.py's: 41 committee pages, re-fetchable, and in the
+# nightly's kit (cloud_kit.json), which only carries what git does not.
+committee_details.json
 docket_pages/
 Docket_*.txt
 
