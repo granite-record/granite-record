@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.33
+# GRANITE_VERSION: 2026-09-07.34
 """
 A page's worth of data for every committee.
 
@@ -17,7 +17,7 @@ WHERE EACH PART COMES FROM
   identity, leadership, room   committees.json          fetch_committees.py
   clerk, purpose               committee_details.json   fetch_committee_details.py
                                (joined by committee_details.read, which says
-                               which file wins which field)
+                               which file gives which field)
   who sits on it               data/committee_members.json
                                                         fetch_committee_members_db.py
   bills referred               site/index.json          the search index
@@ -459,7 +459,8 @@ def main():
     # 26 September, because GitHub's weekly job swaps committees.json in whole
     # from the listing pages, which carry no clerk and no purpose: read alone,
     # its first Sunday would have taken both off every page. A missing details
-    # file is a warning and a page without them, not a stopped build.
+    # file is a warning and a page without them, not a stopped build; one that
+    # is there and will not read stops it, saying what to do.
     web = CD.read("committees.json", "committee_details.json")
     seats = load(data / "committee_members.json", {})
     codes = load(data / "committees.json", {})

@@ -329,10 +329,15 @@ joins in (`committee_details.py` says how). So the weekly can go on once that
 change is on `main` and the laptop has written the file once, with `python3
 committee_details.py --from-committees`, and sent it with `python3 cloud.py
 seed-kit` -- before `dev` reaches `main`, since the kit now requires the file
-and a night's `kit-down` stops without it. Look at House Rules first, too: on
-the listing page saved on 6 September its assistant and researcher are blank,
-and `fetch_committees.py` reads the labels after them as the values, so the
-weekly would give that page an aide named `Researcher:`. Either
+and a night's `kit-down` stops without it. With the file there, it is the only
+source of the clerk, the purpose and the page roster: the old values
+`committees.json` still carries on the laptop, and in the bucket from the first
+seed, are ignored, so taking a clerk out of the details takes it off the page.
+A fetch of a page that reads as a committee's replaces that committee's three
+with what the page says, stamped `fetched`; a page that failed or parsed as
+nothing changes nothing. House Rules' blank assistant and researcher on the
+listing (saved 6 September) now read as blank in both committee parsers,
+rather than as the labels after them (`Researcher:`, `Location:`). Either
 can be started by hand from the Actions tab; do not start one while a night is
 waiting for approval, because the newer run makes the waiting one
 unpublishable.
