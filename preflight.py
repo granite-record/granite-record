@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.259
+# GRANITE_VERSION: 2026-09-04.260
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21767,6 +21767,505 @@ def _stand_down(R, NI, FA):
         "publish.bat looks for the stand-down file only after it has built or deployed"
     return "ok", (f"{R.STANDDOWN} stops the nightly, the snapshot, publish.bat and the five "
                   "fetchers GitHub owns, before any request; never on GitHub's machine")
+
+
+# ---- fetch_past_db: the six Past* views ----------------------------------------
+
+PAST_TEXT = "a|b\r\nc\t\"quoted\" café — line sep\x85end"
+
+
+def _past_catalogue():
+    """The six views' columns as INFORMATION_SCHEMA gave them on 26 September.
+
+    The NAMES are the real ones; PastLegislation's middle 43 and every TYPE
+    the task did not state are the fixture's own, not a claim about the view.
+    """
+    leg = ([("SessionYear", "smallint")] + [(f"c{i}", "varchar") for i in range(2, 45)]
+           + [("Retained", "bit"), ("legislationID", "int"), ("id", "int")])
+    return {
+        "PastSponsors": [("SessionYear", "smallint"), ("lsr", "int"),
+                         ("LSRSequenceNo", "smallint"), ("employeeNo", "varchar"),
+                         ("PrimeSponsor", "int"), ("SignedOff", "bit"),
+                         ("DateSignedOff", "smalldatetime"), ("SponsorWithdrawn", "bit")],
+        "PastLegislation": leg,
+        "PastDocket": [("SessionYear", "smallint"), ("LSR", "int"), ("ExpandedBillNo", "varchar"),
+                       ("StatusDate", "datetime"), ("CondensedBillNo", "varchar"),
+                       ("LegislativeBody", "varchar"), ("Description", "varchar"),
+                       ("legislationid", "int"), ("OrderDate", "datetime"),
+                       ("statusorder", "int"), ("id", "int")],
+        "PastLegislationText": [("id", "int"), ("BillNbr", "varchar"), ("html", "text"),
+                                ("sessionyear", "smallint"), ("VersionID", "int"),
+                                ("text", "text"), ("legislationID", "int"), ("lsr", "int"),
+                                ("FullDescription", "varchar")],
+        "PastAmendments": [("id", "int"), ("LegislationTextID", "int"),
+                           ("LegislationText", "varchar"), ("sessionyear", "smallint"),
+                           ("legislationID", "int"), ("AmendmentNo", "varchar")],
+        "PastCommitteeReports": [("id", "int"), ("committeeSupportID", "int"),
+                                 ("chamberCode", "varchar"), ("legislationid", "int"),
+                                 ("committeeType", "varchar"), ("releaseDAte", "datetime"),
+                                 ("htmlText", "varchar")],
+    }
+
+
+def _past_cell(ty, i):
+    """Row i's value for a column of SQL type ty: (what the bridge sends, what JSON holds)."""
+    import base64
+    b64 = lambda s: base64.b64encode(s.encode("utf-8")).decode("ascii")
+    if ty in ("int", "smallint"):
+        return b64(str(1000 + i)), 1000 + i
+    if ty == "bit":
+        return b64("1" if i % 2 == 0 else "0"), i % 2 == 0
+    if ty in ("datetime", "smalldatetime"):
+        return b64("2016-03-10T14:05:00.1230000" if i == 1 else "2016-03-10T14:05:00.0000000"), \
+            ("2016-03-10T14:05:00.123" if i == 1 else "2016-03-10T14:05:00")
+    s = [PAST_TEXT, None, ""][i % 3]
+    return ("-" if s is None else b64(s)), s
+
+
+def _past_fake_bridge(P, calls, how):
+    """child.popen for probe_db, answering as PS_STREAM and PS_JSONL would.
+
+    how["rows"][view] is the count the server gives (3 unless said); how["short"]
+    [view] rows fewer arrive than it counted; a view in how["refuse"] cannot
+    connect. Nothing is started and nothing leaves this process.
+    """
+    import base64
+    cat = _past_catalogue()
+
+    class Proc:
+        def __init__(self, lines, rc):
+            self.stdout, self.stderr = iter([x + "\r\n" for x in lines]), iter([])
+            self.returncode, self._rc = None, rc
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            self.returncode = self._rc if self.returncode is None else self.returncode
+            return self.returncode
+
+        def kill(self):
+            self.returncode = -9
+
+    def popen(cmd, **kw):
+        script, env = cmd[-1], dict(kw.get("env") or {})
+        view = re.search(r"FROM (\w+)", env.get("GR_COUNT") or "").group(1)
+        calls.append({"view": view, "script": script, "count": env.get("GR_COUNT"),
+                      "sql": env.get("GR_SQL")})
+        if view in how.get("refuse", ()):
+            return Proc(["CONNECT_FAIL A network-related error occurred (fixture)"], 3)
+        n = how.get("rows", {}).get(view, 3)
+        sent = max(0, n - how.get("short", {}).get(view, 0))
+        cols = cat[view]
+        if script == P.PS_STREAM:
+            with open(env["GR_OUT"], "w", encoding="utf-8", newline="") as fh:
+                for i in range(sent):
+                    fh.write("|".join([f"{view}-{i}"] + ["x"] * (len(cols) - 1)) + "\r\n")
+            return Proc([f"COUNT {n}", f"DONE {sent}"], 0)
+        assert script == P.PS_JSONL, "a bridge script this fixture does not know"
+        names = ",".join(base64.b64encode(c.encode("utf-8")).decode("ascii") for c, _ in cols)
+        rows = ["R " + ",".join(_past_cell(t, i)[0] for _, t in cols) for i in range(sent)]
+        return Proc([f"COUNT {n}", "COLUMNS " + names] + rows + [f"DONE {sent}"], 0)
+
+    return popen
+
+
+@check("build", "fetch_past_db asks for nothing but SELECT, and only of its six views",
+       needs=("fetch_past_db",))
+def _past_select_only(FP):
+    """The Past* views are somebody else's database, read on a public account.
+
+    Every statement fetch_past_db.py sends is built from the six names in
+    VIEWS and passes select_only() on the way out. This holds the guard to
+    what it must refuse -- a write, a second statement, a comment, a view off
+    the list, a star, a join -- and proves a column name the catalogue hands
+    back cannot become SQL, however it is spelled. It also reads the script:
+    it reaches the database only through probe_db's three bridges, imports
+    nothing that could open a connection of its own, and holds no statement
+    that begins with anything but SELECT.
+    """
+    import ast
+    six = ("PastSponsors", "PastLegislation", "PastAmendments", "PastDocket",
+           "PastCommitteeReports", "PastLegislationText")
+    assert set(FP.NAMES) == set(six) and len(FP.NAMES) == 6, f"the allow-list is {FP.NAMES}"
+    # Every statement built for every view passes, and names only its view.
+    cat = _past_catalogue()
+    cat["PastSponsors"] = cat["PastSponsors"] + [
+        ("x] FROM PastSponsors; DROP TABLE PastSponsors --", "varchar"),
+        ("o'brien", "int"), ("scan", "image"), ("memo", "ntext")]
+    built = [FP.catalogue_sql(FP.NAMES)]
+    for v in FP.NAMES:
+        c, s, names, tys = FP.statements(v, cat[v])
+        assert c == f"SELECT COUNT(*) AS n FROM {v}", c
+        assert s.startswith("SELECT ") and s.endswith(f" FROM {v}"), s[-80:]
+        assert len(names) == len(cat[v]) == len(tys), v
+        built += [c, s]
+    c, s, names, tys = FP.statements("PastSponsors", cat["PastSponsors"])
+    assert "[x]] FROM PastSponsors; DROP TABLE PastSponsors --]" in s, \
+        "a column name with a ] in it was not escaped: " + s[-160:]
+    assert "DATALENGTH([scan]) AS [scan_bytes]" in s and "scan_bytes" in names, \
+        "a blob column was asked for as its bytes"
+    assert "CAST([memo] AS nvarchar(max))" in s, "ntext is not kept wide"
+    assert "CAST([html] AS varchar(max))" in FP.statements(
+        "PastLegislationText", cat["PastLegislationText"])[1], "text is not cast"
+    for sql in built:
+        FP.select_only(sql)
+    refused = [
+        "DELETE FROM PastSponsors",
+        "SELECT [a] FROM PastSponsors; DROP TABLE PastSponsors",
+        "SELECT [a] FROM Legislators",
+        "SELECT [a] FROM dbo.Legislators",
+        "SELECT [a] INTO x FROM PastSponsors",
+        "SELECT [a] FROM PastSponsors -- note",
+        "SELECT [a] FROM PastSponsors /* note */",
+        "SELECT [a] FROM PastSponsors UNION SELECT [a] FROM PastDocket",
+        "SELECT [a] FROM PastSponsors JOIN PastDocket ON 1 = 1",
+        "SELECT [a] FROM (SELECT [a] FROM PastDocket) q",
+        "EXEC sp_who",
+        "SELECT * FROM PastSponsors",
+        "SELECT @@VERSION",
+        "SELECT [a] FROM #t",
+        "SELECT CHAR(65) FROM PastSponsors",
+        "SELECT OPENROWSET([a]) FROM PastSponsors",
+        "SELECT [a FROM PastSponsors",
+        "SELECT [a] FROM PastSponsors WHERE [a] = 'x",
+        "SELECT [a] FROM PastSponsors WHERE [a] = 'PastDocket'",
+        "SELECT TABLE_NAME AS v FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Legislators'",
+        "SELECT name FROM sys.databases",
+    ]
+    let_through = []
+    for sql in refused:
+        try:
+            FP.select_only(sql)
+            let_through.append(sql)
+        except ValueError:
+            pass
+    assert not let_through, "select_only let these through: " + " | ".join(let_through)
+    for bad in ("Legislators", "PastSponsors; DROP TABLE x"):
+        try:
+            FP.statements(bad, [("a", "int")])
+            raise AssertionError(f"statements() built SQL for {bad!r}")
+        except ValueError:
+            pass
+
+    # The script itself: nothing reaches the database but through probe_db.
+    src = Path("fetch_past_db.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    imported = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import)
+                for a in n.names} | {n.module.split(".")[0] for n in ast.walk(tree)
+                                     if isinstance(n, ast.ImportFrom) and n.module}
+    own = imported & {"subprocess", "child", "socket", "urllib", "http", "requests",
+                      "pyodbc", "pymssql", "sqlite3", "ctypes"}
+    assert not own, f"fetch_past_db.py imports {sorted(own)}; it reaches the database through probe_db only"
+    bridges = {n.func.attr for n in ast.walk(tree) if isinstance(n, ast.Call)
+               and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
+               and n.func.value.id == "P"}
+    assert bridges <= {"run", "run_to_file_counted", "run_to_jsonl"}, \
+        f"fetch_past_db.py calls probe_db.{sorted(bridges)}"
+    docs = {id(n.body[0].value) for n in ast.walk(tree)
+            if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef)) and n.body
+            and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
+    verb = re.compile(r"^\s*(?:INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|MERGE|"
+                      r"TRUNCATE|GRANT|DECLARE|USE|WITH)\b")
+    writes = [n.value[:50] for n in ast.walk(tree) if isinstance(n, ast.Constant)
+              and isinstance(n.value, str) and id(n) not in docs and verb.search(n.value)]
+    assert not writes, f"fetch_past_db.py holds statements that are not SELECTs: {writes}"
+    return "ok", (f"{len(built)} statements built for the six views all pass; "
+                  f"{len(refused)} that must not, do not; a ] in a column name is escaped; "
+                  "the script reaches the database through probe_db's bridges only")
+
+
+@check("build", "fetch_past_db takes each view whole or not at all, counted, into its own "
+       "folder and manifest", needs=("fetch_past_db", "probe_db", "refusal"))
+def _past_whole_or_nothing(FP, P, R):
+    """A dump of six views, one of them 905 MB, from a machine that is not ours.
+
+    Run end to end against a stand-in for PowerShell that answers the way
+    PS_STREAM and PS_JSONL do, with rows holding a pipe, a line break, a tab,
+    quotes, characters outside ASCII, U+2028, U+0085, an empty string and a
+    NULL. Nothing is started and nothing leaves this process.
+
+    What it holds the script to: --list asks nothing and writes nothing; one
+    catalogue question and then one connection per view, COUNT(*) on it
+    before the rows; five seconds between views; the text views decode to
+    exactly what was sent; the .psv files carry no header; everything lands
+    in db/past/ and its own manifest, never db/_manifest.json, which is
+    GitHub's nightly's; a complete file is not asked for twice; a short stream
+    or an empty view is a non-zero exit that leaves the .part, named, keeps
+    the complete file it would have replaced, and stops the run; a refused
+    connection leaves nothing behind; and GitHub's machine refuses it outright.
+    probe_db.run_to_file is left exactly as its older callers use it.
+    """
+    import contextlib
+    import hashlib
+    import io
+    import types
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-past-"))
+    saved = (P.run, P.child, FP.time, sys.argv)
+    saved_env = os.environ.get("GITHUB_ACTIONS")
+    calls, asked, sleeps, how = [], [], [], {}
+    cat = _past_catalogue()
+
+    def catalogue(conn, queries):
+        asked.append(queries)
+        rows = [{"s": "dbo", "v": v, "c": c, "ty": t, "n": str(i + 1)}
+                for v in reversed(FP.NAMES) for i, (c, t) in reversed(list(enumerate(cat[v])))]
+        return [{"name": queries[0][0], "rows": rows}], None
+
+    def nothing(*_a, **_k):
+        raise AssertionError("something was asked for that should not have been")
+
+    def go(*argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            try:
+                code = FP.main(list(argv))
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue()
+
+    def entry(v):
+        return json.loads(Path("db/past/_manifest.json").read_text(encoding="utf-8"))[v]
+
+    try:
+        os.chdir(tmp)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        FP.time = types.SimpleNamespace(sleep=sleeps.append, time=__import__("time").time,
+                                        strftime=__import__("time").strftime)
+
+        # --list: the plan, and nothing asked or written.
+        P.run, P.child = nothing, types.SimpleNamespace(popen=nothing)
+        code, said = go("--list")
+        assert code == 0 and "Nothing was asked for" in said, said[-300:]
+        assert not Path("db").exists(), "--list wrote something"
+        assert said.rstrip().splitlines()[-1].strip().startswith("6 views"), said[-200:]
+
+        # The whole run.
+        Path("db").mkdir()
+        Path("db/_manifest.json").write_text('{"Docket": {"rows": 1}}', encoding="utf-8")
+        P.run, P.child = catalogue, types.SimpleNamespace(popen=_past_fake_bridge(P, calls, how))
+        code, said = go()
+        assert code == 0, f"a clean run exited {code}: {said[-400:]}"
+        last = [x for x in said.splitlines() if "fetched," in x]
+        assert last and "6 fetched, 0 already here, 0 failed, 0 not reached" in last[-1], said[-300:]
+        assert len(asked) == 1, f"the catalogue was asked {len(asked)} times"
+        assert [c["view"] for c in calls] == list(FP.NAMES), \
+            f"not one connection per view, smallest first: {[c['view'] for c in calls]}"
+        for c in calls:
+            assert c["count"] == f"SELECT COUNT(*) AS n FROM {c['view']}", c["count"]
+            FP.select_only(c["sql"])
+            assert c["sql"].endswith(f" FROM {c['view']}") and "*" not in c["sql"], c["sql"][-80:]
+            want = P.PS_STREAM if FP.SPEC[c["view"]][1] == "psv" else P.PS_JSONL
+            assert c["script"] == want, f"{c['view']} went through the wrong bridge"
+        assert sleeps == [FP.PAUSE] * 5 and FP.PAUSE == 5, f"the pauses were {sleeps}"
+        assert Path("db/_manifest.json").read_text(encoding="utf-8") == '{"Docket": {"rows": 1}}', \
+            "db/_manifest.json, the nightly's, was written"
+        past = sorted(p.name for p in Path("db/past").iterdir())
+        assert past == sorted([FP.path_for(v).name for v in FP.NAMES] + ["_manifest.json"]), past
+        for v in FP.NAMES:
+            p, e = FP.path_for(v), entry(v)
+            body = p.read_bytes()
+            assert e["rows"] == e["count"] == 3 and e["bytes"] == len(body), (v, e)
+            assert e["sha256"] == hashlib.sha256(body).hexdigest(), f"{v}: the sha256 is not the file's"
+            assert e["columns"] == [c for c, _ in cat[v]], f"{v}: the column order is not the view's"
+            assert len(e["types"]) == len(e["columns"]) and e["fetched"] and e["seconds"] >= 0, v
+            if e["format"] == "psv":
+                lines = body.decode("utf-8").split("\r\n")
+                assert lines[-1] == "" and len(lines) == 4 and e["header"] is False, v
+                assert lines[0].startswith(f"{v}-0|") and lines[0].count("|") == len(cat[v]) - 1, \
+                    f"{v}.psv has a header or the wrong fields: {lines[0][:60]}"
+                continue
+            got = [json.loads(x) for x in body.decode("utf-8").split("\n") if x]
+            assert body.count(b"\n") == 3 and len(body.decode("utf-8").splitlines()) == 3, \
+                f"{v}.jsonl does not hold one row per line, whatever splits it"
+            for i, row in enumerate(got):
+                assert list(row) == [c for c, _ in cat[v]], f"{v}: keys out of order"
+                for c, t in cat[v]:
+                    assert row[c] == _past_cell(t, i)[1] and \
+                        type(row[c]) is type(_past_cell(t, i)[1]), \
+                        f"{v} row {i} {c}: {row[c]!r}, not {_past_cell(t, i)[1]!r}"
+        assert entry("PastLegislation")["columns"][-1] == "id" and \
+            len(entry("PastLegislation")["columns"]) == 47
+
+        # Again: everything is complete, so nothing is asked.
+        n = len(calls)
+        code, said = go()
+        assert code == 0 and len(calls) == n and len(asked) == 1, "a complete file was asked for again"
+        assert "0 fetched, 6 already here" in said, said[-200:]
+
+        # A short stream: non-zero, the .part left and named, the complete file kept.
+        before = FP.path_for("PastAmendments").read_bytes()
+        how["short"] = {"PastAmendments": 1}
+        code, said = go("--only", "PastAmendments", "--refetch")
+        part = FP.part_for("PastAmendments")
+        assert code == 1 and part.exists() and part.as_posix() in said, f"{code} {said[-300:]}"
+        assert "came up short" in said and "1 failed" in said, said[-300:]
+        assert FP.path_for("PastAmendments").read_bytes() == before, "a short stream replaced a whole file"
+        e = entry("PastAmendments")
+        assert e["rows"] == 3 and e["last_error"]["part"] == part.as_posix(), e
+        assert FP.complete("PastAmendments", json.loads(
+            Path("db/past/_manifest.json").read_text(encoding="utf-8"))), \
+            "a failed refetch made the complete file look incomplete"
+
+        # The same for a .psv, named in any case; and an empty view.
+        how["short"] = {"PastDocket": 2}
+        code, said = go("--only", "pastdocket", "--refetch")
+        assert code == 1 and FP.part_for("PastDocket").exists(), said[-300:]
+        how["short"], how["rows"] = {}, {"PastSponsors": 0}
+        code, said = go("--only", "PastSponsors", "--refetch")
+        assert code == 1 and "no rows" in said and entry("PastSponsors")["rows"] == 3, said[-300:]
+        how["rows"] = {}
+
+        # A failure stops the run: the view after it is not asked for.
+        for v in ("PastAmendments", "PastDocket"):
+            FP.path_for(v).unlink()
+        how["short"] = {"PastAmendments": 1}
+        n, sleeps[:] = len(calls), []
+        code, said = go()
+        assert code == 1 and [c["view"] for c in calls[n:]] == ["PastAmendments"], \
+            f"the run went on past a failure: {[c['view'] for c in calls[n:]]}"
+        assert "1 not reached" in said and not sleeps, said[-300:]
+
+        # A refused connection leaves no empty .part behind.
+        how["short"], how["refuse"] = {}, {"PastAmendments"}
+        code, said = go("--only", "PastAmendments")
+        assert code == 1 and not FP.part_for("PastAmendments").exists() and \
+            "Nothing of this view was written" in said, said[-300:]
+        how["refuse"] = set()
+        code, said = go()
+        assert code == 0 and "2 fetched, 4 already here" in said, said[-300:]
+        assert not list(Path("db/past").glob("*.part")), "a .part outlived the run that finished it"
+
+        # The catalogue unanswered: no view is asked for, and it says so.
+        n = len(calls)
+        P.run = lambda conn, queries: (None, "A network-related error occurred (fixture)")
+        code, said = go("--refetch")
+        assert code == 1 and len(calls) == n and "Stopped before the first view" in said \
+            and "6 not reached" in said, said[-300:]
+        P.run = catalogue
+
+        # Not a name on the list; and not on GitHub.
+        code, said = go("--only", "Legislators")
+        assert code == 2 and "not one of the six views" in said, said
+        n = len(calls)
+        os.environ["GITHUB_ACTIONS"] = "true"
+        code, said = go("--refetch")
+        assert code == 3 and len(calls) == n and "does not run on GitHub" in said, said
+        os.environ.pop("GITHUB_ACTIONS", None)
+
+        # run_to_file, which GitHub's nightly calls, runs what it always ran.
+        seen = {}
+
+        def older(cmd, **kw):
+            seen.update(kw.get("env") or {})
+            return types.SimpleNamespace(stdout=iter(["PROGRESS 2\r\n", "DONE 4\r\n"]),
+                                         stderr=io.StringIO(""), wait=lambda timeout=None: 0)
+        P.child = types.SimpleNamespace(popen=older)
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = P.run_to_file("conn", "SELECT 1", tmp / "x.psv")
+        assert got == (4, None) and "GR_COUNT" not in seen, (got, sorted(seen))
+    finally:
+        os.chdir(here)
+        P.run, P.child, FP.time, sys.argv = saved
+        if saved_env is None:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        else:
+            os.environ["GITHUB_ACTIONS"] = saved_env
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("six views into db/past/ with their own manifest, one connection each, "
+                  "counted first, 5s apart; text exact through JSON Lines; a short or empty "
+                  "view stops the run and keeps its .part; never on GitHub")
+
+
+@check("build", "the JSON Lines bridge keeps text exact through real PowerShell, and every "
+       "bridge script parses", needs=("probe_db",))
+def _past_bridge_in_powershell(P):
+    """The half of run_to_jsonl that runs in PowerShell, run in PowerShell.
+
+    _past_whole_or_nothing stands in for PowerShell; this does not. PS_JSONL's
+    row-reading half is handed an in-memory table instead of a connection --
+    a SqlConnection is created and never opened -- so the code that turns a
+    value into what crosses the pipe is the code that will run against the
+    General Court's server, and nothing is asked of anybody. Then PowerShell's
+    own parser reads all three bridge scripts, PS_STREAM among them, which
+    GitHub's nightly runs every night.
+    """
+    import base64
+    if not shutil.which("powershell"):
+        return "skip", "no Windows PowerShell here"
+    parse = r"""
+$bad = @()
+foreach ($k in 'GR_PS_RUN','GR_PS_STREAM','GR_PS_JSONL') {
+  $t = $null; $e = $null
+  [void][System.Management.Automation.Language.Parser]::ParseInput(
+    [Environment]::GetEnvironmentVariable($k), [ref]$t, [ref]$e)
+  foreach ($x in $e) { $bad += ($k + ': ' + $x.Message) }
+}
+if ($bad.Count) { $bad -join ' | ' } else { 'PARSED' }
+"""
+    r = _run(["powershell", "-NoProfile", "-NonInteractive", "-Command", parse],
+             capture_output=True, timeout=120,
+             env={"GR_PS_RUN": P.PS, "GR_PS_STREAM": P.PS_STREAM, "GR_PS_JSONL": P.PS_JSONL})
+    assert (r.stdout or "").strip() == "PARSED", \
+        f"a bridge script does not parse: {(r.stdout or r.stderr or '')[-300:]}"
+
+    table = r"""
+$ErrorActionPreference = 'Stop'
+$o = [Console]::Out
+$conn = New-Object System.Data.SqlClient.SqlConnection
+try {
+  $texts = @($env:GR_TEST -split ',' | ForEach-Object {
+    [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)) })
+  $t = New-Object System.Data.DataTable
+  [void]$t.Columns.Add('id', [int])
+  [void]$t.Columns.Add('html', [string])
+  [void]$t.Columns.Add('released', [datetime])
+  [void]$t.Columns.Add('signed', [bool])
+  [void]$t.Columns.Add('fee', [decimal])
+  [void]$t.Rows.Add(1, $texts[0], [datetime]'2016-03-10T14:05:00', $true, [decimal]'1.50')
+  [void]$t.Rows.Add(2, [System.DBNull]::Value, [System.DBNull]::Value, $false, [System.DBNull]::Value)
+  [void]$t.Rows.Add(3, $texts[1], [datetime]'1999-01-01T00:00:00.123', $true, [decimal]'12')
+  $o.WriteLine('COUNT ' + $t.Rows.Count); $o.Flush()
+  $rdr = $t.CreateDataReader()
+"""
+    texts = [PAST_TEXT, ""]
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-pastps-"))
+    saved, saved_env = P.PS_JSONL, os.environ.get("GR_TEST")
+    try:
+        os.environ["GR_TEST"] = ",".join(base64.b64encode(x.encode("utf-8")).decode("ascii")
+                                         for x in texts)
+        P.PS_JSONL = table + P.PS_JSONL_ROWS + P.PS_JSONL_CLOSE
+        out = tmp / "t.jsonl"
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = P.run_to_jsonl("never opened", "unused", "unused", out,
+                                 types={"id": "int", "html": "varchar", "released": "datetime",
+                                        "signed": "bit", "fee": "decimal"},
+                                 columns=["id", "html", "released", "signed", "fee"],
+                                 every=2, timeout=60)
+        assert got == (3, 3, None), f"the bridge said {got}"
+        rows = [json.loads(x) for x in out.read_text(encoding="utf-8").split("\n") if x]
+        want = [{"id": 1, "html": PAST_TEXT, "released": "2016-03-10T14:05:00", "signed": True,
+                 "fee": 1.5},
+                {"id": 2, "html": None, "released": None, "signed": False, "fee": None},
+                {"id": 3, "html": "", "released": "1999-01-01T00:00:00.123", "signed": True,
+                 "fee": 12}]
+        assert rows == want, f"PowerShell and back changed a value: {rows} != {want}"
+        assert type(rows[2]["fee"]) is int and type(rows[0]["fee"]) is float
+    finally:
+        P.PS_JSONL = saved
+        if saved_env is None:
+            os.environ.pop("GR_TEST", None)
+        else:
+            os.environ["GR_TEST"] = saved_env
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("PS_JSONL's reader, run in PowerShell over a table, hands back a pipe, CRLF, "
+                  "a tab, quotes, non-ASCII, U+2028, NULL and an empty string exactly; "
+                  "PS, PS_STREAM and PS_JSONL parse")
 
 
 @check("build", "the committee pages fetch stops at a refusal, records it, and says when it found "
