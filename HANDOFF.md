@@ -202,6 +202,24 @@ into those issues more broadly rather than a couple at a time." These look like
 they may share a cause, and a defect fixed alone gets a narrow patch while the
 cause survives to make the next one. Open one investigation across all of them.
 
+**Sixteen member names that rest on a guess from voting patterns.** Of the 38
+names `member_party.json` carries with source `solved` (fetch_rollcall_parties.py
+inferring who an employee number is from how it voted), 21 agree with
+`db/Legislators.psv` and one was wrong: 377080 was shown as H. Robert Menear and
+is Rep. Lorrie J. Carey, corrected in `member_corrections.json` on 26 September
+from the General Court's PastSponsors view, her printed bills, the House
+Journals and the 2022 organisation-day roll. The other 16 have no second source
+on disk, and the person decided on 26 September to keep them up rather than
+remove names that may be right: 376211 Courchesne, 376261 Ouellette, 376307
+Bouchard, 376488 Kudalis, 376531 Taylor, 376536 Webber, 376570 Donahue, 376611
+Parker, 376649 Kelly, 376678 Matheson, 376695 DesRoches, 376766 Warren, 376889
+LaPlante, 376950 Hogan, 377092 Dobson, 377105 Grace. The check that would settle
+each is the one that named the ids added to `member_corrections.json` on
+16 September (its `_added_16_september` note): score the id's ballots against
+the names printed in the House Journals' vote lists for the same roll calls,
+then corroborate from the organisation-day roll, which prints each member's
+party. The journals for 1997-2026 are on disk under `journals/`.
+
 **A member on a committee he had left.** `site/committee/H12.json` lists Joseph
 Barton as a member of House Legislative Administration. He has not been on it
 for over a year, and -- this is the part that matters -- the General Court's own
