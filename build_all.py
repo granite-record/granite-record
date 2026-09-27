@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.37
+# GRANITE_VERSION: 2026-09-05.39
 """
 Run the whole pipeline in the right order.
 
@@ -330,7 +330,33 @@ def plan(a):
              produces=["text_sponsors.json"],
              note="the sponsor line of the pages fetch_legislation.py saves, "
                   "matched to members who cast a roll call that term; no "
-                  "network, and never over a sponsor the database names"),
+                  "network, and never over a sponsor the database names. "
+                  "Where db/past/ is here it also reads the General Court's "
+                  "sponsor record, straight from the dump, to place a senator "
+                  "printed as Rep. and to name a bill whose line names nobody"),
+
+        # AFTER text_sponsors: a 2023-2024 bill whose sponsor record and printed
+        # line disagree is published as the page prints it, and merge_into takes
+        # that list out of the text_sponsors.json this step's predecessor wrote.
+        # BEFORE build_site_v2 and build_exports, which both call
+        # past_sponsors.merge_into so the page and the download agree. No
+        # network: the dump fetch_past_db.py made, the legislators table, the
+        # ballots and roster build_data wrote, and the saved pages. Every input is
+        # declared, so a machine short of one skips the step and 2023-2024 keeps
+        # its status page -- and build_site_v2 says so -- rather than publishing
+        # the record unlinked or unchecked.
+        Step("2023-2024's sponsors from the General Court's own record",
+             ["past_sponsors.py", "--apply"],
+             needs=["data/bills.json", "data/member_votes.json",
+                    "data/legislators.json", "legislation",
+                    "db/past/PastSponsors.psv", "db/past/PastLegislation.psv",
+                    "db/past/_manifest.json", "db/Legislators.psv",
+                    "db/_columns.json", "past_members.json"],
+             produces=["past_sponsors.json"],
+             note="PastSponsors joined by each bill's stored LSR and its employee "
+                  "numbers mapped to the site's members; for 2023-2024 only, the "
+                  "list each bill publishes, checked against its printed sponsor "
+                  "line (--check prints every bill where they disagree)"),
 
         # AFTER text_sponsors, which walks the same saved pages, and BEFORE
         # build_site_v2, which imports this module (build_site_v2.py:36) and

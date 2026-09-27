@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.124
+// GRANITE_VERSION: 2026-09-07.125
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2406,6 +2406,12 @@ function renderSponsors(b,d){
   // call that term is shown as it is printed, without a party.
   const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
   const asPrinted=fromText&&spAll.some(s=>!s.member_id);
+  // A BILL WHOSE PRINTED LINE NAMES NOBODY. 1991 HCR 13 and HR 19 print "INTRODUCED BY:
+  // REFERRED TO:" with no name after either, and the page listed a sponsor called
+  // REFERRED TO. Their names come from the General Court's own sponsor record instead
+  // (text_sponsors.unprinted), and the page says so rather than implying they were read
+  // off the bill like every other name of that term.
+  const unprinted=spAll.length&&spAll.every(s=>s.unprinted);
   // THE STANDING NOTE IS GONE. It read "Prime sponsor in bold. From the
   // General Court sponsor file." with a link to the docket, and all three
   // parts were being said twice. The prime sponsor carries a PRIME label
@@ -2427,7 +2433,10 @@ function renderSponsors(b,d){
     ?`<p class="note" style="margin-top:12px">As named on the sponsor line of
         the bill's text, where the first name is the prime sponsor.${asPrinted
         ?` A name without a party is shown as the text prints it: it could not
-          be matched to one member who voted that term.`:""}</p>`:""}`;
+          be matched to one member who voted that term.`:""}</p>`:""}${unprinted
+    ?`<p class="note" style="margin-top:12px">The bill's own text names no
+        sponsor. These are the names the General Court's sponsor record gives
+        it.</p>`:""}`;
 }
 
 // Amendments, in the order the docket took them up. A committee amendment
