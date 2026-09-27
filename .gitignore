@@ -52,6 +52,7 @@ data/
 narratives.json
 topics_assigned.json
 text_sponsors.json
+past_sponsors.json
 bill_status.json
 committee_reports.json
 chapters.json

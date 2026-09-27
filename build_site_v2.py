@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.117
+# GRANITE_VERSION: 2026-09-05.118
 """
 Generate the faceted site from real General Court data.
 
@@ -40,6 +40,7 @@ import re
 import sys
 import archive_text as AT
 import bill_order as BO
+import past_sponsors as PSP
 import text_sponsors as TS
 import topic_model as TM
 import unicodedata
@@ -7408,6 +7409,26 @@ def main():
     _n = TS.merge_into(sponsors)
     if _n:
         print(f"  sponsors: {_n:,} bills named on their own text (text_sponsors.json)")
+    # 2023-2024 FROM THE GENERAL COURT'S OWN SPONSOR RECORD, where each bill's printed
+    # sponsor line agrees with it, and as the page prints it where they do not. The
+    # bill status page this term's list came from left Steve Shurtleff off 29 bills and
+    # made him nobody's prime sponsor, and carried no link for 5,900 of its names;
+    # past_sponsors.py says what was measured against what. After merge_into, whose
+    # page lists it takes for the bills that disagree; before seat_into, which dates the
+    # seats on the record's rows as it did on the status page's.
+    _ps = PSP.merge_into(sponsors)
+    if _ps:
+        print(f"  sponsors: 2023-2024 from the General Court's sponsor record on "
+              f"{_ps['record']:,} bills, as the page prints them on {_ps['page']:,}"
+              + (f"; {_ps['differs, and no page list to publish']:,} kept the status "
+                 "page's, having no page list to take"
+                 if _ps['differs, and no page list to publish'] else "")
+              + " (past_sponsors.json)")
+    elif (PSP.PAST / "_manifest.json").exists():
+        # Not silent: the dump is here and the file made from it is not, so 2023-2024
+        # is being built from the status page the record corrects.
+        print("  sponsors: past_sponsors.json is missing though db/past/ is here, so "
+              "2023-2024 keeps the bill status page's list. Run past_sponsors.py --apply.")
     # And the seat on a sponsor the database DOES name, dated from the same
     # pages: the database's rows for 2023-2024 carry no county and no
     # district, so the site was taking both from the roster of the House and

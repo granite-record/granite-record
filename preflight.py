@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.261
+# GRANITE_VERSION: 2026-09-04.262
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5284,6 +5284,12 @@ ic_SOURCES = {
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "db/Legislators.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "db/_columns.json": "fetch_archive_db.py, the column order of each view it dumps",
+    "db/past/PastSponsors.psv": "fetch_past_db.py, which dumps the six Past* views",
+    "db/past/PastLegislation.psv": "fetch_past_db.py, which dumps the six Past* views",
+    "db/past/_manifest.json": "fetch_past_db.py, the column order of each Past* view",
+    "past_members.json": "fetch_sponsors_by_member.py --members, one request",
     "archive/livestreams.json": "livestreams.py --since-state, the nightly's "
                               "step before build_all",
 }
@@ -25071,6 +25077,191 @@ def _sponsors_csv_seat(text_sponsors):
         return "ok", "both builders merge and seat; a 2023-2024 senator is S, the current term keeps its roster"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+def _ps_row(year, lsr, seq, emp, prime=False, withdrawn=False):
+    """One PastSponsors row, as past_sponsors.read_view gives it."""
+    return {"SessionYear": str(year), "lsr": str(lsr), "LSRSequenceNo": str(seq),
+            "employeeNo": emp, "PrimeSponsor": "1" if prime else "0",
+            "SignedOff": "False" if withdrawn else "True", "DateSignedOff": "",
+            "SponsorWithdrawn": "True" if withdrawn else "False"}
+
+
+@check("naming", "2023-2024's sponsors are the General Court's own record where each bill prints the same people, and the page's where it does not",
+       needs=("text_sponsors", "build_site_v2"))
+def _past_sponsors_2023(text_sponsors, build_site_v2):
+    """past_sponsors.py, 26 September. The bill status page 2023-2024's sponsor lists came
+    from made Rep. Mark Paige the prime sponsor of 2023 HB 32 and Rep. Terry Roy the only
+    sponsor of 2024 HB 1713; both bills print "Rep. Shurtleff, Merr. 15" first, and the
+    General Court's own sponsor record, PastSponsors, marks employee 376628 -- Steve
+    Shurtleff -- prime on both. It left him off 29 bills, listed a Rep. Dawn Johnson on
+    2023 HB 104 whom neither the record nor the bill names, and carried no id for 5,900
+    of its 10,310 names.
+
+    Every line and number here is the real one. The record is joined by the bill's own
+    stored LSR -- never by the number, which would give 2011 SR 5 somebody else's -- and
+    an employee number reaches a member through the legislators table's PersonID, or
+    stands for itself where the table has none. Employee 377080 is printed "Rep. Carey,
+    Merr. 1" and the site's record of the number says H. Robert Menear of Strafford 25:
+    shown as printed and linked to nobody. 2023 HB 10 prints Rep. Hoell where the record
+    lists Mark Alliegro, and Hoell is a member in his own right, so that bill disagrees
+    and is published as its page prints it."""
+    import past_sponsors as PSP
+    from collections import defaultdict
+    B = build_site_v2
+    bills = {"2023-2024": {"HB32": {"lsr_year": "2023", "lsr_num": "0069"},
+                           "HB1713": {"lsr_year": "2024", "lsr_num": "3166"},
+                           "HB1429": {"lsr_year": "2024", "lsr_num": "2293"},
+                           "HB10": {"lsr_year": "2023", "lsr_num": "0093"},
+                           "HB104": {"lsr_year": "2023", "lsr_num": "0170"},
+                           "HB11": {"lsr_year": "2023", "lsr_num": "0094"}},
+             "2011-2012": {"SR5": {"lsr_year": "2011", "lsr_num": "1234"}}}
+    ps = [_ps_row(2023, 69, 1, "376628", True), _ps_row(2023, 69, 2, "409042"),
+          _ps_row(2023, 69, 3, "408930"), _ps_row(2023, 69, 4, "377778"),
+          _ps_row(2023, 69, 5, "376862"),
+          _ps_row(2024, 3166, 1, "376628", True), _ps_row(2024, 3166, 2, "408925"),
+          _ps_row(2024, 2293, 1, "408913", True), _ps_row(2024, 2293, 2, "377080"),
+          _ps_row(2023, 93, 1, "375453", True), _ps_row(2023, 93, 8, "408987"),
+          _ps_row(2023, 94, 1, "377088", True),
+          _ps_row(2023, 170, 1, "407144", True), _ps_row(2023, 170, 4, "408927", withdrawn=True),
+          _ps_row(2023, 170, 6, "376991"), _ps_row(2023, 170, 9, "218745"),
+          _ps_row(2011, 1234, 1, "209027", True)]
+    pl = [{"SessionYear": "2011", "LSR": "1234", "CondensedBillNo": "SR6"}]
+    legs = [{"Employeeno": e, "PersonID": p, "LastName": l, "FirstName": f, "LegislativeBody": b}
+            for e, p, l, f, b in [("409042", "9042", "Paige", "Mark", "H"),
+                                  ("408930", "8930", "Levesque", "Cassandra", "H"),
+                                  ("377778", "7778", "Edgar", "Michael", "H"),
+                                  ("376862", "6862", "Schuett", "Dianne", "H"),
+                                  ("408925", "8925", "Roy", "Terry", "H"),
+                                  ("408913", "8913", "Mazur", "Kenneth", "H"),
+                                  ("375453", "5453", "Packard", "Sherman", "H"),
+                                  ("408987", "8987", "Alliegro", "Mark", "H"),
+                                  ("377088", "7088", "Hoell", "J.R.", "H"),
+                                  ("407144", "7144", "Moffett", "Michael", "H"),
+                                  ("408927", "8927", "Hobson", "Deb", "H"),
+                                  ("376991", "6991", "Notter", "Jeanine", "H"),
+                                  ("218745", "8745", "Gannon", "Bill", "S")]]
+    votes = [{"member_id": v, "name": n, "label": lab, "year": "2024", "body": b}
+             for v, n, lab, b in [("376628", "Shurtleff, Steve", "Shurtleff, Steve(D) Merrimack 15", "H"),
+                                  ("377080", "Menear, H. Robert", "Menear, H. Robert(D) Straf 25", "H"),
+                                  ("9042", "Paige, Mark", "Paige, Mark(D) Rockingham 11", "H"),
+                                  ("8930", "Levesque, Cassandra", "Levesque, Cassandra(D) Strafford 4", "H"),
+                                  ("7778", "Edgar, Michael", "Edgar, Michael(D) Rockingham 29", "H"),
+                                  ("6862", "Schuett, Dianne", "Schuett, Dianne(D) Merrimack 12", "H"),
+                                  ("8925", "Roy, Terry", "Roy, Terry(R) Rockingham 31", "H"),
+                                  ("8913", "Mazur, Kenneth", "Mazur, Kenneth(R) Hillsborough 44", "H"),
+                                  ("5453", "Packard, Sherman", "Packard, Sherman(R) Rockingham 16", "H"),
+                                  ("8987", "Alliegro, Mark", "Alliegro, Mark(R) Grafton 7", "H"),
+                                  ("7088", "Hoell, J.R.", "Hoell, J.R.(R) Merrimack 27", "H"),
+                                  ("7144", "Moffett, Michael", "Moffett, Michael(R) Merrimack 4", "H"),
+                                  ("6991", "Notter, Jeanine", "Notter, Jeanine(R) Hillsborough 12", "H"),
+                                  ("8745", "Gannon, Bill", "Gannon, Bill(R)  23", "S")]]
+    people = PSP.People(legs, {}, votes, [])
+    printed = {"HB32": "Rep. Shurtleff, Merr. 15; Rep. M. Paige, Rock. 11; Rep. Levesque, Straf. 4; "
+                       "Rep. Edgar, Rock. 29; Rep. Schuett, Merr. 12",
+               "HB1713": "Rep. Shurtleff, Merr. 15; Rep. Roy, Rock. 31",
+               "HB1429": "Rep. Mazur, Hills. 44; Rep. Carey, Merr. 1",
+               "HB10": "Rep. Packard, Rock. 16; Rep. Hoell, Merr. 27",
+               "HB11": "Rep. Hoell, Merr. 27",
+               "HB104": "Rep. Moffett, Merr. 4; Rep. Notter, Hills. 12; Sen. Gannon, Dist 23"}
+    status = {"2023-2024": {
+        "HB32": [{"member_id": "409042", "name": "Mark Paige", "party": "D", "prime": True},
+                 {"member_id": "377778", "name": "Michael Edgar", "party": "D"},
+                 {"member_id": "", "name": "Dianne Schuett", "party": "D"},
+                 {"member_id": "408930", "name": "Cassandra Levesque", "party": "D"}],
+        "HB1713": [{"member_id": "408925", "name": "Terry Roy", "party": "R", "prime": True}],
+        "HB104": [{"member_id": "407144", "name": "Michael Moffett", "prime": True},
+                  {"member_id": "376991", "name": "Jeanine Notter"},
+                  {"member_id": "", "name": "Bill Gannon", "chamber": "S"},
+                  {"member_id": "", "name": "Dawn Johnson"}]}}
+    joined, tally = PSP.join(bills, ps, pl)
+    assert "SR5" not in joined.get("2011-2012", {}) and \
+        tally["bills whose LSR PastLegislation files under another number"] == 1, (
+        "a bill was joined to an LSR PastLegislation files under another bill number")
+    doc = PSP.build(bills, status, people, joined,
+                    line_of=lambda term, bid, _b: printed.get(bid))
+    t = doc["2023-2024"]
+
+    def pub(bid):
+        return [(r["name"], r["prime"], r["member_id"]) for r in t[bid].get("publish") or []]
+    assert t["HB32"]["page"] == "agrees" and pub("HB32") == [
+        ("Steve Shurtleff", True, "376628"), ("Mark Paige", False, "9042"),
+        ("Cassandra Levesque", False, "8930"), ("Michael Edgar", False, "7778"),
+        ("Dianne Schuett", False, "6862")], f"2023 HB 32 publishes {pub('HB32')}"
+    assert pub("HB1713") == [("Steve Shurtleff", True, "376628"), ("Terry Roy", False, "8925")], (
+        f"2024 HB 1713 publishes {pub('HB1713')}")
+    carey = [r for r in t["HB1429"]["publish"] if r["employee"] == "377080"]
+    assert carey and (carey[0]["member_id"], carey[0]["name"], carey[0]["county"],
+                      carey[0]["district"]) == ("", "Carey", "Merrimack", "1"), (
+        f"377080 was published as {carey}: wanted Carey, Merrimack 1, as printed and unlinked")
+    assert t["HB10"]["page"] == "differs" and not t["HB10"].get("publish"), (
+        "2023 HB 10 prints Rep. Hoell where the record lists Mark Alliegro, and it was "
+        f"taken as {t['HB10']['page']}")
+    assert [n for n, _p, _i in pub("HB104")] == ["Michael Moffett", "Jeanine Notter", "Bill Gannon"], (
+        f"2023 HB 104 publishes {pub('HB104')}: the withdrawn Hobson or the status page's "
+        "Dawn Johnson reached it")
+    page_list = [{"member_id": "7088", "name": "J.R. Hoell", "source": "bill text"}]
+    merged = {k: {b: list(v) for b, v in bs.items()} for k, bs in status.items()}
+    took = PSP.merge(merged, doc, {"2023-2024": {"HB10": page_list}})
+    assert merged["2023-2024"]["HB10"] == page_list and took["page"] == 1, (
+        "a bill the record and its page disagree on did not take the page's list")
+    assert merged["2023-2024"]["HB32"][0]["name"] == "Steve Shurtleff", "the merge left HB 32 as it was"
+
+    # On the page: Shurtleff first, prime, and a link to his own page; Carey linked to
+    # nobody and filed under nobody, the Menear page least of all.
+    people_ = {"376628": {"id": "376628", "name": "Shurtleff, Steve", "chamber": "H",
+                          "party": "D", "county": "Merrimack", "district": "15",
+                          "slug": "steve-shurtleff-merr-15"},
+               "377080": {"id": "377080", "name": "Menear, H. Robert", "chamber": "H",
+                          "party": "D", "county": "Strafford", "district": "25",
+                          "slug": "h-robert-menear-straf-25"}}
+    sponsored = defaultdict(list)
+    sp = B.bill_sponsor_list("HB32", {"designation": "HB 32", "title": "a bill"}, "2023",
+                             "2023-2024", "2025-2026", merged, people_, {}, {}, sponsored)
+    assert sp[0]["prime"] and sp[0]["slug"] == "steve-shurtleff-merr-15", (
+        f"2023 HB 32's first sponsor is {sp[0].get('name')} ({sp[0].get('slug')!r})")
+    merged["2023-2024"]["HB1429"] = t["HB1429"]["publish"]
+    sp = B.bill_sponsor_list("HB1429", {"designation": "HB 1429", "title": "a bill"}, "2024",
+                             "2023-2024", "2025-2026", merged, people_, {}, {}, sponsored)
+    c = [s for s in sp if s.get("employee") == "377080"][0]
+    assert not c["slug"] and "377080" not in sponsored, (
+        "employee 377080's sponsorship reached the page the site names H. Robert Menear")
+    here = Path(".").resolve()
+    for f in ("build_site_v2.py", "build_exports.py"):
+        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        assert not src or "PSP.merge_into(" in src, (
+            f"{f} does not call past_sponsors.merge_into, so its 2023-2024 sponsors are not "
+            "the ones the other builder publishes")
+    return "ok", ("HB 32 and HB 1713 prime Shurtleff; the record's list where the page agrees, "
+                  "the page's where not; 377080 as printed and unlinked; joined by the stored LSR")
+
+
+@check("data", "past_sponsors.json gives 2023 HB 32 and 2024 HB 1713 to their prime sponsor, and every 2023-2024 bill a verdict")
+def _past_sponsors_data():
+    """The two primes the bill status page had wrong, on the file the build publishes
+    from, and the 37 co-sponsorships it had left off: Steve Shurtleff (376628) on 29
+    bills, Kimberly Abare (409060) on 4 and employee 377080, printed Rep. Carey, on 4 --
+    each on a bill that publishes the record's list or its page's, which prints them."""
+    p = Path("past_sponsors.json")
+    if not p.exists():
+        return "skip", "no past_sponsors.json here (python3 past_sponsors.py --apply)"
+    t = json.loads(p.read_text(encoding="utf-8")).get("2023-2024") or {}
+    for bid in ("HB32", "HB1713"):
+        pub = (t.get(bid) or {}).get("publish") or []
+        prime = [r.get("employee") for r in pub if r.get("prime")]
+        assert prime == ["376628"] and pub[0].get("employee") == "376628", (
+            f"2023-2024 {bid} publishes prime {prime}, first {pub[:1]}: both print Rep. "
+            "Shurtleff first and the record marks him prime")
+    odd = [b for b, e in t.items() if e.get("page") not in ("agrees", "differs", "no page")
+           or (e.get("page") != "differs" and not e.get("publish"))]
+    assert not odd, f"2023-2024 bills with no verdict or nothing to publish: {odd[:8]}"
+    restored = Counter(s["employee"] for e in t.values() for s in e.get("sponsors") or ()
+                       if s["employee"] in ("376628", "409060", "377080"))
+    assert restored["376628"] >= 29 and restored["409060"] >= 4 and restored["377080"] >= 4, (
+        f"the record's live rows for Shurtleff, Abare and 377080: {dict(restored)}")
+    n = Counter(e.get("page") for e in t.values())
+    return "ok", (f"HB 32 and HB 1713 prime Shurtleff; {n['agrees']:,} bills agree with their "
+                  f"page, {n['differs']:,} published as printed, {n['no page']:,} have no page")
 
 
 @check("data", "the Learn pages state the record's own figures, and none is left unfilled")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.14
+# GRANITE_VERSION: 2026-09-10.15
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -34,6 +34,7 @@ import json
 from pathlib import Path
 
 import bill_order as BO
+import past_sponsors as PSP
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
 # the bill pages say it: one constant, so the three cannot drift apart.
@@ -324,8 +325,13 @@ def sponsors(out, data):
     # eight Senate bills whose text prints her beside Rep. Timothy Soucy, a
     # pair seat_into will not split; and Carrie Gendreau on SB 118, whose
     # saved text does not print her. Still wrong, on the page and here alike.
+    #
+    # AND THE SAME 2023-2024. build_site_v2 gives that term the General Court's own
+    # sponsor record where each bill's printed line agrees with it (past_sponsors.py);
+    # the download takes the same lists, in the same order, before the seats are dated.
     if isinstance(sp, dict):
         TS.merge_into(sp)
+        PSP.merge_into(sp)
         bills_ = load(Path(data) / "bills.json", {})
         TS.seat_into(sp, current=max(bills_) if bills_ else None)
     cols = ["term", "bill", "member_id", "member", "party", "chamber",
@@ -344,13 +350,15 @@ def sponsors(out, data):
                  "Who put their name to which bill, and who was prime. "
                  "Sponsoring is not voting and is not counted as one. source "
                  "says where each name was read: the General Court's sponsor "
-                 "file, its bill status page, or the sponsor line printed on "
-                 "the bill's text (every term before 2023), where the first "
-                 "name is taken as prime. member_id is empty where this site "
-                 "has not matched the name to a member: every sponsor before "
-                 "1999, when the roll-call files it matches against begin, "
-                 "and several thousand after, nearly all of them 2023-2024 "
-                 "names read from the bill status page.")
+                 "file or its bill status page for the current term; its "
+                 "sponsor record for 2023-2024, where each bill's printed "
+                 "sponsor line agrees with it; or the sponsor line printed on "
+                 "the bill's text, "
+                 "where the first name is taken as prime -- every term before "
+                 "2023, and the 2023-2024 bills whose printed line and record "
+                 "disagree. member_id is empty where this site has not matched "
+                 "the name to a member: every sponsor before 1999, when the "
+                 "roll-call files it matches against begin, and a few after.")
 
 
 # How the tables join, said once here rather than guessed at by everyone

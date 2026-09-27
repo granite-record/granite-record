@@ -30,6 +30,12 @@
                 "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json"]
     },
     {
+      "what": "The General Court's sponsor record for past terms, with the view that guards its join and the manifest that gives both their column order (fetch_past_db.py), and the legislators table that turns its employee numbers into the site's members (fetch_archive_db.py): past_sponsors.py reads all four, and 2023-2024's sponsor lists come from them.",
+      "owner": "laptop",
+      "paths": ["db/past/PastSponsors.psv", "db/past/PastLegislation.psv", "db/past/_manifest.json",
+                "db/Legislators.psv"]
+    },
+    {
       "what": "The study and statutory committees -- their details, meetings and members, and the dump's temporary view of them -- and the dump's manifest, whose StatStudMeetings date the calendar reads. The night's study-committee refresh swaps all four views in whole.",
       "owner": "night",
       "paths": ["db/StatStudDetails.psv", "db/StatStudMeetings.psv", "db/StatStudMembers.psv",
