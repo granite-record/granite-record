@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.5
+# GRANITE_VERSION: 2026-09-11.6
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -77,6 +77,27 @@ import proceedings as P
 DB = Path("db/Docket.psv")
 BILLS = Path("data/bills.json")
 OUT = Path("chapters.json")
+# The General Court's PastLegislation view, dumped by fetch_past_db.py. Its
+# ChapterNo is a check on the docket, never its replacement: a number is read
+# from it only where the docket records the signature and gives none.
+PAST = Path("db/past/PastLegislation.psv")
+PAST_MAN = Path("db/past/_manifest.json")
+
+# NUMBERS A PERSON HAS CONFIRMED where the docket's own line is wrong. In each,
+# the database's ChapterNo and the bill's own final version agree with each
+# other and against the docket, and the docket's number is past the last
+# chapter of that year's laws. Confirmed by the person on 26 September 2026;
+# CLERK_CORRECTIONS.md carries the evidence for the Clerk's office.
+CONFIRMED = {
+    ("1991-1992", "HB329"): (131, 1313,
+        "the docket reads CHAP.01313; the General Court's database gives "
+        "chapter 0131, the bill's final version prints (CHAPTER 131, LAWS OF "
+        "1991), and 1991's chapters end at 390"),
+    ("1991-1992", "HB1108"): (67, 673,
+        "the docket reads CHAP.00673; the General Court's database gives "
+        "chapter 0067, the bill's final version prints (CHAPTER 67, LAWS OF "
+        "1992), and 1992's chapters end at 290"),
+}
 
 # The number ends at a word boundary, or where the clerk ran it into the
 # first of a list of effective dates -- "Chapter 0241I. Section 2 Effective
@@ -243,6 +264,69 @@ def settle(found):
     return out, withheld
 
 
+def apply_confirmed(out):
+    """The person's confirmed corrections, over the docket's number. A
+    correction that no longer meets the number it corrects is reported, not
+    applied: the docket has changed, and the person should look again."""
+    applied, stale = [], []
+    for (term, bid), (right, wrong, why) in CONFIRMED.items():
+        rec = out.get(term, {}).get(bid)
+        if rec and rec.get("chapter") == wrong:
+            rec.update({"chapter": right, "docket": wrong, "corrected": why})
+            applied.append(f"{bid} of {term}: {wrong} -> {right}")
+        elif not (rec and rec.get("chapter") == right):
+            stale.append(f"{bid} of {term}: the docket now gives "
+                         f"{(rec or {}).get('chapter')}, not {wrong}")
+    return applied, stale
+
+
+def database_check(out, found, bills):
+    """Score the docket's numbers against the database's ChapterNo, joined by
+    the bill's stored LSR (lsr_year, lsr_num), never by its number: a number is
+    reused within a term. Where they differ and no person has confirmed which
+    is right, the chapter is withheld with both numbers named. Where the docket
+    records the signature and gives no number, the database's fills it.
+    None when the dump is not on this machine."""
+    if not (PAST.exists() and PAST_MAN.exists()):
+        return None
+    cols = json.loads(PAST_MAN.read_text(encoding="utf-8"))["PastLegislation"]["columns"]
+    iy, il, ic = cols.index("SessionYear"), cols.index("LSR"), cols.index("ChapterNo")
+    said = {}
+    with PAST.open(encoding="utf-8") as fh:
+        for line in fh:
+            f = line.rstrip("\r\n").split("|")
+            if len(f) != len(cols):
+                continue
+            n = f[ic].strip()
+            if n.isdigit() and int(n) and f[iy].strip().isdigit() and f[il].strip().isdigit():
+                said[(int(f[iy]), int(f[il]))] = int(n)
+    agree, differ, filled = 0, [], []
+    for term, tb in bills.items():
+        for bid, b in tb.items():
+            y, l = str(b.get("lsr_year") or ""), str(b.get("lsr_num") or "")
+            if not (y.isdigit() and l.isdigit()):
+                continue
+            db = said.get((int(y), int(l)))
+            if not db:
+                continue
+            rec = out.get(term, {}).get(bid) or {}
+            have = rec.get("chapter")
+            if have == db:
+                agree += 1
+            elif have:
+                out[term][bid] = {"chapter": None, "docket": have, "database": db,
+                                  "withheld": (f"the docket says chapter {have} and "
+                                               f"the General Court's database {db}"),
+                                  "line": rec.get("line", "")}
+                differ.append(f"{bid} of {term}: docket {have}, database {db}")
+            elif (found.get((term, bid)) or {}).get("law") and not rec.get("withheld") \
+                    and not rec.get("override_failed"):
+                out[term][bid] = {"chapter": db, "source": "the General Court's database",
+                                  "line": ""}
+                filled.append(f"{bid} of {term}: {db}")
+    return agree, differ, filled
+
+
 def enrolled_check(out):
     """Score against the enrolled text under legislation/, which nothing
     here wrote. Its heading is "CHAPTER 339 HB 110-FN - FINAL VERSION".
@@ -304,6 +388,24 @@ def main():
     bills = json.loads(BILLS.read_text(encoding="utf-8"))
     found, skipped = read(bills)
     out, withheld = settle(found)
+    applied, stale = apply_confirmed(out)
+    for x in applied:
+        print(f"  confirmed by a person: {x}")
+    for x in stale:
+        print(f"  A CONFIRMED CORRECTION NO LONGER MATCHES: {x}")
+    dbc = database_check(out, found, bills)
+    if dbc is None:
+        print(f"  {PAST} is not here: the database's chapter numbers were not "
+              "checked, and no signed bill's missing number was filled")
+    else:
+        agree_db, differ_db, filled_db = dbc
+        print(f"  against the General Court's database: {agree_db:,} agree, "
+              f"{len(differ_db)} differ and are withheld, {len(filled_db)} "
+              "signed bills with no number on the docket filled from it")
+        for x in differ_db[:10]:
+            print(f"    withheld: {x}")
+        for x in filled_db[:5]:
+            print(f"    filled: {x}")
 
     total = 0
     for term in sorted(bills):
