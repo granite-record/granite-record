@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Pull each member's own page on gencourt: photo, district, towns, contact,
 committees and the position they hold on each.
@@ -379,7 +379,10 @@ def main():
     ap.add_argument("--reparse", action="store_true",
                     help="re-run the parser over cached pages, no network")
     a = ap.parse_args()
-    refusal.check("The members fetch")
+    # --reparse asks nobody (--probe does), so neither a refusal nor GitHub's
+    # night stops it, as fetch_legislation.py's --parse is not stopped.
+    if a.probe or not a.reparse:
+        refusal.check("The members fetch")
 
     cache = Path(a.cache)
     cache.mkdir(parents=True, exist_ok=True)

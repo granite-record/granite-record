@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.8
+# GRANITE_VERSION: 2026-09-07.9
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -145,7 +145,10 @@ def main():
         import atexit
         lock = refusal.hold("fetch_archive_docket")
         lock.__enter__()
-        atexit.register(lock.__exit__, None, None, None)
+        # release(), not __exit__: this run leaves by sys.exit, and at exit a
+        # hold the night window stopped would raise SystemExit(4), which
+        # atexit only prints. A window stop exits 4 below instead.
+        atexit.register(lock.release)
 
     bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
     if a.term not in bills:
@@ -221,9 +224,11 @@ def main():
                 out_path.write_text(NL.join(lines) + NL, encoding="utf-8")
                 print(f"{NL}stopping before the next request: "
                       + ("archive/refused.json is on file" if refusal.MARK.exists()
+                         else "GitHub's night window opened" if lock.window
                          else "the lane holding archive/.lock is gone"),
                       flush=True)
-                sys.exit(2 if refusal.MARK.exists() else 3)
+                sys.exit(2 if refusal.MARK.exists() else
+                         refusal.STOOD_DOWN if lock.window else 3)
             page, err = get(f"{BASE}?{q}", a.timeout)
             fetched += 1
             # A REFUSAL IS NOT A FAILURE AMONG OTHERS. A server that accepts

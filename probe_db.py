@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.13
+# GRANITE_VERSION: 2026-09-06.15
 """
 What is actually in the General Court's public database.
 
@@ -50,6 +50,7 @@ import os
 import subprocess
 import sys
 import child
+import refusal
 from pathlib import Path
 
 # From gc.nh.gov/downloads/ODBC and Data Table Structure.pdf, which publishes
@@ -259,6 +260,16 @@ $out | ConvertTo-Json -Depth 6 -Compress
 
 def run(connstr, queries):
     """One PowerShell process, one connection, every query."""
+    # GITHUB'S NIGHT. The night takes the study committees' views from this
+    # host and the weekly job the rosters, so on a stood-down laptop no query
+    # starts inside its window, or in the half hour before it. Every query of
+    # the host passes through run(), run_to_file() or _bridge() -- the last
+    # under run_to_file_counted() and run_to_jsonl() -- and each asks first,
+    # which is why the check is here and not in each fetch_*_db.py; preflight
+    # holds every function here that starts PowerShell to it. The window
+    # only: the web server's refusal record is a different host's
+    # (CLAUDE.md), so it does not govern this one.
+    refusal.window_check("A query of the General Court's database")
     payload = "~~".join(f"{n}::{q}" for n, q in queries)
     p = subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS],
@@ -377,6 +388,7 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
     a line break between two words is the only space between them.
     """
     import os
+    refusal.window_check("A query of the General Court's database")   # as run()
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     proc = child.popen(
@@ -557,6 +569,7 @@ def _bridge(script, env, on_line, budget):
     """
     import collections
     import threading
+    refusal.window_check("A query of the General Court's database")   # as run()
     proc = child.popen(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
@@ -610,6 +623,9 @@ def run_to_file_counted(connstr, count_sql, sql, path, timeout=1800,
     Returns (count, rows, error): the server's count, the rows PS_STREAM wrote,
     and what went wrong. The file is run_to_file's in every byte.
     """
+    # Before the file is touched, as well as in _bridge: stopped for the
+    # window, a run must leave what was on disk as it was.
+    refusal.window_check("A query of the General Court's database")
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     got = {"count": None, "done": None, "err": None}
@@ -645,6 +661,9 @@ def run_to_jsonl(connstr, count_sql, sql, path, types=None, columns=None,
     reader must name, in order. Returns (count, rows, error): the server's
     COUNT(*), the rows written to `path`, and what went wrong.
     """
+    # Before `path` is opened for writing, which empties it, as well as in
+    # _bridge (run_to_file_counted says why).
+    refusal.window_check("A query of the General Court's database")
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     types = {k: (v or "").lower() for k, v in (types or {}).items()}
