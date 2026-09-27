@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -25,6 +25,24 @@ import sys
 from collections import defaultdict, OrderedDict
 from datetime import date, datetime
 from pathlib import Path
+
+# CHAPTERS A PERSON HAS CONFIRMED over the docket's own number. The facts table
+# prints extract_chapters' confirmed number, so the history beside it must
+# print the same one: 1991 HB 329's history said "Chapter 1313" under a facts
+# table saying 131. extract_chapters.CONFIRMED holds the evidence for each.
+try:
+    from extract_chapters import CONFIRMED as _CONFIRMED_CHAPTERS
+except Exception:                                   # noqa: BLE001
+    _CONFIRMED_CHAPTERS = {}
+
+
+def confirmed_chapter(term, bill, n):
+    """The person-confirmed chapter where the docket's number is the one the
+    correction replaces; otherwise the number as the docket gives it."""
+    fix = _CONFIRMED_CHAPTERS.get((term, bill))
+    if fix and str(n or "").strip().lstrip("0") == str(fix[1]):
+        return str(fix[0])
+    return n
 
 # --------------------------------------------------------------- glossary
 
@@ -1800,6 +1818,9 @@ def build(bill, rows):
               if vocab is not None else None) or classify(r["desc"])
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
+        if ev.get("chapter"):
+            ev["chapter"] = confirmed_chapter(
+                P.term_of(str(r.get("session") or session or "")), bill, ev["chapter"])
         # Off the raw line: clean() has already removed it from ev["_raw"].
         ev["cite"], ev["cite_page"] = cite_of(r["desc"])
         ev["body"] = r["body"]

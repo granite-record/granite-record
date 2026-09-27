@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.269
+# GRANITE_VERSION: 2026-09-04.270
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26433,6 +26433,24 @@ def _chapters_database():
         return "ok", "confirmed 131 over the docket's 1313, a disagreement withheld, a signed bill filled, the join by stored LSR"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a chapter a person confirmed reaches the history as well as the facts table")
+def _chapters_in_history():
+    """narrative.confirmed_chapter gives 1991 HB 329 chapter 131 where its docket
+    says 1313, and 1992 HB 1108 chapter 67 where it says 673, so the history
+    cannot say one number beside a facts table that says another; any other
+    bill, and any other number, is left as the docket gives it."""
+    import narrative as NA
+    assert NA.confirmed_chapter("1991-1992", "HB329", "01313") == "131", \
+        "1991 HB 329's history would still say chapter 1313"
+    assert NA.confirmed_chapter("1991-1992", "HB1108", "00673") == "67", \
+        "1992 HB 1108's history would still say chapter 673"
+    assert NA.confirmed_chapter("1991-1992", "HB329", "0131") == "0131", \
+        "a number the correction does not replace was changed"
+    assert NA.confirmed_chapter("1993-1994", "HB329", "01313") == "01313", \
+        "a correction reached a bill of another term"
+    return "ok", "1991 HB 329 and 1992 HB 1108 say the confirmed chapter in their histories too"
 
 
 @check("build", "a chapter the clerk spelled CH., Chap, Chapt: or Chp. is read on the law line and nowhere else")
