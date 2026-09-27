@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -54,7 +54,16 @@ from collections import Counter
 from pathlib import Path
 
 # "2025-3111h)" -- the marker that opens an amendment in the calendar.
-OPEN_RE = re.compile(r"\b(?P<num>\d{4}-\d{3,4}[a-z]?)\s*\)")
+#
+# AND "2023- 0533h)", which is how pdftotext gives 153 of them: 111 printings
+# in the 2023 calendars, 29 in 2024, 12 in 2025 and one in 2015 carry a space
+# after the hyphen. A marker this could not see was no boundary at all, so
+# the amendment before it ran on through the next one and the one after:
+# 2023-0471h, on HB 610, published 80,199 characters that held HB 614's and
+# HB 639's amendments, where the General Court's own copy is 947. The number
+# is put back together without the space, which is how the docket cites it.
+# (The database's copy of 2023-0471h is 978 characters.)
+OPEN_RE = re.compile(r"\b(?P<year>\d{4})-[ \t]?(?P<seq>\d{3,4}[a-z]?)\s*\)")
 
 # "Proposed by Rep. Brown", and also "Proposed by the Committee on Health,
 # Human Services and Elderly Affairs-c". A committee proposes more amendments
@@ -156,6 +165,67 @@ NEXT_HEADING = re.compile(
     r"\s*(?:Floor\s+)?Amendment\s+to\s+(?:SS)?(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)"
     r"\s*\d+(?:-[A-Z]+)*\s*\(\s*$", re.I)
 
+# WHERE AN AMENDMENT ENDS, whether or not the next number could be read.
+#
+# The next amendment's heading is a line of its own -- "Amendment to HB
+# 614-FN", centred -- with its number in brackets on that line or within the
+# next few, or "Proposed by" under it where the number is printed elsewhere:
+#
+#                          Amendment to HB 614-FN
+#                                (2023- 0533h)
+#          Proposed by the Committee on Health, Human Services ... - r
+#
+# So a boundary is that LINE, with a number or a proposer after it. Not the
+# phrase: an amendment may name another bill's amendment in a sentence, and a
+# sentence can wrap so that the words open a line, and cutting at them would
+# end the amendment there. A heading line followed by the next amendment's
+# number or proposer is the calendar's layout and nothing a drafter writes.
+#
+# It is looked for only AFTER the amendment's own drafting begins. The 2016
+# calendars print an amendment's heading twice, the second time under the
+# proposer and straight above "Amend RSA ...", and that one is its own.
+_BILL = r"(?:SS)?(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)[ \t]*\d+[a-z]?(?:-[A-Z]+)*"
+_NUM = r"\([ \t]*\d{4}[ \t]*-[ \t]*\d{3,4}[a-z]?[ \t]*\)"
+#
+# The heading line can carry a few stray words from the other column --
+# "Amendment to HB 197                    such", "Amendment to HB 1690-FN
+# Cocktail" -- and those are allowed, because the number or the proposer
+# under it is what makes it a heading, not the line being empty after it.
+HEADING = re.compile(
+    rf"^[ \t\f]*(?:Floor[ \t]+)?Amendment[ \t]+to[ \t]+{_BILL}[ \t]*"
+    rf"(?:{_NUM}[ \t\r]*$"
+    rf"|(?:[ \t]+[^\n(]{{1,45}}?)?[ \t\r]*$"
+    rf"(?=(?:\n[^\n]*){{0,3}}?\n[ \t\f]*(?:{_NUM}|Proposed[ \t]+by\b)))",
+    re.M | re.I)
+
+# And where the calendar goes back to its own business. The last amendment in
+# a calendar runs to whatever follows it, which is not another amendment: HR 15
+# of 2022's 2022-0131h published 5,775 characters, where the General Court's
+# own copy is about 550, and the rest was the next session day's parking and
+# health screening. These headings are printed in
+# capitals on a line of their own and were checked against every archived
+# bill's text, 30,391 of them, where none of them occurs.
+#
+# NOTICE alone does occur in bills -- the homestead notice RSA 529:20-a
+# requires is headed with it, and so is 2011 HB 529's methamphetamine warning
+# -- so it ends an amendment only where the calendar's own notice follows it:
+# the Clerk's office selling the Permanent Journals, or an annual ceremony.
+CALENDAR_BUSINESS = re.compile(
+    r"^[ \t\f]*(?:"
+    r"SESSION[ \t]+DAY[ \t]+LOGISTICS\b"
+    r"|(?:COMMITTEE[ \t]+MEETINGS|OFFICIAL[ \t]+NOTICES|REVISED[ \t]+FISCAL[ \t]+NOTES"
+    r"|LAID[ \t]+ON[ \t]+TABLE|HEALTH[ \t]+SELF-SCREENING)[ \t\r]*$"
+    r"|NOTICE[ \t\r]*\n\s*(?:The[ \t]+House[ \t]+Clerk|The[ \t]+\d+(?:st|nd|rd|th)[ \t]+Annual\b)"
+    r")", re.M)
+
+
+def end_of(body, start):
+    """Where the amendment in `body` stops: the next heading, or the calendar's
+    own business, whichever comes first after `start`; else the end."""
+    ends = [m.start() for m in (HEADING.search(body, start),
+                                CALENDAR_BUSINESS.search(body, start)) if m]
+    return min(ends) if ends else len(body)
+
 
 def clean(text):
     """Join the lines back into prose without the page furniture."""
@@ -168,13 +238,19 @@ def clean(text):
 
 def amendments_in(text, source):
     """Every amendment printed in one calendar, from marker to next marker."""
-    marks = [(m.start(), m.group("num"), m.end()) for m in OPEN_RE.finditer(text)]
+    marks = [(m.start(), f"{m.group('year')}-{m.group('seq')}", m.end())
+             for m in OPEN_RE.finditer(text)]
     out = {}
     for i, (pos, num, after) in enumerate(marks):
         end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
         body = text[after:end]
-        if not DRAFTING.search(body[:600]):
+        drafting = DRAFTING.search(body[:600])
+        if not drafting:
             continue                      # a reference, not the amendment
+        # Read a little past the next marker, so a heading whose number that
+        # marker is still has its number to be recognised by.
+        window = text[after:end + 400]
+        body = body[:end_of(window, drafting.start())]
         pm = PROPOSER_RE.search(body[:300])
         who = re.sub(r"\s+", " ", pm.group("who")).strip(" .,") if pm else ""
         if pm:

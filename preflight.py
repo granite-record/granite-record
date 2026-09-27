@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.262
+# GRANITE_VERSION: 2026-09-04.263
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10334,6 +10334,91 @@ def _prose_bill_number(fetch_committee_reports):
         f"the minority report is cut short at {len(text)} characters: "
         f"...{text[-70:]!r}")
     return "ok", "one section per heading, and the prose stays whole"
+
+
+# The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's
+# last amendment: a heading on its own line with the number under it, one of
+# them printed "2023- 0533h" by pdftotext, then the calendar's own business.
+AMENDMENT_PAGE = """\
+                                                        Amendment to HB 610-FN
+                                                                   (2023-0471h)
+
+             Proposed by the Committee on Health, Human Services and Elderly Affairs - c
+
+Amend the bill by replacing section 2 with the following:
+   2 Registry Identification Cards; Qualifications for Minors. Amend RSA 126-X:5, V(a) to read as follows:
+           (a) A custodial parent or legal guardian responsible for health care decisions for the qualifying patient
+submits a written certification from 2 providers, one of whom shall be a [pediatrician] provider who provides
+pediatric care, as provided in the capital budget and in
+Amendment to HB 25-A as passed.
+
+                                                                    2023-0471h
+                                                            AMENDED ANALYSIS
+   This bill expands the definition of provider under the therapeutic cannabis program.
+
+                                                        Amendment to HB 614-FN
+                                                                  (2023- 0533h)
+
+             Proposed by the Committee on Health, Human Services and Elderly Affairs - r
+
+Amend the bill by replacing all after the enacting clause with the following:
+   1 Notice of Homestead Exemption. The party shall provide the following notice by certified mail:
+NOTICE
+   IF YOU OR YOUR SPOUSE OWNS AND RESIDES IN THIS PROPERTY, YOU MAY BE ENTITLED TO A HOMESTEAD EXEMPTION.
+   2 Effective Date. This act shall take effect July 1, 2023.
+
+                   SESSION DAY LOGISTICS MARCH 10, 2022
+
+The House will meet on Thursday, March 10th at 9:00 a.m. in Representative's Hall.
+PARKING
+All legislators should park where they are assigned to park.
+"""
+
+
+@check("reports", "an amendment ends where the next one's heading or the "
+                  "calendar's own business begins", needs=("extract_amendments",))
+def _amendment_ends(extract_amendments):
+    """Amendment texts ran on past their end and into other bills' amendments.
+
+    An amendment ran from its number to the next number, and pdftotext prints
+    153 of those numbers as "2023- 0533h", which the marker could not see. So
+    2023-0471h on HB 610 was published at 80,199 characters, carrying HB 614's
+    and HB 639's amendments; PastAmendments has it at 978. The last amendment
+    in a calendar ran on into whatever came next -- HR 15 of 2022 into the
+    next day's parking and health screening.
+
+    Measured against PastAmendments (joined by billText id + year and checked
+    against the database copy's own heading): 46 of the 2,068 texts of
+    2016-2024 shown on a bill page, on 45 pages, were more than 20% longer
+    than the General Court's own copy, and 1 is now. That one, 2017-2453h on
+    HB 407, is not a run-on: the calendar printed a different, complete
+    amendment under that number. 50 shown texts of all years carried another
+    bill's heading; none does now.
+
+    The page below needs no data, so this runs under --code. It also holds the
+    two cases a cut must NOT make: a sentence that quotes another bill's
+    "Amendment to HB 25-A", and a bill's own NOTICE form in capitals.
+    """
+    EA = extract_amendments
+    got = EA.amendments_in(EA.repair_hyphens(AMENDMENT_PAGE), "HC012.pdf")
+    assert "2023-0533h" in got, (
+        "the number printed '2023- 0533h' opened no amendment: " + str(sorted(got)))
+    a, b = got["2023-0471h"]["text"], got["2023-0533h"]["text"]
+    assert "HB 614" not in a and "Kidney" not in a and "0533h" not in a, (
+        "2023-0471h ran on into the next amendment: ..." + a[-120:])
+    assert "in Amendment to HB 25-A as passed" in a and a.rstrip().endswith(
+        "therapeutic cannabis program."), (
+        "an amendment that quotes another bill's heading in a sentence was cut "
+        "there, or lost its analysis: ..." + a[-160:])
+    assert "SESSION DAY" not in b and "park" not in b, (
+        "the last amendment ran on into the calendar's session-day notice: ..."
+        + b[-120:])
+    assert "HOMESTEAD EXEMPTION" in b and b.rstrip().endswith("July 1, 2023."), (
+        "a bill's own NOTICE form ended the amendment early: ..." + b[-160:])
+    assert got["2023-0533h"]["proposed_by"].startswith("the Committee on Health"), (
+        got["2023-0533h"]["proposed_by"])
+    return "ok", ("a broken number still opens its amendment, and each ends at "
+                  "the next heading or the calendar's own business")
 
 
 @check("build", "a bill with no filing year gets no feed, not one at the root")
