@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.270
+# GRANITE_VERSION: 2026-09-04.271
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20726,7 +20726,7 @@ def _offline_modes_ask_nobody():
             {"at": "t", "epoch": _time.time(), "where": "preflight", "why": "403"}),
             encoding="utf-8")
         (tmp / "archive" / "runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
-        env = dict(os.environ, GRANITE_CLOCK_UTC="2026-09-29T07:00:00Z", GITHUB_ACTIONS="")
+        env = dict(os.environ, GRANITE_CLOCK_UTC="2026-09-29T09:00:00Z", GITHUB_ACTIONS="")
         for script, offline, online in runs:
             for args, stopped in ((offline, False), (online, True)):
                 r = seal.run([sys.executable, str(here / script), *args], cwd=tmp,
@@ -21518,7 +21518,7 @@ def _lane_daily():
             "    pathlib.Path('archive/cloud/pull.json').unlink()\n"
             "if how in ('window', 'window-with'):\n"
             "    import refusal\n"
-            "    os.environ['GRANITE_CLOCK_UTC'] = '2026-09-29T06:30:00Z'\n"
+            "    os.environ['GRANITE_CLOCK_UTC'] = '2026-09-29T08:30:00Z'\n"
             "    if how == 'window-with':\n"
             "        with refusal.hold(name) as held:\n"
             "            assert not held.still(), 'the window did not stop the hold'\n"
@@ -21596,19 +21596,19 @@ def _lane_daily():
         # Stood down: GitHub's night window, then the bucket's refusal record.
         (root / "archive" / "runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
         held = ["stub.py held-1 0", "stub.py held-2 0", "stub.py make-stop-3 0"]
-        rc4, trace4 = lane_run(held, clock="2026-09-29T06:30:00Z")
+        rc4, trace4 = lane_run(held, clock="2026-09-29T08:30:00Z")
         log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8")
         assert rc4 == 4 and trace4 == [] and "window" in log.splitlines()[-2], (
             f"inside GitHub's night window the lane ran {trace4} (exit {rc4})")
         assert not (root / "archive" / ".lock").exists(), "the lane held for GitHub kept its lock"
-        rc5, trace5 = lane_run(held, clock="2026-09-29T12:00:00Z")
+        rc5, trace5 = lane_run(held, clock="2026-09-29T14:00:00Z")
         log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8")
         assert rc5 == 4 and trace5 == [] and "cloud.py pull" in log.splitlines()[-2], (
             f"with the bucket's refusal record never read the lane ran {trace5} (exit {rc5})")
         (root / "archive" / "cloud").mkdir()
-        read = json.dumps({"refusal": {"read": 1790682000, "kind": "r2"}})  # 2026-09-29 11:40 UTC
+        read = json.dumps({"refusal": {"read": 1790689200, "kind": "r2"}})  # 2026-09-29 13:40 UTC
         (root / "archive" / "cloud" / "pull.json").write_text(read, encoding="utf-8")
-        rc6, trace6 = lane_run(held, clock="2026-09-29T12:00:00Z")
+        rc6, trace6 = lane_run(held, clock="2026-09-29T14:00:00Z")
         assert rc6 == 0 and trace6 == ["held-1", "held-2", "make-stop-3"], (
             f"after the window, with the refusal record read since, the lane ran {trace6} "
             f"(exit {rc6})")
@@ -21622,7 +21622,7 @@ def _lane_daily():
                     if ln.startswith(_time.strftime("%Y-%m-%d"))} if p.exists() else set()
         two = ["daily 00:00 stub.py daily-unread 0 unread", "daily 00:00 stub.py daily-next 0",
                "stub.py after-daily 0"]
-        rc7, trace7 = lane_run(two, clock="2026-09-29T12:00:00Z")
+        rc7, trace7 = lane_run(two, clock="2026-09-29T14:00:00Z")
         assert rc7 == 4 and trace7 == ["daily-unread"], (
             f"a daily step started without asking whose turn it was: the lane ran {trace7} "
             f"(exit {rc7})")
@@ -21632,7 +21632,7 @@ def _lane_daily():
         # A 4 that GitHub's turn explains -- here the step leaves the refusal
         # record unread as it goes -- was held: not recorded, and a stop.
         four = ["daily 00:00 stub.py daily-held 4 unread", "stub.py after-held 0"]
-        rc8, trace8 = lane_run(four, clock="2026-09-29T12:00:00Z")
+        rc8, trace8 = lane_run(four, clock="2026-09-29T14:00:00Z")
         assert rc8 == 4 and trace8 == ["daily-held"], (
             f"after a daily step that exited 4 the lane ran {trace8} (exit {rc8}); wanted a stop")
         assert "daily 00:00 stub.py daily-held 4 unread" not in recorded_today(), \
@@ -21643,7 +21643,7 @@ def _lane_daily():
         # recorded, the line named for taking out, and the lane goes on.
         gone = ["daily 00:00 stub.py daily-standdown 4", "daily 00:00 stub.py daily-after-it 0",
                 "stub.py make-stop-4 0"]
-        rc9, trace9 = lane_run(gone, clock="2026-09-29T12:00:00Z")
+        rc9, trace9 = lane_run(gone, clock="2026-09-29T14:00:00Z")
         log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8")
         assert rc9 == 0 and trace9 == ["daily-standdown", "daily-after-it", "make-stop-4"], (
             f"after a daily step stood down for good the lane ran {trace9} (exit {rc9})")
@@ -21668,7 +21668,7 @@ def _lane_daily():
                (["stub.py once-win-with 0 window-with", "stub.py after-with 0"], "once-win-with",
                 False, 4)]
         for lines_, name, is_daily, exited in cut:
-            rc, trace = lane_run(lines_, clock="2026-09-29T12:00:00Z")
+            rc, trace = lane_run(lines_, clock="2026-09-29T14:00:00Z")
             log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8").splitlines()
             said = [ln for ln in log if "night window stopped it" in ln]
             assert rc == 4 and trace == [name], (
@@ -24502,14 +24502,15 @@ try {
 def _night_window(R, PD):
     """One fetch at a time is the rule this address was blocked twice for
     breaking, and since 26 September GitHub's machine asks the General Court
-    every night (06:17 UTC, four hours allowed, and often started late) and
-    early on Monday (04:17, two). Its refusals go to the bucket, not to the
-    laptop. So on a stood-down laptop, and nowhere else:
+    every night (08:17 UTC since 27 September, four hours allowed, and often
+    started late) and early on Monday (04:17, two). Its refusals go to the
+    bucket, not to the laptop. So on a stood-down laptop, and nowhere else:
 
-      - the window is one definition, in UTC, 06:00 to 11:30 daily (an hour
-        for GitHub's late start) and from 04:00 on Monday, merged where the
-        weekly and the night run on; its sentence names it in Eastern time,
-        EDT or EST as the date has it, and says when it ends;
+      - the window is one definition, in UTC, 08:00 to 13:30 daily (an hour
+        for GitHub's late start) and 04:00 to 06:30 on Monday, two windows
+        there with the laptop free between them now that the night starts
+        at 08:17; its sentence names it in Eastern time, EDT or EST as the
+        date has it, and says when it ends;
       - refusal.check(), which every General Court fetcher calls, exits 4 in
         it and in the 30 minutes before it, and exits 4 outside it until the
         bucket's refusal record has been read (cloud.py pull) since the last
@@ -24539,20 +24540,28 @@ def _night_window(R, PD):
 
     def utc(s):
         return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
-    w = R.night_window(utc("2026-09-29T06:30"))                    # a Tuesday
-    assert w and w[0] == utc("2026-09-29T06:00") and w[1] == utc("2026-09-29T11:30"), w
-    for t in ("2026-09-29T05:59", "2026-09-29T11:30", "2026-09-29T12:00", "2026-09-27T04:30"):
+    w = R.night_window(utc("2026-09-29T08:30"))                    # a Tuesday
+    assert w and w[0] == utc("2026-09-29T08:00") and w[1] == utc("2026-09-29T13:30"), w
+    for t in ("2026-09-29T07:59", "2026-09-29T13:30", "2026-09-29T14:00", "2026-09-27T04:30"):
         assert R.night_window(utc(t)) is None, f"{t} UTC was called inside the window"
-    assert R.night_window(utc("2026-09-29T11:00")), \
-        "11:00 UTC, an hour-late night still running, was called outside the window"
-    w = R.night_window(utc("2026-09-28T04:30"))                    # a Monday: the weekly, then the night
-    assert w and w[0] == utc("2026-09-28T04:00") and w[1] == utc("2026-09-28T11:30"), w
-    said = R.describe_window(*R.night_window(utc("2026-09-29T06:30")))
-    assert "2:00 a.m. EDT" in said and "7:30 a.m. EDT" in said, said
+    assert R.night_window(utc("2026-09-29T13:00")), \
+        "13:00 UTC, an hour-late night still running, was called outside the window"
+    w = R.night_window(utc("2026-09-28T04:30"))                    # a Monday: the weekly
+    assert w and w[0] == utc("2026-09-28T04:00") and w[1] == utc("2026-09-28T06:30"), w
+    assert R.night_window(utc("2026-09-28T07:00")) is None, \
+        "07:00 UTC on a Monday, between the weekly and the night, was called inside a window"
+    w = R.night_window(utc("2026-09-28T08:30"))                    # and the night after it
+    assert w and w[0] == utc("2026-09-28T08:00") and w[1] == utc("2026-09-28T13:30"), w
+    said = R.describe_window(*R.night_window(utc("2026-09-29T08:30")))
+    assert "4:00 a.m. EDT" in said and "9:30 a.m. EDT" in said, said
+    said = R.describe_window(*R.night_window(utc("2026-12-08T09:00")))
+    assert "3:00 a.m. EST" in said and "8:30 a.m. EST" in said, said
     said = R.describe_window(*R.night_window(utc("2026-12-07T05:00")))
-    assert "Sunday 11:00 p.m. EST" in said and "Monday 6:30 a.m. EST" in said, said
-    assert R.last_window_end(utc("2026-09-29T12:00")) == utc("2026-09-29T11:30")
-    assert R.last_window_end(utc("2026-09-29T05:00")) == utc("2026-09-28T11:30")
+    assert "Sunday 11:00 p.m. EST" in said and "Monday 1:30 a.m. EST" in said, said
+    assert R.last_window_end(utc("2026-09-29T14:00")) == utc("2026-09-29T13:30")
+    assert R.last_window_end(utc("2026-09-29T07:00")) == utc("2026-09-28T13:30")
+    assert R.last_window_end(utc("2026-09-28T07:00")) == utc("2026-09-28T06:30"), \
+        "between Monday's two windows, the last to close was not the weekly's"
     assert R.eastern(utc("2026-03-08T06:59"))[1] == "EST" and \
         R.eastern(utc("2026-03-08T07:00"))[1] == "EDT" and \
         R.eastern(utc("2026-11-01T05:59"))[1] == "EDT" and \
@@ -24617,11 +24626,11 @@ def _night_window(R, PD):
         os.environ.pop("GITHUB_ACTIONS", None)
         R.MARK, R.LOCK = Path("archive") / "refused.json", Path("archive") / ".lock"
         Path("archive").mkdir()
-        at("2026-09-29T06:30:00")
+        at("2026-09-29T08:30:00")
         assert exits(lambda: R.check("t"))[0] is None, "the window held a laptop that has not stood down"
         (tmp / "archive/runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
         code, said = exits(lambda: R.check("The test fetch"))
-        assert code == R.STOOD_DOWN == 4 and "7:30 a.m. EDT" in said and "window" in said, (code, said)
+        assert code == R.STOOD_DOWN == 4 and "9:30 a.m. EDT" in said and "window" in said, (code, said)
         assert R.CLOCK_ENV in said, "a sentence judged at a test clock did not say so"
         PD.subprocess.run = PD.child.popen = asked
         out = tmp / "out.jsonl"
@@ -24638,22 +24647,22 @@ def _night_window(R, PD):
             "run_to_jsonl stopped for the window emptied the file it would have written"
 
         # The half hour before: nothing starts, the SQL host included.
-        at("2026-09-30T05:40:00")
+        at("2026-09-30T07:40:00")
         code, said = exits(lambda: R.check("t"))
-        assert code == 4 and "opens at 2:00 a.m. EDT" in said and "30 minutes" in said, (code, said)
+        assert code == 4 and "opens at 4:00 a.m. EDT" in said and "30 minutes" in said, (code, said)
         code, said = exits(lambda: PD.run("x", [("q", "SELECT 1")]))
         assert code == 4 and "30 minutes" in said, (code, said)
-        at("2026-09-30T05:15:00")
-        read_at("2026-09-29T11:45")
-        assert "opens at 2:00 a.m. EDT" in R.window_soon(), "a window 45 minutes off was not mentioned"
+        at("2026-09-30T07:15:00")
+        read_at("2026-09-29T13:45")
+        assert "opens at 4:00 a.m. EDT" in R.window_soon(), "a window 45 minutes off was not mentioned"
         assert exits(lambda: R.check("t"))[0] is None, "a fetch 45 minutes before the window was held"
-        at("2026-09-30T04:00:00")
+        at("2026-09-30T06:00:00")
         assert R.window_soon() == "", "a window two hours off was mentioned"
 
         # A run already going when the window opens stops at its next request,
         # and cannot then end as though it had finished: a block left normally
         # exits 4, and the file its starter named says the window stopped it.
-        at("2026-09-30T05:59:00")
+        at("2026-09-30T07:59:00")
         told = tmp / "window-stop.json"
         os.environ[R.WINDOW_STOP_ENV] = str(told)
         err = io.StringIO()
@@ -24663,7 +24672,7 @@ def _night_window(R, PD):
                     assert held.still(), "a held run was stopped before the window"
                     assert held.window is None and not told.exists(), \
                         "a run was marked stopped by a window that had not opened"
-                    at("2026-09-30T06:00:00")
+                    at("2026-09-30T08:00:00")
                     first, second = held.still(), held.still()
             raise AssertionError("a with-block the window stopped ended as though it had "
                                  "finished (status 0)")
@@ -24673,7 +24682,7 @@ def _night_window(R, PD):
             os.environ.pop(R.WINDOW_STOP_ENV, None)
         said = err.getvalue()
         assert not first and not second, "a held run went on asking inside the window"
-        assert "stops before its next request" in said and "2:00 a.m. EDT" in said, said
+        assert "stops before its next request" in said and "4:00 a.m. EDT" in said, said
         assert said.count("stops before its next request") == 1, "still() said why twice"
         assert "not as finished" in said, f"the exit 4 did not say why: {said[-300:]}"
         assert told.exists() and "the test fetch" in told.read_text(encoding="utf-8"), \
@@ -24700,33 +24709,33 @@ def _night_window(R, PD):
             held.still()
         held.release()
         assert not R.LOCK.exists(), "release() left the lock"
-        at("2026-09-30T05:59:00")
+        at("2026-09-30T07:59:00")
         with R.hold("t") as held:
             held.still()
         assert held.window is None, "a hold the window never stopped was marked stopped"
         (tmp / "archive/runs-in-the-cloud.json").unlink()
-        at("2026-09-30T06:30:00")
+        at("2026-09-30T08:30:00")
         with R.hold("the test fetch") as held:
             assert held.still(), "a laptop that has not stood down was stopped by the window"
         (tmp / "archive/runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
 
         # After the window: the web server's fetchers want a read of the bucket.
         (tmp / "archive/cloud/pull.json").unlink()
-        at("2026-09-29T12:00:00")
+        at("2026-09-29T14:00:00")
         code, said = exits(lambda: R.check("t"))
         assert code == 4 and "cloud.py pull" in said and "never" in said, (code, said)
         assert exits(lambda: R.window_check("t"))[0] is None, \
             "the SQL host's check wanted a pull, which the web server's refusals are for"
-        read_at("2026-09-29T09:00")
+        read_at("2026-09-29T11:00")
         code, said = exits(lambda: R.check("t"))
         assert code == 4 and "cloud.py pull" in said, "a read from inside the window was enough"
-        read_at("2026-09-29T11:45", kind="folder")
+        read_at("2026-09-29T13:45", kind="folder")
         code, said = exits(lambda: R.check("t"))
         assert code == 4 and "cloud.py pull" in said and R.refusal_read() is None, \
             "a pull from a --local-bucket folder counted as reading the night's refusal record"
-        read_at("2026-09-29T11:45")
+        read_at("2026-09-29T13:45")
         assert exits(lambda: R.check("t"))[0] is None, "a read since the window closed was not enough"
-        at("2026-09-29T06:30:00")
+        at("2026-09-29T08:30:00")
         R.MARK.write_text(json.dumps({"at": "x", "epoch": __import__("time").time(),
                                       "where": "w"}), encoding="utf-8")
         assert exits(lambda: R.check("t"))[0] == 2, "a standing refusal did not stop the fetch first"
@@ -24756,11 +24765,11 @@ def _night_window(R, PD):
             f"the lane's {name} does not ask whose turn it is before it starts a step"
     assert "STOOD_DOWN" in ast.unparse(fns["run_daily"]), \
         "the lane records a daily step held for GitHub's turn as run"
-    return "ok", ("the window is 2:00 to 7:30 a.m. EDT, from midnight on Mondays, and nothing "
-                  "starts in the half hour before; the fetchers, all four SQL bridges and the "
-                  "lane wait it out, a held run stops at its first minute, and the web server's "
-                  "fetchers wait for a read of the real bucket's refusal since; not without "
-                  "the stand-down, nor on GitHub")
+    return "ok", ("the window is 4:00 to 9:30 a.m. EDT, and midnight to 2:30 on Mondays too, "
+                  "and nothing starts in the half hour before; the fetchers, all four SQL "
+                  "bridges and the lane wait it out, a held run stops at its first minute, and "
+                  "the web server's fetchers wait for a read of the real bucket's refusal since; "
+                  "not without the stand-down, nor on GitHub")
 
 
 @check("build", "the committee pages fetch stops at a refusal, records it, and says when it found "
@@ -24904,7 +24913,7 @@ def _wf_environment(job_lines):
 
 @check("workflows", "the workflow files parse, pin every action to a commit, and time out")
 def _workflows_parse():
-    """A workflow that does not parse fails on GitHub, at two in the morning, with
+    """A workflow that does not parse fails on GitHub, at four in the morning, with
     nobody watching; an action named by a tag runs whatever the tag points at
     tonight. So each file parses -- with PyYAML where it is installed, and by a
     careful read of its indentation where it is not -- and every `uses:` names

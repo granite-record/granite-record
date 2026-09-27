@@ -373,7 +373,12 @@ site each night on a Windows machine GitHub lends free to public repositories,
 and deploys production only after the person approves the `production`
 environment. `weekly.yml` takes the committee rosters, the members who have
 left and the study committees early on Monday. The nightly's schedule is on
-(06:17 UTC, 2:17 a.m. Eastern in summer). The weekly's is still commented out,
+(08:17 UTC, 4:17 a.m. Eastern in summer and 3:17 in winter). It was 06:17
+until 27 September, when the first scheduled night got all 13 files under
+`dynamicdatadump/` as 3 bytes, an empty file's byte-order mark (the snapshot
+rightly installed none of them): the General Court evidently rewrites them
+around 2:00 to 2:30 a.m. Eastern; the laptop's snapshot at 2:04 a.m. on 20
+September had got two of them that way. The weekly's is still commented out,
 because its swap of `committees.json` would have dropped the clerk and the
 purpose; `fetch_committee_details.py` now writes those to their own
 `committee_details.json`, a laptop file in the kit that `build_committees.py`
@@ -436,14 +441,19 @@ Other General Court fetchers still run here, each with the person's go-ahead,
 and three things now keep them and the night apart.
 
 **GitHub's night window.** On a stood-down laptop no General Court request
-starts from 06:00 to 11:30 UTC daily (the night starts 06:17 and may run four
+starts from 08:00 to 13:30 UTC daily (the night starts 08:17 and may run four
 hours, and GitHub often starts a scheduled run late, so an hour is allowed for
-that) or from 04:00 UTC on Monday (the weekly, 04:17, two hours, then the
-night after it): 2:00 to 7:30 a.m. EDT in summer, 1:00 to 6:30 a.m. EST in
-winter, and on a Monday from midnight EDT, which in winter is 11:00 p.m. EST
-on the Sunday. Nor does one start in the 30 minutes before the window opens
-(`refusal.START_MARGIN_MINUTES`). `refusal.NIGHT_WINDOWS` is the one
-definition. `refusal.check()`, which every General Court fetcher calls after
+that) or from 04:00 to 06:30 UTC on Monday (the weekly, 04:17, two hours):
+4:00 to 9:30 a.m. EDT in summer, 3:00 to 8:30 a.m. EST in winter, and on a
+Monday also midnight to 2:30 a.m. EDT, which in winter is 11:00 p.m. EST on
+the Sunday to 1:30 a.m. Nor does one start in the 30 minutes before a window
+opens (`refusal.START_MARGIN_MINUTES`). Since the night moved to 08:17 the
+two Monday windows are separate, so a fetch may start between them, from
+2:30 to 3:30 a.m. EDT, once the bucket's refusal record has been read since
+the weekly's closed; a weekly started late enough to run past 06:30 UTC is
+not covered there, as the night's window used to cover it.
+`refusal.NIGHT_WINDOWS` is the one definition, and moves with the cron line
+in `nightly.yml`. `refusal.check()`, which every General Court fetcher calls after
 parsing its arguments (after an offline branch that asks nobody, such as
 `--parse` or `--reparse`), exits 4 inside the window and the half hour before
 it, with a sentence naming the window in Eastern time and when it ends;
@@ -465,7 +475,7 @@ next request if it asks `refusal.hold().still()` before each one, as the
 fetchers that hold `archive/.lock` do (legislation, the docket and calendar
 archives, the Senate calendars, leadership, sponsors by member, the
 snapshot); one that does not keeps asking, so a long one is best started
-after 7:30 a.m. **A run the window stopped does not end as finished.** The
+after 9:30 a.m. **A run the window stopped does not end as finished.** The
 hold remembers the stop: a `with refusal.hold()` block left normally, or by
 `sys.exit(0)`, exits 4 instead (the Senate calendars and sponsors by member
 used to return 0 from the loop that stopped), and a 2, a 3 or an exception
@@ -474,7 +484,7 @@ each step (`logs/gc_lane.window-stop`), which the step's hold writes when the
 window stops it, so a step cut short is recorded in neither
 `logs/gc_lane.done` nor `logs/gc_lane.daily` whatever status it ended with
 -- 0, 1 and 3 included -- and the lane stops with 4. The weak point is still GitHub itself: a night started more
-than an hour late could still be asking after 11:30. `python3 refusal.py`
+than an hour late could still be asking after 13:30. `python3 refusal.py`
 prints the window and whether it is open.
 
 **Bringing the nights back: `python3 cloud.py pull`.** It is the laptop's only

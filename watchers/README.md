@@ -38,13 +38,15 @@ from the lane or by hand -- and the rule is still one fetch at a time, across
 both machines now. On a stood-down laptop:
 
 - **No General Court request starts in GitHub's night window, or in the half
-  hour before it**: the window is 06:00 to 11:30 UTC every day (the night
-  starts at 06:17 and may run four hours, and GitHub often starts it late, so
-  an hour is allowed for that), and from 04:00 UTC on Monday for the weekly
-  job. In Eastern time that is 2:00 to 7:30 a.m. EDT in summer and 1:00 to
-  6:30 a.m. EST in winter; on a Monday it opens at midnight EDT, which in
-  winter is 11:00 p.m. EST on the Sunday. `refusal.NIGHT_WINDOWS` is the one
-  definition.
+  hour before it**: the window is 08:00 to 13:30 UTC every day (the night
+  starts at 08:17 and may run four hours, and GitHub often starts it late, so
+  an hour is allowed for that), and 04:00 to 06:30 UTC on Monday for the
+  weekly job. In Eastern time that is 4:00 to 9:30 a.m. EDT in summer and
+  3:00 to 8:30 a.m. EST in winter; on a Monday there is also midnight to 2:30
+  a.m. EDT, which in winter is 11:00 p.m. EST on the Sunday to 1:30 a.m. The
+  night started at 06:17 until 27 September, when it met the General Court
+  rewriting its dynamicdatadump files, which it evidently does around 2 a.m.
+  Eastern. `refusal.NIGHT_WINDOWS` is the one definition.
   `refusal.check()`, which every General Court fetcher calls, exits 4 inside
   it and in the 30 minutes before it, with the window in Eastern time and
   when it ends; the lane stops before its next step, daily ones included
@@ -75,8 +77,8 @@ both machines now. On a stood-down laptop:
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the
-morning Eastern time starts its last step before 1:30 a.m. EDT (12:30 a.m.
-EST), and a fetch still running under it stops at 2 a.m. EDT (1 a.m. EST) if
+morning Eastern time starts its last step before 3:30 a.m. EDT (2:30 a.m.
+EST), and a fetch still running under it stops at 4 a.m. EDT (3 a.m. EST) if
 it asks `hold().still()`. On the night into a Monday both come earlier,
 because the weekly's window opens at midnight EDT (11 p.m. EST on the
 Sunday): the last step starts before 11:30 p.m. EDT on the Sunday (10:30 p.m.
