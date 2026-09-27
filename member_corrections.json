@@ -1851,6 +1851,30 @@
 
         "He is keyed 917 rather than by a six-digit number because that is his PersonID. db/Legislators.psv gives PersonID 917, Employeeno 377246; from 2015 the roll call history fills the PersonID column, so he lands in that id space while the six above him, whose rows leave it empty, fall back to the Employeeno."
       ]
+    },
+
+    "377080": {
+      "name": "Carey, Lorrie J.",
+
+      "party": "Democrat",
+
+      "county": "Merrimack",
+
+      "district": "1",
+
+      "was": "Menear, H. Robert (Democrat, Strafford 25)",
+
+      "terms": "2013-2014, when her bills print Merr 26, and 2023-2024, when they print Merr. 1. She is on the site through her roll-call ballots and the bills she sponsored.",
+
+      "why": [
+        "The name and seat this id carried were never read from any document. They came from one row of member_party.json with source 'solved', which is fetch_rollcall_parties.py inferring a member from voting patterns, and the inference put the wrong person's name on 950 of her ballots. H. Robert Menear is employee number 377145 (PersonID 750) and has his own page; 377080 and 377145 voted on the same 656 roll calls, so they are two people. Found on 26 September 2026 by comparing the General Court's new PastSponsors view with the printed bills.",
+
+        "The General Court's own sponsor record names her. db/past/PastSponsors.psv puts employee 377080 on 16 bills whose printed text is saved here, and every one of them prints 'Rep. Carey': Merr 26 on the bills of 2013-2014, and Merr. 1 on those of 2024. For example legislation/2024/HB1429.html line 46 prints 'Rep. Carey, Merr. 1', and PastSponsors.psv line 131378 reads '2024|2293|5|377080|0|True||False'.",
+
+        "Her full name is printed three times. 'Rep. Lorrie J. Carey' signs the State-Federal Relations and Veterans Affairs committee report on 2013 SB 88 (committee_reports.json). The House Journal of 3 January 2024 lists 'Carey, Lorrie' among the Merrimack members in its roll calls (journals/2024/HJ 01 January 3, 2024.txt). And Boscawen's select board lists 'Lorrie J. Carey' (town_officials_web.json, read from boscawennh.gov); data/towns.json puts Boscawen in Merrimack 1, with the floterial Merrimack 26.",
+
+        "Seat and party come from the organisation-day membership roll of 7 December 2022 (journals/2023/HJ 01 December 7, 2022.txt line 214), which prints 'Lorrie Carey, d' at the head of the Merrimack block. The text extraction runs the district labels two lines out of step there; her place at the head of the block is the one-seat Merrimack 1, which is also what her 2024 bills print. The same journal (lines 73-74) welcomes the family of 'Rep-elect Carey'. The party the inference gave, Democrat, therefore happened to be right; the name and the seat were not."
+      ]
     }
   },
 
