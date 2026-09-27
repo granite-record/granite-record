@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.265
+# GRANITE_VERSION: 2026-09-04.266
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5498,8 +5498,6 @@ ic_SOURCES = {
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
-    "db/past/PastCommitteeReports.jsonl": "fetch_past_db.py, which dumps the "
-                                          "six Past* views",
     "committee_reports.json": "fetch_committee_reports.py, which does not declare it",
     "archive/livestreams.json": "livestreams.py --since-state, the nightly's "
                               "step before build_all",
@@ -6301,14 +6299,16 @@ var fixtures = [
                           committee:"Criminal Justice and Public Safety",
                           text:"HB365 seeks to authorize federal agents to enforce New Hampshire laws.",
                           vote_yeas:17, vote_nays:4,
-                          note:"House Calendar 12, 2021 printed HB 197's report here. This is the report as the committee filed it with the Clerk on February 23, 2021."},
+                          note:"House Calendar 12, 2021 printed HB 197's report here. This is the report as the committee filed it with the Clerk, dated February 8, 2021."},
                          {side:"Minority", author:"Rep. David Meuse",
                           committee:"Criminal Justice and Public Safety", text:"",
                           note:"House Calendar 12, 2021 printed HB 81's report here. The committee's own copy of this report is not in the record here, so no reasoning is shown for it."}]}]},
    want:["printed HB 197's report here", "as the committee filed it with the Clerk",
-         "HB365 seeks to authorize federal agents",
+         "dated February 8, 2021", "HB365 seeks to authorize federal agents",
          "printed HB 81's report here", "no reasoning is shown for it"],
-   wantNot:["gives no reasoning"]}
+   // Not the day the dump says it was released, which came after House
+   // Calendar 12 had printed the report.
+   wantNot:["gives no reasoning", "February 23"]}
 ];
 
 // BOTH ways a detail can be drawn, on EVERY shape of bill. The expanded view
@@ -10559,6 +10559,127 @@ def _wrapped_bill_number(fetch_committee_reports):
     return "ok", "the wrapped number stays in SB 453's report, and both sides are read"
 
 
+# Headings the parser did not know, each as a calendar prints it: "HB-604-FN,"
+# (House Calendar 32 of 2001), "SB 131--FN," (56 of 1997), "SJR-2," (51 of
+# 1997), "HCACR 15," (3 of 2016) and an address, "HA 1," (9 of 2018), after
+# HB 1813's report.
+MISSED_HEADINGS_PAGE = """\
+   HB 218-FN, relative to the motor vehicle road toll law and motor vehicle registration fees. OUGHT TO PASS WITH
+   AMENDMENT
+
+   Rep. John S. Langone for Ways and Means: The committee feels that this bill, as amended, accomplishes the intent of the Dept.
+   of Safety and the Transportation Committee. It also removes the "Dedicated Funds" section of the bill. Vote 15-2.
+
+   HB-604-FN, relative to increasing certain fees and making other changes to fish and game licenses. OUGHT TO PASS
+
+   Rep. Jeff Gilbert for Ways and Means: The Committee voted on a bipartisan basis 12-6 to approve the proposed license fee
+   increases of approximately 40% over a two year period. These fees represent nearly all of the sources of funding for the
+   Department of Fish and Game. Vote 12-6.
+
+   SB 131--FN, allowing certain state employees to take paid leave to participate in disaster relief service work. RE-REFER TO COMMITTEE
+
+   Rep. Jon P. Beaulieu for Executive Departments and Administration: The committee understands the importance of the work
+   that the American Red Cross provides with its disaster relief services. However, there were a number of unanswered
+   questions as to the effect of such legislation. Vote 12-4.
+
+   SJR-2, relative to federal funding under the Individuals with Disabilities Education Act. OUGHT TO PASS WITH AMENDMENT
+
+   Rep. Stanley Searles for Education: This Senate Joint Resolution urges Congress to keep its promises, appropriate the
+   40% average per pupil expenditure funds as established in law. Vote 15-0.
+
+HCACR 15, relating to the election of judges. Providing that judges be elected for specific terms. INEXPEDIENT TO LEGISLATE.
+Rep. Timothy Horrigan for Judiciary. This resolution is the most recent version of an idea which has been proposed and
+rejected many times before: electing judges. The committee concluded the idea is not suitable. Vote 16-0.
+
+HB 1813-FN, relative to the law regarding Medicaid expansion. INEXPEDIENT TO LEGISLATE.
+Rep. John Fothergill for Health, Human Services and Elderly Affairs. The committee agreed the topic needs
+to be part of the larger discussion, but this is not the right time. Vote 22-0.
+
+JUDICIARY
+
+HA 1, seeking the removal from office of superior court judge James D. O'Neill, III. OUGHT NOT TO PASS.
+Article 73 of the State Constitution provides that in a House Address, "the cause for removal shall be stated
+fully and substantially in the Address." This address does not meet that requirement; therefore, the commit-
+tee voted unanimously to recommend the Address be found Ought Not To Pass. Vote 17-0.
+"""
+
+# House Calendar 7 of 1998, a browser's printout: the page broke inside HB
+# 1211's heading, leaving its title at the foot of one page and its number at
+# the top of the next.
+SPLIT_HEADING_PAGE = """\
+   HB 1206, affirming that it is the legislature's intent that new court facility construction costs
+   reflect the needs and usage of the judiciary. INEXPEDIENT TO LEGISLATE
+
+   Rep. Steve Vaillancourt for Public Works and Highways: This bill would affirm the legislature's
+   intent that new court construction costs reflect the needs and usage of the judiciary. The
+   committee believes this bill is not necessary. Vote 18-0.
+
+                         , appropriating startup funds for the Governors State Park in Laconia. OUGHT TO PASS
+
+file:///C/Users/sue.forcier/Downloads/working/houcal7.htm[11/8/2021 1:47:35 PM]
+\fHouse Calendar 7
+
+   HB 1211-FN-A
+   WITH AMENDMENT
+
+   Rep. Gene G. Chandler for Public Works and Highways: This bill, as presented, involved an
+   appropriation of $750,000 for Governors State Park located near the Laconia Correctional
+   Facility, for the purpose of development of said park. Vote 20-0.
+"""
+
+
+@check("reports", "a heading the calendar prints oddly still ends the report "
+                  "above it, and an address is no bill",
+       needs=("fetch_committee_reports",))
+def _headings_the_parser_missed(fetch_committee_reports):
+    """36 bills' pages carried another item's committee report.
+
+    BILL_START knew HB, SB, CACR, HR, SR, HCR, SCR and HJR, each with at most a
+    space before its number and single hyphens after. So "HB-604-FN," (House
+    Calendar 32 of 2001) was no heading and HB 604's report -- Fish and Game
+    license fees -- went to HB 218; "SB 131--FN," gave SB 106 the Red Cross
+    leave; every "SJR 2," and "HA 1," went to the bill above it; "HCACR 15,"
+    gave HB 1281 and HB 1350 the report on electing judges; and HB 1813 showed
+    an address's reasoning with its vote, 17-0, for its own 22-0. And four
+    times the 1998 printouts broke a heading across a page, so no heading was
+    read at all. Re-reading the 1,580 calendars: 36 bills lose another item's
+    report, 24 gain their own, and five lose a stray heading off the end of
+    theirs.
+
+    An address's section ends the report above it and makes no record: its
+    committee recommends OUGHT NOT TO PASS, which the parser does not read,
+    and a record for one carried the minority's recommendation as the
+    majority's.
+    """
+    F = fetch_committee_reports
+    got = F.parse_reports(MISSED_HEADINGS_PAGE, "House Calendar 32, 2001")
+    assert sorted(got) == ["CACR15", "HB1813", "HB218", "HB604", "SB131", "SJR2"], (
+        "headings read: " + ", ".join(sorted(got)))
+    one = {k: v[0]["reports"] for k, v in got.items()}
+    assert all(len(v) == 1 for v in one.values()), {k: len(v) for k, v in one.items()}
+    assert "fish and game" not in one["HB218"][0]["text"].lower() and \
+        one["HB218"][0].get("vote_yeas") == 15, (
+        "HB 604's report is still on HB 218: " + one["HB218"][0]["text"][-100:])
+    assert one["HB604"][0]["author"] == "Rep. Jeff Gilbert", one["HB604"]
+    assert one["SB131"][0]["author"] == "Rep. Jon P. Beaulieu", one["SB131"]
+    assert "Address" not in one["HB1813"][0]["text"] and \
+        (one["HB1813"][0]["vote_yeas"], one["HB1813"][0]["vote_nays"]) == (22, 0), (
+        "an address's report and vote are still on HB 1813: " + str(one["HB1813"]))
+    assert F.bill_key("HCACR 15") == "CACR15" and F.bill_key("HB-604-FN") == "HB604", (
+        F.bill_key("HCACR 15"), F.bill_key("HB-604-FN"))
+
+    got = F.parse_reports(SPLIT_HEADING_PAGE, "House Calendar 7, 1998")
+    assert sorted(got) == ["HB1206", "HB1211"], (
+        "the heading the page broke was not read: " + ", ".join(sorted(got)))
+    h1206, h1211 = got["HB1206"][0], got["HB1211"][0]
+    assert [e["author"] for e in h1206["reports"]] == ["Rep. Steve Vaillancourt"] and \
+        "Governors State Park" not in h1206["reports"][0]["text"], h1206
+    assert h1211["majority_recommendation"] == "OUGHT TO PASS WITH AMENDMENT" and \
+        h1211["reports"][0]["author"] == "Rep. Gene G. Chandler", h1211
+    return "ok", ("a hyphened, doubled or chamber-marked number, an SJR and a "
+                  "heading the page broke all start a report; an address ends one")
+
+
 # Two of the committees' filed reports as text_of gives them, cut down:
 # PastCommitteeReports 15090 (2021 HB 365's majority) and HB 197's minority.
 FILED_HB365_MAJ = (
@@ -10637,7 +10758,14 @@ def _misprinted_report():
                                                      "sound and says so at length here.")],
              ("2021-2022", "HB85"): [other("HB85", "The minority worries about the "
                                                    "school bus in the dark.", "Minority")],
-             ("2019-2020", "HB567"): [other("HB567", atlantic)]}
+             ("2019-2020", "HB567"): [other("HB567", atlantic)],
+             # A filed minority on the same bill, signed by another member of
+             # the same surname: not the report the calendar printed.
+             ("2021-2022", "HB888"): [dict(other("HB888", "The minority of the committee "
+                                                          "thought otherwise.", "Minority"),
+                                           author="Rep. Mary Bordenet")],
+             ("2021-2022", "HB321"): [other("HB321", "The majority says something of "
+                                                     "its own here.")]}
     cal = "House Calendar 12, 2021"
     reports = {"2021-2022": {
         "HB365": [{"bill": "HB365", "majority_recommendation": "INEXPEDIENT TO LEGISLATE",
@@ -10665,11 +10793,31 @@ def _misprinted_report():
         "HB85": [{"bill": "HB85", "majority_recommendation": "OUGHT TO PASS",
                   "source": "House Calendar 18, 2021",
                   "reports": [{"side": "Majority", "author": "Rep. Kristina Schultz",
-                               "text": atlantic}]}]}}
+                               "text": atlantic}]}],
+        # Another bill's minority, and a filed minority of its own that
+        # another Bordenet signed: withheld, not replaced by hers.
+        "HB888": [{"bill": "HB888", "majority_recommendation": "OUGHT TO PASS",
+                   "minority_recommendation": "INEXPEDIENT TO LEGISLATE", "source": cal,
+                   "reports": [{"side": "Majority", "author": "Rep. Dave Testerman",
+                                "text": "The majority liked it."},
+                               {"side": "Minority", "author": "Rep. John Bordenet",
+                                "text": HB197_MIN_TEXT}]}],
+        # Words another bill filed on the OTHER side: a filed copy is
+        # compared with the same side only.
+        "HB321": [{"bill": "HB321", "majority_recommendation": "OUGHT TO PASS",
+                   "source": cal,
+                   "reports": [{"side": "Majority", "author": "Rep. Dave Testerman",
+                                "text": HB197_MIN_TEXT}]}]}}
     got, census = RC.check(reports, fixed)
     t = got.get("2021-2022", {})
     assert "HB85" not in t, ("reasoning a member reused from another term's bill "
                              "was taken for a misprint: " + str(t.get("HB85")))
+    assert [(c["side"], c["action"]) for c in t.get("HB888", [])] == [
+        ("Minority", "withheld")], (
+        "a filed copy signed by another member of the same surname replaced the "
+        "report the calendar printed: " + str(t.get("HB888")))
+    assert "HB321" not in t, ("a majority report was compared with another bill's "
+                              "filed MINORITY report: " + str(t.get("HB321")))
     c365 = t.get("HB365") or []
     assert len(c365) == 1 and c365[0]["action"] == "filed" and \
         c365[0]["belongs_to"] == "HB197" and c365[0]["text"].startswith("HB365 seeks"), c365
@@ -10681,8 +10829,12 @@ def _misprinted_report():
     assert kept["text"].startswith("The majority found") and gone["text"] == "" \
         and "not in the record here" in gone["note"], (kept, gone)
     maj, mino = reports["2021-2022"]["HB365"][0]["reports"]
+    # The form's own date. The dump released it on 23 February, after House
+    # Calendar 12 had printed the committee's report, so "filed on February
+    # 23" was a date the record itself contradicts.
     assert maj["text"].startswith("HB365 seeks") and "HB 197's report" in maj["note"] \
-        and "on February 23, 2021." in maj["note"], maj
+        and "dated February 8, 2021." in maj["note"] \
+        and "February 23" not in maj["note"], maj
     assert mino["text"].startswith("Some of the more dangerous") and "note" not in mino, mino
     assert "HB999" not in reports["2021-2022"], "a record that was another bill's stayed"
     for src, want in (("build_site_v2.py", "RC.apply(reports"),
@@ -10691,6 +10843,175 @@ def _misprinted_report():
             f"{src} no longer applies report_check's corrections")
     return "ok", (f"{n} corrected in the fixture: HB 365's text from its filed copy, "
                   "a record that was another bill's dropped")
+
+
+# Cut down from the calendars they were read in: House Calendar 18 of 2006
+# (HB 1141, HB 1195), 14 and 7 of 2016 (HB 1497, HB 1652), 43 and 15 of 2011
+# (SB 172, HB 164) and 21 of 2007 (the turnpike toll bills).
+CAL_LAND = ("Although the basic intent of this bill is to encourage towns to adopt "
+            "open space housing concepts, this bill would mandate municipalities to "
+            "allow the Village Plan alternative who had previously voted to only "
+            "permit cluster development.")
+CAL_DEFAULT = ("This bill excludes salary and compensation increases from a default "
+               "budget unless the increases are required by a collective bargaining "
+               "agreement that was in effect during the preceding fiscal year. There "
+               "are many concepts and interpretations of what should or should not be "
+               "included in a default budget in an official ballot voting town.")
+CAL_MATH = ("The Education Committee finds unanimously that this bill needs further "
+            "research, reviews and development. The committee recognizes the "
+            "difficulty in securing qualified mathematics educators and the need to "
+            "engage the Teacher Preparation Programs in the design of a plan to "
+            "increase the numbers of qualified math educators in our schools, from "
+            "scholarships to loan forgiveness.")
+CAL_CORE = ("Best practices and high academic standards are necessary components of "
+            "a quality education. The board of education approved the common core "
+            "standards developed through a joint project of the governors association "
+            "and the chief state school officers. This process should be a result of "
+            "the department working closely with local school boards, educators and "
+            "residents.")
+CAL_TOLLS = ("The committee unanimously voted to retain another bill as the vehicle to "
+             "study the seven bills that it received regarding toll issues on the "
+             "turnpike system. Among the topics that will be studied include the "
+             "removal of certain toll booths, the placement and removal of other main "
+             "line toll booths, and uniform toll rates.")
+
+
+@check("reports", "a House report the calendar printed under another bill is "
+                  "caught against the term's other calendar reports, where no "
+                  "filed copy reaches")
+def _calendar_misprint():
+    """The filed copies begin in 2016, so House Calendar reports before them
+    were checked by nothing but their opening words.
+
+    House Calendar 18 of 2006 prints HB 1195's report, signed and voted,
+    as a second report under HB 1141; 14 of 2016 prints HB 1652's reasoning
+    under HB 1497's heading and Rep. Cordelli's name. report_check's calendar
+    test finds a report whose words exactly one other bill of the term prints
+    as its own, and withholds it where its heading already has a report of
+    its own on that side, or where it speaks in the other bill's title's
+    words and none of its own. Measured on every calendar on disk, re-read by
+    this branch's parser: 7 reports on 7 pages, each read in the calendar.
+
+    And the three it must leave alone: SB 172 of 2011 printing HB 164's
+    words because the House amended HB 164 into it (its own title's words are
+    in them too); a report a committee wrote once for several bills; and a
+    text two bills both carry as a second report, which is a third heading's
+    that nothing read. The step that runs it must not wait for a dump the
+    test does not need.
+    """
+    RC = imp("report_check")
+    assert RC is not None, "report_check.py will not import"
+    T = "2005-2006"
+
+    def rec(source, rec_, *entries):
+        return {"majority_recommendation": rec_, "source": source,
+                "reports": [dict(side=s, author=a, text=x, **({"vote_yeas": v[0],
+                                  "vote_nays": v[1]} if v else {}))
+                            for s, a, x, v in entries]}
+    c18 = "House Calendar 18, 2006"
+    reports = {T: {
+        "HB1141": [rec(c18, "INEXPEDIENT TO LEGISLATE",
+                       ("Committee", "Rep. Mary R. Cooney", CAL_LAND, (15, 1)),
+                       ("Committee", "Rep. Gilman C. Shattuck", CAL_DEFAULT, (11, 1)))],
+        "HB1195": [rec(c18, "INEXPEDIENT TO LEGISLATE",
+                       ("Committee", "Rep. Gilman C. Shattuck", CAL_DEFAULT, (11, 1)))],
+        "HB1497": [rec("House Calendar 14, 2006", "OUGHT TO PASS",
+                       ("Committee", "Rep. Glenn Cordelli", CAL_MATH, (19, 0)))],
+        "HB1652": [rec("House Calendar 7, 2006", "REFER FOR INTERIM STUDY",
+                       ("Committee", "Rep. Mary Heath", CAL_MATH, (20, 0)))],
+        "SB172": [rec("House Calendar 43, 2006", "OUGHT TO PASS WITH AMENDMENT",
+                      ("Committee", "Rep. Gregory Hill", CAL_CORE, (16, 0)))],
+        "HB164": [rec("House Calendar 15, 2006", "OUGHT TO PASS",
+                      ("Committee", "Rep. Rick M Ladd", CAL_CORE, (17, 0)))],
+        "HB486": [rec("House Calendar 21, 2006", "INEXPEDIENT TO LEGISLATE",
+                      ("Committee", "Rep. Franklin T Tilton", CAL_TOLLS, (15, 0)))],
+        "HB631": [rec("House Calendar 21, 2006", "INEXPEDIENT TO LEGISLATE",
+                      ("Committee", "Rep. John A Graham", CAL_TOLLS, (14, 0)))],
+        "HB627": [rec("House Calendar 21, 2006", "INEXPEDIENT TO LEGISLATE",
+                      ("Committee", "Rep. Dale R Sprague", CAL_TOLLS, (14, 1)))],
+        # A third heading's report, which both calendars ran on into.
+        "SB138": [rec("House Calendar 51, 2006", "OUGHT TO PASS",
+                      ("Committee", "Rep. Susan B. Durham", CAL_LAND[:90], (17, 0)),
+                      ("Committee", "Rep. Stanley Searles", CAL_DEFAULT, (15, 0)))],
+        "SB66": [rec("House Calendar 56, 2006", "RE-REFER TO COMMITTEE",
+                     ("Committee", "Rep. L. Randy Lyman", CAL_MATH[:80], (12, 0)),
+                     ("Committee", "Rep. Stanley Searles", CAL_DEFAULT, (15, 0)))]}}
+    # The mutual pair would take HB 1195's words for its own if HB 1195 were
+    # in the term; it is not, in that part of the fixture.
+    mutual = {T: {k: reports[T][k] for k in ("SB138", "SB66")}}
+    bills = {T: {
+        "HB1141": {"title": "relative to innovative land use controls."},
+        "HB1195": {"title": "relative to salary and compensation increases included "
+                            "in a default budget."},
+        "HB1497": {"title": "relative to the limits on disclosure of information used "
+                            "on college entrance exams."},
+        "HB1652": {"title": "establishing a teacher preparation for mathematics "
+                            "education scholarship program."},
+        "SB172": {"title": "relative to performance-based school accountability criteria."},
+        "HB164": {"title": "requiring legislative approval for the adoption of the "
+                           "common core state standards in New Hampshire."},
+        "HB486": {"title": "requiring that the effect of turnpike tolls on towns be "
+                           "proportional and reasonable."},
+        "HB631": {"title": "relative to the elimination of certain tolls."},
+        "HB627": {"title": "relative to uniform main line toll rates for the New "
+                           "Hampshire turnpike system."},
+        "SB138": {"title": "establishing teacher appreciation day."},
+        "SB66": {"title": "allowing a state resident to obtain a license for a pistol "
+                          "or revolver for life."}}}
+    got, census = RC.check({T: {k: v for k, v in reports[T].items()
+                                if k not in ("SB138", "SB66")}}, {}, bills)
+    t = got.get(T, {})
+    assert sorted(t) == ["HB1141", "HB1497"], (
+        "the calendar test decided these, where HB 1141 and HB 1497 alone are "
+        "another bill's: " + str({k: [(c["action"], c["belongs_to"]) for c in v]
+                                  for k, v in t.items()}))
+    c1141, c1497 = t["HB1141"], t["HB1497"]
+    assert [(c["author"], c["action"], c["belongs_to"], c.get("printed_under"))
+            for c in c1141] == [("Rep. Gilman C. Shattuck", "withheld", "HB1195", c18)], c1141
+    # Withheld, never dropped: the heading, the recommendation and the vote
+    # it was printed under are HB 1497's.
+    assert [(c["action"], c["belongs_to"]) for c in c1497] == [("withheld", "HB1652")], c1497
+    m, _ = RC.check(mutual, {}, bills)
+    assert not m, ("a text two bills both carry as a second report was given to "
+                   "one of them: " + str(m))
+    # Without titles, the second report on a side is still found.
+    a, _ = RC.check({T: {k: reports[T][k] for k in ("HB1141", "HB1195", "HB1497",
+                                                     "HB1652")}}, {})
+    assert sorted(a.get(T, {})) == ["HB1141"], (
+        "without titles the calendar test found: " + str(sorted(a.get(T, {}))))
+    n = RC.apply(reports, got)
+    own, second = reports[T]["HB1141"][0]["reports"]
+    assert own["text"] == CAL_LAND and own.get("vote_yeas") == 15, own
+    assert second["text"] == "" and "vote_yeas" not in second and (
+        "printed HB 1195's report here" in second["note"]
+        and "House Calendar 18, 2006 prints the same words under HB 1195's own "
+        "heading" in second["note"]), second
+    assert reports[T]["HB1497"] and reports[T]["HB1497"][0]["reports"][0]["text"] == "", (
+        "HB 1497's record went, or kept HB 1652's words")
+    # Its 19-0 is not HB 1652's 20-0: the calendar printed this bill's vote
+    # with another bill's words, and the vote stays. HB 1141's second report
+    # carried HB 1195's own 11-1, which goes with the words.
+    assert reports[T]["HB1497"][0]["reports"][0].get("vote_yeas") == 19, (
+        "a vote that is not the other bill's went with its words: "
+        + str(reports[T]["HB1497"][0]["reports"][0]))
+    assert reports[T]["HB1195"][0]["reports"][0]["text"] == CAL_DEFAULT
+
+    # The step that runs it needs the reports and the titles, not the dump.
+    BA = imp("build_all")
+    if BA is not None:
+        class A:
+            key = None
+            session = "2026"
+            base = "https://graniterecord.org"
+            archive = "nh-archive"
+        step = [s for s in BA.plan(A()) if s.args[:1] == ["report_check.py"]]
+        assert step, "build_all no longer runs report_check.py"
+        needs = sorted(str(p).replace("\\", "/") for p in step[0].needs)
+        assert needs == ["committee_reports.json", "data/bills.json"], (
+            "report_check's step needs " + ", ".join(needs) + ": a machine "
+            "without a dump it names skips the tests that need none")
+    return "ok", (f"{n} withheld in the fixture: a second report on one side, and "
+                  "another bill's words over this bill's member; reuse left alone")
 
 
 # The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's

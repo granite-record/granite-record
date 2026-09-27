@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.38
+# GRANITE_VERSION: 2026-09-05.39
 """
 Run the whole pipeline in the right order.
 
@@ -569,14 +569,21 @@ def plan(a):
         # reasoning, and it printed HB 197's report under 2021 HB 365's
         # heading; this compares every House report with the one the
         # committee filed and says where the two disagree about the bill.
+        #
+        # The dumps are NOT among its needs. Named here, a machine without
+        # PastCommitteeReports -- GitHub's, until the kit carries it --
+        # skipped the whole step, and with it the two tests that need no
+        # dump: a report's own opening words, and the term's other calendar
+        # reports. report_check compares the filed copies wherever they are,
+        # and says so where they are not.
         Step("House committee reports checked against the ones the committees filed",
              ["report_check.py", "--apply"],
-             needs=["committee_reports.json", "data/bills.json",
-                    "db/past/PastCommitteeReports.jsonl"],
+             needs=["committee_reports.json", "data/bills.json"],
              produces=["report_corrections.json"],
              optional=True,
              note="asks nobody anything -- it reads the dumped "
-                  "PastCommitteeReports and CandH_Reports. A report the "
+                  "PastCommitteeReports and CandH_Reports where they are "
+                  "here, and the calendars' own reports. A report the "
                   "calendar printed under another bill takes the text its "
                   "committee filed, or none, and the page says which"),
 

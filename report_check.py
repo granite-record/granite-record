@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.1
+# GRANITE_VERSION: 2026-09-26.2
 """
 A House committee report printed under another bill, caught against the
 report the committee filed.
@@ -30,39 +30,63 @@ seeks to authorize federal agents to enforce New Hampshire laws..."
 
 HOW IT DECIDES
 
-A calendar report is another bill's when either
+A calendar report is another bill's when
 
-  - its words are another bill's filed report of the same term -- eight words
-    running, at least ten times and over half the report -- and not its own
-    bill's, which has filed reports and shares under a fifth of them; or
+  - its words are another bill's filed report of the same term and the same
+    side -- eight words running, at least ten times and over half the report
+    -- and not its own bill's, which has filed reports on that side and shares
+    under a fifth of them; or
   - it opens by naming another bill in the form a filing names its own:
-    "HB197 AN ACT ...". This one needs no filed copy, so it covers every term.
+    "HB197 AN ACT ...". This one needs no filed copy, so it covers every term;
+    or
+  - its words are another bill's report in the calendars of the same term:
+    over half its eight-word runs are printed under exactly one other bill's
+    heading, it does not name its own bill, no filed copy of its own on the
+    same side carries them, and either its heading already has a report of
+    its own on that side, or it speaks in the other bill's title's words and
+    in none of its own title's. This is the only test there is before the
+    filed copies begin in 2016, and it withholds; it never drops a record,
+    because the heading and the recommendation above the text are this
+    bill's. The vote printed with the text goes with it only where it is the
+    vote the other bill's own printing carries.
 
 Same term only: a member who files the same reasoning on a bill two sessions
 later (2021 HB 85 and 2019 HB 567, the Atlantic time zone) is not a misprint.
+Nor is a text a committee wrote once for several bills heard together -- the
+seven turnpike toll bills of 2007 -- which is why the calendar test wants
+exactly one other bill, and why two bills whose titles share their subject
+are left alone: 2011 SB 172 was amended to carry HB 164's common core
+language, and its report says so in HB 164's words.
 
 WHAT IT DOES ABOUT ONE
 
   filed     the bill has a filed report from the same side, signed by the same
-            member: its text replaces the misprint, and the page says so.
+            member (the whole name, not the surname): its text replaces the
+            misprint, and the page says so.
   withheld  it has none: the text comes off, and the page says why, rather
             than printing another bill's reasoning or claiming there was none.
-  dropped   every report in the calendar's record is another bill's and none
-            has a filed copy: the record is not this bill's at all.
+  dropped   every report in the calendar's record is another bill's by the
+            filed copies or its opening words, and none has a filed copy: the
+            record is not this bill's at all.
 
-Measured on everything on disk (26 September 2026): 2021 HB 365's majority,
-filed; 2024 HB 463's "minority report" from House Calendar 20, which is SB
-453's and was never HB 463's -- fetch_committee_reports now reads it where it
-belongs, and until that is re-run this drops it. Nothing else: 30,441 reports
-of every term read for their opening words, 9,744 of them (2016-2026) compared
-with the filed copies, which each find HB 365's on their own.
+Measured on everything on disk (27 September 2026), with the calendars re-read
+by this commit's fetch_committee_reports: 2021 HB 365's majority, filed; and,
+withheld by the calendar test, 2006 HB 1141 (House Calendar 18 printed HB
+1195's report as a second one under it), 2010 HB 271 (Calendar 2 printed HB
+133's minority as HB 271's), 2010 HB 1221 (Calendar 14 printed HB 1239's
+heading "B 1239"), 2012 HB 1470 (Calendar 14, HB 1191's words over Rep.
+Dowling's name), 2013 HB 529 (Calendar 69, HB 456's over Rep. Williams's),
+2014 HB 1247 (Calendar 13, HB 1392's minority as a second one) and 2016 HB
+1497 (Calendar 14, HB 1652's over Rep. Cordelli's). Each was read in the
+calendar. The file as it stood before that re-read also has 2024 HB 463's
+phantom, which this drops.
 
 WHAT IT WRITES
 
 report_corrections.json, {term: {bill: [correction]}}, each correction naming
-the calendar record by its source and the report by its side and signer. Every
-run rewrites it whole from what is on disk -- it is derived, and a run over part
-of the record would silently forget the rest.
+the calendar record by its source and the report by its side, its signer and
+its opening words. Every run rewrites it whole from what is on disk -- it is
+derived, and a run over part of the record would silently forget the rest.
 """
 
 import argparse
@@ -104,10 +128,28 @@ ENTRY = re.compile(r"\bRep\.\s+[^.]{2,60}?\s+for\s+(?:the\s+(?:Majority|Minority
 # "HB197 AN ACT relative to ...": how a filed report names the bill it is on.
 OPENS_WITH_BILL = re.compile(rf"^\s*{KINDS}\s*0*(\d+)(?:-[A-Z]+)*\s*,?\s+AN\s+ACT\b")
 
+# The form's own date: "Date: February 8, 2021". The dump's release date is
+# not it -- 2021 HB 365's form is dated 8 February and was released on the
+# 23rd, after House Calendar 12 had printed the committee's report.
+FILED_DATE = re.compile(r"\bDate:\s*([A-Z][a-z]+)\s+(\d{1,2}),\s*(\d{4})")
+# Another bill named in a report's own words, as a calendar prints numbers.
+NAMES = re.compile(rf"\b{KINDS}\s?-?\s?0*(\d{{1,4}})\b")
+
 SHINGLE = 8          # words in a run
 LEAST = 10           # runs a report must share with another bill's filed copy
 MOST_OWN = 0.2       # share of its runs a misprint may have with its own bill's
+CAL_LEAST = 25       # runs a report needs before the calendars can say whose it is
+CAL_WHY = "another bill's report in the calendars"
 WORD = re.compile(r"[a-z0-9]+")
+# Words every title and report uses, which say nothing about whose report it is.
+GENERIC = frozenset("""
+relative with that this from which have been their other certain establishing
+establish requiring making relating providing state states hampshire concerning
+regarding shall under into amendment amendments title titles bill bills house
+senate committee committees study studies commission general court legislature
+legislative legislation laws also would such about more than these those there
+where when were will provide provides department
+""".split())
 
 
 def text_of(markup):
@@ -122,14 +164,33 @@ def shingles(text):
     return {" ".join(w[i:i + SHINGLE]) for i in range(len(w) - SHINGLE + 1)}
 
 
-def surname(author):
-    words = re.findall(r"[A-Za-z'’-]+", author or "")
-    return words[-1].lower() if words else ""
+def signer(author):
+    """'Rep. Carol M. McGuire' -> 'carol m mcguire': the whole name, so that a
+    filed copy signed by another member of the same surname is not taken for
+    the report the calendar printed."""
+    name = re.sub(r"^\s*(?:Rep|Sen)s?\.\s*", "", author or "", flags=re.I)
+    return " ".join(re.findall(r"[a-z0-9'-]+", name.lower().replace("’", "'")))
+
+
+def title_words(text):
+    """The words that say what a title or a report is about, cut to their
+    first six letters so that 'parents' and 'parental' are one word."""
+    return {w[:6] for w in re.findall(r"[a-z]+", (text or "").lower())
+            if len(w) >= 4 and w not in GENERIC}
+
+
+def bill_title(bills, term, bid):
+    t = ((bills or {}).get(term, {}).get(bid) or {}).get("title") or ""
+    return re.sub(r"^\s*\((?:\w+\s+)?new title\)\s*", "", t, flags=re.I)
+
+
+def named(text):
+    return {f"{k.upper()}{int(n)}" for k, n in NAMES.findall(text or "")}
 
 
 def parse_filed(text, side=None):
-    """One filed House committee report as {bill, side, author, text, all}, or
-    None.
+    """One filed House committee report as {bill, side, author, text, all,
+    dated}, or None.
 
     The document is the Clerk's form: REPORT OF COMMITTEE, the bill number,
     the recommendation, STATEMENT OF INTENT and the reasoning, the member who
@@ -138,7 +199,8 @@ def parse_filed(text, side=None):
     for the Majority of <committee>.". Some forms leave the statement empty and
     carry the reasoning only there -- 2020 HB 1101's majority report does -- so
     that entry is the text where the statement is empty, and "all" is the whole
-    document, which is what a calendar printing is compared with.
+    document, which is what a calendar printing is compared with. "dated" is
+    the form's own Date: line, or empty.
     """
     m = BILL_NUMBER.search(text)
     if not m:
@@ -146,7 +208,7 @@ def parse_filed(text, side=None):
     if side is None:
         s = FILED_SIDE.search(text)
         side = s.group(1).title() if s else "Committee"
-    signer = SIGNED.search(text)
+    signed = SIGNED.search(text)
     statement = ""
     i = INTENT.search(text)
     if i:
@@ -157,9 +219,13 @@ def parse_filed(text, side=None):
         entry = list(ENTRY.finditer(text))
         if entry:
             statement = VOTE_END.sub("", entry[-1].group("text")).strip()
+    dated = ""
+    d = FILED_DATE.search(text)
+    if d and d.group(1) in MONTHS:
+        dated = f"{d.group(3)}-{MONTHS.index(d.group(1)) + 1:02d}-{int(d.group(2)):02d}"
     return {"bill": f"{m.group(1).upper()}{int(m.group(2))}", "side": side,
-            "author": f"Rep. {signer.group('who').strip()}" if signer else "",
-            "text": statement, "all": text}
+            "author": f"Rep. {signed.group('who').strip()}" if signed else "",
+            "text": statement, "all": text, "dated": dated}
 
 
 def billtext_id(rec):
@@ -236,29 +302,97 @@ def filed_reports(bills, past=PAST, current=CURRENT):
     return out, census
 
 
-def check(reports, filed):
+def calendar_claim(bid, rec, e, byb, index, own_filed, bills=None, term=""):
+    """(the other bill, the calendar that prints it under that bill's heading,
+    the vote printed with it there) where one other bill's calendar reports
+    of the same term claim this report's words, else None. `index` is this
+    term's {run: {bill}}.
+
+    Over half the report's runs must be printed under exactly one other bill
+    -- a text a committee wrote once for a group of bills is shared with
+    several and is nobody's misprint -- and printed there as that bill's own
+    report, the only one on its side under that heading. A text two bills
+    both carry as a second report is a third heading's that nothing read, and
+    this cannot say whose. The report must not name its own bill, nor match a
+    filed copy of its own on the same side. Then either its heading already
+    carries a report of its own on this side, so this one is a second, or it
+    speaks in the other bill's title's words (two at least) and in none of
+    its own title's, where the two titles do not share their subject."""
+    s = shingles(e.get("text"))
+    if len(s) < CAL_LEAST:
+        return None
+    per = Counter(b for x in s for b in index.get(x, ()) if b != bid)
+    claims = [b for b, n in per.items() if n >= len(s) / 2]
+    if len(claims) != 1:
+        return None
+    b2 = claims[0]
+    if bid in named(e.get("text")):
+        return None
+    if own_filed:
+        mine = set()
+        for d in own_filed:
+            mine |= shingles(d.get("all") or d["text"])
+        if len(s & mine) >= len(s) / 2:
+            return None
+    # Where the other bill prints these words as its own report: the calendar
+    # that does, and every run the other bill's reports carry.
+    where, vote, theirs = "", None, set()
+    for r2 in byb.get(b2) or []:
+        sides = Counter(e2.get("side") for e2 in r2.get("reports") or [])
+        for e2 in r2.get("reports") or []:
+            sh = shingles(e2.get("text"))
+            theirs |= sh
+            if not where and sides[e2.get("side")] == 1 and len(s & sh) >= len(s) / 2:
+                where = r2.get("source") or ""
+                if e2.get("vote_yeas") is not None:
+                    vote = [e2.get("vote_yeas"), e2.get("vote_nays")]
+    if not where:
+        return None
+    for e2 in rec.get("reports") or []:
+        if e2 is e or e2.get("side") != e.get("side"):
+            continue
+        s2 = shingles(e2.get("text"))
+        if s2 and len(s2 & theirs) < len(s2) / 2:
+            return b2, where, vote
+    if bills:
+        mine_t = title_words(bill_title(bills, term, bid))
+        theirs_t = title_words(bill_title(bills, term, b2))
+        if len(mine_t & theirs_t) < 2:
+            said = title_words(e.get("text"))
+            if len(said & (theirs_t - mine_t)) >= 2 and not said & (mine_t - theirs_t):
+                return b2, where, vote
+    return None
+
+
+def check(reports, filed, bills=None):
     """{term: {bill: [correction]}} for every House calendar report that is
-    another bill's, and a census of what was compared."""
-    index = defaultdict(set)            # shingle -> {(term, bill)}
-    own_sh = {}
+    another bill's, and a census of what was compared. `bills`
+    (data/bills.json) gives the titles the calendar test reads; without it
+    that test only finds a second report on one side."""
+    index = defaultdict(set)            # (side, shingle) -> {(term, bill)}
     for key, docs in filed.items():
-        s = set()
         for d in docs:
-            s |= shingles(d.get("all") or d["text"])
-        own_sh[key] = s
-        for x in s:
-            index[x].add(key)
+            for x in shingles(d.get("all") or d["text"]):
+                index[(d["side"], x)].add(key)
     terms_filed = {t for t, _ in filed}
 
     census, out = Counter(), defaultdict(lambda: defaultdict(list))
     for term, byb in reports.items():
+        # This term's calendar reports, run by run, for the calendar test.
+        cal = defaultdict(set)
+        for b, recs in byb.items():
+            for r in recs:
+                for e in r.get("reports") or []:
+                    for x in shingles(e.get("text")):
+                        cal[x].add(b)
         for bid, recs in byb.items():
             for rec in recs:
                 verdicts = []
                 for e in rec.get("reports") or []:
                     census["reports read"] += 1
                     t = e.get("text") or ""
-                    other, why = None, ""
+                    side = e.get("side")
+                    other, why, where, vote = None, "", "", None
                     m = OPENS_WITH_BILL.match(t)
                     if m and f"{m.group(1).upper()}{int(m.group(2))}" != bid:
                         other, why = f"{m.group(1).upper()}{int(m.group(2))}", "its own opening words"
@@ -266,7 +400,9 @@ def check(reports, filed):
                         s = shingles(t)
                         if len(s) >= LEAST:
                             census["compared with filed copies"] += 1
-                            hits = Counter(k for x in s for k in index.get(x, ())
+                            # The same side only: a majority report is
+                            # compared with filed majority reports.
+                            hits = Counter(k for x in s for k in index.get((side, x), ())
                                            if k[0] == term)
                             mine = hits.pop((term, bid), 0)
                             if hits:
@@ -274,24 +410,42 @@ def check(reports, filed):
                                 if n >= max(LEAST, len(s) / 2) and mine < MOST_OWN * len(s):
                                     other, why = b2, "another bill's filed report"
                     if not other:
+                        census["compared with the term's calendars"] += 1
+                        got = calendar_claim(
+                            bid, rec, e, byb, cal,
+                            [d for d in filed.get((term, bid), []) if d["side"] == side],
+                            bills, term)
+                        if got:
+                            (other, where, vote), why = got, CAL_WHY
+                    if not other:
                         verdicts.append(None)
                         continue
                     census["another bill's report"] += 1
                     same = [d for d in filed.get((term, bid), [])
-                            if d["side"] == e.get("side") and d["text"]
-                            and surname(d["author"]) == surname(e.get("author"))]
-                    verdicts.append((e, other, why, same[0] if same else None))
+                            if d["side"] == side and d["text"]
+                            and signer(d["author"]) == signer(e.get("author"))]
+                    verdicts.append((e, other, why, same[0] if same else None, where, vote))
                 bad = [v for v in verdicts if v]
                 if not bad:
                     continue
-                whole = len(bad) == len(verdicts) and not any(v[3] for v in bad)
-                for e, other, why, fix in bad:
+                # A record goes only where the filed copies or the opening
+                # words say every report in it is another bill's. The
+                # calendar test withholds: the heading and the recommendation
+                # it found the text under are this bill's.
+                whole = (len(bad) == len(verdicts) and not any(v[3] for v in bad)
+                         and all(v[2] != CAL_WHY for v in bad))
+                for e, other, why, fix, where, vote in bad:
                     c = {"source": rec.get("source") or "", "side": e.get("side") or "",
-                         "author": e.get("author") or "", "belongs_to": other,
+                         "author": e.get("author") or "",
+                         "opens": (e.get("text") or "")[:60], "belongs_to": other,
                          "found_by": why}
+                    if where:
+                        c["printed_under"] = where
+                    if vote:
+                        c["their_vote"] = vote
                     if fix:
-                        c.update(action="filed", text=fix["text"],
-                                 filed=fix["source"], released=fix["released"])
+                        c.update(action="filed", text=fix["text"], filed=fix["source"],
+                                 released=fix["released"], dated=fix.get("dated") or "")
                     else:
                         c["action"] = "dropped" if whole else "withheld"
                     census[c["action"]] += 1
@@ -337,14 +491,38 @@ def apply(reports, corrections):
                     for e in rec.get("reports") or []:
                         if (e.get("side"), e.get("author")) != (c.get("side"), c.get("author")):
                             continue
+                        # And the words it was found in, where the correction
+                        # records them: a record can carry two reports on one
+                        # side over one name, and only one is another bill's.
+                        if c.get("opens") and not (e.get("text") or "").startswith(c["opens"]):
+                            continue
+                        other = kind_name(c.get("belongs_to"))
                         printed = (f"{rec.get('source') or 'The House Calendar'} printed "
-                                   f"{kind_name(c.get('belongs_to'))}'s report here.")
+                                   f"{other}'s report here.")
                         if c.get("action") == "filed":
                             e["text"] = c.get("text") or ""
-                            day = said_day(c.get("released"))
+                            # The form's own date, never the dump's release
+                            # date, which can fall after the calendar that
+                            # printed the report.
+                            day = said_day(c.get("dated"))
                             e["note"] = (f"{printed} This is the report as the committee "
                                          f"filed it with the Clerk"
-                                         + (f" on {day}" if day else "") + ".")
+                                         + (f", dated {day}" if day else "") + ".")
+                        elif c.get("printed_under"):
+                            # The vote printed at the end of those words goes
+                            # with them where it is the vote the other bill's
+                            # own printing carries: 2006 HB 1141's second
+                            # report is HB 1195's, signed and voted 11-1. Where
+                            # it differs it is this bill's -- 2016 HB 1497's
+                            # 19-0 beside HB 1652's 20-0 -- and it stays.
+                            e["text"] = ""
+                            if c.get("their_vote") and c["their_vote"] == [
+                                    e.get("vote_yeas"), e.get("vote_nays")]:
+                                for k in ("vote_yeas", "vote_nays", "calendar"):
+                                    e.pop(k, None)
+                            e["note"] = (f"{printed} {c['printed_under']} prints the same "
+                                         f"words under {other}'s own heading, so no "
+                                         "reasoning is shown for it here.")
                         else:
                             e["text"] = ""
                             e["note"] = (f"{printed} The committee's own copy of this "
@@ -368,12 +546,16 @@ def main():
     filed, fc = filed_reports(bills)
     for k, v in sorted(fc.items()):
         print(f"  {v:>7,}  {k}")
-    # Silence is not success. With neither dump on disk this compares nothing
-    # but opening words, and says so rather than reporting a clean record.
+    # Silence is not success. With neither dump on disk this compares no filed
+    # copy, and says so rather than reporting a clean record.
     if not filed:
-        print(f"\nNO FILED REPORTS: neither {PAST} nor {CURRENT} gave one, so only "
-              "each report's opening words are checked.")
-    got, census = check(reports, filed)
+        print(f"\nNO FILED REPORTS: neither {PAST} nor {CURRENT} gave one, so each "
+              "report is checked against its own opening words and the term's "
+              "calendars only.")
+    if not bills:
+        print(f"\nNO TITLES: {BILLS} is not here, so the calendar test finds only a "
+              "second report on one side.")
+    got, census = check(reports, filed, bills)
     for k, v in sorted(census.items()):
         print(f"  {v:>7,}  {k}")
     for term in sorted(got):

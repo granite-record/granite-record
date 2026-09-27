@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.30
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -79,10 +79,73 @@ UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
 # COMMITTEE MEETINGS, which SECTION_END has already terminated, so it
 # reaches no report -- but it is the same shape as the SB 2 sentence above,
 # so if a heading ever appears from nowhere, look here first.
+#
+# A HEADING THIS DID NOT KNOW WAS NO HEADING, and the report under it went to
+# the bill above. The calendars print a hyphen after the kind now and then
+# ("HB-604-FN," in House Calendar 32 of 2001, "SJR-2," in 51 of 1997), a
+# doubled one before the suffix ("SB 131--FN," in 56 of 1997), and kinds this
+# list left out: SJR, the House's addresses for removal from office ("HA 1,"
+# in 43 of 2010), "HCO 1,", and the 2016 calendars' "HCACR 15," and "SCACR
+# 5,", which are CACR 15 and CACR 5. So HB 218's page carried the Fish and
+# Game fees HB 604's report argues for, SB 106's carried SB 131's Red Cross
+# leave, SB 138's a Senate joint resolution's, SB 497's and HB 2010's the
+# addresses to remove two marital masters and a judge, HB 1813's an address's
+# reasoning and its vote of 17-0 for its own 22-0, and HB 1281's and HB
+# 1350's the report on electing judges: 36 bills lost another item's report
+# when the 1,580 calendars were re-read, and 24 gained their own. bill_key()
+# puts the number back into the form the rest of the site uses.
 BILL_START = re.compile(
     r"(?:\A|[\r\n\f])[ \t\f]*"
-    r"(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*,\s*",
+    r"(?P<bill>(?:HB|SB|CACR|HCACR|SCACR|HR|SR|HCR|SCR|HJR|SJR|HA|HCO)"
+    r"[ \t]?-?[ \t]?\d+(?:--?[A-Z]+)*)\s*,\s*",
     re.I)
+
+# An address or an order ends the report above it and is no bill. An
+# address's committee recommends OUGHT NOT TO PASS, which RECS does not read,
+# so a record made for one carried the minority's recommendation as the
+# majority's. It is a boundary and nothing more.
+BOUNDARY_ONLY = ("HA", "HCO")
+
+# What the calendar prints, and the key the site files the bill under.
+_KEY = re.compile(r"([A-Z]+)[\s-]*(\d+)")
+_KIND = {"HCACR": "CACR", "SCACR": "CACR"}
+
+
+def bill_key(bill):
+    """'HB 660-FN-LOCAL' -> 'HB660', 'HB-604-FN' -> 'HB604', 'HCACR 15' ->
+    'CACR15': the kind and the number as printed, and nothing else."""
+    m = _KEY.match(re.sub(r"\s+", " ", bill.upper()).strip())
+    if not m:
+        return re.sub(r"\s+", "", bill.upper()).split("-")[0]
+    return f"{_KIND.get(m.group(1), m.group(1))}{m.group(2)}"
+
+
+# THE HEADING THE PRINTOUT CUT IN TWO. The 1998 calendars are a browser's
+# printout, and four times the page broke inside a heading: the title stayed
+# at the foot of one page with a gap where the number was, and the number went
+# to the top of the next with nothing after it --
+#
+#                          , appropriating startup funds for the Governors ...
+#     file:///C/Users/.../houcal7.htm[11/8/2021 1:47:35 PM]
+#     <form feed>House Calendar 7
+#        HB 1211-FN-A
+#        WITH AMENDMENT
+#
+# -- so no heading was read, and HB 1211's report went to HB 1206, HB 1234's
+# to HB 1233, HB 1156's to HB 1597 and HB 1241's to HB 1040. The number is put
+# back in front of its title. Only across the printout's own page footer, and
+# only a number standing alone on its line.
+SPLIT_HEADING = re.compile(
+    r"^[ \t]{6,}(?P<title>,[ \t]+[^\n]*)\n"
+    r"(?P<gap>(?:[^\n]*\n){0,3}?[^\n]*file:///[^\n]*\n(?:[^\n]*\n){0,3}?)"
+    r"[ \t\f]*(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)[ \t]?\d+(?:-[A-Z]+)*)[ \t]*\n",
+    re.M)
+
+
+def rejoin_split_headings(text):
+    return SPLIT_HEADING.sub(
+        lambda m: f"   {m.group('bill')}{m.group('title')}\n{m.group('gap')}", text)
+
 
 # A report also ends when the calendar moves to another kind of business. These
 # headings are the terminators; without them the last report on a page absorbs
@@ -450,6 +513,7 @@ def parse_reports(text, source, skipped=None, skipped_samples=None):
     """Split into bill sections, then read the recommendations and signed prose."""
     skipped = skipped if skipped is not None else [0]
     skipped_samples = skipped_samples if skipped_samples is not None else []
+    text = rejoin_split_headings(text)
     # start("bill"), not start() -- the pattern matches the line break before
     # the number too, and slicing from the wrong offset eats a digit off it.
     found = [(m.start("bill"), m.group("bill")) for m in BILL_START.finditer(text)]
@@ -466,6 +530,8 @@ def parse_reports(text, source, skipped=None, skipped_samples=None):
     reports = defaultdict(list)
 
     for i, (pos, bill) in enumerate(marks):
+        if bill_key(bill).rstrip("0123456789") in BOUNDARY_ONLY:
+            continue
         end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
         chunk = clean_pdf_text(text[pos:end])
         # Cut at the first heading that starts a different kind of business.
@@ -541,7 +607,7 @@ def parse_reports(text, source, skipped=None, skipped_samples=None):
             entry["text"] = body
             entries.append(entry)
 
-        key = re.sub(r"\s+", "", bill.upper()).split("-")[0]
+        key = bill_key(bill)
         # A bill sitting on the table is reprinted in every calendar that
         # follows, and each reprint matched a recommendation without carrying
         # any signed prose. Those were stored anyway, so HCR 11 showed
