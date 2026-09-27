@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.268
+# GRANITE_VERSION: 2026-09-04.269
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3104,6 +3104,201 @@ def _archive_text_as_shown():
         "!supportLists]> was lost, or the title was: " + repr(got[:80]))
     return "ok", ("Word's properties stay out, and a tag before punctuation "
                   "is no space while a tag between words still is")
+
+
+def _printing(label, marks, lsr, number, title, analysis, sections, law=None,
+              approved=None):
+    """(html, text) of one printing of a 2018 bill, in the shapes the archive's
+    page and the database's two columns have: the HTML opens with the version
+    line and the text column does not. `law` is a chapter's number, which the
+    chaptered text puts before each section's."""
+    n = f"{law}:" if law else ""
+    lines = (label + marks + ["2018 SESSION", lsr, number, f"AN ACT {title}",
+                              "-" * 65, "ANALYSIS", analysis, "- " * 40,
+                              "Explanation: Matter added to current law appears in "
+                              "bold italics."]
+             + marks + [lsr, "STATE OF NEW HAMPSHIRE",
+                        "In the Year of Our Lord Two Thousand Eighteen", f"AN ACT {title}",
+                        "Be it Enacted by the Senate and House of Representatives in "
+                        "General Court convened:"]
+             + [f"{n}{s}" if re.match(r"\d+ ", s) else s for s in sections]
+             + ([approved] if approved else []))
+    html = "<html><body>" + "".join(f"<p><span>{x}</span></p>" for x in lines) + \
+           "</body></html>"
+    return html, "\r\n".join(lines[len(label):])
+
+
+def _sb421(label, marks, after, new, lsr="18-2993", **kw):
+    """2018 SB 421, whose new section the enrolled bill amendment renumbered."""
+    return _printing(
+        label, marks, lsr, "SENATE BILL 421",
+        "relative to insurance coverage for prescription contraceptives.",
+        "This bill clarifies insurance coverage for prescription contraceptive drugs "
+        "and prescription contraceptive devices and for contraceptive services.",
+        ["1 New Section; Coverage for Prescription Contraceptive Devices and for "
+         "Contraceptive Services. Amend RSA 415 by inserting after section "
+         f"{after} the following new section:",
+         f"{new} Coverage for Prescription Contraceptive Drugs and Prescription "
+         "Contraceptive Devices and for Contraceptive Services. Each insurer that "
+         "issues or renews any individual policy of accident or health insurance "
+         "shall provide coverage for outpatient contraceptive services under the "
+         "same terms and conditions as for other outpatient services.",
+         "2 Effective Date. This act shall take effect January 1, 2019."], **kw)
+
+
+def _hb1474(label, **kw):
+    """2018 HB 1474, whose page is its version adopted by both bodies."""
+    return _printing(
+        label, [], "18-2424", "HOUSE BILL 1474",
+        "designating the New Hampshire Red as the official state poultry.",
+        "This bill designates the New Hampshire Red as the official state poultry.",
+        ["1 New Section; State Poultry. Amend RSA 3 by inserting after section 28 "
+         "the following new section:",
+         "3:29 State Poultry. The New Hampshire Red is hereby designated as the "
+         "official state poultry of New Hampshire.",
+         "2 Effective Date. This act shall take effect upon its passage."], **kw)
+
+
+@check("frontend", "an archived bill's final version is the General Court's own, "
+                   "not an earlier printing that says it is", needs=("archive_text",))
+def _final_version_from_db(at):
+    """Twenty-three 2018 pages printed VERSION ADOPTED BY BOTH BODIES over an
+    earlier printing, and the Bill Text tab showed each as the final version.
+
+    The pages are the House's or the Senate's amended text, or a committee of
+    conference's, without the enrolled bill amendment of 23 May 2018 that the
+    version adopted by both bodies carries -- and the enacted section numbers
+    come from that amendment. 2018 SB 421's page inserts an RSA 415:6-v, word
+    for word the House's printing under a new heading; chapter 361 enacted
+    415:6-w. PastLegislationText, the General Court's own copy of every
+    printing, holds the version adopted by both bodies (VersionID 13 or 14)
+    and the chaptered law (48, 52, 53), and archive_text.final_versions shows
+    the former wherever it is not the page and is at least as near the law.
+
+    The fixture is SB 421 cut down to its first section -- the House's
+    printing, the page that relabels it, the version adopted by both bodies and
+    chapter 361 -- so this runs under --code. What else it holds to:
+      - 2018 HB 1474, whose page is its final version word for word, and the
+        same SB 421 page a session later, keep their pages: 2018 alone was
+        measured, so FINAL_FROM_DB is 2018 alone;
+      - if the database's copy were the earlier printing, the page would stay;
+      - with no view on disk -- GitHub's nightly, whose kit does not carry it
+        -- every page stands as it was and the tally says why;
+      - a veto note the page carries goes with the text, before a fiscal note.
+    """
+    import io
+    import contextlib
+    adopted = ["SB 421 - VERSION ADOPTED BY BOTH BODIES"]
+    eba = ["2May2018... 1753h", "05/23/2018 2097EBA"]
+    house = _sb421(["SB 421 - AS AMENDED BY THE HOUSE"], eba[:1], "6-u", "415:6-v")
+    page = _sb421(adopted, eba[:1], "6-u", "415:6-v")
+    final = _sb421(adopted, eba, "6-u", "415:6-w")
+    law = _sb421(["CHAPTER 361", "SB 421 - FINAL VERSION"], eba, "6-v", "415:6-w",
+                 law=361, approved="Approved: July 02, 2018")
+    poultry = _hb1474(["HB 1474 - VERSION ADOPTED BY BOTH BODIES"])
+    poultry_law = _hb1474(["CHAPTER 268", "HB 1474 - FINAL VERSION"], law=268,
+                          approved="Approved: June 18, 2018")
+    # The same three printings a session later, each printing that session's LSR,
+    # so that nothing but FINAL_FROM_DB keeps them from the rule.
+    page19, final19, law19 = (_sb421(adopted, eba[:1], "6-u", "415:6-v", lsr="19-2993"),
+                              _sb421(adopted, eba, "6-u", "415:6-w", lsr="19-2993"),
+                              _sb421(["CHAPTER 9", "SB 421 - FINAL VERSION"], eba, "6-v",
+                                     "415:6-w", lsr="19-2993", law=9,
+                                     approved="Approved: July 02, 2019"))
+
+    def row(id_, year, lsr, bill, vid, doc):
+        return json.dumps({"id": id_, "BillNbr": bill, "html": doc[0], "sessionyear": year,
+                           "VersionID": vid, "text": doc[1],
+                           "legislationID": int(f"{lsr}{year}"), "lsr": lsr,
+                           "FullDescription": None})
+
+    title = "relative to insurance coverage for prescription contraceptives."
+    bills = {"2017-2018": {
+                 "SB421": {"bill": "SB421", "lsr": "2018-2993", "lsr_year": "2018",
+                           "lsr_num": "2993", "title": title},
+                 "HB1474": {"bill": "HB1474", "lsr": "2018-2424", "lsr_year": "2018",
+                            "lsr_num": "2424", "title": "designating the New Hampshire "
+                            "Red as the official state poultry."}},
+             "2019-2020": {
+                 "SB421": {"bill": "SB421", "lsr": "2019-2993", "lsr_year": "2019",
+                           "lsr_num": "2993", "title": title}}}
+    root = Path(tempfile.mkdtemp())
+    here = os.getcwd()
+    view = root / "db" / "past" / "PastLegislationText.jsonl"
+
+    def lay(sb421_page, rows):
+        for year, name, doc in (("2018", "SB0421", sb421_page), ("2018", "HB1474", poultry[0]),
+                                ("2019", "SB0421", page19[0])):
+            (root / "legislation" / year).mkdir(parents=True, exist_ok=True)
+            (root / "legislation" / year / f"{name}.html").write_text(doc, encoding="utf-8")
+        view.parent.mkdir(parents=True, exist_ok=True)
+        view.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            return at.build(bills)
+
+    try:
+        os.chdir(root)
+        got, tally, _ = lay(page[0], [
+            row(77295, 2018, 2993, "SB421", 6, house),
+            row(77294, 2018, 2993, "SB421", 13, final),
+            row(77293, 2018, 2993, "SB421", 48, law),
+            row(78100, 2018, 2424, "HB1474", 14, poultry),
+            row(78101, 2018, 2424, "HB1474", 48, poultry_law),
+            row(90001, 2019, 2993, "SB421", 13, final19),
+            row(90002, 2019, 2993, "SB421", 48, law19)])
+        sb = got["2017-2018"]["SB421"]
+        assert "415:6-w Coverage" in sb["text"] and "415:6-v Coverage" not in sb["text"], (
+            "2018 SB 421 still shows the House's printing as the version adopted by "
+            "both bodies -- RSA 415:6-v, where chapter 361 enacted 415:6-w: "
+            + repr(sb["text"][sb["text"].find("415:6"):][:60]))
+        assert sb.get("version") == "Version adopted by both bodies", (
+            f"the page's own label for the version was not kept: {sb.get('version')!r}")
+        assert sb["text"].startswith("ANALYSIS") and "2097EBA" in sb["text"] \
+            and sb.get("source") == "PastLegislationText 77294", (
+            "the final version's text did not arrive whole from its own row: "
+            f"{sb.get('source')!r}, {sb['text'][:40]!r}")
+        assert got["2017-2018"]["HB1474"].get("source") == "archive page", (
+            "a page that is its final version word for word was replaced")
+        later = got["2019-2020"]["SB421"]
+        assert "415:6-v Coverage" in later["text"] and later.get("source") == "archive page", (
+            "a session nobody measured took the database's text: FINAL_FROM_DB "
+            "names the sessions that were checked, and only those")
+
+        # The database's copy the EARLIER printing, the page the later: the
+        # page is the nearer the law, so it stays.
+        got, _, _ = lay(final[0], [
+            row(77294, 2018, 2993, "SB421", 13, house),
+            row(77293, 2018, 2993, "SB421", 48, law)])
+        assert got["2017-2018"]["SB421"].get("source") == "archive page", (
+            "a page nearer the chaptered law than the database's copy was replaced")
+
+        # No view on disk, as on GitHub's machine: every page as it was.
+        view.unlink()
+        (root / "legislation" / "2018" / "SB0421.html").write_text(page[0], encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            got, tally, _ = at.build(bills)
+        sb = got["2017-2018"]["SB421"]
+        assert "415:6-v Coverage" in sb["text"] and sb.get("source") == "archive page", (
+            "without the view a page's text changed")
+        assert any("not checked" in k for k in tally), (
+            "without the view the build said nothing about the pages it could not "
+            f"check: {sorted(tally)}")
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+    noted = at.with_veto_note(
+        "ANALYSIS\nThis bill does a thing.\n2 Effective Date. Upon passage.\nLBAO\n"
+        "18-2993\nFISCAL IMPACT: none",
+        "ANALYSIS\nThis bill does a thing.\n2 Effective Date. Upon passage.\n\n"
+        "VETOED: June 18, 2018\n\nVeto Overridden: September 13, 2018\n\nLBAO")
+    assert "Upon passage.\n\nVETOED: June 18, 2018\n\nVeto Overridden: September 13, " \
+           "2018\n\nLBAO\n18-2993" in noted, (
+        "a veto note on the page was lost with the page's text, or put after the "
+        f"fiscal note: {noted!r}")
+    return "ok", ("2018 SB 421 shows chapter 361's 415:6-w with its own label; a page "
+                  "that is its final version, another session, a nearer page and a "
+                  "missing view all keep the page, and a veto note stays")
 
 
 @check("status", "stripping the page furniture never deletes a line of the bill")
