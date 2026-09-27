@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Fetch a whole past session from the legacy docket pages.
 
@@ -197,7 +197,10 @@ def main():
     ap.add_argument("--reparse", action="store_true",
                     help="re-run the parser over cached pages, no network")
     a = ap.parse_args()
-    refusal.check("The session fetch")
+    # --reparse asks nobody (--probe does), so neither a refusal nor GitHub's
+    # night stops it, as fetch_legislation.py's --parse is not stopped.
+    if a.probe or not a.reparse:
+        refusal.check("The session fetch")
 
     if a.probe:
         probe(a.year, a.probe_lsr, a.timeout)

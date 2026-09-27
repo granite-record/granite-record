@@ -384,69 +384,128 @@ Other General Court fetchers still run here, each with the person's go-ahead,
 and three things now keep them and the night apart.
 
 **GitHub's night window.** On a stood-down laptop no General Court request
-starts from 06:00 to 10:30 UTC daily (the night starts 06:17 and may run four
-hours) or from 04:00 UTC on Monday (the weekly, 04:17, two hours, then the
-night after it): 2:00 to 6:30 a.m. Eastern in summer, an hour earlier in
-winter. `refusal.NIGHT_WINDOWS` is the one definition. `refusal.check()`, which
-every General Court fetcher calls after parsing its arguments, exits 4 inside
-it with a sentence naming the window in Eastern time and when it ends;
-`watchers/gc_lane.py` stops before its next step the same way; and `probe_db`
-stops a query of the SQL host in it too, because the night takes the study
-committees' views from that host and the weekly the rosters (the window only:
-the web server's refusal record is not the SQL host's). Exit 4 and not 2,
-because the lane and the fetchers read 2 as the address refusing. A fetch
-already running when the window opens is not stopped by it -- `check()` warns
-in the hour before -- so a long one is best started after 6:30 a.m. The weak
-point is GitHub itself: a scheduled run can start late, and a night that
-started at 06:50 could still be asking at 10:40. `python3 refusal.py` prints
-the window and whether it is open.
+starts from 06:00 to 11:30 UTC daily (the night starts 06:17 and may run four
+hours, and GitHub often starts a scheduled run late, so an hour is allowed for
+that) or from 04:00 UTC on Monday (the weekly, 04:17, two hours, then the
+night after it): 2:00 to 7:30 a.m. Eastern in summer, an hour earlier in
+winter. Nor does one start in the 30 minutes before the window opens
+(`refusal.START_MARGIN_MINUTES`). `refusal.NIGHT_WINDOWS` is the one
+definition. `refusal.check()`, which every General Court fetcher calls after
+parsing its arguments (after an offline branch that asks nobody, such as
+`--parse` or `--reparse`), exits 4 inside the window and the half hour before
+it, with a sentence naming the window in Eastern time and when it ends;
+`watchers/gc_lane.py` stops before its next step the same way, daily steps
+included, and does not record a daily step that itself exited 4 as run; and
+`probe_db` stops a query of the SQL host in the window and the half hour
+before, at every one of its bridges (`run`, `run_to_file`, and `_bridge`
+under `run_to_file_counted` and `run_to_jsonl` -- preflight reads the source
+for any function that starts PowerShell without asking first), because the
+night takes the study committees' views from that host and the weekly the
+rosters (the window only: the web server's refusal record is not the SQL
+host's). Exit 4 and not 2, because the lane and the fetchers read 2 as the
+address refusing. A fetch already running when the window opens stops at its
+next request if it asks `refusal.hold().still()` before each one, as the
+fetchers that hold `archive/.lock` do (legislation, the docket and calendar
+archives, the Senate calendars, leadership, sponsors by member, the
+snapshot); one that does not keeps asking, so a long one is best started
+after 7:30 a.m. The weak point is still GitHub itself: a night started more
+than an hour late could still be asking after 11:30. `python3 refusal.py`
+prints the window and whether it is open.
 
 **Bringing the nights back: `python3 cloud.py pull`.** It is the laptop's only
 (it refuses on GitHub, where `kit-down` is the command), it only ever reads the
 bucket (preflight reads every function it reaches for a put, copy or delete),
-and it refuses beside a running build. It brings the night's own kit files down
-where the laptop's copy is still the one it last had in common with the bucket
+and it refuses beside a running build. It stops before reading anything from
+a bucket that holds neither the kit manifest nor a night's verdict -- empty,
+or not the night's. It brings the night's own kit files down where the
+laptop's copy is still the one it last had in common with the bucket
 (`archive/cloud/pull.json` records that; before a file's first pull the
 bucket's own old manifests under `replaced/` settle it); a night's file the
-laptop changed since is named as a clash and pull exits 1, and `--take PATH`
-sets the laptop's copy aside under `archive/cloud/set-aside/<day>/` and takes
-the bucket's. A laptop build rewriting the carried outputs (`proceedings.csv`,
-`narratives.json` and the rest) is the usual clash. It never touches the
-laptop's own files, which go the other way with `seed-kit`, or `site/`. It
-brings the night's logs to `logs/` (so `preflight`'s nightly check reads
-them), its change lists to `reports/gc-changes-<day>.md` and
-`gc-changes-weekly-<day>.md`, and the verdicts to `archive/cloud/last-night.json`
-and `last-weekly.json` -- since the last pull, seven days at most, or `--day`.
+laptop changed since -- or changed while the pull ran, which it looks for
+again just before replacing the file -- is named as a clash and pull exits 1,
+and `--take PATH` (written any way a person copies it: `.\x`, `./x`, `x\y`, or
+absolute under the working folder) sets the laptop's copy aside under
+`archive/cloud/set-aside/<day>/` and takes the bucket's. A laptop build
+rewriting the carried outputs (`proceedings.csv`, `narratives.json` and the
+rest) is the usual clash. It never touches the laptop's own files, which go
+the other way with `seed-kit`, or `site/`. It brings the night's logs to
+`logs/` (so `preflight`'s nightly check reads them), its change lists to
+`reports/gc-changes-<day>.md` and `gc-changes-weekly-<day>.md`, and the
+verdicts to `archive/cloud/last-night.json` and `last-weekly.json` -- from the
+day before the last pull's (a night's folder is named for the day it started
+in Eastern time, and the winter weekly starts on Sunday evening), seven days
+at most, or `--day`; a last-pull date in the future is taken as today, and
+said. A night's verdict from before yesterday is printed as STALE.
 `--changes-only` is the morning triage's: the refusal, the verdicts and the
-change lists, nothing else. `--dry-run` writes nothing.
+change lists, nothing else -- plus a line saying how old the last full pull
+is and how many of the night's files the bucket's kit manifest has changed
+since. `pull.json` records the last full pull (`"full"`) that brought every
+file down whole. `--dry-run` writes nothing and makes no folder.
+`--local-bucket` is for tests: pull refuses it in the stood-down repository
+that holds `secrets.json` unless `--allow-local-bucket` is given.
 
 **Refusals cross both ways.** Every pull reads the bucket's
 `state/refused.json` first: where the laptop has none it comes down as
 `archive/refused.json`, so a refusal the night met stops laptop fetches too;
 where both hold one the newer stands and the older is set aside, never
-dropped. And `refusal.check()` on a stood-down laptop refuses to start a
-General Court fetch until that record has been read since the last night
-window closed -- `python3 cloud.py pull --changes-only` is enough -- because
-otherwise a refusal met last night is invisible here. The other way, a refusal
-`refusal.note()` records on a stood-down laptop is sent to the bucket's
-`state/refused.json` at once when the bucket holds none, so the night stops
-too; if the bucket cannot be reached it says so loudly, `note()` still
-returns, and `archive/cloud/refusal-unsent.json` stays until `python3 cloud.py
-send-refusal` has sent it -- pull, `state-up` and `preflight` all report it.
+dropped. What each stops is printed as `refusal.force()` says: in force for so
+many more hours (every fetch here stops at it), or older than 24 hours (hand
+fetches here are not stopped by it, the lane is, and GitHub's night stops at
+it until `python3 cloud.py clear-refusal`). The read is recorded with the kind
+and name of the bucket, and `refusal.check()` on a stood-down laptop refuses
+to start a General Court fetch until the REAL bucket's record has been read
+since the last night window closed -- `python3 cloud.py pull --changes-only`
+is enough; a read of a `--local-bucket` folder never counts -- because
+otherwise a refusal met last night is invisible here.
+
+The other way, a refusal `refusal.note()` records on a stood-down laptop is
+sent to the bucket's `state/refused.json` at once when the bucket holds none,
+so the night stops too -- but only from the repository that holds
+`secrets.json` (`cloud.home()`); a refusal recorded in any other folder with a
+stand-down file in it, a test's, needs a folder bucket and never reaches R2.
+**Not every General Court fetcher records a refusal.** The ones that call
+`refusal.note()` are `fetch_archive_docket`, `fetch_archive_text`,
+`fetch_calendar_archive`, `fetch_committees`, `fetch_leadership`,
+`fetch_legislation`, `fetch_lsrs`, `fetch_rollcall_parties`,
+`fetch_senate_calendars`, `fetch_sponsors_by_member` and `snapshot_gencourt`.
+Fourteen others stop at a refusal on file (they call `refusal.check()`) but
+record none they meet, so a refusal one of them meets reaches neither this
+laptop's record nor the bucket's, and the night would ask again:
+`fetch_archive_bills`, `fetch_bill_status`, `fetch_bill_text`,
+`fetch_committee_reports`, `fetch_journals`, `fetch_members`,
+`fetch_schedule`, `fetch_session`, `fetch_testimony`, `resolve_members`,
+`probe_archive`, `probe_archive_shape`, `probe_calendars` and `probe_legacy`
+(`fetch_committee_details` and `probe_schema`, which since 26 September check,
+record none either). Giving them `refusal.classify()` and `note()` is open
+work, not done. If the bucket cannot be reached, `note()` says so loudly,
+still returns, and leaves `archive/cloud/refusal-unsent.json`; if the bucket
+already holds a different, older refusal, the laptop's newer one is not sent
+over it -- that one stops the night already -- but waits behind it, and the
+marker stays and says so. The marker goes only when the bucket holds the
+refusal the laptop holds, or a person lifts the laptop's (`refusal.py
+--clear`); pull, `state-up` and `preflight` report it until then, and `python3
+cloud.py send-refusal` sends it whenever the bucket holds none. A standing
+laptop refusal the bucket holds none of fails the pull, naming send-refusal.
 **The refusal that stops a night is the bucket's**: `refusal.py --clear` lifts
 the local one (and the unsent marker with it) and says so, and `python3
-cloud.py clear-refusal` lifts the bucket's; lifting only the local one brings
-the bucket's back at the next pull. Both are a person's decision, after
-`netcheck.py`.
+cloud.py clear-refusal` lifts the bucket's -- and says when the laptop holds
+a refusal the bucket does not, which is the moment a waiting one needs
+`send-refusal`. Lifting only the local one brings the bucket's back at the
+next pull. Both are a person's decision, after `netcheck.py`.
 
 `preflight`'s nightly check, on a stood-down laptop, reads the pulled logs and
 `archive/cloud/last-night.json` rather than this machine's own logs, which
-stopped at the stand-down: it skips until the first pull, and fails once the
-newest pulled night is more than 48 hours old -- naming `python3 cloud.py pull`
-when the pull is what is old, and the Actions tab when the pull is fresh and
-the night is not. `preflight` itself sets `GRANITE_NO_BUCKET`, under which
-`cloud.py` refuses the real bucket, so no check can send a made-up refusal to
-the night.
+stopped at the stand-down: it skips until the first pull for 48 hours after
+the stand-down's `since`, and fails after that, naming `python3 cloud.py
+pull`; once there is a pull, it fails when the newest pulled night is more
+than 48 hours old -- naming `python3 cloud.py pull` when the pull is what is
+old, and the Actions tab when the pull is fresh and the night is not. A second
+data check fails when the last FULL pull is more than 48 hours old (the same
+48-hour grace after the stand-down when there has been none), because a laptop
+that only runs `--changes-only` never brings the night's files down.
+`preflight` itself sets `GRANITE_NO_BUCKET`, under which `cloud.py` refuses the
+real bucket, so no check can send a made-up refusal to the night; the lane
+test passes it on to the lane it runs.
 
 **Branches, since 26 September: `main` is what is live, `dev` is where work
 goes.** The nightly builds and publishes `main`, so a commit there reaches the

@@ -43,16 +43,20 @@ GITHUB'S NIGHT (26 September 2026)
 
 Since the laptop stood down, GitHub's machine asks the General Court every
 night and early on Monday. On a stood-down laptop the lane asks
-refusal.gc_turn() before it starts each step, and stops at that boundary --
-exit 4, the stand-down's status, with the reason in its log -- inside GitHub's
-night window (refusal.NIGHT_WINDOWS, the one definition), or when this laptop
-has not read the bucket's refusal record since the last window closed, which
-`python3 cloud.py pull --changes-only` does. A refusal the night met is in the
-bucket, not here, until that read brings it down. It stops rather than waits:
-a lane that outlived a night would need that read anyway, and reading the
-bucket is a person's command here, not the lane's. A step already running
-when the window opens is not stopped by it; a long one is best queued after
-the window closes.
+refusal.gc_turn() before it starts each step, daily ones included, and stops
+at that boundary -- exit 4, the stand-down's status, with the reason in its
+log -- inside GitHub's night window (refusal.NIGHT_WINDOWS, the one
+definition), in the half hour before it, or when this laptop has not read the
+bucket's refusal record since the last window closed, which `python3 cloud.py
+pull --changes-only` does. A refusal the night met is in the bucket, not here,
+until that read brings it down. It stops rather than waits: a lane that
+outlived a night would need that read anyway, and reading the bucket is a
+person's command here, not the lane's. A daily step that itself exits 4 was
+held, not run: it is not recorded as today's, and the lane stops. A step
+already running when the window opens stops at its next request if it asks
+refusal.hold().still() before each one, as the lane's fetchers do; one that
+does not is not stopped, so a long one is best queued after the window
+closes.
 
 DAILY STEPS
 
@@ -253,18 +257,32 @@ def run_child(args, log):
 
 
 def run_daily(due, n):
-    """Today's due daily steps, in order. Returns the step count reached.
+    """Today's due daily steps, in order. Returns (the step count reached,
+    whether the lane must stop now for GitHub's turn).
 
-    Each is recorded when it finishes, whatever its status. One that fails
-    ends the day's daily steps: those after it read what it should have made.
+    Each is recorded when it finishes, whatever its status -- except one that
+    exited refusal.STOOD_DOWN, which did not run: it was held for GitHub's
+    night, and recording it would lose that day's step for good (its files
+    are live views). The lane stops there, as it does when githubs_turn()
+    holds a step before it starts, which it asks before EACH daily step: a
+    day's steps can run long enough for the window to come round. One that
+    fails ends the day's daily steps: those after it read what it should have
+    made.
     """
     today = time.strftime("%Y-%m-%d")
     for i, (step, line) in enumerate(due):
+        if githubs_turn():
+            return n, True
         args = step.replace("{date}", today).split()
         n += 1
         log = LOGS / f"gc_{time.strftime('%m%d_%H%M')}_{slug(' '.join(args))}.log"
         say(f"step {n} (daily, {line.split()[1]}): python3 {' '.join(args)}  -> {log.name}")
         rc, mins, tail = run_child(args, log)
+        if rc == refusal.STOOD_DOWN:
+            say(f"step {n} (daily) exited {rc}, the stand-down's: held for GitHub's turn, so "
+                "not recorded as run today, and the lane stops here rather than ask it again "
+                "at every boundary. Last lines: " + " | ".join(tail)[:400])
+            return n, True
         with DAILY.open("a", encoding="utf-8") as fh:
             fh.write(f"{today}\t{line}\n")
         if rc == 0:
@@ -281,7 +299,7 @@ def run_daily(due, n):
             say("  skipped for today, because they read what that step should have "
                 "made: " + "; ".join(later for _, later in rest)[:400])
         break
-    return n
+    return n, False
 
 
 def githubs_turn():
@@ -333,9 +351,9 @@ def main():
                 return 0
             due = daily_due()
             if due:
-                if githubs_turn():
+                n, held = run_daily(due, n)
+                if held:
                     return refusal.STOOD_DOWN
-                n = run_daily(due, n)
                 # Back to the top: the refusal and lock checks come before
                 # anything else is asked.
                 continue

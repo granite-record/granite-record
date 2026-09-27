@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.6
+# GRANITE_VERSION: 2026-09-07.7
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -79,6 +79,7 @@ import urllib.request
 from pathlib import Path
 
 import committee_details as CD
+import refusal
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
@@ -277,6 +278,12 @@ def main():
                          "can be fixed against the real thing")
     ap.add_argument("--delay", type=float, default=1.5)
     a = ap.parse_args()
+    # Every committee's address is gc.nh.gov's, read from committees.json, so
+    # a standing refusal stops this as it stops every General Court fetch --
+    # and, on a stood-down laptop, GitHub's night window, whose weekly job
+    # asks the same pages. It changes no request this makes: it only stops it
+    # starting.
+    refusal.check("The committee pages fetch")
 
     path = Path(a.file)
     if not path.exists():

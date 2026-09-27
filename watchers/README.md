@@ -14,11 +14,11 @@ copy of it.
 
 **Check before you start one.** Two of the same watcher is two fetchers.
 Pasted into `cmd` as it stands, this lists every watcher, the lane, a
-nightly, any fetch, the snapshot, a publish and a `cloud.py` transfer, each
-with its command line:
+nightly, any fetch or probe, `resolve_members`, the snapshot, a publish and a
+`cloud.py` transfer, each with its command line:
 
 ```
-powershell -NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'gc_lane|nightly|fetch_|snapshot_gencourt|publish|_watch\.py|cloud\.py' } | Select ProcessId,CommandLine | Format-List"
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'gc_lane|nightly|fetch_|probe_|resolve_members|snapshot_gencourt|publish|_watch\.py|cloud\.py' } | Select ProcessId,CommandLine | Format-List"
 ```
 
 With nothing running it lists one process: itself. The one it replaces wrapped
@@ -26,8 +26,9 @@ the same PowerShell in `python3 -c` with `\"` inside double quotes. `cmd` has
 no backslash escape, so it read that quote as the end of the string and the
 `|` after it as a pipe of its own. This one quotes only with `'` inside the
 `"`. It says `_watch\.py` rather than `watch`, which also matches the
-`gpu-watchdog` flag of every Edge and Teams process on the machine. It lists
-this machine only: GitHub's night is on the repository's Actions tab.
+`gpu-watchdog` flag of every Edge and Teams process on the machine. It names
+`probe_` and `resolve_members` because they ask the General Court too. It
+lists this machine only: GitHub's night is on the repository's Actions tab.
 
 ## GitHub's night, and the laptop's fetches
 
@@ -36,31 +37,43 @@ Since 26 September the nightly runs on GitHub, and this laptop has stood down
 from the lane or by hand -- and the rule is still one fetch at a time, across
 both machines now. On a stood-down laptop:
 
-- **No General Court request starts in GitHub's night window**: 06:00 to
-  10:30 UTC every day, and from 04:00 UTC on Monday for the weekly job --
-  2:00 to 6:30 a.m. Eastern in summer, from midnight on Mondays, an hour
-  earlier in winter. `refusal.NIGHT_WINDOWS` is the one definition.
+- **No General Court request starts in GitHub's night window, or in the half
+  hour before it**: the window is 06:00 to 11:30 UTC every day (the night
+  starts at 06:17 and may run four hours, and GitHub often starts it late, so
+  an hour is allowed for that), and from 04:00 UTC on Monday for the weekly
+  job -- 2:00 to 7:30 a.m. Eastern in summer, from midnight on Mondays, an
+  hour earlier in winter. `refusal.NIGHT_WINDOWS` is the one definition.
   `refusal.check()`, which every General Court fetcher calls, exits 4 inside
-  it with the window in Eastern time and when it ends; the lane stops before
-  its next step (exit 4, the reason in `logs/gc_lane.log`, the lock released);
-  and a query of the SQL host stops in it too, because the night and the
-  weekly query that host. A step already running when the window opens is
-  not stopped, so queue a long one to start after it closes.
+  it and in the 30 minutes before it, with the window in Eastern time and
+  when it ends; the lane stops before its next step, daily ones included
+  (exit 4, the reason in `logs/gc_lane.log`, the lock released); and a query
+  of the SQL host stops in it and in the half hour before, because the night
+  and the weekly query that host.
+- **A run already going when the window opens stops at its next request** if
+  it asks `refusal.hold().still()` before each one, as the fetchers that hold
+  `archive/.lock` do -- it says the window is why, once. A fetch that does not
+  is not stopped, so queue a long one to start after the window closes.
 - **No request starts until the bucket's refusal record has been read since
   the last window closed**, because a refusal the night meets is recorded in
   the bucket, not here. `python3 cloud.py pull --changes-only` reads it (a
   full `python3 cloud.py pull` does too), and brings the refusal down as
   `archive/refused.json` if the night met one -- which then stops the lane
-  and every fetch here, as a refusal met here always has.
-- **A refusal met here goes to the bucket at once** (`refusal.note()`), so the
-  night stops too. If the bucket cannot be reached the fetch says so loudly,
-  and `archive/cloud/refusal-unsent.json` stays until `python3 cloud.py
-  send-refusal` has sent it.
+  and every fetch here, as a refusal met here always has. Only a read of the
+  real bucket counts: a pull from a `--local-bucket` folder is a test.
+- **A refusal met here goes to the bucket at once** (`refusal.note()`, in the
+  fetchers that record one), so the night stops too. If the bucket cannot be
+  reached, or already holds an older refusal this one waits behind, the fetch
+  says so loudly, and `archive/cloud/refusal-unsent.json` stays until the
+  bucket holds this refusal -- `python3 cloud.py send-refusal` sends it once
+  the bucket holds none -- or a person lifts it here.
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the
-morning Eastern time runs until 2 a.m.; the next morning it wants
-`python3 cloud.py pull --changes-only` and a restart.
+morning Eastern time starts its last step before 1:30 a.m. EDT (12:30 a.m.
+EST; 11:30 p.m. on Sunday before a Monday), and a fetch still running under
+it stops at 2 a.m. EDT (1 a.m. EST) if it asks `hold().still()`; the next
+morning, after the window, it wants `python3 cloud.py pull --changes-only`
+and a restart.
 
 ---
 
@@ -78,8 +91,10 @@ holds it -- because several fetchers never looked at the lock, and
 `handover` takes the lock itself and is given it for that step. It stops on
 any step that exits non-zero, before every step if `archive/refused.json`
 exists at all, and -- on a stood-down laptop -- before a step inside GitHub's
-night window or before the bucket's refusal record has been read since the
-last one (above).
+night window or the half hour before it, or before the bucket's refusal
+record has been read since the last one (above). A daily step that exits 4
+was held for GitHub's turn, not run: it is not recorded as run, and the lane
+stops.
 
 ```
 python3 watchers/gc_lane.py            # from the repository root

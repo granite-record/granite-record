@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.262
+# GRANITE_VERSION: 2026-09-04.263
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11081,11 +11081,16 @@ def _committee_fetch_replaces(CD, FCD):
     --probe writes nothing, so it does not stop on a file that will not read.
 
     Run through fetch_committee_details.main with get() stubbed and
-    urlopen made to fail: nothing is asked of anybody.
+    urlopen made to fail: nothing is asked of anybody. Its refusal.check()
+    reads a refusal record in a temp folder, never this machine's -- whose
+    standing refusal, or GitHub's night window on a stood-down laptop, would
+    otherwise stop the test -- and a refusal there stops the fetch before it
+    asks for anything.
     """
     import contextlib
     import datetime
     import io
+    import time as _time
     import urllib.error
     rows = [{"chamber": "H", "code": str(c), "name": f"Fixture {c}",
              "url": f"https://example.invalid/committee/{c}"} for c in (41, 42, 43, 44)]
@@ -11102,7 +11107,7 @@ def _committee_fetch_replaces(CD, FCD):
             "<a href='member.aspx?pid=2'>John Roe</a> (D) "
             f"<p>Pursuant to House Rule 31: {duty}</p>"
             "<div>HELPFUL LINKS Committees of Conference</div></body></html>")
-    real_get, real_open = FCD.get, FCD.urllib.request.urlopen
+    real_get, real_open, real_mark = FCD.get, FCD.urllib.request.urlopen, FCD.refusal.MARK
 
     def no_network(*a, **k):
         raise AssertionError("fetch_committee_details opened a connection in preflight")
@@ -11111,6 +11116,8 @@ def _committee_fetch_replaces(CD, FCD):
         cj, dj = root / "committees.json", root / "committee_details.json"
         cj.write_text(json.dumps({"H": rows}), encoding="utf-8")
         FCD.urllib.request.urlopen = no_network
+        (root / "archive").mkdir()
+        FCD.refusal.MARK = root / "archive" / "refused.json"
 
         def run(args, answer):
             asked = []
@@ -11172,12 +11179,23 @@ def _committee_fetch_replaces(CD, FCD):
         rc, out, asked = run(["--only", "H43"], lambda url: page)
         assert rc not in (0, None) and not asked and dj.read_bytes() == snap[:40], (
             "a fetch that will write went ahead over a committee_details.json that will not read")
+
+        # A standing refusal stops it before the first request, --probe too.
+        FCD.refusal.MARK.write_text(json.dumps({"at": "t", "epoch": _time.time(),
+                                                "where": "fixture", "why": "403"}),
+                                    encoding="utf-8")
+        for args in (["--only", "H44"], ["--probe", "--only", "H44"]):
+            rc, out, asked = run(args, lambda url: page)
+            assert rc == 2 and not asked and "refused" in out, (
+                f"{args}: a standing refusal did not stop the committee pages fetch "
+                f"(exit {rc}, asked {asked})")
     finally:
-        FCD.get, FCD.urllib.request.urlopen = real_get, real_open
+        FCD.get, FCD.urllib.request.urlopen, FCD.refusal.MARK = real_get, real_open, real_mark
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("a page read as a committee's takes off a clerk it no longer names and is "
                   "stamped; a failed or empty page changes nothing; a run emptying a field "
-                  "everywhere is refused; --probe reads past a broken file")
+                  "everywhere is refused; --probe reads past a broken file; a standing "
+                  "refusal stops it before it asks")
 
 
 # The House listing's Rules committee on 6 September 2026, as the General Court
@@ -13515,32 +13533,44 @@ def _cloud_pull(CL, R):
 
     Against a folder bucket: a night changes its own files, one of the
     laptop's and the built site, writes its logs, change lists and verdict,
-    and sends them. A dry pull writes nothing anywhere. A pull brings the
-    night's files -- including one the laptop has no pull record of, settled
-    by the bucket's own old manifests -- its logs to logs/, its change lists
-    to reports/ and its verdict to archive/cloud/, never archive/, and leaves
-    the laptop's files, site/ and unknown log names alone. A night's file
-    changed on the laptop, or a log the laptop wrote itself, is a clash: left
-    as it is, named, exit 1, and --take sets it aside and takes the bucket's.
-    --changes-only takes the change list and the verdict and nothing more; a
-    pull refuses on GitHub and beside a running build. Throughout, a bucket
-    that fails any put, copy or delete stands in, and every function pull can
-    reach is read for one.
+    and sends them. A dry pull writes nothing anywhere and makes no folder. A
+    pull brings the night's files -- including one the laptop has no pull
+    record of, settled by the bucket's own old manifests -- its logs to
+    logs/, its change lists to reports/ and its verdict to archive/cloud/,
+    never archive/, and leaves the laptop's files, site/ and unknown log
+    names alone. A night's file changed on the laptop, or a log the laptop
+    wrote itself, or a file written while the pull ran, is a clash: left as
+    it is, named, exit 1, and --take (however the path is written) sets it
+    aside and takes the bucket's. --changes-only takes the change list and
+    the verdict and says how old the last full pull is and how many of the
+    night's files changed since; a verdict from before yesterday is STALE.
+    A pull refuses on GitHub, beside a running build, from a bucket that
+    holds neither a kit manifest nor a verdict (recording no read), and from
+    a folder in the stood-down home repository. The days looked at start the
+    day before the last pull's, and a record from the future is corrected.
+    Throughout, a bucket that fails any put, copy or delete stands in, and
+    every function pull can reach is read for one.
 
-    The refusal: the night's comes down where the laptop has none; where both
-    hold one the newer stands and the older is set aside; refusal.note() on a
-    stood-down laptop sends one to a bucket that has none, and when the bucket
-    cannot be reached leaves a marker that pull and state-up report until
-    send-refusal sends it -- without note() failing.
+    The refusal: the night's comes down where the laptop has none, saying
+    what it stops; where both hold one the newer stands and the older is set
+    aside; the read is recorded with the kind of bucket. refusal.note() on a
+    stood-down laptop sends one to a bucket that has none -- and from a
+    folder that is not the repository holding secrets.json, never to the
+    real bucket -- and when the bucket cannot be reached leaves a marker that
+    pull and state-up report until send-refusal sends it, without note()
+    failing. A newer laptop refusal behind an older one in the bucket keeps
+    its marker, waits, is named by clear-refusal when the bucket's is
+    lifted, fails the next pull, and is sent.
     """
     import ast
     import contextlib
     import io
-    from datetime import datetime
+    import types
+    from datetime import date, datetime, timedelta
     real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
     tmp = Path(tempfile.mkdtemp(prefix="gr-pull-"))
     saved = (CL.open_bucket, R.MARK, R.CLOUD_BUCKET, os.environ.get("GITHUB_ACTIONS"),
-             os.environ.get(CL.NO_BUCKET))
+             os.environ.get(CL.NO_BUCKET), CL.home, CL.make_bucket)
     today = f"{datetime.now():%Y-%m-%d}"
     writes = []
 
@@ -13577,8 +13607,34 @@ def _cloud_pull(CL, R):
                   for n in ast.walk(d) if isinstance(n, ast.Call)
                   and isinstance(n.func, ast.Attribute) and n.func.attr in WRITERS}
                  | {f"cmd_pull reaches {name}" for name in reached if name in NAMED})
-    assert "cmd_pull" in reached and "pull_kit" in reached, "cmd_pull was not found to read"
+    assert "cmd_pull" in reached and "pull_kit" in reached and "full_pull_news" in reached, \
+        "cmd_pull was not found to read"
     assert not bad, "pull can write to the bucket: " + "; ".join(bad)
+
+    # The days: from the day before the last pull's, seven at most, and a
+    # record from the future corrected and said.
+    ns = types.SimpleNamespace(day=None, changes_only=False)
+    d0 = date(2026, 9, 28)
+    assert CL.pull_days(ns, {"logs_through": "2026-09-28"}, d0) == (
+        ["2026-09-27", "2026-09-28"], ""), "the day before the last pull's is not looked at again"
+    days, note = CL.pull_days(ns, {"logs_through": "2026-10-03"}, d0)
+    assert days == ["2026-09-27", "2026-09-28"] and "after today" in note, (days, note)
+    assert len(CL.pull_days(ns, {}, d0)[0]) == CL.PULL_DAYS == 7
+    assert CL.pull_days(ns, {"logs_through": "2026-09-01"}, d0)[0][0] == "2026-09-22"
+
+    # --take, however a person writes the path; and naming --take when wrong.
+    assert CL.take_paths(tmp, [".\\logs\\a.log", "./narratives.json", "Docket.txt",
+                               str(tmp / "nh-archive" / "x.gz")]) == \
+        {"logs/a.log", "narratives.json", "Docket.txt", "nh-archive/x.gz"}
+    for wrong in ("..\\elsewhere.txt", str(tmp.parent / "outside.txt"), ".\\"):
+        try:
+            CL.take_paths(tmp, [wrong])
+            raise AssertionError(f"--take {wrong!r} was taken as a file here")
+        except CL.Failed as e:
+            assert "--take" in str(e), f"a bad --take path's error does not name --take: {e}"
+
+    def refusal(epoch, where):
+        return json.dumps({"at": f"t{epoch}", "epoch": epoch, "where": where})
 
     try:
         os.environ.pop("GITHUB_ACTIONS", None)
@@ -13594,8 +13650,9 @@ def _cloud_pull(CL, R):
         def call(root, *argv, bucket=bucket):
             return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
 
-        def pull(root, *argv, bucket=bucket):
-            CL.open_bucket = lambda a, preview=False: ReadOnly(a.local_bucket)
+        def pull(root, *argv, bucket=bucket, kind=ReadOnly):
+            CL.open_bucket = lambda a, preview=False: kind(a.local_bucket,
+                                                           create=not a.dry_run)
             try:
                 return call(root, "pull", *argv, bucket=bucket)
             finally:
@@ -13604,6 +13661,19 @@ def _cloud_pull(CL, R):
         def text(root, rel):
             p = root.joinpath(*rel.split("/"))
             return p.read_text(encoding="utf-8") if p.exists() else None
+
+        def dirs(*roots):
+            return {p for r in roots for p in Path(r).rglob("*") if p.is_dir()} | {
+                Path(r) for r in roots if Path(r).exists()}
+
+        # A bucket nothing was ever sent to is no answer: nothing taken, no read.
+        blank, fresh = tmp / "blank", tmp / "fresh"
+        blank.mkdir()
+        fresh.mkdir()
+        _pull_fixture(fresh, real)
+        code, out = pull(fresh, "--changes-only", bucket=blank)
+        assert code == 1 and "neither" in out and not (fresh / CL.PULL_RECORD).exists(), (
+            f"a pull of an empty bucket counted as reading the refusal record: {out[-300:]}")
 
         assert call(laptop, "seed-kit")[0] == 0
         assert call(night, "state-down")[0] == 0 and call(night, "kit-down")[0] == 0
@@ -13630,7 +13700,20 @@ def _cloud_pull(CL, R):
         assert code == 0, out[-300:]
         assert call(night, "state-up")[0] == 0
 
-        # A dry pull writes nothing, here or there.
+        # A dry pull writes nothing, here or there, and makes no folder --
+        # archive/cloud/ included, which the machine lock would have made.
+        dry = tmp / "dry"
+        dry.mkdir()
+        _pull_fixture(dry, real)
+        before, folders = _tree(dry), dirs(dry, bucket)
+        assert not (dry / "archive/cloud").exists()
+        code, out = call(dry, "pull", "--dry-run")
+        assert code == 0 and "nothing written" in out, out[-400:]
+        assert _tree(dry) == before and dirs(dry, bucket) == folders, \
+            "pull --dry-run wrote a file or made a folder"
+        code, out = call(dry, "pull", "--dry-run", bucket=tmp / "nowhere")
+        assert code == 1 and not (tmp / "nowhere").exists(), \
+            "pull --dry-run made the folder it was given as the bucket"
         before = _tree(laptop)
         code, out = pull(laptop, "--dry-run")
         assert code == 0 and "nothing written" in out, out[-400:]
@@ -13638,6 +13721,7 @@ def _cloud_pull(CL, R):
 
         code, out = pull(laptop)
         assert code == 0, out[-600:]
+        assert "STALE" not in out, f"today's verdict was called stale: {out[-300:]}"
         assert text(laptop, "Docket.txt") == "docket 2\n", (
             "the night's changed file did not come down (the laptop's copy is the one it "
             "sent, which the bucket's older manifest records)")
@@ -13657,25 +13741,54 @@ def _cloud_pull(CL, R):
             "the verdict went somewhere other than archive/cloud/"
         rec = json.loads(text(laptop, CL.PULL_RECORD))
         assert rec["refusal"]["read"] > 0 and "Docket.txt" in rec["kit"], rec.keys()
+        assert rec["refusal"]["kind"] == "folder" and \
+            rec["refusal"]["bucket"] == str(bucket.resolve()), \
+            f"the read did not record which bucket it was: {rec['refusal']}"
+        assert rec["full"]["epoch"] > 0, "a full pull was not recorded as one"
+        R.MARK = laptop / "archive" / "refused.json"
+        assert R.refusal_read() is None, "a folder bucket's read counted as the night's"
         code, out = pull(laptop)
         assert code == 0 and "files 0 taken" in out and "0 clashing" in out, out[-400:]
 
-        # A second night; the laptop changed a night's file since.
+        # A second night; --changes-only says the laptop's copies are behind;
+        # the laptop changed a night's file since.
         (night / "Docket.txt").write_text("docket 3\n", encoding="utf-8")
         (night / "narratives.json").write_text('{"night": 2}', encoding="utf-8")
         (night / log).write_text(f"{'=' * 74}\nGranite Record nightly  {today} 02:18\nagain\n",
                                  encoding="utf-8")
         assert call(night, "kit-up")[0] == 0
+        code, out = pull(laptop, "--changes-only")
+        assert code == 0 and "the last full pull was 0 hours ago" in out and \
+            "2 of the night's 4 files changed since" in out, out[-500:]
         (laptop / "narratives.json").write_text('{"mine": 1}', encoding="utf-8")
         code, out = pull(laptop)
         assert code == 1 and "--take narratives.json" in out, out[-500:]
         assert text(laptop, "narratives.json") == '{"mine": 1}', "a clash was overwritten"
         assert text(laptop, "Docket.txt") == "docket 3\n", "a clash stopped the other files"
         assert "again" in text(laptop, log), "the newer copy of a log pull wrote did not replace it"
-        code, out = pull(laptop, "--take", "narratives.json")
+        code, out = pull(laptop, "--take", ".\\narratives.json")
         assert code == 0 and text(laptop, "narratives.json") == '{"night": 2}', out[-400:]
         assert text(laptop, f"{CL.SET_ASIDE}/{today}/narratives.json") == '{"mine": 1}', \
             "--take did not keep the laptop's copy"
+
+        # A file written on the laptop while the pull was bringing it down is a
+        # clash, not overwritten.
+        (night / "Docket.txt").write_text("docket 4\n", encoding="utf-8")
+        assert call(night, "kit-up")[0] == 0
+
+        class Busy(ReadOnly):
+            def get_file(self, key, dst):
+                if key == "kit/Docket.txt":
+                    (laptop / "Docket.txt").write_text("written while pull ran\n",
+                                                       encoding="utf-8")
+                super().get_file(key, dst)
+        code, out = pull(laptop, kind=Busy)
+        assert code == 1 and "Docket.txt" in out and "while this pull ran" in out, out[-500:]
+        assert text(laptop, "Docket.txt") == "written while pull ran\n", \
+            "pull replaced a file written while it ran"
+        code, out = pull(laptop, "--take", str(laptop / "Docket.txt"))
+        assert code == 0 and text(laptop, "Docket.txt") == "docket 4\n", out[-400:]
+
         # A log the laptop wrote itself is not pull's to replace.
         (bucket / "logs/2000-01-03").mkdir(parents=True)
         (bucket / "logs/2000-01-03/gc-changes-2000-01-03.md").write_text("the bucket's\n",
@@ -13696,6 +13809,7 @@ def _cloud_pull(CL, R):
             text(triage, "archive/cloud/last-night.json"), "--changes-only missed what it is for"
         assert not (triage / log).exists() and text(triage, "Docket.txt") == "docket 1\n", \
             "--changes-only took more than the change list and the verdict"
+        assert "NO FULL PULL has run here" in out, "--changes-only did not say no full pull ran"
         os.environ["GITHUB_ACTIONS"] = "true"
         code, out = pull(triage, "--changes-only")
         assert code == 1 and "laptop's" in out, "pull ran on GitHub's machine"
@@ -13705,13 +13819,14 @@ def _cloud_pull(CL, R):
         assert code == 1 and "fresh" in out, "pull ran beside a build"
         (triage / ".build.lock").unlink()
 
-        # The night's refusal reaches the laptop; of two, the newer stands.
-        def refusal(epoch, where):
-            return json.dumps({"at": f"t{epoch}", "epoch": epoch, "where": where})
+        # The night's refusal reaches the laptop, saying what it stops; of
+        # two, the newer stands.
         (night / "archive/refused.json").write_text(refusal(200, "night"), encoding="utf-8")
         assert call(night, "state-up")[0] == 0
         code, out = pull(laptop, "--changes-only")
         assert code == 0 and "THE BUCKET HOLDS A REFUSAL" in out, out[-400:]
+        assert "older than 24 hours" in out and "hand fetches here are not stopped" in out \
+            and "clear-refusal" in out, f"pull did not say what an old refusal stops: {out[-500:]}"
         assert '"night"' in text(laptop, "archive/refused.json"), "the night's refusal did not come down"
         (laptop / "archive/refused.json").write_text(refusal(300, "laptop"), encoding="utf-8")
         assert pull(laptop, "--changes-only")[0] == 0
@@ -13723,41 +13838,105 @@ def _cloud_pull(CL, R):
             "the older refusal was dropped rather than set aside"
 
         # The laptop's refusal reaches the bucket, from refusal.note() itself.
-        away, empty = tmp / "away", tmp / "empty"
+        # `mine` is a bucket of the night's (a verdict in it, from before
+        # yesterday) that holds no refusal yet.
+        away, mine = tmp / "away", tmp / "mine"
         away.mkdir()
         _pull_fixture(away, real)
+        (mine / "state").mkdir(parents=True)
+        (mine / "state/last-night.json").write_text(json.dumps(
+            {"kind": "nightly", "day": "2000-01-01", "clean": True}), encoding="utf-8")
         (away / "archive/runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
-        R.MARK, R.CLOUD_BUCKET = away / "archive" / "refused.json", str(empty)
+        R.MARK, R.CLOUD_BUCKET = away / "archive" / "refused.json", str(mine)
         with contextlib.redirect_stderr(io.StringIO()) as err:
             R.note("fetch_x", "HTTP Error 403: Forbidden")
-        sent = (empty / "state/refused.json")
+        sent = (mine / "state/refused.json")
         assert sent.exists() and sent.read_bytes() == R.MARK.read_bytes(), err.getvalue()[-300:]
         assert not (away / CL.UNSENT).exists(), "the unsent marker stayed after a send"
         # ... and when the bucket cannot be reached, note() still returns, loudly,
-        # and the marker holds until send-refusal has sent it.
+        # and the marker holds until send-refusal has sent it. With no folder
+        # bucket, a temp folder is not the repository that holds secrets.json,
+        # so the real bucket is never tried at all.
         sent.unlink()
         R.CLOUD_BUCKET = None
         with contextlib.redirect_stderr(io.StringIO()) as err:
             R.note("fetch_x", "HTTP Error 403: Forbidden")
         assert "THE BUCKET HAS NOT BEEN TOLD" in err.getvalue() and (away / CL.UNSENT).exists(), \
             "an unsent refusal was not loud, or left no marker"
-        code, out = pull(away, "--changes-only", bucket=empty)
-        assert code == 1 and "send-refusal" in out, "pull did not report the unsent refusal"
-        code, out = call(away, "send-refusal", bucket=empty)
+        assert "secrets.json" in err.getvalue(), \
+            f"a temp folder's refusal was not refused the real bucket: {err.getvalue()[-300:]}"
+        made = []
+        os.environ.pop(CL.NO_BUCKET, None)
+        CL.make_bucket = lambda *a, **k: made.append(a) or saved[6](*a, **k)
+        try:
+            CL.send_refusal(away)
+            raise AssertionError("a temp folder's refusal was sent without a folder bucket")
+        except CL.Failed as e:
+            assert "secrets.json" in str(e) and not made, (str(e), made)
+        finally:
+            CL.make_bucket = saved[6]
+            os.environ[CL.NO_BUCKET] = "1"
+        code, out = pull(away, "--changes-only", bucket=mine)
+        assert code == 1 and "send-refusal" in out and "IS NOT IN THE BUCKET" in out, out[-400:]
+        assert "STALE" in out, f"a verdict from 2000 was not called stale: {out[-400:]}"
+        code, out = call(away, "send-refusal", bucket=mine)
         assert code == 0 and sent.exists() and not (away / CL.UNSENT).exists(), out[-300:]
-        assert pull(away, "--changes-only", bucket=empty)[0] == 0
-        # state-up reports a marker it cannot lift.
-        (away / "archive/refused.json").unlink()
-        (away / CL.UNSENT).write_text("{}", encoding="utf-8")
+        assert pull(away, "--changes-only", bucket=mine)[0] == 0
+
+        # A newer laptop refusal behind an older one in the bucket is not lost.
+        older = refusal(__import__("time").time() - 3600, "older in the bucket")
+        sent.write_text(older, encoding="utf-8")
+        R.CLOUD_BUCKET = str(mine)
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            R.note("fetch_y", "HTTP Error 403: Forbidden")
+        marker = away / CL.UNSENT
+        assert "HAS NOT TAKEN THIS REFUSAL" in err.getvalue() and marker.exists() and \
+            "waiting behind" in marker.read_text(encoding="utf-8"), err.getvalue()[-400:]
+        assert sent.read_text(encoding="utf-8") == older, "the bucket's refusal was overwritten"
+        code, out = call(away, "send-refusal", bucket=mine)
+        assert code == 1 and "waiting behind" in out and marker.exists(), out[-300:]
+        code, out = pull(away, "--changes-only", bucket=mine)
+        assert code == 0 and marker.exists() and "waits behind" in out, out[-400:]
+        code, out = call(away, "clear-refusal", bucket=mine)
+        assert code == 0 and "HOLDS A REFUSAL THE BUCKET DOES NOT" in out and \
+            "send-refusal" in out, f"clear-refusal did not name the laptop's refusal: {out[-400:]}"
+        code, out = pull(away, "--changes-only", bucket=mine)
+        assert code == 1 and "IS NOT IN THE BUCKET" in out and "send-refusal" in out, out[-400:]
+        code, out = call(away, "send-refusal", bucket=mine)
+        assert code == 0 and sent.read_bytes() == R.MARK.read_bytes() and not marker.exists(), \
+            out[-300:]
+
+        # A folder bucket in the stood-down repository that holds secrets.json
+        # is refused unless the test says so.
+        CL.home = lambda root: Path(root).resolve() == away.resolve()
+        try:
+            code, out = pull(away, "--changes-only", bucket=mine)
+            assert code == 1 and "--allow-local-bucket" in out, out[-300:]
+            assert pull(away, "--changes-only", "--allow-local-bucket", bucket=mine)[0] == 0
+        finally:
+            CL.home = saved[5]
+
+        # state-up reports a marker it cannot lift: this machine's refusal,
+        # which its record says it sent, is not in the (empty) bucket...
+        marker.write_text("{}", encoding="utf-8")
         code, out = call(away, "state-up", bucket=tmp / "nothing")
-        assert code == 1 and "send-refusal" in out, "state-up did not report the unsent refusal"
+        assert code == 1 and "send-refusal" in out and marker.exists(), \
+            f"state-up did not report the unsent refusal: {out[-300:]}"
+        # ... and lifts one with no refusal here left to send.
+        (away / "archive/refused.json").unlink()
+        code, out = call(away, "state-up", bucket=tmp / "nothing")
+        assert code == 0 and not marker.exists(), \
+            f"state-up kept a marker with no refusal on file here to send: {out[-300:]}"
         assert not writes, "a pull wrote to the bucket: " + "; ".join(writes[:3])
         return "ok", (f"{len(reached)} functions pull reaches, none writing to the bucket; the "
                       "night's files, logs, change lists and verdict come down, the laptop's "
-                      "files and site/ stay, a clash is named and --take settles it, and a "
-                      "refusal crosses both ways, loudly when it cannot")
+                      "files and site/ stay, a clash (one written mid-pull too) is named and "
+                      "--take settles it however it is written, an empty bucket is no read, "
+                      "and a refusal crosses both ways -- loudly when it cannot, and waiting "
+                      "behind an older one rather than lost")
     finally:
         CL.open_bucket, R.MARK, R.CLOUD_BUCKET = saved[:3]
+        CL.home, CL.make_bucket = saved[5], saved[6]
         for name, v in (("GITHUB_ACTIONS", saved[3]), (CL.NO_BUCKET, saved[4])):
             if v is None:
                 os.environ.pop(name, None)
@@ -13773,8 +13952,11 @@ def _pulled_nights_read():
     --code: never pulled, a fresh night, an old pull, a fresh pull of an old
     night, a verdict newer than the logs, and a week that installed nothing."""
     _pulled_night_selftest()
-    return "ok", ("never pulled skips; an old night fails, naming the pull or the Actions tab "
-                  "as the cause; a fresh verdict counts; a week of nothing installed fails")
+    _full_pull_selftest()
+    return "ok", ("never pulled skips for 48 hours after the stand-down and fails after; an old "
+                  "night fails, naming the pull or the Actions tab as the cause; a fresh "
+                  "verdict counts; a week of nothing installed fails; a full pull over 48 "
+                  "hours old fails, and a changes-only one is not a full one")
 
 
 @check("cloud", "nothing preflight runs can reach the real bucket", needs=("cloud",))
@@ -19183,25 +19365,97 @@ def _every_fetcher_checks_refusal():
     # the pages that only write a link to the General Court are not asking it.
     # netcheck.py is the one exception by design: it is what a person runs to
     # diagnose a refusal, so a standing refusal must not stop it.
-    ASKS = _re.compile(r"urlopen|urllib\.request\.Request|requests\.(?:get|post)|http\.client")
+    #
+    # AND THE CALL, NOT THE IMPORT (26 September 2026). This asked only for
+    # "import refusal", which a script can carry and never call check() -- and
+    # it missed probe_schema.py outright, which downloads with urlretrieve,
+    # a word ASKS did not have. check() is also where a stood-down laptop
+    # waits for GitHub's night now, so a script that only imports refusal
+    # walks through the window as well as through a refusal.
+    # fetch_committee_details.py holds no literal URL -- its addresses are
+    # read from committees.json -- so it is named here: it asks gc.nh.gov for
+    # every committee's page.
+    ASKS = _re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
+                       r"|http\.client")
+    NAMED = ("fetch_committee_details.py",)
+    probe = ('BASE = "https://gc.nh.gov/x/"\nimport refusal\n'
+             'urllib.request.urlretrieve(BASE + "a", "a")\n')
+    assert URL.search(probe) and ASKS.search(probe) and "refusal.check(" not in probe, \
+        "the reader would not catch a urlretrieve that imports refusal and never checks it"
     asks, missing = [], []
     for p in sorted(Path(".").glob("*.py")):
         if p.name in ("netcheck.py", "preflight.py"):
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
-        if not URL.search(src) or (not p.name.startswith("fetch_") and not ASKS.search(src)):
+        if p.name not in NAMED and (
+                not URL.search(src) or (not p.name.startswith("fetch_") and not ASKS.search(src))):
             continue
         asks.append(p.name)
-        if "import refusal" not in src:
+        if "import refusal" not in src or "refusal.check(" not in src:
             missing.append(p.name)
 
     assert asks, "no fetcher holds a gc.nh.gov URL, which cannot be right"
+    assert all(n in asks for n in NAMED if Path(n).exists()), "a named fetcher was not read"
     assert not missing, (
-        "these ask gc.nh.gov and never consult refusal.py, so a standing "
-        "refusal would not stop them:\n    " + "\n    ".join(missing)
+        "these ask gc.nh.gov and never call refusal.check(), so neither a standing "
+        "refusal nor GitHub's night window would stop them:\n    " + "\n    ".join(missing)
         + "\n  Add `import refusal` and `refusal.check(\"...\")` straight "
-          "after the arguments are parsed.")
-    return "ok", f"{len(asks)} fetchers ask gc.nh.gov; all consult refusal.py"
+          "after the arguments are parsed (after an offline branch that asks nobody).")
+    return "ok", f"{len(asks)} scripts ask gc.nh.gov; all call refusal.check()"
+
+
+@check("build", "a fetcher's offline mode is not stopped by a refusal or by GitHub's night, "
+                "and its fetching mode is")
+def _offline_modes_ask_nobody():
+    """refusal.check() stops a fetch that would ask the General Court: a
+    standing refusal (exit 2), or on a stood-down laptop GitHub's night window
+    (exit 4). Four scripts called it before an offline branch that asks
+    nobody -- fetch_lsrs.py --parse, fetch_members.py --reparse,
+    fetch_session.py --reparse and probe_archive_shape.py --report -- so
+    re-reading pages already saved was stopped too, for as long as a refusal
+    stood or every night for five and a half hours. fetch_legislation.py's
+    --parse was already below it.
+
+    Each is run in a temp folder holding a fresh refusal and a stand-down file,
+    at a clock inside the window: the offline mode gets past the check, and
+    the fetching mode stops at it. Nothing is asked of anybody -- the
+    fetching mode stops before its first request, and the offline one makes
+    none."""
+    import time as _time
+    here = Path(".").resolve()
+    runs = [("fetch_lsrs.py", ["--parse"], []),
+            ("fetch_members.py", ["--reparse"], []),
+            ("fetch_session.py", ["--year", "2020", "--reparse", "--max-lsr", "3"],
+             ["--year", "2020", "--max-lsr", "3"]),
+            ("probe_archive_shape.py", ["--report"], [])]
+    runs = [r for r in runs if (here / r[0]).exists()]
+    if not runs:
+        return "skip", "none of the four scripts is here"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-offline-"))
+    try:
+        (tmp / "archive").mkdir()
+        (tmp / "data").mkdir()
+        (tmp / "data" / "legislators.json").write_text("[]", encoding="utf-8")
+        (tmp / "archive" / "refused.json").write_text(json.dumps(
+            {"at": "t", "epoch": _time.time(), "where": "preflight", "why": "403"}),
+            encoding="utf-8")
+        (tmp / "archive" / "runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
+        env = dict(os.environ, GRANITE_CLOCK_UTC="2026-09-29T07:00:00Z", GITHUB_ACTIONS="")
+        for script, offline, online in runs:
+            for args, stopped in ((offline, False), (online, True)):
+                r = _run([sys.executable, str(here / script), *args], cwd=tmp,
+                         capture_output=True, text=True, timeout=120, env=env)
+                said = (r.stdout or "") + (r.stderr or "")
+                held = r.returncode in (2, 4) and ("refused" in said or "window" in said)
+                assert held == stopped, (
+                    f"python3 {script} {' '.join(args)} "
+                    + ("was not stopped by a standing refusal" if stopped else
+                       "was stopped by the refusal check, though it asks nobody")
+                    + f" (exit {r.returncode}): {said.strip()[-200:]}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(runs)} offline modes run past a standing refusal and GitHub's night; "
+                  "their fetching modes stop at them")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
@@ -19800,7 +20054,14 @@ def _lane_daily():
         in its log, inside GitHub's night window or before the bucket's
         refusal record has been read since the last one -- and runs once it
         has (26 September 2026). The lane imports the real refusal.py for
-        that, where it once needed only to find the file.
+        that, where it once needed only to find the file;
+      - it asks before EACH daily step, not once before them all, and a daily
+        step that exits 4 itself was held, not run: it is not recorded as
+        today's, and the lane stops rather than ask it again at every
+        boundary.
+
+    The lane runs with this process's environment, GRANITE_NO_BUCKET
+    included, and only the clock and GITHUB_ACTIONS set for it.
     """
     import time as _time
     here = Path(".").resolve()
@@ -19821,6 +20082,8 @@ def _lane_daily():
             "    pathlib.Path('watchers/gc_lane.stop').write_text('stop', encoding='utf-8')\n"
             "if len(sys.argv) > 3 and sys.argv[3] == 'refuse':\n"
             "    pathlib.Path('archive/refused.json').write_text('{}', encoding='utf-8')\n"
+            "if len(sys.argv) > 3 and sys.argv[3] == 'unread':\n"
+            "    pathlib.Path('archive/cloud/pull.json').unlink()\n"
             "print(name, 'exit', code)\n"
             "sys.exit(code)\n", encoding="utf-8")
         # A daily line that is not due yet, when the clock leaves room for one.
@@ -19830,9 +20093,12 @@ def _lane_daily():
         def lane_run(lines_, clock=None):
             queue.write_text("\n".join(lines_) + "\n", encoding="utf-8")
             (root / "trace.txt").unlink(missing_ok=True)
+            # This process's environment, so GRANITE_NO_BUCKET reaches the
+            # lane and every step it starts; only the clock and GitHub's flag
+            # are the test's.
             r = _run([sys.executable, str(lane)], cwd=root, capture_output=True,
                      text=True, timeout=90,
-                     env={"GRANITE_CLOCK_UTC": clock or "", "GITHUB_ACTIONS": ""})
+                     env=dict(os.environ, GRANITE_CLOCK_UTC=clock or "", GITHUB_ACTIONS=""))
             trace = ((root / "trace.txt").read_text(encoding="utf-8").split()
                      if (root / "trace.txt").exists() else [])
             return r.returncode, trace
@@ -19883,21 +20149,45 @@ def _lane_daily():
         assert rc4 == 4 and trace4 == [] and "window" in log.splitlines()[-2], (
             f"inside GitHub's night window the lane ran {trace4} (exit {rc4})")
         assert not (root / "archive" / ".lock").exists(), "the lane held for GitHub kept its lock"
-        rc5, trace5 = lane_run(held, clock="2026-09-29T11:00:00Z")
+        rc5, trace5 = lane_run(held, clock="2026-09-29T12:00:00Z")
         log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8")
         assert rc5 == 4 and trace5 == [] and "cloud.py pull" in log.splitlines()[-2], (
             f"with the bucket's refusal record never read the lane ran {trace5} (exit {rc5})")
         (root / "archive" / "cloud").mkdir()
-        (root / "archive" / "cloud" / "pull.json").write_text(json.dumps(
-            {"refusal": {"read": 1790678400}}), encoding="utf-8")     # 2026-09-29 10:40 UTC
-        rc6, trace6 = lane_run(held, clock="2026-09-29T11:00:00Z")
+        read = json.dumps({"refusal": {"read": 1790682000, "kind": "r2"}})  # 2026-09-29 11:40 UTC
+        (root / "archive" / "cloud" / "pull.json").write_text(read, encoding="utf-8")
+        rc6, trace6 = lane_run(held, clock="2026-09-29T12:00:00Z")
         assert rc6 == 0 and trace6 == ["held-1", "held-2", "make-stop-3"], (
             f"after the window, with the refusal record read since, the lane ran {trace6} "
             f"(exit {rc6})")
+
+        # Each daily step asks: the first here makes the bucket's refusal record
+        # unread, so the second must not start. And one that exits 4 was held,
+        # not run -- not recorded, and the lane stops rather than loop on it.
+        def recorded_today():
+            p = root / "logs" / "gc_lane.daily"
+            return {ln.split("\t", 1)[1] for ln in p.read_text(encoding="utf-8").splitlines()
+                    if ln.startswith(_time.strftime("%Y-%m-%d"))} if p.exists() else set()
+        two = ["daily 00:00 stub.py daily-unread 0 unread", "daily 00:00 stub.py daily-next 0",
+               "stub.py after-daily 0"]
+        rc7, trace7 = lane_run(two, clock="2026-09-29T12:00:00Z")
+        assert rc7 == 4 and trace7 == ["daily-unread"], (
+            f"a daily step started without asking whose turn it was: the lane ran {trace7} "
+            f"(exit {rc7})")
+        assert "daily 00:00 stub.py daily-next 0" not in recorded_today(), \
+            "a daily step the lane never started was recorded as run"
+        (root / "archive" / "cloud" / "pull.json").write_text(read, encoding="utf-8")
+        four = ["daily 00:00 stub.py daily-held 4", "stub.py after-held 0"]
+        rc8, trace8 = lane_run(four, clock="2026-09-29T12:00:00Z")
+        assert rc8 == 4 and trace8 == ["daily-held"], (
+            f"after a daily step that exited 4 the lane ran {trace8} (exit {rc8}); wanted a stop")
+        assert "daily 00:00 stub.py daily-held 4" not in recorded_today(), \
+            "a daily step held for GitHub's turn (exit 4) was recorded as run, and would be lost"
         return "ok", ("daily steps once a day before the queue, a failure skipping the rest of the "
                       "day's and not the lane, none again on a restart, a stop at the boundary, "
                       "a refusal still ending it, and a stood-down lane waiting for GitHub's "
-                      "night and for a read of the bucket's refusal")
+                      "night and for a read of the bucket's refusal -- asked before each daily "
+                      "step, and a held one not recorded as run")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -19926,10 +20216,14 @@ def _running_oneliner():
     m = re.search(r"-match '([^']+)'", ln)
     assert m, "the one-liner does not match command lines against a pattern"
     pattern = re.compile(m.group(1), re.I)
+    # probe_*.py and resolve_members.py ask the General Court too (the
+    # refusal check reads them for that), so a session looking for what is
+    # running must see them.
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
                  "python3 fetch_legislation.py --all", "python3 snapshot_gencourt.py",
                  r"cmd /c publish.bat", "python3 cloud.py pull",
-                 r"python3 watchers\captions_watch.py"):
+                 r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
+                 "python3 probe_db.py --sample", "python3 resolve_members.py"):
         assert pattern.search(want), f"the one-liner would not list: {want}"
     assert not pattern.search("msedgewebview2.exe --gpu-watchdog-timeout-seconds=60 "
                               "--enable-features=RendererHangWatcher"), \
@@ -22657,8 +22951,12 @@ try {
     texts = [PAST_TEXT, ""]
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-pastps-"))
-    saved, saved_env = P.PS_JSONL, os.environ.get("GR_TEST")
+    saved, saved_env, saved_mark = P.PS_JSONL, os.environ.get("GR_TEST"), P.refusal.MARK
     try:
+        # probe_db asks refusal.window_check() before every bridge. This one
+        # opens no connection, so GitHub's night window on a stood-down laptop
+        # has nothing to say about it: the record it reads is a temp folder's.
+        P.refusal.MARK = tmp / "archive" / "refused.json"
         os.environ["GR_TEST"] = ",".join(base64.b64encode(x.encode("utf-8")).decode("ascii")
                                          for x in texts)
         P.PS_JSONL = table + P.PS_JSONL_ROWS + P.PS_JSONL_CLOSE
@@ -22681,7 +22979,7 @@ try {
         assert rows == want, f"PowerShell and back changed a value: {rows} != {want}"
         assert type(rows[2]["fee"]) is int and type(rows[0]["fee"]) is float
     finally:
-        P.PS_JSONL = saved
+        P.PS_JSONL, P.refusal.MARK = saved, saved_mark
         if saved_env is None:
             os.environ.pop("GR_TEST", None)
         else:
@@ -22694,28 +22992,39 @@ try {
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
-                "window, or before the bucket's refusal record is read since the last one",
+                "window or the half hour before it, none goes on inside it, and none starts "
+                "before the real bucket's refusal record is read since the last one",
        needs=("refusal", "probe_db"))
 def _night_window(R, PD):
     """One fetch at a time is the rule this address was blocked twice for
     breaking, and since 26 September GitHub's machine asks the General Court
-    every night (06:17 UTC, four hours allowed) and early on Monday (04:17,
-    two). Its refusals go to the bucket, not to the laptop. So on a stood-down
-    laptop, and nowhere else:
+    every night (06:17 UTC, four hours allowed, and often started late) and
+    early on Monday (04:17, two). Its refusals go to the bucket, not to the
+    laptop. So on a stood-down laptop, and nowhere else:
 
-      - the window is one definition, in UTC, merged where the weekly and the
-        night run on; its sentence names it in Eastern time, EDT or EST as the
-        date has it, and says when it ends;
+      - the window is one definition, in UTC, 06:00 to 11:30 daily (an hour
+        for GitHub's late start) and from 04:00 on Monday, merged where the
+        weekly and the night run on; its sentence names it in Eastern time,
+        EDT or EST as the date has it, and says when it ends;
       - refusal.check(), which every General Court fetcher calls, exits 4 in
-        it, and exits 4 outside it until the bucket's refusal record has been
-        read (cloud.py pull) since the last window closed; a standing refusal
-        still exits 2 first;
-      - probe_db's two bridges to the SQL host, which the night and the weekly
-        also query, stop in the window without starting PowerShell, and the
-        refusal record does not govern them;
-      - the lane asks before each step (the lane's own check drives it);
+        it and in the 30 minutes before it, and exits 4 outside it until the
+        bucket's refusal record has been read (cloud.py pull) since the last
+        window closed -- a read of the REAL bucket: a --local-bucket folder's
+        read does not count; a standing refusal still exits 2 first;
+      - a run that started before the window stops at it: hold().still(),
+        which the fetchers that hold archive/.lock ask before every request,
+        turns False at the window's first minute, and says why once;
+      - every one of probe_db's bridges to the SQL host, which the night and
+        the weekly also query, stops in the window and the half hour before
+        without starting PowerShell or touching its output file -- read from
+        the source, so a bridge added later that starts PowerShell without
+        asking first fails here -- and the refusal record does not govern
+        them;
+      - the lane asks before each step, daily ones included (the lane's own
+        check drives it);
       - none of it applies without the stand-down, or on GitHub's machine.
     """
+    import ast
     import contextlib
     import io
     from datetime import datetime, timezone
@@ -22723,26 +23032,58 @@ def _night_window(R, PD):
     def utc(s):
         return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
     w = R.night_window(utc("2026-09-29T06:30"))                    # a Tuesday
-    assert w and w[0] == utc("2026-09-29T06:00") and w[1] == utc("2026-09-29T10:30"), w
-    for t in ("2026-09-29T05:59", "2026-09-29T10:30", "2026-09-29T11:00", "2026-09-27T04:30"):
+    assert w and w[0] == utc("2026-09-29T06:00") and w[1] == utc("2026-09-29T11:30"), w
+    for t in ("2026-09-29T05:59", "2026-09-29T11:30", "2026-09-29T12:00", "2026-09-27T04:30"):
         assert R.night_window(utc(t)) is None, f"{t} UTC was called inside the window"
+    assert R.night_window(utc("2026-09-29T11:00")), \
+        "11:00 UTC, an hour-late night still running, was called outside the window"
     w = R.night_window(utc("2026-09-28T04:30"))                    # a Monday: the weekly, then the night
-    assert w and w[0] == utc("2026-09-28T04:00") and w[1] == utc("2026-09-28T10:30"), w
+    assert w and w[0] == utc("2026-09-28T04:00") and w[1] == utc("2026-09-28T11:30"), w
     said = R.describe_window(*R.night_window(utc("2026-09-29T06:30")))
-    assert "2:00 a.m. EDT" in said and "6:30 a.m. EDT" in said, said
+    assert "2:00 a.m. EDT" in said and "7:30 a.m. EDT" in said, said
     said = R.describe_window(*R.night_window(utc("2026-12-07T05:00")))
-    assert "Sunday 11:00 p.m. EST" in said and "Monday 5:30 a.m. EST" in said, said
-    assert R.last_window_end(utc("2026-09-29T11:00")) == utc("2026-09-29T10:30")
-    assert R.last_window_end(utc("2026-09-29T05:00")) == utc("2026-09-28T10:30")
+    assert "Sunday 11:00 p.m. EST" in said and "Monday 6:30 a.m. EST" in said, said
+    assert R.last_window_end(utc("2026-09-29T12:00")) == utc("2026-09-29T11:30")
+    assert R.last_window_end(utc("2026-09-29T05:00")) == utc("2026-09-28T11:30")
     assert R.eastern(utc("2026-03-08T06:59"))[1] == "EST" and \
         R.eastern(utc("2026-03-08T07:00"))[1] == "EDT" and \
         R.eastern(utc("2026-11-01T05:59"))[1] == "EDT" and \
         R.eastern(utc("2026-11-01T06:00"))[1] == "EST", "the daylight-time rule is wrong"
+    assert R.START_MARGIN_MINUTES == 30 < R.SOON_MINUTES, "the half hour before is not 30 minutes"
+
+    # EVERY FUNCTION IN probe_db THAT STARTS POWERSHELL asks window_check()
+    # first. The reader is tried first on one that does not.
+    SPAWN = {("child", "popen"), ("subprocess", "run"), ("subprocess", "Popen"),
+             ("subprocess", "call"), ("subprocess", "check_output"), ("subprocess", "check_call")}
+
+    def unguarded(tree):
+        out, starts = [], []
+        for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)):
+            calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)]
+            spawns = [n.lineno for n in calls if (n.func.value.id, n.func.attr) in SPAWN]
+            if not spawns:
+                continue
+            starts.append(fn.name)
+            checks = [n.lineno for n in calls
+                      if (n.func.value.id, n.func.attr) == ("refusal", "window_check")]
+            if not checks or min(checks) > min(spawns):
+                out.append(fn.name)
+        return out, starts
+    probe = ast.parse("def fine(x):\n    refusal.window_check('q')\n    child.popen(x)\n\n"
+                      "def late(x):\n    child.popen(x)\n    refusal.window_check('q')\n\n"
+                      "def bare(x):\n    subprocess.run(x)\n")
+    assert unguarded(probe)[0] == ["late", "bare"], unguarded(probe)
+    bad, starts = unguarded(ast.parse(Path(PD.__file__).read_text(encoding="utf-8")))
+    assert {"run", "run_to_file", "_bridge"} <= set(starts), \
+        f"probe_db's bridges were not found to read: {starts}"
+    assert not bad, (f"probe_db starts PowerShell without asking refusal.window_check() first "
+                     f"in {', '.join(bad)}: GitHub's night queries that host too")
 
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-window-"))
     saved = (R.MARK, os.environ.get("GITHUB_ACTIONS"), os.environ.get(R.CLOCK_ENV),
-             PD.subprocess.run, PD.child.popen)
+             PD.subprocess.run, PD.child.popen, R.LOCK)
 
     def at(t):
         os.environ[R.CLOCK_ENV] = t + "Z"
@@ -22759,27 +23100,69 @@ def _night_window(R, PD):
     def asked(*_a, **_k):
         raise AssertionError("the SQL host was asked inside the window")
 
-    def read_at(t):
+    def read_at(t, kind="r2"):
         (tmp / "archive/cloud").mkdir(parents=True, exist_ok=True)
         (tmp / "archive/cloud/pull.json").write_text(json.dumps(
-            {"refusal": {"read": utc(t).timestamp()}}), encoding="utf-8")
+            {"refusal": {"read": utc(t).timestamp(), "kind": kind}}), encoding="utf-8")
     try:
         os.chdir(tmp)
         os.environ.pop("GITHUB_ACTIONS", None)
-        R.MARK = Path("archive") / "refused.json"
+        R.MARK, R.LOCK = Path("archive") / "refused.json", Path("archive") / ".lock"
         Path("archive").mkdir()
         at("2026-09-29T06:30:00")
         assert exits(lambda: R.check("t"))[0] is None, "the window held a laptop that has not stood down"
         (tmp / "archive/runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
         code, said = exits(lambda: R.check("The test fetch"))
-        assert code == R.STOOD_DOWN == 4 and "6:30 a.m. EDT" in said and "window" in said, (code, said)
+        assert code == R.STOOD_DOWN == 4 and "7:30 a.m. EDT" in said and "window" in said, (code, said)
         assert R.CLOCK_ENV in said, "a sentence judged at a test clock did not say so"
         PD.subprocess.run = PD.child.popen = asked
-        for fn in (lambda: PD.run("x", [("q", "SELECT 1")]),
-                   lambda: PD.run_to_file("x", "SELECT 1", tmp / "out.psv")):
+        out = tmp / "out.jsonl"
+        out.write_text("what was on disk\n", encoding="utf-8")
+        bridges = (lambda: PD.run("x", [("q", "SELECT 1")]),
+                   lambda: PD.run_to_file("x", "SELECT 1", tmp / "out.psv"),
+                   lambda: PD.run_to_file_counted("x", "SELECT 1", "SELECT 1", tmp / "c.psv"),
+                   lambda: PD.run_to_jsonl("x", "SELECT 1", "SELECT 1", out),
+                   lambda: PD._bridge(PD.PS_JSONL, {}, print, 60))
+        for n, fn in enumerate(bridges):
             code, said = exits(fn)
-            assert code == 4 and "database" in said, (code, said)
-        at("2026-09-29T11:00:00")
+            assert code == 4 and "database" in said, (n, code, said)
+        assert out.read_text(encoding="utf-8") == "what was on disk\n", \
+            "run_to_jsonl stopped for the window emptied the file it would have written"
+
+        # The half hour before: nothing starts, the SQL host included.
+        at("2026-09-30T05:40:00")
+        code, said = exits(lambda: R.check("t"))
+        assert code == 4 and "opens at 2:00 a.m. EDT" in said and "30 minutes" in said, (code, said)
+        code, said = exits(lambda: PD.run("x", [("q", "SELECT 1")]))
+        assert code == 4 and "30 minutes" in said, (code, said)
+        at("2026-09-30T05:15:00")
+        read_at("2026-09-29T11:45")
+        assert "opens at 2:00 a.m. EDT" in R.window_soon(), "a window 45 minutes off was not mentioned"
+        assert exits(lambda: R.check("t"))[0] is None, "a fetch 45 minutes before the window was held"
+        at("2026-09-30T04:00:00")
+        assert R.window_soon() == "", "a window two hours off was mentioned"
+
+        # A run already going when the window opens stops at its next request.
+        at("2026-09-30T05:59:00")
+        with R.hold("the test fetch") as held:
+            assert held.still(), "a held run was stopped before the window"
+            at("2026-09-30T06:00:00")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                first, second = held.still(), held.still()
+            said = err.getvalue()
+            assert not first and not second, "a held run went on asking inside the window"
+            assert "stops before its next request" in said and "2:00 a.m. EDT" in said, said
+            assert said.count("stops before its next request") == 1, "still() said why twice"
+        (tmp / "archive/runs-in-the-cloud.json").unlink()
+        at("2026-09-30T06:30:00")
+        with R.hold("the test fetch") as held:
+            assert held.still(), "a laptop that has not stood down was stopped by the window"
+        (tmp / "archive/runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
+
+        # After the window: the web server's fetchers want a read of the bucket.
+        (tmp / "archive/cloud/pull.json").unlink()
+        at("2026-09-29T12:00:00")
         code, said = exits(lambda: R.check("t"))
         assert code == 4 and "cloud.py pull" in said and "never" in said, (code, said)
         assert exits(lambda: R.window_check("t"))[0] is None, \
@@ -22787,12 +23170,12 @@ def _night_window(R, PD):
         read_at("2026-09-29T09:00")
         code, said = exits(lambda: R.check("t"))
         assert code == 4 and "cloud.py pull" in said, "a read from inside the window was enough"
-        read_at("2026-09-29T10:45")
+        read_at("2026-09-29T11:45", kind="folder")
+        code, said = exits(lambda: R.check("t"))
+        assert code == 4 and "cloud.py pull" in said and R.refusal_read() is None, \
+            "a pull from a --local-bucket folder counted as reading the night's refusal record"
+        read_at("2026-09-29T11:45")
         assert exits(lambda: R.check("t"))[0] is None, "a read since the window closed was not enough"
-        at("2026-09-30T05:30:00")
-        assert "opens at 2:00 a.m. EDT" in R.window_soon(), "a window 30 minutes off was not mentioned"
-        at("2026-09-30T04:00:00")
-        assert R.window_soon() == "", "a window two hours off was mentioned"
         at("2026-09-29T06:30:00")
         R.MARK.write_text(json.dumps({"at": "x", "epoch": __import__("time").time(),
                                       "where": "w"}), encoding="utf-8")
@@ -22801,8 +23184,10 @@ def _night_window(R, PD):
         os.environ["GITHUB_ACTIONS"] = "true"
         assert exits(lambda: R.check("t"))[0] is None and R.gc_turn() is None, \
             "GitHub's own machine was held by the laptop's window"
+        with R.hold("t") as held:
+            assert held.still(), "GitHub's own machine's run was stopped by the laptop's window"
     finally:
-        R.MARK, PD.subprocess.run, PD.child.popen = saved[0], saved[3], saved[4]
+        R.MARK, PD.subprocess.run, PD.child.popen, R.LOCK = saved[0], saved[3], saved[4], saved[5]
         for name, v in (("GITHUB_ACTIONS", saved[1]), (R.CLOCK_ENV, saved[2])):
             if v is None:
                 os.environ.pop(name, None)
@@ -22810,15 +23195,22 @@ def _night_window(R, PD):
                 os.environ[name] = v
         os.chdir(here)
         shutil.rmtree(tmp, ignore_errors=True)
-    lane = Path("watchers/gc_lane.py").read_text(encoding="utf-8")
-    loop = lane[lane.index("def main("):]
-    assert loop.count("githubs_turn()") >= 2 and \
-        loop.index("githubs_turn()") < loop.index("run_daily(") and \
-        loop.rindex("githubs_turn()") < loop.index("run_child("), \
-        "the lane does not ask whose turn it is before each kind of step"
-    return "ok", ("the window is 2:00 to 6:30 a.m. EDT, from midnight on Mondays; the fetchers, "
-                  "the SQL host and the lane wait it out, and the web server's fetchers wait for "
-                  "a read of the bucket's refusal since; not without the stand-down, nor on GitHub")
+
+    # The lane asks before every step, in run_daily and in main's queue loop.
+    tree = ast.parse(Path("watchers/gc_lane.py").read_text(encoding="utf-8"))
+    fns = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    for name in ("run_daily", "main"):
+        body = ast.unparse(fns[name])
+        assert "githubs_turn()" in body and "run_child(" in body and \
+            body.index("githubs_turn()") < body.index("run_child("), \
+            f"the lane's {name} does not ask whose turn it is before it starts a step"
+    assert "STOOD_DOWN" in ast.unparse(fns["run_daily"]), \
+        "the lane records a daily step held for GitHub's turn as run"
+    return "ok", ("the window is 2:00 to 7:30 a.m. EDT, from midnight on Mondays, and nothing "
+                  "starts in the half hour before; the fetchers, all four SQL bridges and the "
+                  "lane wait it out, a held run stops at its first minute, and the web server's "
+                  "fetchers wait for a read of the real bucket's refusal since; not without "
+                  "the stand-down, nor on GitHub")
 
 
 @check("build", "the committee pages fetch stops at a refusal, records it, and says when it found "
@@ -23268,15 +23660,44 @@ def _workflows_site_handoff():
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
 PULL_STALE_HOURS = 24         # a pull older than this is the likelier reason a night looks old
+FULL_PULL_HOURS = 48          # the laptop's copies of the night's files, at most this old
+STANDDOWN_GRACE_HOURS = 48    # never having pulled is a skip only this long after the stand-down
 
 
-def _pulled_night_findings(logs, cloud, now):
+def _standdown_since(path):
+    """When this laptop stood down, as a naive local time: the stand-down
+    file's "since" (refusal.py --stand-down writes local time), or the file's
+    own date when that will not read. None when there is no file."""
+    from datetime import datetime
+    p = Path(path)
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return datetime.fromisoformat(str(d.get("since")))
+    except (OSError, ValueError, TypeError, AttributeError):
+        try:
+            return datetime.fromtimestamp(p.stat().st_mtime)
+        except OSError:
+            return None
+
+
+def _grace(since, now):
+    """(still within STANDDOWN_GRACE_HOURS of the stand-down, "N hours ago")."""
+    if since is None:
+        return False, "at a time its stand-down file does not say"
+    hours = (now - since).total_seconds() / 3600
+    return hours <= STANDDOWN_GRACE_HOURS, f"{hours:.0f} hours ago ({since:%Y-%m-%d %H:%M})"
+
+
+def _pulled_night_findings(logs, cloud, now, since=None):
     """(problems, summary) for a laptop that has stood down, as of `now`.
 
     Its own nightly stopped at the stand-down; GitHub's nights reach it only
     through `cloud.py pull`, which writes archive/cloud/pull.json (with the
     logs it wrote), archive/cloud/last-night.json and logs/nightly-<day>.log.
-    problems is None when nothing has ever been pulled. The newest night is
+    problems is None when nothing has ever been pulled and the laptop stood
+    down (`since`) no more than STANDDOWN_GRACE_HOURS ago: after that, never
+    having pulled is a failure naming the pull, because a laptop that never
+    pulls would otherwise skip this check for good. The newest night is
     the later of the newest pulled log's start and the verdict's; older than
     NIGHTLY_STALE_HOURS is a problem, whose remedy depends on whether the pull
     or the night is what is old. The week of nights that installed nothing is
@@ -23293,9 +23714,16 @@ def _pulled_night_findings(logs, cloud, now):
             return None
     rec, verdict = doc(Path(cloud) / "pull.json"), doc(Path(cloud) / "last-night.json")
     if not rec and not verdict:
-        return None, ("this laptop has stood down, and nothing has been pulled from the bucket "
-                      "yet: python3 cloud.py pull brings GitHub's nights here, and this check "
-                      "reads them")
+        grace, ago = _grace(since, now)
+        said = (f"this laptop stood down {ago}, and nothing has been pulled from the bucket "
+                "since: python3 cloud.py pull brings GitHub's nights here, and this check "
+                "reads them")
+        if grace:
+            return None, said + f" (it skips for {STANDDOWN_GRACE_HOURS} hours after the stand-down)"
+        return [said[0].upper() + said[1:] + ". Until then this laptop's data, nightly logs and "
+                "change lists stop at the stand-down. The pull reads the bucket only and asks the "
+                "General Court nothing. It clears when a pull brings a night from the last 48 "
+                "hours."], said
     nights = []
     for name in sorted(n for n in (rec or {}).get("files", {}) if PULLED_NIGHTLY.match(n)):
         f = Path(logs) / name.split("/", 1)[1]
@@ -23371,7 +23799,13 @@ def _pulled_night_selftest():
         if verdict:
             (cloud / "last-night.json").write_text(json.dumps(verdict), encoding="utf-8")
     try:
-        assert _pulled_night_findings(logs, cloud, now)[0] is None, "never pulled was not a skip"
+        assert _pulled_night_findings(logs, cloud, now, now - timedelta(hours=20))[0] is None, \
+            "never pulled, the day after the stand-down, was not a skip"
+        p = _pulled_night_findings(logs, cloud, now, now - timedelta(hours=49))[0]
+        assert p and len(p) == 1 and "python3 cloud.py pull" in p[0], \
+            f"never pulled, 49 hours after the stand-down, did not fail naming the pull: {p}"
+        assert _pulled_night_findings(logs, cloud, now, None)[0], \
+            "never pulled, with no stand-down date to go by, was a skip"
         pulled(now - timedelta(hours=2), "2026-09-30")
         assert _pulled_night_findings(logs, cloud, now)[0] == [], "a night from this morning failed"
         pulled(now - timedelta(days=3), "2026-09-27")
@@ -23388,8 +23822,98 @@ def _pulled_night_selftest():
         pulled(now - timedelta(hours=1), *days, installed=False)
         p = _pulled_night_findings(logs, cloud, now)[0]
         assert len(p) == 1 and "installed none" in p[0], p
+        sd = tmp / "runs-in-the-cloud.json"
+        sd.write_text(json.dumps({"since": "2026-09-26T15:04:05"}), encoding="utf-8")
+        assert _standdown_since(sd) == datetime(2026, 9, 26, 15, 4, 5)
+        sd.write_text("{}", encoding="utf-8")
+        assert _standdown_since(sd) is not None, "a stand-down with no date gave no time at all"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _full_pull_findings(cloud, now, since):
+    """(problems, summary) about the laptop's copies of the night's files, on
+    a laptop that has stood down: problems is None for a skip.
+
+    --changes-only is the morning's pull and brings no kit file, so a laptop
+    that only ever triages keeps the night's files -- proceedings.csv, the
+    narratives, the day's data -- as they were on the last FULL pull, which
+    pull.json records ("full"). Older than FULL_PULL_HOURS is a failure
+    naming python3 cloud.py pull; never is a skip for STANDDOWN_GRACE_HOURS
+    after the stand-down and a failure after, as the nightly check's is."""
+    from datetime import datetime
+    try:
+        rec = json.loads((Path(cloud) / "pull.json").read_text(encoding="utf-8"))
+        full = (rec.get("full") or {}) if isinstance(rec, dict) else {}
+    except (OSError, ValueError, AttributeError):
+        full = {}
+    if not full.get("epoch"):
+        grace, ago = _grace(since, now)
+        said = (f"no full pull has run here since this laptop stood down {ago}: the night's files "
+                "on this laptop are as they were then")
+        if grace:
+            return None, said + f" (this skips for {STANDDOWN_GRACE_HOURS} hours after the stand-down)"
+        return [said[0].upper() + said[1:] + ". python3 cloud.py pull brings them (it reads the "
+                "bucket only; --changes-only does not bring them). It clears on the first full "
+                "pull."], said
+    at = datetime.fromtimestamp(float(full["epoch"]))
+    hours = (now - at).total_seconds() / 3600
+    said = f"the last full pull was {hours:.0f} hours ago ({at:%Y-%m-%d %H:%M})"
+    if hours > FULL_PULL_HOURS:
+        return [said[0].upper() + said[1:] + f", more than {FULL_PULL_HOURS}: this laptop's "
+                "copies of the night's files are that old, and a build or a check here reads "
+                "them. python3 cloud.py pull brings them (it reads the bucket only; "
+                "--changes-only does not bring them). It clears on the next full pull."], said
+    return [], said
+
+
+def _full_pull_selftest():
+    """_full_pull_findings on made-up pull records whose answers are known."""
+    from datetime import datetime, timedelta
+    now = datetime(2026, 9, 30, 9, 0)
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        assert _full_pull_findings(tmp, now, now - timedelta(hours=10))[0] is None, \
+            "no full pull, the morning after the stand-down, was not a skip"
+        p = _full_pull_findings(tmp, now, now - timedelta(hours=50))[0]
+        assert p and "python3 cloud.py pull" in p[0], p
+        (tmp / "pull.json").write_text(json.dumps(
+            {"epoch": now.timestamp(), "mode": "changes-only"}), encoding="utf-8")
+        assert _full_pull_findings(tmp, now, now - timedelta(hours=50))[0], \
+            "a changes-only pull counted as a full one"
+        (tmp / "pull.json").write_text(json.dumps(
+            {"full": {"epoch": (now - timedelta(hours=47)).timestamp()}}), encoding="utf-8")
+        assert _full_pull_findings(tmp, now, None)[0] == [], "a full pull 47 hours old failed"
+        (tmp / "pull.json").write_text(json.dumps(
+            {"full": {"epoch": (now - timedelta(hours=49)).timestamp()}}), encoding="utf-8")
+        p = _full_pull_findings(tmp, now, None)[0]
+        assert p and "49 hours ago" in p[0] and "python3 cloud.py pull" in p[0], p
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("data", "a stood-down laptop's copies of the night's files are no more than 48 hours old")
+def _full_pull_fresh():
+    """On a laptop that has stood down, the night's files -- the day's data,
+    the carried outputs, the snapshots -- change on GitHub every night and
+    reach this laptop only through a full `python3 cloud.py pull`. The
+    morning triage's --changes-only brings the change list and not them, so
+    the laptop's data can grow old while every morning looks attended to.
+    Fails when the last full pull is over 48 hours old (or, 48 hours after the
+    stand-down, when there has never been one), naming the pull. The pull
+    reads the bucket and asks the General Court nothing; running it is still
+    the person's to decide, because it can clash with work here."""
+    from datetime import datetime
+    import refusal
+    _full_pull_selftest()
+    if refusal.stood_down() is None:
+        return "skip", "this laptop has not stood down: its own nightly keeps its files"
+    problems, summary = _full_pull_findings(Path("archive/cloud"), datetime.now(),
+                                            _standdown_since(refusal.STANDDOWN))
+    if problems is None:
+        return "skip", summary
+    assert not problems, "\n".join(problems)
+    return "ok", summary
 
 
 @check("data", "a refusal met on this laptop has reached the bucket")
@@ -23408,11 +23932,22 @@ def _refusal_reached_the_bucket():
         d = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         d = {}
+    d = d if isinstance(d, dict) else {}
+    why = str(d.get("why") or "")
+    if "waiting behind" in why or "newer refusal" in why:
+        # The bucket holds another refusal, which stops the night for now;
+        # this one is not lost, but it needs a person before it can be sent.
+        raise AssertionError(
+            f"{p} says a refusal met on this laptop at {d.get('at', '?')} is not in the "
+            f"bucket: {why}. The night is stopped by the bucket's for now. python3 "
+            "cloud.py pull says where things stand; python3 refusal.py --clear removes the "
+            "marker with the refusal, if a person has decided it is over.")
     raise AssertionError(
         f"{p} says a refusal met on this laptop at {d.get('at', '?')} never reached the "
-        "bucket, so GitHub's night would still ask the General Court. python3 cloud.py "
-        "send-refusal sends it (the bucket, not the General Court); python3 refusal.py "
-        "--clear removes the marker with the refusal, if a person has decided it is over.")
+        "bucket" + (f" ({why})" if why else "") + ", so GitHub's night would still ask the "
+        "General Court. python3 cloud.py send-refusal sends it (the bucket, not the General "
+        "Court); python3 refusal.py --clear removes the marker with the refusal, if a "
+        "person has decided it is over.")
 
 
 @check("data", "the nightly is still running, and its last report pull worked")
@@ -23450,10 +23985,12 @@ def _nightly_logs():
     GitHub and this laptop's own logs stop at the stand-down, so they would
     fail here forever. What it reads instead is what `cloud.py pull` brought:
     the pulled nightly logs and archive/cloud/last-night.json
-    (_pulled_night_findings). Never pulled is a skip that says so; a newest
-    night older than 48 hours fails, with python3 cloud.py pull as the remedy
-    when the pull is what is old, and the Actions tab when the pull is fresh
-    and the night is not.
+    (_pulled_night_findings). Never pulled is a skip that says so for 48
+    hours after the stand-down, and a failure naming python3 cloud.py pull
+    after that -- a laptop that never pulled once skipped this for good; a
+    newest night older than 48 hours fails, with python3 cloud.py pull as the
+    remedy when the pull is what is old, and the Actions tab when the pull is
+    fresh and the night is not.
     """
     from datetime import datetime
     import refusal
@@ -23461,7 +23998,8 @@ def _nightly_logs():
     _pulled_night_selftest()
     if refusal.stood_down() is not None:
         problems, summary = _pulled_night_findings(Path("logs"), Path("archive/cloud"),
-                                                   datetime.now())
+                                                   datetime.now(),
+                                                   _standdown_since(refusal.STANDDOWN))
         if problems is None:
             return "skip", summary
         assert not problems, "\n".join(problems)

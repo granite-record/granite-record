@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -291,8 +291,9 @@ def main():
     ap.add_argument("--parse", action="store_true",
                     help="re-read the saved CSV; touches no network")
     a = ap.parse_args()
-    refusal.check("The LSR fetch")
 
+    # --parse asks nobody, so neither a refusal nor GitHub's night stops it:
+    # the check comes after it, as fetch_legislation.py's does.
     if a.parse:
         if not RAW_CSV.exists():
             raise SystemExit(f"  {RAW_CSV} is not here. Run without --parse first.")
@@ -302,6 +303,7 @@ def main():
         print(f"{len(rows)} requests parsed -> {OUT}"
               + (f"; {gone} newly marked withdrawn" if gone else ""))
         return 0
+    refusal.check("The LSR fetch")
 
     print(f"asking {SEARCH} for the page that offers the file")
     body, enc = get(SEARCH)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Work out the shape of an NH data file without guessing.
 
@@ -21,6 +21,8 @@ import sys
 import urllib.request
 from collections import Counter
 from pathlib import Path
+
+import refusal
 
 BASE = "https://gc.nh.gov/dynamicdatadump/"
 
@@ -114,6 +116,11 @@ def main():
     ap.add_argument("--file")
     ap.add_argument("--no-download", action="store_true")
     a = ap.parse_args()
+    # It downloads from gc.nh.gov/dynamicdatadump/ whatever it does not find
+    # here, so a standing refusal, and GitHub's night on a stood-down laptop,
+    # stop it -- unless --no-download says it will ask nobody.
+    if not a.no_download:
+        refusal.check("The schema probe")
 
     d = Path(a.dir)
     targets = [Path(a.file)] if a.file else [d / n for n in WANTED]

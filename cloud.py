@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.2
+# GRANITE_VERSION: 2026-09-25.3
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -21,6 +21,7 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                change lists, verdicts and refusal
     python3 cloud.py send-refusal [--dry-run]  a refusal met here, to the bucket,
                                                when refusal.py could not send it
+                                               or it waited behind another
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -110,28 +111,48 @@ deletes nothing there, and preflight holds its code to that.
                           morning triage looks. Since the last pull, at most
                           PULL_DAYS days, or --day. A local file of the same
                           name that differs, and that pull did not write, is
-                          a clash like a kit file's.
+                          a clash like a kit file's. The days start the day
+                          before the last pull's, because a night's folder is
+                          named for the day it started in Eastern time.
   the verdicts            state/last-night.json and last-weekly.json to
                           archive/cloud/ -- NOT archive/, where state-down's
-                          record would take them for this machine's own
+                          record would take them for this machine's own. A
+                          night's from before yesterday is called STALE.
   the refusal             state/refused.json comes down as archive/refused.json
                           when the laptop has none (a refusal the night met
                           stops this laptop's fetches too); where both hold
                           one the newer stands and the older is set aside,
-                          never dropped. When pull read it is recorded, and
-                          refusal.check() on a stood-down laptop refuses to
-                          start a General Court fetch until a read since
-                          GitHub's last night window.
+                          never dropped. When pull read it is recorded, with
+                          the kind of bucket, and refusal.check() on a
+                          stood-down laptop refuses to start a General Court
+                          fetch until a read of the REAL bucket since
+                          GitHub's last night window. A bucket holding
+                          neither the kit manifest nor a night's verdict is
+                          empty or not the night's: pull stops before
+                          reading anything from it. A standing refusal here
+                          that the bucket holds none of is a failure.
 
 --changes-only is the morning triage's: the refusal, the verdicts and the
-change lists, and nothing else.
+change lists, and nothing else -- except a line saying how old the last full
+pull is and how many of the night's files the bucket's kit manifest has
+changed since, which pull.json's "full" records and preflight holds to 48
+hours on a stood-down laptop.
+
+--local-bucket is for tests, and pull refuses it in the stood-down
+repository that holds secrets.json unless --allow-local-bucket says a test
+there is meant; its read of the refusal record never counts either way.
 
 send-refusal is the other direction for the one file that must cross at
 once: a refusal refusal.py records on a stood-down laptop goes to the
 bucket's state/refused.json when the bucket holds none, so the night stops
-too. refusal.note() calls send_refusal() itself; when the bucket cannot be
-reached it leaves archive/cloud/refusal-unsent.json, which pull, state-up
-and preflight report until this command sends it.
+too -- to the real bucket only from the repository that holds secrets.json.
+refusal.note() calls send_refusal() itself; when the bucket cannot be
+reached, or holds another refusal this one must wait behind (the night stops
+at that one, and it is never overwritten from here), it leaves
+archive/cloud/refusal-unsent.json saying which, and pull, state-up and
+preflight report it until the bucket holds this refusal or a person lifts it
+here. clear-refusal says when this machine holds a refusal the bucket does
+not, which is the moment a waiting one needs sending.
 """
 
 import argparse
@@ -431,11 +452,19 @@ def hash_all(hashes, rels, workers, what):
 
 class FolderBucket:
     """A folder standing in for the bucket: the same keys, as files. Object
-    metadata sits beside them under .meta/, which no listing shows."""
+    metadata sits beside them under .meta/, which no listing shows.
 
-    def __init__(self, folder):
+    kind and name say which bucket a read was of, for pull's record: only a
+    read of the real one ("r2") frees a stood-down laptop's fetches."""
+    kind = "folder"
+
+    def __init__(self, folder, create=True):
         self.root = Path(folder)
-        self.root.mkdir(parents=True, exist_ok=True)
+        # A dry run makes no folder: every read below answers "nothing there"
+        # for a folder that does not exist.
+        if create:
+            self.root.mkdir(parents=True, exist_ok=True)
+        self.name = str(self.root.resolve())
 
     def describe(self):
         return f"the folder {self.root}"
@@ -508,8 +537,11 @@ class NotAsked(FolderBucket):
     """For a --dry-run on a machine that cannot reach the bucket yet: an empty
     bucket, so the run can still show everything a first upload would send."""
 
+    kind = "none"
+
     def __init__(self, why):
         self.why = why
+        self.name = ""
 
     def describe(self):
         return f"the bucket (not asked: {self.why})"
@@ -527,6 +559,7 @@ class NotAsked(FolderBucket):
 class R2Bucket:
     """Cloudflare R2 through its S3 endpoint. boto3 is imported here and
     nowhere else, so every other command, preflight included, runs without it."""
+    kind = "r2"
 
     def __init__(self, cfg, workers, quick=False):
         # quick: one small object, sent by refusal.note() as a fetch gives up,
@@ -560,7 +593,7 @@ class R2Bucket:
             "s3", endpoint_url=f"https://{cfg['account']}.r2.cloudflarestorage.com",
             aws_access_key_id=cfg["key_id"], aws_secret_access_key=cfg["secret"],
             region_name="auto", config=conf)
-        self.bucket = cfg["bucket"]
+        self.bucket = self.name = cfg["bucket"]
         # R2 wants every part but the last the same size, which this gives.
         self.tc = TransferConfig(multipart_threshold=64 * MB,
                                  multipart_chunksize=64 * MB, max_concurrency=4)
@@ -629,11 +662,20 @@ def make_bucket(local_bucket, workers, quick=False):
     return R2Bucket(keys.r2(), workers, quick=quick)
 
 
+def home(root):
+    """Whether root is the repository that holds secrets.json -- the one
+    whose refusals are the real ones, and whose pull records a read of the
+    real bucket. A temp folder with a stand-down file in it is not."""
+    import keys
+    return Path(root).resolve() == Path(keys.PATH).resolve().parent
+
+
 def open_bucket(a, preview=False):
     """The bucket named on the command line or by keys.r2(). With preview, a
-    dry run that cannot reach it compares with an empty bucket and says so."""
+    dry run that cannot reach it compares with an empty bucket and says so.
+    A dry run's folder bucket is not created."""
     if a.local_bucket:
-        return FolderBucket(a.local_bucket)
+        return FolderBucket(a.local_bucket, create=not getattr(a, "dry_run", False))
     try:
         return make_bucket(None, a.workers)
     except (Failed, SystemExit) as e:
@@ -1351,17 +1393,46 @@ def cmd_state_up(a, root):
         raise Failed(f"{len(bad)} state files did not send: {'; '.join(bad)}")
 
 
+def write_unsent(root, why):
+    """archive/cloud/refusal-unsent.json, saying why the refusal on file here
+    is not in the bucket -- the shape refusal.tell_the_bucket writes."""
+    p = local(root, UNSENT)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "epoch": time.time(),
+                             "refusal": "archive/refused.json", "why": str(why)[:300]},
+                            indent=1), encoding="utf-8")
+
+
+def _who(doc):
+    return f"{doc.get('where') or '?'} at {doc.get('at') or '?'}"
+
+
 def unsent_after(bucket, root):
     """The sentence for a refusal met here that the bucket was never told of,
-    or "". The marker goes once the bucket holds a refusal -- any refusal
-    stops the night, and which is newer is pull's to settle on the laptop."""
+    or "". The marker goes once the bucket holds THIS refusal, or there is
+    none here any more. While the bucket holds another one it stays, and is
+    said, but is no failure: the night stops at any refusal the bucket holds,
+    so this one waits behind it rather than being lost -- until a person
+    lifts that one, when send-refusal sends this."""
     marker = local(root, UNSENT)
     if not marker.exists():
         return ""
-    if bucket.get_bytes("state/refused.json") is not None:
+    here = local(root, _refusal_entry(load_kit(root))["path"])
+    mine = here.read_bytes() if here.exists() else None
+    theirs = bucket.get_bytes("state/refused.json")
+    cleared = ((load_state_record(root) or {}).get("cleared") or {}).get("refused.json")
+    if mine is None or (theirs is not None and theirs == mine) or cleared == _sha(mine):
         marker.unlink(missing_ok=True)
-        say(f"  {UNSENT}: the bucket holds a refusal now, so the night stops at it; "
-            "the marker is lifted")
+        say(f"  {UNSENT}: " + ("there is no refusal on file here any more" if mine is None else
+                               "the bucket holds this refusal, so the night stops at it"
+                               if theirs == mine else
+                               "a person cleared this refusal from the bucket")
+            + "; the marker is lifted")
+        return ""
+    if theirs is not None:
+        say(f"  {UNSENT} stays: this machine's refusal ({_who(_refusal_doc(mine))}) waits "
+            f"behind the one the bucket holds ({_who(_refusal_doc(theirs))}), which stops the "
+            "night until a person lifts it; then python3 cloud.py send-refusal sends this one")
         return ""
     return (f"{UNSENT} says a refusal met here never reached the bucket, and the bucket "
             "still holds none, so GitHub's night would ask the General Court: python3 "
@@ -1439,12 +1510,34 @@ def cmd_clear_refusal(a, root):
     bucket = open_bucket(a)
     obj = "state/refused.json"
     data = bucket.get_bytes(obj)
+    here = local(root, entry["path"])
+    mine = here.read_bytes() if here.exists() else None
+
+    def about_here():
+        # A refusal this machine holds that the bucket does not is the one
+        # clearing the bucket's can lose: the night would stop at neither.
+        if mine is None:
+            return
+        if data is not None and mine == data:
+            say(f"  this machine still holds the same refusal at {entry['path']}: python3 "
+                "refusal.py --clear lifts it here")
+            return
+        say(f"  THIS MACHINE HOLDS A REFUSAL THE BUCKET DOES NOT ({_who(_refusal_doc(mine))}), "
+            f"at {entry['path']}. Clearing the bucket's does not lift it, and GitHub's night "
+            f"will not stop at it until it is sent: python3 cloud.py send-refusal"
+            + (" (this machine's is newer than the one cleared, and was waiting behind it)"
+               if data is not None and float(_refusal_doc(mine).get("epoch") or 0)
+               > float(_refusal_doc(data).get("epoch") or 0) else "")
+            + ". python3 refusal.py --clear lifts it here instead, if a person has decided "
+              "it is over.")
+
     if data is None:
         say("clear-refusal: the bucket holds no refusal (state/refused.json); "
             "nothing to clear there")
     elif a.dry_run:
         say(f"--dry-run: state/refused.json ({human(len(data))}) would move to "
             "replaced/; nothing moved")
+        about_here()
         return
     else:
         day = f"{datetime.now():%Y-%m-%d}"
@@ -1457,9 +1550,7 @@ def cmd_clear_refusal(a, root):
     if data is not None:
         rec.setdefault("cleared", {})["refused.json"] = _sha(data)
     save_state_record(root, rec)
-    if local(root, entry["path"]).exists():
-        say(f"  this machine still holds {entry['path']}: python3 refusal.py "
-            "--clear lifts it here")
+    about_here()
 
 
 def _refusal_entry(kit):
@@ -1471,15 +1562,24 @@ def _refusal_entry(kit):
 
 def send_refusal(root, local_bucket=None, dry_run=False):
     """This machine's refusal record to the bucket's state/refused.json, when
-    the bucket holds none, so GitHub's night stops at it too. The sentence to
-    print; Failed when it could not be sent.
+    the bucket holds none, so GitHub's night stops at it too. (done, the
+    sentence to print); Failed when it could not be sent.
+
+    done is True when nothing is left to send: the bucket holds this refusal
+    (sent now, or before), there is none here, or it is the one a person
+    cleared from the bucket (clear-refusal records it, and it is never sent
+    back). It is False while the bucket holds ANOTHER refusal: that one stops
+    the night already, and is never overwritten from here, so this one waits
+    behind it -- the unsent marker stays, saying so, until the bucket holds
+    this refusal or a person lifts it here. Giving up there, as this once
+    did, lost a newer laptop refusal the moment a person cleared the
+    bucket's older one.
 
     refusal.note() calls this on a stood-down laptop, the moment a fetch meets
-    a refusal; `cloud.py send-refusal` is the same by hand. Never over a
-    refusal the bucket already holds -- that one stops the night already, and
-    which of two is newer is pull's to settle on the laptop -- and never one a
-    person cleared from the bucket (clear-refusal records it). The unsent
-    marker goes once the bucket holds a refusal, and only then.
+    a refusal; `cloud.py send-refusal` is the same by hand. The real bucket
+    only from the repository that holds secrets.json (home()): a refusal
+    recorded in a test's temp folder beside a stand-down file must never
+    reach the night, so anywhere else needs a folder bucket.
     """
     root = Path(root)
     kit = load_kit(root)
@@ -1488,21 +1588,29 @@ def send_refusal(root, local_bucket=None, dry_run=False):
     if not src.exists():
         if not dry_run:
             marker.unlink(missing_ok=True)
-        return f"no refusal on file here ({entry['path']}); nothing to send"
+        return True, f"no refusal on file here ({entry['path']}); nothing to send"
     data = src.read_bytes()
     mine = _sha(data)
     rec = load_state_record(root)
     if (rec or {}).get("cleared", {}).get("refused.json") == mine:
         if not dry_run:
             marker.unlink(missing_ok=True)
-        return (f"{entry['path']} is the refusal a person cleared from the bucket with "
-                "clear-refusal, and is not sent back; python3 refusal.py --clear lifts it here")
+        return True, (f"{entry['path']} is the refusal a person cleared from the bucket with "
+                      "clear-refusal, and is not sent back; python3 refusal.py --clear lifts "
+                      "it here")
+    if not local_bucket and not home(root):
+        import keys
+        raise Failed(f"{root.resolve()} is not the repository that holds secrets.json "
+                     f"({Path(keys.PATH).resolve().parent}), so its refusal is not sent to the "
+                     "real bucket: only that repository's refusals are the night's business. "
+                     "A test gives a folder bucket (--local-bucket FOLDER, or "
+                     "refusal.CLOUD_BUCKET)")
     obj = "state/refused.json"
     try:
         bucket = make_bucket(local_bucket, 1, quick=True)
         theirs = bucket.get_bytes(obj)
         if theirs is None and dry_run:
-            return f"--dry-run: {entry['path']} would go to {obj} in {bucket.describe()}"
+            return True, f"--dry-run: {entry['path']} would go to {obj} in {bucket.describe()}"
         if theirs is None:
             bucket.put_bytes(obj, data)
             if bucket.get_bytes(obj) != data:
@@ -1511,23 +1619,37 @@ def send_refusal(root, local_bucket=None, dry_run=False):
         raise
     except (Exception, SystemExit) as e:                        # noqa: BLE001
         raise Failed(scrub(f"{type(e).__name__}: {e}"))
+    if theirs is not None and theirs != data:
+        t, m = _refusal_doc(theirs), _refusal_doc(data)
+        older = float(t.get("epoch") or 0) <= float(m.get("epoch") or 0)
+        why = (f"waiting behind the bucket's older refusal ({_who(t)}), which stops the night "
+               "until a person lifts it with python3 cloud.py clear-refusal; python3 cloud.py "
+               "send-refusal then sends this one" if older else
+               f"the bucket holds a newer refusal ({_who(t)}), which stops the night; python3 "
+               "cloud.py pull takes it here and sets this one aside")
+        if not dry_run:
+            write_unsent(root, why)
+        return False, (f"{bucket.describe()} holds another refusal at {obj}, so this one "
+                       f"({_who(m)}) is not sent over it: {why}")
     if theirs is None:
         rec = rec or {"files": {}, "cleared": {}}
         rec["files"]["refused.json"] = mine
         save_state_record(root, rec)
         said = f"sent to {obj} in {bucket.describe()}, and GitHub's night stops at it too"
-    elif theirs == data:
-        said = f"{bucket.describe()} already holds this refusal at {obj}"
     else:
-        said = (f"{bucket.describe()} already holds another refusal at {obj}, which stops "
-                "the night as well; this one stays here, and pull keeps the newer of the two")
+        said = f"{bucket.describe()} already holds this refusal at {obj}"
     if not dry_run:
         marker.unlink(missing_ok=True)
-    return said
+    return True, said
 
 
 def cmd_send_refusal(a, root):
-    say(f"send-refusal: {send_refusal(root, a.local_bucket, a.dry_run)}")
+    done, said = send_refusal(root, a.local_bucket, a.dry_run)
+    say(f"send-refusal: {said}")
+    if not done and not a.dry_run:
+        raise Failed(f"not sent; {UNSENT} stays and says why, and pull, state-up and "
+                     "preflight report it until the bucket holds this refusal or a person "
+                     "lifts it here")
 
 
 # THE NIGHT'S BUILT SITE, AS ONE FILE. The publish job runs on another
@@ -1794,21 +1916,40 @@ def set_aside(root, rel, day):
 
 
 def pull_days(a, rec, today):
-    """The days whose logs this pull looks for: --day, or from the last pull's
-    day to today, at most PULL_DAYS of them."""
+    """(days, note): the days whose logs this pull looks for -- --day, or from
+    the day BEFORE the last pull's to today, at most PULL_DAYS of them -- and
+    a sentence when the record needed correcting, or "".
+
+    The day before, because a night's folder is named for the day it started
+    in Eastern time, and a pull can run before that night has sent it: the
+    weekly starts at 04:17 UTC on Monday, which in winter is 11:17 p.m. on
+    Sunday, so a pull early on Monday records Monday as done while Sunday's
+    folder is still to come. A day looked at twice costs a listing; the
+    files already here are "already here". A through-date after today (a
+    clock that was wrong, or a record from another machine) would make the
+    range empty for as long as it stays ahead, so it is taken as today, and
+    said."""
     from datetime import date, timedelta
     if a.day:
         try:
-            return [date.fromisoformat(a.day).isoformat()]
+            return [date.fromisoformat(a.day).isoformat()], ""
         except ValueError:
             raise Failed(f"--day {a.day!r} is not a date (YYYY-MM-DD)")
     earliest = today - timedelta(days=PULL_DAYS - 1)
-    last = rec.get("changes_through" if a.changes_only else "logs_through")
+    key = "changes_through" if a.changes_only else "logs_through"
+    last, note = rec.get(key), ""
     try:
-        start = max(earliest, date.fromisoformat(last)) if last else earliest
+        through = date.fromisoformat(last) if last else None
     except ValueError:
-        start = earliest
-    return [(start + timedelta(days=k)).isoformat() for k in range((today - start).days + 1)]
+        through, note = None, f"the pull record's {key} ({last!r}) is not a date, and is ignored"
+    if through and through > today:
+        note = (f"the pull record says the last pull took them through {through}, which is "
+                f"after today ({today}): this machine's clock, or the record, is wrong, so "
+                "today is used")
+        through = today
+    start = max(earliest, through - timedelta(days=1)) if through else earliest
+    return ([(start + timedelta(days=k)).isoformat() for k in range((today - start).days + 1)],
+            note)
 
 
 def _refusal_doc(data):
@@ -1822,7 +1963,16 @@ def _refusal_doc(data):
 def pull_refusal(bucket, root, kit, dry, day):
     """The bucket's refusal record against this laptop's. ([lines], [failures],
     what the bucket holds). A refusal only ever arrives or stays here; the
-    older of two is set aside, never dropped."""
+    older of two is set aside, never dropped.
+
+    What each stops is refusal.force()'s sentence, because three readers read
+    one differently: check() for 24 hours, the lane and GitHub's night for as
+    long as it is on file. And a refusal on this laptop the bucket holds none
+    of is a FAILURE while it stands -- the night would ask the address this
+    laptop was refused by -- unless it is the one a person cleared from the
+    bucket. The unsent marker is lifted only once the bucket holds the
+    refusal this laptop holds, or there is none here."""
+    import refusal
     entry = _refusal_entry(kit)
     here_p, marker = local(root, entry["path"]), local(root, UNSENT)
     theirs = bucket.get_bytes("state/refused.json")
@@ -1831,58 +1981,91 @@ def pull_refusal(bucket, root, kit, dry, day):
     t = _refusal_doc(theirs) if theirs is not None else {}
     held = ("none" if theirs is None else
             {"where": t.get("where"), "at": t.get("at"), "sha256": _sha(theirs)})
-    what = f"{t.get('where') or '?'} at {t.get('at') or '?'}"
+    what = _who(t)
+    cleared = ((load_state_record(root) or {}).get("cleared") or {}).get("refused.json")
+    after = mine                    # what this laptop holds once this pull is done
+    told = False                    # a failure already names send-refusal
     if theirs is None and mine is None:
         lines.append("no refusal on file in the bucket or here")
     elif theirs is None:
-        cleared = ((load_state_record(root) or {}).get("cleared") or {}).get("refused.json")
-        lines.append(f"{entry['path']} is on file here and the bucket holds none"
-                     + ("; a person cleared this one from the bucket, and "
-                        "python3 refusal.py --clear lifts it here" if cleared == _sha(mine)
-                        else ""))
+        m = _refusal_doc(mine)
+        if cleared == _sha(mine):
+            lines.append(f"{entry['path']} ({_who(m)}) is on file here and the bucket holds "
+                         "none: a person cleared this one from the bucket, and python3 "
+                         "refusal.py --clear lifts it here")
+        elif refusal.hours_left(m) is not None:
+            told = True
+            bad.append(f"THIS LAPTOP'S REFUSAL ({_who(m)}, {entry['path']}) IS NOT IN THE BUCKET, "
+                       f"which holds none, so GitHub's night would still ask the address this "
+                       f"laptop was refused by. python3 cloud.py send-refusal sends it (to the "
+                       f"bucket, not the General Court); python3 refusal.py --clear lifts it "
+                       f"here, if a person has decided it is over")
+        else:
+            lines.append(f"{entry['path']} ({_who(m)}) is on file here and the bucket holds "
+                         f"none. It is older than {refusal.QUIET_HOURS} hours, so hand fetches "
+                         "here are not stopped by it; the lane here is, and GitHub's night "
+                         "never sees it: python3 cloud.py send-refusal sends it if it should "
+                         "stop the night too, and python3 refusal.py --clear lifts it here")
     elif mine is None:
+        after = theirs
         if not dry:
             write_whole(here_p, theirs)
-        lines.append(f"THE BUCKET HOLDS A REFUSAL ({what}), which stops GitHub's night: "
+        lines.append(f"THE BUCKET HOLDS A REFUSAL ({what}): "
                      f"{'it would go' if dry else 'it is now'} on file here too, as "
-                     f"{entry['path']}, and every General Court fetch on this laptop stops "
-                     "at it. Lifting it is a person's decision, after netcheck.py: "
-                     "python3 cloud.py clear-refusal lifts the bucket's and python3 "
-                     "refusal.py --clear this one; lifting only this one brings it back "
-                     "at the next pull")
+                     f"{entry['path']}. It is {refusal.force(t)}. Lifting it is a person's "
+                     "decision, after netcheck.py: python3 cloud.py clear-refusal lifts the "
+                     "bucket's and python3 refusal.py --clear this one; lifting only this one "
+                     "brings it back at the next pull")
     elif mine == theirs:
-        lines.append(f"the same refusal ({what}) is on file in the bucket and here")
+        lines.append(f"the same refusal ({what}) is on file in the bucket and here. It is "
+                     f"{refusal.force(t)}")
     else:
         m = _refusal_doc(mine)
         newer = float(t.get("epoch") or 0) > float(m.get("epoch") or 0)
         if newer:
+            after = theirs
             kept = f"{SET_ASIDE}/{day}/{entry['path']}" if dry else set_aside(root, entry["path"], day)
             if not dry:
                 write_whole(here_p, theirs)
             lines.append(f"the bucket's refusal ({what}) is newer than this laptop's "
-                         f"({m.get('where') or '?'} at {m.get('at') or '?'}), and "
-                         f"{'would take' if dry else 'takes'} its place here; this laptop's "
-                         f"is kept at {kept}")
+                         f"({_who(m)}), and {'would take' if dry else 'takes'} its place here; "
+                         f"this laptop's is kept at {kept}. It is {refusal.force(t)}")
         else:
-            lines.append(f"this laptop's refusal ({m.get('where') or '?'} at "
-                         f"{m.get('at') or '?'}) is newer than the bucket's ({what}) and "
-                         "stays; the bucket's stops the night as well")
+            lines.append(f"this laptop's refusal ({_who(m)}) is newer than the bucket's ({what}) "
+                         f"and stays. The bucket's is {refusal.force(t)}; this laptop's waits "
+                         "behind it, and when a person lifts the bucket's, python3 cloud.py "
+                         "send-refusal sends this one")
     if marker.exists():
-        if theirs is not None:
+        lift = (after is None or (theirs is not None and after == theirs)
+                or (theirs is None and cleared == _sha(after)))
+        if lift:
             if not dry:
                 marker.unlink(missing_ok=True)
-            lines.append(f"{UNSENT}: the bucket holds a refusal, so the night stops at it; "
-                         f"the marker {'would be' if dry else 'is'} lifted")
-        else:
+            lines.append(f"{UNSENT}: " + ("there is no refusal here to send" if after is None else
+                                          "a person cleared this one from the bucket"
+                                          if theirs is None else
+                                          "the bucket holds this laptop's refusal, so the night "
+                                          "stops at it")
+                         + f"; the marker {'would be' if dry else 'is'} lifted")
+        elif theirs is not None:
+            lines.append(f"{UNSENT} stays: this laptop's refusal is not the bucket's, and waits "
+                         "behind it (above)")
+        elif not told:
             bad.append(f"a refusal met on this laptop never reached the bucket ({UNSENT}), "
                        "which holds none, so GitHub's night would still ask the General "
                        "Court: python3 cloud.py send-refusal")
     return lines, bad, held
 
 
-def pull_verdicts(bucket, root, dry):
-    """state/last-night.json and last-weekly.json to archive/cloud/. ([lines], taken)."""
+def pull_verdicts(bucket, root, dry, today):
+    """state/last-night.json and last-weekly.json to archive/cloud/. ([lines], taken).
+
+    A night's verdict from before yesterday is STALE: the morning triage
+    reading "CLEAN" off it would be reading about a night that is not the
+    last one, because the nightly on GitHub has not sent a verdict since."""
+    from datetime import timedelta
     lines, taken = [], 0
+    yesterday = (today - timedelta(days=1)).isoformat()
     for key, rel in VERDICTS.items():
         data = bucket.get_bytes(f"state/{key}")
         if data is None:
@@ -1894,7 +2077,11 @@ def pull_verdicts(bucket, root, dry):
         if not same and not dry:
             write_whole(dst, data)
         taken += 0 if same else 1
-        lines.append(f"{key}: {v.get('kind') or '?'} of {v.get('day') or '?'}, "
+        stale = key == "last-night.json" and str(v.get("day") or "") < yesterday
+        lines.append(("STALE -- the newest night's verdict is from before yesterday, so the "
+                      "nightly on GitHub has not sent one since (its Actions tab says why): "
+                      if stale else "")
+                     + f"{key}: {v.get('kind') or '?'} of {v.get('day') or '?'}, "
                      f"{'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
                      + ("" if v.get("clean") else
                         " -- " + "; ".join(str(x) for x in (v.get("not_clean") or [])[:3]))
@@ -2005,16 +2192,22 @@ def pull_kit(a, bucket, root, kit, known, take, day, today):
             night[rel] = ent
     hashes = Hashes(root)
     todo, here, clash, unknown, bad = {}, [], [], [], []
+    # (size, mtime_ns) of each file as it was judged -- None for one that was
+    # not there -- so that one changed between then and its replacement is a
+    # clash, not overwritten: the judging can take minutes on a large kit.
+    pre = {}
     for rel, ent in sorted(night.items()):
         try:
             check_rel(rel)
             if not local(root, rel).exists():
                 todo[rel] = ent
+                pre[rel] = None
                 continue
             cur = hashes.entry(rel)
         except (Failed, OSError) as e:
             bad.append(f"{rel}: {e}")
             continue
+        pre[rel] = (cur["size"], cur["mtime_ns"])
         if cur["sha256"] == ent["sha256"] and cur["size"] == ent["size"]:
             here.append(rel)
         elif rel in known and known[rel][1] == cur["sha256"]:
@@ -2036,7 +2229,7 @@ def pull_kit(a, bucket, root, kit, known, take, day, today):
         todo[rel] = night[rel]
     gone = sorted(rel for rel in known if rel not in man["files"])
     r.update(todo=todo, here=here, clash=clash, taking=taking, gone=gone, got=set(),
-             bad=bad, aside=[], night=len(night))
+             bad=bad, aside=[], night=len(night), moved=[])
     if a.dry_run:
         return r
     for rel in taking:
@@ -2055,6 +2248,20 @@ def pull_kit(a, bucket, root, kit, known, take, day, today):
             if size != ent["size"] or sha != ent["sha256"]:
                 raise OSError(f"arrived as {size:,} bytes, sha256 {sha[:12]}; the "
                               f"manifest says {ent['size']:,}, {ent['sha256'][:12]}")
+            # Looked at again just before it is replaced: a file written here
+            # since it was judged -- a build, an editor -- is this laptop's
+            # change, and a clash like any other.
+            try:
+                st = dst.stat()
+                now_is = (st.st_size, st.st_mtime_ns)
+            except FileNotFoundError:
+                now_is = None
+            if now_is != pre.get(rel):
+                tmp.unlink(missing_ok=True)
+                with lock:
+                    r["clash"].append(rel)
+                    r["moved"].append(rel)
+                return
             os.replace(tmp, dst)
             ns = int(ent.get("mtime_ns") or 0)
             if ns:
@@ -2080,38 +2287,122 @@ def pull_kit(a, bucket, root, kit, known, take, day, today):
     return r
 
 
+def take_paths(root, raw):
+    """--take's paths as the /-relative paths pull names clashes by.
+
+    A person copies a path from pull's own message, from a listing or from
+    Explorer, so .\\x, ./x, x\\y and an absolute path under the working folder
+    are all the same file. Anything that is not a file in the working folder
+    is refused, naming --take -- not cloud_kit.json, which check_rel names."""
+    base = Path(root).resolve()
+    out = set()
+    for p in raw or []:
+        q = p.strip()
+        if Path(q).is_absolute() or re.match(r"^[A-Za-z]:", q):
+            try:
+                q = Path(q).resolve().relative_to(base).as_posix()
+            except ValueError:
+                raise Failed(f"--take {p!r} is not under the working folder {base}")
+        q = q.replace("\\", "/")
+        while q.startswith("./"):
+            q = q[2:]
+        try:
+            out.add(check_rel(q))
+        except Failed:
+            raise Failed(f"--take {p!r} is not a path of a file in the working folder "
+                         "(as pull names a clash: Docket.txt, logs/nightly-2026-09-26.log)")
+    return out
+
+
+def bucket_is_the_nights(bucket):
+    """Whether the bucket holds what a night leaves: the kit manifest or a
+    night's verdict. One with neither is empty, or not the night's, and
+    reading "no refusal" from it proves nothing -- so pull stops before it
+    reads the refusal record, and records no read."""
+    for key in (MANIFEST.format("kit"), "state/last-night.json"):
+        if bucket.head(key) is not None:
+            return True
+    return False
+
+
+def full_pull_news(bucket, kit, rec, now):
+    """--changes-only's word on everything else: how old the last FULL pull
+    is, and how many of the night's files the bucket's kit manifest has
+    changed since -- which a morning of changes-only pulls would otherwise
+    leave unsaid while the laptop's copies of them grow old. Read-only: the
+    manifest, and this laptop's pull record."""
+    full = rec.get("full") or {}
+    try:
+        man = read_manifest(bucket, "kit")[0]
+    except Failed as e:
+        return [f"the bucket's kit manifest would not read ({e}), so what the nights changed "
+                "since the last full pull is not known"]
+    if man is None:
+        return ["the bucket holds no kit manifest"]
+    never, known = never_rx(kit), rec.get("kit") or {}
+    night = {rel: e for rel, e in man["files"].items()
+             if owner_of(kit, rel) == "night" and not rel.startswith(PULL_NOT)
+             and not any(rx.match(rel) for rx in never)}
+    newer = sorted(rel for rel, e in night.items()
+                   if (known.get(rel) or [None, None])[1] != e.get("sha256"))
+    if not full.get("epoch"):
+        return [f"NO FULL PULL has run here: the night's {len(night):,} files in the bucket's "
+                f"kit are not on this laptop as the nights left them ({len(newer):,} differ "
+                "from anything pull brought). python3 cloud.py pull brings them"]
+    hours = (now.timestamp() - float(full["epoch"])) / 3600
+    return [f"the last full pull was {hours:.0f} hours ago ({full.get('at') or '?'}); the "
+            f"bucket's kit manifest has {len(newer):,} of the night's {len(night):,} files "
+            "changed since"
+            + (": python3 cloud.py pull brings them" if newer else ", so nothing waits")
+            + (". OLDER THAN 48 HOURS: preflight fails on it" if hours > 48 else "")]
+
+
 def cmd_pull(a, root):
     """The laptop takes back what the nights changed. The module docstring says
     what comes down and where; this only ever reads the bucket."""
     if os.environ.get("GITHUB_ACTIONS") == "true":
         raise Failed("pull is the laptop's. On GitHub's machine, which starts empty, "
                      "state-down and kit-down are the commands.")
+    # A FOLDER IS NOT THE BUCKET. Its read of the refusal record never counts
+    # (refusal.refusal_read wants a read of R2), but a folder pull in the
+    # repository whose fetches that record governs would still bring a test's
+    # files over the laptop's real ones.
+    if a.local_bucket and home(root) and (Path(root) / "archive/runs-in-the-cloud.json").exists() \
+            and not a.allow_local_bucket:
+        raise Failed("--local-bucket is a test, and this is the stood-down repository that "
+                     "holds secrets.json: a folder's files and refusal record are not the "
+                     "night's. Pull from the real bucket here, or test in another folder "
+                     "(--root); --allow-local-bucket says a test here is meant")
     quiet_disk(root)
     kit = load_kit(root)
     bucket = open_bucket(a)
     rec = load_pull_record(root)
     now = datetime.now()
     today, day = now.date(), f"{now:%Y-%m-%d}"
-    # cmd's own separator is welcome here: a person copies the path from a
-    # listing and types it the way Windows writes it.
-    take = {p.replace("\\", "/") for p in (a.take or [])}
-    for p in take:
-        check_rel(p)
-    days = pull_days(a, rec, today)
+    take = take_paths(root, a.take)
+    days, note = pull_days(a, rec, today)
     mode = "--changes-only" if a.changes_only else "a full pull"
     say(f"pull{' --dry-run' if a.dry_run else ''}: {mode} from {bucket.describe()}, "
         f"logs of {days[0]}" + (f" to {days[-1]}" if len(days) > 1 else ""))
+    if note:
+        say(f"  ({note})")
     last = rec.get("changes_through" if a.changes_only else "logs_through")
-    if not a.day and last and last < days[0]:
+    if not a.day and last and not note and last < days[0]:
         say(f"  (the last pull took them to {last}; days before {days[0]} are not looked "
             f"for, {PULL_DAYS} being the most one pull looks back. --day YYYY-MM-DD takes "
             "one of them; the bucket keeps a month)")
+    if not bucket_is_the_nights(bucket):
+        raise Failed(f"{bucket.describe()} holds neither {MANIFEST.format('kit')} nor "
+                     "state/last-night.json: it is empty, or not the night's. Nothing was "
+                     "taken, and its refusal record was not read or recorded, because \"no "
+                     "refusal\" from a bucket the night never wrote to says nothing")
     failures, clashes = [], []
 
     # 1. THE REFUSAL, first and recorded at once: it is what a General Court
     # fetch on this laptop waits for, whatever happens to the rest. The time
     # recorded is taken before the read, so a read is never dated later than
-    # it happened.
+    # it happened; and which bucket was read, because only a read of the real
+    # one counts (refusal.refusal_read).
     read_at = time.time()
     lines, bad, held = pull_refusal(bucket, root, kit, a.dry_run, day)
     for ln in lines:
@@ -2119,11 +2410,14 @@ def cmd_pull(a, root):
     failures += bad
     if not a.dry_run:
         rec["refusal"] = {"read": read_at, "at": now.isoformat(timespec="seconds"),
-                          "bucket": held}
+                          "kind": bucket.kind, "bucket": bucket.name, "holds": held}
         save_pull_record(root, rec)
+        if bucket.kind != "r2":
+            say(f"  refusal: read from {bucket.describe()}, which is not the real bucket, so "
+                "it does not count as reading the night's refusal record")
 
     # 2. THE VERDICTS
-    lines, n_verdicts = pull_verdicts(bucket, root, a.dry_run)
+    lines, n_verdicts = pull_verdicts(bucket, root, a.dry_run, today)
     for ln in lines:
         say(f"  verdict: {ln}")
 
@@ -2151,9 +2445,12 @@ def cmd_pull(a, root):
             + (f" to {days[-1]}" if len(days) > 1 else "")
             + ": the night has not run since, or has not reached kit-up, which sends it")
 
-    # 4. THE KIT
+    # 4. THE KIT -- or, for --changes-only, how far behind it this laptop is.
     k = None
-    if not a.changes_only:
+    if a.changes_only:
+        for ln in full_pull_news(bucket, kit, rec, now):
+            say(f"  kit: {ln}")
+    else:
         known = rec.setdefault("kit", {})
         k = pull_kit(a, bucket, root, kit, known, take, day, today)
         todo = k["todo"]
@@ -2163,6 +2460,7 @@ def cmd_pull(a, root):
             say(f"  this laptop's copy kept at {p}")
         show("in this laptop's pull record and gone from the bucket's kit; left as they "
              "are", k["gone"], {})
+        show("changed on this laptop while this pull ran, and left as they are", k["moved"], {})
         clashes += k["clash"]
         failures += k["bad"]
 
@@ -2174,6 +2472,14 @@ def cmd_pull(a, root):
     if not a.dry_run:
         rec.update(at=now.isoformat(timespec="seconds"), epoch=time.time(),
                    mode="changes-only" if a.changes_only else "full")
+        # THE LAST FULL PULL: the one --changes-only and preflight measure
+        # the laptop's copies of the night's files by. A pull whose kit step
+        # could not bring every file down whole does not count; one with
+        # clashes does, because a clash is this laptop's own change, named
+        # by every pull until --take settles it.
+        if k and not k["bad"]:
+            rec["full"] = {"epoch": time.time(), "at": now.isoformat(timespec="seconds"),
+                           "clashes": len(k["clash"])}
         if not a.day:
             rec["changes_through"] = days[-1]
             if not a.changes_only:
@@ -2248,12 +2554,21 @@ def main(argv=None):
     ap.add_argument("--take", nargs="+", metavar="PATH",
                     help="pull: set this laptop's copy of each named clash aside under "
                          f"{SET_ASIDE}/<day>/ and take the bucket's")
+    ap.add_argument("--allow-local-bucket", action="store_true",
+                    help="tests only: let pull --local-bucket run in the stood-down "
+                         "repository that holds secrets.json (its read of the refusal "
+                         "record still never counts)")
     a = ap.parse_args(argv)
     root = Path(a.root).resolve()
     t0 = time.time()
     try:
         if a.command == "kit-list":
             cmd_kit_list(a, root)
+        elif a.command == "pull" and a.dry_run:
+            # A dry pull writes nothing, so there is no writer for the lock to
+            # keep out -- and taking it would make archive/cloud/, a folder a
+            # dry run has no business making.
+            cmd_pull(a, root)
         else:
             with machine_lock(root):
                 COMMANDS[a.command](a, root)
