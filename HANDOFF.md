@@ -182,6 +182,30 @@ who have left exactly like the rest. Count the ballots before quoting a figure:
 merging it with `past_members.json` (2,614 more), so the population carrying
 the database-row label is larger than 676.
 
+**2023-2024's sponsors come from the General Court's own record now**
+(`past_sponsors.py`, 26 September), and two things about it are the
+person's. PastSponsors is joined by each bill's stored LSR, and
+`python3 past_sponsors.py --check` prints the bar against the saved pages and
+every bill that misses it -- run it rather than quoting its counts. Where a
+bill's printed line and the record disagree the page's list is published, and
+most of those disagreements are sponsors the record and the status page both
+list and the printed bill does not, or printed sponsors the record marks
+withdrawn: which of the two should win there is the first decision. Letting
+the record win is not a one-line switch in `past_sponsors.merge`: an entry's
+`sponsors` are the record's live rows as it keeps them -- employee, id, name,
+chamber, prime -- with no party, label or source, and are not a published
+list, so those bills would need `records()` run for them in `build()`, as the
+bills that agree already have. The second is whether any other term takes the
+record's list; none does yet. What employee 377080 is called is settled:
+Rep. Lorrie J. Carey (`member_corrections.json`), whose four co-sponsorships
+link to her page once `build_data.py` has put the correction on the ballots.
+A published row the status page has no row for takes its party from its
+member's ballots that term, and every row's chamber is the one the bill
+prints, then the ballots', before the status page's, which files six sitting
+senators under the House. And the nightly's kit now carries `db/past/` and
+`db/Legislators.psv`, so `python3 cloud.py seed-kit` has to run once before
+the next night, or its kit-down stops with THE KIT IS SHORT.
+
 **One trap kept from the docket parser**, fixed in `f9e69f6`: `HOUSE_SCHED_RE`'s
 trailing `$` anchor made the venue class responsible for absorbing every word
 the clerk appended after the room, so one colon or one Zoom paragraph failed the
@@ -201,6 +225,24 @@ Reported and confirmed, deliberately NOT chased one at a time. Asked for on
 into those issues more broadly rather than a couple at a time." These look like
 they may share a cause, and a defect fixed alone gets a narrow patch while the
 cause survives to make the next one. Open one investigation across all of them.
+
+**Sixteen member names that rest on a guess from voting patterns.** Of the 38
+names `member_party.json` carries with source `solved` (fetch_rollcall_parties.py
+inferring who an employee number is from how it voted), 21 agree with
+`db/Legislators.psv` and one was wrong: 377080 was shown as H. Robert Menear and
+is Rep. Lorrie J. Carey, corrected in `member_corrections.json` on 26 September
+from the General Court's PastSponsors view, her printed bills, the House
+Journals and the 2022 organisation-day roll. The other 16 have no second source
+on disk, and the person decided on 26 September to keep them up rather than
+remove names that may be right: 376211 Courchesne, 376261 Ouellette, 376307
+Bouchard, 376488 Kudalis, 376531 Taylor, 376536 Webber, 376570 Donahue, 376611
+Parker, 376649 Kelly, 376678 Matheson, 376695 DesRoches, 376766 Warren, 376889
+LaPlante, 376950 Hogan, 377092 Dobson, 377105 Grace. The check that would settle
+each is the one that named the ids added to `member_corrections.json` on
+16 September (its `_added_16_september` note): score the id's ballots against
+the names printed in the House Journals' vote lists for the same roll calls,
+then corroborate from the organisation-day roll, which prints each member's
+party. The journals for 1997-2026 are on disk under `journals/`.
 
 **A member on a committee he had left.** `site/committee/H12.json` lists Joseph
 Barton as a member of House Legislative Administration. He has not been on it
