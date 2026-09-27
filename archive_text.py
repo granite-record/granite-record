@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.3
+# GRANITE_VERSION: 2026-09-16.4
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -71,12 +71,51 @@ BLOCK = re.compile(r"</?(?:p|div|br|tr|h[1-6]|li|table|blockquote)\b[^>]*>",
                    re.I)
 
 
+# WHAT A BROWSER NEVER SHOWS, and this used to print as the bill. A page Word
+# saved as HTML carries the document's properties in its head, inside a
+# comment only Office reads:
+#
+#     <!--[if gte mso 9]><xml> <o:DocumentProperties>
+#       <o:Author>Fowler_E</o:Author> <o:Created>2004-12-28T20:07:00Z</o:Created>
+#       ... <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
+#
+# Stripping tags left the values, so 2005, 2007, 2009, 2011 and 2013 HR 1 and
+# 2009 HR 2 -- resolutions, which have no analysis for front_matter_off to cut
+# at -- opened with a staff username, two edit timestamps and a word count as
+# though the House had adopted them. A comment is removed whole, <xml> too
+# where one stands outside a comment. Word's OTHER conditional,
+# <![if !supportLists]>1.<![endif]>, is not a comment: it is how the page
+# shows a list's numbers to every browser, so its tags go and its text stays.
+COMMENT = re.compile(r"<!--.*?-->", re.S)
+XML = re.compile(r"<xml\b.*?</xml\s*>", re.S | re.I)
+
+# A TAG BETWEEN A WORD AND ITS PUNCTUATION IS NOT A SPACE. Every inline tag
+# became one, so "elections are made<B><I>, except as provided in article
+# 68-a</I></B>." -- the bold italics of an amendment -- read "made , except
+# as provided in article 68-a ." across 166,075 places in the archive. Where
+# the tags are the ONLY thing between a character and a closing punctuation
+# mark they go with nothing in their place; everywhere else a tag is still a
+# space, because a tag between two words may be the only thing keeping them
+# apart and joining them would print a word nobody wrote. A space the page
+# itself put before the mark is left alone: the lookbehind wants a character,
+# not a space and not the end of another tag.
+TAG_BEFORE_MARK = re.compile(r"(?<=[^\s>])(?:<[^>]+>)+(?=[,.;:!?)\]])")
+
+# The Basic Multilingual Plane's private-use area and planes 15-16.
+PRIVATE = re.compile("[-\U000f0000-\U0010ffff]")
+
+
 def text_of(path, keep_front=False):
     """The text of one saved page with its lines kept, or "" if it is not a bill."""
     html = FL.decode(Path(path).read_bytes())
     t = re.sub(r"<script.*?</script>", " ", html, flags=re.S | re.I)
     t = re.sub(r"<style.*?</style>", " ", t, flags=re.S | re.I)
+    # "<!>", not "": a comment between two words is still between them, and
+    # the tag rules below decide what it becomes like any other tag.
+    t = COMMENT.sub("<!>", t)
+    t = XML.sub("<!>", t)
     t = BLOCK.sub("\n", t)
+    t = TAG_BEFORE_MARK.sub("", t)
     t = re.sub(r"<[^>]+>", " ", t)
     t = FL._unescape(t)
     # A page saved before 10 September was decoded as UTF-8 on the way in, and
@@ -243,6 +282,18 @@ def main():
         print(f"  {v:>7,}  {k}")
     if strays:
         print(f"  {len(strays)} saved pages match no bill of that year")
+    # Counted and LEFT AS THEY ARE. A private-use code point is a character a
+    # font on the drafter's machine drew -- a Wingdings bullet, a symbol from
+    # a table -- and nothing says which; replacing it would be a guess printed
+    # as the General Court's text. So it is reported, for a person to read.
+    pua = [(t, b, len(PRIVATE.findall(r["text"])))
+           for t in sorted(got) for b, r in sorted(got[t].items())
+           if PRIVATE.search(r["text"])]
+    if pua:
+        print(f"  {sum(n for *_, n in pua):,} private-use characters, left as "
+              f"the page has them, in {len(pua)} texts: "
+              + ", ".join(f"{t[:4]} {b} ({n})" for t, b, n in pua[:8])
+              + (" ..." if len(pua) > 8 else ""))
     # Silence is not success: a run that reads pages and produces nothing has
     # found a parsing problem, not an empty archive.
     if tally["pages"] and not total and not tally["already covered"]:

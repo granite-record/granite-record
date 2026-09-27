@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.261
+# GRANITE_VERSION: 2026-09-04.262
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2890,6 +2890,78 @@ def _front_matter_off():
     assert at.front_matter_off(modern).startswith("ANALYSIS"), (
         "the rule-above-the-label path stopped working")
     return "ok", "the header comes off with or without a rule above the label"
+
+
+@check("frontend", "an archived page's text is what a browser shows: no Word "
+                   "properties, and no space where a tag met punctuation")
+def _archive_text_as_shown():
+    """Two ways archive_text.text_of printed what no reader of the page sees.
+
+    2005, 2007, 2009, 2011 and 2013 HR 1 and 2009 HR 2 were saved from Word,
+    and their Bill Text opened "Fowler_E Fowler_E 2 3 2004-12-28T20:07:00Z ...
+    MicrosoftInternetExplorer4": the document properties Word keeps in a
+    comment in the page's head, which stripping tags turned into text. A
+    resolution has no analysis, so front_matter_off never cut them.
+
+    And every inline tag became a space, so "made<B><I>, except as provided
+    in article 68-a</I></B>." read "made , except ... 68-a ." -- 166,075 times
+    across archive_text.json. In the 28,369 bills whose text matches a version
+    in PastLegislationText word for word it was 143,195 against the view's own
+    14,029, and 13,710 once fixed, with not one word of those bills changed.
+    Only a tag that is the sole thing between a character and punctuation
+    goes; a tag between two words stays a space, and a space the page itself
+    wrote stays.
+
+    The page below is the shape of the real 2005 HR 1 and 1989 CACR 14, so
+    this needs no data and runs under --code.
+    """
+    at = imp("archive_text")
+    if at is None:
+        return "skip", "archive_text will not import"
+    page = (
+        '<html xmlns:o="urn:schemas-microsoft-com:office:office">\r\n<head>\r\n'
+        "<title>House Resolutions 1-5</title>\r\n"
+        "<!--[if gte mso 9]><xml>\r\n <o:DocumentProperties>\r\n"
+        "  <o:Author>Fowler_E</o:Author>\r\n"
+        "  <o:Created>2004-12-28T20:07:00Z</o:Created>\r\n"
+        " </o:DocumentProperties>\r\n</xml><![endif]--><!--[if gte mso 9]><xml>\r\n"
+        " <w:WordDocument>\r\n  <w:BrowserLevel>MicrosoftInternetExplorer4"
+        "</w:BrowserLevel>\r\n </w:WordDocument>\r\n</xml><![endif]-->\r\n"
+        "<style>\r\n<!--\r\n p.MsoNormal {margin:0in;}\r\n-->\r\n</style>\r\n"
+        "</head>\r\n<body>\r\n"
+        "<p><![if !supportLists]><span>I.<span>&nbsp; </span></span>"
+        "<![endif]>All intermediate vacancies may be filled up in the same "
+        "manner as biennial elections are made<B><I>, except as provided in "
+        "article 68-a</I></B>.</p>\r\n"
+        "<p>The <b>house</b><i>clerk</i> shall keep a record (see RSA "
+        "<span>14:1</span>) of every vote , and <b>shall</b> publish it.</p>\r\n"
+        "</body></html>")
+    d = Path(tempfile.mkdtemp())
+    try:
+        f = d / "HR0001.html"
+        f.write_bytes(page.encode("cp1252"))
+        got = at.text_of(f, keep_front=True)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    for gone in ("Fowler_E", "2004-12-28T20:07:00Z", "MicrosoftInternetExplorer4",
+                 "MsoNormal"):
+        assert gone not in got, (
+            f"{gone!r} is in the text of a page Word saved: the document "
+            "properties in its conditional comment reached the Bill Text")
+    assert "elections are made, except as provided in article 68-a." in got, (
+        "a tag between a word and its punctuation still became a space: "
+        + repr(got[got.find("elections"):][:80]))
+    assert "(see RSA 14:1) of every vote , and" in got, (
+        "the text around a tag before ')' or a space the page itself wrote "
+        "before ',' came out wrong: " + repr(got[got.find("(see"):][:60]))
+    assert "house clerk" in got and "shall publish" in got, (
+        "a tag that was the only thing between two words was removed, which "
+        "joins them into a word the page does not have: " + repr(got))
+    assert got.lstrip().startswith("House Resolutions 1-5") and "I." in got, (
+        "the list number Word shows every browser through <![if "
+        "!supportLists]> was lost, or the title was: " + repr(got[:80]))
+    return "ok", ("Word's properties stay out, and a tag before punctuation "
+                  "is no space while a tag between words still is")
 
 
 @check("status", "stripping the page furniture never deletes a line of the bill")
