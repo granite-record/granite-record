@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.264
+# GRANITE_VERSION: 2026-09-04.265
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25377,6 +25377,71 @@ def _chapters():
         assert (got.get("1997-1998", {}).get("HB149") or {}).get(
             "override_failed"), "a failed override (\"ML\") was not kept"
         return "ok", "five spellings, sections and see-alsos refused, clashes withheld"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the database's chapter numbers check the docket's: a confirmed correction applies, a disagreement is withheld, a signed bill's missing number is filled")
+def _chapters_database():
+    """extract_chapters.py against a PastLegislation dump written for it: 1991
+    HB 329's docket "CHAP.01313" gives way to the person-confirmed 131 and keeps
+    the docket's number beside it; a disagreement nobody has confirmed is
+    withheld with both numbers named; a bill whose docket records the signature
+    and no number takes the database's; a number both agree on stands; and the
+    join is the stored LSR, so a bill of the same number under another LSR
+    takes nothing."""
+    here = Path(".").resolve()
+    if not (here / "extract_chapters.py").exists():
+        return "skip", "extract_chapters.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        for d in ("db", "data", "db/past"):
+            (root / d).mkdir(parents=True, exist_ok=True)
+        rows = [
+            ("1991", "0665", "HB  0329", "05/20/1991 10:00:00", "HB329",
+             "SIGNED BY GOVERNOR 05/20/91  EFF: 05/20/91 CHAP.01313"),
+            ("1995", "0010", "HB  0005", "05/01/1995 10:00:00", "HB5",
+             "SIGNED BY GOVERNOR 05/01/95 EFF: 07/01/95 CHAP.0100"),
+            ("1995", "0011", "HB  0006", "05/02/1995 10:00:00", "HB6",
+             "SIGNED BY GOVERNOR 05/02/95 EFF: 07/01/95"),
+            ("1995", "0012", "HB  0007", "05/03/1995 10:00:00", "HB7",
+             "SIGNED BY GOVERNOR 05/03/95 EFF: 07/01/95 CHAP.0102"),
+            ("1996", "0013", "HB  0008", "05/04/1996 10:00:00", "HB8",
+             "SIGNED BY GOVERNOR 05/04/96 EFF: 07/01/96"),
+        ]
+        (root / "db" / "Docket.psv").write_text(
+            "".join("|".join([y, l, e, d, b, "H", t, "x", "1", d, "1"]) + "\n"
+                    for y, l, e, d, b, t in rows), encoding="utf-8")
+        bills = {"1991-1992": {"HB329": {"bill": "HB329", "lsr_year": "1991", "lsr_num": "0665"}},
+                 "1995-1996": {"HB5": {"bill": "HB5", "lsr_year": "1995", "lsr_num": "0010"},
+                               "HB6": {"bill": "HB6", "lsr_year": "1995", "lsr_num": "0011"},
+                               "HB7": {"bill": "HB7", "lsr_year": "1995", "lsr_num": "0012"},
+                               "HB8": {"bill": "HB8", "lsr_year": "1996", "lsr_num": "0013"}}}
+        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        cols = ["SessionYear", "LSR", "ChapterNo"]
+        (root / "db" / "past" / "_manifest.json").write_text(
+            json.dumps({"PastLegislation": {"columns": cols}}), encoding="utf-8")
+        past = [("1991", "665", "0131"), ("1995", "10", "0101"), ("1995", "11", "0050"),
+                ("1995", "12", "0102"), ("1995", "13", "0077")]
+        (root / "db" / "past" / "PastLegislation.psv").write_text(
+            "".join("|".join(r) + "\n" for r in past), encoding="utf-8")
+        r = _run([sys.executable, str(here / "extract_chapters.py")],
+                 cwd=root, capture_output=True, text=True, timeout=60,
+                 env={**os.environ, "PYTHONPATH": str(here)})
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[-400:]
+        got = json.loads((root / "chapters.json").read_text(encoding="utf-8"))
+        hb329 = got["1991-1992"]["HB329"]
+        assert hb329.get("chapter") == 131 and hb329.get("docket") == 1313 \
+            and hb329.get("corrected"), f"the confirmed correction did not apply: {hb329}"
+        hb5 = got["1995-1996"]["HB5"]
+        assert hb5.get("chapter") is None and "100" in hb5.get("withheld", "") \
+            and "101" in hb5.get("withheld", ""), f"a disagreement was not withheld: {hb5}"
+        assert got["1995-1996"]["HB6"].get("chapter") == 50, \
+            f"a signed bill with no docket number was not filled: {got['1995-1996'].get('HB6')}"
+        assert got["1995-1996"]["HB7"].get("chapter") == 102, "an agreed number did not stand"
+        assert (got["1995-1996"].get("HB8") or {}).get("chapter") is None, \
+            "a bill took a number through an LSR of another year"
+        return "ok", "confirmed 131 over the docket's 1313, a disagreement withheld, a signed bill filled, the join by stored LSR"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
