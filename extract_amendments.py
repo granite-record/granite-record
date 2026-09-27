@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -46,6 +46,7 @@ here. An amendment nobody cites is still recorded; it simply goes unused.
 """
 
 import argparse
+import difflib
 import json
 import narrative
 import re
@@ -236,6 +237,73 @@ def clean(text):
     return NEXT_HEADING.sub("", joined).rstrip()
 
 
+# THE BILL THE CALENDAR PRINTED IT UNDER. "Amendment to HB 614-FN" stands on
+# the line above the number, with at most a stray word or two from the other
+# column between them. The docket says which bill cites a number; this says
+# which bill the calendar printed that number's text for, and where the two
+# disagree the text is not the cited bill's -- build_site_v2.bill_amendments
+# leaves it off. Only a heading within three lines of the number counts: one
+# further up belongs to the amendment before it.
+HEAD_BEFORE = re.compile(rf"(?:Floor[ \t]+)?Amendment[ \t]+to[ \t]+(?P<bill>{_BILL})", re.I)
+
+
+def plain_bill(s):
+    """'HB 614-FN' -> 'HB614', 'SSHB 1' -> 'HB1': what a bill page is keyed on,
+    near enough to compare -- a Senate substitute amends the bill it
+    substitutes for."""
+    m = re.match(r"(?:SS)?([A-Z]+)[ \t]*0*(\d+)", (s or "").upper().strip())
+    return f"{m.group(1)}{int(m.group(2))}" if m else ""
+
+
+def heading_of(text, pos):
+    """The bill in the heading printed just above the marker at `pos`, or ''."""
+    before = text[max(0, pos - 300):pos]
+    last = None
+    for last in HEAD_BEFORE.finditer(before):
+        pass
+    if not last or before.count("\n", last.end()) > 3:
+        return ""
+    return plain_bill(last.group("bill"))
+
+
+# WHICH PRINTING OF A NUMBER IS ITS TEXT. The same amendment is reprinted in
+# later calendars, and a printing cut short by a page break is shorter than
+# the rest, so the longest printing was kept. But a longer printing is not
+# always the same amendment: House Calendar 52 of 2017 prints 2017-2453h, the
+# Labor committee's amendment to HB 407, and House Calendar 11 of 2018 printed
+# the Finance committee's under that number, which HB 407's page then showed.
+# So the earliest printing stands, and a later one replaces it only where it
+# is longer AND opens with the earlier one's opening words -- the earlier one
+# was cut short, not a different amendment.
+#
+# Opens with them near enough, not character for character: House Calendar 15
+# of 2016 prints 2016-0539h's "189:18 Patriotic Exercises" as ":18", and
+# Calendar 19 prints it whole. And not merely somewhere in it: both of
+# 2017-2453h's texts open "Amend the bill by replacing all after the enacting
+# clause with the following", as most amendments do, and the Finance
+# committee's goes on to amend RSA 281-A:23 too, further down.
+OPENING = 40         # words
+SAME_OPENING = 0.9   # of them, in order, at the start of the longer printing
+
+
+def _words(text):
+    return re.findall(r"[a-z0-9]+", (text or "").lower())
+
+
+def replaces(kept, later):
+    """True where `later`, a later printing of the same number, is the fuller
+    copy of `kept` rather than another amendment printed under its number."""
+    if len(later["text"]) <= len(kept["text"]):
+        return False
+    head = _words(kept["text"])[:OPENING]
+    if not head:
+        return False
+    theirs = _words(later["text"])[:OPENING + 10]
+    same = sum(b.size for b in difflib.SequenceMatcher(
+        None, head, theirs, autojunk=False).get_matching_blocks())
+    return same >= SAME_OPENING * len(head)
+
+
 def amendments_in(text, source):
     """Every amendment printed in one calendar, from marker to next marker."""
     marks = [(m.start(), f"{m.group('year')}-{m.group('seq')}", m.end())
@@ -258,12 +326,11 @@ def amendments_in(text, source):
         body = clean(body)
         if len(body) < 80:
             continue
+        rec = {"text": body, "proposed_by": who, "source": source,
+               "chars": len(body), "heading": heading_of(text, pos)}
         prev = out.get(num)
-        # The same amendment is reprinted in later calendars. Keep the fullest
-        # copy: a truncated one is a page break, not a shorter amendment.
-        if not prev or len(body) > len(prev["text"]):
-            out[num] = {"text": body, "proposed_by": who, "source": source,
-                        "chars": len(body)}
+        if not prev or replaces(prev, rec):
+            out[num] = rec
     return out
 
 
@@ -313,8 +380,9 @@ def main():
             continue
         got = amendments_in(repair_hyphens(text), f.name)
         per_file[f.name] = len(got)
+        # The calendars in order, so the first printing met is the earliest.
         for num, rec in got.items():
-            if num not in found or rec["chars"] > found[num]["chars"]:
+            if num not in found or replaces(found[num], rec):
                 found[num] = rec
 
     print(f"{len(found):,} amendments with their text")

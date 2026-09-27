@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.118
+# GRANITE_VERSION: 2026-09-05.119
 """
 Generate the faceted site from real General Court data.
 
@@ -203,7 +203,43 @@ def bill_text_block(rec):
             "chars": len(body)}
 
 
-def bill_amendments(narr, texts):
+def amended_bill(s):
+    """'HB 614-FN' -> 'HB614', 'SSHB1' -> 'HB1': near enough to compare the
+    bill an amendment's heading names with the bill it is shown on, a Senate
+    substitute amending the bill it substitutes for. extract_amendments.
+    plain_bill writes the headings the same way."""
+    m = re.match(r"(?:SS)?([A-Z]+)[ \t]*0*(\d+)", (s or "").upper().strip())
+    return f"{m.group(1)}{int(m.group(2))}" if m else ""
+
+
+def amendment_num(e):
+    """The amendment number a docket event moves, or ''."""
+    num = (e.get("amendment") or "").strip()
+    if not num:
+        m = AMEND_NUM.search(e.get("raw", "")) or AMEND_ANY.search(e.get("raw", ""))
+        num = m.group(1) if m else ""
+    return num
+
+
+def amendment_claims(narratives):
+    """{term: {amendment number: {bills whose docket names it}}}: in any line,
+    since a committee's report names the amendment it recommends before any
+    line moves it -- "Ought to Pass with Amendment #2022-0996h" on HB 1347."""
+    out = defaultdict(lambda: defaultdict(set))
+    for term, byb in (narratives or {}).items():
+        if not isinstance(byb, dict):
+            continue
+        for bid, narr in byb.items():
+            for e in (narr or {}).get("events", []):
+                nums = set(AMEND_ANY.findall(e.get("raw") or ""))
+                if e.get("amendment"):
+                    nums.add(e["amendment"].strip())
+                for num in nums:
+                    out[term][num].add(amended_bill(bid))
+    return out
+
+
+def bill_amendments(narr, texts, claimed=None):
     """Every amendment on one bill, in the order the docket took them up.
 
     Order is the whole point. A committee amendment is considered before any
@@ -214,15 +250,28 @@ def bill_amendments(narr, texts):
     Text is attached where the calendars had it and left absent where they did
     not. An amendment nobody can read is still an amendment that was moved,
     and dropping it would hide a step rather than a document.
+
+    And left absent where the calendar printed it under ANOTHER bill's
+    heading. extract_amendments records the bill named in "Amendment to HB
+    1347" above each number, and where that is not this bill the text is
+    that bill's: HB 1180's docket of 2022 moves 2022-0996h, which House
+    Calendar 10A prints, and the database files, as HB 1347's. It is left off
+    -- with its proposer and its calendar -- and the row stays, because the
+    docket says the number was moved here.
+
+    `claimed` is the term's {number: {bills whose docket moves it}}, from
+    amendment_claims. Given, the heading must name a bill that moves the
+    number too, since a calendar also misprints headings: it put 2022-1160h,
+    HB 1604's, under "Amendment to HB 1160-FN" -- its own number -- and
+    2026-0976h under "HB 16678-FN", which is no bill. Neither is another
+    bill's amendment, and neither is left off.
     """
+    own = amended_bill((narr or {}).get("bill"))
     out, seen = [], {}
     for e in (narr or {}).get("events", []):
         if e.get("type") != "amendment" or e.get("cancelled"):
             continue
-        num = (e.get("amendment") or "").strip()
-        if not num:
-            m = AMEND_NUM.search(e.get("raw", "")) or AMEND_ANY.search(e.get("raw", ""))
-            num = m.group(1) if m else ""
+        num = amendment_num(e)
         if not num:
             continue
         # THE ROW THAT DECIDED IT, WHERE THE FIRST ONLY ANNOUNCED IT. The
@@ -246,6 +295,10 @@ def bill_amendments(narr, texts):
             continue
         kind = (e.get("amend_kind") or "").strip() or "Amendment"
         doc = texts.get(num) or {}
+        printed_for = amended_bill(doc.get("heading"))
+        if own and printed_for and printed_for != own and (
+                claimed is None or printed_for in claimed.get(num, ())):
+            doc = {}
         seen[num] = {
             "num": num,
             "kind": kind,
@@ -6775,6 +6828,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     n_station_bills = 0
     # The journey against the status and the rail, counted per term.
     j_tally, j_current = Counter(), []
+    # Which bills' dockets move each amendment number, so that an amendment
+    # the calendar printed under another bill is known for that bill's.
+    claims = amendment_claims(narratives)
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -6900,7 +6956,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         docs, text_url = bill_documents(b, bid, st, narr, sources,
                                         rep_written, rep_docket)
 
-        bill_amds = bill_amendments(narr, amend_texts)
+        bill_amds = bill_amendments(narr, amend_texts, claims.get(term, {}))
         btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,

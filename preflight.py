@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.266
+# GRANITE_VERSION: 2026-09-04.267
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11017,6 +11017,9 @@ def _calendar_misprint():
 # The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's
 # last amendment: a heading on its own line with the number under it, one of
 # them printed "2023- 0533h" by pdftotext, then the calendar's own business.
+# And between them HB 174's heading as House Calendar 11 of 2013 prints it,
+# "(2013-00079h)", a number no marker reads: only the heading can end the
+# amendment above it there, as it ended 2013-0065h.
 AMENDMENT_PAGE = """\
                                                         Amendment to HB 610-FN
                                                                    (2023-0471h)
@@ -11033,6 +11036,14 @@ Amendment to HB 25-A as passed.
                                                                     2023-0471h
                                                             AMENDED ANALYSIS
    This bill expands the definition of provider under the therapeutic cannabis program.
+
+                                                        Amendment to HB 174
+                                                                  (2013-00079h)
+
+             Proposed by the Committee on Transportation - c
+
+Amend the title of the bill by replacing it with the following:
+AN ACT prohibiting the use of a mobile electronic device while driving.
 
                                                         Amendment to HB 614-FN
                                                                   (2023- 0533h)
@@ -11084,6 +11095,13 @@ def _amendment_ends(extract_amendments):
     a, b = got["2023-0471h"]["text"], got["2023-0533h"]["text"]
     assert "HB 614" not in a and "Kidney" not in a and "0533h" not in a, (
         "2023-0471h ran on into the next amendment: ..." + a[-120:])
+    assert "HB 174" not in a and "Transportation" not in a and "mobile" not in a, (
+        "2023-0471h ran on through a heading whose number no marker reads, "
+        "which only the heading itself can end: ..." + a[-160:])
+    # The bill each was printed under, which a bill page checks it against.
+    assert (got["2023-0471h"].get("heading"), got["2023-0533h"].get("heading")) == (
+        "HB610", "HB614"), (got["2023-0471h"].get("heading"),
+                            got["2023-0533h"].get("heading"))
     assert "in Amendment to HB 25-A as passed" in a and a.rstrip().endswith(
         "therapeutic cannabis program."), (
         "an amendment that quotes another bill's heading in a sentence was cut "
@@ -11096,7 +11114,83 @@ def _amendment_ends(extract_amendments):
     assert got["2023-0533h"]["proposed_by"].startswith("the Committee on Health"), (
         got["2023-0533h"]["proposed_by"])
     return "ok", ("a broken number still opens its amendment, and each ends at "
-                  "the next heading or the calendar's own business")
+                  "the next heading, readable number or not, or the calendar's "
+                  "own business")
+
+
+@check("reports", "an amendment's text is its earliest printing unless a later "
+                  "one is that printing whole, and is not shown under another "
+                  "bill's heading", needs=("extract_amendments", "build_site_v2"))
+def _amendment_printing(extract_amendments, build_site_v2):
+    """2017 HB 407's page showed the Finance committee's amendment under
+    2017-2453h, which is the Labor committee's number.
+
+    House Calendar 52 of 2017 prints 2017-2453h, the Labor committee's; House
+    Calendar 11 of 2018 printed the Finance committee's under the same number,
+    and the longest printing won. Now the earliest stands, and a later one
+    replaces it only where it opens with the earlier one's words -- the
+    earlier was cut short. Both 2017-2453h texts open "Amend the bill by
+    replacing all after the enacting clause with the following", as most
+    amendments do, so the test reads forty words; and House Calendar 15 of
+    2016 prints 2016-0539h's "189:18" as ":18", so near enough counts. Over
+    the 1,580 calendars this moves 2017-2453h and no other shown text.
+
+    And HB 1180's docket of 2022 moves 2022-0996h, which House Calendar 10A
+    prints -- and the database files -- under "Amendment to HB 1347", HB
+    1347's committee's amendment. The heading is recorded, and a page leaves
+    the text off where the heading names another bill whose docket names the
+    number too; not where the calendar misprinted the heading itself --
+    2022-1160h under "HB 1160", its own number, and 2026-0976h under "HB
+    16678".
+    """
+    EA, B = extract_amendments, build_site_v2
+    boiler = "Amend the bill by replacing all after the enacting clause with the following: "
+    labor = {"text": boiler + "1 Workers' Compensation; Medical, Hospital, and Remedial "
+             "Care. Amend RSA 281-A:23, VI to read as follows: VI. An employer subject "
+             "to this chapter may furnish testing for the presence of a bloodborne disease."}
+    finance = {"text": boiler + "1 New Paragraph; Workers' Compensation; Definitions. "
+               "Amend RSA 281-A:2 by inserting after paragraph I-a the following new "
+               "paragraph: I-aa. Airborne disease means pathogenic microorganisms that "
+               "may be discharged through respiratory secretions. 2 Workers' Compensation; "
+               "Medical, Hospital, and Remedial Care. Amend RSA 281-A:23, VI to read as "
+               "follows: VI. An employer subject to this chapter may furnish testing."}
+    assert not EA.replaces(labor, finance), (
+        "a longer amendment printed later under the same number replaced the "
+        "earlier one, though it opens differently")
+    cut = {"text": "Amend RSA 189:18 as inserted by section 1 of the bill by replacing it "
+           "with the following: :18 Patriotic Exercises. In all public schools of the "
+           "state one session shall be devoted to exercises of a patriotic nature."}
+    whole = {"text": "Amend RSA 189:18 as inserted by section 1 of the bill by replacing "
+             "it with the following: 189:18 Patriotic Exercises. In all public schools "
+             "of the state one session shall be devoted to exercises of a patriotic "
+             "nature, which shall include a discussion of the Pledge of Allegiance."}
+    assert EA.replaces(cut, whole) and not EA.replaces(whole, cut), (
+        "a fuller printing of the same amendment did not replace a shorter one")
+
+    def narr(bill, num):
+        return {"bill": bill, "events": [{
+            "type": "amendment", "body": "H", "date": "2022-03-16",
+            "raw": f"Amendment #{num} : AF DV 170-170 03/16/2022", "amendment": num,
+            "amend_kind": "Amendment", "motion": "AF", "vote_kind": "DV",
+            "mover": "", "cancelled": False}]}
+    texts = {"2022-0996h": {"text": "Amend the title of the bill.", "heading": "HB1347",
+                            "source": "HC010A.pdf", "proposed_by": "Rep. Cushman"},
+             "2022-1160h": {"text": "Amend the bill by replacing section 1.",
+                            "heading": "HB1160", "source": "HC012.pdf"}}
+    claims = {"2022-0996h": {"HB1180", "HB1347"}, "2022-1160h": {"HB1604"}}
+    got = B.bill_amendments(narr("HB1180", "2022-0996h"), texts, claims)
+    assert [(a["num"], a["text"], a["source"], a["proposed_by"]) for a in got] == [
+        ("2022-0996h", "", "", "")], (
+        "an amendment printed under another bill's heading, whose docket names "
+        "it too, was shown on this bill: " + str(got))
+    got = B.bill_amendments(narr("HB1347", "2022-0996h"), texts, claims)
+    assert got[0]["text"] == "Amend the title of the bill.", got
+    got = B.bill_amendments(narr("HB1604", "2022-1160h"), texts, claims)
+    assert got[0]["text"] == "Amend the bill by replacing section 1.", (
+        "a heading the calendar misprinted took the text off its own bill: "
+        + str(got))
+    return "ok", ("the earliest printing stands unless a later one is it whole; "
+                  "another bill's amendment is left off its page")
 
 
 @check("build", "a bill with no filing year gets no feed, not one at the root")
