@@ -226,6 +226,16 @@ into those issues more broadly rather than a couple at a time." These look like
 they may share a cause, and a defect fixed alone gets a narrow patch while the
 cause survives to make the next one. Open one investigation across all of them.
 
+**Twenty-two 2018 final versions nothing could check.** On 26 September 23
+bills of 2017-2018 whose "Version adopted by both bodies" was an earlier
+printing took the General Court's own final version from
+`db/past/PastLegislationText.jsonl` (archive_text.final_versions; the rule and
+its evidence are in the docstring). 22 other bills of 2018 carry that label on a
+page that prints a 2017 LSR -- bills carried into the second year -- and the view
+holds no printing of them, so they were left as the page shows them. The view is
+in the kit (944 MB) so that GitHub's build applies the same rule; without it the
+step keeps every page's own text and says how many it could not check.
+
 **Sixteen member names that rest on a guess from voting patterns.** Of the 38
 names `member_party.json` carries with source `solved` (fetch_rollcall_parties.py
 inferring who an employee number is from how it voted), 21 agree with

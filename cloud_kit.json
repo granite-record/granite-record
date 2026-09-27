@@ -31,6 +31,11 @@
                 "db/past/PastCommitteeReports.jsonl"]
     },
     {
+      "what": "The General Court's own text of every past bill's printings, 1989-2024 (fetch_past_db.py; 944 MB). archive_text.py reads it to show 2018's final version where the saved page printed an earlier one, and without it GitHub's build would keep the earlier printing on those 23 bills. It changes only when the laptop dumps the views again.",
+      "owner": "laptop",
+      "paths": ["db/past/PastLegislationText.jsonl"]
+    },
+    {
       "what": "The General Court's sponsor record for past terms, with the view that guards its join and the manifest that gives both their column order (fetch_past_db.py), and the legislators table that turns its employee numbers into the site's members (fetch_archive_db.py): past_sponsors.py reads all four, and 2023-2024's sponsor lists come from them.",
       "owner": "laptop",
       "paths": ["db/past/PastSponsors.psv", "db/past/PastLegislation.psv", "db/past/_manifest.json",
