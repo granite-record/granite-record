@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.1
+# GRANITE_VERSION: 2026-09-26.2
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
@@ -36,24 +36,31 @@ WHAT IS MERGED, AND WHERE. Only 2023-2024, where the site's list came from the b
 page and this record was measured against the bills' printed sponsor lines first
 (--check). Against the 1,938 saved pages of that term it is the printed list on every bill
 but the ones --check names, and the status page was not: it left Rep. Steve Shurtleff off
-29 bills, Rep. Kimberly Abare off 4 and the member printed as Rep. Carey off 4, made Rep.
-Mark Paige the prime sponsor of 2023 HB 32 and Rep. Terry Roy the only sponsor of 2024
-HB 1713 -- both are Shurtleff's -- listed Rep. Dawn Johnson on 2023 HB 104, which neither
-the record nor the bill names, and carried no link for 5,900 of its 10,310 names.
-build_site_v2 and build_exports call merge_into(), so the page and the download agree.
-Every other term keeps the sponsor line of its own text for now; the rows are here for
-text_sponsors.py's use and for the person's decision about the rest.
+29 bills, Rep. Kimberly Abare off 4 and Rep. Lorrie J. Carey off 4, made Rep. Mark Paige
+the prime sponsor of 2023 HB 32 and Rep. Terry Roy the only sponsor of 2024 HB 1713 --
+both are Shurtleff's -- listed Rep. Dawn Johnson on 2023 HB 104, which neither the record
+nor the bill names, and carried no link for 5,900 of its 10,310 names. build_site_v2 and
+build_exports call merge_into(), so the page and the download agree. Every other term
+keeps the sponsor line of its own text for now; the rows are here for text_sponsors.py's
+use and for the person's decision about the rest.
 
 A BILL WHERE THE RECORD AND THE PRINT DISAGREE is published as the page prints it: the
 sponsors text_sponsors.py read off that bill's text. --check names every one.
 
-A NAME THE SITE HAS WRONG IS NOT LINKED. Employee 377080 is printed as "Rep. Carey, Merr. 1"
-on every bill the record puts that number on, and the site's record of the number says
-H. Robert Menear of Strafford 25, a guess from voting patterns in member_party.json. Where
-the only printed sponsor left over is at another seat than the one the site gives the only
-row left over, the row is shown as the page prints it and is not linked. What 377080 is
-called is the person's to decide, in member_corrections.json; once the site's name agrees
-with the print, the rows link on the next build.
+WHAT A PUBLISHED ROW SAYS (records). The name, party and link are those of the status
+page's row for the same member where one pairs. The party of a row none pairs with is the
+one the member's own ballots carry that term: the status page left Shurtleff and Abare off,
+and their 30 restored rows were published with no party. The chamber is the one the bill
+prints, then the one the member voted in that term, and the status page's only after both,
+because the status page files six sitting senators under the House.
+
+A ROW PAIRED ONLY BY ELIMINATION AT ANOTHER SEAT IS NOT LINKED. Where the only printed
+sponsor left over is at another seat than the one the site gives the only row left over,
+the site's name for the number is not the one the bill prints, and the row is shown as the
+page prints it, linked to nobody. Employee 377080 was that case -- every bill prints "Rep.
+Carey", and the site named the number H. Robert Menear of Strafford 25, a vote-pattern
+guess in member_party.json -- until member_corrections.json named her Rep. Lorrie J. Carey
+of Merrimack 1 on 26 September. Her rows now pair by name and link to her own page.
 """
 
 import argparse
@@ -64,6 +71,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import member_links as ML
+import names
 import past_members
 import text_sponsors as TS
 
@@ -196,8 +204,9 @@ def _split_last(last):
 
 class People:
     """Everything the files on disk say about an employee number: the site's id for it,
-    the names each source gives it, the chamber it voted in each term and its roll-call
-    seat. votes and roster may be None where a caller needs names only."""
+    the names each source gives it, the chamber it voted in and the party its ballots carry
+    each term, and its roll-call seat. votes and roster may be None where a caller needs
+    names only."""
 
     def __init__(self, legislators, past_members=None, votes=None, roster=None):
         self.emp2pid, self.leg = {}, {}
@@ -213,7 +222,7 @@ class People:
             last, _, first = (rec.get("name") or "").partition(",")
             if last.strip():
                 self.pm[str(emp)] = (rec.get("chamber") or "", last.strip(), first.strip())
-        self.vote, self.bodies = {}, defaultdict(Counter)
+        self.vote, self.bodies, self.parties = {}, defaultdict(Counter), defaultdict(Counter)
         for v in votes or ():
             vid = str(v.get("member_id") or "")
             if not vid:
@@ -221,8 +230,14 @@ class People:
             if vid not in self.vote:
                 self.vote[vid] = (TS.vote_name(v.get("name")), v.get("label") or "")
             y = str(v.get("year") or "")
-            if y.isdigit() and v.get("body") in ("H", "S"):
+            if not y.isdigit():
+                continue
+            if v.get("body") in ("H", "S"):
                 self.bodies[(vid, TS.term_of(y))][v["body"]] += 1
+            # build_data writes X where it knows no party; that is not one.
+            p = (v.get("party") or "").strip()[:1].upper()
+            if p and p in "RDILU":
+                self.parties[(vid, TS.term_of(y))][p] += 1
         self.roster = {str(m.get("id")): m for m in (roster or ())}
         self.known = set(self.vote) | set(self.roster)
 
@@ -272,11 +287,23 @@ class People:
             return " ".join(x for x in (first, last) if x)
         return ""
 
+    def voted_chamber(self, emp, term):
+        """The chamber the number's ballots were cast in that term -- the one most of them
+        were, for a member who changed chambers mid-term -- or "" where it cast none."""
+        c = self.bodies.get((self.vid(emp), term))
+        return c.most_common(1)[0][0] if c else ""
+
+    def party(self, emp, term):
+        """The party the number's ballots carry that term, most of them where they differ,
+        or "" where none carries one."""
+        c = self.parties.get((self.vid(emp), term))
+        return c.most_common(1)[0][0] if c else ""
+
     def chamber(self, emp, term):
         """The chamber the number voted in that term, else the one the tables give it."""
-        c = self.bodies.get((self.vid(emp), term))
-        if c:
-            return c.most_common(1)[0][0]
+        voted = self.voted_chamber(emp, term)
+        if voted:
+            return voted
         r = self.roster.get(self.vid(emp))
         if r and (r.get("chamber") or "")[:1] in ("H", "S"):
             return r["chamber"][:1]
@@ -460,7 +487,20 @@ def records(rows, db, people, term, pieces=None, pairs=None):
 
     In the order the page prints them where there is a page (the record's prime is the
     first printed, or the bill would not be here), else the record's own order with the
-    prime first."""
+    prime first.
+
+    THE CHAMBER IS THE ONE THE BILL PRINTS, then the one the member voted in that term, and
+    the status page's last -- for a resolution with no page, the ballots' first. The status
+    page files six sitting senators under the House (Donna Soucy, Jeb Bradley, Carrie
+    Gendreau, Lou D'Allesandro, Shannon Chandley, Rebecca Whitley), and taken first it put
+    "Sen. Donna Soucy (D - SD18)" under Representatives on 34 rows that seat_into cannot
+    date: resolutions with no text, and Senate bills that print two Soucys.
+
+    A ROW NO STATUS-PAGE ROW PAIRS WITH takes its party from the member's own ballots that
+    term, and is labelled as names.legislator labels a member: "Rep. Steve Shurtleff (D -
+    Merr 15)", with the seat the bill prints, and no seat where there is no page, because a
+    label states the seat held when the record was made. Of the rows the status page left
+    off, 26 of Shurtleff's and 4 of Kimberly Abare's were published with no party at all."""
     live = [r for r in rows if not r["withdrawn"]]
     printed = {id(r): (i, how) for r, i, how in (pairs or ())}
     if printed:
@@ -476,8 +516,9 @@ def records(rows, db, people, term, pieces=None, pairs=None):
         sid = people.site_id(emp)
         rec = {"member_id": sid, "employee": emp,
                "name": d.get("name") or people.site_name(emp),
-               "party": d.get("party") or "",
-               "chamber": d.get("chamber") or (sp or {}).get("chamber") or people.chamber(emp, term),
+               "party": d.get("party") or people.party(emp, term),
+               "chamber": ((sp or {}).get("chamber") or people.voted_chamber(emp, term)
+                           or d.get("chamber") or people.chamber(emp, term)),
                "sequence": n, "prime": bool(r["prime"]), "prime_inferred": False,
                "source": SOURCE, "url": d.get("url") or ""}
         if sp:
@@ -491,7 +532,14 @@ def records(rows, db, people, term, pieces=None, pairs=None):
                         "district": sp["district"],
                         "unlinked": "the site's record of this employee number names another "
                                     "member at another seat"})
-        rec["label"] = f"{rec['name']} ({rec['party']})" if rec["party"] else rec["name"]
+        if d or how == "elimination, seat differs":
+            rec["label"] = f"{rec['name']} ({rec['party']})" if rec["party"] else rec["name"]
+        else:
+            seat = sp if sp and sp.get("chamber") == rec["chamber"] else {}
+            rec["label"] = names.legislator({
+                "name": rec["name"], "chamber": rec["chamber"], "party": rec["party"],
+                "district": seat.get("district") or "",
+                "county_abbr": TS.ABBR.get(seat.get("county") or "", "")})
         out.append(rec)
     return out
 

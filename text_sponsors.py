@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.4
+# GRANITE_VERSION: 2026-09-14.5
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -229,6 +229,13 @@ def split(field, dropped=None):
         chamber = {"rep": "H", "sen": "S"}[h.group(1).lower()] if h else ""
         lead = h.end() if h else 0
         s = s[lead:]
+        # AN HONORIFIC TYPED TWICE IS ONE: 2005 HB 64 prints "Rep. Rep. A. Tilton, Ches 6",
+        # and the second "Rep." was kept as the first word of a sponsor called "Rep. A.
+        # Tilton". The first one gives the chamber.
+        again = HONORIFIC.match(s) if h else None
+        while again and again.end():
+            lead, s = lead + again.end(), s[again.end():]
+            again = HONORIFIC.match(s)
         only = None if h else SEAT_ONLY.match(s.strip(" .,"))
         if only and not (only.group("place") and letters(only.group("place")) not in DIST_WORDS
                          and letters(only.group("place")) not in COUNTIES):

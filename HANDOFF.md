@@ -183,20 +183,26 @@ merging it with `past_members.json` (2,614 more), so the population carrying
 the database-row label is larger than 676.
 
 **2023-2024's sponsors come from the General Court's own record now**
-(`past_sponsors.py`, 26 September), and three things about it are the
+(`past_sponsors.py`, 26 September), and two things about it are the
 person's. PastSponsors is joined by each bill's stored LSR, and
 `python3 past_sponsors.py --check` prints the bar against the saved pages and
 every bill that misses it -- run it rather than quoting its counts. Where a
 bill's printed line and the record disagree the page's list is published, and
 most of those disagreements are sponsors the record and the status page both
 list and the printed bill does not, or printed sponsors the record marks
-withdrawn: which of the two should win there is the first decision
-(`past_sponsors.merge`). The second is what employee 377080 is called: every
-bill prints "Rep. Carey, Merr. 1", and the site's record of the number says
-H. Robert Menear of Strafford 25, a vote-pattern guess in `member_party.json`;
-the rows show as printed and unlinked until `member_corrections.json` says
-otherwise. The third is whether any other term takes the record's list; none
-does yet. And the nightly's kit now carries `db/past/` and
+withdrawn: which of the two should win there is the first decision. Letting
+the record win is not a one-line switch in `past_sponsors.merge`: an entry's
+`sponsors` are the record's live rows as it keeps them -- employee, id, name,
+chamber, prime -- with no party, label or source, and are not a published
+list, so those bills would need `records()` run for them in `build()`, as the
+bills that agree already have. The second is whether any other term takes the
+record's list; none does yet. What employee 377080 is called is settled:
+Rep. Lorrie J. Carey (`member_corrections.json`), whose four co-sponsorships
+link to her page once `build_data.py` has put the correction on the ballots.
+A published row the status page has no row for takes its party from its
+member's ballots that term, and every row's chamber is the one the bill
+prints, then the ballots', before the status page's, which files six sitting
+senators under the House. And the nightly's kit now carries `db/past/` and
 `db/Legislators.psv`, so `python3 cloud.py seed-kit` has to run once before
 the next night, or its kit-down stops with THE KIT IS SHORT.
 

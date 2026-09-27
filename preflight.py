@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.266
+# GRANITE_VERSION: 2026-09-04.267
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26960,6 +26960,11 @@ def _sponsors_csv_seat(text_sponsors):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# "Rep." or "Sen." as a word of a sponsor's name. The chamber is a field of the row and never
+# part of the name; \b on both sides keeps Larsen, Senter and Repass names.
+SPONSOR_HONORIFIC = re.compile(r"\b(?:Rep|Sen)s?\b\.?", re.I)
+
+
 def _ps_row(year, lsr, seq, emp, prime=False, withdrawn=False):
     """One PastSponsors row, as past_sponsors.read_view gives it."""
     return {"SessionYear": str(year), "lsr": str(lsr), "LSRSequenceNo": str(seq),
@@ -26979,14 +26984,27 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
     2023 HB 104 whom neither the record nor the bill names, and carried no id for 5,900
     of its 10,310 names.
 
-    Every line and number here is the real one. The record is joined by the bill's own
-    stored LSR -- never by the number, which would give 2011 SR 5 somebody else's -- and
-    an employee number reaches a member through the legislators table's PersonID, or
-    stands for itself where the table has none. Employee 377080 is printed "Rep. Carey,
-    Merr. 1" and the site's record of the number says H. Robert Menear of Strafford 25:
-    shown as printed and linked to nobody. 2023 HB 10 prints Rep. Hoell where the record
-    lists Mark Alliegro, and Hoell is a member in his own right, so that bill disagrees
-    and is published as its page prints it."""
+    WHAT IS REAL HERE AND WHAT IS NOT. The bills, their stored LSRs, the employee numbers
+    on them and the printed sponsor lines are the General Court's -- HB 10's, HB 1429's
+    and CACR 9's lines cut short to the sponsors a rule needs -- and so are the status
+    page's rows, less some of their fields. The PersonIDs are stand-ins, each the last four
+    figures of the employee number (Mark Paige's is really 9942), and the ballots are
+    written under them. HB 11 is made up, to put Rep. Hoell's surname in the term's record
+    (377088 is not his number), and so is 2011 SR 5's LSR.
+
+    The record is joined by the bill's own stored LSR -- never by the number, which would
+    give 2011 SR 5 somebody else's -- and an employee number reaches a member through the
+    legislators table's PersonID, or stands for itself where the table has none. A row no
+    status-page row pairs with takes its party from the member's ballots that term:
+    Shurtleff is D, and Kimberly Abare, on CACR 9, R. The chamber is the one the bill
+    prints, then the ballots', and the status page's last, because the status page files
+    Sens. Gendreau and Bradley (CACR 9) and Soucy (SR 9, which has no page) under the
+    House. Employee 377080 is Rep. Lorrie J. Carey (member_corrections.json) and links to
+    her own page; while the ballots named H. Robert Menear of Strafford 25, until
+    26 September, the row was shown as printed and linked to nobody, and a row paired
+    that way still is. 2023 HB 10 prints Rep. Hoell where the record lists Mark Alliegro,
+    and Hoell is a member in his own right, so that bill disagrees and is published as
+    its page prints it."""
     import past_sponsors as PSP
     from collections import defaultdict
     B = build_site_v2
@@ -26995,17 +27013,23 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
                            "HB1429": {"lsr_year": "2024", "lsr_num": "2293"},
                            "HB10": {"lsr_year": "2023", "lsr_num": "0093"},
                            "HB104": {"lsr_year": "2023", "lsr_num": "0170"},
-                           "HB11": {"lsr_year": "2023", "lsr_num": "0094"}},
+                           "HB11": {"lsr_year": "2023", "lsr_num": "0094"},
+                           "CACR9": {"lsr_year": "2023", "lsr_num": "0900"},
+                           "SR9": {"lsr_year": "2023", "lsr_num": "1067"}},
              "2011-2012": {"SR5": {"lsr_year": "2011", "lsr_num": "1234"}}}
     ps = [_ps_row(2023, 69, 1, "376628", True), _ps_row(2023, 69, 2, "409042"),
           _ps_row(2023, 69, 3, "408930"), _ps_row(2023, 69, 4, "377778"),
           _ps_row(2023, 69, 5, "376862"),
           _ps_row(2024, 3166, 1, "376628", True), _ps_row(2024, 3166, 2, "408925"),
-          _ps_row(2024, 2293, 1, "408913", True), _ps_row(2024, 2293, 2, "377080"),
+          _ps_row(2024, 2293, 1, "409129", True), _ps_row(2024, 2293, 5, "377080"),
           _ps_row(2023, 93, 1, "375453", True), _ps_row(2023, 93, 8, "408987"),
           _ps_row(2023, 94, 1, "377088", True),
           _ps_row(2023, 170, 1, "407144", True), _ps_row(2023, 170, 4, "408927", withdrawn=True),
           _ps_row(2023, 170, 6, "376991"), _ps_row(2023, 170, 9, "218745"),
+          _ps_row(2023, 900, 1, "218760", True), _ps_row(2023, 900, 3, "218755"),
+          _ps_row(2023, 900, 4, "209078"), _ps_row(2023, 900, 13, "376628"),
+          _ps_row(2023, 900, 16, "409060"),
+          _ps_row(2023, 1067, 1, "209091", True), _ps_row(2023, 1067, 10, "209096"),
           _ps_row(2011, 1234, 1, "209027", True)]
     pl = [{"SessionYear": "2011", "LSR": "1234", "CondensedBillNo": "SR6"}]
     legs = [{"Employeeno": e, "PersonID": p, "LastName": l, "FirstName": f, "LegislativeBody": b}
@@ -27014,29 +27038,43 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
                                   ("377778", "7778", "Edgar", "Michael", "H"),
                                   ("376862", "6862", "Schuett", "Dianne", "H"),
                                   ("408925", "8925", "Roy", "Terry", "H"),
-                                  ("408913", "8913", "Mazur", "Kenneth", "H"),
+                                  ("409129", "9129", "Mazur", "Lisa", "H"),
                                   ("375453", "5453", "Packard", "Sherman", "H"),
                                   ("408987", "8987", "Alliegro", "Mark", "H"),
                                   ("377088", "7088", "Hoell", "J.R.", "H"),
                                   ("407144", "7144", "Moffett", "Michael", "H"),
                                   ("408927", "8927", "Hobson", "Deb", "H"),
                                   ("376991", "6991", "Notter", "Jeanine", "H"),
-                                  ("218745", "8745", "Gannon", "Bill", "S")]]
-    votes = [{"member_id": v, "name": n, "label": lab, "year": "2024", "body": b}
-             for v, n, lab, b in [("376628", "Shurtleff, Steve", "Shurtleff, Steve(D) Merrimack 15", "H"),
-                                  ("377080", "Menear, H. Robert", "Menear, H. Robert(D) Straf 25", "H"),
-                                  ("9042", "Paige, Mark", "Paige, Mark(D) Rockingham 11", "H"),
-                                  ("8930", "Levesque, Cassandra", "Levesque, Cassandra(D) Strafford 4", "H"),
-                                  ("7778", "Edgar, Michael", "Edgar, Michael(D) Rockingham 29", "H"),
-                                  ("6862", "Schuett, Dianne", "Schuett, Dianne(D) Merrimack 12", "H"),
-                                  ("8925", "Roy, Terry", "Roy, Terry(R) Rockingham 31", "H"),
-                                  ("8913", "Mazur, Kenneth", "Mazur, Kenneth(R) Hillsborough 44", "H"),
-                                  ("5453", "Packard, Sherman", "Packard, Sherman(R) Rockingham 16", "H"),
-                                  ("8987", "Alliegro, Mark", "Alliegro, Mark(R) Grafton 7", "H"),
-                                  ("7088", "Hoell, J.R.", "Hoell, J.R.(R) Merrimack 27", "H"),
-                                  ("7144", "Moffett, Michael", "Moffett, Michael(R) Merrimack 4", "H"),
-                                  ("6991", "Notter, Jeanine", "Notter, Jeanine(R) Hillsborough 12", "H"),
-                                  ("8745", "Gannon, Bill", "Gannon, Bill(R)  23", "S")]]
+                                  ("218745", "8745", "Gannon", "Bill", "S"),
+                                  ("218760", "8760", "Abbas", "Daryl", "S"),
+                                  ("218755", "8755", "Gendreau", "Carrie", "S"),
+                                  ("209078", "9078", "Bradley", "Jeb", "S"),
+                                  ("209091", "9091", "Watters", "David", "S"),
+                                  ("209096", "9096", "Soucy", "Donna", "S")]]
+    # Shurtleff, Abare and Carey have no PersonID, so their ballots are cast under the
+    # employee number itself, as on the real file.
+    votes = [{"member_id": v, "name": n, "label": lab, "year": "2024", "body": b, "party": p}
+             for v, n, lab, b, p in [
+                 ("376628", "Shurtleff, Steve", "Shurtleff, Steve(D) Merrimack 15", "H", "D"),
+                 ("377080", "Carey, Lorrie J.", "Carey, Lorrie J.(D) Merrimack 1", "H", "D"),
+                 ("409060", "Abare, Kimberly", "Abare, Kimberly(R) Hillsborough 1", "H", "R"),
+                 ("9042", "Paige, Mark", "Paige, Mark(D) Rockingham 11", "H", "D"),
+                 ("8930", "Levesque, Cassandra", "Levesque, Cassandra(D) Strafford 4", "H", "D"),
+                 ("7778", "Edgar, Michael", "Edgar, Michael(D) Rockingham 29", "H", "D"),
+                 ("6862", "Schuett, Dianne", "Schuett, Dianne(D) Merrimack 12", "H", "D"),
+                 ("8925", "Roy, Terry", "Roy, Terry(R) Rockingham 31", "H", "R"),
+                 ("9129", "Mazur, Lisa", "Mazur, Lisa(R) Hillsborough 44", "H", "R"),
+                 ("5453", "Packard, Sherman", "Packard, Sherman(R) Rockingham 16", "H", "R"),
+                 ("8987", "Alliegro, Mark", "Alliegro, Mark(R) Grafton 7", "H", "R"),
+                 ("7088", "Hoell, J.R.", "Hoell, J.R.(R) Merrimack 27", "H", "R"),
+                 ("7144", "Moffett, Michael", "Moffett, Michael(R) Merrimack 4", "H", "R"),
+                 ("6991", "Notter, Jeanine", "Notter, Jeanine(R) Hillsborough 12", "H", "R"),
+                 ("8745", "Gannon, Bill", "Gannon, Bill(R)  23", "S", "R"),
+                 ("8760", "Abbas, Daryl", "Abbas, Daryl(R)  22", "S", "R"),
+                 ("8755", "Gendreau, Carrie", "Gendreau, Carrie(R)  01", "S", "R"),
+                 ("9078", "Bradley, Jeb", "Bradley, Jeb(R)  03", "S", "R"),
+                 ("9091", "Watters, David", "Watters, David(D)  04", "S", "D"),
+                 ("9096", "Soucy, Donna", "Soucy, Donna(D)  18", "S", "D")]]
     people = PSP.People(legs, {}, votes, [])
     printed = {"HB32": "Rep. Shurtleff, Merr. 15; Rep. M. Paige, Rock. 11; Rep. Levesque, Straf. 4; "
                        "Rep. Edgar, Rock. 29; Rep. Schuett, Merr. 12",
@@ -27044,17 +27082,29 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
                "HB1429": "Rep. Mazur, Hills. 44; Rep. Carey, Merr. 1",
                "HB10": "Rep. Packard, Rock. 16; Rep. Hoell, Merr. 27",
                "HB11": "Rep. Hoell, Merr. 27",
-               "HB104": "Rep. Moffett, Merr. 4; Rep. Notter, Hills. 12; Sen. Gannon, Dist 23"}
+               "HB104": "Rep. Moffett, Merr. 4; Rep. Notter, Hills. 12; Sen. Gannon, Dist 23",
+               "CACR9": "Sen. Abbas, Dist 22; Sen. Gendreau, Dist 1; Sen. Bradley, Dist 3; "
+                        "Rep. Shurtleff, Merr. 15; Rep. Abare, Hills. 1"}
     status = {"2023-2024": {
         "HB32": [{"member_id": "409042", "name": "Mark Paige", "party": "D", "prime": True},
                  {"member_id": "377778", "name": "Michael Edgar", "party": "D"},
                  {"member_id": "", "name": "Dianne Schuett", "party": "D"},
                  {"member_id": "408930", "name": "Cassandra Levesque", "party": "D"}],
         "HB1713": [{"member_id": "408925", "name": "Terry Roy", "party": "R", "prime": True}],
+        "HB1429": [{"member_id": "409129", "name": "Lisa Mazur", "party": "R", "chamber": "H",
+                    "prime": True}],
         "HB104": [{"member_id": "407144", "name": "Michael Moffett", "prime": True},
                   {"member_id": "376991", "name": "Jeanine Notter"},
                   {"member_id": "", "name": "Bill Gannon", "chamber": "S"},
-                  {"member_id": "", "name": "Dawn Johnson"}]}}
+                  {"member_id": "", "name": "Dawn Johnson"}],
+        # The status page's chamber for three sitting senators: H.
+        "CACR9": [{"member_id": "", "name": "Daryl Abbas", "party": "R", "chamber": "S",
+                   "prime": True},
+                  {"member_id": "", "name": "Carrie Gendreau", "party": "R", "chamber": "H"},
+                  {"member_id": "", "name": "Jeb Bradley", "party": "R", "chamber": "H"}],
+        "SR9": [{"member_id": "", "name": "David Watters", "party": "D", "chamber": "S",
+                 "prime": True},
+                {"member_id": "", "name": "Donna Soucy", "party": "D", "chamber": "H"}]}}
     joined, tally = PSP.join(bills, ps, pl)
     assert "SR5" not in joined.get("2011-2012", {}) and \
         tally["bills whose LSR PastLegislation files under another number"] == 1, (
@@ -27065,16 +27115,48 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
 
     def pub(bid):
         return [(r["name"], r["prime"], r["member_id"]) for r in t[bid].get("publish") or []]
+
+    def row(bid, emp, doc_=None):
+        got = [r for r in (doc_ or t)[bid].get("publish") or () if r["employee"] == emp]
+        assert len(got) == 1, f"{bid} publishes employee {emp} {len(got)} times"
+        return got[0]
     assert t["HB32"]["page"] == "agrees" and pub("HB32") == [
         ("Steve Shurtleff", True, "376628"), ("Mark Paige", False, "9042"),
         ("Cassandra Levesque", False, "8930"), ("Michael Edgar", False, "7778"),
         ("Dianne Schuett", False, "6862")], f"2023 HB 32 publishes {pub('HB32')}"
     assert pub("HB1713") == [("Steve Shurtleff", True, "376628"), ("Terry Roy", False, "8925")], (
         f"2024 HB 1713 publishes {pub('HB1713')}")
-    carey = [r for r in t["HB1429"]["publish"] if r["employee"] == "377080"]
-    assert carey and (carey[0]["member_id"], carey[0]["name"], carey[0]["county"],
-                      carey[0]["district"]) == ("", "Carey", "Merrimack", "1"), (
-        f"377080 was published as {carey}: wanted Carey, Merrimack 1, as printed and unlinked")
+    # THE PARTY OF A ROW THE STATUS PAGE LEFT OFF is the one the member's ballots carry that
+    # term: 30 such rows went out with none, and the page's party count and chips with them.
+    s = row("HB32", "376628")
+    assert (s["party"], s["label"]) == ("D", "Rep. Steve Shurtleff (D - Merr 15)"), (
+        f"2023 HB 32's prime was published as {s['label']!r}, party {s['party']!r}")
+    assert t["CACR9"]["page"] == "agrees" and (
+        row("CACR9", "409060")["party"], row("CACR9", "376628")["party"]) == ("R", "D"), (
+        f"2023 CACR 9 publishes Abare's party as {row('CACR9', '409060')['party']!r} and "
+        f"Shurtleff's as {row('CACR9', '376628')['party']!r}")
+    # THE CHAMBER IS THE PRINTED ONE, then the ballots': the status page's H for a senator
+    # is last, and on SR 9, which has no page, the ballots come first.
+    ch = [(r["name"], r["chamber"]) for r in t["CACR9"]["publish"]]
+    assert [c for _n, c in ch] == ["S", "S", "S", "H", "H"], (
+        f"2023 CACR 9 publishes the chambers {ch}: Gendreau and Bradley are senators")
+    assert row("SR9", "209096")["chamber"] == "S" and t["SR9"]["page"] == "no page", (
+        "Sen. Donna Soucy was published in the House on 2023 SR 9, which has no page")
+    # 377080 IS REP. LORRIE J. CAREY and is linked like anyone else. A row paired only by
+    # elimination at another seat is still shown as printed: it was hers, while the site's
+    # record of the number named H. Robert Menear of Strafford 25.
+    c = row("HB1429", "377080")
+    assert (c["member_id"], c["name"], c["party"], c["chamber"], c.get("unlinked")) == (
+        "377080", "Lorrie J. Carey", "D", "H", None), f"377080 was published as {c}"
+    menear = [dict(v, name="Menear, H. Robert", label="Menear, H. Robert(D) Straf 25")
+              if v["member_id"] == "377080" else v for v in votes]
+    old = PSP.build(bills, status, PSP.People(legs, {}, menear, []), joined,
+                    line_of=lambda term, bid, _b: printed.get(bid))["2023-2024"]
+    c0 = row("HB1429", "377080", old)
+    assert (c0["member_id"], c0["name"], c0.get("county"), c0.get("district")) == (
+        "", "Carey", "Merrimack", "1") and c0.get("unlinked"), (
+        f"a row paired only by elimination at another seat was published as {c0}: wanted "
+        "Carey, Merrimack 1, as printed and unlinked")
     assert t["HB10"]["page"] == "differs" and not t["HB10"].get("publish"), (
         "2023 HB 10 prints Rep. Hoell where the record lists Mark Alliegro, and it was "
         f"taken as {t['HB10']['page']}")
@@ -27088,33 +27170,39 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
         "a bill the record and its page disagree on did not take the page's list")
     assert merged["2023-2024"]["HB32"][0]["name"] == "Steve Shurtleff", "the merge left HB 32 as it was"
 
-    # On the page: Shurtleff first, prime, and a link to his own page; Carey linked to
-    # nobody and filed under nobody, the Menear page least of all.
+    # On the page: Shurtleff first, prime, with his party, and a link to his own page; Rep.
+    # Lorrie J. Carey linked to hers and filed under her, like any other sponsor.
     people_ = {"376628": {"id": "376628", "name": "Shurtleff, Steve", "chamber": "H",
                           "party": "D", "county": "Merrimack", "district": "15",
                           "slug": "steve-shurtleff-merr-15"},
-               "377080": {"id": "377080", "name": "Menear, H. Robert", "chamber": "H",
-                          "party": "D", "county": "Strafford", "district": "25",
-                          "slug": "h-robert-menear-straf-25"}}
+               "377080": {"id": "377080", "name": "Carey, Lorrie J.", "chamber": "H",
+                          "party": "D", "county": "Merrimack", "district": "1",
+                          "slug": "lorrie-j-carey-merr-1"}}
     sponsored = defaultdict(list)
     sp = B.bill_sponsor_list("HB32", {"designation": "HB 32", "title": "a bill"}, "2023",
                              "2023-2024", "2025-2026", merged, people_, {}, {}, sponsored)
-    assert sp[0]["prime"] and sp[0]["slug"] == "steve-shurtleff-merr-15", (
-        f"2023 HB 32's first sponsor is {sp[0].get('name')} ({sp[0].get('slug')!r})")
+    assert sp[0]["prime"] and sp[0]["slug"] == "steve-shurtleff-merr-15" \
+        and sp[0]["party"] == "D", (
+        f"2023 HB 32's first sponsor is {sp[0].get('name')} ({sp[0].get('slug')!r}), "
+        f"party {sp[0].get('party')!r}")
     merged["2023-2024"]["HB1429"] = t["HB1429"]["publish"]
     sp = B.bill_sponsor_list("HB1429", {"designation": "HB 1429", "title": "a bill"}, "2024",
                              "2023-2024", "2025-2026", merged, people_, {}, {}, sponsored)
     c = [s for s in sp if s.get("employee") == "377080"][0]
-    assert not c["slug"] and "377080" not in sponsored, (
-        "employee 377080's sponsorship reached the page the site names H. Robert Menear")
+    assert c["slug"] == "lorrie-j-carey-merr-1" and any(
+        x["bill"] == "HB1429" for x in sponsored.get("377080") or ()), (
+        f"employee 377080's sponsorship of 2024 HB 1429 links {c['slug']!r} and is filed under "
+        f"{[k for k, v in sponsored.items() if any(x['bill'] == 'HB1429' for x in v)]}: "
+        "wanted Rep. Lorrie J. Carey's page")
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
         src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
         assert not src or "PSP.merge_into(" in src, (
             f"{f} does not call past_sponsors.merge_into, so its 2023-2024 sponsors are not "
             "the ones the other builder publishes")
-    return "ok", ("HB 32 and HB 1713 prime Shurtleff; the record's list where the page agrees, "
-                  "the page's where not; 377080 as printed and unlinked; joined by the stored LSR")
+    return "ok", ("HB 32 and HB 1713 prime Shurtleff, D; Abare R on CACR 9; Gendreau, Bradley "
+                  "and Soucy in the Senate; 377080 linked as Rep. Lorrie J. Carey; the record's "
+                  "list where the page agrees, the page's where not; joined by the stored LSR")
 
 
 @check("naming", "a senator printed as Rep. is the senator the sponsor record names, never a representative of the surname",
@@ -27203,12 +27291,15 @@ def _sponsor_rows_are_people(text_sponsors):
     called "Rock 15"; "Rep. McGough, Hill 18" one called "Hill 18 McGough"; "Sen.
     Francoeur, Dsit 14" one called "Dsit 14 Francoeur"; and 1999 HB 398's comma for a
     semicolon lost Rep. Ronald Nowe -- "Rep. M. Nowe" before him is Mary Lou Nowe, who
-    later filed as Flayhan, and stays as printed. A committee that introduced a bill
-    stays the committee. A line that names nobody is named from the General Court's
-    sponsor record, marked as that."""
+    later filed as Flayhan, and stays as printed. 2005 HB 64's "Rep. Rep. A. Tilton" made
+    a sponsor called "Rep. A. Tilton", whom no roll call names; she is Rep. Anna Tilton. A
+    committee that introduced a bill stays the committee. A line that names nobody is
+    named from the General Court's sponsor record, marked as that."""
     T = text_sponsors
     import past_sponsors as PSP
     lines = {
+        "Rep. Rep. A. Tilton, Ches 6; Rep. Foster, Hills 10":
+            [("H", "A. Tilton", "Cheshire", "6"), ("H", "Foster", "Hillsborough", "10")],
         "Rep. M. Nowe, Rock 4; Rep. G. Katsakiores, Rock 13, Rep. R. Nowe, Rock 3; Rep. Rose, Ches 13":
             [("H", "M. Nowe", "Rockingham", "4"), ("H", "G. Katsakiores", "Rockingham", "13"),
              ("H", "R. Nowe", "Rockingham", "3"), ("H", "Rose", "Cheshire", "13")],
@@ -27257,7 +27348,8 @@ def _sponsor_rows_are_people(text_sponsors):
         assert got == want, f"{line!r} was read as {got}"
         for _c, name, _co, _d in got:
             assert not re.search(r"\d", name) and "REFERRED" not in name.upper() \
-                and not seatish.match(name), f"{line!r} made a sponsor called {name!r}"
+                and not seatish.match(name) and not SPONSOR_HONORIFIC.search(name), (
+                f"{line!r} made a sponsor called {name!r}")
     # The line that names nobody: its sponsors come from the record, marked so.
     joined = {"1991-1992": {"HCR13": {"lsr": "1991-1217", "rows": [
         {"employee": "373290", "sequence": 1, "prime": True, "withdrawn": False}]}}}
@@ -27300,12 +27392,14 @@ def _unprinted_sponsor_note():
     return "ok", "the record's names say so; a line's names keep their own note"
 
 
-@check("data", "no sponsor row is a heading, a seat or a name with a figure in it, and the five senators printed as Rep. are theirs")
+@check("data", "no sponsor row is a heading, a seat, an honorific or a name with a figure in it, and the five senators printed as Rep. are theirs")
 def _sponsor_rows_data():
     """The same rule on text_sponsors.json and the lists past_sponsors.json publishes for
-    2023-2024: 0 rows naming REFERRED, 0 seat-only rows, 0 names containing a figure --
-    the rows the pages list and sponsors.csv exports. And the five senators printed as
-    "Rep. X, Dist N" that the site had placed on representatives of their surnames."""
+    2023-2024: 0 rows naming REFERRED, 0 seat-only rows, 0 names containing a figure, and
+    0 names containing "Rep." or "Sen." -- the chamber is a field, and 2005 HB 64's "Rep.
+    Rep. A. Tilton" was a sponsor called "Rep. A. Tilton". These are the rows the pages
+    list and sponsors.csv exports. And the five senators printed as "Rep. X, Dist N" that
+    the site had placed on representatives of their surnames."""
     ts = Path("text_sponsors.json")
     if not ts.exists():
         return "skip", "no text_sponsors.json here"
@@ -27319,7 +27413,8 @@ def _sponsor_rows_data():
     seatish = re.compile(r"^(?:[A-Za-z]+\.?\s*)?\d+$|^(?:dist|district|dsit|dit)\.?$", re.I)
     bad = [f"{t} {b} {r.get('name')!r}" for t, b, r in rows
            if "REFERRED" in (r.get("name") or "").upper()
-           or re.search(r"\d", r.get("name") or "") or seatish.match((r.get("name") or "").strip())]
+           or re.search(r"\d", r.get("name") or "") or seatish.match((r.get("name") or "").strip())
+           or SPONSOR_HONORIFIC.search(r.get("name") or "")]
     assert not bad, (f"{len(bad)} sponsor rows are not a person, e.g. {bad[:6]}: rebuild "
                      "with python3 text_sponsors.py --apply")
     five = [("2001-2002", "HB428", "Boyce", "209042"), ("2003-2004", "HB1360", "Boyce", "209042"),
@@ -27339,8 +27434,13 @@ def _sponsor_rows_data():
 def _past_sponsors_data():
     """The two primes the bill status page had wrong, on the file the build publishes
     from, and the 37 co-sponsorships it had left off: Steve Shurtleff (376628) on 29
-    bills, Kimberly Abare (409060) on 4 and employee 377080, printed Rep. Carey, on 4 --
-    each on a bill that publishes the record's list or its page's, which prints them."""
+    bills, Kimberly Abare (409060) on 4 and Rep. Lorrie J. Carey (377080) on 4.
+
+    COUNTED ON WHAT IS PUBLISHED, not on the record's rows: the record's list for a bill
+    that agrees with its page or has none, and the list text_sponsors.py read off the page
+    for one that differs -- the two lists merge_into gives the site and sponsors.csv. And
+    pinned on two bills: CACR 9 names Shurtleff and Abare, and 2024 HB 1429 links Carey,
+    whom the site named H. Robert Menear until member_corrections.json said otherwise."""
     p = Path("past_sponsors.json")
     if not p.exists():
         return "skip", "no past_sponsors.json here (python3 past_sponsors.py --apply)"
@@ -27354,13 +27454,78 @@ def _past_sponsors_data():
     odd = [b for b, e in t.items() if e.get("page") not in ("agrees", "differs", "no page")
            or (e.get("page") != "differs" and not e.get("publish"))]
     assert not odd, f"2023-2024 bills with no verdict or nothing to publish: {odd[:8]}"
-    restored = Counter(s["employee"] for e in t.values() for s in e.get("sponsors") or ()
-                       if s["employee"] in ("376628", "409060", "377080"))
+    ts = Path("text_sponsors.json")
+    text = (json.loads(ts.read_text(encoding="utf-8")).get("2023-2024") or {}) if ts.exists() else {}
+    published = {b: (e.get("publish") or (text.get(b) if e.get("page") == "differs" else None) or [])
+                 for b, e in t.items()}
+    three = ("376628", "409060", "377080")
+    restored = Counter(m for rows in published.values()
+                       for m in {x for r in rows for x in (r.get("employee"), r.get("member_id"))
+                                 if x in three})
     assert restored["376628"] >= 29 and restored["409060"] >= 4 and restored["377080"] >= 4, (
-        f"the record's live rows for Shurtleff, Abare and 377080: {dict(restored)}")
+        f"the bills whose published list names Shurtleff, Abare and Carey: {dict(restored)}")
+    cacr9 = {r.get("member_id") for r in published.get("CACR9") or ()}
+    assert {"376628", "409060"} <= cacr9, (
+        f"2023 CACR 9 publishes {sorted(x for x in cacr9 if x)}: it prints Rep. Shurtleff "
+        "and Rep. Abare, and the record lists both")
+    carey = [r for r in published.get("HB1429") or () if r.get("member_id") == "377080"]
+    assert carey, (
+        "2024 HB 1429 does not link employee 377080, printed Rep. Carey, Merr. 1: she is Rep. "
+        "Lorrie J. Carey (member_corrections.json). If data/member_votes.json predates that "
+        "correction, run build_data.py and then past_sponsors.py --apply")
     n = Counter(e.get("page") for e in t.values())
-    return "ok", (f"HB 32 and HB 1713 prime Shurtleff; {n['agrees']:,} bills agree with their "
-                  f"page, {n['differs']:,} published as printed, {n['no page']:,} have no page")
+    return "ok", (f"HB 32 and HB 1713 prime Shurtleff; Shurtleff on {restored['376628']} "
+                  f"published lists, Abare on {restored['409060']}, Carey on "
+                  f"{restored['377080']}; {n['agrees']:,} bills agree with their page, "
+                  f"{n['differs']:,} published as printed, {n['no page']:,} have no page")
+
+
+@check("data", "every 2023-2024 sponsor published under a member sits in the chamber that member voted in that term")
+def _past_sponsors_chamber():
+    """The bill status page files six sitting senators of 2023-2024 under the House --
+    Donna Soucy, Jeb Bradley, Carrie Gendreau, Lou D'Allesandro, Shannon Chandley and
+    Rebecca Whitley -- and past_sponsors.records took that chamber before the one the bill
+    prints. past_sponsors.json carried H for them on 906 rows; seat_into dated all but 34
+    from the printed line, and those 34 read "Sen. Donna Soucy (D - SD18)" under
+    Representatives while sponsors.csv exported them as H. Every published 2023-2024 row
+    with a member id is held here to the chamber that member's ballots were cast in that
+    term, read from data/member_votes.json rather than from anything past_sponsors wrote.
+    A member with no ballot that term is counted and not judged."""
+    p, mv = Path("past_sponsors.json"), Path("data/member_votes.json")
+    if not p.exists() or not mv.exists():
+        return "skip", "no past_sponsors.json or data/member_votes.json here"
+    term = "2023-2024"
+    t = json.loads(p.read_text(encoding="utf-8")).get(term) or {}
+    ts = Path("text_sponsors.json")
+    text = (json.loads(ts.read_text(encoding="utf-8")).get(term) or {}) if ts.exists() else {}
+    voted = {}
+    for v in json.loads(mv.read_text(encoding="utf-8")):
+        y = str(v.get("year") or "")
+        if y.isdigit() and v.get("body") in ("H", "S"):
+            y = int(y)
+            if f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}" == term:
+                voted.setdefault(str(v.get("member_id") or ""), set()).add(v["body"])
+    bad, n, unvoted = [], 0, 0
+    for bid, e in sorted(t.items()):
+        rows = e.get("publish") or (text.get(bid) if e.get("page") == "differs" else None) or []
+        for r in rows:
+            mid = str(r.get("member_id") or "")
+            if not mid:
+                continue
+            if mid not in voted:
+                unvoted += 1
+                continue
+            n += 1
+            if r.get("chamber") not in voted[mid]:
+                bad.append(f"{bid} {r.get('name')} ({mid}) {r.get('chamber') or 'no chamber'}, "
+                           f"voted {'/'.join(sorted(voted[mid]))}")
+    assert n, "no published 2023-2024 row carries a member id with a ballot that term"
+    assert not bad, (f"{len(bad)} published 2023-2024 sponsor row(s) sit in a chamber their "
+                     f"member did not vote in that term, e.g. {bad[:6]}: rebuild with python3 "
+                     "past_sponsors.py --apply")
+    return "ok", (f"{n:,} published rows with a member id, each in the chamber of that "
+                  f"member's {term} ballots"
+                  + (f"; {unvoted:,} under a member with no ballot that term" if unvoted else ""))
 
 
 @check("data", "the Learn pages state the record's own figures, and none is left unfilled")

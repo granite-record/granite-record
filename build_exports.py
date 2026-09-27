@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.15
+# GRANITE_VERSION: 2026-09-10.16
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -324,11 +324,16 @@ def sponsors(out, data):
     # saved text (SCR 1, SR 9, SR 10, SR 11, HCR 7, HCR 11); Donna Soucy on
     # eight Senate bills whose text prints her beside Rep. Timothy Soucy, a
     # pair seat_into will not split; and Carrie Gendreau on SB 118, whose
-    # saved text does not print her. Still wrong, on the page and here alike.
+    # saved text does not print her. Still wrong, on the page and here alike,
+    # until those lists came from the sponsor record below.
     #
     # AND THE SAME 2023-2024. build_site_v2 gives that term the General Court's own
     # sponsor record where each bill's printed line agrees with it (past_sponsors.py);
     # the download takes the same lists, in the same order, before the seats are dated.
+    # A row of it sits in the chamber the bill prints, then the one its member voted in
+    # that term, and the status page's only after both, so the six are senators here on
+    # all 34 of those rows -- the 35 above, less Gendreau on SB 118, which now publishes
+    # the list its page prints.
     if isinstance(sp, dict):
         TS.merge_into(sp)
         PSP.merge_into(sp)
