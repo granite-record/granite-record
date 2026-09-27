@@ -24,10 +24,11 @@
       "globs": ["Docket_*.txt"]
     },
     {
-      "what": "The database views the build reads, of the 31 in the dump.",
+      "what": "The database views the build reads, of the 31 in the dump, and of the six Past* views the one report_check.py reads: the House committee reports of 2016-2024 as the committees filed them.",
       "owner": "laptop",
       "paths": ["db/Docket.psv", "db/Legislation.psv", "db/LegislationText.psv", "db/DocumentVersion.psv",
-                "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json"]
+                "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json",
+                "db/past/PastCommitteeReports.jsonl"]
     },
     {
       "what": "The study and statutory committees -- their details, meetings and members, and the dump's temporary view of them -- and the dump's manifest, whose StatStudMeetings date the calendar reads. The night's study-committee refresh swaps all four views in whole.",

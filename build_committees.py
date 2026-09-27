@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.34
+# GRANITE_VERSION: 2026-09-07.35
 """
 A page's worth of data for every committee.
 
@@ -57,6 +57,7 @@ import bill_order as BO
 import committee_details as CD
 import committee_names as CN
 import names
+import report_check as RC
 import shell as S
 import structured as LD
 import site_read as SR
@@ -484,7 +485,12 @@ def main():
     # the Senate's report entirely, so a Senate committee narrating its own
     # executive session had nothing of its own to quote and quoted the House's.
     reports = {}
-    for src in (load("committee_reports.json", {}), load("senate_reports.json", {})):
+    # The House Calendar's printings, less the reports report_check.py found
+    # printed under another bill: a record it drops is not this bill's, and a
+    # committee day would otherwise narrate another bill's recommendation.
+    house = load("committee_reports.json", {})
+    RC.apply(house, load("report_corrections.json", {}))
+    for src in (house, load("senate_reports.json", {})):
         for t, byb in src.items():
             for b, v in byb.items():
                 reports.setdefault(t, {}).setdefault(b, []).extend(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -23,6 +23,7 @@ Text extraction, best first:
 """
 
 import argparse
+import difflib
 import json
 import proceedings as P
 import re
@@ -379,13 +380,89 @@ def calendar_urls(year, delay=2.0, rediscover=False):
     return out
 
 
+# A committee's vote, anywhere in a section -- VOTE_TAIL without the anchoring
+# to the end of a report body.
+VOTE_ANY = re.compile(r"\bVote[:\s]\s*\d{1,3}\s*[-–]\s*\d{1,3}", re.I)
+
+
+def _section(text, pos, end):
+    """One section's text as parse_reports reads it: cleaned, and cut where
+    the calendar turns to another kind of business."""
+    chunk = clean_pdf_text(text[pos:end])
+    cut = SECTION_END.search(chunk, 60)
+    return chunk[:cut.start()] if cut else chunk
+
+
+def continues(prev, chunk):
+    """True where `chunk`, opened by a bill number at the start of a line, is
+    the report above it still going rather than a heading.
+
+    BILL_START only asks for a bill number and a comma at the start of a line,
+    and a sentence that wraps can put one there. House Calendar 20 of 2024
+    prints SB 453's majority report as
+
+        ... The problem is that the companion bill that implements these policies,
+        HB 463, may not be passed, and therefore we would have allocated $450,000
+        ... so that they can rise or fall together. Vote 13-12. Rep. Karen Ebel
+        for the Minority of Finance. This bill would make a $450,000 ...
+
+    and "HB 463," was read as a heading. SB 453's majority report lost its
+    last two sentences and its vote, its minority report was lost altogether,
+    and HB 463's page gained a report the House never made on it: "OUGHT TO
+    PASS", by Rep. Ebel, reasoning about SB 453.
+
+    A heading's first report cannot be preceded by a committee vote -- the vote
+    is how a report ENDS -- and the other side of a divided committee signs for
+    the same committee as the side above it. So a section that reaches a vote
+    before its first signature, with no recommendation before that vote, and
+    whose first signer is for the same committee as the last signer above it,
+    is that report continuing. Across the 1,580 calendars on disk this is 7
+    places: four inside another bill's report (HB 176 in HB 306 of 2003,
+    "HB 2004" in HB 304 of 2005, HB 1262 in HB 407 of 2021, HB 463 in SB 453
+    of 2024) and three inside the same bill's (HB 1594 of 2014, twice, and
+    HCR 9 of 2024), each of which had lost the rest of its report. The
+    committee test is what keeps out the grievance reports printed after a
+    conference report in 2012, which also reach a vote before a signature.
+    """
+    first = AUTHOR.search(chunk)
+    if not first:
+        return False
+    vote = VOTE_ANY.search(chunk, 0, first.start())
+    if not vote:
+        return False
+    rec = MAJ_MIN.search(chunk) or SOLO_REC.search(chunk)
+    if rec and rec.start() < vote.start():
+        return False
+    signed = list(AUTHOR.finditer(prev))
+    if not signed:
+        return False
+
+    # Near enough rather than equal: House Calendar 9 of 2014 signs HB 1594's
+    # majority "for the Majority of Executive Departments and Adminstration"
+    # and its minority with the word spelled right.
+    def committee(m):
+        return " ".join(m.group("committee").split()).lower()
+    return difflib.SequenceMatcher(
+        None, committee(signed[-1]), committee(first)).ratio() >= 0.9
+
+
 def parse_reports(text, source, skipped=None, skipped_samples=None):
     """Split into bill sections, then read the recommendations and signed prose."""
     skipped = skipped if skipped is not None else [0]
     skipped_samples = skipped_samples if skipped_samples is not None else []
     # start("bill"), not start() -- the pattern matches the line break before
     # the number too, and slicing from the wrong offset eats a digit off it.
-    marks = [(m.start("bill"), m.group("bill")) for m in BILL_START.finditer(text)]
+    found = [(m.start("bill"), m.group("bill")) for m in BILL_START.finditer(text)]
+    # A number that only continues the report above it is not a heading, and
+    # the report above it runs on through it. continues() says why.
+    marks = []
+    for i, (pos, bill) in enumerate(found):
+        if marks:
+            end = found[i + 1][0] if i + 1 < len(found) else len(text)
+            if continues(_section(text, marks[-1][0], pos),
+                         _section(text, pos, end)):
+                continue
+        marks.append((pos, bill))
     reports = defaultdict(list)
 
     for i, (pos, bill) in enumerate(marks):

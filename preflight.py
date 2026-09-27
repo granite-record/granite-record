@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.263
+# GRANITE_VERSION: 2026-09-04.264
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5356,6 +5356,9 @@ ic_SOURCES = {
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "db/past/PastCommitteeReports.jsonl": "fetch_past_db.py, which dumps the "
+                                          "six Past* views",
+    "committee_reports.json": "fetch_committee_reports.py, which does not declare it",
     "archive/livestreams.json": "livestreams.py --since-state, the nightly's "
                               "step before build_all",
 }
@@ -6141,7 +6144,29 @@ var fixtures = [
   // for "neither" is unreachable and is not asserted anywhere.
   {name:"amendments only",
    d:{next_step:"Introduced", amendments:detail.amendments},
-   want:[], wantFocused:["site yet, but the amendments to it have"]}
+   want:[], wantFocused:["site yet, but the amendments to it have"]},
+  // A report the House Calendar printed under another bill's heading, as
+  // report_check.py corrects it: the committee's filed text with a note that
+  // says so, or no text and a note saying why. 2021 HB 365's majority report
+  // was HB 197's. The second must not also claim the report gave no reasons.
+  {name:"misprinted report",
+   d:{next_step:"Introduced",
+      reports:[{majority_recommendation:"INEXPEDIENT TO LEGISLATE",
+                minority_recommendation:"OUGHT TO PASS",
+                source:"House Calendar 12, 2021", date:"2021-02-19",
+                dated:"printed", cite:"HC 12", cite_url:"",
+                reports:[{side:"Majority", author:"Rep. Dave Testerman",
+                          committee:"Criminal Justice and Public Safety",
+                          text:"HB365 seeks to authorize federal agents to enforce New Hampshire laws.",
+                          vote_yeas:17, vote_nays:4,
+                          note:"House Calendar 12, 2021 printed HB 197's report here. This is the report as the committee filed it with the Clerk on February 23, 2021."},
+                         {side:"Minority", author:"Rep. David Meuse",
+                          committee:"Criminal Justice and Public Safety", text:"",
+                          note:"House Calendar 12, 2021 printed HB 81's report here. The committee's own copy of this report is not in the record here, so no reasoning is shown for it."}]}]},
+   want:["printed HB 197's report here", "as the committee filed it with the Clerk",
+         "HB365 seeks to authorize federal agents",
+         "printed HB 81's report here", "no reasoning is shown for it"],
+   wantNot:["gives no reasoning"]}
 ];
 
 // BOTH ways a detail can be drawn, on EVERY shape of bill. The expanded view
@@ -6199,6 +6224,13 @@ for (var fi = 0; fi < fixtures.length; fi++) {
         if (html.indexOf(want[wi]) < 0) {
           console.log("RENDERDETAIL (" + mode + ") drew " + html.length
                       + " chars but not " + JSON.stringify(want[wi]));
+          process.exit(1); }
+      }
+      var never = fx.wantNot || [];
+      for (var ni = 0; ni < never.length; ni++) {
+        if (html.indexOf(never[ni]) >= 0) {
+          console.log("RENDERDETAIL (" + mode + ") drew "
+                      + JSON.stringify(never[ni]) + ", which it must not here");
           process.exit(1); }
       }
     } catch (e) {
@@ -6311,7 +6343,7 @@ console.log("ok");
                            text=True, timeout=90)
         assert r.returncode == 0, (r.stdout + r.stderr).strip().splitlines()[0][:150]
         return "ok", ("loaded in node, drew a bill and rendered its detail "
-                      "on three shapes of bill, collapsed and focused")
+                      "on four shapes of bill, collapsed and focused")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -10334,6 +10366,189 @@ def _prose_bill_number(fetch_committee_reports):
         f"the minority report is cut short at {len(text)} characters: "
         f"...{text[-70:]!r}")
     return "ok", "one section per heading, and the prose stays whole"
+
+
+# House Calendar 20 of 2024, page 21, as pdftotext gives it: SB 453's majority
+# report wraps so that "HB 463," opens a line.
+WRAPPED_BILL_PAGE = """\
+SB 453-FN-A, making an appropriation to the statewide voter registration system. MAJORITY: REFER
+FOR INTERIM STUDY. MINORITY: OUGHT TO PASS.
+Rep. Dan McGuire for the Majority of Finance. This bill combines $450,000 from the general fund with
+$100,000 from HAVA funds to pay for the creation of an online voter registration portal and other improve-
+ments to the registration database. The problem is that the companion bill that implements these policies,
+HB 463, may not be passed, and therefore we would have allocated $450,000 to the Secretary of State for no
+purpose. The correct action is for the allocation of funds to be attached to the policy bill so that they can rise
+or fall together. Vote 13-12. Rep. Karen Ebel for the Minority of Finance. This bill would make a $450,000
+appropriation to the Secretary of State to incorporate additional capabilities into the Statewide Voter Reg-
+istration System, such as an election information portal and maintaining the system. The recommendation
+of Division I of the Finance Committee on SB 453 was unanimously Ought to Pass.
+"""
+
+
+@check("reports", "a bill number that wraps to the start of a line inside a "
+                  "report does not take the rest of it to another bill",
+       needs=("fetch_committee_reports",))
+def _wrapped_bill_number(fetch_committee_reports):
+    """HB 463's page carried a report the House never made on it.
+
+    SB 453's majority report in House Calendar 20 of 2024 wraps so that "HB
+    463, may not be passed" opens a line, and BILL_START read that as a
+    heading. SB 453 lost the end of its majority report and its vote, and its
+    minority report went to HB 463 -- "OUGHT TO PASS", signed by Rep. Ebel,
+    reasoning about SB 453. The rule that catches it: a heading's first report
+    is never preceded by a committee vote, and the other side of a divided
+    committee signs for the same committee. Rebuilt from the 1,580 calendars
+    on disk, 7 such lines, 7 bills' records changed, and no others.
+    """
+    got = fetch_committee_reports.parse_reports(WRAPPED_BILL_PAGE,
+                                                "House Calendar 20, 2024")
+    assert sorted(got) == ["SB453"], (
+        "a bill number wrapped inside a report opened a section of its own: "
+        + str(sorted(got)))
+    r = got["SB453"][0]
+    sides = {e["side"]: e for e in r["reports"]}
+    assert set(sides) == {"Majority", "Minority"}, sides.keys()
+    assert "rise or fall together" in sides["Majority"]["text"] and \
+        sides["Majority"].get("vote_yeas") == 13, (
+        "SB 453's majority report was cut at the wrapped number: "
+        + repr(sides["Majority"]["text"][-80:]))
+    assert sides["Minority"]["author"] == "Rep. Karen Ebel", sides["Minority"]
+    assert r["minority_recommendation"] == "OUGHT TO PASS", r
+    return "ok", "the wrapped number stays in SB 453's report, and both sides are read"
+
+
+# Two of the committees' filed reports as text_of gives them, cut down:
+# PastCommitteeReports 15090 (2021 HB 365's majority) and HB 197's minority.
+FILED_HB365_MAJ = (
+    "REGULAR CALENDAR February 8, 2021 HOUSE OF REPRESENTATIVES REPORT OF "
+    "COMMITTEE The Majority of the Committee on Criminal Justice and Public "
+    "Safety to which was referred HB 365, AN ACT giving peace officer status to "
+    "federal law enforcement officers. Having considered the same, report the "
+    "same with the following resolution: RESOLVED, that it is INEXPEDIENT TO "
+    "LEGISLATE. Rep. Dave Testerman FOR THE MAJORITY OF THE COMMITTEE MAJORITY "
+    "COMMITTEE REPORT Committee: Criminal Justice and Public Safety Bill Number: "
+    "HB 365 Title: giving peace officer status to federal law enforcement "
+    "officers. Date: February 8, 2021 Consent Calendar: REGULAR Recommendation: "
+    "INEXPEDIENT TO LEGISLATE STATEMENT OF INTENT HB365 seeks to authorize "
+    "federal agents to enforce New Hampshire laws. This is allowed, probably in "
+    "error, in enforcing immigration laws along the Canadian border. It clearly "
+    "violates Art 7 State Sovereignty of the New Hampshire Constitution. Vote "
+    "17-4. Rep. Dave Testerman FOR THE MAJORITY REGULAR CALENDAR")
+HB197_MIN_TEXT = (
+    "This bill was an extension of the stand your ground law. However, it would "
+    "have given permission to use deathly force when witnessing the commission "
+    "of a felony using unlawful force in a vehicle. Previous subparagraphs would "
+    "in RSA 427:4 would cover all issues justifying this bill. It is difficult "
+    "to justify using deadly force against someone if your or other's life is "
+    "not in danger. We felt the bill went too far.")
+FILED_HB197_MIN = (
+    "REGULAR CALENDAR February 8, 2021 HOUSE OF REPRESENTATIVES REPORT OF "
+    "COMMITTEE The Minority of the Committee on Criminal Justice and Public "
+    "Safety to which was referred HB 197, AN ACT relative to the use of deadly "
+    "force in defense of another. Rep. John Bordenet FOR THE MINORITY OF THE "
+    "COMMITTEE MINORITY COMMITTEE REPORT Committee: Criminal Justice and Public "
+    "Safety Bill Number: HB 197 STATEMENT OF INTENT " + HB197_MIN_TEXT
+    + " Rep. John Bordenet FOR THE MINORITY REGULAR CALENDAR")
+
+
+@check("reports", "a House report the calendar printed under another bill "
+                  "takes its committee's filed text, or none, and the page says so")
+def _misprinted_report():
+    """2021 HB 365's majority report on this site was HB 197's minority report.
+
+    Nothing here put it there: House Calendar 12 of 2021 prints it under HB
+    365's heading, and the calendar was the only source the House's reasoning
+    was read from. report_check.py compares every House report with the one
+    the committee filed -- PastCommitteeReports for 2016-2024, CandH_Reports
+    for the current term -- and with its own opening words in every term.
+    Measured on everything on disk: 2021 HB 365's majority (filed) and a
+    report on 2024 HB 463 that was SB 453's (dropped; the parser no longer
+    reads it), in 30,441 reports read and 9,744 compared with filed copies.
+
+    The fixture holds the three decisions and the one it must not make: a
+    member who reuses reasoning in another term is not a misprint.
+    """
+    RC = imp("report_check")
+    assert RC is not None, ("report_check.py will not import, so nothing "
+                            "compares the House Calendar with the filed reports")
+
+    def filed(text, side, released, source):
+        p = RC.parse_filed(text, side)
+        p.update(released=released, source=source)
+        return p
+    hb365 = filed(FILED_HB365_MAJ, "Majority", "2021-02-23", "PastCommitteeReports 15090")
+    assert hb365["bill"] == "HB365" and hb365["author"] == "Rep. Dave Testerman", hb365
+    assert hb365["text"].startswith("HB365 seeks") and "Vote" not in hb365["text"], hb365["text"]
+    # 2021 HB 85's majority reused, word for word, what a member filed on 2019
+    # HB 567 -- the Atlantic time zone, two sessions apart.
+    atlantic = ("This bill would switch New Hampshire to the Atlantic Time Zone, or "
+                "you could consider it daylight saving all year. This change "
+                "eliminates the inconvenient and dangerous clock changes in spring "
+                "and fall, which have been shown to cause auto and work accidents.")
+
+    def other(bill, text, side="Majority"):
+        return dict(hb365, bill=bill, side=side, text=text, all=text)
+    fixed = {("2021-2022", "HB365"): [hb365],
+             ("2021-2022", "HB197"): [filed(FILED_HB197_MIN, "Minority", "2021-02-16", "x")],
+             ("2021-2022", "HB999"): [other("HB999", "Something else entirely.")],
+             ("2021-2022", "HB777"): [other("HB777", "The majority found the bill "
+                                                     "sound and says so at length here.")],
+             ("2021-2022", "HB85"): [other("HB85", "The minority worries about the "
+                                                   "school bus in the dark.", "Minority")],
+             ("2019-2020", "HB567"): [other("HB567", atlantic)]}
+    cal = "House Calendar 12, 2021"
+    reports = {"2021-2022": {
+        "HB365": [{"bill": "HB365", "majority_recommendation": "INEXPEDIENT TO LEGISLATE",
+                   "minority_recommendation": "OUGHT TO PASS", "source": cal,
+                   "reports": [{"side": "Majority", "author": "Rep. Dave Testerman",
+                                "vote_yeas": 17, "vote_nays": 4,
+                                "text": "HB197 AN ACT relative to the justified use of "
+                                        "deadly force upon another person. " + HB197_MIN_TEXT},
+                               {"side": "Minority", "author": "Rep. David Meuse",
+                                "text": "Some of the more dangerous police work is done by task forces."}]}],
+        # Another bill's report and nothing of its own, found by the filed
+        # copies alone: the record is not this bill's.
+        "HB999": [{"bill": "HB999", "majority_recommendation": "OUGHT TO PASS",
+                   "source": cal, "reports": [{"side": "Minority", "author": "Rep. John Bordenet",
+                                               "text": HB197_MIN_TEXT}]}],
+        # Its own majority, and a minority that is another bill's with no
+        # filed copy of its own: that text comes off, the record stays.
+        "HB777": [{"bill": "HB777", "majority_recommendation": "OUGHT TO PASS",
+                   "minority_recommendation": "INEXPEDIENT TO LEGISLATE", "source": cal,
+                   "reports": [{"side": "Majority", "author": "Rep. Dave Testerman",
+                                "text": "The majority found the bill sound and says so at length here."},
+                               {"side": "Minority", "author": "Rep. John Bordenet",
+                                "text": HB197_MIN_TEXT}]}],
+        # Another term's bill's filed words: reused, not misprinted.
+        "HB85": [{"bill": "HB85", "majority_recommendation": "OUGHT TO PASS",
+                  "source": "House Calendar 18, 2021",
+                  "reports": [{"side": "Majority", "author": "Rep. Kristina Schultz",
+                               "text": atlantic}]}]}}
+    got, census = RC.check(reports, fixed)
+    t = got.get("2021-2022", {})
+    assert "HB85" not in t, ("reasoning a member reused from another term's bill "
+                             "was taken for a misprint: " + str(t.get("HB85")))
+    c365 = t.get("HB365") or []
+    assert len(c365) == 1 and c365[0]["action"] == "filed" and \
+        c365[0]["belongs_to"] == "HB197" and c365[0]["text"].startswith("HB365 seeks"), c365
+    assert [c["action"] for c in t.get("HB999", [])] == ["dropped"], t.get("HB999")
+    assert [(c["side"], c["action"]) for c in t.get("HB777", [])] == [
+        ("Minority", "withheld")], t.get("HB777")
+    n = RC.apply(reports, got)
+    kept, gone = reports["2021-2022"]["HB777"][0]["reports"]
+    assert kept["text"].startswith("The majority found") and gone["text"] == "" \
+        and "not in the record here" in gone["note"], (kept, gone)
+    maj, mino = reports["2021-2022"]["HB365"][0]["reports"]
+    assert maj["text"].startswith("HB365 seeks") and "HB 197's report" in maj["note"] \
+        and "on February 23, 2021." in maj["note"], maj
+    assert mino["text"].startswith("Some of the more dangerous") and "note" not in mino, mino
+    assert "HB999" not in reports["2021-2022"], "a record that was another bill's stayed"
+    for src, want in (("build_site_v2.py", "RC.apply(reports"),
+                      ("build_committees.py", "RC.apply(house")):
+        assert want in Path(src).read_text(encoding="utf-8"), (
+            f"{src} no longer applies report_check's corrections")
+    return "ok", (f"{n} corrected in the fixture: HB 365's text from its filed copy, "
+                  "a record that was another bill's dropped")
 
 
 # The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's

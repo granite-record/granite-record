@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.37
+# GRANITE_VERSION: 2026-09-05.38
 """
 Run the whole pipeline in the right order.
 
@@ -563,6 +563,22 @@ def plan(a):
                   "table. BEFORE site data, which puts each report on the "
                   "bill's Senate public hearing. Refuses to write when the "
                   "dump holds none or most fail to read"),
+
+        # BEFORE site data and the committee pages, which both apply what it
+        # writes. The House Calendar is the only source of the House's
+        # reasoning, and it printed HB 197's report under 2021 HB 365's
+        # heading; this compares every House report with the one the
+        # committee filed and says where the two disagree about the bill.
+        Step("House committee reports checked against the ones the committees filed",
+             ["report_check.py", "--apply"],
+             needs=["committee_reports.json", "data/bills.json",
+                    "db/past/PastCommitteeReports.jsonl"],
+             produces=["report_corrections.json"],
+             optional=True,
+             note="asks nobody anything -- it reads the dumped "
+                  "PastCommitteeReports and CandH_Reports. A report the "
+                  "calendar printed under another bill takes the text its "
+                  "committee filed, or none, and the page says which"),
 
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",

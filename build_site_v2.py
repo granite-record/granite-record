@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.117
+# GRANITE_VERSION: 2026-09-05.118
 """
 Generate the faceted site from real General Court data.
 
@@ -31,6 +31,7 @@ from about_figures import STREAM_START
 import narrative as N
 import fiscal
 import proceedings as P
+import report_check as RC
 import senate_hearing_reports as SHR
 import csv
 import json
@@ -7273,6 +7274,9 @@ def parse_args():
                     help="where each recording's captions stop, for a machine "
                          "without the caption files (caption_span.py --write)")
     ap.add_argument("--reports", default="committee_reports.json")
+    ap.add_argument("--report-corrections", default="report_corrections.json",
+                    help="House reports the calendar printed under another "
+                         "bill, from report_check.py; skipped if not there")
     ap.add_argument("--vetoes", default="veto_messages.json",
                     help="governor's veto messages, from extract_vetoes.py; "
                          "skipped if the file is not there")
@@ -7492,6 +7496,15 @@ def main():
             sys.exit(f"{name} is keyed on bill number, not on term. Rebuild it: "
                      "delete it and run its fetcher once for each year of the "
                      "term.")
+    # A House Calendar that printed another bill's report under a heading --
+    # 2021 HB 365's majority report was HB 197's -- is corrected from the
+    # report the committee filed, before anything else reads the record.
+    # report_check.py finds them and says what it did; absent, nothing changes.
+    n_fixed = RC.apply(reports, load(a.report_corrections, {}))
+    print(f"House committee reports corrected from the committee's filed "
+          f"copy: {n_fixed}"
+          + ("" if Path(a.report_corrections).exists()
+             else f" ({a.report_corrections} is not here; report_check.py writes it)"))
     if senate:
         for term, byb in senate.items():
             into = reports.setdefault(term, {})
