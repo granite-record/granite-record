@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.40
+# GRANITE_VERSION: 2026-09-05.41
 """
 Run the whole pipeline in the right order.
 
@@ -376,7 +376,11 @@ def plan(a):
              produces=["archive_text.json"],
              note="bill_text.json covers 2025-2026 and nothing else, so every "
                   "older term drew a Bill Text tab with nothing in it; merged "
-                  "UNDER bill_text.json, never over it"),
+                  "UNDER bill_text.json, never over it. Where db/past/ holds the "
+                  "text view, the 23 pages of 2018 that print an earlier version "
+                  "as the one adopted by both bodies show the General Court's "
+                  "own instead (archive_text.FINAL_FROM_DB); the kit does not "
+                  "carry the view, so GitHub's build keeps the pages"),
 
         Step("plain-language bill histories",
              ["narrative.py", "--docket", "Docket.txt", "--all",
