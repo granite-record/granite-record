@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.262
+# GRANITE_VERSION: 2026-09-04.263
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6298,10 +6298,11 @@ def _states_covered():
     return "ok", f"{len(emitted)} states emitted, all drawn, one chain"
 
 
-def _app_js(expr):
+def _app_js(expr, names=("renderHearings", "archivedNote")):
     """app.js loaded in node against dom_stub.js, and `expr` evaluated with
-    `scope` holding renderHearings and archivedNote. Returns the value as
-    JSON, or None where node, app.js or the stub is not here.
+    `scope` holding `names` -- renderHearings and archivedNote unless a caller
+    asks for others. Returns the value as JSON, or None where node, app.js or
+    the stub is not here.
 
     The value is printed after a marker, so anything app.js itself logs while
     it loads cannot be mistaken for it.
@@ -6316,7 +6317,7 @@ def _app_js(expr):
         (root / "go.js").write_text(
             'require("./stub.js");\n'
             'const src = require("fs").readFileSync("./page.js", "utf8");\n'
-            'const scope = (0, eval)(src + "; ({renderHearings, archivedNote})");\n'
+            'const scope = (0, eval)(src + "; ({' + ", ".join(names) + '})");\n'
             'const out = (' + expr + ');\n'
             'process.stdout.write("\\n@@" + JSON.stringify(out));\n',
             encoding="utf-8")
@@ -25234,6 +25235,224 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
             "the ones the other builder publishes")
     return "ok", ("HB 32 and HB 1713 prime Shurtleff; the record's list where the page agrees, "
                   "the page's where not; 377080 as printed and unlinked; joined by the stored LSR")
+
+
+@check("naming", "a senator printed as Rep. is the senator the sponsor record names, never a representative of the surname",
+       needs=("text_sponsors",))
+def _senators_printed_as_rep(text_sponsors):
+    """A House seat is always printed with its county; "Rep. Boyce, Dist 4" is Sen. Robert
+    Boyce, and read as a Rep. it went to Rep. Laurie Boyce on 2001 HB 428 and 2003
+    HB 1360 -- as 2001 SB 84's O'Neil, 2002 HB 1301's Johnson and 2003 HB 1242's Kenney
+    went to representatives of those names. Such a piece is placed on a senator only where
+    the General Court's sponsor record lists them live on that bill at the district
+    printed -- Carl Johnson is printed at Dist 3 in 2001-2002 while his roll-call label
+    says 2 -- and otherwise stays as printed: 1999-2000's record lacks Sen. Larsen on
+    HB 1594. Every line is the one the page prints."""
+    T = text_sponsors
+    import past_sponsors as PSP
+
+    def row(mid, name, label, body, year, party):
+        return {"member_id": mid, "name": name, "label": label, "body": body,
+                "year": year, "party": party}
+    sat = T.Sat([
+        row("376310", "Boyce, Laurie", "Boyce, Laurie(R) Belk 05", "H", "2001", "R"),
+        row("376310", "Boyce, Laurie", "Boyce, Laurie(R) Belk 05", "H", "2003", "R"),
+        row("209042", "Boyce, Robert", "Boyce, Robert(R)  04", "S", "2001", "R"),
+        row("209042", "Boyce, Robert", "Boyce, Robert(R)  04", "S", "2003", "R"),
+        row("205015", "Johnson, Carl", "Johnson, Carl(R)  02", "S", "2002", "R"),
+        row("376236", "Johnson, Nancy", "Johnson, Nancy(R) Graf 13", "H", "2002", "R"),
+        row("209046", "O'Neil, Daniel", "O'Neil, Daniel(D)  18", "S", "2001", "D"),
+        row("376259", "O'Neil, Michael", "O'Neil, Michael(R) Rock 15", "H", "2001", "R"),
+        row("209049", "Kenney, Joseph", "Kenney, Joseph(R)  03", "S", "2003", "R"),
+        row("376484", "Kenney, Bettie", "Kenney, Bettie(D) Straf 6", "H", "2003", "D"),
+        row("205035", "Larsen, Sylvia", "Larsen, Sylvia(D)  15", "S", "2000", "D"),
+        row("376400", "Larsen, Ann", "Larsen, Ann(R) Hills 7", "H", "2000", "R"),
+    ])
+    lines = [
+        ("2001-2002", "HB428", "Rep. Mirski, Graf 12; Rep. Phinizy, Sull 7; Rep. Dudley, Graf 14; "
+                               "Sen. Roberge, Dist 9; Rep. Boyce, Dist 4"),
+        ("2003-2004", "HB1360", "Rep. Souza, Hills 51; Sen. Martel, Dist 18; Rep. Boyce, Dist 4"),
+        ("2001-2002", "SB84", "Sen. Pignatelli, Dist 13; Sen. O'Hearn, Dist 12; Rep. O'Neil, Dist 18"),
+        ("2001-2002", "HB1301", "Rep. Hopper, Hills 5; Sen. Boyce, Dist 4; Rep. Johnson, Dist 3"),
+        ("2001-2002", "HB1439", "Rep. Wendelboe, Belk 2; Sen. Johnson, Dist 3; Sen. Boyce, Dist 4"),
+        ("2003-2004", "HB1242", "Rep. Kurk, Hills 48; Sen. Odell, Dist 8; Rep. Kenney, Dist 3"),
+        ("1999-2000", "HB1594", "Rep. Flora, Hills 15; Rep. Larsen, Dist 15; Sen. Disnard, Dist 8"),
+    ]
+    rec = {"HB428": ["209042"], "HB1360": ["209042"], "SB84": ["209046"],
+           "HB1301": ["209042", "205015"], "HB1439": ["205015", "209042"],
+           "HB1242": ["209049"], "HB1594": []}
+    joined = {}
+    for term, bid, _line in lines:
+        joined.setdefault(term, {})[bid] = {
+            "lsr": "", "rows": [{"employee": e, "sequence": i + 5, "prime": False,
+                                 "withdrawn": False} for i, e in enumerate(rec[bid])]}
+    got, _tally, _ = T.build({}, sat, sponsor_record=(joined, PSP.People([], {})), lines=lines)
+
+    def who(term, bid, name):
+        r = [x for x in got[term][bid] if x["as_printed"].startswith(f"Rep. {name}, Dist")][0]
+        return r["member_id"], r["chamber"]
+    want = [("2001-2002", "HB428", "Boyce", ("209042", "S")),
+            ("2003-2004", "HB1360", "Boyce", ("209042", "S")),
+            ("2001-2002", "SB84", "O'Neil", ("209046", "S")),
+            ("2001-2002", "HB1301", "Johnson", ("205015", "S")),
+            ("2003-2004", "HB1242", "Kenney", ("209049", "S")),
+            ("1999-2000", "HB1594", "Larsen", ("", "H"))]
+    for term, bid, name, w in want:
+        assert who(term, bid, name) == w, (
+            f"{term} {bid} 'Rep. {name}, Dist' placed on {who(term, bid, name)}, wanted {w}")
+    # The district is a real test: without the page that prints Johnson at Dist 3 that
+    # term, his label's 2 does not match, and he is left as printed.
+    got2, _t, _ = T.build({}, sat, sponsor_record=(joined, PSP.People([], {})),
+                          lines=[x for x in lines if x[1] != "HB1439"])
+    r = [x for x in got2["2001-2002"]["HB1301"] if x["as_printed"].startswith("Rep. Johnson")][0]
+    assert r["member_id"] == "", "a senator was placed at a district nothing printed for them"
+    # No sponsor record at all: nobody is placed, and no representative either.
+    got3, _t, _ = T.build({}, sat, sponsor_record=None, lines=lines[:1])
+    r = [x for x in got3["2001-2002"]["HB428"] if x["as_printed"].startswith("Rep. Boyce")][0]
+    assert r["member_id"] == "", f"'Rep. Boyce, Dist 4' went to {r['member_id']} with no record"
+    return "ok", ("Boyce twice, O'Neil, Johnson (at the district that term's bills print) and "
+                  "Kenney placed on the senator; never on a representative; Larsen left as printed")
+
+
+@check("naming", "a sponsor row is a person or a committee: no heading, no seat on its own, no figure in a name",
+       needs=("text_sponsors",))
+def _sponsor_rows_are_people(text_sponsors):
+    """The sponsor line is read as the pages type it, and they type it loosely. Each line
+    below is one a saved page prints, and each produced a row that was not a person:
+    1991 HCR 13's prime sponsor was "REFERRED TO"; "Rep. Putnam; Rock 15" made a sponsor
+    called "Rock 15"; "Rep. McGough, Hill 18" one called "Hill 18 McGough"; "Sen.
+    Francoeur, Dsit 14" one called "Dsit 14 Francoeur"; and 1999 HB 398's comma for a
+    semicolon lost Rep. Ronald Nowe -- "Rep. M. Nowe" before him is Mary Lou Nowe, who
+    later filed as Flayhan, and stays as printed. A committee that introduced a bill
+    stays the committee. A line that names nobody is named from the General Court's
+    sponsor record, marked as that."""
+    T = text_sponsors
+    import past_sponsors as PSP
+    lines = {
+        "Rep. M. Nowe, Rock 4; Rep. G. Katsakiores, Rock 13, Rep. R. Nowe, Rock 3; Rep. Rose, Ches 13":
+            [("H", "M. Nowe", "Rockingham", "4"), ("H", "G. Katsakiores", "Rockingham", "13"),
+             ("H", "R. Nowe", "Rockingham", "3"), ("H", "Rose", "Cheshire", "13")],
+        "Rep. Putnam; Rock 15": [("H", "Putnam", "Rockingham", "15")],
+        "Sen. Russman, Dist 19; Rep. Battles, Rock 18; Rock 18; Rep. Putnam, Rock 15":
+            [("S", "Russman", "", "19"), ("H", "Battles", "Rockingham", "18"),
+             ("H", "Putnam", "Rockingham", "15")],
+        "Rep. McGough, Hill 18; Rep. Batula, Hills 18":
+            [("H", "McGough", "Hillsborough", "18"), ("H", "Batula", "Hillsborough", "18")],
+        "Sen. Francoeur, Dsit 14; Sen. Flanders, Dist 7": [("S", "Francoeur", "", "14"),
+                                                           ("S", "Flanders", "", "7")],
+        "Sen. Pignatelli, Dist 13; Sen. Wheeler, Dit 21": [("S", "Pignatelli", "", "13"),
+                                                           ("S", "Wheeler", "", "21")],
+        "Rep. J. Bradley; Carr 8, Rep. MacGillivray, Hills 21":
+            [("H", "J. Bradley", "Carroll", "8"), ("H", "MacGillivray", "Hillsborough", "21")],
+        "Sen. Hollingworth, Dist; 23": [("S", "Hollingworth", "", "23")],
+        "Rep. Kidder of Merimack Dist. 2": [("H", "Kidder", "Merrimack", "2")],
+        "Sen. Torr of Dist. 21; Rep. Torr Strafford Dist. 6":
+            [("S", "Torr", "", "21"), ("H", "Torr", "Strafford", "6")],
+        "Rep. Hall of Hillsborough, Dist. 16": [("H", "Hall", "Hillsborough", "16")],
+        "Rep. Dickinson. Carr 4; Sen. Clegg. Dist 14; Rep. Mock Carr 3; Rep. D. Welch Rock 18":
+            [("H", "Dickinson", "Carroll", "4"), ("S", "Clegg", "", "14"),
+             ("H", "Mock", "Carroll", "3"), ("H", "D. Welch", "Rockingham", "18")],
+        "Rep. Syracusa, Rock 33; Rep. Hunt, Chest 10; Rep. Burnham,Ches 8":
+            [("H", "Syracusa", "Rockingham", "33"), ("H", "Hunt", "Cheshire", "10"),
+             ("H", "Burnham", "Cheshire", "8")],
+        "Rep. Taylor, Staf 11; Rep. Alger, Graft 9; Rep. Giordano, Rcok 26; Rep. Levesque, Straff. 4":
+            [("H", "Taylor", "Strafford", "11"), ("H", "Alger", "Grafton", "9"),
+             ("H", "Giordano", "Rockingham", "26"), ("H", "Levesque", "Strafford", "4")],
+        "Sen. Pignatelli, Dist 13; Sen. Squires, Sen. Larsen, Dist. 15; Dist 12":
+            [("S", "Pignatelli", "", "13"), ("S", "Squires", "", "12"), ("S", "Larsen", "", "15")],
+        "Rep. J. Tilton, Rep. Shurtleff, Merr 10; Merr 6":
+            [("H", "J. Tilton", "Merrimack", "6"), ("H", "Shurtleff", "Merrimack", "10")],
+        # "Gray" is one letter from "Graf", and a first draft of the seat reader took Sen.
+        # James Gray for a seat printed on its own and dropped him from 305 sponsor lines.
+        "Sen. Gray, Dist 6; Sen. Murphy, Dist 16": [("S", "Gray", "", "6"), ("S", "Murphy", "", "16")],
+        "Rep. Vaillancourt, Hills 44; Rep; Foster, Hills 10":
+            [("H", "Vaillancourt", "Hillsborough", "44"), ("H", "Foster", "Hillsborough", "10")],
+        "REFERRED TO": [],
+        "Judiciary Committee": [("", "Judiciary Committee", "", "")],
+    }
+    seatish = re.compile(r"^(?:[A-Za-z]+\.?\s*)?\d+$|^(?:dist|district|dsit|dit)$", re.I)
+    for line, want in lines.items():
+        got = [(p["chamber"], " ".join(p["words"]), p["county"], p["district"])
+               for p in T.split(line)]
+        assert got == want, f"{line!r} was read as {got}"
+        for _c, name, _co, _d in got:
+            assert not re.search(r"\d", name) and "REFERRED" not in name.upper() \
+                and not seatish.match(name), f"{line!r} made a sponsor called {name!r}"
+    # The line that names nobody: its sponsors come from the record, marked so.
+    joined = {"1991-1992": {"HCR13": {"lsr": "1991-1217", "rows": [
+        {"employee": "373290", "sequence": 1, "prime": True, "withdrawn": False}]}}}
+    people = PSP.People([], {"373290": {"name": "Hill, Michael", "chamber": "H"}})
+    got, _t, _ = T.build({}, T.Sat([]), sponsor_record=(joined, people),
+                         lines=[("1991-1992", "HCR13", "REFERRED TO"),
+                                ("1999-2000", "HB1500", "Judiciary Committee")])
+    hcr = got["1991-1992"]["HCR13"]
+    assert [(r["name"], r["prime"], r["member_id"], r["source"], r.get("unprinted")) for r in hcr] \
+        == [("Michael Hill", True, "", PSP.SOURCE, True)], f"1991 HCR 13 names {hcr}"
+    com = got["1999-2000"]["HB1500"]
+    assert [r["name"] for r in com] == ["Judiciary Committee"], (
+        f"1999 HB 1500, introduced by the Judiciary Committee, names {[r['name'] for r in com]}")
+    return "ok", (f"{len(lines)} printed lines, each a person or a committee; a line naming "
+                  "nobody named from the record and marked so")
+
+
+@check("frontend", "a bill whose printed line names nobody says its sponsors are the General Court's record")
+def _unprinted_sponsor_note():
+    """1991 HCR 13 and HR 19 print "INTRODUCED BY: REFERRED TO:" and no name, and are named
+    from the General Court's sponsor record (text_sponsors.unprinted). Every other sponsor
+    of that term was read off the bill's own line, and the page says so of them; these say
+    where theirs came from instead."""
+    got = _app_js(
+        '[scope.renderSponsors({id: "HCR13"}, {sponsors: [{name: "Michael Hill", '
+        'chamber: "H", label: "Rep. Michael Hill", prime: true, unprinted: true, '
+        'source: "General Court sponsor record"}]}), '
+        'scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "Vartanian", chamber: "H", '
+        'label: "Rep. Vartanian (Rock 20)", prime: true, source: "bill text"}]})]',
+        names=("renderSponsors",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    record, text = got
+    assert "names no" in record and "sponsor record" in record \
+        and "As named on the sponsor line" not in record, (
+        "a bill whose line names nobody does not say its sponsors are the General Court's "
+        "record: " + re.sub(r"\s+", " ", record)[-240:])
+    assert "sponsor record" not in text and "As named on the sponsor line" in text, (
+        "a bill named off its own line lost its note, or gained the record's")
+    return "ok", "the record's names say so; a line's names keep their own note"
+
+
+@check("data", "no sponsor row is a heading, a seat or a name with a figure in it, and the five senators printed as Rep. are theirs")
+def _sponsor_rows_data():
+    """The same rule on text_sponsors.json and the lists past_sponsors.json publishes for
+    2023-2024: 0 rows naming REFERRED, 0 seat-only rows, 0 names containing a figure --
+    the rows the pages list and sponsors.csv exports. And the five senators printed as
+    "Rep. X, Dist N" that the site had placed on representatives of their surnames."""
+    ts = Path("text_sponsors.json")
+    if not ts.exists():
+        return "skip", "no text_sponsors.json here"
+    text = json.loads(ts.read_text(encoding="utf-8"))
+    rows = [(t, b, r) for t, bs in text.items() for b, rs in bs.items() for r in rs]
+    ps = Path("past_sponsors.json")
+    if ps.exists():
+        doc = json.loads(ps.read_text(encoding="utf-8"))
+        rows += [(t, b, r) for t, bs in doc.items() for b, e in bs.items()
+                 for r in e.get("publish") or ()]
+    seatish = re.compile(r"^(?:[A-Za-z]+\.?\s*)?\d+$|^(?:dist|district|dsit|dit)\.?$", re.I)
+    bad = [f"{t} {b} {r.get('name')!r}" for t, b, r in rows
+           if "REFERRED" in (r.get("name") or "").upper()
+           or re.search(r"\d", r.get("name") or "") or seatish.match((r.get("name") or "").strip())]
+    assert not bad, (f"{len(bad)} sponsor rows are not a person, e.g. {bad[:6]}: rebuild "
+                     "with python3 text_sponsors.py --apply")
+    five = [("2001-2002", "HB428", "Boyce", "209042"), ("2003-2004", "HB1360", "Boyce", "209042"),
+            ("2001-2002", "SB84", "O'Neil", "209046"), ("2001-2002", "HB1301", "Johnson", "205015"),
+            ("2003-2004", "HB1242", "Kenney", "209049")]
+    wrong = []
+    for t, b, name, want in five:
+        got = [r.get("member_id") for r in (text.get(t) or {}).get(b) or ()
+               if (r.get("as_printed") or "").startswith(f"Rep. {name}, Dist")]
+        if got != [want]:
+            wrong.append(f"{t} {b} {name}: {got}")
+    assert not wrong, f"a senator printed as Rep. is not theirs: {wrong}"
+    return "ok", f"{len(rows):,} sponsor rows, every one a person or a committee; the five senators placed"
 
 
 @check("data", "past_sponsors.json gives 2023 HB 32 and 2024 HB 1713 to their prime sponsor, and every 2023-2024 bill a verdict")

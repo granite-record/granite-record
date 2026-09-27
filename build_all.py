@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.38
+# GRANITE_VERSION: 2026-09-05.39
 """
 Run the whole pipeline in the right order.
 
@@ -330,7 +330,10 @@ def plan(a):
              produces=["text_sponsors.json"],
              note="the sponsor line of the pages fetch_legislation.py saves, "
                   "matched to members who cast a roll call that term; no "
-                  "network, and never over a sponsor the database names"),
+                  "network, and never over a sponsor the database names. "
+                  "Where db/past/ is here it also reads the General Court's "
+                  "sponsor record, straight from the dump, to place a senator "
+                  "printed as Rep. and to name a bill whose line names nobody"),
 
         # AFTER text_sponsors: a 2023-2024 bill whose sponsor record and printed
         # line disagree is published as the page prints it, and merge_into takes
