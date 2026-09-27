@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.10
+# GRANITE_VERSION: 2026-09-09.11
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -488,17 +488,23 @@ def stand_down(who, instead=""):
 # ---- GitHub's night window ---------------------------------------------------
 #
 # The one definition of when GitHub's machine may be asking the General Court,
-# in UTC because GitHub's cron has no time zone. The nightly starts at 06:17
-# and is allowed four hours, to 10:17; the window runs to 11:30 because GitHub
+# in UTC because GitHub's cron has no time zone. The nightly starts at 08:17
+# and is allowed four hours, to 12:17; the window runs to 13:30 because GitHub
 # often starts a scheduled run late, and an hour's late start is allowed for.
-# The weekly starts at 04:17 on Monday and is allowed two hours, and the night
-# waits for it (one concurrency group), so on a Monday the two run together as
-# 04:00 to 11:30. A start later than an hour past 06:17 is still the known
-# weakness, and HANDOFF.md says so.
+# It started at 06:17 until 27 September 2026, when the night met the General
+# Court rewriting its dynamicdatadump files, which it evidently does around
+# 2:00 to 2:30 a.m. Eastern (.github/workflows/nightly.yml has the evidence);
+# this moves with the workflow's cron line. The weekly starts at 04:17 on
+# Monday and is allowed two hours, so a Monday has two windows, 04:00 to 06:30
+# and 08:00 to 13:30, and a fetch may start here between them, from 06:30 to
+# the half hour before the second. A start later than an hour past 08:17 is
+# still the known weakness, and so, on a Monday, is a weekly started late
+# enough to run past 06:30, which the night's window no longer covers since
+# it moved; HANDOFF.md says so.
 
 NIGHT_WINDOWS = (
     # (weekday or None for every day, start, end, what), UTC; weekday 0 is Monday
-    (None, (6, 0), (11, 30), "the nightly, which GitHub starts at 06:17 UTC, often late, "
+    (None, (8, 0), (13, 30), "the nightly, which GitHub starts at 08:17 UTC, often late, "
                              "and allows four hours"),
     (0, (4, 0), (6, 30), "Monday's weekly job, which GitHub starts at 04:17 UTC and "
                          "allows two hours"),
@@ -528,7 +534,7 @@ def _governing():
     archive/refused.json and the stand-down archive/runs-in-the-cloud.json. A
     test that points MARK at a folder of its own is governed by that folder,
     never by the machine running it -- the guards below exit and send, and a
-    check that drives a fetcher on the stood-down laptop at 06:30 UTC must not
+    check that drives a fetcher on the stood-down laptop at 08:30 UTC must not
     fail for the time of day, or send its made-up refusal to the real bucket.
     Never on GitHub's machine.
     """

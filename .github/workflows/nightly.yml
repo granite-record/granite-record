@@ -10,10 +10,15 @@
 # stand-down. To pause it, Actions -> nightly -> "..." -> Disable workflow;
 # keepalive never re-enables a workflow the person switched off. To take it
 # out, put the "# " back in front of the two schedule lines under "on:" and
-# push to main. GitHub reads cron as UTC and has no time zone: 06:17 UTC is
-# 2:17 a.m. Eastern in summer (EDT) and 1:17 a.m. in winter (EST). The :17
+# push to main. GitHub reads cron as UTC and has no time zone: 08:17 UTC is
+# 4:17 a.m. Eastern in summer (EDT) and 3:17 a.m. in winter (EST). The :17
 # keeps away from the top of the hour, when scheduled runs start late or are
-# dropped.
+# dropped. It was 06:17 until 27 September 2026, when the first scheduled
+# night, at 2:17 a.m. EDT, got all 13 files under dynamicdatadump/ as 3 bytes
+# (an empty file's byte-order mark) -- the laptop's snapshot at 2:04 a.m. on
+# 20 September had got two of them so -- because the General Court evidently
+# rewrites them around 2:00 to 2:30 a.m. Eastern. refusal.NIGHT_WINDOWS, which
+# keeps the laptop's fetches clear of the night, moves with the cron line.
 #
 # By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
 # its three boxes say; a scheduled night fetches, deploys a preview, and asks
@@ -40,7 +45,7 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: "17 6 * * *"
+    - cron: "17 8 * * *"
 
 # The workflow's own token reads the repository and nothing else. The one job
 # that needs more, keepalive, asks for it itself.

@@ -1,7 +1,7 @@
 # Sunday night: the committee rosters, the members who have left, and the
 # study committees' members and bills -- the things the build reads that the
 # day's files do not carry. The same shape as the nightly (nightly.yml), in the
-# same concurrency group, so the two never run at once; it runs two hours
+# same concurrency group, so the two never run at once; it runs four hours
 # before Monday's night, which builds and publishes what it took. nightly.py's
 # weekly() says what each fetch is and how it is kept whole. It publishes
 # nothing and holds no Pages token.
