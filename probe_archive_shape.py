@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.5
 """
 How the General Court's record changes shape as you go back through it.
 
@@ -171,10 +171,12 @@ def main():
                     help="read what is already on disk and say nothing to the "
                          "server")
     a = ap.parse_args()
-    refusal.check("The archive shape probe")
 
+    # --report asks nobody, so neither a refusal nor GitHub's night stops it:
+    # the check comes after it, as fetch_legislation.py's does.
     if a.report:
         return report()
+    refusal.check("The archive shape probe")
 
     ids = json.loads(Path(a.ids).read_text(encoding="utf-8"))
     years = ([y.strip() for y in a.years.split(",")] if a.years

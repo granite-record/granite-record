@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 Do the civics pages' source links actually go anywhere?
 
@@ -10,6 +10,13 @@ MAKES REQUESTS. Not many -- there are fewer than twenty distinct addresses --
 but they go to gc.nh.gov and nh.gov, and gc.nh.gov has refused this project
 twice. So it is a separate script that has to be asked for, it is one request
 at a time with a long gap, and it stops at the second refusal.
+
+And it asks refusal.check() before its first request, as every script that
+asks gc.nh.gov does: a standing refusal stops it (exit 2), and on a
+stood-down laptop so do GitHub's night window, the half hour before it, and
+a bucket refusal record not read since the last one (exit 4). Its addresses
+come from civics.py rather than being written here, which is why preflight's
+reader of fetchers used to miss it. --list asks nobody and is never stopped.
 
 WHY IT EXISTS SEPARATELY FROM preflight
 
@@ -32,6 +39,7 @@ import urllib.request
 from collections import Counter
 
 import civics
+import refusal
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
@@ -80,6 +88,8 @@ def main():
             print(f"  {slug:24} {url}")
         print("\n  Nothing was asked for.")
         return 0
+
+    refusal.check("The civics link check")
 
     codes, bad, refused = Counter(), [], 0
     for i, (label, url, slug) in enumerate(ls, 1):

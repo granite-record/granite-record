@@ -341,4 +341,8 @@ fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 400 --note 2
 # investigation after the wrong thing. Asked once more with the settled
 # address; if they answer empty again they are empty, and the guard records
 # them rather than this being asked a third time.
-fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 10 --note 2016-tail
+# RETIRED 26 September 2026, with the person's agreement: the General Court's
+# PastLegislationText view (db/past/, dumped by fetch_past_db.py that day)
+# holds all three -- 2016 HB1183, SB320 and SB446, each printing its own LSR --
+# so no request is needed for them. Kept, commented, as the record of why.
+# fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 10 --note 2016-tail
