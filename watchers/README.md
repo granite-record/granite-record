@@ -41,8 +41,10 @@ both machines now. On a stood-down laptop:
   hour before it**: the window is 06:00 to 11:30 UTC every day (the night
   starts at 06:17 and may run four hours, and GitHub often starts it late, so
   an hour is allowed for that), and from 04:00 UTC on Monday for the weekly
-  job -- 2:00 to 7:30 a.m. Eastern in summer, from midnight on Mondays, an
-  hour earlier in winter. `refusal.NIGHT_WINDOWS` is the one definition.
+  job. In Eastern time that is 2:00 to 7:30 a.m. EDT in summer and 1:00 to
+  6:30 a.m. EST in winter; on a Monday it opens at midnight EDT, which in
+  winter is 11:00 p.m. EST on the Sunday. `refusal.NIGHT_WINDOWS` is the one
+  definition.
   `refusal.check()`, which every General Court fetcher calls, exits 4 inside
   it and in the 30 minutes before it, with the window in Eastern time and
   when it ends; the lane stops before its next step, daily ones included
@@ -51,8 +53,12 @@ both machines now. On a stood-down laptop:
   and the weekly query that host.
 - **A run already going when the window opens stops at its next request** if
   it asks `refusal.hold().still()` before each one, as the fetchers that hold
-  `archive/.lock` do -- it says the window is why, once. A fetch that does not
-  is not stopped, so queue a long one to start after the window closes.
+  `archive/.lock` do -- it says the window is why, once, and a run that
+  would then have ended 0 ends 4 instead, because it did not finish. Under
+  the lane its hold also writes `logs/gc_lane.window-stop`, so the lane
+  records that step in neither `gc_lane.done` nor `gc_lane.daily` whatever
+  status it ended with, and stops with 4. A fetch that does not ask is not
+  stopped, so queue a long one to start after the window closes.
 - **No request starts until the bucket's refusal record has been read since
   the last window closed**, because a refusal the night meets is recorded in
   the bucket, not here. `python3 cloud.py pull --changes-only` reads it (a
@@ -70,10 +76,13 @@ both machines now. On a stood-down laptop:
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the
 morning Eastern time starts its last step before 1:30 a.m. EDT (12:30 a.m.
-EST; 11:30 p.m. on Sunday before a Monday), and a fetch still running under
-it stops at 2 a.m. EDT (1 a.m. EST) if it asks `hold().still()`; the next
-morning, after the window, it wants `python3 cloud.py pull --changes-only`
-and a restart.
+EST), and a fetch still running under it stops at 2 a.m. EDT (1 a.m. EST) if
+it asks `hold().still()`. On the night into a Monday both come earlier,
+because the weekly's window opens at midnight EDT (11 p.m. EST on the
+Sunday): the last step starts before 11:30 p.m. EDT on the Sunday (10:30 p.m.
+EST), and a running fetch stops at midnight EDT (11 p.m. EST on the Sunday).
+The next morning, after the window, the lane wants `python3 cloud.py pull
+--changes-only` and a restart.
 
 ---
 
@@ -93,8 +102,12 @@ any step that exits non-zero, before every step if `archive/refused.json`
 exists at all, and -- on a stood-down laptop -- before a step inside GitHub's
 night window or the half hour before it, or before the bucket's refusal
 record has been read since the last one (above). A daily step that exits 4
-was held for GitHub's turn, not run: it is not recorded as run, and the lane
-stops.
+while `refusal.gc_turn()` says it is GitHub's turn was held, not run: it is
+not recorded as run, and the lane stops. One that exits 4 when it is not
+GitHub's turn is stood down for good -- the script refuses on this machine
+because GitHub runs that job now -- so it is recorded as run, the log says the
+line should come out of `gc_lane.queue`, and the lane goes on. A step GitHub's
+window stopped part way is recorded as neither, whatever it exited (above).
 
 ```
 python3 watchers/gc_lane.py            # from the repository root

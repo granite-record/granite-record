@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.263
+# GRANITE_VERSION: 2026-09-04.264
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -62,6 +62,146 @@ def _run(cmd, **kw):
     repository to it. This stays as a name because every check here calls it.
     """
     return child.run(cmd, **kw)
+
+
+# ---- a child that cannot reach the network ------------------------------------
+#
+# SEALED (26 September 2026). Several checks start a fetcher -- or the lane,
+# which starts them -- as a real process, and each such check was safe only
+# because the fetcher stopped before its first request: a fresh refusal on
+# file, a clock inside GitHub's window, a cache that answers every page, a
+# get() replaced in a wrapper. A regression in any of those would have sent a
+# request from preflight to the General Court, or to YouTube, with nothing to
+# say so. So such a child now starts sealed: a sitecustomize.py on its
+# PYTHONPATH, in a folder of its own, replaces socket.socket.connect and
+# connect_ex, socket.socket.sendto, socket.create_connection and
+# socket.getaddrinfo with a raiser that writes a sentinel file before it
+# raises; its proxies point at a closed port on the loopback address, with
+# NO_PROXY cleared, for anything that reads them rather than Python's
+# sockets. It passes to everything the child starts, so the lane's steps are
+# sealed too. After each run the sentinel must be absent -- and the seal must
+# have loaded in the child, which it records, or "no sentinel" would prove
+# nothing.
+
+_SEAL_SITE = r'''# Written by preflight.py: this process may reach nothing on the network.
+import os as _os
+import socket as _socket
+
+_ASKED = _os.environ.get("GRANITE_SEAL_ASKED", "")
+_LOADED = _os.environ.get("GRANITE_SEAL_LOADED", "")
+
+
+class SealedByPreflight(OSError):
+    """What a sealed process gets for any attempt to reach the network."""
+
+
+def _refuse(name, method):
+    def raiser(*args, **kwargs):
+        shown = args[1:] if method else args
+        try:
+            with open(_ASKED, "a", encoding="utf-8") as fh:
+                fh.write((f"{_os.getpid()} {name}{shown!r}")[:300] + "\n")
+        except OSError:
+            pass
+        raise SealedByPreflight(f"preflight sealed this process from the network: {name}")
+    return raiser
+
+
+_socket.socket.connect = _refuse("socket.connect", True)
+_socket.socket.connect_ex = _refuse("socket.connect_ex", True)
+_socket.socket.sendto = _refuse("socket.sendto", True)
+_socket.create_connection = _refuse("socket.create_connection", False)
+_socket.getaddrinfo = _refuse("socket.getaddrinfo", False)
+if _LOADED:
+    try:
+        with open(_LOADED, "a", encoding="utf-8") as fh:
+            fh.write(f"{_os.getpid()}\n")
+    except OSError:
+        pass
+'''
+
+_PROXY_NAMES = ("http_proxy", "https_proxy", "all_proxy", "ftp_proxy", "no_proxy")
+
+
+class _Seal:
+    """A folder holding the sealing sitecustomize.py, and what the children
+    started under it recorded: `loaded` for each process the seal was in,
+    `asked` for each attempt one made to reach the network."""
+
+    def __init__(self):
+        import socket
+        self.dir = Path(tempfile.mkdtemp(prefix="gr-seal-"))
+        (self.dir / "sitecustomize.py").write_text(_SEAL_SITE, encoding="utf-8")
+        self.asked, self.loaded = self.dir / "asked.txt", self.dir / "loaded.txt"
+        # A port on the loopback address that nothing listens on: bound to
+        # learn one, then closed. Nothing is asked of it -- the seal refuses
+        # the connection before it is tried.
+        s = socket.socket()
+        try:
+            s.bind(("127.0.0.1", 0))
+            self.port = s.getsockname()[1]
+        finally:
+            s.close()
+
+    def env(self, base=None):
+        """`base` (this process's environment when None), sealed.
+
+        Every proxy variable is SET, never only left out: child.run lays the
+        env it is given over this process's own, so one merely missing here
+        would come back from os.environ. On Windows the names are upper
+        case only -- the environment there ignores case, and two spellings
+        of one name in a block is asking for the wrong one to win."""
+        base = os.environ if base is None else base
+        e = {k: v for k, v in base.items() if k.lower() not in _PROXY_NAMES}
+        prior = base.get("PYTHONPATH", os.environ.get("PYTHONPATH", ""))
+        e["PYTHONPATH"] = os.pathsep.join([str(self.dir)] + ([prior] if prior else []))
+        e["GRANITE_SEAL_ASKED"], e["GRANITE_SEAL_LOADED"] = str(self.asked), str(self.loaded)
+        closed = f"http://127.0.0.1:{self.port}"
+        for name in _PROXY_NAMES:
+            for k in ((name.upper(),) if os.name == "nt" else (name.upper(), name)):
+                e[k] = "" if name == "no_proxy" else closed
+        e["GRANITE_NO_BUCKET"] = "1"
+        return e
+
+    def starts(self):
+        try:
+            return len(self.loaded.read_text(encoding="utf-8").split())
+        except OSError:
+            return 0
+
+    def run(self, cmd, env=None, **kw):
+        """_run(cmd) sealed; AssertionError when the child tried to reach the
+        network, or the seal was not in it."""
+        before = self.starts()
+        r = _run(cmd, env=self.env(env), **kw)
+        what = " ".join(str(c) for c in cmd[1:3])
+        if self.asked.exists():
+            tried = self.asked.read_text(encoding="utf-8", errors="replace").strip()
+            self.asked.unlink(missing_ok=True)
+            raise AssertionError(f"{what} TRIED TO REACH THE NETWORK from preflight, and the "
+                                 f"seal stopped it: {tried[:300]}")
+        assert self.starts() > before, (
+            f"{what} ran without the seal preflight puts on a fetcher's process "
+            "(sitecustomize.py on PYTHONPATH did not load), so nothing showed whether it "
+            "asked the network")
+        return r
+
+    def close(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+
+def _sealed_run(cmd, env=None, **kw):
+    """_run for a child that is a fetcher, the lane, or the pipeline that
+    starts them: one seal for the one run (_Seal.run)."""
+    with _Seal() as seal:
+        return seal.run(cmd, env=env, **kw)
 
 
 def check(group, name, needs=()):
@@ -2308,11 +2448,13 @@ def _ls_fixture(root, livestreams):
 
 
 def _ls_run(root, *extra):
-    return _run([sys.executable, str(Path("livestreams.py").resolve()),
-                 "--since-state", "--replay", "api", "--captions-from", "src",
-                 "--origin", "runner", *extra],
-                cwd=str(root), env=_ls_env(), capture_output=True, text=True,
-                timeout=120)
+    # Sealed (_Seal): it replays the Data API's answers and a caption source,
+    # and a regression that asked YouTube instead fails here, not quietly.
+    return _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+                        "--since-state", "--replay", "api", "--captions-from", "src",
+                        "--origin", "runner", *extra],
+                       cwd=str(root), env=_ls_env(), capture_output=True, text=True,
+                       timeout=120)
 
 
 @check("livestreams", "three nights of new livestreams: indexed, captioned, "
@@ -2412,9 +2554,9 @@ def _ls_nights(livestreams, build_manifest):
         env = {k: v for k, v in _ls_env().items() if k != "GRANITE_PROCEEDINGS"}
 
         def markers():
-            r = _run([sys.executable, str(Path("livestreams.py").resolve()),
-                      "--markers", "--origin", "runner"], cwd=str(root), env=env,
-                     capture_output=True, text=True, timeout=120)
+            r = _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+                             "--markers", "--origin", "runner"], cwd=str(root), env=env,
+                            capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
             return json.loads((root / "candidate_segments.json").read_text(
                 encoding="utf-8"))
@@ -2636,10 +2778,10 @@ def _ls_state(livestreams):
         # not a key's shape: the check above rightly fails on one of those.
         key = "preflight-sentinel-" + "k" * 21
         env = dict(_ls_env(), YOUTUBE_API_KEY=key)
-        r = _run([sys.executable, str(Path("livestreams.py").resolve()),
-                  "--since-state", "--replay", "api", "--captions-from", "src",
-                  "--now", "2026-09-25T06:30:00Z"], cwd=str(root), env=env,
-                 capture_output=True, text=True, timeout=120)
+        r = _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+                         "--since-state", "--replay", "api", "--captions-from", "src",
+                         "--now", "2026-09-25T06:30:00Z"], cwd=str(root), env=env,
+                        capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
         assert key not in r.stdout + r.stderr
         leaks = [str(p) for p in root.rglob("*") if p.is_file()
@@ -12808,9 +12950,11 @@ def _carried_outputs(BA):
     root = Path(tempfile.mkdtemp(prefix="gr-carried-"))
 
     def run(*args, env=None):
-        return _run([sys.executable, str(here / "build_all.py"), *args],
-                    cwd=root, capture_output=True, text=True, timeout=120,
-                    env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
+        # Sealed: --local skips the network steps, and a regression that ran
+        # one would meet the seal's raiser, not the General Court.
+        return _sealed_run([sys.executable, str(here / "build_all.py"), *args],
+                           cwd=root, capture_output=True, text=True, timeout=120,
+                           env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
     try:
         (root / "archive" / "cloud").mkdir(parents=True)
         (root / BA.KIT_RECORD).write_text("{}", encoding="utf-8")
@@ -13560,7 +13704,14 @@ def _cloud_pull(CL, R):
     pull and state-up report until send-refusal sends it, without note()
     failing. A newer laptop refusal behind an older one in the bucket keeps
     its marker, waits, is named by clear-refusal when the bucket's is
-    lifted, fails the next pull, and is sent.
+    lifted -- which then exits 1, as it does for any laptop refusal that
+    waited behind the one cleared (newer and in force, or marked), and only
+    then -- fails the next pull, and is sent. A refusal recorded here while
+    a pull reads the bucket's is never written over: the pull creates the
+    file or, finding one, compares the two. home() is the checkout that
+    holds secrets.json, not the one keys.py sits in; and the recorder that
+    proves a temp folder's refusal makes no bucket raises rather than make
+    one, with GRANITE_NO_BUCKET left set.
     """
     import ast
     import contextlib
@@ -13837,6 +13988,47 @@ def _cloud_pull(CL, R):
         assert '"older"' in text(laptop, f"{CL.SET_ASIDE}/{today}/archive/refused.json"), \
             "the older refusal was dropped rather than set aside"
 
+        # A refusal recorded here while the pull reads the bucket's -- a
+        # fetch's note() between the look and the write -- is not written
+        # over: the pull creates the file, and compares the two when it
+        # cannot. create_whole itself refuses a file that is there.
+        probe_file = tmp / "create-probe.json"
+        probe_file.write_text("mine", encoding="utf-8")
+        try:
+            CL.create_whole(probe_file, b"theirs")
+            raise AssertionError("create_whole wrote over a file that was there")
+        except FileExistsError:
+            pass
+        assert probe_file.read_text(encoding="utf-8") == "mine" and \
+            not probe_file.with_name(probe_file.name + ".part").exists(), \
+            "create_whole changed the file that was there, or left its part file"
+        real_create = CL.create_whole
+
+        def landing(content):
+            def create(dst, data):
+                dst.write_text(content, encoding="utf-8")
+                return real_create(dst, data)
+            return create
+        for landed, stays in ((refusal(400, "landed mid-pull"), '"landed mid-pull"'),
+                              (refusal(150, "older mid-pull"), '"night"')):
+            (laptop / "archive/refused.json").unlink()
+            CL.create_whole = landing(landed)
+            try:
+                code, out = pull(laptop, "--changes-only")
+            finally:
+                CL.create_whole = real_create
+            assert code == 0 and "while this pull read" in out, out[-400:]
+            assert stays in text(laptop, "archive/refused.json"), (
+                f"of a refusal recorded mid-pull and the bucket's, the wrong one stands here: "
+                f"{text(laptop, 'archive/refused.json')}")
+        assert any("older mid-pull" in p.read_text(encoding="utf-8")
+                   for p in (laptop / CL.SET_ASIDE).rglob("refused.json*")), \
+            "a refusal recorded mid-pull, older than the bucket's, was dropped, not set aside"
+        (laptop / "archive/refused.json").unlink()
+        assert pull(laptop, "--changes-only")[0] == 0 and \
+            '"night"' in text(laptop, "archive/refused.json"), \
+            "with nothing recorded mid-pull, the bucket's refusal was not created here"
+
         # The laptop's refusal reaches the bucket, from refusal.note() itself.
         # `mine` is a bucket of the night's (a verdict in it, from before
         # yesterday) that holds no refusal yet.
@@ -13865,9 +14057,16 @@ def _cloud_pull(CL, R):
             "an unsent refusal was not loud, or left no marker"
         assert "secrets.json" in err.getvalue(), \
             f"a temp folder's refusal was not refused the real bucket: {err.getvalue()[-300:]}"
+        # Refused before any bucket is made: the recorder raises rather than
+        # hand on to the real make_bucket, and GRANITE_NO_BUCKET stays set,
+        # so a send_refusal that lost its secrets.json test could reach
+        # neither R2 nor anything else from here.
         made = []
-        os.environ.pop(CL.NO_BUCKET, None)
-        CL.make_bucket = lambda *a, **k: made.append(a) or saved[6](*a, **k)
+
+        def recorder(*a, **k):
+            made.append(a)
+            raise AssertionError("send_refusal made a bucket for a temp folder's refusal")
+        CL.make_bucket = recorder
         try:
             CL.send_refusal(away)
             raise AssertionError("a temp folder's refusal was sent without a folder bucket")
@@ -13875,7 +14074,20 @@ def _cloud_pull(CL, R):
             assert "secrets.json" in str(e) and not made, (str(e), made)
         finally:
             CL.make_bucket = saved[6]
-            os.environ[CL.NO_BUCKET] = "1"
+        assert os.environ.get(CL.NO_BUCKET) == "1", "GRANITE_NO_BUCKET was lifted"
+        # home() is the checkout that HOLDS secrets.json: keys.PATH names the
+        # file beside keys.py whether it is there or not.
+        import keys
+        kept_path, homeless = keys.PATH, tmp / "homeless"
+        homeless.mkdir()
+        try:
+            keys.PATH = homeless / "secrets.json"
+            assert not CL.home(homeless), "a folder with no secrets.json in it counted as home"
+            keys.PATH.write_text("{}", encoding="utf-8")
+            assert CL.home(homeless) and not CL.home(away), \
+                "home() did not find secrets.json's folder"
+        finally:
+            keys.PATH = kept_path
         code, out = pull(away, "--changes-only", bucket=mine)
         assert code == 1 and "send-refusal" in out and "IS NOT IN THE BUCKET" in out, out[-400:]
         assert "STALE" in out, f"a verdict from 2000 was not called stale: {out[-400:]}"
@@ -13897,14 +14109,49 @@ def _cloud_pull(CL, R):
         assert code == 1 and "waiting behind" in out and marker.exists(), out[-300:]
         code, out = pull(away, "--changes-only", bucket=mine)
         assert code == 0 and marker.exists() and "waits behind" in out, out[-400:]
+        # Clearing the bucket's leaves the laptop's newer one, in force and
+        # named by the marker, in no bucket: the clearing stands, and it
+        # exits 1 saying to send it.
         code, out = call(away, "clear-refusal", bucket=mine)
-        assert code == 0 and "HOLDS A REFUSAL THE BUCKET DOES NOT" in out and \
-            "send-refusal" in out, f"clear-refusal did not name the laptop's refusal: {out[-400:]}"
+        assert code == 1 and "HOLDS A REFUSAL THE BUCKET DOES NOT" in out and \
+            "send-refusal" in out and "waiting behind" in out, \
+            f"clear-refusal did not fail naming the laptop's refusal: {out[-400:]}"
+        assert not sent.exists(), "clear-refusal did not clear the bucket's refusal"
         code, out = pull(away, "--changes-only", bucket=mine)
         assert code == 1 and "IS NOT IN THE BUCKET" in out and "send-refusal" in out, out[-400:]
         code, out = call(away, "send-refusal", bucket=mine)
         assert code == 0 and sent.read_bytes() == R.MARK.read_bytes() and not marker.exists(), \
             out[-300:]
+
+        # clear-refusal's status, case by case, in a folder of its own: 1 only
+        # when this machine's refusal waited behind the one cleared -- newer
+        # and in force, or named by the marker -- and 0 otherwise.
+        third, b3 = tmp / "third", tmp / "b3"
+        third.mkdir()
+        _pull_fixture(third, real)
+        now_ = __import__("time").time()
+        for here_, bucket_, marked, want in (
+                (refusal(now_ - 60, "newer, in force"), refusal(now_ - 3600, "b"), False, 1),
+                (refusal(now_ - 30 * 3600, "newer, past 24h"), refusal(now_ - 40 * 3600, "b"),
+                 False, 0),
+                (refusal(now_ - 7200, "older, marked"), refusal(now_ - 3600, "b"), True, 1),
+                (refusal(now_ - 7200, "older, unmarked"), refusal(now_ - 3600, "b"), False, 0),
+                (None, refusal(now_ - 3600, "b"), False, 0)):
+            (b3 / "state").mkdir(parents=True, exist_ok=True)
+            (b3 / "state/refused.json").write_text(bucket_, encoding="utf-8")
+            (third / "archive/refused.json").unlink(missing_ok=True)
+            if here_:
+                (third / "archive/refused.json").write_text(here_, encoding="utf-8")
+            (third / CL.UNSENT).unlink(missing_ok=True)
+            if marked:
+                (third / CL.UNSENT).parent.mkdir(parents=True, exist_ok=True)
+                (third / CL.UNSENT).write_text("{}", encoding="utf-8")
+            code, out = call(third, "clear-refusal", bucket=b3)
+            assert code == want and not (b3 / "state/refused.json").exists(), (
+                f"clear-refusal with this machine's refusal "
+                f"{json.loads(here_)['where'] if here_ else 'absent'!r} "
+                f"{'and the marker ' if marked else ''}exited {code}, not {want}: {out[-300:]}")
+            assert want == 0 or "send-refusal" in out, out[-300:]
 
         # A folder bucket in the stood-down repository that holds secrets.json
         # is refused unless the test says so.
@@ -16023,7 +16270,7 @@ def _fetch_writes_its_term():
             "<tr><td>Body: H</td></tr><tr><td>Gen Status: SIGNED BY GOVERNOR"
             "</td></tr></table></body></html>", encoding="utf-8")
 
-        r = _run(
+        r = _sealed_run(
             [sys.executable, str(here / "fetch_bill_status.py"),
              "--reparse", "--term", "2023-2024", "--data", "data",
              "--out", "bill_status.json", "--cache", "status_pages"],
@@ -19238,8 +19485,8 @@ def _docket_fetch_stops():
                 "D.time.sleep = lambda s: None\n"
                 "sys.argv = ['x', '--term', '2015-2016', '--delay', '0']\n"
                 "sys.exit(D.main())\n", encoding="utf-8")
-            r = _run([sys.executable, "wrap.py"], cwd=root, capture_output=True,
-                     text=True, timeout=60)
+            r = _sealed_run([sys.executable, "wrap.py"], cwd=root, capture_output=True,
+                            text=True, timeout=60)
             refused = (root / "archive" / "refused.json").exists()
             cached = sorted(p.name for p in (root / "docket_pages").glob("*.html")) \
                 if (root / "docket_pages").exists() else []
@@ -19283,8 +19530,8 @@ def _docket_fetch_stops():
                 "rc = D.main()\n"
                 "print('ASKED', len(asked))\n"
                 "sys.exit(rc)\n", encoding="utf-8")
-            r = _run([sys.executable, "wrap.py"], cwd=root, capture_output=True,
-                     text=True, timeout=60)
+            r = _sealed_run([sys.executable, "wrap.py"], cwd=root, capture_output=True,
+                            text=True, timeout=60)
             assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
             assert f"ASKED {want_asked}" in r.stdout, (
                 f"{flag or 'no flag'}: {r.stdout.strip()[-120:]}")
@@ -19375,27 +19622,73 @@ def _every_fetcher_checks_refusal():
     # fetch_committee_details.py holds no literal URL -- its addresses are
     # read from committees.json -- so it is named here: it asks gc.nh.gov for
     # every committee's page.
+    #
+    # A CALL, READ AS CODE (26 September 2026). "refusal.check(" as text was
+    # satisfied by a comment or a string saying so. The call is read from the
+    # parsed source now: an ast.Call of refusal.check, with refusal imported.
+    # And a script whose addresses come from a module rather than a literal
+    # -- check_civics_links.py asks every gc.nh.gov address civics.py holds,
+    # and held no URL of its own, so this never read it -- is read when it
+    # imports one of ADDRESSES and makes a request.
+    import ast as _ast
     ASKS = _re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
                        r"|http\.client")
     NAMED = ("fetch_committee_details.py",)
-    probe = ('BASE = "https://gc.nh.gov/x/"\nimport refusal\n'
-             'urllib.request.urlretrieve(BASE + "a", "a")\n')
-    assert URL.search(probe) and ASKS.search(probe) and "refusal.check(" not in probe, \
-        "the reader would not catch a urlretrieve that imports refusal and never checks it"
+    ADDRESSES = ("civics",)         # modules holding gc.nh.gov addresses scripts ask
+
+    def read(name, src):
+        """(asks the General Court, calls refusal.check with refusal imported)."""
+        tree = _ast.parse(src)
+        imported = {a.name for n in _ast.walk(tree) if isinstance(n, _ast.Import)
+                    for a in n.names} | {n.module for n in _ast.walk(tree)
+                                         if isinstance(n, _ast.ImportFrom) and n.module}
+        asks = name in NAMED or (
+            (URL.search(src) and (name.startswith("fetch_") or ASKS.search(src)))
+            or (bool(imported & set(ADDRESSES)) and ASKS.search(src)))
+        checks = "refusal" in imported and any(
+            isinstance(n, _ast.Call) and isinstance(n.func, _ast.Attribute)
+            and n.func.attr == "check" and isinstance(n.func.value, _ast.Name)
+            and n.func.value.id == "refusal" for n in _ast.walk(tree))
+        return bool(asks), checks
+    probes = {
+        "a urlretrieve that imports refusal and never checks":
+            ('BASE = "https://gc.nh.gov/x/"\nimport refusal\n'
+             'urllib.request.urlretrieve(BASE + "a", "a")\n', (True, False)),
+        "a check that is only a comment and a string":
+            ('BASE = "https://gc.nh.gov/x/"\nimport refusal, urllib.request\n'
+             '# refusal.check("x") comes first\nNOTE = "refusal.check(\'x\')"\n'
+             'urllib.request.urlopen(BASE)\n', (True, False)),
+        "a script asking the addresses civics.py holds":
+            ('import civics, urllib.request\nfor u in civics.TOPICS:\n'
+             '    urllib.request.urlopen(u)\n', (True, False)),
+        "a script that asks and checks":
+            ('import civics, refusal, urllib.request\nrefusal.check("x")\n'
+             'urllib.request.urlopen(civics.GC)\n', (True, True)),
+        "a builder that imports civics and asks nobody":
+            ('import civics\nprint(civics.GC)\n', (False, False)),
+    }
+    for what, (src, want) in probes.items():
+        assert read("probe.py", src) == want, f"the reader got {what} wrong: {read('probe.py', src)}"
     asks, missing = [], []
     for p in sorted(Path(".").glob("*.py")):
         if p.name in ("netcheck.py", "preflight.py"):
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
-        if p.name not in NAMED and (
-                not URL.search(src) or (not p.name.startswith("fetch_") and not ASKS.search(src))):
+        try:
+            ask, checks = read(p.name, src)
+        except SyntaxError as e:
+            raise AssertionError(f"{p.name} will not parse, so whether it asks the General "
+                                 f"Court cannot be read: {e}")
+        if not ask:
             continue
         asks.append(p.name)
-        if "import refusal" not in src or "refusal.check(" not in src:
+        if not checks:
             missing.append(p.name)
 
     assert asks, "no fetcher holds a gc.nh.gov URL, which cannot be right"
     assert all(n in asks for n in NAMED if Path(n).exists()), "a named fetcher was not read"
+    assert not Path("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
+        "check_civics_links.py, which asks the addresses civics.py holds, was not read"
     assert not missing, (
         "these ask gc.nh.gov and never call refusal.check(), so neither a standing "
         "refusal nor GitHub's night window would stop them:\n    " + "\n    ".join(missing)
@@ -19414,24 +19707,28 @@ def _offline_modes_ask_nobody():
     fetch_session.py --reparse and probe_archive_shape.py --report -- so
     re-reading pages already saved was stopped too, for as long as a refusal
     stood or every night for five and a half hours. fetch_legislation.py's
-    --parse was already below it.
+    --parse was already below it. check_civics_links.py did not call it at
+    all until 26 September; its --list asks nobody.
 
     Each is run in a temp folder holding a fresh refusal and a stand-down file,
     at a clock inside the window: the offline mode gets past the check, and
     the fetching mode stops at it. Nothing is asked of anybody -- the
     fetching mode stops before its first request, and the offline one makes
-    none."""
+    none -- and each runs sealed (_Seal), so a fetching mode that got past
+    the check would meet a raiser, not the General Court, and fail here."""
     import time as _time
     here = Path(".").resolve()
     runs = [("fetch_lsrs.py", ["--parse"], []),
             ("fetch_members.py", ["--reparse"], []),
             ("fetch_session.py", ["--year", "2020", "--reparse", "--max-lsr", "3"],
              ["--year", "2020", "--max-lsr", "3"]),
-            ("probe_archive_shape.py", ["--report"], [])]
+            ("probe_archive_shape.py", ["--report"], []),
+            ("check_civics_links.py", ["--list"], ["--delay", "0"])]
     runs = [r for r in runs if (here / r[0]).exists()]
     if not runs:
-        return "skip", "none of the four scripts is here"
+        return "skip", "none of the five scripts is here"
     tmp = Path(tempfile.mkdtemp(prefix="gr-offline-"))
+    seal = _Seal()
     try:
         (tmp / "archive").mkdir()
         (tmp / "data").mkdir()
@@ -19443,8 +19740,8 @@ def _offline_modes_ask_nobody():
         env = dict(os.environ, GRANITE_CLOCK_UTC="2026-09-29T07:00:00Z", GITHUB_ACTIONS="")
         for script, offline, online in runs:
             for args, stopped in ((offline, False), (online, True)):
-                r = _run([sys.executable, str(here / script), *args], cwd=tmp,
-                         capture_output=True, text=True, timeout=120, env=env)
+                r = seal.run([sys.executable, str(here / script), *args], cwd=tmp,
+                             capture_output=True, text=True, timeout=120, env=env)
                 said = (r.stdout or "") + (r.stderr or "")
                 held = r.returncode in (2, 4) and ("refused" in said or "window" in said)
                 assert held == stopped, (
@@ -19453,9 +19750,142 @@ def _offline_modes_ask_nobody():
                        "was stopped by the refusal check, though it asks nobody")
                     + f" (exit {r.returncode}): {said.strip()[-200:]}")
     finally:
+        seal.close()
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", (f"{len(runs)} offline modes run past a standing refusal and GitHub's night; "
-                  "their fetching modes stop at them")
+                  "their fetching modes stop at them, sealed from the network")
+
+
+@check("build", "a fetcher, the lane or the pipeline that preflight starts cannot reach the "
+                "network, and it would fail if one tried")
+def _children_sealed():
+    """_Seal is what stands between a regression in a fetcher's own stop and
+    a request from preflight to the General Court. So:
+
+      - a sealed child that tries each way out -- create_connection,
+        getaddrinfo, a socket's connect, urllib through the proxies -- is
+        refused every time, and the sentinel names each try; so is a
+        grandchild it starts, as the lane starts its steps; the child's
+        proxies point at the loopback address and NO_PROXY is gone;
+      - _Seal.run fails a run that tried, and a run the seal was not in;
+      - every check here that starts a fetcher, a probe, livestreams.py,
+        check_civics_links.py, the lane, build_all.py or cloud.py as a
+        process starts it through the seal -- read from this file, so the
+        next check that starts one bare fails here. Those that do now:
+        _offline_modes_ask_nobody (fetch_lsrs, fetch_members, fetch_session,
+        probe_archive_shape, check_civics_links), _lane_daily (the lane and
+        its steps), _fetch_writes_its_term (fetch_bill_status),
+        _docket_fetch_stops (fetch_archive_docket, through its wrapper),
+        _carried_outputs (build_all.py --local) and the livestreams checks
+        (_ls_run, _ls_nights, _ls_state).
+    """
+    import ast
+    probe = ("import socket, subprocess, sys, urllib.request\n"
+             "def tr(name, fn):\n"
+             "    try:\n"
+             "        fn()\n"
+             "        print(name, 'REACHED')\n"
+             "    except OSError as e:\n"
+             "        print(name, type(e).__name__)\n"
+             "port = int(sys.argv[1])\n"
+             "tr('create_connection', lambda: socket.create_connection(('127.0.0.1', port), 1))\n"
+             "tr('getaddrinfo', lambda: socket.getaddrinfo('localhost', 80))\n"
+             "tr('connect', lambda: socket.socket().connect(('127.0.0.1', port)))\n"
+             "tr('urlopen', lambda: urllib.request.urlopen('http://example.invalid/', timeout=1))\n"
+             "import os\n"
+             "print('NO_PROXY', repr(os.environ.get('NO_PROXY', '')), "
+             "os.environ.get('HTTP_PROXY', ''))\n"
+             "r = subprocess.run([sys.executable, '-c', 'import socket\\ntry:\\n "
+             "socket.getaddrinfo(\"localhost\", 80)\\nexcept OSError as e: "
+             "print(type(e).__name__)'], capture_output=True, text=True)\n"
+             "print('grandchild', r.stdout.strip())\n")
+    with _Seal() as seal:
+        r = _run([sys.executable, "-c", probe, str(seal.port)], env=seal.env(
+            dict(os.environ, NO_PROXY="*", no_proxy="*")), capture_output=True, text=True,
+            timeout=60)
+        out = r.stdout.split("\n")
+        tried = seal.asked.read_text(encoding="utf-8").splitlines() \
+            if seal.asked.exists() else []
+        for name in ("create_connection", "getaddrinfo", "connect", "urlopen"):
+            assert f"{name} " in r.stdout and f"{name} REACHED" not in r.stdout, (
+                f"a sealed child's {name} was not refused: {r.stdout[-300:]} {r.stderr[-300:]}")
+        assert "SealedByPreflight" in r.stdout or "URLError" in r.stdout, r.stdout[-300:]
+        assert any(ln.startswith(f"NO_PROXY '' http://127.0.0.1:{seal.port}") for ln in out), (
+            f"a sealed child kept NO_PROXY, or has no closed proxy: {r.stdout[-200:]}")
+        assert any(ln.startswith("grandchild SealedByPreflight") for ln in out), (
+            f"a process the sealed child started was not sealed: {r.stdout[-200:]}")
+        assert len(tried) >= 5 and seal.starts() >= 2, (
+            f"the sentinel named {len(tried)} tries and {seal.starts()} sealed processes, "
+            "not the five and two made")
+        seal.asked.unlink()
+        try:
+            seal.run([sys.executable, "-c", "import socket; socket.getaddrinfo('x', 1)"],
+                     capture_output=True, text=True, timeout=60)
+            raise RuntimeError("unreached")
+        except AssertionError as e:
+            assert "TRIED TO REACH THE NETWORK" in str(e), str(e)
+        except RuntimeError:
+            raise AssertionError("_Seal.run passed a child that tried to reach the network")
+        try:
+            seal.run([sys.executable, "-S", "-E", "-c", "print(1)"], capture_output=True,
+                     text=True, timeout=60)
+            raise AssertionError("_Seal.run passed a child the seal was not in")
+        except AssertionError as e:
+            assert "without the seal" in str(e), str(e)
+
+    # Every spawn here of something that can reach the network is sealed.
+    NET = (r"(?:fetch_\w+|probe_\w+|livestreams|gc_lane|check_civics_links|netcheck"
+           r"|snapshot_gencourt|resolve_members|nightly|build_all|cloud|check_live)")
+    NAMES = re.compile(r"\b" + NET + r"\.py\b|\bimport " + NET + r"\b")
+    SPAWNERS = {"_run", "run", "call", "Popen", "check_output", "check_call", "popen"}
+
+    def bare(tree):
+        out = []
+        for fn in (n for n in tree.body if isinstance(n, ast.FunctionDef)):
+            body = fn.body[1:] if (fn.body and isinstance(fn.body[0], ast.Expr) and
+                                   isinstance(fn.body[0].value, ast.Constant)) else fn.body
+            nodes = [n for b in body for n in ast.walk(b)]
+            # What a check says -- an assertion's message, a raise, its
+            # ("ok"/"skip", message) -- names scripts without starting them.
+            # A return of anything else, _ls_run's of a spawn, is read.
+            said = {id(n) for m in nodes
+                    if isinstance(m, (ast.Assert, ast.Raise)) or (
+                        isinstance(m, ast.Return) and isinstance(m.value, ast.Tuple)
+                        and m.value.elts and isinstance(m.value.elts[0], ast.Constant))
+                    for part in ([m.msg] if isinstance(m, ast.Assert) else [m])
+                    if part is not None for n in ast.walk(part)}
+            names = any(isinstance(n, ast.Constant) and isinstance(n.value, str)
+                        and id(n) not in said and NAMES.search(n.value) for n in nodes)
+            # Sealed: _sealed_run(...), a _Seal's run() -- by convention the
+            # _Seal is called `seal` -- or a spawn given env=seal.env(...).
+            spawns = [n for n in nodes if isinstance(n, ast.Call)
+                      and (getattr(n.func, "id", None) or getattr(n.func, "attr", None))
+                      in SPAWNERS and n.args and "sys.executable" in ast.unparse(n.args[0])
+                      and ast.unparse(n.func) != "seal.run"
+                      and not any(k.arg == "env" and "seal.env(" in ast.unparse(k.value)
+                                  for k in n.keywords)]
+            if names and spawns:
+                out.append(fn.name)
+        return out
+    trial = ast.parse('def a():\n    """fetch_x.py"""\n    _run([sys.executable, "build_x.py"])\n\n'
+                      'def b():\n    _run([sys.executable, str(here / "fetch_x.py")])\n\n'
+                      'def c():\n    _sealed_run([sys.executable, "fetch_x.py"])\n'
+                      '    seal.run([sys.executable, "gc_lane.py"])\n'
+                      '    _run([sys.executable, "cloud.py"], env=seal.env(e))\n\n'
+                      'def d():\n    w = "import fetch_x as D"\n'
+                      '    child.run([sys.executable, "wrap.py"])\n\n'
+                      'def e():\n    return other.run([sys.executable, "livestreams.py"])\n\n'
+                      'def f():\n    _run([sys.executable, "build_x.py"])\n'
+                      '    assert x, "fetch_x.py now writes it"\n'
+                      '    return "skip", "run build_all.py first"\n')
+    assert bare(trial) == ["b", "d", "e"], f"the reader of spawns found {bare(trial)}"
+    found = bare(ast.parse(Path(__file__).read_text(encoding="utf-8")))
+    assert not found, ("these checks start a fetcher, the lane or the pipeline as a process "
+                       "without the seal, so a regression would reach the network from "
+                       "preflight: " + ", ".join(found) + ". Start it with _sealed_run or "
+                       "a _Seal's run().")
+    return "ok", ("a sealed child and its children reach nothing and the sentinel says so; "
+                  "every check that starts a fetcher, the lane or the pipeline seals it")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
@@ -20056,12 +20486,20 @@ def _lane_daily():
         has (26 September 2026). The lane imports the real refusal.py for
         that, where it once needed only to find the file;
       - it asks before EACH daily step, not once before them all, and a daily
-        step that exits 4 itself was held, not run: it is not recorded as
-        today's, and the lane stops rather than ask it again at every
-        boundary.
+        step that exits 4 itself while refusal.gc_turn() says it is GitHub's
+        turn was held, not run: it is not recorded as today's, and the lane
+        stops rather than ask it again at every boundary;
+      - a daily step that exits 4 when gc_turn() says nothing is the
+        stand-down itself: recorded, the log says the line should come out
+        of the queue, and the lane goes on;
+      - a step GitHub's night window stopped part way -- its hold's still()
+        said so -- is recorded in neither gc_lane.done nor gc_lane.daily,
+        whether it then exited 0, 1 or 4, and the lane stops with 4; and a
+        `with hold()` block left normally after that exits 4 by itself.
 
     The lane runs with this process's environment, GRANITE_NO_BUCKET
-    included, and only the clock and GITHUB_ACTIONS set for it.
+    included, and only the clock and GITHUB_ACTIONS set for it -- sealed
+    (_Seal), so neither it nor any step it starts can reach the network.
     """
     import time as _time
     here = Path(".").resolve()
@@ -20069,21 +20507,35 @@ def _lane_daily():
     if not lane.exists():
         return "skip", "watchers/gc_lane.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-lane-"))
+    seal = _Seal()
     try:
         shutil.copy(here / "refusal.py", root / "refusal.py")
         (root / "watchers").mkdir()
         (root / "archive").mkdir()
+        # A step GitHub's window stops part way: its own clock moves into the
+        # window, and its hold says so -- then it ends 0 or 1 regardless
+        # ("window"), or leaves a `with hold()` block normally ("window-with").
         (root / "stub.py").write_text(
-            "import pathlib, sys\n"
+            "import os, pathlib, sys\n"
             "name, code = sys.argv[1], int(sys.argv[2])\n"
+            "how = sys.argv[3] if len(sys.argv) > 3 else ''\n"
             "with open('trace.txt', 'a', encoding='utf-8') as fh:\n"
             "    fh.write(name + '\\n')\n"
             "if name.startswith('make-stop'):\n"
             "    pathlib.Path('watchers/gc_lane.stop').write_text('stop', encoding='utf-8')\n"
-            "if len(sys.argv) > 3 and sys.argv[3] == 'refuse':\n"
+            "if how == 'refuse':\n"
             "    pathlib.Path('archive/refused.json').write_text('{}', encoding='utf-8')\n"
-            "if len(sys.argv) > 3 and sys.argv[3] == 'unread':\n"
+            "if how == 'unread':\n"
             "    pathlib.Path('archive/cloud/pull.json').unlink()\n"
+            "if how in ('window', 'window-with'):\n"
+            "    import refusal\n"
+            "    os.environ['GRANITE_CLOCK_UTC'] = '2026-09-29T06:30:00Z'\n"
+            "    if how == 'window-with':\n"
+            "        with refusal.hold(name) as held:\n"
+            "            assert not held.still(), 'the window did not stop the hold'\n"
+            "        print(name, 'left its hold normally and was not made to exit 4')\n"
+            "    else:\n"
+            "        assert not refusal.hold(name).still(), 'the window did not stop the hold'\n"
             "print(name, 'exit', code)\n"
             "sys.exit(code)\n", encoding="utf-8")
         # A daily line that is not due yet, when the clock leaves room for one.
@@ -20096,9 +20548,9 @@ def _lane_daily():
             # This process's environment, so GRANITE_NO_BUCKET reaches the
             # lane and every step it starts; only the clock and GitHub's flag
             # are the test's.
-            r = _run([sys.executable, str(lane)], cwd=root, capture_output=True,
-                     text=True, timeout=90,
-                     env=dict(os.environ, GRANITE_CLOCK_UTC=clock or "", GITHUB_ACTIONS=""))
+            r = seal.run([sys.executable, str(lane)], cwd=root, capture_output=True,
+                         text=True, timeout=90,
+                         env=dict(os.environ, GRANITE_CLOCK_UTC=clock or "", GITHUB_ACTIONS=""))
             trace = ((root / "trace.txt").read_text(encoding="utf-8").split()
                      if (root / "trace.txt").exists() else [])
             return r.returncode, trace
@@ -20140,8 +20592,19 @@ def _lane_daily():
             f"a daily step that recorded a refusal was followed by {trace3} (exit {rc3}); "
             "wanted the lane to stop before its next step")
 
-        # Stood down: GitHub's night window, then the bucket's refusal record.
+        # Not stood down, a daily step's 4 is a failure like any other: run,
+        # recorded, and the day's later daily steps skipped.
         (root / "archive" / "refused.json").unlink()
+        plain = ["daily 00:00 stub.py daily-four 4", "daily 00:00 stub.py daily-four-next 0",
+                 "stub.py make-stop-5 0"]
+        rc_, trace_ = lane_run(plain)
+        recorded = (root / "logs" / "gc_lane.daily").read_text(encoding="utf-8")
+        assert rc_ == 0 and trace_ == ["daily-four", "make-stop-5"] and \
+            "stub.py daily-four 4" in recorded and "stub.py daily-four-next 0" in recorded, (
+                f"on a laptop that has not stood down, a daily step that exited 4 was read as "
+                f"the stand-down: the lane ran {trace_} (exit {rc_})")
+
+        # Stood down: GitHub's night window, then the bucket's refusal record.
         (root / "archive" / "runs-in-the-cloud.json").write_text("{}", encoding="utf-8")
         held = ["stub.py held-1 0", "stub.py held-2 0", "stub.py make-stop-3 0"]
         rc4, trace4 = lane_run(held, clock="2026-09-29T06:30:00Z")
@@ -20177,18 +20640,70 @@ def _lane_daily():
         assert "daily 00:00 stub.py daily-next 0" not in recorded_today(), \
             "a daily step the lane never started was recorded as run"
         (root / "archive" / "cloud" / "pull.json").write_text(read, encoding="utf-8")
-        four = ["daily 00:00 stub.py daily-held 4", "stub.py after-held 0"]
+        # A 4 that GitHub's turn explains -- here the step leaves the refusal
+        # record unread as it goes -- was held: not recorded, and a stop.
+        four = ["daily 00:00 stub.py daily-held 4 unread", "stub.py after-held 0"]
         rc8, trace8 = lane_run(four, clock="2026-09-29T12:00:00Z")
         assert rc8 == 4 and trace8 == ["daily-held"], (
             f"after a daily step that exited 4 the lane ran {trace8} (exit {rc8}); wanted a stop")
-        assert "daily 00:00 stub.py daily-held 4" not in recorded_today(), \
+        assert "daily 00:00 stub.py daily-held 4 unread" not in recorded_today(), \
             "a daily step held for GitHub's turn (exit 4) was recorded as run, and would be lost"
+        (root / "archive" / "cloud" / "pull.json").write_text(read, encoding="utf-8")
+
+        # A 4 that GitHub's turn does not explain is the stand-down itself:
+        # recorded, the line named for taking out, and the lane goes on.
+        gone = ["daily 00:00 stub.py daily-standdown 4", "daily 00:00 stub.py daily-after-it 0",
+                "stub.py make-stop-4 0"]
+        rc9, trace9 = lane_run(gone, clock="2026-09-29T12:00:00Z")
+        log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8")
+        assert rc9 == 0 and trace9 == ["daily-standdown", "daily-after-it", "make-stop-4"], (
+            f"after a daily step stood down for good the lane ran {trace9} (exit {rc9})")
+        assert {"daily 00:00 stub.py daily-standdown 4", "daily 00:00 stub.py daily-after-it 0"} \
+            <= recorded_today(), "a daily step stood down for good was not recorded, and would " \
+                                 "be asked again at every boundary"
+        assert "should come out of" in log and "daily-standdown" in log, \
+            "the log did not say the stood-down daily line should come out of the queue"
+
+        # GitHub's window stops a step part way: whatever it exits, it is not
+        # done, and the lane stops with 4.
+        done_file = root / "logs" / "gc_lane.done"
+
+        def done_lines():
+            return done_file.read_text(encoding="utf-8").splitlines() if done_file.exists() else []
+        cut = [(["daily 00:00 stub.py daily-win-0 0 window", "daily 00:00 stub.py daily-win-0b 0",
+                 "stub.py after-win-0 0"], "daily-win-0", True, 0),
+               (["daily 00:00 stub.py daily-win-1 1 window", "daily 00:00 stub.py daily-win-1b 0",
+                 "stub.py after-win-1 0"], "daily-win-1", True, 1),
+               (["stub.py once-win-0 0 window", "stub.py after-once-0 0"], "once-win-0", False, 0),
+               (["stub.py once-win-1 1 window", "stub.py after-once-1 0"], "once-win-1", False, 1),
+               (["stub.py once-win-with 0 window-with", "stub.py after-with 0"], "once-win-with",
+                False, 4)]
+        for lines_, name, is_daily, exited in cut:
+            rc, trace = lane_run(lines_, clock="2026-09-29T12:00:00Z")
+            log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8").splitlines()
+            said = [ln for ln in log if "night window stopped it" in ln]
+            assert rc == 4 and trace == [name], (
+                f"after {name}, which GitHub's window stopped part way and which exited "
+                f"{exited}, the lane ran {trace} (exit {rc}); wanted a stop with 4")
+            assert said and f"exited {exited}, but" in said[-1] and name in " ".join(log[-6:]), (
+                f"the lane did not say GitHub's window cut {name} short, or it did not exit "
+                f"{exited}: {log[-3:]}")
+            assert not any(name in ln for ln in done_lines() + sorted(recorded_today())), \
+                f"{name}, cut short by GitHub's window, was recorded as run"
+            if is_daily:
+                assert not any(ln.startswith(lines_[1]) for ln in recorded_today()), \
+                    f"the daily step after {name} was recorded as run, or skipped for the day"
+            assert not (root / "logs" / "gc_lane.window-stop").exists(), \
+                "the lane left the window-stop file behind"
         return "ok", ("daily steps once a day before the queue, a failure skipping the rest of the "
                       "day's and not the lane, none again on a restart, a stop at the boundary, "
                       "a refusal still ending it, and a stood-down lane waiting for GitHub's "
                       "night and for a read of the bucket's refusal -- asked before each daily "
-                      "step, and a held one not recorded as run")
+                      "step, a held one not recorded as run, a stood-down one recorded and "
+                      "named, and a step the window cut short done in neither list whatever "
+                      "it exited -- all sealed from the network")
     finally:
+        seal.close()
         shutil.rmtree(root, ignore_errors=True)
 
 
@@ -23013,7 +23528,11 @@ def _night_window(R, PD):
         read does not count; a standing refusal still exits 2 first;
       - a run that started before the window stops at it: hold().still(),
         which the fetchers that hold archive/.lock ask before every request,
-        turns False at the window's first minute, and says why once;
+        turns False at the window's first minute, and says why once -- and
+        the run cannot then end as finished: a `with hold()` block left
+        normally or by sys.exit(0) exits 4, a 2, a 3 or an exception passes
+        unchanged, release() raises nothing, and the file the run's starter
+        named in WINDOW_STOP_ENV says the window stopped it;
       - every one of probe_db's bridges to the SQL host, which the night and
         the weekly also query, stops in the window and the half hour before
         without starting PowerShell or touching its output file -- read from
@@ -23142,18 +23661,60 @@ def _night_window(R, PD):
         at("2026-09-30T04:00:00")
         assert R.window_soon() == "", "a window two hours off was mentioned"
 
-        # A run already going when the window opens stops at its next request.
+        # A run already going when the window opens stops at its next request,
+        # and cannot then end as though it had finished: a block left normally
+        # exits 4, and the file its starter named says the window stopped it.
         at("2026-09-30T05:59:00")
-        with R.hold("the test fetch") as held:
-            assert held.still(), "a held run was stopped before the window"
-            at("2026-09-30T06:00:00")
-            err = io.StringIO()
+        told = tmp / "window-stop.json"
+        os.environ[R.WINDOW_STOP_ENV] = str(told)
+        err = io.StringIO()
+        try:
             with contextlib.redirect_stderr(err):
-                first, second = held.still(), held.still()
-            said = err.getvalue()
-            assert not first and not second, "a held run went on asking inside the window"
-            assert "stops before its next request" in said and "2:00 a.m. EDT" in said, said
-            assert said.count("stops before its next request") == 1, "still() said why twice"
+                with R.hold("the test fetch") as held:
+                    assert held.still(), "a held run was stopped before the window"
+                    assert held.window is None and not told.exists(), \
+                        "a run was marked stopped by a window that had not opened"
+                    at("2026-09-30T06:00:00")
+                    first, second = held.still(), held.still()
+            raise AssertionError("a with-block the window stopped ended as though it had "
+                                 "finished (status 0)")
+        except SystemExit as e:
+            assert e.code == R.STOOD_DOWN, f"a with-block the window stopped exited {e.code}"
+        finally:
+            os.environ.pop(R.WINDOW_STOP_ENV, None)
+        said = err.getvalue()
+        assert not first and not second, "a held run went on asking inside the window"
+        assert "stops before its next request" in said and "2:00 a.m. EDT" in said, said
+        assert said.count("stops before its next request") == 1, "still() said why twice"
+        assert "not as finished" in said, f"the exit 4 did not say why: {said[-300:]}"
+        assert told.exists() and "the test fetch" in told.read_text(encoding="utf-8"), \
+            "the file the starter named was not written when the window stopped the run"
+        assert not R.LOCK.exists(), "a hold the window stopped kept its lock"
+        # sys.exit(0) is finishing too; a refusal's 2, a lost lock's 3 and an
+        # exception are not the hold's to change, and release() raises nothing.
+        for leave, want in ((lambda: sys.exit(0), R.STOOD_DOWN), (lambda: sys.exit(None), R.STOOD_DOWN),
+                            (lambda: sys.exit(2), 2), (lambda: sys.exit(3), 3),
+                            (lambda: (_ for _ in ()).throw(KeyError("k")), KeyError)):
+            try:
+                with contextlib.redirect_stderr(io.StringIO()):
+                    with R.hold("t") as held:
+                        held.still()
+                        leave()
+                raise AssertionError("unreached")
+            except SystemExit as e:
+                assert e.code == want, f"a stopped hold left by {want} exited {e.code}"
+            except KeyError:
+                assert want is KeyError, "an exception in a stopped hold was replaced"
+        with contextlib.redirect_stderr(io.StringIO()):
+            held = R.hold("t")
+            held.__enter__()
+            held.still()
+        held.release()
+        assert not R.LOCK.exists(), "release() left the lock"
+        at("2026-09-30T05:59:00")
+        with R.hold("t") as held:
+            held.still()
+        assert held.window is None, "a hold the window never stopped was marked stopped"
         (tmp / "archive/runs-in-the-cloud.json").unlink()
         at("2026-09-30T06:30:00")
         with R.hold("the test fetch") as held:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.9
+# GRANITE_VERSION: 2026-09-09.10
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -61,7 +61,11 @@ So on a stood-down laptop, and only there:
     the weekly query too;
   - a run already going when the window opens stops at its next request if
     it asks hold().still() before each one, as the fetchers that hold
-    archive/.lock do;
+    archive/.lock do -- and the hold remembers it, so the run cannot end
+    as though it had finished: a `with hold(...)` block left normally, or
+    by sys.exit(0), leaves by SystemExit(STOOD_DOWN) instead, and under the
+    lane still() also writes the file WINDOW_STOP_ENV names, which is how
+    the lane learns a step was cut short whatever status it ended with;
   - no request starts until this laptop has read the bucket's refusal record
     (`cloud.py pull`, which records when, and from which bucket: a read of a
     --local-bucket folder never counts) since the last window ended, which
@@ -307,12 +311,29 @@ def classify(err=None, body=None):
 
 LOCK = Path("archive/.lock")
 
+# The file a run's hold writes when GitHub's night window stops it, named by
+# whoever started the run -- watchers/gc_lane.py, for each step. A fetch cut
+# short by the window used to end 0 (fetch_senate_calendars and
+# fetch_sponsors_by_member return 0 from a loop that stopped early), 1 or 3,
+# and the lane recorded a step that had not finished as done, or a day's
+# step as run. The status cannot carry it for every script; this file does.
+WINDOW_STOP_ENV = "GRANITE_WINDOW_STOP"
+
 
 class hold:
-    """with refusal.hold("fetch_legislation"): ... -- one worker, or none."""
+    """with refusal.hold("fetch_legislation"): ... -- one worker, or none.
+
+    `window` is the night window that stopped this run, once still() has
+    said so, and None until then. A block that ends normally, or by
+    sys.exit(0), after that leaves by SystemExit(STOOD_DOWN): a run the
+    window cut short did not finish, and must not say it did. Any other
+    ending -- a refusal's 2, a lost lock's 3, an exception -- goes on as it
+    was. release() lets go of the lock without that, for a caller that
+    registers it with atexit, where a SystemExit is only printed."""
 
     def __init__(self, who):
         self.who, self.mine, self._stop, self._told = who, False, None, False
+        self.window = None
 
     def __enter__(self):
         import os
@@ -355,12 +376,16 @@ class hold:
         And on a stood-down laptop, False from the moment GitHub's night
         window opens, whoever holds the lock: check() lets nothing start in
         the half hour before it, but a run started earlier would otherwise go
-        on asking the General Court beside the night. It says so once."""
+        on asking the General Court beside the night. It says so once, and
+        remembers it (`window`, and the WINDOW_STOP_ENV file when one is
+        named), so the run cannot end as though it had finished."""
         import os
         w = night_window() if _governing() is not None else None
         if w:
             if not self._told:
                 self._told = True
+                self.window = w
+                _tell_the_starter(self.who, w)
                 s, e, what = w
                 print(f"\n{self.who} stops before its next request: GitHub's night window "
                       f"opened at {_clock(s)} -- {describe_window(s, e, what)} -- and no General "
@@ -378,8 +403,10 @@ class hold:
             return False
         return held.isdigit() and int(held) == os.getppid() and fresh
 
-    def __exit__(self, *exc):
+    def release(self):
+        """Let go of the lock, if this run took it. Nothing else."""
         if self.mine:
+            self.mine = False
             self._stop.set()
             # Only our own lock. Another worker's is not ours to remove.
             try:
@@ -387,7 +414,35 @@ class hold:
                     LOCK.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    def __exit__(self, kind, value, tb):
+        self.release()
+        finished = kind is None or (kind is SystemExit and getattr(value, "code", None) in (0, None))
+        if self.window and finished:
+            s, e, _ = self.window
+            print(f"{self.who} ends with status {STOOD_DOWN}, the stand-down's, not as finished: "
+                  f"GitHub's night window, open since {_clock(s)}, stopped it before it was "
+                  f"done. Start it again after {_clock(e)}.{_clock_note()}",
+                  file=sys.stderr, flush=True)
+            raise SystemExit(STOOD_DOWN)
         return False
+
+
+def _tell_the_starter(who, w):
+    """Write the file WINDOW_STOP_ENV names, when the process that started
+    this one named one: the lane reads it after the step, whatever status the
+    step ends with. Never raises -- the run is stopping either way."""
+    p = os.environ.get(WINDOW_STOP_ENV, "").strip()
+    if not p:
+        return
+    try:
+        s, e, what = w
+        Path(p).write_text(json.dumps({
+            "who": who, "pid": os.getpid(), "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "window": f"{s:%Y-%m-%dT%H:%M}Z to {e:%Y-%m-%dT%H:%M}Z"}, indent=1),
+            encoding="utf-8")
+    except (OSError, TypeError, ValueError):
+        pass
 
 
 # ---- the stand-down ---------------------------------------------------------

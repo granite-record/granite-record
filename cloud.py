@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.3
+# GRANITE_VERSION: 2026-09-25.4
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -665,9 +665,13 @@ def make_bucket(local_bucket, workers, quick=False):
 def home(root):
     """Whether root is the repository that holds secrets.json -- the one
     whose refusals are the real ones, and whose pull records a read of the
-    real bucket. A temp folder with a stand-down file in it is not."""
+    real bucket. A temp folder with a stand-down file in it is not, and
+    neither is a checkout with no secrets.json in it: keys.PATH names the
+    file beside keys.py whether it is there or not, so a worktree or a fresh
+    clone would otherwise count as home."""
     import keys
-    return Path(root).resolve() == Path(keys.PATH).resolve().parent
+    p = Path(keys.PATH)
+    return p.exists() and Path(root).resolve() == p.resolve().parent
 
 
 def open_bucket(a, preview=False):
@@ -1502,6 +1506,13 @@ def cmd_clear_refusal(a, root):
     night, and it outlives any machine. This moves it to replaced/, never
     deletes it, and records that it was cleared, so no state-up sends the same
     refusal back. Clearing it is a person's decision, after netcheck.py.
+
+    It exits 1 when the refusal it cleared had a newer one of this laptop's
+    waiting behind it -- one still in force, or one the unsent marker names:
+    the bucket then holds no refusal at all, and the night would ask the
+    address this laptop was refused by until send-refusal sends it. The
+    clearing stands; the status is so a person, or the morning triage, does
+    not read the run as the end of the matter.
     """
     kit = load_kit(root)
     entry = next((s for s in kit.get("state", []) if s["key"] == "refused.json"), None)
@@ -1551,6 +1562,20 @@ def cmd_clear_refusal(a, root):
         rec.setdefault("cleared", {})["refused.json"] = _sha(data)
     save_state_record(root, rec)
     about_here()
+    if data is not None and mine is not None and mine != data:
+        import refusal
+        m, t = _refusal_doc(mine), _refusal_doc(data)
+        newer = float(m.get("epoch") or 0) > float(t.get("epoch") or 0)
+        marker = local(root, UNSENT).exists()
+        if marker or (newer and refusal.hours_left(m) is not None):
+            raise Failed(f"the bucket's refusal ({_who(t)}) is lifted, and this machine's "
+                         f"({_who(m)}), which was waiting behind it"
+                         + (f" ({UNSENT} names it)" if marker else
+                            ", is newer and still in force")
+                         + ", is not in the bucket: GitHub's night would ask the address this "
+                           "machine was refused by. Send it: python3 cloud.py send-refusal "
+                           "(or python3 refusal.py --clear here, if a person has decided it "
+                           "is over)")
 
 
 def _refusal_entry(kit):
@@ -1904,6 +1929,27 @@ def write_whole(dst, data):
     os.replace(tmp, dst)
 
 
+def create_whole(dst, data):
+    """Bytes to a file that must not exist yet, whole or not at all.
+    FileExistsError, with nothing written, when one is there -- however late
+    it arrived. Written beside it first and hard-linked into place, so the
+    name appears only complete and only if it is free; where the disk cannot
+    make a hard link, an O_EXCL create, which is exclusive though not whole."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(dst.name + ".part")
+    tmp.write_bytes(data)
+    try:
+        os.link(tmp, dst)
+    except FileExistsError:
+        raise
+    except OSError:
+        fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0))
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def set_aside(root, rel, day):
     """This machine's copy of rel, kept under archive/cloud/set-aside/<day>/
     before pull puts the bucket's in its place. Returns where."""
@@ -1971,13 +2017,27 @@ def pull_refusal(bucket, root, kit, dry, day):
     of is a FAILURE while it stands -- the night would ask the address this
     laptop was refused by -- unless it is the one a person cleared from the
     bucket. The unsent marker is lifted only once the bucket holds the
-    refusal this laptop holds, or there is none here."""
+    refusal this laptop holds, or there is none here.
+
+    Where the laptop holds none, the bucket's is CREATED here, never written
+    over whatever is there by then (create_whole): a fetch's refusal.note()
+    can record one between the look above and the write, and replacing it
+    would lose the laptop's newest refusal. When one did arrive, the two are
+    compared as any two are."""
     import refusal
     entry = _refusal_entry(kit)
     here_p, marker = local(root, entry["path"]), local(root, UNSENT)
     theirs = bucket.get_bytes("state/refused.json")
     mine = here_p.read_bytes() if here_p.exists() else None
     lines, bad = [], []
+    if theirs is not None and mine is None and not dry:
+        try:
+            create_whole(here_p, theirs)
+        except FileExistsError:
+            mine = here_p.read_bytes()
+            lines.append(f"a refusal was recorded here ({_who(_refusal_doc(mine))}) while this "
+                         f"pull read the bucket's; it is not written over, and the two are "
+                         "compared")
     t = _refusal_doc(theirs) if theirs is not None else {}
     held = ("none" if theirs is None else
             {"where": t.get("where"), "at": t.get("at"), "sha256": _sha(theirs)})
@@ -2007,9 +2067,7 @@ def pull_refusal(bucket, root, kit, dry, day):
                          "never sees it: python3 cloud.py send-refusal sends it if it should "
                          "stop the night too, and python3 refusal.py --clear lifts it here")
     elif mine is None:
-        after = theirs
-        if not dry:
-            write_whole(here_p, theirs)
+        after = theirs                  # created here above, unless dry
         lines.append(f"THE BUCKET HOLDS A REFUSAL ({what}): "
                      f"{'it would go' if dry else 'it is now'} on file here too, as "
                      f"{entry['path']}. It is {refusal.force(t)}. Lifting it is a person's "

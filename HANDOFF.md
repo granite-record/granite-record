@@ -387,15 +387,20 @@ and three things now keep them and the night apart.
 starts from 06:00 to 11:30 UTC daily (the night starts 06:17 and may run four
 hours, and GitHub often starts a scheduled run late, so an hour is allowed for
 that) or from 04:00 UTC on Monday (the weekly, 04:17, two hours, then the
-night after it): 2:00 to 7:30 a.m. Eastern in summer, an hour earlier in
-winter. Nor does one start in the 30 minutes before the window opens
+night after it): 2:00 to 7:30 a.m. EDT in summer, 1:00 to 6:30 a.m. EST in
+winter, and on a Monday from midnight EDT, which in winter is 11:00 p.m. EST
+on the Sunday. Nor does one start in the 30 minutes before the window opens
 (`refusal.START_MARGIN_MINUTES`). `refusal.NIGHT_WINDOWS` is the one
 definition. `refusal.check()`, which every General Court fetcher calls after
 parsing its arguments (after an offline branch that asks nobody, such as
 `--parse` or `--reparse`), exits 4 inside the window and the half hour before
 it, with a sentence naming the window in Eastern time and when it ends;
 `watchers/gc_lane.py` stops before its next step the same way, daily steps
-included, and does not record a daily step that itself exited 4 as run; and
+included, and does not record a daily step that itself exited 4 as run while
+`refusal.gc_turn()` says it is GitHub's turn (a 4 that `gc_turn()` does not
+explain is the stand-down itself -- the script refuses here because GitHub
+runs that job -- so that step is recorded, the log says its line should come
+out of the queue, and the lane goes on); and
 `probe_db` stops a query of the SQL host in the window and the half hour
 before, at every one of its bridges (`run`, `run_to_file`, and `_bridge`
 under `run_to_file_counted` and `run_to_jsonl` -- preflight reads the source
@@ -408,7 +413,15 @@ next request if it asks `refusal.hold().still()` before each one, as the
 fetchers that hold `archive/.lock` do (legislation, the docket and calendar
 archives, the Senate calendars, leadership, sponsors by member, the
 snapshot); one that does not keeps asking, so a long one is best started
-after 7:30 a.m. The weak point is still GitHub itself: a night started more
+after 7:30 a.m. **A run the window stopped does not end as finished.** The
+hold remembers the stop: a `with refusal.hold()` block left normally, or by
+`sys.exit(0)`, exits 4 instead (the Senate calendars and sponsors by member
+used to return 0 from the loop that stopped), and a 2, a 3 or an exception
+passes unchanged. The lane names a file in `refusal.WINDOW_STOP_ENV` for
+each step (`logs/gc_lane.window-stop`), which the step's hold writes when the
+window stops it, so a step cut short is recorded in neither
+`logs/gc_lane.done` nor `logs/gc_lane.daily` whatever status it ended with
+-- 0, 1 and 3 included -- and the lane stops with 4. The weak point is still GitHub itself: a night started more
 than an hour late could still be asking after 11:30. `python3 refusal.py`
 prints the window and whether it is open.
 
@@ -475,8 +488,8 @@ laptop's record nor the bucket's, and the night would ask again:
 `fetch_committee_reports`, `fetch_journals`, `fetch_members`,
 `fetch_schedule`, `fetch_session`, `fetch_testimony`, `resolve_members`,
 `probe_archive`, `probe_archive_shape`, `probe_calendars` and `probe_legacy`
-(`fetch_committee_details` and `probe_schema`, which since 26 September check,
-record none either). Giving them `refusal.classify()` and `note()` is open
+(`fetch_committee_details`, `probe_schema` and `check_civics_links`, which
+since 26 September check, record none either). Giving them `refusal.classify()` and `note()` is open
 work, not done. If the bucket cannot be reached, `note()` says so loudly,
 still returns, and leaves `archive/cloud/refusal-unsent.json`; if the bucket
 already holds a different, older refusal, the laptop's newer one is not sent
@@ -490,8 +503,16 @@ laptop refusal the bucket holds none of fails the pull, naming send-refusal.
 the local one (and the unsent marker with it) and says so, and `python3
 cloud.py clear-refusal` lifts the bucket's -- and says when the laptop holds
 a refusal the bucket does not, which is the moment a waiting one needs
-`send-refusal`. Lifting only the local one brings the bucket's back at the
-next pull. Both are a person's decision, after `netcheck.py`.
+`send-refusal`; when the laptop's waited behind the one cleared (newer and
+still in force, or named by the unsent marker) it exits 1 as well, the
+clearing standing, because the bucket then holds no refusal and the night
+would ask. Lifting only the local one brings the bucket's back at the next
+pull. Both are a person's decision, after `netcheck.py`. Where the laptop
+holds none, pull CREATES the bucket's here (a hard link from a part file, or
+an exclusive create), never writing over one a fetch recorded while the pull
+was reading: finding one, it compares the two as it would any two.
+`cloud.home()` is the checkout that holds `secrets.json` -- it must be there,
+not only named by `keys.PATH` -- so a worktree or fresh clone never counts.
 
 `preflight`'s nightly check, on a stood-down laptop, reads the pulled logs and
 `archive/cloud/last-night.json` rather than this machine's own logs, which
@@ -505,7 +526,19 @@ data check fails when the last FULL pull is more than 48 hours old (the same
 that only runs `--changes-only` never brings the night's files down.
 `preflight` itself sets `GRANITE_NO_BUCKET`, under which `cloud.py` refuses the
 real bucket, so no check can send a made-up refusal to the night; the lane
-test passes it on to the lane it runs.
+test passes it on to the lane it runs. **And every check that starts a
+fetcher, the lane or the pipeline as a process seals it** (`_Seal` in
+preflight.py): a `sitecustomize.py` on the child's `PYTHONPATH` replaces
+`socket.socket.connect`/`connect_ex`/`sendto`, `socket.create_connection` and
+`socket.getaddrinfo` with a raiser that writes a sentinel file, the proxies
+point at a closed loopback port with `NO_PROXY` cleared, and it passes to
+every process the child starts. After each run the sentinel must be absent
+and the seal must have loaded. Sealed now: the offline-mode check (fetch_lsrs,
+fetch_members, fetch_session, probe_archive_shape, check_civics_links), the
+lane test and its steps, the bill-status fetch, the docket fetch through its
+wrapper, `build_all.py --local`, and every `livestreams.py` run. A check reads
+preflight.py itself for any bare start of one of these, so the next check
+that starts a fetcher without the seal fails.
 
 **Branches, since 26 September: `main` is what is live, `dev` is where work
 goes.** The nightly builds and publishes `main`, so a commit there reaches the
@@ -552,18 +585,28 @@ each finished line to `logs/gc_lane.done`.
 docket mixes database lines the narrator fails on with web lines; narrate it
 by hand. See `watchers/README.md`.
 
-A refusal stops the lane, and since 18 September it stops every fetcher holding
-a literal `gc.nh.gov` URL as well: each calls `refusal.check()` once its
-arguments are parsed, and `preflight` fails if one of them stops. Ten did not
-check until that morning, so anything written before it -- a note, a session
-summary, this paragraph in an older revision -- describes a wider gap than the
-one that is left. What is left is `fetch_committee_details.py`, which reads its
-addresses out of `committees.json` instead of carrying one, so it asks
-gc.nh.gov without the check seeing it -- and, since 26 September, without
-GitHub's night window or a refusal pulled from the bucket stopping it either,
-because both live in `refusal.check()`. Until it calls that, run it outside
-the window and after `python3 cloud.py pull --changes-only`. `python3
-netcheck.py` then `python3 refusal.py --clear` is a person's decision.
+A refusal stops the lane, and it stops every script here that asks the
+General Court's web server: each calls `refusal.check()` once its arguments
+are parsed (after an offline branch that asks nobody), and `preflight` reads
+each for an actual call -- an `ast.Call` of `refusal.check`, not the words in
+a comment -- and fails if one stops. As of 26 September those are the 28
+scripts `check_civics_links`, `fetch_archive_bills`, `fetch_archive_docket`,
+`fetch_archive_text`, `fetch_bill_status`, `fetch_bill_text`,
+`fetch_calendar_archive`, `fetch_committee_details`,
+`fetch_committee_reports`, `fetch_committees`, `fetch_journals`,
+`fetch_leadership`, `fetch_legislation`, `fetch_lsrs`, `fetch_members`,
+`fetch_rollcall_parties`, `fetch_schedule`, `fetch_senate_calendars`,
+`fetch_session`, `fetch_sponsors_by_member`, `fetch_testimony`,
+`probe_archive`, `probe_archive_shape`, `probe_calendars`, `probe_legacy`,
+`probe_schema`, `resolve_members` and `snapshot_gencourt`: every script
+holding a literal `gc.nh.gov` URL that makes a request (every `fetch_*.py`
+holding one), plus `fetch_committee_details`, whose addresses come from
+`committees.json`, and `check_civics_links`, whose come from `civics.py`
+(its `--list` asks nobody and is not stopped). `netcheck.py` is the one
+exception, by design: it diagnoses a refusal. The `fetch_*_db.py` scripts ask
+the SQL host, not the web server, and none of them calls it. No other script
+does either. `python3 netcheck.py` then `python3 refusal.py --clear` is a
+person's decision.
 
 **The HB/SB/CACR sweep of 1989-2024 is finished.** It ran on 19 September at
 the person's word -- `fetch_legislation.py --all --from 1989 --to 2024

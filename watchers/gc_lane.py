@@ -51,12 +51,24 @@ bucket's refusal record since the last window closed, which `python3 cloud.py
 pull --changes-only` does. A refusal the night met is in the bucket, not here,
 until that read brings it down. It stops rather than waits: a lane that
 outlived a night would need that read anyway, and reading the bucket is a
-person's command here, not the lane's. A daily step that itself exits 4 was
-held, not run: it is not recorded as today's, and the lane stops. A step
-already running when the window opens stops at its next request if it asks
+person's command here, not the lane's. A daily step that itself exits 4 while
+refusal.gc_turn() says it is GitHub's turn was held, not run: it is not
+recorded as today's, and the lane stops. One that exits 4 on a stood-down
+laptop when gc_turn() says nothing was stood down for good -- the script
+calls refusal.stand_down(), because GitHub runs that job now -- so it is
+recorded as run, the log says the line should come out of the queue, and the
+lane goes on. A step already
+running when the window opens stops at its next request if it asks
 refusal.hold().still() before each one, as the lane's fetchers do; one that
 does not is not stopped, so a long one is best queued after the window
 closes.
+
+A STEP THE WINDOW CUT SHORT IS NOT DONE. It can end 0 (a fetch whose loop
+stops early and returns 0), 1 or 3 as easily as 4, so the lane does not read
+its status for this: each step is started with refusal.WINDOW_STOP_ENV naming
+WINDOW_STOP, which the step's hold writes when the window stops it. A step
+that wrote it is recorded in neither logs/gc_lane.done nor
+logs/gc_lane.daily, whatever it exited, and the lane stops with 4.
 
 DAILY STEPS
 
@@ -112,6 +124,7 @@ DONE = LOGS / "gc_lane.done"
 DAILY = LOGS / "gc_lane.daily"
 LOG = LOGS / "gc_lane.log"
 STOP = ROOT / "watchers" / "gc_lane.stop"
+WINDOW_STOP = LOGS / "gc_lane.window-stop"   # a step's hold writes it (above)
 IDLE_HOURS = 12          # an empty queue for this long ends the lane
 HEARTBEAT = 60           # seconds between touches of the lock
 DAILY_RE = re.compile(r"^daily\s+([01]\d|2[0-3]):([0-5]\d)\s+(\S.*)$")
@@ -241,33 +254,56 @@ def slug(step):
 def run_child(args, log):
     """One step as a child of this lane, logged to its own file.
 
-    (status, minutes, its last three lines). Unbuffered, so the step's log
-    shows where it has got to: a child writing to a file buffers otherwise,
-    and a fetch that prints its first line after a hundred requests looks
-    exactly like a hang.
+    (status, minutes, its last three lines, what its hold wrote in
+    WINDOW_STOP when GitHub's night window stopped it, or ""). Unbuffered, so
+    the step's log shows where it has got to: a child writing to a file
+    buffers otherwise, and a fetch that prints its first line after a
+    hundred requests looks exactly like a hang.
     """
+    WINDOW_STOP.unlink(missing_ok=True)
     t0 = time.time()
     with log.open("w", encoding="utf-8") as fh:
         rc = subprocess.call([sys.executable, *args], cwd=str(ROOT),
                              stdout=fh, stderr=subprocess.STDOUT,
-                             env={**os.environ, "PYTHONUNBUFFERED": "1"})
+                             env={**os.environ, "PYTHONUNBUFFERED": "1",
+                                  refusal.WINDOW_STOP_ENV: str(WINDOW_STOP)})
     tail = [ln for ln in log.read_text(encoding="utf-8", errors="replace").splitlines()
             if ln.strip()][-3:]
-    return rc, (time.time() - t0) / 60, tail
+    cut = ""
+    if WINDOW_STOP.exists():
+        try:
+            cut = WINDOW_STOP.read_text(encoding="utf-8", errors="replace").strip() or "(empty)"
+        except OSError:
+            cut = "(unreadable)"
+        WINDOW_STOP.unlink(missing_ok=True)
+    return rc, (time.time() - t0) / 60, tail, cut
+
+
+def cut_short(n, rc, cut, tail, daily=False):
+    """Say why a step GitHub's night window stopped is not recorded."""
+    say(f"step {n}{' (daily)' if daily else ''} exited {rc}, but GitHub's night window "
+        f"stopped it before it finished ({' '.join(cut.split())[:200]}): not recorded as "
+        + ("run today" if daily else "done") + ", and the lane stops (exit "
+        f"{refusal.STOOD_DOWN}, the stand-down's). Last lines: " + " | ".join(tail)[:400])
 
 
 def run_daily(due, n):
     """Today's due daily steps, in order. Returns (the step count reached,
     whether the lane must stop now for GitHub's turn).
 
-    Each is recorded when it finishes, whatever its status -- except one that
-    exited refusal.STOOD_DOWN, which did not run: it was held for GitHub's
-    night, and recording it would lose that day's step for good (its files
-    are live views). The lane stops there, as it does when githubs_turn()
-    holds a step before it starts, which it asks before EACH daily step: a
-    day's steps can run long enough for the window to come round. One that
-    fails ends the day's daily steps: those after it read what it should have
-    made.
+    Each is recorded when it finishes, whatever its status -- except one
+    GitHub's night window cut short (run_child's WINDOW_STOP), whatever it
+    exited, and one that exited refusal.STOOD_DOWN while refusal.gc_turn()
+    says it is GitHub's turn: neither ran to the end, and recording it would
+    lose that day's step for good (its files are live views). The lane stops
+    there, as it does when githubs_turn() holds a step before it starts,
+    which it asks before EACH daily step: a day's steps can run long enough
+    for the window to come round. On a stood-down laptop a 4 that gc_turn()
+    does not explain is the stand-down itself (refusal.stand_down: GitHub
+    runs that job now), which
+    no wait will change: it is recorded, the log says the line should come
+    out of the queue, and the day's steps go on. One that fails ends the
+    day's daily steps: those after it read what it should have made.
     """
     today = time.strftime("%Y-%m-%d")
     for i, (step, line) in enumerate(due):
@@ -277,12 +313,28 @@ def run_daily(due, n):
         n += 1
         log = LOGS / f"gc_{time.strftime('%m%d_%H%M')}_{slug(' '.join(args))}.log"
         say(f"step {n} (daily, {line.split()[1]}): python3 {' '.join(args)}  -> {log.name}")
-        rc, mins, tail = run_child(args, log)
-        if rc == refusal.STOOD_DOWN:
-            say(f"step {n} (daily) exited {rc}, the stand-down's: held for GitHub's turn, so "
-                "not recorded as run today, and the lane stops here rather than ask it again "
-                "at every boundary. Last lines: " + " | ".join(tail)[:400])
+        rc, mins, tail, cut = run_child(args, log)
+        if cut:
+            cut_short(n, rc, cut, tail, daily=True)
             return n, True
+        # On a laptop that has not stood down a 4 is no stand-down, and is
+        # read as any other failure below.
+        if rc == refusal.STOOD_DOWN and refusal.stood_down() is not None:
+            turn = refusal.gc_turn()
+            if turn:
+                say(f"step {n} (daily) exited {rc}, the stand-down's: held for GitHub's turn "
+                    f"({turn[0]}), so not recorded as run today, and the lane stops here "
+                    "rather than ask it again at every boundary. Last lines: "
+                    + " | ".join(tail)[:400])
+                return n, True
+            with DAILY.open("a", encoding="utf-8") as fh:
+                fh.write(f"{today}\t{line}\n")
+            say(f"step {n} (daily) exited {rc}, the stand-down's, and it is not GitHub's turn "
+                "now, so this is the stand-down itself: this machine has handed that job to "
+                "GitHub, and it will not run here on any day. Recorded as run today so it is "
+                f"not asked again, and the lane goes on. The line should come out of "
+                f"watchers/{QUEUE.name}: {line}. Last lines: " + " | ".join(tail)[:400])
+            continue
         with DAILY.open("a", encoding="utf-8") as fh:
             fh.write(f"{today}\t{line}\n")
         if rc == 0:
@@ -382,13 +434,16 @@ def main():
                 + f"  -> {log.name}")
             if handover:
                 lock.release()
-            rc, mins, tail = run_child(args, log)
+            rc, mins, tail, cut = run_child(args, log)
             if handover:
                 if LOCK.exists():
                     say("the handed-over step left archive/.lock behind. "
                         "Stopping rather than guessing whose it is.")
                     return 4
                 lock.take()
+            if cut:
+                cut_short(n, rc, cut, tail)
+                return refusal.STOOD_DOWN
             if rc != 0:
                 say(f"step {n} ended with status {rc} after {mins:.0f} min. "
                     f"That is the address saying no or the run breaking, and "
