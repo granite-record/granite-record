@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.125
+// GRANITE_VERSION: 2026-09-07.126
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2296,12 +2296,18 @@ function renderReports(b,d,rsa){
         <p class="repby">${esc(e.author)}</p>
         ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
           esc(e.amendment)}.</p>`:""}
+        ${/* Where the House Calendar printed another bill's report under
+             this heading (report_check.py), the page says so: the text
+             below is then the committee's filed copy, or there is none. */
+          e.note?`<p class="note" style="margin:0 0 7px">${esc(e.note)}</p>`:""}
         ${(e.text||"").trim()
           ? `<p style="font-family:var(--serif);font-size:16px;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>`
           // 350 of the Senate's 1,446 reports carry no reasoning at all. That
           // is a fact about the report, not a gap in the site, and saying so
-          // is better than an empty space under a heading.
-          : `<p class="note" style="margin:0">This report records the
+          // is better than an empty space under a heading. Not where a note
+          // above has said why there is none: that report did give reasons,
+          // and they are not the ones the calendar printed.
+          : e.note?"":`<p class="note" style="margin:0">This report records the
              recommendation and the vote, and gives no reasoning.</p>`}
         </div>`;}).join("");
     return between(r.date)+rep(head(r,cmte,r.body==="S"?"Senate":"House"),

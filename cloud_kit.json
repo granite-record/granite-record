@@ -24,10 +24,11 @@
       "globs": ["Docket_*.txt"]
     },
     {
-      "what": "The database views the build reads, of the 31 in the dump.",
+      "what": "The database views the build reads, of the 31 in the dump, and of the six Past* views the one report_check.py reads: the House committee reports of 2016-2024 as the committees filed them.",
       "owner": "laptop",
       "paths": ["db/Docket.psv", "db/Legislation.psv", "db/LegislationText.psv", "db/DocumentVersion.psv",
-                "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json"]
+                "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json",
+                "db/past/PastCommitteeReports.jsonl"]
     },
     {
       "what": "The General Court's sponsor record for past terms, with the view that guards its join and the manifest that gives both their column order (fetch_past_db.py), and the legislators table that turns its employee numbers into the site's members (fetch_archive_db.py): past_sponsors.py reads all four, and 2023-2024's sponsor lists come from them.",

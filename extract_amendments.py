@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.7
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -46,6 +46,7 @@ here. An amendment nobody cites is still recorded; it simply goes unused.
 """
 
 import argparse
+import difflib
 import json
 import narrative
 import re
@@ -54,7 +55,16 @@ from collections import Counter
 from pathlib import Path
 
 # "2025-3111h)" -- the marker that opens an amendment in the calendar.
-OPEN_RE = re.compile(r"\b(?P<num>\d{4}-\d{3,4}[a-z]?)\s*\)")
+#
+# AND "2023- 0533h)", which is how pdftotext gives 153 of them: 111 printings
+# in the 2023 calendars, 29 in 2024, 12 in 2025 and one in 2015 carry a space
+# after the hyphen. A marker this could not see was no boundary at all, so
+# the amendment before it ran on through the next one and the one after:
+# 2023-0471h, on HB 610, published 80,199 characters that held HB 614's and
+# HB 639's amendments, where the General Court's own copy is 947. The number
+# is put back together without the space, which is how the docket cites it.
+# (The database's copy of 2023-0471h is 978 characters.)
+OPEN_RE = re.compile(r"\b(?P<year>\d{4})-[ \t]?(?P<seq>\d{3,4}[a-z]?)\s*\)")
 
 # "Proposed by Rep. Brown", and also "Proposed by the Committee on Health,
 # Human Services and Elderly Affairs-c". A committee proposes more amendments
@@ -156,6 +166,67 @@ NEXT_HEADING = re.compile(
     r"\s*(?:Floor\s+)?Amendment\s+to\s+(?:SS)?(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)"
     r"\s*\d+(?:-[A-Z]+)*\s*\(\s*$", re.I)
 
+# WHERE AN AMENDMENT ENDS, whether or not the next number could be read.
+#
+# The next amendment's heading is a line of its own -- "Amendment to HB
+# 614-FN", centred -- with its number in brackets on that line or within the
+# next few, or "Proposed by" under it where the number is printed elsewhere:
+#
+#                          Amendment to HB 614-FN
+#                                (2023- 0533h)
+#          Proposed by the Committee on Health, Human Services ... - r
+#
+# So a boundary is that LINE, with a number or a proposer after it. Not the
+# phrase: an amendment may name another bill's amendment in a sentence, and a
+# sentence can wrap so that the words open a line, and cutting at them would
+# end the amendment there. A heading line followed by the next amendment's
+# number or proposer is the calendar's layout and nothing a drafter writes.
+#
+# It is looked for only AFTER the amendment's own drafting begins. The 2016
+# calendars print an amendment's heading twice, the second time under the
+# proposer and straight above "Amend RSA ...", and that one is its own.
+_BILL = r"(?:SS)?(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)[ \t]*\d+[a-z]?(?:-[A-Z]+)*"
+_NUM = r"\([ \t]*\d{4}[ \t]*-[ \t]*\d{3,4}[a-z]?[ \t]*\)"
+#
+# The heading line can carry a few stray words from the other column --
+# "Amendment to HB 197                    such", "Amendment to HB 1690-FN
+# Cocktail" -- and those are allowed, because the number or the proposer
+# under it is what makes it a heading, not the line being empty after it.
+HEADING = re.compile(
+    rf"^[ \t\f]*(?:Floor[ \t]+)?Amendment[ \t]+to[ \t]+{_BILL}[ \t]*"
+    rf"(?:{_NUM}[ \t\r]*$"
+    rf"|(?:[ \t]+[^\n(]{{1,45}}?)?[ \t\r]*$"
+    rf"(?=(?:\n[^\n]*){{0,3}}?\n[ \t\f]*(?:{_NUM}|Proposed[ \t]+by\b)))",
+    re.M | re.I)
+
+# And where the calendar goes back to its own business. The last amendment in
+# a calendar runs to whatever follows it, which is not another amendment: HR 15
+# of 2022's 2022-0131h published 5,775 characters, where the General Court's
+# own copy is about 550, and the rest was the next session day's parking and
+# health screening. These headings are printed in
+# capitals on a line of their own and were checked against every archived
+# bill's text, 30,391 of them, where none of them occurs.
+#
+# NOTICE alone does occur in bills -- the homestead notice RSA 529:20-a
+# requires is headed with it, and so is 2011 HB 529's methamphetamine warning
+# -- so it ends an amendment only where the calendar's own notice follows it:
+# the Clerk's office selling the Permanent Journals, or an annual ceremony.
+CALENDAR_BUSINESS = re.compile(
+    r"^[ \t\f]*(?:"
+    r"SESSION[ \t]+DAY[ \t]+LOGISTICS\b"
+    r"|(?:COMMITTEE[ \t]+MEETINGS|OFFICIAL[ \t]+NOTICES|REVISED[ \t]+FISCAL[ \t]+NOTES"
+    r"|LAID[ \t]+ON[ \t]+TABLE|HEALTH[ \t]+SELF-SCREENING)[ \t\r]*$"
+    r"|NOTICE[ \t\r]*\n\s*(?:The[ \t]+House[ \t]+Clerk|The[ \t]+\d+(?:st|nd|rd|th)[ \t]+Annual\b)"
+    r")", re.M)
+
+
+def end_of(body, start):
+    """Where the amendment in `body` stops: the next heading, or the calendar's
+    own business, whichever comes first after `start`; else the end."""
+    ends = [m.start() for m in (HEADING.search(body, start),
+                                CALENDAR_BUSINESS.search(body, start)) if m]
+    return min(ends) if ends else len(body)
+
 
 def clean(text):
     """Join the lines back into prose without the page furniture."""
@@ -166,15 +237,88 @@ def clean(text):
     return NEXT_HEADING.sub("", joined).rstrip()
 
 
+# THE BILL THE CALENDAR PRINTED IT UNDER. "Amendment to HB 614-FN" stands on
+# the line above the number, with at most a stray word or two from the other
+# column between them. The docket says which bill cites a number; this says
+# which bill the calendar printed that number's text for, and where the two
+# disagree the text is not the cited bill's -- build_site_v2.bill_amendments
+# leaves it off. Only a heading within three lines of the number counts: one
+# further up belongs to the amendment before it.
+HEAD_BEFORE = re.compile(rf"(?:Floor[ \t]+)?Amendment[ \t]+to[ \t]+(?P<bill>{_BILL})", re.I)
+
+
+def plain_bill(s):
+    """'HB 614-FN' -> 'HB614', 'SSHB 1' -> 'HB1': what a bill page is keyed on,
+    near enough to compare -- a Senate substitute amends the bill it
+    substitutes for."""
+    m = re.match(r"(?:SS)?([A-Z]+)[ \t]*0*(\d+)", (s or "").upper().strip())
+    return f"{m.group(1)}{int(m.group(2))}" if m else ""
+
+
+def heading_of(text, pos):
+    """The bill in the heading printed just above the marker at `pos`, or ''."""
+    before = text[max(0, pos - 300):pos]
+    last = None
+    for last in HEAD_BEFORE.finditer(before):
+        pass
+    if not last or before.count("\n", last.end()) > 3:
+        return ""
+    return plain_bill(last.group("bill"))
+
+
+# WHICH PRINTING OF A NUMBER IS ITS TEXT. The same amendment is reprinted in
+# later calendars, and a printing cut short by a page break is shorter than
+# the rest, so the longest printing was kept. But a longer printing is not
+# always the same amendment: House Calendar 52 of 2017 prints 2017-2453h, the
+# Labor committee's amendment to HB 407, and House Calendar 11 of 2018 printed
+# the Finance committee's under that number, which HB 407's page then showed.
+# So the earliest printing stands, and a later one replaces it only where it
+# is longer AND opens with the earlier one's opening words -- the earlier one
+# was cut short, not a different amendment.
+#
+# Opens with them near enough, not character for character: House Calendar 15
+# of 2016 prints 2016-0539h's "189:18 Patriotic Exercises" as ":18", and
+# Calendar 19 prints it whole. And not merely somewhere in it: both of
+# 2017-2453h's texts open "Amend the bill by replacing all after the enacting
+# clause with the following", as most amendments do, and the Finance
+# committee's goes on to amend RSA 281-A:23 too, further down.
+OPENING = 40         # words
+SAME_OPENING = 0.9   # of them, in order, at the start of the longer printing
+
+
+def _words(text):
+    return re.findall(r"[a-z0-9]+", (text or "").lower())
+
+
+def replaces(kept, later):
+    """True where `later`, a later printing of the same number, is the fuller
+    copy of `kept` rather than another amendment printed under its number."""
+    if len(later["text"]) <= len(kept["text"]):
+        return False
+    head = _words(kept["text"])[:OPENING]
+    if not head:
+        return False
+    theirs = _words(later["text"])[:OPENING + 10]
+    same = sum(b.size for b in difflib.SequenceMatcher(
+        None, head, theirs, autojunk=False).get_matching_blocks())
+    return same >= SAME_OPENING * len(head)
+
+
 def amendments_in(text, source):
     """Every amendment printed in one calendar, from marker to next marker."""
-    marks = [(m.start(), m.group("num"), m.end()) for m in OPEN_RE.finditer(text)]
+    marks = [(m.start(), f"{m.group('year')}-{m.group('seq')}", m.end())
+             for m in OPEN_RE.finditer(text)]
     out = {}
     for i, (pos, num, after) in enumerate(marks):
         end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
         body = text[after:end]
-        if not DRAFTING.search(body[:600]):
+        drafting = DRAFTING.search(body[:600])
+        if not drafting:
             continue                      # a reference, not the amendment
+        # Read a little past the next marker, so a heading whose number that
+        # marker is still has its number to be recognised by.
+        window = text[after:end + 400]
+        body = body[:end_of(window, drafting.start())]
         pm = PROPOSER_RE.search(body[:300])
         who = re.sub(r"\s+", " ", pm.group("who")).strip(" .,") if pm else ""
         if pm:
@@ -182,12 +326,11 @@ def amendments_in(text, source):
         body = clean(body)
         if len(body) < 80:
             continue
+        rec = {"text": body, "proposed_by": who, "source": source,
+               "chars": len(body), "heading": heading_of(text, pos)}
         prev = out.get(num)
-        # The same amendment is reprinted in later calendars. Keep the fullest
-        # copy: a truncated one is a page break, not a shorter amendment.
-        if not prev or len(body) > len(prev["text"]):
-            out[num] = {"text": body, "proposed_by": who, "source": source,
-                        "chars": len(body)}
+        if not prev or replaces(prev, rec):
+            out[num] = rec
     return out
 
 
@@ -237,8 +380,9 @@ def main():
             continue
         got = amendments_in(repair_hyphens(text), f.name)
         per_file[f.name] = len(got)
+        # The calendars in order, so the first printing met is the earliest.
         for num, rec in got.items():
-            if num not in found or rec["chars"] > found[num]["chars"]:
+            if num not in found or replaces(found[num], rec):
                 found[num] = rec
 
     print(f"{len(found):,} amendments with their text")

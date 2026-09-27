@@ -70,6 +70,9 @@ bill_text.json
 # disk, rebuilt by archive_text.py in a couple of minutes.
 archive_text.json
 amendments.json
+# Which House committee reports the calendar printed under another bill,
+# rebuilt whole by report_check.py on every build.
+report_corrections.json
 # One per term now: build_manifest.py writes verification_manifest.csv for
 # the current term and verification_manifest_<term>.csv for each archived
 # one, and build_proceedings.py reads them all. Named individually, the
