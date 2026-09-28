@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.273
+# GRANITE_VERSION: 2026-09-04.274
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23576,14 +23576,15 @@ def _nightly_runner(NI):
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
-    calls, size, empty = [], {"bills": 100}, {"rc": 0}
+    calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0}
 
     def fake(args, label, cwd=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         NI.say("  a line the step printed", echo=False)
         name = Path(args[0]).name
-        if name == "snapshot_gencourt.py" and empty["rc"]:
+        if name == "snapshot_gencourt.py" and (empty["rc"] or empty["left"]):
+            empty["left"] = max(0, empty["left"] - 1)
             # 27 September's first scheduled night: thirteen of the fourteen
             # files 3 bytes long, and the manifest saying so.
             day = Path(args[args.index("--dir") + 1]) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
@@ -23591,8 +23592,8 @@ def _nightly_runner(NI):
             man = {f"F{i}.txt": {"error": "failed: not a data file (3 bytes)"} for i in range(13)}
             man["Members.txt"] = {"sha256": "0" * 64, "bytes": 90000}
             (day / "manifest.json").write_text(json.dumps(man), encoding="utf-8")
-            NI.say(f"  (0s, exit {empty['rc']})")
-            return empty["rc"]
+            NI.say("  (0s, exit 1)")
+            return 1
         if name == "build_all.py":
             _runner_site(size["bills"])
         elif name == "fetch_archive_db.py":
@@ -23772,7 +23773,7 @@ def _nightly_runner(NI):
         empty["rc"] = 0
         v = verdict()
         assert code == 1 and v["fetch"] == "empty: 13 of 14 files came back with no data in them" \
-            and not v["built"], v
+            and v["fetch_tries"] == NI.EMPTY_TRIES and not v["built"], v
         os.environ["GITHUB_ACTIONS"] = "true"
         try:
             code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
@@ -23781,9 +23782,23 @@ def _nightly_runner(NI):
         notes = [ln for ln in out.splitlines() if ln.startswith("::")]
         assert code == 1 and notes == [
             "::error title=Why the night failed::13 of the General Court's 14 daily files "
-            "came back empty, so nothing was installed or built. Nothing was published."], notes
+            f"came back empty on each of {NI.EMPTY_TRIES} tries, {NI.EMPTY_WAIT} minutes apart, "
+            "so nothing was installed or built. Nothing was published."], notes
         code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
         assert code == 1 and "::" not in out, "a note for GitHub was printed off GitHub"
+
+        # And when they fill in -- empty on the first two tries, whole on the
+        # third -- the night waits half an hour each time rather than failing,
+        # installs the third try whole, and builds.
+        slept = []
+        NI.time = types.SimpleNamespace(sleep=slept.append, time=__import__("time").time)
+        empty["left"] = 2
+        code, _ = night("--runner", run_id="112")
+        v = verdict()
+        tries = [c for c in calls if c[0] == "snapshot_gencourt.py"]
+        assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == 3 \
+            and len(tries) == 3 and v["built"], (code, v.get("fetch"), v.get("fetch_tries"), len(tries))
+        assert slept.count(NI.EMPTY_WAIT * 60) == 2, f"the night waited {slept}"
 
         # And none of it is the laptop's.
         code, _ = night("--dry-run")

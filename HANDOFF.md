@@ -373,12 +373,18 @@ site each night on a Windows machine GitHub lends free to public repositories,
 and deploys production only after the person approves the `production`
 environment. `weekly.yml` takes the committee rosters, the members who have
 left and the study committees early on Monday. The nightly's schedule is on
-(08:17 UTC, 4:17 a.m. Eastern in summer and 3:17 in winter). It was 06:17
-until 27 September, when the first scheduled night got all 13 files under
-`dynamicdatadump/` as 3 bytes, an empty file's byte-order mark (the snapshot
-rightly installed none of them): the General Court evidently rewrites them
-around 2:00 to 2:30 a.m. Eastern; the laptop's snapshot at 2:04 a.m. on 20
-September had got two of them that way. The weekly's is still commented out,
+(08:17 UTC, 4:17 a.m. Eastern in summer and 3:17 in winter). The day's files
+under `dynamicdatadump/` are sometimes half written in the early morning, and
+the snapshot rightly installs none of a set with any empty: all 13 came back 3
+bytes long (an empty file's byte-order mark) at 2:33 a.m. EDT on 27 September,
+and eight of them at 4:42 a.m. on the 28th, after the start had moved from
+06:17 to 08:17 UTC on the guess that a 2 a.m. rewrite was the cause. The
+laptop's snapshots had met it once (two files, 2:04 a.m. on 20 September) and
+got whole files at 2:32 and 3:45 on other nights and at every run after 7 a.m.
+So since 28 September the night asks again rather than failing: a snapshot
+with empty files and nothing else wrong runs again, whole, every 30 minutes,
+up to six tries (`nightly.EMPTY_TRIES`), and the run's page says on which try
+the files arrived, or leads with a sentence saying why the night stopped. The weekly's is still commented out,
 because its swap of `committees.json` would have dropped the clerk and the
 purpose; `fetch_committee_details.py` now writes those to their own
 `committee_details.json`, a laptop file in the kit that `build_committees.py`

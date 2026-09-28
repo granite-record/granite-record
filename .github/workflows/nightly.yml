@@ -15,10 +15,13 @@
 # keeps away from the top of the hour, when scheduled runs start late or are
 # dropped. It was 06:17 until 27 September 2026, when the first scheduled
 # night, at 2:17 a.m. EDT, got all 13 files under dynamicdatadump/ as 3 bytes
-# (an empty file's byte-order mark) -- the laptop's snapshot at 2:04 a.m. on
-# 20 September had got two of them so -- because the General Court evidently
-# rewrites them around 2:00 to 2:30 a.m. Eastern. refusal.NIGHT_WINDOWS, which
-# keeps the laptop's fetches clear of the night, moves with the cron line.
+# (an empty file's byte-order mark), and the move to 08:17 was made on the
+# guess that the General Court rewrites them around 2 a.m. The next night, at
+# 4:42 a.m. EDT, got eight of them empty, so no hour is safe on the evidence:
+# the files are sometimes half written in the early morning. The night asks
+# again instead -- every 30 minutes, up to six tries (nightly.EMPTY_TRIES) --
+# which is why the night's job allows 300 minutes. refusal.NIGHT_WINDOWS,
+# which keeps the laptop's fetches clear of the night, moves with the cron line.
 #
 # By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
 # its three boxes say; a scheduled night fetches, deploys a preview, and asks
@@ -70,7 +73,7 @@ jobs:
   night:
     name: the night
     runs-on: windows-2022
-    timeout-minutes: 240
+    timeout-minutes: 300
     # The preview's Pages token can live in this environment rather than in the
     # repository's secrets; see the operator checklist.
     environment:

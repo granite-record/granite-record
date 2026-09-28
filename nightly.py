@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -509,8 +509,20 @@ def main():
             else:
                 try:
                     with refusal.hold("nightly"):
-                        rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."],
-                                 "the day's bulk files")
+                        for tries in range(1, EMPTY_TRIES + 1):
+                            rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."],
+                                     "the day's bulk files"
+                                     + (f", try {tries} of {EMPTY_TRIES}" if tries > 1 else ""))
+                            got = fetch_status(rc, a.archive)
+                            if (not a.runner or not got.startswith("empty")
+                                    or tries == EMPTY_TRIES or refusal.MARK.exists()):
+                                break
+                            say(f"\n  {got}: the General Court's files are sometimes half "
+                                f"written in the early morning. Asking again in {EMPTY_WAIT} "
+                                f"minutes (try {tries + 1} of {EMPTY_TRIES}).")
+                            time.sleep(EMPTY_WAIT * 60)
+                        if night:
+                            night.v["fetch_tries"] = tries
                         # On GitHub's machine the study committees' meetings
                         # come with the day's files, under the same lock: the
                         # calendar shows them, and nothing else refreshes them.
@@ -795,9 +807,12 @@ def plain_why(v, weekly=False):
         # 3 bytes long, at 06:33 on 27 September thirteen.
         m = re.search(r"(\d+) of (\d+)", fetch)
         some = m and m.group(1) != m.group(2)
+        tries = int(v.get("fetch_tries") or 1)
         why = ((f"{m.group(1)} of the General Court's {m.group(2)} daily files"
                 if some else "The General Court's daily files")
-               + " came back empty, so nothing was installed or built.")
+               + " came back empty"
+               + (f" on each of {tries} tries, {EMPTY_WAIT} minutes apart" if tries > 1 else "")
+               + ", so nothing was installed or built.")
     elif fetch.startswith("deferred"):
         why = ("The day's files were not asked for: a refusal on file or another "
                "fetch was in the way.")
@@ -817,6 +832,22 @@ def plain_why(v, weekly=False):
     else:
         why = "The night stopped before it recorded what it did."
     return why + " Nothing was published."
+
+
+# THE DAY'S FILES ARE SOMETIMES HALF WRITTEN IN THE EARLY MORNING (28 September
+# 2026). The first two scheduled nights on GitHub failed on them: at 06:33 UTC
+# on the 27th all thirteen under dynamicdatadump/ came back 3 bytes long, and
+# at 08:42 UTC on the 28th eight of them, in no order a rewrite in progress
+# would leave. The laptop's snapshots had met it once, two files at 02:04 EDT on
+# 20 September, and got whole files at 02:32 and 03:45 on other nights and at
+# every run after 7 a.m. So no hour is safe on the evidence, and moving the
+# schedule from 06:17 to 08:17 UTC, on one night's evidence, did not fix it.
+# The night asks again instead: a snapshot that comes back with empty files
+# and nothing else wrong is run again, whole, every EMPTY_WAIT minutes, up to
+# EMPTY_TRIES times -- at most 84 requests over two and a half hours, each
+# try one complete pass, so the files installed are still all from one moment.
+EMPTY_TRIES = 6
+EMPTY_WAIT = 30         # minutes
 
 
 def fetch_status(rc, archive):
@@ -1161,9 +1192,12 @@ class Night:
             say(f"  - {w}")
         gh_output(built=bool(v.get("built")), publishable=bool(v.get("publishable")),
                   clean=bool(v["clean"]), day=self.day)
+        tries = int(v.get("fetch_tries") or 1)
         gh_summary([f"### Nightly {self.day}: {'clean' if v['clean'] else 'not clean'}",
                     f"- built: {'yes' if v.get('built') else 'no'}; for production: "
                     f"{'yes' if v.get('publishable') else 'no'}"]
+                   + ([f"- the day's files arrived whole on try {tries} of {EMPTY_TRIES}"]
+                      if tries > 1 and v.get("fetch") == "installed" else [])
                    + [f"- {w}" for w in why[:8]])
 
 

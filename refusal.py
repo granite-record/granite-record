@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.11
+# GRANITE_VERSION: 2026-09-09.12
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -489,12 +489,14 @@ def stand_down(who, instead=""):
 #
 # The one definition of when GitHub's machine may be asking the General Court,
 # in UTC because GitHub's cron has no time zone. The nightly starts at 08:17
-# and is allowed four hours, to 12:17; the window runs to 13:30 because GitHub
-# often starts a scheduled run late, and an hour's late start is allowed for.
-# It started at 06:17 until 27 September 2026, when the night met the General
-# Court rewriting its dynamicdatadump files, which it evidently does around
-# 2:00 to 2:30 a.m. Eastern (.github/workflows/nightly.yml has the evidence);
-# this moves with the workflow's cron line. The weekly starts at 04:17 on
+# and asks the General Court only in its first part: the day's files, and when
+# they come back empty the same again every half hour, up to six tries
+# (nightly.EMPTY_TRIES), so it has stopped asking by about 11:15 on the worst
+# night and 12:15 with an hour's late start. The window runs to 13:30 because
+# GitHub often starts a scheduled run late. It started at 06:17 until 27
+# September 2026, and moving it did not stop the night meeting half-written
+# files (.github/workflows/nightly.yml has the evidence); it moves with the
+# workflow's cron line. The weekly starts at 04:17 on
 # Monday and is allowed two hours, so a Monday has two windows, 04:00 to 06:30
 # and 08:00 to 13:30, and a fetch may start here between them, from 06:30 to
 # the half hour before the second. A start later than an hour past 08:17 is
