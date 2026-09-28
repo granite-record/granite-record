@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.2
+# GRANITE_VERSION: 2026-09-26.3
 """
 A House committee report printed under another bill, caught against the
 report the committee filed.
@@ -79,7 +79,9 @@ Dowling's name), 2013 HB 529 (Calendar 69, HB 456's over Rep. Williams's),
 2014 HB 1247 (Calendar 13, HB 1392's minority as a second one) and 2016 HB
 1497 (Calendar 14, HB 1652's over Rep. Cordelli's). Each was read in the
 calendar. The file as it stood before that re-read also has 2024 HB 463's
-phantom, which this drops.
+phantom, which this drops. And dropped by its heading: the record of 1999's
+SJR 1, on sulfur in gasoline, which the re-read put on 2000's SJR 1, another
+resolution of the same number (another_measure() says why only resolutions).
 
 WHAT IT WRITES
 
@@ -140,6 +142,8 @@ LEAST = 10           # runs a report must share with another bill's filed copy
 MOST_OWN = 0.2       # share of its runs a misprint may have with its own bill's
 CAL_LEAST = 25       # runs a report needs before the calendars can say whose it is
 CAL_WHY = "another bill's report in the calendars"
+# Resolutions are numbered again in a term's second year; bills are not.
+RESOLUTION = re.compile(r"^(?:CACR|HCR|SCR|HJR|SJR|HR|SR)\d")
 WORD = re.compile(r"[a-z0-9]+")
 # Words every title and report uses, which say nothing about whose report it is.
 GENERIC = frozenset("""
@@ -186,6 +190,37 @@ def bill_title(bills, term, bid):
 
 def named(text):
     return {f"{k.upper()}{int(n)}" for k, n in NAMES.findall(text or "")}
+
+
+def another_measure(bills, term, bid, rec):
+    """The year of the other resolution a calendar record is for, or "".
+
+    ANOTHER MEASURE OF THE SAME NUMBER (27 September 2026). Resolutions are
+    numbered again in the second year of a term, and the record keeps one of
+    each number a term: 1999-2000's SJR 1 is 2000's, on the White Mountain
+    National Forest, and House Calendar 59 of 1999 reports 1999's SJR 1,
+    "supporting the reduction of the sulfur content of gasoline". Once the
+    calendars were re-read with their SJR headings, that report sat on the
+    forest resolution's page. So a resolution's record printed in the other
+    year of its term, under a heading that shares no word with its title, is
+    the other measure's. A title an amendment replaced is left alone: it can
+    share no word with the heading it was reported under.
+
+    Bills are not tested. Their numbers are not used twice in a term, and the
+    same test would take 2019-2020 HB 496's own 2019 report, printed under the
+    title the Senate later replaced without marking it a new title."""
+    if not RESOLUTION.match(bid or ""):
+        return ""
+    b = (bills or {}).get(term, {}).get(bid) or {}
+    own = str(b.get("lsr_year") or "")
+    m = re.search(r",\s*((?:19|20)\d\d)\s*$", rec.get("source") or "")
+    if not own or not m or m.group(1) == own:
+        return ""
+    if re.match(r"^\s*\((?:\w+\s+)?new title\)", b.get("title") or "", re.I):
+        return ""
+    heading = title_words(rec.get("title"))
+    title = title_words(bill_title(bills, term, bid))
+    return m.group(1) if len(heading) >= 2 and title and not (heading & title) else ""
 
 
 def parse_filed(text, side=None):
@@ -387,6 +422,21 @@ def check(reports, filed, bills=None):
                         cal[x].add(b)
         for bid, recs in byb.items():
             for rec in recs:
+                year = another_measure(bills, term, bid, rec)
+                if year:
+                    # The whole record is the other measure's: its heading and
+                    # its recommendation as well as its reasoning.
+                    for e in rec.get("reports") or []:
+                        census["reports read"] += 1
+                        census["another measure of the same number"] += 1
+                        census["dropped"] += 1
+                        out[term][bid].append({
+                            "source": rec.get("source") or "", "side": e.get("side") or "",
+                            "author": e.get("author") or "",
+                            "opens": (e.get("text") or "")[:60], "belongs_to": bid,
+                            "found_by": f"{year}'s {kind_name(bid)}, by its heading",
+                            "action": "dropped"})
+                    continue
                 verdicts = []
                 for e in rec.get("reports") or []:
                     census["reports read"] += 1

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.271
+# GRANITE_VERSION: 2026-09-04.272
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20697,7 +20697,9 @@ def _offline_modes_ask_nobody():
     re-reading pages already saved was stopped too, for as long as a refusal
     stood or every night for five and a half hours. fetch_legislation.py's
     --parse was already below it. check_civics_links.py did not call it at
-    all until 26 September; its --list asks nobody.
+    all until 26 September; its --list asks nobody. fetch_committee_reports.py
+    --offline was a fifth, found on 27 September when the offline re-read of
+    every House calendar met the guard.
 
     Each is run in a temp folder holding a fresh refusal and a stand-down file,
     at a clock inside the window: the offline mode gets past the check, and
@@ -20712,10 +20714,11 @@ def _offline_modes_ask_nobody():
             ("fetch_session.py", ["--year", "2020", "--reparse", "--max-lsr", "3"],
              ["--year", "2020", "--max-lsr", "3"]),
             ("probe_archive_shape.py", ["--report"], []),
-            ("check_civics_links.py", ["--list"], ["--delay", "0"])]
+            ("check_civics_links.py", ["--list"], ["--delay", "0"]),
+            ("fetch_committee_reports.py", ["--year", "2020", "--offline"], ["--year", "2020"])]
     runs = [r for r in runs if (here / r[0]).exists()]
     if not runs:
-        return "skip", "none of the five scripts is here"
+        return "skip", "none of the six scripts is here"
     tmp = Path(tempfile.mkdtemp(prefix="gr-offline-"))
     seal = _Seal()
     try:
@@ -20762,7 +20765,7 @@ def _children_sealed():
         process starts it through the seal -- read from this file, so the
         next check that starts one bare fails here. Those that do now:
         _offline_modes_ask_nobody (fetch_lsrs, fetch_members, fetch_session,
-        probe_archive_shape, check_civics_links), _lane_daily (the lane and
+        probe_archive_shape, check_civics_links, fetch_committee_reports), _lane_daily (the lane and
         its steps), _fetch_writes_its_term (fetch_bill_status),
         _docket_fetch_stops (fetch_archive_docket, through its wrapper),
         _carried_outputs (build_all.py --local) and the livestreams checks
@@ -23573,13 +23576,23 @@ def _nightly_runner(NI):
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
-    calls, size = [], {"bills": 100}
+    calls, size, empty = [], {"bills": 100}, {"rc": 0}
 
     def fake(args, label, cwd=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         NI.say("  a line the step printed", echo=False)
         name = Path(args[0]).name
+        if name == "snapshot_gencourt.py" and empty["rc"]:
+            # 27 September's first scheduled night: thirteen of the fourteen
+            # files 3 bytes long, and the manifest saying so.
+            day = Path(args[args.index("--dir") + 1]) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
+            day.mkdir(parents=True, exist_ok=True)
+            man = {f"F{i}.txt": {"error": "failed: not a data file (3 bytes)"} for i in range(13)}
+            man["Members.txt"] = {"sha256": "0" * 64, "bytes": 90000}
+            (day / "manifest.json").write_text(json.dumps(man), encoding="utf-8")
+            NI.say(f"  (0s, exit {empty['rc']})")
+            return empty["rc"]
         if name == "build_all.py":
             _runner_site(size["bills"])
         elif name == "fetch_archive_db.py":
@@ -23749,6 +23762,28 @@ def _nightly_runner(NI):
                         "--outcome", "livestreams=failure", run_id="110")
         assert code == 1 and not verdict()["clean"], \
             "a failed step the night was allowed to carry on past left it CLEAN"
+
+        # The day's files came back empty -- 27 September's first scheduled
+        # night -- and the verdict says so rather than "did not complete"; the
+        # workflow's last word leads the run's page with one sentence written
+        # here, and prints none off GitHub.
+        empty["rc"] = 1
+        code, _ = night("--runner", run_id="111")
+        empty["rc"] = 0
+        v = verdict()
+        assert code == 1 and v["fetch"] == "empty: 13 of 14 files came back with no data in them" \
+            and not v["built"], v
+        os.environ["GITHUB_ACTIONS"] = "true"
+        try:
+            code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        notes = [ln for ln in out.splitlines() if ln.startswith("::")]
+        assert code == 1 and notes == [
+            "::error title=Why the night failed::The General Court's daily files came back "
+            "empty, so nothing was installed or built. Nothing was published."], notes
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
+        assert code == 1 and "::" not in out, "a note for GitHub was printed off GitHub"
 
         # And none of it is the laptop's.
         code, _ = night("--dry-run")
@@ -29126,6 +29161,98 @@ def _one_naming():
     assert not bad, (f"{len(bad)} of {len(recs)} members are named two ways: "
                      + "; ".join(bad[:3]))
     return "ok", f"{len(recs):,} members, one name each"
+
+
+@check("build", "a resolution's record printed under another resolution of its number is dropped")
+def _report_another_measure():
+    """Resolutions are numbered again in a term's second year, and the record
+    keeps one of each number a term, so House Calendar 59 of 1999's report on
+    1999's SJR 1 -- sulfur in gasoline -- sat on 2000's SJR 1, on the White
+    Mountain National Forest, once the calendars were re-read with their SJR
+    headings. report_check drops a resolution's record printed in the other
+    year of its term under a heading sharing no word with its title.
+
+    And what it must leave alone: the same resolution's own record; a title
+    an amendment replaced, which can share no word with the heading it was
+    reported under (2026's CACR 12); a resolution reported in its own year;
+    and every bill, whose numbers are not used twice in a term -- 2019-2020's
+    HB 496 was reported in 2019 under the title the Senate later replaced.
+    """
+    RC = imp("report_check")
+    assert RC is not None, "report_check.py will not import"
+
+    def rec(source, title, text):
+        return {"source": source, "title": title, "majority_recommendation": "OUGHT TO PASS",
+                "reports": [{"side": "Committee", "author": "Rep. Alex Example",
+                             "text": text, "vote_yeas": 16, "vote_nays": 0}]}
+    forest = ("concerning the status of the White Mountain National Forest within the "
+              "U.S. Forest Service's forest management plan.")
+    bills = {"1999-2000": {"SJR1": {"lsr_year": "2000", "title": forest},
+                           "HR5": {"lsr_year": "2000", "title": "honoring the Plymouth Bobcats."}},
+             "2025-2026": {"CACR12": {"lsr_year": "2025",
+                                      "title": "(New Title) the adoption of tax laws."}},
+             "2019-2020": {"HB496": {"lsr_year": "2020", "title": (
+                 "relative to the definition of antique snowmobiles, relative to water "
+                 "quality in public swimming pools.")}}}
+    reports = {"1999-2000": {
+        "SJR1": [rec("House Calendar 59, 1999",
+                     "supporting the reduction of the sulfur content of gasoline",
+                     "This resolution seeks to persuade Congress to cut the sulfur in gasoline."),
+                 rec("House Calendar 40, 2000", forest[:-1],
+                     "The forest plan should keep the forest open to its many uses.")],
+        "HR5": [rec("House Calendar 12, 2000", "congratulating a championship team",
+                    "The team won its title after an unbeaten season.")]},
+        "2025-2026": {"CACR12": [rec("House Calendar 19, 2026",
+                                     "relating to voting on broad-based taxes",
+                                     "A two-thirds vote for any new broad-based tax.")]},
+        "2019-2020": {"HB496": [rec("House Calendar 14, 2019",
+                                    "establishing a committee to identify the requirements "
+                                    "needed to commit a person",
+                                    "The committee found the study premature this year.")]}}
+    got, census = RC.check(reports, {}, bills)
+    flat = [(t, b, c["source"], c["action"], c["found_by"])
+            for t, bs in got.items() for b, cs in bs.items() for c in cs]
+    assert flat == [("1999-2000", "SJR1", "House Calendar 59, 1999", "dropped",
+                     "1999's SJR 1, by its heading")], flat
+    assert RC.apply(reports, got) == 1
+    left = [r["source"] for r in reports["1999-2000"]["SJR1"]]
+    assert left == ["House Calendar 40, 2000"], f"2000's SJR 1 kept {left}"
+    assert reports["2025-2026"]["CACR12"] and reports["2019-2020"]["HB496"] \
+        and reports["1999-2000"]["HR5"], "a record the test must leave alone was dropped"
+    return "ok", ("1999's SJR 1 comes off 2000's; a replaced title, a same-year "
+                  "resolution and a bill stay")
+
+
+@check("calendar", "a calendar printed for another term is left out of that year's reports")
+def _calendar_own_term():
+    """The General Court's 1999 list carries three 1998 calendars as well --
+    "1a", "2a" and "4a", whose mastheads read "Vol. 20 Concord N.H.
+    Wednesday, January 7, 1998 No. 1" and so on -- and read as 1999's, 155 of
+    their reports sat on the 1999-2000 bills sharing their numbers: 2000's HB
+    555 carried 1998's report on exempting pensions. The masthead's volume is
+    the calendar's year; a December calendar is already the next year's
+    volume, which is why the term is compared and not the year; and a
+    calendar that prints no masthead is read as before."""
+    import fetch_committee_reports as FCR
+    head = "House Calendar\n\n        "
+    cases = [
+        ("Vol. 20 Concord N.H. Wednesday, January 7, 1998 No. 1", 1999, 1998),
+        ("Vol. 20 Concord N.H. Wednesday, January 7, 1998 No. 1", 1998, None),
+        # December 1998, the new House's first calendar: 1999's volume.
+        ("Vol. 21 Concord N.H. Wednesday, December 2, 1998 No. 1", 1999, None),
+        # December 1999 filed under 2000: the same term.
+        ("Vol. 21 Concord N.H. Friday, December 31, 1999 No. 100", 2000, None),
+        ("Vol.37         Concord,N.H.           Friday,December5,2014    No.1", 2015, None),
+        ("Vol.37         Concord,N.H.           Friday,December5,2014    No.1", 2017, 2015),
+        ("HB 12, citing Vol. 3 of the annotations. OUGHT TO PASS.", 1999, None),
+        ("", 1999, None),
+    ]
+    for text, year, want in cases:
+        got = FCR.printed_for_another_term(head + text, year)
+        assert got == want, (f"{text[:48]!r} in {year}'s list was read as "
+                             f"{got or 'this term'}'s, not {want or 'this term'}'s")
+    return "ok", ("1998's calendar in 1999's list is left out; a December calendar, a "
+                  "later masthead's spacing and a page with none are read as before")
 
 
 @check("calendar", "a bill heading at the top of a page still starts a report")

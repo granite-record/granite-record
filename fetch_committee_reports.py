@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -313,6 +313,33 @@ def extract_text(pdf):
     except ImportError:
         sys.exit("No PDF text extractor. Install poppler (pdftotext) or "
                  "run: pip install pdfplumber")
+
+
+# THE CALENDAR'S OWN TERM (27 September 2026). The General Court's list for
+# 1999 carries three calendars of 1998 as well -- "1a", "2a" and "4a", whose
+# mastheads read "Vol. 20 Concord N.H. Wednesday, January 7, 1998 No. 1" and
+# so on -- and read as 1999's, their 155 reports sat on the 1999-2000 bills
+# that share their numbers: 2000's HB 555, on a child's representation,
+# carried 1998's report on exempting pensions. The 1998 list has its own copy
+# of each. The masthead's volume is the calendar's year -- Vol. 20 is 1998,
+# Vol. 47 is 2025 -- and a December calendar is already the next year's
+# volume, so the term is compared and not the year. Of the 1,579 calendars on
+# disk, 1,496 print a masthead of this form, 1,493 of them naming a volume of
+# their own list's term; the 83 that print none are read as before.
+MASTHEAD = re.compile(r"\bVol\.?\s*(\d{1,3})\s+Concord\b", re.I)
+
+
+def masthead_year(text):
+    """The year a calendar's masthead volume names, or None: Vol. 20 is 1998."""
+    m = MASTHEAD.search((text or "")[:6000])
+    return 1978 + int(m.group(1)) if m else None
+
+
+def printed_for_another_term(text, year):
+    """The masthead's year where it names a volume of a term other than
+    `year`'s, else None: such a calendar's reports are not this year's."""
+    own = masthead_year(text)
+    return own if own and P.term_of(str(own)) != P.term_of(str(year)) else None
 
 
 # The page's own list, rather than a guess at what the files are called.
@@ -660,7 +687,12 @@ def main():
     ap.add_argument("--out", default="committee_reports.json")
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
-    refusal.check("The committee reports fetch")
+    # Only the fetching mode asks the General Court. --offline, and --pdf with
+    # a file on this disk, read what is here, so a refusal on file or GitHub's
+    # night has nothing to stop in them -- and they were stopped all the same
+    # until 27 September, when the offline re-read of every calendar met it.
+    if not (a.offline or (a.pdf and Path(a.pdf).exists())):
+        refusal.check("The committee reports fetch")
 
     cache = Path(a.cache) / a.year
     cache.mkdir(parents=True, exist_ok=True)
@@ -734,6 +766,11 @@ def main():
     for num, path in targets:
         text, how = extract_text(path)
         methods.add(how)
+        own = printed_for_another_term(text, a.year)
+        if own:
+            print(f"  HC {num or path.name}: left out -- its masthead is volume "
+                  f"{own - 1978}, {own}'s, so its reports are {P.term_of(str(own))}'s")
+            continue
         got = parse_reports(text, f"House Calendar {num}, {a.year}" if num
                             else path.name, skipped, skipped_samples)
         for k, v in got.items():

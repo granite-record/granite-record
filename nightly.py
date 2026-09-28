@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -522,8 +522,7 @@ def main():
                     say(f"  the lock was taken by someone else first (exit {rc})")
                 installed = rc == 0
                 if night:
-                    night.v["fetch"] = {0: "installed", 2: "refused"}.get(
-                        rc, f"did not complete (exit {rc})")
+                    night.v["fetch"] = fetch_status(rc, a.archive)
                 if rc == 2:
                     say("\nREFUSED while fetching. Recorded; every fetch now waits "
                         "for a person.")
@@ -744,6 +743,87 @@ def gh_summary(lines):
         return
     with open(out, "a", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
+
+
+def gh_annotate(level, title, message):
+    """A note at the top of the run's page on GitHub, when there is one: the
+    first thing a person sees after "View workflow run" in GitHub's email.
+    Public, like the summary."""
+    if github("GITHUB_ACTIONS") != "true":
+        return
+
+    def esc(x, prop=False):
+        x = str(x).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        return x.replace(":", "%3A").replace(",", "%2C") if prop else x
+    print(f"::{level} title={esc(title, True)}::{esc(message)}", flush=True)
+
+
+# WHY A NIGHT STOPPED, IN ONE SENTENCE (27 September 2026). GitHub's email for
+# the first scheduled night listed two notes, both "Process completed with exit
+# code 1", and the person could not tell from it why the night had failed: the
+# day's files had come back empty. The verdict step now puts one sentence at
+# the top of the run's page. The page is public, so the sentence is one of
+# these, chosen by the verdict's own fields, and never a step's own words.
+STEP_WHY = {
+    "state-down": "the state files could not be brought down from the private bucket",
+    "kit-down": "the night's data could not be brought down from the private bucket",
+    "livestreams": "the livestream step failed",
+    "night": "the night's own step failed",
+    "preview": "the preview could not be deployed",
+    "pack": "the site could not be sent to the private bucket for the publish job",
+    "kit-up": "the night's data could not be sent back to the private bucket",
+}
+
+
+def plain_why(v, weekly=False):
+    """The one sentence a run's page leads with when it was not clean."""
+    failed = [k for k, r in (v.get("steps") or {}).items()
+              if r not in ("success", "skipped", "")]
+    step = next((STEP_WHY[k] for k in failed if k in STEP_WHY and k != "night"), "")
+    if weekly:
+        return ("The weekly job did not finish cleanly"
+                + (f": {step}." if step else "; its summary lists what fell short."))
+    fetch = str(v.get("fetch") or "")
+    if v.get("preflight") == "failed":
+        why = "The code checks failed, so nothing was fetched or built."
+    elif fetch == "refused":
+        why = ("The General Court refused a request. Nothing more was asked, and "
+               "every fetch waits until a person clears the refusal.")
+    elif fetch.startswith("empty"):
+        why = ("The General Court's daily files came back empty, so nothing was "
+               "installed or built.")
+    elif fetch.startswith("deferred"):
+        why = ("The day's files were not asked for: a refusal on file or another "
+               "fetch was in the way.")
+    elif fetch.startswith("did not complete"):
+        why = ("Not all of the General Court's daily files arrived, so nothing was "
+               "installed or built.")
+    elif v.get("build") and v["build"] != "passed":
+        why = "The build failed."
+    elif v.get("check_site") and v["check_site"] != "passed":
+        why = "The built site failed its checks."
+    elif step:
+        why = f"The night ran, but {step}."
+    elif v.get("blocking"):
+        why = "The site was built, but the night's checks kept it from production."
+    else:
+        why = "The night stopped before it recorded what it did."
+    return why + " Nothing was published."
+
+
+def fetch_status(rc, archive):
+    """The day's files as the verdict records them. A failed snapshot is told
+    apart by its own manifest: the first scheduled night, 27 September 2026,
+    met the General Court's daily files 3 bytes long, and its verdict said only
+    "did not complete (exit 1)"."""
+    if rc in (0, 2):
+        return {0: "installed", 2: "refused"}[rc]
+    man = load_json(Path(archive) / "snapshots" / f"{datetime.now():%Y-%m-%d}" / "manifest.json")
+    errs = [x["error"] for x in (man.values() if isinstance(man, dict) else [])
+            if isinstance(x, dict) and x.get("error")]
+    if errs and all("not a data file" in e for e in errs):
+        return f"empty: {len(errs)} of {len(man)} files came back with no data in them"
+    return f"did not complete (exit {rc})"
 
 
 def count_lines(path):
@@ -1171,6 +1251,8 @@ def close_verdict(a):
 
     Exit 1 when any step it is told of failed, so a step allowed to carry on
     past its own failure -- the livestreams -- still fails the night at the end.
+    A night that was not clean puts plain_why()'s sentence at the top of the
+    run's page on GitHub: an error when the job fails, a warning otherwise.
     """
     path = WEEKLY_VERDICT if a.weekly else VERDICT
     v = load_json(path)
@@ -1195,6 +1277,12 @@ def close_verdict(a):
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
           + ("" if v.get("clean") else " -- " + "; ".join(v.get("not_clean", [])[:4])))
+    if not v.get("clean"):
+        why = plain_why(v, a.weekly)
+        gh_annotate("error" if failed else "warning",
+                    f"Why the {'weekly job' if a.weekly else 'night'} "
+                    f"{'failed' if failed else 'was not clean'}", why)
+        gh_summary([f"**Why:** {why}"])
     return 1 if failed else 0
 
 
