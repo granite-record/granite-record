@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.272
+# GRANITE_VERSION: 2026-09-04.273
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23780,8 +23780,8 @@ def _nightly_runner(NI):
             os.environ.pop("GITHUB_ACTIONS", None)
         notes = [ln for ln in out.splitlines() if ln.startswith("::")]
         assert code == 1 and notes == [
-            "::error title=Why the night failed::The General Court's daily files came back "
-            "empty, so nothing was installed or built. Nothing was published."], notes
+            "::error title=Why the night failed::13 of the General Court's 14 daily files "
+            "came back empty, so nothing was installed or built. Nothing was published."], notes
         code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
         assert code == 1 and "::" not in out, "a note for GitHub was printed off GitHub"
 

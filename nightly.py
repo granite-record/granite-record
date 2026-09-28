@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -779,7 +779,8 @@ def plain_why(v, weekly=False):
     """The one sentence a run's page leads with when it was not clean."""
     failed = [k for k, r in (v.get("steps") or {}).items()
               if r not in ("success", "skipped", "")]
-    step = next((STEP_WHY[k] for k in failed if k in STEP_WHY and k != "night"), "")
+    first = next((k for k in failed if k in STEP_WHY and k != "night"), "")
+    step = STEP_WHY.get(first, "")
     if weekly:
         return ("The weekly job did not finish cleanly"
                 + (f": {step}." if step else "; its summary lists what fell short."))
@@ -790,8 +791,13 @@ def plain_why(v, weekly=False):
         why = ("The General Court refused a request. Nothing more was asked, and "
                "every fetch waits until a person clears the refusal.")
     elif fetch.startswith("empty"):
-        why = ("The General Court's daily files came back empty, so nothing was "
-               "installed or built.")
+        # Some or all: at 02:04 on 20 September two of the fourteen came back
+        # 3 bytes long, at 06:33 on 27 September thirteen.
+        m = re.search(r"(\d+) of (\d+)", fetch)
+        some = m and m.group(1) != m.group(2)
+        why = ((f"{m.group(1)} of the General Court's {m.group(2)} daily files"
+                if some else "The General Court's daily files")
+               + " came back empty, so nothing was installed or built.")
     elif fetch.startswith("deferred"):
         why = ("The day's files were not asked for: a refusal on file or another "
                "fetch was in the way.")
@@ -803,7 +809,9 @@ def plain_why(v, weekly=False):
     elif v.get("check_site") and v["check_site"] != "passed":
         why = "The built site failed its checks."
     elif step:
-        why = f"The night ran, but {step}."
+        # The state and the kit come down before the night; the rest after it.
+        why = (f"The night could not start: {step}." if first in ("state-down", "kit-down")
+               else f"The night ran, but {step}.")
     elif v.get("blocking"):
         why = "The site was built, but the night's checks kept it from production."
     else:
