@@ -433,6 +433,22 @@ dry run lists only those files. Until it does, the night publishes the older
 boundaries. On 26 September that was two hearings, HB 748 and HB 752 of 2025,
 shown as approximate on GitHub's build and as stated on the laptop's.
 
+**The House committee reports are the laptop's too.** `committee_reports.json`
+is made here, by `fetch_committee_reports.py` reading the calendars on this
+disk -- `--offline` asks nobody, and since 27 September no refusal or night
+window stops it -- and the night only reads it. On 27 September every House
+calendar of 1997-2026 was re-read under the parser's newer heading rules, and
+1999 again once a calendar whose masthead names another term's volume was left
+out: the General Court lists three 1998 calendars under 1999 as well, and
+their 155 reports sat on 125 bills of 1999-2000. Send the file with
+`python3 cloud.py seed-kit` when the code that reads it is on `main`, not
+before: `report_check.py` drops 1999's SJR 1 report from 2000's SJR 1 page,
+and a re-read file beside an older `report_check` shows it there. The two are
+different resolutions with one number in one term -- resolutions are numbered
+again in a term's second year -- and the record keeps one SJR 1 a term, so
+1999's has no page of its own until bills are keyed on more than the term and
+the number.
+
 **The laptop stood down on 26 September.** `python3 refusal.py --stand-down`
 wrote `archive/runs-in-the-cloud.json`, so the laptop's nightly, snapshot and
 the fetchers GitHub owns refuse with exit 4 and a sentence saying why, and
