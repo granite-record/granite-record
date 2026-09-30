@@ -151,7 +151,7 @@
     "setup_archive.py": "2026-09-04.1",
     "shell.py": "2026-09-07.21",
     "site_read.py": "2026-09-09.3",
-    "snapshot_gencourt.py": "2026-09-04.5",
+    "snapshot_gencourt.py": "2026-09-04.6",
     "structured.py": "2026-09-13.3",
     "testimony_from_db.py": "2026-09-11.1",
     "tests/test_cmte_match.js": "2026-09-12.4",

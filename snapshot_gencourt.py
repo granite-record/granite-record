@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -109,9 +109,12 @@ def targets():
 # script used to ask for the files alone, and so took whatever the last
 # visitor's rebuild had left. It opens the page first now, as a person would,
 # keeps what the page said in snapshots/<day>/page.json for the nightly's
-# verdict, and goes on to the files whatever it said: that message named the
-# Members file, which is not taken from there, and an error the files do not
-# show is not a reason to go without them.
+# verdict, and goes on to the files whatever it said: the files themselves show
+# whether they arrived whole, and an error they do not show is no reason to go
+# without them. The "Members File" of that message is legislators.txt, one of
+# these: opened on 30 September the page listed it first, answered in nine
+# seconds and rewrote Docket.txt in the second it was asked; on the 28th it
+# did not list it at all.
 PAGE = BASE
 PAGE_TIMEOUT = 300      # seconds: the page rebuilds every table before it answers
 PAGE_ERROR = re.compile(r"Error Generating\b.{0,400}", re.I)

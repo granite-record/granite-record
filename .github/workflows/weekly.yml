@@ -6,10 +6,13 @@
 # weekly() says what each fetch is and how it is kept whole. It publishes
 # nothing and holds no Pages token.
 #
-# THE SCHEDULE IS OFF until the person turns it on, as for the nightly: remove
-# the "# " in front of the two schedule lines under "on:", commit, and push to
-# main. 04:17 UTC on Monday is 12:17 a.m. Eastern in summer (EDT) and
-# 11:17 p.m. on Sunday in winter (EST).
+# THE SCHEDULE IS ON, since its first run by hand, on 30 September 2026, came
+# back clean. To pause it, Actions -> weekly -> "..." -> Disable workflow;
+# keepalive never re-enables a workflow the person switched off. To take it
+# out, put the "# " back in front of the two schedule lines under "on:" and
+# push to main. 04:17 UTC on Monday is 12:17 a.m. Eastern in summer (EDT) and
+# 11:17 p.m. on Sunday in winter (EST); refusal.NIGHT_WINDOWS keeps the
+# laptop's fetches clear of it from 04:00 to 06:30 UTC.
 
 name: weekly
 run-name: >-
@@ -23,8 +26,8 @@ on:
         description: "Take the rosters and study committees from the General Court"
         type: boolean
         default: false
-  # schedule:
-  #   - cron: "17 4 * * 1"
+  schedule:
+    - cron: "17 4 * * 1"
 
 permissions:
   contents: read

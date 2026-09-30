@@ -391,15 +391,19 @@ downloads page says), printed "Error Generating Members File : Execution
 Timeout Expired" on 28 September, and the files came back whole from the 29th.
 Since 30 September the snapshot opens that page before taking the files, as a
 person would, keeps what it said in `snapshots/<day>/page.json`, and the run's
-page quotes its error when the files come back empty. The weekly's is still commented out,
-because its swap of `committees.json` would have dropped the clerk and the
-purpose; `fetch_committee_details.py` now writes those to their own
-`committee_details.json`, a laptop file in the kit that `build_committees.py`
-joins in (`committee_details.py` says how). So the weekly can go on once that
-change is on `main` and the laptop has written the file once, with `python3
-committee_details.py --from-committees`, and sent it with `python3 cloud.py
-seed-kit` -- before `dev` reaches `main`, since the kit now requires the file
-and a night's `kit-down` stops without it. With the file there, it is the only
+page quotes its error when the files come back empty. Opened by hand on 30
+September, the page answered in nine seconds and rewrote `Docket.txt` in the
+second it was asked; its "Members File" is `legislators.txt`, which it listed
+first that day and not at all on the 28th.
+
+The weekly's schedule is on too (04:17 UTC on Monday), after its first run by
+hand, on 30 September, came back clean: committee memberships 810, committees
+41 and former members 676, all as before, and study-committee memberships
+12,413, 31 more. It waited until the swap of `committees.json` could no longer
+drop the clerk and the purpose: `fetch_committee_details.py` writes those to
+their own `committee_details.json`, a laptop file in the kit that
+`build_committees.py` joins in (`committee_details.py` says how), and the kit
+requires it, so a night's `kit-down` stops without it. With the file there, it is the only
 source of the clerk, the purpose and the page roster: the old values
 `committees.json` still carries on the laptop, and in the bucket from the first
 seed, are ignored, so taking a clerk out of the details takes it off the page.
