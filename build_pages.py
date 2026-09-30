@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.124
+# GRANITE_VERSION: 2026-09-04.125
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -984,6 +984,17 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                             + "".join(f'<a href="{esc(u)}" rel="noopener">'
                                       f'{esc(w)} (PDF)</a>' for w, u in got)
                             + "</p>")
+            # A STUDY OR STATUTORY COMMITTEE'S RECORDING, where one is named
+            # for the meeting (build_calendar.study_recordings). Its card has
+            # no page to lead to, so it leads to the recording itself; a bill's
+            # sitting leads to the bill, whose page holds its recording at the
+            # moment the bill was taken up.
+            rec = next((r.get("video_id") for r in rows
+                        if r.get("study") and r.get("video_id")), "")
+            if study and rec:
+                html.append('<p class="calmore"><a class="out" href="https://www.youtube.com/'
+                            f'watch?v={esc(rec)}" target="_blank" rel="noopener">'
+                            "The recording, on YouTube</a></p>")
             # A study committee that shares a name with a standing one is not
             # that committee, so its card does not borrow the page; and a
             # chamber's committee takes its OWN chamber's page, which the

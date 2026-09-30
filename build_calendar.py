@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.14
+# GRANITE_VERSION: 2026-09-18.15
 """
 The General Court's week, one page per week.
 
@@ -78,6 +78,7 @@ link sent opens what was on the screen. WEEK_JS says how.
 """
 
 import argparse
+import csv
 import datetime
 import json
 import re
@@ -289,6 +290,84 @@ def _where(loc):
         kind = "" if m.group(1).lower() == "other meeting type" else m.group(1)
         s = s[:m.start()]
     return re.sub(r"\s+", " ", s).strip(" ,"), kind.capitalize()
+
+
+# A STUDY OR STATUTORY COMMITTEE'S RECORDING (30 September 2026). A meeting
+# with no bill has no page here to lead to -- its card says so -- so where the
+# House or Senate channel published a recording named for it, the card leads
+# to that. The recording is found in the video index every reader globs
+# (videos_*.csv, the nightly's new livestreams among them) by its own date and
+# its committee: the words of the recording's committee and the meeting's must
+# mostly agree both ways, a Dice score of REC_MATCH, because a one-word title
+# such as "House Education" would otherwise take a long name that merely
+# contains the word. A recording already on a bill's sitting is that
+# sitting's; a meeting after the build is not recorded yet; and a recording
+# two committees fit equally well is not guessed between -- two rows of one
+# name that day are one meeting the database holds twice, and share it.
+# Measured on 30 September 2026: sixteen of the eighteen recordings since the
+# nightly began that sat on no bill fit a study or statutory meeting of their
+# own day by name, and the other two were the House Special Committee on
+# COVID Response Efficacy, which is neither and has no card.
+REC_MATCH = 0.6
+REC_GENERIC = frozenset("house senate committee committees commission joint study special "
+                        "task force the and for".split())
+VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+def _rec_words(s):
+    return {w for w in re.findall(r"[a-z]{3,}", (s or "").lower()) if w not in REC_GENERIC}
+
+
+def recordings_by_day(root=Path(".")):
+    """{date: [(video_id, title, the words of its committee)]} out of every
+    videos_*.csv here."""
+    out = defaultdict(list)
+    for f in sorted(Path(root).glob("videos_*.csv")):
+        try:
+            with open(f, encoding="utf-8", newline="") as fh:
+                for r in csv.DictReader(fh):
+                    vid = (r.get("video_id") or "").strip()
+                    date = (r.get("parsed_date") or "").strip()[:10]
+                    if not VIDEO_ID.match(vid) or not date:
+                        continue
+                    name = ((r.get("parsed_committee") or "").strip()
+                            or re.sub(r"\(.*?\)", " ", r.get("title") or ""))
+                    out[date].append((vid, (r.get("title") or "").strip(), _rec_words(name)))
+        except OSError:
+            continue
+    return out
+
+
+def study_recordings(rows, videos, on_bills, today):
+    """Give each study or statutory meeting held by `today` the recording named
+    for it, as row["video_id"]. ([rows given one], [(date, title)] of the
+    recordings from FROM to today on no bill that fit no meeting here)."""
+    by_day = defaultdict(list)
+    for r in rows:
+        by_day[r["date"]].append(r)
+    linked, unmatched = [], []
+    for date, recs in sorted(videos.items()):
+        if date < FROM or date > today:
+            continue
+        day = [r for r in by_day.get(date, []) if r.get("kind") != "cancelled"]
+        for vid, title, tw in recs:
+            if vid in on_bills or not tw:
+                continue
+            scored = []
+            for r in day:
+                cw = _rec_words(r.get("committee"))
+                if cw:
+                    scored.append((2 * len(tw & cw) / (len(tw) + len(cw)), r))
+            best = max((sc for sc, _ in scored), default=0)
+            top = [r for sc, r in scored if sc == best]
+            if best < REC_MATCH or len({r["committee"] for r in top}) > 1:
+                unmatched.append((date, title))
+                continue
+            for r in top:
+                if not r.get("video_id"):
+                    r["video_id"] = vid
+                    linked.append(r)
+    return linked, unmatched
 
 
 def statstud(root=Path(".")):
@@ -1857,6 +1936,8 @@ def weeks_from(rows, names=None):
         if r.get("study"):
             row["study"] = True
             row["note"] = r.get("note") or ""
+            if r.get("video_id"):
+                row["video_id"] = r["video_id"]
         weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
     # A BILL'S ROW AT A STUDY COMMITTEE'S MEETING TAKES THE MEETING'S TIME AND
     # ROOM. The docket gives neither; the database copy's row for the same
@@ -2476,6 +2557,16 @@ def main():
         print("  WARNING: no study or statutory committee meetings -- "
               f"{STATSTUD_DIR}/StatStudMeetings.psv or StatStudDetails.psv is not "
               "on disk, so the calendar shows bill business only")
+    if study_rows:
+        # SILENCE IS NOT SUCCESS: how many meetings link a recording, and the
+        # recordings on no bill that fit no meeting here, said out loud.
+        on_bills = {(r.get("video_id") or "").strip() for r in proceedings.load()} - {""}
+        linked, unmatched = study_recordings(study_rows, recordings_by_day(), on_bills,
+                                             datetime.date.today().isoformat())
+        print(f"  {len(linked):,} study and statutory meetings link their recording"
+              + (f"; {len(unmatched):,} recordings since {FROM} on no bill fit no meeting "
+                 "here, the newest: " + "; ".join(f"{t} ({d})" for d, t in unmatched[-3:])
+                 if unmatched else ""))
     weeks, titles, years, code = collect(site, study_rows)
     # SILENCE IS NOT SUCCESS: no weeks is a Calendar tab pointing at nothing,
     # and a build that said so only by printing a zero.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.278
+# GRANITE_VERSION: 2026-09-04.279
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18322,6 +18322,75 @@ def _calendar_document_links():
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("the first notice linked, journals found by number with their "
                   "own date agreeing, and the link drawn on the card")
+
+
+@check("calendar", "a study or statutory meeting links the recording named for it, and no other")
+def _study_recordings():
+    """A meeting with no bill has no page to lead to, so its card leads to its
+    recording: the one of its own day whose committee's words and the
+    meeting's mostly agree both ways. Measured on the recordings of September
+    2026: the Long Range Capital Planning and Utilization Committee and the
+    Joint Committee on Tax Expenditure Review of 28 September take theirs;
+    "JLCAR Administrative Rules" is the Administrative Rules committee;
+    "House Education" does not take a long oversight committee's name that
+    contains the word; the House Special Committee on COVID Response Efficacy
+    fits nothing; a recording already on a bill's sitting is that sitting's;
+    a meeting after the build takes nothing; and two rows of one name are one
+    meeting held twice in the database, and share it. The card draws the
+    link; a card with none draws nothing."""
+    import html as _h
+    import build_calendar as BC
+    import build_pages as BP
+
+    def meet(date, name):
+        return {"study": True, "bill": "", "kind": "statutory committee", "date": date,
+                "time": "10:00", "committee": name, "venue": "LOB 101", "note": ""}
+
+    def vids(date, *pairs):
+        return {date: [(v, f"{t} ({date})", BC._rec_words(t)) for v, t in pairs]}
+    oversight = "Legislative Oversight Committee for the Education Improvement and Assessment Program"
+    rows = [meet("2026-09-28", "Long Range Capital Planning and Utilization Committee"),
+            meet("2026-09-28", "Joint Committee on Tax Expenditure Review"),
+            meet("2026-10-15", "Administrative Rules"),
+            meet("2026-09-25", oversight),
+            meet("2026-09-18", "Fiscal Committee"), meet("2026-09-18", "Fiscal Committee"),
+            meet("2026-11-16", "Long Range Capital Planning and Utilization Committee")]
+    videos = {}
+    for d in (vids("2026-09-28", ("uJJBjxFc4jI", "Long Range Capital Planning and Utilization "
+                                                 "Committee"),
+                   ("XFczMcnO4RM", "Joint Committee on Tax Expenditure Review")),
+              vids("2026-10-15", ("kn9s8YRu8VA", "JLCAR Administrative Rules")),
+              vids("2026-09-25", ("aaaaaaaaaaa", "House Education"),
+                   ("PiFmlIP7qOE", "House Special Committee on COVID Response Efficacy")),
+              vids("2026-09-18", ("bbbbbbbbbbb", "Fiscal Committee"),
+                   ("qYTXGQYaj8k", "Fiscal Committee")),
+              vids("2026-11-16", ("4LN-zepbriM", "Long Range Capital Planning and Utilization "
+                                                 "Committee"))):
+        videos.update(d)
+    linked, unmatched = BC.study_recordings(rows, videos, {"bbbbbbbbbbb"}, "2026-10-20")
+    got = [(r["date"], r["committee"][:20], r.get("video_id", "")) for r in rows]
+    assert got == [("2026-09-28", "Long Range Capital P", "uJJBjxFc4jI"),
+                   ("2026-09-28", "Joint Committee on T", "XFczMcnO4RM"),
+                   ("2026-10-15", "Administrative Rules", "kn9s8YRu8VA"),
+                   ("2026-09-25", oversight[:20], ""),
+                   ("2026-09-18", "Fiscal Committee", "qYTXGQYaj8k"),
+                   ("2026-09-18", "Fiscal Committee", "qYTXGQYaj8k"),
+                   ("2026-11-16", "Long Range Capital P", "")], got
+    assert {t for _d, t in unmatched} == {"House Education (2026-09-25)",
+                                          "House Special Committee on COVID Response Efficacy "
+                                          "(2026-09-25)"}, unmatched
+    weeks = BC.weeks_from(rows[:1] + [meet("2026-09-29", "Fiscal Committee")], names={})
+    for date, name, want in (("2026-09-28", rows[0]["committee"], True),
+                             ("2026-09-29", "Fiscal Committee", False)):
+        key = BP.Meet(date, "", name, "")
+        wk = BC.week_key(__import__("datetime").date.fromisoformat(date))
+        page, _m = BP.cal_days({date: [key]}, {key: weeks[wk][date][key]}, {}, {}, {},
+                               lambda d: (d, ""), _h.escape)
+        has = 'href="https://www.youtube.com/watch?v=uJJBjxFc4jI"' in page and \
+            "The recording, on YouTube</a>" in page
+        assert has == want, (name, page[-400:])
+    return "ok", ("recordings found by day and by committee both ways; none borrowed from a "
+                  "bill's sitting, guessed between two committees, or given ahead of the meeting")
 
 
 @check("frontend", "a House and a Senate committee of one name are two cards, each linking its own page, and a committee of conference is one bill's")
