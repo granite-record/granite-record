@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.5
+# GRANITE_VERSION: 2026-09-25.6
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -993,6 +993,15 @@ def cmd_seed_kit(a, root):
             and f"kit/{r}" in remote]
     for r in kept:
         todo.pop(r)
+    # --only: the files it names and nothing else, as laptop_evening.py sends
+    # the caption results. Every other change here waits, and its copy in the
+    # bucket, and its manifest entry, stand.
+    held = []
+    if getattr(a, "only", None):
+        pats = [glob_re(g) for g in a.only]
+        held = [r for r in todo if not any(p.match(r) for p in pats)]
+        for r in held:
+            todo.pop(r)
     elsewhere = [r for r in known if r not in entries]
     total = sum(e["size"] for e in entries.values())
     say(f"  {'first seed of' if man is None else 'the kit is already in'} "
@@ -1001,6 +1010,7 @@ def cmd_seed_kit(a, root):
     show("to send", list(todo), sz)
     show("unchanged, not sent", same, sz, limit=0)
     show("the night's own; its copy in the bucket stands", kept, sz)
+    show("changed here and not named by --only; its copy in the bucket stands", held, sz)
     show("in the bucket's kit and not here; left as they are", elsewhere,
          {r: known[r]["size"] for r in elsewhere})
     if a.dry_run:
@@ -2115,6 +2125,29 @@ def pull_refusal(bucket, root, kit, dry, day):
     return lines, bad, held
 
 
+def pull_livestream_state(bucket, root, kit, dry):
+    """state/livestreams.json to where livestreams.py reads it. ([lines])
+
+    The night's record of the recordings it has seen and of those still
+    waiting for captions, which the laptop's `livestreams.py --catch-up`
+    reads and never writes: the night is its one writer, and this copy is
+    only ever replaced by the bucket's. Until 30 September 2026 no pull
+    brought it, so the catch-up could not start on the laptop at all."""
+    entry = next((s for s in kit.get("state", []) if s["key"] == "livestreams.json"), None)
+    if entry is None:
+        return []
+    data = bucket.get_bytes(f"state/{entry['key']}")
+    if data is None:
+        return ["the livestream state: the bucket holds none"]
+    dst = local(root, entry["path"])
+    if dst.exists() and dst.read_bytes() == data:
+        return ["the livestream state: already here"]
+    if not dry:
+        write_whole(dst, data)
+    return [f"the livestream state: {'would come down' if dry else 'taken'} "
+            f"({human(len(data))}) to {entry['path']}"]
+
+
 def pull_verdicts(bucket, root, dry, today):
     """state/last-night.json and last-weekly.json to archive/cloud/. ([lines], taken).
 
@@ -2524,6 +2557,11 @@ def cmd_pull(a, root):
         clashes += k["clash"]
         failures += k["bad"]
 
+    # 5. THE LIVESTREAM STATE, which the laptop's caption catch-up reads.
+    if not a.changes_only:
+        for ln in pull_livestream_state(bucket, root, kit, a.dry_run):
+            say(f"  {ln}")
+
     stray = sorted(take - set(k["taking"] if k else []) - set(taken))
     if stray:
         say(f"  --take named {', '.join(stray)}, which {'is' if len(stray) == 1 else 'are'} "
@@ -2611,6 +2649,9 @@ def main(argv=None):
     ap.add_argument("--changes-only", action="store_true",
                     help="pull: the refusal, the verdicts and the change lists, and "
                          "nothing else (the morning triage's)")
+    ap.add_argument("--only", nargs="+", metavar="GLOB",
+                    help="seed-kit: send only the kit files these globs name; every "
+                         "other change waits")
     ap.add_argument("--take", nargs="+", metavar="PATH",
                     help="pull: set this laptop's copy of each named clash aside under "
                          f"{SET_ASIDE}/<day>/ and take the bucket's")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -218,6 +218,17 @@ STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
 LSRS = Path("lsrs.json")
 LSR_GONE_MOST = 0.10
 LSR_GONE_FLOOR = 5
+
+# RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026). YouTube refuses
+# GitHub's machine the captions, so the laptop's evening job reads them. A
+# finished recording the laptop has not read CAPTION_WAIT_DAYS after it ended
+# is a warning: the laptop has been off, or its evening job is failing. Past
+# CAPTION_WAIT_MOST days it is no longer counted, so no recording can hold a
+# warning up for ever, and one with no captions published at all is not
+# waiting for anything.
+LIVE_STATE = Path("archive/livestreams.json")
+CAPTION_WAIT_DAYS = 3
+CAPTION_WAIT_MOST = 30
 STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
 
 # A result this much smaller than the copy it would replace is not swapped in:
@@ -908,6 +919,29 @@ def count_lines(path):
     return n
 
 
+def captions_waiting(now=None):
+    """How many finished recordings, CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST
+    days old, the laptop has not read yet, by the livestream state."""
+    from datetime import timedelta, timezone
+    st = load_json(LIVE_STATE)
+    if not isinstance(st, dict):
+        return 0
+    now = now or datetime.now(timezone.utc)
+    n = 0
+    for v in (st.get("videos") or {}).values():
+        if not isinstance(v, dict) or v.get("status") != "finished" or v.get("adopted"):
+            continue
+        if v.get("captions") not in ("waiting", "deferred", "failed", "for-laptop", "none-yet"):
+            continue
+        try:
+            ended = datetime.fromisoformat(str(v.get("ended") or v.get("seen")).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if timedelta(days=CAPTION_WAIT_DAYS) < now - ended <= timedelta(days=CAPTION_WAIT_MOST):
+            n += 1
+    return n
+
+
 def take_lsrs():
     """Next session's bill requests into lsrs.json, whole or not at all, and a
     line saying what happened: "installed, ..." or "not taken: ...". The fetch
@@ -1246,9 +1280,17 @@ class Night:
         """What the night went ahead without: a list beside the record kept from
         an earlier night. Reported on the run's page and in the verdict, and
         never a reason to hold the night back."""
+        out = []
         lsrs = self.v.get("lsrs")
-        return ([f"next session's bill requests: {lsrs}"]
-                if lsrs and not str(lsrs).startswith("installed") else [])
+        if lsrs and not str(lsrs).startswith("installed"):
+            out.append(f"next session's bill requests: {lsrs}")
+        n = captions_waiting()
+        if n:
+            out.append(f"{n} recording{'s' if n != 1 else ''} finished more than "
+                       f"{CAPTION_WAIT_DAYS} days ago {'have' if n != 1 else 'has'} no start "
+                       f"time from {'their' if n != 1 else 'its'} captions yet: the laptop's "
+                       "evening catch-up (laptop_evening.py) reads them")
+        return out
 
     def exit_code(self):
         """0 when the night did what it was asked. A dry run is asked for a build

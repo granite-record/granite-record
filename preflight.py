@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.276
+# GRANITE_VERSION: 2026-09-04.278
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14548,6 +14548,121 @@ def _fake_s3():
     return mods, store, made
 
 
+@check("cloud", "seed-kit --only sends only the files it names, and every other copy stands",
+       needs=("cloud",))
+def _cloud_seed_only(CL):
+    """The laptop's evening job sends the caption results and nothing else: a
+    data file re-read on dev and not yet released must not reach the night by
+    that back door. Against a folder bucket: after a first seed, two of the
+    laptop's files change; --only names one; only that one goes, the other's
+    copy and its manifest entry stand, and a plain seed-kit then sends it."""
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-only-"))
+    try:
+        root, bucket = tmp / "laptop", tmp / "bucket"
+        root.mkdir()
+        _cloud_fixture(root, real)
+        B = ["--local-bucket", str(bucket)]
+        assert _cloud_call(CL, "seed-kit", "--root", str(root), *B)[0] == 0
+        (root / "legislation/2026/HB1.html").write_text("<p>one, again</p>", encoding="utf-8")
+        (root / "legislation/2026/HB2.html").write_text("<p>two, again</p>", encoding="utf-8")
+        code, out = _cloud_call(CL, "seed-kit", "--root", str(root), "--only",
+                                "legislation/2026/HB1.html", *B)
+        assert code == 0 and "sent 1 files" in out, out[-300:]
+        assert (bucket / "kit/legislation/2026/HB1.html").read_text(encoding="utf-8") == \
+            "<p>one, again</p>", "--only did not send the file it named"
+        assert (bucket / "kit/legislation/2026/HB2.html").read_text(encoding="utf-8") == \
+            "<p>two</p>", "--only sent a file it did not name"
+        man = json.loads((bucket / "state/kit-manifest.json").read_text(encoding="utf-8"))
+        assert "legislation/2026/HB2.html" in man["files"], \
+            "--only dropped a file it held back from the kit's manifest"
+        code, out = _cloud_call(CL, "seed-kit", "--root", str(root), *B)
+        assert code == 0 and "sent 1 files" in out, out[-300:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "--only sends what it names; every other change waits, in the bucket and its manifest"
+
+
+@check("cloud", "the laptop's evening job catches up the livestream captions and sends only "
+                "their results, and nothing when the timestamps got worse",
+       needs=("laptop_evening",))
+def _laptop_evening(LE):
+    """YouTube refuses GitHub's machine the captions, so laptop_evening.py, run
+    by Windows' Task Scheduler each evening, pulls the night's livestream
+    state, catches the waiting recordings up and sends the caption results.
+    Driven here on faked steps: a fresh state goes pull, probe, catch-up,
+    probe, then seed-kit --only with exactly the kit's caption files; a state
+    over two days old, or none, stops after the pull; a broken catch-up sends
+    nothing; and a probe worse than the one last sent -- CLAUDE.md's rule
+    that nothing about timestamps goes on the site if the median regressed --
+    sends nothing either. Every file --only names is one the kit carries."""
+    from datetime import datetime as _dt, timedelta, timezone
+    saved = (LE.run_step, LE.STATE, LE.RECORD)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-evening-"))
+    calls, answers = [], {}
+
+    def fake(argv, log):
+        calls.append(list(argv))
+        return answers.get(" ".join(argv[:2]), (0, ""))
+
+    def state(days_old):
+        at = (_dt.now(timezone.utc) - timedelta(days=days_old)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        LE.STATE.write_text(json.dumps({"last_run": {"at": at}}), encoding="utf-8")
+
+    def scored(mins, secs, placed=44):
+        return (0, f"  A CANDIDATE: candidate_segments.json  ({placed} of 63 marked proceedings)\n"
+                   f"    median off by {mins}m {secs:02d}s, worst 88m 08s\n")
+
+    def quiet(msg):
+        pass
+    try:
+        LE.run_step, LE.STATE, LE.RECORD = fake, tmp / "livestreams.json", tmp / "evening.json"
+        state(0.3)
+        answers.update({"livestreams.py --catch-up": (0, "LIVESTREAMS CATCH-UP: 2 captioned"),
+                        "probe_alignment.py --truth": scored(0, 1),
+                        "cloud.py seed-kit": (0, "seed-kit: sent 3 files, 1 MB")})
+        code, steps, said, sent = LE.evening(log=quiet)
+        assert code == 0 and [c[:2] for c in calls] == [
+            ["cloud.py", "pull"], ["probe_alignment.py", "--truth"], ["livestreams.py", "--catch-up"],
+            ["probe_alignment.py", "--truth"], ["cloud.py", "seed-kit"]], calls
+        assert calls[-1][2] == "--only" and tuple(calls[-1][3:]) == LE.CAPTION_FILES, calls[-1]
+        assert "2 captioned" in said and "sent 3 files" in said and sent == {
+            "median_s": 1, "placed": 44, "total": 63}, (said, sent)
+        for age, words in ((3, "days old"), (None, "not here")):
+            del calls[:]
+            if age is None:
+                LE.STATE.unlink()
+            else:
+                state(age)
+            code, steps, said, sent = LE.evening(log=quiet)
+            assert code == 1 and calls == [["cloud.py", "pull"]] and words in said, (calls, said)
+        del calls[:]
+        state(0.3)
+        answers["livestreams.py --catch-up"] = (1, "LIVESTREAMS: broken -- x")
+        code, steps, said, sent = LE.evening(log=quiet)
+        assert code == 1 and not any(c[:2] == ["cloud.py", "seed-kit"] for c in calls), calls
+        # Worse than the times last sent: a median that grew, or a truth
+        # proceeding lost out of the same number -- nothing goes.
+        answers["livestreams.py --catch-up"] = (0, "LIVESTREAMS CATCH-UP: 1 captioned")
+        LE.RECORD.write_text(json.dumps({"sent_probe": {"median_s": 1, "placed": 44,
+                                                        "total": 63}}), encoding="utf-8")
+        for worse in (scored(0, 30), scored(0, 1, placed=43)):
+            del calls[:]
+            answers["probe_alignment.py --truth"] = worse
+            code, steps, said, sent = LE.evening(log=quiet)
+            assert code == 1 and "got worse" in said and not any(
+                c[:2] == ["cloud.py", "seed-kit"] for c in calls), (said, calls)
+        kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+        named = {x for e in kit["kit"] for x in e.get("paths", []) + e.get("globs", [])}
+        assert set(LE.CAPTION_FILES) <= named, \
+            f"laptop_evening sends {set(LE.CAPTION_FILES) - named}, which the kit does not carry"
+    finally:
+        LE.run_step, LE.STATE, LE.RECORD = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("pull, probe, catch-up, probe, then only the caption results; a stale or "
+                  "missing state, a broken catch-up or a worse probe sends nothing")
+
+
 @check("cloud", "the R2 adapter makes the calls boto3 takes", needs=("cloud",))
 def _cloud_r2_adapter(CL):
     """The folder bucket above tests the logic; R2 is reached through
@@ -14621,7 +14736,8 @@ def _pull_fixture(root, kit_src):
     kit["kit"].append({"what": "site", "owner": "night", "optional": True,
                        "paths": ["site/committees.json"]})
     kit["state"] += [{"path": "archive/last-night.json", "key": "last-night.json", "what": "x"},
-                     {"path": "archive/last-weekly.json", "key": "last-weekly.json", "what": "x"}]
+                     {"path": "archive/last-weekly.json", "key": "last-weekly.json", "what": "x"},
+                     {"path": "archive/livestreams.json", "key": "livestreams.json", "what": "x"}]
     kit["logs"] = {"globs": ["logs/*", "reports/gc-changes-*.md"]}
     (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
     (root / "site" / "committees.json").write_text("[]", encoding="utf-8")
@@ -14836,6 +14952,9 @@ def _cloud_pull(CL, R):
         (night / "archive/last-night.json").write_text(json.dumps(
             {"kind": "nightly", "day": today, "started": f"{today}T02:17:00",
              "clean": True}), encoding="utf-8")
+        (night / "archive/livestreams.json").write_text(json.dumps(
+            {"version": 1, "videos": {}, "last_run": {"at": f"{today}T08:45:00Z"}}),
+            encoding="utf-8")
         code, out = call(night, "kit-up")
         assert code == 0, out[-300:]
         assert call(night, "state-up")[0] == 0
@@ -14879,6 +14998,9 @@ def _cloud_pull(CL, R):
         assert text(laptop, "archive/cloud/last-night.json") and \
             not (laptop / "archive/last-night.json").exists(), \
             "the verdict went somewhere other than archive/cloud/"
+        assert text(laptop, "archive/livestreams.json") == text(night, "archive/livestreams.json"), \
+            "the night's livestream state did not reach archive/livestreams.json, where the " \
+            "laptop's caption catch-up reads it"
         rec = json.loads(text(laptop, CL.PULL_RECORD))
         assert rec["refusal"]["read"] > 0 and "Docket.txt" in rec["kit"], rec.keys()
         assert rec["refusal"]["kind"] == "folder" and \
@@ -23899,6 +24021,27 @@ def _nightly_runner(NI):
         assert code == 0 and v["clean"] and "would newly withdraw 8 of the 10" in v["lsrs"] \
             and Path("lsrs.json").read_bytes() == good, v.get("lsrs")
         lsr["rows"] = 10
+
+        # Recordings the laptop has not read three days after they ended are
+        # a warning, not a failure; a read one, a young one, one with no
+        # captions published and one past thirty days are not counted.
+        from datetime import timedelta, timezone
+        ago = lambda d: (datetime.now(timezone.utc) - timedelta(days=d)).strftime(  # noqa: E731
+            "%Y-%m-%dT%H:%M:%SZ")
+        Path("archive/livestreams.json").write_text(json.dumps({"videos": {
+            "late": {"status": "finished", "captions": "deferred", "ended": ago(5)},
+            "read": {"status": "finished", "captions": "captioned", "adopted": "x",
+                     "ended": ago(5)},
+            "young": {"status": "finished", "captions": "deferred", "ended": ago(1)},
+            "none": {"status": "finished", "captions": "none-published", "ended": ago(5)},
+            "old": {"status": "finished", "captions": "deferred", "ended": ago(40)},
+            "soon": {"status": "upcoming", "ended": None}}}), encoding="utf-8")
+        code, _ = night("--runner", "--no-fetch", run_id="116")
+        v = verdict()
+        assert code == 0 and v["clean"] and any(
+            w.startswith("1 recording finished more than 3 days ago has no start time")
+            for w in v["warnings"]), v.get("warnings")
+        Path("archive/livestreams.json").unlink()
         assert slept.count(NI.EMPTY_WAIT * 60) == 2, f"the night waited {slept}"
 
         # And none of it is the laptop's.
