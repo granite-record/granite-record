@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -49,9 +49,11 @@ site. Exit 0 installed or archived, 1 a failure, 2 refused.
 import argparse
 import gzip
 import hashlib
+import html
 import json
 import os
 import random
+import re
 import shutil
 import sys
 import time
@@ -99,6 +101,56 @@ def targets():
     return [(BASE + f, f) for f in FILES] + EXTRA
 
 
+# THE PAGE FIRST (30 September 2026). The General Court's downloads page links
+# these files as "Current Data Tables - data refreshes on file access", and the
+# page that lists them is what rebuilds them from the database when it is
+# opened. On 28 September it said "Error Generating Members File : Execution
+# Timeout Expired. ..." while every file it linked was 3 bytes long. This
+# script used to ask for the files alone, and so took whatever the last
+# visitor's rebuild had left. It opens the page first now, as a person would,
+# keeps what the page said in snapshots/<day>/page.json for the nightly's
+# verdict, and goes on to the files whatever it said: that message named the
+# Members file, which is not taken from there, and an error the files do not
+# show is not a reason to go without them.
+PAGE = BASE
+PAGE_TIMEOUT = 300      # seconds: the page rebuilds every table before it answers
+PAGE_ERROR = re.compile(r"Error Generating\b.{0,400}", re.I)
+
+
+def page_said(body):
+    """What the Dynamic Data Files page says went wrong rebuilding the files,
+    as plain text, or "" when it reports nothing."""
+    text = body.decode("utf-8", "replace") if isinstance(body, bytes) else (body or "")
+    text = html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text)))
+    m = PAGE_ERROR.search(text)
+    if not m:
+        return ""
+    said = m.group(0)
+    cut = said.find(" LSR Table")          # the page's own list of files follows it
+    return (said[:cut] if cut > 0 else said).strip()
+
+
+def open_page():
+    """{"status", "said"}: the page asked for once. status is "ok", "error" (the
+    page answered and reported a failed rebuild), or refusal.classify's word for
+    a request that did not come back as a page."""
+    try:
+        data = get(PAGE, timeout=PAGE_TIMEOUT)
+    except Exception as e:                                  # noqa: BLE001
+        kind = refusal.classify(e) or "failed"
+        # Slow, not refusing: the page rebuilds every table before it answers,
+        # so a timeout here is not counted with the dropped connections that
+        # end a run. A reset or an unanswered close still is.
+        inner = getattr(e, "reason", e)
+        if kind == "dropped" and (isinstance(inner, TimeoutError) or "timed out" in str(inner).lower()):
+            kind = "slow"
+        return {"status": kind, "said": f"{type(e).__name__}: {e}"[:200]}
+    if refusal.classify(body=data[:4000].decode("utf-8", "replace")) == "refused":
+        return {"status": "refused", "said": "the firewall's block page, served as 200"}
+    said = page_said(data)
+    return {"status": "error" if said else "ok", "said": said}
+
+
 def write_atomically(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".part")
@@ -106,9 +158,9 @@ def write_atomically(path, data):
     os.replace(tmp, path)
 
 
-def get(url):
+def get(url, timeout=120):
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 
@@ -193,10 +245,30 @@ def run(a, held):
     work = targets()
     i = 0
     retried = set()
-    while i < len(work):
+
+    # The page first: opening it is what rebuilds the files.
+    if refusal.MARK.exists():
+        stopped = "refused"
+        print("  archive/refused.json is on file. Stopping.")
+    elif not held.still():
+        stopped = "lock"
+        print("  the run holding archive/.lock is gone. Stopping.")
+    else:
+        page = open_page()
+        page["asked"] = date.today().isoformat()
+        write_atomically(snap / "page.json", json.dumps(page, indent=2).encode("utf-8"))
+        print(f"  page  {PAGE}: " + {"ok": "answered, and reported no error",
+                                      "error": f"answered, and reported: {page['said'][:200]}"}.get(
+            page["status"], f"{page['status']}: {page['said'][:100]}"), flush=True)
+        if page["status"] == "refused":
+            refusal.note("snapshot_gencourt", page["said"])
+            stopped = "refused"
+        elif page["status"] == "dropped":
+            dropped += 1
+
+    while not stopped and i < len(work):
         url, name = work[i]
-        if i or retried:
-            time.sleep(a.delay * random.uniform(0.75, 1.25))
+        time.sleep(a.delay * random.uniform(0.75, 1.25))
         # Immediately before the request: a refusal another fetch met while
         # this one waited, or a nightly killed while it waited, stops it here.
         if refusal.MARK.exists():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -535,6 +535,9 @@ def main():
                 installed = rc == 0
                 if night:
                     night.v["fetch"] = fetch_status(rc, a.archive)
+                    said = data_page(a.archive)
+                    if said:
+                        night.v["data_page_said"] = said
                 if rc == 2:
                     say("\nREFUSED while fetching. Recorded; every fetch now waits "
                         "for a person.")
@@ -812,7 +815,8 @@ def plain_why(v, weekly=False):
                 if some else "The General Court's daily files")
                + " came back empty"
                + (f" on each of {tries} tries, {EMPTY_WAIT} minutes apart" if tries > 1 else "")
-               + ", so nothing was installed or built.")
+               + ", so nothing was installed or built."
+               + (f' Their data page said: "{v["data_page_said"]}"' if v.get("data_page_said") else ""))
     elif fetch.startswith("deferred"):
         why = ("The day's files were not asked for: a refusal on file or another "
                "fetch was in the way.")
@@ -848,6 +852,22 @@ def plain_why(v, weekly=False):
 # try one complete pass, so the files installed are still all from one moment.
 EMPTY_TRIES = 6
 EMPTY_WAIT = 30         # minutes
+
+
+def page_quote(said):
+    """The General Court's own words about a failed rebuild, fit for the public
+    run page: only a message that starts "Error Generating", only letters,
+    digits and ordinary punctuation, and only its first sentence."""
+    s = re.sub(r"\s+", " ", re.sub(r"[^A-Za-z0-9 .,:;'()/-]", " ", said or "")).strip()
+    m = re.match(r"(Error Generating .{1,120}?\.)(?:\s|$)", s)
+    return m.group(1) if m else ""
+
+
+def data_page(archive):
+    """What today's snapshot says the Dynamic Data Files page reported about its
+    rebuild, as page_quote() gives it, or "" when it reported nothing wrong."""
+    page = load_json(Path(archive) / "snapshots" / f"{datetime.now():%Y-%m-%d}" / "page.json")
+    return page_quote(page.get("said")) if isinstance(page, dict) and page.get("status") == "error" else ""
 
 
 def fetch_status(rc, archive):
@@ -1198,6 +1218,8 @@ class Night:
                     f"{'yes' if v.get('publishable') else 'no'}"]
                    + ([f"- the day's files arrived whole on try {tries} of {EMPTY_TRIES}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
+                   + ([f"- the General Court's data page said: {v['data_page_said']}"]
+                      if v.get("data_page_said") else [])
                    + [f"- {w}" for w in why[:8]])
 
 

@@ -384,7 +384,14 @@ got whole files at 2:32 and 3:45 on other nights and at every run after 7 a.m.
 So since 28 September the night asks again rather than failing: a snapshot
 with empty files and nothing else wrong runs again, whole, every 30 minutes,
 up to six tries (`nightly.EMPTY_TRIES`), and the run's page says on which try
-the files arrived, or leads with a sentence saying why the night stopped. The weekly's is still commented out,
+the files arrived, or leads with a sentence saying why the night stopped. The
+cause was on the General Court's side: their Dynamic Data Files page, which
+rebuilds the files when it is opened ("data refreshes on file access", the
+downloads page says), printed "Error Generating Members File : Execution
+Timeout Expired" on 28 September, and the files came back whole from the 29th.
+Since 30 September the snapshot opens that page before taking the files, as a
+person would, keeps what it said in `snapshots/<day>/page.json`, and the run's
+page quotes its error when the files come back empty. The weekly's is still commented out,
 because its swap of `committees.json` would have dropped the clerk and the
 purpose; `fetch_committee_details.py` now writes those to their own
 `committee_details.json`, a laptop file in the kit that `build_committees.py`

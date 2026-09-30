@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.274
+# GRANITE_VERSION: 2026-09-04.275
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -22929,6 +22929,15 @@ def _snapshot_stops(SG):
     n = len(SG.targets())
     data = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 3
     tmps = []
+    # The Dynamic Data Files page, which rebuilds the files when it is opened:
+    # as it answers when all is well, and as it answered on 28 September.
+    healthy = (b"<html><body><h1>DYNAMIC DATA FILES</h1><a href='LSRs.txt?x=20260930'>LSR "
+               b"Table</a><br/><a href='Docket.txt?x=20260930'>Docket</a></body></html>")
+    failed = (b"<html><body><h1>DYNAMIC DATA FILES</h1><span>Error Generating Members File : "
+              b"Execution Timeout Expired.  The timeout period elapsed prior to completion of "
+              b"the operation or the server is not responding.\r\nOperation cancelled by user."
+              b"</span><br/><a href='LSRs.txt?x=20260928031030'>LSR Table</a></body></html>")
+    page, seen = [healthy], {}
 
     def run(answers, installed=None, lock=None):
         tmp = Path(tempfile.mkdtemp())
@@ -22940,9 +22949,16 @@ def _snapshot_stops(SG):
             (root / name).write_bytes(body)
         if lock is not None:
             refusal.LOCK.write_text(str(lock))
-        it, asked = iter(answers), []
+        it, asked, order = iter(answers), [], []
+        seen.update(order=order, arch=tmp / "arch")
 
-        def fake(url):
+        def fake(url, timeout=120):
+            if url == SG.PAGE:
+                order.append("page")
+                if isinstance(page[0], BaseException):
+                    raise page[0]
+                return page[0]
+            order.append("file")
             asked.append(url)
             a = next(it)
             if isinstance(a, BaseException):
@@ -22978,11 +22994,37 @@ def _snapshot_stops(SG):
         assert rc == 0 and refusal.LOCK.read_text() == str(os.getppid()), "the nightly's lock was disturbed"
         rc, asked, root = run([data] * n, lock=99999999)
         assert rc == 3 and not asked, rc
+
+        # The page first, once, and what it said kept for the verdict; a page
+        # reporting a failed rebuild does not stop the files; a refused page
+        # stops everything, as a refused file does.
+        def said():
+            return json.loads(next(seen["arch"].glob("snapshots/*/page.json")).read_text(encoding="utf-8"))
+        rc, asked, root = run([data] * n)
+        assert rc == 0 and seen["order"][0] == "page" and seen["order"].count("page") == 1, seen["order"][:3]
+        assert said()["status"] == "ok", said()
+        page[0] = failed
+        rc, asked, root = run([data] * n)
+        assert rc == 0 and len(asked) == n and (root / "Docket.txt").read_bytes() == data, \
+            "a page reporting a failed rebuild kept whole files from being installed"
+        assert said()["status"] == "error" and said()["said"].startswith(
+            "Error Generating Members File : Execution Timeout Expired."), said()
+        page[0] = urllib.error.HTTPError("u", 403, "no", {}, None)
+        rc, asked, root = run([data] * n)
+        assert rc == 2 and not asked and refusal.MARK.exists() and not any(root.iterdir()), \
+            "a refused page went on to ask for the files"
+        page[0] = TimeoutError("timed out")
+        rc, asked, root = run([data] * n)
+        assert rc == 0 and said()["status"] == "slow" and (root / "Docket.txt").read_bytes() == data, \
+            "a page slow to answer counted as a refusal, or kept the files from being taken"
+        page[0] = healthy
+        assert SG.page_said(healthy) == "", "a page with no error was read as reporting one"
         src = Path("snapshot_gencourt.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
         assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
-        return "ok", ("one 403 stops it, block page and broken files not stored, all-or-none "
-                      "install, shrink guard, nightly lock respected")
+        return "ok", ("the page first, its error kept and the files still taken; one 403 stops it, "
+                      "block page and broken files not stored, all-or-none install, shrink guard, "
+                      "nightly lock respected")
     finally:
         refusal.MARK, refusal.LOCK, SG.get, SG.time = saved
         for t in tmps:
@@ -23583,12 +23625,18 @@ def _nightly_runner(NI):
         NI.say(f"\n--- {label} ---")
         NI.say("  a line the step printed", echo=False)
         name = Path(args[0]).name
+        if name == "snapshot_gencourt.py":
+            day = Path(args[args.index("--dir") + 1]) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
+            day.mkdir(parents=True, exist_ok=True)
+            bad = bool(empty["rc"] or empty["left"])
+            (day / "page.json").write_text(json.dumps(
+                {"status": "error", "said": "Error Generating Members File : Execution Timeout "
+                 "Expired. The timeout period elapsed prior to completion of the operation."}
+                if bad else {"status": "ok", "said": ""}), encoding="utf-8")
         if name == "snapshot_gencourt.py" and (empty["rc"] or empty["left"]):
             empty["left"] = max(0, empty["left"] - 1)
             # 27 September's first scheduled night: thirteen of the fourteen
             # files 3 bytes long, and the manifest saying so.
-            day = Path(args[args.index("--dir") + 1]) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
-            day.mkdir(parents=True, exist_ok=True)
             man = {f"F{i}.txt": {"error": "failed: not a data file (3 bytes)"} for i in range(13)}
             man["Members.txt"] = {"sha256": "0" * 64, "bytes": 90000}
             (day / "manifest.json").write_text(json.dumps(man), encoding="utf-8")
@@ -23783,7 +23831,11 @@ def _nightly_runner(NI):
         assert code == 1 and notes == [
             "::error title=Why the night failed::13 of the General Court's 14 daily files "
             f"came back empty on each of {NI.EMPTY_TRIES} tries, {NI.EMPTY_WAIT} minutes apart, "
-            "so nothing was installed or built. Nothing was published."], notes
+            "so nothing was installed or built. Their data page said: \"Error Generating Members "
+            "File : Execution Timeout Expired.\" Nothing was published."], notes
+        assert NI.page_quote("<b>x</b> Error Generating it all") == "" and NI.page_quote(
+            "Error Generating Docket File : a <script>. more") == \
+            "Error Generating Docket File : a script .", "page_quote let through what it should not"
         code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
         assert code == 1 and "::" not in out, "a note for GitHub was printed off GitHub"
 
@@ -23798,6 +23850,7 @@ def _nightly_runner(NI):
         tries = [c for c in calls if c[0] == "snapshot_gencourt.py"]
         assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == 3 \
             and len(tries) == 3 and v["built"], (code, v.get("fetch"), v.get("fetch_tries"), len(tries))
+        assert "data_page_said" not in v, "a whole night kept an earlier try's page error"
         assert slept.count(NI.EMPTY_WAIT * 60) == 2, f"the night waited {slept}"
 
         # And none of it is the laptop's.
