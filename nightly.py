@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -206,6 +206,18 @@ SCRATCH = Path(".night")
 # that made each committee come on Sunday. fetch_archive_db.GITHUB_VIEWS names
 # the same four, and preflight holds the lists together.
 STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
+
+# NEXT SESSION'S BILL REQUESTS (30 September 2026). fetch_lsrs.py merges each
+# download into lsrs.json and marks a request that has gone as withdrawn, so a
+# truncated download would withdraw real requests. The night keeps yesterday's
+# file and puts it back when the fetch fails, writes nothing, or would newly
+# withdraw more than LSR_GONE_MOST of the standing requests (and more than
+# LSR_GONE_FLOOR). It warns rather than blocks: a list beside the record going
+# stale for a night is no reason to hold back the day's docket, and a site
+# left alone for a month must not stop because one page changed.
+LSRS = Path("lsrs.json")
+LSR_GONE_MOST = 0.10
+LSR_GONE_FLOOR = 5
 STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
 
 # A result this much smaller than the copy it would replace is not swapped in:
@@ -529,6 +541,9 @@ def main():
                         if night and rc == 0 and not refusal.MARK.exists():
                             night.v["study_meetings"] = take_views(
                                 STUDY_NIGHTLY, "the study committees' meetings, from the database")
+                            # And next session's bill requests, from the site.
+                            if not refusal.MARK.exists():
+                                night.v["lsrs"] = take_lsrs()
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
@@ -893,6 +908,41 @@ def count_lines(path):
     return n
 
 
+def take_lsrs():
+    """Next session's bill requests into lsrs.json, whole or not at all, and a
+    line saying what happened: "installed, ..." or "not taken: ...". The fetch
+    runs here, in the working folder, so that a refusal it meets is recorded in
+    the refusal record every other fetch reads."""
+    before = LSRS.read_bytes() if LSRS.exists() else None
+    old = load_json(LSRS) if before is not None else []
+    old = old if isinstance(old, list) else []
+    standing = {r.get("lsr") for r in old if isinstance(r, dict) and not r.get("withdrawn")}
+    rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
+    new = load_json(LSRS)
+    gone = [r for r in (new if isinstance(new, list) else [])
+            if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
+    why = ""
+    if rc != 0:
+        why = f"the fetch did not complete (exit {rc})"
+    elif not isinstance(new, list) or not new:
+        why = "the fetch wrote no requests"
+    elif len(gone) > max(LSR_GONE_FLOOR, LSR_GONE_MOST * len(standing)):
+        why = f"it would newly withdraw {len(gone)} of the {len(standing)} standing requests"
+    if why:
+        if before is not None:
+            tmp = LSRS.with_name(LSRS.name + ".part")
+            tmp.write_bytes(before)
+            os.replace(tmp, LSRS)
+        else:
+            LSRS.unlink(missing_ok=True)
+        say(f"  bill requests not taken: {why}")
+        return (f"not taken: {why}; "
+                + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
+    active = sum(1 for r in new if isinstance(r, dict) and not r.get("withdrawn"))
+    return (f"installed, {active} requests (was {len(standing)})"
+            + (f"; {len(gone)} newly withdrawn" if gone else ""))
+
+
 def take_views(views, label):
     """The study committees' views from the database, whole or not at all.
 
@@ -1192,6 +1242,14 @@ class Night:
             why += [b for b in v.get("blocking", []) if b not in why]
         return why
 
+    def warnings(self):
+        """What the night went ahead without: a list beside the record kept from
+        an earlier night. Reported on the run's page and in the verdict, and
+        never a reason to hold the night back."""
+        lsrs = self.v.get("lsrs")
+        return ([f"next session's bill requests: {lsrs}"]
+                if lsrs and not str(lsrs).startswith("installed") else [])
+
     def exit_code(self):
         """0 when the night did what it was asked. A dry run is asked for a build
         and, if it was told to fetch, the day's data; the rest is reported."""
@@ -1205,11 +1263,13 @@ class Night:
         v = self.v
         why = self.problems()
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code,
-                 clean=not why and code == 0, not_clean=why)
+                 clean=not why and code == 0, not_clean=why, warnings=self.warnings())
         write_json(VERDICT, v)
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {VERDICT}")
         for w in why:
             say(f"  - {w}")
+        for w in v["warnings"]:
+            say(f"  - warning: {w}")
         gh_output(built=bool(v.get("built")), publishable=bool(v.get("publishable")),
                   clean=bool(v["clean"]), day=self.day)
         tries = int(v.get("fetch_tries") or 1)
@@ -1220,7 +1280,8 @@ class Night:
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + ([f"- the General Court's data page said: {v['data_page_said']}"]
                       if v.get("data_page_said") else [])
-                   + [f"- {w}" for w in why[:8]])
+                   + [f"- {w}" for w in why[:8]]
+                   + [f"- warning: {w}" for w in v["warnings"]])
 
 
 def runner_deploy(a):
@@ -1347,6 +1408,13 @@ def close_verdict(a):
                     f"Why the {'weekly job' if a.weekly else 'night'} "
                     f"{'failed' if failed else 'was not clean'}", why)
         gh_summary([f"**Why:** {why}"])
+    elif v.get("warnings"):
+        # Clean, and publishable, but something beside the record was kept
+        # from an earlier night: said at the top of the run's page. Every
+        # warning is a line nightly.py wrote from its own counts.
+        gh_annotate("warning", "The night was clean, with a warning",
+                    "; ".join(str(w) for w in v["warnings"])[:300]
+                    + ". Everything else was taken as usual.")
     return 1 if failed else 0
 
 

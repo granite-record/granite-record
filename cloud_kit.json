@@ -14,6 +14,11 @@
                 "HouseDistricts.txt", "Counties.txt"]
     },
     {
+      "what": "Next session's bill requests, fetch_lsrs.py's lsrs.json: the night takes them since 30 September 2026 (nightly.take_lsrs) and puts the earlier list back whole when a fetch fails. Until then the file was committed to git and fetched by hand.",
+      "owner": "night",
+      "paths": ["lsrs.json"]
+    },
+    {
       "what": "Each day's copy of those files: what gc_changes.py compares the night's with.",
       "owner": "night",
       "globs": ["nh-archive/**"]

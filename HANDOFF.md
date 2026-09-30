@@ -396,6 +396,20 @@ September, the page answered in nine seconds and rewrote `Docket.txt` in the
 second it was asked; its "Members File" is `legislators.txt`, which it listed
 first that day and not at all on the 28th.
 
+**Next session's bill requests are the night's too** (30 September). They
+were `lsrs.json`, committed to git and fetched by hand, and the site's 241 had
+stood still since 18 September in the middle of the filing season.
+`nightly.take_lsrs()` now runs `fetch_lsrs.py` after the day's files, keeps
+yesterday's list, and puts it back whole when the fetch fails, writes
+nothing, or would newly withdraw more than a tenth of the standing requests
+(and more than five). `lsrs.json` is a night file in the kit and no longer in
+git, and `fetch_lsrs.py` stands down on the laptop except for `--parse`. A
+failure there is a *warning*, not a failure: the night stays clean and
+publishes, the run's page leads with a warning note, and the verdict carries
+`warnings`, which `cloud.py pull` prints. That is the rule for anything beside
+the record that the night takes: the day's files block, the lists around them
+warn, so one changed page cannot stop a site left alone for a month.
+
 The weekly's schedule is on too (04:17 UTC on Monday), after its first run by
 hand, on 30 September, came back clean: committee memberships 810, committees
 41 and former members 676, all as before, and study-committee memberships

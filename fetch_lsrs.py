@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.3
+# GRANITE_VERSION: 2026-09-18.4
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -38,6 +38,11 @@ behaviour. If the link is not on the page, this says so and stops, which is a
 report a person can act on rather than a probe somebody else has to absorb.
 
 Two requests, a pause between them, and it identifies itself.
+
+GITHUB'S NIGHTLY RUNS IT NOW (30 September 2026). nightly.take_lsrs() runs it
+every night, keeps the list whole, and lsrs.json is the night's file in the
+kit rather than one committed to git. On a laptop that has stood down it
+refuses; --parse, which asks nobody, still works.
 """
 
 import argparse
@@ -303,6 +308,10 @@ def main():
         print(f"{len(rows)} requests parsed -> {OUT}"
               + (f"; {gone} newly marked withdrawn" if gone else ""))
         return 0
+    # One writer per file: the night takes the requests, and lsrs.json reaches
+    # this machine from R2.
+    refusal.stand_down("The LSR fetch", "GitHub's nightly takes next session's bill "
+                       "requests now, and lsrs.json reaches this machine from R2.")
     refusal.check("The LSR fetch")
 
     print(f"asking {SEARCH} for the page that offers the file")

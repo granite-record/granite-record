@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.275
+# GRANITE_VERSION: 2026-09-04.276
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20735,7 +20735,10 @@ def _offline_modes_ask_nobody():
                 r = seal.run([sys.executable, str(here / script), *args], cwd=tmp,
                              capture_output=True, text=True, timeout=120, env=env)
                 said = (r.stdout or "") + (r.stderr or "")
-                held = r.returncode in (2, 4) and ("refused" in said or "window" in said)
+                # Stopped by the refusal, by GitHub's night, or -- for a fetcher GitHub
+                # owns, such as fetch_lsrs.py -- by the stand-down itself.
+                held = r.returncode in (2, 4) and ("refused" in said or "window" in said
+                                                   or "GitHub runs it" in said)
                 assert held == stopped, (
                     f"python3 {script} {' '.join(args)} "
                     + ("was not stopped by a standing refusal" if stopped else
@@ -23619,6 +23622,7 @@ def _nightly_runner(NI):
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0}
+    lsr = {"rc": 0, "rows": 3}
 
     def fake(args, label, cwd=None):
         calls.append(list(args))
@@ -23646,6 +23650,20 @@ def _nightly_runner(NI):
             _runner_site(size["bills"])
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
+        elif name == "fetch_lsrs.py":
+            # fetch_lsrs.py's merge: this download's requests, and every earlier
+            # one it no longer lists kept and marked withdrawn.
+            if lsr["rc"]:
+                NI.say(f"  (0s, exit {lsr['rc']})")
+                return lsr["rc"]
+            rows = [{"lsr": f"2027-{i:04d}", "session": 2027, "body": "HB", "title": "t",
+                     "sponsor": "s", "withdrawn": False} for i in range(1, lsr["rows"] + 1)]
+            here_now = {r["lsr"] for r in rows}
+            if Path("lsrs.json").exists():
+                rows += [{**r, "withdrawn": True} for r in
+                         json.loads(Path("lsrs.json").read_text(encoding="utf-8"))
+                         if r["lsr"] not in here_now]
+            Path("lsrs.json").write_text(json.dumps(rows), encoding="utf-8")
         elif name == "gc_changes.py":
             out = Path(args[args.index("--out") + 1])
             out.parent.mkdir(exist_ok=True)
@@ -23851,6 +23869,36 @@ def _nightly_runner(NI):
         assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == 3 \
             and len(tries) == 3 and v["built"], (code, v.get("fetch"), v.get("fetch_tries"), len(tries))
         assert "data_page_said" not in v, "a whole night kept an earlier try's page error"
+
+        # Next session's bill requests, taken with the day's files. A fetch
+        # that fails, or would withdraw most of the standing requests, puts the
+        # earlier list back and is a warning: the night stays clean, and the
+        # run's page says so at the top.
+        assert v.get("lsrs", "").startswith("installed, 3 requests"), v.get("lsrs")
+        lsr["rows"] = 10
+        code, _ = night("--runner", run_id="113")
+        assert code == 0 and verdict()["lsrs"] == "installed, 10 requests (was 3)", verdict()["lsrs"]
+        good = Path("lsrs.json").read_bytes()
+        lsr["rc"] = 1
+        code, _ = night("--runner", run_id="114")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["lsrs"].startswith("not taken: the fetch did not "
+                                                                  "complete") \
+            and v["warnings"] and Path("lsrs.json").read_bytes() == good, \
+            (code, v.get("lsrs"), v.get("warnings"))
+        os.environ["GITHUB_ACTIONS"] = "true"
+        try:
+            code, out = night("--runner", "--close", "--outcome", "night=success", run_id="114")
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        assert code == 0 and any(ln.startswith("::warning title=The night was clean")
+                                 for ln in out.splitlines()), out[-300:]
+        lsr["rc"], lsr["rows"] = 0, 2
+        code, _ = night("--runner", run_id="115")
+        v = verdict()
+        assert code == 0 and v["clean"] and "would newly withdraw 8 of the 10" in v["lsrs"] \
+            and Path("lsrs.json").read_bytes() == good, v.get("lsrs")
+        lsr["rows"] = 10
         assert slept.count(NI.EMPTY_WAIT * 60) == 2, f"the night waited {slept}"
 
         # And none of it is the laptop's.
@@ -24041,9 +24089,10 @@ def _stand_down(R, NI, FA):
 
     import fetch_committees as FC
     import fetch_committee_members_db as FCM
+    import fetch_lsrs as FL
     import fetch_members_db as FM
     import snapshot_gencourt as SG
-    saved = (FC.get, SG.run, probe_db.run, probe_db.run_to_file)
+    saved = (FC.get, SG.run, probe_db.run, probe_db.run_to_file, FL.get)
     try:
         os.chdir(tmp)
         os.environ.pop("GITHUB_ACTIONS", None)
@@ -24053,7 +24102,7 @@ def _stand_down(R, NI, FA):
         code, said = refuses(lambda: R.stand_down("The nightly"), ["x"])
         assert code == R.STOOD_DOWN == 4 and "2026-09-26" in said and \
             str(R.STANDDOWN) in said, (code, said)
-        FC.get = SG.run = probe_db.run = probe_db.run_to_file = asked
+        FC.get = SG.run = probe_db.run = probe_db.run_to_file = FL.get = asked
         for label, fn, argv in (
                 ("nightly.py", NI.main, ["nightly.py", "--no-fetch"]),
                 ("nightly.py --runner", NI.main, ["nightly.py", "--runner", "--no-fetch"]),
@@ -24061,6 +24110,7 @@ def _stand_down(R, NI, FA):
                 ("fetch_committees.py", FC.main, ["fetch_committees.py"]),
                 ("fetch_committee_members_db.py", FCM.main, ["fetch_committee_members_db.py"]),
                 ("fetch_members_db.py", FM.main, ["fetch_members_db.py"]),
+                ("fetch_lsrs.py", FL.main, ["fetch_lsrs.py"]),
                 ("fetch_archive_db.py for the study views", FA.main,
                  ["fetch_archive_db.py", "--only", "StatStudMeetings", "--only", "vStatStudTemp"])):
             code, said = refuses(fn, argv)
@@ -24070,7 +24120,7 @@ def _stand_down(R, NI, FA):
         assert R.stood_down() is None and R.stand_down("x") is None, \
             "GitHub's own machine was stood down by a copy of the file"
     finally:
-        FC.get, SG.run, probe_db.run, probe_db.run_to_file = saved
+        FC.get, SG.run, probe_db.run, probe_db.run_to_file, FL.get = saved
         sys.argv = saved_argv
         if saved_env is None:
             os.environ.pop("GITHUB_ACTIONS", None)
@@ -24087,7 +24137,7 @@ def _stand_down(R, NI, FA):
     assert guard != -1, "publish.bat does not look for the stand-down file"
     assert guard < bat.find("python3 build_all.py") and guard < bat.find("call npx wrangler"), \
         "publish.bat looks for the stand-down file only after it has built or deployed"
-    return "ok", (f"{R.STANDDOWN} stops the nightly, the snapshot, publish.bat and the five "
+    return "ok", (f"{R.STANDDOWN} stops the nightly, the snapshot, publish.bat and the six "
                   "fetchers GitHub owns, before any request; never on GitHub's machine")
 
 

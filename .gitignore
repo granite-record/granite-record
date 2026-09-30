@@ -44,6 +44,9 @@ HouseDistricts.txt
 Counties.txt
 Committees.txt
 SubjectCodes.txt
+# Next session's bill requests: the nightly's file since 30 September 2026
+# (nightly.take_lsrs), carried in the kit rather than committed.
+lsrs.json
 
 # ---- generated data ------------------------------------------------------
 # Every one of these is produced by a build_* step from the files above.

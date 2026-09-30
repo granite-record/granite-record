@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.4
+# GRANITE_VERSION: 2026-09-25.5
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -2143,6 +2143,8 @@ def pull_verdicts(bucket, root, dry, today):
                      f"{'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
                      + ("" if v.get("clean") else
                         " -- " + "; ".join(str(x) for x in (v.get("not_clean") or [])[:3]))
+                     + (" -- with a warning: " + "; ".join(str(x) for x in v["warnings"][:2])
+                        if v.get("clean") and v.get("warnings") else "")
                      + (f"; already at {rel}" if same else
                         f"; {'would go' if dry else 'now'} at {rel}"))
     return lines, taken
