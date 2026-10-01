@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.286
+# GRANITE_VERSION: 2026-09-04.287
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2569,12 +2569,15 @@ def _ls_nights(livestreams, build_manifest):
     """The whole step on replayed answers, three nights running.
 
     Night one lists three new recordings and a committed row written before
-    its stream aired, captions one, meets a data centre's bot check on the
-    next and stops there; night two asks YouTube for no captions -- the hold
-    -- and turns the recording that was only scheduled into an aired one; the
-    build's --markers step reads the captioned one and touches nothing else;
-    night three finds the laptop has read it and stops carrying it. No night
-    changes a committed file, and build_manifest takes the aired row over the
+    its stream aired; finds that one, eight days old, has captions under
+    neither name and takes it to have none; captions one; meets a data
+    centre's bot check on the next and stops there. Night two, past the
+    twelve-hour hold, makes one request -- the refused recording again, the
+    oldest waiting -- is refused again and asks for nothing else, and turns
+    the recording that was only scheduled into an aired one; the build's
+    --markers step reads the captioned one and touches nothing else; night
+    three finds the laptop has read it and stops carrying it. No night changes
+    a committed file, and build_manifest takes the aired row over the
     committed one written before the stream.
     """
     if not Path("livestreams.py").exists():
@@ -2596,8 +2599,10 @@ def _ls_nights(livestreams, build_manifest):
             "a refused fetch left a folder behind"
         assert v["PFNEW000002"]["status"] == "upcoming", v["PFNEW000002"]
         assert v["PFSTALE0001"]["status"] == "finished", v["PFSTALE0001"]
+        assert v["PFSTALE0001"]["captions"] == "none-published", v["PFSTALE0001"]
         ref = st["refusals"]["runner"]
         assert ref["count"] == 1 and "not a bot" in ref["why"], ref
+        assert ref["until_iso"] == "2026-09-25T18:30:00Z", ref
         assert st["last_run"]["units"] == 6, \
             f"{st['last_run']['units']} units, expected 2 + 3 pages + 1"
         house = list(csv.DictReader(open(root / "videos_house_livestreams.csv",
@@ -2616,8 +2621,11 @@ def _ls_nights(livestreams, build_manifest):
         st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
         assert st["last_run"]["units"] == 3, st["last_run"]
         assert st["videos"]["PFNEW000002"]["status"] == "finished"
+        ref = st["refusals"]["runner"]
+        assert ref["count"] == 2 and ref["until_iso"] == "2026-09-27T06:30:00Z", \
+            f"the second night did not open with one request, refused again: {ref}"
         assert st["videos"]["PFNEW000002"]["captions"] == "deferred", \
-            "the second night asked YouTube inside the hold"
+            "the second night went on asking YouTube past a refusal"
         assert not (root / "work" / "PFNEW000002").exists()
         house = {x["video_id"]: x for x in csv.DictReader(
             open(root / "videos_house_livestreams.csv", encoding="utf-8"))}
@@ -2712,7 +2720,8 @@ def _ls_nights(livestreams, build_manifest):
         return "ok", ("3 new and 1 pre-air row indexed at 6 units, then 3, then 2; "
                       "one captioned, read by --markers and put back the next "
                       "night without its captions, then handed to the laptop; "
-                      "one refused and held; committed index untouched")
+                      "one refused, and refused again at the next night's one "
+                      "request; one with no captions closed; committed index untouched")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -2754,12 +2763,220 @@ def _ls_classify(livestreams):
     return "ok", f"{len(cases)} answers read as meant"
 
 
-@check("livestreams", "after a refusal the next night asks nothing, and the "
-                      "wait doubles", needs=("livestreams",))
+@check("livestreams", "one caption track to an ask, the oldest recordings first and a "
+                      "few a run, the second track only at a recording's last ask",
+       needs=("livestreams", "segment_markers"))
+def _ls_gentle(livestreams, segment_markers):
+    """What YouTube is asked for, pinned. On 30 September 2026 the laptop's
+    catch-up was answered "HTTP Error 429: Too Many Requests" on its second
+    recording: it asked for `en.*`, which is two caption requests a recording
+    for one track -- yt-dlp lists a recording's own captions as `en` and as
+    `en-orig`, and all 4,265 captioned folders in work/ held both (300
+    compared, 300 identical) -- twenty seconds apart and twenty a run. So:
+
+      - every ask names ONE track outright, a name yt-dlp can match one
+        track with, and the tracks are the caption files segment_markers
+        reads, in its order;
+      - yt-dlp's own pauses are in its arguments, and a run waits a minute
+        or two between recordings and asks for a few -- enough for an
+        ordinary session day's four, far short of twenty;
+      - a run asks the oldest recordings and leaves the rest;
+      - `en-orig` is asked for only when `en` is not there, and only at a
+        recording's last ask, a week after its stream; a recording with
+        neither is then taken to have none -- in a run that captioned
+        something, because "none" is also what yt-dlp says when it could
+        not get at the captions, and a run of nothing but "none" has shown
+        nothing -- and the laptop, which cannot write the night's state,
+        remembers that itself.
+
+    Nothing here asks YouTube: every ask is answered from a folder of saved
+    files, and one that would start yt-dlp instead fails the check.
+    """
+    import argparse as _ap
+    import contextlib
+    import io
+    from datetime import datetime, timedelta, timezone
+    L = livestreams
+    for track in L.CAPTION_TRACKS:
+        args = L.ytdlp_args(track)
+        at = [k for k, x in enumerate(args) if x == "--sub-langs"]
+        assert len(at) == 1 and args[at[0] + 1] == track, args
+        assert re.fullmatch(r"[A-Za-z]+(?:-[A-Za-z]+)*", track), \
+            f"{track!r} is a pattern, not one track's name: yt-dlp would fetch every match"
+    assert "--sub-langs" not in L.YTDLP, "YTDLP names tracks itself; ytdlp_args adds the one"
+    assert L.CAPTION_FILES == [f"captions.{t}.json3" for t in L.CAPTION_TRACKS], \
+        (L.CAPTION_TRACKS, L.CAPTION_FILES)
+    reads = [f for f in segment_markers.WORK_FILES if f.startswith("captions.")]
+    assert L.CAPTION_FILES == reads, \
+        f"segment_markers reads {reads}; this step asks for {L.CAPTION_FILES}"
+    try:
+        L.ytdlp_args("en.*")
+        raise AssertionError("ytdlp_args accepted a wildcard")
+    except L.Broken:
+        pass
+    for flag in ("--sleep-requests", "--sleep-subtitles"):
+        assert flag in L.YTDLP and float(L.YTDLP[L.YTDLP.index(flag) + 1]) >= 1, \
+            f"yt-dlp is not told to pause between its own requests ({flag})"
+    assert L.DELAY >= 60 and 0 < L.JITTER and L.DELAY + L.JITTER <= 120, (L.DELAY, L.JITTER)
+    assert 4 <= L.MAX_CAPTIONS < 18, L.MAX_CAPTIONS
+
+    root = Path(tempfile.mkdtemp())
+    here = os.getcwd()
+    real_ask, real_read, real_summary = L.ask_track, L.read_markers, L.write_summary
+    asked = []
+
+    def ask(vid, track, work=L.WORK, source=None, timeout=300):
+        assert source, f"{vid}: an ask with no saved answers would have started yt-dlp"
+        asked.append((vid, track))
+        return real_ask(vid, track, work, source, timeout)
+
+    L.ask_track = ask
+    try:
+        words = json.dumps(_json3(["I am opening the hearing on House Bill 1491"]))
+        src, work = root / "src", root / "work"
+        now = datetime(2026, 10, 1, 21, 0, tzinfo=timezone.utc)
+        a = _ap.Namespace(max_captions=L.MAX_CAPTIONS, budget=45, delay=0, jitter=0,
+                          timeout=60, stop_after=3, captions_from=str(src), origin="laptop")
+        quiet = contextlib.redirect_stdout(io.StringIO())
+
+        # More waiting than a run asks for: the oldest go, both of a
+        # recording's saved tracks are there, and only `en` is taken.
+        vids = [f"V{k:02d}" for k in range(L.MAX_CAPTIONS + 3)]
+        for vid in vids:
+            (src / vid).mkdir(parents=True)
+            for f in L.CAPTION_FILES:
+                (src / vid / f).write_text(words, encoding="utf-8")
+        st = {"videos": {vid: {"status": "finished", "captions": "waiting",
+                               "ended": L.iso(now - timedelta(hours=40 - k))}
+                         for k, vid in enumerate(vids)}}
+        queue = L.caption_queue(st, now)
+        assert queue == vids, queue
+        with quiet:
+            got, why = L.run_captions(st, queue, L.Refusals({}, "laptop"), now, a, work=work)
+        first = vids[:L.MAX_CAPTIONS]
+        assert asked == [(vid, "en") for vid in first], asked
+        assert got == {"captioned": L.MAX_CAPTIONS, "left for tomorrow": 3} and not why, got
+        assert all(sorted(x.name for x in (work / vid).iterdir()) == ["captions.en.json3"]
+                   for vid in first), "an ask brought more than its one track"
+        assert [vid for vid in vids if st["videos"][vid]["captions"] == "waiting"] \
+            == vids[L.MAX_CAPTIONS:], "the ones left are not the newest"
+        # The next run starts with what was left.
+        assert L.caption_queue(st, now) == vids[L.MAX_CAPTIONS:]
+
+        # A recording with only the second track, and one with none. Inside
+        # the week each is asked for `en` and nothing else, and waits.
+        del asked[:]
+        (src / "ORIG").mkdir()
+        (src / "ORIG" / "captions.en-orig.json3").write_text(words, encoding="utf-8")
+        (src / "NONE").mkdir()
+        young = {"status": "finished", "captions": "waiting",
+                 "ended": L.iso(now - timedelta(days=2))}
+        st = {"videos": {"NONE": dict(young), "ORIG": dict(young)}}
+        with quiet:
+            got, why = L.run_captions(st, ["NONE", "ORIG"], L.Refusals({}, "laptop"), now,
+                                      a, work=work)
+        assert asked == [("NONE", "en"), ("ORIG", "en")], asked
+        assert got == {"none-yet": 2}, got
+        assert not (work / "ORIG").exists() and not (work / "NONE").exists()
+        # A week after the stream, the last ask: `en`, then `en-orig`.
+        del asked[:]
+        late = now + timedelta(days=6)
+        assert L.caption_queue(st, late) == ["NONE", "ORIG"], \
+            "a recording a week old was closed without its last ask"
+        with quiet:
+            got, why = L.run_captions(st, ["NONE", "ORIG"], L.Refusals({}, "laptop"), late,
+                                      a, work=work)
+        assert asked == [("NONE", "en"), ("NONE", "en-orig"),
+                         ("ORIG", "en"), ("ORIG", "en-orig")], asked
+        assert got == {"none-published": 1, "captioned": 1}, got
+        assert st["videos"]["NONE"]["captions"] == "none-published"
+        assert (work / "ORIG" / "captions.en-orig.json3").exists()
+        assert segment_markers.read_words(work / "ORIG"), "the second track is not read"
+        assert L.caption_queue(st, late) == [], "a recording with no captions is still due"
+        # A refusal of the first track is not a missing one: no second ask.
+        del asked[:]
+        (src / "REF").mkdir()
+        (src / "REF" / "ERROR.txt").write_text(
+            "ERROR: Unable to download video subtitles for 'en': HTTP Error 429: "
+            "Too Many Requests", encoding="utf-8")
+        st = {"videos": {"REF": {"status": "finished", "captions": "waiting",
+                                 "ended": L.iso(late - timedelta(days=30))}}}
+        table = {}
+        with quiet:
+            got, why = L.run_captions(st, ["REF"], L.Refusals(table, "laptop"), late, a,
+                                      work=work)
+        assert asked == [("REF", "en")] and why and table["laptop"]["count"] == 1, (asked, table)
+
+        # The laptop's catch-up reads the night's state and never writes it,
+        # so what it found to have no captions it keeps beside its own
+        # refusal record, and does not ask for again. Three evenings: one
+        # that captions nothing, and so closes nothing; one that captions
+        # the other recording, and so takes "none" at its word; one that
+        # asks for nothing.
+        del asked[:]
+        night = root / "night"
+        (night / "archive").mkdir(parents=True)
+        (night / "src" / "NONE").mkdir(parents=True)
+        state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {}, "videos": {
+            "NONE": {"status": "finished", "captions": "deferred", "chamber": "house",
+                     "ended": L.iso(now - timedelta(days=9)), "title": "x"},
+            "GOOD": {"status": "finished", "captions": "deferred", "chamber": "house",
+                     "ended": L.iso(now - timedelta(days=1)), "title": "y"}}}
+        (night / "archive" / "livestreams.json").write_text(json.dumps(state),
+                                                            encoding="utf-8")
+        before = (night / "archive" / "livestreams.json").read_bytes()
+        record = night / "archive" / "youtube.refused.json"
+        os.chdir(night)
+        # The reading of what was captioned is --markers' and its own
+        # checks'; here it would need a proceedings table.
+        L.read_markers, L.write_summary = (lambda vids: 0), (lambda: 0)
+
+        def evening():
+            del asked[:]
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = L.main(["--catch-up", "--captions-from", "src", "--origin", "laptop",
+                               "--now", L.iso(now)])
+            assert code == 0, out.getvalue()[-300:]
+            said = [ln for ln in out.getvalue().splitlines()
+                    if ln.startswith("LIVESTREAMS CATCH-UP:")]
+            assert len(said) == 1, out.getvalue()[-300:]
+            return (list(asked), said[0],
+                    json.loads(record.read_text(encoding="utf-8")).get(L.NONE_PUBLISHED))
+
+        both = [("NONE", "en"), ("NONE", "en-orig"), ("GOOD", "en")]
+        was, line, kept = evening()
+        assert was == both and not kept and "2 none-yet" in line, (was, line, kept)
+        (night / "src" / "GOOD").mkdir()
+        (night / "src" / "GOOD" / "captions.en.json3").write_text(words, encoding="utf-8")
+        was, line, kept = evening()
+        assert was == both and list(kept or {}) == ["NONE"], (was, kept)
+        assert "1 captioned" in line and "1 none-published" in line, line
+        was, line, kept = evening()
+        assert was == [] and list(kept or {}) == ["NONE"], \
+            f"the third evening asked again: {was}"
+        os.chdir(here)
+        assert (night / "archive" / "livestreams.json").read_bytes() == before, \
+            "the catch-up wrote the night's state"
+        return "ok", (f"`en` alone to an ask; {L.MAX_CAPTIONS} oldest of "
+                      f"{len(vids)} asked, {L.DELAY:g}-{L.DELAY + L.JITTER:g}s apart; "
+                      "`en-orig` only at the last ask, and never after a refusal; "
+                      "a recording with none is closed only by a run that captioned "
+                      "something, and the laptop remembers it")
+    finally:
+        L.ask_track, L.read_markers, L.write_summary = real_ask, real_read, real_summary
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "after a refusal nothing is asked for twelve hours, and "
+                      "the wait doubles", needs=("livestreams",))
 def _ls_hold(livestreams):
-    """A refusal is kept per machine: this one's holds the next night
-    entirely, the night after makes one request, and a second refusal in a
-    row doubles the wait. The laptop's own record is untouched by it."""
+    """A refusal is kept per machine: this one's holds it for twelve hours --
+    36 until 1 October 2026, which cost the laptop two evenings for one 429
+    -- so its next run a day later opens with one request, and a second
+    refusal in a row doubles the wait. Inside a hold nothing is asked at all.
+    The laptop's own record is untouched by it."""
     import contextlib
     import io
     from datetime import datetime, timedelta, timezone
@@ -2774,46 +2991,60 @@ def _ls_hold(livestreams):
             (src / vid / "ERROR.txt").write_text("HTTP Error 429: Too Many "
                                                  "Requests", encoding="utf-8")
         import argparse as _ap
-        a = _ap.Namespace(max_captions=20, budget=45, delay=0, timeout=60,
+        a = _ap.Namespace(max_captions=20, budget=45, delay=0, jitter=0, timeout=60,
                           stop_after=3, captions_from=str(src), origin="runner")
-        st = {"videos": {v: {"status": "finished", "captions": "waiting"}
+        t0 = datetime(2026, 9, 25, 6, 30, tzinfo=timezone.utc)
+        st = {"videos": {v: {"status": "finished", "captions": "waiting",
+                             "ended": L.iso(t0 - timedelta(hours=20))}
                          for v in ("A", "B")}}
         table = {}
-        t0 = datetime(2026, 9, 25, 6, 30, tzinfo=timezone.utc)
+        assert (L.HOLD_HOURS, L.HOLD_MAX) == (12, 168), (L.HOLD_HOURS, L.HOLD_MAX)
         got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
                                   t0, a, work=root / "work")
         assert why and got["deferred"] == 2, (got, why)
         assert table["runner"]["count"] == 1
-        # The next night: inside the hold, nothing is attempted. The source
-        # would now answer, so an attempt would show as a caption file.
+        held = table["runner"]["until"] - t0.timestamp()
+        assert abs(held - 12 * 3600) < 1, held / 3600
+        # Inside the hold nothing is attempted, an hour in or a minute before
+        # its end. The source would now answer, so an attempt would show as a
+        # caption file.
         for vid in ("A", "B"):
             (src / vid / "ERROR.txt").unlink()
             (src / vid / "captions.en.json3").write_text(
                 json.dumps(_json3(["I am opening the hearing on House Bill 1491"])),
                 encoding="utf-8")
-        got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
-                                  t0 + timedelta(hours=24), a, work=root / "work")
-        assert not (root / "work" / "A").exists(), "asked inside the hold"
+        for inside in (timedelta(hours=1), timedelta(hours=11, minutes=59)):
+            got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
+                                      t0 + inside, a, work=root / "work")
+            assert why and got["deferred"] == 2, (inside, got, why)
+            assert not (root / "work" / "A").exists(), f"asked inside the hold, {inside} in"
         # A refusal on the laptop is its own: the runner's does not hold it.
-        assert not L.Refusals(table, "laptop").held(t0 + timedelta(hours=24))
-        # Past the hold, a probe, refused again: the wait doubles.
+        assert not L.Refusals(table, "laptop").held(t0 + timedelta(hours=1))
+        # The next night, past the hold: one request, refused again, and
+        # nothing after it. The wait doubles.
         (src / "A" / "captions.en.json3").unlink()
         (src / "A" / "ERROR.txt").write_text("HTTP Error 429", encoding="utf-8")
         got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
-                                  t0 + timedelta(hours=48), a, work=root / "work")
+                                  t0 + timedelta(hours=24), a, work=root / "work")
         assert table["runner"]["count"] == 2 and why, table
-        held = table["runner"]["until"] - (t0 + timedelta(hours=48)).timestamp()
-        assert abs(held - 72 * 3600) < 1, held / 3600
+        held = table["runner"]["until"] - (t0 + timedelta(hours=24)).timestamp()
+        assert abs(held - 24 * 3600) < 1, held / 3600
         assert not (root / "work" / "B").exists(), "went on past a refusal"
+        # Doubling stops at a week: 12, 24, 48, 96, 168.
+        probe, at, waits = {"runner": dict(table["runner"], count=0)}, t0, []
+        for _ in range(6):
+            waits.append(L.Refusals(probe, "runner").note(at, "HTTP Error 429"))
+        assert waits == [12, 24, 48, 96, 168, 168], waits
         # And an answer clears it.
         (src / "A" / "ERROR.txt").unlink()
         (src / "A" / "captions.en.json3").write_text(
             json.dumps(_json3(["I am opening the hearing on House Bill 1491"])),
             encoding="utf-8")
         got, why = L.run_captions(st, ["A"], L.Refusals(table, "runner"),
-                                  t0 + timedelta(hours=121), a, work=root / "work")
+                                  t0 + timedelta(hours=49), a, work=root / "work")
         assert got["captioned"] == 1 and table["runner"]["count"] == 0, (got, table)
-        return "ok", "held 36h, then one probe, then 72h; cleared by an answer"
+        return "ok", ("held 12h and asked nothing inside it, then one request, then 24h; "
+                      "12, 24, 48, 96, 168 at most; cleared by an answer")
     finally:
         quiet.__exit__(None, None, None)
         shutil.rmtree(root, ignore_errors=True)
@@ -2918,6 +3149,7 @@ def _ls_no_ytdlp(livestreams):
     root = Path(tempfile.mkdtemp())
     here = os.getcwd()
     real = importlib.util.find_spec
+    real_ask, asks = livestreams.ask_track, []
     saved = {k: os.environ.pop(k) for k in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS")
              if k in os.environ}
     try:
@@ -2925,11 +3157,20 @@ def _ls_no_ytdlp(livestreams):
         os.chdir(root)
         importlib.util.find_spec = (lambda name, *a, **k:
                                     None if name == "yt_dlp" else real(name, *a, **k))
+
+        # This run is given no caption source, so an ask would be a real one:
+        # it must make none, and one made stops here, not at YouTube.
+        def no_ask(vid, track, *a, **k):
+            asks.append(vid)
+            return "failed", "preflight: an ask was made with no caption source"
+
+        livestreams.ask_track = no_ask
         with contextlib.redirect_stdout(io.StringIO()) as out:
             code = livestreams.main(["--since-state", "--replay", "api",
                                      "--now", "2026-09-25T06:30:00Z",
                                      "--origin", "runner"])
         importlib.util.find_spec = real
+        assert not asks, f"captions were asked for with no yt-dlp here: {asks}"
         assert code == 3, (code, out.getvalue()[-300:])
         assert "yt-dlp is not installed" in out.getvalue()
         st = json.loads(Path("archive/livestreams.json").read_text(encoding="utf-8"))
@@ -2941,6 +3182,7 @@ def _ls_no_ytdlp(livestreams):
         return "ok", "exit 3, three recordings left waiting with no try counted"
     finally:
         importlib.util.find_spec = real
+        livestreams.ask_track = real_ask
         os.environ.update(saved)
         os.chdir(here)
         shutil.rmtree(root, ignore_errors=True)

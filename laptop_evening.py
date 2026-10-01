@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.1
+# GRANITE_VERSION: 2026-09-30.2
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -26,8 +26,9 @@ WHAT IT RUNS, IN ORDER, STOPPING AT THE FIRST THAT FAILS
        two days old, or nothing is captioned: an older list is a night that
        has not run, and the catch-up would be working from a stale one.
   2. livestreams.py --catch-up
-       captions the waiting recordings, twenty seconds apart, and reads the
-       chair's boundaries out of them.
+       captions the waiting recordings -- the six oldest in an evening, a
+       minute or two apart, one caption track each -- and reads the chair's
+       boundaries out of them. What is left comes first the next evening.
   3. probe_alignment.py --truth --candidate candidate_segments.json
        CLAUDE.md: nothing about timestamps goes on the site before this has
        been run and the median has not regressed. It is compared with the
