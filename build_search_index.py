@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.1
+# GRANITE_VERSION: 2026-10-01.2
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -13,7 +13,8 @@ No network. Standard library only. It reads the index build_site_v2 wrote
 (site/idx/<term>.json), the text of the bills (bill_text.json for the current
 term, archive_text.json for the terms before it) and app.js, and writes one
 file per term, site/sidx/<term>.json, plus site/sidx/manifest.json with what
-each holds and what it weighs.
+each holds and what it weighs, and site/sidx/words.json: every word the bills
+use (EVERY WORD, below).
 
 WHY IT EXISTS
 
@@ -95,9 +96,24 @@ Each n is one bill: (its place in ids, counted from the one before) * 20, plus
 never by its row in the index, so a file left over from an older build can
 only fail to find a bill, never find the wrong one.
 
+EVERY WORD
+
+    {"v": 1, "n": 33000, "words": "aback abandon abandoned ..."}
+
+sidx/words.json is every word of five letters or more in any bill's title,
+sponsor, committee, topic or text, in any term, and in the names of members
+and towns (careers.json, places.json). The page fetches it only when a search
+has listed nothing, to tell a misspelt word ("medicade") from a real one that
+no bill of the term is about ("incest", "Syria", a former member's surname).
+Only the first is offered as another word. Without it the page read "incest"
+as "invest" and said no bill says incest, when three do. A word used once, in
+one bill, is in it: the file answers "has any bill said this", not "is any
+bill about it".
+
 A WRITER RUN ON A SUBSET DESTROYS THE REST, so this one cannot: a file is one
 term's, --terms writes only the terms named, and the manifest is read and
-merged rather than rewritten.
+merged rather than rewritten. words.json is every term's, so a run with
+--terms leaves it as it is.
 
 SILENCE IS NOT SUCCESS. A term with bills and no text at all is said out
 loud; and if the texts were asked for and none could be read for any term the
@@ -380,7 +396,8 @@ def build_term(term, rows, texts, table):
         for w in set(a) | set(b):
             if w in title or w in common or w in FUNCTION:
                 continue
-            if w in broad and not a[w] and w not in once_keys and                     centrality(b[w], max(lb[bid], 1), usual_b) < VERY_CENTRAL:
+            if w in broad and not a[w] and w not in once_keys and \
+                    centrality(b[w], max(lb[bid], 1), usual_b) < VERY_CENTRAL:
                 continue
             wt = weigh(a[w], b[w], bid, w in telling, w in once_keys)
             if wt is not None:
@@ -502,7 +519,9 @@ def write_fixture(cases_path, a, table, texts):
     by_id = {r["id"]: r for r in rows}
     named = set(cases.get("bills") or {})
     for c in cases["cases"]:
-        for k in ("first", "must", "never"):
+        # "near": bills a case names as tempting a wrong reading, carried so
+        # that the fixture can be wrong in the way the real index could.
+        for k in ("first", "must", "never", "near"):
             named.update(c.get(k) or [])
     named.update(cases.get("texts") or [])
     missing = sorted(named - set(by_id))
@@ -572,6 +591,67 @@ def dumps(data):
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
 
+# --- every word the bills use -------------------------------------------------
+
+# A word as the page reads a typed one: a run of letters. Five or more,
+# because the page never offers another spelling for a shorter word.
+KNOWN_WORD = re.compile(r"[a-z]{5,}")
+# Fewer words than this and the file is not a vocabulary: one term's texts
+# alone come to fifteen thousand.
+WORDS_FEWEST = 10_000
+
+
+def known_words(text):
+    """The words of five letters or more in a string, as the page would read
+    them if typed: lower case, a hyphen as a space."""
+    return set(KNOWN_WORD.findall(norm(text)))
+
+
+def strings(o):
+    """Every string in a JSON value, keys included."""
+    if isinstance(o, str):
+        yield o
+    elif isinstance(o, dict):
+        for k, v in o.items():
+            yield k
+            yield from strings(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from strings(v)
+
+
+def name_words(paths):
+    """The words in the names of members and towns, and what was read.
+
+    careers.json is everyone with a recorded vote; places.json every town and
+    ward. A former member who was never a bill's prime sponsor is in no
+    index, and a surname is not a misspelling: for one day the header
+    answered the name of a former senator with 2,052 bills about "house"."""
+    got, said = set(), []
+    for path in paths or ():
+        p = Path(path)
+        if not p.exists():
+            said.append(f"{p.name}: not here")
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except ValueError as e:
+            said.append(f"{p.name}: unreadable ({e})")
+            continue
+        mine = set()
+        for s in strings(data):
+            mine |= known_words(s)
+        got |= mine
+        said.append(f"{p.name}: {len(mine):,} words")
+    return got, said
+
+
+def words_file(words):
+    """sidx/words.json: {"v": 1, "n": N, "words": "a b c"}, in order."""
+    ws = sorted(words)
+    return {"v": VERSION, "n": len(ws), "words": " ".join(ws)}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--idx", default="site/idx",
@@ -585,6 +665,9 @@ def main():
                     help="only these terms (the others' files are left alone)")
     ap.add_argument("--allow-no-text", action="store_true",
                     help="write the files even when no text at all could be read")
+    ap.add_argument("--names", nargs="*", default=["careers.json", "places.json"],
+                    help="files whose strings are names -- of members, of towns "
+                         "-- and so are words, for sidx/words.json")
     ap.add_argument("--fixture", metavar="CASES",
                     help="refresh tests/search_cases.json's bills, and the "
                          "search_index.json and search_texts.json beside it, "
@@ -628,11 +711,19 @@ def main():
         manifest = {"terms": {}}
     manifest.update(v=VERSION, central=CENTRAL, telling=TELLING, floor=FLOOR)
     total_text = 0
+    known = set()
     for f in files:
         term = f.stem
         rows = json.loads(f.read_text(encoding="utf-8"))
         rows = [r for r in rows if isinstance(r, dict)
                 and (not r.get("term") or r["term"] == term)]
+        if not a.terms:
+            for r in rows:
+                known |= known_words(" ".join(
+                    [str(r.get("title") or ""), str(r.get("sponsor") or ""),
+                     str(r.get("topic") or ""), *map(str, r.get("committees") or [])]))
+            for rec in (texts.get(term) or {}).values():
+                known |= known_words(rec.get("text") or "")
         data, tally = build_term(term, rows, texts.get(term) or {}, table)
         raw = dumps(data).encode("utf-8")
         (out / f"{term}.json").write_bytes(raw)
@@ -645,6 +736,37 @@ def main():
               f"text, {tally.get('words', 0):,} words, "
               f"{tally.get('postings', 0):,} entries, {len(raw):,} bytes "
               f"({tally['gzip']:,} gzipped){note}")
+    # EVERY WORD THE BILLS USE, for the page to tell a misspelt word from a
+    # real one (app.js, A SEARCH THAT LISTS NOTHING). It is every term's, so
+    # it is written only by a run over every term: one made from a subset
+    # would call the rest of the record's words misspellings.
+    words_path = out / "words.json"
+    thin = False
+    if a.terms:
+        print(f"  words.json: left as it is ({'there' if words_path.exists() else 'NOT THERE'}"
+              ") -- it is every term's words, and this run read "
+              f"{len(files)} of them")
+    else:
+        names, said = name_words(a.names)
+        for s in said:
+            print("  names, " + s)
+        known |= names
+        thin = len(known) < WORDS_FEWEST
+        if thin and not a.allow_no_text:
+            # Not written: with a thin list every word it lacks would be
+            # offered as some other word. With none the page offers nothing.
+            if words_path.exists():
+                words_path.unlink()
+            manifest.pop("words", None)
+        else:
+            raw = dumps(words_file(known)).encode("utf-8")
+            words_path.write_bytes(raw)
+            manifest["words"] = {"n": len(known), "bytes": len(raw),
+                                 "gzip": len(gzip.compress(raw, 9, mtime=0))}
+            print(f"  words.json: {len(known):,} words the bills, members and "
+                  f"towns use, {len(raw):,} bytes "
+                  f"({manifest['words']['gzip']:,} gzipped) -- fetched only "
+                  "when a search lists nothing")
     man_path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n",
                         encoding="utf-8")
     t = manifest["terms"]
@@ -657,6 +779,13 @@ def main():
             "is empty and the search would read titles only. bill_text.json "
             "and archive_text.json are what it reads; --allow-no-text says "
             "that is expected.")
+    if thin and not a.allow_no_text:
+        raise SystemExit(
+            f"search index: only {len(known):,} words were read from every "
+            f"term's bills, fewer than {WORDS_FEWEST:,}, so words.json was "
+            "NOT written and a misspelt search will be offered nothing. The "
+            "texts are what it is read from; --allow-no-text says that is "
+            "expected.")
 
 
 if __name__ == "__main__":

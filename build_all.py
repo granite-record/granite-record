@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.44
+# GRANITE_VERSION: 2026-09-05.45
 """
 Run the whole pipeline in the right order.
 
@@ -676,7 +676,9 @@ def plan(a):
              produces=["site/sidx/manifest.json"], kit_required=True,
              note="one file per term, fetched only when somebody searches: "
                   "the words each bill's analysis and text are about, so a "
-                  "search finds a bill whose title does not say what it is. "
+                  "search finds a bill whose title does not say what it is; "
+                  "and words.json, every word the bills use, which is what "
+                  "lets a misspelt search be offered its word. "
                   "archive_text.json, where it is here, is the terms before "
                   "this one; without it they are found by title and topic"),
 

@@ -254,16 +254,37 @@ It reads, for each bill, in the order it lists them:
 1. **the title**, the prime sponsor's name and the committees' names, from
    `site/idx/<term>.json` -- the word itself before a longer word it begins;
 2. **the topic** the bill is filed under, for a single typed word that is the
-   topic's name, and only where the topic names one subject;
+   topic's name, and only where the topic names one subject. In a search of
+   several words a topic stands for one of them only when it is that word
+   and nothing else and the title has the rest;
 3. **the drafters' analysis and the bill's text**, from
    `site/sidx/<term>.json`, which `build_search_index.py` writes: for each
    word, the bills it is central to and how central, 1 to 9. The page fetches
    that file only when somebody searches, per term;
 4. **a table of public words** (`CONCEPTS`), for what a reader types that no
    bill says -- "lgbtq", "weed", "bathroom bill" -- each standing for wording
-   the bills do use, looked for in all of the above.
+   the bills do use. A phrase of the table is looked for in all of the
+   above; a single word of it in titles and analyses, and in the body of a
+   text only under an entry's `with` rule.
 
-Three things in it are easy to undo by accident.
+Five things in it are easy to undo by accident.
+
+*A single word the table supplies is not read in the body of a text.* A
+phrase ("risk protection order") is specific and a single word is not: read
+in texts, "gun control" listed a speed enforcement fund for its radar guns
+and "illegal immigrants" five bills on alien insurers. The word the reader
+typed is still read there.
+
+*A search that lists nothing is offered a word, never read as one.*
+`site/sidx/words.json`, which the same build writes, is every word of five
+letters or more that any bill of any term uses, with the names of members and
+towns. A typed word that lists nothing and is in that file is a real word no
+bill of the term is about, and nothing is offered for it; one that is not in
+it is offered as the word of the bills it sounds like ("medicade", Medicaid),
+as a "Did you mean" that the reader chooses. The file is fetched only when a
+search has listed nothing. For one day the page read such a word again by
+itself, with no such file: it showed 98 investment bills for "incest" under
+"no bill says incest", which three bills do.
 
 *What "about" means is decided at build time.* A word a text uses once is
 nearly always a passing mention, so the build keeps a word for a bill when the

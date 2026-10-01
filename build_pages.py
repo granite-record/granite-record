@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.126
+# GRANITE_VERSION: 2026-09-04.127
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1765,12 +1765,16 @@ SEATING_JS = """
 # /search put a bill that has the word itself above one that only has a
 # longer word it begins, as /bills does; and since 1 October indexAdd (the
 # header hands it sidx/<term>.json, what each bill's analysis and text are
-# about), respell (a search that finds nothing, read again) and whyListed
-# (the line that says why a bill is listed). find.js loads it only when
-# somebody types, and only on a page that does not already run app.js.
+# about), readShort (a two-letter word read as the start of one where a
+# search lists nothing), whyListed (the line that says why a bill is listed),
+# and spelling and wordsAdd (a misspelt word offered as the word it sounds
+# like, once sidx/words.json says it is no word of any bill). find.js loads
+# it only when somebody types, and only on a page that does not already run
+# app.js.
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
-                     "looseness", "indexAdd", "respell", "whyListed")
+                     "looseness", "indexAdd", "readShort", "whyListed",
+                     "spelling", "wordsAdd")
 
 
 def bill_matcher_js(app_js):
@@ -1816,7 +1820,7 @@ def bill_matcher_js(app_js):
 # Concord" led to a page with no towns in it. This page reads the same
 # find.json with the cap off and groups what it finds.
 #
-# It reuses find.js wholesale -- findRows, findMatch, findSuggest, _fmark,
+# It reuses find.js wholesale -- findRows, findMatch, findOffers, _fmark,
 # _froot, _fwhole, FKIND, and for the bills findBills, findBillsLoad,
 # findBillsLoadAll, findBillsAll and findBillRow -- because a second matcher
 # would be a second thing to keep in
@@ -1909,7 +1913,7 @@ const bills=(q,B,C,counting)=>{
 // this site's own pages.
 const AFTER=new Set(["Former senators","Former representatives",
   "Former members","Pages on this site"]);
-let waiting=false,waitingAll=false;
+let waiting=false,waitingAll=false,waitingWords=false;
 
 function draw(q){
   const s=(q||"").trim();
@@ -1976,16 +1980,21 @@ function draw(q){
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
   if(!placed)html+=bills(s,B,C,counting);
-  // Only when something close exists, and only when no bill matched either:
-  // its guesses are names, and "voting" was offered "zoning" over 141 bills.
-  // findSuggest measures against every distinct word in the index and returns
-  // nothing rather than reaching: there is no Firearms subject in the General
-  // Court's own list, so a search for "firarms" offers nothing and says
-  // nothing. Not while the earlier terms are still being counted either.
+  // Only when something close exists, and only when no bill matched either
+  // ("voting" was offered "zoning" over 141 bills). find.js's findOffers
+  // gives a name close to what was typed and the word of the bills that a
+  // misspelt one sounds like ("medicade", "firarms"), and nothing rather
+  // than reaching: a word any bill has used is never offered as another.
+  // Not while the earlier terms are still being counted either.
   if(!rows.length&&!nB&&!(B&&B.state==="loading")&&!counting){
-    const did=findSuggest(s);
-    if(did)html=`<p class="note">Did you mean
-      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`+html;
+    const offer=findOffers(s,!!(B&&B.every));
+    if(offer.wait&&!waitingWords){
+      waitingWords=true;
+      offer.wait.then(()=>draw(box.value));
+    }
+    const did=offer.words.map(d=>
+      `<a href="/search?q=${encodeURIComponent(d)}">${esc(d)}</a>`);
+    if(did.length)html=`<p class="note">Did you mean ${did.join(" or ")}?</p>`+html;
   }
   out.innerHTML=html;
 }

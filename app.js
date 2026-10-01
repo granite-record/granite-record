@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.129
+// GRANITE_VERSION: 2026-09-07.130
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -353,17 +353,21 @@ const CONCEPTS=[
     "women's athletics","save women's sports","fairness in women's sports"],
    terms:["sport","athletic","athlete"],
    with:["biological sex","basis of sex","transgender"],once:true},
+  // `named`, as in the first entry: a form for recording a fetal death asks
+  // whether it was the mother's "first marriage or civil union", and that
+  // bill was listed under "gay marriage" while these were plain terms.
   {ask:["gay marriage","same sex marriage","same sex marriages","marriage equality",
     "same sex couples","civil unions","civil union","traditional marriage",
     "defense of marriage","definition of marriage"],
-   terms:["right to marry","same sex","same gender","civil union","civil marriage",
-    "one man and one woman","definition of marriage"]},
+   terms:["one man and one woman","definition of marriage"],
+   named:["right to marry","same sex","same gender","civil union","civil marriage"]},
 
   // --- abortion ---------------------------------------------------------
   {ask:["abortion","abortions","abortion ban","abortion bans","abortion rights",
     "abortion access","abortion pill","abortion pills","abortion law","abortion laws",
     "anti abortion","pro life","pro choice","right to life","reproductive rights",
-    "reproductive freedom","reproductive health","roe","roe v wade"],
+    "reproductive freedom","reproductive health","roe","roe v wade",
+    "late term abortion","late term abortions"],
    terms:["abortion","reproductive","pregnancy termination","terminate a pregnancy",
     "termination of the minor's pregnancy","fetal life protection"]},
 
@@ -723,7 +727,35 @@ const CONCEPTS=[
   {ask:["scam","scams","scammers"],
    terms:["fraud","fraudulent","deceptive"]},
   {ask:["jury duty"],
-   terms:["juror","jury service","jury duty"]}
+   terms:["juror","jury service","jury duty"]},
+
+  // --- FROM THE REVIEW OF THE TEXT INDEX (1 October): four searches on
+  // subjects where a wrong answer costs most. None is from a set the search
+  // is measured on. "ghost guns" and "gun free zones" are not here: no bill
+  // has said the first, and the second is "safe school zone", which is also
+  // pocket knives and discipline statistics.
+  // As two words "birth control" was one bill, on reporting fetal deaths to
+  // the Centers for Disease Control, and "family planning" multi-family
+  // housing with a planning board in its analysis.
+  {ask:["birth control","contraception","contraceptive","contraceptives","family planning"],
+   terms:["contraception","contraceptive","birth control","family planning"]},
+  // "pronoun" alone is the grammar of a statute: the register of deeds
+  // chapter made gender neutral, a retirement system's "he or she". A
+  // pronoun AND one of these is the subject, and one mention counts, since
+  // one is all the 2026 bill has.
+  {ask:["pronouns","pronoun","preferred pronouns","preferred pronoun","misgendering",
+    "deadnaming"],
+   terms:["pronoun"],
+   with:["gender identity","gender expression","biological sex","transgender",
+    "personal identity ideology"],once:true},
+  // No bill says "marker". The bills on what a licence or a birth record
+  // says say "designation".
+  {ask:["gender marker","gender markers","sex marker","sex markers"],
+   terms:["gender designation","sex designation"]},
+  // Not in SYN beside "ammunition": a word there is also read as the start
+  // of a longer one, and "ammonia" would have listed these.
+  {ask:["ammo"],
+   terms:["ammunition"]}
 ];
 /* THE MARKS A QUESTION IS ASKED WITH, taken off the ENDS of words and nowhere
    else. Only the comma and the hyphen were being removed, so a reader who
@@ -790,6 +822,33 @@ function stem(w){
   if(/(xes|ches|shes|sses)$/.test(w))return w.slice(0,-2);
   return w.endsWith("s")?w.slice(0,-1):w;
 }
+/* A PHRASE OF THE TABLE, TYPED WITH ANOTHER ENDING. "transgender athletes"
+   listed eleven bills and "transgender athlete ban" one: the table has the
+   plural, and the singular was read as two words. A phrase is the table's
+   when each of its words is, read as its singular -- so one spelling of a
+   phrase in the table is enough. A single word is still the table's only as
+   the table spells it ("weeds" is the plant). */
+CPHRASES.forEach(e=>{e.push(e[0].split(" ").map(stem));});
+// Where in `words` the phrase `e` is typed, or -1.
+function phraseAt(words,stems,e){
+  const want=e[2];
+  for(let i=0;i+want.length<=words.length;i++){
+    let k=0;
+    while(k<want.length&&stems[i+k]===want[k])k++;
+    if(k===want.length)return i;
+  }
+  return -1;
+}
+/* A PLURAL THAT IS NOT MADE WITH AN S. "knife" found nothing in a term with
+   a bill titled about "knives", and "woman" not "women": taking the s off
+   never reaches these. Each is read as the other, in a title, as a plural is
+   read as its singular. Not life and lives, leaf and leaves, half and halves:
+   the plural is also a verb, and "leaf" would list every leave of absence. */
+const ODDPLURAL={};
+[["knife","knives"],["wife","wives"],["wolf","wolves"],["calf","calves"],
+ ["shelf","shelves"],["thief","thieves"],["child","children"],["woman","women"],
+ ["tooth","teeth"],["goose","geese"],["mouse","mice"]]
+  .forEach(([a,b])=>{ODDPLURAL[a]=b;ODDPLURAL[b]=a;});
 // "legalize" did not find "legalizing" or "legalization". A verb in -ize or
 // -ise is also read without its final e, as the start of a word. Not -ate,
 // which was here too: "appropriate" listed 81 bills making appropriations,
@@ -802,7 +861,7 @@ function conceptGroup(word,own,c){
   own=[...new Set(own)];
   const alts=[...new Set([...own,...c.terms])];
   const g={word,alts:alts.concat(c.named.filter(t=>!alts.includes(t))),
-    tab:own.length,nam:alts.length,exact:true};
+    tab:own.length,nam:alts.length,exact:true,asked:own};
   // The reader's own word, where the entry says it counts only in a title
   // or an analysis: typed "gender identity" is read as the table reads it.
   const on=own.filter(o=>c.named.includes(o));
@@ -825,11 +884,19 @@ function conceptGroup(word,own,c){
 function queryGroups(raw){
   let q=" "+qnorm(raw)+" ";
   const out=[];
-  for(const [p,c] of CPHRASES){
-    if(q.includes(" "+p+" ")){
-      out.push(c.syn?{word:p,alts:[...new Set([p,...c.syn])]}:conceptGroup(p,[p],c));
-      q=q.split(" "+p+" ").join(" ");
+  let typed=q.split(" ").filter(Boolean),stems=typed.map(stem);
+  for(const e of CPHRASES){
+    const p=e[0],c=e[1];
+    let as=p;
+    if(!q.includes(" "+p+" ")){
+      const i=typed.length>=e[2].length?phraseAt(typed,stems,e):-1;
+      if(i<0)continue;
+      as=typed.slice(i,i+e[2].length).join(" ");
     }
+    out.push(c.syn?{word:as,alts:[...new Set([as,p,...c.syn])]}
+      :conceptGroup(as,[...new Set([as,p])],c));
+    q=q.split(" "+as+" ").join(" ");
+    typed=q.split(" ").filter(Boolean);stems=typed.map(stem);
   }
   const words=q.split(" ").filter(Boolean);
   const kept=words.filter(w=>!STOPSET.has(w));
@@ -841,6 +908,8 @@ function queryGroups(raw){
     if(c&&!c.also){ out.push(conceptGroup(w,[w,one],c)); return; }
     // A word that is itself an entry is not a plural to take the s off: "pfas".
     const g={word:w,alts:[...new Set([w,...expand(SYNMAP[w]?w:one)].map(cnorm))]};
+    const odd=ODDPLURAL[w]||ODDPLURAL[one];
+    if(odd&&!g.alts.includes(odd))g.alts.push(odd);
     if(w.length>=7&&VERBEND.test(w)){g.pre=w.slice(0,-1);g.alts.push(g.pre);}
     if(c){
       g.terms=c.terms;
@@ -848,6 +917,17 @@ function queryGroups(raw){
       g.nam=g.alts.length;g.alts=g.alts.concat(c.named.filter(t=>!g.alts.includes(t)));
     }
     out.push(g);
+  });
+  // What a part of a search may not do alone. `solo`: it is the whole search.
+  // `rest`: for a search of several parts, what a title must say for each of
+  // the others to be in it -- their own words, not the table's (see fitAlone).
+  // `peers`: the other parts themselves, kept where copying or printing a
+  // group does not follow them round in a circle.
+  if(out.length===1)out[0].solo=true;
+  else out.forEach(g=>{
+    const others=out.filter(x=>x!==g);
+    g.rest=others.map(x=>x.alts.slice(0,x.tab!=null?x.tab:x.alts.length));
+    Object.defineProperty(g,"peers",{value:others,enumerable:false});
   });
   return out;
 }
@@ -886,13 +966,14 @@ function altRx(term){
    nothing "ai" or "ev" began was ever what the reader meant. And not the
    singular of a four-letter plural -- "cars" is "car", not "care" and "card";
    the plural itself, as typed, still is.
-   One exception, `short`, set by respell() below: a word of two letters
-   that is a word of no bill at all is read as a start after all. "special
-   ed" found 21 bills while "ed" began "education", and none once a
-   two-letter word had to be a word. */
-const typedAlt=(g,alt)=>!g.exact&&(alt.length>2||!!g.short)&&!alt.includes(" ")
+   One exception, `short`, set by readShort() below, term by term: in a
+   term where the search as typed lists nothing, a word of two letters is
+   read as a start after all. "special ed" found 21 bills while "ed" began
+   "education", and none once a two-letter word had to be a word. */
+const typedAlt=(g,alt,term)=>!g.exact&&(alt.length>2||(!!g.short&&g.short.has(term||"")))
+  &&!alt.includes(" ")
   &&(alt===g.word||alt===g.pre||(g.word.length>4&&alt===stem(g.word)));
-function inText(hay,g,alt){ return typedAlt(g,alt)?hasTerm(hay,alt):altRx(alt).test(hay); }
+function inText(hay,g,alt,term){ return typedAlt(g,alt,term)?hasTerm(hay,alt):altRx(alt).test(hay); }
 
 /* THE BILLS' OWN WORDS: THE TOPIC, THE ANALYSIS AND THE TEXT (1 October).
    The person: "I want the system to be smart enough to find what a user is
@@ -906,8 +987,9 @@ function inText(hay,g,alt){ return typedAlt(g,alt)?hasTerm(hay,alt):altRx(alt).t
      archived term, the one this site's model gave it). It is in the index
      already. A single word the reader typed that is a word of the topic's
      name lists the topic's bills: "housing", "elections", "gambling",
-     "insurance". Only a single typed word, never a phrase or a synonym, and
-     only a topic that names ONE subject: "mental health" would be all 118
+     "insurance". Only a single typed word, never a phrase or a synonym (in a
+     search of several words, only as fitAlone() says below), and only a topic
+     that names ONE subject: "mental health" would be all 118
      bills filed under Public and Mental Health, ambulances and prescription
      prices among them, which is the 14 September finding above and still
      true; and under Welfare/Medicare/Medicaid a Medicare supplement bill is
@@ -923,10 +1005,35 @@ function inText(hay,g,alt){ return typedAlt(g,alt)?hasTerm(hay,alt):altRx(alt).t
    WHAT IS READ THERE. The reader's own word, whole, or its singular, and the
    table's terms. Not a synonym SYN supplied: those were chosen for titles,
    and read in the text "law enforcement" listed a bill on smoking in cars,
-   whose text says "police" twice. A longer word the reader's begins is
-   found there as it is in a title ("legaliz" finds legalization). A weight
-   of 0 is a mention that is not central, kept for the table's wording only;
-   it counts under an entry's `with` and `once`, and nowhere else.
+   whose text says "police" twice. A weight of 0 is a mention that is not
+   central, kept for the table's wording only; it counts under an entry's
+   `with` and `once`, and nowhere else.
+
+   A SINGLE WORD THE TABLE SUPPLIED IS READ IN THE ANALYSIS, NOT THE TEXT
+   UNDER IT. A phrase of the table is specific ("risk protection order",
+   "gender reassignment"); a single word is not. Read in the body of a text,
+   "gun control" listed a speed enforcement fund (radar guns), two bills on
+   single-use bags and one on Selective Service; "abortion" a ban on
+   bisphenol A in baby food ("reproductive toxicants"); "illegal immigrants"
+   invasive species and five bills on alien insurers; "landlord" balloons
+   released into the air. Measured over the 115 judged searches on 1
+   October, a single table word found in a text and nowhere else was never
+   a bill a search was judged to want, and was six of the bills judged
+   wrong. The drafters' analysis is where a bill says what it is about; the
+   text is still read for the word the reader typed, and for a single word
+   under an entry's `with`, where a second thing must be there too.
+
+   A LONGER WORD THE READER'S BEGINS ("legaliz" and legalization) is found
+   there as it is in a title, but only when the word is the whole search:
+   "organ donation" listed political donations to organizations.
+
+   IN A SEARCH OF SEVERAL WORDS each must be found, and each may be found
+   in a different place: "birth control" still lists a bill on reporting
+   fetal deaths to the Centers for Disease Control whose text is about
+   birth certificates. The index holds words, not where they stand, so only
+   a phrase the table lists is read as a phrase. Each such card says "in
+   the bill's text", and is listed after every bill whose title has the
+   words.
 
    The file names a bill by its id and is asked for by the bill's term, so a
    stale file can fail to find a bill and cannot find the wrong one. */
@@ -972,11 +1079,15 @@ function textHits(g,term){
       :(typedAlt(g,alt)||alt===g.word||alt===stem(g.word));
     if(!own&&!tab)return;                  // a synonym: titles only
     const base=own?0.6:1.6;
-    const onlyA=(g.nam!=null&&i>=g.nam)||!!(g.ownNamed&&g.ownNamed.includes(alt));
+    // In the analysis only: wording the entry marks `named`, and any single
+    // word this file supplied, unless the entry asks for a second thing as
+    // well (`with`). See WHAT IS READ THERE, above.
+    const onlyA=(g.nam!=null&&i>=g.nam)||!!(g.ownNamed&&g.ownNamed.includes(alt))
+      ||(tab&&!own&&!g.with&&!alt.includes(" "));
     if(alt.includes(" ")){readPosts(X,X.p[alt],m,base,0.04,alt,!own,onlyA,once);return;}
     const keys=wordKeys(alt);
     for(const k of keys)readPosts(X,X.w[k],m,base,0.04,alt,!own,onlyA,once);
-    if(typedAlt(g,alt)&&alt.length>=4)
+    if(g.solo&&typedAlt(g,alt)&&alt.length>=4)
       for(const k of X.keys||(X.keys=Object.keys(X.w)))
         if(k.length>alt.length&&k.startsWith(alt)&&!keys.has(k))
           readPosts(X,X.w[k],m,1.2,0.03,k,false,false,false);
@@ -1048,7 +1159,7 @@ const RXN={};
 function nameRx(term){
   return RXN[term]||(RXN[term]=new RegExp("\\b"+rxEsc(term)+"\\b"));
 }
-function fit(b,g){
+function fitAlone(b,g){
   let d=4,why=null;
   const out=g.not&&g.not.some(t=>hasTerm(b.hayT,t));
   for(let i=0;i<g.alts.length;i++){
@@ -1057,15 +1168,27 @@ function fit(b,g){
       if(!out&&d>1.5&&altRx(alt).test(b.hayT)){d=1.5;why=["title",alt];}
       continue;
     }
-    const own=typedAlt(g,alt)||alt===g.word,name=own&&!g.exact;
+    // A name is the word as typed, never its singular: "weeds" is not Rep.
+    // Weed, whose bills stood above every bill about weeds.
+    const own=typedAlt(g,alt)||alt===g.word,name=alt===g.word&&!g.exact;
     if(altRx(alt).test(b.hayT)||(name&&nameRx(alt).test(b.hayS))){d=0;why=null;break;}
-    if(d>1&&(inText(b.hayT,g,alt)||(name&&altRx(alt).test(b.hayS)))){d=1;why=null;}
+    if(d>1&&(inText(b.hayT,g,alt,b.term)||(name&&altRx(alt).test(b.hayS)))){d=1;why=null;}
     if(d>2&&own&&(altRx(alt).test(b.hayC)||(g.exact&&altRx(alt).test(b.hayS)))){d=2;why=null;}
-    if(d>3&&own&&inText(b.hayC,g,alt)){d=3;why=null;}
+    if(d>3&&own&&inText(b.hayC,g,alt,b.term)){d=3;why=null;}
   }
+  // The topic. For a word that is the whole search, a word of the topic's
+  // name. In a search of several words a topic stands for one of them only
+  // when it is that word and nothing else, and the title has every other:
+  // "property taxes" lists a bill titled about real property and filed
+  // under Taxes, but "car insurance" listed seventeen health insurance
+  // bills (the topic Insurance, and "care" or "carrier" in the title) and
+  // "civil rights" a bill on rights in private roads (the topic Civil
+  // Actions).
   if(d>0.5&&!g.exact&&!g.word.includes(" ")&&b.topic){
     const t=topicHay(b);
-    if(t&&(altRx(g.word).test(t)||(g.word.length>4&&altRx(stem(g.word)).test(t)))){d=0.5;why=["topic"];}
+    if(t&&(altRx(g.word).test(t)||(g.word.length>4&&altRx(stem(g.word)).test(t)))
+       &&(g.solo||(g.rest&&!/\S\s+\S/.test(t)
+          &&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){d=0.5;why=["topic"];}
   }
   if(d>0.6&&b.term){
     const m=textHits(g,b.term),h=m&&m.get(b.id);
@@ -1089,6 +1212,25 @@ function fit(b,g){
   }
   return [d,why];
 }
+/* IN A SEARCH OF SEVERAL WORDS, TWO WEAK FINDINGS ARE NOT A BILL. A longer
+   word in the title is a guess at what the reader meant, and so is a word
+   that only the topic, the analysis or the text has. One guess a bill is
+   listed for, after the bills that have the words. Both together listed nine
+   bills on health carriers for "car insurance" -- "care" or "carrier" in the
+   title, "insurance" in the analysis -- and tax dollars donated to
+   non-profit organizations for "organ donation". So the start of a longer
+   title word does not count beside a word found only outside the title.
+   Not for a two-letter word read as a start (readShort): that reading is
+   itself the last resort of a search that listed nothing. */
+function fit(b,g){
+  const f=fitAlone(b,g);
+  if(!f||f[0]!==1||!g.peers||(g.short&&g.short.has(b.term||"")))return f;
+  for(const o of g.peers){
+    const x=fitAlone(b,o);
+    if(x&&x[1]&&x[1][0]!=="title")return null;
+  }
+  return f;
+}
 // 3 in the title, 2 in the sponsor's name, 1 in a committee's name, 0 not at
 // all; and 2.5 where it is the topic, the analysis or the text that has it.
 // A sponsor's name or a committee's matches only what the reader typed: a
@@ -1100,10 +1242,10 @@ function groupWeight(b,g){
   if(f[1])return f[1][0]==="title"?3:2.5;
   let w=0;
   for(const alt of g.alts){
-    if(inText(b.hayT,g,alt))return 3;
+    if(inText(b.hayT,g,alt,b.term))return 3;
     if(!(typedAlt(g,alt)||alt===g.word))continue;
     if(w<2&&altRx(alt).test(b.hayS))w=2;
-    if(w<1&&inText(b.hayC,g,alt))w=1;
+    if(w<1&&inText(b.hayC,g,alt,b.term))w=1;
   }
   return w||2.5;
 }
@@ -1131,27 +1273,46 @@ function whyListed(b,gs){
   }
   return said.join("; ");
 }
-/* A SEARCH THAT FINDS NOTHING, READ AGAIN. Only then: a search that lists
-   one bill is left exactly as typed.
-
-   A WORD NO BILL HAS, SPELLED AS IT SOUNDS. "medicade" and "fentynal" found
-   nothing; "marajuana" and "cannibis" would not either. A typed word of
-   five letters or more that is in no title, topic, analysis, text,
-   sponsor's or committee's name of the bills being searched is read as the
-   word of theirs that sounds the same -- the same consonants in the same
-   order, which is what a misspelling by ear keeps -- or, failing that, a
-   word one letter away. By sound first: "medicade" is one letter from
-   Medicare and two from Medicaid, and it is Medicaid that it sounds like.
-   The page says so ("no bill says medicade: showing medicaid"). It is only
-   done where the bills' text has been read: before the index arrives, a
-   word that is in ten bills' text and no title would be "corrected" away.
+/* A SEARCH THAT LISTS NOTHING. Two things, and neither changes a search
+   that lists a bill.
 
    A WORD OF TWO LETTERS, AS THE START OF A WORD. "special ed" found 21
    bills while "ed" began "education", and none once a two-letter word had
    to be a word -- which is right for "ai" and "ev", where the table has
-   the word, and for a search that finds something. */
+   the word, and for a search that finds something. It is decided term by
+   term: read over every term at once, "special ed" listed one bill, a 2001
+   bill on number plates whose sponsor is an Ed, where this term alone
+   listed 29. A wider search must never list less.
+
+   A WORD NO BILL HAS EVER USED, OFFERED AS THE WORD IT SOUNDS LIKE.
+   "medicade" and "fentynal" find nothing. The page then offers the word of
+   the bills being searched that sounds the same -- the same consonants in
+   the same order, which is what a misspelling by ear keeps -- or, failing
+   that, a word one letter away: "Did you mean medicaid?", with how many
+   bills that finds. By sound first: "medicade" is one letter from Medicare
+   and two from Medicaid, and it is Medicaid that it sounds like.
+
+   IT IS AN OFFER, AND ONLY FOR A WORD THAT IS NOT ONE. For one day
+   (1 October) the search was read again by itself, and the page said "no
+   bill says incest: showing invest" over 98 bills about investment -- when
+   three bills of the term say incest, in texts that are not about it.
+   "white" was read as "with", "bible" as "bill", "syria" as "sharia", a
+   former senator's name as "house" (2,052 bills), "salem" as "sale". What
+   was missing was any way to know a real word from a misspelt one. So:
+   - sidx/words.json (build_search_index.py) is every word of five letters
+     or more that any bill of any term uses -- title, analysis, text,
+     sponsor or committee -- with the names of members and towns. A word in
+     it is a word, and is never offered as another. Nor is the start of
+     one: "londo" is somebody typing Londonderry. The page fetches the file
+     only when a search has listed nothing, and offers nothing without it;
+   - a word is never offered as one the search skips ("with", "bill");
+   - nothing is done until the reader chooses. A word the bills have never
+     used can still be a word -- Haiti, lynching -- and offering "hate" for
+     it is a poor guess; listing the hate crime bills under it unasked would
+     be a wrong answer. */
+const asSaid=w=>w.replace(/ph/g,"f").replace(/c(?=[eiy])/g,"s").replace(/[ckq]/g,"k").replace(/z/g,"s");
 function soundKey(w){
-  const s=w.replace(/ph/g,"f").replace(/c(?=[eiy])/g,"s").replace(/[ckq]/g,"k").replace(/z/g,"s");
+  const s=asSaid(w);
   return (s[0]+s.slice(1).replace(/[aeiouyh']/g,"")).replace(/(.)\1+/g,"$1");
 }
 // Letters added, dropped, changed or swapped with a neighbour, up to `max`.
@@ -1173,10 +1334,14 @@ function lettersApart(a,b,max){
   }
   return p1[b.length];
 }
+// The words the bills being searched can be found by, with how many bills:
+// what a title says and what the search index files a bill under. Not a word
+// the search skips: "white" is two letters from "with".
 let VOCAB=null;
 function vocabOf(rows){
   if(VOCAB&&VOCAB.rows===rows&&VOCAB.n===rows.length&&VOCAB.gen===SIDXGEN)return VOCAB.list;
-  const words=new Map(),add=(w,n)=>{if(w.length>=4&&/^[a-z]+$/.test(w))words.set(w,(words.get(w)||0)+n);};
+  const words=new Map(),add=(w,n)=>{if(w.length>=4&&/^[a-z]+$/.test(w)&&!STOPSET.has(w))
+    words.set(w,(words.get(w)||0)+n);};
   const terms=new Set();
   for(const b of rows){
     terms.add(b.term);
@@ -1189,48 +1354,92 @@ function vocabOf(rows){
   VOCAB={rows,n:rows.length,gen:SIDXGEN,list:words};
   return words;
 }
+/* HOW CLOSE. Read against 182 real words no bill has used and 36 common
+   misspellings (1 October): two letters apart is a misspelling only in a
+   long word -- "medicade", "fentynal" -- and in a short one it is another
+   word (Haiti and hate, Kenya and keno, Amish and amass). And a word spelt
+   by ear keeps how it starts: "lynching" is not "launching", nor "proton"
+   "portion". So: the first two letters as they sound; then the same sound
+   and one letter apart, or two in a word of eight letters or more; or
+   another sound and one letter apart ("pention", "morgage"). That offered
+   26 of the 36 their word, and 3 of the 182 another (photon as photo; 6
+   over every term, Mormon as Morton among them). */
 function soundsLike(word,rows){
-  const key=soundKey(word);
+  const key=soundKey(word),head=asSaid(word).slice(0,2),most=word.length>=8?2:1;
   let best=null;
   for(const [v,n] of vocabOf(rows)){
-    if(v[0]!==word[0]&&soundKey(v)[0]!==key[0])continue;
+    if(asSaid(v).slice(0,2)!==head)continue;
     const same=soundKey(v)===key;
-    const far=lettersApart(word,v,same?2:1);
-    if(far>(same?2:1)||!far)continue;
+    const far=lettersApart(word,v,same?most:1);
+    if(far>(same?most:1)||!far)continue;
     const score=[same?0:1,far,-n];
     if(!best||score[0]<best[0][0]||(score[0]===best[0][0]&&(score[1]<best[0][1]
       ||(score[1]===best[0][1]&&score[2]<best[0][2]))))best=[score,v];
   }
   return best&&best[1];
 }
-// The groups of a search, as they are to be read against these bills: as
-// typed if that finds anything. Otherwise the search is read again with the
-// word that sounds like the one no bill has -- the whole search, so that
-// "vacine mandate" is the phrase "vaccine mandate" -- and `read` on the
-// groups handed back lists [the word typed, the word read for it].
-function respell(gs,rows){
-  const plain=g=>!g.exact&&g.tab==null&&!g.word.includes(" ")&&/^[a-z]+$/.test(g.word);
-  const any=x=>rows.some(b=>x.every(g=>fit(b,g)));
-  if(!gs.some(g=>plain(g)&&(g.word.length<3||g.word.length>=5))||any(gs))return gs;
-  const terms=new Set(rows.map(b=>b.term));
-  let known=terms.size>0,out=gs;
-  for(const t of terms)if(!t||!SIDX[t])known=false;
-  if(known){
-    const read=[];
-    const words=gs.map(g=>{
-      if(!plain(g)||g.word.length<5||rows.some(b=>fit(b,g)))return g.word;
-      const v=soundsLike(g.word,rows);
-      if(v)read.push([g.word,v]);
-      return v||g.word;
-    });
-    if(read.length){
-      const again=queryGroups(words.join(" "));
-      if(any(again)){again.read=read;return again;}
-    }
+// A part of a search that is one plain word: not the table's, not a phrase.
+const plainWord=g=>!g.exact&&g.tab==null&&!g.word.includes(" ")&&/^[a-z]+$/.test(g.word);
+// The groups of a search as they are read against these bills. In each term
+// where the search as typed lists nothing, a word of two letters is read as
+// the start of a word. The groups handed in are the ones handed back.
+function readShort(gs,rows){
+  const two=gs.filter(g=>plainWord(g)&&g.word.length<3);
+  if(!two.length)return gs;
+  two.forEach(g=>{g.short=null;});
+  const seen=new Set(),found=new Set();
+  for(const b of rows){
+    const t=b.term||"";
+    seen.add(t);
+    if(!found.has(t)&&gs.every(g=>fit(b,g)))found.add(t);
   }
-  const short=out.map(g=>plain(g)&&g.word.length<3
-    ?Object.assign({},g,{short:true,_tx:null,_wx:null}):g);
-  return short.some((g,i)=>g!==out[i])&&any(short)?short:out;
+  const none=new Set([...seen].filter(t=>!found.has(t)));
+  if(none.size)two.forEach(g=>{g.short=none;});
+  return gs;
+}
+/* Every word any bill has used, and the names of members and towns: what
+   build_search_index.py writes as sidx/words.json. A file of another
+   version, or one with no words in it, is refused, and nothing is offered. */
+let KNOWN=null;
+function wordsAdd(data){
+  if(!data||data.v!==1||typeof data.words!=="string"||!data.words)return false;
+  KNOWN={set:new Set(data.words.split(" ")),starts:new Map()};
+  return true;
+}
+// A word the bills use, or the start of one.
+function knownWord(w){
+  if(KNOWN.set.has(w)||KNOWN.set.has(stem(w)))return true;
+  if(!KNOWN.starts.has(w)){
+    let yes=false;
+    for(const k of KNOWN.set)if(k.length>w.length&&k.startsWith(w)){yes=true;break;}
+    KNOWN.starts.set(w,yes);
+  }
+  return KNOWN.starts.get(w);
+}
+/* For a search that lists nothing among these bills: null where there is
+   nothing to offer; {need:true} where there may be and the known words have
+   not been handed over (wordsAdd); or {q, read, n} -- the search to offer in
+   its place, the [word typed, word offered] pairs, and how many of these
+   bills it lists. The whole search is read again, so that "vacine mandate"
+   is offered as the phrase "vaccine mandate". Only where every term's text
+   has been read: the words a bill can be found by are half in that file. */
+function spelling(gs,rows){
+  const odd=gs.filter(g=>plainWord(g)&&g.word.length>=5&&!rows.some(b=>fit(b,g)));
+  if(!odd.length)return null;
+  for(const b of rows)if(!b.term||!SIDX[b.term])return null;
+  if(!KNOWN)return {need:true};
+  const read=[];
+  const words=gs.map(g=>{
+    if(!odd.includes(g)||knownWord(g.word))return g.word;
+    const v=soundsLike(g.word,rows);
+    if(v)read.push([g.word,v]);
+    return v||g.word;
+  });
+  if(!read.length)return null;
+  const q=words.join(" "),again=readShort(queryGroups(q),rows);
+  let n=0;
+  for(const b of rows)if(again.every(g=>fit(b,g)))n++;
+  return n?{q,read,n}:null;
 }
 // BILLMATCH:END
 // NOTHING FOUND is still an answer with somewhere to go. A search of several
@@ -1249,13 +1458,24 @@ function emptyResult(){
     :gs.length===1&&gs[0].word.includes(" ")?gs[0].word.split(" ").filter(w=>!STOPSET.has(w)):[];
   const parts=words.map(w=>{const g2=queryGroups(w);
     return [w,inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length];}).filter(p=>p[1]);
+  // A word no bill has ever used, offered as the word it sounds like -- an
+  // offer, and never a list drawn in its place (see A SEARCH THAT LISTS
+  // NOTHING, above). Only where the search itself lists nothing in the
+  // term: a list a filter emptied is not a spelling.
+  let did="";
+  if(gs.length&&!inTerm.some(b=>gs.every(g=>groupWeight(b,g)>0))){
+    const sp=spelling(gs,inTerm);
+    if(sp&&sp.need)wantWords();
+    else if(sp)did=`<br><br>Did you mean <button class="link" data-q="${esc(sp.q)}">${
+      esc(sp.q)}</button> (${sp.n.toLocaleString()})?`;
+  }
   // termPhrase() brings its own preposition ("in the 2025-2026 term",
   // "across all terms"), so the "in the" that used to sit here made the
   // sentence read "No bills match in the in the 2025-2026 term." -- or, with
   // the picker on All terms, "in the across all terms". The two callers at
   // the count line pass it bare and were always right; this one doubled it.
   return `<div class="empty">No bills match${words.length?" all of that":""}
-    ${esc(termPhrase())}.${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
+    ${esc(termPhrase())}.${did}${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
       `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
       .join(" &middot; ")}`:""}<br><br>Try removing a filter, or a different term.</div>`;
 }
@@ -1295,14 +1515,31 @@ function textState(){
   const st=terms.map(t=>TEXT[t]);
   return st.includes("loading")?"loading":st.includes("failed")?"failed":"ready";
 }
+/* EVERY WORD THE BILLS USE, FETCHED WHEN A SEARCH LISTS NOTHING.
+   sidx/words.json is what tells a misspelt word from a real one that no
+   bill of this term is about (spelling(), above). It is about 100 KB over
+   the wire, so it is asked for once, the first time a search in words
+   comes back empty with a word in it that might be a misspelling, and the
+   empty result is drawn again when it arrives. If it cannot be had,
+   nothing is offered. */
+let WORDS="";
+function wantWords(){
+  if(WORDS)return;
+  WORDS="loading";
+  fetch(DATA("sidx/words.json"))
+    .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+    .then(j=>{WORDS=wordsAdd(j)?"ready":"failed";})
+    .catch(()=>{WORDS="failed";})
+    .then(()=>{if(WORDS==="ready"&&query.trim())render();});
+}
 /* The search as it is read against the bills in view: the groups of
-   queryGroups(), and where that finds nothing, respell()'s second reading
-   ("medicade" as Medicaid). Kept until the search, the term or what has been
-   fetched changes. */
+   queryGroups(), with readShort()'s reading of a two-letter word in a term
+   where the search lists nothing ("special ed"). Kept until the search, the
+   term or what has been fetched changes. */
 let QG_KEY=null,QG=[];
 function groupsFor(q){
   const key=[q,term,IDX.length,TEXTGEN].join("\u0001");
-  if(key!==QG_KEY){QG_KEY=key;QG=respell(queryGroups(q),IDX.filter(inTermOf));}
+  if(key!==QG_KEY){QG_KEY=key;QG=readShort(queryGroups(q),IDX.filter(inTermOf));}
   return QG;
 }
 /* WHY THE LIST IS WHAT IT IS, in the bills' own words. A reader who types
@@ -1312,11 +1549,10 @@ function groupsFor(q){
    that found a bill now listed -- only those, because each card says which
    of its own words put it there, and a list of thirty terms that found
    nothing was four lines long. The words typed are not repeated back, and
-   nothing here describes a bill -- only what it says. A word no bill has,
-   read as the word it sounds like, is said first. */
+   nothing here describes a bill -- only what it says. */
 function searchHint(gs,rows){
   rows=rows||[];
-  const typed=g=>[g.word,stem(g.word),g.pre];
+  const typed=g=>[g.word,stem(g.word),g.pre,...(g.asked||[])];
   const syn=[...new Set(gs.flatMap(g=>g.alts.slice(0,g.tab!=null?g.tab:g.alts.length)
     .filter(x=>!typed(g).includes(x))))];
   const found=new Set();
@@ -1328,8 +1564,7 @@ function searchHint(gs,rows){
   }
   const tab=[...found].filter(x=>!syn.includes(x)&&!gs.some(g=>typed(g).includes(x)));
   const state=textState();
-  return [gs.read?gs.read.map(r=>`no bill says \u201c${r[0]}\u201d: showing ${r[1]}`).join("; "):"",
-    syn.length?`also matching: ${syn.join(", ")}`:"",
+  return [syn.length?`also matching: ${syn.join(", ")}`:"",
     tab.length?`${syn.length?"then":"also listing"} bills that say: ${tab.join(", ")}`:"",
     state==="loading"?"reading the bills\u2019 text\u2026"
       :state==="failed"?"the bills\u2019 text could not be read: titles and topics only":""]

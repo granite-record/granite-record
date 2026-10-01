@@ -16,6 +16,12 @@
   "must bill, which the table found. never = plainly about something else. at_most = a ceiling on the",
   "real index. same = each group is two sides' words for one subject and must return one list.",
   "",
+  "nothing = a real word no bill of the term is about: it must list nothing and be offered as no",
+  "other word. offer = a misspelling: it must list nothing as typed, the page must offer that word,",
+  "and must and never are then held to the offered word's list. near = bills that tempt a wrong",
+  "reading (titles that say 'invest', for 'incest'), named so that the fixture carries them.",
+  "known = real words that were once read as other words; each must be in sidx/words.json.",
+  "",
   "Machine-judged, by reading titles and, where a title did not settle it, the bill's text. It is a",
   "seed, not the person's reference: the person's own judgments belong in the bench."
  ],
@@ -24,9 +30,9 @@
   {
    "q": "lgbtq",
    "at_most": 40,
-   "why": "the person's example: nothing was returned; no title says lgbtq; the review, 1 October: SB 520's text is about breast reduction for pain and never mentions gender; its title alone listed it",
+   "why": "the person's example: nothing was returned; no title says lgbtq; the review, 1 October: SB 520's text is about breast reduction for pain and never mentions gender; its title alone listed it; the second review: a resolution on bearing arms, a bill on immigration detention and one on fetal death records each say 'sexual orientation', 'gender identity' or 'civil union' once, in a list, and were listed when that wording was read in the body of a text",
    "must": ["HB148", "HB377", "HB712", "HB1217", "HB1299", "HB1356", "HB1376", "HB1442", "HB1447", "HB1564", "HB1165", "HB1778", "SB38", "SB211", "SB268", "SB459", "SB552", "CACR25"],
-   "never": ["HB105", "HB1254", "HB300", "HB561", "SB520"]
+   "never": ["HB105", "HB1254", "HB300", "HB561", "SB520", "HR20", "HB438", "SB189"]
   },
   {
    "q": "trans",
@@ -78,7 +84,9 @@
   {
    "q": "gay marriage",
    "at_most": 10,
-   "must": ["CACR25"]
+   "must": ["CACR25"],
+   "never": ["SB189"],
+   "why": "the second review, 1 October: SB 189, fetal death records, asks whether it was the mother's 'first marriage or civil union', and was listed second of two"
   },
   {
    "q": "abortion",
@@ -89,9 +97,9 @@
   {
    "q": "gun control",
    "at_most": 60,
-   "why": "returned nothing: control had to match too",
+   "why": "returned nothing: control had to match too; the second review: HB 245, the speed enforcement fund, says 'radar guns' -- a single word the table supplied is read in an analysis, not the text under it",
    "must": ["HB56", "HB159", "HB352", "HB1049", "SB466", "SB555", "HB1642", "HR20"],
-   "never": ["HB1450"]
+   "never": ["HB1450", "HB245"]
   },
   {
    "q": "guns",
@@ -383,24 +391,188 @@
    "q": "marajuana",
    "must": ["HB75", "HB198"],
    "at_most": 40,
-   "why": "a word no bill has, read as the word it sounds like"
+   "why": "a word no bill has used: it lists nothing, and the page offers the word it sounds like. Until the second review it was read as that word unasked",
+   "offer": "marijuana"
   },
   {
    "q": "imigration",
    "must": ["SB71", "HB511"],
    "at_most": 45,
-   "why": "the same, one letter short"
+   "why": "the same, one letter short",
+   "offer": "immigration"
   },
   {
    "q": "housing",
    "must": ["HB60", "HB1171"],
    "at_most": 160,
    "why": "a broad word: a bill filed under the topic Housing is listed after the titles that say housing"
+  },
+  {
+   "q": "ammo",
+   "must": ["HB506", "HB1454"],
+   "never": ["HB245"],
+   "at_most": 15,
+   "why": "the second review, 1 October: returned nothing; the bills say ammunition"
+  },
+  {
+   "q": "car insurance",
+   "must": ["HB434"],
+   "never": ["SB476", "HB705", "HB1347", "SB546"],
+   "at_most": 20,
+   "why": "the second review, 1 October: 11 bills became 28: 'care' or 'carrier' in the title, and 'insurance' only in the topic or the analysis"
+  },
+  {
+   "q": "civil rights",
+   "first": ["HB641", "SB464"],
+   "never": ["HB1135"],
+   "at_most": 20,
+   "why": "the second review, 1 October: a bill on rights in private roads, by the topic Civil Actions"
+  },
+  {
+   "q": "property taxes",
+   "must": ["HB1380", "HB1581"],
+   "never": ["SB42"],
+   "at_most": 80,
+   "why": "a topic stands for one word of several only when it is that word and the title has the rest: 'real property' filed under Taxes, and not notices of death filed under Property"
+  },
+  {
+   "q": "organ donation",
+   "never": ["HB1083", "HB1649"],
+   "empty_ok": true,
+   "at_most": 3,
+   "why": "the second review, 1 October: political donations to organizations"
+  },
+  {
+   "q": "insurance",
+   "must": ["HB705", "SB547"],
+   "at_most": 120,
+   "why": "filed under the topic Insurance, with titles that do not say it: nothing else here fails if the topic stops being read"
+  },
+  {
+   "q": "birth control",
+   "must": ["HB730"],
+   "never": ["SB530"],
+   "at_most": 10,
+   "why": "the second review, 1 October: as two words it was one bill, on reporting fetal deaths to the Centers for Disease Control"
+  },
+  {
+   "q": "family planning",
+   "never": ["HB1010"],
+   "at_most": 10,
+   "empty_ok": true,
+   "why": "the second review, 1 October: multi-family housing, with a planning board in its analysis"
+  },
+  {
+   "q": "pronouns",
+   "must": ["HB1778"],
+   "never": ["HB1035", "HB1749"],
+   "at_most": 10,
+   "why": "the second review, 1 October: listed only the bill making the register of deeds chapter gender neutral"
+  },
+  {
+   "q": "gender marker",
+   "must": ["HB1165"],
+   "at_most": 10,
+   "why": "the second review, 1 October: returned nothing; the bills say designation"
+  },
+  {
+   "q": "transgender athlete ban",
+   "must": ["SB211", "HB148", "SB38", "HB1442"],
+   "at_most": 20,
+   "why": "the second review, 1 October: one bill, where 'transgender athletes' listed eleven: the table had the plural"
+  },
+  {
+   "q": "knife",
+   "first": ["HB609"],
+   "at_most": 10,
+   "why": "the second review, 1 October: returned nothing; HB 609's title says knives"
+  },
+  {
+   "q": "special ed",
+   "must": ["HB76"],
+   "at_most": 40,
+   "why": "'ed' is read as the start of a word in a term where the search as typed lists nothing"
+  },
+  {
+   "q": "medicade",
+   "offer": "medicaid",
+   "must": ["HB94", "HB455"],
+   "at_most": 60,
+   "why": "by sound: it is one letter from Medicare and two from Medicaid"
+  },
+  {
+   "q": "fentynal",
+   "offer": "fentanyl",
+   "must": ["SB14", "SB467", "HB73"],
+   "at_most": 20,
+   "why": "the same. SB 14 and SB 467 say fentanyl in their titles; HB 73 is found by the words that stand beside it (substance misuse)"
+  },
+  {
+   "q": "incest",
+   "nothing": true,
+   "why": "the second review, 1 October: read as invest, over 98 bills, under 'no bill says incest'; three bills say it",
+   "near": ["HB302", "SB107"]
+  },
+  {
+   "q": "terrorism",
+   "nothing": true,
+   "why": "the second review, 1 October: read as terrorist"
+  },
+  {
+   "q": "deported",
+   "nothing": true,
+   "why": "the second review, 1 October: read as departed"
+  },
+  {
+   "q": "white",
+   "nothing": true,
+   "why": "the second review, 1 October: read as with, 177 bills"
+  },
+  {
+   "q": "bible",
+   "nothing": true,
+   "why": "the second review, 1 October: read as bill, 77 bills",
+   "near": ["HB10"]
+  },
+  {
+   "q": "houde",
+   "nothing": true,
+   "why": "the second review, 1 October: read as house, 2,052 bills: a former senator's name"
+  },
+  {
+   "q": "salem",
+   "nothing": true,
+   "why": "the second review, 1 October: read as sale, 75 bills: a town"
+  },
+  {
+   "q": "unity",
+   "nothing": true,
+   "why": "the second review, 1 October: read as unit, 143 bills: a town"
+  },
+  {
+   "q": "lynch",
+   "nothing": true,
+   "why": "the second review, 1 October: read as lunch: a former governor's name"
+  },
+  {
+   "q": "moore",
+   "nothing": true,
+   "why": "the second review, 1 October: read as more"
+  },
+  {
+   "q": "treaty",
+   "nothing": true,
+   "why": "the second review, 1 October: read as treat"
+  },
+  {
+   "q": "prayer",
+   "nothing": true,
+   "why": "the second review, 1 October: read as payer"
   }
  ],
  "same": [
   ["gun control", "gun rights", "gun safety", "second amendment"],
-  ["pro life", "pro choice", "abortion rights", "reproductive freedom"],
+  ["pro life", "pro choice", "abortion rights", "reproductive freedom", "late term abortion"],
   ["illegal immigrants", "undocumented immigrants", "illegal aliens"],
   ["gender affirming care", "sex change", "transition care"],
   ["gay marriage", "traditional marriage", "marriage equality", "defense of marriage"],
@@ -419,6 +591,7 @@
   ["287g", "287(g)"],
   ["lgbtq rights", "lgbtq+ rights"]
  ],
+ "known": ["incest", "terrorism", "deported", "white", "bible", "houde", "salem", "unity", "lynch", "moore", "treaty", "prayer", "allen", "persian", "martial", "syria", "londonderry"],
  "bills": {
   "HB561": {
    "n": "HB 561",
@@ -574,6 +747,13 @@
    "committees": ["House Transportation"],
    "topic": "Motor Vehicles"
   },
+  "HB705": {
+   "n": "HB 705",
+   "title": "relative to health care cost transparency.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Health and Human Services"],
+   "topic": "Insurance"
+  },
   "SB223": {
    "n": "SB 223-FN",
    "title": "relative valid photo identification for purposes of obtaining a ballot and relative to the production of lists of certain schools of higher education.",
@@ -630,6 +810,13 @@
    "committees": ["House Education Funding"],
    "topic": "Education - General"
   },
+  "HB609": {
+   "n": "HB 609-FN",
+   "title": "relative to the general court's authority over the sale, purchase, ownership, use, possession, transportation, licensing, permitting, taxation, and other matter pertaining to firearms, stun guns, Tasers, pepper spray devices, knives and other self-defense tools.",
+   "sponsor": "Samuel Farrington",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "State Government"
+  },
   "HB453": {
    "n": "HB 453",
    "title": "prohibiting municipalities from banning use of grounds maintenance and snow and ice removal equipment with internal combustion engines.",
@@ -679,6 +866,13 @@
    "committees": ["House Judiciary", "Senate Judiciary"],
    "topic": "Discrimination"
   },
+  "SB189": {
+   "n": "SB 189",
+   "title": "relative to fetal death records.",
+   "sponsor": "Suzanne Prentiss",
+   "committees": ["House Judiciary", "Senate Executive Departments and Administration"],
+   "topic": "State Government"
+  },
   "SB466": {
    "n": "SB 466-FN",
    "title": "relative to the possession of a firearm without a serial number.",
@@ -714,6 +908,13 @@
    "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
    "topic": "Public and Mental Health"
   },
+  "SB467": {
+   "n": "SB 467-FN",
+   "title": "relative to the penalty for certain fentanyl-related offenses and establishing a mandatory minimum sentence for the crime of distribution of a controlled drug with death resulting.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
   "SB434": {
    "n": "SB 434",
    "title": "relative to regulation of public school materials.",
@@ -727,6 +928,13 @@
    "sponsor": "Regina Birdsell",
    "committees": ["Senate Health and Human Services"],
    "topic": "Public and Mental Health"
+  },
+  "SB476": {
+   "n": "SB 476",
+   "title": "relative to consumer health care cost transparency.",
+   "sponsor": "Tim McGough",
+   "committees": ["Senate Health and Human Services"],
+   "topic": "Insurance"
   },
   "SB479": {
    "n": "SB 479-FN",
@@ -784,12 +992,33 @@
    "committees": ["Senate Transportation"],
    "topic": "Transportation and Highways"
   },
+  "SB546": {
+   "n": "SB 546-FN",
+   "title": "relative to health carrier network access monitoring.",
+   "sponsor": "Cindy Rosenwald",
+   "committees": ["Senate Health and Human Services"],
+   "topic": "Insurance"
+  },
+  "SB547": {
+   "n": "SB 547-FN",
+   "title": "relative to regulation and transparency of pharmacy benefit manager practices.",
+   "sponsor": "Cindy Rosenwald",
+   "committees": ["Senate Health and Human Services"],
+   "topic": "Insurance"
+  },
   "SB555": {
    "n": "SB 555-FN",
    "title": "relative to critical risk protection orders.",
    "sponsor": "Debra Altschiller",
    "committees": ["Senate Judiciary"],
    "topic": "Civil Actions"
+  },
+  "SB530": {
+   "n": "SB 530-FN",
+   "title": "relative to fetal death reporting to the Centers for Disease Control.",
+   "sponsor": "Cindy Rosenwald",
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "State Government"
   },
   "SB557": {
    "n": "SB 557-FN",
@@ -840,6 +1069,13 @@
    "committees": ["House Judiciary", "Senate Judiciary"],
    "topic": "Discrimination"
   },
+  "SB464": {
+   "n": "SB 464-FN",
+   "title": "relative to civil rights enforcement.",
+   "sponsor": "Daryl Abbas",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
   "SB603": {
    "n": "SB 603-FN",
    "title": "relative to the funding of the SNAP program by the department of health and human services.",
@@ -882,12 +1118,26 @@
    "committees": ["House Housing"],
    "topic": "Housing"
   },
+  "HB1010": {
+   "n": "HB 1010",
+   "title": "relative to multi-family residential development on commercially zoned land.",
+   "sponsor": "Katelyn Kuttab",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
   "HB1560": {
    "n": "HB 1560-FN",
    "title": "relative to annual motor vehicle inspection standards and reinstatement.",
    "sponsor": "Peter Leishman",
    "committees": ["House Transportation"],
    "topic": "Motor Vehicles"
+  },
+  "HB1135": {
+   "n": "HB 1135",
+   "title": "prohibiting the acquisition of prescriptive rights in private roads through adverse use.",
+   "sponsor": "Deborah Aylward",
+   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"],
+   "topic": "Civil Actions"
   },
   "HB1012": {
    "n": "HB 1012",
@@ -994,6 +1244,13 @@
    "committees": ["House Judiciary"],
    "topic": "Discrimination"
   },
+  "HB1749": {
+   "n": "HB 1749-FN",
+   "title": "reinstating the death penalty for murder offenses.",
+   "sponsor": "Seth King",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
   "HB1792": {
    "n": "HB 1792-FN",
    "title": "relative to the prohibition on teaching discrimination.",
@@ -1088,6 +1345,13 @@
   "HB1201": {
    "n": "HB 1201",
    "title": "requiring certain political committees to disclose the identity of their donors.",
+   "sponsor": "Russell Muirhead",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB1083": {
+   "n": "HB 1083-FN",
+   "title": "requiring the disclosure of the source of certain political donations in state elections.",
    "sponsor": "Russell Muirhead",
    "committees": ["House Election Law"],
    "topic": "Elections"
@@ -1239,6 +1503,13 @@
    "committees": ["House Judiciary", "Senate Judiciary"],
    "topic": "Discrimination"
   },
+  "HB1035": {
+   "n": "HB 1035",
+   "title": "making the chapter relative to the register of deeds gender neutral.",
+   "sponsor": "Bryan Morse",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Counties"
+  },
   "HB1252": {
    "n": "HB 1252",
    "title": "requiring the department of safety to only administer tests for commercial driver's licenses in English and prohibiting the assistance of an interpreter during such tests.",
@@ -1309,6 +1580,13 @@
    "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
    "topic": "Elections"
   },
+  "HB1454": {
+   "n": "HB 1454-FN",
+   "title": "relative to the possession of firearms following a court order requiring surrender of firearms and ammunition.",
+   "sponsor": "Jay Markell",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
   "HB1625": {
    "n": "HB 1625-FN",
    "title": "relative to annual reporting on accessory dwelling unit construction and use.",
@@ -1350,6 +1628,13 @@
    "sponsor": "Cyril Aures",
    "committees": ["House Judiciary"],
    "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1380": {
+   "n": "HB 1380-LOCAL",
+   "title": "requiring the assessment of real property and land be based on replacement or cost-based value.",
+   "sponsor": "Kelley Potenza",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Taxes - Local"
   },
   "HB1338": {
    "n": "HB 1338",
@@ -1477,6 +1762,13 @@
    "committees": ["House Resources, Recreation and Development"],
    "topic": "Environment - Conservation"
   },
+  "HB1347": {
+   "n": "HB 1347",
+   "title": "relative to health care provider networks and referrals.",
+   "sponsor": "Trinidad Tellez",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Insurance"
+  },
   "HB1770": {
    "n": "HB 1770-FN",
    "title": "relative to the allocation of parental rights and responsibilities and establishing a presumption of equal parenting time.",
@@ -1511,6 +1803,20 @@
    "sponsor": "John Cloutier",
    "committees": ["House Education Funding"],
    "topic": "Education - General"
+  },
+  "HB1649": {
+   "n": "HB 1649",
+   "title": "prohibiting certain tax dollars from being donated to non-profit organizations.",
+   "sponsor": "Lorie Ball",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Taxes - Local"
+  },
+  "HB1581": {
+   "n": "HB 1581-FN",
+   "title": "allowing municipalities to adopt a requirement that property owners be given notice when the assessed value of their property changes by certain amounts.",
+   "sponsor": "Robert Wherry",
+   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"],
+   "topic": "Taxes - Local"
   },
   "SB660": {
    "n": "SB 660",
@@ -1547,6 +1853,20 @@
    "committees": ["House Transportation", "Senate Judiciary"],
    "topic": "Motor Vehicles"
   },
+  "SB14": {
+   "n": "SB 14",
+   "title": "relative to the penalty for certain fentanyl-related offenses; relative to establishing a mandatory minimum sentence for the crime of distribution of a controlled drug with death resulting; and relative to amending the penalties for the possession and use of a quantity of psilocybin for persons 18 years of age or older.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB10": {
+   "n": "HB 10",
+   "title": "establishing a parental bill of rights.",
+   "sponsor": "Sherman Packard",
+   "committees": ["House Children and Family Law", "Senate Education"],
+   "topic": "Children"
+  },
   "HB50": {
    "n": "HB 50",
    "title": "relative to intentional or knowing violation of the prohibition on teaching discrimination.",
@@ -1575,12 +1895,26 @@
    "committees": ["House Housing", "Senate Commerce"],
    "topic": "Housing"
   },
+  "HB73": {
+   "n": "HB 73",
+   "title": "relative to harm reduction, substance misuse, and the governor's commission on alcohol and drug abuse prevention, treatment, and recovery.",
+   "sponsor": "David Nagel",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
+  },
   "HB75": {
    "n": "HB 75",
    "title": "legalizing cannabis for persons 21 years of age or older.",
    "sponsor": "Kevin Verville",
    "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
    "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB76": {
+   "n": "HB 76",
+   "title": "relative to tracking special education complaints.",
+   "sponsor": "Katelyn Kuttab",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
   },
   "HB81": {
    "n": "HB 81",
@@ -1616,6 +1950,13 @@
    "sponsor": "Joe Alexander",
    "committees": ["House Education Policy and Administration"],
    "topic": "Education - General"
+  },
+  "HB94": {
+   "n": "HB 94",
+   "title": "relative to coverage of circumcision under the state Medicaid plan.",
+   "sponsor": "Julius Soti",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Welfare/Medicare/Medicaid"
   },
   "HB148": {
    "n": "HB 148",
@@ -1700,6 +2041,13 @@
    "sponsor": "Tom Mannion",
    "committees": ["House Environment and Agriculture", "Senate Judiciary"],
    "topic": "Animals"
+  },
+  "HB245": {
+   "n": "HB 245",
+   "title": "establishing the speed enforcement and awareness fund and providing for grants to municipal law enforcement for speed enforcement and speed awareness traffic equipment.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Motor Vehicles"
   },
   "HB250": {
    "n": "HB 250",
@@ -1855,6 +2203,13 @@
    "committees": ["House Election Law"],
    "topic": "CACR"
   },
+  "SB42": {
+   "n": "SB 42",
+   "title": "relative to notice of death affidavits.",
+   "sponsor": "James Gray",
+   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"],
+   "topic": "Property - Real and Personal"
+  },
   "HB385": {
    "n": "HB 385",
    "title": "reestablishing voter identification exceptions.",
@@ -1917,6 +2272,13 @@
    "sponsor": "Kris Schultz",
    "committees": ["House Labor, Industrial and Rehabilitative Services"],
    "topic": "Employment"
+  },
+  "HB455": {
+   "n": "HB 455",
+   "title": "relative to reports by the department of health and human services regarding Medicaid enhancement for children and pregnant women.",
+   "sponsor": "Jess Edwards",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
   },
   "HB466": {
    "n": "HB 466",
@@ -2065,6 +2427,13 @@
    "committees": ["House Health, Human Services and Elderly Affairs"],
    "topic": "Public and Mental Health"
   },
+  "HB641": {
+   "n": "HB 641",
+   "title": "establishing a private right of action for civil rights violations.",
+   "sponsor": "Linda Harriott-Gathright",
+   "committees": ["House Judiciary"],
+   "topic": "Discrimination"
+  },
   "HB662": {
    "n": "HB 662",
    "title": "requiring the discussion of abortion procedures and viewing of certain videos during health education in public schools.",
@@ -2114,6 +2483,13 @@
    "committees": ["House Labor, Industrial and Rehabilitative Services"],
    "topic": "Employment"
   },
+  "HB730": {
+   "n": "HB 730",
+   "title": "requiring school districts to educate and provide information to students regarding adoption during health education for grades 9 through 12, and in college in certain circumstances.",
+   "sponsor": "John Sellers",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
   "HB737": {
    "n": "HB 737",
    "title": "creating local options for games of chance, authorizing keno throughout the state, and changing charitable gaming license fees and reporting requirements.",
@@ -2148,6 +2524,13 @@
    "sponsor": "Timothy Lang",
    "committees": ["House Education Policy and Administration", "Senate Education"],
    "topic": "Education - General"
+  },
+  "SB107": {
+   "n": "SB 107",
+   "title": "enabling the state treasurer to invest certain fish and game funds.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Ways and Means", "Senate Energy and Natural Resources"],
+   "topic": "Fish & Game"
   },
   "SB133": {
    "n": "SB 133",

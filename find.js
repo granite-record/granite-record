@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.11
+// GRANITE_VERSION: 2026-09-16.12
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -332,9 +332,10 @@ function _fbillApi(){
   if(typeof queryGroups==="function"&&typeof groupWeight==="function"
      &&typeof billNumbers==="function"&&typeof billKey==="function"
      &&typeof looseness==="function"&&typeof indexAdd==="function"
-     &&typeof respell==="function"&&typeof whyListed==="function")
+     &&typeof readShort==="function"&&typeof whyListed==="function"
+     &&typeof spelling==="function"&&typeof wordsAdd==="function")
     return {queryGroups,groupWeight,billNumbers,billKey,looseness,indexAdd,
-            respell,whyListed};
+            readShort,whyListed,spelling,wordsAdd};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -428,9 +429,10 @@ function findBills(q,limit,allTerms){
   if(!ids){
     gs=A.queryGroups(s);
     if(!gs.length)return null;
-    // A search that finds nothing as typed is read again: "medicade" as
-    // Medicaid. app.js's groupsFor() does the same, over the same bills.
-    if(A.respell)gs=A.respell(gs,src.rows);
+    // In a term where the search lists nothing, a two-letter word is read
+    // as the start of one ("special ed"). app.js's groupsFor() does the
+    // same, over the same bills.
+    if(A.readShort)gs=A.readShort(gs,src.rows);
     words=gs.map(g=>g.word).join(" ");
   }
   const hit=[];
@@ -456,8 +458,48 @@ function findBills(q,limit,allTerms){
   const why=new Map();
   if(gs&&A.whyListed)for(const b of top){const y=A.whyListed(b,gs);if(y)why.set(b,y);}
   return {state:"ready",n:hit.length,term:FBILLS.term,every:!!allTerms,
-          terms:allTerms?FALL.terms:[FBILLS.term],numbers:!!ids,
-          read:(gs&&gs.read)||null,why,top};
+          terms:allTerms?FALL.terms:[FBILLS.term],numbers:!!ids,why,top};
+}
+
+/* A SEARCH THAT LISTS NO BILL, OFFERED AS THE WORD IT SOUNDS LIKE (app.js,
+   A SEARCH THAT LISTS NOTHING). For a day the bills row read the word
+   again by itself: a former member's surname opened with "All 2,052 bills
+   found for houde ... showing house" above the member, and Return went
+   there. Now nothing is counted under another word. Where no bill and no
+   name matches, the "Did you mean" line the names already had offers the
+   bills' word as well.
+
+   What tells a misspelling from a word is sidx/words.json, every word the
+   bills use. It is fetched the first time it is needed and not before:
+   {state:"loading"} until it is here, with FWORDS.loading to wait on; null
+   where there is nothing to offer, or the file cannot be had; else
+   {q, n}, the search to offer and how many bills it lists. */
+const FWORDS={state:"",loading:null,redraw:false};
+function findBillSpelling(q,allTerms){
+  const s=(q||"").trim(),src=allTerms?FALL:FBILLS,A=FBILLS.api;
+  if(!s||!src.rows||!A||!A.spelling||A.billNumbers(s))return null;
+  const sp=A.spelling(A.readShort(A.queryGroups(s),src.rows),src.rows);
+  if(!sp||!sp.need)return sp;
+  if(FWORDS.state==="failed")return null;
+  if(!FWORDS.loading){
+    FWORDS.state="loading";
+    FWORDS.loading=_fjson("sidx/words.json")
+      .then(j=>{FWORDS.state=A.wordsAdd(j)?"ready":"failed";})
+      .catch(()=>{FWORDS.state="failed";});
+  }
+  return FWORDS.state==="loading"?{state:"loading"}:null;
+}
+// The words to offer for a search nothing matched: the bills', and a name's.
+// The bills' first: it goes by sound, and for "medicade" it is Medicaid,
+// where the nearest name is the subject Medicare, one letter away. `wait` is
+// there while the bills' words are on their way: draw again after.
+function findOffers(q,allTerms){
+  const words=[],sp=findBillSpelling(q,allTerms);
+  const wait=sp&&sp.state==="loading"?FWORDS.loading:null;
+  if(sp&&sp.q)words.push(sp.q);
+  const did=findSuggest(q);
+  if(did&&!words.includes(did))words.push(did);
+  return {words,wait};
 }
 
 // One bill as a row: its number, and its title under it. A resolution's
@@ -500,9 +542,7 @@ function findBillsAll(B,q,what){
   const where=every?`In all ${B.terms.length} terms, ${_fspan(B.terms)}.`
     :ready?`In the ${_fesc(B.term)} term.`
     :B&&B.state==="loading"?"Counting this term&rsquo;s bills&hellip;":"";
-  // A word no bill has, read as the word it sounds like: said, not done quietly.
-  const read=ready&&B.read?B.read.map(r=>`No bill says &ldquo;${_fesc(r[0])}&rdquo;: showing ${_fesc(r[1])}.`).join(" "):"";
-  const line=[read,where,what||(where?"":"In the bill search.")].filter(Boolean).join(" ");
+  const line=[where,what||(where?"":"In the bill search.")].filter(Boolean).join(" ");
   return `<a class="fbills" href="/bills?q=${encodeURIComponent(q)}${every?"&amp;term=all":""}">
     <span class="fl1"><span class="fname">${name}</span></span>
     <span class="fwhat">${line}</span></a>`;
@@ -567,16 +607,25 @@ function findDraw(q){
   const list=named.map(row).join("")+bills
     +rows.filter(r=>!named.includes(r)).map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here
-  // and no bill matches; "Did you mean" only when no bill does either, since
-  // its guesses come from names alone ("voting" was offered "zoning" over
-  // 141 bills). While the bills are being counted, neither: it is not known.
+  // and no bill matches; "Did you mean" only when no bill does either
+  // ("voting" was offered "zoning" over 141 bills). Its guesses are a name
+  // close to what was typed and, since 1 October, the word of the bills
+  // that a misspelt one sounds like (findOffers). While the bills are being
+  // counted, neither: it is not known.
   let tail="";
   if(!rows.length&&!num&&(!B||(counted&&!B.n)||B.state==="failed")){
     const none=!B||counted?"No matching results.":"";
-    const did=findSuggest(s);
-    if(none||did)tail=`<p class="fnote">${none}${did?`${none?" ":""}Did you mean
-      <button type="button" class="fdym" data-q="${_fesc(did)}">${_fesc(did)}</button>?`
-      :""}</p>`;
+    const offer=findOffers(s,false);
+    if(offer.wait&&!FWORDS.redraw){
+      FWORDS.redraw=true;
+      offer.wait.then(()=>{
+        const box=document.getElementById("findq");
+        if(box)findDraw(box.value);});
+    }
+    const did=offer.words.map(d=>
+      `<button type="button" class="fdym" data-q="${_fesc(d)}">${_fesc(d)}</button>`);
+    if(none||did.length)tail=`<p class="fnote">${none}${did.length
+      ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
   }
   out.innerHTML=num?all+list+every+tail:list+all+tail;
 }

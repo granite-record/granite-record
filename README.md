@@ -223,7 +223,7 @@ addresses:
 |---|---|
 | `/index.json` | every bill, every term — title, sponsor, committee, topic, status, passage |
 | `/idx/<term>.json` | one term's bills; this is what the search page loads |
-| `/sidx/<term>.json` | what each of that term's bills is about, from its analysis and text: for each word, the bills it is central to and how central. The search fetches it when somebody searches. `/sidx/manifest.json` says what each file holds and weighs |
+| `/sidx/<term>.json` | what each of that term's bills is about, from its analysis and text: for each word, the bills it is central to and how central. The search fetches it when somebody searches. `/sidx/manifest.json` says what each file holds and weighs, and `/sidx/words.json` is every word of five letters or more that any bill of any term uses, with the names of members and towns: what tells a misspelt search from a real word no bill is about |
 | `/legislators.json` | the roster — who holds a seat now, with districts, towns and committees |
 | `/former.json` | the 1,785 people in the record who hold no seat now, with the span of their record. Deliberately a separate file: everything that reads the roster reads it to mean "who serves today" |
 | `/rollcalls_index.json` | every recorded vote — tally, whether it passed, party split, and a plain-English question where one could be made (5,007 of 9,565) |
