@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.292
+# GRANITE_VERSION: 2026-09-04.293
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27464,7 +27464,8 @@ def _dbday_bridge(P, DF, calls, how):
     """child.popen for probe_db, answering fetch_day_db.py's statements out of
     the fixture's views as PS_STREAM_COUNTED would. how["short"][view] rows
     fewer arrive than the server counted; a view in how["refuse"] cannot
-    connect; one in how["fail"] connects and its query fails."""
+    connect; one in how["fail"] connects and its query fails; one in
+    how["empty"] answers with no rows at all."""
     def popen(cmd, **kw):
         script, env = cmd[-1], dict(kw.get("env") or {})
         view = re.search(r"FROM \[(\w+)\]", env.get("GR_COUNT") or "").group(1)
@@ -27475,7 +27476,7 @@ def _dbday_bridge(P, DF, calls, how):
         if view in how.get("fail", ()):
             return _DbdayProc(["COUNT 3", "QUERY_FAIL Execution Timeout Expired (fixture)"], 4)
         assert script == P.PS_STREAM_COUNTED, "fetch_day_db.py went through another bridge"
-        rows = _DBDAY_VIEWS[view]
+        rows = [] if view in how.get("empty", ()) else _DBDAY_VIEWS[view]
         sent = rows[:max(0, len(rows) - how.get("short", {}).get(view, 0))]
         with open(env["GR_OUT"], "w", encoding="utf-8", newline="") as fh:
             fh.write("".join(r + "\r\n" for r in sent))
@@ -27629,6 +27630,19 @@ def _fetch_day_db(FD, DF, P, NI):
         assert any(n.startswith("SubjectCodes.txt was not compared")
                    for n in DF.lookup_notes(DF.VIEWS_DIR, ".")), DF.lookup_notes(DF.VIEWS_DIR, ".")
         DF.rebuild(DF.VIEWS_DIR, ".")
+
+        # A session that has taken no roll call yet answers with no rows, and
+        # that is an answer; a roster with no rows is not.
+        del calls[:]
+        how.clear()
+        how["empty"] = {"RollCallSummary", "RollCallHistory"}
+        code, said = go("--fetch-only")
+        assert code == 0 and len(calls) == 11, (code, said[-300:])
+        del calls[:]
+        how["empty"] = {"Legislators"}
+        code, said = go("--fetch-only")
+        assert code == 1 and len(calls) == 1 and "no rows" in said, (code, said[-300:])
+        assert 0 < FD.TIMEOUT <= 300, "a view's query is given more than five minutes"
 
         # A connection that fails ends it at once; on GitHub's machine it is
         # the host's hold, and the next run asks nothing.

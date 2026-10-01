@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.1
+# GRANITE_VERSION: 2026-10-01.2
 """
 The day's records from the General Court's database, into .night/dbday/.
 
@@ -86,7 +86,14 @@ import refusal
 OUT = DF.VIEWS_DIR                  # .night/dbday, and nowhere else
 DATABASE = P.DATABASE
 PAUSE = 4.0                         # seconds between connections
-TIMEOUT = 300                       # seconds for one view
+# Seconds a view's query may take. The whole of RollCallHistory, 2.3 million
+# rows, took 95 on 8 September; tonight's is a twentieth of it. A host too
+# slow for this is the host that timed the export out, and is not asked twice.
+TIMEOUT = 120
+# The views that may honestly answer with no rows: a session that has taken no
+# roll call yet, or signed no sponsor. Where the installed file has rows and
+# the database gives none, dayfiles_from_db's guards stop the night.
+MAY_BE_EMPTY = ("Sponsors", "RollCallSummary", "RollCallHistory")
 
 # Smallest first.
 ORDER = ("Legislators", "RollCallSummary", "Sponsors", "Legislation", "Docket",
@@ -179,7 +186,7 @@ def fetch(todo, held, pause):
                 err = f"the file holds {lines:,} lines for {rows:,} rows"
             elif bad:
                 err = f"{bad:,} of its lines are not {len(cols)} columns wide"
-            elif needed and not rows:
+            elif needed and not rows and view not in MAY_BE_EMPTY:
                 err = "the view answered with no rows"
         if err:
             entry["error"] = str(err)[:300]
