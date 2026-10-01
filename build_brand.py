@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.8
+# GRANITE_VERSION: 2026-09-12.9
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -19,9 +19,9 @@ a bought clipart Old Man of the Mountain and an artist's licensed drawing, and
 on 30 September 2026 the person took the clipart out of git as the drawing
 already was: brand/ and the images in assets/ are gitignored, they live on the
 machine that builds the site, and GitHub's nightly gets assets/ from the
-private kit (cloud_kit.json). DATA.md has the terms. So on a clone brand/ is
-empty and this stops at the first missing original, saying what a fork should
-put there to draw its own (need(), below).
+private kit (cloud_kit.json). DATA.md has the terms. So a clone has no brand/
+and this stops at the first missing original, saying what a fork should put
+there to draw its own (need(), below).
 
 The clipart below is the SMALL mark. Since 24 September the logo proper is
 Debra Caplan's drawing (see write_licensed): her lockups draw the home page's

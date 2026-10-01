@@ -102,7 +102,7 @@ Four things are absent on purpose and are not missing:
   dozen transcribed here, about 15 GB; all of it re-fetchable.
 - `site/` — the built output.
 - the logo and the icons — used under licence and not part of the open-source
-  release, so `brand/` is empty and `assets/` holds one text file. The build
+  release, so there is no `brand/` and `assets/` holds one text file. The build
   runs without them and says so once: the header is the site's name alone, the
   home page's heading is text, and `check_site.py` reports the missing icons.
   [`DATA.md`](DATA.md) says how a fork brings its own.
