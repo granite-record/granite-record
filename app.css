@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.181 */
+/* GRANITE_VERSION: 2026-09-07.182 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1086,6 +1086,19 @@ nav.top .brand::before{content:"";flex:0 0 auto;width:33px;height:56px;
 background:currentColor;
 -webkit-mask:url(/mark.png) center/contain no-repeat;
 mask:url(/mark.png) center/contain no-repeat}
+/* AND THE ROW HAS TO PAY FOR IT. The drawing is 18px wider than the clipart
+   was, and the phone row had none to give: brand, search and menu fitted
+   360px with one pixel over when the serif had not loaded yet (Georgia sets
+   the name 24px wider), which was the margin the bar was built to. With the
+   mark that became 377px, so on a 360 or a 375px phone the menu button
+   dropped to a row of its own until the font arrived -- measured with the
+   fonts blocked, not guessed. Between 947 and 964px the same 18px wrapped
+   the search button where it used to fit.
+   The brand's side padding is the 24px that buys it back. It pads nothing
+   anyone sees -- the brand has no box -- and without it the mark sits on the
+   page's own left edge. Only below 980px: above that the tab strip is out of
+   the flow, the brand takes the free space, and nothing can wrap. */
+@media (max-width:979.98px){nav.top .brand{padding-left:0;padding-right:0}}
 /* MARK:END ----------------------------------------------------------------- */
 
 *{box-sizing:border-box}html,body{margin:0}

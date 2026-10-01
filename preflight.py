@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.287
+# GRANITE_VERSION: 2026-09-04.288
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14058,6 +14058,10 @@ def _header_mark():
         it names the file or draws .brand::before
       - the box it draws is the box build_brand.py cuts the mask for, and the
         mask is at least twice that, so it is sharp on a 2x screen
+      - below the width where the tab strip leaves the flow, the brand gives
+        up its side padding: the drawing is 18px wider than the clipart was,
+        and without that the phone's row wraps on a 360px screen whenever the
+        serif is late, which was measured with the fonts blocked
       - stylesheet(True) carries the region and stylesheet(False) is the same
         text without it, with no slot left unfilled; without_mark() takes the
         region out of app.css's bytes and nothing else
@@ -14102,6 +14106,15 @@ def _header_mark():
     assert BB.HEADER_MARK == BP.HEADER_MARK and BB.MARK_SCALE >= 2, (
         "build_brand.py writes the mark under another name than build_pages.py "
         "places, or at less than twice its box")
+    strip = re.search(r"@media \(min-width:(\d+)px\)\{\s*nav\.top \.in\{position:relative\}",
+                      css)
+    assert strip, "app.css no longer takes the tab strip out of the flow at a min-width"
+    assert (f"@media (max-width:{int(strip.group(1)) - 1}.98px)"
+            "{nav.top .brand{padding-left:0;padding-right:0}}") in rule, (
+        "with the mark drawn, the brand must give up its side padding below "
+        f"{strip.group(1)}px, where the strip is in the flow: the mark is 18px "
+        "wider than the row had, and a 360px phone wraps its menu button "
+        "without them")
 
     drawn, plain = BP.stylesheet(True), BP.stylesheet(False)
     assert region in drawn and drawn.replace(region, "") == plain, (
