@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Check the site is fit to publish before uploading it.
 
@@ -26,6 +26,11 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+# The logo and the icons, by name: the one list, kept where the build places
+# them. They are not in the repository, so a site built from a bare clone has
+# none of them, and every page's head still links four.
+from build_pages import BRAND_FILES
 
 # A JSON file here whose emptiness is a fact about the record rather than a
 # build that produced nothing. Every other empty one is a failure: silence is
@@ -105,6 +110,18 @@ def main():
     for k, v in sorted(counts.items()):
         print(f"  {k:<22} {v:,} entries")
 
+    # ---- the logo and the icons ---------------------------------------------
+    # ONE PLAIN ERROR, NOT TEN BROKEN LINKS. Without this a site built from a
+    # clone was refused with "broken link: index.html -> /icon.svg" and nine
+    # more like it, none of which says the one thing a person needs to know:
+    # the files were never in the repository. Still an error -- a site without
+    # its icons must not be published -- but one that says why and what to do.
+    # The links to them are counted here and left out of the list below.
+    no_brand = [f for f in BRAND_FILES if not (site / f).exists()]
+    brand_at = {(site / f).resolve() for f in no_brand}
+    to_brand = 0
+    print(f"\nlogo and icons: {len(BRAND_FILES) - len(no_brand)}/{len(BRAND_FILES)} present")
+
     # ---- every internal link resolves ---------------------------------------
     print("\nlinks:")
     bad = Counter()
@@ -141,12 +158,26 @@ def main():
                 target = (p.parent / clean).resolve()
             checked += 1
             if not served(target):
+                if target in brand_at:
+                    to_brand += 1
+                    continue
                 bad[f"{p.name} -> {href}"] += 1
     print(f"  {checked:,} internal references checked across {len(pages)} pages")
     for k, n in list(bad.items())[:10]:
         errors.append(f"broken link: {k}")
     if not bad:
-        print("  all resolve")
+        print("  all resolve" + (f", bar {to_brand:,} to the logo and icons that "
+                                 "are not here" if to_brand else ""))
+    if no_brand:
+        errors.append(
+            f"the logo and icons are not in the site: {len(no_brand)} of "
+            f"{len(BRAND_FILES)} files are missing ({', '.join(no_brand)})"
+            + (f", and {to_brand:,} links on the pages checked point at them"
+               if to_brand else "")
+            + ". They are not in the repository (DATA.md says why): the "
+            "project's own build takes them from its kit, and a fork brings "
+            "its own -- a mark in brand/ and python3 build_brand.py, or files "
+            "of those names in assets/ -- and then builds again")
 
     # ---- per-bill pages and feeds -------------------------------------------
     nbill = len(list((site / "bill").rglob("*.html"))) if (site / "bill").exists() else 0

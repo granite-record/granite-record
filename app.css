@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.180 */
+/* GRANITE_VERSION: 2026-09-07.182 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -359,11 +359,15 @@ align-items:center;gap:var(--sp-3) var(--sp-6);flex-wrap:wrap}
    it and the nav is two colours deep -- near-white in light, #272D2E in dark
    -- so the profile is a mask over `currentColor` and follows .brand's own
    colour in both. One file, fetched once for 33,683 pages, and if it fails
-   to load the wordmark is still a wordmark. 15x24 because the drawn shape is
-   0.628 as wide as it is tall, measured with getBBox rather than guessed.
+   to load the wordmark is still a wordmark.
    The whole lockup as an image was the other option and is worse: 16px of
    serif drawn at 22px would be soft, it would not invert, and a reader could
-   not select the site's name. */
+   not select the site's name.
+   THE RULE THAT DRAWS IT IS NOT IN THIS REGION. Since 1 October it is the
+   artist's drawing, which a fork does not have, so it sits between
+   MARK:START and MARK:END below SHARED:END and build_pages.py keeps it only
+   where the build has the file. Everything here is the wordmark, which is
+   the whole brand where there is no mark. */
 /* 22px, not 16px. All five header arrangements set the wordmark at
    600 22px/1.1 Source Serif 4 and differ in nothing else about it, so the
    size is settled even where the arrangement is not. At body size it read as
@@ -377,10 +381,6 @@ display:inline-flex;align-items:center;gap:var(--sp-4);
 color:var(--ink);text-decoration:none}
 nav.top .brand:hover{color:var(--pine)}
 nav.top .brand:hover::before{background:var(--pine)}
-nav.top .brand::before{content:"";flex:0 0 auto;width:15px;height:24px;
-background:currentColor;
--webkit-mask:url(/mark.svg) center/contain no-repeat;
-mask:url(/mark.svg) center/contain no-repeat}
 /* CENTRED, AND CENTRED BY MARGIN RATHER THAN BY GRID. The bar holds a
    variable number of controls -- find.js mounts its search button at runtime
    and the menu button only exists below 720px -- so a three-column grid
@@ -1056,6 +1056,50 @@ line-height:1.1}
 .prose,.attrib,.lead,.ctitle,.sdtx,.cbt,.billbody{font-family:var(--serif)}
 
 /* SHARED:END ------------------------------------------------------------ */
+
+/* MARK:START ---------------------------------------------------------------
+   THE HEADER'S MARK IS THE ARTIST'S DRAWING (1 October 2026). Debra Caplan's
+   Old Man of the Mountain, whole, beside the live-text wordmark: the person
+   chose it from a rendered comparison of eight arrangements, at the size
+   where the drawing reads at 1x -- a 33x56 box, which is its ink's own
+   426x726 -- and accepted the bar growing from 61px to 75 for it. The bar is
+   not sticky and no rule in this file is tied to its height, so nothing
+   else moves. /mark.png is that ink as an alpha mask at three times the box,
+   so it is sharp on a 2x laptop and a 3x phone, and it takes .brand's colour
+   as the clipart mark did: ink on paper in light, light ink on dark, pine
+   under the pointer. The favicon and the tab icons stay the clipart.
+
+   A REGION OF ITS OWN, BECAUSE A FORK HAS NO DRAWING. The file is licensed,
+   never in the repository, and reaches a build only through
+   assets/licensed/. A mask whose file is missing is drawn as nothing, but
+   its box is still there: an empty 33x56 gap before the name and a bar 14px
+   taller for no reason, on every page. So build_pages.py reads from this
+   marker to MARK:END, gives the block to style.css and leaves it in the
+   app.css it copies into the site ONLY where the build placed /mark.png
+   (build_pages.HEADER_MARK), and cuts it where it did not. Without it the
+   brand is the wordmark alone, which is what the rules in the shared region
+   above already draw. It is outside SHARED so that the shared region stays
+   byte for byte what both stylesheets carry.
+
+   Nothing outside this region may name the file; preflight holds that. */
+nav.top .brand::before{content:"";flex:0 0 auto;width:33px;height:56px;
+background:currentColor;
+-webkit-mask:url(/mark.png) center/contain no-repeat;
+mask:url(/mark.png) center/contain no-repeat}
+/* AND THE ROW HAS TO PAY FOR IT. The drawing is 18px wider than the clipart
+   was, and the phone row had none to give: brand, search and menu fitted
+   360px with one pixel over when the serif had not loaded yet (Georgia sets
+   the name 24px wider), which was the margin the bar was built to. With the
+   mark that became 377px, so on a 360 or a 375px phone the menu button
+   dropped to a row of its own until the font arrived -- measured with the
+   fonts blocked, not guessed. Between 947 and 964px the same 18px wrapped
+   the search button where it used to fit.
+   The brand's side padding is the 24px that buys it back. It pads nothing
+   anyone sees -- the brand has no box -- and without it the mark sits on the
+   page's own left edge. Only below 980px: above that the tab strip is out of
+   the flow, the brand takes the free space, and nothing can wrap. */
+@media (max-width:979.98px){nav.top .brand{padding-left:0;padding-right:0}}
+/* MARK:END ----------------------------------------------------------------- */
 
 *{box-sizing:border-box}html,body{margin:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:var(--t-body);
@@ -4603,9 +4647,11 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* THE ARTIST'S STACKED LOCKUP (24 September): Debra Caplan's drawing with
    the name in two lines, 1365x725 once cut to its ink, at 360px in the
    478px middle column -- a detailed drawing needs the room the clipart did
-   not. The box is her proportions; on a checkout without her files
-   (assets/licensed/ is gitignored) the clipart lockup is fitted inside it
-   by the mask's contain rather than stretched. */
+   not. The box is her proportions; a lockup of another shape (the clipart's,
+   or a fork's own) is fitted inside it by the mask's contain rather than
+   stretched. Where a build has no lockup.png at all -- neither is in the
+   repository -- build_pages.py does not write this class: the heading is
+   h1.wordmark below, its words, and not an empty band. */
 :where(body.pg) h1.lockup{width:min(100%,360px);aspect-ratio:1365/725;margin:var(--sp-1) auto var(--sp-6);
     background:var(--ink);
     -webkit-mask:url(/lockup.png) center/contain no-repeat;
@@ -4619,6 +4665,12 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :where(body.pg) h1.lockup span{position:static;width:auto;height:auto;margin:0;overflow:visible;
     clip:auto;white-space:normal}
 }
+/* THE SAME HEADING WHERE THERE IS NO LOCKUP TO DRAW (1 October): a build
+   without the logo files, which is every fork until it brings its own. The
+   site's name in the serif at the hero size, centred like the lockup it
+   stands in for, so the slogan under it still hangs from something. */
+:where(body.pg) h1.wordmark{font-size:var(--t-hero);text-align:center;
+margin:var(--sp-1) 0 var(--sp-6)}
 :where(body.pg) .corrections{font-size:var(--t-ui);color:var(--ink-2);margin-top:var(--sp-4)}
 :where(body.pg) .corrections a{color:var(--pine)}
 /* The line under the home page's logo, which the person set on 14 September:

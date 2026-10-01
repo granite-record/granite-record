@@ -252,6 +252,27 @@ town_sites/
 brand/licensed/
 assets/licensed/
 
+# THE CLIPART (1 October 2026). The other half of the logo: a bought
+# clipart Old Man of the Mountain, the stand-in the site launched with, and
+# every icon build_brand.py draws from it -- the favicon, the tab and app
+# icons, the clipart lockup and link cards. It is used under the terms it was
+# bought on, which are not the project's to pass on, so it is not part of the
+# open-source release either, and on 30 September the person decided these
+# files leave the repository: untracked since the commit of 1 October that
+# removed them, with the history before it left as it is, so every earlier
+# commit still carries them. They stay on the machine that builds the site,
+# and GitHub's nightly gets the assets/ images from the private kit
+# (cloud_kit.json).
+# assets/site.webmanifest is text, is MIT like the code, and stays tracked.
+# See DATA.md; preflight fails if any of them is ever tracked again.
+/Icon.png
+/Logo Black.png
+/Logo White.png
+/brand/*
+/assets/*.png
+/assets/*.svg
+/assets/*.ico
+
 # THE CLERKS' CORRECTIONS LIST (24 September 2026). The errors found in the
 # General Court's own record, with their evidence, for the person to take to
 # the House and Senate Clerks' offices. The person chose to keep it out of

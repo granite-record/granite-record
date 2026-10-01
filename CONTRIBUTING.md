@@ -91,7 +91,7 @@ project:
 | `openpyxl` | `build_manifest.py`, `ground_truth.py`, `probe_alignment.py` |
 | `pdfplumber` | calendar and PDF text extraction |
 | `pypdf` | PDF page handling |
-| `PIL` (Pillow) | `build_brand.py` (icons, logos and link-card images) |
+| `PIL` (Pillow) | `build_brand.py` (drawing your own icons and link-card images; the project's are not in the repository) |
 | `faster_whisper` | `transcribe_and_align.py` (transcribing a recording that has no captions) |
 | `boto3` | `cloud.py` (the nightly's kit and the backup in the project's R2 bucket; `--local-bucket` needs nothing) |
 
