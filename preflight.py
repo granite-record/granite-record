@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.286
+# GRANITE_VERSION: 2026-09-04.287
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4825,6 +4825,255 @@ def _best_match_words(BP):
                   "and Sugar Hill before Hillsborough")
 
 
+# REAL SEARCHES, REAL BILLS (1 October 2026). The frontend check further down
+# holds how a search is READ, against one-line bills invented for the purpose:
+# "bail" is not Rep. Bailey, "alien" is not "alienation". None of it ran a
+# real search against real titles and named the bills that must come back --
+# so "lgbtq" returned nothing and "trans" returned 162 bills about transfers
+# and transportation, and every check here passed.
+#
+# tests/search_cases.json is that: searches a member of the public types,
+# each with bills of 2025-2026 it must list and bills it must not, every bill
+# carried with its title, sponsor and committees as the index has them. This
+# script runs them through the matcher build_pages cuts out of app.js (the
+# header's and /search's copy, which the checks above hold to /bills' own),
+# over the fixture's bills under --code and over the real index where the site
+# is built. It also reads the table itself: no word in two entries, no word of
+# the table read as the start of a longer one, no term with a hyphen in it.
+_SEARCH_CASES_JS = r"""
+// node go.js <billmatch.js> <search_cases.json> [idx.json ...]
+// The page's matcher, as build_pages cuts it for the header search, over real
+// titles. With no index named, the bills in the cases file are the fixture;
+// with indexes named, the cases run over the first of them (the cases' own
+// term) and the table and the pairs over all of them.
+const fs = require("fs");
+const [, , matcherFile, casesFile, ...idxFiles] = process.argv;
+const window = {};
+new Function("window", fs.readFileSync(matcherFile, "utf8"))(window);
+const A = window.GR_BILLMATCH;
+const C = JSON.parse(fs.readFileSync(casesFile, "utf8"));
+// The three haystacks exactly as app.js's ensureTerm() and find.js's _fprep() build them.
+const norm = s => String(s || "").toLowerCase().replace(/-/g, " ");
+const prep = b => { b.hayT = norm([b.id, b.n, b.title].join(" ")); b.hayS = norm(b.sponsor);
+  b.hayC = norm((b.committees || [b.committee || ""]).join(" | ")); return b; };
+const real = idxFiles.length > 0;
+const byTerm = real ? idxFiles.map(f => JSON.parse(fs.readFileSync(f, "utf8")).map(prep))
+  : [Object.entries(C.bills).map(([id, b]) => prep({ id, term: C.term, ...b }))];
+const own = real ? (byTerm.find(r => r.length && r[0].term === C.term) || []) : byTerm[0];
+const all = byTerm.flat(), whole = real && byTerm.length >= 15;
+// What /bills?q= lists, in best-match order: find.js's findBills.
+function search(rows, q) {
+  const gs = A.queryGroups(q), words = gs.map(g => g.word).join(" "), hit = [];
+  for (const b of rows) {
+    let sc = 0, ok = true;
+    for (const g of gs) { const w = A.groupWeight(b, g); if (!w) { ok = false; break; } sc += w; }
+    if (!ok) continue;
+    if (gs.length > 1 && b.hayT.includes(words)) sc += 2;
+    hit.push([A.looseness(b, gs), -sc, A.billKey(b), b]);
+  }
+  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
+  return hit.map(h => h[3]);
+}
+const fails = [], stale = [], said = q => JSON.stringify(q);
+const have = new Map(own.map(b => [b.id, b]));
+let found = 0, kept = 0;
+for (const c of C.cases) {
+  const got = search(own, c.q).map(b => b.id), at = new Map(got.map((id, i) => [id, i]));
+  const first = c.first || [], must = [...first, ...(c.must || [])], never = c.never || [];
+  for (const id of [...must, ...never]) {
+    const b = have.get(id);
+    if (!b) fails.push(`${said(c.q)} names ${id}, which is not a bill of ${C.term}`);
+    else if (real && C.bills[id] && b.title !== C.bills[id].title && !stale.includes(id)) stale.push(id);
+  }
+  const lost = must.filter(id => !at.has(id)), wrong = never.filter(id => at.has(id));
+  found += must.length - lost.length; kept += never.length - wrong.length;
+  if (lost.length) fails.push(`${said(c.q)} does not list ${lost.join(", ")} (${(C.bills[lost[0]] || {}).title || ""})`);
+  if (wrong.length) fails.push(`${said(c.q)} lists ${wrong.join(", ")} (${(C.bills[wrong[0]] || {}).title || ""})`);
+  if (!got.length && !c.empty_ok) fails.push(`${said(c.q)} returns nothing`);
+  // The reader's own word before a bill the table found.
+  const late = first.filter(id => at.has(id) && (c.must || []).some(m => at.has(m) && at.get(m) < at.get(id)));
+  if (late.length) fails.push(`${said(c.q)} lists ${late.join(", ")}, which has the word itself, below a bill the table found`);
+  if (real && c.at_most && got.length > c.at_most) fails.push(`${said(c.q)} lists ${got.length} bills, more than ${c.at_most}: a flood`);
+}
+// Two sides' words for one subject return one list.
+for (const group of C.same) {
+  const lists = group.map(q => search(all, q).map(b => b.id + "/" + b.term).sort().join(" "));
+  if (!lists[0]) fails.push(`${said(group[0])} returns nothing, so the pair proves nothing`);
+  group.forEach((q, i) => { if (lists[i] !== lists[0]) fails.push(`${said(q)} and ${said(group[0])} return different bills: the table has taken a side`); });
+}
+// The table itself.
+const T = A.CONCEPTS, seen = new Map();
+let asks = 0, terms = 0;
+T.forEach((c, i) => {
+  if (!c.ask.length || !c.terms.length) fails.push(`entry ${i} has no ask or no term`);
+  for (const a of c.ask) {
+    asks++;
+    if (seen.has(a)) fails.push(`${said(a)} is an ask of two entries (${seen.get(a)} and ${i})`);
+    seen.set(a, i);
+    const gs = A.queryGroups(a);
+    if (gs.length !== 1) fails.push(`the ask ${said(a)} is read as ${gs.length} parts, not one`);
+    else if (!a.includes(" ") && !c.also && !gs[0].exact) fails.push(`the table's word ${said(a)} is still read as the start of a longer word`);
+  }
+  for (const t of c.terms) {
+    terms++;
+    if (/-/.test(t)) fails.push(`the term ${said(t)} has a hyphen, and a title is searched with hyphens as spaces`);
+    // Silence is not success: a term no title has ever used looks fine and finds
+    // nothing. Asked only where most of the terms' indexes are here to be read.
+    if (whole && !all.some(b => A.altRx(t).test(b.hayT))) fails.push(`the term ${said(t)} (entry ${i}, ${said(c.ask[0])}) is in no title of any term`);
+  }
+});
+// The two SYN groups switched on as phrases are still read as phrases: a group
+// renamed in SYN would otherwise go back, silently, to searching "enforcement".
+for (const p of ["mental health", "law enforcement"]) {
+  const gs = A.queryGroups(p);
+  if (gs.length !== 1 || gs[0].word !== p || gs[0].alts.length < 2) fails.push(`${said(p)} is no longer read as one phrase with its group`);
+}
+console.log(JSON.stringify({ fails, stale, cases: C.cases.length, found, kept, pairs: C.same.length,
+  entries: T.length, asks, terms, bills: own.length, every: all.length, files: byTerm.length, whole }));
+"""
+
+
+def _search_cases_node(BP, idx_files=()):
+    """tests/search_cases.json through the cut matcher: what the script found."""
+    app = Path("app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    # The header's copy hands back five functions. The table and the pattern a
+    # term is matched with are read from the same script, by the same line.
+    hook = "return {queryGroups,"
+    assert matcher.count(hook) == 1, (
+        "billmatch.js no longer ends by returning queryGroups first, and this "
+        "check reads the table through that line")
+    matcher = matcher.replace(hook, "return {CONCEPTS,altRx,queryGroups,")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_CASES_JS, encoding="utf-8")
+        r = _run(["node", "go.js", "billmatch.js",
+                  str(Path("tests/search_cases.json").resolve()),
+                  *[str(Path(f).resolve()) for f in idx_files]],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        said = (r.stdout + r.stderr).strip()
+        assert r.returncode == 0 and said, (
+            "node go.js: " + (said.splitlines() or ["no output"])[-1][:200])
+        return json.loads(said.splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _search_cases_said(fails):
+    return ("; ".join(f[:170] for f in fails[:4])
+            + (f" -- and {len(fails) - 4} more" if len(fails) > 4 else ""))
+
+
+@check("frontend", "a search in the public's words lists the real bills it must and "
+                   "none it must not, and two sides' words for a subject list the "
+                   "same bills", needs=("build_pages",))
+def _search_cases(BP):
+    """The person, 1 October: "typing lgbtq or trans doesn't show the several
+    bathroom ban bills put forward this past session, or the hormone therapy
+    ban".
+
+    The bill search read a title, a sponsor's name and a committee's name, in
+    the record's vocabulary. No title of the term says lgbtq, transgender,
+    bathroom or hormone therapy: they say "classification of individuals based
+    on biological sex" and "hormone treatments and puberty blockers". So
+    "lgbtq" found nothing, and "trans", read as the start of a word, found 54
+    titles with transfer, transparency or transportation and 108 bills heard
+    by a Transportation committee. Of 393 bills a reader would expect across
+    65 everyday searches, 110 were found.
+
+    app.js's CONCEPTS is a table of the words people type and the wording
+    titles use, and this holds it to real bills. Every bill in
+    tests/search_cases.json is a real one of 2025-2026 with its title copied
+    from the index; the searches are run as the header search and /search run
+    them. Four things, each of which the page got wrong before:
+
+    - a bill a search must list is listed, and one that is plainly about
+      something else is not: "trans" lists HB 148 and not the transfer of
+      state-owned real property; "ai" lists the artificial intelligence bills
+      and not school building aid; "adu" not "adults";
+    - a bill that has the reader's OWN word comes before one the table found:
+      "weed" still lists the aquatic weeds bill, first; "undocumented" the two
+      titles that say so;
+    - two sides' words for one subject return one list -- "gun control" and
+      "gun rights", "pro life" and "pro choice", "illegal immigrants" and
+      "undocumented immigrants". If a pair ever differs the table has taken a
+      side, which is the one thing a finding aid must not do;
+    - the table is well formed: no word in two entries, none read as the
+      start of a longer word, no term carrying a hyphen that a title, searched
+      with its hyphens as spaces, could never match ("gender-affirming" sat
+      in SYN for weeks and matched nothing).
+
+    The cases are machine-judged, by reading; they are a seed and not the
+    person's reference. A title is never typed into the file; it is copied
+    from the index.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not (Path("app.js").exists() and Path("tests/search_cases.json").exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    got = _search_cases_node(BP)
+    assert not got["fails"], "search: " + _search_cases_said(got["fails"])
+    # A check that passes by asking nothing proves nothing.
+    assert got["cases"] >= 30 and got["found"] >= 200 and got["kept"] >= 40 \
+        and got["pairs"] >= 10 and got["entries"] >= 40, (
+        f"the cases no longer exercise the search: {got['cases']} searches, "
+        f"{got['found']} bills they must list, {got['kept']} they must not, "
+        f"{got['pairs']} pairs, {got['entries']} entries in the table")
+    return "ok", (f"{got['cases']} real searches over {got['bills']} real bills of "
+                  f"2025-2026: {got['found']} listed that must be, {got['kept']} "
+                  f"not listed that must not be; {got['pairs']} groups of sides' words "
+                  f"return one list each; a table of {got['entries']} entries, "
+                  f"{got['asks']} words and {got['terms']} terms, none read as "
+                  "the start of a longer word")
+
+
+@check("data", "the same searches over the real index: none floods, and every term "
+               "of the table is in some title", needs=("build_pages",))
+def _search_cases_real(BP):
+    """The fixture cannot show a flood: it holds only the bills the cases name.
+
+    "trans" returned 162 bills and "absentee ballot" 142, every election bill
+    of the term. Over the real index each case carries a ceiling, and a
+    search that lists more than it fails here. The pairs of sides' words are
+    held to one list across every term on disk, not one.
+
+    And silence is not success. A term of the table that no title uses looks
+    exactly like one that works: it lists nothing, and nothing fails. Every
+    term is looked for in every term's titles, and one found in none is
+    named. That is asked only when most of the terms' indexes are here, since
+    a term may be in a 1999 title and no later one.
+
+    A bill named by a case whose title has since changed is reported, not
+    failed: amendments retitle bills, and a stale case should be seen.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    cases = Path("tests/search_cases.json")
+    if not (Path("app.js").exists() and cases.exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    term = json.loads(cases.read_text(encoding="utf-8"))["term"]
+    own = Path("site/idx") / f"{term}.json"
+    if not own.exists():
+        return "skip", f"site/idx/{term}.json is not built"
+    others = sorted(f for f in own.parent.glob("*.json")
+                    if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
+    got = _search_cases_node(BP, [own, *others])
+    assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
+    return "ok", (f"{got['cases']} searches over the {got['bills']:,} bills of {term} "
+                  f"and the pairs over {got['every']:,} bills of {got['files']} terms"
+                  + (f"; all {got['terms']} terms of the table are in a title"
+                     if got["whole"] else
+                     f"; the table's terms not checked, with {got['files']} "
+                     "indexes here")
+                  + (f"; retitled since its case was written: "
+                     f"{', '.join(got['stale'][:8])}" if got["stale"] else ""))
+
+
 @check("frontend", "the assets are revalidated, and no page names a version")
 def _asset_headers():
     """What replaced "a page asks for the script it was built against".
@@ -6314,7 +6563,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, searchHint, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -6846,6 +7095,41 @@ if (scope.groupWeight(bill("hb2 relative to parental alienation"), imm) > 0
 var ev = scope.queryGroups("electric vehicles")[0];
 if (scope.groupWeight(bill("hb4 relative to hunting from a vehicle", "", "science, technology and energy"), ev) > 0) {
   console.log("SEARCH: a synonym matched a committee's name"); process.exit(1); }
+// The third pass (1 October): a word the table of public words owns is read
+// whole, a short word takes a plural and no other ending, an apostrophe typed
+// on a phone is an apostrophe, and the line under the box says what the
+// titles were searched for without repeating the word typed.
+var tr = scope.queryGroups("trans");
+if (tr.length !== 1 || !tr[0].exact || tr[0].alts.indexOf("gender identity") < 0
+    || scope.groupWeight(bill("hb5 relative to the transfer of state owned real property", "", "house transportation"), tr[0]) > 0
+    || scope.groupWeight(bill("hb6 relative to gender identity information on drivers' licenses"), tr[0]) !== 3) {
+  console.log("SEARCH: 'trans' is read as the start of transfer or transportation, or misses gender identity"); process.exit(1); }
+var aiq = scope.queryGroups("ai")[0];
+if (scope.groupWeight(bill("hb7 making school building aid program funds nonlapsing"), aiq) > 0
+    || scope.groupWeight(bill("hb8 relative to the use of artificial intelligence by state agencies"), aiq) !== 3) {
+  console.log("SEARCH: 'ai' matched 'aid', or missed artificial intelligence"); process.exit(1); }
+var carq = scope.queryGroups("cars")[0];
+if (scope.groupWeight(bill("hb9 relative to rental car coverage"), carq) !== 3
+    || scope.groupWeight(bill("hb10 relative to health care and identification cards"), carq) > 0) {
+  console.log("SEARCH: 'cars' missed 'car', or matched 'care' or 'card'"); process.exit(1); }
+var curly = scope.queryGroups("driver’s license"), straight = scope.queryGroups("driver's license");
+if (JSON.stringify(curly) !== JSON.stringify(straight)
+    || !curly.every(function (g) { return scope.groupWeight(bill("hb11 relative to driver’s license suspension"), g) > 0
+                                          && scope.groupWeight(bill("hb12 relative to driver's license suspension"), g) > 0; })) {
+  console.log("SEARCH: a curly apostrophe is not read as a straight one, in the search or in a title"); process.exit(1); }
+if (scope.queryGroups("legalize")[0].alts.indexOf("legaliz") < 0
+    || scope.queryGroups("probate")[0].alts.indexOf("probat") >= 0) {
+  console.log("SEARCH: 'legalize' does not reach legalizing, or 'probate' reaches probation"); process.exit(1); }
+var hint = scope.searchHint(scope.queryGroups("lgbtq"));
+if (/lgbtq/.test(hint) || hint.indexOf("also listing bills whose titles say: ") !== 0
+    || hint.indexOf("gender identity") < 0 || hint.indexOf("biological sex") < 0) {
+  console.log("SEARCH: the line under the box does not say what 'lgbtq' searched the titles for: " + hint); process.exit(1); }
+var hg = scope.searchHint(scope.queryGroups("guns"));
+if (hg.indexOf("also matching: firearm, weapon") !== 0 || hg.indexOf("; then bills whose titles say: ") < 0
+    || hg.indexOf("risk protection order") < hg.indexOf("; then ")) {
+  console.log("SEARCH: the line under the box does not put a word's own group before the table's terms: " + hg); process.exit(1); }
+if (scope.searchHint(scope.queryGroups("xyzzy")) !== "") {
+  console.log("SEARCH: the line under the box says something about a word nothing stands for"); process.exit(1); }
 console.log("ok");
 """, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True,
