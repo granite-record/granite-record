@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.282
+# GRANITE_VERSION: 2026-09-04.283
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24367,6 +24367,430 @@ def _nightly_weekly(NI):
                   "recorded and honoured; the report names what changed")
 
 
+# ---- the one night a term turns over --------------------------------------------
+#
+# NEW_SESSION_PLAN.md, section 2 (30 September 2026): the snapshot's shrink rule,
+# the census gates, the feed prune and the weekly's list guards are each right
+# on an ordinary night and wrong on the night the General Court's files first
+# show a new term. The "New term" box lets them through for one run, and an
+# ordinary night that meets smaller files says on its run's page to tick it.
+
+NEW_TERM_SENTENCE = ("The General Court's files are much smaller: a new term? Run the nightly "
+                     "by hand with New term ticked.")
+
+
+@check("build", "a New term night lets the smaller files, the census and the feed prune through "
+       "once, and an ordinary night that met smaller files says to tick it",
+       needs=("nightly", "snapshot_gencourt", "build_all"))
+def _nightly_new_term(NI, SG, BA):
+    """The snapshot refuses files more than 30% smaller, and the census gates
+    refuse a build that fell; the night a term turns over, both are wrong, and a
+    blocked night keeps the old baseline, so they would block every night after
+    it too. nightly.py --new-term -- the box a person ticks on a run by hand --
+    passes --allow-shrink to the snapshot, --allow-prune to the build, and takes
+    tonight's counts as the baseline even though they fell; the next night is
+    gated against them as any night is, and is given none of it. Driven here
+    through the snapshot's own run() on fake answers, so that the record it
+    leaves is the one the nightly reads, and through nightly.main() with every
+    step faked. A New term run with Dry run ticked does nothing: a dry run that
+    moved the baseline would leave the next scheduled night to publish the
+    switch unasked. And an ordinary night that met smaller files says so on the
+    run's page, in the sentence the person chose, rather than "not all of the
+    files arrived".
+    """
+    import argparse
+    import contextlib
+    import io
+    import types
+    import urllib.error
+    from datetime import datetime
+    import caption_span                    # noqa: F401 -- imported here, before the chdir
+    import refusal
+    assert NI.NEW_TERM_HINT == NEW_TERM_SENTENCE, \
+        f"the run's page says {NI.NEW_TERM_HINT!r} for a refused shrink"
+    assert NI.INSTALL_RECORD == SG.INSTALL_RECORD, \
+        "nightly.py reads the snapshot's install record under another name than it is written"
+
+    # build_all hands --allow-prune to build_feeds only when it is given it.
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    def feeds(a):
+        return next(s.args for s in BA.plan(a) if s.args[0] == "build_feeds.py")
+    assert "--allow-prune" not in feeds(A()), "build_all lets the feed prune through unasked"
+    assert feeds(type("B", (A,), {"allow_prune": True})())[-1] == "--allow-prune", \
+        "build_all.py --allow-prune does not reach build_feeds.py"
+    assert re.search(r'ap\.add_argument\("--allow-prune", action="store_true"',
+                     Path("build_all.py").read_text(encoding="utf-8")), \
+        "build_all.py takes no --allow-prune for the New term night to pass"
+
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-newterm-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+             NI.captions_compared, NI.time, NI.FILE_CEILING, sys.argv, refusal.MARK,
+             refusal.LOCK, SG.get, SG.time)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+                "GITHUB_SHA")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    calls, how = [], {"bills": 100, "smaller": False, "rows": {}}
+    today = f"{datetime.now():%Y-%m-%d}"
+
+    def fake(args, label, cwd=None):
+        calls.append(list(args))
+        NI.say(f"\n--- {label} ---")
+        name, rc = Path(args[0]).name, 0
+        if name == "snapshot_gencourt.py":
+            # Every file arrives; the record is the shape snapshot_gencourt's
+            # run() leaves, which the first half of this check reads off it.
+            day = Path(args[args.index("--dir") + 1]) / "snapshots" / today
+            day.mkdir(parents=True, exist_ok=True)
+            (day / "manifest.json").write_text(json.dumps(
+                {f: {"sha256": "0" * 64, "bytes": 900} for f in ("Docket.txt", "LSRs.txt")}),
+                encoding="utf-8")
+            allow = "--allow-shrink" in args
+            small = ([{"name": "Docket.txt", "bytes": 900, "installed_bytes": 90000}]
+                     if how["smaller"] else [])
+            ok = not small or allow
+            (day / NI.INSTALL_RECORD).write_text(json.dumps(
+                {"installed": ok, "allow_shrink": allow, "shrunk": small}), encoding="utf-8")
+            rc = 0 if ok else 1
+        elif name == "build_all.py":
+            _runner_site(how["bills"])
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd, how["rows"])
+        elif name == "fetch_lsrs.py":
+            Path("lsrs.json").write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                                         encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        NI.say(f"  (0s, exit {rc})")
+        return rc
+
+    def night(*argv, run_id="201", github=False):
+        NI.LOG = []
+        del calls[:]
+        os.environ["GITHUB_RUN_ID"] = run_id
+        if github:
+            os.environ["GITHUB_ACTIONS"] = "true"
+        sys.argv = ["nightly.py", *argv]
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = NI.main()
+                except SystemExit as e:
+                    code = e.code
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        return code, out.getvalue()
+
+    def verdict():
+        return json.loads(NI.VERDICT.read_text(encoding="utf-8"))
+
+    def baseline():
+        return json.loads(NI.CENSUS.read_text(encoding="utf-8"))
+
+    def page_note(out):
+        notes = [ln for ln in out.splitlines() if ln.startswith("::error title=Why the night failed::")]
+        assert len(notes) == 1, f"the run's page leads with {notes}"
+        return notes[0].split("::", 2)[2]
+
+    def of(name):
+        return [c for c in calls if Path(c[0]).name == name]
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        Path("db").mkdir()
+
+        # THE SNAPSHOT'S OWN RECORD, through its run(): a Docket a hundredth of
+        # the installed one is refused and recorded as smaller; with
+        # --allow-shrink it is installed and recorded as accepted; a later run
+        # that did not install leaves no earlier record speaking for it.
+        SG.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        n = len(SG.targets())
+        big = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 200
+        new = b"2027|0001|12/2/2026 10:44:26 AM|HB1|H|Introduced\n" * 3
+
+        def snap(allow, answers, arch):
+            root = tmp / f"root-{arch}"
+            root.mkdir(exist_ok=True)
+            (root / "Docket.txt").write_bytes(big)
+            it = iter(answers)
+
+            def get(url, timeout=120):
+                if url == SG.PAGE:
+                    return b"<html><body><h1>DYNAMIC DATA FILES</h1></body></html>"
+                x = next(it)
+                if isinstance(x, BaseException):
+                    raise x
+                return x
+            SG.get = get
+            a = argparse.Namespace(dir=str(tmp / arch), into=str(root), allow_shrink=allow,
+                                   delay=0.0, plan=False)
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                refusal.check("t")
+                with refusal.hold("t") as held:
+                    rc = SG.run(a, held)
+            rec = tmp / arch / "snapshots" / today / SG.INSTALL_RECORD
+            return rc, (root / "Docket.txt").read_bytes(), (
+                json.loads(rec.read_text(encoding="utf-8")) if rec.exists() else None)
+
+        rc, docket, rec = snap(False, [new] * n, "arch-a")
+        assert rc == 1 and docket == big, "the snapshot installed a Docket a hundredth the size"
+        assert rec == {"installed": False, "allow_shrink": False, "shrunk": [
+            {"name": "Docket.txt", "bytes": len(new), "installed_bytes": len(big)}]}, rec
+        said = NI.fetch_status(1, str(tmp / "arch-a"))
+        assert said.startswith("smaller: 1 of the files much smaller") and "Docket.txt" in said, said
+        rc, docket, rec = snap(False, [new, urllib.error.HTTPError("u", 500, "x", {}, None)]
+                               + [new] * n, "arch-a")
+        assert rc == 1 and rec is None and NI.fetch_status(1, str(tmp / "arch-a")) == \
+            "did not complete (exit 1)", "an earlier run's shrink record spoke for a later one"
+        rc, docket, rec = snap(True, [new] * n, "arch-b")
+        assert rc == 0 and docket == new and rec["installed"] and rec["allow_shrink"] and \
+            [x["name"] for x in rec["shrunk"]] == ["Docket.txt"], (rc, rec)
+        assert NI.fetch_status(0, str(tmp / "arch-b")) == "installed" and \
+            NI.shrink_accepted(str(tmp / "arch-b")).startswith("accepted 1 much smaller"), \
+            NI.shrink_accepted(str(tmp / "arch-b"))
+
+        # THE NIGHT. Every step faked from here.
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        NI.tracked_changes = lambda: ([], [])
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
+
+        # Only the night or the week takes it, and only on GitHub's machine.
+        for argv in (("--new-term",), ("--runner", "--new-term", "--deploy-to", "production"),
+                     ("--runner", "--new-term", "--close")):
+            code, _ = night(*argv)
+            assert code == 2, f"nightly.py accepted {' '.join(argv)}"
+
+        # An ordinary night: the files whole, the views taken, the baseline set.
+        code, _ = night("--runner", "--dry-run", run_id="201")
+        assert code == 0 and baseline()["census"]["bills"] == 100, verdict()
+        assert not any("--allow-shrink" in c for c in of("snapshot_gencourt.py")) and \
+            of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], calls
+        assert "new_term" not in verdict() and verdict()["asked"]["new_term"] is False
+
+        # An ordinary night that meets much smaller files: nothing installed or
+        # built, and the run's page says what it may be and which box to tick.
+        how["smaller"] = True
+        code, _ = night("--runner", run_id="202")
+        v = verdict()
+        assert code == 1 and v["fetch"].startswith("smaller") and not v["built"] and \
+            not of("build_all.py"), (code, v.get("fetch"))
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="202",
+                          github=True)
+        why = page_note(out)
+        assert code == 1 and why.startswith(NEW_TERM_SENTENCE) and \
+            why.endswith("Nothing was published."), why
+
+        # New term with Dry run: nothing at all, and the page says why.
+        code, _ = night("--runner", "--new-term", "--dry-run", run_id="203")
+        v = verdict()
+        assert code == 1 and not calls and v["new_term"] == {"refused": "ticked with Dry run"} \
+            and not v["built"] and baseline()["census"]["bills"] == 100, (code, calls, v)
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="203",
+                          github=True)
+        assert page_note(out) == NI.NEW_TERM_DRY + " Nothing was published.", page_note(out)
+
+        # THE NEW TERM RUN: the smaller files in, half the bills, a study view
+        # at a tenth of its rows -- all let through, the prune allowed, and
+        # tonight's counts the baseline. Publishable, behind the approval.
+        how["bills"], how["rows"] = 50, {"StatStudDetails": 3}
+        code, _ = night("--runner", "--new-term", run_id="204")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["publishable"], (code, v.get("not_clean"))
+        assert of("snapshot_gencourt.py") and all("--allow-shrink" in c
+                                                  for c in of("snapshot_gencourt.py")), calls
+        assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune"]], \
+            of("build_all.py")
+        assert v["fetch"] == "installed" and v["asked"]["new_term"] is True and \
+            v["new_term"]["files"].startswith("accepted 1 much smaller") and \
+            v["new_term"]["gates"] == "re-baselined: bills fell from 100 to 50", v.get("new_term")
+        assert v["gates"] == "re-baselined for a new term: bills fell from 100 to 50", v["gates"]
+        assert v["study_meetings"]["StatStudDetails"].startswith("installed, 3 rows"), \
+            v["study_meetings"]
+        assert baseline()["census"]["bills"] == 50 and baseline().get("new_term") is True, \
+            "the New term run did not make tonight's counts the baseline"
+
+        # ONCE. The next night is given none of it: smaller files are refused
+        # again, a fall from the new baseline blocks, the baseline stays, the
+        # prune is not allowed, and a view falling again is kept out.
+        code, _ = night("--runner", run_id="205")
+        assert code == 1 and verdict()["fetch"].startswith("smaller") and \
+            not any("--allow-shrink" in c for c in of("snapshot_gencourt.py")), \
+            "the New term allowance outlived its run, at the snapshot"
+        how["smaller"], how["bills"] = False, 25
+        code, _ = night("--runner", "--no-fetch", run_id="206")
+        v = verdict()
+        assert code == 1 and v["gates"] == "blocked: bills fell from 50 to 25" and \
+            "new_term" not in v and baseline()["census"]["bills"] == 50, \
+            "the New term allowance outlived its run, at the census gates"
+        assert of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], \
+            "the New term allowance outlived its run, at the feed prune"
+        how["bills"], how["rows"] = 50, {"StatStudDetails": 1}
+        code, _ = night("--runner", run_id="207")
+        assert code == 1 and verdict()["study_meetings"]["StatStudDetails"].startswith(
+            "not taken"), "the New term allowance outlived its run, at the study views"
+
+        # And no New term run passes the file ceiling.
+        NI.FILE_CEILING = 10
+        code, _ = night("--runner", "--no-fetch", "--new-term", run_id="208")
+        v = verdict()
+        assert code == 1 and not v["publishable"] and "ceiling" in v["gates"] and \
+            baseline()["census"]["bills"] == 50, v.get("gates")
+    finally:
+        os.chdir(here)
+        (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
+         NI.time, NI.FILE_CEILING, sys.argv, refusal.MARK, refusal.LOCK, SG.get, SG.time) = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the snapshot records a refused shrink and takes one only with --allow-shrink; "
+                  "an ordinary night says to tick New term; New term with Dry run does nothing; "
+                  "the New term run re-baselines and allows the prune, and the next night is "
+                  "gated as usual; the ceiling holds")
+
+
+@check("build", "a New term week takes the smaller committee lists once, and never an empty one",
+       needs=("nightly",))
+def _nightly_weekly_new_term(NI):
+    """In January a term's committee assignments are cleared and made again,
+    and the weekly's rosters, committee list and study committees' views can
+    come back much smaller -- which on any other Sunday is a failed fetch, and
+    is kept out. The weekly run by hand with New term ticked takes them however
+    much smaller, for that run only. Never an empty one, which is a failure
+    whatever the week; and never fewer members who have left, which is a merge
+    and cannot rightly shrink."""
+    import contextlib
+    import io
+    import types
+    import refusal
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekly-new-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    how = {"seats": 3, "committees": 5, "rows": {}, "drop_former": False}
+
+    def member(i):
+        return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": True}
+
+    def fake(args, label, cwd=None):
+        NI.say(f"\n--- {label} ---")
+        name = Path(args[0]).name
+        out = Path(args[args.index("--out") + 1]) if "--out" in args else None
+        if name == "fetch_committee_members_db.py":
+            out.write_text(json.dumps({"H01": [member(i) for i in range(how["seats"])]}),
+                           encoding="utf-8")
+        elif name == "fetch_members_db.py":
+            got = {} if how["drop_former"] else json.loads(out.read_text(encoding="utf-8"))
+            got["777"] = {"name": "Newly, Gone", "party": "Democrat"}
+            out.write_text(json.dumps(got), encoding="utf-8")
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd, how["rows"])
+        elif name == "fetch_committees.py":
+            out.write_text(json.dumps({"H": [{"code": f"H{i}", "name": f"H {i}", "chair": "B"}
+                                             for i in range(how["committees"])]}),
+                           encoding="utf-8")
+        NI.say("  (0s, exit 0)")
+        return 0
+
+    def installed():
+        Path("data").mkdir(exist_ok=True)
+        Path("db").mkdir(exist_ok=True)
+        Path("data/committee_members.json").write_text(json.dumps(
+            {"H01": [member(i) for i in range(10)], "S01": [member(i) for i in range(20, 25)]}),
+            encoding="utf-8")
+        Path("former_members.json").write_text(json.dumps(
+            {"1": {"name": "Old, One"}, "2": {"name": "Old, Two"}}), encoding="utf-8")
+        Path("committees.json").write_text(json.dumps(
+            {"S": [{"code": f"S{i}", "name": f"S {i}"} for i in range(14)],
+             "H": [{"code": f"H{i}", "name": f"H {i}"} for i in range(27)]}), encoding="utf-8")
+        for v in NI.STUDY_WEEKLY:
+            (Path("db") / f"{v}.psv").write_text("".join(f"{v}|{i}\n" for i in range(30)),
+                                                 encoding="utf-8")
+
+    def week(*extra):
+        NI.LOG = []
+        sys.argv = ["nightly.py", "--runner", "--weekly", *extra]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+        return code, json.loads(NI.WEEKLY_VERDICT.read_text(encoding="utf-8"))
+
+    def seats():
+        return sum(len(x) for x in json.loads(
+            Path("data/committee_members.json").read_text(encoding="utf-8")).values())
+
+    def committees():
+        return sum(len(x) for x in json.loads(
+            Path("committees.json").read_text(encoding="utf-8")).values())
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+
+        # The New term week: 3 seats of 15, 5 committees of 41, a view at a
+        # tenth -- each taken, for this run.
+        installed()
+        how["rows"] = {"StatStudMembers": 3}
+        code, v = week("--new-term")
+        assert code == 0 and v["clean"] and v["asked"]["new_term"] is True, v
+        assert seats() == 3 and committees() == 5 and \
+            (Path("db") / "StatStudMembers.psv").read_text(encoding="utf-8").count("\n") == 3, \
+            "a New term week did not take the smaller lists"
+
+        # ONCE: the next ordinary week keeps a further fall out, as on any week.
+        how.update(seats=1, committees=2, rows={"StatStudMembers": 1})
+        code, v = week()
+        assert code == 1 and seats() == 3 and committees() == 5 and \
+            v["results"]["committee_members"].startswith("not taken") and \
+            v["results"]["committees"].startswith("not taken") and \
+            v["results"]["study StatStudMembers"].startswith("not taken"), \
+            "the New term allowance outlived its week"
+
+        # Never empty, and never fewer members who have left, New term or not.
+        installed()
+        how.update(seats=0, committees=41, rows={}, drop_former=True)
+        code, v = week("--new-term")
+        assert code == 1 and seats() == 15 and \
+            v["results"]["committee_members"] == "not taken: it came back empty" and \
+            v["results"]["former_members"].startswith("not taken") and \
+            len(json.loads(Path("former_members.json").read_text(encoding="utf-8"))) == 2, v
+    finally:
+        os.chdir(here)
+        NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a New term week takes the smaller rosters, committee list and study views; the "
+                  "next week keeps a fall out again; an empty roster and a shrunken merge never")
+
+
 @check("build", "a laptop that has handed the nightly to GitHub runs none of it, and GitHub's "
        "own machine is never stood down", needs=("refusal", "nightly", "fetch_archive_db"))
 def _stand_down(R, NI, FA):
@@ -25679,6 +26103,115 @@ def _workflows_site_handoff():
                          f"{down or 'no job'}; the publish job would have nothing to deploy")
     return "ok", (f"sent by {', '.join(up)} and taken down by {', '.join(down)} under the run's "
                   "id; no artifact or cache in any workflow")
+
+
+# The box, as a person reads it on GitHub's "Run workflow" form, and the note
+# the person asked to sit beside it (NEW_SESSION_PLAN.md, decision 3).
+NEW_TERM_INPUT = "New term: accept the General Court's smaller files once"
+NEW_TERM_REVIEWER = "THIS RUN MUST KEEP A REQUIRED REVIEWER"
+NEW_TERM_ENV = "  NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}"
+NEW_TERM_FLAG = "          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term' }"
+
+
+@check("workflows", "the New term box is on the nightly and the weekly run by hand, reaches only "
+       "the night or the week, and keeps its required reviewer", needs=("nightly",))
+def _workflows_new_term(NI):
+    """The night a term turns over, the General Court's files really do get
+    smaller, and guards that are right on every other night would stop it. The
+    New term box lets them through for one run (nightly.py --new-term), so it
+    must reach nightly.py from a box a person ticks and from nothing else: off
+    unless ticked; read only by a run started by hand (the env line names
+    workflow_dispatch, so a schedule never carries it); handed only to the step
+    that runs the night or the week, never to a deploy or the verdict. Every
+    workflow that runs the night or the week has it, so the weekly can take
+    January's committee lists.
+
+    And the person decided on 30 September 2026 that the switch waits for their
+    approval even once ordinary nights publish without one. Today the
+    production environment asks for approval of every deploy, which covers it;
+    the note beside the box says that this run must keep a required reviewer
+    when that rule comes off, and this check fails if a workflow that has the
+    box and deploys production does not carry it."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    assert NEW_TERM_INPUT.startswith(NI.NEW_TERM_BOX + ":"), (
+        f"the box reads {NEW_TERM_INPUT!r}, and the run's page tells a person to tick "
+        f"{NI.NEW_TERM_BOX!r}")
+    boxed, reviewed = [], []
+    for f in files:
+        text = f.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        code = _wf_code(lines)
+        body = "\n".join(code)
+        jobs = _wf_jobs(text)
+        runs = [j for j, jl in jobs.items() if any("nightly.py @flags" in ln for ln in _wf_code(jl))]
+        at = [i for i, ln in enumerate(lines) if re.match(r"^      new_term:\s*$", ln)]
+        if not runs:
+            assert not at and "new_term" not in body.lower() and "--new-term" not in body, \
+                f"{f.name} carries New term but runs neither the night nor the week"
+            continue
+        assert len(at) == 1, f"{f.name} runs nightly.py and has {len(at)} New term boxes, not one"
+        i = at[0]
+        heads = [ln for ln in lines[:i] if re.match(r"^\S|^  \S|^    \S", ln)
+                 and not ln.lstrip().startswith("#")]
+        assert heads[-3:] == ["on:", "  workflow_dispatch:", "    inputs:"], (
+            f"{f.name}'s new_term is not an input of workflow_dispatch: {heads[-3:]}")
+        spec = []
+        for ln in lines[i + 1:]:
+            if not re.match(r"^        \S", ln):
+                break
+            spec.append(ln.strip())
+        assert spec == [f'description: "{NEW_TERM_INPUT}"', "type: boolean", "default: false"], \
+            f"{f.name}'s New term box is {spec}: it must read as the box, and be off unless ticked"
+
+        # Read once, from a run by hand; named elsewhere only in the run's name.
+        assert NEW_TERM_ENV in _wf_block(lines, "env"), \
+            f"{f.name} does not take NEW_TERM from the box, on a run by hand alone"
+        name = _wf_block(lines, "run-name")
+        stray = [ln.strip() for ln in code if "inputs.new_term" in ln
+                 and ln != NEW_TERM_ENV and ln not in name]
+        assert not stray, f"{f.name} reads the New term box outside its env line: {stray}"
+
+        # Handed to the night or the week, and to no other step.
+        for j, jl in jobs.items():
+            for st in _wf_steps(_wf_code(jl)):
+                s = "\n".join(st)
+                if "nightly.py @flags" in s:
+                    assert NEW_TERM_FLAG in st and s.count("NEW_TERM") == 1 and \
+                        s.count("--new-term") == 1, \
+                        f"{f.name}: job {j}'s night does not pass --new-term from the box alone"
+                else:
+                    assert "NEW_TERM" not in s and "--new-term" not in s and \
+                        "new_term" not in s, \
+                        f"{f.name}: job {j} hands New term to a step that is not the night or the week"
+        assert body.count("NEW_TERM") == 2 and body.count("--new-term") == 1, \
+            f"{f.name} names NEW_TERM or --new-term outside its env line and its night"
+
+        # The note beside the box, wherever production is deployed.
+        note = []
+        for ln in reversed(lines[:i]):
+            if not ln.strip().startswith("#"):
+                break
+            note.append(ln.strip().lstrip("#").strip())
+        note = " ".join(reversed(note))
+        if "--deploy-to production" in body:
+            assert NEW_TERM_REVIEWER in note and "approval" in note, (
+                f"{f.name} has the New term box and deploys production, and the note beside the "
+                "box that this run must keep a required reviewer is gone. The person decided on "
+                "30 September 2026 that the switch to a new term waits for their approval even "
+                "after ordinary nights publish without one")
+            reviewed.append(f.name)
+        boxed.append(f.name)
+    assert "nightly.yml" in boxed and "weekly.yml" in boxed, \
+        f"the New term box is on {boxed or 'no workflow'}; the nightly and the weekly both need it"
+    assert reviewed, "no workflow with the New term box deploys production, so its note was never read"
+    src = Path("nightly.py").read_text(encoding="utf-8")
+    assert re.search(r'ap\.add_argument\("--new-term", action="store_true"', src), \
+        "nightly.py takes no --new-term for the box to pass"
+    return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
+                  f"only to the night or the week; {', '.join(reviewed)} keeps its "
+                  "required-reviewer note")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")

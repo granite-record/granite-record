@@ -17,13 +17,26 @@
 name: weekly
 run-name: >-
   weekly ${{ github.event_name == 'schedule' && '(scheduled)'
-  || (inputs.fetch && '(by hand, fetching)' || '(by hand, no fetch)') }}
+  || (inputs.fetch && (inputs.new_term && '(by hand, fetching, new term)' || '(by hand, fetching)')
+  || '(by hand, no fetch)') }}
 
 on:
   workflow_dispatch:
     inputs:
       fetch:
         description: "Take the rosters and study committees from the General Court"
+        type: boolean
+        default: false
+      # NEW TERM (30 September 2026): the week a term's committee assignments
+      # are cleared and made again, in January. For this run only -- nightly.py
+      # --runner --weekly --new-term -- the committee rosters, the committee
+      # list and the study committees' views are taken however much smaller,
+      # though never empty; the members who have left are a merge and keep
+      # their guard. It does nothing without Fetch ticked. A scheduled week
+      # never carries it. This job publishes nothing: what it takes reaches
+      # the site with the next night's build.
+      new_term:
+        description: "New term: accept the General Court's smaller files once"
         type: boolean
         default: false
   schedule:
@@ -36,6 +49,8 @@ env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: utf-8
   FETCH: ${{ github.event_name == 'schedule' || inputs.fetch }}
+  # Only ever from the box, on a run by hand: never on a scheduled week.
+  NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
 
 defaults:
   run:
@@ -111,6 +126,7 @@ jobs:
         run: |
           $flags = @('--runner', '--weekly')
           if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
+          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term' }
           python nightly.py @flags
           exit $LASTEXITCODE
 

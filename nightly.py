@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -43,7 +43,9 @@ THE GATES, before any deploy
   the census has not fallen past its threshold (below); the site changed;
   and the file count is under 95,000 of Cloudflare's 100,000 -- a ceiling
   --force cannot lift, because stopping short of the cap beats having the
-  upload rejected halfway.
+  upload rejected halfway. GitHub's workflow passes no --force: the one run
+  there that may pass the census is the New term run (--new-term, below), and
+  it cannot pass the ceiling either.
 
     bills          2% fewer in index.json
     legislators    2% fewer in legislators.json
@@ -123,6 +125,37 @@ committee rosters, the members who have left and the study committees'
 members and bills, one fetch at a time, each whole or not at all, with a
 report of what changed in reports/gc-changes-weekly-<date>.md, beside the
 night's own what-changed reports.
+
+THE ONE NIGHT A TERM TURNS OVER: --new-term (30 September 2026)
+
+Each guard below is right to stop an ordinary night and wrong for the night
+the General Court's files first show a new term, when they really do get
+smaller. --new-term is "New term: accept the General Court's smaller files
+once", a box on the nightly and the weekly run by hand, and only there: a
+scheduled night never carries it, and nothing it allows is written down for
+the next night to find. For that one run:
+
+  the day's files     snapshot_gencourt.py --allow-shrink: tonight's files
+                      are installed though they are much smaller, and the
+                      log names each one. An empty file is still refused
+  the study views     taken however much smaller, though never empty
+  the feeds           build_all.py --allow-prune, for build_feeds.py. On
+                      GitHub's machine site/ starts empty and nothing is
+                      stale, so there the census is what sees feeds fall
+  the census gates   a fall is reported and does not stop the night, and
+                      tonight's counts become the baseline -- once: the next
+                      night is gated against them as on any other. The file
+                      ceiling still stops it
+  the weekly          the committee rosters, the committee list and the
+                      study committees' views taken however much smaller,
+                      never empty; the members who have left are a merge and
+                      can never be smaller, so that guard stays
+
+It is never a dry run: the switch is the run that may publish, and it waits
+for the person's approval in the "production" environment (nightly.yml says
+why that must outlast the approvals of ordinary nights). Ticked with Dry run,
+it does nothing and says so. On an ordinary night a shrink the snapshot
+refused is what the run's page says it is, and which box to tick.
 """
 
 import argparse
@@ -234,6 +267,12 @@ STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
 # A result this much smaller than the copy it would replace is not swapped in:
 # snapshot_gencourt's rule for the day's files, used for every other fetch.
 SWAP_SHRINK = 0.30
+# The New term run's: any fall at all, for that one run. An empty result is
+# still refused -- take_json and take_views refuse one whatever this says.
+NEW_TERM_SHRINK = 1.0
+# What snapshot_gencourt's --into did, in the day's snapshot folder: its
+# INSTALL_RECORD, which preflight holds to this.
+INSTALL_RECORD = "install.json"
 
 # The late-caption check has to cover the recordings as it does on the laptop,
 # where on 25 September it compared 2,850 of the 2,851 recordings with
@@ -441,6 +480,9 @@ def main():
                     help="(--runner) finish the verdict with the workflow's step results")
     ap.add_argument("--outcome", action="append", default=[], metavar="STEP=RESULT",
                     help="(--close) one workflow step's result; repeatable")
+    ap.add_argument("--new-term", action="store_true",
+                    help="(--runner) the night, or the weekly job, a term turns over: the "
+                         "General Court's smaller files accepted, once")
     a = ap.parse_args()
 
     # THE STAND-DOWN. Once GitHub runs the nightly, the laptop does not, in any
@@ -452,6 +494,9 @@ def main():
         if a.deploy:
             ap.error("--deploy is the laptop's. On GitHub's machine the deploys are "
                      "--deploy-to steps, and production is behind its own environment.")
+        if a.new_term and (a.deploy_to or a.close):
+            ap.error("--new-term is for the night or the weekly job: a deploy and the "
+                     "verdict are the same on every night")
         on_the_runner()
         if a.close:
             return close_verdict(a)
@@ -459,9 +504,9 @@ def main():
             return runner_deploy(a)
         if a.weekly:
             return weekly(a)
-    elif a.weekly or a.deploy_to or a.close or a.dry_run:
-        ap.error("--weekly, --deploy-to, --close and --dry-run are for GitHub's "
-                 "machine, with --runner")
+    elif a.weekly or a.deploy_to or a.close or a.dry_run or a.new_term:
+        ap.error("--weekly, --deploy-to, --close, --dry-run and --new-term are for "
+                 "GitHub's machine, with --runner")
 
     lock = Path(".nightly.lock")
     if lock.exists() and time.time() - lock.stat().st_mtime < 6 * 3600:
@@ -484,6 +529,13 @@ def main():
     if night:
         night.intro()
     try:
+        if night and a.new_term and a.dry_run:
+            # The switch is the run that may publish, behind approval; a dry
+            # run that let the smaller files and the new counts in would leave
+            # the next scheduled night to publish them, unasked.
+            say("\nSTOPPED: " + NEW_TERM_DRY)
+            night.v["new_term"] = {"refused": "ticked with Dry run"}
+            return 1
         if build_running():
             # THE REPORTS ARE STILL PULLED, and the line above used to say the
             # opposite. A reader's report sits in the D1 database until
@@ -533,7 +585,8 @@ def main():
                 try:
                     with refusal.hold("nightly"):
                         for tries in range(1, EMPTY_TRIES + 1):
-                            rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."],
+                            rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."]
+                                     + (["--allow-shrink"] if a.new_term else []),
                                      "the day's bulk files"
                                      + (f", try {tries} of {EMPTY_TRIES}" if tries > 1 else ""))
                             got = fetch_status(rc, a.archive)
@@ -551,7 +604,8 @@ def main():
                         # calendar shows them, and nothing else refreshes them.
                         if night and rc == 0 and not refusal.MARK.exists():
                             night.v["study_meetings"] = take_views(
-                                STUDY_NIGHTLY, "the study committees' meetings, from the database")
+                                STUDY_NIGHTLY, "the study committees' meetings, from the database",
+                                shrink=NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK)
                             # And next session's bill requests, from the site.
                             if not refusal.MARK.exists():
                                 night.v["lsrs"] = take_lsrs()
@@ -561,6 +615,8 @@ def main():
                 installed = rc == 0
                 if night:
                     night.v["fetch"] = fetch_status(rc, a.archive)
+                    if a.new_term and rc == 0:
+                        night.v["new_term"]["files"] = shrink_accepted(a.archive)
                     said = data_page(a.archive)
                     if said:
                         night.v["data_page_said"] = said
@@ -588,7 +644,13 @@ def main():
             else:
                 before = census(site)
                 before_fp = fingerprint(site)
-            if run(["build_all.py", "--local"] + (["--no-captions"] if a.runner else []),
+            if night and a.new_term:
+                # On this machine site/ starts empty, so build_feeds finds
+                # nothing stale and the census gates are what see feeds fall;
+                # the prune is allowed for a build wherever site/ is kept.
+                night.v["new_term"]["feeds"] = "the prune allowed, for this build"
+            if run(["build_all.py", "--local"] + (["--no-captions"] if a.runner else [])
+                   + (["--allow-prune"] if a.new_term else []),
                    "rebuild") != 0:
                 say("\nSTOPPED: the build failed. The live site is untouched.")
                 if night:
@@ -611,19 +673,23 @@ def main():
                 if after["files"] >= FILE_CEILING:
                     stop = [f"{after['files']:,} files is past the {FILE_CEILING:,} ceiling"]
             else:
-                stop, blocked, lines = gated(before, after, a.force)
+                stop, blocked, lines = gated(before, after, a.force or a.new_term)
             say("\n--- gates ---")
             for ln in lines:
                 say(ln)
             if stop:
                 say("\nNOT PUBLISHABLE: " + "; ".join(stop))
+            elif blocked and a.new_term:
+                say("\n  the census objected, and this is the New term run: tonight's counts "
+                    "are tomorrow's baseline, and tomorrow is gated as usual: " + "; ".join(blocked))
             elif blocked:
                 say("\n  the census objected, --force given: " + "; ".join(blocked))
             changed = fingerprint(site) != before_fp
             say(f"\n  the site {'changed' if changed else 'did not change'}")
 
             if night:
-                night.judge(site, before, after, stop, changed)
+                night.judge(site, before, after, stop, changed,
+                            accepted=blocked if a.new_term and not stop else [])
             elif a.deploy and not stop and changed:
                 clean, what = tree_clean()
                 if not clean:
@@ -815,6 +881,19 @@ STEP_WHY = {
     "kit-up": "the night's data could not be sent back to the private bucket",
 }
 
+# THE NEW TERM, ON THE RUN'S PAGE (30 September 2026). The first is what an
+# ordinary night says when the snapshot refused files much smaller than the
+# copies installed: the one night that is right is the night a term turns
+# over, and the box for it is on the nightly run by hand. The second is what
+# the New term run says when it was also ticked as a dry run, which it will not
+# be. preflight holds both to the box's name in nightly.yml.
+NEW_TERM_BOX = "New term"
+NEW_TERM_HINT = (f"The General Court's files are much smaller: a new term? Run the nightly by "
+                 f"hand with {NEW_TERM_BOX} ticked.")
+NEW_TERM_DRY = (f"{NEW_TERM_BOX} was ticked with Dry run, so nothing was fetched or built: the "
+                "switch to a new term is a run that may publish, and it waits for approval. Run "
+                f"the nightly by hand again with {NEW_TERM_BOX} ticked and Dry run unticked.")
+
 
 def plain_why(v, weekly=False):
     """The one sentence a run's page leads with when it was not clean."""
@@ -826,7 +905,10 @@ def plain_why(v, weekly=False):
         return ("The weekly job did not finish cleanly"
                 + (f": {step}." if step else "; its summary lists what fell short."))
     fetch = str(v.get("fetch") or "")
-    if v.get("preflight") == "failed":
+    new_term = v.get("new_term") if isinstance(v.get("new_term"), dict) else {}
+    if new_term.get("refused"):
+        why = NEW_TERM_DRY
+    elif v.get("preflight") == "failed":
         why = "The code checks failed, so nothing was fetched or built."
     elif fetch == "refused":
         why = ("The General Court refused a request. Nothing more was asked, and "
@@ -843,6 +925,11 @@ def plain_why(v, weekly=False):
                + (f" on each of {tries} tries, {EMPTY_WAIT} minutes apart" if tries > 1 else "")
                + ", so nothing was installed or built."
                + (f' Their data page said: "{v["data_page_said"]}"' if v.get("data_page_said") else ""))
+    elif fetch.startswith("smaller"):
+        # The shrink rule, which is right on every night but the one a term
+        # turns over -- and that night is a person's to call.
+        why = (NEW_TERM_HINT + " If no term has begun, a file came back cut short: "
+               "nothing was installed or built, and the next night asks again.")
     elif fetch.startswith("deferred"):
         why = ("The day's files were not asked for: a refusal on file or another "
                "fetch was in the way.")
@@ -900,15 +987,40 @@ def fetch_status(rc, archive):
     """The day's files as the verdict records them. A failed snapshot is told
     apart by its own manifest: the first scheduled night, 27 September 2026,
     met the General Court's daily files 3 bytes long, and its verdict said only
-    "did not complete (exit 1)"."""
+    "did not complete (exit 1)".
+
+    Every file arriving and none installed is the shrink rule: its record,
+    snapshots/<day>/install.json, names the files much smaller than the copies
+    installed, and the verdict says "smaller" -- a new term, or a file cut
+    short -- rather than "did not complete"."""
     if rc in (0, 2):
         return {0: "installed", 2: "refused"}[rc]
-    man = load_json(Path(archive) / "snapshots" / f"{datetime.now():%Y-%m-%d}" / "manifest.json")
+    day = Path(archive) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
+    man = load_json(day / "manifest.json")
     errs = [x["error"] for x in (man.values() if isinstance(man, dict) else [])
             if isinstance(x, dict) and x.get("error")]
     if errs and all("not a data file" in e for e in errs):
         return f"empty: {len(errs)} of {len(man)} files came back with no data in them"
+    rec = load_json(day / INSTALL_RECORD)
+    small = rec.get("shrunk") if isinstance(rec, dict) and not rec.get("installed") else None
+    if small and isinstance(small, list):
+        names = [str(x.get("name")) for x in small if isinstance(x, dict)]
+        return (f"smaller: {len(names)} of the files much smaller than the copies installed "
+                f"({', '.join(names[:4])}{' ...' if len(names) > 4 else ''}), so none was installed")
     return f"did not complete (exit {rc})"
+
+
+def shrink_accepted(archive):
+    """What the New term run's --allow-shrink let in tonight, from the
+    snapshot's own record: the files much smaller than the copies they
+    replaced, or that none was."""
+    rec = load_json(Path(archive) / "snapshots" / f"{datetime.now():%Y-%m-%d}" / INSTALL_RECORD)
+    small = rec.get("shrunk") if isinstance(rec, dict) else None
+    names = [str(x.get("name")) for x in (small or []) if isinstance(x, dict)]
+    if not isinstance(rec, dict):
+        return "the snapshot left no record of what it installed"
+    return (f"accepted {len(names)} much smaller than the copies installed: {', '.join(names)}"
+            if names else "none of the files was much smaller")
 
 
 def count_lines(path):
@@ -977,14 +1089,15 @@ def take_lsrs():
             + (f"; {len(gone)} newly withdrawn" if gone else ""))
 
 
-def take_views(views, label):
+def take_views(views, label, shrink=SWAP_SHRINK):
     """The study committees' views from the database, whole or not at all.
 
     fetch_archive_db.py writes straight over db/<view>.psv and exits 0 even
     when a view fails, so it is run in a scratch folder, and each view replaces
     the installed copy only if the query succeeded, the file holds exactly the
-    rows the query counted, and it is not sharply smaller than what it
-    replaces. The views' entries in db/_manifest.json follow them in; the
+    rows the query counted, and it is not more than `shrink` smaller than what
+    it replaces (any fall, on the New term run; never empty). The views'
+    entries in db/_manifest.json follow them in; the
     calendar reads the meetings' date from there. {view: what happened}.
     """
     scratch = SCRATCH / "views"
@@ -1008,7 +1121,7 @@ def take_views(views, label):
                       f"counted {entry['rows']:,}")
             continue
         was = count_lines(old) if old.exists() else 0
-        if was and rows < was * (1 - SWAP_SHRINK):
+        if was and rows < was * (1 - shrink):
             out[v] = f"not taken: {rows:,} rows against {was:,} installed"
             continue
         old.parent.mkdir(exist_ok=True)
@@ -1169,14 +1282,21 @@ class Night:
                   "started": started.isoformat(timespec="seconds"),
                   "run_id": github("GITHUB_RUN_ID"), "attempt": github("GITHUB_RUN_ATTEMPT"),
                   "sha": github("GITHUB_SHA"), "on_github": github("GITHUB_ACTIONS") == "true",
-                  "asked": {"fetch": not a.no_fetch, "dry_run": a.dry_run},
+                  "asked": {"fetch": not a.no_fetch, "dry_run": a.dry_run,
+                            "new_term": a.new_term},
                   "built": False, "publishable": False, "clean": False}
+        if a.new_term:
+            # What the New term run let through, filled in as it goes. Kept in
+            # this night's verdict and nowhere a later night reads.
+            self.v["new_term"] = {}
 
     def intro(self):
         say(f"on GitHub's machine: commit {self.v['sha'][:12] or '(not on GitHub)'}, "
             f"run {self.v['run_id'] or '-'}; "
             + ("taking the day's data" if not self.a.no_fetch else "no fetch")
-            + ("; a dry run: nothing goes to production" if self.a.dry_run else ""))
+            + ("; a dry run: nothing goes to production" if self.a.dry_run else "")
+            + (f"; {NEW_TERM_BOX}: the General Court's smaller files accepted, once"
+               if self.a.new_term else ""))
         say(f"  the refusal record is {refusal.MARK}; python {sys.version.split()[0]}")
 
     def baseline(self):
@@ -1192,8 +1312,13 @@ class Night:
             f"(run {rec.get('run_id') or '?'}), from {CENSUS}")
         return c, rec.get("fingerprint")
 
-    def judge(self, site, before, after, stop, changed):
-        """After a build that passed check_site: can it go to production?"""
+    def judge(self, site, before, after, stop, changed, accepted=()):
+        """After a build that passed check_site: can it go to production?
+
+        accepted: what the census gates objected to and the New term run let
+        through, once. Tonight's counts become the baseline all the same, and
+        tomorrow is gated against them as any night is.
+        """
         v, a = self.v, self.a
         v.update(build="passed", check_site="passed", built=True, census=after,
                  changed=changed)
@@ -1208,8 +1333,13 @@ class Night:
         elif stop:
             v["gates"] = "blocked: " + "; ".join(stop)
             blocking += stop
+        elif accepted:
+            v["gates"] = "re-baselined for a new term: " + "; ".join(accepted)
         else:
             v["gates"] = "passed"
+        if "new_term" in v and before is not None and not stop:
+            v["new_term"]["gates"] = ("re-baselined: " + "; ".join(accepted) if accepted
+                                      else "nothing the census counts fell")
 
         compared, of = captions_compared()
         unchecked = of - compared
@@ -1234,8 +1364,10 @@ class Night:
         already = live == fp
         if not stop:
             write_json(CENSUS, {"census": after, "fingerprint": fp, "day": self.day,
-                                "run_id": v["run_id"], "sha": v["sha"]})
-            say(f"  tonight's counts are the baseline now: {CENSUS}")
+                                "run_id": v["run_id"], "sha": v["sha"],
+                                **({"new_term": True} if accepted else {})})
+            say(f"  tonight's counts are the baseline now: {CENSUS}"
+                + (" (re-baselined by the New term run)" if accepted else ""))
         n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
 
@@ -1255,6 +1387,8 @@ class Night:
     def problems(self):
         """Why tonight was not clean, by CLOUD_MOVE.md's list; [] when it was."""
         v, why = self.v, []
+        if (v.get("new_term") or {}).get("refused"):
+            return [f"{NEW_TERM_BOX} was {v['new_term']['refused']}: nothing was done"]
         if v.get("preflight") != "passed":
             why.append("preflight " + str(v.get("preflight", "did not run")))
         if not self.a.no_fetch:
@@ -1322,6 +1456,8 @@ class Night:
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + ([f"- the General Court's data page said: {v['data_page_said']}"]
                       if v.get("data_page_said") else [])
+                   + [f"- {NEW_TERM_BOX}, {k}: {r}" for k, r in (v.get("new_term") or {}).items()
+                      if k != "refused"]
                    + [f"- {w}" for w in why[:8]]
                    + [f"- warning: {w}" for w in v["warnings"]])
 
@@ -1486,12 +1622,20 @@ def weekly(a):
 
     One at a time, a few seconds apart, under the same lock and the same
     refusal record as the night; the database first, the web server last.
+
+    --new-term, the week a term's committee assignments are cleared and made
+    again: the rosters, the committee list and the study committees' views are
+    taken however much smaller, though never empty, for this one run. The
+    members who have left are a merge, which is never smaller, and keep their
+    guard.
     """
     started = datetime.now()
     day = f"{started:%Y-%m-%d}"
     v = {"kind": "weekly", "day": day, "started": started.isoformat(timespec="seconds"),
          "run_id": github("GITHUB_RUN_ID"), "sha": github("GITHUB_SHA"),
-         "asked": {"fetch": not a.no_fetch}, "results": {}, "clean": False}
+         "asked": {"fetch": not a.no_fetch, "new_term": a.new_term}, "results": {},
+         "clean": False}
+    shrink = NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK
     code = 1
     lock = Path(".nightly.lock")
     lock.write_text(f"{started:%Y-%m-%d %H:%M} pid {os.getpid()} (weekly)", encoding="utf-8")
@@ -1499,7 +1643,8 @@ def weekly(a):
     say(f"Granite Record weekly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)
     say(f"on GitHub's machine: commit {v['sha'][:12] or '(not on GitHub)'}; "
-        f"the refusal record is {refusal.MARK}")
+        f"the refusal record is {refusal.MARK}"
+        + (f"; {NEW_TERM_BOX}: smaller committee lists accepted, once" if a.new_term else ""))
     before = {"committee_members": load_json("data/committee_members.json") or {},
               "former_members": load_json("former_members.json") or {},
               "committees": load_json("committees.json") or {},
@@ -1525,14 +1670,15 @@ def weekly(a):
         with refusal.hold("weekly"):
             res["committee_members"], _ = take_json(
                 "who sits on each committee, from the database",
-                ["fetch_committee_members_db.py"], "data/committee_members.json", seats)
+                ["fetch_committee_members_db.py"], "data/committee_members.json", seats,
+                shrink=shrink)
             time.sleep(4)
             res["former_members"], _ = take_json(
                 "members who have left, from the database",
                 ["fetch_members_db.py"], "former_members.json", len, seed=True, shrink=0.0)
             time.sleep(4)
             study = take_views(STUDY_WEEKLY, "the study committees' members and bills, "
-                                             "from the database")
+                                             "from the database", shrink=shrink)
             res.update({f"study {k}": r for k, r in study.items()})
             time.sleep(4)
             if refusal.MARK.exists():
@@ -1540,7 +1686,8 @@ def weekly(a):
             else:
                 res["committees"], rc = take_json(
                     "chairs, vice chairs, aides and rooms, from gc.nh.gov",
-                    ["fetch_committees.py"], "committees.json", committee_count)
+                    ["fetch_committees.py"], "committees.json", committee_count,
+                    shrink=shrink)
                 if rc == 2:
                     say("\nREFUSED while fetching. Recorded; every fetch now waits for a person.")
         report = write_weekly_report(day, before)
@@ -1558,6 +1705,8 @@ def weekly(a):
         say(f"\nverdict: {'CLEAN' if v.get('clean') else 'NOT CLEAN'} -> {WEEKLY_VERDICT}")
         gh_output(clean=bool(v.get("clean")), day=day)
         gh_summary([f"### Weekly {day}: {'clean' if v.get('clean') else 'not clean'}"]
+                   + ([f"- {NEW_TERM_BOX}: the committee lists were taken however much "
+                       "smaller, for this run only"] if a.new_term else [])
                    + [f"- {k}: {r}" for k, r in v["results"].items()])
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "

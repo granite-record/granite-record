@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.41
+# GRANITE_VERSION: 2026-09-05.42
 """
 Run the whole pipeline in the right order.
 
@@ -732,8 +732,12 @@ def plan(a):
         # data.html, the manifest and exports zero times; build_exports names
         # feed zero times; neither mentions the sitemap -- so the order is
         # free, and this is the order that lets the page tell the truth.
+        # --allow-prune is the New term night's (nightly.py --new-term), when
+        # the last term's moving bills stop being current and more than a
+        # quarter of a feed folder can rightly go at once. Never otherwise.
         Step("RSS feeds",
-             ["build_feeds.py", "--site", "site", "--base", a.base],
+             ["build_feeds.py", "--site", "site", "--base", a.base]
+             + (["--allow-prune"] if getattr(a, "allow_prune", False) else []),
              needs=["site/index.json"], produces=["site/feed/all.xml"],
              note="following a bill without an account, an email address or a "
                   "list that could leak"),
@@ -765,6 +769,9 @@ def main():
     ap.add_argument("--no-captions", action="store_true",
                     help="skip the steps that read caption files, on a machine "
                          "that holds none (GitHub's)")
+    ap.add_argument("--allow-prune", action="store_true",
+                    help="let build_feeds remove more than a quarter of a feed folder: "
+                         "the New term night's, and only that one")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--keep-going", action="store_true",
                     help="carry on past a failed required step")

@@ -24,13 +24,15 @@
 # which keeps the laptop's fetches clear of the night, moves with the cron line.
 #
 # By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
-# its three boxes say; a scheduled night fetches, deploys a preview, and asks
-# for approval to publish.
+# its four boxes say; a scheduled night fetches, deploys a preview, and asks
+# for approval to publish. The fourth box, New term, is for the one night a
+# term turns over, and the note above it says what it lets through.
 
 name: nightly
 run-name: >-
   nightly ${{ github.event_name == 'schedule' && '(scheduled)'
-  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)') }}
+  || (inputs.new_term && '(by hand, new term)'
+  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)')) }}
 
 on:
   workflow_dispatch:
@@ -47,6 +49,27 @@ on:
         description: "Deploy the build to nightly.graniterecord.pages.dev (needs the Pages token)"
         type: boolean
         default: true
+      # NEW TERM (30 September 2026): the night the General Court's files first
+      # show a new term, when they really do get much smaller. For this run
+      # only -- nightly.py --new-term -- the smaller files are installed
+      # (snapshot_gencourt.py --allow-shrink), the census gates take tonight's
+      # counts as the baseline, and the feed prune is allowed. A scheduled night
+      # never carries it, nothing it allows is kept for the next night, and
+      # nightly.py refuses it with Dry run, because this is the run that may
+      # publish the switch. Fetch ticked takes the new files; the preview shows
+      # the switched site before anyone approves it.
+      #
+      # THIS RUN MUST KEEP A REQUIRED REVIEWER. The person decided on 30
+      # September 2026 that the switch to a new term waits for their approval
+      # even after the approvals of ordinary nights are switched off. Today the
+      # "production" environment has them as its required reviewer for every
+      # deploy, which covers this run. Before that rule comes off, a New term
+      # run's publish job must go through an environment that still has one.
+      # preflight fails if this box is here without this note.
+      new_term:
+        description: "New term: accept the General Court's smaller files once"
+        type: boolean
+        default: false
   schedule:
     - cron: "17 8 * * *"
 
@@ -64,6 +87,8 @@ env:
   FETCH: ${{ github.event_name == 'schedule' || inputs.fetch }}
   DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
+  # Only ever from the box, on a run by hand: never on a scheduled night.
+  NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
 
 defaults:
   run:
@@ -190,6 +215,7 @@ jobs:
           $flags = @('--runner')
           if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
           if ($env:DRY_RUN -eq 'true') { $flags += '--dry-run' }
+          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term' }
           python nightly.py @flags
           exit $LASTEXITCODE
 
@@ -289,9 +315,10 @@ jobs:
   # Production, and only through here. The "production" environment has the
   # person as its required reviewer until five clean nights have passed, so
   # this job waits for their approval; removing that rule is what makes
-  # publishing automatic. It deploys the very build the night checked (by
-  # fingerprint), and nightly.py refuses an older night's once a newer one
-  # has run.
+  # publishing automatic -- except for a New term run, which must keep a
+  # required reviewer (the note above the new_term box). It deploys the very
+  # build the night checked (by fingerprint), and nightly.py refuses an older
+  # night's once a newer one has run.
   publish:
     name: publish to production
     needs: night

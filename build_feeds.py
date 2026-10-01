@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -177,7 +177,8 @@ def prune(root, keep, allow, fall=0.25):
     if len(stale) > fall * len(have) and not allow:
         return 0, (f"  LEFT {len(stale):,} of {len(have):,} feeds in {root.name}/ that this "
                    f"run did not write: more than {fall:.0%} is the shape of a run that "
-                   "failed, not of housekeeping. --allow-prune once, if it is intended.")
+                   "failed, not of housekeeping. --allow-prune once, if it is intended: "
+                   "build_all.py passes it on the nightly's New term run.")
     for p in stale:
         p.unlink()
     for d in sorted((p for p in root.rglob("*") if p.is_dir()), reverse=True):
