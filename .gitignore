@@ -73,6 +73,8 @@ bill_text.json
 # disk, rebuilt by archive_text.py in a couple of minutes.
 archive_text.json
 amendments.json
+# The bills the House withdrew, read off its journals by journal_bills.py.
+journal_bills.json
 # Which House committee reports the calendar printed under another bill,
 # rebuilt whole by report_check.py on every build.
 report_corrections.json

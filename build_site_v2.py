@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.119
+# GRANITE_VERSION: 2026-09-05.121
 """
 Generate the faceted site from real General Court data.
 
@@ -1329,12 +1329,32 @@ def docket_outcome(narr):
 # phrase appears in every MINORITY report as well -- which is how HCR1, HCR4
 # and HCR9 came to read "Killed" when the House had adopted Ought to Pass on
 # them 197-156, 195-149 and 204-163.
+#
+# A WITHDRAWAL THE CHAMBER ADOPTED FINISHES THE BILL TOO (30 September 2026).
+# "Withdrawn Under House Rule 38(e) (Rep Cebrowski): MA VV" is HB 641 of
+# 2013, and "Withdrawn Pursuant to House Rule 38(e) (Rep Coulombe): MA VV" HB
+# 1186 of 2012; both read "In committee", over a docket that withdrew them.
+# The action has to BEGIN with the withdrawal -- "REP. HEALY SUB ITL,
+# WITHDRAWN; PASSED VV" is a motion withdrawn, not a bill, and "Withdraw From
+# Joint Committee" is not "Withdrawn" -- and only an adopted one counts, as
+# for every row here: "Persuant to House Rule 39(e), Withdrawn: MF RC
+# 160-207" is HB 431 of 2025, which the House then passed. The rule is cited
+# with "to" and without -- "Persuant House Rule 39(e), Withdrawn: MF DV" is
+# SB 78 of 2025 -- and "Per House Rule 38, Withdrawn from Committee" is a
+# committee discharged, not a bill withdrawn.
+WITHDRAWN_ACT = re.compile(
+    r"^\s*(?:(?:p[eu]r?s?uant(?:\s+to)?|per)\s+(?:house|senate)\s+rule\s+[\w.]+"
+    r"(?:\s*\(\w\))?\s*,?\s*)?withdrawn\b(?!\s+from)", re.I)
 DISPOSED = [
     (re.compile(r"inexpedient to legislate", re.I), ("done", "Killed")),
     (re.compile(r"indefinitely postpone", re.I),
      ("done", "Indefinitely postponed")),
     (re.compile(r"interim study", re.I), ("study", "Referred for interim study")),
+    (WITHDRAWN_ACT, ("done", "Withdrawn")),
 ]
+# Where a bill's record is the House Journal's rather than the General
+# Court's files (journal_bills.py, build_data.add_journal_bills).
+JOURNAL_SOURCE = "House Journal"
 
 
 def floor_disposed(narr):
@@ -1391,6 +1411,12 @@ def classify(narr, rcs, prefix=""):
         return "law", "Signed into law"
     if "vetoed" in text:
         return "veto", "Vetoed"
+    # A WITHDRAWAL THE CHAMBER ADOPTED, where it is the last disposal the
+    # floor carried (floor_disposed, and WITHDRAWN_ACT above DISPOSED). HB 641
+    # of 2013 and HB 1186 of 2012 read "In committee" without this.
+    _w = floor_disposed(narr)
+    if _w and _w[1] == "Withdrawn":
+        return _w
     # A DISPOSAL THE CHAMBER RECONSIDERED IS NOT ONE. HB 323 of 2005 read
     # "Killed": the House adopted Inexpedient to Legislate on 23 March, 164-153,
     # and on 30 March reconsidered it, 153-150, voted the kill down and passed
@@ -5363,6 +5389,8 @@ def journey_disagrees(steps, kind, status, rail, bid):
         "Died on the table": {"tabled", "died"},
         "Laid on the table": {"tabled", "died"},
         "Died when the conference report was rejected": {"conf_rejected"},
+        # Only a journal record's journey has this line (journal_story).
+        "Withdrawn": {"withdrawn"},
     }.get(status)
     if want is not None:
         if any(f["act"] in want for f in finals):
@@ -5644,9 +5672,12 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
 # `between` is true where a dated docket line between the chambers decided
 # the status over the fields (between_chambers and the two rules beside it),
 # so status_source can say the docket did.
+#
+# `source` is JOURNAL_SOURCE where the status is the House Journal's, for a
+# bill the General Court's files do not carry; "" otherwise.
 Disposition = namedtuple("Disposition",
-                         "kind status told settled prefix stated stale between",
-                         defaults=(False,))
+                         "kind status told settled prefix stated stale between source",
+                         defaults=(False, ""))
 
 
 def bill_committees(b, bid):
@@ -6168,6 +6199,13 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
         settled = docket_outcome({"events": [{"raw": law_line}]})
     if not settled and override_failed:
         settled = ("veto", "Vetoed, override failed")
+    # A BILL THE GENERAL COURT'S FILES DO NOT CARRY, whose record is the House
+    # Journal's (build_data.add_journal_bills): introduced, and withdrawn. No
+    # docket, no status page and nothing else says otherwise, because nothing
+    # else has it; were any of them to, this would give way to it.
+    if (b or {}).get("journal", {}).get("withdrawn") and not (settled or told or narr):
+        return Disposition("done", "Withdrawn", told, settled, prefix,
+                           0, 0, False, JOURNAL_SOURCE)
     disposed = floor_disposed(narr)
     if settled:
         # A dated docket line beats a status field that has not caught up.
@@ -6312,16 +6350,21 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
 
     text_url = bill_text_url(b, st)
     add_doc("Bill text", text_url, "text")
-    add_doc("Bill status page", (
-        "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
-        f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
-        f"&txtsessionyear={b.get('lsr_year','')}"
-        f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "status")
-    add_doc("Docket", (
-        "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
-        f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
-        f"&txtsessionyear={b.get('lsr_year','')}"
-        f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "docket")
+    # NOT FOR A JOURNAL RECORD. Both addresses are built from the LSR, which a
+    # bill read off the House Journal does not have (add_journal_bills says
+    # why none is invented). Whether the General Court's own pages have the
+    # bill is not known here: its data files do not, and no page was asked.
+    if not b.get("journal"):
+        add_doc("Bill status page", (
+            "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
+            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
+            f"&txtsessionyear={b.get('lsr_year','')}"
+            f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "status")
+        add_doc("Docket", (
+            "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
+            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
+            f"&txtsessionyear={b.get('lsr_year','')}"
+            f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "docket")
     # The journals and calendars the docket itself cites. These are the
     # official record of the individual actions, which is a stronger thing
     # to link than a summary of them.
@@ -6360,6 +6403,87 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
         if r.get("cite_url"):
             add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
     return docs, text_url
+
+
+def _long_day(iso):
+    """"2025-02-06" -> "February 6, 2025", as the narratives write a day."""
+    try:
+        y, m, d = (int(x) for x in str(iso).split("-"))
+        return f"{MONTHS[m - 1].capitalize()} {d}, {y}"
+    except (ValueError, IndexError):
+        return str(iso or "")
+
+
+def journal_story(b, jkeys):
+    """What the page says of a bill whose record is the House Journal's:
+    {intro, steps, dates, stages, notes, docs}.
+
+    The bill is in none of the General Court's current files, so there is no
+    docket to narrate and none is invented: no docket row, no status-page
+    field, nothing presented as the General Court's own words. What is said
+    is what the journal prints -- the day the bill was introduced and the
+    committee it went to, and the day it was withdrawn and how -- in this
+    site's words, with the journal cited for each, and one note saying where
+    the record comes from. It says nothing about why the General Court's
+    files lack the bill, which nothing on disk states.
+
+    The rail and On the record read `steps` the way they read journey()'s:
+    one House decision, drawn as the stop where the bill ended.
+    """
+    j = b.get("journal") or {}
+    i, w = j.get("introduced") or {}, j.get("withdrawn") or {}
+    committee = names.committee(b.get("house_committee") or "")
+    vote, _, kind = (w.get("vote") or "").partition(", ")
+    if not re.search(r"\d", vote):
+        vote, kind = "", vote
+    tally = vote.replace("-", "–")
+    how = {"division": "on a division vote", "roll call": "on a roll call",
+           "voice vote": "on a voice vote"}.get(kind, "")
+    if w.get("how") == "consent calendar":
+        step = "Withdrawn on the consent calendar"
+        said = (f"On {_long_day(w.get('date'))} the House adopted its consent "
+                "calendar, which listed the bill to be withdrawn.")
+    else:
+        step = "Withdrawn" + (f", {tally}" if tally else f" {how}" if how else "")
+        said = (f"On {_long_day(w.get('date'))} the House voted to withdraw it"
+                + (f" {how}" if how else "") + (f", {tally}" if tally else "") + ".")
+        recon, _, rv = (w.get("reconsideration") or "").partition(", ")
+        if recon:
+            said += (f" A motion to reconsider {recon}"
+                     + (f", {rv.replace('-', chr(0x2013))}" if rv else "") + ".")
+    stages = [
+        {"label": "In House committee" + (f" — {committee}" if committee else ""),
+         "hand": "H:committee", "notes": [],
+         "text": (f"It was introduced on {_long_day(i.get('date'))}"
+                  + (f" and referred to the House {committee} committee." if committee
+                     else "."))},
+        {"label": "On the House floor", "hand": "H:floor", "notes": [], "text": said},
+    ]
+
+    def where(c):
+        return (f"{c.get('journal')}, {_long_day(c.get('date'))}, page {c.get('page')}"
+                if c else "")
+    # ONLY WHAT WAS LOOKED AT. The bulk files and the database view were read
+    # (journal_bills.py says which) and the bill is in none of them; no
+    # status page was ever asked for, so the note does not speak for one.
+    notes = [("The data files the General Court publishes for this term, its "
+              "docket among them, do not list this bill. This record is the "
+              f"House Journal's, which prints its introduction ({where(i)}) and "
+              f"its withdrawal ({where(w)}).")]
+    vols = {}
+    for c in (i, w):
+        url = journal_url(c.get("date", ""), c.get("journal", ""), jkeys) if c else ""
+        if url:
+            v = vols.setdefault(c["journal"], {"url": url, "pages": []})
+            if str(c.get("page")) not in v["pages"]:
+                v["pages"].append(str(c.get("page")))
+    docs = [(f"{k}, page{'s' if len(v['pages']) > 1 else ''} {' and '.join(v['pages'])}",
+             v["url"]) for k, v in vols.items()]
+    return {"intro": i.get("date", ""),
+            "steps": [{"date": w.get("date", ""), "body": "H", "act": "withdrawn",
+                       "mark": "x", "text": step, "short": "withdrawn"}] if w else [],
+            "dates": sorted(d for d in (i.get("date"), w.get("date")) if d),
+            "stages": stages, "notes": notes, "docs": docs}
 
 
 def bill_text_url(b, st):
@@ -6832,6 +6956,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # Which bills' dockets move each amendment number, so that an amendment
     # the calendar printed under another bill is known for that bill's.
     claims = amendment_claims(narratives)
+    # The journals the drain fetched, for a House Journal record's citations:
+    # read once, and only if a bill needs them.
+    _jk = {}
+
+    def _jkeys():
+        if "keys" not in _jk:
+            _jk["keys"] = journal_keys_from_queue()
+        return _jk["keys"]
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -6924,6 +7056,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # it, so the list card, the bill's own rail and On the record are
         # one account. journey_disagrees() is the test that they are.
         intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term)
+        # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
+        # journey to read; its introduction and withdrawal are the journal's,
+        # and so are its dates (journal_story).
+        story = journal_story(b, _jkeys()) if disp.source == JOURNAL_SOURCE else None
+        if story:
+            intro, jsteps, dates = story["intro"], story["steps"], story["dates"]
+            carried = len({d_[:4] for d_ in dates}) > 1
         row = bill_index_row(
             bid, b, year, term, cmte, cmtes, disp, prime,
             narr, rcs, coverage, carried, dates, chapter,
@@ -6956,6 +7095,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
 
         docs, text_url = bill_documents(b, bid, st, narr, sources,
                                         rep_written, rep_docket)
+        # The journals a House Journal record cites, in place of the docket's.
+        for _lab, _url in (story or {}).get("docs", []):
+            if _url not in {x["url"] for x in docs}:
+                docs.append({"label": _lab, "url": _url, "kind": "record"})
 
         bill_amds = bill_amendments(narr, amend_texts, claims.get(term, {}))
         btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
@@ -7059,12 +7202,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # The history, plus a closing paragraph where the bill's ending
             # is only on the status page. 120 bills showed a settled headline
             # over a story that stopped at the committee report.
-            "stages": ((narr or {}).get("stages", [])
+            "stages": (story["stages"] if story else
+                       (narr or {}).get("stages", [])
                        + [x for x in [closing_stage(
                            status, narr,
                            decided=any(s_["body"] in ("H", "S") for s_ in jsteps))]
                           if x]),
-            "notes": (narr or {}).get("notes", []),
+            # Where the record comes from, on a bill the House Journal alone
+            # carries; the docket's own notes everywhere else.
+            "notes": story["notes"] if story else (narr or {}).get("notes", []),
             # Belongs on the Votes tab, not above the history.
             # NOT OVER THE TOP OF THE ROLL CALLS. narrative counts the
             # floor votes the DOCKET records as voice or division votes; the
@@ -7112,16 +7258,19 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # the 1989-2016 histories arrived. The chip's own words are the
             # answer there. In any term, a line claiming another kind of
             # status than the chip's gives way to it (STEP_CLAIM).
-            "next_step": settled_step(
+            "next_step": (status if story else settled_step(
                 bill_next_step(narr, b, prefix, st, settled, told),
-                status, term, current, kind),
+                status, term, current, kind)),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
             # "General Court docket" where a dated docket line decided the
             # status over the fields: settled (the governor, a veto), or
             # between the chambers (a refusal to concur, a conference report
             # voted down, a resolution the second chamber adopted).
-            "status_source": ("General Court docket" if settled or disp.between
+            # "House Journal" where the bill is in none of the General Court's
+            # files and the journal is its record (journal_story).
+            "status_source": (JOURNAL_SOURCE if disp.source == JOURNAL_SOURCE
+                              else "General Court docket" if settled or disp.between
                               else "General Court bill status page" if told
                               else "derived from the docket"),
             "chapter": chapter,
@@ -7176,7 +7325,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "house_committee": names.committee(b.get("house_committee", "")),
             "senate_committee": names.committee(b.get("senate_committee", "")),
             "lsr": b.get("lsr", ""),
-            "docket_url": ("https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
+            # None for a House Journal record: the address is built from the
+            # LSR, which such a bill does not have; whether the General
+            # Court's page has it was never asked.
+            "docket_url": ("" if b.get("journal") else
+                           "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
                            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
                            f"&txtsessionyear={b.get('lsr_year','')}"
                            f"&txtbillnumber={bid.lower()}&sortoption=billnumber"),

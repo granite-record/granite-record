@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.56
+# GRANITE_VERSION: 2026-09-04.57
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -107,6 +107,14 @@ def noscript(b, d, data_url=None):
     if d.get("text_url"):
         links.append(f'<a href="{E(d["text_url"])}" rel="noopener">'
                      "the bill text</a>")
+    # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S (build_site_v2.journal_story)
+    # has no docket address and no text, so the list below said "the files
+    # linked below" over nothing. Its files are the journals it cites.
+    if d.get("status_source") == "House Journal":
+        for doc in d.get("documents") or []:
+            if doc.get("kind") == "record" and doc.get("url"):
+                links.append(f'<a href="{E(doc["url"])}" rel="noopener">'
+                             f'the House Journal, {E(doc.get("label") or "")}</a>')
     # ONLY WHEN THERE IS A FILE TO OFFER. This linked to the bill's JSON
     # unconditionally, and 33,585 of those files stopped existing the day
     # their contents moved inside the page -- so the one thing this block

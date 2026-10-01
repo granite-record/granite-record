@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.37
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -299,6 +299,132 @@ def _pick_committee(stored, first, known, in_use=()):
     if known and _r._key(first) in known:
         return first
     return stored if _same_committee(first, stored, known, in_use) else first
+
+
+JOURNAL_BILLS = "journal_bills.json"
+JOURNAL_SOURCE = "House Journal"
+
+
+def add_journal_bills(by_term, path=JOURNAL_BILLS):
+    """{term: {bill: record}}: the House's withdrawn bills, from journal_bills.py,
+    added to `by_term` -- and only where the General Court's own files have
+    nothing for them.
+
+    Nine House bills of 2025-2026 were withdrawn early under House Rule 39(e),
+    and every current-term file the General Court publishes has dropped them;
+    the House Journal still prints each one's introduction and withdrawal.
+
+    ONLY INTO A TERM THAT IS ALREADY HERE, AND NEVER OVER A BILL THAT IS. A
+    term these records created would be "already built from session files" to
+    the archive merge above, which would then skip the whole of the real
+    term -- 2025-2026 would be nine bills long. And a record the General
+    Court's files carry is better than this in every respect.
+
+    lsr and lsr_num stay empty. An invented LSR would send the fetchers, which
+    ask only for records that carry one, to the General Court for addresses
+    that may not exist. lsr_year is the journal's year, which is what files
+    the bill under its term. The journal's own citations travel under
+    "journal", which is also what tells the site this record is not the
+    General Court's.
+    """
+    p = Path(path)
+    if not p.exists():
+        print("=" * 70)
+        print(f"NO {p}. The bills the House withdrew in 2025-2026 are in none of")
+        print("the General Court's current files, and this is where they come")
+        print("from: without it they are not on the site, and nothing else says")
+        print("so. Run: python3 journal_bills.py")
+        print("=" * 70)
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError as e:
+        print("=" * 70)
+        print(f"{p} WILL NOT PARSE ({e}); no withdrawn bill is added from it.")
+        print("=" * 70)
+        return {}
+    added, kept, skipped = defaultdict(dict), [], []
+    for term, byb in sorted(data.items()):
+        if term not in by_term:
+            skipped += [f"{b} {term} (no such term here)" for b in byb]
+            continue
+        archived = any(r.get("archived") for r in by_term[term].values())
+        for bid, j in sorted(byb.items()):
+            year = str(j.get("year") or "")
+            if P.term_of(year) != term:
+                skipped.append(f"{bid} {term} (filed in {year or 'no year'})")
+                continue
+            if bid in by_term[term]:
+                kept.append(f"{bid} {term}")
+                continue
+            rec = {
+                "bill": bid, "lsr": "", "lsr_year": year, "lsr_num": "",
+                "title": j.get("title", ""), "chamber": j.get("chamber") or "H",
+                "subject_code": "", "subject": "",
+                "house_committee": j.get("committee", ""), "senate_committee": "",
+                "hearing": "", "hearing_room": "",
+                "designation": j.get("designation") or bid,
+                "suffix": j.get("suffix", ""),
+                "journal": {k: j[k] for k in ("introduced", "withdrawn", "sponsors")
+                            if k in j},
+            }
+            if archived:
+                rec["archived"] = True
+            by_term[term][bid] = rec
+            added[term][bid] = rec
+    n = sum(len(v) for v in added.values())
+    print(f"  {p}: {n} withdrawn bill(s) added from the House Journal"
+          + (f" ({', '.join(f'{b} {t}' for t, bb in added.items() for b in bb)})" if n else "")
+          + (f"; {len(kept)} already in the record and left alone ({', '.join(kept)})"
+             if kept else ""))
+    if skipped:
+        print(f"  {p}: {len(skipped)} not added: {', '.join(skipped)}")
+    return dict(added)
+
+
+def journal_sponsor_rows(printed, term, sat, legs):
+    """One withdrawn bill's sponsors, as the journal printed them, in the
+    shape data/sponsors.json carries them.
+
+    In the journal's order, the first taken as prime -- it is the prime on
+    every one of the 1,643 bills of 2025-2026 the sponsor files can check --
+    and marked prime_inferred, because the journal does not say so itself.
+    Each name is placed by text_sponsors (split, then Sat.resolve among the
+    members who cast a roll call that term), and labelled with the seat the
+    roster gives that member, not the one printed: the January 2025 lists
+    print some members' 2023-2024 seats. A member who has since left is
+    labelled from their own votes. A name nobody fits stays as printed.
+    """
+    import text_sponsors as TS
+    out = []
+    for i, sp in enumerate(TS.split("; ".join(printed or []))):
+        m = sat.resolve(term, sp)[0] if sat else None
+        mine = legs.get(str(m["id"])) if m else None
+        if mine:
+            row = {"member_id": str(m["id"]), "name": mine["name"],
+                   "party": mine.get("party_code", ""), "chamber": mine.get("chamber", ""),
+                   "label": mine.get("label", ""), "county": mine.get("county_abbr", ""),
+                   "district": mine.get("district", "")}
+        elif m:
+            ch = sp["chamber"]
+            county = TS.ABBR.get(m.get("county") or "", "") if ch == "H" else ""
+            dist = str(m.get("number") or "")
+            last = " ".join(x for x in (m["last"], m.get("suffix")) if x)
+            row = {"member_id": str(m["id"]), "name": f"{last}, {m['first']}".strip(", "),
+                   "party": m.get("party", ""), "chamber": ch,
+                   "label": names.legislator({"first": m["first"], "last": last,
+                                              "chamber": ch, "party": m.get("party", ""),
+                                              "district": dist, "county_abbr": county}),
+                   "county": county, "district": dist}
+        else:
+            r = TS.record(i, sp, None)
+            row = {k: r[k] for k in ("member_id", "name", "party", "chamber", "label",
+                                     "district")}
+            row["county"] = TS.ABBR.get(r.get("county") or "", r.get("county") or "")
+        row.update({"sequence": i, "prime": i == 0, "prime_inferred": True,
+                    "source": JOURNAL_SOURCE, "as_printed": sp["printed"]})
+        out.append(row)
+    return out
 
 
 def _official_committees(by_term):
@@ -1686,6 +1812,11 @@ def main():
     if stray:
         print(f"  {len(stray):,} bills have no filing year and are left out of "
               f"bills.json: {sorted(stray)[:5]}")
+    # The House's withdrawn bills, from its journals: HERE, once every term is
+    # in by_term and before the committee names are settled below, so that
+    # one of these can never stand in for a term nor over a bill the General
+    # Court's files carry. add_journal_bills says why each.
+    journal_added = add_journal_bills(by_term, d / JOURNAL_BILLS)
     # One name per committee, the one it had at the time: see
     # _official_committees. Said out loud, because a table that stopped
     # matching would otherwise just quietly put the extra spellings back.
@@ -1734,6 +1865,26 @@ def main():
                 sp_by_term.setdefault(_t, {}).update(_rows)
                 print(f"  sponsors.json {_t}: {len(_rows):,} from the status "
                       "pages")
+    # The withdrawn bills' sponsors, as the House Journal printed them, and
+    # only where the bill has none from another source.
+    if journal_added:
+        import text_sponsors as TS
+        _sat = TS.Sat(member_votes)
+        _jn = _jr = _jt = 0
+        for _t, _byb in journal_added.items():
+            _slice = sp_by_term.setdefault(_t, {})
+            for _b, _rec in _byb.items():
+                if _slice.get(_b):
+                    continue
+                _rows = journal_sponsor_rows(
+                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat, legs)
+                if _rows:
+                    _slice[_b] = _rows
+                    _jn += 1
+                    _jt += len(_rows)
+                    _jr += sum(1 for r in _rows if r.get("member_id"))
+        print(f"  sponsors.json: {_jn} withdrawn bill(s) took their sponsors from "
+              f"the House Journal, {_jr} of {_jt} names placed on a member")
     (out / "sponsors.json").write_text(
         json.dumps(sp_by_term, indent=2), encoding="utf-8")
     for t in sorted(sp_by_term):

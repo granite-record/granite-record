@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.41
+# GRANITE_VERSION: 2026-09-05.43
 """
 Run the whole pipeline in the right order.
 
@@ -213,8 +213,16 @@ class building:
 
 class Step:
     def __init__(self, name, args, needs=(), produces=(), network=False,
-                 optional=False, note="", superseded=False, captions=False):
+                 optional=False, note="", superseded=False, captions=False,
+                 kit_required=False):
         self.name, self.args = name, args
+        # A STEP THE NIGHTLY MAY NOT SKIP. Where the build is the kit's
+        # (kit_build), a missing input fails this step and stops the build,
+        # as a missing carried output does, rather than skipping it: the
+        # skip is a warning nobody reads, and the site then publishes without
+        # what the step makes. Elsewhere it is skipped and named, so a first
+        # build on a bare machine can still happen.
+        self.kit_required = kit_required
         self.needs = [Path(n) for n in needs]
         self.produces = [Path(p) for p in produces]
         self.network, self.optional, self.note = network, optional, note
@@ -270,6 +278,23 @@ def plan(a):
              note="what each vote decided is the clerk's: rollcall_outcomes.py "
                   "reads every Docket*.txt for the recorded outcome, and the "
                   "House and Senate Journals for a vote no docket line names"),
+
+        # BEFORE build_data, which adds what this finds to the record. Nine
+        # House bills of 2025-2026 were withdrawn early under House Rule
+        # 39(e) and are in none of the General Court's current-term files;
+        # the House Journal prints each one's introduction and withdrawal.
+        # It refuses, and stops the build, rather than write nothing from a
+        # year whose lists it can no longer read (journal_bills.py says why).
+        # NOT SKIPPED ON THE NIGHTLY'S MACHINE. journal_bills.json is not in
+        # git and not in the kit, so without journals/ build_data would add
+        # nothing, say so in the middle of its output, and the nine bills
+        # would leave the site with every step reporting success.
+        Step("bills the House withdrew, from its journals",
+             ["journal_bills.py"],
+             needs=["journals"], produces=["journal_bills.json"],
+             kit_required=True,
+             note="the House Journal's introduction lists and its withdrawals, "
+                  "2025 on, for bills the session files do not carry"),
 
         Step("build data (first pass)",
              ["build_data.py", "--dir", ".", "--out", "data"],
@@ -858,9 +883,12 @@ def main():
 
     print(f"{len(steps)} steps, session {a.session}\n")
     if a.dry_run:
+        strict = kit_build()
         for i, s in enumerate(steps, 1):
             miss = s.missing()
-            flag = ("SKIP, missing " + ", ".join(miss)) if miss else "run"
+            flag = ((("would fail, the kit's build may not skip it: missing "
+                      if strict and s.kit_required else "SKIP, missing ")
+                     + ", ".join(miss)) if miss else "run")
             print(f"{i:>2}. {s.name}")
             print(f"    python3 {' '.join(s.args)}")
             print(f"    {flag}" + (f"  ({s.note})" if s.note else ""))
@@ -877,6 +905,16 @@ def _run_steps(steps, a):
     t0 = time.time()
     for i, s in enumerate(steps, 1):
         miss = s.missing()
+        if miss and s.kit_required and kit_build():
+            why = (f"missing {', '.join(miss)}, and on the kit's build this step may "
+                   "not be skipped: cloud_kit.json must bring it")
+            print(f"[{i}/{len(steps)}] {s.name} — FAILED, {why}")
+            results.append({"step": s.name, "status": "failed", "missing": miss,
+                            "error": why})
+            failed = s.name
+            if not a.keep_going:
+                break
+            continue
         if miss:
             print(f"[{i}/{len(steps)}] {s.name} — SKIPPED, missing {', '.join(miss)}")
             results.append({"step": s.name, "status": "skipped",

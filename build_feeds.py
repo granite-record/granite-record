@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.20
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -91,6 +91,22 @@ def iso_day(d):
         except ValueError:
             continue
     return ""
+
+
+def filed_date(d):
+    """The day a bill's sponsorship is dated in its sponsors' feeds: the
+    oldest dated docket event, and for a bill with no docket, the Introduced
+    stop of its rail.
+
+    A bill whose record is the House Journal's (build_site_v2.journal_story)
+    has no docket event, and an empty date is today's to rfc822 -- so every
+    sponsor's feed carried it as new, dated afresh every night."""
+    dated = sorted(e["date"] for e in (d.get("events") or []) if e.get("date"))
+    if dated:
+        return dated[0]
+    return next((s.get("date") or "" for s in
+                 ((d.get("journey") or {}).get("rail") or [])
+                 if s.get("stop") == "Introduced"), "")
 
 
 def chamber_of(k):
@@ -297,7 +313,7 @@ def main():
     # pages exists only for the few too large to inline -- so for two days this
     # wrote 173 feeds and skipped every other bill without a word, while 5,436
     # bill pages linked a feed that was never written.
-    recs = SR.by_bill(site, fields=("events", "sponsors", "next_step"))
+    recs = SR.by_bill(site, fields=("events", "sponsors", "next_step", "journey"))
     # A FEED IS FOR A BILL THAT CAN STILL DO SOMETHING. One per bill of a
     # closed term is a file that will never gain an item: nobody subscribes
     # to 1993. Writing them for every archived bill once the 1989-2016
@@ -324,7 +340,8 @@ def main():
         url = bill_url(b)
         events = [e for e in (d.get("events") or []) if e.get("date")]
         events.sort(key=lambda e: e["date"], reverse=True)
-        filed = events[-1]["date"] if events else ""
+        # A BILL WITH NO DOCKET is dated by its introduction: filed_date.
+        filed = filed_date(d)
         seen = set()
         for sp in (d.get("sponsors") or []):
             mid = by_slug.get(sp.get("slug")) or str(sp.get("member_id") or "")

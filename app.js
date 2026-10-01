@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.126
+// GRANITE_VERSION: 2026-09-07.127
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2418,6 +2418,9 @@ function renderSponsors(b,d){
   // (text_sponsors.unprinted), and the page says so rather than implying they were read
   // off the bill like every other name of that term.
   const unprinted=spAll.length&&spAll.every(s=>s.unprinted);
+  // A BILL ONLY THE HOUSE JOURNAL CARRIES (journal_bills.py): its sponsors are
+  // the journal's list of bills introduced, and the first is taken as prime.
+  const fromJournal=spAll.length&&spAll.every(s=>s.source==="House Journal");
   // THE STANDING NOTE IS GONE. It read "Prime sponsor in bold. From the
   // General Court sponsor file." with a link to the docket, and all three
   // parts were being said twice. The prime sponsor carries a PRIME label
@@ -2442,7 +2445,10 @@ function renderSponsors(b,d){
           be matched to one member who voted that term.`:""}</p>`:""}${unprinted
     ?`<p class="note" style="margin-top:12px">The bill's own text names no
         sponsor. These are the names the General Court's sponsor record gives
-        it.</p>`:""}`;
+        it.</p>`:""}${fromJournal
+    ?`<p class="note" style="margin-top:12px">As named in the House Journal's
+        list of bills introduced, where the first name is the prime
+        sponsor.</p>`:""}`;
 }
 
 // Amendments, in the order the docket took them up. A committee amendment

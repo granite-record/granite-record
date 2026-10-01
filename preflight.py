@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.282
+# GRANITE_VERSION: 2026-09-04.284
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -600,8 +600,11 @@ def _parse_all():
 
 @check("files", "changed modules import")
 def _import_all():
+    # journal_bills: its checks below skip, rather than fail, when it will
+    # not import, and a reader that stopped importing drops nine bills.
     mods = ["narrative", "build_site_v2", "build_feeds", "floor_markers",
-            "apply_markers", "inventory", "build_all", "rollcall_parser"]
+            "apply_markers", "inventory", "build_all", "rollcall_parser",
+            "journal_bills"]
     bad = []
     for m in mods:
         if not Path(m + ".py").exists():
@@ -5784,6 +5787,9 @@ ic_SOURCES = {
     "site/idx": "build_indexes.py, which does not declare it",
     "work": "fetch_captions.py -- a directory of caption folders",
     "calendars": "fetch_calendar_archive.py -- a directory of PDFs",
+    "journals": "fetch_calendar_archive.py, the House Journals' PDFs, and "
+                "extract_calendar_text.py, the .txt beside each -- a directory "
+                "of year folders; the kit carries the text (journals/*/*.txt)",
     "legislation": "fetch_legislation.py -- a directory of saved bill pages",
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
@@ -15443,6 +15449,804 @@ def _no_bucket_here(CL):
             os.environ[CL.NO_BUCKET] = saved
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", "R2 refused with GRANITE_NO_BUCKET set, saying so; a folder bucket still made"
+
+
+# ============================================ code: the House's withdrawn bills ==
+#
+# journal_bills.py reads the House Journal's introduction lists and its
+# withdrawals, for the nine bills of 2025-2026 every current-term file of the
+# General Court has dropped. The fixture is cut from the real journals: HJ 3
+# of 9 January 2025 (HB 476's entry, HCR 7's name broken across a page head,
+# HB 234's "Har-" / "rington"), the four "not introduced" placeholders of
+# 7 January 2026, HJ 4 of 6 February 2025 (the consent calendar, its TO BE
+# WITHDRAWN list, HB 476's motion and the reconsideration that failed) and
+# HJ 9 of 20 March 2025 (HB 431's motion, which failed after a roll call).
+#
+# TWO CASES ARE INVENTED, because the record has no example of either, and
+# each is marked where it stands: HB 523's removal from the consent calendar
+# of 6 February 2025 (the House in fact withdrew HB 523 on that calendar; no
+# bill on a 2025-2026 TO BE WITHDRAWN list was ever removed from one), and
+# HCR 7's withdrawal and the reconsideration that undid it (HCR 7 was never
+# moved to be withdrawn). The words are the journal's own forms.
+
+_JB_INTRO = [
+    "      State of   HOUSE RECORD",
+    "",
+    "              HOUSE JOURNAL NO. 3",
+    "",
+    "                                 Thursday, January 9, 2025",
+    "",
+    "                                                 RESOLUTION",
+    "Rep. Doucette offered the following: RESOLVED, that in accordance with the list in the possession of the Clerk,",
+    "Motion was adopted.",
+    "",
+    "                                                INTRODUCTION OF HOUSE BILLS",
+    "",
+    "                                                 First, second reading and referral",
+    "",
+    "HB 476-FN, relative to restrictions on elective abortion. (Peternel, Carr. 6; Aures, Merr. 13; Burnham, Straf.",
+    "2; Granger, Straf. 2; M. Pearson, Rock. 34; Prudhomme-O'Brien, Rock. 13; Seidel, Hills. 29; Sellers, Graf. 18;",
+    "Terry, Belk. 7; Judiciary)",
+    "HB 523-FN, relative to the office of child advocate's oversight of restraint and seclusion reports. (DeSimone,",
+    "Rock. 18; Children and Family Law)",
+    "HCR 7, recognizing abortion as a critical component of comprehensive reproductive health care. (Simpson,",
+    "Rock. 33; M. Smith, Straf. 10; Hakken-Phillips, Graf. 12; M. Murray, Hills. 37; Seibert, Hills. 21; Van-",
+    "\f10  9JANUARY2025HOUSERECORD",
+    "",
+    "decasteele, Rock. 25; Turer, Rock. 6; Lloyd, Hills. 8; Ebel, Merr. 7; Weber, Ches. 5; Rosenwald, Dist 13;",
+    "Prentiss, Dist 5; Altschiller, Dist 24; Reardon, Dist 15; Perkins Kwoka, Dist 21; Health, Human Services",
+    "and Elderly Affairs)",
+    "HB 1164, - not introduced.",
+    "HB 1165, relative to gender designation on state-issued identification. (Perez, Rock. 16; Sellers, Graf. 10;",
+    "Panek, Hills. 1; Transportation)",
+    "HB 1437 - not introduced.",
+    "HB 1438, requiring mental health caseworkers to report instances of animal abuse. (Lloyd, Hills. 8; Executive",
+    "Departments and Administration)",
+    "HB 1470 - not introduced",
+    "HB 1471, relative to changes to the state retirement system. (Foote, Rock. 13; Executive Departments and",
+    "Administration)",
+    "HB 1545- not introduced.",
+    "HB 1546-FN, repealing the business profits tax. (Ankarberg, Straf. 7; Ways and Means)",
+    "HB 431, establishing a commission to review draft rules related to minimum standards for public school",
+    "approval. (Notter, Hills. 12; Education Policy and Administration)",
+    "HB 234-FN, relative to the statewide education property tax and excess revenue from games of chance. (Har-",
+    "rington, Straf. 18; Granger, Straf. 2; Ways and Means)",
+    "CACR 1, relating to the governor. Providing that there be a lieutenant governor who shall assume the duties",
+    "of the governor if the governor is incapacitated. (Moffett, Merr. 4; Executive Departments and Administration)",
+    "",
+    "                                                                      RECESS",
+    "",
+]
+_JB_FEB6 = [
+    "              HOUSE JOURNAL NO. 4",
+    "",
+    "                                 Thursday, February 6, 2025",
+    "",
+    "                                                          CONSENT CALENDAR",
+    "Rep. Osborne moved that the Consent Calendar with the relevant amendments as printed in the day's House",
+    "Record be adopted.",
+    # INVENTED: the journal prints no removal here, and the House withdrew HB
+    # 523 on this very calendar. No bill on a 2025-2026 TO BE WITHDRAWN list
+    # was ever removed from its calendar, so the case has no real example;
+    # the line is in the form the journal prints a removal in.
+    "HB 523-FN, relative to the office of child advocate's oversight of restraint and seclusion reports, removed",
+    "by Reps. Heath Howard and Wade.",
+    "Consent Calendar was adopted.",
+    "",
+    "                                                        MOTION TO WITHDRAW",
+    "HB 476-FN, relative to restrictions on elective abortion, removed by Reps. Heath Howard, Wade, de Vries,",
+    "Seibert, Wendy Thomas, Selig, Beauchemin, Sorensen, Parshall and DeRoy.",
+    "",
+    "The question being adoption of the motion to withdraw.",
+    "Rep. Heath Howard requested a roll call; not sufficiently seconded.",
+    "On a division vote, with 335 members having voted in the affirmative, and 18 in the negative, the motion to",
+    "withdraw was adopted.",
+    "\f2                   6FEBRUARY2025HOUSERECORD",
+    "",
+    "                                                       MOTION TO RECONSIDER",
+    "Having voted with the prevailing side, Rep. Kuttab moved that the House reconsider its action whereby, on",
+    "a Division vote of 335-18, the House adopted the motion to withdraw on HB 476-FN, relative to restrictions",
+    "on elective abortion.",
+    "",
+    "The question being adoption of the motion to reconsider.",
+    "Rep. Kuttab requested a roll call; sufficiently seconded.",
+    "",
+    "                                            YEAS 15 - NAYS 340",
+    "",
+    "                                            YEAS - 15",
+    "                                            BELKNAP",
+    "",
+    "Comtois, Barbara    Nagel, David",
+    "",
+    "and the motion failed.",
+    "",
+    "HB 178, relative to foster parent representation of foster children with disabilities. OUGHT TO PASS.",
+    "Rep. Mark Pearson for Children and Family Law. This bill does one simple thing. Vote 18-0.",
+    "",
+    "                                                            TO BE WITHDRAWN",
+    "",
+    "HB 234-FN, relative to the statewide education property tax and excess revenue from games of chance.",
+    "HB 523-FN, relative to the office of child advocate's oversight of restraint and seclusion reports.",
+    "",
+    "                                                          REGULAR CALENDAR",
+    "",
+    "HB 511-FN, relative to cooperation with federal immigration authorities. OUGHT TO PASS WITH AMEND-",
+    "MENT.",
+]
+_JB_MAR20 = [
+    "              HOUSE JOURNAL NO. 9",
+    "",
+    "                                 Thursday, March 20, 2025",
+    "",
+    "                                                          CONSENT CALENDAR",
+    "Rep. Osborne moved that the Consent Calendar with the relevant amendments as printed in the day's House",
+    "Record be adopted.",
+    "\f                      20MARCH2025HOUSERECORD                                                                 3",
+    "",
+    "Consent Calendar was adopted.",
+    "",
+    "                                                        MOTION TO WITHDRAW",
+    "HB 431, establishing a commission to review draft rules related to minimum standards for public school",
+    "approval, removed by Reps. Notter, Layon, Farrington, Osborne, Noble, McFarlane, Cordelli, Tom Mannion,",
+    "Wherry and Litchfield.",
+    "",
+    "The question being adoption of the motion to withdraw.",
+    "Rep. Cordelli requested a roll call; sufficiently seconded.",
+    "",
+    "                                           YEAS 160 - NAYS 207",
+    "",
+    "St. Clair, Charlie    Paige, David               YEAS - 160                             Woodcock, Stephen",
+    "Burroughs, Anita                                 BELKNAP",
+    "",
+    "and the motion failed.                               Smith, Steven",
+    "",
+    # INVENTED: HCR 7 was never moved to be withdrawn. The words are the
+    # journal's own forms, put to a bill so that a reconsideration that
+    # CARRIED, and the motion to withdraw then put again and lost, is seen to
+    # cancel the withdrawal it reconsidered.
+    "                                                        MOTION TO WITHDRAW",
+    "HCR 7, recognizing abortion as a critical component of comprehensive reproductive health care, removed by",
+    "Reps. Wade and Selig.",
+    "The question being adoption of the motion to withdraw.",
+    "Motion was adopted.",
+    "",
+    "                                                       MOTION TO RECONSIDER",
+    "Having voted with the prevailing side, Rep. Selig moved that the House reconsider its action whereby the",
+    "House adopted the motion to withdraw on HCR 7.",
+    "The question being adoption of the motion to reconsider.",
+    "Motion was adopted.",
+    "The question now being adoption of the motion to withdraw.",
+    "Motion failed.",
+    "",
+    "                                                          REGULAR CALENDAR",
+]
+
+
+def _jb_tree(root):
+    """The fixture's journals/ under `root`: three files of 2025."""
+    d = root / "journals" / "2025"
+    d.mkdir(parents=True)
+    for name, lines in (("HJ 03 January 9, 2025.txt", _JB_INTRO),
+                        ("HJ 04 February 6, 2025.txt", _JB_FEB6),
+                        ("HJ 09 March 20, 2025.txt", _JB_MAR20)):
+        (d / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return root / "journals"
+
+
+@check("build", "the House Journal's introductions are read, traps and all",
+       needs=("journal_bills",))
+def _journal_intros(J):
+    """journal_bills.py reads each entry of a list of bills introduced: the
+    designation as printed, the title, every sponsor in order and the
+    committee. The traps are the journals' own. A "not introduced" placeholder
+    in each of its four spellings gives nothing, and three of them have no
+    comma, so a splitter that waits for one glues them to the entry before
+    and loses the entry after. HCR 7's "Van-" ends a page and "decasteele"
+    begins the next, below its running head; HB 234's "Har-" ends a line. A
+    page head with no space between the day and the month is page 39, not 1.
+    """
+    import contextlib
+    import io
+    root = Path(tempfile.mkdtemp())
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            intros, records, report, problems = J.read_all(_jb_tree(root))
+        assert not problems, problems
+        got = {b: e for (t, b), e in intros.items()}
+        assert all(t == "2025-2026" for t, _b in intros), sorted(intros)
+        e = got.get("HB476")
+        assert e, f"HB 476's entry was not read: {sorted(got)}"
+        assert (e["designation"], e["suffix"], e["committee"]) == (
+            "HB 476-FN", "-FN", "Judiciary"), (e["designation"], e["committee"])
+        assert e["title"] == "relative to restrictions on elective abortion.", e["title"]
+        assert e["sponsors"][0] == "Peternel, Carr. 6" and len(e["sponsors"]) == 9, e["sponsors"]
+        assert e["sponsors"][2] == "Burnham, Straf. 2", e["sponsors"]
+        assert (e["cite"]["journal"], e["cite"]["page"], e["cite"]["line"],
+                e["cite"]["date"]) == ("HJ 3", 1, 15, "2025-01-09"), e["cite"]
+        hcr = got.get("HCR7") or {}
+        assert "Vandecasteele, Rock. 25" in hcr.get("sponsors", []), (
+            f"a name broken across a page head was not rejoined: {hcr.get('sponsors')}")
+        assert hcr.get("committee") == "Health, Human Services and Elderly Affairs", hcr
+        assert got["HB234"]["sponsors"][0] == "Harrington, Straf. 18", got["HB234"]["sponsors"]
+        for gone in ("HB1164", "HB1437", "HB1470", "HB1545"):
+            assert gone not in got, f"the placeholder {gone} was read as a bill"
+        for kept, title in (("HB1165", "relative to gender designation on state-issued "
+                                       "identification."),
+                            ("HB1438", "requiring mental health caseworkers to report "
+                                       "instances of animal abuse."),
+                            ("HB1471", "relative to changes to the state retirement system."),
+                            ("HB1546", "repealing the business profits tax.")):
+            assert got.get(kept, {}).get("title") == title, (
+                f"the entry after a placeholder was swallowed or garbled: {kept} "
+                f"{got.get(kept)}")
+        assert got["HB1165"]["cite"]["page"] == 10, got["HB1165"]["cite"]
+        assert got["CACR1"]["title"].startswith("relating to the governor. Providing that"), (
+            got["CACR1"]["title"])
+        assert got["CACR1"]["committee"] == "Executive Departments and Administration"
+        assert len(got) == 10, sorted(got)
+        assert J.pages(["x", "\f19FEBRUARY2026HOUSERECORD  39", "y"]) == [1, 39, 39], (
+            "an odd page's head read as another page")
+        assert J.pages(["\f4  8JANUARY2025HOUSERECORD", "y"]) == [4, 4]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("10 measures read; four placeholders give nothing and swallow "
+                  "nothing; names rejoined at a line end and across a page head")
+
+
+@check("build", "a withdrawal stands only where the House's own record says it did",
+       needs=("journal_bills",))
+def _journal_withdrawals(J):
+    """A record is written for a bill introduced AND withdrawn for good:
+      - listed TO BE WITHDRAWN on a consent calendar the journal records as
+        adopted -- HB 234;
+      - but not where members removed it from that calendar -- HB 523 here,
+        whose removal is invented (the House withdrew it on that calendar);
+      - a MOTION TO WITHDRAW adopted, with its vote, and the reconsideration
+        that failed beside it -- HB 476, 335-18 and 15-340;
+      - not a motion that failed, whose outcome comes after a roll call --
+        HB 431, 160-207, which the House went on to pass;
+      - not one a carried motion to reconsider undid, the motion to withdraw
+        then put again and lost -- HCR 7 here, invented throughout.
+    And a year folder holding a sitting of its own year with no introduction
+    read from it is refused, non-zero, with nothing written; a folder holding
+    only December's organization day is not.
+    """
+    import contextlib
+    import io
+    root = Path(tempfile.mkdtemp())
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            _intros, records, report, problems = J.read_all(_jb_tree(root))
+        assert not problems, problems
+        recs = records.get("2025-2026") or {}
+        assert sorted(recs) == ["HB234", "HB476"], (
+            f"withdrawn records {sorted(recs)}, wanted HB234 and HB476; notes: {report}")
+        w = recs["HB234"]["withdrawn"]
+        assert (w["how"], w["date"], w["journal"]) == ("consent calendar", "2025-02-06",
+                                                      "HJ 4"), w
+        assert recs["HB234"]["introduced"]["date"] == "2025-01-09"
+        w = recs["HB476"]["withdrawn"]
+        assert (w["how"], w.get("vote"), w.get("reconsideration")) == (
+            "motion", "335-18, division", "failed, 15-340"), w
+        assert recs["HB476"]["title"] == "relative to restrictions on elective abortion."
+        assert recs["HB476"]["committee"] == "Judiciary"
+        assert any("HB523" in x and "removed" in x for x in report), report
+        assert any("HCR7" in x and "reconsidered" in x for x in report), report
+
+        # A year that cannot be read is refused rather than written empty.
+        bad = Path(tempfile.mkdtemp())
+        out = bad / "journal_bills.json"
+        try:
+            (bad / "journals" / "2025").mkdir(parents=True)
+            (bad / "journals" / "2025" / "HJ 04 February 6, 2025.txt").write_text(
+                "\n".join(_JB_FEB6) + "\n", encoding="utf-8")
+            r = _run([sys.executable, "journal_bills.py", "--root", str(bad / "journals"),
+                      "--out", str(out)], capture_output=True, text=True, timeout=120)
+            assert r.returncode != 0 and not out.exists(), (
+                f"a year of sittings with no introduction read was written "
+                f"(exit {r.returncode}): {(r.stdout + r.stderr)[-300:]}")
+            assert "REFUSED" in r.stderr, r.stderr[-300:]
+            # December's organization day opens next year's folder and has no
+            # list yet: said, not refused.
+            shutil.rmtree(bad / "journals" / "2025")
+            _jb_tree(bad)
+            (bad / "journals" / "2027").mkdir()
+            (bad / "journals" / "2027" / "HJ 01 December 2, 2026.txt").write_text(
+                "              HOUSE JOURNAL NO. 1\n\n"
+                "                          Wednesday, December 2, 2026\n\n"
+                "The House assembled at 10:00 a.m.\n", encoding="utf-8")
+            r = _run([sys.executable, "journal_bills.py", "--root", str(bad / "journals"),
+                      "--out", str(out)], capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0 and out.exists(), (r.stdout + r.stderr)[-300:]
+            assert sorted(json.loads(out.read_text(encoding="utf-8"))["2025-2026"]) == [
+                "HB234", "HB476"]
+        finally:
+            shutil.rmtree(bad, ignore_errors=True)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("consent-calendar and motion withdrawals stand; a removal, a failed "
+                  "motion and a carried reconsideration give none; an unreadable year "
+                  "is refused")
+
+
+_JB_HEAD3 = ["              HOUSE JOURNAL NO. 3", "",
+             "                                 Thursday, January 9, 2025", ""]
+_JB_HEAD4 = ["              HOUSE JOURNAL NO. 4", "",
+             "                                 Thursday, February 6, 2025", ""]
+_JB_LIST = ["                                                INTRODUCTION OF HOUSE BILLS", "",
+            "                                                 First, second reading and referral",
+            ""]
+
+
+def _jb_consent(tbw, adopted="Consent Calendar was adopted.", heading="TO BE WITHDRAWN",
+                pre=()):
+    """A consent calendar of 6 February 2025's shape, `tbw` its TO BE
+    WITHDRAWN list."""
+    return ["                                                          CONSENT CALENDAR",
+            "Rep. Osborne moved that the Consent Calendar with the relevant amendments as "
+            "printed in the day's House", "Record be adopted.", *pre, adopted, "",
+            "HB 178, relative to foster parents. OUGHT TO PASS.",
+            "Rep. Mark Pearson for Children and Family Law. Vote 18-0.", "",
+            f"                                                            {heading}", "",
+            *tbw, "", "                                                          REGULAR CALENDAR",
+            ""]
+
+
+def _jb_motion(bill, *after):
+    return ["                                                        MOTION TO WITHDRAW",
+            f"{bill}, relative to apples, removed by Reps. Wade and Selig.", "",
+            "The question being adoption of the motion to withdraw.", *after]
+
+
+def _jb_case(J, entries, body, files=()):
+    """read_all over two sittings of 2025 -- 9 January's list of bills
+    introduced holding `entries`, and 6 February's `body` -- and any `files`
+    besides: ({bill: intro}, {bill: record}, notes, problems)."""
+    import contextlib
+    import io
+    root = Path(tempfile.mkdtemp())
+    try:
+        d = root / "2025"
+        d.mkdir(parents=True)
+        for name, lines in (("HJ 03 January 9, 2025.txt",
+                             _JB_HEAD3 + _JB_LIST + list(entries)
+                             + ["", "                    RECESS", ""]),
+                            ("HJ 04 February 6, 2025.txt", _JB_HEAD4 + list(body)),
+                            *files):
+            (d / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            intros, records, report, problems = J.read_all(root)
+        return ({b: e for (_t, b), e in intros.items()}, records.get("2025-2026") or {},
+                report, problems)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the journal reader refuses a withdrawal it cannot decide",
+       needs=("journal_bills",))
+def _journal_undecided(J):
+    """A withdrawn bill is in none of the General Court's files, so one the
+    reader misses is gone from the site with every step reporting success.
+    What it reads and understands it records or notes; what it saw and could
+    not decide stops the run. Each case is a form the journals or the House
+    Calendar print, or a way the reader was shown to fail silently:
+
+      - "Motion adopted." (2026's wording, fourteen times), a heading in
+        title case, "Consent Calendar adopted." -- read, and recorded;
+      - a blank line inside an entry (SB 83 of 2025 lost 135 Senate bills
+        after it), a committee alone below a blank (SB 118), a CACR under
+        INTRODUCTION OF SENATE BILLS (CACR 11 of 2026) -- read, the CACR as
+        the Senate's;
+      - "not introduced" after an en dash or no dash -- a placeholder, not
+        glued to the entry before;
+      - a TO BE WITHDRAWN title wrapping onto a line that begins "HB 2," --
+        one bill, not two; a "removed by" past a page head -- removed;
+      - a reconsideration "whereby it withdrew" that carried, and the motion
+        to withdraw then lost -- no record, a note;
+      - REFUSED: a motion with no outcome read; TO BE WITHDRAWN outside a
+        consent calendar, or on one not read as adopted; a reconsideration
+        that carried with no second vote read; a House bill withdrawn with no
+        introduction read; a record without sponsors or committee (a list
+        that ran into the prose after it); a sitting whose dateline is not
+        read. A Senate bill the House withdrew is a note, not a refusal.
+    """
+    apples = ["HB 100, relative to apples. (Smith, Hills. 1; Judiciary)"]
+    tbw100 = ["HB 100, relative to apples."]
+
+    def wants(case, got, records, report, problems, record=None, problem=None, note=None):
+        if record is not None:
+            assert sorted(records) == sorted(record) and not problems, (
+                f"{case}: records {sorted(records)}, wanted {sorted(record)}; "
+                f"problems {problems}; notes {report}")
+        if problem:
+            assert any(problem in x for x in problems), (
+                f"{case}: not refused ({problem!r} not in {problems}); records "
+                f"{sorted(records)}")
+        if note:
+            assert any(note in x for x in report) and not problems, (
+                f"{case}: no note {note!r} ({report}); problems {problems}")
+
+    # Read and recorded.
+    for case, body in (
+            ("Motion adopted.", _jb_motion("HB 100", "Motion adopted.", "")),
+            ("To Be Withdrawn", _jb_consent(tbw100, heading="To Be Withdrawn")),
+            ("Consent Calendar adopted.",
+             _jb_consent(tbw100, adopted="Consent Calendar adopted."))):
+        wants(case, *_jb_case(J, apples, body), record=["HB100"])
+
+    # A blank line inside an entry, a placeholder of another spelling.
+    got, recs, rep, prob = _jb_case(J, [
+        "HB 100, relative to apples. (Smith, Hills. 1; Judiciary)",
+        "HB 101, relative to pears and plums and other fruit that grows in the",
+        "",
+        "state of New Hampshire. (Jones, Rock. 2; Brown, Merr. 3; Ways and Means)",
+        "HB 102 – not introduced.",
+        "HB 103, relative to cherries. (Green, Ches. 4; Election Law)",
+        "HB 104 not introduced.",
+        "HB 105, relative to grapes. (",
+        "",
+        "White, Sull. 5; Housing)"],
+        _jb_consent(["HB 101, relative to pears.", "HB 105, relative to grapes."]))
+    assert sorted(got) == ["HB100", "HB101", "HB103", "HB105"], sorted(got)
+    assert got["HB101"]["sponsors"] == ["Jones, Rock. 2", "Brown, Merr. 3"], got["HB101"]
+    assert got["HB101"]["title"].endswith("state of New Hampshire."), got["HB101"]["title"]
+    assert got["HB100"]["title"] == "relative to apples." and got["HB103"]["committee"] == (
+        "Election Law"), (got["HB100"], got["HB103"])
+    wants("a blank inside an entry", got, recs, rep, prob, record=["HB101", "HB105"])
+
+    # One wrapped title, not two bills; a removal the page turned onto.
+    wants("a title wrapping at a designation", *_jb_case(
+        J, apples + ["HB 2, relative to the budget. (Weyler, Rock. 14; Finance)"],
+        _jb_consent(["HB 100, relative to apples and to the amendments made in",
+                     "HB 2, the budget."])), record=["HB100"])
+    wants("a removal past a page head", *_jb_case(J, apples, _jb_consent(tbw100, pre=[
+        "HB 100, relative to apples and to the many varieties of apple grown in orchards",
+        "\f2  6FEBRUARY2025HOUSERECORD", "",
+        "and sold at farm stands, removed by Reps. Wade and Selig."])),
+        record=[], note="removed from the consent calendar")
+
+    # A reconsideration that carried, the motion to withdraw then lost.
+    recon = ["", "                                                       MOTION TO RECONSIDER",
+             "Having voted with the prevailing side, Rep. Selig moved that the House "
+             "reconsider its action whereby it withdrew HB 100.",
+             "The question being adoption of the motion to reconsider.", "Motion adopted."]
+    wants("reconsidered, then lost", *_jb_case(J, apples, _jb_motion(
+        "HB 100", "Motion was adopted.", *recon,
+        "The question now being adoption of the motion to withdraw.", "Motion failed.", "")),
+        record=[], note="then failed")
+    wants("reconsidered, second vote unread", *_jb_case(J, apples, _jb_motion(
+        "HB 100", "Motion was adopted.", *recon, "")), problem="reconsidered")
+
+    # Refused.
+    for case, entries, body, problem in (
+            ("no outcome", apples, _jb_motion("HB 100", "Rep. Wade spoke.", ""),
+             "no outcome read"),
+            ("outside a consent calendar", apples,
+             ["                    TO BE WITHDRAWN", "", *tbw100, ""], "outside a consent"),
+            ("calendar not read as adopted", apples,
+             _jb_consent(tbw100, adopted="The calendar stood."), "not read as recording"),
+            ("no introduction", apples, _jb_consent(["HB 900, relative to quinces."]),
+             "no introduction list"),
+            ("a list run into prose",
+             apples + ["HB 101, relative to pears. (Jones, Rock. 2; Ways and Means)",
+                       "Rep. Bogert moved that the House recess for introductions."],
+             _jb_consent(["HB 101, relative to pears."]), "without a sponsors")):
+        wants(case, *_jb_case(J, entries, body), problem=problem)
+    wants("a Senate bill withdrawn", *_jb_case(
+        J, apples, _jb_consent(["SB 9, relative to quinces."])), record=[],
+        note="a Senate measure")
+    wants("a dateline not read", *_jb_case(J, apples, [], files=[(
+        "HJ 05 February 13, 2025.txt",
+        ["              HOUSE JOURNAL NO. 5", "", "Thursday,February13,2025", ""]
+        + _jb_motion("HB 100", "Motion was adopted."))]), problem="no dateline")
+
+    # Whose list: a CACR under INTRODUCTION OF SENATE BILLS, and a committee
+    # alone below a blank -- one the General Court's committee table names,
+    # given here so that the check needs no Committees.txt on disk.
+    root = Path(tempfile.mkdtemp())
+    saved = list(J._CKEYS)
+    J._CKEYS[:] = [{J._ckey("Health, Human Services and Elderly Affairs")}]
+    try:
+        f = root / "HJ 11 March 27, 2025.txt"
+        f.write_text("\n".join(_JB_HEAD3 + [
+            "                                               INTRODUCTION OF SENATE BILLS", "",
+            "                                                 First, second reading and referral",
+            "",
+            "CACR 8, relating to sheriffs. Providing that there be no age limit. "
+            "(Executive Departments and Administration)",
+            "SB 118-FN, relative to the personal needs allowance of residents of nursing homes.",
+            "", "(Health, Human Services and Elderly Affairs)", "",
+            "SB 119-FN, relative to Medicaid pharmaceutical services. (Health, Human Services "
+            "and Elderly Affairs)", "", "                    RECESS", ""]) + "\n",
+            encoding="utf-8")
+        r = J.read_file(f, 2025)
+        got = {e["bill"]: e for e in r["intros"]}
+        assert sorted(got) == ["CACR8", "SB118", "SB119"], sorted(got)
+        assert {e["chamber"] for e in got.values()} == {"S"}, got["CACR8"]
+        assert got["SB118"]["committee"] == "Health, Human Services and Elderly Affairs", (
+            got["SB118"])
+    finally:
+        J._CKEYS[:] = saved
+        shutil.rmtree(root, ignore_errors=True)
+    # A title's own parenthesis does not close an entry at a page turn.
+    assert not J._closed("HB 450, relative to clean energy and resiliency (C-PACER)")
+    assert J._closed("SB 73-FN, relative to the operation of bingo games. (Ways and Means)")
+    assert J._closed("HB 449, cases. (D. McGuire, Merr. 14; Resources, Recreation and Development)")
+    assert J._continues("(Packard, Rock. 16; Hunt, Ches. 14;",
+                        "HB 450, relative to clean energy and resiliency (C-PACER)")
+    assert not J._continues("(Speaker Packard in the Chair)", "SB 56, relative to the authority.")
+    assert not J._continues("(Packard, Rock. 16; Finance)", "HB 1, x. (Smith, Rock. 1; Finance)")
+    return "ok", ("new wordings recorded, the press's blanks and placeholders read; "
+                  "seven undecided withdrawals refused; a Senate CACR is the Senate's")
+
+
+@check("pipeline", "the nightly's build fails, not skips, without the House Journals",
+       needs=("build_all",))
+def _journal_step_not_skipped(BA):
+    """journal_bills.json is in neither git nor the kit, so the nightly's
+    machine makes it from the journals the kit brings. Without journals/ the
+    step used to be skipped: build_data printed a banner in the middle of its
+    output, build_all echoes three lines of a step, check_site counts a skip
+    as a warning, and the nine bills left the site with every step passing.
+
+    So where the build is the kit's, the step fails and the build stops; on
+    a laptop's bare folder it is skipped and named, as every step with a
+    missing input is, so that a first build can still happen.
+    """
+    here = Path(".").resolve()
+    step = next((s for s in BA.plan(type("A", (), {
+        "key": None, "session": "2026", "base": "https://graniterecord.org",
+        "archive": "nh-archive"})()) if "journal_bills.py" in s.args), None)
+    assert step is not None, "build_all has no journal_bills.py step"
+    assert step.kit_required, "the journal step may be skipped on the nightly's machine"
+    root = Path(tempfile.mkdtemp(prefix="gr-journal-step-"))
+
+    def run(*args, env=None):
+        return _sealed_run([sys.executable, str(here / "build_all.py"), *args],
+                           cwd=root, capture_output=True, text=True, timeout=120,
+                           env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
+    try:
+        (root / "archive" / "cloud").mkdir(parents=True)
+        (root / BA.KIT_RECORD).write_text("{}", encoding="utf-8")
+        for p, _, _ in BA.CARRIED:
+            (root / p).write_text('{"recordings": {}}' if p == "caption_spans.json"
+                                  else "{}", encoding="utf-8")
+        r = run("--local")
+        assert r.returncode == 1 and "FAILED, missing journals" in r.stdout \
+            and f"Stopped at: {step.name}" in r.stdout, (
+                f"a kit build without journals/ did not stop at the journal step "
+                f"(exit {r.returncode}): {r.stdout[-400:]}")
+        (root / BA.KIT_RECORD).unlink()
+        r = run("--local", "--dry-run")
+        assert r.returncode == 0 and "SKIP, missing journals" in r.stdout, (
+            f"a laptop's folder without journals/ did not name the skip: {r.stdout[-400:]}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("from the kit, no journals/ stops the build at the journal step; "
+                  "on a laptop's bare folder the step is skipped and named")
+
+
+@check("build", "a journal record joins the record only where nothing else has the bill",
+       needs=("build_data", "build_all"))
+def _journal_into_data(BD, BA):
+    """build_data.add_journal_bills puts a withdrawn bill into data/bills.json
+    only in a term already there, and never over a bill the General Court's
+    files carry. A term it created would read to the archive merge as "built
+    from session files" and the real term would be skipped -- 2025-2026 nine
+    bills long. A missing file is said, loudly, and adds nothing.
+
+    The sponsors are the journal's, in its order, the first prime and marked
+    inferred, under source "House Journal"; each is labelled with the seat the
+    roster gives -- Sellers prints "Graf. 18", his 2023-2024 seat, and sits
+    for Grafton 10 -- a member who has left from their own votes, and a name
+    nobody fits as printed. And the step runs before build_data reads it.
+    """
+    import contextlib
+    import io
+    steps = [s.name for s in BA.plan(type("A", (), {
+        "key": None, "session": "2026", "base": "https://graniterecord.org",
+        "archive": "nh-archive"})())]
+    at = {n: i for i, n in enumerate(steps)}
+    assert at["bills the House withdrew, from its journals"] < at["build data (first pass)"], (
+        "the journal step runs after build_data has read its output")
+    root = Path(tempfile.mkdtemp())
+    try:
+        mine = {"bill": "HB10", "lsr": "2025-0042", "lsr_year": "2025",
+                "lsr_num": "0042", "title": "the General Court's own"}
+        by_term = {"2025-2026": {"HB10": mine},
+                   "2023-2024": {"HB1": {"bill": "HB1", "lsr_year": "2023",
+                                         "archived": True}}}
+        rec = {"bill": "HB476", "designation": "HB 476-FN", "suffix": "-FN",
+               "title": "relative to restrictions on elective abortion.", "chamber": "H",
+               "year": "2025", "committee": "Judiciary",
+               "sponsors": ["Peternel, Carr. 6"],
+               "introduced": {"date": "2025-01-09", "journal": "HJ 3", "page": 12},
+               "withdrawn": {"date": "2025-02-06", "journal": "HJ 4", "page": 1,
+                             "how": "motion", "vote": "335-18, division"}}
+        p = root / "journal_bills.json"
+        p.write_text(json.dumps({
+            "2025-2026": {"HB476": rec, "HB10": {**rec, "bill": "HB10"}},
+            "2027-2028": {"HB1001": {**rec, "bill": "HB1001", "year": "2027"}}}),
+            encoding="utf-8")
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            added = BD.add_journal_bills(by_term, p)
+        assert sorted(by_term) == ["2023-2024", "2025-2026"], (
+            f"a journal record created a term: {sorted(by_term)}")
+        assert by_term["2025-2026"]["HB10"] is mine and "journal" not in mine, (
+            "a journal record was put over a bill the General Court's files carry")
+        got = by_term["2025-2026"].get("HB476") or {}
+        assert added == {"2025-2026": {"HB476": got}}, added
+        assert (got.get("lsr"), got.get("lsr_num"), got.get("lsr_year"),
+                got.get("house_committee"), got.get("designation")) == (
+            "", "", "2025", "Judiciary", "HB 476-FN"), got
+        assert got["journal"]["withdrawn"]["how"] == "motion", got.get("journal")
+        assert "HB1001" in said.getvalue(), "a record left out was not named"
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            assert BD.add_journal_bills({"2025-2026": {}}, root / "absent.json") == {}
+        assert "NO " in said.getvalue() and "journal_bills.py" in said.getvalue(), (
+            "a missing journal_bills.json went unsaid")
+
+        import text_sponsors as TS
+        sat = TS.Sat([
+            {"member_id": "10579", "name": "Peternel, Katy", "party": "R", "year": "2025",
+             "body": "H", "label": "Rep. Katy Peternel (R - Carr 6)"},
+            {"member_id": "10651", "name": "Seidel, Sheila", "party": "R", "year": "2025",
+             "body": "H", "label": "Seidel, Sheila(R) Hillsborough 29"},
+            {"member_id": "10620", "name": "Sellers, John", "party": "R", "year": "2025",
+             "body": "H", "label": "Rep. John Sellers (R - Graf 10)"}])
+        legs = {
+            "10579": {"id": "10579", "name": "Peternel, Katy", "party_code": "R",
+                      "chamber": "H", "county_abbr": "Carr", "district": "6",
+                      "label": "Rep. Katy Peternel (R - Carr 6)"},
+            "10620": {"id": "10620", "name": "Sellers, John", "party_code": "R",
+                      "chamber": "H", "county_abbr": "Graf", "district": "10",
+                      "label": "Rep. John Sellers (R - Graf 10)"}}
+        rows = BD.journal_sponsor_rows(["Peternel, Carr. 6", "Seidel, Hills. 29",
+                                        "Sellers, Graf. 18", "Nobody, Rock. 99"],
+                                       "2025-2026", sat, legs)
+        assert [r["member_id"] for r in rows] == ["10579", "10651", "10620", ""], rows
+        assert [r["prime"] for r in rows] == [True, False, False, False], rows
+        assert all(r["source"] == "House Journal" and r["prime_inferred"] for r in rows)
+        assert [r["sequence"] for r in rows] == [0, 1, 2, 3]
+        assert rows[1]["label"] == "Rep. Sheila Seidel (R - Hills 29)", rows[1]
+        assert (rows[2]["label"], rows[2]["district"], rows[2]["as_printed"]) == (
+            "Rep. John Sellers (R - Graf 10)", "10", "Sellers, Graf. 18"), rows[2]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("added into its term only, never over a docket bill, never a term of "
+                  "its own; sponsors in the journal's order, seats from the roster")
+
+
+@check("build", "a withdrawn bill says Withdrawn, from the journal or the docket",
+       needs=("build_site_v2", "build_bill_pages", "build_feeds"))
+def _withdrawn_status(B, BP, BF):
+    """A bill the House Journal alone carries reads Withdrawn, kind done,
+    credited to the House Journal -- never to the General Court's status page
+    -- with a dated rail of introduction then withdrawal, no docket row of its
+    own invented, and no docket or status-page address, which would be built
+    from an LSR it does not have. Its journal is linked where the drain
+    fetched it.
+
+    And a withdrawal the DOCKET records as adopted is an ending too: HB 641 of
+    2013, "Withdrawn Under House Rule 38(e) (Rep Cebrowski): MA VV", read "In
+    committee". One that failed changes nothing: HB 431 of 2025, "Persuant to
+    House Rule 39(e), Withdrawn: MF RC 160-207", which the House then passed.
+
+    Its note says only what was looked at -- the General Court's data files,
+    the docket among them -- and nothing of a status page nobody asked for.
+    A reader without JavaScript is given the journals, not an empty list; and
+    its sponsors' feeds date the sponsorship by its introduction, where a
+    bill with no docket event used to be dated afresh every night.
+    """
+    jrec = {"bill": "HB476", "lsr": "", "lsr_year": "2025", "lsr_num": "",
+            "title": "relative to restrictions on elective abortion.", "chamber": "H",
+            "house_committee": "Judiciary", "senate_committee": "",
+            "designation": "HB 476-FN", "suffix": "-FN",
+            "journal": {"introduced": {"date": "2025-01-09", "journal": "HJ 3", "page": 12},
+                        "withdrawn": {"date": "2025-02-06", "journal": "HJ 4", "page": 1,
+                                      "how": "motion", "vote": "335-18, division",
+                                      "reconsideration": "failed, 15-340"}}}
+    d = B.bill_disposition(jrec, "HB476", {}, None, [], "2025-2026", "2025-2026")
+    assert (d.kind, d.status, d.source) == ("done", "Withdrawn", "House Journal"), d
+
+    def narr(raw, motion):
+        return {"events": [
+            {"date": "2013-01-03", "type": "introduced", "body": "H", "cancelled": False,
+             "raw": "Introduced 1/3/2013 and Referred to Municipal and County Government"},
+            {"date": "2013-02-06", "type": "floor", "body": "H", "cancelled": False,
+             "raw": raw, "action": raw.split(":")[0], "motion": motion}]}
+    ma = narr("Withdrawn Under House Rule 38(e) (Rep Cebrowski): MA VV", "MA")
+    mf = narr("Persuant to House Rule 39(e), Withdrawn: MF RC 160-207", "MF")
+    arch = {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS", "senate_status": ""}
+    d = B.bill_disposition({}, "HB641", arch, ma, [], "2013-2014", "2025-2026")
+    assert (d.kind, d.status) == ("done", "Withdrawn"), (
+        f"a withdrawal the docket records as adopted reads {d.status!r}")
+    d = B.bill_disposition({}, "HB641", {}, ma, [], "2025-2026", "2025-2026")
+    assert (d.kind, d.status) == ("done", "Withdrawn"), d
+    d = B.bill_disposition({}, "HB431", {}, mf, [], "2025-2026", "2025-2026")
+    assert d.status != "Withdrawn", "a withdrawal motion that FAILED withdrew the bill"
+    assert B.classify(mf, [], "HB")[1] == "In committee", B.classify(mf, [], "HB")
+    for not_a_bill in ("REP. HEALY SUB ITL,WITHDRAWN; PASSED VV",
+                       "Withdraw From Joint Committee (Reps Wallner and Hess)",
+                       "Withdrawn from Consent Calendar",
+                       "Per House Rule 38, Withdrawn from Committee"):
+        assert not B.WITHDRAWN_ACT.search(not_a_bill), not_a_bill
+    # The rule cited without "to" -- SB 78 of 2025's docket -- is the same act.
+    for spelled in ("Persuant House Rule 39(e), Withdrawn: MF DV 2025-1713h",
+                    "Pursuant to House Rule 39(e), Withdrawn"):
+        assert B.WITHDRAWN_ACT.search(spelled), spelled
+    mf_dv = narr("Persuant House Rule 39(e), Withdrawn: MF DV 2025-1713h", "MF")
+    d = B.bill_disposition({}, "SB78", {}, mf_dv, [], "2025-2026", "2025-2026")
+    assert d.status != "Withdrawn", "a withdrawal motion that FAILED withdrew the bill"
+
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        # A journal the drain fetched, for the citation's link.
+        (root / "archive").mkdir()
+        (root / "archive" / "queue.csv").write_text(
+            "chamber,kind,year,name,url,path,state,attempts,error,bytes,fetched\n"
+            "H,journal,2025,HJ 04 February 6 2025.pdf,https://example.invalid/hj4.pdf,"
+            "\"journals\\2025\\HJ 04 February 6, 2025.pdf\",held,0,,1,\n", encoding="utf-8")
+        out = root / "site"
+        out.mkdir()
+        bills = {"2025-2026": {"HB476": jrec},
+                 "2013-2014": {"HB641": {"bill": "HB641", "lsr": "2013-0123",
+                                         "lsr_year": "2013", "lsr_num": "0123",
+                                         "title": "relative to penalties", "chamber": "H",
+                                         "archived": True, **arch}}}
+        os.chdir(root)
+        try:
+            with open(os.devnull, "w") as quiet:
+                import contextlib
+                with contextlib.redirect_stdout(quiet):
+                    idx, *_ = B.build_bills(out, bills, {"2013-2014": {"HB641": ma}},
+                                            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                            {}, {}, {}, {}, {})
+        finally:
+            os.chdir(here)
+        row = {r["id"]: r for r in idx}
+        j = row["HB476"]
+        assert (j["status"], j["kind"], j["passage"], j["last_action"]) == (
+            "Withdrawn", "done", "Hx--x", "2025-02-06"), j
+        assert (row["HB641"]["status"], row["HB641"]["kind"]) == ("Withdrawn", "done"), (
+            row["HB641"])
+        page = json.loads((out / "bills" / "2025" / "HB476.json").read_text(encoding="utf-8"))
+        assert page["status_source"] == "House Journal", page["status_source"]
+        assert page["docket_url"] == "" and page["events"] == [] and page["lsr"] == "", (
+            "a journal record carries a docket address or docket rows")
+        kinds = [x["kind"] for x in page["documents"]]
+        assert "status" not in kinds and "docket" not in kinds, page["documents"]
+        assert any(x["url"] == "https://example.invalid/hj4.pdf" for x in page["documents"]), (
+            f"the journal that withdrew it is not linked: {page['documents']}")
+        rail = page["journey"]["rail"]
+        assert [(s["stop"], s["date"]) for s in rail[:2]] == [
+            ("Introduced", "2025-01-09"), ("House", "2025-02-06")], rail
+        assert page["journey"]["steps"][0]["act"] == "withdrawn"
+        assert page["next_step"] == "Withdrawn", page["next_step"]
+        assert len(page["notes"]) == 1 and "House Journal" in page["notes"][0], page["notes"]
+        assert "do not list this bill" in page["notes"][0] and (
+            "status page" not in page["notes"][0]), (
+            f"the note speaks for more than was looked at: {page['notes']}")
+        html = BP.noscript(j, page)
+        assert "https://example.invalid/hj4.pdf" in html and "<ul></ul>" not in html, (
+            f"a reader without JavaScript is offered no journal: {html[-300:]}")
+        assert BF.filed_date(page) == "2025-01-09", (
+            f"a sponsorship with no docket is dated {BF.filed_date(page)!r}, not by its "
+            "introduction")
+        assert BF.filed_date({"events": [{"date": "2013-02-06"}, {"date": "2013-01-03"},
+                                         {"date": ""}]}) == "2013-01-03"
+        old = json.loads((out / "bills" / "2013" / "HB641.json").read_text(encoding="utf-8"))
+        assert old["docket_url"] and any(x["kind"] == "docket" for x in old["documents"]), (
+            "a bill with an LSR lost its docket address")
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a journal record: Withdrawn, done, Hx--x, credited to the House "
+                  "Journal, no docket or status-page address; a docket's adopted "
+                  "withdrawal is Withdrawn, a failed one is not")
 
 
 # ================================================================ data checks ==
@@ -32159,6 +32963,73 @@ def _work():
                if (d / "transcript.json").exists() and (d / "segments.json").exists())
     return "ok", (f"{len(dirs):,} videos, {tr:,} transcripts, {sg:,} aligned, "
                   f"{both:,} ready for apply_markers, {applied:,} already patched")
+
+
+@check("data", "every bill the House withdrew is on the record")
+def _withdrawn_on_record():
+    """Each bill journal_bills.json reads as introduced and withdrawn is in
+    data/bills.json under its term -- as the General Court's own record where
+    its files carry it, and otherwise as the journal's. Nine bills of
+    2025-2026 are in none of those files, and a step that dropped them would
+    fall below every count the nightly guards: the census only stops a fall
+    of 2%. So it is counted here, by name.
+    """
+    jp, bp = Path("journal_bills.json"), Path("data/bills.json")
+    if not bp.exists():
+        return "skip", "no data/bills.json here; run build_data.py"
+    # NOT A SKIP WHERE THE JOURNALS ARE HERE. The file is missing then
+    # because the step did not run or refused, and the nine bills are not on
+    # the record: exactly what this check is for.
+    J = imp("journal_bills")
+    if not jp.exists():
+        assert not (J and J.years()), (
+            "the House Journals from 2025 are here and journal_bills.json is not, so "
+            "build_data added no withdrawn bill: run python3 journal_bills.py, then "
+            "build_data.py")
+        return "skip", ("no journal_bills.json and no journals/ from 2025 here; "
+                        "journal_bills.py writes it from them before build_data reads it")
+    jb = json.loads(jp.read_text(encoding="utf-8"))
+    bills = json.loads(bp.read_text(encoding="utf-8"))
+    want = [(t, b) for t, bb in jb.items() for b in bb]
+    assert want, ("journal_bills.json records no withdrawn bill, and the journals of "
+                  "2025-2026 print nine")
+    missing = [f"{b} {t}" for t, b in want if b not in (bills.get(t) or {})]
+    assert not missing, ("the House Journal records these as introduced and withdrawn, "
+                         "and data/bills.json does not have them: " + ", ".join(missing))
+    own = sum(1 for t, b in want if (bills[t][b] or {}).get("journal"))
+    return "ok", (f"{len(want)} withdrawn bill(s) on the record, {own} of them as the "
+                  "House Journal's")
+
+
+@check("data", "every House measure the House Journal introduced is on the record")
+def _journal_intros_on_record():
+    """Measured against something it did not generate: every House measure the
+    journals' lists of bills introduced print, from 2025 on, is in
+    data/bills.json under its term. The General Court's files carry all of
+    them but the withdrawn, and journal_bills.py writes those -- so a bill
+    missing here is a withdrawal the reader did not see, or a bill the files
+    dropped for some other reason, and either way a bill the site has lost.
+    """
+    J = imp("journal_bills")
+    bp = Path("data/bills.json")
+    if J is None:
+        raise AssertionError("journal_bills.py will not import")
+    if not J.years():
+        return "skip", "no journals/ from 2025 here"
+    if not bp.exists():
+        return "skip", "no data/bills.json here; run build_data.py"
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        intros, _records, _report, problems = J.read_all()
+    assert not problems, "journal_bills.py would refuse: " + "; ".join(problems[:3])
+    bills = json.loads(bp.read_text(encoding="utf-8"))
+    missing = sorted(f"{e['designation']} ({t}, {e['cite']['file']}:{e['cite']['line']})"
+                     for (t, b), e in intros.items() if b not in (bills.get(t) or {}))
+    assert not missing, (f"{len(missing)} House measure(s) the journals introduce are not "
+                         "in data/bills.json: " + "; ".join(missing[:6]))
+    return "ok", (f"all {len(intros):,} House measures the journals introduce are on "
+                  "the record")
 
 
 # ======================================================================= main ==
