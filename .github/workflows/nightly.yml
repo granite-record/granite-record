@@ -220,6 +220,18 @@ jobs:
           }
           exit $rc
 
+      # A NIGHT THE EXPORT FAILS (1 October 2026). When the General Court's
+      # daily files come back empty on every try, the night asks the SQL host
+      # the General Court publishes credentials for instead (fetch_day_db.py,
+      # then dayfiles_from_db.py) and installs all seven changing files or
+      # none; nightly.py's docstring says when it may. It needs nothing new
+      # from this workflow, and NO SECRET: the credentials are the published
+      # ones in probe_db.py; PowerShell, which reaches that host, is on this
+      # image, as the study committees' views already use it; the hold on
+      # that host (archive/sql-held.json) comes down and goes back with the
+      # state files; and the copy kept under nh-archive/from-db/ goes back
+      # with the kit. Six tries are two and a half hours of the job's five,
+      # the database a few minutes, the build under thirty.
       - name: The night
         id: night
         run: |

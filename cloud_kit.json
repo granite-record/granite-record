@@ -140,6 +140,8 @@
      "what": "The Sunday job's verdict."},
     {"path": "archive/livestreams.json", "key": "livestreams.json",
      "what": "What livestreams.py has seen and waits for, and what it read off recordings the laptop has not yet read. The night writes it; the laptop's --catch-up only reads it."},
+    {"path": "archive/sql-held.json", "key": "sql-held.json",
+     "what": "A hold on the General Court's SQL host: a connection the night could not open (probe_db.py). It expires by itself and lengthens; the night is its one writer, and the web server's refusal record is a different file about a different server."},
     {"path": "reports/.cursor-production", "key": "cursor-production",
      "what": "How far the reader reports have been pulled. A number, never a reader's words."}
   ],

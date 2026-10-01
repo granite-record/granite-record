@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -181,9 +181,47 @@ which boxes to tick -- and, when a New term run built the switch and was never
 published, that too. The weekly job publishes nothing, so there is nothing
 for its New term run to wait for: what it takes reaches the site with the
 next night's build.
+
+A NIGHT THE EXPORT FAILS: THE DATABASE (1 October 2026)
+
+On 27 and 28 September and on 1 October the General Court's export came back
+empty on every try -- its own page said "Error Generating ... File : Execution
+Timeout Expired" -- and nothing was built those days. The same record is in
+the SQL host the General Court publishes credentials for, and the person
+approved the night asking it, gently, as the fallback. On GitHub's night only:
+
+  when                the export was asked EMPTY_TRIES times and the last try
+                      came back empty with nothing else wrong; no refusal from
+                      the web server is on file; no hold on the SQL host is on
+                      file (probe_db.py's archive/sql-held.json); the installed
+                      files are there to take the years and the row order
+                      from; and it is not a New term run. Never when a try
+                      arrived whole: one source for the night's seven files
+  what                fetch_day_db.py asks six views and five lookups, one
+                      connection each, a few seconds apart (about 170,000
+                      rows); dayfiles_from_db.py rebuilds the seven files that
+                      change and guards them against the installed ones; the
+                      seven and tonight's Members.txt go in through
+                      snapshot_gencourt.install(), shrink rule and all, or
+                      none does. The six lookups stay as the last good export
+                      left them
+  then                the night goes on as any night: the study committees'
+                      views, next session's requests, the what-changed report
+                      (on the columns both sources carry), the build, and the
+                      same check_site, census and other gates
+  it says so          the verdict keeps "fetch" as the truth about the export
+                      and gains "day_files", which names the database; a
+                      warning leads the run's page; DB_NIGHTS_MOST such nights
+                      in a row is an error there, and the build still goes out
+  a copy              nh-archive/from-db/<day>/, with a source.json. The
+                      archive's index stays the history of the website's files
+
+If any of it fails nothing is installed, and the night ends as it did before
+there was a fallback, with one sentence added saying what the database did.
 """
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -321,6 +359,36 @@ LIVE_WAITS = (10, 30, 60, 120)
 CODE_SUFFIXES = (".py", ".js", ".mjs", ".css", ".html", ".bat", ".cmd", ".ps1",
                  ".sh", ".toml", ".yml", ".yaml")
 
+# ---- a night the export fails: the day's files from the database ---------------
+#
+# fetch_day_db.py's folder, which is dayfiles_from_db.VIEWS_DIR; and where a
+# database night's files are kept, beside the archive of the website's own.
+# preflight holds these to the modules they name.
+DB_DAY = SCRATCH / "dbday"
+FROM_DB = "from-db"
+DB_SOURCE = "database"
+# This many nights in a row built from the database is an error on the run's
+# page: the export has been down that long, the committee list and the other
+# lookups are that old, and it is time to tell the General Court's IT office.
+DB_NIGHTS_MOST = 7
+# The SQL host's own hold (probe_db.HELD and HELD_ENV). Every step the night
+# starts is told its full path: take_views runs its fetch in a scratch folder,
+# where "archive/" would be somewhere else.
+SQL_HELD = Path("archive/sql-held.json")
+SQL_HELD_ENV = "GRANITE_SQL_HELD"
+# Why a fallback that was tried installed nothing. One of these, chosen by the
+# night's own code, is all the run's page says of it: the page is public, and
+# takes none of a server's own words. The detail is in the log and the verdict.
+DB_WHY = {
+    "held": "a hold on it is on file, so it was not asked",
+    "connect": "its server could not be connected to",
+    "query": "a query of it failed, and nothing is asked twice in one night",
+    "short": "what came back from it was not whole",
+    "guard": "what came back from it did not pass the night's checks against the installed files",
+    "shrink": "the files rebuilt from it were much smaller than the copies installed",
+    "error": "the night's own step for it failed",
+}
+
 QUIET = False             # --runner: child output to the log file only
 
 
@@ -380,7 +448,8 @@ def run(args, label, cwd=None):
     mark = len(LOG)
     proc = child.popen([sys.executable, "-u"] + args,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       text=True, bufsize=1, cwd=cwd)
+                       text=True, bufsize=1, cwd=cwd,
+                       env={SQL_HELD_ENV: str(SQL_HELD.resolve())})
     for ln in proc.stdout:
         say("  " + ln.rstrip(), echo=False)
     proc.wait()
@@ -617,6 +686,7 @@ def main():
                 # the later tries' page timed out, and the verdict, reading
                 # only the last try's answer, said nothing of it.
                 asked, page_said, page_at = datetime.now(), "", 0
+                db_day = False          # tonight's files came from the database
                 try:
                     with refusal.hold("nightly"):
                         for tries in range(1, EMPTY_TRIES + 1):
@@ -638,10 +708,16 @@ def main():
                             time.sleep(EMPTY_WAIT * 60)
                         if night:
                             night.v["fetch_tries"] = tries
+                            # THE DATABASE, WHEN THE EXPORT CAME BACK EMPTY ON
+                            # EVERY TRY (1 October 2026), under the same lock:
+                            # all seven changing files from it, or none. Never
+                            # when a try arrived whole, or failed another way.
+                            if rc != 0 and tries == EMPTY_TRIES and got.startswith("empty"):
+                                db_day = from_database(a, night, tries, asked)
                         # On GitHub's machine the study committees' meetings
                         # come with the day's files, under the same lock: the
                         # calendar shows them, and nothing else refreshes them.
-                        if night and rc == 0 and not refusal.MARK.exists():
+                        if night and (rc == 0 or db_day) and not refusal.MARK.exists():
                             night.v["study_meetings"] = take_views(
                                 STUDY_NIGHTLY, "the study committees' meetings, from the database",
                                 shrink=NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK)
@@ -654,9 +730,12 @@ def main():
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
-                installed = rc == 0
+                installed = rc == 0 or db_day
                 if night:
+                    # The truth about the export, whatever the database did.
                     night.v["fetch"] = fetch_status(rc, a.archive, asked)
+                    night.v["db_nights"] = (0 if rc == 0 else
+                                            night.v["db_nights"] + (1 if db_day else 0))
                     if a.new_term and rc == 0:
                         night.v["new_term"]["files"] = shrink_accepted(a.archive, asked)
                     if page_said:
@@ -669,13 +748,19 @@ def main():
                 if rc == 2:
                     say("\nREFUSED while fetching. Recorded; every fetch now waits "
                         "for a person.")
+                elif rc != 0 and db_day:
+                    say(f"\nThe export did not complete (exit {rc}). The day's files were "
+                        "installed from the General Court's database instead, and the "
+                        "night goes on with them.")
                 elif rc != 0:
                     say(f"\nThe fetch did not complete (exit {rc}); nothing was "
                         "installed, so tonight's build would be yesterday's.")
 
         if installed:
             rc = run(["gc_changes.py", "--archive", a.archive,
-                      "--out", f"reports/gc-changes-{day}.md"], "what the General Court changed")
+                      "--out", f"reports/gc-changes-{day}.md"]
+                     + (["--db-night", day] if db_day else []),
+                     "what the General Court changed")
             if night:
                 night.v["changes_report"] = ("written" if rc == 0 and
                                              Path(f"reports/gc-changes-{day}.md").exists()
@@ -993,6 +1078,10 @@ def plain_why(v, weekly=False):
         return ("The weekly job did not finish cleanly"
                 + (f": {step}." if step else "; its summary lists what fell short."))
     fetch = str(v.get("fetch") or "")
+    # A night whose files came from the database installed them: the export's
+    # failure is its warning, not why it was not clean.
+    if from_db(v) and fetch.startswith("empty"):
+        fetch = "installed"
     if new_term.get("refused"):
         why = NEW_TERM_NO_FETCH if new_term["refused"] == REFUSED_NO_FETCH else NEW_TERM_DRY
     elif v.get("preflight") == "failed":
@@ -1012,7 +1101,8 @@ def plain_why(v, weekly=False):
                + (f" on each of {tries} tries, {EMPTY_WAIT} minutes apart" if tries > 1 else "")
                + ", so nothing was installed or built."
                + (f' Their data page said{page_try(v)}: "{v["data_page_said"]}"'
-                  if v.get("data_page_said") else ""))
+                  if v.get("data_page_said") else "")
+               + db_tried(v))
     elif fetch.startswith("smaller"):
         # The shrink rule, which is right on every night but the one a term
         # turns over -- and that night is a person's to call.
@@ -1049,6 +1139,22 @@ def plain_why(v, weekly=False):
     else:
         why = "The night stopped before it recorded what it did."
     return why + " Nothing was published."
+
+
+def from_db(v):
+    """Whether this verdict's day files were installed from the database."""
+    return isinstance(v.get("day_files"), dict) and v["day_files"].get("source") == DB_SOURCE
+
+
+def db_tried(v):
+    """" The General Court's database is the fallback, and ..." for a night
+    whose fallback was tried and installed nothing, or "". A sentence of this
+    file's own (DB_WHY), fit for the public run page."""
+    df = v.get("day_files") if isinstance(v.get("day_files"), dict) else {}
+    why = DB_WHY.get(str(df.get("why_code") or ""))
+    if not why or df.get("source") == DB_SOURCE:
+        return ""
+    return f" The General Court's database is the fallback, and {why}."
 
 
 def page_try(v):
@@ -1209,6 +1315,171 @@ def shrink_accepted(archive, since=None):
             if names else "none of the files was much smaller")
 
 
+def installed_day(archive, docket):
+    """Which day's files are installed here, by the docket: the day the
+    archive first held this export, "<day> (from the database)" for a
+    database night's copy, or "" when it is neither."""
+    digest = hashlib.sha256(docket).hexdigest()
+    idx = load_json(Path(archive) / "index.json") or {}
+    hist = (idx.get("Docket.txt") or {}).get("history") if isinstance(idx, dict) else None
+    days = [h[0] for h in (hist or []) if isinstance(h, list) and len(h) == 2 and h[1] == digest]
+    if days:
+        return str(days[-1])
+    for src in sorted((Path(archive) / FROM_DB).glob("*/source.json"), reverse=True):
+        rec = load_json(src) or {}
+        if ((rec.get("files") or {}).get("Docket.txt") or {}).get("sha256") == digest:
+            return f"{src.parent.name} (from the database)"
+    return ""
+
+
+def tonights_members(archive, since):
+    """Members.txt as the website served it tonight, or None. It is not part
+    of the failing export, lives under /downloads/, and arrived whole on every
+    failed night; the snapshot stored it though it installed nothing."""
+    man = load_json(snapshot_day(archive, since) / "manifest.json")
+    entry = man.get("Members.txt") if isinstance(man, dict) else None
+    digest = entry.get("sha256") if isinstance(entry, dict) else None
+    if not digest:
+        return None
+    try:
+        with gzip.open(Path(archive) / "store" / f"{digest}.gz", "rb") as fh:
+            data = fh.read()
+    except (OSError, EOFError):
+        return None
+    return data if hashlib.sha256(data).hexdigest() == digest else None
+
+
+def keep_db_copy(archive, day, files, block, src):
+    """nh-archive/from-db/<day>/: what a database night installed, and a
+    source.json saying when each view was asked, its rows, and each file's
+    sha256. Beside the archive of the website's files, never in its index."""
+    root = Path(archive) / FROM_DB / day
+    root.mkdir(parents=True, exist_ok=True)
+    rec = {"day": day, "asked": src.get("asked"), "views": src.get("views"),
+           "compared_with": block.get("compared_with"), "years": block.get("years"),
+           "members": block.get("members"), "files": {}}
+    for name, data in sorted(files.items()):
+        tmp = root / f"{name}.gz.part"
+        with gzip.open(tmp, "wb") as fh:
+            fh.write(data)
+        os.replace(tmp, root / f"{name}.gz")
+        rec["files"][name] = {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+    write_json(root / "source.json", rec)
+    return root
+
+
+def from_database(a, night, tries, since):
+    """A night the export came back empty on every try: the seven day files
+    that change, from the General Court's database. True when they were
+    installed -- all seven, with tonight's Members.txt -- and False when
+    nothing was.
+
+    The verdict's "day_files" is written here: its source ("database", or
+    "none" with why_code and why when the fallback was tried and installed
+    nothing), when the views were asked and how long they took, their rows,
+    which day's files tonight's were compared with, the differences, what was
+    carried from the last good export, and the warnings. A night that may not
+    fall back at all -- a New term run, a refusal on file, no installed files
+    -- gets no "day_files" and one line in the log.
+    """
+    import dayfiles_from_db as DF
+    import probe_db
+    import snapshot_gencourt
+    say("\n--- the day's files, from the General Court's database ---")
+    if a.new_term:
+        say("  not asked: a New term run takes the new term's files from the export, or none")
+        return False
+    if refusal.MARK.exists():
+        say("  not asked: a refusal from the web server is on file, and carrying on by "
+            "another door is a person's decision")
+        return False
+    try:
+        was = DF.installed_files(".")
+        DF.scope(was)
+    except DF.Problem as e:
+        say(f"  not asked: {e}", echo=False)
+        say("  not asked: there are no installed files to take the years and the row order "
+            "from. A machine with no last good day does not fall back.")
+        return False
+    block = night.v["day_files"] = {"source": "none",
+                                    "because": f"the export came back empty on {tries} tries"}
+
+    def stop(code, detail=""):
+        block.update(why_code=code, why=DB_WHY[code] + (f": {detail}" if detail else ""))
+        say(f"\nNOT INSTALLED FROM THE DATABASE: {DB_WHY[code]}. Nothing was installed.")
+        if detail:
+            say(f"  {detail}", echo=False)
+        return False
+
+    try:
+        held = probe_db.hold_standing()
+        if held:
+            return stop("held", probe_db.hold_sentence(held))
+        shutil.rmtree(DB_DAY, ignore_errors=True)
+        t0 = time.time()
+        rc = run(["fetch_day_db.py", "--fetch-only"],
+                 "the day's records, from the General Court's database")
+        src = load_json(DB_DAY / DF.SOURCE)
+        src = src if isinstance(src, dict) else {}
+        views = {k: e for k, e in (src.get("views") or {}).items() if isinstance(e, dict)}
+        block.update(asked=src.get("asked"), seconds=round(time.time() - t0),
+                     rows={k: e.get("rows") for k, e in views.items() if not e.get("error")})
+        if rc != 0:
+            errs = [str(e.get("error") or "") for e in views.values()]
+            code = ("held" if rc == probe_db.SQL_HELD else
+                    "connect" if any(x.startswith("CONNECT_FAIL") for x in errs) else "query")
+            return stop(code, "; ".join(x for x in errs if x)[:300] or f"exit {rc}")
+        try:
+            files, facts = DF.rebuild(DB_DAY, ".")
+        except DF.Problem as e:
+            return stop("short", str(e))
+        result = DF.judge(files, was, facts)
+        block.update(years=facts["years"], files=facts["rows"],
+                     differences=result["differences"],
+                     compared_with=installed_day(a.archive, was["Docket.txt"]))
+        for ln in DF.report(result, facts):
+            say(ln, echo=False)
+        if result["stops"]:
+            block["stops"] = result["stops"]
+            return stop("guard", "; ".join(result["stops"]))
+        notes = list(result["warnings"]) + DF.lookup_notes(DB_DAY, ".")
+        fetched = dict(files)
+        carried = sorted(set(snapshot_gencourt.FILES) - set(DF.DAY_FILES))
+        members = tonights_members(a.archive, since)
+        if members is not None:
+            fetched["Members.txt"] = members
+            block["members"] = "tonight's, from the website"
+        else:
+            carried.append("Members.txt")
+            block["members"] = "the installed one: tonight's did not arrive"
+            notes.append("Members.txt did not arrive from the website tonight, so the "
+                         "installed one stays")
+        done = (f"all seven of the day's changing files, {sum(facts['rows'].values()):,} rows, "
+                "and " + ("tonight's Members.txt" if members is not None else "no Members.txt")
+                + f"; compared with the files of {block['compared_with'] or 'an unknown day'}: "
+                + (", ".join(f"{n} +{d['new']:,}/-{d['gone']:,}"
+                             for n, d in result["differences"].items() if d["new"] or d["gone"])
+                   or "no row differs"))
+        ok, lines = snapshot_gencourt.install(fetched, ".")
+        for ln in lines:
+            say("  " + ln.strip(), echo=False)
+        if not ok:
+            return stop("shrink", lines[0])
+    except Exception as e:                                      # noqa: BLE001
+        return stop("error", f"{type(e).__name__}: {e}")
+    # THE FILES ARE IN. Nothing from here on may say they are not: a copy that
+    # could not be kept is a warning, never a night that installed nothing.
+    block.update(source=DB_SOURCE, carried=carried, warnings=notes,
+                 nights=night.v["db_nights"] + 1)
+    say("\n  INSTALLED FROM THE DATABASE: " + done)
+    try:
+        keep_db_copy(a.archive, night.day, fetched, block, src)
+    except Exception as e:                                      # noqa: BLE001
+        notes.append(f"the copy under {a.archive}/{FROM_DB}/{night.day}/ could not be "
+                     f"written ({type(e).__name__})")
+    return True
+
+
 def count_lines(path):
     n = 0
     with open(path, "rb") as fh:
@@ -1286,6 +1557,15 @@ def take_views(views, label, shrink=SWAP_SHRINK):
     entries in db/_manifest.json follow them in; the
     calendar reads the meetings' date from there. {view: what happened}.
     """
+    import probe_db
+    held = probe_db.hold_standing()
+    if held:
+        # No more queries of that host, from anything, while its hold stands.
+        say(f"  not asked: {probe_db.hold_sentence(held)}", echo=False)
+        out = {v: "not taken: a hold on the General Court's database is on file" for v in views}
+        for v, what in out.items():
+            say(f"  {v}: {what}")
+        return out
     scratch = SCRATCH / "views"
     shutil.rmtree(scratch, ignore_errors=True)
     scratch.mkdir(parents=True)
@@ -1471,6 +1751,13 @@ class Night:
                   "asked": {"fetch": not a.no_fetch, "dry_run": a.dry_run,
                             "new_term": a.new_term},
                   "built": False, "publishable": False, "clean": False}
+        prev = load_json(VERDICT)
+        # How many nights in a row the day's files have come from the
+        # database, carried from the night before: a night that installs the
+        # export sets it to 0, one that falls back adds one, and a night that
+        # takes neither leaves it.
+        self.v["db_nights"] = (int(prev.get("db_nights") or 0)
+                               if isinstance(prev, dict) and prev.get("kind") == "nightly" else 0)
         if a.new_term:
             # What the New term run let through, filled in as it goes. Kept in
             # this night's verdict; what it accepted reaches a later night
@@ -1479,7 +1766,7 @@ class Night:
         else:
             # A New term run that built the switch and was never published:
             # said on this night's page if it meets the smaller files again.
-            was = unpublished_new_term(load_json(VERDICT), load_json(CENSUS))
+            was = unpublished_new_term(prev, load_json(CENSUS))
             if was:
                 self.v["new_term_unpublished"] = was
 
@@ -1606,8 +1893,9 @@ class Night:
         if v.get("preflight") != "passed":
             why.append("preflight " + str(v.get("preflight", "did not run")))
         if not self.a.no_fetch:
-            if v.get("fetch") != "installed":
-                why.append(f"the day's files: {v.get('fetch', 'not taken')}")
+            if v.get("fetch") != "installed" and not from_db(v):
+                why.append(f"the day's files: {v.get('fetch', 'not taken')}"
+                           + ("." + db_tried(v).rstrip(".") if db_tried(v) else ""))
             else:
                 bad = [f"{k}: {r}" for k, r in (v.get("study_meetings") or {}).items()
                        if not r.startswith("installed")]
@@ -1629,6 +1917,13 @@ class Night:
         an earlier night. Reported on the run's page and in the verdict, and
         never a reason to hold the night back."""
         out = []
+        if from_db(self.v):
+            # First, so that it leads the run's page.
+            df, n = self.v["day_files"], int(self.v.get("db_nights") or 0)
+            out.append("the day's files were built from the General Court's database, because "
+                       f"its export came back empty on {int(self.v.get('fetch_tries') or 1)} "
+                       "tries" + (f" (night {n} in a row)" if n > 1 else ""))
+            out += [str(w) for w in df.get("warnings") or []]
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
             out.append(f"next session's bill requests: {lsrs}")
@@ -1639,6 +1934,17 @@ class Night:
                        f"time from {'their' if n != 1 else 'its'} captions yet: the laptop's "
                        "evening catch-up (laptop_evening.py) reads them")
         return out
+
+    def alarms(self):
+        """What is an error on the run's page and does not stop the night:
+        the build still goes out, and somebody has to act."""
+        n = int(self.v.get("db_nights") or 0)
+        if from_db(self.v) and n >= DB_NIGHTS_MOST:
+            return [f"the day's files have come from the General Court's database {n} nights "
+                    "in a row: its export has been down that long, the committee list and "
+                    "the other lookups are that old, and it is time to tell the General "
+                    "Court's IT office"]
+        return []
 
     def exit_code(self):
         """0 when the night did what it was asked. A dry run is asked for a build
@@ -1652,11 +1958,13 @@ class Night:
     def finish(self, code):
         v = self.v
         why = self.problems()
+        alarms = self.alarms()
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code,
-                 clean=not why and code == 0, not_clean=why, warnings=self.warnings())
+                 clean=not why and not alarms and code == 0, not_clean=why + alarms,
+                 alarms=alarms, warnings=self.warnings())
         write_json(VERDICT, v)
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {VERDICT}")
-        for w in why:
+        for w in why + alarms:
             say(f"  - {w}")
         for w in v["warnings"]:
             say(f"  - warning: {w}")
@@ -1666,6 +1974,8 @@ class Night:
         gh_summary([f"### Nightly {self.day}: {'clean' if v['clean'] else 'not clean'}",
                     f"- built: {'yes' if v.get('built') else 'no'}; for production: "
                     f"{'yes' if v.get('publishable') else 'no'}"]
+                   + ([f"- **{v['warnings'][0]}**"] if from_db(v) and v["warnings"] else [])
+                   + [f"- **error: {x}**" for x in alarms]
                    + ([f"- the day's files arrived whole on try {tries} of {EMPTY_TRIES}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + ([f"- the General Court's data page said{page_try(v)}: {v['data_page_said']}"]
@@ -1807,7 +2117,15 @@ def close_verdict(a):
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
           + ("" if v.get("clean") else " -- " + "; ".join(v.get("not_clean", [])[:4])))
-    if not v.get("clean"):
+    alarms = [str(x) for x in (v.get("alarms") or [])]
+    if alarms and not failed and list(v.get("not_clean") or []) == alarms:
+        # Built, and fit to go out, with something a person has to act on:
+        # an error at the top of the run's page, and no failed job, because a
+        # failed job publishes nothing.
+        gh_annotate("error", "The night was built, with an error to act on",
+                    "; ".join(alarms)[:400] + ". The build was not held back for it.")
+        gh_summary([f"**Error:** {'; '.join(alarms)}"])
+    elif not v.get("clean"):
         why = plain_why(v, a.weekly)
         gh_annotate("error" if failed else "warning",
                     f"Why the {'weekly job' if a.weekly else 'night'} "
