@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.6
+# GRANITE_VERSION: 2026-09-25.7
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -8,6 +8,10 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
     python3 cloud.py kit-down                  an empty machine takes the kit
     python3 cloud.py kit-up [--dry-run]        ... and sends back what its night changed,
                                                with the night's logs and state
+    python3 cloud.py kit-up --hold RUN         a New term run's: what it changed waits
+                                               under nights/RUN/kit/, out of kit/
+    python3 cloud.py kit-release --run RUN     ... and goes into kit/, once that
+                                               run's build has been published
     python3 cloud.py state-down | state-up     the small state files only
     python3 cloud.py clear-refusal             lift the refusal record the night
                                                keeps in the bucket (a person's call)
@@ -69,7 +73,9 @@ THE BUCKET
     backup/<path>          the laptop's backup
     replaced/<date>/...    what a command would otherwise have overwritten or removed
     logs/<date>/<file>     the night's logs
-    nights/<run>/          the night's built site, one archive, for the publish job
+    nights/<run>/          the night's built site, one archive, for the publish job;
+                           and under kit/, with kit.json, what a New term run's
+                           night changed, waiting for its build to be published
     state/<file>           refused.json, census.json and the rest (cloud_kit.json);
                            kit-manifest.json and backup-manifest.json, the size,
                            sha256 and date of every file sent, which is how an
@@ -81,6 +87,25 @@ own record lives in archive/cloud/: what kit-down fetched, which build_all.py
 reads as "this folder is built from the kit"; what state-down took, which
 state-up reads so a copy taken down is never sent back over a newer one; and
 a cache of hashes so an unchanged file is not read twice either.
+
+THE ONE NIGHT A TERM TURNS OVER: kit-up --hold, kit-release (1 October 2026)
+
+The New term run (nightly.py --new-term) installs files the shrink rule would
+refuse on any other night, and the switch to a new term waits for the
+person's approval. Sent to kit/ in the ordinary way, those files would be the
+installed copies the next scheduled night compares with -- so that night
+would take the new term's files without complaint and publish the switch,
+whether the person had approved it, rejected it, or not yet looked. So that
+run's kit-up is given --hold RUN: every file of the night's it changed goes
+to nights/RUN/kit/<path> instead, with nights/RUN/kit.json saying what waits
+and which copy of each the night had taken down, and kit/ and its manifest
+keep what they held. (An entry cloud_kit.json marks "held": false goes to
+kit/ all the same: the day's archive copy and the livestream index.) The
+publish job runs kit-release --run RUN after the deploy has landed: each
+waiting file is copied into kit/ over the copy the night took down -- all of
+them or none, and none if kit/ has changed underneath since -- and the
+manifest follows. A run never published is never released, and nights/ is
+deleted by the bucket's lifecycle rule a few days on.
 
 BACK TO THE LAPTOP: pull (26 September 2026)
 
@@ -327,6 +352,10 @@ def load_kit(root):
                          "not 'night' or 'laptop'")
         for x in list(e.get("paths", [])) + list(e.get("globs", [])):
             check_rel(x)
+        if "held" in e and (e["held"] is not False or e["owner"] != "night"):
+            raise Failed(f"{KIT_FILE}: an entry says held: {e['held']!r}. Only a night's "
+                         "entry may say it, and only false: every other file of the "
+                         "night's is held on a New term run")
     for s in kit.get("state", []):
         check_rel(s["path"])
         if not s.get("key") or "/" in s["key"]:
@@ -348,6 +377,16 @@ def owner_of(kit, rel):
         if entry_matches(e, rel):
             return e["owner"]
     return None
+
+
+def held_back(kit, rel):
+    """Whether kit-up --hold keeps this file out of kit/ until the New term
+    run's build is published: every file of the night's, unless its entry
+    says "held": false."""
+    for e in kit.get("kit", []):
+        if entry_matches(e, rel):
+            return e["owner"] == "night" and e.get("held", True) is not False
+    return False
 
 
 def kit_files(root, kit):
@@ -1297,6 +1336,16 @@ def cmd_kit_up(a, root):
     theirs = [r for r in changed if files[r] == "laptop"]
     gone = [r for r in before if r not in files and not local(root, r).exists()
             and owner_of(kit, r) == "night"]
+    # --hold RUN, a New term run's: what the night changed waits under
+    # nights/RUN/kit/ and kit/ keeps the copies it had, until kit-release.
+    hold = getattr(a, "hold", None)
+    waiting, gone_waiting = [], []
+    if hold:
+        hprefix, hkey = _held_keys(hold)
+        waiting = [r for r in night if held_back(kit, r)]
+        night = [r for r in night if r not in waiting]
+        gone_waiting = [r for r in gone if held_back(kit, r)]
+        gone = [r for r in gone if r not in gone_waiting]
     man, _ = read_manifest(bucket, "kit")
     cur = (man or {}).get("files", {})
     # The bucket's copy must still be the one this machine took down -- or
@@ -1318,18 +1367,26 @@ def cmd_kit_up(a, root):
     show("changed in the bucket since kit-down; its copy stands and this "
          "machine's goes to replaced/", conflict, sz)
     show("the night's, gone since kit-down", gone, {r: before[r][0] for r in gone})
+    if hold:
+        say(f"  --hold {hold}: a New term run. What it changed stays out of kit/ until "
+            f"its build is published (kit-release --run {hold})")
+        show(f"the night's, to wait under {hprefix}/", waiting, sz)
+        show("the night's, gone since kit-down; the removal waits too", gone_waiting,
+             {r: before[r][0] for r in gone_waiting})
     say(f"  logs for logs/{day}/: {len(logs):,} files, "
         f"{human(sum(local(root, r).stat().st_size for r in logs))}; state files "
         f"here: {len(here_state)}")
-    if not removal_ok(len(gone), len(before), a.allow_removals):
-        raise Failed(f"{len(gone):,} of the night's kit files are gone since kit-down, "
+    if not removal_ok(len(gone) + len(gone_waiting), len(before), a.allow_removals):
+        raise Failed(f"{len(gone) + len(gone_waiting):,} of the night's kit files are gone since kit-down, "
                      "more than a night removes. Nothing was sent. "
                      "--allow-removals if it is meant.")
     if a.dry_run:
         say(f"--dry-run: nothing sent. {len(night):,} files, "
             f"{human(sum(sz[r] for r in night))} would go to kit/; {len(gone):,} "
             f"would move to replaced/; {len(logs):,} logs; state compared and sent "
-            "where it differs.")
+            "where it differs."
+            + (f" {len(waiting):,} files, {human(sum(sz[r] for r in waiting))} would "
+               f"wait under {hprefix}/." if hold else ""))
         return
     rep = Replacer(bucket, day)
     remote = bucket.list("kit/")
@@ -1351,6 +1408,36 @@ def cmd_kit_up(a, root):
             removed.append(r)
         except Exception as e:                                  # noqa: BLE001
             fails.append(f"{r} (moving to replaced/): {type(e).__name__}: {e}")
+    held = None
+    if hold:
+        # The waiting files, each under the run's own prefix, then the record
+        # of them -- written only when every one arrived, so that kit-release
+        # never moves half a night into kit/. kit/ and its manifest are not
+        # touched for any of them, and neither is this machine's record of
+        # what it took down: they are not in the kit.
+        there_h = bucket.list(f"nights/{hold}/")
+        want = {r: entries[r] for r in waiting}
+        have = [r for r, e in want.items()
+                if there_h.get(f"{hprefix}/{r}") == e["size"]
+                and (bucket.head(f"{hprefix}/{r}") or {}).get("sha256") == e["sha256"]]
+        hsent, hfail = send(bucket, root, hprefix,
+                            {r: e for r, e in want.items() if r not in have},
+                            there_h, rep, a.workers)
+        fails += [f"{f} (to wait under {hprefix}/)" for f in hfail]
+        if not hfail:
+            held = {"run": hold, "day": day,
+                    "written": datetime.now().isoformat(timespec="seconds"),
+                    "files": dict(sorted(want.items())),
+                    "base": {r: (before[r][1] if r in before else None)
+                             for r in sorted(set(want) | set(gone_waiting))},
+                    "removed": sorted(gone_waiting)}
+            try:
+                if hkey in there_h:
+                    rep.keep(hkey)
+                bucket.put_bytes(hkey, json.dumps(held, indent=1).encode("utf-8"))
+            except Exception as e:                              # noqa: BLE001
+                held = None
+                fails.append(f"{hkey}: {type(e).__name__}: {e}")
     doc = write_manifest(bucket, "kit", sent, removed, "kit-up", rep)
     # What this machine now holds in common with the bucket: a second kit-up
     # the same night starts from here, not from what came down.
@@ -1375,6 +1462,14 @@ def cmd_kit_up(a, root):
         f"files sent, {ssame} unchanged, {human(sbytes)}; {rep.n:,} older copies "
         f"kept under replaced/{day}/")
     say(f"  {MANIFEST.format('kit')}: {doc['count']:,} files, {human(doc['bytes'])}")
+    if hold:
+        say(f"  held for run {hold}: " + (
+            f"{len(held['files']):,} files, "
+            f"{human(sum(e['size'] for e in held['files'].values()))}, wait under "
+            f"{hprefix}/ and are not in kit/; {hkey} lists them"
+            + (f", and {len(held['removed']):,} removals" if held["removed"] else "")
+            if held is not None else
+            f"NOT RECORDED. {hkey} was not written, so kit-release has nothing to release"))
     if fails or conflict:
         raise Failed(
             (f"{len(fails)} did not send: {'; '.join(fails[:4])}. " if fails else "")
@@ -1702,6 +1797,126 @@ def _night_keys(run):
     if not run or not RUN_ID.match(run):
         raise Failed(f"--run {run!r} is not a run id (letters, digits, . _ -)")
     return f"nights/{run}/site.tar.gz", f"nights/{run}/site.json"
+
+
+def _held_keys(run):
+    """(prefix, record) for what a New term run's kit-up --hold keeps waiting:
+    nights/<run>/kit/<path> for each file, nights/<run>/kit.json listing them."""
+    if not run or not RUN_ID.match(run):
+        raise Failed(f"{run!r} is not a run id (letters, digits, . _ -)")
+    return f"nights/{run}/kit", f"nights/{run}/kit.json"
+
+
+def cmd_kit_release(a, root):
+    """What a New term run's night changed, into kit/, once that run's build
+    is published: the publish job runs this after its deploy has landed.
+
+    All of it or none. Each waiting file replaces the copy the night took
+    down, and only that copy: if kit/ holds anything else for one of them --
+    another night or the weekly job wrote it since -- nothing is released,
+    because a kit of some of that night's files and some of a later one's is
+    the kit of no night. The copy each replaces goes to replaced/ first, like
+    anything else. Run again after a failure, it finds what is already in
+    kit/ and moves the rest.
+    """
+    kit = load_kit(root)
+    hprefix, hkey = _held_keys(a.run)
+    bucket = open_bucket(a)
+    raw = bucket.get_bytes(hkey)
+    if raw is None:
+        raise Failed(f"{bucket.describe()} has no {hkey}: kit-up --hold did not finish "
+                     f"for run {a.run}, or the lifecycle rule has deleted what it held. "
+                     "Nothing was released, so the next night still compares with the "
+                     "kit as it was; a new New term run is the way forward.")
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+        held, base = doc["files"], doc.get("base") or {}
+        removed = list(doc.get("removed") or [])
+        if not isinstance(held, dict) or not isinstance(base, dict) or not all(
+                isinstance(e, dict) and isinstance(e.get("sha256"), str)
+                and isinstance(e.get("size"), int) for e in held.values()):
+            raise ValueError("not a record of held files")
+    except (ValueError, KeyError, TypeError, AttributeError) as e:
+        raise Failed(f"{hkey} will not read ({e}); nothing was released")
+    never = never_rx(kit)
+    for rel in list(held) + removed:
+        check_rel(rel)
+        if not held_back(kit, rel) or any(rx.match(rel) for rx in never):
+            raise Failed(f"{hkey} names {rel}, which {KIT_FILE} does not hold back for "
+                         "a New term run; nothing was released")
+    man, _ = read_manifest(bucket, "kit")
+    if man is None:
+        raise Failed(f"{bucket.describe()} has no {MANIFEST.format('kit')}; nothing "
+                     "was released")
+    cur = man["files"]
+    remote = bucket.list("kit/")
+    waits = bucket.list(f"{hprefix}/")
+    todo, already, clash, short = {}, [], [], []
+    for rel, ent in sorted(held.items()):
+        there = (cur.get(rel) or {}).get("sha256")
+        if there == ent["sha256"] and f"kit/{rel}" in remote:
+            already.append(rel)
+        elif there != base.get(rel):
+            clash.append(rel)
+        elif waits.get(f"{hprefix}/{rel}") != ent["size"] or                 (bucket.head(f"{hprefix}/{rel}") or {}).get("sha256") != ent["sha256"]:
+            short.append(rel)
+        else:
+            todo[rel] = ent
+    drop = []
+    for rel in removed:
+        if rel not in cur:
+            continue
+        if cur[rel].get("sha256") != base.get(rel):
+            clash.append(rel)
+        else:
+            drop.append(rel)
+    say(f"kit-release: run {a.run} holds {len(held):,} files, "
+        f"{human(sum(e['size'] for e in held.values()))}, under {hprefix}/ of "
+        f"{bucket.describe()}; {len(todo):,} to move into kit/, {len(already):,} "
+        f"already there, {len(drop):,} to remove")
+    if clash or short:
+        raise Failed(
+            "NOTHING WAS RELEASED. "
+            + (f"kit/ no longer holds the copy run {a.run} took down of "
+               f"{', '.join(clash[:6])}: another night or the weekly job has written "
+               "there since, and one file has one writer. " if clash else "")
+            + (f"{', '.join(short[:6])} {'is' if len(short) == 1 else 'are'} not under "
+               f"{hprefix}/ as {hkey} records. " if short else "")
+            + "The next night still compares with the kit as it was, and refuses the "
+              "smaller files; a new New term run is the way forward.")
+    if a.dry_run:
+        say(f"--dry-run: nothing moved. {len(todo):,} files, "
+            f"{human(sum(e['size'] for e in todo.values()))} would go into kit/.")
+        return
+    day = f"{datetime.now():%Y-%m-%d}"
+    rep = Replacer(bucket, day)
+    done, gone, fails = {}, [], []
+    for rel, ent in todo.items():
+        try:
+            if f"kit/{rel}" in remote:
+                rep.keep(f"kit/{rel}")
+            bucket.copy(f"{hprefix}/{rel}", f"kit/{rel}")
+            done[rel] = ent
+        except Exception as e:                                  # noqa: BLE001
+            fails.append(f"{rel}: {type(e).__name__}: {e}")
+    for rel in drop:
+        try:
+            if f"kit/{rel}" in remote:
+                rep.keep(f"kit/{rel}")
+                bucket.delete(f"kit/{rel}")
+            gone.append(rel)
+        except Exception as e:                                  # noqa: BLE001
+            fails.append(f"{rel} (moving to replaced/): {type(e).__name__}: {e}")
+    mdoc = write_manifest(bucket, "kit", done, gone, f"kit-release {a.run}", rep)
+    say(f"kit-release: moved {len(done):,} files, "
+        f"{human(sum(e['size'] for e in done.values()))}, into kit/; {len(already):,} "
+        f"were already there; removed {len(gone):,}; {rep.n:,} older copies kept under "
+        f"replaced/{day}/")
+    say(f"  {MANIFEST.format('kit')}: {mdoc['count']:,} files, {human(mdoc['bytes'])}")
+    if fails:
+        raise Failed(f"{len(fails)} of {len(todo) + len(drop):,} did not move, so kit/ "
+                     f"holds part of run {a.run}'s night: {'; '.join(fails[:4])}. Run "
+                     "kit-release again: what did move is recorded and is not moved twice.")
 
 
 def _site_dir(root, name):
@@ -2621,6 +2836,7 @@ COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "state-down": cmd_state_down, "state-up": cmd_state_up,
             "clear-refusal": cmd_clear_refusal,
             "site-up": cmd_site_up, "site-down": cmd_site_down,
+            "kit-release": cmd_kit_release,
             "backup": cmd_backup, "pull": cmd_pull, "send-refusal": cmd_send_refusal}
 
 
@@ -2639,8 +2855,11 @@ def main(argv=None):
                     help="use a folder as the bucket (testing; no credentials)")
     ap.add_argument("--root", default=".", help="the working folder")
     ap.add_argument("--workers", type=int, default=8)
-    ap.add_argument("--run", help="site-up, site-down: the night's run id "
+    ap.add_argument("--run", help="site-up, site-down, kit-release: the night's run id "
                                   "(GitHub's run id), which names nights/<run>/")
+    ap.add_argument("--hold", metavar="RUN",
+                    help="kit-up, on a New term run: what the night changed waits under "
+                         "nights/RUN/kit/ and stays out of kit/ until kit-release --run RUN")
     ap.add_argument("--site", default="site",
                     help="site-up, site-down: the built site's folder")
     ap.add_argument("--day", metavar="YYYY-MM-DD",

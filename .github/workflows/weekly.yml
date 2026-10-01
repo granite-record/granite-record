@@ -18,7 +18,7 @@ name: weekly
 run-name: >-
   weekly ${{ github.event_name == 'schedule' && '(scheduled)'
   || (inputs.fetch && (inputs.new_term && '(by hand, fetching, new term)' || '(by hand, fetching)')
-  || '(by hand, no fetch)') }}
+  || (inputs.new_term && '(by hand, new term without the fetch: refused)' || '(by hand, no fetch)')) }}
 
 on:
   workflow_dispatch:
@@ -32,9 +32,10 @@ on:
       # --runner --weekly --new-term -- the committee rosters, the committee
       # list and the study committees' views are taken however much smaller,
       # though never empty; the members who have left are a merge and keep
-      # their guard. It does nothing without Fetch ticked. A scheduled week
-      # never carries it. This job publishes nothing: what it takes reaches
-      # the site with the next night's build.
+      # their guard. Ticked without the fetch it stops, and its page says to
+      # tick both. A scheduled week never carries it. This job publishes
+      # nothing, so nothing here waits for a deploy as the nightly's New term
+      # run does: what it takes reaches the site with the next night's build.
       new_term:
         description: "New term: accept the General Court's smaller files once"
         type: boolean
