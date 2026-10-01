@@ -1,13 +1,47 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
     python3 build_floor_index.py --videos videos_house_2026-01-01_to_2026-06-30.csv \\
         --summary RollCallSummary.txt --narratives narratives.json
 
-Writes floor_index.json, which build_site_v2.py merges into each bill's
-hearings tab alongside its committee proceedings.
+Writes floor_index.json, which build_proceedings.py folds into
+proceedings.csv, the one table every bill's hearings tab is drawn from.
+
+EVERY TERM ON DISK, REBUILT WHOLE EACH RUN
+
+It read the download's RollCallSummary.txt and the newest term of
+narratives.json, which is one session year of roll calls and one term of
+docket. Two things followed from that, one of them already on the site:
+
+  2025's roll calls are not in the download, which holds 2026 alone. The
+  docket's floor actions are read only where they had no roll call, on the
+  understanding that the roll calls had placed those -- so 138 of 2025's 173
+  roll-call floor debates had no entry at all, and their bills' pages never
+  linked the sitting where the vote was taken.
+
+  At the new term the download becomes 2027's and the newest narratives term
+  2027-2028's, and the next run would have written an index with no
+  2025-2026 floor debate in it.
+
+So it reads the download and then every rollcalls/RollCallSummary_<year>.txt,
+each roll call once, from the first file that holds it -- the rule
+build_data.rows_all keeps -- and every term narratives.json holds, from
+FIRST_TERM on. The file stays keyed on the bill number with each entry dated,
+and build_proceedings files each entry under the term of its date, so HB 10
+of 2025 and HB 10 of 2027 are two bills' rows under one key, never one bill's.
+
+FIRST_TERM, and not every year with a recording, because the earlier terms
+have not been checked. The recordings go back to 2019, and reading those
+terms too added about 6,200 floor entries to 2019-2024 bills, 521 of them
+timed by a roll call's clock, on 30 September 2026. In 2020-21 the House sat
+away from the State House and its roll calls are dated a day late
+(session_days.read_rollcall_dates), and pairing a vote with that day's
+recording by its date would link the wrong sitting. Lowering FIRST_TERM is a
+decision for after a bench sample of those years, not a side effect of this
+fix. A recording whose title names its bill is entered for every year, as it
+always was.
 
 How the timing works, from watching a real session:
 
@@ -33,7 +67,7 @@ import argparse
 import csv
 import json
 import narrative
-import re
+import proceedings as P
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -119,10 +153,41 @@ def load_session_videos(paths):
     return out
 
 
+# The first term whose roll calls and docket floor actions are read: see the
+# docstring. A floor, so a new term needs nothing done to it here.
+FIRST_TERM = "2025-2026"
+
+
+def summary_files(summary, archive):
+    """The download, then every year the archive holds, in that order."""
+    files = [Path(summary)] if Path(summary).exists() else []
+    d = Path(archive) if archive else None
+    if d is not None and d.is_dir():
+        files += sorted(d.glob("RollCallSummary_*.txt"))
+    return files
+
+
+def narrative_bills(path):
+    """(term, bill, record) for every bill of every term narratives.json
+    holds, from FIRST_TERM on."""
+    p = Path(path)
+    data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    if data and not narrative.is_term_keyed(data):
+        raise SystemExit(f"{path} is keyed on bill number, not on term. Rebuild it: "
+                         f"python3 narrative.py --docket Docket.txt --all --out {path}")
+    for term in sorted(data):
+        if term >= FIRST_TERM:
+            for bill, rec in data[term].items():
+                yield term, bill, rec
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--videos", nargs="+", required=True)
     ap.add_argument("--summary", default="RollCallSummary.txt")
+    ap.add_argument("--archive", default="rollcalls",
+                    help="the folder of RollCallSummary_<year>.txt read after "
+                         "--summary; '' for the download alone")
     ap.add_argument("--narratives", default="narratives.json")
     ap.add_argument("--out", default="floor_index.json")
     a = ap.parse_args()
@@ -136,19 +201,39 @@ def main():
           f"{sum(1 for _, c in vids if c == 'S')} Senate)")
 
     # ---- roll calls, grouped into runs per bill within a day ---------------
-    calls = defaultdict(list)
-    with open(a.summary, encoding="utf-8-sig", errors="replace") as fh:
-        for line in fh:
-            p = line.rstrip("\n").split("|")
-            if len(p) < 13:
-                continue
-            try:
-                when = datetime.strptime(p[3].strip(), "%m/%d/%Y %I:%M:%S %p")
-            except ValueError:
-                continue
-            calls[(p[1].strip(), when.date().isoformat())].append({
-                "num": int(p[2] or 0), "when": when, "bill": p[4].strip().upper(),
-                "q": p[11].strip(), "y": p[5].strip(), "n": p[6].strip()})
+    # The download, then every archived year: see the docstring. A roll call
+    # is (year, chamber, number), and the first file holding one is the copy
+    # read.
+    calls, read = defaultdict(list), set()
+    for f in summary_files(a.summary, a.archive):
+        with open(f, encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("|")
+                if len(p) < 13:
+                    continue
+                key = (p[0].strip(), p[1].strip(), p[2].strip())
+                if key in read or P.term_of(key[0]) < FIRST_TERM:
+                    continue
+                read.add(key)
+                try:
+                    when = datetime.strptime(p[3].strip(), "%m/%d/%Y %I:%M:%S %p")
+                except ValueError:
+                    continue
+                calls[(p[1].strip(), when.date().isoformat())].append({
+                    "num": int(p[2] or 0), "when": when, "bill": p[4].strip().upper(),
+                    "q": p[11].strip(), "y": p[5].strip(), "n": p[6].strip()})
+    print(f"{len(read):,} roll calls read")
+
+    # The bills the docket knows, by term. A roll call's bill column also
+    # names things that are not bills -- "HRULE64", the House adopting its
+    # rules on 8 January 2025 -- and those are boundaries in a sitting, not
+    # debates to put on a bill's page. It leaves out, too, a bill the docket
+    # no longer carries: HB 476 of 2025, withdrawn on 6 February, whose
+    # reconsideration was that day's roll call 3, has no record here and so
+    # no page to put it on. The run still closes the next bill's window.
+    nar = list(narrative_bills(a.narratives))
+    known = {(t, b.upper()) for t, b, _ in nar}
+    not_bills = defaultdict(int)
 
     index = defaultdict(list)
     precise = dated = 0
@@ -177,6 +262,11 @@ def main():
                 runs.append({"bill": c["bill"], "last": c["when"],
                              "motions": [c["q"]], "tallies": [f"{c['y']}-{c['n']}"]})
         for i, r in enumerate(runs):
+            # Still a run: the window of the bill after it opens where it
+            # closed.
+            if (P.term_of(date), r["bill"]) not in known:
+                not_bills[r["bill"]] += 1
+                continue
             entry = {"date": date, "body": body, "video_id": vid["video_id"],
                      "motions": r["motions"], "tallies": r["tallies"],
                      "kind": "floor debate"}
@@ -199,10 +289,10 @@ def main():
     # date, so the right recording is still known.
     seen = {(b, e["date"]) for b, es in index.items() for e in es}
     novote = 0
-    # One term's worth: narratives.json is keyed on the term now, and this
-    # tool works on the session it was pointed at.
-    nar = narrative.load_narratives(a.narratives)
-    for bill, rec in nar.items():
+    # Every term narratives.json holds, for the reason the roll calls are
+    # read from every year. A bill number recurs across terms; the date on
+    # each event is what keeps them apart, here and in build_proceedings.
+    for _term, bill, rec in nar:
         b = bill.upper()
         for e in rec.get("events", []):
             if e.get("type") != "floor" or e.get("cancelled"):
@@ -258,6 +348,9 @@ def main():
     print(f"  {novote:,} voice or division votes, recording linked by date only")
     print(f"  {nconf:,} recordings that name their bill in the title "
           "(whole recording is that bill)")
+    if not_bills:
+        print(f"  {sum(not_bills.values()):,} roll-call runs on something the docket does "
+              "not know as a bill, left out: " + ", ".join(sorted(not_bills)[:8]))
     multi = sum(1 for b, es in index.items() if len(es) > 1)
     print(f"  {multi:,} bills reached the floor on more than one day")
 

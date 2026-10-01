@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.4
+# GRANITE_VERSION: 2026-09-18.5
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -271,6 +271,11 @@ def merge(new):
     A request vanishing between runs is a withdrawal, which is a fact about
     the record rather than a gap in it. Dropping it would make the site
     quietly disagree with what it said last week.
+
+    Or it is an introduction, which the list alone cannot tell from a
+    withdrawal: a request drafted and filed becomes a bill. The flag says only
+    that it left the list, and build_lsrs.became_bills reads the bills to say
+    which -- a request whose number a bill carries reads "Introduced as HB 45".
     """
     old = {}
     if OUT.exists():

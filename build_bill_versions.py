@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.8
+# GRANITE_VERSION: 2026-09-09.9
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -8,7 +8,22 @@ Every version of a bill, in order, and what each amendment changed.
 
 Writes site/versions/<year>/<BILL>.json for every bill with more than one
 version. No network: it reads db/LegislationText.psv, db/Legislation.psv and
-db/document_versions.json, all already on this disk.
+db/document_versions.json, all already on this disk -- and the same two
+views of every term frozen under db/term/<term>/.
+
+A TERM'S VERSIONS OUTLIVE THE DATABASE'S CURRENT VIEWS
+
+LegislationText and Legislation are the database's current-term views. When
+the General Court turns them over to 2027-2028, the next dump of them holds
+no 2025-2026 bill, and every one of that term's Versions tabs would have gone
+with them -- this writes the whole site/versions tree and the manifest from
+whatever the dump holds. So the views are frozen before they turn, into
+db/term/<term>/ with the _columns.json they were dumped with (a
+LegislationID restarts every term, so a term's text is only ever joined to
+its own Legislation rows), and read after the current views: a bill-year the
+current views hold comes from them, and a frozen term supplies only what
+they no longer do. With no frozen term on disk this reads exactly what it
+always did.
 
 WHY A SEPARATE FILE
 
@@ -75,15 +90,30 @@ WORD = re.compile(r"\S+\s*")
 CONTEXT = 25
 
 
-def columns():
-    return json.loads((DB / "_columns.json").read_text(encoding="utf-8"))
+def columns(folder=DB):
+    return json.loads((folder / "_columns.json").read_text(encoding="utf-8"))
 
 
-def bills_by_id(lg):
+# A term's views as they stood at its end: see the docstring.
+FROZEN = DB / "term"
+
+
+def sources():
+    """[(folder, its column lists)]: the current dump, then each frozen term
+    holding both views, oldest first."""
+    out = [(DB, columns())]
+    if FROZEN.is_dir():
+        for d in sorted(x for x in FROZEN.iterdir() if x.is_dir()):
+            if (d / "Legislation.psv").exists() and (d / "LegislationText.psv").exists():
+                out.append((d, columns(d) if (d / "_columns.json").exists() else out[0][1]))
+    return out
+
+
+def bills_by_id(lg, folder=DB):
     out = {}
     i_id, i_no, i_yr = (lg.index("legislationID"), lg.index("CondensedBillNo"),
                         lg.index("sessionyear"))
-    for line in (DB / "Legislation.psv").open(encoding="utf-8"):
+    for line in (folder / "Legislation.psv").open(encoding="utf-8"):
         f = line.rstrip("\n").split("|")
         if len(f) >= len(lg) and f[i_id].strip():
             out[f[i_id].strip()] = (f[i_no].strip(), f[i_yr].strip())
@@ -152,19 +182,11 @@ def runs(a, b):
     return out
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--site", default="site")
-    ap.add_argument("--check", action="store_true")
-    ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--manifest", default="data/bill_versions.json")
-    a = ap.parse_args()
-
-    C = columns()
+def read_versions(folder, C, order, unknown):
+    """{(bill, year): [version]} out of one dump's LegislationText, joined to
+    the same dump's Legislation."""
     lt, lg = C["LegislationText"], C["Legislation"]
-    bills = bills_by_id(lg)
-    order = json.loads((DB / "document_versions.json").read_text(encoding="utf-8"))
-
+    bills = bills_by_id(lg, folder)
     i_lid, i_dv, i_txt, i_dt = (lt.index("LegislationID"),
                                 lt.index("DocumentVersion"),
                                 lt.index("Text"), lt.index("DateTimeStamp"))
@@ -177,8 +199,7 @@ def main():
     # an app.js that has never heard of either keeps working unchanged.
     i_html = lt.index("HTMLText")
     per = collections.defaultdict(list)
-    unknown = collections.Counter()
-    for line in (DB / "LegislationText.psv").open(encoding="utf-8"):
+    for line in (folder / "LegislationText.psv").open(encoding="utf-8"):
         f = line.rstrip("\n").split("|")
         if len(f) < len(lt):
             continue
@@ -199,6 +220,34 @@ def main():
             # has no blocks file, which the index then does not point at.
             "blocks": bill_blocks.blocks(f[i_html]),
         })
+    return per
+
+
+def all_versions(order, unknown):
+    """{(bill, year): [version]} from the current dump and every frozen term.
+    The current views first, so a bill-year they hold is theirs."""
+    per = collections.defaultdict(list)
+    for folder, C in sources():
+        mine = read_versions(folder, C, order, unknown)
+        taken = [k for k in mine if k not in per]
+        for k in taken:
+            per[k] = mine[k]
+        if folder != DB:
+            print(f"  {folder}: {len(taken):,} bills the current views no longer hold")
+    return per
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--site", default="site")
+    ap.add_argument("--check", action="store_true")
+    ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--manifest", default="data/bill_versions.json")
+    a = ap.parse_args()
+
+    order = json.loads((DB / "document_versions.json").read_text(encoding="utf-8"))
+    unknown = collections.Counter()
+    per = all_versions(order, unknown)
 
     out = Path(a.site) / "versions"
     written = steps_total = texts = amds = lone = 0

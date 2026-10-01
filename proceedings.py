@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.5
+# GRANITE_VERSION: 2026-09-05.6
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -150,18 +150,6 @@ def in_term(data, current_term):
     if term_keyed(data):
         return dict(data)
     return {current_term: dict(data)} if current_term else {}
-
-
-def for_term(data, term=None):
-    """One term out of a {term: {...}} file; the most recent by default.
-
-    The default is what every tool working on the current session wants, and
-    is the reason a reader that has no notion of terms keeps working once the
-    file it reads grows a second one.
-    """
-    if not data:
-        return {}
-    return data.get(term or max(data), {})
 
 
 def _num(v):

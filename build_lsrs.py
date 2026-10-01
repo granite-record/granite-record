@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 The 2027 bill requests, as a term the bill search can open.
 
@@ -23,6 +23,11 @@ term bills once the full text is available and they've been officially filed,
 and should be listed between All terms and the current term in the term
 selector, and the 2025-2026 term (Current term) should be the default until
 the bills for next term are fully available."
+
+The default was settled the other way on 30 September: the site opens on
+2027-2028 from its first bill, because the General Court publishes bills in
+batches and the first arrives with others. That is what the newest-term rule
+already does, so nothing holds 2025-2026 first.
 
 WHAT THIS WRITES
 
@@ -106,12 +111,45 @@ def roster(site):
     return out
 
 
-def rows_from(lsrs, who):
+LSR_NO = re.compile(r"^(\d{4})-(\d+)$")
+
+
+def became_bills(bills, lsrs):
+    """{request number: "HB 45"} for the requests that are bills now.
+
+    A request that is drafted and introduced keeps its number as the bill's
+    LSR: 2027-0001 becomes whatever bill carries LSR 2027-0001. fetch_lsrs
+    marks a request that leaves its list withdrawn, because the list alone
+    cannot tell a withdrawal from an introduction, and in December and
+    January that would have put "Withdrawn" on every request introduced in
+    that time. The bills can tell: data/bills.json is {term: {bill: record}},
+    and a record's lsr_year and lsr_num are the request's year and number --
+    matched as integers, the list padding "0001" where the bills write none.
+    """
+    want = set()
+    for r in lsrs:
+        m = LSR_NO.match(str(r.get("lsr") or "").strip())
+        if m:
+            want.add((m.group(1), int(m.group(2))))
+    if not want:
+        return {}
+    have = {}
+    for byb in (bills or {}).values():
+        for bid, rec in byb.items():
+            y, n = str(rec.get("lsr_year") or ""), str(rec.get("lsr_num") or "")
+            if n.isdigit() and (y, int(n)) in want:
+                have[(y, int(n))] = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid)
+    return {f"{y}-{n:04d}": b for (y, n), b in have.items()}
+
+
+def rows_from(lsrs, who, became=None):
     rows, unmatched = [], []
     for r in lsrs:
         num = str(r.get("lsr") or "").strip()
         if not num:
             continue
+        m = LSR_NO.match(num)
+        bill = (became or {}).get(f"{m.group(1)}-{int(m.group(2)):04d}" if m else num, "")
         body = str(r.get("body") or "").upper()
         name = str(r.get("sponsor") or "").strip()
         hit = who.get(_fold(name))
@@ -132,12 +170,14 @@ def rows_from(lsrs, who):
             # names. The word on the card is the one fact there is about where
             # it stands.
             "kind": "",
-            "status": "Withdrawn" if r.get("withdrawn") else "Filed as a request",
+            "status": (f"Introduced as {bill}" if bill else
+                       "Withdrawn" if r.get("withdrawn") else "Filed as a request"),
             "status_stated": True,
-            "withdrawn": bool(r.get("withdrawn")),
+            "withdrawn": bool(r.get("withdrawn")) and not bill,
             "term": TERM, "carried": False, "passage": "",
             "last_action": "", "nrc": 0, "votedays": [],
             "lsr": True,
+            **({"introduced": bill} if bill else {}),
         })
     rows.sort(key=lambda x: x["n"])
     return rows, unmatched
@@ -147,6 +187,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--src", default="lsrs.json")
+    ap.add_argument("--bills", default="data/bills.json",
+                    help="the bills, to tell a request that became one from a withdrawal")
     a = ap.parse_args()
     site, src = Path(a.site), Path(a.src)
 
@@ -159,7 +201,10 @@ def main():
     # naming nothing.
     assert isinstance(lsrs, list) and lsrs, f"{src} holds no requests"
 
-    rows, unmatched = rows_from(lsrs, roster(site))
+    bp = Path(a.bills)
+    became = became_bills(json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {},
+                          lsrs)
+    rows, unmatched = rows_from(lsrs, roster(site), became)
     assert rows, "no request survived shaping, though the source had some"
     idx = site / "idx"
     idx.mkdir(parents=True, exist_ok=True)
@@ -181,6 +226,8 @@ def main():
     print(f"  {len(rows)} bill requests for 2027 -> idx/{TERM}.json ({kinds})")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
+    if became:
+        print(f"  {len(became)} introduced as bills, each marked with its bill")
     if unmatched:
         seen = sorted(set(unmatched))
         print(f"  {len(seen)} sponsor name(s) matched nobody on the roster: "

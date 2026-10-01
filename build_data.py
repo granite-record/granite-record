@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -96,16 +96,34 @@ def rows_all(d, base, expect=None):
     been the larger change, and it would have let the two disagree about what
     a column means.
 
-    The download is read first, so a year present in both keeps the copy the
-    General Court publishes directly.
+    A roll call is taken from the first file that holds it, and the download
+    is read first, so a roll call in both keeps the copy the General Court
+    publishes directly. Both files begin year|body|number, which is what
+    names a roll call. This docstring promised that for years before anything
+    kept it: the summaries went into a dict, so an archive copy overwrote the
+    download's, and the ballots into a list, so a roll call in both would
+    have been counted twice. None is in both today -- the download is 2026
+    and rollcalls/ ends at 2025 -- but at the new term 2026 is archived while
+    the download may still hold it, and every 2026 ballot would count twice
+    on every member's record.
+
+    By roll call and not by year, because the new term's download may carry a
+    few of the old year's roll calls -- organization day, if it is filed under
+    2026 -- and taking a year from the first file holding any of it would
+    then take all of 2026 from those few.
     """
     out = rows(d / f"{base}.txt", expect)
+    seen = {tuple(r[:3]) for r in out}
     extra = d / "rollcalls"
     if extra.is_dir():
         for f in sorted(extra.glob(f"{base}_*.txt")):
             got = rows(f, expect)
-            print(f"  {f.name}: {len(got):,} rows")
-            out += got
+            new = [r for r in got if tuple(r[:3]) not in seen]
+            seen.update(tuple(r[:3]) for r in new)
+            print(f"  {f.name}: {len(new):,} rows" + (
+                f", {len(got) - len(new):,} left out as roll calls an earlier file holds"
+                if len(new) < len(got) else ""))
+            out += new
     return out
 
 
@@ -482,6 +500,40 @@ def hearing_in_term(raw, term):
     except ValueError:
         return raw
     return raw if a <= int(m.group(0)) <= b else ""
+
+
+def status_for_session(raw, bills):
+    """({bill: status record} for the current session's bills, [terms the file
+    has no slice for]) -- each bill's record from its own term's slice of
+    bill_status.json, found by the term its LSR year names.
+
+    This took the file's newest term, on the reading that the newest term is
+    the current session's. That holds until the term turns over: the first
+    night the General Court's files show 2027-2028, bill_status.json's newest
+    slice is still 2025-2026, and every 2027 bill numbered like a 2025 one
+    would have taken that bill's title, committee, chapter, text address and
+    sponsors, with no error anywhere -- HB 1 has been the budget every term
+    since 1993, and would have been 2025's budget with 2025's sponsors. A term
+    with no slice gets nothing, and says so. proceedings.for_term, which took
+    the newest term of any file by default, went too: this was its only
+    caller, and its default was the fault.
+
+    A file still in the flat shape is the current session's, as it always was.
+    """
+    if not P.term_keyed(raw):
+        return raw, []
+    by_term = defaultdict(set)
+    for bill, rec in bills.items():
+        by_term[P.term_of(str(rec.get("lsr_year") or ""))].add(bill)
+    out, missing = {}, []
+    for term in sorted(by_term):
+        if term not in raw:
+            missing.append(term)
+            continue
+        # In the file's own order, which is the order sponsors.json has
+        # always been written in.
+        out.update((b, v) for b, v in raw[term].items() if b in by_term[term])
+    return out, missing
 
 
 def main():
@@ -990,11 +1042,13 @@ def main():
     # than leaving them to be sifted out of docket prose.
     bsp = Path("bill_status.json")
     if bsp.exists():
-        # Keyed on the term. `bills` here is the current session's, so it is
-        # the newest term that belongs on it; a file still in the flat shape
-        # is that term already.
+        # Keyed on the term, and each bill takes its own term's record:
+        # status_for_session says why not the newest.
         raw = json.loads(bsp.read_text(encoding="utf-8"))
-        st = P.for_term(raw) if P.term_keyed(raw) else raw
+        st, no_slice = status_for_session(raw, bills)
+        if no_slice:
+            print(f"bill status page: nothing for {', '.join(t or 'no term' for t in no_slice)}"
+                  " -- bill_status.json has no slice for it yet")
         added_sp = added_t = 0
 
         def status_sponsors(v):

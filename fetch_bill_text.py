@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -535,6 +535,31 @@ def is_empty(rec, html):
         and len(rec.get("text") or "") < 200
 
 
+# The cache was bill_text/<BILL>.html, with no term in the name, and on 30
+# September 2026 every page in it was 2025-2026's: 2,234 files for the 2,234
+# bills of bill_text.json, which held that term and nothing else. They stay
+# where they are and are read as that term's. Everything written from then on
+# goes under its term.
+LEGACY_TERM = "2025-2026"
+
+
+def cache_path(cache, term, bid):
+    """Where one bill's page is cached: bill_text/<term>/<BILL>.html.
+
+    A bill number is reused every term, so a cache named for the number alone
+    answers a 2027 run for HB 1 with 2025's HB 1 as "already fetched", and its
+    text goes out under the new bill with nothing to say it is the wrong one.
+    A term's own folder is used whenever it holds the page; the flat file is
+    read only for LEGACY_TERM, which is the term every flat file belongs to.
+    """
+    f = Path(cache) / term / f"{bid}.html"
+    if term == LEGACY_TERM and not f.exists():
+        old = Path(cache) / f"{bid}.html"
+        if old.exists():
+            return old
+    return f
+
+
 def inspect(cache, limit=0, purge=False):
     """Read the cache and say whether what is in it is bills.
 
@@ -546,7 +571,9 @@ def inspect(cache, limit=0, purge=False):
     200 with an error page. Those land in the cache the same size and shape as
     a bill and are only visibly wrong if somebody looks.
     """
-    files = sorted(Path(cache).glob("*.html"))
+    # The flat files are LEGACY_TERM's, and a term's own pages sit in its
+    # folder: see cache_path.
+    files = sorted(Path(cache).glob("*.html")) + sorted(Path(cache).glob("*/*.html"))
     if not files:
         print(f"Nothing cached under {cache}/ yet.")
         return
@@ -568,24 +595,27 @@ def inspect(cache, limit=0, purge=False):
     versions, gaps = Counter(), Counter()
     bad, thin, tiny, ok = [], [], [], []
     for f in files:
+        # "2027-2028/HB1" or, for a flat file, "HB1": the purge below deletes
+        # by this name, so HB1 of one term is never deleted for another's.
+        name = f.relative_to(cache).with_suffix("").as_posix()
         try:
             html = f.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue                     # being written right now; fine
         hit = next((why for mark, why in NOT_A_BILL if mark in html), None)
         if hit:
-            bad.append((f.stem, hit))
+            bad.append((name, hit))
             continue
         rec = parse_text(html, f.stem, "")
         if is_empty(rec, html):
-            bad.append((f.stem, "came back empty: no version, title or text"))
+            bad.append((name, "came back empty: no version, title or text"))
             continue
         if len(html) < 2000:
-            tiny.append(f.stem)
+            tiny.append(name)
         elif rec.get("heading_only"):
-            thin.append(f.stem)
+            thin.append(name)
         else:
-            ok.append((f.stem, rec))
+            ok.append((name, rec))
         versions[rec.get("version") or "(none)"] += 1
         for k in missing(rec):
             gaps[k] += 1
@@ -854,7 +884,7 @@ def main():
     # away because it did not reach the end.
     stopped = ""
     for i, (bid, url) in enumerate(todo, 1):
-        f = cache / f"{bid}.html"
+        f = cache_path(cache, term, bid)
         if f.exists() and not a.refetch:
             html = f.read_text(encoding="utf-8", errors="replace")
             cached += 1
@@ -875,6 +905,7 @@ def main():
             if note:
                 tick.done()
                 print(f"  {note}", flush=True)
+            f.parent.mkdir(parents=True, exist_ok=True)
             f.write_text(html, encoding="utf-8")
             fetched += 1
             time.sleep(gov.delay)

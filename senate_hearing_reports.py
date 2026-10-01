@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.1
+# GRANITE_VERSION: 2026-09-24.2
 """
 The Senate committees' own hearing reports, read out of the database dump
 already on this disk.
@@ -874,6 +874,34 @@ def finish(rec, doubts, bill, row_stamp):
     return r
 
 
+# A TERM'S REPORTS OUTLIVE THE DATABASE'S CURRENT VIEW. CandH_Reports holds
+# the current term, and this file is written whole from the dump of it, so the
+# first dump after the General Court turns the view over to 2027-2028 would
+# have written a file with no 2025-2026 report in it. The view is frozen
+# before it turns, as db/term/<term>/CandH_Reports.psv, and read after the
+# current dump: a term the current dump holds comes from it, and a frozen
+# one supplies only the terms it no longer does.
+FROZEN = Path("db") / "term"
+
+
+def frozen_sources():
+    """Each term's CandH_Reports.psv frozen under db/term/<term>/, oldest first."""
+    return sorted(FROZEN.glob("*/CandH_Reports.psv")) if FROZEN.is_dir() else []
+
+
+def with_frozen(out, sources):
+    """`out` with every term the frozen dumps hold and it does not: (out,
+    [(source, {term: bills})])."""
+    said = []
+    for f in sources:
+        more, _ = parse_all(f)
+        kept = {t: v for t, v in sorted(more.items()) if t not in out}
+        out.update(kept)
+        if kept:
+            said.append((f, {t: len(v) for t, v in kept.items()}))
+    return out, said
+
+
 def read_rows(path=SOURCE):
     """Every Senate hearing report row in the dump."""
     csv.field_size_limit(1 << 30)
@@ -991,6 +1019,10 @@ def main():
         sys.exit(f"{src} is not on this disk. It is the database dump "
                  "fetch_archive_db.py writes; this script only reads it.")
     out, c = parse_all(src)
+    out, frozen = with_frozen(out, frozen_sources())
+    for f, terms in frozen:
+        print(f"  {f}: " + ", ".join(f"{t} ({n:,} bills)" for t, n in terms.items())
+              + ", which the current dump no longer holds")
     if a.show:
         want = a.show.replace(" ", "").upper()
         for term, byb in sorted(out.items()):

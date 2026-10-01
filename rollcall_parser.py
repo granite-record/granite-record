@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -250,18 +250,34 @@ def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):
     from 1999 has its ballots on this disk, each naming its own code, so the
     count comes from them, the same way in every year, and settles the old
     question of which field is "excused" by not needing either.
+
+    A roll call's ballots come from the first file that holds it, the
+    download first -- the rule parse_all keeps for the summaries. Summed
+    across every file, a roll call in two would count each member twice, and
+    since these counts are the headline tally, 2026 would have published
+    doubled yeas and nays from the night 2026 was archived beside a download
+    still holding it. By roll call rather than by year: see
+    build_data.rows_all.
     """
     counts = defaultdict(Counter)
     files = [Path(current)] if Path(current).exists() else []
     d = Path(extra_dir)
     if d.is_dir():
         files += sorted(d.glob("RollCallHistory_*.txt"))
+    source = {}
     for f in files:
+        left_out = 0
         with open(f, encoding="utf-8-sig", errors="replace") as fh:
             for line in fh:
                 p = line.rstrip("\n").split("|")
                 if len(p) > 6 and p[2].strip().isdigit():
-                    counts[(p[0].strip(), p[1].strip(), int(p[2]))][vote_word(p[6])] += 1
+                    key = (p[0].strip(), p[1].strip(), int(p[2]))
+                    if source.setdefault(key, f) != f:
+                        left_out += 1
+                        continue
+                    counts[key][vote_word(p[6])] += 1
+        if left_out:
+            print(f"  {f.name}: {left_out:,} ballots left out as roll calls an earlier file holds")
     return counts
 
 

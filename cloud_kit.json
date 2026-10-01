@@ -36,6 +36,11 @@
                 "db/past/PastCommitteeReports.jsonl"]
     },
     {
+      "what": "Each term's current-term views as they stood at its end (db/term/<term>/: Legislation, LegislationText, CandH_Reports and their _columns.json), frozen before the General Court turns the views over to the next term. build_bill_versions.py and senate_hearing_reports.py read them after the current dump, so a past term keeps its versions and Senate hearing reports. Nothing is here until the first freeze.",
+      "owner": "laptop",
+      "globs": ["db/term/*/*"]
+    },
+    {
       "what": "The General Court's own text of every past bill's printings, 1989-2024 (fetch_past_db.py; 944 MB). archive_text.py reads it to show 2018's final version where the saved page printed an earlier one, and without it GitHub's build would keep the earlier printing on those 23 bills. It changes only when the laptop dumps the views again.",
       "owner": "laptop",
       "paths": ["db/past/PastLegislationText.jsonl"]

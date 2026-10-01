@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.3
+# GRANITE_VERSION: 2026-09-06.4
 """
 Senate committee reports, with their reasoning, from the General Court's
 own database.
@@ -300,20 +300,44 @@ def main():
         return 0
 
     p = Path(a.out)
+    prev = {}
     if p.exists():
         try:
-            prev = json.loads(p.read_text(encoding="utf-8"))
-            had = (sum(len(v) for v in prev.values())
-                   if prev and all(isinstance(v, dict) for v in prev.values())
-                   else len(prev))
+            prev = P.in_term(json.loads(p.read_text(encoding="utf-8")), "")
         except ValueError:
-            had = 0
-        if had and nbills < had * 0.5 and not a.force_write:
-            sys.exit(f"\nNOT WRITING {a.out}: this run found {nbills:,} bills "
-                     f"against {had:,} already on file.")
-    p.write_text(json.dumps(out, indent=1), encoding="utf-8")
+            prev = {}
+    why = shrunk(prev, out)
+    if why and not a.force_write:
+        sys.exit(f"\nNOT WRITING {a.out}: {why}")
+    merged, kept = merge_terms(prev, out)
+    p.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     print(f"  -> {a.out}")
+    if kept:
+        print("  kept, because the database's view no longer holds them: "
+              + ", ".join(f"{t} ({len(merged[t]):,} bills)" for t in kept))
     return 0
+
+
+def shrunk(prev, out):
+    """Why this run's reports look like a failed run rather than the record,
+    or "". Term against the same term: the first run of a new term finds a
+    handful of 2027 bills against a whole 2025-2026 on file, and judged
+    against the whole file that refused every night until somebody passed
+    --force-write -- which would then have written 2025-2026 out of it."""
+    for t, byb in out.items():
+        had = len(prev.get(t, {}))
+        if had and len(byb) < had * 0.5:
+            return f"this run found {len(byb):,} bills of {t} against {had:,} already on file."
+    return ""
+
+
+def merge_terms(prev, out):
+    """(the file to write, [terms kept from it]). The view holds the current
+    term only, so a term this run read replaces its own slice and every other
+    term on file is kept -- written whole, the first run after the view turns
+    over would have dropped 2025-2026's 1,446 reports."""
+    kept = sorted(t for t in prev if t not in out)
+    return {**{t: prev[t] for t in kept}, **out}, kept
 
 
 if __name__ == "__main__":

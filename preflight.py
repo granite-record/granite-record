@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.279
+# GRANITE_VERSION: 2026-09-04.281
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3299,6 +3299,64 @@ def _final_version_from_db(at):
     return "ok", ("2018 SB 421 shows chapter 361's 415:6-w with its own label; a page "
                   "that is its final version, another session, a nearer page and a "
                   "missing view all keep the page, and a veto note stays")
+
+
+@check("status", "the bill-text cache keeps each term's pages apart",
+       needs=("fetch_bill_text",))
+def _text_cache_by_term(fetch_bill_text):
+    """fetch_bill_text cached bill_text/<BILL>.html, a name with no term in
+    it, so a 2027 run would have found 2025's HB 1 "already fetched" and
+    published its text under the new bill. The cache is
+    bill_text/<term>/<BILL>.html now, and the flat files -- every one of them
+    2025-2026's -- answer for that term and no other."""
+    FB = fetch_bill_text
+    tmp = Path(tempfile.mkdtemp(prefix="gr-textcache-"))
+    try:
+        (tmp / "HB1.html").write_text("2025's", encoding="utf-8")
+        assert FB.cache_path(tmp, FB.LEGACY_TERM, "HB1") == tmp / "HB1.html"
+        for term in ("2027-2028", "2023-2024"):
+            got = FB.cache_path(tmp, term, "HB1")
+            assert got == tmp / term / "HB1.html", f"{term} reads {got}"
+        (tmp / FB.LEGACY_TERM).mkdir()
+        (tmp / FB.LEGACY_TERM / "HB1.html").write_text("refetched", encoding="utf-8")
+        assert FB.cache_path(tmp, FB.LEGACY_TERM, "HB1") == tmp / FB.LEGACY_TERM / "HB1.html", \
+            "a term's own folder is not preferred to the flat file"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    src = Path("fetch_bill_text.py").read_text(encoding="utf-8")
+    assert "f = cache_path(cache, term, bid)" in src and 'cache / f"{bid}.html"' not in src, \
+        "fetch_bill_text reads or writes its cache by the bill number alone again"
+    return "ok", "2027's HB1 is not 2025's; the flat pages answer for 2025-2026 only"
+
+
+@check("status", "a bill takes the status page of its own term, and a term with no slice "
+                 "takes none", needs=("build_data",))
+def _status_own_term(build_data):
+    """build_data laid bill_status.json's newest term onto the current
+    session's bills by number. The first night of 2027-2028 that newest term
+    is still 2025-2026, and every 2027 bill numbered like a 2025 one would
+    have taken its title, committee, chapter, text address and sponsors --
+    HB 1, the budget every term since 1993, with 2025's sponsors.
+    status_for_session takes each bill's record from the term its LSR year
+    names, and nothing for a term the file has no slice for."""
+    SFS = build_data.status_for_session
+    raw = {"2023-2024": {"HB1": {"title": "the 2023 budget"}},
+           "2025-2026": {"HB1": {"title": "the 2025 budget"}, "HB2": {"title": "2025's HB2"}}}
+    new = {"HB1": {"lsr_year": "2027"}, "HB2": {"lsr_year": "2027"}}
+    assert SFS(raw, new) == ({}, ["2027-2028"]), SFS(raw, new)
+    raw["2027-2028"] = {"HB1": {"title": "the 2027 budget"}}
+    assert SFS(raw, new) == ({"HB1": {"title": "the 2027 budget"}}, []), SFS(raw, new)
+    got, missing = SFS(raw, {"HB1": {"lsr_year": "2025"}, "HB2": {"lsr_year": "2026"}})
+    assert {b: v["title"] for b, v in got.items()} == {
+        "HB1": "the 2025 budget", "HB2": "2025's HB2"} and not missing, (got, missing)
+    flat = {"HB1": {"title": "flat"}}
+    assert SFS(flat, new) == (flat, []), "a flat file is the current session's"
+    assert not hasattr(build_data.P, "for_term"), (
+        "proceedings.for_term is back: its newest-term default is the fault this check is about")
+    src = Path("build_data.py").read_text(encoding="utf-8")
+    assert "status_for_session(raw, bills)" in src, \
+        "build_data no longer reads bill_status.json through status_for_session"
+    return "ok", "2027 bills take nothing from 2025-2026, and their own slice once it exists"
 
 
 @check("status", "stripping the page furniture never deletes a line of the bill")
@@ -28120,6 +28178,251 @@ def _ballot_conflict(rollcall_parser):
         "build_data.py no longer puts rollcall_parser.ballot's fields on each member vote "
         "row, so no conflict reaches attendance")
     return "ok", "code 5 flagged as a conflict, code 7 and an empty code not; build_data puts it on the row"
+
+
+@check("rollcalls", "a roll call in both the download and the archive is counted once, "
+                    "from the download", needs=("build_data", "rollcall_parser"))
+def _rollcall_once(build_data, rollcall_parser):
+    """At the new term 2026 is archived as rollcalls/*_2026.txt while the
+    download may still hold it, and build_data.rows_all and
+    rollcall_parser.ballot_counts read every file and added them up: each
+    2026 ballot would have counted twice on its member's record, and in the
+    headline tally, with no error anywhere. A roll call now comes from the
+    first file that holds it, the download first -- and by roll call rather
+    than by year, so a new download carrying only a few of the old year's
+    roll calls (organization day, if it is filed under 2026) does not take
+    the whole year from those few. Real shapes, a byte-order mark included."""
+    import io
+    import contextlib
+    tmp = Path(tempfile.mkdtemp(prefix="gr-rollonce-"))
+    try:
+        (tmp / "rollcalls").mkdir()
+
+        def put(name, lines):
+            (tmp / name).write_text("\ufeff" + "\n".join(lines) + "\n", encoding="utf-8")
+        put("RollCallHistory.txt", ["2026|H|1|100|11||Yea|", "2026|H|1|101|12||Nay|"])
+        put("RollCallSummary.txt",
+            ["2026|H|1|1/7/2026 10:15:33 AM|HB1|1|1|0|0|||Passage|the download|||"])
+        # The archive holds the same roll call with other ballots, one the
+        # download lacks, and a year of its own.
+        put("rollcalls/RollCallHistory_2026.txt",
+            ["2026|H|1|100|11||Nay|", "2026|H|1|101|12||Nay|", "2026|H|1|102|13||Yea|",
+             "2026|H|2|100|11||Yea|"])
+        put("rollcalls/RollCallSummary_2026.txt",
+            ["2026|H|1|1/7/2026 10:15:33 AM|HB1|1|2|0|0|||Passage|the archive|||",
+             "2026|H|2|1/7/2026 11:00:00 AM|HB2|1|0|0|0|||Passage|the archive|||"])
+        put("rollcalls/RollCallHistory_2025.txt", ["2025|H|1|100|11||Yea|"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            hist = build_data.rows_all(tmp, "RollCallHistory", 8)
+            summ = build_data.rows_all(tmp, "RollCallSummary")
+            counts = rollcall_parser.ballot_counts(current=tmp / "RollCallHistory.txt",
+                                                   extra_dir=tmp / "rollcalls")
+        by = Counter(tuple(r[:3]) for r in hist)
+        assert by == {("2026", "H", "1"): 2, ("2026", "H", "2"): 1, ("2025", "H", "1"): 1}, by
+        assert [r[6] for r in hist if tuple(r[:3]) == ("2026", "H", "1")] == ["Yea", "Nay"], \
+            "roll call 1 of 2026 is not the download's"
+        titles = {tuple(r[:3]): r[12] for r in summ}
+        assert titles == {("2026", "H", "1"): "the download", ("2026", "H", "2"): "the archive"}, titles
+        assert counts[("2026", "H", 1)] == Counter({"Yea": 1, "Nay": 1}), counts[("2026", "H", 1)]
+        assert counts[("2026", "H", 2)] == Counter({"Yea": 1}) and \
+            counts[("2025", "H", 1)] == Counter({"Yea": 1}), dict(counts)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a roll call in both is read once, from the download; one only the archive "
+                  "holds is kept; ballots and summaries agree")
+
+
+@check("rollcalls", "the floor index reads every year's roll calls from 2025-2026 on, and only bills",
+       needs=("build_floor_index",))
+def _floor_every_year(build_floor_index):
+    """build_floor_index read the download's roll calls alone -- one session
+    year -- and the newest term of narratives.json, and read a docket floor
+    action only where it had no roll call, taking the roll calls to have
+    placed those. So 138 of 2025's 173 roll-call floor debates had no entry
+    and their bills never linked the sitting, and at the new term the index
+    would have been written with no 2025-2026 debate in it. It reads the
+    archived years and every narratives term now, from FIRST_TERM on; a roll
+    call is read once, from the first file holding it; and a roll call on
+    something the docket does not know as a bill -- "HRULE64", the House
+    adopting its rules -- is no bill's debate but still closes the window of
+    the bill after it. Driven end to end on a small tree."""
+    BFI = build_floor_index
+    assert BFI.FIRST_TERM == "2025-2026", (
+        f"FIRST_TERM is {BFI.FIRST_TERM}: lowering it puts 2019-2024's floor debates on the "
+        "site, which waits for a bench sample of those years (see its docstring)")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-floor-"))
+    try:
+        (tmp / "rollcalls").mkdir()
+
+        def put(name, lines):
+            (tmp / name).write_text("\ufeff" + "\n".join(lines) + "\n", encoding="utf-8")
+        put("videos_house_x.csv", [
+            "video_id,title,title_parsed,parsed_committee,parsed_date,start_eastern,duration_iso",
+            "v2025,House Session 2/6/2025,yes,House Session,2025-02-06,2025-02-06 10:00:00,PT5H",
+            "v2023,House Session 3/9/2023,yes,House Session,2023-03-09,2023-03-09 10:00:00,PT5H"])
+        put("RollCallSummary.txt", [
+            "2026|H|1|1/7/2026 10:15:33 AM||321|2|34|38|||Call of the Roll|||",
+            "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||The download's copy|tenancy|||"])
+        put("rollcalls/RollCallSummary_2025.txt", [
+            "2025|H|2|2/6/2025 10:10:00 AM|HRULE64|300|50|0|0|||Adopt|rules|||",
+            "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||Adopt Floor Amendment|tenancy|||",
+            "2025|H|4|2/6/2025 10:30:00 AM|HB60|217|139|11|32|||OTP|tenancy|||"])
+        put("rollcalls/RollCallSummary_2023.txt", [
+            "2023|H|5|3/9/2023 11:00:00 AM|HB10|200|150|0|0|||OTP|x|||"])
+        floor = lambda d, kind: {"type": "floor", "date": d, "body": "H",
+                                 "vote_kind": kind, "action": "OTP"}
+        (tmp / "narratives.json").write_text(json.dumps({
+            "2023-2024": {"HB10": {"events": [floor("2023-03-09", "VV")]}},
+            "2025-2026": {"HB60": {"events": [floor("2025-02-06", "RC")]},
+                          "HB71": {"events": [floor("2025-02-06", "VV")]}}}), encoding="utf-8")
+        r = _run([sys.executable, str(Path(BFI.__file__).resolve()), "--videos", "videos_house_x.csv",
+                  "--summary", "RollCallSummary.txt", "--narratives", "narratives.json",
+                  "--out", "floor.json"], cwd=tmp, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stdout or "") + (r.stderr or "")
+        got = json.loads((tmp / "floor.json").read_text(encoding="utf-8"))
+        assert sorted(got) == ["HB60", "HB71"], (
+            f"the index holds {sorted(got)}: not HRULE64, which is not a bill, nor 2023's HB10, "
+            "which is before FIRST_TERM")
+        (e,) = got["HB60"]
+        assert e["precise"] and e["debate_end"] == 1800.0 and e["window_start"] == 600.0, (
+            f"HB60 should close at 30m and open where the rules vote closed, at 10m: {e}")
+        assert e["motions"] == ["The download's copy", "OTP"], (
+            f"roll call 3 should be the download's copy, read once: {e['motions']}")
+        assert got["HB71"][0]["precise"] is False, got["HB71"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("2025's archived roll calls placed, the download's copy first, a rules vote "
+                  "left out but still a boundary, and nothing before FIRST_TERM")
+
+
+@check("reports", "a past term's Senate reports outlive the database's current view",
+       needs=("fetch_reports_db", "senate_hearing_reports"))
+def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
+    """CandH_Reports is the database's current-term view, and both files made
+    from it were written whole: the first run after the General Court turns
+    it over to 2027-2028 would have written 2025-2026's reports out. Worse,
+    fetch_reports_db's guard compared the run against the whole file, so it
+    would have refused every night -- a handful of 2027 bills against a whole
+    2025-2026 -- until somebody passed --force-write, which then dropped it.
+    senate_reports.json is merged by term now and guarded term against term;
+    senate_hearing_reports reads each term frozen under db/term/<term>/ after
+    the current dump."""
+    FR, SH = fetch_reports_db, senate_hearing_reports
+    prev = {"2025-2026": {f"SB{i}": [{}] for i in range(1, 400)}}
+    new = {"2027-2028": {"SB1": [{"x": 1}], "SB2": [{}]}}
+    assert FR.shrunk(prev, new) == "", "a new term was judged against the old one"
+    merged, kept = FR.merge_terms(prev, new)
+    assert kept == ["2025-2026"] and set(merged) == {"2025-2026", "2027-2028"} \
+        and merged["2027-2028"]["SB1"] == [{"x": 1}], (kept, list(merged))
+    assert "2025-2026" in FR.shrunk(prev, {"2025-2026": {"SB1": [{}]}}), \
+        "a term that lost most of its bills is no longer refused"
+    assert FR.merge_terms(prev, {"2025-2026": {"SB1": []}})[0] == {"2025-2026": {"SB1": []}}, \
+        "a term this run read must replace its own slice"
+    src = Path("fetch_reports_db.py").read_text(encoding="utf-8")
+    assert "merged, kept = merge_terms(prev, out)" in src and "shrunk(prev, out)" in src, \
+        "fetch_reports_db no longer writes through merge_terms and shrunk"
+    saved = SH.parse_all
+    try:
+        SH.parse_all = lambda f: ({"2025-2026": {"SB9": ["frozen"]},
+                                   "2027-2028": {"SB1": ["frozen 2027"]}}, {})
+        out, said = SH.with_frozen({"2027-2028": {"SB1": ["current"]}}, [Path("db/term/2025-2026/x")])
+    finally:
+        SH.parse_all = saved
+    assert out == {"2027-2028": {"SB1": ["current"]}, "2025-2026": {"SB9": ["frozen"]}}, out
+    assert said == [(Path("db/term/2025-2026/x"), {"2025-2026": 1})], said
+    src = Path("senate_hearing_reports.py").read_text(encoding="utf-8")
+    assert "with_frozen(out, frozen_sources())" in src, \
+        "senate_hearing_reports no longer reads the frozen terms"
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    assert any("db/term/*/*" in e.get("globs", []) and e.get("owner") == "laptop"
+               for e in kit["kit"]), "the kit does not carry db/term/, so GitHub's build would not"
+    return "ok", ("a 2027 run keeps 2025-2026 and is judged against 2027 alone; a frozen term "
+                  "supplies only what the current dump lacks; the kit carries it")
+
+
+@check("build", "a past term's bill versions outlive the database's current views",
+       needs=("build_bill_versions",))
+def _versions_keep_terms(build_bill_versions):
+    """build_bill_versions writes every Versions tab and its manifest from the
+    dump of LegislationText and Legislation, which are current-term views:
+    the first dump after they turn over to 2027-2028 holds no 2025-2026 bill.
+    It reads each term frozen under db/term/<term>/ after the current dump
+    now -- each with its own Legislation, because a LegislationID restarts
+    every term -- and a bill-year the current dump holds comes from it.
+    Driven end to end on a small tree."""
+    BBV = build_bill_versions
+    tmp = Path(tempfile.mkdtemp(prefix="gr-versions-"))
+    try:
+        cols = {"LegislationText": ["LegislationID", "DocumentVersion", "Text",
+                                    "DateTimeStamp", "HTMLText"],
+                "Legislation": ["legislationID", "CondensedBillNo", "sessionyear"]}
+
+        def dump(folder, bills, texts):
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+            (folder / "Legislation.psv").write_text(
+                "".join(f"{i}|{b}|{y}\n" for i, b, y in bills), encoding="utf-8")
+            (folder / "LegislationText.psv").write_text(
+                "".join(f"{i}|{lab}|{t}|01/05/2027 10:00:00|<p>{t}</p>\n" for i, lab, t in texts),
+                encoding="utf-8")
+        two = lambda i, word: [(i, "Introduced", f"{word} as introduced"),
+                               (i, "As Amended by the House", f"{word} as amended")]
+        # The current views: 2027's HB1, and -- before the turn -- 2025's HB2.
+        dump(tmp / "db", [("1", "HB1", "2027"), ("3", "HB2", "2025")],
+             two("1", "2027 HB1") + two("3", "current HB2"))
+        # The frozen term: the same LegislationID 1 is a different bill there.
+        dump(tmp / "db" / "term" / "2025-2026", [("1", "HB1", "2025"), ("2", "HB2", "2025")],
+             two("1", "2025 HB1") + two("2", "frozen HB2"))
+        (tmp / "db" / "document_versions.json").write_text(json.dumps(
+            {"Introduced": {"sort": 20}, "As Amended by the House": {"sort": 30}}), encoding="utf-8")
+        r = _run([sys.executable, str(Path(BBV.__file__).resolve()), "--site", "site",
+                  "--manifest", "m.json"], cwd=tmp, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stdout or "") + (r.stderr or "")
+        man = json.loads((tmp / "m.json").read_text(encoding="utf-8"))
+        assert {y: sorted(b) for y, b in man.items()} == {"2025": ["HB1", "HB2"], "2027": ["HB1"]}, man
+        words = {p.relative_to(tmp / "site" / "versions").as_posix(): p.read_text(encoding="utf-8")
+                 for p in (tmp / "site" / "versions").rglob("*.txt")}
+        hb2 = " ".join(t for k, t in words.items() if k.startswith("2025/HB2."))
+        hb1 = " ".join(t for k, t in words.items() if k.startswith("2025/HB1."))
+        assert "current HB2" in hb2 and "frozen HB2" not in hb2, \
+            f"2025's HB2 should come from the current dump while it holds it: {hb2!r}"
+        assert "2025 HB1" in hb1 and "2027" not in hb1, \
+            f"2025's HB1 should be the frozen term's own LegislationID 1: {hb1!r}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("2025-2026 kept from its frozen dump, joined to its own ids; the current dump "
+                  "wins a bill-year it still holds")
+
+
+@check("build", "a bill request that became a bill reads as introduced, not withdrawn",
+       needs=("build_lsrs",))
+def _request_became_bill(build_lsrs):
+    """fetch_lsrs marks a request that leaves its list withdrawn, because the
+    list cannot tell a withdrawal from an introduction, and in December and
+    January that would have put "Withdrawn" on every request filed as a bill.
+    build_lsrs reads the bills: a request whose number a bill carries as its
+    LSR -- the year and the number, the list padding it and the bills not --
+    reads "Introduced as HB 45"."""
+    L = build_lsrs
+    req = lambda n, gone: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB",
+                           "title": "t", "sponsor": "", "withdrawn": gone}
+    lsrs = [req(1, True), req(2, True), req(3, False)]
+    bills = {"2025-2026": {"HB45": {"lsr_year": "2025", "lsr_num": "1"}},
+             "2027-2028": {"HB45": {"lsr_year": "2027", "lsr_num": "1"},
+                           "SB7": {"lsr_year": "2027", "lsr_num": "0003"}}}
+    became = L.became_bills(bills, lsrs)
+    assert became == {"2027-0001": "HB 45", "2027-0003": "SB 7"}, became
+    rows, _ = L.rows_from(lsrs, {}, became)
+    got = {r["n"]: (r["status"], r["withdrawn"], r.get("introduced")) for r in rows}
+    assert got == {"LSR 2027-0001": ("Introduced as HB 45", False, "HB 45"),
+                   "LSR 2027-0002": ("Withdrawn", True, None),
+                   "LSR 2027-0003": ("Introduced as SB 7", False, "SB 7")}, got
+    rows, _ = L.rows_from(lsrs[2:], {}, {})
+    assert rows[0]["status"] == "Filed as a request" and "introduced" not in rows[0], rows[0]
+    src = Path("build_lsrs.py").read_text(encoding="utf-8")
+    assert "rows_from(lsrs, roster(site), became)" in src, \
+        "build_lsrs no longer gives rows_from the bills"
+    return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
 
 
 @check("naming", "a sponsorship is filed under the member its bill page links, and a name is that member only where they sat",
