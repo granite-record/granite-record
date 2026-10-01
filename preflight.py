@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.289
+# GRANITE_VERSION: 2026-09-04.294
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8601,7 +8601,7 @@ def _fixture_brand(here, root, brand=True):
     shutil.copytree(here / "assets"), which made the fixture three different
     sites: the laptop's carried the artist's logo over the clipart, GitHub's
     machine carried whatever the kit had brought, and a clone -- since the
-    logo and icons left the repository on 30 September -- carried none, and
+    logo and icons left the repository on 1 October -- carried none, and
     failed _chain ("style.css asks for /lockup.png") and _links_resolve ("312
     links to 4 paths") on a tree with nothing wrong with it.
 
@@ -13903,10 +13903,11 @@ def _logo_licence():
     And brand/licensed/ and assets/licensed/ are gitignored, which stops a
     `git add .` but not a `git add -f`, so this asks git what it tracks.
 
-    THE CLIPART TOO, since 30 September 2026. The bought Old Man of the
+    THE CLIPART TOO, since 1 October 2026. The bought Old Man of the
     Mountain and every icon drawn from it are used on the terms they were
     bought on, which are no more the project's to pass on than the artist's,
-    and the person decided they leave the repository as well: the originals in
+    and the person decided on 30 September that they leave the repository as
+    well, which the commit of 1 October did: the originals in
     brand/, their arrival copies at the root, and the images in assets/. So
     the question to git is now the whole of brand/ and assets/ and those three
     names, and the one answer allowed is assets/site.webmanifest, which is
@@ -13949,7 +13950,7 @@ def _brand_files():
     """A new icon reference should fail here, on the laptop, and not as a 404
     after a night.
 
-    None of the logo and icon files is in the repository (30 September 2026),
+    None of the logo and icon files is in the repository (since 1 October 2026),
     so nothing about a checkout says which ones a complete site needs. That is
     build_pages.BRAND_FILES, and it is only worth having if it is true -- so
     it is held to the four places a page can ask for one of them:
@@ -13969,7 +13970,11 @@ def _brand_files():
     literal path -- exactly BRAND_FILES less the manifest, which git holds --
     because a literal path that is missing stops seed-kit and kit-down, where
     a glob is satisfied by any one file. The header's mark is the artist's and
-    travels with assets/licensed/*.
+    travels with assets/licensed/* -- and is named there by its own path as
+    well, for the same reason: it is the one file a page asks for that has no
+    clipart twin, so with the glob alone a kit sent before build_brand.py
+    drew it was a whole kit to seed-kit, and the first thing to say otherwise
+    was GitHub's machine, a night later.
     """
     import build_pages as BP
     want = set(BP.BRAND_FILES)
@@ -14040,9 +14045,16 @@ def _brand_files():
         and not licensed[0].get("optional"), (
         "the kit no longer carries assets/licensed/* as the laptop's, required "
         "-- which is how the header's mark and the artist's lockup reach the night")
+    mark = f"assets/licensed/{BP.HEADER_MARK}"
+    assert mark in licensed[0].get("paths", []), (
+        f"the kit's licensed entry must name {mark} by its literal path: the "
+        "glob beside it is satisfied by the lockup alone, so without the path "
+        "seed-kit sends a kit that builds a header with no mark and says "
+        "nothing, and the night is the first to find out")
     return "ok", (f"{len(want)} files named by {len(set(named.values()))} sources and "
                   f"nothing else, plus the header's {BP.HEADER_MARK}; the kit's "
-                  f"clipart entry names the {len(clip)} git does not hold")
+                  f"clipart entry names the {len(clip)} git does not hold and its "
+                  f"licensed entry names the mark")
 
 
 @check("frontend", "the header draws the artist's mark where the build has it, and the wordmark alone where it does not")
@@ -14076,7 +14088,10 @@ def _header_mark():
     where assets/licensed/ is here, the mark is in it. A kit sent before
     build_brand.py drew it would build a header with no mark and pass every
     other check, because that is exactly what a fork's correct build looks
-    like. _links_resolve runs both builds end to end on the fixture.
+    like. The kit names the mark by its path, so seed-kit refuses that kit
+    on the laptop (_brand_files holds the path there); this is what stops
+    the night if one is in the bucket anyway. _links_resolve runs both
+    builds end to end on the fixture.
     """
     import struct
     import build_pages as BP
@@ -15096,7 +15111,7 @@ def _cloud_kit(CL, BA):
       - every output a build reads before rewriting it (build_all.CARRIED),
         and every input a --local step declares from outside the repository
         (ic_SOURCES), is in the kit; so are the caption summary, the logo
-        the build lays over the clipart, and since 30 September the clipart
+        the build lays over the clipart, and since 1 October the clipart
         itself, file by file (build_pages.BRAND_FILES), because it is no
         longer in the repository
       - nothing in the kit or the state is tracked by git, and every literal

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.9
+# GRANITE_VERSION: 2026-09-12.10
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -16,8 +16,9 @@ pages. One source, one copy step.
 NONE OF THE PICTURES IS IN THE REPOSITORY. This script is MIT like the rest of
 the code; what it reads and what it draws are not. The project's originals are
 a bought clipart Old Man of the Mountain and an artist's licensed drawing, and
-on 30 September 2026 the person took the clipart out of git as the drawing
-already was: brand/ and the images in assets/ are gitignored, they live on the
+on 1 October 2026 the clipart came out of git as the drawing already was (the
+person's decision of the day before; commits from before the removal still
+carry it): brand/ and the images in assets/ are gitignored, they live on the
 machine that builds the site, and GitHub's nightly gets assets/ from the
 private kit (cloud_kit.json). DATA.md has the terms. So a clone has no brand/
 and this stops at the first missing original, saying what a fork should put
@@ -107,7 +108,10 @@ def need(p):
             "again:\n"
             + "".join(f"  brand/{name:<18} {what}\n" for name, what in ORIGINALS)
             + "or skip this script and put finished files in assets/ under the "
-            "names build_pages.BRAND_FILES lists.")
+            "names build_pages.BRAND_FILES lists.\nNone of these draws a mark "
+            "for the header: that is a mask named mark.png in assets/, opaque "
+            "where the ink is (build_pages.HEADER_MARK), and without one the "
+            "header is the site's name alone.")
     return p
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.127
+# GRANITE_VERSION: 2026-09-04.128
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -110,7 +110,8 @@ def pages_region(src="app.css"):
 #
 # NONE OF THEM IS IN THE REPOSITORY, bar the manifest, which is text. The
 # person decided on 30 September 2026 that the bought clipart leaves git as
-# the artist's drawing already had (DATA.md says why), so on a fresh clone
+# the artist's drawing already had (DATA.md says why), and the commit that
+# removed it is of 1 October, so on a fresh clone
 # assets/ holds site.webmanifest and nothing else. The project's own machines
 # get them back from the private kit (cloud_kit.json); a fork brings its own.
 #

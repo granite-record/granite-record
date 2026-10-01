@@ -46,12 +46,12 @@ site, gitignored, and reach the nightly build through the project's private
 kit. The one file of assets/ that is tracked is site.webmanifest, which is
 text and is MIT like the code.
 
-The clipart was in the repository until 30 September 2026, so earlier commits
-carry it: the images in brand/, the copies of them at the root (Icon.png, Logo
-Black.png and Logo White.png), and what build_brand.py drew from them into
-assets/. The history was not rewritten. Those files were never offered under
-the MIT licence and are not now; that an old commit still holds them is not a
-licence to use them.
+The clipart was in the repository until it was removed on 1 October 2026, so
+commits from before the removal carry it: the images in brand/, the copies of
+them at the root (Icon.png, Logo Black.png and Logo White.png), and what
+build_brand.py drew from them into assets/. The history was not rewritten.
+Those files were never offered under the MIT licence and are not now; that an
+old commit still holds them is not a licence to use them.
 
 A fork of this project should bring its own. The code that draws the icons,
 build_brand.py, is MIT like the rest of the code, and says what to put in
@@ -62,3 +62,14 @@ files are missing, sets the home page's heading as text and the header as the
 site's name alone, and leaves the icon links in each page's head pointing at
 nothing -- which check_site.py reports as one error, so that a site without
 its icons is not published by accident.
+
+Two things in the code are this project's and a fork changes them with its
+logo. The footer of every page and the About page credit Debra Caplan for the
+logo, as her licence asks; that credit is written in bills.html and in
+build_pages.py (shell() and ABOUT), it is printed whether or not her files are
+there, and a site that does not carry her drawing should not carry it. And
+.gitignore keeps every image out of brand/ and assets/, because this
+repository may hold none: a fork that wants its own logo in its own repository
+takes those lines out. preflight's _logo_licence check holds both in place for
+this project -- the credit present, the images untracked -- and is the check
+to change with them.

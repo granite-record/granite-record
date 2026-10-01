@@ -327,8 +327,8 @@ The logo and the icons are the exception to all of it, and they are not in the
 repository: the logo is an artist's drawing and the icons are bought clipart,
 used under licences that are not the project's to pass on. A fork should bring
 its own; `DATA.md` says which files that means and what the build does without
-them. Commits before 30 September 2026 still carry the clipart, which was
-never offered under MIT.
+them. Commits from before the clipart was removed, on 1 October 2026, still
+carry it; it was never offered under MIT.
 
 ---
 
