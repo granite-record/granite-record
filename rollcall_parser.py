@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -101,6 +101,28 @@ PROCEDURAL = {"call of the roll", "rules suspension", "limit debate", "print rem
 # any-letters-then-digits pattern is exactly what admitted HRULE64.
 BILL_NO = re.compile(r"^(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)\d+$", re.I)
 
+# ONE BILL NUMBER, HOWEVER THE FILE TYPED IT. Seven roll calls were typed some
+# other way than data/bills.json keys their bill: "SB 406" (2012 S 118), "HB
+# 315" (2017 S 198) and "SB 426" (2018 S 84) with a space, "sb136" (2016 H 21)
+# in lower case, "SB115-FN" (2001 S 11) with its fiscal-note flag, and
+# "HCACR2" and "HCACR15" (2016 H 31 and H 38) with the House's letter in
+# front of a CACR. This parser stripped spaces and did not upper-case, so
+# SB 136's vote was on no bill page; build_data upper-cased and did not strip,
+# so the three spaced ones linked no member's ballot to the bill. The last
+# three matched no bill number at all and were filed as procedural: CACR 2's
+# 234-90 vote to kill it was on neither its page nor its member's, and
+# /data/rollcalls.csv published it as procedural. Both now ask this.
+FLAGS = re.compile(r"(?:-(?:FN|LOCAL|L|A))+$")
+
+
+def bill_number(raw):
+    """The bill a roll call's bill field names, keyed as data/bills.json keys
+    it -- spaces out, upper case, no -FN, -L, -A or -LOCAL, HCACR read as CACR
+    -- or "" where the field names no bill ("HRULE64", "SUSPRULE", blank)."""
+    b = FLAGS.sub("", re.sub(r"\s+", "", raw or "").upper())
+    b = re.sub(r"^HCACR(?=\d)", "CACR", b)
+    return b if BILL_NO.match(b) else ""
+
 
 def threshold(question_raw, bill, yeas, nays, seated):
     """(needed, rule_text) or (None, None) for a simple majority.
@@ -128,8 +150,10 @@ def parse(path, want_bill=None):
             if body not in SEATS:
                 continue
 
-            bill = p[4].strip()
-            if want_bill and bill.upper() != want_bill.upper():
+            # A bill as data/bills.json keys it; anything else as typed.
+            bill = bill_number(p[4]) or p[4].strip()
+            if want_bill and bill.upper() != (bill_number(want_bill)
+                                              or want_bill).upper():
                 continue
 
             raw_q = p[11].strip()
@@ -173,8 +197,7 @@ def parse(path, want_bill=None):
                 "date": when.strftime("%Y-%m-%d") if when else "",
                 "time": when.strftime("%H:%M") if when else "",
                 "bill": bill or None,
-                "procedural": (not bill) or not BILL_NO.match(bill.replace(" ", ""))
-                              or key in PROCEDURAL,
+                "procedural": not bill_number(bill) or key in PROCEDURAL,
                 "question": std, "question_raw": raw_q, "question_plain": plain,
                 "yeas": yeas, "nays": nays, "voting": voting, "not_voting": not_voting,
                 "seats": SEATS[body], "seated": seated,
@@ -400,7 +423,8 @@ def main():
         sys.exit(f"No roll call file to read: neither {a.file} nor anything in "
                  f"{a.dir}/.")
     if a.bill:
-        rows = [r for r in rows if (r["bill"] or "").upper() == a.bill.upper()]
+        rows = [r for r in rows if (r["bill"] or "").upper()
+                == (bill_number(a.bill) or a.bill).upper()]
     if not rows:
         sys.exit("No roll calls matched.")
 
@@ -413,8 +437,7 @@ def main():
         for r in rows:
             # A vote whose bill column does not hold a bill number goes with
             # the other procedural votes rather than inventing a bill.
-            b = (r["bill"] or "").replace(" ", "")
-            key = b if b and BILL_NO.match(b) else "_procedural"
+            key = bill_number(r["bill"]) or "_procedural"
             by_term[P.term_of(r["year"])][key].append(r)
         stray = by_term.pop("", None)
         if stray:

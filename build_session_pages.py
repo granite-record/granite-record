@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.9
+# GRANITE_VERSION: 2026-09-19.11
 """
 A page for every day the House sat.
 
@@ -232,6 +232,34 @@ def runs(items):
     return out
 
 
+# The kinds of motion a speaker's own "moved ..." and the record's action are
+# compared by, the more particular first: "Nonconcur" before "concur", and a
+# reconsideration of a concurrence is a reconsideration. A motion neither side
+# names one of is never called different.
+MOTION_KINDS = [
+    ("reconsider", r"reconsider"), ("nonconcur", r"non-?\s*concur"),
+    ("concur", r"\bconcur"), ("recommit", r"\bre-?\s*commit|\bre-?\s*refer"),
+    ("table", r"\btable\b"), ("itl", r"inexpedient|\bITL\b"),
+    ("study", r"interim\s+study"), ("otp", r"ought\s+to\s+pass|\bOTP"),
+    ("conference", r"committee\s+of\s+conference|\bC\s*of\s*C\b|conf\s+comm"),
+    ("postpone", r"indefinitely\s+postpone"), ("vacate", r"\bvacate"),
+    ("accede", r"\baccede"),
+]
+
+
+def _motion_kind(text):
+    for kind, pat in MOTION_KINDS:
+        if re.search(pat, text or "", re.I):
+            return kind
+    return None
+
+
+def _same_motion(moved, action):
+    """False only where both name a kind of motion and the kinds differ."""
+    a, b = _motion_kind(moved), _motion_kind(action)
+    return not (a and b and a != b)
+
+
 def speakers_for(attrs, bill, item, sole=False):
     """The attributions belonging to this motion, split by side.
 
@@ -257,7 +285,15 @@ def speakers_for(attrs, bill, item, sole=False):
         # motion, so the tally is not needed to claim it. Most bills are like
         # this, and requiring the tally threw away every speech on a bill
         # decided by voice -- which is the commonest way the House decides.
-        if sole or (want and a.get("tally") == want):
+        # UNLESS THE JOURNAL NAMES ANOTHER. "Rep. Mock moved Re-commit to
+        # Committee and spoke in favor" is a speech on recommittal, and the
+        # 14 April 1999 page put it under HB 605's Inexpedient to Legislate,
+        # the one motion the record holds that day. Where the motion the
+        # speaker moved and the record's are plainly different motions, the
+        # speaker is named as having spoken during the bill and no more.
+        if sole and not _same_motion(a.get("inline_motion"), item.action):
+            rest[side] += a["names"]
+        elif sole or (want and a.get("tally") == want):
             mine[side] += a["names"]
         else:
             rest[side] += a["names"]
@@ -455,7 +491,11 @@ def render(day, narrative, titles, years, members, esc):
     # is predictable and is NOT the order they happened in, and the heading
     # says so rather than letting an alphabetical list read as a narrative.
     # A printed debate is drawn once even where its bill holds the floor twice.
-    removed = (narrative.get("consent") or {}).get("removed") or []
+    # The bills the journal says came off the consent calendar. A removal it
+    # prints outside the calendar's own segment counts only for a bill the
+    # record has on this day's list: journal_days.taken_off says why.
+    removed = journal_days.taken_off(
+        narrative, {i.bill for i in day.items if i.consent})
     seq_items, cons = day.split(removed)
 
     H.append(opening_html(narrative, body, members, esc))

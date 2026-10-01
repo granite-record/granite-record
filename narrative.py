@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.41
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -793,7 +793,14 @@ def load_narratives(path, term=None):
     return data.get(term or max(data), {})
 
 
-def parse_docket(path, want_bill=None, want_session=None):
+def parse_docket(path, want_bill=None, want_session=None, lsrs=None):
+    """{bill: [row]} -- the docket's rows, grouped by the bill-number field.
+
+    With `lsrs` ({term: {bill: (LSR year, LSR number)}}, load_lsrs()), each
+    bill's rows are its OWN rows: own_rows() says which those are and why.
+    Without it every row stays under the number it was filed under, which is
+    what a checkout with no data/bills.json gets.
+    """
     bills = defaultdict(list)
     with open(path, encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
@@ -801,7 +808,10 @@ def parse_docket(path, want_bill=None, want_session=None):
             if len(p) < 7:
                 continue
             bill = p[3].strip()
-            if want_bill and bill.upper() != want_bill.upper():
+            # Asked for one bill, the whole file is still read when the rows
+            # are chosen by LSR: a row of that bill's can be filed under
+            # another key, and the rows are chosen before the one is kept.
+            if want_bill and not lsrs and bill.upper() != want_bill.upper():
                 continue
             try:
                 created = datetime.strptime(p[2].strip(), "%m/%d/%Y %I:%M:%S %p")
@@ -813,7 +823,174 @@ def parse_docket(path, want_bill=None, want_session=None):
                 "desc": p[5], "created": created,
                 "flags": re.findall(r"==\s*([A-Z][A-Z ]*?)\s*==", p[5]),
             })
+    if lsrs:
+        bills, taken, moved = own_rows(bills, lsrs)
+        LSR_REPORT.update(taken=taken, moved=moved)
+        if want_bill:
+            bills = {b: r for b, r in bills.items()
+                     if b.upper() == want_bill.upper()}
     return bills
+
+
+# WHOSE ROW IS IT. The docket files every row under a bill-number field the
+# clerk typed, and grouping on that field alone put another measure's events
+# into 43 archived histories and filed 59 bills' own rows under keys no bill
+# carries. Each row also carries its LSR, the drafting request it was filed
+# against, and data/bills.json records each bill's own. So a bill's rows are
+# the ones carrying its LSR -- the rule referrals._own_rows reads committees
+# by, so a page's committee row and the history under it come from the same
+# rows. Three shapes, every one of them in the database's dockets of
+# 1989-2014 and none in 2015-2026:
+#
+#   A NUMBER USED TWICE IN ONE TERM. A resolution can be numbered again in
+#   the term's second year. SCR 2 of 1990 is the Fast Day resolution, LSR
+#   2730, which the Senate killed; the docket files the 1989 recycling
+#   resolution, LSR 0564, under the same SCR2, and its history said the House
+#   had passed it on 13 April 1989. That LSR is left out of SCR 2's history.
+#   The earlier measure has no record of its own to go to (data/bills.json
+#   holds one bill per number per term), so its rows go nowhere.
+#
+#   A ROW WHOSE LSR IS ANOTHER BILL'S. SB 98 of 2011 carries "Introduced and
+#   Referred to Transportation", LSR 2011-0961, which is SB 99's: its history
+#   said it "crossed to the Senate on January 19, 2011", which is SB 99's
+#   introduction. Left out of SB 98's -- and NOT put on SB 99's. The LSR may
+#   be the mistake rather than the number, so moving a row onto the bill it
+#   names corrects the General Court's own record, which is a person's
+#   decision; until one is made the row is in neither history. 27 rows of
+#   1999-2014 are this shape.
+#
+#   A ROW UNDER A KEY NO BILL CARRIES: a blank number, "1101" for HB 1101,
+#   "SB420-FN", "SB21`", "HCR 9", "HB500" (LSR 0500's number typed for the
+#   bill's). Given to the one bill whose LSR, year and number both, it
+#   carries. HB 1101 of 2000 had a history with no introduction. A key that
+#   names no bill and whose LSR names none either is a real bill with no
+#   record, and its rows stay where they are.
+#
+# MATCHED ON THE NUMBER WITHIN A BILL, as _own_rows matches. HCR 15, CACR 13
+# and HR 11 of 1991-1992 and HBI 5 of 1993-1994 carry one LSR across both
+# years of the term, and a match on the year as well would have cut each one's
+# history in half.
+#
+# AND ONE MEASURE ENTERED TWICE IS STILL ONE MEASURE. On 1 December 2010 the
+# Senate's SR 2 to SR 5 were each entered under two LSRs the same day, the
+# second never given a status: SR 3's select committee report -- the return of
+# votes found correct -- is on LSR 2011-2003 and nowhere else. A second LSR
+# that no bill carries, whose rows begin the same day as the bill's own, is
+# that, and its rows stay. Every LSR a bill's number was reused for began on
+# another day; most in another year.
+#
+# THE KEYS WHOSE LSR IS THE MISTAKE, whose rows stay under the number they
+# were filed under, as they always have, rather than go to the bill the LSR
+# names. Each is a row the key, not the LSR, describes:
+#
+#   1989-1990's "SSHB1" carries LSR 1990-2755, which is SR 8's -- "requesting
+#   the teaching of the founding of the state" -- and its two rows are the
+#   House's special-session votes on HB 1 of 14 December 1989. HB 1's own
+#   row carries the count too, but its history reads the day as voice votes,
+#   so these are the only place the 217-147 roll call reaches the sitting's
+#   page: dropping them took it off.
+#   1995-1996's "HB 0306" carries LSR 1996-2936, HB 1637's, on four Judiciary
+#   work sessions entered on 24 July 1995. HB 1637 is the welfare bill,
+#   introduced on 5 March 1996 and sent to Health; HB 306 was re-referred to
+#   Judiciary, and its own row six minutes later covers the same dates.
+#   1997-1998's "H  0718" carries LSR 1997-0938, CACR 22's, on a copy to the
+#   chairman due 5 March 1997: HB 718's due date, not CACR 22's.
+#
+# All three are for the Clerk's list.
+NOT_MOVED = {("1989-1990", "SSHB1", "2755"), ("1995-1996", "HB 0306", "2936"),
+             ("1997-1998", "H  0718", "938")}
+LSR_REPORT = {"taken": [], "moved": []}
+
+
+def _lsr_num(s):
+    return str(s or "").strip().lstrip("0")
+
+
+def load_lsrs(path):
+    """{term: {bill: (LSR year, LSR number)}} from data/bills.json, or {}."""
+    p = Path(path) if path else None
+    if not p or not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return {}
+    if not is_term_keyed(data):
+        return {}
+    return {t: {b: (str(r.get("lsr_year") or "").strip(), _lsr_num(r.get("lsr_num")))
+                for b, r in byb.items() if isinstance(r, dict)}
+            for t, byb in data.items()}
+
+
+def own_rows(bills, lsrs):
+    """(bills, taken, moved): each bill's own rows, by LSR. See NOT_MOVED.
+
+    `taken` is [(term, bill, row, {bills its LSR is})] for every row left out
+    of the history it was filed under, `moved` [(term, key, bill, row)] for
+    every row given to the bill its LSR is. A bill whose record names no LSR,
+    or one no row of it carries, keeps every row, and so does a row that
+    carries no LSR itself: there is nothing to tell them apart by.
+    """
+    owner = defaultdict(set)
+    for term, recs in lsrs.items():
+        for b, (y, n) in recs.items():
+            if n:
+                owner[(term, y, n)].add(b)
+    num = lambda r: _lsr_num(r["lsr"].partition("-")[2])
+    # The keys in the docket's order, so that a term nothing moves in is
+    # written exactly as it was.
+    out = {k: [] for k in bills}
+    taken, moved = [], []
+    for key, rows in bills.items():
+        by_term = defaultdict(list)
+        for r in rows:
+            by_term[P.term_of(r["session"])].append(r)
+        for term, rs in by_term.items():
+            rec = lsrs.get(term, {}).get(key)
+            if rec:
+                own = rec[1]
+                if not own or all(num(r) != own for r in rs):
+                    out[key] += rs
+                    continue
+                began = defaultdict(lambda: datetime.max)
+                for r in rs:
+                    began[num(r)] = min(began[num(r)], r["created"])
+                for r in rs:
+                    n = num(r)
+                    whose = owner.get((term, r["session"], n), set())
+                    if n == own or not n or (not whose and
+                                             began[n].date() == began[own].date()):
+                        out[key].append(r)
+                    else:
+                        taken.append((term, key, r, whose))
+                continue
+            for r in rs:
+                n = num(r)
+                whose = owner.get((term, r["session"], n), set())
+                if len(whose) != 1 or (term, key, n) in NOT_MOVED:
+                    out[key].append(r)
+                else:
+                    dest = next(iter(whose))
+                    out.setdefault(dest, []).append(r)
+                    moved.append((term, key, dest, r))
+    return {k: v for k, v in out.items() if v}, taken, moved
+
+
+def report_lsrs(taken, moved, source):
+    """Say what own_rows did to this run. Printed with a marker narrate_archive
+    passes on, because a rule that quietly stopped working looks exactly like
+    a docket with no misfiled row."""
+    if source is None:
+        print("  rows by LSR: no bill list, so every row stays under the number "
+              "it was filed under")
+        return
+    hosts = {(t, b) for t, b, _r, _w in taken}
+    gained = {(t, b) for t, _k, b, _r in moved}
+    keys = {(t, k) for t, k, _b, _r in moved}
+    print(f"  rows by LSR ({source}): {len(taken):,} row(s) left out of "
+          f"{len(hosts):,} histor{'y' if len(hosts) == 1 else 'ies'} as another "
+          f"measure's; {len(moved):,} given to the {len(gained):,} bill(s) "
+          f"whose LSR they carry, from {len(keys):,} key(s) no bill carries")
 
 
 def event_date(ev, fallback):
@@ -2176,6 +2353,9 @@ def main():
                     help="docket dates, and rows filed under the wrong bill, "
                          "a person has corrected, with the evidence; "
                          "hand-made, and skipped if not there")
+    ap.add_argument("--bills", default="data/bills.json",
+                    help="each bill's own LSR, which decides which docket rows "
+                         "are its own (own_rows); skipped if not there")
     a = ap.parse_args()
 
     global MEMBERS, TESTIMONY, CORRECTIONS, MISFILED
@@ -2187,9 +2367,12 @@ def main():
     except (OSError, ValueError):
         TESTIMONY = {}
 
-    bills = parse_docket(a.docket, want_bill=a.bill)
+    lsrs = load_lsrs(a.bills)
+    bills = parse_docket(a.docket, want_bill=a.bill, lsrs=lsrs)
     if not bills:
         sys.exit(f"No docket rows found{' for ' + a.bill if a.bill else ''}.")
+    report_lsrs(LSR_REPORT["taken"], LSR_REPORT["moved"],
+                a.bills if lsrs else None)
 
     # Keyed on the term. Every docket row for a bill carries the same session
     # year -- all 2,233 of them, split 847 in 2025 and 1,386 in 2026 with no

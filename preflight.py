@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.284
+# GRANITE_VERSION: 2026-09-04.286
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1719,6 +1719,71 @@ def _rule_vote_not_a_bill(rollcall_parser):
         assert not rows["HB56"]["procedural"], (
             "a real bill's vote was swept up as procedural")
         return "ok", "the rule vote is procedural and the bill's is not"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+# The seven roll calls whose bill field is typed another way than the bill's
+# own number, as the General Court's files give them.
+_RC_TYPED = [
+    "2001|S|11|3/29/2001 12:00:00 AM|SB115-FN|22|1|23|1|NULL|NULL|Ordering to third reading.  Sen. McCarley/Sen. Hollingworth|granting a cost of living adjustment to certain retired group II firefighters.||6/4/2002 10:46:02 AM",
+    "2012|S|118|6/6/2012 12:00:00 AM|SB 406|18|4|23|0|||Committee of Conference Report 2462|(New Title) relative to establishing an early offer alternative in medical injury claims.||6/6/2012 7:31:16 PM",
+    "2016|H|21|1/7/2016 3:19:26 PM|sb136|156|152|17|74|||OTPA|||",
+    "2016|H|31|1/20/2016 2:44:45 PM|HCACR2|234|90|19|56|||ITL|Relating to dedicated funds.  Providing that funds shall be used solely for the purpose of the fund.||",
+    "2016|H|38|2/4/2016 2:57:33 PM|HCACR15|220|85|25|69|||ITL|relating to the election of judges. Providing that judges be elected for specific terms.||",
+    "2017|S|198|6/22/2017 12:00:00 AM|HB 315|3|20|23|0|||C of C Report 2306|(New Title) relative to persons who may accompany a youth operator of an OHRV.||6/22/2017 3:33:45 PM",
+    "2018|S|84|3/8/2018 12:00:00 AM|SB 426|13|10|23|1|||Inexpedient to Legislate|relative to the commission on primary care workforce issues.||3/9/2018 4:46:41 PM",
+    "2025|H|1|1/8/2025 10:00:00 AM|HRULE64|216|164|10|10|||Amend H Rule 64|relating to the rules of the House",
+]
+
+
+@check("rollcalls", "a roll call reaches its bill however the file typed the number",
+       needs=("rollcall_parser",))
+def _rollcall_typed_bill(RP):
+    """2016 H 31 is CACR 2's 234-90 vote to kill it, filed as "HCACR2": it
+    matched no bill number, was classed as procedural, and reached neither
+    the bill's page nor any member's. "SB 406", "sb136" and "SB115-FN" missed
+    the same way, each at a different step, because rollcall_parser stripped
+    spaces without upper-casing and build_data upper-cased without stripping.
+    One normaliser now answers both; a vote on a House rule stays procedural.
+    """
+    want = {"SB115-FN": "SB115", "SB 406": "SB406", "sb136": "SB136",
+            "HCACR2": "CACR2", "HCACR15": "CACR15", "HB 315": "HB315",
+            "SB 426": "SB426", "HB2-FN-A-LOCAL": "HB2", "HB1-L": "HB1",
+            "HRULE64": "", "SUSPRULE": "", "HR      ": "", "": ""}
+    got = {k: RP.bill_number(k) for k in want}
+    assert got == want, f"bill_number gave {[(k, v) for k, v in got.items() if v != want[k]]}"
+    d = Path(tempfile.mkdtemp())
+    try:
+        (d / "RollCallSummary.txt").write_text("\n".join(_RC_TYPED) + "\n", encoding="utf-8")
+        rows = {(r["year"], r["body"], r["number"]): r
+                for r in RP.parse(d / "RollCallSummary.txt")}
+        bad = {k: (r["bill"], r["procedural"]) for k, r in rows.items()
+               if k != ("2025", "H", 1) and (r["procedural"] or r["bill"] != RP.bill_number(r["bill"]))}
+        assert not bad, f"typed bill numbers still procedural or unnormalised: {bad}"
+        assert rows[("2025", "H", 1)]["procedural"] and rows[("2025", "H", 1)]["bill"] == "HRULE64", (
+            "a vote on a House rule was taken for a bill")
+        # Keyed as the page looks the bill up, through the CLI the build runs.
+        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+                  "RollCallSummary.txt", "--dir", "none", "--all", "--out", "rc.json"],
+                 cwd=d, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
+        keyed = json.loads((d / "rc.json").read_text(encoding="utf-8"))
+        assert sorted(keyed["2015-2016"]) == ["CACR15", "CACR2", "SB136"] and \
+            sorted(keyed["2001-2002"]) == ["SB115"] and \
+            sorted(keyed["2011-2012"]) == ["SB406"] and \
+            sorted(keyed["2017-2018"]) == ["HB315", "SB426"] and \
+            sorted(keyed["2025-2026"]) == ["_procedural"], (
+            f"roll calls keyed {[(t, sorted(b)) for t, b in keyed.items()]}")
+        # build_data keys each member's ballot by the summary's bill, and only
+        # a rebuild would show it reverting -- the nightly runs --code alone.
+        src = Path("build_data.py").read_text(encoding="utf-8")
+        assert '"bill": RP.bill_number(r[4]) or r[4].upper()' in src, (
+            "build_data.py no longer keys the roll-call summary's bill through "
+            "rollcall_parser.bill_number, so no ballot on \"SB 406\" reaches SB 406's page")
+        return "ok", ("spaces, case, -FN and HCACR normalise to the bill's own number, in "
+                      "parse, in the keys and in build_data's ballots; a House rule vote "
+                      "stays procedural")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -9440,6 +9505,511 @@ process.stdout.write("\\n@@" + JSON.stringify(scope.renderDetail(row, d)));
         N.MOVED.clear()
         N.MOVED.update(saved[1])
         shutil.rmtree(root, ignore_errors=True)
+
+
+# Real rows from the database's dockets, one shape each, for the check below.
+DOCKETS_OWN_LSR = {
+    "1989-1990": [
+        # SCR 2 used twice: the 1989 recycling resolution, then 1990's Fast Day.
+        "1989|0564|01/05/1989 05:08:50 PM|SCR2|S|INTRODUCED AND REF TO DEV. REC & ENV.  SJ 3  ,P 28|x",
+        "1989|0564|04/13/1989 05:09:25 PM|SCR2|H|PASSED/ADOPTED; HJ70, P2100 + 2148|x",
+        "1989|0564|04/20/1989 05:09:33 PM|SCR2|H|ENROLLED:  HJ72, P2205|x",
+        "1990|2730|01/03/1990 11:32:02 AM|SCR2|S|INTRODUCED AND REF TO PUBLIC AFFAIRS     SJ 1, P 6|x",
+        "1990|2730|01/30/1990 09:53:20 AM|SCR2|S|ITL REPORT ADOPTED|x",
+        # SR 8's LSR on HB 1's special-session votes: kept under SSHB1, where
+        # the clerk filed them, and not moved onto SR 8.
+        "1990|2755|12/14/1989 08:58:49 AM|SSHB1|H|SPEC COMM PROP AM, AA VV; PASSED WITH AM RC(217-147)|x",
+        "1990|2755|12/14/1989 08:59:10 AM|SSHB1|H|CONC WITH SEN AM, REP VARTANIAN MA VV;|x",
+        "1990|2755|04/19/1990 11:55:25 AM|SR8|S|INTRODUCED                             SJ 20 , P 404|x",
+    ],
+    "1991-1992": [
+        # One LSR across both years of the term: every row is HCR 15's.
+        "1991|1230|06/20/1991 12:00:40 PM|HCR15|H|INTRODUCED AND REF TO WAYS & MEANS; (SEE PERM JRNL)|x",
+        "1991|1230|06/27/1991 03:12:03 PM|HCR15|H|DIV(159-174); HJ96,P2085|x",
+        "1992|1230|11/21/1991 09:15:59 AM|HCR15|H|MAJ REPORT ITL FOR 1992, ON 01/08/92  (VOTE 14-0;CC)|x",
+        "1992|1230|01/08/1992 05:53:34 PM|HCR15|H|ITL REPORT ADOPTED; HJ9,P313|x",
+    ],
+    "1995-1996": [
+        # HB 306's Judiciary work sessions under "HB 0306" with HB 1637's LSR,
+        # seven months before HB 1637 was introduced: the key is right and the
+        # LSR is not, so they stay where they were filed.
+        "1996|2936|07/24/1995 08:42:29 AM|HB 0306|H|RE-REFER SUBCOM WK SESSION  AUG09 9:30 RM308,LOB  :JUDICIARY|x",
+        "1996|0166|07/24/1995 08:48:04 AM|HB306|H|RE-REFER WK SESS  AUG02,09,16,23,30  9:30  RM208,LOB  :JUDICIARY|x",
+        "1996|2936|03/05/1996 08:41:09 AM|HB1637|H|INTRODUCED (APPROVED BY RULES) AND REF TO HEALTH HS&EA;HJ34,P1214|x",
+    ],
+    "1999-2000": [
+        # HB 1101's introduction under "1101".
+        "2000|2038|01/05/2000 10:00:00 AM|1101|H|Introduced and ref. to Res, Rec & Dev;  HJ5, p87|x",
+        "2000|2038|01/05/2000 04:18:00 PM|HB1101|H|Hearing   Jan 11   10:00   RM305,LOB|x",
+        # A row with no LSR at all, on another day: nothing says it is not
+        # the bill's, so it stays. (No docket on disk has one today.)
+        "2000||01/06/2000 09:00:00 AM|HB1101|H|Copy to Chairman  1/6/2000   due on|x",
+    ],
+    "2001-2002": [
+        # HR 24's introduction under no number at all.
+        "2002|2458|01/31/2002 10:20:02 AM||H|Introduced and ref to Ways & Means;  HJ14, p540|x",
+        "2002|2458|01/31/2002 04:05:31 PM|HR24|H|Hearing   Feb 13   10:00   RM202,LOB|x",
+    ],
+    "2009-2010": [
+        # A real bill with no record, whose LSR names none: it stays put.
+        "2010|2113|12/10/2009 11:23:39 AM|HB1308|H|To Be Introduced 1/6/2010 and Referred to Legislative Administration|x",
+        "2010|2113|01/06/2010 11:33:17 AM|HB1308|H|Withdrawn Prior to Introduction|x",
+    ],
+    "2011-2012": [
+        # SB 99's introduction, filed under SB 98.
+        "2011|0960|01/19/2011 02:12:47 PM|SB98|S|Introduced and Referred to Transportation, SJ 3, Pg.35|x",
+        "2011|0961|01/19/2011 02:13:45 PM|SB98|S|Introduced and Referred to Transportation, SJ 3, Pg.35|x",
+        "2011|0960|01/26/2011 01:31:32 PM|SB98|S|Hearing: 2/3/2011, Room 103, LOB, 10:30 a.m.; SC9|x",
+        "2011|0961|01/26/2011 01:31:52 PM|SB99|S|Hearing: 2/3/2011, Room 103, LOB, 11:00 a.m.; SC9|x",
+        # SR 3 entered twice on organization day: one measure, both LSRs kept.
+        "2011|1127|12/01/2010 04:00:14 PM|SR3|S|Introduced and Adopted, VV; SJ Organization Day, Pg.8|x",
+        "2011|2003|12/01/2010 01:50:30 PM|SR3|S|Introduced and Adopted, VV|x",
+        "2011|2003|12/01/2010 01:52:00 PM|SR3|S|President Appoints: Senators Bradley, Barnes and Larsen|x",
+    ],
+}
+# Each record's own LSR, as data/bills.json gives it.
+LSRS_OWN = {
+    "1989-1990": {"SCR2": ("1990", "2730"), "SR8": ("1990", "2755"),
+                  "HB1": ("1989", "9100")},
+    "1991-1992": {"HCR15": ("1992", "1230")},
+    "1995-1996": {"HB306": ("1996", "166"), "HB1637": ("1996", "2936")},
+    "1999-2000": {"HB1101": ("2000", "2038")},
+    "2001-2002": {"HR24": ("2002", "2458")},
+    "2011-2012": {"SB98": ("2011", "960"), "SB99": ("2011", "961"),
+                  "SR3": ("2011", "1127")},
+}
+
+
+@check("narrative", "a bill's history is read from the rows carrying its own LSR",
+       needs=("narrative",))
+def _narrative_own_lsr(N):
+    """The docket's bill-number field put another measure's events in 43
+    archived histories, and 59 bills' own rows under keys no bill carries.
+    1990's SCR 2, the Fast Day resolution the Senate killed, said the House
+    passed it on 13 April 1989: that was the 1989 recycling resolution under
+    the same number. Each shape below is one way it could come back, on rows
+    copied from the dockets -- and the CLI is run both ways the pipeline runs
+    it, because a rule the build never asks for is no rule."""
+    def ok(rows, bill):
+        return [r["desc"] for r in rows.get(bill, [])]
+
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        got, report = {}, {}
+        for term, lines in DOCKETS_OWN_LSR.items():
+            p = tmp / f"Docket_db_{term}.txt"
+            p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            N.LSR_REPORT.update(taken=[], moved=[])
+            got[term] = N.parse_docket(str(p), lsrs=LSRS_OWN)
+            report[term] = (len(N.LSR_REPORT["taken"]), len(N.LSR_REPORT["moved"]))
+        g = got["1989-1990"]
+        assert [r["lsr"] for r in g["SCR2"]] == ["1990-2730"] * 2, (
+            "1990's SCR 2 still carries the 1989 resolution's rows: "
+            f"{[r['lsr'] for r in g['SCR2']]}")
+        assert len(g.get("SSHB1", [])) == 2 and all("SPEC COMM" not in d for d in ok(g, "SR8")), (
+            "1989-1990's SSHB1 rows -- the only place the sitting's page gets HB 1's 217-147 "
+            "roll call -- were dropped, or moved onto SR 8, whose LSR they wrongly carry")
+        assert len(got["1991-1992"]["HCR15"]) == 4, (
+            "HCR 15 lost the rows its one LSR carries into the term's other year")
+        g = got["1995-1996"]
+        assert len(g.get("HB 0306", [])) == 1 and not any("JUDICIARY" in d for d in ok(g, "HB1637")), (
+            "HB 306's July 1995 work sessions were given to HB 1637, the welfare bill of 1996, "
+            "because the row carries HB 1637's LSR")
+        g = got["1999-2000"]
+        assert "1101" not in g and any(d.startswith("Introduced") for d in ok(g, "HB1101")), (
+            "HB 1101's introduction stayed under the key '1101'")
+        assert any(d.startswith("Copy to Chairman") for d in ok(g, "HB1101")), (
+            "a row with no LSR was left out of the bill it was filed under")
+        g = got["2001-2002"]
+        assert "" not in g and any(d.startswith("Introduced") for d in ok(g, "HR24")), (
+            "HR 24's introduction stayed under a blank number")
+        assert len(got["2009-2010"].get("HB1308", [])) == 2, (
+            "a bill with no record lost rows whose LSR names no bill")
+        g = got["2011-2012"]
+        assert [r["lsr"] for r in g["SB98"]] == ["2011-0960"] * 2, (
+            "SB 98 still carries SB 99's introduction")
+        assert not any(d.startswith("Introduced") for d in ok(g, "SB99")), (
+            "SB 99 was given the row its LSR names -- moving it corrects the General "
+            "Court's own record, which is the person's decision")
+        assert len(g["SR3"]) == 3, (
+            "SR 3's second organization-day LSR lost the select committee rows it holds")
+        assert report == {"1989-1990": (3, 0), "1991-1992": (0, 0), "1995-1996": (0, 0),
+                          "1999-2000": (0, 1), "2001-2002": (0, 1), "2009-2010": (0, 0),
+                          "2011-2012": (1, 0)}, f"what own_rows says it did: {report}"
+        # No bill list: every row stays where the clerk filed it.
+        bare = N.parse_docket(str(tmp / "Docket_db_1989-1990.txt"))
+        assert len(bare["SCR2"]) == 5 and len(bare["SSHB1"]) == 2, (
+            "with no bill list, rows were chosen anyway")
+
+        # The two ways the pipeline asks. build_all narrates the current term
+        # with narrative.py's own default list, data/bills.json ...
+        (tmp / "data").mkdir()
+        (tmp / "data" / "bills.json").write_text(json.dumps({
+            t: {b: {"lsr": f"{y}-{n}", "lsr_year": y, "lsr_num": n}
+                for b, (y, n) in recs.items()} for t, recs in LSRS_OWN.items()}),
+            encoding="utf-8")
+        (tmp / "Docket.txt").write_text(
+            "\n".join(DOCKETS_OWN_LSR["2011-2012"]) + "\n", encoding="utf-8")
+        r = _run([sys.executable, str(Path("narrative.py").resolve()), "--docket",
+                  "Docket.txt", "--all", "--out", "cur.json"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "narrative.py failed: " + (r.stderr or r.stdout)[-300:]
+        assert "rows by LSR" in r.stdout, "narrative.py did not say what the LSRs did"
+        cur = json.loads((tmp / "cur.json").read_text(encoding="utf-8"))["2011-2012"]
+        assert len(cur["SB98"]["events"]) == 2, (
+            "narrative.py with its default bill list still told SB 99's introduction on SB 98")
+        # ... and narrate_archive the archive, passing its own --bills on --
+        # given as a full path, which on Windows carries a drive letter's
+        # colon into the line the archive's total is read from.
+        (tmp / "Docket.txt").unlink()
+        (tmp / "data" / "bills.json").rename(tmp / "lsrs.json")
+        shutil.copy("narrative.py", tmp / "narrative.py")
+        env = {**os.environ, "PYTHONPATH": os.pathsep.join(
+            [str(Path(".").resolve())] + [x for x in [os.environ.get("PYTHONPATH")] if x])}
+        r = _run([sys.executable, str(Path("narrate_archive.py").resolve()),
+                  "--out", "arch.json", "--bills", str((tmp / "lsrs.json").resolve())],
+                 cwd=tmp, env=env, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "narrate_archive.py failed: " + (r.stderr or r.stdout)[-300:]
+        arch = json.loads((tmp / "arch.json").read_text(encoding="utf-8"))
+        scr2 = arch["1989-1990"]["SCR2"]
+        assert "SSHB1" in arch["1989-1990"] and "1101" not in arch["1999-2000"] and \
+            "HB 0306" in arch["1995-1996"] and \
+            not any("1989" in (e.get("date") or "") for e in scr2["events"]), (
+            "narrate_archive did not pass --bills on: 1990's SCR 2 says "
+            f"{scr2['narrative'][:90]!r}")
+        assert "rows by LSR" in r.stdout, "narrate_archive did not pass on what the LSRs did"
+        assert "rows by LSR, every term: 4 row(s) left out of 2 histories" in r.stdout, (
+            "narrate_archive's all-term total is missing or wrong: "
+            + " | ".join(l for l in r.stdout.splitlines() if "rows by LSR" in l)[-300:])
+        return "ok", ("a reused number and another bill's LSR leave the history; SR 8's LSR "
+                      "on SSHB1 and HB 1637's on HB 306's rows move nothing; HCR 15 keeps both "
+                      "years, SR 3 both entries, a row with no LSR its bill; a blank, bare or "
+                      "mistyped key goes to its LSR's bill; both pipeline paths")
+    finally:
+        N.LSR_REPORT.update(taken=[], moved=[])
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+# The 14 April 1999 House Journal, as journal_days reads it: Part II of the
+# consent calendar under a heading CONSENT_HEAD does not take, with HB 605's
+# removal on it; and, for the rule that a stray line cannot ADD a bill, a
+# "removed by" paragraph under another heading for a bill the calendar did
+# not hold that day (HB 9999).
+_JOURNAL_1999 = """
+                                                  HOUSE JOURNAL NO. 23
+
+                                               Wednesday, April 14, 1999
+
+                                                   COMMITTEE REPORTS
+
+                                              CONSENT CALENDAR - Part II
+
+Rep. Chandler moved that the Consent Calendar with the relevant amendments as
+printed in the day's House Record be adopted.
+
+HB 605-FN, affirming sovereign immunity as it relates to the state's computers and
+computer software and programs and granting the state board of claims jurisdiction over
+claims against the state arising out of computer-related problems, removed by Rep. Mock.
+
+Consent Calendar adopted.
+
+                                                   MOTION TO VACATE
+
+HB 9999, relative to nothing in particular, removed by Rep. Nobody.
+"""
+_JOURNAL_2026 = """
+                                                  HOUSE JOURNAL NO. 5
+
+                                              Thursday, February 19, 2026
+
+                                                   CONSENT CALENDAR
+
+HB 1602-FN: relative to the thing the House took off, removed by Reps. Able and
+Baker.
+
+Consent Calendar was adopted.
+
+                                                   COMMITTEE REPORTS
+"""
+
+
+@check("session", "a removal from the consent calendar is read wherever the day prints "
+       "it, and can only take a bill off", needs=("journal_days", "session_days",
+                                                   "build_session_pages"))
+def _session_consent_removed_anywhere(JD, SD, BSP):
+    """The 14 April 1999 House sitting listed HB 605 among the bills adopted
+    together without debate; the House took it off the calendar and sent it
+    back to committee. The journal
+    prints its removal under "CONSENT CALENDAR - Part II", a heading the
+    consent segment is not read from. And 19 February 2026 printed HB 1602's
+    removal with a colon. A removal printed outside the segment counts only
+    for a bill on that day's consent list, so it can take one off and never
+    put one on -- the House prints 143 of them, under a motion to vacate or to
+    withdraw, a guests' heading. The page is drawn through render(), the path
+    the pages use."""
+    import html as _html
+    blocks = {iso: b for iso, b in JD.day_blocks(JD.clean(_JOURNAL_1999))}
+    assert "1999-04-14" in blocks, "the fixture's sitting was not found"
+    c = JD.consent(blocks["1999-04-14"])
+    assert c.get("removed_elsewhere") == ["HB605-FN", "HB9999"], (
+        f"the removals printed outside the consent segment were not read: {c}")
+    found = {"consent": c}
+    assert JD.taken_off(found, {"HB605", "HB522"}) == ["HB605-FN"], (
+        "HB 605's removal did not count for a bill on the day's consent list")
+    assert JD.taken_off(found, {"HB522"}) == [], (
+        "a removal printed outside the segment counted for a bill not on the list")
+    blocks = {iso: b for iso, b in JD.day_blocks(JD.clean(_JOURNAL_2026))}
+    assert JD.consent(blocks["2026-02-19"]).get("removed") == ["HB1602-FN"], (
+        "a removal written with a colon after the bill was not read")
+
+    def ev(date, raw, typ, **kw):
+        return {"date": date, "body": "H", "type": typ, "raw": raw, **kw}
+    rep = "Maj Report ITL for Apr 14 (Vote 16-0;CC)"
+    narr = {"1999-2000": {
+        b: {"events": [ev("1999-04-07", rep, "report"),
+                       ev("1999-04-14", "ITL VV", "floor", action="Inexpedient to Legislate",
+                          motion="MA", vote_kind="VV")]}
+        for b in ("HB605", "HB522")}}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        assert sorted(i.bill for i in day.items if i.consent) == ["HB522", "HB605"], (
+            "the fixture's two bills are not both on the day's consent list")
+        page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
+        cons = page.split("On the consent calendar", 1)[-1].split("</section>", 1)[0]
+        listed = cons.split("</p>", 1)[-1]
+        assert "HB 522" in listed and "HB 605" not in listed and "HB 605-FN was taken off" in cons, (
+            "the 14 April 1999 page still lists HB 605 as adopted without debate: "
+            + re.sub(r"<[^>]+>", " ", cons)[:200])
+        assert "HB 9999" not in page, "a stray removal put a bill into the consent note"
+        # Without HB 605 on the list, the same journal changes nothing.
+        narr["1999-2000"].pop("HB605")
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        assert BSP.render(day, found, {}, {}, {}, _html.escape)[0] == \
+            BSP.render(day, {}, {}, {}, {}, _html.escape)[0], (
+            "removals printed outside the segment, for bills not on the list, changed the page")
+        return "ok", ("HB 605 comes off 14 April 1999's list; a colon is read; a stray "
+                      "removal for a bill not on the list changes nothing")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# HB 605 as the 14 April 1999 House Journal prints it once it came off the
+# consent calendar, and the reconsideration of HB 737 that follows it with no
+# bill heading between (journals/1999/HJ012.txt; the committee's report is cut
+# to its first sentence). Then HB 1-A and its own reconsideration, from
+# journals/1999/HJ021.txt, the budget's report cut to its heading.
+_JOURNAL_RECONSIDER = """
+HB 605-FN, affirming sovereign immunity as it relates to the state's computers and
+computer software and programs and granting the state board of claims jurisdiction over
+claims against the state arising out of computer-related problems. INEXPEDIENT TO
+LEGISLATE
+
+Rep. Sandra B. Keans for Judiciary: This bill immunizes the state in perpetuity for any
+and all computer problems whether they relate to the Y2K problem or not. Vote 13-1.
+
+Rep. Mock moved Re-commit to Committee and spoke in favor.
+
+Adopted.
+
+                                                          reconsideration
+
+Having voted with the prevailing side, Rep. Bickford moved that the House reconsider its
+action whereby it voted HB 737, declaring the New Hampshire supreme court's Claremont
+II decision to be an unconstitutional violation of the separation of powers mandate under
+part I, article 37 of the New Hampshire constitution, Inexpedient to Legislate.
+Reps. Nancy Wall, and Dickinson spoke in favor.
+Rep. Weber spoke in favor and yielded to questions.
+Reps. Belvin and MacGillivray spoke against.
+Rep. Dickinson requested a roll call; sufficiently seconded.
+The question being the motion to reconsider.
+
+                                 YEAS 120 NAYS 225
+
+HB 1-A, making appropriations for the expenses of certain departments of the state for the fiscal
+years ending June 30, 2000, and June 30, 2001. MAJORITY: OUGHT TO PASS WITH
+AMENDMENT. MINORITY: OUGHT TO PASS.
+
+                                                          reconsideration
+Having voted with the prevailing side, Rep. Hager moved that the House reconsider its action
+whereby it ordered to third reading HB 1-A, making appropriations for the expenses of certain
+departments of the state for the fiscal years ending June 30, 2000 and June 30, 2001.
+
+Rep. Hager spoke against.
+
+Reconsideration failed.
+"""
+
+
+@check("session", "a speech is placed on a bill's motion only where the journal puts it there",
+       needs=("journal_days", "session_days", "build_session_pages"))
+def _session_speech_on_its_motion(JD, SD, BSP):
+    """When HB 605 came off 14 April 1999's consent calendar its page entry
+    said Reps. Nancy Wall, "and Dickinson", Weber and Mock spoke for killing
+    it and Belvin and MacGillivray against. Five of them spoke on HB 737's
+    reconsideration, which follows HB 605 in the journal with no bill heading
+    between; Mock spoke for his own motion to recommit, which the record does
+    not hold, under the one motion it does. A reconsideration of another bill
+    now ends the bill before it; a speaker's own "moved ..." of a different
+    kind of motion is named as speaking during the bill and no more; and a
+    comma before "and" is one separator. A bill's reconsideration of itself
+    stays its own."""
+    import html as _html
+    attrs = JD.attributions(JD.clean(_JOURNAL_RECONSIDER))
+    by = {n: a["bill"] for a in attrs for n in a["names"]}
+    assert all(by.get(n) is None for n in ("Nancy Wall", "Dickinson", "Weber", "Belvin",
+                                           "MacGillivray")), (
+        f"the speeches on HB 737's reconsideration were read as another bill's: {by}")
+    assert not any(n.lower().startswith("and ") for n in by), (
+        f"a comma before 'and' left a member called {[n for n in by if n.lower().startswith('and ')]}")
+    assert by.get("Mock") == "HB605-FN" and by.get("Hager") == "HB1-A", (
+        f"a bill lost its own speeches, or its own reconsideration's: {by}")
+    assert BSP._same_motion("Ought to Pass", "Ought to Pass with Amendment") and \
+        BSP._same_motion("that the House concur", "House Concurs with Senate Amendment 2024") and \
+        BSP._same_motion("Recommit to Committee", "Recommitted to Finance") and \
+        BSP._same_motion("something unread", "Inexpedient to Legislate") and \
+        not BSP._same_motion("that the House nonconcur", "House Concurs with Senate Amendment") and \
+        not BSP._same_motion("Re-commit to Committee", "Inexpedient to Legislate"), (
+        "motions of one kind read as different, or different kinds as one")
+
+    def ev(date, raw, typ, **kw):
+        return {"date": date, "body": "H", "type": typ, "raw": raw, **kw}
+    narr = {"1999-2000": {"HB605": {"events": [
+        ev("1999-04-06", "Maj Report ITL for Apr 14 (vote 13-1)", "report"),
+        ev("1999-04-14", "ITL Report adopted", "floor", action="Inexpedient to Legislate",
+           motion="MA", vote_kind="VV")]}}}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
+        page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
+        txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
+        claimed = " ".join(re.findall(r"Spoke (?:for|against) the motion(.*?)(?:Spoke|The motion|Taken|$)", txt))
+        assert not any(n in txt for n in ("Wall", "Dickinson", "Weber", "Belvin", "MacGillivray")), (
+            "HB 605's entry names members who spoke on HB 737: " + txt[:300])
+        assert "Mock" not in claimed and re.search(r"Also spoke during this bill\s+Rep\. Mock", txt), (
+            "Rep. Mock, who moved to recommit, is listed as speaking on the motion to kill: "
+            + txt[:300])
+        return "ok", ("HB 737's speakers are on no other bill; Mock's recommittal is not "
+                      "the motion to kill; HB 1-A keeps its own reconsideration")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("data", "no history tells a row whose LSR is another measure's, and no bill's own "
+       "row or roll call is left under a number typed another way",
+       needs=("narrative", "narrate_archive", "rollcall_parser"))
+def _own_lsr_on_disk(N, NA, RP):
+    """The audit of 30 September, re-measured on the built files, from the
+    dockets and data/bills.json rather than through own_rows.
+
+    A history row whose own LSR, year and number, is a different bill's of
+    the same term; one whose LSR no bill carries, under a number whose own
+    LSR began on another day (a number used twice in a term); a narratives
+    key no bill carries whose rows name exactly one bill's LSR; a roll call
+    filed as procedural, or keyed, under a bill number typed some other way;
+    a member's ballot under one. On the build of 30 September: 76 such rows
+    found in 38 of the 43 histories, 27 keys, seven roll calls and 893
+    ballots. A row is found by its text, so one an older decade's reader
+    joins to the next is not -- this undercounts, and never invents one."""
+    fb, fn = Path("data/bills.json"), Path("narratives.json")
+    if not (fb.exists() and fn.exists()):
+        return "skip", "no data/bills.json or narratives.json"
+    found = dict(NA.dockets())
+    if Path("Docket.txt").exists():
+        found["current"] = "Docket.txt"
+    if not found:
+        return "skip", "no docket on this disk"
+    lsrs = N.load_lsrs(fb)
+    narr = json.loads(fn.read_text(encoding="utf-8"))
+    owner = {}
+    for t, recs in lsrs.items():
+        for b, (y, n) in recs.items():
+            if n:
+                owner.setdefault((t, y, n), set()).add(b)
+    sq = lambda s: re.sub(r"\s+", " ", s or "").strip().lower()
+    told, stray, checked = [], [], 0
+    for path in found.values():
+        rows = {}
+        with open(path, encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("|")
+                if len(p) < 7 or not p[0].strip().isdigit():
+                    continue
+                t = N.P.term_of(p[0].strip())
+                rows.setdefault((t, p[3].strip()), []).append(
+                    (p[0].strip(), N._lsr_num(p[1]), p[2].split(" ")[0], p[5]))
+        for (t, key), rs in rows.items():
+            rec = lsrs.get(t, {}).get(key)
+            if not rec:
+                names = {next(iter(owner[(t, y, n)])) for y, n, _d, _x in rs
+                         if len(owner.get((t, y, n), ())) == 1}
+                if names and key in (narr.get(t) or {}) and \
+                        not all((t, key, n) in N.NOT_MOVED for _y, n, _d, _x in rs):
+                    stray.append(f"{t} {key!r} (rows of {', '.join(sorted(names))})")
+                continue
+            own = rec[1]
+            if not own or all(n != own for _y, n, _d, _x in rs):
+                continue
+            mine = {sq(N.clean(x)) for _y, n, _d, x in rs if n == own}
+            began = min(datetime_of(d) for _y, n, d, _x in rs if n == own)
+            raws = {sq(e.get("raw")) for e in ((narr.get(t) or {}).get(key) or {}).get("events") or ()}
+            for y, n, d, x in rs:
+                # A row with no LSR is kept by own_rows: nothing says whose.
+                if n == own or not n:
+                    continue
+                whose = owner.get((t, y, n), set()) - {key}
+                reused = not owner.get((t, y, n)) and datetime_of(
+                    min((dd for _y, nn, dd, _x in rs if nn == n), key=datetime_of)) != began
+                if not (whose or reused):
+                    continue
+                checked += 1
+                c = sq(N.clean(x))
+                if c not in mine and c in raws:
+                    who = f", {' and '.join(sorted(whose))}'s" if whose else ""
+                    told.append(f"{t} {key}: {x.strip()[:50]!r} (LSR {y}-{n}{who})")
+    assert not told, (f"{len(told)} history row(s) tell another measure's docket row "
+                      "(rebuild the narratives if narrative.py is newer): " + "; ".join(told[:4]))
+    assert not stray, (f"{len(stray)} narratives key(s) no bill carries still hold a bill's "
+                       "own rows: " + "; ".join(stray[:6]))
+    # The roll calls, and every member's ballot on one.
+    typed = []
+    rc = Path("rollcalls.json")
+    if rc.exists():
+        for t, byb in json.loads(rc.read_text(encoding="utf-8")).items():
+            for b, rs in byb.items():
+                for r in rs:
+                    n = RP.bill_number(r.get("bill"))
+                    if (b == "_procedural" and n) or (b != "_procedural" and
+                                                      (b != n or r.get("bill") != n)):
+                        typed.append(f"{r.get('year')} {r.get('body')} {r.get('number')} "
+                                     f"{r.get('bill')!r} under {b!r}")
+    mv = Path("data/member_votes.json")
+    ballots = 0
+    if mv.exists():
+        for v in json.loads(mv.read_text(encoding="utf-8")):
+            n = RP.bill_number(v.get("bill"))
+            if n and n != v.get("bill"):
+                ballots += 1
+                if ballots <= 3:
+                    typed.append(f"ballot on {v.get('bill')!r}")
+    assert not typed, (f"roll calls or ballots under a bill number typed another way "
+                       f"({ballots} ballots): " + "; ".join(typed[:6]))
+    return "ok", (f"{checked:,} docket rows whose LSR is another measure's are in no "
+                  "history; no stray key holds a bill's rows; every roll call and ballot "
+                  "is under its bill's own number")
+
+
+def datetime_of(mdy):
+    """A docket entry stamp's date, "01/19/2011", as a comparable tuple."""
+    try:
+        m, d, y = (int(x) for x in mdy.split("/"))
+        return (y, m, d)
+    except ValueError:
+        return (0, 0, 0)
 
 
 @check("session", "the clerk's as-of date dates a row, but never ahead of what it answers",

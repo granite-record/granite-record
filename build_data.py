@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.37
+# GRANITE_VERSION: 2026-09-04.38
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1543,7 +1543,12 @@ def main():
             continue
         summary[(r[0], r[1], r[2])] = {
             "year": r[0], "body": r[1], "number": r[2], "datetime": r[3],
-            "bill": r[4].upper(), "yea": int(r[5] or 0), "nay": int(r[6] or 0),
+            # The bill as data/bills.json keys it, so each ballot reaches its
+            # bill's page: "SB 406" upper-cased and left spaced linked no
+            # member's vote to SB 406. rollcall_parser.bill_number says which
+            # seven. A field that names no bill is upper-cased as it was.
+            "bill": RP.bill_number(r[4]) or r[4].upper(),
+            "yea": int(r[5] or 0), "nay": int(r[6] or 0),
             "question": r[11], "title": r[12],
         }
     print(f"roll call summaries: {len(summary):,}")

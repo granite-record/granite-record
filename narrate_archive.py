@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.2
+# GRANITE_VERSION: 2026-09-11.4
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -31,6 +31,12 @@ import sys
 from pathlib import Path
 
 TERM = re.compile(r"^Docket(?:_db)?_(\d{4}-\d{4})\.txt$")
+# narrative.py's own account of which rows the LSRs took off a bill or gave to
+# one (narrative.report_lsrs), summed across the terms below. The bill list's
+# path is in brackets and may hold a colon of its own: "D:/nh/data/bills.json".
+LSR_SAID = re.compile(r"rows by LSR \(.*\): ([\d,]+) row\(s\) left out of ([\d,]+) "
+                      r"histor(?:y|ies)[^;]*; ([\d,]+) given to the ([\d,]+) bill"
+                      r"\(s\)[^,]*, from ([\d,]+) key")
 
 
 def dockets():
@@ -47,6 +53,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="narratives.json")
     ap.add_argument("--members", default="data/legislators.json")
+    # Each bill's own LSR, which decides which docket rows are its own:
+    # narrative.own_rows says why. Passed rather than left to narrative.py's
+    # default, so the rule cannot silently stop when one of them moves.
+    ap.add_argument("--bills", default="data/bills.json")
     ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
 
@@ -60,11 +70,11 @@ def main():
             print(f"  {term:11} {path}")
         return 0
 
-    bills = 0
+    bills, lsr = 0, None
     for term, path in found.items():
         r = subprocess.run(
             [sys.executable, "narrative.py", "--docket", path, "--all",
-             "--out", a.out, "--members", a.members],
+             "--out", a.out, "--members", a.members, "--bills", a.bills],
             capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()[-1:]
@@ -76,9 +86,25 @@ def main():
         # What docket_corrections.json did, and above all what it failed to
         # do: an entry that stopped matching lets a mistyped date back onto
         # the site, and this run's output is captured, so it is passed on.
+        # And which rows the LSRs took off a bill or gave to one: a rule that
+        # stopped working looks exactly like a docket with nothing misfiled.
         for line in (r.stdout or "").splitlines():
-            if "docket_corrections.json" in line:
+            if "docket_corrections.json" in line or "rows by LSR" in line:
                 print("    " + line.strip())
+            said = LSR_SAID.search(line)
+            if said:
+                lsr = [x + int(y.replace(",", "")) for x, y in
+                       zip(lsr or [0] * 5, said.groups())]
+    # The whole archive's count, last, where build_all's summary of this step
+    # shows it: per term it is one line among thirty-six.
+    if lsr is None:
+        print("rows by LSR: no term said what its LSRs did -- narrative.py read no "
+              f"bill list at {a.bills}, so every row stayed under the number it was "
+              "filed under")
+    else:
+        print(f"rows by LSR, every term: {lsr[0]:,} row(s) left out of {lsr[1]:,} "
+              f"histories as another measure's; {lsr[2]:,} given to the {lsr[3]:,} "
+              f"bill(s) whose LSR they carry, from {lsr[4]:,} key(s) no bill carries")
     print(f"\n{bills:,} bills narrated into {a.out}")
     # Silence is not success: a run that narrated nothing looks exactly like
     # a term with no docket.

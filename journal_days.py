@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.4
+# GRANITE_VERSION: 2026-09-19.6
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -217,10 +217,54 @@ NEXT_HEAD = re.compile(r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}[ \t]*$", re.M)
 
 
 def _names(s):
-    """The individual members named in one attribution sentence."""
+    """The individual members named in one attribution sentence.
+
+    A comma before the "and" is read as one separator: "Reps. Nancy Wall, and
+    Dickinson spoke in favor" (14 April 1999) put a member called "and
+    Dickinson" on the page.
+    """
     s = re.sub(r"\s+", " ", s or "").strip()
-    parts = re.split(r"\s*,\s*|\s+and\s+", s)
+    parts = re.split(r"\s*,\s*(?:and\s+)?|\s+and\s+", s)
     return [p.strip(" .") for p in parts if p.strip(" .")]
+
+
+# A RECONSIDERATION OF ANOTHER BILL ENDS THE BILL BEFORE IT. "Having voted with
+# the prevailing side, Rep. Bickford moved that the House reconsider its action
+# whereby it voted HB 737, ..." opens no bill heading, so the speeches on it
+# were read as the previous bill's: on 14 April 1999 the five members who
+# spoke on HB 737's reconsideration, and its 120-225 roll call, were put on
+# HB 605, which the House had just sent back to committee on a voice vote --
+# and the same sentence did it on dozens of days of 1998-2026. What follows
+# one, up to the next bill heading, is no bill's: it is not ALWAYS the bill it
+# names, because unheaded business can follow it before the next heading (on
+# 23 April 1998 Rep. Kurk spoke on vacating SB 428's reference, after HB
+# 1520's reconsideration). A bill's reconsideration of itself is its own, as
+# it was.
+RECONSIDER = re.compile(
+    r"(?:\bReps?\.\s+" + _NAME + r"\s+)?\bmoved\s+that\s+the\s+House\s+"
+    r"reconsider\s+its\s+action\s+whereby\s+it\b[^.]{0,250}?"
+    r"\b(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)",
+    re.I | re.S)
+
+
+def bill_marks(block):
+    """[(position, bill or None)] in order: each bill heading, and each
+    reconsideration of a bill other than the one whose stretch it falls in,
+    which starts a stretch that is no bill's."""
+    marks = [(m.start(), m.group("bill").replace(" ", "").upper())
+             for m in BILL_HEAD.finditer(block)]
+    base = lambda b: (b or "").split("-")[0]
+    ends = []
+    for m in RECONSIDER.finditer(block):
+        cur = None
+        for at, mb in marks:
+            if at <= m.start():
+                cur = mb
+            else:
+                break
+        if cur and base(cur) != base(m.group("bill").replace(" ", "").upper()):
+            ends.append((m.start(), None))
+    return sorted(marks + ends, key=lambda x: x[0])
 
 
 def attributions(block):
@@ -232,8 +276,7 @@ def attributions(block):
     after it -- it is None and the caller must not guess.
     """
     out = []
-    marks = [(m.start(), m.group("bill").replace(" ", "").upper())
-             for m in BILL_HEAD.finditer(block)]
+    marks = bill_marks(block)
 
     def bill_at(pos):
         cur = None
@@ -248,7 +291,8 @@ def attributions(block):
                for m in TALLY.finditer(block)]
 
     def next_bill_at(pos):
-        """Where this bill's block ends -- the next bill heading, or the end."""
+        """Where this bill's block ends -- the next bill heading or
+        reconsideration of another bill (bill_marks), or the end."""
         for at, _b in marks:
             if at > pos:
                 return at
@@ -467,25 +511,68 @@ def absences(block):
 # the members who did -- which is the only place that is recorded, and the one
 # thing needed to keep a removed bill out of the consent list on the page.
 CONSENT_HEAD = re.compile(r"^[ \t]*CONSENT\s+CALENDAR[ \t]*$", re.M | re.I)
+# A colon as well as a comma after the bill: "HB 1602: ..., removed by Reps.
+# ..." is how 19 February 2026 printed one.
 REMOVED = re.compile(
-    r"\b(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*,"
+    r"\b(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*[,:]"
     r"[^.]{0,300}?\bremoved\s+by\b", re.I | re.S)
 ADOPTED = re.compile(r"Consent\s+Calendar\s+was\s+adopted", re.I)
+# THE SAME LINE OUTSIDE THE SEGMENT. On 14 April 1999 the House reconsidered
+# Part II of its consent calendar and adopted it again under a heading of its
+# own, "CONSENT CALENDAR - Part II", which CONSENT_HEAD does not read -- and
+# "HB 605-FN, affirming sovereign immunity ..., removed by Rep. Mock." sits
+# there, so the day's page listed HB 605 among the bills adopted without
+# debate on the day the House took it off and sent it back to committee
+# (HJ 40, p. 943, and the docket's own row). A paragraph that opens
+# with a bill and says a member removed it, anywhere on the day. The House
+# prints 143 of these outside the segment, under a motion to vacate, to
+# withdraw, a guests' heading, so one counts only for a bill already on that
+# day's consent list: taken_off() is the one place that is decided.
+REMOVED_LINE = re.compile(
+    r"(?:\A|\n)[ \t]*(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)"
+    r"\s*[,:][^.]{0,300}?\bremoved\s+by\s+Rep", re.I | re.S)
+
+
+def _removed_bill(g):
+    return g.group("bill").replace(" ", "").upper()
 
 
 def consent(block):
-    """{adopted, removed:[bill]} -- what the House did with its consent list."""
+    """{adopted, removed:[bill], removed_elsewhere:[bill]} -- what the House
+    did with its consent list. removed_elsewhere, only where there is one, is
+    the bills a "removed by" paragraph names outside the consent segment;
+    taken_off() says when one counts."""
+    out = {}
     m = CONSENT_HEAD.search(block)
-    if not m:
-        return {}
-    end = len(block)
-    nh = NEXT_HEAD.search(block, m.end() + 10)
-    if nh:
-        end = nh.start()
-    seg = joined(block[m.end():end])
-    return {"adopted": bool(ADOPTED.search(seg)),
-            "removed": sorted({g.group("bill").replace(" ", "").upper()
-                               for g in REMOVED.finditer(seg)})}
+    if m:
+        end = len(block)
+        nh = NEXT_HEAD.search(block, m.end() + 10)
+        if nh:
+            end = nh.start()
+        seg = joined(block[m.end():end])
+        out = {"adopted": bool(ADOPTED.search(seg)),
+               "removed": sorted({_removed_bill(g) for g in REMOVED.finditer(seg)})}
+    elsewhere = ({_removed_bill(g) for g in REMOVED_LINE.finditer(block)}
+                 - set(out.get("removed") or ()))
+    if elsewhere:
+        out["removed_elsewhere"] = sorted(elsewhere)
+    return out
+
+
+def taken_off(found, on_list):
+    """[bill] -- the bills taken off one day's consent calendar.
+
+    `found` is read_day()'s answer for the day and `on_list` the bills the
+    record puts on that day's consent calendar. Every removal the consent
+    segment prints counts, as it always has; one printed anywhere else on the
+    day counts only for a bill on the list, so that it can take a bill off and
+    never put one into the note about bills that came off.
+    """
+    c = (found or {}).get("consent") or {}
+    on = {str(b).split("-")[0].upper() for b in on_list}
+    return sorted(set(c.get("removed") or ())
+                  | {b for b in c.get("removed_elsewhere") or ()
+                     if b.split("-")[0] in on})
 
 
 def read_year(year, root=HOUSE):
@@ -522,9 +609,9 @@ def read_year(year, root=HOUSE):
                 for k, v in opening(block).items():
                     got["opening"].setdefault(k, v)
                 for k, v in consent(block).items():
-                    if k == "removed":
-                        got["consent"].setdefault("removed", [])
-                        got["consent"]["removed"] += v
+                    if k in ("removed", "removed_elsewhere"):
+                        got["consent"].setdefault(k, [])
+                        got["consent"][k] += v
                     else:
                         got["consent"].setdefault(k, v)
     _YEARS[key] = out
