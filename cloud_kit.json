@@ -36,8 +36,9 @@
                 "db/past/PastCommitteeReports.jsonl"]
     },
     {
-      "what": "Each term's current-term views as they stood at its end (db/term/<term>/: Legislation, LegislationText, CandH_Reports and their _columns.json), frozen before the General Court turns the views over to the next term. build_bill_versions.py and senate_hearing_reports.py read them after the current dump, so a past term keeps its versions and Senate hearing reports. Nothing is here until the first freeze.",
+      "what": "Each term's current-term views as they stood at its end (db/term/<term>/: Legislation, LegislationText, CandH_Reports and their _columns.json), frozen before the General Court turns the views over to the next term. build_bill_versions.py and senate_hearing_reports.py read them after the current dump, so a past term keeps its versions and Senate hearing reports. Nothing is here until the first freeze, so it may be empty.",
       "owner": "laptop",
+      "optional": true,
       "globs": ["db/term/*/*"]
     },
     {
