@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.11
+# GRANITE_VERSION: 2026-09-19.14
 """
 A page for every day the House sat.
 
@@ -260,6 +260,119 @@ def _same_motion(moved, action):
     return not (a and b and a != b)
 
 
+# The same kinds, and two more the House moves in the middle of a debate on
+# something else: to postpone to a day certain and to make a special order.
+# Only for asking whether a motion was made after a speech (made_after): the
+# comparisons above keep the list they were measured with.
+MOTION_KINDS_SINCE = MOTION_KINDS + [
+    ("postpone to a day", r"\bpostpone\b"),
+    ("special order", r"\bspec(?:ial)?\.?\s+order"),
+]
+
+
+def _kind_since(text):
+    for kind, pat in MOTION_KINDS_SINCE:
+        if re.search(pat, text or "", re.I):
+            return kind
+    return None
+
+
+# What a motion moved in the journal's long form asks for comes last: "moved
+# that the request for concurrence with amendment on HB 374, relative to ...,
+# be laid on the table" is a motion to table, and read from its first words
+# it was one about concurring. A motion in any other form is read whole, in
+# the kinds' order: what follows "reconsider" is the action to be
+# reconsidered ("... whereby the House adopted the committee report of
+# Inexpedient to Legislate on HR 30"), and a reconsideration is that kind
+# first.
+MOVED_TO_BE = re.compile(
+    r"\bbe\s+((?:laid|tabled|indefinitely|postponed|made\s+a\s+special|re-?\s*committed|"
+    r"re-?\s*referred|referred)\b.*)$", re.I | re.S)
+
+
+def _moved_kind(moved):
+    """The kind of one motion the journal records as moved (`moved_since`)."""
+    m = MOVED_TO_BE.search(moved or "")
+    return _kind_since(m.group(1) if m else moved)
+
+
+def made_after(a, item):
+    """True where the journal shows a motion of this item's kind being moved
+    AFTER the speech and before the vote the speech precedes
+    (journal_days.MOVED_SINCE, the attribution's `moved_since`).
+
+    Then the vote is on that later motion and the speech was on whatever
+    stood before it, so the count ties the speech to nothing. "Rep. Arndt
+    moved that the House concur and spoke in favor", then "Rep. Rice moved
+    that the request for concurrence ... be laid on the table", then YEAS 62
+    NAYS 273: HB 374's page of 9 June 1999 had Rep. Arndt speaking for laying
+    the bill on the table. While a lost motion carried no count in the
+    1999-2006 docket there was nothing for such a speech to be tied to; once
+    "Lay on the Table, ML RC(62-273)" was read with its count, sixteen tabling
+    motions of those years and a postponement and a special order each took
+    the speeches made before them. The rule is the journal's and holds for
+    every year: measured on 1 October 2026 it moves 490 names on 163
+    bill-days of 1997-2026, 36 of them in 1999-2006, from a motion to "also
+    spoke". On 7 January 2026 the page had Rep. Mark Pearson speaking against
+    his own motion to postpone HB 349 indefinitely.
+
+    A motion of another kind made between the two does not untie the
+    speech: on HR 20 of 2000 the House debated the report, refused to table
+    it on a division, and then voted 162-179 on the report, and those who
+    spoke on the report are tied to that vote as they were."""
+    kind = _kind_since(item.action)
+    return bool(kind) and any(_moved_kind(m) == kind
+                              for m in a.get("moved_since") or ())
+
+
+def several_on_line(item):
+    """True where the item is a line the 1999-2006 reader joined back
+    together from rows that, read one by one, were several floor actions,
+    and which still tells one (session_days.Item.joined): a line the reader
+    could split into its motions again is several items and carries no mark.
+    Each row was a motion on this page before they were joined; the line
+    tells the last one carried, so it is not the one motion of the day that
+    ONE MOTION MEANS NO AMBIGUITY in speakers_for assumes."""
+    return (getattr(item, "joined", 0) or 0) > 1
+
+
+def claims(a, item, sole=False):
+    """Does this motion claim one attribution of its bill? speakers_for says
+    when; the page's "also spoke" list asks the same question of every
+    motion (unplaced)."""
+    if made_after(a, item):
+        return False
+    want = (item.yeas, item.nays) if item.counted else None
+    tied = bool(want) and a.get("tally") == want
+    if sole and not _same_motion(a.get("inline_motion"), item.action):
+        return False
+    if sole and several_on_line(item):
+        k = _motion_kind(a.get("inline_motion"))
+        return tied or bool(k and k == _motion_kind(item.action))
+    return bool(sole or tied)
+
+
+def unplaced(attrs, bill, items):
+    """The names of the bill's speakers no motion of the run claims, sorted.
+
+    BY THE SPEECH, NOT BY THE MOTION. This was every speech each motion did
+    not claim, motion by motion, so a speech one motion claimed was listed
+    again as unplaced because the motion beside it did not claim it too: HB
+    1348 of 2002 named all five of its credited speakers a second time under
+    "the record does not say which of the day's motions", 633 bill-days of
+    1997-2026 did the same, and telling a line's questions one by one made it
+    677. A member who spoke twice, once on a motion the record ties and once
+    not, is still named in both places, which is what happened."""
+    sole = len(items) == 1
+    out = set()
+    for a in attrs:
+        if base_bill(a.get("bill")) != base_bill(bill):
+            continue
+        if not any(claims(a, it, sole) for it in items):
+            out.update(n for n in a["names"] if n)
+    return sorted(out)
+
+
 def speakers_for(attrs, bill, item, sole=False):
     """The attributions belonging to this motion, split by side.
 
@@ -275,7 +388,6 @@ def speakers_for(attrs, bill, item, sole=False):
     """
     mine = {"for": [], "against": []}
     rest = {"for": [], "against": []}
-    want = (item.yeas, item.nays) if item.counted else None
     for a in attrs:
         if base_bill(a.get("bill")) != base_bill(bill):
             continue
@@ -291,12 +403,18 @@ def speakers_for(attrs, bill, item, sole=False):
         # the one motion the record holds that day. Where the motion the
         # speaker moved and the record's are plainly different motions, the
         # speaker is named as having spoken during the bill and no more.
-        if sole and not _same_motion(a.get("inline_motion"), item.action):
-            rest[side] += a["names"]
-        elif sole or (want and a.get("tally") == want):
-            mine[side] += a["names"]
-        else:
-            rest[side] += a["names"]
+        # UNLESS THE LINE PUT SEVERAL. A joined line whose rows were several
+        # floor actions and which still tells one (several_on_line) is one
+        # motion on the page and several on the floor, so a speech is claimed
+        # only on evidence: its vote's tally is this motion's, or the speaker
+        # moved this kind of motion. A speech on CACR 21 of 1999's passage,
+        # which failed 224-109 short of three fifths, would otherwise be
+        # credited to the tabling that followed it on the same line.
+        # AND NEVER A MOTION MADE AFTER THE SPEECH, whether it is the one
+        # motion of the day or its count is the vote's (made_after).
+        # All of it is decided in claims(), which the page's "also spoke"
+        # list asks of every motion too.
+        (mine if claims(a, item, sole) else rest)[side] += a["names"]
     return mine, rest
 
 
@@ -432,6 +550,30 @@ def short_outcome(item):
     return (item.action or "Considered").strip()
 
 
+# THE BILL'S OWN LINE CAN SAY IT CAME OFF. journal_days.taken_off counts a
+# removal the journal prints outside the consent segment only for a bill the
+# record has on that day's list, and the record's list is the bills whose
+# floor action that day is a consent item. HB 605 of 1999 was one while its
+# 14 April line was read a row at a time, wrongly, as the report to kill it
+# adopted; read whole the line is "ITL Report adopted; Consent Cal
+# reconsidered, Rep Mock MA VV; Removed from Consent Cal, req Rep Mock;
+# Recommitted to committee, Rep Mock MA VV", its action is the recommittal,
+# and the page's note that HB 605 was taken off the list -- true, and printed
+# in the journal -- went with the mistake. A floor line with a clause of its
+# own saying the bill was removed from the consent calendar puts the bill on
+# that day's list as surely as a consent item does. A clause of its own: "Special
+# Order to after the bills removed from the Consent Calendar" names other
+# bills. Measured on 1 October 2026 this is HB 605 and nothing else: the
+# 1989 lines that open "REMOVED FROM CC" are older than the journals on
+# disk, and HB 1563 of 2012's removal is printed inside the segment.
+CAME_OFF_IN_LINE = re.compile(
+    r"(?:^|;)\s*removed\s+from\s+(?:the\s+)?(?:consent|cons\b|cons\.|CC\b)", re.I)
+
+
+def came_off_in_line(item):
+    return bool(CAME_OFF_IN_LINE.search(getattr(item, "raw", "") or ""))
+
+
 def consent_html(cons, removed, titles, years, esc):
     """The bills the chamber disposed of together, grouped by what happened.
 
@@ -495,7 +637,7 @@ def render(day, narrative, titles, years, members, esc):
     # prints outside the calendar's own segment counts only for a bill the
     # record has on this day's list: journal_days.taken_off says why.
     removed = journal_days.taken_off(
-        narrative, {i.bill for i in day.items if i.consent})
+        narrative, {i.bill for i in day.items if i.consent or came_off_in_line(i)})
     seq_items, cons = day.split(removed)
 
     H.append(opening_html(narrative, body, members, esc))
@@ -516,7 +658,6 @@ def render(day, narrative, titles, years, members, esc):
         href = bill_href(term, bill, years)
         ti = titles.get((term, bill)) or ""
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
-        leftover = set()
         # WHAT WAS DONE IN RECESS TAKES NO PART IN THE DAY'S DEBATE. The
         # journal prints it with no speaker -- "Rep. Almy moved that the House
         # accede. Adopted." -- so the speeches the journal gives the bill that
@@ -551,7 +692,7 @@ def render(day, narrative, titles, years, members, esc):
                          f"{esc(words(it.entered))}, the date the bill&rsquo;s "
                          "own history gives it.</p>")
             else:
-                mine, rest = speakers_for(attrs, bill, it, sole=(len(own) == 1))
+                mine, _rest = speakers_for(attrs, bill, it, sole=(len(own) == 1))
                 for side, label in (("for", "Spoke for the motion"),
                                     ("against", "Spoke against the motion")):
                     who = mine[side]
@@ -560,8 +701,6 @@ def render(day, narrative, titles, years, members, esc):
                                  "</span>"
                                  + ", ".join(member_html(body, n, members, esc)
                                              for n in who) + "</p>")
-                leftover.update(rest["for"])
-                leftover.update(rest["against"])
             p = vote_payload(it)
             if p:
                 i = len(payloads)
@@ -588,8 +727,8 @@ def render(day, narrative, titles, years, members, esc):
         # "spoke in favor" means the opposite of its plain reading 22% of the
         # time, and it is the motion that disambiguates it. Naming them without
         # a side is true; guessing the motion would not be.
-        if leftover:
-            names = sorted(n for n in leftover if n)
+        if own:
+            names = unplaced(attrs, bill, own)
             if names:
                 H.append('<p class="sspoke sother"><span class="slab">Also '
                          "spoke during this bill</span>"

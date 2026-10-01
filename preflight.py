@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.286
+# GRANITE_VERSION: 2026-09-04.290
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1315,17 +1315,128 @@ def _reconsidered_kill(build_site_v2):
             "Reconsider", date="1997-03-05"),
         _ev("H", "ADOPTED RC(233-114); HJ33,P798-800", "floor", "MA", "Adopt",
             date="1997-03-05"))
+    # The 30 March entry as docket_era_1999.join_rows hands it over since 1
+    # October: one line, told by its last carried question, the passage.
+    hb323_whole = _nar(
+        _ev("H", "ITL MA RC(164-153)", "floor", "MA", "Inexpedient to Legislate",
+            date="2005-03-23"),
+        _ev("H", "Rep Norelli moved to Reconsider, MA RC(153-150); ITL ML DIV(149-151); "
+                 "Rep Kurk Fl Am{0867}, AA DIV(182-116); Passed with Am VV", "floor", "MA",
+            "Ought to Pass with Amendment", date="2005-03-30"))
+    # And as it has been told since the joined line was split into its
+    # questions again (docket_vocab.questions): the reconsideration, the kill
+    # voted down, the amendment and the passage, each its own event.
+    hb323_split = _nar(
+        _ev("H", "ITL MA RC(164-153)", "floor", "MA", "Inexpedient to Legislate",
+            date="2005-03-23"),
+        _ev("H", "Rep Norelli moved to Reconsider, MA RC(153-150)", "floor", "MA", "Reconsider",
+            date="2005-03-30"),
+        _ev("H", "ITL ML DIV(149-151)", "floor", "ML", "Inexpedient to Legislate",
+            date="2005-03-30"),
+        _ev("H", "Rep Kurk Fl Am{0867}, AA DIV(182-116)", "amendment", "AA", date="2005-03-30"),
+        _ev("H", "Passed with Am VV", "floor", "MA", "Ought to Pass with Amendment",
+            date="2005-03-30"))
     got = {bid: B.classify(n, [], "HB") for bid, n in
-           (("HB323", hb323), ("HB1267", hb1267), ("HB666", hb666))}
+           (("HB323", hb323), ("HB323 read whole", hb323_whole),
+            ("HB323 by question", hb323_split), ("HB1267", hb1267), ("HB666", hb666))}
     bad = []
     if got["HB323"] == ("done", "Killed"):
         bad.append("HB 323 of 2005 is 'Killed' by a kill the House reconsidered and passed it over")
+    if got["HB323 read whole"] == ("done", "Killed"):
+        bad.append("HB 323 of 2005, its 30 March entry read whole, is 'Killed': the "
+                   "reconsideration in the passage's own line was not read")
+    if got["HB323 by question"] == ("done", "Killed"):
+        bad.append("HB 323 of 2005, its 30 March entry told question by question, is "
+                   "'Killed' by the kill its own reconsideration undid")
+    if len(set(got[k] for k in ("HB323", "HB323 read whole", "HB323 by question"))) != 1:
+        bad.append("HB 323 of 2005 reads differently by how its 30 March entry is cut: "
+                   + repr({k: got[k] for k in got if k.startswith("HB323")}))
     for bid in ("HB1267", "HB666"):
         if got[bid] != ("done", "Killed"):
             bad.append(f"{bid}'s kill stood and it reads {got[bid]}")
     assert not bad, "; ".join(bad)
-    return "ok", ("HB 323 of 2005 is not killed by the kill it was reconsidered out of; "
-                  "HB 1267 of 2012 and HB 666 of 1997, whose kills stood, are")
+    return "ok", ("HB 323 of 2005 is not killed by the kill it was reconsidered out of, "
+                  "its 30 March entry cut in two or read whole; HB 1267 of 2012 and "
+                  "HB 666 of 1997, whose kills stood, are")
+
+
+@check("status", "a failed reconsideration does not take a re-referral down with it on the "
+       "rail or in the Reports tab", needs=("build_site_v2",))
+def _rail_reconsider_own_outcome(build_site_v2):
+    """SB 135 of 1999 on 22 June: "Re-Referred to Res, Rec & Dev committee
+    RC(158-154); Rep Royce moved to reconsider, ML RC(156-157)", one line the
+    database cut in two and the 1999-2006 reader now reads whole
+    (Docket_db_1999-2000.txt). The rail lent the reconsideration's ML to the
+    re-referral before it, which has no outcome word of its own, and the
+    bill's step "Sent back to committee, 158-154" left its page. Measured
+    over every history, SB 135 is the one rail this moves."""
+    B = build_site_v2
+    sb135 = _nar(_ev("H", "Re-Referred to Res, Rec & Dev committee RC(158-154); Rep Royce "
+                          "moved to reconsider, ML RC(156-157)", "rereferred",
+                     date="1999-06-22"))
+    _intro, steps = B.journey(sb135, "SB135", [], "", "", "1999-2000")
+    got = [(s["date"], s["act"], s.get("text")) for s in steps]
+    assert got == [("1999-06-22", "recommitted", "Sent back to committee, 158–154")], (
+        f"SB 135's re-referral of 22 June 1999 is not on its rail as carried: {got}")
+    assert B._j_segments("Rep X moved to reconsider; MA VV") == [
+        "Rep X moved to reconsider; MA VV"], (
+        "an outcome alone no longer joins the reconsideration it decides")
+    # The Reports tab reads the same line for why there is a second report,
+    # and lent the ML the same way: it gave a cancelled subcommittee session
+    # of 27 September 1999 as the reason. Measured over every history, SB 135
+    # is the one line this moves; a reconsideration that CARRIED is left be.
+    line = ("Re-Referred to Res, Rec & Dev committee RC(158-154); Rep Royce moved "
+            "to reconsider, ML RC(156-157); HJ73, p1926-1930")
+    assert B._again_carried(line) is True, (
+        "the Reports tab reads SB 135's re-referral of 22 June 1999 as failed, "
+        "from its failed reconsideration's ML")
+    assert B._again_carried("Recommitted, Rep X MA VV; Rep Y moved to reconsider, ML VV") is True
+    assert B._again_carried("Rep X moved Recommit, ML RC(100-200); Rep Y moved to "
+                            "reconsider, ML VV") is False, (
+        "a recommittal that failed in its own clause reads as carried")
+    # The same line as the history has held it since it was told question by
+    # question (docket_vocab.questions): the re-referral, carrying the whole
+    # line, and the failed reconsideration as an event of its own. The rail
+    # joins a row to the one before it where the first names a motion and the
+    # second its outcome, and read these two clauses as that: a re-referral
+    # that failed. It reads the line, once; and the page lists it once.
+    whole = line
+    split = _nar(
+        {**_ev("H", "Re-Referred to Res, Rec & Dev committee RC(158-154)", "rereferred",
+               date="1999-06-22"), "line": whole},
+        {**_ev("H", "Rep Royce moved to reconsider, ML RC(156-157); HJ73, p1926-1930",
+               "floor", "ML", "reconsider", date="1999-06-22"), "in_line": True})
+    _intro, steps = B.journey(split, "SB135", [], "", "", "1999-2000")
+    assert [(s["date"], s["act"], s.get("text")) for s in steps] == got, (
+        "SB 135's re-referral, told as its own question beside the failed motion to "
+        f"reconsider it, is not on its rail: {[(s['date'], s['act'], s.get('text')) for s in steps]}")
+    assert [raw for _e, raw in B._j_rows(split["events"])] == [whole], (
+        "the rail reads a line told question by question more than once, or in pieces: "
+        f"{[raw for _e, raw in B._j_rows(split['events'])]}")
+    assert [B.docket_line(e) for e in B.docket_lines(split)] == [whole], (
+        "a line told question by question is not listed once, whole, among the "
+        f"bill's docket lines: {[B.docket_line(e) for e in B.docket_lines(split)]}")
+    # And the Reports tab quotes the line, not a clause of it: HB 278 of
+    # 1999's failed motion to recommit, read as an event of its own, was
+    # given alone as what the docket records between the bill's two reports.
+    hb278 = ("Comm Am, AA VV; Rep Soltani moved to recommit, ML VV; Passed with Am and ref "
+             "to Finance VV; HJ29, p633-634")
+    told = _nar(
+        {**_ev("H", "Maj Report OTP/AM for Mar 18 (vote 14-2;CC)", "report",
+               date="1999-03-10"), "recommendation": "Ought to Pass with Amendment"},
+        {**_ev("H", "Comm Am, AA VV", date="1999-03-18"), "in_line": True},
+        {**_ev("H", "Rep Soltani moved to recommit, ML VV", "floor", "ML",
+               "Rerefer to Committee", date="1999-03-18"), "in_line": True},
+        {**_ev("H", "Passed with Am and ref to Finance VV; HJ29, p633-634", "floor", "MA",
+               "Ought to Pass with Amendment", date="1999-03-18"), "line": hb278},
+        {**_ev("H", "Fin Maj Report OTP for Apr 8 (vote 20-1;Reg)", "report",
+               date="1999-03-31"), "recommendation": "Ought to Pass"})
+    _out, _docket, between = B.committee_reports([], told, {}, "Judiciary", "")
+    assert [x["text"] for x in between] == [hb278], (
+        f"the note between HB 278's two reports quotes a clause, not the docket's line: {between}")
+    return "ok", ("SB 135 is sent back 158-154 on the rail and in the Reports tab, its line "
+                  "read whole or question by question; its failed reconsideration keeps "
+                  "its own ML; HB 278's note between reports quotes the whole line")
 
 
 @check("status", "conferees who never signed a report end the bill too, and a report signed late does not",
@@ -1778,12 +1889,78 @@ def _rollcall_typed_bill(RP):
         # build_data keys each member's ballot by the summary's bill, and only
         # a rebuild would show it reverting -- the nightly runs --code alone.
         src = Path("build_data.py").read_text(encoding="utf-8")
-        assert '"bill": RP.bill_number(r[4]) or r[4].upper()' in src, (
+        assert '"bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper()' in src, (
             "build_data.py no longer keys the roll-call summary's bill through "
-            "rollcall_parser.bill_number, so no ballot on \"SB 406\" reaches SB 406's page")
+            "rollcall_parser.roll_call_bill, so no ballot on \"SB 406\" reaches SB 406's page")
         return "ok", ("spaces, case, -FN and HCACR normalise to the bill's own number, in "
                       "parse, in the keys and in build_data's ballots; a House rule vote "
                       "stays procedural")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+# Real rows of rollcalls/RollCallSummary_<year>.txt: the House address of 1999,
+# HCO 1 of 2002, measures of three special sessions, the draft and the rules
+# vote that stay procedural, and the Senate's two votes on 2009's SR 1.
+_RC_MEASURES = [
+    "1999|H|169|7/1/1999 12:25:00 PM|HA1|256|58|316|100|HA 1  FOR THE REMOVAL OF DAVID A BROCK, CHIEF JUSTICE OF THE NEW| HAMPSHIRE SUPREME COURT, FROM HIS SAID OFFICE.|JOINT COMMITTEE REPORT:  OUGHT NOT TO PASS|for the removal of David A. Brock, chief justice of the New Hampshire supreme court, from his said office.||9/27/1999 2:46:42 PM",
+    "2002|S|146|6/27/2002 12:00:00 AM|HCO1|13|11|24|0|||Adoption of the suspension of the rules Sen. Francoeur/Sen Barnes|relative to implementing an election pursuant to representative districts established in the order.||7/2/2002 12:42:20 PM",
+    "2008|H|401|6/4/2008 8:33:00 AM|SSHR1   |151|162|317|83|SSHR1: 2008 SPECIAL SESSION RULES OF THE HOUSE.||  FLAM 2149H REP HESS|2008 Special Session Rules of the House||6/10/2008 9:06:08 AM",
+    "2009|S|32|4/1/2009 12:00:00 AM|SR1|14|9|23|0|||Sen. Reynolds moved Introduction.|requesting an opinion of the justices concerning the constitutionality of SB 21.||5/4/2009 4:03:47 PM",
+    "2009|S|33|4/1/2009 12:00:00 AM|SR1|14|9|23|0|||Sen. Reynolds moved Ought to Pass|requesting an opinion of the justices concerning the constitutionality of SB 21.||5/4/2009 4:29:58 PM",
+    "2010|S|69|6/9/2010 12:00:00 AM|SSSB1|14|9|23|1|||Ought to Pass|relative to video lottery and table gaming at certain locations throughout the state and establishing the gaming regulatory oversight authority to oversee and assess the regulation of gaming activities in New Hampshire.||6/10/2010 3:22:00 PM",
+    "2010|S|70|6/9/2010 12:00:00 AM|DRAFT|14|9|23|1|||Draft of SSSB 2 - LSR 2371, Laid on Table|making distributions from limited liability companies, partnerships, and associations subject to the interest and dividends tax only if they have transferable shares.||6/10/2010 3:21:49 PM",
+    "2013|H|199|11/7/2013 10:56:00 AM|SSHB1|183|141|324|76|SSHB1: RELATIVE TO ACCESS TO HEALTH INSURANCE COVERAGE.              ||  DRAFTING, INTRO, READ & REFERRAL TO COMM (REP SHURTLEFF)           |making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2014 and June 30, 2015.||11/8/2013 2:44:00 PM",
+    "2015|H|199|11/18/2015 12:46:54 PM|SSHCR1|79|258|28|35|||Adopt Amendment|establishing a joint task force for the response to the heroin and opioid epidemic in New Hampshire.||",
+    "2018|S|258|7/25/2018 12:00:00 AM|SSRULES|11|13|24|0|||Amendment to Special Session Senate Rules 5-4 and 5-5|Senator Feltes moved to offer an amendment to amend Special Session Senate Rules 5-4 and 5-5.||7/30/2018 11:20:23 AM",
+]
+
+
+@check("rollcalls", "a vote on a measure with a record reaches it, and a vote on a measure "
+       "whose number another record holds reaches neither", needs=("rollcall_parser",))
+def _rollcall_measure_kinds(RP):
+    """Three kinds data/bills.json holds were missing from the bill-number
+    pattern -- the House address (HA), HCO and every special-session measure
+    (SSHB, SSSB, SSHR, SSHCR) -- so 68 roll calls on them were published as
+    procedural and twelve records said they had no roll call: HA 1 of 1999,
+    the House's 256-58 on removing Chief Justice Brock, among them. A vote on
+    the chamber's own special-session rules, or on a draft no record carries,
+    stays procedural.
+
+    And the Senate's roll calls 32 and 33 of 2009 are on 2009's SR 1, an
+    opinion of the justices on SB 21; the one SR 1 the record holds for
+    2009-2010 is 2010's, on EPA vapor recovery, whose page drew both, with 23
+    senators' ballots linked to it. They are filed under a name no record
+    carries, and are not procedural."""
+    want = {"HA1": "HA1", "HCO1": "HCO1", "SSHR1   ": "SSHR1", "SSSB1": "SSSB1",
+            "SSHB1": "SSHB1", "SSHCR1": "SSHCR1", "SSRULES": "", "DRAFT": "", "HRULE64": ""}
+    got = {k: RP.bill_number(k) for k in want}
+    assert got == want, f"bill_number gave {[(k, v) for k, v in got.items() if v != want[k]]}"
+    assert RP.roll_call_bill("2010", "S", 32, "SR1") == "SR1" and \
+        RP.roll_call_bill("2009", "S", "33", "SR1") == "SR1 (2009)", (
+        "roll_call_bill no longer names 2009's SR 1, or names another year's roll call as it")
+    d = Path(tempfile.mkdtemp())
+    try:
+        (d / "RollCallSummary.txt").write_text("\n".join(_RC_MEASURES) + "\n", encoding="utf-8")
+        rows = {(r["year"], r["body"], r["number"]): r
+                for r in RP.parse(d / "RollCallSummary.txt")}
+        assert len(rows) == len(_RC_MEASURES), f"read {len(rows)} of {len(_RC_MEASURES)} rows"
+        flags = {r["bill"]: r["procedural"] for r in rows.values()}
+        assert flags == {"HA1": False, "HCO1": False, "SSHR1": False, "SR1 (2009)": False,
+                         "SSSB1": False, "DRAFT": True, "SSHB1": False, "SSHCR1": False,
+                         "SSRULES": True}, f"bills and procedural flags as parsed: {flags}"
+        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+                  "RollCallSummary.txt", "--dir", "none", "--all", "--out", "rc.json"],
+                 cwd=d, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
+        keyed = {t: sorted(b) for t, b in
+                 json.loads((d / "rc.json").read_text(encoding="utf-8")).items()}
+        assert keyed == {"1999-2000": ["HA1"], "2001-2002": ["HCO1"], "2007-2008": ["SSHR1"],
+                         "2009-2010": ["SR1 (2009)", "SSSB1", "_procedural"],
+                         "2013-2014": ["SSHB1"], "2015-2016": ["SSHCR1"],
+                         "2017-2018": ["_procedural"]}, f"roll calls keyed {keyed}"
+        return "ok", ("HA, HCO and special-session votes reach their measures; a draft and "
+                      "a rules vote stay procedural; 2009's SR 1 is on no 2010 page")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -5211,12 +5388,20 @@ def _no_control_bytes():
             "docket_pages/", "bill_text/", "legislation/", "captions/",
             "review/", ".git/", "sources/", "brand/", "assets/",
             "town_sites/")
+    #
+    # AND THE SAME CACHES UNDER A WORKTREE'S OWN ROOT. On 1 October a session
+    # working in .claude/worktrees/ws-front kept a copy of legislation/ there,
+    # and this went red on four General Court pages in it (0x1e in 2016's HB
+    # 625, 0x02 in three of 2022) while another session's change was being
+    # checked in the main tree. A worktree's source files are still read; its
+    # copies of the folders skipped above are skipped as they are here.
+    worktree = re.compile(r"^claude/worktrees/[^/]+/")
     bad, n = [], 0
     for f in sorted(Path(".").rglob("*")):
         if not f.is_file() or f.suffix.lower() not in exts:
             continue
         rel = f.as_posix().lstrip("./")
-        if rel.startswith(skip):
+        if worktree.sub("", rel).startswith(skip):
             continue
         n += 1
         raw = f.read_bytes()
@@ -9790,7 +9975,35 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         assert BSP.render(day, found, {}, {}, {}, _html.escape)[0] == \
             BSP.render(day, {}, {}, {}, {}, _html.escape)[0], (
             "removals printed outside the segment, for bills not on the list, changed the page")
-        return "ok", ("HB 605 comes off 14 April 1999's list; a colon is read; a stray "
+        # HB 605 as its 14 April line is read since 1 October 2026: whole, a
+        # recommittal on Rep. Mock's motion and no consent item at all. The
+        # line itself says the bill came off the calendar, in a clause of its
+        # own, and that puts it on the day's list for the journal's removal to
+        # count; a special order naming "the bills removed from the Consent
+        # Calendar" does not.
+        whole = ("ITL Report adopted; Consent Cal reconsidered, Rep Mock MA VV; Removed from "
+                 "Consent Cal, req Rep Mock; Recommitted to committee, Rep Mock MA VV; HJ40, p943")
+        narr["1999-2000"]["HB605"] = {"events": [
+            ev("1999-04-07", rep, "report"),
+            ev("1999-04-14", whole, "floor", action="Rerefer to Committee", motion="MA",
+               vote_kind="VV")]}
+        narr["1999-2000"]["HB9999"] = {"events": [
+            ev("1999-04-14", "Special Order to after the bills removed from the Consent "
+               "Calendar, Without Objection, MA", "floor", action="Special Order", motion="MA")]}
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        assert sorted(i.bill for i in day.items if i.consent) == ["HB522"], (
+            "HB 605's recommittal, read whole, is a consent item")
+        page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
+        cons = page.split("On the consent calendar", 1)[-1].split("</section>", 1)[0]
+        assert "HB 605-FN was taken off" in cons and "HB 9999" not in cons, (
+            "the 14 April 1999 page does not say HB 605 was taken off the consent "
+            "calendar, which its own docket line and the journal both say: "
+            + re.sub(r"<[^>]+>", " ", cons)[:200])
+        assert "Rerefer to Committee" in page, (
+            "HB 605's recommittal is not among the day's motions")
+        return "ok", ("HB 605 comes off 14 April 1999's list, as a consent item or as the "
+                      "recommittal its line is read as whole; a colon is read; a stray "
                       "removal for a bill not on the list changes nothing")
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -9841,6 +10054,237 @@ Rep. Hager spoke against.
 
 Reconsideration failed.
 """
+
+
+# The House Journal for 9 June 1999 (HB 374), 23 March 2000 (HR 20),
+# 10 February 1999 (HB 110) and 21 March 2006 (CACR 34), as
+# journals/1999/HJ019.txt, journals/2000/HJ009.txt, journals/1999/HJ004.txt
+# and journals/2006/HJ009.txt print them, without each committee's statement
+# and the names under each roll call.
+_JOURNAL_MOTION_AFTER = """
+HB 374, relative to the order of names on presidential primary election ballots. (Amendment printed
+SJ 22, 6/8/99)
+
+Rep. Arndt moved that the House concur and spoke in favor.
+
+                                                  motion to lay on the table
+Rep. Rice moved that the request for concurrence with amendment on HB 374, relative to the order
+of names on presidential primary election ballots, be laid on the table.
+
+Rep. Buckley requested a roll call; sufficiently seconded.
+
+                                   YEAS 62 NAYS 273
+
+and the motion failed.
+
+Adopted.
+
+HR 20, urging Congress to pass a pending resolution proposing an amendment to the United States
+Constitution relating to voluntary school prayer. MAJORITY: OUGHT TO PASS. MINORITY:
+INEXPEDIENT TO LEGISLATE.
+
+Reps. Gary Johnson and Jacobson spoke against.
+
+Reps. Richard Herman and Potter spoke against and yielded to questions.
+
+Reps. Buckley and Ronald Nowe spoke in favor.
+
+Rep. Burling spoke to the bill.
+
+Rep. Ronald Nowe requested a roll call; sufficiently seconded.
+
+The question being the adoption of the majority report.
+
+                                                  motion to lay on the table
+
+Rep. Eugene Gagnon moved that HR 20, urging Congress to pass a pending resolution proposing an
+amendment to the United States Constitution relating to voluntary school prayer, be laid on the
+table.
+
+On a division vote, 156 members having voted in the affirmative and 185 in the negative, the motion
+failed.
+
+The question now being the adoption of the majority report.
+
+YEAS 162 NAYS 179
+and the majority report failed.
+
+HB 110-FN-L, authorizing each town and city to determine its methods of raising revenue to fulfill
+its obligation to fund public elementary and secondary education. INEXPEDIENT TO LEGISLATE
+
+Rep. Mirski spoke against.
+
+Reps. Vaillancourt and Burling spoke in favor.
+
+Rep. Alger moved Re-commit to Committee.
+Rep. Kurk spoke against.
+Rep. Alger requested a roll call; sufficiently seconded.
+The question being the motion to Re-commit to Committee.
+
+YEAS 50 NAYS 302
+and the motion failed.
+
+                                                  motion to lay on the table
+
+Rep. Mirski moved that HB 110-FN-L, authorizing each town and city to determine its methods of
+raising revenue to fulfill its obligation to fund public elementary and secondary education be laid on
+the table.
+
+The motion failed.
+
+The question now being the adoption of the committee report.
+
+Adopted.
+
+CACR 34, relating to the definition of marriage. Providing that marriage between one man
+
+and one woman shall be the only legal union that shall be valid or recognized in this state.
+
+MAJORITY: INEXPEDIENT TO LEGISLATE. MINORITY: OUGHT TO PASS.
+Rep. Balboni spoke against and yielded to question.
+Rep. Sorg spoke against.
+Rep. Desmarais spoke in favor.
+
+                                      MOTION TO LAY ON THE TABLE
+
+Rep. Hutchinson moved that CACR 34, relating to the definition of marriage. Providing that
+marriage between one man and one woman shall be the only legal union that shall be valid
+or recognized in this state, be laid on the table.
+Rep. James Wheeler requested a roll call; sufficiently seconded.
+The question being to lay CACR 34 on the table.
+
+                                                YEAS 55 NAYS 277
+
+and the motion to lay CACR 34 on the table failed.
+"""
+
+
+@check("session", "a speech is not credited to a motion made after it, and a credited "
+       "speaker is not listed again as unplaced",
+       needs=("narrative", "journal_days", "session_days", "build_session_pages"))
+def _session_speech_before_its_motion(N, JD, SD, BSP):
+    """The vote a speech precedes ties it to a motion, and the House often
+    puts another motion between the two. On 9 June 1999 Rep. Arndt moved that
+    the House concur with the Senate's amendment to HB 374 and spoke in
+    favor; Rep. Rice moved to table; the roll call, 62-273, was on the
+    tabling. While the 1999-2006 docket's lost motions carried no count there
+    was nothing to tie such a speech to; read with their counts, sixteen
+    tabling motions, a postponement and a special order of those years each
+    took the speeches made before them, and the same reading had long put
+    speeches on motions made after them in every other year (on 4 January
+    2024, two members who spoke on an amendment to HB 232 under the motion
+    that then tabled it). The journal says what was moved after a speech, and
+    a motion of that kind does not claim it.
+
+    A motion of ANOTHER kind made between does not untie a speech: HR 20 of
+    2000's report was debated, a motion to table it lost on a division, and
+    the roll call that followed, 162-179, was on the report.
+
+    And the page's "also spoke during this bill" list named every speech each
+    motion did not claim, motion by motion, so a member credited under one
+    motion was listed again under "the record does not say which of the
+    day's motions" because the motion beside it did not claim the speech
+    too."""
+    import html as _html
+    attrs = JD.attributions(JD.clean(_JOURNAL_MOTION_AFTER))
+    by = {}
+    for a in attrs:
+        for n in a["names"]:
+            by.setdefault(n, []).append(a)
+    arndt, = by["Arndt"]
+    assert arndt["tally"] == (62, 273) and len(arndt["moved_since"]) == 1 and \
+        "be laid on the table" in arndt["moved_since"][0], (
+        f"the motion to table made after Rep. Arndt spoke is not kept with the speech: {arndt}")
+    assert by["Kurk"][0]["tally"] == (50, 302) and by["Kurk"][0]["moved_since"] == [] and \
+        by["Mirski"][0]["moved_since"] == ["Re-commit to Committee"], (
+        f"HB 110's motion to recommit is not after Mirski's speech and before Kurk's: "
+        f"{by['Mirski'][0]} {by['Kurk'][0]}")
+    johnson = by["Gary Johnson"][0]
+    assert johnson["tally"] == (162, 179) and len(johnson["moved_since"]) == 1, johnson
+
+    def item(bill, term, action, motion, kind, y=None, n=None):
+        return SD.Item(bill, term, {"type": "floor", "body": "H", "action": action,
+                                    "motion": motion, "vote_kind": kind, "yeas": y, "nays": n,
+                                    "raw": action}, 0)
+    # HB 374: the tabling that lost 62-273, and the concurrence by voice.
+    table = item("HB374", "1999-2000", "Lay on Table", "ML", "RC", "62", "273")
+    concur = item("HB374", "1999-2000", "Concur", "MA", "VV")
+    for sole in (False, True):
+        mine, rest = BSP.speakers_for(attrs, "HB374", table, sole=sole)
+        assert mine == {"for": [], "against": []} and rest["for"] == ["Arndt"], (
+            f"Rep. Arndt, who spoke for concurring, is credited to the motion to table "
+            f"HB 374 (one motion that day: {sole}): {mine}")
+    assert BSP.unplaced(attrs, "HB374", [table, concur]) == ["Arndt"], (
+        BSP.unplaced(attrs, "HB374", [table, concur]))
+    # HR 20: a tabling motion between the debate and the vote on the report
+    # does not take the debate from the report.
+    report = item("HR20", "1999-2000", "Ought to Pass", "ML", "RC", "162", "179")
+    tabled = item("HR20", "1999-2000", "Lay on Table", "ML", "DV", "156", "185")
+    mine, _rest = BSP.speakers_for(attrs, "HR20", report)
+    assert mine == {"for": ["Buckley", "Ronald Nowe"],
+                    "against": ["Gary Johnson", "Jacobson", "Richard Herman", "Potter"]}, (
+        f"HR 20's debate on the report, voted 162-179 after a tabling motion lost, is no "
+        f"longer the report's: {mine}")
+    assert BSP.speakers_for(attrs, "HR20", tabled)[0] == {"for": [], "against": []}
+    assert BSP.unplaced(attrs, "HR20", [tabled, report]) == [], (
+        f"HR 20's speakers, credited under the report, are listed again as unplaced: "
+        f"{BSP.unplaced(attrs, 'HR20', [tabled, report])}")
+    # CACR 34: the motion to table it is read past the period in its title.
+    balboni = by["Balboni"][0]
+    assert balboni["tally"] == (55, 277) and [m[-20:] for m in balboni["moved_since"]] == \
+        ["be laid on the table"], (
+        f"the motion to table CACR 34, whose title holds a period, is read as {balboni}")
+    lay34 = item("CACR34", "2005-2006", "Lay on Table", "ML", "RC", "55", "277")
+    assert BSP.speakers_for(attrs, "CACR34", lay34)[0] == {"for": [], "against": []} and \
+        BSP.unplaced(attrs, "CACR34", [lay34]) == ["Balboni", "Desmarais", "Sorg"], (
+        "those who spoke on CACR 34's report are credited to the motion to table it: "
+        f"{BSP.speakers_for(attrs, 'CACR34', lay34)[0]}")
+    # HB 110, on the page: Rep. Kurk spoke after the motion to recommit was
+    # made, and the three before it spoke on the committee's report.
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        N.CORRECTIONS = []
+        N.TERM = "1999-2000"
+        rec = N.build("HB110", _docket_rows(_DOCKET_CUT_1999["HB110"]))
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "narratives.json").write_text(
+            json.dumps({"1999-2000": {"HB110": {"events": rec["events"]}}}), encoding="utf-8")
+        day = SD.load(root / "narratives.json")[("H", "1999-02-10")]
+        nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
+        page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
+    claimed = re.findall(r"Spoke (for|against) the motion (.*?)(?= Spoke| A roll call| Taken| The motion| Also|$)", txt)
+    assert claimed == [("against", "Rep. Kurk")], (
+        f"HB 110's page of 10 February 1999 credits {claimed}: " + txt[:500])
+    also = re.search(r"Also spoke during this bill (.*?) the record does not say", txt)
+    assert also and also.group(1).strip() == "Rep. Burling , Rep. Mirski , Rep. Vaillancourt", (
+        "those who spoke on HB 110's report before the motion to recommit, and only they, "
+        f"are not the page's unplaced speakers: {also and also.group(1)!r}")
+    # One motion on the day does not claim a speech made before it was moved:
+    # HB 232 of 4 January 2024, whose record holds its tabling alone.
+    spoke = [{"bill": "HB232-FN", "side": "against", "names": ["Brian Sullivan"],
+              "tally": (190, 182), "inline_motion": None,
+              "moved_since": ["that HB 232-FN, adopting section 1910 OSHA standards for public "
+                              "sector employees in New Hampshire, be laid on the table"]},
+             {"bill": "HB232-FN", "side": "for", "names": ["Infantine"], "tally": (190, 182),
+              "inline_motion": None,
+              "moved_since": ["that HB 232-FN, adopting section 1910 OSHA standards for public "
+                              "sector employees in New Hampshire, be laid on the table"]}]
+    lay = item("HB232", "2023-2024", "Lay HB232 on Table", "MA", "RC", "190", "182")
+    assert BSP.speakers_for(spoke, "HB232", lay, sole=True)[0] == {"for": [], "against": []} and \
+        BSP.unplaced(spoke, "HB232", [lay]) == ["Brian Sullivan", "Infantine"], (
+        "the two who spoke on HB 232's amendment are credited to the motion that tabled it")
+    # ...and still claims one made on it: no motion was moved in between.
+    after = [dict(spoke[0], moved_since=[])]
+    assert BSP.speakers_for(after, "HB232", lay, sole=True)[0]["against"] == ["Brian Sullivan"]
+    return "ok", ("Arndt is not for tabling HB 374; HR 20's debate stays with its report "
+                  "across a tabling motion that lost; HB 110's page credits Kurk alone and "
+                  "names the other three once; HB 232's tabling claims no speech made before it")
 
 
 @check("session", "a speech is placed on a bill's motion only where the journal puts it there",
@@ -9983,6 +10427,10 @@ def _own_lsr_on_disk(N, NA, RP):
             for b, rs in byb.items():
                 for r in rs:
                     n = RP.bill_number(r.get("bill"))
+                    # 2009's SR 1 is filed under its own name on purpose:
+                    # rollcall_parser.OTHER_MEASURE.
+                    if RP.other_measure(r) and b == r.get("bill"):
+                        continue
                     if (b == "_procedural" and n) or (b != "_procedural" and
                                                       (b != n or r.get("bill") != n)):
                         typed.append(f"{r.get('year')} {r.get('body')} {r.get('number')} "
@@ -10164,6 +10612,771 @@ def _docket_rows(lines):
     return out
 
 
+# Real rows, copied from the dockets on disk: Docket_db_1999-2000.txt lines
+# 2970-2973 (HB 605), 263-264 (HB 110), 88-89 (HB 94), 1866-1867 (HB 278) and
+# 12500-12501 (HR 10); Docket_db_2005-2006.txt lines 10939-10940 (HB 317),
+# 12891-12893 (HB 1240), 8811 (HB 162) and 6199 (SB 42).
+_DOCKET_CUT_1999 = {
+    "HB605": [
+        "1999|0365|04/06/1999 11:07:57 AM|HB605|H|Maj Report  ITL  for  Apr 14   (vote 13-1;CC#2)|04/06/1999 11:07:57 AM",
+        "1999|0365|04/14/1999 02:25:49 PM|HB605|H|ITL Report adopted;  Consent Cal reconsidered, Rep Mock|04/14/1999 02:25:49 PM",
+        "1999|0365|04/14/1999 03:36:29 PM|HB605|H|MA VV; Removed from Consent Cal, req Rep Mock; Recommitted to|04/14/1999 03:36:29 PM",
+        "1999|0365|04/14/1999 03:38:09 PM|HB605|H|committee, Rep Mock MA VV;  HJ40, p943|04/14/1999 03:38:09 PM"],
+    "HB110": [
+        "1999|0042|02/10/1999 12:16:46 PM|HB110|H|Rep Alger moved to recommit, ML RC(50-302); Rep Mirski moved to Lay on the Table, ML VV; ITL report|02/10/1999 12:16:46 PM",
+        "1999|0042|02/10/1999 12:18:53 PM|HB110|H|adopted VV; HJ18, p283-285|02/10/1999 12:18:53 PM"],
+    "HB94": [
+        "1999|0018|03/04/1999 10:35:30 AM|HB94|H|Rep LaPorte moved to reconsider, MA DIV(190-147); Recommited to Transportation, Rep Packard|03/04/1999 10:35:30 AM",
+        "1999|0018|03/04/1999 10:53:29 AM|HB94|H|MA VV;  HJ29, p598|03/04/1999 10:53:29 AM"],
+    "HB278": [
+        "1999|0238|03/18/1999 04:20:34 PM|HB278|H|Comm Am, AA VV; Rep Soltani moved to recommit, ML VV; Passed with Am and ref to Finance VV;  HJ29,|03/18/1999 04:20:34 PM",
+        "1999|0238|03/18/1999 04:22:09 PM|HB278|H|p633-634|03/18/1999 04:22:09 PM"],
+    "HR10": [
+        "2000|1015|05/25/1999 04:24:10 PM|HR10|H|Taken from the Table, Rep Alukonis MA VV; Reps Kurk & Alukonis Prop Am{1416}(New Title),|05/25/1999 04:24:10 PM",
+        "2000|1015|05/25/1999 04:25:07 PM|HR10|H|AA VV; Laid on the Table, Rep Alukonis MA VV; HJ58, p1579-1580|05/25/1999 04:25:07 PM"],
+    "HB317": [
+        "2006|0863|02/15/2006 01:33:33 PM|HB317|H|Passed with AM {0074h},  MA, VV|02/15/2006 01:33:33 PM",
+        "2006|0863|02/15/2006 03:12:57 PM|HB317|H|ref to Ways & Means|02/15/2006 03:12:57 PM"],
+    "HB1240": [
+        "2006|2126|02/15/2006 04:43:17 PM|HB1240|H|Maj AM {0795h},  AA, RC (172-150)   HJ 19, pg 1151-1154|02/15/2006 04:43:17 PM",
+        "2006|2126|02/15/2006 05:10:11 PM|HB1240|H|Passed with AM {0795h},  ML,  RC (141-181)   HJ 19, pg 1154-1156|02/15/2006 05:10:11 PM",
+        "2006|2126|02/15/2006 05:15:37 PM|HB1240|H|Ref to Interim Study,  MA,  Div (170-152)   HJ 19, pg 1156|02/15/2006 05:15:37 PM"],
+    "HB162": [
+        "2006|0103|02/02/2006 02:25:53 PM|HB162|H|Lay on Table,   ML,  RC (140-198)     HJ 14, pg 747-749|02/02/2006 02:25:53 PM"],
+    "SB42": [
+        "2005|0821|02/17/2005 10:25:50 AM|SB42|S|Sen. Larsen Moved Laid on Table Division 8Y-15N, MF; SJ 6, Pg.64|02/17/2005 10:25:50 AM"],
+    # The 2006 clerk's comma between the kind of vote and its count
+    # (Docket_db_2005-2006.txt line 11521).
+    "SB128": [
+        "2006|1003|01/18/2006 03:59:31 PM|SB128|H|Lay on Table,  ML, RC, (144-195)  HJ 10, pg 532-534|01/18/2006 03:59:31 PM"],
+    # The result after a semicolon of its own (Docket_db_1999-2000.txt line
+    # 19526, Docket_db_2005-2006.txt line 20896).
+    "SB301": [
+        "2000|2722|03/09/2000 02:24:57 PM|SB301|S|Inexpedient to Legislate(not voted on), Sen. Fernald Moved Laid on Table; Division 8y-14n, MF,VV|03/09/2000 02:24:57 PM"],
+    "SB1": [
+        "2006|4001|09/26/2006 02:00:53 PM|SB1|H|Rep Vaillancourt moved lay on table; MF VV; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:00:53 PM"],
+    # A Senate question and a third reading that came out differently
+    # (Docket_db_1999-2000.txt lines 7344 and 12279).
+    "SB108": [
+        "1999|0874|05/20/1999 04:11:59 PM|SB108|S|Sen. Gordon Moved Rerefer to Committee, RC 10Y-14N, MF, OT3rdg, MA, VV; SJ 20, P 528-534|05/20/1999 04:11:59 PM"],
+    "SB219": [
+        "2000|0954|02/03/2000 02:10:55 PM|SB219|S|Ought to Pass with Amendment {3073}[New Title], AA, VV,  Ordered to 3rd Reading, RC 12y -12n, MF|02/03/2000 02:10:55 PM"],
+}
+
+
+@check("narrative", "a House floor day the 1999-2006 docket cut into rows is read as one "
+       "entry, and a question its own clause says lost is not told as carried",
+       needs=("narrative", "docket_vocab", "docket_era_1999"))
+def _docket_1999_cut_rows(N, V, E):
+    """HB 605 of 1999 was told as killed -- its history, the 14 April 1999
+    sitting and the consent grouping -- because the database cut the House's
+    one entry for that day into three rows and the first, read alone, is "ITL
+    Report adopted". Whole, it is the consent calendar reconsidered and the
+    bill recommitted on Rep. Mock's motion, and it passed on 13 May. The
+    1989 and 2007 eras had a joiner and this one had none, and docket_vocab
+    returns rows unjoined when an era has none. HB 110 of 1999 was told as
+    tabled and then passed, where the House voted the tabling down and killed
+    it.
+
+    Separately, a question whose words sound carried ("Lay on Table",
+    "Passed") was made adopted whatever its own clause said: 2006 HB 1240 was
+    told as passed on the day passage failed 141-181, as were four other 2006
+    House bills, and 98 events in all. Each rule is tested on the rows that
+    showed it, beside a row each must leave alone."""
+    from datetime import datetime as _dt
+    tup = lambda lines, body=None: [
+        (_dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p"), "", body or p[4], p[5])
+        for p in (x.split("|") for x in lines)]
+    rows = _DOCKET_CUT_1999
+    assert callable(getattr(E, "join_rows", None)), (
+        "docket_era_1999 has no join_rows, and docket_vocab reads its rows unjoined")
+    joined = {b: [r[3] for r in E.join_rows(tup(rows[b]))] for b in rows}
+    whole = " ".join(x.split("|")[5].strip() for x in rows["HB605"][1:])
+    assert joined["HB605"][1:] == [whole], (
+        f"HB 605's 14 April 1999 entry is not read whole: {joined['HB605']}")
+    for b, why in (("HB110", "a lowercase word"), ("HB94", "a bare result"),
+                   ("HB278", "the page of a broken citation"), ("HR10", "a bare result")):
+        assert len(joined[b]) == 1, f"{b}'s row that opens on {why} was not joined: {joined[b]}"
+    assert len(joined["HB317"]) == 2, (
+        "2006 HB 317's 'ref to Ways & Means', typed as an entry of its own after a "
+        f"decided question, was joined to it: {joined['HB317']}")
+    assert len(E.join_rows(tup(rows["HB110"], body="S"))) == 2, (
+        "a Senate row was joined; only the House's floor day is one entry cut")
+
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        N.CORRECTIONS = []
+        got, told, votes = {}, {}, {}
+        for b, lines in rows.items():
+            recs = _docket_rows(lines)
+            N.TERM = N.P.term_of(recs[0]["session"])
+            r = N.build(b, recs)
+            got[b] = [(e["date"], e.get("action"), e.get("motion"))
+                      for e in r["events"] if e["type"] == "floor"]
+            votes[b] = [(e.get("motion"), e.get("vote_kind"), e.get("yeas"), e.get("nays"))
+                        for e in r["events"] if e["type"] == "floor"]
+            told[b] = r.get("narrative") or ""
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+    assert got["HB605"] == [("1999-04-14", "Rerefer to Committee", "MA")], (
+        f"HB 605's 14 April 1999 entry is not its recommittal: {got['HB605']}")
+    assert "send it back to committee" in told["HB605"] and \
+        "voted to kill it" not in told["HB605"], (
+        "HB 605's history still says the House killed it: " + told["HB605"][-160:])
+    # Whole, the line's last carried question is the report to kill it; its
+    # two failed motions are told ahead of it, each with its own vote
+    # (_docket_1999_questions), and neither is told as carried.
+    assert got["HB110"] == [("1999-02-10", "Rerefer to Committee", "ML"),
+                            ("1999-02-10", "Lay on Table", "ML"),
+                            ("1999-02-10", "Inexpedient to Legislate", "MA")], (
+        f"HB 110's 10 February 1999 entry is not two failed motions and the report to "
+        f"kill it adopted: {got['HB110']}")
+    assert "voted to lay it on the table" not in told["HB110"] and \
+        "voted to pass it" not in told["HB110"], (
+        "HB 110's history says it was tabled or passed: " + told["HB110"][-200:])
+    assert got["HR10"] == [("1999-05-25", "Taken from the Table", "MA"),
+                           ("1999-05-25", "Lay on Table", "MA")], (
+        f"HR 10's tabling, carried and read whole, is no longer told: {got['HR10']}")
+    assert got["HB1240"] == [("2006-02-15", "Ought to Pass with Amendment", "ML"),
+                             ("2006-02-15", "Refer for Interim Study", "MA")], (
+        f"2006 HB 1240's failed passage is not told as failed: {got['HB1240']}")
+    assert "rejected a motion to pass it with changes" in told["HB1240"], (
+        "2006 HB 1240's history does not say passage failed: " + told["HB1240"][-200:])
+    assert got["HB162"] == [("2006-02-02", "Lay on Table", "ML")] and \
+        got["SB42"] == [("2005-02-17", "Lay on Table", "MF")], (
+        f"a tabling its own clause says lost is told as carried: {got['HB162']} {got['SB42']}")
+    # A question read as lost keeps the count the House wrote after its
+    # result; the Senate's, written before it, is not replaced by what follows.
+    assert votes["HB162"] == [("ML", "RC", "140", "198")] and \
+        votes["HB1240"][0] == ("ML", "RC", "141", "181") and \
+        votes["SB128"] == [("ML", "RC", "144", "195")], (
+        f"a House question that lost has no count: {votes['HB162']} {votes['HB1240']} "
+        f"{votes['SB128']}")
+    assert votes["SB301"] == [("MF", "", None, None)], (
+        f"SB 301's tabling, lost on a division of 8 to 14, took the 'VV' written after "
+        f"its result: {votes['SB301']}")
+    assert [m for _d, _a, m in got["HB317"]] == ["MA"], (
+        f"2006 HB 317's carried passage is no longer told as carried: {got['HB317']}")
+    # The result the clerk put after a semicolon of its own.
+    assert got["SB301"] == [("2000-03-09", "Lay on Table", "MF")] and \
+        got["SB1"] == [("2006-09-26", "Lay on Table", "MF")], (
+        f"a tabling whose result follows its own semicolon is told as carried: "
+        f"{got['SB301']} {got['SB1']}")
+    assert "rejected a motion to lay it on the table" in told["SB301"], told["SB301"][-160:]
+    # A Senate question and its third reading, which came out differently.
+    assert votes["SB108"] == [("MF", "RC", "10", "14")], (
+        f"SB 108 of 1999's recommittal, which failed 10-14 on a roll call, is "
+        f"{votes['SB108']}")
+    assert "rejected a motion to send it back to committee on a roll call" in told["SB108"], (
+        "SB 108's history does not say the recommittal failed: " + told["SB108"][-200:])
+    assert votes["SB219"] == [("MF", "RC", "12", "12")], (
+        f"SB 219 of 2000's third reading, which failed 12-12, is {votes['SB219']}")
+    assert "voted to pass it" not in told["SB219"], (
+        "SB 219's history says the Senate passed it on 3 February 2000: "
+        + told["SB219"][-200:])
+    return "ok", ("HB 605 is recommitted and HB 110 killed, read whole; HB 317's separate "
+                  "referral stays apart; HB 1240's passage, HB 162's, SB 42's, SB 301's and "
+                  "2006 SB 1's tablings lost; SB 108's recommittal and SB 219's third "
+                  "reading lost")
+
+
+# Real rows, copied from the dockets on disk: Docket_db_2005-2006.txt lines
+# 798 and 801-802 (HB 323) and 11726-11727 (HR 13); Docket_db_1999-2000.txt
+# lines 4920-4922 (HB 633), 11768-11769 (HB 536), 9148-9149 (HB 239),
+# 1852-1854 (HB 644), 2714-2715 (CACR 21) and 1324-1325 (HB 346);
+# Docket_db_2001-2002.txt lines 18072-18074 (SB 336) and 8138-8139 (HB 1).
+_DOCKET_QUESTIONS_1999 = {
+    "HB323": [
+        "2005|0129|03/23/2005 05:32:53 PM|HB323|H|ITL MA RC(164-153);  HJ 27, p 790-792|03/23/2005 05:32:53 PM",
+        "2005|0129|03/30/2005 05:36:33 PM|HB323|H|Rep Norelli moved to Reconsider, MA RC(153-150);  ITL ML DIV(149-151); Rep Kurk Fl Am{0867}, AA|03/30/2005 05:36:33 PM",
+        "2005|0129|03/30/2005 06:03:24 PM|HB323|H|DIV(182-116);  Passed with Am VV;  HJ 30, p 968-970 + 971|03/30/2005 06:03:24 PM"],
+    "HB633": [
+        "1999|0594|05/20/1999 10:53:42 AM|HB633|H|Corrected Maj Am{1344}, AA VV;  Passed with Am RC(172-171[including Speaker]);     Rep O'Hearn moved|05/20/1999 10:53:42 AM",
+        "1999|0594|05/20/1999 11:39:29 AM|HB633|H|to reconsider, MA RC(175-167); Passed with Am RC(172-171); Rep Burling moved to|05/20/1999 11:39:29 AM",
+        "1999|0594|05/20/1999 11:40:51 AM|HB633|H|Lay on the Table, ML RC(161-182);  HJ54, p1451-1461 + 1502|05/20/1999 11:40:51 AM"],
+    "SB336": [
+        "2002|3053|04/17/2002 12:57:16 PM|SB336|H|Rep Arndt moved OTP/AM;  Reps Clegg et al Fl Am{3431}(New Title), AA VV;  Reps Stritch and Scanlan|04/17/2002 12:57:16 PM",
+        "2002|3053|04/17/2002 04:26:58 PM|SB336|H|Fl Am{3536}(New Title), AA RC(200-147);  Reps Bragdon and F Davis Fl Am{3481}(New Title),|04/17/2002 04:26:58 PM",
+        "2002|3053|04/17/2002 04:29:32 PM|SB336|H|AL RC(164-174);  Passed with Am RC(200-140);  HJ34, p1348-1367 + 1387|04/17/2002 04:29:32 PM"],
+    "HB536": [
+        "2000|0784|05/20/1999 04:16:36 PM|HB536|H|Comm Am{1063}, AA VV; Rep Patten Fl Am{1375}, AA VV; Rep Vaillancourt moved Lay on the Table, ML|05/20/1999 04:16:36 PM",
+        "2000|0784|05/20/1999 04:17:56 PM|HB536|H|DIV(103-190); Passed with Am DIV(214-80);  HJ54, p1496-1497|05/20/1999 04:17:56 PM"],
+    "HB239": [
+        "2000|0008|01/05/2000 02:16:24 PM|HB239|H|Ref for Int Study, ML RC(172-176); Rep Owen moved OTP, MA RC(181-167); Passed and ref to|01/05/2000 02:16:24 PM",
+        "2000|0008|01/05/2000 05:38:39 PM|HB239|H|Finance;  HJ5, p137-141|01/05/2000 05:38:39 PM"],
+    # Its first row ends on ";" and is an entry the clerk finished: it is not
+    # joined, and tells its last carried question, as an uncut line does.
+    "HB644": [
+        "1999|0236|05/13/1999 02:39:27 PM|HB644|H|Rep Vaillancourt moved Lay on the Table, ML RC(158-176); ITL Report adopted RC(233-108);|05/13/1999 02:39:27 PM",
+        "1999|0236|05/13/1999 03:44:53 PM|HB644|H|Indefinitely Postponed, Rep Hager MA RC(191-145); Rep Kurk moved to reconsider, ML VV;  HJ51,|05/13/1999 03:44:53 PM",
+        "1999|0236|05/13/1999 03:44:58 PM|HB644|H|p1360-1367|05/13/1999 03:44:58 PM"],
+    "CACR21": [
+        "1999|0329|05/13/1999 12:58:48 PM|CACR21|H|Comm Am, AA VV; OTP/AM fails 3/5 DIV(224-109); Rep K Herman moved ITL; Laid on the Table, Rep|05/13/1999 12:58:48 PM",
+        "1999|0329|05/13/1999 01:00:05 PM|CACR21|H|Burling MA DIV(191-142);  HJ51, p1336-1343|05/13/1999 01:00:05 PM"],
+    # The three articles of an address, each a roll call, and the resolution
+    # (Docket_db_1999-2000.txt lines 20968-20970).
+    "HR51": [
+        "2000|2841|07/12/2000 12:56:22 PM|HR51|H|Art 1, Adopted RC(219-138);  Art  2, Adopted RC(252-104);  Art  3, Adopted RC(242-112); Rep Jacobson|07/12/2000 12:56:22 PM",
+        "2000|2841|07/12/2000 04:21:26 PM|HR51|H|Floor Am {4796}, AA RC(244-108); Rep Mirski Floor Am {4806},  AL RC(113-231); Adopted with Am|07/12/2000 04:21:26 PM",
+        "2000|2841|07/12/2000 05:50:43 PM|HR51|H|RC(253-95); HJ56, p1667-1719 + 1755|07/12/2000 05:50:43 PM"],
+    # An amendment rejected, reconsidered and adopted on one line
+    # (Docket_db_2001-2002.txt lines 4754-4760).
+    "HB375": [
+        "2001|0626|05/03/2001 06:23:55 PM|HB375|H|Rep Vaillancourt moved to Div ? on Maj Am, ML RC(20-338);  Maj Am{1054}, AL RC(174-185); Reps|05/03/2001 06:23:55 PM",
+        "2001|0626|05/03/2001 06:25:07 PM|HB375|H|Bickford & Vaillancourt Prop Fl Am{1081},  AL RC(179-181);  Rep Dokmo moved OTP, Passed|05/03/2001 06:25:07 PM",
+        "2001|0626|05/03/2001 06:36:09 PM|HB375|H|RC(228-132);  Rep Dyer moved to Reconsider, MA RC(184-176); Rep Dickinson moved to|05/03/2001 06:36:09 PM",
+        "2001|0626|05/03/2001 07:01:53 PM|HB375|H|Reconsider Fl Am{1081}; Rep Burling moved Lay on the Table, ML RC(176-184); Reconsider Fl|05/03/2001 07:01:53 PM",
+        "2001|0626|05/03/2001 07:02:55 PM|HB375|H|Am(1081}, MA RC(186-174); Fl Am{1081}(New Title), AA RC(180-179); Rep Alukonis et al Prop Fl|05/03/2001 07:02:55 PM",
+        "2001|0626|05/03/2001 07:22:03 PM|HB375|H|Am{1104},  AA RC(296-57); Rep Leone Fl Am{1110}, AL RC(162-190);  Passed with Am RC(181-172);|05/03/2001 07:22:03 PM",
+        "2001|0626|05/03/2001 07:54:30 PM|HB375|H|HJ45, p1362-1391 + 1392|05/03/2001 07:54:30 PM"],
+    # Three pairs that stay apart.
+    "HB346": [
+        "1999|0166|01/05/2000 03:20:18 PM|HB346|H|11/3/99  Reps Chandler & Burling Susp Rules to Consider C of C Report, MA 2/3VV; Conf Comm Report|01/05/2000 03:20:18 PM",
+        "1999|0166|01/05/2000 03:21:10 PM|HB346|H|11/3/99 Adopted VV;  HJ5, p84|01/05/2000 03:21:10 PM"],
+    "HB1": [
+        "2001|1068|04/18/2001 11:40:36 AM|HB1|H|Maj Am {HC 33, entire}, AA VV;  Min Am {HC 34, entire}, AL RC(187-195); Reps Hunt & Letourneau Prop|04/18/2001 11:40:36 AM",
+        "2001|1068|04/18/2001 11:58:34 AM|HB1|H|Fl Am{0944}, AA RC(338-40);  Passed with Am RC(239-144);  HJ39, p1115-1122 + 1179|04/18/2001 11:58:34 AM"],
+    "HR13": [
+        "2006|1076|03/22/2006 10:57:05 PM|HR13|H|Rep. Coughlin moved Ought to Pass with Amendment|03/22/2006 10:57:05 PM",
+        "2006|1076|03/22/2006 10:57:32 PM|HR13|H|FLR AM {1279h},  AA,  VV   HJ 29, pg 1722|03/22/2006 10:57:32 PM"],
+}
+
+
+@check("narrative", "a House floor day of 1999-2006 read whole tells every question it "
+       "decided, in the clerk's order, and a row that stops in mid-clause is carried on",
+       needs=("narrative", "docket_vocab", "docket_era_1999", "build_site_v2"))
+def _docket_1999_questions(N, V, E, B):
+    """Joined and told by its last carried question alone, HB 323 of 2005
+    read killed 164-153 on 23 March and passed on the 30th with nothing
+    between: the reconsideration, 153-150 on a roll call, opens the line its
+    passage ends. HB 633 of 1999 lost the first of its two 172-171 passages,
+    and seven bills an amendment from their lists (SB 336 of 2002's 3536,
+    adopted 200-147, among them). And about fifty rows that carry on the row
+    before open on a capital and were still read alone: HB 633's "Lay on the
+    Table, ML RC(161-182)" was a third entry.
+
+    Real rows. Each joined line is split at the clerk's ";" and every clause
+    that decides a question with its own result is an event; the words of
+    the line are all there once; a question moved and then stated is one
+    event with the vote; a finished row is not joined to the next; and a
+    line that still tells one motion where its rows were several says so."""
+    from datetime import datetime as _dt
+    rows = _DOCKET_QUESTIONS_1999
+    tup = lambda lines: [(_dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p"), "", p[4], p[5])
+                         for p in (x.split("|") for x in lines)]
+    n_lines = {b: len(E.join_rows(tup(rows[b]))) for b in rows}
+    assert n_lines["HB633"] == 1 and n_lines["SB336"] == 1 and n_lines["CACR21"] == 1, (
+        f"a row that carries on a row stopped in mid-clause is read alone: {n_lines}")
+    assert n_lines["HB644"] == 2, (
+        "HB 644's first row of 13 May 1999, which ends on its own ';', was joined to "
+        f"the next entry (or its page row was not): {n_lines['HB644']} lines")
+    for b, why in (("HB346", "a row that opens on a date"),
+                   ("HB1", "a row whose citation narrative.clean would cut the line at"),
+                   ("HR13", "the 2006 clerk's row, one question to a row")):
+        assert n_lines[b] == 2, f"{why} was joined to the row before it ({b})"
+
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        N.CORRECTIONS = []
+        ev, told = {}, {}
+        for b, lines in rows.items():
+            recs = _docket_rows(lines)
+            N.TERM = N.P.term_of(recs[0]["session"])
+            r = N.build(b, recs)
+            ev[b], told[b] = r["events"], r.get("narrative") or ""
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+
+    def floor(b):
+        return [(e["date"], e.get("action"), e.get("motion"), e.get("vote_kind"),
+                 e.get("yeas"), e.get("nays")) for e in ev[b] if e["type"] == "floor"]
+
+    def amends(b):
+        return [(e.get("amendment"), e.get("motion"), e.get("vote_kind"))
+                for e in ev[b] if e["type"] == "amendment"]
+
+    # HB 323 of 2005: the kill, its reconsideration, the kill voted down, the
+    # amendment and the passage.
+    assert floor("HB323") == [
+        ("2005-03-23", "Inexpedient to Legislate", "MA", "RC", "164", "153"),
+        ("2005-03-30", "Reconsider", "MA", "RC", "153", "150"),
+        ("2005-03-30", "Inexpedient to Legislate", "ML", "DV", "149", "151"),
+        ("2005-03-30", "Ought to Pass with Amendment", "MA", "VV", None, None)], (
+        f"HB 323 of 2005's 30 March line is not its four questions: {floor('HB323')}")
+    # An amendment told from its own clause keeps the House's division,
+    # which the whole-line pattern does not read.
+    assert amends("HB323") == [("0867", "AA", "DV")], amends("HB323")
+    assert "(0867), offered by Rep Kurk, was adopted on a division vote 182–116" in \
+        told["HB323"], told["HB323"]
+    # HR 51 of 2000: its three articles are told as articles, not as the
+    # resolution passing 242-112, and the resolution with its own count.
+    assert floor("HR51") == [
+        ("2000-07-12", "Art 1", "MA", "RC", "219", "138"),
+        ("2000-07-12", "Art 2", "MA", "RC", "252", "104"),
+        ("2000-07-12", "Art 3", "MA", "RC", "242", "112"),
+        ("2000-07-12", "Ought to Pass with Amendment", "MA", "RC", "253", "95")], (
+        f"HR 51 of 2000's articles and adoption are {floor('HR51')}")
+    assert amends("HR51") == [("4796", "AA", "RC"), ("4806", "AL", "RC")], amends("HR51")
+    # HB 375 of 2001: floor amendment 1081 lost 179-181, was reconsidered and
+    # was adopted 180-179. Both are told, in that order, and the bill's list
+    # of amendments gives the outcome that stood.
+    assert amends("HB375") == [("1054", "AL", "RC"), ("1081", "AL", "RC"), ("1081", "AA", "RC"),
+                               ("1104", "AA", "RC"), ("1110", "AL", "RC")], amends("HB375")
+    t = told["HB375"]
+    assert t.index("(1081), offered by Reps Bickford & Vaillancourt, was rejected on a roll "
+                   "call 179–181") < t.index("(1081) was adopted on a roll call 180–179"), t
+    listed = {a["num"]: a["adopted"] for a in B.bill_amendments({"bill": "HB375", "events": ev["HB375"]}, {})}
+    assert listed == {"1054": False, "1081": True, "1104": True, "1110": False}, (
+        f"HB 375's amendments, 1081 adopted on reconsideration, are listed as {listed}")
+    t = told["HB323"]
+    assert t.index("voted to kill it") < t.index("“Reconsider” on a roll call 153–150") \
+        < t.index("rejected a motion to kill it") < t.index("voted to pass it with changes"), (
+        "HB 323's history does not put the reconsideration between its kill and its "
+        "passage: " + t)
+    # HB 633 of 1999: both 172-171 passages, the reconsideration between them
+    # and the tabling motion that lost, from the row that opens on a capital.
+    assert floor("HB633") == [
+        ("1999-05-20", "Ought to Pass with Amendment", "MA", "RC", "172", "171"),
+        ("1999-05-20", "reconsider", "MA", "RC", "175", "167"),
+        ("1999-05-20", "Ought to Pass with Amendment", "MA", "RC", "172", "171"),
+        ("1999-05-20", "Lay on Table", "ML", "RC", "161", "182")], (
+        f"HB 633 of 1999's 20 May entry is not its four questions: {floor('HB633')}")
+    assert amends("HB633") == [("1344", "AA", "VV")], amends("HB633")
+    assert "voted to lay it on the table" not in told["HB633"], told["HB633"]
+    # And the history says all four. The two passages are one sentence word
+    # for word, and narrative.collapse drops a sentence it has already
+    # written: the second says "again", or the history ends on the
+    # reconsideration with the bill passed once.
+    t = told["HB633"]
+    assert t.count("172–171") == 2 and \
+        t.index("the House voted to pass it with changes on a roll call 172–171") \
+        < t.index("“reconsider” on a roll call 175–167") \
+        < t.index("the House again voted to pass it with changes on a roll call 172–171") \
+        < t.index("rejected a motion to lay it on the table on a roll call 161–182"), (
+        "HB 633's history does not tell both passages around the reconsideration: " + t)
+    # The clerk's "Div ?" is not a member's motion in the clerk's words, and
+    # the citation a line ends with is no clause of its own.
+    assert not [a for _d, a, *_ in floor("HB375") if "Div" in (a or "")], (
+        f"HB 375's 'moved to Div ? on Maj Am' is told as a motion: {floor('HB375')}")
+    for b in ("HB633", "SB336", "HB536", "HR51"):
+        assert not [e["raw"] for e in ev[b]
+                    if re.match(r"\s*(?:HJ|SJ|HC|SC)\s*\d", e.get("raw") or "")], (
+            f"{b}'s citation is an event of its own: {[e['raw'] for e in ev[b]]}")
+    # The amendments: SB 336's three, offered by several members and cut
+    # across rows, and HB 536's two.
+    assert amends("SB336") == [("3431", "AA", "VV"), ("3536", "AA", "RC"), ("3481", "AL", "RC")], (
+        f"SB 336 of 2002's floor amendments are {amends('SB336')}")
+    assert "(3536), offered by Reps Stritch and Scanlan, was adopted on a roll call 200–147" \
+        in told["SB336"], told["SB336"]
+    assert floor("SB336") == [("2002-04-17", "Ought to Pass with Amendment", "MA", "RC",
+                               "200", "140")], floor("SB336")
+    assert amends("HB536") == [("1063", "AA", "VV"), ("1375", "AA", "VV")], amends("HB536")
+    assert floor("HB536") == [
+        ("1999-05-20", "Lay on Table", "ML", "DV", "103", "190"),
+        ("1999-05-20", "Ought to Pass with Amendment", "MA", "DV", "214", "80")], floor("HB536")
+    # Every word of a split line, once: the events' own lines together are it.
+    words = lambda s: sorted(re.findall(r"[A-Za-z0-9]+", s))
+    for b in ("HB633", "SB336", "HB536"):
+        whole = N.clean(" ".join(x.split("|")[5].strip() for x in rows[b]))
+        parts = " ".join(e["raw"] for e in ev[b])
+        assert words(parts) == words(whole), (
+            f"{b}'s split line does not hold the clerk's words once each: {parts!r}")
+        assert {e.get("cite") for e in ev[b]} == {"HJ 54" if b != "SB336" else "HJ 34"}, (
+            f"{b}'s questions do not each cite the journal their line cites")
+        # And the line itself is carried once, by the event that tells what
+        # the line read whole tells, for the rail and the page's docket list.
+        assert [e["line"] for e in ev[b] if e.get("line")] == [whole] and \
+            sum(1 for e in ev[b] if e.get("in_line")) == len(ev[b]) - 1, (
+            f"{b}'s split line is not carried whole by exactly one of its events")
+    # One question, moved and then stated, is one event with the vote.
+    assert floor("HB239") == [
+        ("2000-01-05", "Refer for Interim Study", "ML", "RC", "172", "176"),
+        ("2000-01-05", "Ought to Pass", "MA", "RC", "181", "167")], (
+        f"HB 239's passage of 5 January 2000 is told twice, or without its roll call: "
+        f"{floor('HB239')}")
+    assert "voted to pass it on a roll call 181–167, then sent it on to the Finance " \
+        "committee" in told["HB239"], told["HB239"]
+    # A finished row is an entry: it tells its last carried question and no more.
+    assert floor("HB644")[0] == ("1999-05-13", "Inexpedient to Legislate", "MA", "RC",
+                                 "233", "108") and len(floor("HB644")) == 3, (
+        f"HB 644's uncut first row tells more or less than its report adopted: {floor('HB644')}")
+    # A line whose rows were two floor actions and which still tells one
+    # says so, for the sitting page (docket_era_1999.MARK_JOINED); one that
+    # tells two or more again does not.
+    c21 = [e for e in ev["CACR21"] if e["type"] == "floor"]
+    assert [(e.get("action"), e.get("motion"), e.get("vote_kind"), e.get("yeas"), e.get("joined"))
+            for e in c21] == [("Lay on Table", "MA", "DV", "191", 2)], (
+        f"CACR 21 of 1999's tabling, carried 191-142, is {c21}")
+    assert "“Burling”" not in told["CACR21"], told["CACR21"]
+    assert not any(e.get("joined") for b in ("HB323", "HB633", "HB536") for e in ev[b]), (
+        "a line split into several motions is still marked as one motion from several rows")
+    # The bill's own page lists the clerk's line once, whole, and not its
+    # clauses: the page shows the docket's lines.
+    line = N.clean(" ".join(x.split("|")[5].strip() for x in rows["HB633"]))
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        out = root / "site"
+        out.mkdir()
+        bills = {"1999-2000": {"HB633": {
+            "bill": "HB633", "lsr": "1999-0594", "lsr_year": "1999", "lsr_num": "0594",
+            "title": "relative to the adequate education grant", "chamber": "H",
+            "archived": True, "gen_status": "", "house_status": "", "senate_status": ""}}}
+        os.chdir(root)
+        try:
+            import contextlib
+            with open(os.devnull, "w") as quiet, contextlib.redirect_stdout(quiet):
+                B.build_bills(out, bills, {"1999-2000": {"HB633": {
+                    "bill": "HB633", "events": ev["HB633"], "narrative": told["HB633"],
+                    "stages": [], "notes": [], "vote_note": ""}}},
+                    {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+        finally:
+            os.chdir(here)
+        page = json.loads((out / "bills" / "1999" / "HB633.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert [e["text"] for e in page["events"]] == [line], (
+        "HB 633's page does not list its 20 May 1999 line once, as the clerk typed it: "
+        f"{[e['text'] for e in page['events']]}")
+    return "ok", ("HB 323 of 2005 is killed, reconsidered 153-150 and passed; HB 633 of 1999 "
+                  "passes 172-171 twice around its reconsideration and its tabling loses "
+                  "161-182; SB 336 keeps amendment 3536 and HB 536 its 1063; a moved and "
+                  "stated passage is one event; three pairs of rows stay apart")
+
+
+# Real rows, copied from the dockets on disk. Docket_db_1999-2000.txt lines
+# 8627-8628 (HB 344), 451-452 (CACR 6), 7162-7164 (SB 140), 9048-9053 (HB 999),
+# 19433-19435 (SB 303), 14376-14377 (HB 1548), 2472-2473 (HCR 10) and
+# 12503-12504 (HR 10); Docket_db_2001-2002.txt lines 10660-10661 (HCR 14),
+# 731-732 (HB 708) and 16440 with 16443-16444 (HB 1423);
+# Docket_db_2003-2004.txt lines 2562-2564 (HB 763) and 16213-16214 (SB 324);
+# Docket_db_2005-2006.txt lines 9588-9589 (HB 634), 20804-20805 (SB 393) and
+# 8911 (HB 621).
+_DOCKET_CLAUSES_1999 = {
+    "HB344": [
+        "1999|1005|01/28/1999 12:02:18 PM|HB344|H|Reps Chandler & Burling susp rules to consider, MA 2/3VV; Rep Weber moved OTP, MA VV; Passed|01/28/1999 12:02:18 PM",
+        "1999|1005|01/28/1999 12:03:26 PM|HB344|H|VV; HJ15, p194|01/28/1999 12:03:26 PM"],
+    "CACR6": [
+        "1999|0067|05/25/1999 02:44:59 PM|CACR6|H|Comm Am, AA VV;  Passed with Am RC(250-78); Rep Chandler susp rules for 3rd reading, MA|05/25/1999 02:44:59 PM",
+        "1999|0067|05/25/1999 03:09:44 PM|CACR6|H|DIV(262-62); 3rd reading MA RC(257-68);  HJ58, p1563-1568|05/25/1999 03:09:44 PM"],
+    "SB140": [
+        "1999|0859|07/01/1999 11:43:28 AM|SB140|H|Conf Comm Report Adopted, Rep Dalrymple MA VV;  HJ77, p2068|07/01/1999 11:43:28 AM",
+        "1999|0859|07/01/1999 02:24:12 PM|SB140|H|Rep Dalrymple moved to reconsider, MA VV; Conf Comm Report, ML VV; Rep Dalrymple moved|07/01/1999 02:24:12 PM",
+        "1999|0859|07/01/1999 02:25:59 PM|SB140|H|to discharge Conf Comm, and req New Conf Comm, MA VV;  HJ77, p2073|07/01/1999 02:25:59 PM"],
+    "HCR14": [
+        "2002|0636|01/17/2002 03:15:36 PM|HCR14|H|Comm Am{2059}, AA VV; Rep Sapareto Fl Am{2210}(New Title), AA RC(212-134);  Adopted as Am|01/17/2002 03:15:36 PM",
+        "2002|0636|01/17/2002 03:50:45 PM|HCR14|H|RC(188-152);  HJ10, p427-436 + 437|01/17/2002 03:50:45 PM"],
+    # Two pairs that stay apart: a row the clerk finished on its citation,
+    # and the 2006 clerk's row whose one question is already decided.
+    "HB708": [
+        "2001|0124|04/19/2001 04:12:30 PM|HB708|H|Reps Scanlan & Burling Susp Rules for Deadline to Apr 26, MA 2/3VV;  HJ40, 1201|04/19/2001 04:12:30 PM",
+        "2001|0124|04/19/2001 04:13:22 PM|HB708|H|Special Order to Apr 25, Rep Scanlan MA VV;  HJ40, p1202|04/19/2001 04:13:22 PM"],
+    "HB634": [
+        "2006|0434|01/18/2006 12:05:48 PM|HB634|H|Comm AM {0228h}  AA, VV|01/18/2006 12:05:48 PM",
+        "2006|0434|01/18/2006 12:10:03 PM|HB634|H|Passed with AM {0228h} New Title,  MA, RC  (176-168)   HJ 10, pg 493-497|01/18/2006 12:10:03 PM"],
+    # A floor amendment voted on in two parts, among five that lost.
+    "HB999": [
+        "1999|1057|11/03/1999 11:20:31 AM|HB999|H|Comm Am{2214}, AL VV; Reps Lozeau & Burling Fl Am{2229}, Rep Alger Div?, Secs,17 & 18, AA|11/03/1999 11:20:31 AM",
+        "1999|1057|11/03/1999 11:25:03 AM|HB999|H|RC(255-96); Am{2229}, Remaining Secs, AA RC(239-112); Rep Mirski Fl Am{2223}(NT), AL|11/03/1999 11:25:03 AM",
+        "1999|1057|11/03/1999 11:44:14 AM|HB999|H|RC(53-296); Rep Mirski Fl Ams {2226 & 2231} withdrawn; Rep Saparetto Fl Am{2220}(NT), AL|11/03/1999 11:44:14 AM",
+        "1999|1057|11/03/1999 12:25:47 PM|HB999|H|RC(75-275); Rep Mirski Fl Am{2234}, AL RC(81-265); Rep Mirski Fl Am{2231}, AL RC(66-278);|11/03/1999 12:25:47 PM",
+        "1999|1057|11/03/1999 12:50:15 PM|HB999|H|Reps Davis & Wallin Fl Am{2230}, AL RC(138-206); Rep Vaillancourt moved to Susp Rules to allow|11/03/1999 12:50:15 PM",
+        "1999|1057|11/03/1999 01:02:24 PM|HB999|H|Fl Am, ML RC(114-228); Passed with Am RC(212-128)|11/03/1999 01:02:24 PM"],
+    "HB1423": [
+        "2002|2394|02/13/2002 09:45:58 AM|HB1423|H|Maj Report   OTP/AM   for   Feb 21   (vote 11-3;Reg)|02/13/2002 09:45:58 AM",
+        "2002|2394|02/21/2002 11:47:36 AM|HB1423|H|Rep Alger div question on Maj Am; Am{2606}, secs 1-5, AA RC(191-164); Secs 6-9, AA VV, Sec 10, AA|02/21/2002 11:47:36 AM",
+        "2002|2394|02/21/2002 11:49:34 AM|HB1423|H|VV; Passed with Am RC(208-147);  HJ21, p851-857 + 884|02/21/2002 11:49:34 AM"],
+    "SB303": [
+        "2000|2713|05/18/2000 03:16:02 PM|SB303|H|Rep Clegg Div ?; Comm Am{4383}, Sec. 5, AL DIV(141-160); Remainder of Comm Am, AA RC(238-74); Rep|05/18/2000 03:16:02 PM",
+        "2000|2713|05/18/2000 04:07:31 PM|SB303|H|Franks moved to Reconsider Sec. 5 of Am, MA DIV(172-140); Rep Almy Fl Am{4542 (to Sec.5)}, AA VV;|05/18/2000 04:07:31 PM",
+        "2000|2713|05/18/2000 04:17:32 PM|SB303|H|Passed with Am VV;  HJ46, p1465-1471 + 1484|05/18/2000 04:17:32 PM"],
+    "HB1548": [
+        "2000|2203|06/27/2000 11:02:04 AM|HB1548|H|Reps Weatherspoon & Sargent moved LOT, ML RC(134-203);  Governor's Veto Sustained [fails 2/3]|06/27/2000 11:02:04 AM",
+        "2000|2203|06/27/2000 12:26:55 PM|HB1548|H|RC(194-148);  HJ50, p1572-1576|06/27/2000 12:26:55 PM"],
+    "HB763": [
+        "2003|0346|05/29/2003 11:38:52 AM|HB763|H|Rep Mock moved to Concur with Sen Ams; Rep D Eaton moved  LOT, ML RC(175-198); House Concurred with|05/29/2003 11:38:52 AM",
+        "2003|0346|05/29/2003 11:40:02 AM|HB763|H|Sen Am, RC(197-176);  HJ 45, p1439-1443|05/29/2003 11:40:02 AM",
+        "2003|0346|05/29/2003 11:40:26 AM|HB763|H|Rep Woods moved Reconsideration, ML RC(172-200);  HJ 45, p1444-1446|05/29/2003 11:40:26 AM"],
+    "HCR10": [
+        "1999|0305|06/16/1999 03:19:44 PM|HCR10|H|Comm Rept Re-Ref ML RC(158-168); Rep Burling moved OTP, MA RC(196-131); Rep|06/16/1999 03:19:44 PM",
+        "1999|0305|06/16/1999 03:21:13 PM|HCR10|H|Rubin moved Lay on the Table, ML RC(116-211);  HJ67, p1771-1777 + 1782|06/16/1999 03:21:13 PM"],
+    "SB393": [
+        "2006|3056|01/10/2006 12:29:21 PM|SB393|H|Emergency Session; Suspension of Rules for Intro. & Consideration at Present time, &|01/10/2006 12:29:21 PM",
+        "2006|3056|01/10/2006 01:13:34 PM|SB393|H|if passed third reading & final passage,  MA  VV   HJ 9, pg 482|01/10/2006 01:13:34 PM"],
+    "SB324": [
+        "2004|3019|04/22/2004 12:50:21 PM|SB324|H|Maj Am{1177}, AL RC(158-182); Min Am{1208}, AA VV;  Passed with Am and ref to Finance VV;  HJ 31,|04/22/2004 12:50:21 PM",
+        "2004|3019|04/22/2004 12:51:10 PM|SB324|H|p 1257-1262|04/22/2004 12:51:10 PM"],
+    "HR10": [
+        "2000|1015|04/13/2000 03:09:04 PM|HR10|H|Taken from the Table, Rep Alukonis MA VV; Fin Comm Am{4110}, AA VV;  Laid on the Table, Rep Alukonis|04/13/2000 03:09:04 PM",
+        "2000|1015|04/13/2000 03:21:13 PM|HR10|H|MA VV;  HJ35, p1093-1094|04/13/2000 03:21:13 PM"],
+    "HB621": [
+        "2006|0153|02/01/2006 04:39:09 PM|HB621|H|Min AM {0199h},  AA,  RC (183-158) HJ 13, pg 706|02/01/2006 04:39:09 PM"],
+}
+
+
+@check("narrative", "a House floor line of 1999-2006 tells its veto, its concurrence, an "
+       "amendment voted in parts and a motion in two halves, and the minority's amendment "
+       "is not the committee's",
+       needs=("narrative", "docket_vocab", "docket_era_1999", "build_site_v2"))
+def _docket_1999_clauses(N, V, E, B):
+    """Told question by question, a line still left some of its questions
+    out, and three of those left a history false or ending in the wrong
+    place. HB 999 of 1999 "took up 5 floor amendments and rejected all of
+    them" on a day it adopted a sixth, 2229, in two votes the clerk wrote
+    after the number. HB 1548 of 2000, the repeal of the death penalty, ended
+    on the House refusing to table it, the veto sustained 194-148 on the same
+    line untold; HB 763 of 2003 on a tabling motion that lost, its
+    concurrence 197-176 untold; and the House's part in SB 140 of 1999 on its
+    conference report failing, because "moved to discharge Conf Comm, and req
+    New Conf Comm, MA VV" has a comma in it. And "Min Am{1208}, AA VV" (SB 324
+    of 2004) was told as the committee's amendment adopted, straight after the
+    committee's own was rejected.
+
+    Real rows, beside the rows each rule must leave alone. The same rows hold
+    what the checks beside this one did not: a row the clerk finished is not
+    joined to the next, a suspension of the rules and any other motion a
+    member made are told from their own clauses, "Adopted as Am" is passage
+    with amendment, and a passage moved and then stated on a voice vote is
+    told once."""
+    from datetime import datetime as _dt
+    rows = _DOCKET_CLAUSES_1999
+    tup = lambda lines: [(_dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p"), "", p[4], p[5])
+                         for p in (x.split("|") for x in lines)]
+    n_lines = {b: len(E.join_rows(tup(rows[b]))) for b in rows}
+    assert n_lines["HB708"] == 2, (
+        "HB 708 of 2001's special order, a row of its own after one the clerk finished on "
+        f"its citation, was joined to it: {n_lines['HB708']} line")
+    assert n_lines["HB634"] == 2, (
+        "2006 HB 634's passage, a row of its own after an amendment already decided, was "
+        f"joined to it: {n_lines['HB634']} line")
+    for b in ("HB344", "CACR6", "HCR14", "HB1548", "HCR10", "SB393", "SB324", "HR10"):
+        assert n_lines[b] == 1, f"{b}'s cut rows are not one line: {n_lines[b]}"
+
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        N.CORRECTIONS = []
+        ev, told, stages = {}, {}, {}
+        for b, lines in rows.items():
+            recs = _docket_rows(lines)
+            N.TERM = N.P.term_of(recs[0]["session"])
+            r = N.build(b, recs)
+            ev[b], told[b] = r["events"], r.get("narrative") or ""
+            stages[b] = [(s["label"], s["text"]) for s in r["stages"]]
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+
+    def floor(b):
+        return [(e.get("action"), e.get("motion"), e.get("vote_kind"), e.get("yeas"),
+                 e.get("nays")) for e in ev[b] if e["type"] == "floor"]
+
+    def amends(b):
+        return [(e.get("amendment"), e.get("amend_kind"), e.get("motion"), e.get("vote_kind"),
+                 e.get("part")) for e in ev[b] if e["type"] == "amendment"]
+
+    def listed(b):
+        return {a["num"]: a["adopted"]
+                for a in B.bill_amendments({"bill": b, "events": ev[b]}, {})}
+
+    # HB 999 of 1999: floor amendment 2229, adopted in two parts, and the
+    # five that lost.
+    assert amends("HB999")[:3] == [
+        ("2214", "Committee Amendment", "AL", "VV", None),
+        ("2229", "Fl Am", "AA", "RC", "some"),
+        ("2229", "Fl Am", "AA", "RC", "rest")], (
+        f"HB 999 of 1999's floor amendment 2229, adopted in two parts, is {amends('HB999')[:3]}")
+    t = told["HB999"]
+    assert "Part of a floor amendment (2229), offered by Reps Lozeau & Burling, was adopted " \
+        "on a roll call 255–96" in t and "The rest of the floor amendment (2229) was adopted " \
+        "on a roll call 239–112" in t, t
+    assert "took up 5 other floor amendments and rejected all of them" in t and \
+        "took up 5 floor amendments" not in t, (
+        "HB 999's history says the House rejected every floor amendment it took up: " + t)
+    assert listed("HB999") == {"2214": False, "2229": True, "2223": False, "2220": False,
+                               "2234": False, "2231": False, "2230": False}, (
+        f"HB 999's amendments, 2229 adopted, are listed as {listed('HB999')}")
+    # Its two parts are each decided once: neither is an outcome the line
+    # went on to undo, which is what "decided_again" says of HB 375's 1081.
+    assert not [e for e in ev["HB999"] if e.get("decided_again")], (
+        "a part of HB 999's amendment 2229 is marked as decided again by the next part")
+    # A section alone decides only itself: the list claims nothing from it.
+    assert amends("SB303")[0] == ("4383", "Committee Amendment", "AL", "DV", "some") and \
+        listed("SB303") == {"4383": None, "4542": True}, (
+        f"SB 303 of 2000's committee amendment, section 5 lost and the rest adopted, is "
+        f"{amends('SB303')} listed {listed('SB303')}")
+    assert "Part of the committee's amendment (4383) was rejected on a division vote " \
+        "141–160" in told["SB303"], told["SB303"]
+    # A bare "Am{2606}" is the majority's, which the line named just before.
+    assert amends("HB1423") == [("2606", "Committee Amendment", "AA", "RC", "some")] and \
+        "Part of the committee's amendment (2606) was adopted on a roll call 191–164" \
+        in told["HB1423"] and listed("HB1423") == {"2606": None}, (
+        f"HB 1423 of 2002's majority amendment, its sections 1-5, is {amends('HB1423')}: "
+        + told["HB1423"])
+    # The veto, the concurrence, the report to re-refer and the third reading.
+    assert floor("HB1548") == [("Lay on Table", "ML", "RC", "134", "203")] and \
+        [e["type"] for e in ev["HB1548"]] == ["floor", "veto_override"], (
+        f"HB 1548 of 2000's 27 June line is not a tabling refused and the veto: "
+        f"{[(e['type'], e['raw']) for e in ev['HB1548']]}")
+    assert told["HB1548"].rstrip().endswith(
+        "the House voted 194–148 on overriding the governor's veto on a roll call, and the "
+        "veto was sustained, failing to meet the two thirds threshold."), told["HB1548"]
+    assert floor("HB763") == [("Lay on Table", "ML", "RC", "175", "198"),
+                              ("Concur", "MA", "RC", "197", "176"),
+                              ("Reconsideration", "ML", "RC", "172", "200")], (
+        f"HB 763 of 2003's concurrence, 197-176, is not told: {floor('HB763')}")
+    assert "voted to agree to the other chamber's changes on a roll call 197–176" in \
+        told["HB763"], told["HB763"]
+    assert floor("HCR10") == [("Rerefer to Committee", "ML", "RC", "158", "168"),
+                              ("Ought to Pass", "MA", "RC", "196", "131"),
+                              ("Lay on Table", "ML", "RC", "116", "211")], floor("HCR10")
+    assert floor("CACR6") == [("Ought to Pass with Amendment", "MA", "RC", "250", "78"),
+                              ("susp rules for 3rd reading", "MA", "DV", "262", "62"),
+                              ("3rd reading", "MA", "RC", "257", "68")], (
+        f"CACR 6 of 1999's suspension and third reading are {floor('CACR6')}")
+    # A motion in two halves, and the 2006 clerk's suspension of the rules.
+    assert floor("SB140") == [("Conf Comm Report", "MA", "VV", None, None),
+                              ("reconsider", "MA", "VV", None, None),
+                              ("Conf Comm Report", "ML", "VV", None, None),
+                              ("discharge Conf Comm, and req New Conf Comm", "MA", "VV",
+                               None, None)], (
+        f"SB 140 of 1999's request for a new conference is not told: {floor('SB140')}")
+    assert floor("SB393") == [(
+        "Suspension of Rules for Intro. & Consideration at Present time, & if passed third "
+        "reading & final passage", "MA", "VV", None, None)], floor("SB393")
+    # "Adopted as Am" is passage with amendment; a passage moved and then
+    # stated on a voice vote is one passage.
+    assert floor("HCR14") == [("Ought to Pass with Amendment", "MA", "RC", "188", "152")] and \
+        [a[0] for a in amends("HCR14")] == ["2059", "2210"], (floor("HCR14"), amends("HCR14"))
+    assert floor("HB344") == [("susp rules to consider", "MA", "VV", None, None),
+                              ("Ought to Pass", "MA", "VV", None, None)], (
+        f"HB 344 of 1999's passage is told twice, or its suspension not at all: "
+        f"{floor('HB344')}")
+    # The minority's amendment, from a clause and from a row of its own.
+    assert amends("SB324") == [("1177", "Committee Amendment", "AL", "RC", None),
+                               ("1208", "Minority Amendment", "AA", "VV", None)], amends("SB324")
+    assert "The committee's amendment (1177) was rejected on a roll call 158–182" in \
+        told["SB324"] and "The committee minority's amendment (1208) was adopted on a voice " \
+        "vote" in told["SB324"], told["SB324"]
+    assert "The committee minority's amendment (0199h) was adopted on a roll call 183–158" \
+        in told["HB621"], told["HB621"]
+    # A committee's amendment voted between two floor questions stays under
+    # the floor's heading: HR 10 was never in committee.
+    assert [lab for lab, _t in stages["HR10"]] == ["On the House floor"] and \
+        "The committee's amendment (4110) was adopted on a voice vote" in told["HR10"], (
+        f"HR 10's Finance amendment of 13 April 2000 is under {stages['HR10']}")
+    # And still under the committee's where the committee's work comes first.
+    assert [lab for lab, _t in stages["SB324"]] == ["In House committee", "On the House floor"], (
+        stages["SB324"])
+    return "ok", ("HB 999's amendment 2229 is adopted in two parts and listed adopted; SB 303's "
+                  "section 5 claims nothing for 4383; HB 1548's veto, HB 763's concurrence, "
+                  "CACR 6's third reading and SB 140's new conference are told; the "
+                  "minority's amendment is the minority's; HB 708 and HB 634 stay apart")
+
+
+# HB 1348 of 2002 on 25 April: Docket_db_2001-2002.txt lines 15986-15987, and
+# the speeches journal_days reads for it out of that day's House Journal.
+_HB1348_ROWS = [
+    "2002|2357|04/25/2002 02:18:42 PM|HB1348|H|Rep Packard moved Nonconc, req Conf Comm, ML RC(146-157); Rep Herman moved Nonconcur,|04/25/2002 02:18:42 PM",
+    "2002|2357|04/25/2002 02:21:32 PM|HB1348|H|then withdrew motion; Rep McGuirk moved Conc with Sen Am, MA RC(192-112);  HJ38, p1438-1442|04/25/2002 02:21:32 PM",
+]
+_HB1348_SPOKE = [
+    {"bill": "HB1348", "side": "against", "names": ["McGuirk"], "tally": (146, 157), "inline_motion": None},
+    {"bill": "HB1348", "side": "for", "names": ["Stohl", "McGuire", "Royce"], "tally": (146, 157), "inline_motion": None},
+    # "Rep. Herman moved to nonconcur and spoke in favor. ... Rep. Herman withdrew
+    # his motion. Rep. McGuirk moved to concur. ... YEAS 192 NAYS 112"
+    {"bill": "HB1348", "side": "for", "names": ["Herman"], "tally": (192, 112),
+     "inline_motion": "to nonconcur", "moved_since": ["to concur"]},
+]
+
+
+@check("session", "a line read whole from rows that were several motions does not lend its "
+       "one motion every speech on the bill",
+       needs=("narrative", "docket_vocab", "docket_era_1999", "session_days", "build_session_pages"))
+def _joined_line_speeches(N, V, E, SD, BSP):
+    """HB 1348 of 2002's two rows of 25 April are one line with two motions:
+    a motion to nonconcur that failed 146-157, then the concurrence that
+    carried 192-112. Read whole and told by its last carried question alone,
+    the line left one motion on the sitting page, and the page credits every
+    speech to a bill's one motion: Reps. Stohl, McGuire and Royce, who spoke
+    for nonconcurring, were said to have spoken for concurring, and Rep.
+    McGuirk against it. The line is two motions again, each with its own
+    roll call, and each speech goes to the motion whose count it carries --
+    unless that motion was only made after the speech, as the concurrence was
+    after Rep. Herman spoke for nonconcurring (made_after).
+
+    A line whose rows were read as several floor actions and which still
+    tells one says how many (docket_vocab, for the era that asks:
+    docket_era_1999.MARK_JOINED) -- CACR 21 of 1999's tabling, whose failed
+    passage "OTP/AM fails 3/5 DIV(224-109)" is told by nothing -- and a
+    speech is then claimed only where its vote's tally is the motion's or
+    its speaker moved that kind of motion. HB 605's 14 April 1999 rows were
+    one floor action, and Rep. Mock, who moved the recommittal, keeps his
+    place under it."""
+    assert getattr(E, "MARK_JOINED", False), "docket_era_1999 no longer marks its joined lines"
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        N.CORRECTIONS = []
+        N.TERM = "2001-2002"
+        evs = [e for e in N.build("HB1348", _docket_rows(_HB1348_ROWS))["events"]
+               if e["type"] == "floor"]
+        N.TERM = "1999-2000"
+        ev605 = [e for e in N.build("HB605", _docket_rows(_DOCKET_CUT_1999["HB605"]))["events"]
+                 if e["type"] == "floor"]
+        ev21 = [e for e in N.build("CACR21", _docket_rows(_DOCKET_QUESTIONS_1999["CACR21"]))["events"]
+                if e["type"] == "floor"]
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+    got = [(e["date"], e.get("action"), e.get("motion"), e.get("yeas"), e.get("nays"),
+            e.get("joined")) for e in evs]
+    assert got == [("2002-04-25", "Nonconcur", "ML", "146", "157", None),
+                   ("2002-04-25", "Concur", "MA", "192", "112", None)], (
+        f"HB 1348's 25 April line is not its two motions, unmarked: {got}")
+    assert not ev605[0].get("joined"), (
+        f"HB 605's 14 April rows, one floor action, were marked as several: {ev605}")
+    # Two motions on the day: each speech goes where its vote's count puts it.
+    nonc, conc = (SD.Item("HB1348", "2001-2002", e, 0) for e in evs)
+    assert nonc.carried is False and conc.carried is True, (nonc.carried, conc.carried)
+    mine, _rest = BSP.speakers_for(_HB1348_SPOKE, "HB1348", nonc)
+    assert mine == {"for": ["Stohl", "McGuire", "Royce"], "against": ["McGuirk"]}, (
+        f"the speeches on HB 1348's failed nonconcurrence are not under it: {mine}")
+    # Rep. Herman spoke for a second motion to nonconcur, which he withdrew;
+    # the roll call after it, 192-112, was on Rep. McGuirk's motion to
+    # concur, made after he spoke. He is on neither motion, and is named
+    # once, as having spoken on the bill.
+    mine, _rest = BSP.speakers_for(_HB1348_SPOKE, "HB1348", conc)
+    assert mine == {"for": [], "against": []}, (
+        f"speeches on a nonconcurrence were credited to the concurrence: {mine}")
+    assert BSP.unplaced(_HB1348_SPOKE, "HB1348", [nonc, conc]) == ["Herman"], (
+        f"HB 1348's unplaced speakers are {BSP.unplaced(_HB1348_SPOKE, 'HB1348', [nonc, conc])}: "
+        "one credited under the nonconcurrence is listed again, or Herman is not listed")
+    # One motion told from a line whose rows were two: it claims on evidence.
+    assert [(e.get("action"), e.get("joined")) for e in ev21] == [("Lay on Table", 2)], (
+        f"CACR 21 of 1999's line is not one tabling marked as two floor actions: {ev21}")
+    item = SD.Item("CACR21", "1999-2000", ev21[0], 0)
+    spoke = [{"bill": "CACR21", "side": "for", "names": ["A"], "tally": (224, 109),
+              "inline_motion": None},
+             {"bill": "CACR21", "side": "against", "names": ["B"], "tally": None,
+              "inline_motion": None}]
+    mine, rest = BSP.speakers_for(spoke, "CACR21", item, sole=True)
+    assert not mine["for"] and not mine["against"] and \
+        sorted(rest["for"] + rest["against"]) == ["A", "B"], (
+        f"speeches on CACR 21's failed passage were credited to its tabling: {mine}")
+    tied = [{"bill": "CACR21", "side": "for", "names": ["X"], "tally": (191, 142),
+             "inline_motion": None}]
+    assert BSP.speakers_for(tied, "CACR21", item, sole=True)[0]["for"] == ["X"], (
+        "a speech the journal ties to the tabling's own division is no longer claimed")
+    plain = SD.Item("CACR21", "1999-2000", {k: v for k, v in ev21[0].items() if k != "joined"}, 0)
+    assert BSP.speakers_for(spoke, "CACR21", plain, sole=True)[0] == \
+        {"for": ["A"], "against": ["B"]}, "the one-motion rule itself changed for an unjoined line"
+    mock = [{"bill": "HB605", "side": "for", "names": ["Mock"], "tally": None,
+             "inline_motion": "Re-commit to Committee"}]
+    assert BSP.speakers_for(mock, "HB605", SD.Item("HB605", "1999-2000", ev605[0], 0),
+                            sole=True)[0]["for"] == ["Mock"], (
+        "Rep. Mock, who moved HB 605's recommittal, is no longer listed under it")
+    return "ok", ("HB 1348's line is two motions and each keeps its own speakers; CACR 21's "
+                  "tabling, one motion from two rows, claims a speech only on evidence; "
+                  "HB 605's Mock keeps his motion")
+
+
 @check("narrative", "a day in the bill's own term keeps its year, a retained "
        "bill's introduction included, and the rail says the same day",
        needs=("narrative", "docket_vocab", "build_site_v2"))
@@ -10326,6 +11539,80 @@ def _senator_motions(N, V, SD):
                       "question is the mover; three rows that must not move do not")
     finally:
         N.CORRECTIONS, N.TERM, N.MISFILED = saved
+
+
+@check("session", "a motion the docket records as lost (ML) says it failed on its sitting page",
+       needs=("session_days", "build_session_pages"))
+def _session_motion_lost(SD, BSP):
+    """ML is "motion lost", the House docket's usual word where the Senate's
+    is MF, and session_days read only MA and MF. Every ML motion -- 260 on 1
+    October 2026, 2006's HB 1240 among them, whose passage failed 141-181 on
+    15 February -- was drawn with "On the motion: Ought to Pass with
+    Amendment" and no outcome at all, and the 1999-2006 reader had just moved
+    29 House motions from a wrong "adopted" to ML."""
+    e = {"type": "floor", "action": "Ought to Pass with Amendment", "motion": "ML",
+         "vote_kind": "RC", "yeas": "141", "nays": "181",
+         "raw": "Passed with AM {0795h},  ML,  RC (141-181)   HJ 19, pg 1154-1156"}
+    it = SD.Item("HB1240", "2005-2006", e, 0)
+    assert it.carried is False, f"a House ML is read as {it.carried!r}, not as failed"
+    assert it.outcome_words.startswith("The motion failed on a roll call"), it.outcome_words
+    assert BSP.vote_payload(it)["passed"] is False
+    assert SD.Item("HB1", "2005-2006", {**e, "motion": "MA"}, 0).carried is True
+    assert SD.Item("HB1", "2005-2006", {**e, "motion": "MF"}, 0).carried is False
+    return "ok", "ML, MF and MA each say what happened to the motion"
+
+
+@check("session", "a voice vote takes no count from another question on its line",
+       needs=("narrative", "docket_vocab", "docket_era_1999", "session_days",
+              "build_session_pages"))
+def _session_voice_vote_no_count(N, V, E, SD, BSP):
+    """"Ought to Pass, RC 4Y-16N, MF, Sen. Fernald Moved Laid on Table, MF, VV"
+    (HB 661 of 1999, Docket_db_1999-2000.txt line 2734) is passage failing 4
+    to 16 on a roll call and a tabling motion failing by voice. The record
+    tells the tabling, and session_days, finding no count in its fields,
+    took the roll call's from the line: "A voice vote: 4 yeas, 16 nays" on 1
+    July 1999's page. While the tabling was told with no vote at all the
+    page said "A roll call: 4 yeas, 16 nays" of it, which was the same count
+    on the same wrong motion. "Ought to Pass, RC 9Y- 14N, MF, Sen. Gordon
+    Moved Inexpedient to Legislate, MA, VV" (HB 605, line 2982) drew the kill
+    as adopted beside 9 yeas and 14 nays. A voice vote has no count; a row
+    whose fields say nothing of the vote still takes the one its line states
+    (SB 13 of 2025)."""
+    rows = {
+        "HB661": "1999|0334|07/01/1999 08:46:12 AM|HB661|S|Ought to Pass, RC 4Y-16N, MF, Sen. "
+                 "Fernald Moved Laid on Table, MF, VV|07/01/1999 08:46:12 AM",
+        "HB605": "1999|0365|06/29/1999 05:29:43 PM|HB605|S|Ought to Pass, RC 9Y- 14N, MF, Sen. "
+                 "Gordon Moved Inexpedient to Legislate, MA, VV; SJ 26, P 696-697"
+                 "|06/29/1999 05:29:43 PM"}
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        N.CORRECTIONS, N.TERM = [], "1999-2000"
+        ev = {b: [e for e in N.build(b, _docket_rows([line]))["events"] if e["type"] == "floor"]
+              for b, line in rows.items()}
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+    assert [(e.get("action"), e.get("motion"), e.get("vote_kind")) for e in ev["HB661"]] == \
+        [("Lay on Table", "MF", "VV")], ev["HB661"]
+    table = SD.Item("HB661", "1999-2000", ev["HB661"][0], 0)
+    assert (table.kind, table.yeas, table.nays, table.carried) == ("VV", None, None, False), (
+        f"HB 661's tabling motion, lost by voice on 1 July 1999, is drawn with "
+        f"{table.kind} {table.yeas}-{table.nays}")
+    assert BSP.vote_payload(table) is None and \
+        table.outcome_words.startswith("The motion failed on a voice vote"), table.outcome_words
+    kill = SD.Item("HB605", "1999-2000", ev["HB605"][0], 0)
+    assert (kill.action, kill.kind, kill.yeas, kill.carried) == \
+        ("Inexpedient to Legislate", "VV", None, True), (
+        f"HB 605's kill by voice in the Senate is drawn with the failed passage's count: "
+        f"{kill.kind} {kill.yeas}-{kill.nays}")
+    said = {"type": "floor", "body": "S", "motion": "MA", "vote_kind": "", "yeas": None,
+            "nays": None, "action": "Ought to Pass with Amendment #2025-0144s, RC 15Y-8N",
+            "raw": "Ought to Pass with Amendment #2025-0144s, RC 15Y-8N, MA; OT3rdg; 01/30/2025"}
+    rc = SD.Item("SB13", "2025-2026", said, 0)
+    assert (rc.kind, rc.yeas, rc.nays) == ("RC", 15, 8), (
+        f"a row whose fields carry no vote no longer takes the one its line states: "
+        f"{rc.kind} {rc.yeas}-{rc.nays}")
+    return "ok", ("HB 661's tabling and HB 605's kill, both by voice, show no count; SB 13's "
+                  "roll call is still read off its line")
 
 
 @check("session", "business done in recess is on its sitting, a joint rule's "
@@ -29660,7 +30947,10 @@ def _floor_every_year(build_floor_index):
     call is read once, from the first file holding it; and a roll call on
     something the docket does not know as a bill -- "HRULE64", the House
     adopting its rules -- is no bill's debate but still closes the window of
-    the bill after it. Driven end to end on a small tree."""
+    the bill after it. A bill number typed another way, "HB 72", is keyed
+    through rollcall_parser.bill_number as every other reader keys it, where it
+    was upper-cased as typed and missed its bill. Driven end to end on a small
+    tree."""
     BFI = build_floor_index
     assert BFI.FIRST_TERM == "2025-2026", (
         f"FIRST_TERM is {BFI.FIRST_TERM}: lowering it puts 2019-2024's floor debates on the "
@@ -29681,7 +30971,9 @@ def _floor_every_year(build_floor_index):
         put("rollcalls/RollCallSummary_2025.txt", [
             "2025|H|2|2/6/2025 10:10:00 AM|HRULE64|300|50|0|0|||Adopt|rules|||",
             "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||Adopt Floor Amendment|tenancy|||",
-            "2025|H|4|2/6/2025 10:30:00 AM|HB60|217|139|11|32|||OTP|tenancy|||"])
+            "2025|H|4|2/6/2025 10:30:00 AM|HB60|217|139|11|32|||OTP|tenancy|||",
+            # typed with a space, as 2017 S 198 typed "HB 315": still HB72's
+            "2025|H|5|2/6/2025 10:40:00 AM|HB 72|200|150|10|32|||ITL|x|||"])
         put("rollcalls/RollCallSummary_2023.txt", [
             "2023|H|5|3/9/2023 11:00:00 AM|HB10|200|150|0|0|||OTP|x|||"])
         floor = lambda d, kind: {"type": "floor", "date": d, "body": "H",
@@ -29689,15 +30981,19 @@ def _floor_every_year(build_floor_index):
         (tmp / "narratives.json").write_text(json.dumps({
             "2023-2024": {"HB10": {"events": [floor("2023-03-09", "VV")]}},
             "2025-2026": {"HB60": {"events": [floor("2025-02-06", "RC")]},
-                          "HB71": {"events": [floor("2025-02-06", "VV")]}}}), encoding="utf-8")
+                          "HB71": {"events": [floor("2025-02-06", "VV")]},
+                          "HB72": {"events": [floor("2025-02-06", "RC")]}}}), encoding="utf-8")
         r = _run([sys.executable, str(Path(BFI.__file__).resolve()), "--videos", "videos_house_x.csv",
                   "--summary", "RollCallSummary.txt", "--narratives", "narratives.json",
                   "--out", "floor.json"], cwd=tmp, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stdout or "") + (r.stderr or "")
         got = json.loads((tmp / "floor.json").read_text(encoding="utf-8"))
-        assert sorted(got) == ["HB60", "HB71"], (
+        assert sorted(got) == ["HB60", "HB71", "HB72"], (
             f"the index holds {sorted(got)}: not HRULE64, which is not a bill, nor 2023's HB10, "
-            "which is before FIRST_TERM")
+            "which is before FIRST_TERM, and HB72 though its roll call typed it 'HB 72'")
+        (e72,) = got["HB72"]
+        assert e72["precise"] and e72["window_start"] == 1800.0 and e72["debate_end"] == 2400.0, (
+            f"HB72's roll call, typed 'HB 72', is not its debate from 30m to 40m: {e72}")
         (e,) = got["HB60"]
         assert e["precise"] and e["debate_end"] == 1800.0 and e["window_start"] == 600.0, (
             f"HB60 should close at 30m and open where the rules vote closed, at 10m: {e}")
@@ -29707,7 +31003,8 @@ def _floor_every_year(build_floor_index):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("2025's archived roll calls placed, the download's copy first, a rules vote "
-                  "left out but still a boundary, and nothing before FIRST_TERM")
+                  "left out but still a boundary, 'HB 72' read as HB72, and nothing before "
+                  "FIRST_TERM")
 
 
 @check("reports", "a past term's Senate reports outlive the database's current view",

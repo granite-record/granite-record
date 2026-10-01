@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.7
+# GRANITE_VERSION: 2026-09-19.10
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -34,7 +34,7 @@ THE THREE VOTES, AND WHY THE TALLY NEVER DECIDES
   voice       vote_kind VV, no count at all
 
 WHICH SIDE PREVAILED IS `motion`, NEVER THE LARGER NUMBER. It is MA (motion
-adopted) or MF (motion failed), stated by the clerk. Inferring it from the
+adopted), or MF or ML (motion failed, motion lost), stated by the clerk. Inferring it from the
 tally gets every veto override and every constitutional amendment backwards: on
 9 April 2026 the House recorded YEAS 186 - NAYS 169 and the veto was SUSTAINED,
 because an override needs two thirds. 186 is the larger number and the losing
@@ -54,9 +54,13 @@ from pathlib import Path
 
 NARRATIVES = "narratives.json"
 
-# The clerk's shorthand, expanded. MA and MF are the only two that decide
-# anything; the rest appear in `raw` and are not relied on here.
-CARRIED = {"MA": True, "MF": False}
+# The clerk's shorthand, expanded. MA, MF and ML are the only ones that decide
+# anything; the rest appear in `raw` and are not relied on here. ML is
+# "motion lost", the House docket's usual word where the Senate's is MF:
+# without it every motion the record holds as ML -- 260 on 1 October 2026,
+# among them 2006's HB 1240, whose passage failed 141-181 -- was drawn on its
+# sitting page with no outcome at all.
+CARRIED = {"MA": True, "MF": False, "ML": False}
 
 VOTE_KIND = {
     "RC": "roll call",
@@ -321,7 +325,7 @@ class Item:
 
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
-                 "consent", "fifths", "entered", "recess")
+                 "consent", "fifths", "entered", "recess", "joined")
 
     def __init__(self, bill, term, e, seq):
         self.bill = bill
@@ -335,6 +339,11 @@ class Item:
         self.cite = (e.get("cite") or "").strip()
         self.page = _int(e.get("cite_page"))
         self.raw = (e.get("raw") or "").strip()
+        # A line the 1999-2006 docket reader joined back together from rows
+        # the database cut it into: how many floor actions those rows were
+        # read as one by one, where more than one (narrative's "joined"),
+        # else 0.
+        self.joined = _int(e.get("joined")) or 0
         self.seq = seq
         self.need = None
         self.veto = False
@@ -356,8 +365,17 @@ class Item:
         # `raw` rather than `action` because the clerk puts the outcome after
         # the tally -- "RC 19Y-5N, 3/5 nec., MA" -- and `action` is cut before
         # it on some rows and not others.
+        #
+        # NOT A COUNT FOR A VOICE VOTE. A voice vote has none, so where the
+        # fields say VV they carry all there is, and a count elsewhere on the
+        # line is another question's: "Ought to Pass, RC 4Y-16N, MF, Sen.
+        # Fernald Moved Laid on Table, MF, VV" (HB 661 of 1999) is passage
+        # failing 4 to 16 and then a tabling motion failing by voice, and the
+        # page said of the tabling "A voice vote: 4 yeas, 16 nays". 28 Senate
+        # motions of 1999-2008 read that way on 1 October 2026, among them
+        # kills "adopted" with the failed passage's count drawn beside them.
         src = self.raw or self.action
-        if not self.kind or self.yeas is None:
+        if not self.kind or (self.yeas is None and self.kind != "VV"):
             m = INLINE_VOTE.search(src)
             if m:
                 self.kind = self.kind or m.group("kind").upper()

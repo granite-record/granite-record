@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -69,6 +69,7 @@ import json
 import narrative
 import proceedings as P
 import re
+import rollcall_parser as RP
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -219,8 +220,13 @@ def main():
                     when = datetime.strptime(p[3].strip(), "%m/%d/%Y %I:%M:%S %p")
                 except ValueError:
                     continue
+                # The bill as rollcall_parser keys it, so "HB 315", "sb136" or
+                # "SB115-FN" is the bill's own debate; a label that names no
+                # bill ("HRULE64") is kept as typed, so it still closes the
+                # window of the bill after it.
                 calls[(p[1].strip(), when.date().isoformat())].append({
-                    "num": int(p[2] or 0), "when": when, "bill": p[4].strip().upper(),
+                    "num": int(p[2] or 0), "when": when,
+                    "bill": RP.bill_number(p[4]) or p[4].strip().upper(),
                     "q": p[11].strip(), "y": p[5].strip(), "n": p[6].strip()})
     print(f"{len(read):,} roll calls read")
 

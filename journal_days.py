@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.6
+# GRANITE_VERSION: 2026-09-19.7
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -178,6 +178,32 @@ MOVED_SPOKE = re.compile(
     r"\s+and\s+spoke\s+(?P<side>in\s+favor|against)\b",
     re.I)
 
+# A MOTION MADE AFTER THE SPEECH IS NOT WHAT THE SPEECH WAS ON. The vote a
+# speech precedes ties it to a motion (attributions, below), and the House
+# often puts another motion between the two: "Rep. Arndt moved that the House
+# concur and spoke in favor. ... Rep. Rice moved that the request for
+# concurrence with amendment on HB 374 ... be laid on the table. ... YEAS 62
+# NAYS 273" (9 June 1999). The roll call is on Rep. Rice's motion, made after
+# Rep. Arndt spoke for concurring, and by its count alone that speech was
+# "for" tabling the bill. So every motion moved between a speech and the vote
+# after it is kept with the speech (`moved_since`), in the journal's words,
+# and the page does not credit a speech to a motion of a kind that was only
+# made after it (build_session_pages.made_after).
+#
+# Read from the end of the speech's own sentence, so "Rep. Mock moved Re-commit
+# to Committee and spoke in favor" (14 April 1999) does not count its own
+# motion.
+#
+# A motion's words run to the period that ends a line, not to the first
+# one: a constitutional amendment's title holds a period -- "Rep. Hutchinson
+# moved that CACR 34, relating to the definition of marriage. Providing that
+# marriage between one man and one woman ..., be laid on the table."
+# (21 March 2006) -- and read to it the motion was to do nothing.
+MOVED_SINCE = re.compile(
+    r"\bmoved\b\s*(?P<what>(?:[^.]|\.(?![ \t]*(?:\n|$))){0,700})", re.I)
+SPOKE_END = re.compile(r"\bspoke\s+(?:in\s+favor|against)\b", re.I)
+
+
 # The debate the chamber voted to keep. The heading's bill number is NOT
 # trusted: journals/2026/HJ 13 May 14, 2026.txt reads "DEBATE ON HB 434" for a
 # debate the motion three lines above calls SB 434, twice. Seven headings carry
@@ -298,8 +324,9 @@ def attributions(block):
                 return at
         return len(block)
 
-    def tally_after(pos):
-        """The vote this speech precedes, or None.
+    def tally_after(pos, at=False):
+        """The vote this speech precedes, or None; with `at`, where the
+        journal prints it instead.
 
         BOUNDED BY THE BILL. Without the bound this reached forward into the
         next bill and tied Rep. White's speech on a motion to reconsider --
@@ -308,10 +335,20 @@ def attributions(block):
         so is the whole point of this function returning None.
         """
         stop = next_bill_at(pos)
-        for at, y, n in tallies:
-            if pos < at < stop:
-                return (y, n)
+        for where, y, n in tallies:
+            if pos < where < stop:
+                return where if at else (y, n)
         return None
+
+    def moved_since(pos):
+        """What was moved between the speech at pos and the vote after it
+        (MOVED_SINCE), each motion in the journal's words; [] with no vote."""
+        vote = tally_after(pos, at=True)
+        if vote is None:
+            return []
+        said = SPOKE_END.search(block, pos, vote)
+        return [re.sub(r"\s+", " ", m.group("what")).strip()
+                for m in MOVED_SINCE.finditer(block, said.end() if said else pos, vote)]
 
     text = joined(block)
     # Re-find on the joined text, and map positions back by searching the
@@ -326,7 +363,8 @@ def attributions(block):
         out.append({"bill": bill_at(pos), "side": "for" if "favor" in
                     m.group("side").lower() else "against",
                     "names": _names(m.group("names")),
-                    "tally": tally_after(pos), "inline_motion": None})
+                    "tally": tally_after(pos), "inline_motion": None,
+                    "moved_since": moved_since(pos)})
     for m in MOVED_SPOKE.finditer(text):
         frag = m.group(0)[:40]
         pos = block.find(frag) if frag in block else 0
@@ -334,7 +372,8 @@ def attributions(block):
                     m.group("side").lower() else "against",
                     "names": [m.group("name").strip()],
                     "tally": tally_after(pos),
-                    "inline_motion": re.sub(r"\s+", " ", m.group("motion")).strip()})
+                    "inline_motion": re.sub(r"\s+", " ", m.group("motion")).strip(),
+                    "moved_since": moved_since(pos)})
     return out
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.6
+# GRANITE_VERSION: 2026-09-11.9
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -236,6 +236,9 @@ def _event(pid, typ, m, fixed, clean, mod, created, session=None, desc=None):
     d["_type"] = typ
     d["_raw"] = clean
     d["_era"] = pid
+    # Where on the line the question it tells begins, for questions() below.
+    d["_at"] = (m.start("action") if "action" in m.re.groupindex
+                and m.group("action") is not None else m.start())
     fix = getattr(mod, "normalise", None) or getattr(mod, "fix", None)
     if fix is not None:
         # docket_era_1989 keeps the older signature fix(d, type, created).
@@ -287,7 +290,9 @@ def classify(desc, created=None, session=None):
 
 
 def join_rows(rows, session=None):
-    """Rows of one bill, with an action split across several joined up.
+    """Rows of one bill, with an action split across several joined up --
+    and, where the era reads clauses, a joined line then given a row for
+    each question it decided (questions(), below).
 
     narrative.py holds a row as a dict; an era's rule works on
     (created, bill, body, desc), which is all any of them compares. The
@@ -308,11 +313,178 @@ def join_rows(rows, session=None):
     if len(out) == len(rows):
         return rows
     # Map each joined line back onto the row it started from, in order.
-    joined, i = [], 0
+    joined, at, i = [], [], 0
     for created, _b, _body, desc in out:
         while i < len(rows) and rows[i].get("created") != created:
             i += 1
         base = rows[i] if i < len(rows) else rows[-1]
         joined.append({**base, "desc": desc})
+        at.append(min(i, len(rows) - 1))
         i += 1
-    return joined
+    # A line that was joined is then split into the questions it decided,
+    # where its era reads clauses (questions(), below). A line's rows run
+    # from the row it started from to the next line's.
+    #
+    # An era that asks for it (MARK_JOINED) has a joined line say how many
+    # floor actions the rows it was cut into were read as, one by one, where
+    # that is more than one -- for the sitting page, which drew each as a
+    # motion of its own until the rows were joined: see
+    # docket_era_1999.MARK_JOINED. Where the split has given the line two or
+    # more floor actions of its own again there is nothing to say: each is a
+    # motion on the page, as it was.
+    mark = getattr(era[0], "MARK_JOINED", False)
+    out = []
+    for n, r in enumerate(joined):
+        pieces = rows[at[n]:at[n + 1] if n + 1 < len(at) else len(rows)]
+        if len(pieces) < 2:
+            out.append(r)
+            continue
+        parts = questions(r, session)
+        if mark:
+            floor = sum(1 for p in pieces
+                        if ((classify(p.get("desc") or "", p.get("created"), session)
+                             or narrative.classify(p.get("desc") or ""))
+                            .get("_type") in _FLOOR))
+            told = [p for p in parts
+                    if (p.get("event") or {}).get("_type") in _FLOOR]
+            if floor > 1 and len(parts) == 1:
+                parts[0]["joined"] = floor
+            elif floor > 1 and len(told) == 1:
+                told[0]["joined"] = floor
+        out.extend(parts)
+    return out
+
+
+_FLOOR = ("floor", "veto_override")
+
+
+def _clause_event(text, mod, table, created, session):
+    """The event one clause of a joined line tells on its own, or None."""
+    clean = narrative.clean(text)
+    for pid, typ, pat, fixed in table:
+        m = pat.search(clean)
+        if m:
+            return _event(pid, typ, m, fixed, clean, mod, created, session, text)
+    return None
+
+
+def _same_question(a, b):
+    """Are two floor events one question, moved and then stated: "Rep Owen
+    moved OTP, MA RC(181-167); Passed and ref to Finance"?"""
+    def key(e):
+        return ((e.get("action") or "").strip().lower(),
+                (e.get("motion") or "").upper())
+    return (a.get("_type") == b.get("_type") == "floor" and key(a) == key(b)
+            and key(a)[1] == "MA")
+
+
+def questions(row, session=None):
+    """One joined line -> a row for each question it decided, in the clerk's
+    order, or [row] where it decided one.
+
+    The line read whole tells one question, as it always has, and that event
+    is kept exactly as the whole line gave it. Each OTHER clause that decides
+    a question on its own (the era's CLAUSE table: docket_era_1999 says what
+    qualifies) becomes an event of its own, and what is left between them is
+    carried as untold text, so the rows together are the clerk's line, every
+    word of it once. Each row carries its event ready-made ("event"), because
+    a clause is read by the clause table and not by the tables a whole line
+    is read by, and the line it came from ("entry"), whose citation is the
+    citation of every question on it.
+
+    ONE QUESTION, MOVED AND THEN STATED, IS ONE EVENT. "Rep Owen moved OTP,
+    MA RC(181-167); Passed and ref to Finance" (HB 239 of 1999) is a passage
+    on a roll call and the referral that follows it; the whole line tells the
+    passage from its second clause, which carries no vote, and the clause
+    before it is the same motion with the count. Where the clause before the
+    one the whole line tells is the same motion carried, and the told one has
+    no vote of its own, the two are one event with that vote; and where both
+    say the same uncounted vote ("Rep Weber moved OTP, MA VV; Passed VV", HB
+    344 of 1999) they are one event too, not a passage told twice.
+    """
+    era = era_for(session)
+    mod = era[0] if era else None
+    cut, table = getattr(mod, "clauses", None), getattr(mod, "CLAUSE", None)
+    if cut is None or not table:
+        return [row]
+    desc, created = row.get("desc") or "", row.get("created")
+    text = narrative.clean(desc)
+    spans = cut(text)
+    if len(spans) < 2:
+        return [row]
+    whole = classify(desc, created, session) or narrative.classify(desc)
+    k = None
+    if whole.get("_type") != "other":
+        at = whole.get("_at", 0)
+        k = next((i for i, (a, b) in enumerate(spans) if a <= at < b),
+                 len(spans) - 1)
+    evs = [whole if i == k else _clause_event(text[a:b], mod, table, created, session)
+           for i, (a, b) in enumerate(spans)]
+    if not any(e is not None for i, e in enumerate(evs) if i != k):
+        return [row]
+    # What the line said before a clause can say what the clause is about
+    # (the era's clause_context: whose amendment a bare "Am{2229}" is).
+    context = getattr(mod, "clause_context", None)
+    if context is not None:
+        for i, e in enumerate(evs):
+            if e is not None and i != k:
+                context(e, text[:spans[i][0]])
+    # One question moved and then stated: the clause before joins the told one.
+    lead = None
+    if k and evs[k - 1] is not None and _same_question(evs[k - 1], whole):
+        before = evs[k - 1]
+        if not (whole.get("vote") or whole.get("y")):
+            for f in ("vote", "y", "n"):
+                whole[f] = before.get(f)
+            lead = k - 1
+        elif (whole.get("vote") == before.get("vote")
+              and not whole.get("y") and not before.get("y")):
+            lead = k - 1                 # "moved OTP, MA VV; Passed VV"
+    # An amendment the line decides twice: "Reps Bickford & Vaillancourt Prop
+    # Fl Am{1081}, AL RC(179-181); ...; Reconsider Fl Am(1081}, MA
+    # RC(186-174); Fl Am{1081}(New Title), AA RC(180-179)" (HB 375 of 2001)
+    # rejected 1081 by two votes, reconsidered, and adopted it by one. Both
+    # are told, in order; the earlier says a later clause decided it again,
+    # so that a list of the bill's amendments gives the outcome that stood.
+    # Not a vote on part of one ("part": the era's clause table says which):
+    # the sections of a divided amendment are each decided once.
+    last = {}
+    for i, e in enumerate(evs):
+        if e is not None and e.get("_type") == "amendment" and (e.get("num") or "").strip() \
+                and (e.get("motion") or "").strip() and not e.get("part"):
+            num = e["num"].strip()
+            if num in last:
+                evs[last[num]]["decided_again"] = True
+            last[num] = i
+    if lead is not None:
+        evs[lead] = None
+        if not any(e is not None for i, e in enumerate(evs) if i != k):
+            # nothing else to tell: the line stays whole, with its vote
+            return [{**row, "event": whole}]
+    parts, i = [], 0
+    while i < len(spans):
+        j, ev = i, evs[i]
+        if i == lead:
+            j, ev = k, whole
+        elif ev is None:
+            # the untold clauses up to the next question, as one row
+            while j + 1 < len(spans) and evs[j + 1] is None and j + 1 != lead:
+                j += 1
+            ev = {"_type": "other", "_era": "clause"}
+        ev["_raw"] = text[spans[i][0]:spans[j][1]].strip(" ;")
+        parts.append({**row, "desc": ev["_raw"], "entry": desc, "event": ev,
+                      "in_line": True})
+        i = j + 1
+    # THE LINE ITSELF, ONCE. What reads a docket line for itself -- the
+    # bill page's list of docket lines, and the passage rail, which has its
+    # own way with a line of several clauses and with a row wrapped onto the
+    # next -- is handed the clerk's whole line by the row that tells what
+    # the whole line tells ("line"), or by the first where it tells nothing,
+    # and passes over the rest ("in_line"). Handed the clauses one by one,
+    # the rail took SB 135 of 1999's "Re-Referred to Res, Rec & Dev committee
+    # RC(158-154)" and the failed motion to reconsider it for one row wrapped
+    # in two, and the re-referral left the bill's page.
+    main = next((p for p in parts if p["event"] is whole), parts[0])
+    del main["in_line"]
+    main["line"] = text
+    return parts

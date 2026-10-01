@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.121
+# GRANITE_VERSION: 2026-09-05.125
 """
 Generate the faceted site from real General Court data.
 
@@ -287,7 +287,7 @@ def bill_amendments(narr, texts, claimed=None):
         # 2025's 2025-2080s was offered on 15 May and adopted on 5 June.
         if num in seen:
             a = seen[num]
-            said = ADOPTED.get((e.get("motion") or "").upper())
+            said = _amendment_said(e)
             if a["adopted"] is None and said is not None:
                 a["adopted"] = said
                 a["vote_kind"] = a["vote_kind"] or e.get("vote_kind") or ""
@@ -310,7 +310,13 @@ def bill_amendments(narr, texts, claimed=None):
                       else "floor" if "floor" in kind.lower()
                       else "enrolment" if "enrolled" in kind.lower() else ""),
             "date": e.get("date"), "body": e.get("body"),
-            "adopted": ADOPTED.get((e.get("motion") or "").upper()),
+            # Not the outcome of a vote the same docket line goes on to
+            # undo: HB 375 of 2001's floor amendment 1081 lost 179-181, was
+            # reconsidered, and was adopted 180-179, all on one line the
+            # history tells question by question. The first carries
+            # "decided_again", and the row that decided it again fills the
+            # outcome in, as a row does for an amendment only announced.
+            "adopted": None if e.get("decided_again") else _amendment_said(e),
             "vote_kind": e.get("vote_kind") or "",
             "mover": e.get("mover") or "",
             "proposed_by": doc.get("proposed_by") or "",
@@ -331,6 +337,25 @@ def bill_amendments(narr, texts, claimed=None):
                 clash.append({"num": b["num"], "shared": shared})
         a["supersedes"] = clash
     return out
+
+
+def _amendment_said(e):
+    """Whether one amendment event says its amendment was adopted (True),
+    rejected (False) or neither (None).
+
+    A VOTE ON SOME OF IT SAYS NEITHER. The House divides an amendment and
+    votes on its sections, and the 1999-2006 reader tells each numbered part
+    with "part": "Comm Am{4383}, Sec. 5, AL DIV(141-160)" is section 5 of
+    SB 303 of 2000's committee amendment lost, and the remainder then carried
+    238-74, so "rejected" beside 4383 would be false. The remainder's vote is
+    the amendment's ("rest"): "Am{2229}, Remaining Secs, AA RC(239-112)"
+    adopted HB 999 of 1999's floor amendment, whose sections 17 and 18 had
+    carried 255-96."""
+    if e.get("part") == "some":
+        return None
+    return ADOPTED.get((e.get("motion") or "").upper())
+
+
 VOTE_KIND_RE = re.compile(r"\b(RC|VV|DV)\b")
 
 
@@ -1352,6 +1377,9 @@ DISPOSED = [
     (re.compile(r"interim study", re.I), ("study", "Referred for interim study")),
     (WITHDRAWN_ACT, ("done", "Withdrawn")),
 ]
+# A reconsideration the chamber carried, as a clause of a floor line:
+# "Rep Norelli moved to Reconsider, MA RC(153-150)". See classify().
+RECONSIDER_CARRIED = re.compile(r"(?i:\breconsider\w*)[^;]*?\bMA\b")
 # Where a bill's record is the House Journal's rather than the General
 # Court's files (journal_bills.py, build_data.add_journal_bills).
 JOURNAL_SOURCE = "House Journal"
@@ -1428,10 +1456,19 @@ def classify(narr, rcs, prefix=""):
     # "Special Order (Reconsideration Motion)" only scheduled a motion that
     # then failed, and HB 666 of 1997 reconsidered its kill and killed the
     # bill again in a row the parser reads in two halves.
+    #
+    # The reconsideration can also be a clause of the passage's own line. The
+    # House typed 30 March 2005 as one entry, "Rep Norelli moved to
+    # Reconsider, MA RC(153-150); ITL ML DIV(149-151); ...; Passed with Am
+    # VV", which the 1999-2006 docket reader joins back together from the
+    # rows the database cut it into, and a whole line is told by its last
+    # carried question, the passage. So a passage whose own line carried a
+    # reconsideration before it undoes the disposal too.
     fl = [e for e in evs if e.get("type") == "floor"
           and (e.get("motion") or "").upper() == "MA"]
     fl = [e for _i, e in sorted(enumerate(fl),
                                 key=lambda x: (x[1].get("date") or "", x[0]))]
+    passage = re.compile(r"ought to pass|\botp\b|\bpassed\b", re.I)
 
     def undone(i, e):
         a = (e.get("action") or "").lower()
@@ -1440,6 +1477,10 @@ def classify(narr, rcs, prefix=""):
             return False
         body = e.get("body") or ""
         for j in range(i + 1, len(fl)):
+            if (fl[j].get("body") or "") == body and \
+                    RECONSIDER_CARRIED.search(fl[j].get("raw") or "") and \
+                    passage.search(fl[j].get("action") or ""):
+                return True
             x = (fl[j].get("action") or "").lower()
             if (fl[j].get("body") or "") != body or not re.search(r"\breconsider", x) \
                     or re.match(r"\s*special order", x):
@@ -3023,19 +3064,25 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
     for a, z in zip(dates, dates[1:]):
         # Strictly before the later report: an action on the same day
         # is the floor acting on that report, not the reason for it.
+        # The docket's lines, each whole and once (docket_line): the note
+        # quotes a line. Read by the clause, HB 278 of 1999's "Comm Am, AA
+        # VV; Rep Soltani moved to recommit, ML VV; Passed with Am and ref to
+        # Finance VV" gave the failed motion alone as what the docket records
+        # between its two reports.
         again = [e for e in (narr or {}).get("events", [])
-                 if not e.get("cancelled") and e.get("type") != "report"
-                 and a < (e.get("date") or "") < z and REPORT_AGAIN.search(e.get("raw", ""))]
+                 if not e.get("cancelled") and not e.get("in_line")
+                 and e.get("type") != "report"
+                 and a < (e.get("date") or "") < z and REPORT_AGAIN.search(docket_line(e))]
         # THE ONE THAT SENT IT BACK, not the first that names it: HB 75 of
         # 1999 quoted "Sen. Russman moved Rerefer, Sen. Russman Withdrew
         # Motion to Rerefer" over "Sen D'Allesandro Moved Rerefer, MA, VV",
         # which carried. A motion that failed, was withdrawn or was not voted
         # on is quoted only where nothing else between the reports is.
-        e = (next((e for e in again if _again_carried(e.get("raw", ""))), None)
-             or next((e for e in again if _again_carried(e.get("raw", "")) is None), None)
+        e = (next((e for e in again if _again_carried(docket_line(e))), None)
+             or next((e for e in again if _again_carried(docket_line(e)) is None), None)
              or (again[0] if again else None))
         if e:
-            between.append({"before": z, "date": e["date"], "text": e.get("raw", "")})
+            between.append({"before": z, "date": e["date"], "text": docket_line(e)})
     return out, docket, between
 
 
@@ -3043,14 +3090,27 @@ def _again_carried(raw):
     """True where a line sending a bill back to committee records it carried,
     False where it records it failed, was withdrawn or was not voted on, None
     where it says neither."""
-    m = REPORT_AGAIN.search(raw or "")
-    rest = (raw or "")[m.start():] if m else (raw or "")
+    raw = raw or ""
+    m = REPORT_AGAIN.search(raw)
+    rest = raw[m.start():] if m else raw
+    # AND NO FURTHER THAN A FAILED MOTION TO RECONSIDER IT. "Re-Referred to
+    # Res, Rec & Dev committee RC(158-154); Rep Royce moved to reconsider, ML
+    # RC(156-157)" (SB 135 of 1999, one line since the 1999-2006 reader joins
+    # the two rows the database cut it into) is the bill sent back and a
+    # motion to undo that which failed, the reading _j_segments gives it too.
+    # Read to the end, the ML was the re-referral's, and the Reports tab gave
+    # a cancelled subcommittee session as the reason for the second report.
+    # A reconsideration that carried is left where it was.
+    again = LOST_RECONSIDER.search(rest) if m else None
+    if again:
+        rest = rest[:again.start()]
+        raw = raw[:m.start() + again.start()]
     # Withdrawn or not voted on in the clause that sends it back, not in one
     # before it: "Ought to Pass [not voted on]; Sen. Prescott Moved Recommit,
     # MA, VV" (SB 10 of 2001) and "REP FLANAGAN WITHDREW OTP/AM MOTION;
     # RE-REFERRED TO CON & STAT" (HB 303 of 1991) are recommittals that
     # carried. "REP BUCKLEY WITHDREW RECOMMIT MOTION" is still withdrawn.
-    clause = (raw or "")[(raw or "").rfind(";", 0, m.start()) + 1:] if m else (raw or "")
+    clause = raw[raw.rfind(";", 0, m.start()) + 1:] if m else raw
     if re.search(r"withdr[ae]w|not\s+voted\s+on", clause, re.I):
         return False
     if re.search(r"\b(?:MF|ML)\b|\bfail|\blost\b", rest):
@@ -3059,10 +3119,14 @@ def _again_carried(raw):
     # it: "Sen. Kelly moved to Rereferred to Committee" (HB 450 of 2009) is
     # the motion, and its "MA, VV" is the next line.
     if re.search(r"\bMA\b|\badopted\b|\bcarried\b", rest, re.I) or (
-            re.search(r"\b(?:re-?referred|recommitted|retained)\b", raw or "", re.I)
-            and not re.search(r"\bmov(?:ed|es?)\b", raw or "", re.I)):
+            re.search(r"\b(?:re-?referred|recommitted|retained)\b", raw, re.I)
+            and not re.search(r"\bmov(?:ed|es?)\b", raw, re.I)):
         return True
     return None
+
+
+# A later clause of the line moving to reconsider, which failed.
+LOST_RECONSIDER = re.compile(r";[^;]*\b(?i:reconsider)[^;]*\b(?:ML|MF)\b")
 
 
 def hearing_testimony(e, tdb, scraped):
@@ -3905,8 +3969,14 @@ def _j_segments(raw):
         # Bill; Adopted, SJ 14" the enrolment (HB 235 of 2000). Read apart, the
         # bare "Adopted" was a committee report adopted -- a kill, on two bills
         # that became law.
+        # BUT NOT A RECONSIDERATION'S. "Re-Referred to Res, Rec & Dev
+        # committee RC(158-154); Rep Royce moved to reconsider, ML
+        # RC(156-157)" (SB 135 of 1999, read whole since 1 October from the
+        # two rows the database cut it into) is the bill sent back and a
+        # motion to reconsider that failed, not a re-referral that failed.
         if (out and not _j_has_outcome(out[-1]) and _j_has_outcome(p)
-                and not re.search(r"withdr[ae]w", out[-1], re.I) and (
+                and not re.search(r"withdr[ae]w", out[-1], re.I)
+                and not (J_RECONSIDER.search(p) and not J_RECONSIDER.search(out[-1])) and (
                 (_j_act(out[-1]) and (
                     nxt is None or J_OUTCOME_ONLY.match(p)
                     or (nxt == "amendment" and _j_act(out[-1]) == "conference")))
@@ -4445,13 +4515,24 @@ def _j_rows(evs):
     THE FLOOR'S WORDS CAN SIT IN A ROW TYPED AS A REPORT. "MAJ REPT OTP, ML
     DIV(114-223); REP MCGUIRK MOVED ITL, ITL REPORT" is a report row of SB 217
     of 1997, and its "ADOPTED VV" is the House's floor row of the same day --
-    in whichever order the two were entered."""
+    in whichever order the two were entered.
+
+    A LINE TOLD QUESTION BY QUESTION IS STILL ONE LINE HERE. The 1999-2006
+    reader gives a House floor day an event for each question it decided
+    (docket_vocab.questions), each with its own clause as `raw`. Those are
+    whole clauses, not a row wrapped onto the next, and read as rows they are
+    joined back wrongly: SB 135 of 1999's "Re-Referred to Res, Rec & Dev
+    committee RC(158-154)" and "Rep Royce moved to reconsider, ML
+    RC(156-157)" became a re-referral that failed, and left the rail. The
+    line is read whole, once, from the event that carries it (docket_line),
+    which is what this was written for."""
+    evs = [e for e in evs if not e.get("in_line")]
     tails = defaultdict(list)
     voted = set()
     for e in evs:
         if e.get("type") != "report":
             continue
-        raw = e.get("raw") or ""
+        raw = docket_line(e)
         segs = _j_segments(raw)
         if (segs and re.search(r"\bM[AFL]\b|\bmoved\b|\bsubst", raw, re.I)
                 and _j_act(segs[-1]) and not _j_has_outcome(segs[-1])):
@@ -4471,7 +4552,7 @@ def _j_rows(evs):
     for e in evs:
         if e.get("type") in J_NOT_FLOOR and id(e) not in voted:
             continue
-        raw = _j_unfile(e.get("raw") or "")
+        raw = _j_unfile(docket_line(e))
         first = (_j_segments(raw) or [""])[0]
         tail = tails.get((e.get("body"), e.get("date")))
         if tail and J_OUTCOME_ONLY.match(first):
@@ -6782,11 +6863,23 @@ def vote_note_for(narr, rollcalls):
     return note
 
 
+def docket_line(e):
+    """The docket line an event was read from, as the clerk typed it: the
+    whole line where the event is one question of a line told question by
+    question and is the one that carries it ("line"), else its own `raw`."""
+    return e.get("line") or e.get("raw") or ""
+
+
 def docket_lines(narr):
     """The docket's own lines for the bill's page: its events, and the rows
     the docket files under it that belong to another bill, by date. Those
-    are not in "events", so nothing that tells the bill's story reads them."""
-    evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+    are not in "events", so nothing that tells the bill's story reads them.
+
+    A line told question by question (docket_vocab.questions) is listed
+    once, whole, by the event that carries it: the page shows the clerk's
+    lines, and a clause of one is not a line."""
+    evs = [e for e in (narr or {}).get("events", [])
+           if not e.get("cancelled") and not e.get("in_line")]
     away = [e for e in (narr or {}).get("misfiled", []) if not e.get("cancelled")]
     if not away:
         return evs
@@ -7228,8 +7321,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # A DATE A PERSON CORRECTED (docket_corrections.json) is shown on
             # the day it happened, beside the clerk's line, which still says
             # the other date -- so the line carries why, in plain words.
-            "events": [{"date": e["date"], "text": e.get("raw", ""),
-                        "routine": is_routine(e.get("raw", "")),
+            "events": [{"date": e["date"], "text": docket_line(e),
+                        "routine": is_routine(docket_line(e)),
                         **({"date_as_recorded": e["date_as_recorded"],
                             "date_note": e.get("date_note") or (
                                 "The General Court's online docket gives "

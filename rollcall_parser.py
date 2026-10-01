@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -99,7 +99,18 @@ PROCEDURAL = {"call of the roll", "rules suspension", "limit debate", "print rem
 #
 # The prefixes are the General Court's, listed rather than matched loosely: an
 # any-letters-then-digits pattern is exactly what admitted HRULE64.
-BILL_NO = re.compile(r"^(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)\d+$", re.I)
+#
+# THE LIST WAS SHORT OF THREE KINDS data/bills.json HOLDS, each with a record
+# of its own: the House address (HA1 of 1999, to remove Chief Justice Brock
+# from office, which the House voted 256-58 ought not to pass), HCO1 (2002's,
+# on an election in the districts the court's order set, and the Senate's
+# 13-11 on suspending its rules for it) and every special-session bill and
+# resolution (SSHB1, SSSB1, SSHR1, SSHCR1). 68 roll calls on them were
+# published as procedural, in /data/rollcalls.csv and the roll-call index,
+# and twelve records said they had none. A vote on the chamber's own
+# special-session rules ("SSRULES") or on a draft no record carries ("DRAFT")
+# stays procedural.
+BILL_NO = re.compile(r"^(?:(?:SS)?(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)|HA|HCO)\d+$", re.I)
 
 # ONE BILL NUMBER, HOWEVER THE FILE TYPED IT. Seven roll calls were typed some
 # other way than data/bills.json keys their bill: "SB 406" (2012 S 118), "HB
@@ -122,6 +133,40 @@ def bill_number(raw):
     b = FLAGS.sub("", re.sub(r"\s+", "", raw or "").upper())
     b = re.sub(r"^HCACR(?=\d)", "CACR", b)
     return b if BILL_NO.match(b) else ""
+
+
+# ONE NUMBER, TWO MEASURES IN ONE TERM. The Senate's roll calls 32 and 33 of
+# 2009 are filed "SR1", and they are: 2009's SR 1, LSR 2009-1052, "requesting
+# an opinion of the justices concerning the constitutionality of SB 21",
+# introduced and passed 14-9 on 1 April 2009 (SJ 10 p.163). data/bills.json
+# holds one SR 1 for 2009-2010, 2010's, on EPA vapor recovery, which was
+# adopted on voice votes -- so its page drew both roll calls, and 23
+# senators' pages said they had voted on it. Neither the General Court nor
+# its file is wrong; one record per number in a term is this site's model. A
+# roll call listed here is filed under a name no record carries, which keeps
+# it off the other measure's page and every member's ballot unlinked, and is
+# not procedural: it was a vote on a measure.
+OTHER_MEASURE = {("2009", "S", 32): "SR1 (2009)", ("2009", "S", 33): "SR1 (2009)"}
+
+
+def roll_call_bill(year, body, number, raw):
+    """The bill a roll call is filed under: bill_number(raw), or for a roll
+    call on a measure that shares its number with another measure's record
+    in the same term, the name OTHER_MEASURE gives it."""
+    try:
+        k = (str(year).strip(), str(body).strip(), int(number))
+    except (TypeError, ValueError):
+        k = None
+    return OTHER_MEASURE.get(k) or bill_number(raw)
+
+
+def other_measure(r):
+    """True for a parsed roll call OTHER_MEASURE files under its own name."""
+    try:
+        k = (str(r.get("year")).strip(), str(r.get("body")).strip(), int(r.get("number")))
+    except (TypeError, ValueError):
+        return False
+    return k in OTHER_MEASURE and r.get("bill") == OTHER_MEASURE[k]
 
 
 def threshold(question_raw, bill, yeas, nays, seated):
@@ -151,7 +196,7 @@ def parse(path, want_bill=None):
                 continue
 
             # A bill as data/bills.json keys it; anything else as typed.
-            bill = bill_number(p[4]) or p[4].strip()
+            bill = roll_call_bill(year, body, num, p[4]) or p[4].strip()
             if want_bill and bill.upper() != (bill_number(want_bill)
                                               or want_bill).upper():
                 continue
@@ -197,7 +242,9 @@ def parse(path, want_bill=None):
                 "date": when.strftime("%Y-%m-%d") if when else "",
                 "time": when.strftime("%H:%M") if when else "",
                 "bill": bill or None,
-                "procedural": not bill_number(bill) or key in PROCEDURAL,
+                "procedural": ((not bill_number(bill)
+                                and (year, body, num) not in OTHER_MEASURE)
+                               or key in PROCEDURAL),
                 "question": std, "question_raw": raw_q, "question_plain": plain,
                 "yeas": yeas, "nays": nays, "voting": voting, "not_voting": not_voting,
                 "seats": SEATS[body], "seated": seated,
@@ -436,8 +483,10 @@ def main():
         by_term = defaultdict(lambda: defaultdict(list))
         for r in rows:
             # A vote whose bill column does not hold a bill number goes with
-            # the other procedural votes rather than inventing a bill.
-            key = bill_number(r["bill"]) or "_procedural"
+            # the other procedural votes rather than inventing a bill -- unless
+            # OTHER_MEASURE has named the measure it was on.
+            key = bill_number(r["bill"]) or (
+                r["bill"] if other_measure(r) else "_procedural")
             by_term[P.term_of(r["year"])][key].append(r)
         stray = by_term.pop("", None)
         if stray:

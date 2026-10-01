@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.41
+# GRANITE_VERSION: 2026-09-04.44
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1060,6 +1060,12 @@ FLOOR_AMD = re.compile(
     r"(?P<when> on \w+ \d{1,2}, \d{4})?"
     r"(?:, changing the text of the bill)?\.$")
 
+# The remainder of a floor amendment voted on in parts, as describe() words
+# the 1999-2006 reader's "part": "rest".
+REST_OF_AMD = re.compile(
+    r"^The rest of the floor amendment \([^)]+\).*? was (?:adopted|rejected)"
+    r"[^.]*?(?P<when> on \w+ \d{1,2}, \d{4})?(?:, changing the text of the bill)?\.$")
+
 REPEATABLE = [
     (re.compile(r"^The committee held a work session on (.+)\.$"),
      "The committee held work sessions on {dates}."),
@@ -1085,8 +1091,11 @@ def and_list(items):
     return ", ".join(items[:-1]) + " and " + items[-1]
 
 
-def fold_amendments(run, chamber):
-    """One sentence for a day's floor amendments, keeping every number."""
+def fold_amendments(run, chamber, other=False):
+    """One sentence for a day's floor amendments, keeping every number.
+
+    other: the sentence before the run told a floor amendment the chamber
+    voted on in parts that day, so these are the day's other ones."""
     def cite(m):
         num = m.group("num")
         # Who offered it is kept: it is the one fact in these sentences that
@@ -1104,8 +1113,9 @@ def fold_amendments(run, chamber):
     no = [m for m in run if m.group("what") == "rejected"]
     wd = [m for m in run if m.group("what") == "withdrawn"]
     when = next((m.group("when") for m in run if m.group("when")), "")
-    lead = (f"On {when[4:]} the {chamber} took up {len(run)} floor amendments"
-            if when else f"The {chamber} took up {len(run)} floor amendments")
+    n = f"{len(run)} other" if other else f"{len(run)}"
+    lead = (f"On {when[4:]} the {chamber} took up {n} floor amendments"
+            if when else f"The {chamber} took up {n} floor amendments")
     gone = (f" {'Amendment' if len(wd) == 1 else 'Amendments'} "
             + and_list([cite(m) for m in wd])
             + f" {'was' if len(wd) == 1 else 'were'} withdrawn." if wd else "")
@@ -1155,7 +1165,14 @@ def collapse(sentences, chamber="House"):
             run.append(m)
             j += 1
         if len(run) >= 4:
-            out.append(fold_amendments(run, chamber))
+            # "took up 5 floor amendments and rejected all of them", straight
+            # after the sentence that says the rest of a sixth was adopted
+            # that day (HB 999 of 1999), counts one too few and reads as a
+            # contradiction: these are the day's other ones.
+            m = REST_OF_AMD.match(out[-1].strip()) if out else None
+            out.append(fold_amendments(
+                run, chamber,
+                other=bool(m and m.group("when") == run[0].group("when"))))
             i = j
             continue
         # Enrolment and its amendment, in either order.
@@ -1649,9 +1666,12 @@ def describe(ev, body, seen_intro=False):
         vk, _ = VOTE_KIND.get((ev.get("vote") or "").upper(), (None, None))
         y, n = ev.get("y"), ev.get("n")
         # NO MOTION IS NOT A REJECTION. See amendment_outcome().
+        # A vote on part of it, where the event says so itself: the 1999-2006
+        # reader's "Am{2229}, Remaining Secs, AA RC(239-112)" carries its
+        # result and "part" (docket_era_1999.CLAUSE_AMEND_PART).
         said, part = ("adopted" if adopted
                       else "rejected" if motion in ("AF", "AL", "FAILED")
-                      else None), False
+                      else None), ev.get("part") or False
         if said is None and "Enrolled Bill" not in kind:
             said, part, vk2, y2, n2 = amendment_outcome(ev["_raw"])
             adopted = said == "adopted"
@@ -1679,7 +1699,13 @@ def describe(ev, body, seen_intro=False):
         # it was written, while the sentence went on calling them "An
         # amendment". The heading was already making the claim; this says it
         # in the sentence too rather than leaving the reader to notice.
+        # And an amendment the committee's minority wrote is neither the
+        # committee's nor any member's: the 1999-2006 reader's "Min Am{1208}"
+        # (docket_era_1999.MINORITY_AMENDMENT), offered on the floor against
+        # the majority's.
         who = ("The committee's amendment" if "committee" in kind.lower()
+               else "The committee minority's amendment"
+               if kind.lower() == "minority amendment"
                else "A floor amendment")
         # The Senate's verb is not part of the senator's name: "Sen. Bradley
         # Offered Floor Amendment" read "offered by Sen. Bradley Offered".
@@ -1711,7 +1737,12 @@ def describe(ev, body, seen_intro=False):
                      if mover else f"{who} was {verb}").replace(
                          "amendment", f"amendment ({num})", 1)
                     + when + tail + ".")
-        if part:
+        if part == "rest":
+            # What was left once sections were divided out of it, and the
+            # sentence before has usually just told those.
+            who = "The rest of " + ("the floor amendment" if who == "A floor amendment"
+                                    else f"{who[0].lower()}{who[1:]}")
+        elif part:
             who = f"Part of {who[0].lower()}{who[1:]}"
         # "changing the text of the bill" was appended to every amendment,
         # including the ones that failed. A rejected amendment changed
@@ -1991,18 +2022,35 @@ def build(bill, rows):
         rows = vocab.join_rows(rows, session)
     evs, elsewhere = [], []
     for r in rows:
-        ev = (vocab.classify(r["desc"], r["created"], r.get("session"))
-              if vocab is not None else None) or classify(r["desc"])
+        # One question of a line docket_vocab.questions split comes with its
+        # event already read ("event"): a clause is read by its era's clause
+        # table, not by the tables a whole line is read by.
+        ev = r.get("event") or (
+            vocab.classify(r["desc"], r["created"], r.get("session"))
+            if vocab is not None else None) or classify(r["desc"])
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
         if ev.get("chapter"):
             ev["chapter"] = confirmed_chapter(
                 P.term_of(str(r.get("session") or session or "")), bill, ev["chapter"])
         # Off the raw line: clean() has already removed it from ev["_raw"].
-        ev["cite"], ev["cite_page"] = cite_of(r["desc"])
+        # Every question of one split line cites what the line cites, which
+        # the clerk wrote once at its end ("entry").
+        ev["cite"], ev["cite_page"] = cite_of(r.get("entry") or r["desc"])
         ev["body"] = r["body"]
         ev["cancelled"] = "CANCELLED" in r["flags"]
         ev["recessed"] = "RECESSED" in r["flags"]
+        # A line docket_vocab.join_rows put back together from rows the
+        # database cut it into, which read one by one were more than one
+        # floor action and which still tells one: how many, where its era
+        # asks that this be said.
+        ev["joined"] = r.get("joined") or 0
+        # One question of a line split into its questions: the row that
+        # tells what the whole line tells carries the line ("line"), and the
+        # others say their words are in it ("in_line"). docket_vocab.questions.
+        ev["line"], ev["in_line"] = r.get("line") or "", bool(r.get("in_line"))
+        # Which line that was, for a question the same line decides twice.
+        ev["_entry"] = (r.get("created"), r["entry"]) if r.get("entry") else None
         fixed, entry = corrected_date(r, bill) if CORRECTIONS else (None, None)
         if fixed:
             # The docket's own date is kept beside the corrected one: the
@@ -2105,15 +2153,45 @@ def build(bill, rows):
                 else "sections ruled" if any(re.search(r"\bsections?\s+of\b", x, re.I)
                                              for x in ruled)
                 else "ruled" if ruled else "")
+    # A QUESTION ONE LINE DECIDES TWICE HAPPENED TWICE. collapse() drops a
+    # sentence repeated word for word, because two identical rows are one
+    # action entered twice -- each chamber records the same enrolment. Two
+    # clauses of one entry are not that: the clerk typed "Passed with Am
+    # RC(172-171[including Speaker]); Rep O'Hearn moved to reconsider, MA
+    # RC(175-167); Passed with Am RC(172-171)" (HB 633 of 1999) because the
+    # House passed the bill, reconsidered, and passed it again by the same
+    # count, and with the second sentence dropped the history read passed,
+    # reconsidered, and nothing after. The repeat says "again", which is what
+    # happened and is also what keeps it.
+    told_on_line = set()
     for ev in evs:
         if ev["cancelled"]:
             continue
         s = describe(ev, ev["body"], seen_intro)
         if ev["_type"] == "introduced":
             seen_intro = True
+        if s and ev["_type"] == "floor" and ev.get("_entry"):
+            if (ev["_entry"], s) in told_on_line:
+                chamber = f"the {CHAMBER.get(ev['body'], 'House')} "
+                s = s.replace(chamber, chamber + "again ", 1)
+            told_on_line.add((ev["_entry"], s))
         if s:
             sentences.append(s)
             key = stage_of(ev)
+            # A COMMITTEE'S AMENDMENT VOTED BETWEEN TWO FLOOR QUESTIONS IS ON
+            # THE FLOOR. stage_of files a committee amendment under the
+            # committee, which is where it was written. As one question of a
+            # floor line told question by question it is voted in the middle
+            # of the floor's business: "Taken from the Table, Rep Alukonis MA
+            # VV; Fin Comm Am{4110}, AA VV; Laid on the Table, Rep Alukonis MA
+            # VV" (HR 10 of 1999) came out as a floor heading, an "In House
+            # committee" heading over the one amendment, and a floor heading
+            # again, on a resolution that was never in committee. Where the
+            # chamber's floor already holds the bill, it stays there.
+            if (ev["_type"] == "amendment" and key[1] == "committee"
+                    and (ev.get("in_line") or ev.get("line"))
+                    and stages and stages[-1]["key"][:2] == (key[0], "floor")):
+                key = (key[0], "floor")
             cmte = (ev.get("committee") or "").strip()
             # Only the referral row names the committee; the hearing and
             # executive session rows that follow do not. Keying on what each
@@ -2248,6 +2326,23 @@ def build(bill, rows):
                     # This bill's own row of a vote the docket also files
                     # under another bill (docket_corrections.json "misfiled").
                     **({"row_note": e["row_note"]} if e.get("row_note") else {}),
+                    # One line the clerk typed, read whole from rows the
+                    # database cut it into, and how many floor actions those
+                    # rows were read as one by one (docket_era_1999.
+                    # MARK_JOINED), where the line still tells one of them:
+                    # the sitting page needs to know the House put others to
+                    # the bill on that line. A line split into its questions
+                    # again (docket_vocab.questions) carries no mark.
+                    **({"joined": e["joined"]} if e.get("joined") else {}),
+                    # A question of a line the clerk typed as one entry and
+                    # the 1999-2006 reader tells question by question: `raw`
+                    # is this question's own clause, and the whole line is
+                    # carried once, by the event that tells what the line
+                    # read whole tells ("line"); the others say their words
+                    # are in it ("in_line"). For what shows or reads a docket
+                    # line as a line: the bill page's list, the passage rail.
+                    **({"line": e["line"]} if e.get("line") else {}),
+                    **({"in_line": True} if e.get("in_line") else {}),
                     **({**_floor_fields(e),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
@@ -2263,7 +2358,14 @@ def build(bill, rows):
                         "amend_kind": (e.get("what") or "").strip(),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
-                        "mover": (e.get("mover") or "").strip()}
+                        "mover": (e.get("mover") or "").strip(),
+                        # Decided again by a later clause of the same line
+                        # (docket_vocab.questions): this outcome did not stand.
+                        **({"decided_again": True} if e.get("decided_again") else {}),
+                        # A vote on part of the amendment, where the docket's
+                        # reader says so: "some" for sections of it, "rest"
+                        # for the remainder, whose outcome is the amendment's.
+                        **({"part": e["part"]} if e.get("part") else {})}
                        if e["_type"] == "amendment" else
                        # A committee report's own facts, for the same reason
                        # the two above are here. The Reports tab could show

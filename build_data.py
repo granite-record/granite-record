@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1546,8 +1546,11 @@ def main():
             # The bill as data/bills.json keys it, so each ballot reaches its
             # bill's page: "SB 406" upper-cased and left spaced linked no
             # member's vote to SB 406. rollcall_parser.bill_number says which
-            # seven. A field that names no bill is upper-cased as it was.
-            "bill": RP.bill_number(r[4]) or r[4].upper(),
+            # seven. A field that names no bill is upper-cased as it was. A
+            # roll call on a measure whose number another record of the term
+            # holds goes under the name rollcall_parser.OTHER_MEASURE gives
+            # it, so no member's ballot on 2009's SR 1 links 2010's.
+            "bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper(),
             "yea": int(r[5] or 0), "nay": int(r[6] or 0),
             "question": r[11], "title": r[12],
         }
