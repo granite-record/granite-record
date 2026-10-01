@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.125
+# GRANITE_VERSION: 2026-09-04.126
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -106,10 +106,85 @@ def pages_region(src="app.css"):
     return text[a:b].rstrip()
 
 
+# THE LOGO AND THE ICONS: THE FILES A COMPLETE SITE CARRIES BESIDE ITS PAGES.
+#
+# NONE OF THEM IS IN THE REPOSITORY, bar the manifest, which is text. The
+# person decided on 30 September 2026 that the bought clipart leaves git as
+# the artist's drawing already had (DATA.md says why), so on a fresh clone
+# assets/ holds site.webmanifest and nothing else. The project's own machines
+# get them back from the private kit (cloud_kit.json); a fork brings its own.
+#
+# This is the one list. main() places them and says which are missing;
+# check_site.py reports a site without them as one plain error instead of ten
+# broken links; preflight's fixture writes a stand-in for each, and holds this
+# to what the pages, the stylesheet and the manifest actually name and to the
+# kit entry that carries them. Every name is a file at the site's root:
+#
+#   favicon.ico, icon.svg, icon-32.png, icon-180.png   the <link>s in every head
+#   icon-512.png, icon-512-pad.png                     site.webmanifest's icons
+#   lockup.png                                         the home page's heading
+#   og.png, og-<kind>.png                              a shared link's card
+#   site.webmanifest                                   tracked, and here so that
+#                                                      one list is the whole set
+BRAND_FILES = ("favicon.ico", "icon.svg", "icon-32.png", "icon-180.png",
+               "icon-512.png", "icon-512-pad.png", "lockup.png",
+               "og.png", "og-bill.png", "og-committee.png", "og-learn.png",
+               "og-legislator.png", "og-town.png", "site.webmanifest")
+
+# THE HEADER'S MARK IS NOT ON THAT LIST, because a site is complete without
+# it. It is the artist's drawing cut to its ink (build_brand.write_licensed),
+# it exists only where assets/licensed/ does, and where it does not the header
+# is the wordmark alone -- by design, not by accident: the rule that draws the
+# mark sits between MARK:START and MARK:END in app.css, and main() keeps that
+# block only when this file was placed. A fork that wants a mark puts a mask
+# of this name in assets/ (opaque where the ink is, at any size: the 33x56 box
+# fits it).
+HEADER_MARK = "mark.png"
+
+
+def mark_region(src="app.css"):
+    """The header mark's rule, read out of app.css like the regions above.
+
+    From the MARK:START marker to the end of the MARK:END line. It is outside
+    the shared region on purpose: the shared region is byte for byte the same
+    in both stylesheets on every machine, and this block is there only where
+    the build has the drawing.
+    """
+    text = Path(src).read_text(encoding="utf-8")
+    a = text.index("/* MARK:START")
+    b = text.index("/* MARK:END")
+    return text[a:text.index("*/", b) + 2]
+
+
+def without_mark(css):
+    """app.css's bytes with the header mark's block cut out.
+
+    For a build that has no mark.png: the rule would otherwise draw an empty
+    33x56 box before the site's name on every record page. Bytes in, bytes
+    out, so the copy keeps the line endings of the file it was read from; a
+    file with no such block is returned as it came.
+    """
+    a = css.find(b"/* MARK:START")
+    b = css.find(b"/* MARK:END")
+    if a < 0 or b < a:
+        return css
+    end = css.find(b"\n", b)
+    return css[:a] + (css[end + 1:] if end >= 0 else b"")
+
+
+def stylesheet(mark):
+    """style.css: the palette, the shared region, the page region, and the
+    header mark's block where the build placed the mark."""
+    return (CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared())
+               .replace("__PAGES__", pages_region())
+               .replace("__MARK__", mark_region() if mark else ""))
+
+
 CSS = """
 __PALETTE__
 __SHARED__
 __PAGES__
+__MARK__
 """
 
 
@@ -2498,25 +2573,25 @@ def main():
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "style.css").write_text(
-        CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared())
-           .replace("__PAGES__", pages_region()),
-        encoding="utf-8")
 
     # THE DRAWN FILES. brand/ holds the originals, build_brand.py derives
     # assets/, and this is the step that puts them beside the pages -- site/
     # is generated and gitignored, so anything left there by hand is gone on
-    # the next build and was never in the repository.
+    # the next build. None of the images is in the repository (BRAND_FILES
+    # above says why), so on a clone this places the manifest and nothing
+    # else, says so once, and the build carries on.
     brand = Path("assets")
+    placed, moved, n_lic = set(), 0, 0
     if brand.is_dir():
-        moved = 0
         # THE LICENSED LOGO GOES OVER THE CLIPART. assets/licensed/ holds what
         # build_brand.py draws from Debra Caplan's lockups; it is gitignored,
         # because the person asked that her files never be in the public
         # repository, so it exists only on a machine that has them. Where it
         # does, its files replace the clipart copies of the same name (the home
         # page's lockup, the link cards); the favicon and tab icons are not in
-        # it and stay the clipart, which reads better at small sizes.
+        # it and stay the clipart, which reads better at small sizes. The
+        # header's mark is in it and has no clipart twin, so it arrives by the
+        # second loop or not at all.
         licensed = brand / "licensed"
         over = {f.name: f for f in sorted(licensed.iterdir()) if f.is_file()} \
             if licensed.is_dir() else {}
@@ -2525,21 +2600,49 @@ def main():
                 continue
             dst = out / f.name
             b = over.pop(f.name, f).read_bytes()
+            placed.add(f.name)
             if not dst.exists() or dst.read_bytes() != b:
                 dst.write_bytes(b)
                 moved += 1
         for name, f in over.items():
             dst = out / name
             b = f.read_bytes()
+            placed.add(name)
             if not dst.exists() or dst.read_bytes() != b:
                 dst.write_bytes(b)
                 moved += 1
-        print(f"  brand: {len(list(brand.iterdir()))} files in assets/"
-              + (f", the artist's logo over {len([p for p in licensed.iterdir() if p.is_file()])} of them"
-                 if licensed.is_dir() else ", clipart only (no assets/licensed/ on this machine)")
-              + f"; {moved} copied into the site folder")
+        n_lic = len([p for p in licensed.iterdir() if p.is_file()]) if licensed.is_dir() else 0
+    # WHAT THIS BUILD HAS, read off what it just placed and not off site/,
+    # which is never emptied and may hold a logo from an earlier build.
+    missing = [f for f in BRAND_FILES if f not in placed]
+    has_lockup = "lockup.png" in placed
+    has_mark = HEADER_MARK in placed
+    if missing:
+        # ONE MESSAGE, AND THE BUILD CARRIES ON. A clone has no logo because
+        # the logo is not in the repository, and that is not a failure of the
+        # build: it is the state every fork starts in. check_site.py is what
+        # refuses to publish a site without them.
+        without = ["pages link icons that are not there"]
+        if not has_lockup:
+            without.append("the home page's heading is set as text")
+        if not has_mark:
+            without.append("the header is the wordmark alone")
+        print(f"  brand: the logo and icons are not here -- {len(missing)} of "
+              f"{len(BRAND_FILES)} files are missing ({', '.join(missing)}). "
+              "They are not part of the open-source release; DATA.md says why. "
+              "To add your own, put a mark in brand/ and run python3 "
+              "build_brand.py, or put files of those names in assets/. The site "
+              "is built without them: " + ", ".join(without) + ".")
     else:
-        print("  brand: no assets/ -- run python3 build_brand.py")
+        print(f"  brand: {len(placed)} files from assets/"
+              + (f", {n_lic} of them the artist's (assets/licensed/)" if n_lic
+                 else ", none of them the artist's (no assets/licensed/ on this machine)")
+              + f"; {moved} copied into the site folder"
+              + ("" if has_mark else
+                 f". No {HEADER_MARK} among them (build_brand.py draws it into "
+                 "assets/licensed/ from the artist's drawing), so the header is "
+                 "the wordmark alone"))
+    (out / "style.css").write_text(stylesheet(has_mark), encoding="utf-8")
 
     # bills.html and the files it loads are written by hand rather than
     # generated, and nothing in the pipeline copied them into the output
@@ -2552,13 +2655,17 @@ def main():
     #
     # Copied as they are. Nothing is rewritten on the way through any more:
     # the version query these three used to gain is a header now, written
-    # below.
+    # below. ONE EXCEPTION, and it only ever takes something out: where the
+    # build has no header mark, app.css goes into the site without the block
+    # that draws it (without_mark), for the same reason style.css does.
     for name in ("bills.html", "app.css", "app.js", "find.js"):
         src = Path(name)
         if not src.exists():
             continue
         dst = out / name
         body = src.read_bytes()
+        if name == "app.css" and not has_mark:
+            body = without_mark(body)
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)
             print(f"copied {name} into the site folder")
@@ -3000,9 +3107,15 @@ it, or a name, county, party or committee to find a member.</p>
     # the order a screen reader hears and the order the Tab key takes; the
     # grid in style.css puts .hleft to the left of it. See the comment on
     # .hcols for why that way round.
+    # THE HEADING IS THE LOCKUP WHERE THERE IS ONE. h1.lockup is a mask over
+    # the text colour, and a mask whose file is missing is drawn as nothing:
+    # an empty band above the search box, with the site's name hidden inside
+    # it. A build that placed no lockup.png writes the name as text instead.
+    home_h1 = ('<h1 class="lockup"><span>Granite Record</span></h1>' if has_lockup
+               else '<h1 class="wordmark">Granite Record</h1>')
     home_body = f"""<div class="hcols">
 <div class="hmid">
-<h1 class="lockup"><span>Granite Record</span></h1>
+{home_h1}
 <p class="slogan">Public Records, Made Findable.</p>
 <p class="lead">Keep up with New Hampshire legislation, find bills on the issues you
 care about, learn how the legislature works, and explore the record from 1989 to

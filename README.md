@@ -93,7 +93,7 @@ What does not change is tracked. `rollcalls/` carries the roll-call history of
 the reason a clone is about 125 MB rather than a few. The two small code tables
 are there too. `.gitignore` says which files and why.
 
-Three things are absent on purpose and are not missing:
+Four things are absent on purpose and are not missing:
 
 - `secrets.json` — a YouTube API key, wanted by one step of the pipeline, which
   skips and says so without it. Nothing else in the repository needs a
@@ -101,6 +101,11 @@ Three things are absent on purpose and are not missing:
 - `work/` — the recordings' caption files, about 20 GB, and the audio of a few
   dozen transcribed here, about 15 GB; all of it re-fetchable.
 - `site/` — the built output.
+- the logo and the icons — used under licence and not part of the open-source
+  release, so `brand/` is empty and `assets/` holds one text file. The build
+  runs without them and says so once: the header is the site's name alone, the
+  home page's heading is text, and `check_site.py` reports the missing icons.
+  [`DATA.md`](DATA.md) says how a fork brings its own.
 
 So `build_all.py --local` on a fresh clone has almost nothing to build from,
 and it will **skip rather than fail**. If you only want the data, take it from
@@ -318,10 +323,12 @@ particular bills. It does not cover the underlying record, because it cannot —
 the bills, votes, calendars and recordings are the State of New Hampshire's,
 and facts are not copyrightable. [`DATA.md`](DATA.md) separates the three.
 
-The logo is the exception to all of it. The mark in `brand/` and the images
-drawn from it in `assets/` are used under a licence from their owner and are
-not offered under MIT. A fork should bring its own; `DATA.md` says exactly
-which files that means.
+The logo and the icons are the exception to all of it, and they are not in the
+repository: the logo is an artist's drawing and the icons are bought clipart,
+used under licences that are not the project's to pass on. A fork should bring
+its own; `DATA.md` says which files that means and what the build does without
+them. Commits before 30 September 2026 still carry the clipart, which was
+never offered under MIT.
 
 ---
 

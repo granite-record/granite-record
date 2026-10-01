@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.286
+# GRANITE_VERSION: 2026-09-04.287
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8574,7 +8574,66 @@ CHAIN_NEEDS = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
                "app.css", "app.js", "bills.html"]
 
 
-def _built_site(here, root):
+def _stand_in_png():
+    """A real 1x1 PNG, grey with alpha: what a mask file is, as small as one
+    can be."""
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 4, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"\x00\x00\xff"))
+            + chunk(b"IEND", b""))
+
+
+# What the fixture's licensed lockup holds, so a check can tell which of the
+# two lockups the build put in the site.
+LICENSED_STAND_IN = b"licensed"
+
+
+def _fixture_brand(here, root, brand=True):
+    """The fixture's assets/: the tracked manifest, and stand-ins for the logo.
+
+    THE REAL FILES ARE NOT COPIED ANY MORE (1 October 2026). This used to be
+    shutil.copytree(here / "assets"), which made the fixture three different
+    sites: the laptop's carried the artist's logo over the clipart, GitHub's
+    machine carried whatever the kit had brought, and a clone -- since the
+    logo and icons left the repository on 30 September -- carried none, and
+    failed _chain ("style.css asks for /lockup.png") and _links_resolve ("312
+    links to 4 paths") on a tree with nothing wrong with it.
+
+    So the fixture writes its own: a small stand-in under every name in
+    build_pages.BRAND_FILES, laid out as the real ones are -- the clipart in
+    assets/, and in assets/licensed/ a lockup that must win over the clipart
+    one and the header's mark, which has no clipart twin. No builder opens an
+    image, so what is in them does not matter; that they are placed does.
+    brand=False is a clone: the manifest, which is tracked, and nothing else.
+    """
+    sys.path.insert(0, str(here))
+    import build_pages as BP
+    assets = root / "assets"
+    assets.mkdir(exist_ok=True)
+    manifest = here / "assets" / "site.webmanifest"
+    if manifest.exists():
+        shutil.copy2(manifest, assets / manifest.name)
+    if not brand:
+        return
+    png = _stand_in_png()
+    for name in BP.BRAND_FILES:
+        if name == manifest.name:
+            continue
+        (assets / name).write_bytes(
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>'
+            if name.endswith(".svg") else png)
+    (assets / "licensed").mkdir(exist_ok=True)
+    (assets / "licensed" / "lockup.png").write_bytes(png + LICENSED_STAND_IN)
+    (assets / "licensed" / BP.HEADER_MARK).write_bytes(png)
+
+
+def _built_site(here, root, brand=True):
     """The fixture project, then build_all's builders over it, in build_all's
     order. Returns (the base address they were built with, how many ran).
 
@@ -8582,6 +8641,8 @@ def _built_site(here, root):
     because importing a module never enters its main(), and _links_resolve,
     because a link is only a link once a builder has written it. They share
     this so that a builder added to the pipeline is added in one place.
+
+    brand=False builds it as a fresh clone would: with no logo or icon file.
     """
     _site_fixture(root)
     (root / "site").mkdir(exist_ok=True)
@@ -8603,8 +8664,7 @@ def _built_site(here, root):
                  "alignment_score.json"):
         if (here / name).exists():
             shutil.copy2(here / name, root / name)
-    if (here / "assets").is_dir():
-        shutil.copytree(here / "assets", root / "assets")
+    _fixture_brand(here, root, brand)
     # The fixture's House committee, as data/committees.json names one, so
     # build_committees has a page to write; and the fixture's two towns, as
     # parse_districts writes them, so build_town_pages does.
@@ -8983,6 +9043,18 @@ def _links_resolve():
     of 2024 among them -- and this fixture holds four invented ones. A link to
     a bill the fixture does not carry is counted and skipped, and the count is
     in the result line so that it going up is visible.
+
+    AND IT IS BUILT AS A CLONE BUILDS IT: WITH NO LOGO (1 October 2026). The
+    logo and the icons are not in the repository, so this is the site every
+    fork builds first, and the fixture is the only place that path runs. What
+    must be true of it: the build finishes and says so in one plain message;
+    the only addresses with nothing behind them are the icons every head
+    links; the home page's heading is the site's name as text and not an
+    empty masked band; neither stylesheet draws a header mark that is not
+    there; and check_site refuses the site with one error that says why. Then
+    the stand-ins go in and build_pages runs again, which is the other half:
+    the heading is the lockup, the artist's file wins over the clipart of the
+    same name, and both stylesheets draw the mark.
     """
     from urllib.parse import urldefrag, urljoin
     here = Path(".").resolve()
@@ -8991,7 +9063,8 @@ def _links_resolve():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
-        _built_site(here, root)
+        base, _steps = _built_site(here, root, brand=False)
+        import build_pages as BP
         site = root / "site"
         rules = _redirect_rules(site)
         have_bill = {p.relative_to(site / "bill").with_suffix("").as_posix()
@@ -9024,14 +9097,99 @@ def _links_resolve():
                 if not _served(site, path, rules):
                     broken[f"{path} (as written {raw!r})"] += 1
                     where.setdefault(path, rel)
+        # The icons a clone does not have, set apart: they are the one kind of
+        # dead link this fixture is built to have. Anything else is a defect.
+        brand_at = {"/" + f for f in BP.BRAND_FILES}
+        no_logo = Counter({k: v for k, v in broken.items()
+                           if k.split(" (")[0] in brand_at})
+        for k in no_logo:
+            del broken[k]
         assert not broken, (
             f"{sum(broken.values())} links to {len(broken)} paths with nothing "
             "behind them: " + "; ".join(
                 f"{k} on {where[k.split(' (')[0]]}" for k, _ in broken.most_common(6)))
+        icons = sorted({k.split(" (")[0] for k in no_logo})
+        assert icons, ("the fixture was built with no logo, and every icon link "
+                       "still resolved: something put logo files in it")
+
+        # ---- the site a clone builds ------------------------------------
+        home = (site / "index.html").read_text(encoding="utf-8", errors="replace")
+        assert ('<h1 class="wordmark">Granite Record</h1>' in home
+                and 'class="lockup"' not in home), (
+            "built with no lockup.png, the home page's heading is not the "
+            "site's name as text: a mask whose file is missing is drawn as "
+            "nothing, so the heading would be an empty band")
+        cut = BP.without_mark((here / "app.css").read_bytes())
+        assert (site / "app.css").read_bytes() == cut, (
+            "built with no header mark, site/app.css is not app.css less its "
+            "MARK region")
+        for css in ("style.css", "app.css"):
+            text = (site / css).read_text(encoding="utf-8")
+            assert BP.HEADER_MARK not in text and "/* MARK:START" not in text, (
+                f"built with no header mark, {css} still carries the rule that "
+                "draws it: an empty 33x56 box before the site's name, on every "
+                "page")
+
+        def pages_again():
+            r = _run([sys.executable, str(here / "build_pages.py"), "--out", "site"],
+                     cwd=root, capture_output=True, text=True, timeout=180)
+            assert r.returncode == 0, (
+                "build_pages.py: " + ((r.stderr or r.stdout).strip().splitlines()
+                                      or ["?"])[-1][:160])
+            return [l.strip() for l in r.stdout.splitlines()
+                    if l.strip().startswith("brand:")]
+        said = pages_again()
+        assert len(said) == 1, (
+            f"with no logo the build said {len(said)} things about it, not one")
+        for want in ("not part of the open-source release", "DATA.md",
+                     "build_brand.py", "assets/", "heading is set as text",
+                     "header is the wordmark alone"):
+            assert want in said[0], (
+                f"the build's one message about a missing logo does not say "
+                f"{want!r}: {said[0][:200]}")
+        r = _run([sys.executable, str(here / "check_site.py"),
+                  "--site", "site", "--base", base],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
+        assert r.returncode != 0 and len(bad) == 1 and bad[0].startswith(
+            "x the logo and icons are not in the site"), (
+            "check_site on a site with no logo should refuse it with one "
+            "plain error; it said: " + ("; ".join(bad)[:200] or "nothing"))
+        assert "DATA.md" in bad[0] and "broken link" not in r.stdout, (
+            "check_site's error about the logo does not say why, or it still "
+            "lists the icons as broken links")
+
+        # ---- and the same site once the files are there ---------------------
+        _fixture_brand(here, root, brand=True)
+        said = pages_again()
+        assert len(said) == 1 and "not here" not in said[0], (
+            "with every logo file placed the build still says: " + "; ".join(said)[:200])
+        home = (site / "index.html").read_text(encoding="utf-8", errors="replace")
+        assert '<h1 class="lockup"><span>Granite Record</span></h1>' in home, (
+            "with lockup.png placed, the home page's heading is not the lockup")
+        assert (site / "lockup.png").read_bytes().endswith(LICENSED_STAND_IN), (
+            "assets/licensed/lockup.png did not replace the clipart of the "
+            "same name in the site")
+        assert (site / BP.HEADER_MARK).is_file(), (
+            f"assets/licensed/{BP.HEADER_MARK} was not put in the site")
+        assert (site / "app.css").read_bytes() == (here / "app.css").read_bytes(), (
+            "with the header mark placed, site/app.css is not app.css as it is")
+        for css in ("style.css", "app.css"):
+            assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (
+                f"with the header mark placed, {css} does not draw it")
+        r = _run([sys.executable, str(here / "check_site.py"),
+                  "--site", "site", "--base", base],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
+        assert not bad, "check_site, once the logo is there: " + "; ".join(bad)[:160]
         return "ok", (f"{n} internal links on {len(pages)} fixture pages, each "
                       f"resolved through <base href> and served by a file or a "
                       f"_redirects rule; {offsite_bill} more name a bill this "
-                      "fixture does not carry")
+                      "fixture does not carry. Built as a clone, with no logo: "
+                      f"the only dead addresses are {len(icons)} icons "
+                      f"({sum(no_logo.values())} links), the heading is text, "
+                      "the header has no mark and check_site says why once; "
+                      "with the files placed, the lockup and the mark are drawn")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -13727,7 +13885,7 @@ def _feed_promises():
     return "ok", "home and Learn say only bills still moving have feeds"
 
 
-@check("frontend", "the logo's artist is credited where her licence says, and her files stay out of git")
+@check("frontend", "the logo's artist is credited where her licence says, and no logo or icon file is in git")
 def _logo_licence():
     """The licence for Debra Caplan's logo (24 September 2026) asks for her name
     and a link to linescapesnh.com in the site footer and on the About page,
@@ -13737,7 +13895,16 @@ def _logo_licence():
     build_pages.shell() for the rest -- so a credit dropped from one copy would
     leave thousands of pages without it and every check of the other passing.
     And brand/licensed/ and assets/licensed/ are gitignored, which stops a
-    `git add .` but not a `git add -f`, so this asks git what it tracks."""
+    `git add .` but not a `git add -f`, so this asks git what it tracks.
+
+    THE CLIPART TOO, since 30 September 2026. The bought Old Man of the
+    Mountain and every icon drawn from it are used on the terms they were
+    bought on, which are no more the project's to pass on than the artist's,
+    and the person decided they leave the repository as well: the originals in
+    brand/, their arrival copies at the root, and the images in assets/. So
+    the question to git is now the whole of brand/ and assets/ and those three
+    names, and the one answer allowed is assets/site.webmanifest, which is
+    text and MIT like the code."""
     import subprocess
     for f in ("bills.html", "build_pages.py"):
         src = Path(f).read_text(encoding="utf-8")
@@ -13750,20 +13917,235 @@ def _logo_licence():
     assert "<h2>The logo</h2>" in about and "Debra Caplan" in about \
         and "https://www.linescapesnh.com/" in about, \
         "the About page lost the logo section, its credit or its link"
-    ignored = Path(".gitignore").read_text(encoding="utf-8")
-    for d in ("brand/licensed/", "assets/licensed/"):
+    ignored = Path(".gitignore").read_text(encoding="utf-8").splitlines()
+    for d in ("brand/licensed/", "assets/licensed/", "/Icon.png", "/Logo Black.png",
+              "/Logo White.png", "/brand/*", "/assets/*.png", "/assets/*.svg",
+              "/assets/*.ico"):
         assert d in ignored, f".gitignore no longer keeps {d} out of the repository"
     try:
-        r = subprocess.run(["git", "ls-files", "brand/licensed", "assets/licensed"],
+        r = subprocess.run(["git", "ls-files", "-z", "--", "brand", "assets", "Icon.png",
+                            "Logo Black.png", "Logo White.png"],
                            capture_output=True, text=True, encoding="utf-8", timeout=30)
     except (OSError, subprocess.SubprocessError):
         return "skip", "git is not here to ask what it tracks"
     if r.returncode != 0:
         return "skip", "not a git checkout"
-    tracked = r.stdout.split()
-    assert not tracked, ("the artist's licensed files are tracked by git and would be "
-                         "published with the code: " + ", ".join(tracked[:5]))
-    return "ok", "credit in both footers and on About; brand/licensed and assets/licensed untracked"
+    tracked = [f for f in r.stdout.split("\0") if f and f != "assets/site.webmanifest"]
+    assert not tracked, ("logo or icon files are tracked by git and would be published "
+                         "with the code, which they are not licensed for: "
+                         + ", ".join(tracked[:5]))
+    return "ok", ("credit in both footers and on About; nothing of brand/ or assets/ "
+                  "is tracked but the manifest, and .gitignore keeps it so")
+
+
+@check("frontend", "the logo and icon files are one list: what the pages name, the build places and the kit carries")
+def _brand_files():
+    """A new icon reference should fail here, on the laptop, and not as a 404
+    after a night.
+
+    None of the logo and icon files is in the repository (30 September 2026),
+    so nothing about a checkout says which ones a complete site needs. That is
+    build_pages.BRAND_FILES, and it is only worth having if it is true -- so
+    it is held to the four places a page can ask for one of them:
+
+      - the icon and manifest <link>s in the two head-writers, bills.html and
+        build_pages.shell(), which must agree with each other
+      - the link card every builder names (og.png and og-<kind>.png)
+      - the stylesheet's url(/...)
+      - the icons site.webmanifest lists
+
+    They must name exactly BRAND_FILES and the header's mark, no more and no
+    fewer: a file on the list that nothing asks for is carried to GitHub's
+    machine every night for nothing, and one asked for and not listed is a
+    file the kit does not bring.
+
+    And the kit: one laptop-owned entry in cloud_kit.json names the clipart by
+    literal path -- exactly BRAND_FILES less the manifest, which git holds --
+    because a literal path that is missing stops seed-kit and kit-down, where
+    a glob is satisfied by any one file. The header's mark is the artist's and
+    travels with assets/licensed/*.
+    """
+    import build_pages as BP
+    want = set(BP.BRAND_FILES)
+    assert len(want) == len(BP.BRAND_FILES), "build_pages.BRAND_FILES names a file twice"
+    assert BP.HEADER_MARK not in want, (
+        "the header's mark is on BRAND_FILES: a site is complete without it, "
+        "and check_site would refuse every fork's")
+    named = {}
+
+    def code(path):
+        # A script's own words about a file are not a page asking for it.
+        text = Path(path).read_text(encoding="utf-8")
+        if path.endswith(".py"):
+            text = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+            text = re.sub(r"BRAND_FILES = \(.*?\)\n", "", text, flags=re.S)
+        return text
+
+    head = re.compile(r'<link rel="(?:icon|apple-touch-icon|manifest)" href="/([^"]+)"')
+    heads = {f: set(head.findall(code(f))) for f in ("bills.html", "build_pages.py")}
+    for f, got in heads.items():
+        assert got, f"{f} links no icon in its head; has the markup changed?"
+        for g in got:
+            named.setdefault(g, f)
+    assert heads["bills.html"] == heads["build_pages.py"], (
+        "the two head-writers link different icons: bills.html "
+        f"{sorted(heads['bills.html'])}, build_pages.py {sorted(heads['build_pages.py'])}")
+    card = re.compile(r"\bog(?:-[a-z]+)?\.png")
+    for f in sorted(str(x) for x in Path(".").glob("build_*.py")) + ["shell.py", "bills.html"]:
+        if f == "build_brand.py" or not Path(f).exists():
+            continue        # it draws them; it does not ask for them
+        for g in set(card.findall(code(f))):
+            named.setdefault(g, f)
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    for g in set(re.findall(r"url\(/([^)\s\"']+)\)", css)):
+        named.setdefault(g, "app.css")
+    manifest = Path("assets/site.webmanifest")
+    assert manifest.exists(), "assets/site.webmanifest is not here, and it is tracked"
+    for icon in json.loads(manifest.read_text(encoding="utf-8"))["icons"]:
+        named.setdefault(icon["src"].lstrip("/"), "site.webmanifest")
+
+    unlisted = sorted(set(named) - want - {BP.HEADER_MARK})
+    assert not unlisted, (
+        "asked for by a page, the stylesheet or the manifest and not on "
+        "build_pages.BRAND_FILES, so neither the kit nor a check brings it: "
+        + ", ".join(f"{g} ({named[g]})" for g in unlisted))
+    unasked = sorted(want - set(named))
+    assert not unasked, (
+        "on build_pages.BRAND_FILES and asked for by nothing: " + ", ".join(unasked))
+    assert named.get(BP.HEADER_MARK) == "app.css", (
+        f"app.css no longer draws the header's mark from /{BP.HEADER_MARK}")
+
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))["kit"]
+    clip = {f"assets/{f}" for f in want if f != manifest.name}
+    mine = [e for e in kit if any(x.startswith("assets/") and not x.startswith("assets/licensed/")
+                                  for x in e.get("paths", []) + e.get("globs", []))]
+    assert len(mine) == 1, (
+        f"{len(mine)} kit entries carry files of assets/ itself; the clipart is one entry")
+    e = mine[0]
+    assert e["owner"] == "laptop" and not e.get("optional") and not e.get("globs"), (
+        "the kit's clipart entry must be the laptop's, required, and literal "
+        "paths only: a glob is satisfied by one file and an optional entry by none")
+    assert len(e["paths"]) == len(set(e["paths"])) and set(e["paths"]) == clip, (
+        "the kit's clipart entry and build_pages.BRAND_FILES disagree: the kit "
+        f"lacks {sorted(clip - set(e['paths']))} and has {sorted(set(e['paths']) - clip)} "
+        "too many")
+    licensed = [x for x in kit if "assets/licensed/*" in x.get("globs", [])]
+    assert len(licensed) == 1 and licensed[0]["owner"] == "laptop" \
+        and not licensed[0].get("optional"), (
+        "the kit no longer carries assets/licensed/* as the laptop's, required "
+        "-- which is how the header's mark and the artist's lockup reach the night")
+    return "ok", (f"{len(want)} files named by {len(set(named.values()))} sources and "
+                  f"nothing else, plus the header's {BP.HEADER_MARK}; the kit's "
+                  f"clipart entry names the {len(clip)} git does not hold")
+
+
+@check("frontend", "the header draws the artist's mark where the build has it, and the wordmark alone where it does not")
+def _header_mark():
+    """The header's mark is a file a fork does not have.
+
+    Since 1 October 2026 the mark beside the site's name is Debra Caplan's
+    drawing, in a 33x56 box. It is licensed, never in the repository, and a
+    CSS mask whose file is missing is drawn as nothing -- but its box stays:
+    an empty gap before the name and a bar 14px taller, on every page of
+    every fork. So the rule that draws it lives in its own region of app.css,
+    MARK:START to MARK:END, and build_pages.py keeps that region only where
+    the build placed the file. What has to hold for that to work:
+
+      - the region exists once, outside the palette, the shared region and
+        the page region, so cutting it changes nothing else -- the shared
+        region stays byte for byte what _shared_region demands
+      - the rule is in it, names build_pages.HEADER_MARK, and nothing outside
+        it names the file or draws .brand::before
+      - the box it draws is the box build_brand.py cuts the mask for, and the
+        mask is at least twice that, so it is sharp on a 2x screen
+      - stylesheet(True) carries the region and stylesheet(False) is the same
+        text without it, with no slot left unfilled; without_mark() takes the
+        region out of app.css's bytes and nothing else
+
+    And the guard for the project's own builds, which a fixture cannot give:
+    where assets/licensed/ is here, the mark is in it. A kit sent before
+    build_brand.py drew it would build a header with no mark and pass every
+    other check, because that is exactly what a fork's correct build looks
+    like. _links_resolve runs both builds end to end on the fixture.
+    """
+    import struct
+    import build_pages as BP
+    import build_brand as BB
+    css = Path("app.css").read_text(encoding="utf-8")
+    for m in ("/* MARK:START", "/* MARK:END"):
+        assert css.count(m) == 1, f"app.css has {css.count(m)} of {m!r}, not one"
+    a, b = css.index("/* MARK:START"), css.index("/* MARK:END")
+    end = css.index("*/", b) + 2
+    assert a < b, "app.css's MARK:END is above its MARK:START"
+    for lo, hi, what in (("/* SHARED:START", "/* SHARED:END", "shared"),
+                         ("/* PAGES:START", "/* PAGES:END", "page")):
+        assert not css.index(lo) < a < css.index(hi), (
+            f"the MARK region is inside the {what} region, which every build "
+            "must carry whole")
+    assert a > css.index("/* PALETTE END"), "the MARK region is inside the palette"
+    region = css[a:end]
+    assert BP.mark_region() == region, "build_pages.mark_region() does not return the region"
+    rule = re.sub(r"/\*.*?\*/", "", region, flags=re.S)
+    assert "nav.top .brand::before{" in rule and f"url(/{BP.HEADER_MARK})" in rule, (
+        f"the MARK region does not draw nav.top .brand::before from /{BP.HEADER_MARK}")
+    outside = css[:a] + css[end:]
+    assert BP.HEADER_MARK not in outside, (
+        f"app.css names {BP.HEADER_MARK} outside the MARK region, so a build "
+        "without the file still asks for it")
+    assert ".brand::before" not in re.sub(r"/\*.*?\*/", "", outside, flags=re.S), (
+        "a rule outside the MARK region draws .brand::before: a build without "
+        "the mark would keep an empty box before the site's name")
+    box = re.search(r"width:(\d+)px;height:(\d+)px", rule)
+    assert box and (int(box.group(1)), int(box.group(2))) == tuple(BB.MARK_BOX), (
+        f"app.css draws the mark in {box.groups() if box else 'no'} box and "
+        f"build_brand.py cuts the mask for {BB.MARK_BOX}")
+    assert BB.HEADER_MARK == BP.HEADER_MARK and BB.MARK_SCALE >= 2, (
+        "build_brand.py writes the mark under another name than build_pages.py "
+        "places, or at less than twice its box")
+
+    drawn, plain = BP.stylesheet(True), BP.stylesheet(False)
+    assert region in drawn and drawn.replace(region, "") == plain, (
+        "stylesheet(True) is not stylesheet(False) plus the MARK region")
+    assert BP.HEADER_MARK not in plain, "stylesheet(False) still names the mark"
+    left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", drawn + plain)))
+    assert not left, "the stylesheet has unfilled slots: " + ", ".join(left)
+    raw = Path("app.css").read_bytes()
+    cut = BP.without_mark(raw)
+    i = raw.find(b"/* MARK:START")
+    assert cut != raw and cut[:i] == raw[:i] and raw.endswith(cut[i:]), (
+        "without_mark() did not take one block out of app.css and leave the rest")
+    assert b"/* MARK:" not in cut and BP.HEADER_MARK.encode() not in cut, (
+        "without_mark() left part of the MARK region behind")
+    assert BP.without_mark(cut) == cut, "without_mark() changes a file that has no region"
+
+    said = f"one region of {len(region):,} bytes, cut cleanly; box {BB.MARK_BOX[0]}x{BB.MARK_BOX[1]}"
+    licensed = Path("assets/licensed")
+    if licensed.is_dir() and any(licensed.iterdir()):
+        f = licensed / BP.HEADER_MARK
+        assert f.is_file(), (
+            f"assets/licensed/ is here without {BP.HEADER_MARK}, so this machine "
+            "would build the header with no mark and nothing else would say so. "
+            "On the laptop: python3 build_brand.py draws it from "
+            "brand/licensed/drawing.png, and cloud.py seed-kit sends it. On "
+            "GitHub's machine: the kit was sent before it was drawn")
+        data = f.read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", f"{f.as_posix()} is not a PNG"
+        w, h = struct.unpack(">II", data[16:24])
+        scale = max(w / BB.MARK_BOX[0], h / BB.MARK_BOX[1])
+        assert scale >= 1.98, (
+            f"{f.as_posix()} is {w}x{h}, {scale:.2f} times its {BB.MARK_BOX[0]}x"
+            f"{BB.MARK_BOX[1]} box: soft on a 2x screen. Run python3 build_brand.py")
+        said += f"; assets/licensed/{BP.HEADER_MARK} is {w}x{h}, {scale:.1f}x the box"
+    else:
+        said += "; no assets/licensed/ here, so this machine builds the wordmark alone"
+    site = Path("site")
+    if (site / "style.css").exists() and (site / "app.css").exists():
+        for name in ("style.css", "app.css"):
+            draws = f"url(/{BP.HEADER_MARK})" in (site / name).read_text(encoding="utf-8")
+            assert not draws or (site / BP.HEADER_MARK).is_file(), (
+                f"site/{name} draws the header's mark and site/{BP.HEADER_MARK} "
+                "is not there: an empty box before the site's name")
+    return "ok", said
 
 
 @check("frontend", "there is one stylesheet, and style.css is a view of it")
@@ -14694,17 +15076,21 @@ def _cloud_kit(CL, BA):
 
       - every output a build reads before rewriting it (build_all.CARRIED),
         and every input a --local step declares from outside the repository
-        (ic_SOURCES), is in the kit; so are the caption summary and the logo
-        the build lays over the clipart
+        (ic_SOURCES), is in the kit; so are the caption summary, the logo
+        the build lays over the clipart, and since 30 September the clipart
+        itself, file by file (build_pages.BRAND_FILES), because it is no
+        longer in the repository
       - nothing in the kit or the state is tracked by git, and every literal
         path in either is gitignored, so kit-down never writes over the
         checkout and no generated file is one `git add` from being published
       - neither holds a credential, reports/, CLERK_CORRECTIONS.md, captions,
-        audio, brand/licensed/ or the built site -- bar the one file of it a
-        build reads before it rewrites it, which it does carry
+        audio, anything of brand/ (no build reads the originals, the artist's
+        or the clipart's) or the built site -- bar the one file of it a build
+        reads before it rewrites it, which it does carry
       - small state lives under archive/ on a machine, state/ in the bucket
       - "never" names the credentials and the reader reports; the backup
-        leaves out logs/ and never the Clerks' list, brand/licensed/ or the
+        leaves out logs/ and never the Clerks' list, brand/ and assets/ (the
+        only other copy of the logo, now that git holds none) or the
         What-changed reports
       - one file, one owner
     """
@@ -14738,8 +15124,11 @@ def _cloud_kit(CL, BA):
     # a build from the kit alone showed it on 25 September -- and nothing else
     # of site/, which is rebuilt every night.
     LAST_SITE = {"site/committees.json"}
+    import build_pages as BP
+    clipart = [f"assets/{f}" for f in BP.BRAND_FILES if f != "site.webmanifest"]
     for must in ("caption_spans.json", "candidate_segments.json",
-                 "assets/licensed/lockup.png", *sorted(LAST_SITE)):
+                 "assets/licensed/lockup.png", f"assets/licensed/{BP.HEADER_MARK}",
+                 *clipart, *sorted(LAST_SITE)):
         assert in_kit(must), f"the kit does not carry {must}"
 
     samples = [p for e in entries for p in e.get("paths", [])]
@@ -14747,7 +15136,7 @@ def _cloud_kit(CL, BA):
                 for g in e.get("globs", [])]
     states = [s["path"] for s in kit.get("state", [])]
     forbidden = ["reports/", "CLERK_CORRECTIONS.md", "secrets.json", ".env",
-                 ".dev.vars", "site/", "logs/", "brand/licensed/", ".git/",
+                 ".dev.vars", "site/", "logs/", "brand/", ".git/",
                  ".claude/"]
     allowed = LAST_SITE | {"reports/.cursor-production"}
     for p in samples + states:
@@ -14764,7 +15153,8 @@ def _cloud_kit(CL, BA):
         assert any(rx.match(want) for rx in never), f"'never' does not hold back {want}"
     leave = [CL.glob_re(g) for grp in kit["backup"]["leave_out"] for g in grp["globs"]]
     for keep in ("CLERK_CORRECTIONS.md", "brand/licensed/drawing.png",
-                 "assets/licensed/og.png", "reports/gc-changes-2026-09-25.md",
+                 "assets/licensed/og.png", "brand/icon.png", "assets/favicon.ico",
+                 "reports/gc-changes-2026-09-25.md",
                  "reports/.cursor-production", "work/VID/captions.en.json3",
                  "legislation/2026/HB1.html"):
         assert not any(rx.match(keep) for rx in leave + never), (

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.7
+# GRANITE_VERSION: 2026-09-12.8
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -9,23 +9,29 @@ Turn the drawn logo and icon into the files a site needs, once.
 WHY THIS EXISTS AS A BUILD STEP
 
 `site/` is generated and gitignored, so an icon dropped in there disappears on
-the next build and is never in the repository. The drawn originals live in
-`brand/` and are checked in; this writes the derived files into `assets/`,
-which `build_pages.py` copies into `site/` beside the pages. One source, one
-copy step, and the originals are recoverable.
+the next build. The drawn originals live in `brand/`; this writes the derived
+files into `assets/`, which `build_pages.py` copies into `site/` beside the
+pages. One source, one copy step.
 
-The clipart below is now the SMALL mark. Since 24 September the logo proper is
+NONE OF THE PICTURES IS IN THE REPOSITORY. This script is MIT like the rest of
+the code; what it reads and what it draws are not. The project's originals are
+a bought clipart Old Man of the Mountain and an artist's licensed drawing, and
+on 30 September 2026 the person took the clipart out of git as the drawing
+already was: brand/ and the images in assets/ are gitignored, they live on the
+machine that builds the site, and GitHub's nightly gets assets/ from the
+private kit (cloud_kit.json). DATA.md has the terms. So on a clone brand/ is
+empty and this stops at the first missing original, saying what a fork should
+put there to draw its own (need(), below).
+
+The clipart below is the SMALL mark. Since 24 September the logo proper is
 Debra Caplan's drawing (see write_licensed): her lockups draw the home page's
-heading and the link cards into assets/licensed/, which is gitignored with
-brand/licensed/, and build_pages.py lays them over these. The favicon, the tab
-icons and the header's mark stay this clipart Old Man of the Mountain, which
-reads at 16 to 32 pixels where the detailed drawing does not.
+heading and the link cards, and since 1 October her drawing alone is the
+header's mark, all into assets/licensed/, which build_pages.py lays over
+these. The favicon and the tab icons stay this clipart, which reads at 16 to
+32 pixels where the detailed drawing does not.
 
 WHAT IS DERIVED, AND WHY EACH ONE
 
-  mark.svg          the profile alone, tight to its own bounding box, used as
-                    a CSS mask so the nav's mark takes the colour of the text
-                    beside it and is right in both themes without two files.
   icon.svg          the profile on a dark tile, at any size a tab, a bookmark
                     or a pinned shortcut asks for. The framing is measured off
                     the drawn PNG rather than guessed, so the composition is
@@ -51,17 +57,21 @@ WHAT IS DERIVED, AND WHY EACH ONE
                     page's heading: the black-on-white lockup turned into an
                     alpha mask (ink opaque, paper clear) and cut to the ink's
                     own box. Used as a CSS mask over the text colour, like
-                    mark.svg, so one file is right in both themes -- the two
-                    drawn lockups carry a solid black or white ground, which
-                    would sit on the page as a box in either.
+                    the header's mark, so one file is right in both themes --
+                    the two drawn lockups carry a solid black or white ground,
+                    which would sit on the page as a box in either.
+  licensed/mark.png the header's mark, from the artist's drawing: see
+                    write_licensed. There is no clipart twin since 1 October
+                    (mark.svg is no longer drawn), because a header without
+                    the drawing is the wordmark alone, on purpose.
 
 A NOTE ON THE ORIGINALS' NAMES. They arrived as "Logo Black.png" and "Logo
 White.png", named for their BACKGROUND: the first is the white wordmark on
 black. brand/ holds them as logo-on-black.png and logo-on-white.png, named for
 what they are, because the first draft of this script read the wrong one and
-put a black tile in a white frame on every shared link. The arrival names are
-still in the repository root as byte-identical copies; this script reads
-brand/ only.
+put a black tile in a white frame on every shared link. The arrival names may
+still sit at the root of the person's own folder as byte-identical copies,
+untracked like brand/; this script reads brand/ only.
 """
 import argparse
 import pathlib
@@ -73,14 +83,31 @@ BRAND = ROOT / "brand"
 OUT = ROOT / "assets"
 
 # The profile's own bounding box inside the drawing's 210x297 viewBox, read
-# with getBBox() in a browser rather than estimated from the path data.
+# with getBBox() in a browser rather than estimated from the path data. It is
+# the project's clipart's: a fork with its own old-man.svg measures its own.
 BBOX = (23.805, 15.638, 156.228, 248.628)
+
+# What a fork puts in brand/ to draw its own icons, said once and printed by
+# need() and --check. The project's own are not in the repository.
+ORIGINALS = (
+    ("old-man.svg", "the mark as an SVG with exactly one <path> (and BBOX in "
+                    "this file set to that path's own box)"),
+    ("icon.png", "the mark, light on a flat dark square"),
+    ("logo-on-white.png", "the mark with the site's name, dark ink on white"),
+)
 
 
 def need(p):
     if not p.exists():
-        sys.exit(f"missing {p.relative_to(ROOT)} -- put the drawn originals in "
-                 f"brand/ first (see this file's docstring)")
+        sys.exit(
+            f"missing {p.relative_to(ROOT).as_posix()}.\n"
+            "The project's logo and icons are not in the repository: they are "
+            "used under licence and are not part of the open-source release "
+            "(DATA.md).\nTo draw your own, put these in brand/ and run this "
+            "again:\n"
+            + "".join(f"  brand/{name:<18} {what}\n" for name, what in ORIGINALS)
+            + "or skip this script and put finished files in assets/ under the "
+            "names build_pages.BRAND_FILES lists.")
     return p
 
 
@@ -91,14 +118,6 @@ def path_data():
     if len(paths) != 1:
         sys.exit(f"brand/old-man.svg has {len(paths)} paths; this expects one")
     return paths[0]
-
-
-def write_mark(d):
-    x, y, w, h = BBOX
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {y} {w} {h}">'
-           f'<path d="{d}"/></svg>')
-    (OUT / "mark.svg").write_text(svg, encoding="utf-8")
-    return f"mark.svg  {len(svg):,} bytes, viewBox tight to the shape"
 
 
 def icon_framing():
@@ -210,8 +229,9 @@ OG_SECTIONS = {
     "og-learn.png": "HOW NEW HAMPSHIRE WORKS",
     "og-town.png": "WHO REPRESENTS YOUR TOWN",
 }
-# A bold sans for the label, wherever this runs. The cards are committed to
-# assets/, so this is needed only when they are drawn again.
+# A bold sans for the label, wherever this runs. The cards are kept in
+# assets/ on the machine that has them, so this is needed only when they are
+# drawn again.
 LABEL_FONTS = ("C:/Windows/Fonts/arialbd.ttf",
                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
                "/System/Library/Fonts/Supplemental/Arial Bold.ttf")
@@ -277,12 +297,24 @@ def write_lockup():
 # build_pages.py lays assets/licensed/ over assets/ when it is there.
 #
 # WHAT THE DRAWING IS USED FOR, AND WHAT IT IS NOT. The home page's heading
-# (the stacked lockup, in the narrow middle column) and the link cards (the
-# one-line lockup, which fits a 1200x630 card). The favicon, the tab icons and
-# the header's 24px mark stay the clipart above: the person judged the detailed
-# drawing does not read at small sizes.
+# (the stacked lockup, in the narrow middle column), the link cards (the
+# one-line lockup, which fits a 1200x630 card) and, since 1 October, the
+# header's mark (the drawing alone). The favicon and the tab icons stay the
+# clipart above: the detailed drawing does not read at 16 to 32 pixels.
+#
+# THE HEADER'S MARK. At the old mark's 15x24 the drawing is a grey fleck --
+# its ink covers 27% of its own box where the clipart's covered 83% -- so the
+# person chose, from a rendered comparison, the whole drawing in a 33x56 box
+# beside the live-text wordmark, and accepted a taller bar for it. The file
+# is the ink as an alpha mask at MARK_SCALE times that box: 2x is a laptop,
+# 3x is most phones, and at 99x168 the file is about 9 KB, fetched once for
+# every page. app.css draws it (its MARK region) and build_pages.py keeps
+# that rule only where this file exists; preflight ties the three together.
 LICENSED = BRAND / "licensed"
 LICENSED_OUT = OUT / "licensed"
+HEADER_MARK = "mark.png"      # build_pages.HEADER_MARK
+MARK_BOX = (33, 56)           # CSS pixels: app.css, MARK region
+MARK_SCALE = 3
 
 
 def _licensed(stem):
@@ -308,13 +340,34 @@ def _ink(path):
     return alpha.crop(box)
 
 
+def write_header_mark(drawing):
+    """The drawing as the header's mark: its ink, fitted to MARK_BOX at
+    MARK_SCALE, as an alpha mask the stylesheet colours."""
+    from PIL import Image
+    a = _ink(drawing)
+    w, h = MARK_BOX[0] * MARK_SCALE, MARK_BOX[1] * MARK_SCALE
+    k = min(w / a.width, h / a.height)
+    a = a.resize((max(1, round(a.width * k)), max(1, round(a.height * k))),
+                 Image.LANCZOS)
+    im = Image.new("LA", a.size, 0)
+    im.putalpha(a)
+    im.save(LICENSED_OUT / HEADER_MARK, optimize=True)
+    return (f"{HEADER_MARK} {a.width}x{a.height} (the drawing, {MARK_SCALE}x "
+            f"the header's {MARK_BOX[0]}x{MARK_BOX[1]} box)")
+
+
 def write_licensed():
-    """The home page's lockup and the link cards, from the artist's lockups."""
+    """The home page's lockup, the link cards and the header's mark, from the
+    artist's files."""
     from PIL import Image
     stacked, wide = _licensed("lockup-stacked"), _licensed("lockup-wide")
+    drawing = _licensed("drawing")
     if not (stacked and wide):
         return None
     LICENSED_OUT.mkdir(parents=True, exist_ok=True)
+    mark = (write_header_mark(drawing) if drawing else
+            f"NO {HEADER_MARK} (brand/licensed/ holds no drawing), so the "
+            "header is the wordmark alone")
     a = _ink(stacked)
     im = Image.new("LA", a.size, 0)
     im.putalpha(a)
@@ -332,7 +385,8 @@ def write_licensed():
     card.save(LICENSED_OUT / "og.png", optimize=True)
     _section_cards(ink, LICENSED_OUT)
     return (f"licensed: lockup.png {a.width}x{a.height} (stacked), og.png and "
-            f"{len(OG_SECTIONS)} section cards (one line) -> assets/licensed/")
+            f"{len(OG_SECTIONS)} section cards (one line), {mark} "
+            "-> assets/licensed/")
 
 MANIFEST = """{
   "name": "Granite Record",
@@ -359,22 +413,26 @@ def main():
                     help="say what is missing and write nothing")
     a = ap.parse_args()
     if a.check:
-        for f in ("old-man.svg", "icon.png", "logo-on-white.png",
-                  "logo-on-black.png"):
+        for f, what in ORIGINALS:
             p = BRAND / f
-            print(f"  {'ok ' if p.exists() else 'MISSING'} brand/{f}")
+            print(f"  {'ok ' if p.exists() else 'MISSING'} brand/{f}"
+                  + ("" if p.exists() else f"   <- {what}"))
+        for stem in ("lockup-stacked", "lockup-wide", "drawing"):
+            print(f"  {'ok ' if _licensed(stem) else 'none   '} brand/licensed/{stem}"
+                  "   (the project's licensed logo; a fork has none)")
         return
     OUT.mkdir(exist_ok=True)
     d = path_data()
-    said = [write_mark(d)]
     frame = icon_framing()
-    said.append(write_icon_svg(d, frame))
+    said = [write_icon_svg(d, frame)]
     said.append(write_pngs())
     said.append(write_og())
     said.append(write_og_sections())
     said.append(write_lockup())
-    said.append(write_licensed() or "licensed: none on this machine, so the "
-                "clipart is used everywhere (brand/licensed/ is gitignored)")
+    said.append(write_licensed() or "licensed: brand/licensed/ does not hold "
+                "the artist's two lockups, so nothing was written to "
+                "assets/licensed/: the heading and the cards are the ones above "
+                "and the header is the wordmark alone")
     (OUT / "site.webmanifest").write_text(MANIFEST, encoding="utf-8")
     said.append("site.webmanifest")
     for line in said:

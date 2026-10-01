@@ -114,6 +114,14 @@
       "globs": ["assets/licensed/*"]
     },
     {
+      "what": "The bought clipart the build copies into the site: the favicon, the tab and app icons, and the clipart lockup and link cards, which assets/licensed/ replaces file for file where it holds one of the same name. Private like the licensed logo and for the same reason: not part of the open-source release, so not in the repository since 30 September 2026. Named one by one, so that a kit missing any single icon is refused rather than built. The header's mark is not among them: it is the artist's drawing, mark.png in assets/licensed/, and has no clipart twin. brand/, which build_brand.py draws them from, goes to the backup only.",
+      "owner": "laptop",
+      "paths": ["assets/favicon.ico", "assets/icon.svg", "assets/icon-32.png", "assets/icon-180.png",
+                "assets/icon-512.png", "assets/icon-512-pad.png", "assets/lockup.png", "assets/og.png",
+                "assets/og-bill.png", "assets/og-committee.png", "assets/og-learn.png",
+                "assets/og-legislator.png", "assets/og-town.png"]
+    },
+    {
       "what": "The one file of last night's site a build reads before it rewrites it: build_pages.py counts the committees with a roster for the home page out of site/committees.json, which build_committees.py writes later in the same build. A build from the kit alone on 25 September differed from the laptop's in this and in two sitemap addresses, of 54,975 files; build_bill_pages.py has since listed those addresses whatever is on disk.",
       "owner": "night",
       "optional": true,

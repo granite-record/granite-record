@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.17
+# GRANITE_VERSION: 2026-09-10.18
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -625,8 +625,8 @@ def data_page(site, out, tables, base, cov=()):
       figure here can be traced to the line that produced it.</p>
     <p><a class="out" href="https://github.com/granite-record/granite-record"
       target="_blank" rel="noopener">granite-record on GitHub</a> &mdash; MIT
-      licensed, except the logo, which is used under a licence from its owner
-      and is not part of the open-source release.</p>
+      licensed. The logo and icons are not in it: they are used under licence
+      from their owners.</p>
     <dl class="repo">
       <dt>What a clone gets</dt>
       <dd>{_rf}The roll-call history as the General Court published it, and
