@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.126
+# GRANITE_VERSION: 2026-09-04.127
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2617,22 +2617,27 @@ def main():
     missing = [f for f in BRAND_FILES if f not in placed]
     has_lockup = "lockup.png" in placed
     has_mark = HEADER_MARK in placed
+    no_brand = ""
     if missing:
         # ONE MESSAGE, AND THE BUILD CARRIES ON. A clone has no logo because
         # the logo is not in the repository, and that is not a failure of the
         # build: it is the state every fork starts in. check_site.py is what
         # refuses to publish a site without them.
+        # SAID LAST, at the end of main(), not here. build_all.py shows a
+        # step's last three lines, and this is the one thing about the step a
+        # person on a clone needs to read; printed here it scrolled out of
+        # that window and the build looked as if it had nothing to say.
         without = ["pages link icons that are not there"]
         if not has_lockup:
             without.append("the home page's heading is set as text")
         if not has_mark:
             without.append("the header is the wordmark alone")
-        print(f"  brand: the logo and icons are not here -- {len(missing)} of "
-              f"{len(BRAND_FILES)} files are missing ({', '.join(missing)}). "
-              "They are not part of the open-source release; DATA.md says why. "
-              "To add your own, put a mark in brand/ and run python3 "
-              "build_brand.py, or put files of those names in assets/. The site "
-              "is built without them: " + ", ".join(without) + ".")
+        no_brand = (f"  brand: the logo and icons are not here -- {len(missing)} of "
+                    f"{len(BRAND_FILES)} files are missing ({', '.join(missing)}). "
+                    "They are not part of the open-source release; DATA.md says why. "
+                    "To add your own, put a mark in brand/ and run python3 "
+                    "build_brand.py, or put files of those names in assets/. The site "
+                    "is built without them: " + ", ".join(without) + ".")
     else:
         print(f"  brand: {len(placed)} files from assets/"
               + (f", {n_lic} of them the artist's (assets/licensed/)" if n_lic
@@ -3257,6 +3262,8 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
           f"about.html, search.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
+    if no_brand:
+        print(no_brand)
 
 
 if __name__ == "__main__":

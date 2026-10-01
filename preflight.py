@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.288
+# GRANITE_VERSION: 2026-09-04.289
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9136,11 +9136,17 @@ def _links_resolve():
             assert r.returncode == 0, (
                 "build_pages.py: " + ((r.stderr or r.stdout).strip().splitlines()
                                       or ["?"])[-1][:160])
-            return [l.strip() for l in r.stdout.splitlines()
-                    if l.strip().startswith("brand:")]
-        said = pages_again()
+            lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+            return [l for l in lines if l.startswith("brand:")], lines[-3:]
+        said, shown = pages_again()
         assert len(said) == 1, (
             f"with no logo the build said {len(said)} things about it, not one")
+        # build_all.py prints a step's last three lines and no others, so a
+        # message said any earlier is one a person running the pipeline never
+        # sees -- which is where this one was first put.
+        assert said[0] in shown, (
+            "the build's message about a missing logo is not among its last "
+            "three lines, which are all build_all.py shows of a step")
         for want in ("not part of the open-source release", "DATA.md",
                      "build_brand.py", "assets/", "heading is set as text",
                      "header is the wordmark alone"):
@@ -9161,7 +9167,7 @@ def _links_resolve():
 
         # ---- and the same site once the files are there ---------------------
         _fixture_brand(here, root, brand=True)
-        said = pages_again()
+        said, _shown = pages_again()
         assert len(said) == 1 and "not here" not in said[0], (
             "with every logo file placed the build still says: " + "; ".join(said)[:200])
         home = (site / "index.html").read_text(encoding="utf-8", errors="replace")
