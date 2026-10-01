@@ -24,13 +24,17 @@
 # which keeps the laptop's fetches clear of the night, moves with the cron line.
 #
 # By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
-# its three boxes say; a scheduled night fetches, deploys a preview, and asks
-# for approval to publish.
+# its four boxes say; a scheduled night fetches, deploys a preview, and asks
+# for approval to publish. The fourth box, New term, is for the one night a
+# term turns over, and the note above it says what it lets through, and that
+# nothing it lets through is kept until its build is published.
 
 name: nightly
 run-name: >-
   nightly ${{ github.event_name == 'schedule' && '(scheduled)'
-  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)') }}
+  || (inputs.new_term && ((inputs.dry_run || !inputs.fetch)
+  && '(by hand, new term: refused, its page says which boxes)' || '(by hand, new term)')
+  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)')) }}
 
 on:
   workflow_dispatch:
@@ -47,6 +51,36 @@ on:
         description: "Deploy the build to nightly.graniterecord.pages.dev (needs the Pages token)"
         type: boolean
         default: true
+      # NEW TERM (30 September 2026): the night the General Court's files first
+      # show a new term, when they really do get much smaller. For this run
+      # only -- nightly.py --new-term -- the smaller files are installed
+      # (snapshot_gencourt.py --allow-shrink), the census gates let a fall
+      # through, and the feed prune is allowed. A scheduled night never carries
+      # it. nightly.py refuses it with Dry run ticked, or with "Take the day's
+      # data" unticked, and says so on the run's page: this is the run that
+      # takes the new files and may publish the switch. The preview shows the
+      # switched site before anyone approves it.
+      #
+      # NOTHING IT ACCEPTS IS KEPT UNTIL ITS BUILD IS PUBLISHED (1 October
+      # 2026). The night job of this run sends none of what it took back to the
+      # kit (cloud.py kit-up --hold: it waits under nights/<run>/kit/) and
+      # writes no census. The publish job, once its deploy has landed, moves
+      # the files into the kit (cloud.py kit-release) and sends the new counts
+      # up. Rejected, left waiting until the next scheduled night, or kept out
+      # by another blocker, the run leaves the kit and the census as they were,
+      # and the next night refuses the smaller files again and says why.
+      #
+      # THIS RUN MUST KEEP A REQUIRED REVIEWER. The person decided on 30
+      # September 2026 that the switch to a new term waits for their approval
+      # even after the approvals of ordinary nights are switched off. Today the
+      # "production" environment has them as its required reviewer for every
+      # deploy, which covers this run. Before that rule comes off, a New term
+      # run's publish job must go through an environment that still has one.
+      # preflight fails if this box is here without this note.
+      new_term:
+        description: "New term: accept the General Court's smaller files once"
+        type: boolean
+        default: false
   schedule:
     - cron: "17 8 * * *"
 
@@ -64,6 +98,8 @@ env:
   FETCH: ${{ github.event_name == 'schedule' || inputs.fetch }}
   DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
+  # Only ever from the box, on a run by hand: never on a scheduled night.
+  NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
 
 defaults:
   run:
@@ -190,6 +226,7 @@ jobs:
           $flags = @('--runner')
           if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
           if ($env:DRY_RUN -eq 'true') { $flags += '--dry-run' }
+          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term' }
           python nightly.py @flags
           exit $LASTEXITCODE
 
@@ -236,6 +273,11 @@ jobs:
           python cloud.py site-up --run $env:RUN_ID
           exit $LASTEXITCODE
 
+      # On a New term run what the night changed is HELD: it waits under
+      # nights/<run>/kit/ and kit/ keeps the copies it had, so that the next
+      # night still meets the smaller files and refuses them until this run's
+      # build is published. The logs, the day's archive copy and the state go
+      # up as on any night.
       - name: Send what changed, and the logs, back to R2
         id: kitup
         if: always() && steps.kitdown.outcome == 'success'
@@ -244,8 +286,11 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          python cloud.py kit-up
+          $hold = @()
+          if ($env:NEW_TERM -eq 'true') { $hold = @('--hold', $env:RUN_ID) }
+          python cloud.py kit-up @hold
           exit $LASTEXITCODE
 
       - name: The night's verdict
@@ -289,9 +334,11 @@ jobs:
   # Production, and only through here. The "production" environment has the
   # person as its required reviewer until five clean nights have passed, so
   # this job waits for their approval; removing that rule is what makes
-  # publishing automatic. It deploys the very build the night checked (by
-  # fingerprint), and nightly.py refuses an older night's once a newer one
-  # has run.
+  # publishing automatic -- except for a New term run, which must keep a
+  # required reviewer (the note above the new_term box). It deploys the very
+  # build the night checked (by fingerprint), and nightly.py refuses an older
+  # night's once a newer one has run. A New term run's last step here is what
+  # lets later nights keep what it accepted.
   publish:
     name: publish to production
     needs: night
@@ -354,6 +401,27 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           python nightly.py --runner --deploy-to production
+          exit $LASTEXITCODE
+
+      # A New term run only, and only when the deploy above has landed: a
+      # failed or refused deploy skips this. The files the night held back go
+      # into the kit, and the counts nightly.py wrote when the deploy landed go
+      # up as the census -- the kit first, so that a failure between the two
+      # leaves the old counts standing against the new files, which stops the
+      # next night, rather than the new counts against the old files, which
+      # would not.
+      - name: A published New term run's files and counts are kept for later nights
+        if: env.NEW_TERM == 'true'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python cloud.py kit-release --run $env:RUN_ID
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python cloud.py state-up
           exit $LASTEXITCODE
 
   # GitHub switches a public repository's scheduled workflows off after 60

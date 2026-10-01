@@ -3,6 +3,7 @@
     "The nightly's KIT: everything a machine that starts empty needs, beside the checkout, to build the site the laptop builds. Measured and argued in the cloud-move plan of 25 September 2026; read by cloud.py, and held to the build by preflight.",
     "Paths are relative to the working folder, with / between folders. In a glob, * and ? stay inside one folder and ** crosses any number of them. Every entry must match something unless it says optional.",
     "owner says who writes a file. A 'night' file is the nightly's own: the laptop sends it once, with seed-kit, and never over the night's copy after that. A 'laptop' file is made by the laptop's jobs: the night reads it and never sends it back. One writer per file, because two is how the older copy wins.",
+    "held is for the one night a term turns over. A New term run's kit-up (--hold) keeps the night's changed files out of kit/, under nights/<run>/kit/, until that run's build has been published and kit-release moves them in: until then the next night takes down the kit as it was, and still refuses the General Court's smaller files. An entry that says \"held\": false goes to kit/ all the same, because nothing the build or a guard reads comes from it, or because its state travels in state/ whatever happens. Only a night's entry may say it.",
     "state is the handful of small files a night must remember. On a machine they live under archive/, the project's one place for small state (refused.json, census.json); in the bucket they live under state/. backup is the laptop's copy of everything git does not hold, less what it leaves out and why. never is what no command sends anywhere."
   ],
   "kit": [
@@ -19,8 +20,9 @@
       "paths": ["lsrs.json"]
     },
     {
-      "what": "Each day's copy of those files: what gc_changes.py compares the night's with.",
+      "what": "Each day's copy of those files: what gc_changes.py compares the night's with. Never held: it is the archive of what the General Court served that day, which cannot be asked for again, and neither the build nor the shrink rule reads it.",
       "owner": "night",
+      "held": false,
       "globs": ["nh-archive/**"]
     },
     {
@@ -120,9 +122,10 @@
       "paths": ["site/committees.json"]
     },
     {
-      "what": "The night's new livestreams: the index rows the committed videos_*.csv do not carry. Their state is archive/livestreams.json, in the state list below. Optional: none exists before the first night that finds a livestream.",
+      "what": "The night's new livestreams: the index rows the committed videos_*.csv do not carry. Their state is archive/livestreams.json, in the state list below. Optional: none exists before the first night that finds a livestream. Never held: the state that says a recording has been seen goes up whatever happens, and a row held back from a night that was never published would be a recording the site never shows.",
       "owner": "night",
       "optional": true,
+      "held": false,
       "paths": ["videos_house_livestreams.csv", "videos_senate_livestreams.csv"]
     }
   ],

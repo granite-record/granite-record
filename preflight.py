@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.286
+# GRANITE_VERSION: 2026-09-04.291
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -15219,6 +15219,110 @@ def _fake_s3():
     return mods, store, made
 
 
+def _kit_unmatched(CL, root, kit):
+    """[(entry, [its paths and globs that match no file under root])] for the
+    kit entries that do not say optional: what cloud.kit_files calls missing,
+    by entry, so that a failure can name the one to mark."""
+    out = []
+    for e in kit.get("kit", []):
+        if e.get("optional"):
+            continue
+        gone = [x for x in e.get("paths", []) if not CL.local(root, x).is_file()]
+        gone += [g for g in e.get("globs", []) if not CL.expand(root, g)]
+        if gone:
+            out.append((e, gone))
+    return out
+
+
+def _kit_unmatched_says(CL, unmatched):
+    """One line per entry, saying which, whose, and what to do about it."""
+    lines = []
+    for e, gone in unmatched:
+        what = " ".join(str(e.get("what") or "").split())[:90]
+        lines.append(
+            f"{CL.KIT_FILE}: the {'laptop' if e['owner'] == 'laptop' else 'night'}'s entry "
+            f"\"{what}...\" names {', '.join(gone)}, which "
+            f"{'matches' if len(gone) == 1 else 'match'} no file here. "
+            + ('If the files do not exist yet, add "optional": true to that entry; if they '
+               "should exist, the laptop job that makes them has not run."
+               if e["owner"] == "laptop" else
+               "The night's files reach this laptop with python3 cloud.py pull; if no night "
+               'has made them yet, add "optional": true to that entry.'))
+    return lines
+
+
+@check("cloud", "a kit entry that matches nothing is found, by name, unless it says optional",
+       needs=("cloud",))
+def _kit_unmatched_fixture(CL):
+    """The data check below reads the laptop's own files, and so cannot run
+    where they are not. Its logic on a fixture: a required entry of the
+    laptop's whose glob matches nothing is reported, with the entry's own
+    words and the remedy; the same entry marked optional is not; and what it
+    reports is exactly what stops seed-kit."""
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-kit-entries-"))
+    try:
+        _cloud_fixture(tmp, real)
+        kit = json.loads((tmp / "cloud_kit.json").read_text(encoding="utf-8"))
+        assert _kit_unmatched(CL, tmp, kit) == [], _kit_unmatched(CL, tmp, kit)
+        frozen = {"what": "Each term's views as they stood at its end. Nothing is here until "
+                          "the first freeze.", "owner": "laptop", "globs": ["db/term/*/*"]}
+        kit["kit"].append(frozen)
+        kit["kit"].append({"what": "a file of the night's", "owner": "night",
+                           "paths": ["lsrs.json"]})
+        (tmp / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+        found = _kit_unmatched(CL, tmp, kit)
+        said = _kit_unmatched_says(CL, found)
+        assert [g for _, g in found] == [["db/term/*/*"], ["lsrs.json"]], found
+        assert "db/term/*/*" in said[0] and "Each term's views" in said[0] and \
+            '"optional": true' in said[0] and "the laptop's entry" in said[0], said[0]
+        assert "cloud.py pull" in said[1] and '"optional": true' in said[1], said[1]
+        # It is what stops seed-kit, word for word the same paths.
+        code, out = _cloud_call(CL, "seed-kit", "--dry-run", "--root", str(tmp),
+                                "--local-bucket", str(tmp / "bucket"))
+        assert code == 1 and "db/term/*/*" in out and "lsrs.json" in out, out[-300:]
+        frozen["optional"] = True
+        kit["kit"][-1]["optional"] = True
+        (tmp / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+        assert _kit_unmatched(CL, tmp, kit) == []
+        code, out = _cloud_call(CL, "seed-kit", "--dry-run", "--root", str(tmp),
+                                "--local-bucket", str(tmp / "bucket"))
+        assert code == 0, out[-300:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a required entry matching nothing is named with its remedy, an optional one "
+                  "is not, and the two agree with what stops seed-kit")
+
+
+@check("data", "every kit entry matches a file on this laptop, or says \"optional\": true -- one "
+       "that matches nothing stops seed-kit here and kit-down on GitHub's machine",
+       needs=("cloud",))
+def _kit_entries_match(CL):
+    """On 30 September 2026 cloud_kit.json gained an entry for the frozen
+    term's views, db/term/*/*, which nothing had made yet. A required entry
+    that matches nothing makes cloud.py seed-kit refuse the whole kit -- it
+    stopped that night's caption send -- and, once the definition reaches
+    main, stops kit-down on GitHub's machine before the night begins. Nothing
+    checked it: cloud.py says so only when it is run.
+
+    So, on the laptop: every entry that does not say optional matches at
+    least one file for each path and glob it names. A failure names the entry
+    and says what to do -- for one of the laptop's whose files do not exist
+    yet, "optional": true. A data check, because the files it looks for are
+    the laptop's own; skipped anywhere that is not the repository holding
+    secrets.json."""
+    if not CL.home("."):
+        return "skip", ("not the laptop's own working folder (no secrets.json here): the kit's "
+                        "files are looked for where they are made")
+    kit = CL.load_kit(".")
+    unmatched = _kit_unmatched(CL, ".", kit)
+    assert not unmatched, "\n".join(_kit_unmatched_says(CL, unmatched))
+    required = [e for e in kit["kit"] if not e.get("optional")]
+    return "ok", (f"all {len(required)} kit entries that are not optional match files here "
+                  f"({sum(1 for e in required if e['owner'] == 'laptop')} the laptop's); "
+                  f"{len(kit['kit']) - len(required)} say optional")
+
+
 @check("cloud", "seed-kit --only sends only the files it names, and every other copy stands",
        needs=("cloud",))
 def _cloud_seed_only(CL):
@@ -15384,9 +15488,25 @@ def _cloud_r2_adapter(CL):
             (night / "Docket.txt").read_bytes(), "the night's change did not go up"
         assert any(k.startswith("replaced/") and k.endswith("kit/Docket.txt")
                    for _, k in store), "the replaced copy did not go through the adapter"
-        return "ok", ("seed-kit, kit-down and kit-up through R2Bucket against a "
-                      "stand-in for boto3: endpoint, pages, metadata and missing "
-                      "objects as the real client has them")
+        # A New term run's held files, and their release: the copy into kit/
+        # is the bucket's own, and the object keeps its sha256.
+        # A different LENGTH from "docket 2": kit-up takes a file of the same
+        # size and date as unchanged without reading it, and on a disk whose
+        # clock ticks every 16 ms a second write of the same length lands on
+        # the first one's date more often than not (190 of 200 here).
+        was = (night / "Docket.txt").read_bytes()
+        (night / "Docket.txt").write_text("docket three\n", encoding="utf-8")
+        now = (night / "Docket.txt").read_bytes()
+        code, out = _cloud_call(CL, "kit-up", "--hold", "77", "--root", str(night))
+        assert code == 0 and store[("granite-record-backup", "kit/Docket.txt")][0] == was and \
+            store[("granite-record-backup", "nights/77/kit/Docket.txt")][0] == now, out[-300:]
+        code, out = _cloud_call(CL, "kit-release", "--run", "77", "--root", str(night))
+        got = store[("granite-record-backup", "kit/Docket.txt")]
+        assert code == 0 and got[0] == now and \
+            got[1].get("sha256") == CL.sha256_of(night / "Docket.txt"), out[-300:]
+        return "ok", ("seed-kit, kit-down, kit-up, a held kit-up and its release through "
+                      "R2Bucket against a stand-in for boto3: endpoint, pages, metadata and "
+                      "missing objects as the real client has them")
     finally:
         CL.open_bucket = saved_open
         for n, m in saved_mods.items():
@@ -25285,7 +25405,7 @@ def _nightly_runner(NI):
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
-    calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0}
+    calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0, "pages": []}
     lsr = {"rc": 0, "rows": 3}
 
     def fake(args, label, cwd=None):
@@ -25297,10 +25417,15 @@ def _nightly_runner(NI):
             day = Path(args[args.index("--dir") + 1]) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
             day.mkdir(parents=True, exist_ok=True)
             bad = bool(empty["rc"] or empty["left"])
+            # What the data page answered on this try: an error whenever the
+            # files are empty, unless the check says try by try.
+            page = empty["pages"].pop(0) if empty["pages"] else ("error" if bad else "ok")
             (day / "page.json").write_text(json.dumps(
                 {"status": "error", "said": "Error Generating Members File : Execution Timeout "
                  "Expired. The timeout period elapsed prior to completion of the operation."}
-                if bad else {"status": "ok", "said": ""}), encoding="utf-8")
+                if page == "error" else
+                {"status": "slow", "said": "TimeoutError: The read operation timed out"}
+                if page == "slow" else {"status": "ok", "said": ""}), encoding="utf-8")
         if name == "snapshot_gencourt.py" and (empty["rc"] or empty["left"]):
             empty["left"] = max(0, empty["left"] - 1)
             # 27 September's first scheduled night: thirteen of the fourteen
@@ -25446,6 +25571,11 @@ def _nightly_runner(NI):
         NI.current_branch = lambda: "main"
         code, _ = night("--runner", "--deploy-to", "production", run_id="106")
         assert code == 0 and sent == [(NI.PRODUCTION_BRANCH, "https://graniterecord.org")], sent
+        # An ordinary night's deploy writes nothing: its census was written
+        # the night it ran, and only a New term run's waits for the deploy.
+        landed = json.loads(NI.CENSUS.read_text(encoding="utf-8"))
+        assert "new_term" not in landed and "published" not in landed and \
+            landed["run_id"] == "106", ("an ordinary night's deploy rewrote the census", landed)
         del sent[:]
         code, _ = night("--runner", "--deploy-to", "preview", run_id="106")
         assert code == 0 and sent == [(NI.PREVIEW_BRANCH, "https://nightly.graniterecord.pages.dev")] \
@@ -25513,13 +25643,31 @@ def _nightly_runner(NI):
         assert code == 1 and notes == [
             "::error title=Why the night failed::13 of the General Court's 14 daily files "
             f"came back empty on each of {NI.EMPTY_TRIES} tries, {NI.EMPTY_WAIT} minutes apart, "
-            "so nothing was installed or built. Their data page said: \"Error Generating Members "
-            "File : Execution Timeout Expired.\" Nothing was published."], notes
+            f"so nothing was installed or built. Their data page said, on try 1 of {NI.EMPTY_TRIES}: \"Error "
+            "Generating Members File : Execution Timeout Expired.\" Nothing was published."], notes
         assert NI.page_quote("<b>x</b> Error Generating it all") == "" and NI.page_quote(
             "Error Generating Docket File : a <script>. more") == \
             "Error Generating Docket File : a script .", "page_quote let through what it should not"
         code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
         assert code == 1 and "::" not in out, "a note for GitHub was printed off GitHub"
+
+        # 1 October 2026: the page reported its error on try 1, timed out on
+        # every later try, and the verdict -- reading only the last try's
+        # answer -- said nothing of it. The first error of the night is the
+        # one kept, with the try it came on; and one that first comes on a
+        # later try is kept with that try.
+        for pages, at in ((["error"] + ["slow"] * 5, 1), (["ok", "slow", "error", "slow"], 3)):
+            empty["rc"], empty["pages"] = 1, list(pages)
+            code, _ = night("--runner", run_id="111b")
+            empty["rc"], empty["pages"] = 0, []
+            v = verdict()
+            assert code == 1 and v["fetch"].startswith("empty") and \
+                v.get("data_page_said") == "Error Generating Members File : Execution Timeout " \
+                "Expired." and v.get("data_page_try") == at, (
+                    f"the page's error on try {at} of {NI.EMPTY_TRIES} was lost: the verdict "
+                    f"says {v.get('data_page_said')!r}, try {v.get('data_page_try')}")
+            assert f'Their data page said, on try {at} of {NI.EMPTY_TRIES}: "Error Generating' in NI.plain_why(v), \
+                NI.plain_why(v)
 
         # And when they fill in -- empty on the first two tries, whole on the
         # third -- the night waits half an hour each time rather than failing,
@@ -25532,7 +25680,10 @@ def _nightly_runner(NI):
         tries = [c for c in calls if c[0] == "snapshot_gencourt.py"]
         assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == 3 \
             and len(tries) == 3 and v["built"], (code, v.get("fetch"), v.get("fetch_tries"), len(tries))
-        assert "data_page_said" not in v, "a whole night kept an earlier try's page error"
+        assert v.get("data_page_said", "").startswith("Error Generating Members File") and \
+            v.get("data_page_try") == 1, (
+                "a night that arrived whole on its third try did not keep the page's first "
+                "error with the try it came on", v.get("data_page_said"), v.get("data_page_try"))
 
         # Next session's bill requests, taken with the day's files. A fetch
         # that fails, or would withdraw most of the standing requests, puts the
@@ -25739,6 +25890,938 @@ def _nightly_weekly(NI):
     return "ok", ("rosters, members who have left, study committees and committee pages each "
                   "whole or not at all; a shrunken list and a short view kept out; a refusal "
                   "recorded and honoured; the report names what changed")
+
+
+# ---- the one night a term turns over --------------------------------------------
+#
+# NEW_SESSION_PLAN.md, section 2 (30 September 2026): the snapshot's shrink rule,
+# the census gates, the feed prune and the weekly's list guards are each right
+# on an ordinary night and wrong on the night the General Court's files first
+# show a new term. The "New term" box lets them through for one run, and an
+# ordinary night that meets smaller files says on its run's page to tick it.
+
+NEW_TERM_SENTENCE = ("The General Court's files are much smaller: a new term? Run the nightly "
+                     "by hand with New term ticked.")
+
+
+@check("build", "a New term night lets the smaller files, the census and the feed prune through "
+       "for that run, writes no baseline until its build is published, and an ordinary night "
+       "that met smaller files says which boxes to tick",
+       needs=("nightly", "snapshot_gencourt", "build_all"))
+def _nightly_new_term(NI, SG, BA):
+    """The snapshot refuses files more than 30% smaller, and the census gates
+    refuse a build that fell; the night a term turns over, both are wrong, and a
+    blocked night keeps the old baseline, so they would block every night after
+    it too. nightly.py --new-term -- the box a person ticks on a run by hand --
+    passes --allow-shrink to the snapshot, --allow-prune to the build, and lets
+    a fall through the census. Driven here through the snapshot's own run() on
+    fake answers, so that the record it leaves is the one the nightly reads,
+    and through nightly.main() with every step faked.
+
+    WHAT THIS ONE CAN AND CANNOT SHOW. It runs every night in one folder, with
+    a snapshot that is told whether tonight's files are smaller. So it shows
+    what one run does: that the allowance is passed only by the box; that a
+    New term run with Dry run ticked, or without the fetch, does nothing and
+    says which boxes to tick; that the run writes NO census, and that
+    --deploy-to production writes it when, and only when, the deploy landed;
+    that the run's page gives each accepted file's size and how far it fell.
+    It cannot show that the next night refuses the smaller files, because here
+    nothing travels between nights -- until 1 October 2026 its "ONCE" step
+    claimed that, and proved only that the flag is not passed twice, while the
+    workflow sent the smaller files and the lower counts to the bucket before
+    anyone had approved them. _new_term_waits_for_publish is the check that
+    carries the kit and the state between machines and proves it.
+    """
+    import argparse
+    import contextlib
+    import io
+    import types
+    import urllib.error
+    from datetime import datetime
+    import caption_span                    # noqa: F401 -- imported here, before the chdir
+    import refusal
+    assert NI.NEW_TERM_HINT == NEW_TERM_SENTENCE, \
+        f"the run's page says {NI.NEW_TERM_HINT!r} for a refused shrink"
+    assert NI.INSTALL_RECORD == SG.INSTALL_RECORD, \
+        "nightly.py reads the snapshot's install record under another name than it is written"
+
+    # build_all hands --allow-prune to build_feeds only when it is given it.
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    def feeds(a):
+        return next(s.args for s in BA.plan(a) if s.args[0] == "build_feeds.py")
+    assert "--allow-prune" not in feeds(A()), "build_all lets the feed prune through unasked"
+    assert feeds(type("B", (A,), {"allow_prune": True})())[-1] == "--allow-prune", \
+        "build_all.py --allow-prune does not reach build_feeds.py"
+    assert re.search(r'ap\.add_argument\("--allow-prune", action="store_true"',
+                     Path("build_all.py").read_text(encoding="utf-8")), \
+        "build_all.py takes no --allow-prune for the New term night to pass"
+
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-newterm-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+             NI.captions_compared, NI.time, NI.FILE_CEILING, sys.argv, refusal.MARK,
+             refusal.LOCK, SG.get, SG.time, NI.upload_and_check, NI.current_branch)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+                "GITHUB_SHA")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    calls, how = [], {"bills": 100, "smaller": False, "rows": {}}
+    today = f"{datetime.now():%Y-%m-%d}"
+
+    def fake(args, label, cwd=None):
+        calls.append(list(args))
+        NI.say(f"\n--- {label} ---")
+        name, rc = Path(args[0]).name, 0
+        if name == "snapshot_gencourt.py":
+            # Every file arrives; the record is the shape snapshot_gencourt's
+            # run() leaves, which the first half of this check reads off it.
+            day = Path(args[args.index("--dir") + 1]) / "snapshots" / today
+            day.mkdir(parents=True, exist_ok=True)
+            (day / "manifest.json").write_text(json.dumps(
+                {f: {"sha256": "0" * 64, "bytes": 900} for f in ("Docket.txt", "LSRs.txt")}),
+                encoding="utf-8")
+            allow = "--allow-shrink" in args
+            small = ([{"name": "Docket.txt", "bytes": 900, "installed_bytes": 90000}]
+                     if how["smaller"] else [])
+            ok = not small or allow
+            (day / NI.INSTALL_RECORD).write_text(json.dumps(
+                {"installed": ok, "allow_shrink": allow, "shrunk": small}), encoding="utf-8")
+            rc = 0 if ok else 1
+        elif name == "build_all.py":
+            _runner_site(how["bills"])
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd, how["rows"])
+        elif name == "fetch_lsrs.py":
+            Path("lsrs.json").write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                                         encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        NI.say(f"  (0s, exit {rc})")
+        return rc
+
+    def night(*argv, run_id="201", github=False):
+        NI.LOG = []
+        del calls[:]
+        os.environ["GITHUB_RUN_ID"] = run_id
+        if github:
+            os.environ["GITHUB_ACTIONS"] = "true"
+        sys.argv = ["nightly.py", *argv]
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = NI.main()
+                except SystemExit as e:
+                    code = e.code
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        return code, out.getvalue()
+
+    def verdict():
+        return json.loads(NI.VERDICT.read_text(encoding="utf-8"))
+
+    def baseline():
+        return json.loads(NI.CENSUS.read_text(encoding="utf-8"))
+
+    def page_note(out):
+        notes = [ln for ln in out.splitlines() if ln.startswith("::error title=Why the night failed::")]
+        assert len(notes) == 1, f"the run's page leads with {notes}"
+        return notes[0].split("::", 2)[2]
+
+    def of(name):
+        return [c for c in calls if Path(c[0]).name == name]
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        Path("db").mkdir()
+
+        # THE SNAPSHOT'S OWN RECORD, through its run(): a Docket a hundredth of
+        # the installed one is refused and recorded as smaller; with
+        # --allow-shrink it is installed and recorded as accepted; a later run
+        # that did not install leaves no earlier record speaking for it.
+        SG.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        n = len(SG.targets())
+        big = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 200
+        new = b"2027|0001|12/2/2026 10:44:26 AM|HB1|H|Introduced\n" * 3
+
+        def snap(allow, answers, arch):
+            root = tmp / f"root-{arch}"
+            root.mkdir(exist_ok=True)
+            (root / "Docket.txt").write_bytes(big)
+            it = iter(answers)
+
+            def get(url, timeout=120):
+                if url == SG.PAGE:
+                    return b"<html><body><h1>DYNAMIC DATA FILES</h1></body></html>"
+                x = next(it)
+                if isinstance(x, BaseException):
+                    raise x
+                return x
+            SG.get = get
+            a = argparse.Namespace(dir=str(tmp / arch), into=str(root), allow_shrink=allow,
+                                   delay=0.0, plan=False)
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                refusal.check("t")
+                with refusal.hold("t") as held:
+                    rc = SG.run(a, held)
+            rec = tmp / arch / "snapshots" / today / SG.INSTALL_RECORD
+            return rc, (root / "Docket.txt").read_bytes(), (
+                json.loads(rec.read_text(encoding="utf-8")) if rec.exists() else None)
+
+        rc, docket, rec = snap(False, [new] * n, "arch-a")
+        assert rc == 1 and docket == big, "the snapshot installed a Docket a hundredth the size"
+        assert rec == {"installed": False, "allow_shrink": False, "shrunk": [
+            {"name": "Docket.txt", "bytes": len(new), "installed_bytes": len(big)}]}, rec
+        said = NI.fetch_status(1, str(tmp / "arch-a"))
+        assert said.startswith("smaller: 1 of the files much smaller") and "Docket.txt" in said, said
+        rc, docket, rec = snap(False, [new, urllib.error.HTTPError("u", 500, "x", {}, None)]
+                               + [new] * n, "arch-a")
+        assert rc == 1 and rec is None and NI.fetch_status(1, str(tmp / "arch-a")) == \
+            "did not complete (exit 1)", "an earlier run's shrink record spoke for a later one"
+        rc, docket, rec = snap(True, [new] * n, "arch-b")
+        assert rc == 0 and docket == new and rec["installed"] and rec["allow_shrink"] and \
+            [x["name"] for x in rec["shrunk"]] == ["Docket.txt"], (rc, rec)
+        assert NI.fetch_status(0, str(tmp / "arch-b")) == "installed" and \
+            NI.shrink_accepted(str(tmp / "arch-b")).startswith("accepted 1 much smaller"), \
+            NI.shrink_accepted(str(tmp / "arch-b"))
+        # The size of each and how far it fell, not the name alone: a person
+        # approving the switch has to tell a new term's Docket from a file cut
+        # short.
+        sized = f"Docket.txt {len(new):,} bytes against {len(big):,} (-99%)"
+        rc, docket, rec = snap(False, [new] * n, "arch-c")
+        assert sized in NI.fetch_status(1, str(tmp / "arch-c")) and \
+            sized in NI.shrink_accepted(str(tmp / "arch-b")), (
+                "the verdict names a file that shrank without its size: "
+                + NI.fetch_status(1, str(tmp / "arch-c")))
+        # The snapshot names its folder for the day it started; read after
+        # midnight, the record is still found.
+        from datetime import timedelta
+        late = tmp / "arch-late" / "snapshots" / f"{datetime.now() - timedelta(days=1):%Y-%m-%d}"
+        late.mkdir(parents=True)
+        (late / "manifest.json").write_text("{}", encoding="utf-8")
+        (late / SG.INSTALL_RECORD).write_text(json.dumps(
+            {"installed": True, "allow_shrink": True, "shrunk": []}), encoding="utf-8")
+        began = datetime.now() - timedelta(days=1)
+        os.utime(late / "manifest.json", (began.timestamp() + 60, began.timestamp() + 60))
+        assert NI.shrink_accepted(str(tmp / "arch-late"), began) == \
+            "none of the files was much smaller", (
+                "a snapshot started before midnight and read after it left no record: "
+                + NI.shrink_accepted(str(tmp / "arch-late"), began))
+        # ... and asked for a moment before midnight, started a moment after:
+        # its folder is the next day's.
+        began = datetime.now()
+        late = tmp / "arch-later" / "snapshots" / f"{began + timedelta(days=1):%Y-%m-%d}"
+        late.mkdir(parents=True)
+        (late / "manifest.json").write_text("{}", encoding="utf-8")
+        (late / SG.INSTALL_RECORD).write_text(json.dumps(
+            {"installed": True, "allow_shrink": True, "shrunk": []}), encoding="utf-8")
+        assert NI.shrink_accepted(str(tmp / "arch-later"), began) == \
+            "none of the files was much smaller", (
+                "a snapshot asked for before midnight and started after it left no record: "
+                + NI.shrink_accepted(str(tmp / "arch-later"), began))
+
+        # THE NIGHT. Every step faked from here.
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        NI.tracked_changes = lambda: ([], [])
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
+
+        # Only the night or the week takes it, and only on GitHub's machine.
+        for argv in (("--new-term",), ("--runner", "--new-term", "--deploy-to", "production"),
+                     ("--runner", "--new-term", "--close")):
+            code, _ = night(*argv)
+            assert code == 2, f"nightly.py accepted {' '.join(argv)}"
+
+        # An ordinary night: the files whole, the views taken, the baseline set.
+        code, _ = night("--runner", "--dry-run", run_id="201")
+        assert code == 0 and baseline()["census"]["bills"] == 100, verdict()
+        assert not any("--allow-shrink" in c for c in of("snapshot_gencourt.py")) and \
+            of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], calls
+        assert "new_term" not in verdict() and verdict()["asked"]["new_term"] is False
+
+        # An ordinary night that meets much smaller files: nothing installed or
+        # built, and the run's page says what it may be and which box to tick.
+        how["smaller"] = True
+        code, _ = night("--runner", run_id="202")
+        v = verdict()
+        assert code == 1 and v["fetch"].startswith("smaller") and not v["built"] and \
+            not of("build_all.py"), (code, v.get("fetch"))
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="202",
+                          github=True)
+        why = page_note(out)
+        assert code == 1 and why.startswith(NEW_TERM_SENTENCE) and \
+            why.endswith("Nothing was published."), why
+        # ... and the other two boxes that run needs, which a run by hand has
+        # the wrong way round unless a person changes them.
+        assert NI.NEW_TERM_HOW in why and NI.FETCH_BOX in NI.NEW_TERM_HOW and \
+            NI.DRY_BOX in NI.NEW_TERM_HOW, why
+
+        # New term with Dry run, or without the fetch: nothing at all, and the
+        # page says which boxes. Without the fetch it used to run, take no
+        # files, and let a build that fell for any reason through the census.
+        for flags, refused, sentence in (
+                (("--dry-run",), NI.REFUSED_DRY, NI.NEW_TERM_DRY),
+                (("--no-fetch",), NI.REFUSED_NO_FETCH, NI.NEW_TERM_NO_FETCH),
+                (("--dry-run", "--no-fetch"), NI.REFUSED_DRY, NI.NEW_TERM_DRY)):
+            code, _ = night("--runner", "--new-term", *flags, run_id="203")
+            v = verdict()
+            assert code == 1 and not calls and v["new_term"] == {"refused": refused} \
+                and not v["built"] and baseline()["census"]["bills"] == 100, (flags, code, calls, v)
+            code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="203",
+                              github=True)
+            assert page_note(out) == sentence + " Nothing was published.", page_note(out)
+            assert all(x in sentence for x in (NI.NEW_TERM_BOX, f'"{NI.FETCH_BOX}" ticked',
+                                               f"{NI.DRY_BOX} unticked")), sentence
+
+        # THE NEW TERM RUN: the smaller files in, half the bills, a study view
+        # at a tenth of its rows -- all let through, the prune allowed.
+        # Publishable, behind the approval -- and NO baseline written: the
+        # counts ride in the verdict until the build is published.
+        how["bills"], how["rows"] = 50, {"StatStudDetails": 3}
+        code, _ = night("--runner", "--new-term", run_id="204")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["publishable"], (code, v.get("not_clean"))
+        assert of("snapshot_gencourt.py") and all("--allow-shrink" in c
+                                                  for c in of("snapshot_gencourt.py")), calls
+        assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune"]], \
+            of("build_all.py")
+        assert v["fetch"] == "installed" and v["asked"]["new_term"] is True and \
+            v["new_term"]["files"].startswith("accepted 1 much smaller") and \
+            "Docket.txt 900 bytes against 90,000 (-99%)" in v["new_term"]["files"] and \
+            v["new_term"]["gates"] == "let through: bills fell from 100 to 50" and \
+            "StatStudDetails installed, 3 rows (was 30)" in v["new_term"]["study views"] and \
+            v["new_term"]["kept"].startswith("nothing yet"), v.get("new_term")
+        assert v["gates"] == "let through for a new term: bills fell from 100 to 50", v["gates"]
+        assert v["study_meetings"]["StatStudDetails"].startswith("installed, 3 rows"), \
+            v["study_meetings"]
+        assert baseline()["census"]["bills"] == 100 and "new_term" not in baseline() and \
+            v["census"]["bills"] == 50, (
+                "a New term run moved the baseline the night it ran, before its build was "
+                "published: the next scheduled night would pass its gates against it")
+
+        # The baseline moves when that build has landed on production, and not
+        # when the deploy failed.
+        NI.current_branch = lambda: "main"
+        NI.upload_and_check = lambda a, site, target, base: False
+        code, _ = night("--runner", "--deploy-to", "production", run_id="204")
+        assert code == 1 and baseline()["census"]["bills"] == 100, \
+            "a New term deploy that did not land moved the baseline"
+        NI.upload_and_check = lambda a, site, target, base: True
+        code, _ = night("--runner", "--deploy-to", "preview", run_id="204")
+        assert code == 0 and baseline()["census"]["bills"] == 100, \
+            "a New term run's PREVIEW moved the baseline"
+        code, _ = night("--runner", "--deploy-to", "production", run_id="204")
+        b = baseline()
+        assert code == 0 and b["census"]["bills"] == 50 and b.get("new_term") is True and \
+            b["run_id"] == "204" and b["fingerprint"] == v["fingerprint"] and b.get("published"), (
+                "a published New term run's counts did not become the baseline", code, b)
+
+        # The allowance is the box's, and is passed to no later run: the
+        # snapshot is not given --allow-shrink again, a fall from the new
+        # baseline blocks and says what it may be, the baseline stays, the
+        # prune is not allowed, and a view falling again is kept out.
+        code, _ = night("--runner", run_id="205")
+        assert code == 1 and verdict()["fetch"].startswith("smaller") and \
+            not any("--allow-shrink" in c for c in of("snapshot_gencourt.py")), \
+            "the New term allowance was passed to a later run, at the snapshot"
+        how["smaller"], how["bills"] = False, 25
+        code, _ = night("--runner", "--no-fetch", run_id="206")
+        v = verdict()
+        assert code == 1 and v["gates"] == "blocked: bills fell from 50 to 25" and \
+            "new_term" not in v and baseline()["census"]["bills"] == 50, \
+            "the New term allowance was passed to a later run, at the census gates"
+        assert of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], \
+            "the New term allowance was passed to a later run, at the feed prune"
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="206",
+                          github=True)
+        why = page_note(out)
+        assert why.startswith("The site was built, but it counts far less") and \
+            NEW_TERM_SENTENCE in why and NI.NEW_TERM_HOW in why, (
+                "a night the census gates stopped does not say it may be a new term: " + why)
+        how["bills"], how["rows"] = 50, {"StatStudDetails": 1}
+        code, _ = night("--runner", run_id="207")
+        v = verdict()
+        assert code == 1 and v["study_meetings"]["StatStudDetails"].startswith(
+            "not taken"), "the New term allowance was passed to a later run, at the study views"
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="207",
+                          github=True)
+        assert NEW_TERM_SENTENCE in page_note(out), (
+            "a night whose study views were kept out as much smaller does not say it may be "
+            "a new term: " + page_note(out))
+
+        # A New term run goes to the publish job even when production already
+        # serves its build: publishing is what lets what it accepted be kept.
+        how["rows"] = {}
+        NI.live_fingerprint = lambda base, timeout=180: NI.fingerprint(Path("site"))
+        code, _ = night("--runner", run_id="209")
+        assert code == 0 and not verdict()["publishable"], verdict().get("blocking")
+        code, _ = night("--runner", "--new-term", run_id="210")
+        assert code == 0 and verdict()["publishable"], (
+            "a New term run whose build production already serves had no publish job, so "
+            "nothing it accepted could ever be kept")
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+
+        # And no New term run passes the file ceiling.
+        NI.FILE_CEILING = 10
+        code, _ = night("--runner", "--new-term", run_id="208")
+        v = verdict()
+        assert code == 1 and not v["publishable"] and "ceiling" in v["gates"] and \
+            baseline()["census"]["bills"] == 50, v.get("gates")
+    finally:
+        os.chdir(here)
+        (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
+         NI.time, NI.FILE_CEILING, sys.argv, refusal.MARK, refusal.LOCK, SG.get, SG.time,
+         NI.upload_and_check, NI.current_branch) = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the snapshot records a refused shrink and takes one only with --allow-shrink; "
+                  "an ordinary night says which three boxes to tick; New term with Dry run or "
+                  "without the fetch does nothing; the New term run writes no baseline, and its "
+                  "landed deploy does; the page gives each file's size; the ceiling holds")
+
+
+@check("build", "what a New term run accepted reaches a later night only once its build is "
+       "published: rejected, left waiting or blocked, the next night still refuses the smaller "
+       "files and says why", needs=("nightly", "snapshot_gencourt", "cloud", "build_all"))
+def _new_term_waits_for_publish(NI, SG, CL, BA):
+    """The person decided on 30 September 2026 that the switch to a new term
+    waits for their approval, even once ordinary nights publish without one.
+    The first New term run kept everything it took the night it ran: the
+    workflow's kit-up sent the smaller day files to the kit and its state-up
+    the lower census, both whatever the outcome and both before the approval.
+    So a run that was rejected, or still waiting when the next scheduled night
+    began, or kept from production by another blocker, had already made the
+    smaller files the installed copies and the lower counts the baseline, and
+    the next scheduled night would have carried the switch through unasked.
+
+    Here the nights are run as the workflow runs them, each on its own empty
+    folder, with a folder standing in for the bucket and cloud.py itself
+    carrying the kit and the state between them: state-down, kit-down, the
+    night, site-up, kit-up (--hold on a New term run), the verdict, state-up;
+    and the publish job as state-down, site-down, --deploy-to production and,
+    only if that succeeded, kit-release and state-up. The snapshot is faked
+    only as far as the request: what the General Court "serves" is compared
+    with the copy this machine took down by snapshot_gencourt's own shrunk()
+    and install(). So the next night refuses the smaller files only if the
+    bucket really still holds the old ones.
+
+      - a New term run kept from production by another blocker, and one that
+        is publishable and never approved, leave kit/, its manifest and the
+        census exactly as they were; what they took waits under nights/<run>/
+      - the next scheduled night takes down the old files, refuses the
+        smaller ones, and its page says "a new term?", which boxes to tick,
+        and that the New term run was not published
+      - that older run's approval, arriving late, deploys nothing and keeps
+        nothing
+      - a New term run whose deploy does not land keeps nothing; one whose
+        deploy lands moves its files into the kit and its counts into the
+        census, and the night after takes them down and is gated as usual
+      - and once: files smaller again are refused again
+      - kit-release moves all of a run's files or none, and none when the
+        kit has changed underneath
+
+    And the real cloud_kit.json holds back what it must: the day's files, the
+    outputs a build carries, the study views and the bill requests wait;
+    only the day's archive copy and the livestream index go up regardless.
+    """
+    import contextlib
+    import hashlib
+    import io
+    import types
+    from datetime import datetime
+    import caption_span                    # noqa: F401 -- imported here, before the chdir
+    import refusal
+
+    # THE REAL KIT. Everything a guard or the build reads waits; a file marked
+    # "held": false here would reach the next night before any approval.
+    real = CL.load_kit(".")
+    day_files = [f for f in list(SG.FILES) + [n for _, n in SG.EXTRA] if CL.owner_of(real, f)]
+    assert len(day_files) >= 10 and "Docket.txt" in day_files, \
+        f"the kit carries only {day_files} of the day's files"
+    # Of the outputs a build carries forward, the ones the night writes back
+    # (the caption results among them are the laptop's, and never go up).
+    carried = [c[0] for c in BA.CARRIED if CL.owner_of(real, c[0]) == "night"]
+    assert {"narratives.json", "proceedings.csv"} <= set(carried), carried
+    must_wait = (day_files + carried + [f"db/{v}.psv" for v in NI.STUDY_NIGHTLY]
+                 + ["db/_manifest.json", "lsrs.json", "site/committees.json"])
+    loose = [x for x in must_wait if not CL.held_back(real, x)]
+    assert not loose, (
+        f"{CL.KIT_FILE} does not hold these back on a New term run, so the next night would "
+        f"find them installed before the switch was approved: {loose}")
+    for free in ("nh-archive/snapshots/2026-10-01/manifest.json", "videos_house_livestreams.csv"):
+        assert not CL.held_back(real, free), (
+            f"{CL.KIT_FILE} holds back {free}: a day's archive copy cannot be asked for again, "
+            "and a livestream's row must travel with its state")
+    assert not CL.held_back(real, "legislation/2026/HB0001.html"), \
+        "a file of the laptop's is counted as the night's to hold"
+
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-newterm-kit-"))
+    bucket = tmp / "bucket"
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+             NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK,
+             NI.upload_and_check, NI.current_branch)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+                "GITHUB_SHA")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    calls, gc = [], {}
+    today = f"{datetime.now():%Y-%m-%d}"
+    OLD = b"".join(b"2025|%04d|6/26/2026 10:44:26 AM|HB%d|H|Signed by Governor\n" % (i, i)
+                   for i in range(100))
+    NEW = b"".join(b"2027|%04d|12/2/2026 10:44:26 AM|HB%d|H|Introduced\n" % (i, i)
+                   for i in range(50))
+    NEWER = NEW[:len(NEW) * 2 // 5]
+    NEWER = NEWER[:NEWER.rfind(b"\n") + 1]
+
+    kit = {"kit": [
+        {"what": "the day's file", "owner": "night", "paths": ["Docket.txt"]},
+        {"what": "an output a build carries", "owner": "night", "paths": ["narratives.json"]},
+        {"what": "each day's copy", "owner": "night", "held": False, "globs": ["nh-archive/**"]},
+        {"what": "the study views and the bill requests", "owner": "night", "optional": True,
+         "paths": ["db/StatStudMeetings.psv", "db/StatStudDetails.psv", "db/_manifest.json",
+                   "lsrs.json"]},
+        {"what": "pages", "owner": "laptop", "globs": ["legislation/**"]}],
+        "state": [{"path": "archive/census.json", "key": "census.json", "what": "x"},
+                  {"path": "archive/refused.json", "key": "refused.json", "what": "x"},
+                  {"path": "archive/last-night.json", "key": "last-night.json", "what": "x"}],
+        "logs": {"globs": ["logs/*", "reports/gc-changes-*.md"]},
+        "backup": real["backup"], "never": real["never"]}
+
+    def fake(args, label, cwd=None):
+        calls.append(list(args))
+        NI.say(f"\n--- {label} ---")
+        name, rc = Path(args[0]).name, 0
+        if name == "snapshot_gencourt.py":
+            # The request is faked and nothing else: what the General Court
+            # serves tonight is archived, then compared with the copy THIS
+            # machine holds -- the one that came down from the bucket -- by
+            # the snapshot's own rule, and installed or refused by it.
+            arch = Path(args[args.index("--dir") + 1])
+            data = gc["docket"]
+            sha = hashlib.sha256(data).hexdigest()
+            day = arch / "snapshots" / f"{datetime.now():%Y-%m-%d}"
+            day.mkdir(parents=True, exist_ok=True)
+            (arch / "store").mkdir(exist_ok=True)
+            (arch / "store" / f"{sha}.gz").write_bytes(data)
+            (day / "manifest.json").write_text(json.dumps(
+                {"Docket.txt": {"sha256": sha, "bytes": len(data)}}), encoding="utf-8")
+            (day / "page.json").write_text(json.dumps({"status": "ok", "said": ""}),
+                                           encoding="utf-8")
+            allow = "--allow-shrink" in args
+            fetched = {"Docket.txt": data}
+            small = SG.shrunk(fetched, ".")
+            ok, _ = SG.install(fetched, ".", allow)
+            (day / NI.INSTALL_RECORD).write_text(json.dumps(
+                {"installed": ok, "allow_shrink": allow,
+                 "shrunk": [{"name": n, "bytes": now, "installed_bytes": was}
+                            for n, now, was in small]}), encoding="utf-8")
+            rc = 0 if ok else 1
+        elif name == "build_all.py":
+            # A bill a docket line, and one output the build carries forward.
+            n = Path("Docket.txt").read_bytes().count(b"\n")
+            _runner_site(n)
+            Path("narratives.json").write_text(json.dumps({"bills": n}), encoding="utf-8")
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd)
+        elif name == "fetch_lsrs.py":
+            Path("lsrs.json").write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                                         encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        NI.say(f"  (0s, exit {rc})")
+        return rc
+
+    def night(*argv, run_id, github=False):
+        NI.LOG = []
+        del calls[:]
+        os.environ["GITHUB_RUN_ID"] = run_id
+        if github:
+            os.environ["GITHUB_ACTIONS"] = "true"
+        sys.argv = ["nightly.py", *argv]
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = NI.main()
+                except SystemExit as e:
+                    code = e.code
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        return code, out.getvalue()
+
+    def cloud(*argv):
+        return _cloud_call(CL, *argv, "--root", ".", "--local-bucket", str(bucket))
+
+    def machine(name, *down):
+        """An empty machine, with the checkout's cloud_kit.json and what the
+        named commands bring down."""
+        root = tmp / name
+        root.mkdir()
+        (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+        os.chdir(root)
+        refusal.MARK, refusal.LOCK = root / "archive" / "refused.json", root / "archive" / ".lock"
+        for verb in down:
+            code, out = cloud(*verb.split())
+            assert code == 0, f"{name}: cloud.py {verb} failed: {out[-300:]}"
+        return root
+
+    def the_night(name, run_id, *flags):
+        """One night job, step for step as nightly.yml has it."""
+        machine(name, "state-down", "kit-down")
+        took = Path("Docket.txt").read_bytes()
+        code, _ = night("--runner", *flags, run_id=run_id)
+        asked = [list(c) for c in calls]
+        v = json.loads(NI.VERDICT.read_text(encoding="utf-8"))
+        if code == 0 and v.get("publishable") and "--dry-run" not in flags:
+            up, out = cloud("site-up", "--run", run_id)
+            assert up == 0, out[-300:]
+        up, out = cloud("kit-up", *(["--hold", run_id] if "--new-term" in flags else []))
+        assert up == 0, f"{name}: kit-up failed: {out[-400:]}"
+        _, page = night("--runner", "--close", "--outcome",
+                        f"night={'success' if code == 0 else 'failure'}", run_id=run_id,
+                        github=True)
+        up, out = cloud("state-up")
+        assert up == 0, f"{name}: state-up failed: {out[-400:]}"
+        return types.SimpleNamespace(
+            code=code, v=json.loads(NI.VERDICT.read_text(encoding="utf-8")), page=page,
+            took=took, calls=asked,
+            census=json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"]["bills"]
+            if NI.CENSUS.exists() else None)
+
+    def publish(name, run_id, lands=True):
+        """The publish job, once approved: its deploy, and -- only when that
+        step succeeded, as a workflow step runs -- the release and the state."""
+        machine(name, "state-down")
+        cloud("site-down", "--run", run_id)
+        NI.upload_and_check = lambda a, site, target, base: lands
+        code, _ = night("--runner", "--deploy-to", "production", run_id=run_id)
+        if code == 0:
+            for verb in (("kit-release", "--run", run_id), ("state-up",)):
+                rc, out = cloud(*verb)
+                assert rc == 0, f"{name}: cloud.py {verb[0]} failed: {out[-400:]}"
+        return code
+
+    def later_nights_get():
+        """What the next night would take down: the kit's day file and carried
+        output, its manifest's word for every file outside the day's archive,
+        and the census."""
+        man = json.loads((bucket / "state" / "kit-manifest.json").read_text(encoding="utf-8"))
+        return ((bucket / "kit" / "Docket.txt").read_bytes(),
+                (bucket / "kit" / "narratives.json").read_bytes(),
+                {r: e["sha256"] for r, e in man["files"].items()
+                 if not r.startswith("nh-archive/")},
+                json.loads((bucket / "state" / "census.json").read_text(
+                    encoding="utf-8"))["census"]["bills"])
+
+    def page_note(out):
+        notes = [ln for ln in out.splitlines() if ln.startswith("::error title=Why the night failed::")]
+        assert len(notes) == 1, f"the run's page leads with {notes}"
+        return notes[0].split("::", 2)[2]
+
+    good = lambda work="work", markers="candidate_segments.json": (2850, 2851)   # noqa: E731
+    try:
+        for k in env_keys:
+            os.environ.pop(k, None)
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        NI.tracked_changes = lambda: ([], [])
+        NI.captions_compared = good
+        NI.current_branch = lambda: "main"
+
+        # The laptop seeds the kit with the old term's files, and a first
+        # night sets the baseline: 100 bills.
+        laptop = machine("laptop")
+        for rel, body in (("Docket.txt", OLD), ("narratives.json", b"{}"),
+                          ("nh-archive/index.json", b"{}"),
+                          ("legislation/2026/HB1.html", b"<p>one</p>")):
+            f = laptop.joinpath(*rel.split("/"))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(body)
+        code, out = cloud("seed-kit")
+        assert code == 0, out[-300:]
+        gc["docket"] = OLD
+        first = the_night("first", "300", "--dry-run")
+        assert first.code == 0 and first.v["fetch"] == "installed" and first.census == 100, first.v
+        before = later_nights_get()
+        assert before[0] == OLD and before[3] == 100, before[3]
+
+        # THE TERM TURNS OVER: the General Court serves a docket half the size.
+        gc["docket"] = NEW
+        new_blob = bucket / "kit" / "nh-archive" / "store" / f"{hashlib.sha256(NEW).hexdigest()}.gz"
+
+        # A New term run kept from production by another blocker.
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (5, 2851)
+        blocked = the_night("blocked", "301", "--new-term")
+        NI.captions_compared = good
+        assert blocked.took == OLD and blocked.v["fetch"] == "installed" and blocked.v["built"] \
+            and not blocked.v["publishable"], blocked.v
+        assert later_nights_get() == before, (
+            "a New term run that another blocker kept from production still changed what the "
+            "next night takes down: the kit's files, its manifest or the census")
+        assert (bucket / "nights/301/kit/Docket.txt").read_bytes() == NEW and new_blob.exists(), (
+            "what a New term run took is not waiting under nights/<run>/kit/, or the day's own "
+            "archive copy did not go up")
+
+        # A New term run that is publishable, and that nobody approves.
+        waiting = the_night("waiting", "302", "--new-term")
+        assert waiting.code == 0 and waiting.took == OLD and waiting.v["publishable"] and \
+            waiting.v["new_term"]["files"].startswith("accepted 1 much smaller") and \
+            waiting.v["census"]["bills"] == 50 and waiting.census == 100, waiting.v
+        assert later_nights_get() == before, (
+            "a New term run changed what the next night takes down before its build was "
+            "published: the kit's files, its manifest or the census")
+        held = json.loads((bucket / "nights/302/kit.json").read_text(encoding="utf-8"))
+        assert {"Docket.txt", "narratives.json"} <= set(held["files"]) and \
+            not any(r.startswith("nh-archive/") for r in held["files"]), sorted(held["files"])
+
+        # THE NEXT SCHEDULED NIGHT. Whether 302 was rejected or is still
+        # waiting is the same to it: nothing was published. It takes down the
+        # old term's docket, meets the new one, and refuses it.
+        nxt = the_night("next", "303")
+        assert nxt.took == OLD, (
+            "the next night took down the docket a New term run installed, though that run "
+            "was never published")
+        assert nxt.code == 1 and nxt.v["fetch"].startswith("smaller") and not nxt.v["built"] \
+            and not any("--allow-shrink" in c for c in nxt.calls) and \
+            not any(Path(c[0]).name == "build_all.py" for c in nxt.calls), (
+                "the night after an unpublished New term run carried the switch through: "
+                f"fetch {nxt.v.get('fetch')!r}, built {nxt.v.get('built')}")
+        why = page_note(nxt.page)
+        assert why.startswith(NEW_TERM_SENTENCE) and NI.NEW_TERM_HOW in why and \
+            f"The New term run of {today} was not published" in why, why
+        assert later_nights_get() == before
+
+        # 302's approval, arriving after a newer night has run: nothing.
+        assert publish("late", "302") == 1 and later_nights_get() == before, \
+            "an older New term run's late approval deployed, or kept what it had accepted"
+
+        # A NEW TERM RUN THAT IS PUBLISHED. A deploy that does not land keeps
+        # nothing; one that lands moves the files into the kit and the counts
+        # into the census.
+        switch = the_night("switch", "304", "--new-term")
+        assert switch.code == 0 and switch.took == OLD and switch.v["publishable"] and \
+            later_nights_get() == before, switch.v
+        assert publish("deploy-failed", "304", lands=False) == 1 and later_nights_get() == before, \
+            "a New term deploy that did not land kept what the run had accepted"
+        assert publish("published", "304") == 0
+        docket, carried, table, bills = later_nights_get()
+        census = json.loads((bucket / "state" / "census.json").read_text(encoding="utf-8"))
+        assert docket == NEW and json.loads(carried) == {"bills": 50} and bills == 50 and \
+            table["Docket.txt"] == hashlib.sha256(NEW).hexdigest() and \
+            census.get("new_term") is True and census["run_id"] == "304", (
+                "a published New term run's files and counts did not reach the kit and the "
+                f"census: {bills} bills, run {census.get('run_id')}")
+        assert any(f.read_bytes() == OLD for f in bucket.glob("replaced/*/kit/Docket.txt*")), \
+            "kit-release replaced the kit's docket without keeping the old one"
+        code, out = cloud("kit-release", "--run", "304")
+        assert code == 0 and "0 to move into kit/" in out, \
+            "kit-release run twice moved its files twice: " + out[-200:]
+
+        # The night after takes the new term's files down and is an ordinary
+        # night, gated against the published counts.
+        after = the_night("after", "305")
+        assert after.took == NEW and after.code == 0 and after.v["fetch"] == "installed" and \
+            after.v["gates"] == "passed" and after.v["publishable"] and \
+            "new_term_unpublished" not in after.v, after.v
+
+        # ONCE: files smaller again are refused again.
+        gc["docket"] = NEWER
+        again = the_night("again", "306")
+        assert again.took == NEW and again.code == 1 and again.v["fetch"].startswith("smaller"), (
+            "the New term allowance outlived its published run", again.v.get("fetch"))
+
+        # kit-release is all of a run's files or none: a kit that changed
+        # underneath, after the run took it down, is left alone.
+        the_night("held-again", "307", "--new-term")
+        gc["docket"] = NEW + b"2027|0050|12/3/2026 9:00:00 AM|HB50|H|Introduced\n"
+        moved = the_night("moved-on", "308")
+        assert moved.code == 0 and moved.v["fetch"] == "installed", moved.v
+        there = later_nights_get()
+        code, out = cloud("kit-release", "--run", "307")
+        assert code == 1 and "NOTHING WAS RELEASED" in out and later_nights_get() == there, (
+            "kit-release moved an older run's files over a kit a later night had written: "
+            + out[-200:])
+        code, out = cloud("kit-release", "--run", "999")
+        assert code == 1 and "Nothing was released" in out, out[-200:]
+    finally:
+        os.chdir(here)
+        (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
+         NI.time, sys.argv, refusal.MARK, refusal.LOCK, NI.upload_and_check,
+         NI.current_branch) = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(must_wait)} of the real kit's files wait on a New term run; a blocked "
+                  "run and an unapproved one leave the kit and the census as they were, the "
+                  "next night takes the old files down and refuses the smaller ones, a late "
+                  "approval and a failed deploy keep nothing, a landed one moves files and "
+                  "counts in, and smaller files are refused again after it")
+
+
+@check("build", "a New term week takes the smaller committee lists once, and never an empty one",
+       needs=("nightly",))
+def _nightly_weekly_new_term(NI):
+    """In January a term's committee assignments are cleared and made again,
+    and the weekly's rosters, committee list and study committees' views can
+    come back much smaller -- which on any other Sunday is a failed fetch, and
+    is kept out. The weekly run by hand with New term ticked takes them however
+    much smaller, for that run only. Never an empty one, which is a failure
+    whatever the week; and never fewer members who have left, which is a merge
+    and cannot rightly shrink."""
+    import contextlib
+    import io
+    import types
+    import refusal
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekly-new-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    how = {"seats": 3, "committees": 5, "rows": {}, "drop_former": False}
+
+    def member(i):
+        return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": True}
+
+    def fake(args, label, cwd=None):
+        NI.say(f"\n--- {label} ---")
+        name = Path(args[0]).name
+        out = Path(args[args.index("--out") + 1]) if "--out" in args else None
+        if name == "fetch_committee_members_db.py":
+            out.write_text(json.dumps({"H01": [member(i) for i in range(how["seats"])]}),
+                           encoding="utf-8")
+        elif name == "fetch_members_db.py":
+            got = {} if how["drop_former"] else json.loads(out.read_text(encoding="utf-8"))
+            got["777"] = {"name": "Newly, Gone", "party": "Democrat"}
+            out.write_text(json.dumps(got), encoding="utf-8")
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd, how["rows"])
+        elif name == "fetch_committees.py":
+            out.write_text(json.dumps({"H": [{"code": f"H{i}", "name": f"H {i}", "chair": "B"}
+                                             for i in range(how["committees"])]}),
+                           encoding="utf-8")
+        NI.say("  (0s, exit 0)")
+        return 0
+
+    def installed():
+        Path("data").mkdir(exist_ok=True)
+        Path("db").mkdir(exist_ok=True)
+        Path("data/committee_members.json").write_text(json.dumps(
+            {"H01": [member(i) for i in range(10)], "S01": [member(i) for i in range(20, 25)]}),
+            encoding="utf-8")
+        Path("former_members.json").write_text(json.dumps(
+            {"1": {"name": "Old, One"}, "2": {"name": "Old, Two"}}), encoding="utf-8")
+        Path("committees.json").write_text(json.dumps(
+            {"S": [{"code": f"S{i}", "name": f"S {i}"} for i in range(14)],
+             "H": [{"code": f"H{i}", "name": f"H {i}"} for i in range(27)]}), encoding="utf-8")
+        for v in NI.STUDY_WEEKLY:
+            (Path("db") / f"{v}.psv").write_text("".join(f"{v}|{i}\n" for i in range(30)),
+                                                 encoding="utf-8")
+
+    def week(*extra):
+        NI.LOG = []
+        sys.argv = ["nightly.py", "--runner", "--weekly", *extra]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+        return code, json.loads(NI.WEEKLY_VERDICT.read_text(encoding="utf-8"))
+
+    def seats():
+        return sum(len(x) for x in json.loads(
+            Path("data/committee_members.json").read_text(encoding="utf-8")).values())
+
+    def committees():
+        return sum(len(x) for x in json.loads(
+            Path("committees.json").read_text(encoding="utf-8")).values())
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+
+        # The New term week: 3 seats of 15, 5 committees of 41, a view at a
+        # tenth -- each taken, for this run.
+        installed()
+        how["rows"] = {"StatStudMembers": 3}
+        code, v = week("--new-term")
+        assert code == 0 and v["clean"] and v["asked"]["new_term"] is True, v
+        assert seats() == 3 and committees() == 5 and \
+            (Path("db") / "StatStudMembers.psv").read_text(encoding="utf-8").count("\n") == 3, \
+            "a New term week did not take the smaller lists"
+
+        # ONCE: the next ordinary week keeps a further fall out, as on any week.
+        how.update(seats=1, committees=2, rows={"StatStudMembers": 1})
+        code, v = week()
+        assert code == 1 and seats() == 3 and committees() == 5 and \
+            v["results"]["committee_members"].startswith("not taken") and \
+            v["results"]["committees"].startswith("not taken") and \
+            v["results"]["study StatStudMembers"].startswith("not taken"), \
+            "the New term allowance outlived its week"
+
+        # ... and its page says it may be a new term, and which boxes to tick.
+        assert NI.plain_why(v, True).startswith(NI.WEEKLY_NEW_TERM_HINT) and \
+            NI.NEW_TERM_BOX in NI.WEEKLY_NEW_TERM_HINT and \
+            f'"{NI.WEEKLY_FETCH_BOX}" ticked' in NI.WEEKLY_NEW_TERM_HINT, NI.plain_why(v, True)
+
+        # Never empty, and never fewer members who have left, New term or not.
+        installed()
+        how.update(seats=0, committees=41, rows={}, drop_former=True)
+        code, v = week("--new-term")
+        assert code == 1 and seats() == 15 and \
+            v["results"]["committee_members"] == "not taken: it came back empty" and \
+            v["results"]["former_members"].startswith("not taken") and \
+            len(json.loads(Path("former_members.json").read_text(encoding="utf-8"))) == 2, v
+        assert not NI.plain_why(v, True).startswith(NI.WEEKLY_NEW_TERM_HINT), \
+            "an empty roster was called a new term"
+
+        # New term without the fetch takes nothing, and used to come back
+        # clean with a page saying the lists "were taken however much smaller".
+        installed()
+        how.update(seats=3, committees=5, drop_former=False)
+        code, v = week("--new-term", "--no-fetch")
+        assert code == 1 and not v["clean"] and seats() == 15 and committees() == 41 and \
+            v["new_term"] == {"refused": NI.REFUSED_NO_FETCH} and \
+            NI.plain_why(v, True) == NI.WEEKLY_NEW_TERM_NO_FETCH, (code, v)
+        code, v = week("--no-fetch")
+        assert code == 0 and v["clean"], "an ordinary week by hand without the fetch is not clean"
+    finally:
+        os.chdir(here)
+        NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a New term week takes the smaller rosters, committee list and study views; the "
+                  "next week keeps a fall out again and says it may be a new term; an empty "
+                  "roster and a shrunken merge never; without the fetch it does nothing and says so")
 
 
 @check("build", "a laptop that has handed the nightly to GitHub runs none of it, and GitHub's "
@@ -27053,6 +28136,201 @@ def _workflows_site_handoff():
                          f"{down or 'no job'}; the publish job would have nothing to deploy")
     return "ok", (f"sent by {', '.join(up)} and taken down by {', '.join(down)} under the run's "
                   "id; no artifact or cache in any workflow")
+
+
+# The box, as a person reads it on GitHub's "Run workflow" form, and the note
+# the person asked to sit beside it (NEW_SESSION_PLAN.md, decision 3).
+NEW_TERM_INPUT = "New term: accept the General Court's smaller files once"
+NEW_TERM_REVIEWER = "THIS RUN MUST KEEP A REQUIRED REVIEWER"
+NEW_TERM_ENV = "  NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}"
+NEW_TERM_FLAG = "          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term' }"
+# In a workflow that publishes: the night's kit-up holds what a New term run
+# changed, and the publish job releases it after its deploy -- these lines, in
+# this order, and nothing else of New term anywhere.
+NEW_TERM_HOLD = ["          $hold = @()",
+                 "          if ($env:NEW_TERM -eq 'true') { $hold = @('--hold', $env:RUN_ID) }",
+                 "          python cloud.py kit-up @hold",
+                 "          exit $LASTEXITCODE"]
+NEW_TERM_RELEASE_IF = "        if: env.NEW_TERM == 'true'"
+NEW_TERM_RELEASE = ["          python cloud.py kit-release --run $env:RUN_ID",
+                    "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+                    "          python cloud.py state-up",
+                    "          exit $LASTEXITCODE"]
+RUN_ID_ENV = "          RUN_ID: ${{ github.run_id }}"
+
+
+def _wf_input(lines, name):
+    """A workflow_dispatch input's description, as the "Run workflow" form shows it."""
+    for i, ln in enumerate(lines):
+        if re.match(rf"^      {re.escape(name)}:\s*$", ln):
+            for nxt in lines[i + 1:]:
+                m = re.match(r'^        description:\s*"(.*)"\s*$', nxt)
+                if m:
+                    return m.group(1)
+                if not re.match(r"^        \S", nxt):
+                    break
+    return ""
+
+
+@check("workflows", "the New term box is on the nightly and the weekly run by hand, reaches only "
+       "the night or the week, holds what it took until the publish job releases it, and keeps "
+       "its required reviewer", needs=("nightly",))
+def _workflows_new_term(NI):
+    """The night a term turns over, the General Court's files really do get
+    smaller, and guards that are right on every other night would stop it. The
+    New term box lets them through for one run (nightly.py --new-term), so it
+    must reach nightly.py from a box a person ticks and from nothing else: off
+    unless ticked; read only by a run started by hand (the env line names
+    workflow_dispatch, so a schedule never carries it); handed only to the step
+    that runs the night or the week, never to a deploy or the verdict. Every
+    workflow that runs the night or the week has it, so the weekly can take
+    January's committee lists.
+
+    And the person decided on 30 September 2026 that the switch waits for their
+    approval even once ordinary nights publish without one. Today the
+    production environment asks for approval of every deploy, which covers it;
+    the note beside the box says that this run must keep a required reviewer
+    when that rule comes off, and this check fails if a workflow that has the
+    box and deploys production does not carry it.
+
+    The approval means nothing if what the run took is kept before it is
+    given (_new_term_waits_for_publish drives the commands; this holds the
+    workflow to them). In a workflow that deploys production, the night's
+    kit-up is given --hold with the run's own id on a New term run, and only
+    then; the job that deploys production runs kit-release for that run and
+    then state-up, in one step directly after the deploy, which a failed
+    deploy skips, and never under always(). A workflow that publishes nothing
+    -- the weekly -- holds nothing. And the sentences on the run's page name
+    the boxes by the words each one starts with on the form."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    assert NEW_TERM_INPUT.startswith(NI.NEW_TERM_BOX + ":"), (
+        f"the box reads {NEW_TERM_INPUT!r}, and the run's page tells a person to tick "
+        f"{NI.NEW_TERM_BOX!r}")
+    boxed, reviewed = [], []
+    for f in files:
+        text = f.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        code = _wf_code(lines)
+        body = "\n".join(code)
+        jobs = _wf_jobs(text)
+        runs = [j for j, jl in jobs.items() if any("nightly.py @flags" in ln for ln in _wf_code(jl))]
+        at = [i for i, ln in enumerate(lines) if re.match(r"^      new_term:\s*$", ln)]
+        if not runs:
+            assert not at and "new_term" not in body.lower() and "--new-term" not in body, \
+                f"{f.name} carries New term but runs neither the night nor the week"
+            continue
+        assert len(at) == 1, f"{f.name} runs nightly.py and has {len(at)} New term boxes, not one"
+        i = at[0]
+        heads = [ln for ln in lines[:i] if re.match(r"^\S|^  \S|^    \S", ln)
+                 and not ln.lstrip().startswith("#")]
+        assert heads[-3:] == ["on:", "  workflow_dispatch:", "    inputs:"], (
+            f"{f.name}'s new_term is not an input of workflow_dispatch: {heads[-3:]}")
+        spec = []
+        for ln in lines[i + 1:]:
+            if not re.match(r"^        \S", ln):
+                break
+            spec.append(ln.strip())
+        assert spec == [f'description: "{NEW_TERM_INPUT}"', "type: boolean", "default: false"], \
+            f"{f.name}'s New term box is {spec}: it must read as the box, and be off unless ticked"
+
+        # Read once, from a run by hand; named elsewhere only in the run's name.
+        assert NEW_TERM_ENV in _wf_block(lines, "env"), \
+            f"{f.name} does not take NEW_TERM from the box, on a run by hand alone"
+        name = _wf_block(lines, "run-name")
+        stray = [ln.strip() for ln in code if "inputs.new_term" in ln
+                 and ln != NEW_TERM_ENV and ln not in name]
+        assert not stray, f"{f.name} reads the New term box outside its env line: {stray}"
+
+        # Handed to the night or the week; and, where the workflow publishes,
+        # to the night's kit-up, which holds, and to the publish job's release.
+        publishes = "--deploy-to production" in body
+        held, released = [], []
+        for j, jl in jobs.items():
+            steps = _wf_steps(_wf_code(jl))
+            for k, st in enumerate(steps):
+                s = "\n".join(st)
+                if "nightly.py @flags" in s:
+                    assert NEW_TERM_FLAG in st and s.count("NEW_TERM") == 1 and \
+                        s.count("--new-term") == 1, \
+                        f"{f.name}: job {j}'s night does not pass --new-term from the box alone"
+                elif "cloud.py kit-up" in s and publishes:
+                    at = [st.index(x) for x in NEW_TERM_HOLD if x in st]
+                    assert len(at) == len(NEW_TERM_HOLD) and at == list(range(at[0], at[0] + len(at))) \
+                        and RUN_ID_ENV in st and s.count("NEW_TERM") == 1 and \
+                        s.count("kit-up") == 1, (
+                            f"{f.name}: job {j} sends a New term run's files to the kit the night "
+                            "it ran, before anyone has approved the switch: its kit-up must be "
+                            "given --hold with the run's own id when NEW_TERM is true")
+                    held.append(j)
+                elif "kit-release" in s:
+                    prev = "\n".join(steps[k - 1]) if k else ""
+                    at = [st.index(x) for x in NEW_TERM_RELEASE if x in st]
+                    assert "--deploy-to production" in prev and "--deploy-to production" not in s, (
+                        f"{f.name}: job {j} releases a New term run's files in a step that does "
+                        "not come directly after the production deploy")
+                    assert NEW_TERM_RELEASE_IF in st and "always()" not in s and \
+                        "continue-on-error" not in s and "continue-on-error" not in prev and \
+                        len(at) == len(NEW_TERM_RELEASE) and \
+                        at == list(range(at[0], at[0] + len(at))) and RUN_ID_ENV in st and \
+                        s.count("NEW_TERM") == 1, (
+                            f"{f.name}: job {j}'s release step must run only on a New term run, "
+                            "only when the deploy before it succeeded, and be kit-release for "
+                            "the run's own id and then state-up")
+                    released.append(j)
+                else:
+                    assert "NEW_TERM" not in s and "--new-term" not in s and \
+                        "new_term" not in s and "--hold" not in s, \
+                        f"{f.name}: job {j} hands New term to a step that is not the night or the week"
+        assert body.count("NEW_TERM") == (4 if publishes else 2) and \
+            body.count("--new-term") == 1 and body.count("--hold") == (1 if publishes else 0) \
+            and body.count("kit-release") == (1 if publishes else 0), \
+            f"{f.name} names NEW_TERM, --new-term, --hold or kit-release outside the steps that take them"
+        if publishes:
+            assert held == runs and len(released) == 1 and \
+                "--deploy-to production" in "\n".join(_wf_code(jobs[released[0]])), (
+                    f"{f.name} deploys production: the job that runs the night ({runs}) must "
+                    f"hold a New term run's files (held by {held or 'none'}), and the job that "
+                    f"deploys production must release them (released by {released or 'none'})")
+            # The boxes the run's page tells a person to tick, by their own words.
+            assert _wf_input(lines, "fetch").startswith(NI.FETCH_BOX) and \
+                _wf_input(lines, "dry_run").startswith(NI.DRY_BOX + ":"), (
+                    f"{f.name}: the run's page names the boxes {NI.FETCH_BOX!r} and "
+                    f"{NI.DRY_BOX!r}, and the form shows {_wf_input(lines, 'fetch')!r} and "
+                    f"{_wf_input(lines, 'dry_run')!r}")
+        else:
+            assert _wf_input(lines, "fetch").startswith(NI.WEEKLY_FETCH_BOX), (
+                f"{f.name}: the run's page names the box {NI.WEEKLY_FETCH_BOX!r}, and the form "
+                f"shows {_wf_input(lines, 'fetch')!r}")
+
+        # The note beside the box, wherever production is deployed.
+        note = []
+        for ln in reversed(lines[:i]):
+            if not ln.strip().startswith("#"):
+                break
+            note.append(ln.strip().lstrip("#").strip())
+        note = " ".join(reversed(note))
+        if "--deploy-to production" in body:
+            assert NEW_TERM_REVIEWER in note and "approval" in note, (
+                f"{f.name} has the New term box and deploys production, and the note beside the "
+                "box that this run must keep a required reviewer is gone. The person decided on "
+                "30 September 2026 that the switch to a new term waits for their approval even "
+                "after ordinary nights publish without one")
+            reviewed.append(f.name)
+        boxed.append(f.name)
+    assert "nightly.yml" in boxed and "weekly.yml" in boxed, \
+        f"the New term box is on {boxed or 'no workflow'}; the nightly and the weekly both need it"
+    assert reviewed, "no workflow with the New term box deploys production, so its note was never read"
+    src = Path("nightly.py").read_text(encoding="utf-8")
+    assert re.search(r'ap\.add_argument\("--new-term", action="store_true"', src), \
+        "nightly.py takes no --new-term for the box to pass"
+    assert re.search(r'ap\.add_argument\("--hold", metavar="RUN"',
+                     Path("cloud.py").read_text(encoding="utf-8")), \
+        "cloud.py takes no --hold for the night's kit-up to pass"
+    return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
+                  f"only to the night or the week; {', '.join(reviewed)} holds what the run "
+                  "took until its publish job releases it, and keeps its required-reviewer note")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
