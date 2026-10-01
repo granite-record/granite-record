@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.180 */
+/* GRANITE_VERSION: 2026-09-07.181 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1323,6 +1323,12 @@ letter-spacing:.01em}
 .ctitle{font-size:var(--t-read);color:var(--ink);margin:var(--sp-3) 0 0;
 line-height:1.5}
 .cmeta{font-size:var(--t-ui);color:var(--ink-2);margin-top:var(--sp-3)}
+/* Why a bill is listed, where its title does not have the word searched for:
+   "topic: Housing", "text says: lavatory". One line under the card's own
+   facts, in the same quiet type, so it reads as a note about the search and
+   not as something the record says about the bill. */
+.cwhy{font-size:var(--t-ui);color:var(--ink-2);margin-top:var(--sp-2);font-style:italic}
+.findout .fwhy{display:block;color:var(--ink-2);font-size:var(--t-ui);font-style:italic}
 .cbody{border-top:1px solid var(--rule);padding:0 var(--sp-6) var(--sp-7)}
 .cbody[hidden]{display:none}
 .tabs{display:flex;gap:var(--sp-7);border-bottom:1px solid var(--rule);margin:0 0 var(--sp-6);flex-wrap:wrap}

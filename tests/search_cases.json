@@ -1,12 +1,16 @@
 {
  "_about": [
   "Real searches, held to the real bills they must and must not return. preflight reads this twice:",
-  "under --code the bills below are the fixture, run through the matcher build_pages cuts out of app.js;",
-  "with site/idx built, the same cases run over the real index of the term, where at_most catches a flood,",
-  "every term of the table is looked for in every term's titles, and a retitled bill is reported.",
+  "under --code the bills below are the fixture, with search_index.json (what their own analyses and",
+  "texts are about), run through the matcher build_pages cuts out of app.js; with site/idx and",
+  "site/sidx built, the same cases run over the real index of the term, where at_most catches a flood,",
+  "every term of the table is looked for in every term's titles and texts, and a retitled bill is reported.",
   "",
-  "Every title, sponsor and committee here is copied from site/idx/2025-2026.json as it stood on",
-  "1 October 2026. Add a bill only by copying it from the index: an invented title proves nothing.",
+  "Nothing here is typed. python3 build_search_index.py --fixture tests/search_cases.json copies every",
+  "bill's title, sponsor, committees and topic from site/idx, cuts search_index.json out of the term's",
+  "real search index for exactly these bills, and copies the text of the few bills listed under \"texts\"",
+  "into search_texts.json. Add a bill by naming its id in a case and running that: an invented title",
+  "proves nothing.",
   "",
   "must = the search has to list it. first = it has the reader's own word, so it is listed above every",
   "must bill, which the table found. never = plainly about something else. at_most = a ceiling on the",
@@ -20,29 +24,29 @@
   {
    "q": "lgbtq",
    "at_most": 40,
-   "why": "the person's example: nothing was returned; no title says lgbtq",
-   "must": ["HB148", "HB377", "HB712", "HB1217", "HB1299", "HB1356", "HB1376", "HB1442", "HB1447", "HB1564", "HB1165", "HB1778", "SB38", "SB211", "SB268", "SB459", "SB520", "SB552", "CACR25"],
-   "never": ["HB561", "HB300", "HB105", "HB1254"]
+   "why": "the person's example: nothing was returned; no title says lgbtq; the review, 1 October: SB 520's text is about breast reduction for pain and never mentions gender; its title alone listed it",
+   "must": ["HB148", "HB377", "HB712", "HB1217", "HB1299", "HB1356", "HB1376", "HB1442", "HB1447", "HB1564", "HB1165", "HB1778", "SB38", "SB211", "SB268", "SB459", "SB552", "CACR25"],
+   "never": ["HB105", "HB1254", "HB300", "HB561", "SB520"]
   },
   {
    "q": "trans",
    "at_most": 40,
    "why": "the person's example: 162 bills titled transfer, transparency or transportation, or heard by a Transportation committee",
-   "must": ["HB148", "HB377", "HB712", "HB1217", "HB1299", "HB1356", "HB1376", "HB1442", "HB1447", "HB1564", "HB1165", "SB38", "SB211", "SB268", "SB459", "SB520", "SB552"],
-   "never": ["HB561", "HB300", "HB56", "HB319", "HB640", "HB105", "HB1543"]
+   "must": ["HB148", "HB377", "HB712", "HB1217", "HB1299", "HB1356", "HB1376", "HB1442", "HB1447", "HB1564", "HB1165", "SB38", "SB211", "SB268", "SB459", "SB552"],
+   "never": ["HB105", "HB1543", "HB300", "HB319", "HB56", "HB561", "HB640", "SB520"]
   },
   {
    "q": "transgender",
    "at_most": 40,
-   "must": ["HB148", "HB377", "HB712", "HB1442", "HB1447", "HB1564", "HB1165", "SB38", "SB211", "SB520"],
-   "never": ["HB561", "HB105"]
+   "must": ["HB148", "HB377", "HB712", "HB1442", "HB1447", "HB1564", "HB1165", "SB38", "SB211"],
+   "never": ["HB105", "HB561", "SB520"]
   },
   {
    "q": "bathroom bill",
    "at_most": 20,
-   "why": "no title says bathroom; the eight bills' text says lavatory facilities or locker rooms (read 1 October). SB 459's text names no lavatory",
+   "why": "no title says bathroom; four of the eight say 'lavatory' once, in the text, and nowhere else. A rent registry, a bill on shared facilities in rentals and one on dwellings over water mention a bathroom too, and say nothing of sex",
    "must": ["HB148", "HB1442", "SB268", "SB552", "SB38", "HB1217", "HB1299", "HB1447"],
-   "never": ["SB459", "HB377"]
+   "never": ["HB1450", "HB377", "HB558", "HB81", "SB27", "SB459"]
   },
   {
    "q": "restroom",
@@ -61,15 +65,15 @@
   {
    "q": "gender affirming care",
    "at_most": 15,
-   "must": ["HB377", "HB712", "SB520", "HB1376", "HB1356"],
-   "never": ["HB148", "HB1254"]
+   "must": ["HB377", "HB712", "HB1376", "HB1356"],
+   "never": ["HB1254", "HB148", "SB520"]
   },
   {
    "q": "trans sports",
    "at_most": 20,
    "why": "the text of each covers athletic or sporting competition (read 1 October)",
    "must": ["SB211", "HB148", "HB1442", "SB268", "SB552", "SB459", "HB1217", "HB1299", "SB38"],
-   "never": ["HB377", "HB736"]
+   "never": ["HB1450", "HB377", "HB736"]
   },
   {
    "q": "gay marriage",
@@ -79,7 +83,8 @@
   {
    "q": "abortion",
    "at_most": 40,
-   "must": ["HB476", "HB662", "HB1338", "HB1702", "HB1769", "HCR7", "SB36", "SB260", "SB474", "HB191", "HB1333", "HB1590", "HB1313", "SB551"]
+   "must": ["HB1313", "HB1333", "HB1338", "HB1590", "HB1702", "HB1769", "HB191", "HB232", "HB476", "HB662", "HCR7", "SB260", "SB36", "SB474", "SB551"],
+   "why": "HB 232 names abortion only in its analysis"
   },
   {
    "q": "gun control",
@@ -115,13 +120,13 @@
   },
   {
    "q": "school funding",
-   "at_most": 80,
+   "at_most": 95,
    "must": ["HB550", "HB563", "HB651", "HB772", "HB1815", "SB659", "HB1835", "HR40", "HB527", "HB1787"],
    "never": ["HB1724", "HB1812"]
   },
   {
    "q": "vouchers",
-   "at_most": 50,
+   "at_most": 55,
    "why": "the reader's own word first, housing vouchers included; then the education freedom account bills",
    "first": ["HB628", "HB1512", "HB1732"],
    "must": ["HB748", "HB549", "SB295", "SB203", "HB402"]
@@ -150,7 +155,7 @@
   },
   {
    "q": "teachers",
-   "at_most": 30,
+   "at_most": 45,
    "why": "321 bills: every title with school, education or student in it",
    "must": ["HB90", "HB1270", "HB1669"],
    "never": ["HB93", "HB85", "SB580"]
@@ -170,9 +175,8 @@
   {
    "q": "income tax",
    "at_most": 10,
-   "empty_ok": true,
-   "why": "seven returned and all were 'low-income' beside 'tax'. No title of the term says income tax",
-   "must": [],
+   "why": "both amendments are titled 'the adoption of tax laws'; their analysis says 'tax on personal income'. The seven low-income bills it used to list are never-bills",
+   "must": ["CACR10", "CACR12"],
    "never": ["HB734", "SB173", "HB1021", "HB1674"]
   },
   {
@@ -264,7 +268,7 @@
   },
   {
    "q": "law enforcement",
-   "at_most": 60,
+   "at_most": 95,
    "why": "'law' carries no subject and was skipped, so this searched 'enforcement'",
    "must": ["HB102", "HB109", "HB162", "HB218"],
    "never": ["HB244", "HB320"]
@@ -292,13 +296,106 @@
   },
   {
    "q": "campaign finance",
-   "at_most": 15,
+   "at_most": 25,
    "must": ["HB1201", "HB311", "SB405"]
   },
   {
    "q": "fluoride",
    "at_most": 5,
    "must": ["HB691"]
+  },
+  {
+   "q": "sex change surgery",
+   "must": ["HB712"],
+   "never": ["SB520"],
+   "at_most": 10,
+   "why": "HB 712's text says transgender and gender reassignment; SB 520, with the same words in its title, says neither"
+  },
+  {
+   "q": "bathroom",
+   "must": ["HB148", "HB1442", "SB268", "SB552", "SB38", "HB1217", "HB1299", "HB1447"],
+   "never": ["HB1450", "HB558", "SB27", "HB81"],
+   "at_most": 20
+  },
+  {
+   "q": "lavatory",
+   "must": ["HB148", "HB1442", "SB268", "SB552", "SB38"],
+   "at_most": 15,
+   "why": "the word the bills use; a single mention counts beside biological sex"
+  },
+  {
+   "q": "hormone therapy ban",
+   "must": ["HB377"],
+   "at_most": 10,
+   "why": "the person's own phrase; 'ban' is not a subject"
+  },
+  {
+   "q": "hormones",
+   "must": ["HB377", "HB1254"],
+   "at_most": 10,
+   "why": "a plural the table owns still finds the title with its singular"
+  },
+  {
+   "q": "weeds",
+   "first": ["HB1148"],
+   "never": ["HB75", "HB186", "HB198"],
+   "at_most": 5,
+   "why": "the plural of a slang word is the plant: 23 cannabis bills were listed while the table took the s off"
+  },
+  {
+   "q": "red flag law",
+   "must": ["SB555", "HB1642"],
+   "never": ["HB56", "HB159"],
+   "at_most": 5,
+   "why": "its own entry: under the firearms one the two bills it means were 21st and 33rd of 33"
+  },
+  {
+   "q": "forced outing",
+   "must": ["SB96", "SB430"],
+   "never": ["HB285", "HB1770", "SB278"],
+   "at_most": 15,
+   "why": "not the family court's 'parental rights and responsibilities'"
+  },
+  {
+   "q": "homeless",
+   "must": ["SB113", "HB490", "HB519", "SB441"],
+   "at_most": 15,
+   "why": "SB 441 says it only in its analysis"
+  },
+  {
+   "q": "car inspection",
+   "must": ["HB649", "HB1560", "HB1353", "SB157"],
+   "at_most": 15,
+   "why": "HB 649 is titled 'the maintenance obligations of motor vehicle operators'; its analysis says safety inspections"
+  },
+  {
+   "q": "social media",
+   "must": ["HB1589", "HB1650"],
+   "at_most": 15,
+   "why": "neither title says it; both texts do"
+  },
+  {
+   "q": "crypto",
+   "must": ["HB639", "HB302", "HB310", "SB482"],
+   "at_most": 10
+  },
+  {
+   "q": "marajuana",
+   "must": ["HB75", "HB198"],
+   "at_most": 40,
+   "why": "a word no bill has, read as the word it sounds like"
+  },
+  {
+   "q": "imigration",
+   "must": ["SB71", "HB511"],
+   "at_most": 45,
+   "why": "the same, one letter short"
+  },
+  {
+   "q": "housing",
+   "must": ["HB60", "HB1171"],
+   "at_most": 160,
+   "why": "a broad word: a bill filed under the topic Housing is listed after the titles that say housing"
   }
  ],
  "same": [
@@ -314,1444 +411,1877 @@
   ["trans sports", "girls sports", "save women's sports"],
   ["school choice", "school vouchers", "education freedom"],
   ["vaccine mandate", "vaccine choice", "vaccine requirements"],
-  ["forced outing", "parents rights"],
   ["transgender", "trans rights", "nonbinary"],
-  ["lgbtq", "lgbt", "queer", "gay rights"]
+  ["lgbtq", "lgbt", "queer", "gay rights"],
+  ["forced outing", "parental bill of rights", "parents bill of rights"],
+  ["gender identity", "biological sex"],
+  ["trans rights", "gender ideology"],
+  ["287g", "287(g)"],
+  ["lgbtq rights", "lgbtq+ rights"]
  ],
  "bills": {
-  "HB50": {
-   "n": "HB 50",
-   "title": "relative to intentional or knowing violation of the prohibition on teaching discrimination.",
-   "sponsor": "Peter Petrigno",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB53": {
-   "n": "HB 53",
-   "title": "permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.",
-   "sponsor": "Wendy Thomas",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Judiciary"]
-  },
-  "HB56": {
-   "n": "HB 56",
-   "title": "requiring a background check and mandatory waiting period during certain firearm transfers.",
-   "sponsor": "David Meuse",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB75": {
-   "n": "HB 75",
-   "title": "legalizing cannabis for persons 21 years of age or older.",
-   "sponsor": "Kevin Verville",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB85": {
-   "n": "HB 85",
-   "title": "relative to temporary licensure for student respiratory therapists.",
-   "sponsor": "Carol McGuire",
-   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"]
-  },
-  "HB86": {
-   "n": "HB 86",
-   "title": "increasing the cost of service for notice of civil forfeiture of unlicensed dogs to the rate for certified mail.",
-   "sponsor": "Charlie St. Clair",
-   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB90": {
-   "n": "HB 90",
-   "title": "relative to the definition of part-time teachers.",
-   "sponsor": "Rick Ladd",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB93": {
-   "n": "HB 93",
-   "title": "enabling school districts to appoint a school district treasurer.",
-   "sponsor": "Joe Alexander",
-   "committees": ["House Education Policy and Administration"]
+  "HB561": {
+   "n": "HB 561",
+   "title": "relative to the transfer of state-owned real property to municipalities.",
+   "sponsor": "Nancy Murphy",
+   "committees": ["House Public Works and Highways"],
+   "topic": "Municipalities"
   },
   "HB102": {
    "n": "HB 102-FN",
    "title": "relative to oversight of federal law enforcement actions.",
    "sponsor": "Mike Belcher",
-   "committees": ["House Criminal Justice and Public Safety"]
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "State Government"
   },
   "HB105": {
    "n": "HB 105-FN",
    "title": "creating a new conservation license plate and directing the additional fee to the cyanobacteria mitigation loan and grant fund.",
    "sponsor": "Rosemarie Rung",
-   "committees": ["House Transportation", "Senate Transportation"]
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
   },
   "HB109": {
    "n": "HB 109-FN",
    "title": "relative to false reports to law enforcement.",
    "sponsor": "Dennis Mannion",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB129": {
-   "n": "HB 129-FN",
-   "title": "relative to the definition of the term \"evidence-based\" within public education.",
-   "sponsor": "Mike Belcher",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB148": {
-   "n": "HB 148",
-   "title": "permitting classification of individuals based on biological sex under certain circumstances.",
-   "sponsor": "Jim Kofalt",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "HB159": {
-   "n": "HB 159",
-   "title": "authorizing the state to report mental health data for firearms background check purposes and providing for processes for voluntary surrender of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms disabilities.",
-   "sponsor": "Terry Roy",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB162": {
-   "n": "HB 162",
-   "title": "relative to informed consent for law enforcement searches of houses or other property.",
-   "sponsor": "Terry Roy",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB182": {
-   "n": "HB 182",
-   "title": "prohibiting electric vehicles in commercial parking garages.",
-   "sponsor": "Mark Proulx",
-   "committees": ["House Transportation"]
-  },
-  "HB186": {
-   "n": "HB 186-FN-A",
-   "title": "relative to the legalization and regulation of cannabis and making appropriations therefor.",
-   "sponsor": "Jared Sullivan",
-   "committees": ["House Commerce and Consumer Affairs", "Senate Judiciary"]
-  },
-  "HB190": {
-   "n": "HB 190",
-   "title": "relative to therapeutic cannabis possession limits.",
-   "sponsor": "Heath Howard",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB191": {
-   "n": "HB 191-FN",
-   "title": "providing criminal penalties for the transporting of an unemancipated minor in order to obtain a surgical procedure or a termination of the minor's pregnancy without parental permission.",
-   "sponsor": "Glenn Cordelli",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB198": {
-   "n": "HB 198",
-   "title": "relative to legalizing certain quantities of cannabis and establishing penalties for the smoking or vaping of cannabis in public.",
-   "sponsor": "Jared Sullivan",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB211": {
-   "n": "HB 211",
-   "title": "relative to the use of air rifles for hunting game.",
-   "sponsor": "James Spillane",
-   "committees": ["House Fish and Game and Marine Resources", "Senate Energy and Natural Resources"]
-  },
-  "HB217": {
-   "n": "HB 217",
-   "title": "relative to absentee ballots.",
-   "sponsor": "Bob Lynn",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB218": {
-   "n": "HB 218",
-   "title": "relative to providing victims of crime with a free police report of the investigation.",
-   "sponsor": "John MacDonald",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB233": {
-   "n": "HB 233",
-   "title": "requiring meetings of the New Hampshire vaccine association to be audio and video recorded and published on its website within 48 hours.",
-   "sponsor": "Barbara Comtois",
-   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"]
-  },
-  "HB237": {
-   "n": "HB 237",
-   "title": "prohibiting the use of special education state aid funds and differentiated aid special education funds on students not receiving special education services.",
-   "sponsor": "Mike Belcher",
-   "committees": ["House Education Funding"]
-  },
-  "HB238": {
-   "n": "HB 238",
-   "title": "prohibiting collective bargaining agreements from requiring employees join or contribute to a labor union.",
-   "sponsor": "Daniel Popovici-Muller",
-   "committees": ["House Labor, Industrial and Rehabilitative Services"]
-  },
-  "HB240": {
-   "n": "HB 240",
-   "title": "relative to nonpayment of dog licensing fees.",
-   "sponsor": "Tom Mannion",
-   "committees": ["House Environment and Agriculture", "Senate Judiciary"]
-  },
-  "HB244": {
-   "n": "HB 244",
-   "title": "updating and recodifying the municipal enforcement of the building and fire code.",
-   "sponsor": "Carol McGuire",
-   "committees": ["House Executive Departments and Administration", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB250": {
-   "n": "HB 250",
-   "title": "enabling local governing bodies to regulate the muzzling of dogs.",
-   "sponsor": "Jodi Newell",
-   "committees": ["House Environment and Agriculture", "Senate Energy and Natural Resources"]
-  },
-  "HB254": {
-   "n": "HB 254",
-   "title": "relative to options for end of life care.",
-   "sponsor": "Bob Lynn",
-   "committees": ["House Judiciary"]
-  },
-  "HB262": {
-   "n": "HB 262",
-   "title": "relative to group licenses for dogs.",
-   "sponsor": "Mike Bordes",
-   "committees": ["House Environment and Agriculture"]
-  },
-  "HB288": {
-   "n": "HB 288",
-   "title": "limiting how far in advance of an election an absentee ballot may be requested.",
-   "sponsor": "Robert Wherry",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB294": {
-   "n": "HB 294",
-   "title": "relative to the processing of absentee ballots.",
-   "sponsor": "Gary Daniels",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB295": {
-   "n": "HB 295",
-   "title": "making school building aid program funds nonlapsing.",
-   "sponsor": "Michael Cahill",
-   "committees": ["House Education Funding"]
-  },
-  "HB300": {
-   "n": "HB 300",
-   "title": "relative to directing the department of transportation to issue a request for proposals regarding the Conway Branch rail line and establishing a study committee to investigate the future of railroads in the state.",
-   "sponsor": "Timothy Horrigan",
-   "committees": ["House Public Works and Highways"]
-  },
-  "HB311": {
-   "n": "HB 311",
-   "title": "relative to permissible campaign contributions by business organizations and labor unions.",
-   "sponsor": "Ellen Read",
-   "committees": ["House Election Law"]
-  },
-  "HB319": {
-   "n": "HB 319",
-   "title": "relative to the responsibility of local school districts to provide transportation for pupils in kindergarten.",
-   "sponsor": "Keith Ammon",
-   "committees": ["House Education Funding", "Senate Education"]
-  },
-  "HB320": {
-   "n": "HB 320",
-   "title": "relative to enforcement of marital property settlements.",
-   "sponsor": "Jay Markell",
-   "committees": ["House Children and Family Law", "Senate Children and Family Law"]
-  },
-  "HB323": {
-   "n": "HB 323",
-   "title": "requiring the presentation of a government-issued photographic means of identification in order to vote.",
-   "sponsor": "Donald McFarlane",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB324": {
-   "n": "HB 324",
-   "title": "relative to prohibiting obscene or harmful sexual materials in schools.",
-   "sponsor": "Glenn Cordelli",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB328": {
-   "n": "HB 328",
-   "title": "establishing a charitable gaming oversight commission.",
-   "sponsor": "Dick Ames",
-   "committees": ["House Ways and Means", "Senate Ways and Means"]
-  },
-  "HB341": {
-   "n": "HB 341-FN",
-   "title": "requiring the secretary of state to check voter records prior to every election.",
-   "sponsor": "Gerald Ward",
-   "committees": ["House Election Law"]
-  },
-  "HB344": {
-   "n": "HB 344",
-   "title": "enables the processing of absentee ballots before election day.",
-   "sponsor": "Gary Daniels",
-   "committees": ["House Election Law"]
-  },
-  "HB351": {
-   "n": "HB 351",
-   "title": "requiring landlords to give tenants of at-will tenancies at least 60-days notice to evict.",
-   "sponsor": "Matthew Pitaro",
-   "committees": ["House Housing"]
-  },
-  "HB352": {
-   "n": "HB 352",
-   "title": "prohibiting possession of a firearm at a polling place.",
-   "sponsor": "Timothy Horrigan",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB358": {
-   "n": "HB 358",
-   "title": "relative to exemption from immunization requirements on the basis of religious belief.",
-   "sponsor": "Jim Kofalt",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "HB370": {
-   "n": "HB 370",
-   "title": "reestablishing the commission to study the delivery of behavioral crisis services to individuals with mental illness with an impairment primarily due to intellectual disability.",
-   "sponsor": "JD Bernardy",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "HB377": {
-   "n": "HB 377",
-   "title": "relative to health care professionals administering hormone treatments and puberty blockers and relative to recognizing the second Thursday in October as children's environmental health day.",
-   "sponsor": "Lisa Mazur",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "HB385": {
-   "n": "HB 385",
-   "title": "reestablishing voter identification exceptions.",
-   "sponsor": "Connie Lane",
-   "committees": ["House Election Law"]
-  },
-  "HB387": {
-   "n": "HB 387",
-   "title": "relative to balloons being released into the air.",
-   "sponsor": "Janet Wall",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB402": {
-   "n": "HB 402",
-   "title": "relative to liability as taxable income of education freedom account payments.",
-   "sponsor": "David Luneau",
-   "committees": ["House Ways and Means"]
-  },
-  "HB415": {
-   "n": "HB 415",
-   "title": "removing requirements that schools provide menstrual products in restrooms.",
-   "sponsor": "Katy Peternel",
-   "committees": ["House Education Policy and Administration"]
-  },
-  "HB418": {
-   "n": "HB 418",
-   "title": "relative to eligibility for absentee voting.",
-   "sponsor": "John Sellers",
-   "committees": ["House Election Law"]
-  },
-  "HB434": {
-   "n": "HB 434",
-   "title": "requiring a policyholder's insurance company to provide a rental car for at least 7 days after determination that the vehicle is totaled or unsafe to operate when the policyholder is not at fault for the accident.",
-   "sponsor": "Stephen Pearson",
-   "committees": ["House Commerce and Consumer Affairs"]
-  },
-  "HB438": {
-   "n": "HB 438",
-   "title": "relative to immigration detention facilities.",
-   "sponsor": "Timothy Horrigan",
-   "committees": ["House Executive Departments and Administration"]
-  },
-  "HB439": {
-   "n": "HB 439-FN",
-   "title": "relative to non-driving related violations and driver's license suspension.",
-   "sponsor": "Daniel Veilleux",
-   "committees": ["House Transportation"]
-  },
-  "HB442": {
-   "n": "HB 442",
-   "title": "relative to prohibiting payment of subminimum wages.",
-   "sponsor": "Kris Schultz",
-   "committees": ["House Labor, Industrial and Rehabilitative Services"]
-  },
-  "HB453": {
-   "n": "HB 453",
-   "title": "prohibiting municipalities from banning use of grounds maintenance and snow and ice removal equipment with internal combustion engines.",
-   "sponsor": "Thomas Walsh",
-   "committees": ["House Municipal and County Government"]
-  },
-  "HB466": {
-   "n": "HB 466",
-   "title": "relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.",
-   "sponsor": "Terry Roy",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB476": {
-   "n": "HB 476-FN",
-   "title": "relative to restrictions on elective abortion.",
-   "sponsor": "Katy Peternel",
-   "committees": ["House Judiciary"]
-  },
-  "HB498": {
-   "n": "HB 498",
-   "title": "relative to when a person may receive an absentee ballot.",
-   "sponsor": "Kelley Potenza",
-   "committees": ["House Election Law"]
-  },
-  "HB506": {
-   "n": "HB 506",
-   "title": "relative to background checks during motions to return firearms and ammunition and relative to invalidating out-of-state driver's licenses issued to undocumented immigrants and relative to requiring schools to engage an owner's project manager for construction of school building aid projects at the time of application.",
-   "sponsor": "Dennis Mannion",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB507": {
-   "n": "HB 507",
-   "title": "relative to the timeline for credentialing of mental health care providers.",
-   "sponsor": "Alicia Gregg",
-   "committees": ["House Commerce and Consumer Affairs", "Senate Executive Departments and Administration"]
-  },
-  "HB511": {
-   "n": "HB 511",
-   "title": "relative to cooperation with federal immigration authorities.",
-   "sponsor": "Joe Sweeney",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB527": {
-   "n": "HB 527",
-   "title": "replacing the statewide education property tax with a local revenue contribution.",
-   "sponsor": "Sallie Fellows",
-   "committees": ["House Education Funding"]
-  },
-  "HB540": {
-   "n": "HB 540",
-   "title": "relative to historic horse racing licenses for large facilities.",
-   "sponsor": "Bill Ohm",
-   "committees": ["House Ways and Means"]
-  },
-  "HB549": {
-   "n": "HB 549",
-   "title": "relative to the use of education freedom account funds in religious schools and institutions of higher education.",
-   "sponsor": "Timothy Horrigan",
-   "committees": ["House Education Funding"]
-  },
-  "HB550": {
-   "n": "HB 550",
-   "title": "modifying the base cost of an adequate education.",
-   "sponsor": "David Luneau",
-   "committees": ["House Education Funding"]
-  },
-  "HB551": {
-   "n": "HB 551",
-   "title": "repealing the license to sell pistols and revolvers and limiting liability for certain design features of firearms.",
-   "sponsor": "Michael Granger",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB561": {
-   "n": "HB 561",
-   "title": "relative to the transfer of state-owned real property to municipalities.",
-   "sponsor": "Nancy Murphy",
-   "committees": ["House Public Works and Highways"]
-  },
-  "HB563": {
-   "n": "HB 563-FN",
-   "title": "relative to the cost of an opportunity for an adequate education, extraordinary need grants, fiscal capacity disparity aid, and determination of education grants.",
-   "sponsor": "Rick Ladd",
-   "committees": ["House Education Funding"]
-  },
-  "HB577": {
-   "n": "HB 577",
-   "title": "relative to modifying the definition of ADUs.",
-   "sponsor": "Joe Alexander",
-   "committees": ["House Housing", "Senate Commerce"]
-  },
-  "HB597": {
-   "n": "HB 597",
-   "title": "establishing a designated behavioral health access point within the enhanced 911 system.",
-   "sponsor": "Bill Boyd",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Health and Human Services"]
-  },
-  "HB604": {
-   "n": "HB 604-FN",
-   "title": "relative to a loan forgiveness program for low-income homeowners to build new accessory dwelling units or renovate existing structures into accessory dwelling units.",
-   "sponsor": "Jodi Newell",
-   "committees": ["House Housing"]
-  },
-  "HB612": {
-   "n": "HB 612",
-   "title": "enabling the division of motor vehicles to create a temporary traditional driver's license for youth operators about to turn 21 and relative to requiring employers to provide certain information regarding cost sharing to employees receiving workers' compensation benefit and relative to declaring the third week in September to be New Hampshire service dog week.",
-   "sponsor": "Daniel Veilleux",
-   "committees": ["House Transportation", "Senate Transportation"]
-  },
-  "HB628": {
-   "n": "HB 628",
-   "title": "prohibiting landlords from discriminating against prospective tenants holding certain vouchers under the housing choice voucher program.",
-   "sponsor": "Timothy Horrigan",
-   "committees": ["House Housing"]
-  },
-  "HB630": {
-   "n": "HB 630",
-   "title": "preventing the dissemination of deepfake materials of political candidates before an election.",
-   "sponsor": "Thomas Cormen",
-   "committees": ["House Election Law"]
-  },
-  "HB636": {
-   "n": "HB 636",
-   "title": "relative to community mental health providers.",
-   "sponsor": "Christal Lloyd",
-   "committees": ["House Health, Human Services and Elderly Affairs"]
-  },
-  "HB640": {
-   "n": "HB 640-FN",
-   "title": "relative to the transparency of federal agency operations within New Hampshire.",
-   "sponsor": "Keith Ammon",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB651": {
-   "n": "HB 651-FN",
-   "title": "modifying the base cost and differential aid costs of an adequate education.",
-   "sponsor": "David Luneau",
-   "committees": ["House Education Funding"]
-  },
-  "HB662": {
-   "n": "HB 662",
-   "title": "requiring the discussion of abortion procedures and viewing of certain videos during health education in public schools.",
-   "sponsor": "John Sellers",
-   "committees": ["House Education Policy and Administration"]
-  },
-  "HB670": {
-   "n": "HB 670",
-   "title": "adjusting the minimum fine for attacks by nuisance dogs.",
-   "sponsor": "Len Turcotte",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB685": {
-   "n": "HB 685",
-   "title": "permitting in all residentially zoned areas by right the construction of manufactured housing.",
-   "sponsor": "Joe Alexander",
-   "committees": ["House Housing", "Senate Commerce"]
-  },
-  "HB691": {
-   "n": "HB 691",
-   "title": "prohibiting the addition of fluoridation chemicals to public water systems.",
-   "sponsor": "Peter Schmidt",
-   "committees": ["House Resources, Recreation and Development"]
-  },
-  "HB712": {
-   "n": "HB 712",
-   "title": "limiting breast surgeries for minors, relative to residential care and health facility licensing, and relative to the collection and reporting of abortion statistics by health care providers and medical facilities.",
-   "sponsor": "Lisa Mazur",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "HB715": {
-   "n": "HB 715",
-   "title": "relative to personal electric vehicles.",
-   "sponsor": "Linda Gould",
-   "committees": ["House Transportation"]
-  },
-  "HB726": {
-   "n": "HB 726",
-   "title": "relative to the state minimum hourly rate.",
-   "sponsor": "Kathy Staub",
-   "committees": ["House Labor, Industrial and Rehabilitative Services"]
-  },
-  "HB728": {
-   "n": "HB 728-FN",
-   "title": "authorizing video lottery terminals at charity gaming facilities and repealing historic horse racing licensing.",
-   "sponsor": "Fred Doucette",
-   "committees": ["House Ways and Means"]
-  },
-  "HB734": {
-   "n": "HB 734-FN",
-   "title": "relative to the state education property tax and the low- and moderate-income homeowners property tax relief program.",
-   "sponsor": "Dick Ames",
-   "committees": ["House Education Funding"]
-  },
-  "HB736": {
-   "n": "HB 736-FN",
-   "title": "relative to the minimum number of mobile sports wagering agents authorized by the lottery commission.",
-   "sponsor": "Fred Doucette",
-   "committees": ["House Ways and Means"]
-  },
-  "HB737": {
-   "n": "HB 737",
-   "title": "creating local options for games of chance, authorizing keno throughout the state, and changing charitable gaming license fees and reporting requirements.",
-   "sponsor": "Bill Boyd",
-   "committees": ["House Ways and Means", "Senate Ways and Means"]
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
   },
   "HB748": {
    "n": "HB 748-FN",
    "title": "establishing a local education freedom account program.",
    "sponsor": "Kevin Verville",
-   "committees": ["House Education Policy and Administration"]
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
   },
-  "HB771": {
-   "n": "HB 771",
-   "title": "relative to funding for open enrollment schools.",
-   "sponsor": "Katy Peternel",
-   "committees": ["House Education Funding", "Senate Education Finance"]
+  "HB244": {
+   "n": "HB 244",
+   "title": "updating and recodifying the municipal enforcement of the building and fire code.",
+   "sponsor": "Carol McGuire",
+   "committees": ["House Executive Departments and Administration", "Senate Election Law and Municipal Affairs"],
+   "topic": "Zoning and Planning"
   },
-  "HB772": {
-   "n": "HB 772-FN",
-   "title": "establishing a foundation opportunity budget program for funding public education.",
-   "sponsor": "David Luneau",
-   "committees": ["House Education Funding"]
-  },
-  "HB776": {
-   "n": "HB 776",
-   "title": "relative to the crime of aggravated driving while intoxicated and relative to proclaiming the Virginia opossum the state marsupial of New Hampshire.",
-   "sponsor": "Terry Roy",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "HB1006": {
-   "n": "HB 1006",
-   "title": "relative to on-site parking requirements for accessory dwelling units.",
-   "sponsor": "David Preece",
-   "committees": ["House Housing"]
-  },
-  "HB1007": {
-   "n": "HB 1007",
-   "title": "relative to manufactured housing.",
-   "sponsor": "Len Turcotte",
-   "committees": ["House Housing"]
-  },
-  "HB1012": {
-   "n": "HB 1012",
-   "title": "repealing accessory dwelling units and detached accessory dwelling units.",
-   "sponsor": "Len Turcotte",
-   "committees": ["House Housing"]
-  },
-  "HB1016": {
-   "n": "HB 1016",
-   "title": "eliminating the requirement that municipalities allow for manufactured housing development opportunities.",
-   "sponsor": "Len Turcotte",
-   "committees": ["House Housing"]
-  },
-  "HB1017": {
-   "n": "HB 1017",
-   "title": "relative to accessory dwelling units and workforce housing.",
-   "sponsor": "David Preece",
-   "committees": ["House Housing"]
-  },
-  "HB1021": {
-   "n": "HB 1021",
-   "title": "amending the date to provide written notice to a municipality of a taxpayer's election to be assessed under the low-income housing tax credit program.",
-   "sponsor": "David Walker",
-   "committees": ["House Housing", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB1026": {
-   "n": "HB 1026",
-   "title": "relative to the definition of manufactured housing.",
-   "sponsor": "Jennifer Rhodes",
-   "committees": ["House Housing"]
-  },
-  "HB1049": {
-   "n": "HB 1049-FN",
-   "title": "relative to storage requirements for firearms.",
-   "sponsor": "David Meuse",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1067": {
-   "n": "HB 1067-FN",
-   "title": "relative to the mental health courts.",
-   "sponsor": "Mark Pearson",
-   "committees": ["House Judiciary"]
-  },
-  "HB1079": {
-   "n": "HB 1079",
-   "title": "allowing accessory dwelling units to be built within or attached to certain non-conforming structures.",
-   "sponsor": "Allan Howland",
-   "committees": ["House Housing", "Senate Commerce"]
-  },
-  "HB1092": {
-   "n": "HB 1092",
-   "title": "relative to guard dogs.",
-   "sponsor": "Barbara Comtois",
-   "committees": ["House Environment and Agriculture"]
-  },
-  "HB1136": {
-   "n": "HB 1136",
-   "title": "relative to accessory dwelling units.",
-   "sponsor": "Len Turcotte",
-   "committees": ["House Housing"]
-  },
-  "HB1142": {
-   "n": "HB 1142",
-   "title": "relative to requirements for law enforcement officers assisting in immigration enforcement.",
-   "sponsor": "Alexis Simpson",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1148": {
-   "n": "HB 1148",
-   "title": "adding cyanobacteria and algae blooms to the study of the exotic aquatic weeds and species committee.",
-   "sponsor": "Tanya Donnelly",
-   "committees": ["House Resources, Recreation and Development", "Senate Energy and Natural Resources"]
-  },
-  "HB1155": {
-   "n": "HB 1155",
-   "title": "repealing the home education advisory council.",
-   "sponsor": "Katy Peternel",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB1165": {
-   "n": "HB 1165",
-   "title": "relative to gender designation on state-issued identification.",
-   "sponsor": "Seth King",
-   "committees": ["House Transportation"]
-  },
-  "HB1181": {
-   "n": "HB 1181-FN",
-   "title": "relative to public hearing notice requirements for zoning board of adjustment appeals.",
-   "sponsor": "Melissa Litchfield",
-   "committees": ["House Municipal and County Government"]
-  },
-  "HB1201": {
-   "n": "HB 1201",
-   "title": "requiring certain political committees to disclose the identity of their donors.",
-   "sponsor": "Russell Muirhead",
-   "committees": ["House Election Law"]
-  },
-  "HB1217": {
-   "n": "HB 1217",
-   "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
-   "sponsor": "Katy Peternel",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "HB1218": {
-   "n": "HB 1218",
-   "title": "relative to the disclosure of rights and responsibilities during the sale of a mobile home in a mobile home park.",
-   "sponsor": "Rosemarie Rung",
-   "committees": ["House Housing"]
-  },
-  "HB1219": {
-   "n": "HB 1219",
-   "title": "relative to immunization requirements in foster family homes and relative to financial eligibility for the Medicare savings program.",
-   "sponsor": "Melissa Litchfield",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "HB1235": {
-   "n": "HB 1235-FN",
-   "title": "legalizing certain quantities of cannabis.",
+  "HB186": {
+   "n": "HB 186-FN-A",
+   "title": "relative to the legalization and regulation of cannabis and making appropriations therefor.",
    "sponsor": "Jared Sullivan",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1248": {
-   "n": "HB 1248-FN",
-   "title": "relative to the penalties for intoxication or under the influence of drug offenses.",
-   "sponsor": "Jay Markell",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1252": {
-   "n": "HB 1252",
-   "title": "requiring the department of safety to only administer tests for commercial driver's licenses in English and prohibiting the assistance of an interpreter during such tests.",
-   "sponsor": "Ted Gorski",
-   "committees": ["House Transportation", "Senate Transportation"]
-  },
-  "HB1254": {
-   "n": "HB 1254",
-   "title": "defining biostimulants, plant regulators, nutritional chemicals, and vitamin hormone products.",
-   "sponsor": "Barbara Comtois",
-   "committees": ["House Environment and Agriculture"]
-  },
-  "HB1268": {
-   "n": "HB 1268",
-   "title": "modifying the structure and administration of home education programs and relative to pharmacy benefits managers, managed care laws, notice of drug pricing options and pharmacy benefit manager business practices.",
-   "sponsor": "Kristin Noble",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB1270": {
-   "n": "HB 1270",
-   "title": "clarifying the definition of part-time teacher.",
-   "sponsor": "Margaret Drye",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB1274": {
-   "n": "HB 1274-FN-LOCAL",
-   "title": "relative to dog licenses.",
-   "sponsor": "Paul Dargie",
-   "committees": ["House Environment and Agriculture", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB1277": {
-   "n": "HB 1277",
-   "title": "relative to proof of identification on absentee ballot applications.",
-   "sponsor": "Russell Muirhead",
-   "committees": ["House Election Law"]
-  },
-  "HB1299": {
-   "n": "HB 1299",
-   "title": "permitting classification of individuals based on biological sex under certain limited circumstances and establishing that certain biological sex distinctions do not qualify as discrimination.",
-   "sponsor": "Jim Kofalt",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "HB1306": {
-   "n": "HB 1306",
-   "title": "relative to the counting of absentee ballots.",
-   "sponsor": "Claudine Burnham",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "HB1313": {
-   "n": "HB 1313-FN",
-   "title": "repealing buffer zones for reproductive health care facilities.",
-   "sponsor": "Cyril Aures",
-   "committees": ["House Judiciary"]
-  },
-  "HB1333": {
-   "n": "HB 1333-FN",
-   "title": "relative to nonconsensual provision of medication intended to terminate a pregnancy and the homicide of a fetus.",
-   "sponsor": "Cyril Aures",
-   "committees": ["House Judiciary"]
-  },
-  "HB1338": {
-   "n": "HB 1338",
-   "title": "restricting abortion providers from the definition of charitable organization for the purposes of games of chance.",
-   "sponsor": "John Sellers",
-   "committees": ["House Ways and Means"]
-  },
-  "HB1356": {
-   "n": "HB 1356-FN",
-   "title": "relative to the statute of limitations for bringing a private right of action for violation of the statute prohibiting medical procedures and treatments intended to alter a minor's gender, authorizing the application of sunscreen in schools and camps without a licensed health care provider's note or prescription, and establishing a skin cancer prevention education program.",
-   "sponsor": "Robert Wherry",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "HB1364": {
-   "n": "HB 1364-FN",
-   "title": "requiring quarterly reports from counties, municipalities, or any other political subdivisions of the state that enter into certain agreements with the federal government concerning assistance with federal immigration enforcement.",
-   "sponsor": "Alissandra Murray",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1372": {
-   "n": "HB 1372",
-   "title": "establishing a commission to study the feasibility of reestablishing a state psychiatric hospital for adults with severe mental illness.",
-   "sponsor": "Joe Sweeney",
-   "committees": ["House Health, Human Services and Elderly Affairs"]
-  },
-  "HB1376": {
-   "n": "HB 1376",
-   "title": "relative to a parent's ability to raise their child in a manner consistent with the child's biological sex and relative to breast surgeries for minors.",
-   "sponsor": "Lori Korzen",
-   "committees": ["House Children and Family Law", "Senate Children and Family Law"]
-  },
-  "HB1407": {
-   "n": "HB 1407",
-   "title": "enabling veterinary technicians to provide rabies vaccinations while indirectly supervised by a veterinarian.",
-   "sponsor": "Patrick Long",
-   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"]
-  },
-  "HB1410": {
-   "n": "HB 1410-FN",
-   "title": "creating a new classification for electric vehicles.",
-   "sponsor": "Thomas Walsh",
-   "committees": ["House Transportation"]
-  },
-  "HB1414": {
-   "n": "HB 1414",
-   "title": "relative to establishing conditions for dog access to state parks.",
-   "sponsor": "Daniel Popovici-Muller",
-   "committees": ["House Resources, Recreation and Development"]
-  },
-  "HB1442": {
-   "n": "HB 1442-FN",
-   "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
-   "sponsor": "Erica Layon",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "HB1447": {
-   "n": "HB 1447",
-   "title": "restricting the use of certain public and private facilities on the basis of sex and establishing that such restriction does not qualify as discrimination.",
-   "sponsor": "Lisa Mazur",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "HB1450": {
-   "n": "HB 1450",
-   "title": "relative to the designation and control of shared facilities in rental properties.",
-   "sponsor": "Diane Kelley",
-   "committees": ["House Housing"]
-  },
-  "HB1484": {
-   "n": "HB 1484",
-   "title": "establishing a state minimum wage and providing for incremental increases.",
-   "sponsor": "Kathy Staub",
-   "committees": ["House Labor, Industrial and Rehabilitative Services"]
-  },
-  "HB1488": {
-   "n": "HB 1488",
-   "title": "relative to rabies vaccines for animals.",
-   "sponsor": "Keith Ammon",
-   "committees": ["House Environment and Agriculture"]
-  },
-  "HB1506": {
-   "n": "HB 1506",
-   "title": "creating an exception to the restricted uses of artificial intelligence by state agencies.",
-   "sponsor": "Thomas Cormen",
-   "committees": ["House Executive Departments and Administration"]
-  },
-  "HB1510": {
-   "n": "HB 1510-FN",
-   "title": "relative to responsibility for the custody or control of persons ordered to a county correctional facility.",
-   "sponsor": "Douglas Trottier",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1512": {
-   "n": "HB 1512",
-   "title": "allowing municipalities to hold a vote to prevent their residents from receiving education freedom account vouchers.",
-   "sponsor": "Ellen Read",
-   "committees": ["House Municipal and County Government"]
-  },
-  "HB1521": {
-   "n": "HB 1521",
-   "title": "clarifying the definition of home education.",
-   "sponsor": "Katy Peternel",
-   "committees": ["House Education Policy and Administration"]
-  },
-  "HB1531": {
-   "n": "HB 1531-FN",
-   "title": "requiring applicants for games of chance facilities licensees and game operator employer licensees to enter into host community agreements with municipalities.",
-   "sponsor": "Bill Ohm",
-   "committees": ["House Municipal and County Government"]
-  },
-  "HB1536": {
-   "n": "HB 1536-FN",
-   "title": "establishing penalties for unauthorized parking in designated electric vehicle and motorcycle spaces.",
-   "sponsor": "Seth Miller",
-   "committees": ["House Transportation"]
-  },
-  "HB1543": {
-   "n": "HB 1543-FN",
-   "title": "relative to the transfer of state-owned real property to municipalities.",
-   "sponsor": "Julie Miles",
-   "committees": ["House Public Works and Highways"]
-  },
-  "HB1564": {
-   "n": "HB 1564-FN",
-   "title": "removing all references of gender identity in New Hampshire statutes.",
-   "sponsor": "Seth King",
-   "committees": ["House Judiciary"]
-  },
-  "HB1570": {
-   "n": "HB 1570-FN-LOCAL",
-   "title": "relative to governmental budget authority for agreements for law enforcement agencies to participate in federal immigration enforcement.",
-   "sponsor": "Buzz Scherr",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1590": {
-   "n": "HB 1590-FN",
-   "title": "harmonizing the age of personhood under the criminal code and the fetal life protection act.",
-   "sponsor": "Kevin Scully",
-   "committees": ["House Judiciary"]
-  },
-  "HB1594": {
-   "n": "HB 1594-FN",
-   "title": "establishing a weight-based tiered registration fee schedule for electric and plug-in hybrid vehicles.",
-   "sponsor": "Nicholas Bridle",
-   "committees": ["House Transportation", "Senate Transportation"]
-  },
-  "HB1615": {
-   "n": "HB 1615-FN",
-   "title": "permitting consenting adults to enter into contract-based marriage agreements as an alternative to the requirement of a marriage license.",
-   "sponsor": "Matt Sabourin dit Choinière",
-   "committees": ["House Judiciary"]
-  },
-  "HB1625": {
-   "n": "HB 1625-FN",
-   "title": "relative to annual reporting on accessory dwelling unit construction and use.",
-   "sponsor": "Bill Boyd",
-   "committees": ["House Housing"]
-  },
-  "HB1642": {
-   "n": "HB 1642-FN",
-   "title": "relative to extreme risk protection orders.",
-   "sponsor": "Loren Selig",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1662": {
-   "n": "HB 1662-FN",
-   "title": "relative to providing loan guarantees for accessory dwelling unit financing.",
-   "sponsor": "Chris Muns",
-   "committees": ["House Housing"]
-  },
-  "HB1669": {
-   "n": "HB 1669",
-   "title": "establishing a teacher bill of rights.",
-   "sponsor": "Melissa Litchfield",
-   "committees": ["House Education Policy and Administration"]
-  },
-  "HB1671": {
-   "n": "HB 1671-FN",
-   "title": "relative to prohibiting state Medicaid payments to facilities that discriminate against employees, students, or trainees for exercising lawful medical or religious vaccine exemptions.",
-   "sponsor": "Linda McGrath",
-   "committees": ["House Judiciary"]
-  },
-  "HB1674": {
-   "n": "HB 1674",
-   "title": "creating a tax exemption for certain lower-income property owners.",
-   "sponsor": "Ellen Read",
-   "committees": ["House Municipal and County Government"]
-  },
-  "HB1702": {
-   "n": "HB 1702-FN",
-   "title": "relative to notice requirements and enforcement for pharmacies dispensing medications intended to induce chemical abortions.",
-   "sponsor": "Samuel Farrington",
-   "committees": ["House Judiciary"]
-  },
-  "HB1709": {
-   "n": "HB 1709-FN",
-   "title": "prohibiting certain unlawfully present felons from occupying or renting real property, relative to pet vendor foster home and defining pet vendor foster facility, and providing procedures for the potential confiscation of livestock involved in cruelty to animal cases.",
-   "sponsor": "Joe Alexander",
-   "committees": ["House Housing", "Senate Judiciary"]
-  },
-  "HB1724": {
-   "n": "HB 1724",
-   "title": "relative to public transparency of electric utility retail charges and cost reporting for transmission, wholesale electricity, capacity, and generation adequacy.",
-   "sponsor": "Wendy Thomas",
-   "committees": ["House Science, Technology and Energy"]
-  },
-  "HB1725": {
-   "n": "HB 1725-FN",
-   "title": "relative to the regulation of artificial intelligence technologies.",
-   "sponsor": "Patrick Long",
-   "committees": ["House Commerce and Consumer Affairs"]
-  },
-  "HB1732": {
-   "n": "HB 1732-FN",
-   "title": "relative to housing accessibility and voucher allocation in new multi-unit developments.",
-   "sponsor": "Timothy Horrigan",
-   "committees": ["House Housing"]
-  },
-  "HB1754": {
-   "n": "HB 1754-FN",
-   "title": "repealing the statewide use of the multi-tiered system of supports for behavioral health and wellness relative to systems of care for children's mental health.",
-   "sponsor": "John Sellers",
-   "committees": ["House Education Policy and Administration"]
-  },
-  "HB1769": {
-   "n": "HB 1769-FN",
-   "title": "relative to certain prohibitions on abortion referrals by publicly funded medical facilities.",
-   "sponsor": "Samuel Farrington",
-   "committees": ["House Judiciary"]
-  },
-  "HB1773": {
-   "n": "HB 1773-FN",
-   "title": "relative to food and drink purchased under SNAP, the Supplemental Nutritional Assistance Program.",
-   "sponsor": "Lisa Freeman",
-   "committees": ["House Health, Human Services and Elderly Affairs"]
-  },
-  "HB1778": {
-   "n": "HB 1778-FN",
-   "title": "relative to prohibiting the use of personal identity ideology in public school instruction and policies.",
-   "sponsor": "Melissa Litchfield",
-   "committees": ["House Education Policy and Administration"]
-  },
-  "HB1787": {
-   "n": "HB 1787-FN",
-   "title": "modifying the statewide education property tax.",
-   "sponsor": "Dick Ames",
-   "committees": ["House Ways and Means"]
-  },
-  "HB1788": {
-   "n": "HB 1788-FN",
-   "title": "holding state contracts with DEI provisions to be void as a matter of law and establishing a right of action for citizens where public entities or state agencies engage with contracts with DEI provisions.",
-   "sponsor": "Rich Nalevanko",
-   "committees": ["House Executive Departments and Administration", "Senate Judiciary"]
-  },
-  "HB1792": {
-   "n": "HB 1792-FN",
-   "title": "relative to the prohibition on teaching discrimination.",
-   "sponsor": "Mike Belcher",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "HB1811": {
-   "n": "HB 1811-FN",
-   "title": "repealing statutory immunization requirements for children.",
-   "sponsor": "Matt Drew",
-   "committees": ["House Health, Human Services and Elderly Affairs"]
-  },
-  "HB1812": {
-   "n": "HB 1812-FN",
-   "title": "requiring periodic evaluation of mental health access adequacy by an independent third party.",
-   "sponsor": "Alicia Gregg",
-   "committees": ["House Commerce and Consumer Affairs"]
-  },
-  "HB1815": {
-   "n": "HB 1815-FN",
-   "title": "relative to education financing.",
-   "sponsor": "Bob Lynn",
-   "committees": ["House Education Funding", "Senate Education Finance"]
-  },
-  "HB1822": {
-   "n": "HB 1822-FN",
-   "title": "relative to reporting of civil immigration detentions by state, county, and local law enforcement and correctional facilities.",
-   "sponsor": "Zoe Manos",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "HB1835": {
-   "n": "HB 1835-FN",
-   "title": "relative to the formula for distribution of aid to school districts.",
-   "sponsor": "Heather Raymond",
-   "committees": ["House Education Funding"]
-  },
-  "HR20": {
-   "n": "HR 20",
-   "title": "reaffirming the right for persons of all persuasions to keep and bear arms, and urging Congress and the President to cease infringement upon Second Amendment rights and to restore them where infringed.",
-   "sponsor": "Donald McFarlane",
-   "committees": ["House State-Federal Relations and Veterans Affairs"]
-  },
-  "HR40": {
-   "n": "HR 40",
-   "title": "urging the legislature to adequately fund public education.",
-   "sponsor": "John Cloutier",
-   "committees": ["House Education Funding"]
-  },
-  "HR46": {
-   "n": "HR 46",
-   "title": "declaring the first Friday in June as a state day of remembrance for children killed by gun violence and urging the establishment of a national day of remembrance.",
-   "sponsor": "Suraj Budathoki",
-   "committees": ["House Executive Departments and Administration"]
-  },
-  "HCR7": {
-   "n": "HCR 7",
-   "title": "recognizing abortion as a critical component of comprehensive reproductive health care.",
-   "sponsor": "Alexis Simpson",
-   "committees": ["House Health, Human Services and Elderly Affairs"]
-  },
-  "CACR5": {
-   "n": "CACR 5",
-   "title": "relating to absentee ballots. Providing that no excuse shall be needed by the voter to receive an absentee ballot.",
-   "sponsor": "Connie Lane",
-   "committees": ["House Election Law"]
-  },
-  "CACR19": {
-   "n": "CACR 19",
-   "title": "relative to the personal possession of cannabis. Providing that adults 21 years of age or older shall have the right to possess a modest amount of cannabis intended for their personal consumption.",
-   "sponsor": "Jonah Wheeler",
-   "committees": ["House Criminal Justice and Public Safety"]
-  },
-  "CACR25": {
-   "n": "CACR 25",
-   "title": "relative to the right to marry. Providing that the right to marry is a fundamental civil right and that the state shall protect the right of every individual, regardless of sex, gender identity, sexual orientation, or race, to marry and to have their marriage legally recognized.",
-   "sponsor": "Alice Wade",
-   "committees": ["House Judiciary"]
-  },
-  "SB13": {
-   "n": "SB 13",
-   "title": "invalidating out-of-state driver's licenses issued to undocumented immigrants and prohibiting driver's license issuance and renewal to individuals with pending asylum claims, regardless of a grant of temporary work authorization.",
-   "sponsor": "Bill Gannon",
-   "committees": ["House Transportation", "Senate Judiciary"]
-  },
-  "SB33": {
-   "n": "SB 33-FN",
-   "title": "relative to the regulation of public school materials.",
-   "sponsor": "Kevin Avard",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "SB36": {
-   "n": "SB 36-FN",
-   "title": "relative to the collection and reporting of abortion statistics by health care providers and medical facilities.",
-   "sponsor": "Kevin Avard",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "SB38": {
-   "n": "SB 38",
-   "title": "relative to state recognition of biological sex.",
-   "sponsor": "Kevin Avard",
-   "committees": ["Senate Judiciary"]
-  },
-  "SB54": {
-   "n": "SB 54",
-   "title": "relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.",
-   "sponsor": "Bill Gannon",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "SB62": {
-   "n": "SB 62",
-   "title": "relative to law enforcement participation in a federal immigration program and relative to cooperation with federal immigration authorities.",
-   "sponsor": "Bill Gannon",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "SB70": {
-   "n": "SB 70",
-   "title": "creating a mobile driver's license and non-driver identification card.",
-   "sponsor": "Timothy Lang",
-   "committees": ["Senate Transportation"]
-  },
-  "SB71": {
-   "n": "SB 71-FN",
-   "title": "relative to cooperation with federal immigration authorities.",
-   "sponsor": "Bill Gannon",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "SB88": {
-   "n": "SB 88-FN",
-   "title": "prohibiting state government entities from including specified terms related to labor organization agreements in construction related contracts and grants.",
-   "sponsor": "Regina Birdsell",
-   "committees": ["House Labor, Industrial and Rehabilitative Services", "Senate Commerce"]
-  },
-  "SB100": {
-   "n": "SB 100",
-   "title": "relative to the prohibition on teaching discrimination.",
-   "sponsor": "Timothy Lang",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "SB133": {
-   "n": "SB 133",
-   "title": "relative to the designation of emergency medical services performed by ambulance service providers as essential services.",
-   "sponsor": "Tim McGough",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "SB149": {
-   "n": "SB 149-FN",
-   "title": "relative to the crime of aggravated driving while intoxicated.",
-   "sponsor": "Regina Birdsell",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "SB150": {
-   "n": "SB 150-FN",
-   "title": "defining electric vehicle charging station and charging a fee for annual testing by the division of weights and measures.",
-   "sponsor": "David Watters",
-   "committees": ["House Transportation", "Senate Transportation"]
-  },
-  "SB166": {
-   "n": "SB 166",
-   "title": "relative to notice required prior to sale of a manufactured housing unit located in a resident-owned community.",
-   "sponsor": "Tara Reardon",
-   "committees": ["House Housing", "Senate Commerce"]
-  },
-  "SB173": {
-   "n": "SB 173",
-   "title": "relative to residential property subject to housing covenants under the low income housing tax credit program.",
-   "sponsor": "Keith Murphy",
-   "committees": ["House Housing", "Senate Commerce"]
-  },
-  "SB176": {
-   "n": "SB 176",
-   "title": "relative to the state minimum hourly rate.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["Senate Commerce"]
-  },
-  "SB177": {
-   "n": "SB 177",
-   "title": "relative to requiring New Hampshire employers with over 25 employees use the E-Verify system.",
-   "sponsor": "Bill Gannon",
-   "committees": ["Senate Commerce"]
-  },
-  "SB192": {
-   "n": "SB 192",
-   "title": "establishing a committee to study enhanced coordination between county correctional facilities, the department of corrections, and the department of health and human services.",
-   "sponsor": "Daryl Abbas",
-   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"]
-  },
-  "SB198": {
-   "n": "SB 198",
-   "title": "declaring the third week in September to be New Hampshire service dog week.",
-   "sponsor": "David Watters",
-   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"]
-  },
-  "SB203": {
-   "n": "SB 203",
-   "title": "relative to administration of the education freedom accounts program.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["Senate Education"]
-  },
-  "SB208": {
-   "n": "SB 208-FN",
-   "title": "requiring local school boards and public libraries to adopt curation policies.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["Senate Education"]
+   "committees": ["House Commerce and Consumer Affairs", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB191": {
+   "n": "HB 191-FN",
+   "title": "providing criminal penalties for the transporting of an unemancipated minor in order to obtain a surgical procedure or a termination of the minor's pregnancy without parental permission.",
+   "sponsor": "Glenn Cordelli",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
   },
   "SB211": {
    "n": "SB 211",
    "title": "relative to biological sex in student athletics.",
    "sponsor": "Kevin Avard",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
   },
-  "SB214": {
-   "n": "SB 214",
-   "title": "enabling no-excuse absentee registration and voting.",
-   "sponsor": "Rebecca Perkins Kwoka",
-   "committees": ["Senate Election Law and Municipal Affairs"]
+  "HB649": {
+   "n": "HB 649-FN",
+   "title": "relative to the maintenance obligations of motor vehicle operators.",
+   "sponsor": "Michael Granger",
+   "committees": ["House Transportation", "Senate Commerce"],
+   "topic": "Motor Vehicles"
   },
-  "SB218": {
-   "n": "SB 218",
-   "title": "relative to absentee ballots.",
-   "sponsor": "James Gray",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
+  "HB129": {
+   "n": "HB 129-FN",
+   "title": "relative to the definition of the term \"evidence-based\" within public education.",
+   "sponsor": "Mike Belcher",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB33": {
+   "n": "SB 33-FN",
+   "title": "relative to the regulation of public school materials.",
+   "sponsor": "Kevin Avard",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB563": {
+   "n": "HB 563-FN",
+   "title": "relative to the cost of an opportunity for an adequate education, extraordinary need grants, fiscal capacity disparity aid, and determination of education grants.",
+   "sponsor": "Rick Ladd",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "SB71": {
+   "n": "SB 71-FN",
+   "title": "relative to cooperation with federal immigration authorities.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB651": {
+   "n": "HB 651-FN",
+   "title": "modifying the base cost and differential aid costs of an adequate education.",
+   "sponsor": "David Luneau",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB233": {
+   "n": "HB 233",
+   "title": "requiring meetings of the New Hampshire vaccine association to be audio and video recorded and published on its website within 48 hours.",
+   "sponsor": "Barbara Comtois",
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "Right to Know"
+  },
+  "HB232": {
+   "n": "HB 232-FN",
+   "title": "relative to the rights of conscience for medical professionals.",
+   "sponsor": "Mark Pearson",
+   "committees": ["House Judiciary", "Senate Health and Human Services"],
+   "topic": "Occupational Regulation"
+  },
+  "HB604": {
+   "n": "HB 604-FN",
+   "title": "relative to a loan forgiveness program for low-income homeowners to build new accessory dwelling units or renovate existing structures into accessory dwelling units.",
+   "sponsor": "Jodi Newell",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "SB36": {
+   "n": "SB 36-FN",
+   "title": "relative to the collection and reporting of abortion statistics by health care providers and medical facilities.",
+   "sponsor": "Kevin Avard",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
+  },
+  "HB519": {
+   "n": "HB 519-FN-A",
+   "title": "making an appropriation to the department of health and human services to fund and support the Waypoint youth and young adult shelter.",
+   "sponsor": "Mary Jane Wallner",
+   "committees": ["House Finance"],
+   "topic": "State Government"
+  },
+  "HB323": {
+   "n": "HB 323",
+   "title": "requiring the presentation of a government-issued photographic means of identification in order to vote.",
+   "sponsor": "Donald McFarlane",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "HB439": {
+   "n": "HB 439-FN",
+   "title": "relative to non-driving related violations and driver's license suspension.",
+   "sponsor": "Daniel Veilleux",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
   },
   "SB223": {
    "n": "SB 223-FN",
    "title": "relative valid photo identification for purposes of obtaining a ballot and relative to the production of lists of certain schools of higher education.",
    "sponsor": "Victoria Sullivan",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
   },
-  "SB260": {
-   "n": "SB 260",
-   "title": "relative to access to abortion care.",
+  "HB341": {
+   "n": "HB 341-FN",
+   "title": "requiring the secretary of state to check voter records prior to every election.",
+   "sponsor": "Gerald Ward",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB295": {
+   "n": "HB 295",
+   "title": "making school building aid program funds nonlapsing.",
+   "sponsor": "Michael Cahill",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB640": {
+   "n": "HB 640-FN",
+   "title": "relative to the transparency of federal agency operations within New Hampshire.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "State Government"
+  },
+  "HB639": {
+   "n": "HB 639-FN",
+   "title": "relative to the use of and disputes over blockchain and digital currencies.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Commerce"],
+   "topic": "Courts and Procedure"
+  },
+  "HB728": {
+   "n": "HB 728-FN",
+   "title": "authorizing video lottery terminals at charity gaming facilities and repealing historic horse racing licensing.",
+   "sponsor": "Fred Doucette",
+   "committees": ["House Ways and Means"],
+   "topic": "Gambling"
+  },
+  "HB734": {
+   "n": "HB 734-FN",
+   "title": "relative to the state education property tax and the low- and moderate-income homeowners property tax relief program.",
+   "sponsor": "Dick Ames",
+   "committees": ["House Education Funding"],
+   "topic": "Taxes - Local"
+  },
+  "HB772": {
+   "n": "HB 772-FN",
+   "title": "establishing a foundation opportunity budget program for funding public education.",
+   "sponsor": "David Luneau",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB453": {
+   "n": "HB 453",
+   "title": "prohibiting municipalities from banning use of grounds maintenance and snow and ice removal equipment with internal combustion engines.",
+   "sponsor": "Thomas Walsh",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Motor Vehicles"
+  },
+  "SB149": {
+   "n": "SB 149-FN",
+   "title": "relative to the crime of aggravated driving while intoxicated.",
+   "sponsor": "Regina Birdsell",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "SB27": {
+   "n": "SB 27-FN",
+   "title": "relative to dwellings over water.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Resources, Recreation and Development", "Senate Commerce"],
+   "topic": "Property - Real and Personal"
+  },
+  "SB150": {
+   "n": "SB 150-FN",
+   "title": "defining electric vehicle charging station and charging a fee for annual testing by the division of weights and measures.",
+   "sponsor": "David Watters",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Agriculture"
+  },
+  "SB208": {
+   "n": "SB 208-FN",
+   "title": "requiring local school boards and public libraries to adopt curation policies.",
    "sponsor": "Debra Altschiller",
-   "committees": ["Senate Judiciary"]
+   "committees": ["Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB88": {
+   "n": "SB 88-FN",
+   "title": "prohibiting state government entities from including specified terms related to labor organization agreements in construction related contracts and grants.",
+   "sponsor": "Regina Birdsell",
+   "committees": ["House Labor, Industrial and Rehabilitative Services", "Senate Commerce"],
+   "topic": "State Government"
   },
   "SB268": {
    "n": "SB 268",
    "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
    "sponsor": "Kevin Avard",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "SB272": {
-   "n": "SB 272",
-   "title": "relative to electric-vehicle charging station funding.",
-   "sponsor": "David Watters",
-   "committees": ["House Transportation", "Senate Transportation"]
-  },
-  "SB287": {
-   "n": "SB 287",
-   "title": "requiring applicants for absentee ballots to present a copy of their photo identification with their application.",
-   "sponsor": "Howard Pearl",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "SB295": {
-   "n": "SB 295",
-   "title": "relative to education freedom accounts.",
-   "sponsor": "Victoria Sullivan",
-   "committees": ["House Education Funding", "Senate Education Finance"]
-  },
-  "SB405": {
-   "n": "SB 405",
-   "title": "relative to amounts reported by political committees.",
-   "sponsor": "James Gray",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
-  },
-  "SB431": {
-   "n": "SB 431",
-   "title": "relative to violations of the prohibition on teaching discrimination.",
-   "sponsor": "Timothy Lang",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "SB434": {
-   "n": "SB 434",
-   "title": "relative to regulation of public school materials.",
-   "sponsor": "Timothy Lang",
-   "committees": ["House Education Policy and Administration", "Senate Education"]
-  },
-  "SB446": {
-   "n": "SB 446-FN",
-   "title": "requiring animal care center operators to notify dog owners when a dog will be left unattended and to report injuries to animals or people which occur on the premises of the animal care center.",
-   "sponsor": "Ruth Ward",
-   "committees": ["Senate Commerce"]
-  },
-  "SB459": {
-   "n": "SB 459",
-   "title": "exempting classification of individuals based on biological sex from the definition of an unlawful discriminatory practice in certain limited circumstances.",
-   "sponsor": "Bill Gannon",
-   "committees": ["House Judiciary", "Senate Judiciary"]
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
   },
   "SB466": {
    "n": "SB 466-FN",
    "title": "relative to the possession of a firearm without a serial number.",
    "sponsor": "Bill Gannon",
-   "committees": ["Senate Judiciary"]
+   "committees": ["Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "SB430": {
+   "n": "SB 430",
+   "title": "relative to mandatory disclosure by school district employees to parents and legal guardians.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB431": {
+   "n": "SB 431",
+   "title": "relative to violations of the prohibition on teaching discrimination.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB446": {
+   "n": "SB 446-FN",
+   "title": "requiring animal care center operators to notify dog owners when a dog will be left unattended and to report injuries to animals or people which occur on the premises of the animal care center.",
+   "sponsor": "Ruth Ward",
+   "committees": ["Senate Commerce"],
+   "topic": "Animals"
+  },
+  "SB441": {
+   "n": "SB 441-FN",
+   "title": "relative to the financial responsibility for local assistance and enabling municipalities to request a hearing regarding the residency of an assisted person.",
+   "sponsor": "Victoria Sullivan",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
+  },
+  "SB434": {
+   "n": "SB 434",
+   "title": "relative to regulation of public school materials.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
   },
   "SB474": {
    "n": "SB 474",
    "title": "relative to the effective date of the law regarding collection and reporting of abortion statistics.",
    "sponsor": "Regina Birdsell",
-   "committees": ["Senate Health and Human Services"]
+   "committees": ["Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
   },
   "SB479": {
    "n": "SB 479-FN",
    "title": "allowing alternative treatment centers to operate for profit.",
    "sponsor": "Daniel Innis",
-   "committees": ["Senate Judiciary"]
+   "committees": ["Senate Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "SB482": {
+   "n": "SB 482-FN",
+   "title": "establishing consumer protections for digital access transaction kiosks.",
+   "sponsor": "Tim McGough",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Commerce"],
+   "topic": "Banking and Finance"
   },
   "SB500": {
    "n": "SB 500",
    "title": "relative to restroom access for certain commercial motor vehicle operators.",
    "sponsor": "Regina Birdsell",
-   "committees": ["House Transportation", "Senate Transportation"]
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
   },
   "SB520": {
    "n": "SB 520",
    "title": "relative to breast surgeries for minors.",
    "sponsor": "Tara Reardon",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "SB551": {
-   "n": "SB 551-FN",
-   "title": "relative to legal protections for legal reproductive health care services.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["Senate Judiciary"]
-  },
-  "SB552": {
-   "n": "SB 552",
-   "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
-   "sponsor": "Kevin Avard",
-   "committees": ["House Judiciary", "Senate Judiciary"]
-  },
-  "SB555": {
-   "n": "SB 555-FN",
-   "title": "relative to critical risk protection orders.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["Senate Judiciary"]
-  },
-  "SB557": {
-   "n": "SB 557-FN",
-   "title": "making synthetic and semisynthetic kratom illegal to prepare, distribute, manufacture, sell, possess, or advertise, with exceptions made for scientific research, and relative to the official ballot referendum form of town meetings.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "SB580": {
-   "n": "SB 580-FN",
-   "title": "relative to establishing a school cooperative purchasing program.",
-   "sponsor": "Victoria Sullivan",
-   "committees": ["House Education Funding", "Senate Education"]
-  },
-  "SB603": {
-   "n": "SB 603-FN",
-   "title": "relative to the funding of the SNAP program by the department of health and human services.",
-   "sponsor": "Daryl Abbas",
-   "committees": ["House Finance", "Senate Finance"]
-  },
-  "SB615": {
-   "n": "SB 615-FN",
-   "title": "establishing a commission to study the use and regulation of SNAP in New Hampshire.",
-   "sponsor": "Victoria Sullivan",
-   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"]
-  },
-  "SB620": {
-   "n": "SB 620-FN",
-   "title": "relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.",
-   "sponsor": "Bill Gannon",
-   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"]
-  },
-  "SB623": {
-   "n": "SB 623-FN",
-   "title": "relative to requirements for law enforcement officers assisting in immigration enforcement.",
-   "sponsor": "Debra Altschiller",
-   "committees": ["Senate Judiciary"]
-  },
-  "SB628": {
-   "n": "SB 628-FN",
-   "title": "enabling curbside electric-vehicle charging.",
-   "sponsor": "David Watters",
-   "committees": ["Senate Transportation"]
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Children"
   },
   "SB640": {
    "n": "SB 640-FN",
    "title": "relative to the use of artificial intelligence to provide services requiring a professional license.",
    "sponsor": "Howard Pearl",
-   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"]
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "Occupational Regulation"
   },
   "SB643": {
    "n": "SB 643-FN",
    "title": "requiring municipalities, towns, and cities to submit documentation to the department of revenue administration proving they are in compliance with local budget and tax caps and requiring municipalities to hold a public hearing and conduct a roll call vote when seeking to override a tax or spending cap.",
    "sponsor": "Kevin Avard",
-   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"]
+   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"],
+   "topic": "Taxes - Local"
   },
-  "SB657": {
-   "n": "SB 657-FN",
-   "title": "relative to the use of information technology and artificial intelligence systems by state agencies.",
-   "sponsor": "Rebecca Perkins Kwoka",
-   "committees": ["House Commerce and Consumer Affairs", "Senate Judiciary"]
+  "CACR12": {
+   "n": "CACR 12",
+   "title": "the adoption of tax laws.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Ways and Means", "Senate Finance"],
+   "topic": "State Government"
   },
-  "SB659": {
-   "n": "SB 659",
+  "SB628": {
+   "n": "SB 628-FN",
+   "title": "enabling curbside electric-vehicle charging.",
+   "sponsor": "David Watters",
+   "committees": ["Senate Transportation"],
+   "topic": "Transportation and Highways"
+  },
+  "SB555": {
+   "n": "SB 555-FN",
+   "title": "relative to critical risk protection orders.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["Senate Judiciary"],
+   "topic": "Civil Actions"
+  },
+  "SB557": {
+   "n": "SB 557-FN",
+   "title": "making synthetic and semisynthetic kratom illegal to prepare, distribute, manufacture, sell, possess, or advertise, with exceptions made for scientific research, and relative to the official ballot referendum form of town meetings.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "SB551": {
+   "n": "SB 551-FN",
+   "title": "relative to legal protections for legal reproductive health care services.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["Senate Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "SB552": {
+   "n": "SB 552",
+   "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
+   "sponsor": "Kevin Avard",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "SB620": {
+   "n": "SB 620-FN",
+   "title": "relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "SB623": {
+   "n": "SB 623-FN",
+   "title": "relative to requirements for law enforcement officers assisting in immigration enforcement.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["Senate Judiciary"],
+   "topic": "Police"
+  },
+  "SB405": {
+   "n": "SB 405",
+   "title": "relative to amounts reported by political committees.",
+   "sponsor": "James Gray",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "SB459": {
+   "n": "SB 459",
+   "title": "exempting classification of individuals based on biological sex from the definition of an unlawful discriminatory practice in certain limited circumstances.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "SB603": {
+   "n": "SB 603-FN",
+   "title": "relative to the funding of the SNAP program by the department of health and human services.",
+   "sponsor": "Daryl Abbas",
+   "committees": ["House Finance", "Senate Finance"],
+   "topic": "Welfare/Medicare/Medicaid"
+  },
+  "SB580": {
+   "n": "SB 580-FN",
+   "title": "relative to establishing a school cooperative purchasing program.",
+   "sponsor": "Victoria Sullivan",
+   "committees": ["House Education Funding", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB615": {
+   "n": "SB 615-FN",
+   "title": "establishing a commission to study the use and regulation of SNAP in New Hampshire.",
+   "sponsor": "Victoria Sullivan",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Study Committees and Commissions"
+  },
+  "HB1136": {
+   "n": "HB 1136",
+   "title": "relative to accessory dwelling units.",
+   "sponsor": "Len Turcotte",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1006": {
+   "n": "HB 1006",
+   "title": "relative to on-site parking requirements for accessory dwelling units.",
+   "sponsor": "David Preece",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1007": {
+   "n": "HB 1007",
+   "title": "relative to manufactured housing.",
+   "sponsor": "Len Turcotte",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1560": {
+   "n": "HB 1560-FN",
+   "title": "relative to annual motor vehicle inspection standards and reinstatement.",
+   "sponsor": "Peter Leishman",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB1012": {
+   "n": "HB 1012",
+   "title": "repealing accessory dwelling units and detached accessory dwelling units.",
+   "sponsor": "Len Turcotte",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1067": {
+   "n": "HB 1067-FN",
+   "title": "relative to the mental health courts.",
+   "sponsor": "Mark Pearson",
+   "committees": ["House Judiciary"],
+   "topic": "Courts and Procedure"
+  },
+  "HB1016": {
+   "n": "HB 1016",
+   "title": "eliminating the requirement that municipalities allow for manufactured housing development opportunities.",
+   "sponsor": "Len Turcotte",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1017": {
+   "n": "HB 1017",
+   "title": "relative to accessory dwelling units and workforce housing.",
+   "sponsor": "David Preece",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1148": {
+   "n": "HB 1148",
+   "title": "adding cyanobacteria and algae blooms to the study of the exotic aquatic weeds and species committee.",
+   "sponsor": "Tanya Donnelly",
+   "committees": ["House Resources, Recreation and Development", "Senate Energy and Natural Resources"],
+   "topic": "Environment - Administration"
+  },
+  "HB1815": {
+   "n": "HB 1815-FN",
    "title": "relative to education financing.",
-   "sponsor": "Sharon Carson",
-   "committees": ["Senate Education Finance"]
+   "sponsor": "Bob Lynn",
+   "committees": ["House Education Funding", "Senate Education Finance"],
+   "topic": "Education - General"
+  },
+  "HB1021": {
+   "n": "HB 1021",
+   "title": "amending the date to provide written notice to a municipality of a taxpayer's election to be assessed under the low-income housing tax credit program.",
+   "sponsor": "David Walker",
+   "committees": ["House Housing", "Senate Election Law and Municipal Affairs"],
+   "topic": "Housing"
+  },
+  "HR20": {
+   "n": "HR 20",
+   "title": "reaffirming the right for persons of all persuasions to keep and bear arms, and urging Congress and the President to cease infringement upon Second Amendment rights and to restore them where infringed.",
+   "sponsor": "Donald McFarlane",
+   "committees": ["House State-Federal Relations and Veterans Affairs"],
+   "topic": "State Government"
+  },
+  "HB1811": {
+   "n": "HB 1811-FN",
+   "title": "repealing statutory immunization requirements for children.",
+   "sponsor": "Matt Drew",
+   "committees": ["House Health, Human Services and Elderly Affairs"],
+   "topic": "Public and Mental Health"
+  },
+  "HB1521": {
+   "n": "HB 1521",
+   "title": "clarifying the definition of home education.",
+   "sponsor": "Katy Peternel",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB1488": {
+   "n": "HB 1488",
+   "title": "relative to rabies vaccines for animals.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Environment and Agriculture"],
+   "topic": "Animals"
+  },
+  "HB1026": {
+   "n": "HB 1026",
+   "title": "relative to the definition of manufactured housing.",
+   "sponsor": "Jennifer Rhodes",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1773": {
+   "n": "HB 1773-FN",
+   "title": "relative to food and drink purchased under SNAP, the Supplemental Nutritional Assistance Program.",
+   "sponsor": "Lisa Freeman",
+   "committees": ["House Health, Human Services and Elderly Affairs"],
+   "topic": "Welfare/Medicare/Medicaid"
+  },
+  "HB1788": {
+   "n": "HB 1788-FN",
+   "title": "holding state contracts with DEI provisions to be void as a matter of law and establishing a right of action for citizens where public entities or state agencies engage with contracts with DEI provisions.",
+   "sponsor": "Rich Nalevanko",
+   "committees": ["House Executive Departments and Administration", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "HB1564": {
+   "n": "HB 1564-FN",
+   "title": "removing all references of gender identity in New Hampshire statutes.",
+   "sponsor": "Seth King",
+   "committees": ["House Judiciary"],
+   "topic": "Discrimination"
+  },
+  "HB1792": {
+   "n": "HB 1792-FN",
+   "title": "relative to the prohibition on teaching discrimination.",
+   "sponsor": "Mike Belcher",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB1049": {
+   "n": "HB 1049-FN",
+   "title": "relative to storage requirements for firearms.",
+   "sponsor": "David Meuse",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1570": {
+   "n": "HB 1570-FN-LOCAL",
+   "title": "relative to governmental budget authority for agreements for law enforcement agencies to participate in federal immigration enforcement.",
+   "sponsor": "Buzz Scherr",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Municipalities"
+  },
+  "HB1165": {
+   "n": "HB 1165",
+   "title": "relative to gender designation on state-issued identification.",
+   "sponsor": "Seth King",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB1142": {
+   "n": "HB 1142",
+   "title": "relative to requirements for law enforcement officers assisting in immigration enforcement.",
+   "sponsor": "Alexis Simpson",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Police"
+  },
+  "HB1171": {
+   "n": "HB 1171",
+   "title": "relative to eviction safeguards for tenants whose Social Security payments are disrupted.",
+   "sponsor": "Terri O'Rorke",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1506": {
+   "n": "HB 1506",
+   "title": "creating an exception to the restricted uses of artificial intelligence by state agencies.",
+   "sponsor": "Thomas Cormen",
+   "committees": ["House Executive Departments and Administration"],
+   "topic": "State Government"
+  },
+  "HB1268": {
+   "n": "HB 1268",
+   "title": "modifying the structure and administration of home education programs and relative to pharmacy benefits managers, managed care laws, notice of drug pricing options and pharmacy benefit manager business practices.",
+   "sponsor": "Kristin Noble",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB1270": {
+   "n": "HB 1270",
+   "title": "clarifying the definition of part-time teacher.",
+   "sponsor": "Margaret Drye",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "CACR10": {
+   "n": "CACR 10",
+   "title": "the adoption of tax laws.",
+   "sponsor": "Donald McFarlane",
+   "committees": ["House Ways and Means"],
+   "topic": "Legislature"
+  },
+  "HB1822": {
+   "n": "HB 1822-FN",
+   "title": "relative to reporting of civil immigration detentions by state, county, and local law enforcement and correctional facilities.",
+   "sponsor": "Zoe Manos",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1510": {
+   "n": "HB 1510-FN",
+   "title": "relative to responsibility for the custody or control of persons ordered to a county correctional facility.",
+   "sponsor": "Douglas Trottier",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1835": {
+   "n": "HB 1835-FN",
+   "title": "relative to the formula for distribution of aid to school districts.",
+   "sponsor": "Heather Raymond",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB1201": {
+   "n": "HB 1201",
+   "title": "requiring certain political committees to disclose the identity of their donors.",
+   "sponsor": "Russell Muirhead",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB1079": {
+   "n": "HB 1079",
+   "title": "allowing accessory dwelling units to be built within or attached to certain non-conforming structures.",
+   "sponsor": "Allan Howland",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
+  "HB1536": {
+   "n": "HB 1536-FN",
+   "title": "establishing penalties for unauthorized parking in designated electric vehicle and motorcycle spaces.",
+   "sponsor": "Seth Miller",
+   "committees": ["House Transportation"],
+   "topic": "Transportation and Highways"
+  },
+  "HB1674": {
+   "n": "HB 1674",
+   "title": "creating a tax exemption for certain lower-income property owners.",
+   "sponsor": "Ellen Read",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Taxes - Local"
+  },
+  "HB1512": {
+   "n": "HB 1512",
+   "title": "allowing municipalities to hold a vote to prevent their residents from receiving education freedom account vouchers.",
+   "sponsor": "Ellen Read",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Municipalities"
+  },
+  "HB1155": {
+   "n": "HB 1155",
+   "title": "repealing the home education advisory council.",
+   "sponsor": "Katy Peternel",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB1671": {
+   "n": "HB 1671-FN",
+   "title": "relative to prohibiting state Medicaid payments to facilities that discriminate against employees, students, or trainees for exercising lawful medical or religious vaccine exemptions.",
+   "sponsor": "Linda McGrath",
+   "committees": ["House Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "HB1615": {
+   "n": "HB 1615-FN",
+   "title": "permitting consenting adults to enter into contract-based marriage agreements as an alternative to the requirement of a marriage license.",
+   "sponsor": "Matt Sabourin dit Choinière",
+   "committees": ["House Judiciary"],
+   "topic": "Domestic Relations"
+  },
+  "HB1181": {
+   "n": "HB 1181-FN",
+   "title": "relative to public hearing notice requirements for zoning board of adjustment appeals.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Zoning and Planning"
+  },
+  "HB1531": {
+   "n": "HB 1531-FN",
+   "title": "requiring applicants for games of chance facilities licensees and game operator employer licensees to enter into host community agreements with municipalities.",
+   "sponsor": "Bill Ohm",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Gambling"
+  },
+  "HB1092": {
+   "n": "HB 1092",
+   "title": "relative to guard dogs.",
+   "sponsor": "Barbara Comtois",
+   "committees": ["House Environment and Agriculture"],
+   "topic": "Animals"
+  },
+  "HB1709": {
+   "n": "HB 1709-FN",
+   "title": "prohibiting certain unlawfully present felons from occupying or renting real property, relative to pet vendor foster home and defining pet vendor foster facility, and providing procedures for the potential confiscation of livestock involved in cruelty to animal cases.",
+   "sponsor": "Joe Alexander",
+   "committees": ["House Housing", "Senate Judiciary"],
+   "topic": "Housing"
+  },
+  "HB1484": {
+   "n": "HB 1484",
+   "title": "establishing a state minimum wage and providing for incremental increases.",
+   "sponsor": "Kathy Staub",
+   "committees": ["House Labor, Industrial and Rehabilitative Services"],
+   "topic": "Employment"
+  },
+  "HB1732": {
+   "n": "HB 1732-FN",
+   "title": "relative to housing accessibility and voucher allocation in new multi-unit developments.",
+   "sponsor": "Timothy Horrigan",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1217": {
+   "n": "HB 1217",
+   "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
+   "sponsor": "Katy Peternel",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Education - General"
+  },
+  "HB1218": {
+   "n": "HB 1218",
+   "title": "relative to the disclosure of rights and responsibilities during the sale of a mobile home in a mobile home park.",
+   "sponsor": "Rosemarie Rung",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1442": {
+   "n": "HB 1442-FN",
+   "title": "permitting classification of individuals based on biological sex under certain limited circumstances.",
+   "sponsor": "Erica Layon",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "HR46": {
+   "n": "HR 46",
+   "title": "declaring the first Friday in June as a state day of remembrance for children killed by gun violence and urging the establishment of a national day of remembrance.",
+   "sponsor": "Suraj Budathoki",
+   "committees": ["House Executive Departments and Administration"],
+   "topic": "Memorials"
+  },
+  "HB1724": {
+   "n": "HB 1724",
+   "title": "relative to public transparency of electric utility retail charges and cost reporting for transmission, wholesale electricity, capacity, and generation adequacy.",
+   "sponsor": "Wendy Thomas",
+   "committees": ["House Science, Technology and Energy"],
+   "topic": "Energy and Utilities"
+  },
+  "CACR19": {
+   "n": "CACR 19",
+   "title": "relative to the personal possession of cannabis. Providing that adults 21 years of age or older shall have the right to possess a modest amount of cannabis intended for their personal consumption.",
+   "sponsor": "Jonah Wheeler",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "CACR"
+  },
+  "HB1248": {
+   "n": "HB 1248-FN",
+   "title": "relative to the penalties for intoxication or under the influence of drug offenses.",
+   "sponsor": "Jay Markell",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1447": {
+   "n": "HB 1447",
+   "title": "restricting the use of certain public and private facilities on the basis of sex and establishing that such restriction does not qualify as discrimination.",
+   "sponsor": "Lisa Mazur",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "HB1252": {
+   "n": "HB 1252",
+   "title": "requiring the department of safety to only administer tests for commercial driver's licenses in English and prohibiting the assistance of an interpreter during such tests.",
+   "sponsor": "Ted Gorski",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB1254": {
+   "n": "HB 1254",
+   "title": "defining biostimulants, plant regulators, nutritional chemicals, and vitamin hormone products.",
+   "sponsor": "Barbara Comtois",
+   "committees": ["House Environment and Agriculture"],
+   "topic": "Agriculture"
+  },
+  "HB1543": {
+   "n": "HB 1543-FN",
+   "title": "relative to the transfer of state-owned real property to municipalities.",
+   "sponsor": "Julie Miles",
+   "committees": ["House Public Works and Highways"],
+   "topic": "Municipalities"
+  },
+  "HB1725": {
+   "n": "HB 1725-FN",
+   "title": "relative to the regulation of artificial intelligence technologies.",
+   "sponsor": "Patrick Long",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "State Government"
+  },
+  "HB1450": {
+   "n": "HB 1450",
+   "title": "relative to the designation and control of shared facilities in rental properties.",
+   "sponsor": "Diane Kelley",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1299": {
+   "n": "HB 1299",
+   "title": "permitting classification of individuals based on biological sex under certain limited circumstances and establishing that certain biological sex distinctions do not qualify as discrimination.",
+   "sponsor": "Jim Kofalt",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "HB1274": {
+   "n": "HB 1274-FN-LOCAL",
+   "title": "relative to dog licenses.",
+   "sponsor": "Paul Dargie",
+   "committees": ["House Environment and Agriculture", "Senate Election Law and Municipal Affairs"],
+   "topic": "Animals"
+  },
+  "HB1277": {
+   "n": "HB 1277",
+   "title": "relative to proof of identification on absentee ballot applications.",
+   "sponsor": "Russell Muirhead",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB1662": {
+   "n": "HB 1662-FN",
+   "title": "relative to providing loan guarantees for accessory dwelling unit financing.",
+   "sponsor": "Chris Muns",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1306": {
+   "n": "HB 1306",
+   "title": "relative to the counting of absentee ballots.",
+   "sponsor": "Claudine Burnham",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "HB1625": {
+   "n": "HB 1625-FN",
+   "title": "relative to annual reporting on accessory dwelling unit construction and use.",
+   "sponsor": "Bill Boyd",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB1219": {
+   "n": "HB 1219",
+   "title": "relative to immunization requirements in foster family homes and relative to financial eligibility for the Medicare savings program.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Children"
+  },
+  "HB1313": {
+   "n": "HB 1313-FN",
+   "title": "repealing buffer zones for reproductive health care facilities.",
+   "sponsor": "Cyril Aures",
+   "committees": ["House Judiciary"],
+   "topic": "Civil Actions"
+  },
+  "HB1589": {
+   "n": "HB 1589-FN",
+   "title": "establishing the digital choice act.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Property - Real and Personal"
+  },
+  "HB1590": {
+   "n": "HB 1590-FN",
+   "title": "harmonizing the age of personhood under the criminal code and the fetal life protection act.",
+   "sponsor": "Kevin Scully",
+   "committees": ["House Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1333": {
+   "n": "HB 1333-FN",
+   "title": "relative to nonconsensual provision of medication intended to terminate a pregnancy and the homicide of a fetus.",
+   "sponsor": "Cyril Aures",
+   "committees": ["House Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1338": {
+   "n": "HB 1338",
+   "title": "restricting abortion providers from the definition of charitable organization for the purposes of games of chance.",
+   "sponsor": "John Sellers",
+   "committees": ["House Ways and Means"],
+   "topic": "Gambling"
+  },
+  "HB1594": {
+   "n": "HB 1594-FN",
+   "title": "establishing a weight-based tiered registration fee schedule for electric and plug-in hybrid vehicles.",
+   "sponsor": "Nicholas Bridle",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "CACR25": {
+   "n": "CACR 25",
+   "title": "relative to the right to marry. Providing that the right to marry is a fundamental civil right and that the state shall protect the right of every individual, regardless of sex, gender identity, sexual orientation, or race, to marry and to have their marriage legally recognized.",
+   "sponsor": "Alice Wade",
+   "committees": ["House Judiciary"],
+   "topic": "CACR"
+  },
+  "HB1812": {
+   "n": "HB 1812-FN",
+   "title": "requiring periodic evaluation of mental health access adequacy by an independent third party.",
+   "sponsor": "Alicia Gregg",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Public and Mental Health"
+  },
+  "HB1407": {
+   "n": "HB 1407",
+   "title": "enabling veterinary technicians to provide rabies vaccinations while indirectly supervised by a veterinarian.",
+   "sponsor": "Patrick Long",
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "Animals"
+  },
+  "HB1754": {
+   "n": "HB 1754-FN",
+   "title": "repealing the statewide use of the multi-tiered system of supports for behavioral health and wellness relative to systems of care for children's mental health.",
+   "sponsor": "John Sellers",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB1235": {
+   "n": "HB 1235-FN",
+   "title": "legalizing certain quantities of cannabis.",
+   "sponsor": "Jared Sullivan",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB1778": {
+   "n": "HB 1778-FN",
+   "title": "relative to prohibiting the use of personal identity ideology in public school instruction and policies.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB1372": {
+   "n": "HB 1372",
+   "title": "establishing a commission to study the feasibility of reestablishing a state psychiatric hospital for adults with severe mental illness.",
+   "sponsor": "Joe Sweeney",
+   "committees": ["House Health, Human Services and Elderly Affairs"],
+   "topic": "Study Committees and Commissions"
+  },
+  "HB1376": {
+   "n": "HB 1376",
+   "title": "relative to a parent's ability to raise their child in a manner consistent with the child's biological sex and relative to breast surgeries for minors.",
+   "sponsor": "Lori Korzen",
+   "committees": ["House Children and Family Law", "Senate Children and Family Law"],
+   "topic": "Children"
+  },
+  "HB1642": {
+   "n": "HB 1642-FN",
+   "title": "relative to extreme risk protection orders.",
+   "sponsor": "Loren Selig",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Public and Mental Health"
+  },
+  "HB1356": {
+   "n": "HB 1356-FN",
+   "title": "relative to the statute of limitations for bringing a private right of action for violation of the statute prohibiting medical procedures and treatments intended to alter a minor's gender, authorizing the application of sunscreen in schools and camps without a licensed health care provider's note or prescription, and establishing a skin cancer prevention education program.",
+   "sponsor": "Robert Wherry",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "Civil Actions"
+  },
+  "HB1787": {
+   "n": "HB 1787-FN",
+   "title": "modifying the statewide education property tax.",
+   "sponsor": "Dick Ames",
+   "committees": ["House Ways and Means"],
+   "topic": "Education - General"
+  },
+  "HB1669": {
+   "n": "HB 1669",
+   "title": "establishing a teacher bill of rights.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB1410": {
+   "n": "HB 1410-FN",
+   "title": "creating a new classification for electric vehicles.",
+   "sponsor": "Thomas Walsh",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB1364": {
+   "n": "HB 1364-FN",
+   "title": "requiring quarterly reports from counties, municipalities, or any other political subdivisions of the state that enter into certain agreements with the federal government concerning assistance with federal immigration enforcement.",
+   "sponsor": "Alissandra Murray",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Police"
+  },
+  "HB1650": {
+   "n": "HB 1650-FN",
+   "title": "relative to an age-appropriate design code.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Education - General"
+  },
+  "HB1414": {
+   "n": "HB 1414",
+   "title": "relative to establishing conditions for dog access to state parks.",
+   "sponsor": "Daniel Popovici-Muller",
+   "committees": ["House Resources, Recreation and Development"],
+   "topic": "Environment - Conservation"
+  },
+  "HB1770": {
+   "n": "HB 1770-FN",
+   "title": "relative to the allocation of parental rights and responsibilities and establishing a presumption of equal parenting time.",
+   "sponsor": "Matt Sabourin dit Choinière",
+   "committees": ["House Children and Family Law"],
+   "topic": "Children"
+  },
+  "HB1769": {
+   "n": "HB 1769-FN",
+   "title": "relative to certain prohibitions on abortion referrals by publicly funded medical facilities.",
+   "sponsor": "Samuel Farrington",
+   "committees": ["House Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "HB1702": {
+   "n": "HB 1702-FN",
+   "title": "relative to notice requirements and enforcement for pharmacies dispensing medications intended to induce chemical abortions.",
+   "sponsor": "Samuel Farrington",
+   "committees": ["House Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "HB1353": {
+   "n": "HB 1353",
+   "title": "relative to discounted motor vehicle insurance premiums for voluntary safety inspections.",
+   "sponsor": "Alice Wade",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Motor Vehicles"
+  },
+  "HR40": {
+   "n": "HR 40",
+   "title": "urging the legislature to adequately fund public education.",
+   "sponsor": "John Cloutier",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
   },
   "SB660": {
    "n": "SB 660",
    "title": "relative to photo identification cards issued solely for the purpose of voting.",
    "sponsor": "James Gray",
-   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"]
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "SB659": {
+   "n": "SB 659",
+   "title": "relative to education financing.",
+   "sponsor": "Sharon Carson",
+   "committees": ["Senate Education Finance"],
+   "topic": "Education - General"
+  },
+  "SB657": {
+   "n": "SB 657-FN",
+   "title": "relative to the use of information technology and artificial intelligence systems by state agencies.",
+   "sponsor": "Rebecca Perkins Kwoka",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Judiciary"],
+   "topic": "State Government"
   },
   "SR2": {
    "n": "SR 2",
    "title": "RESOLVED, that the Secretary of State be requested to furnish the Senate with the official return of votes from the various Senatorial Districts.",
    "sponsor": "",
-   "committees": [""]
+   "committees": [],
+   "topic": ""
+  },
+  "SB13": {
+   "n": "SB 13",
+   "title": "invalidating out-of-state driver's licenses issued to undocumented immigrants and prohibiting driver's license issuance and renewal to individuals with pending asylum claims, regardless of a grant of temporary work authorization.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Transportation", "Senate Judiciary"],
+   "topic": "Motor Vehicles"
+  },
+  "HB50": {
+   "n": "HB 50",
+   "title": "relative to intentional or knowing violation of the prohibition on teaching discrimination.",
+   "sponsor": "Peter Petrigno",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Discrimination"
+  },
+  "HB53": {
+   "n": "HB 53",
+   "title": "permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.",
+   "sponsor": "Wendy Thomas",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "HB56": {
+   "n": "HB 56",
+   "title": "requiring a background check and mandatory waiting period during certain firearm transfers.",
+   "sponsor": "David Meuse",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB60": {
+   "n": "HB 60",
+   "title": "relative to the termination of tenancy at the expiration of the tenancy or lease term.",
+   "sponsor": "Bob Lynn",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
+  "HB75": {
+   "n": "HB 75",
+   "title": "legalizing cannabis for persons 21 years of age or older.",
+   "sponsor": "Kevin Verville",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB81": {
+   "n": "HB 81",
+   "title": "relative to consumption of beverages or liquor in areas not approved for service by the liquor commission.",
+   "sponsor": "Jared Sullivan",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Commerce"],
+   "topic": "Liquor and Beer"
+  },
+  "HB85": {
+   "n": "HB 85",
+   "title": "relative to temporary licensure for student respiratory therapists.",
+   "sponsor": "Carol McGuire",
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "Occupational Regulation"
+  },
+  "HB86": {
+   "n": "HB 86",
+   "title": "increasing the cost of service for notice of civil forfeiture of unlicensed dogs to the rate for certified mail.",
+   "sponsor": "Charlie St. Clair",
+   "committees": ["House Municipal and County Government", "Senate Election Law and Municipal Affairs"],
+   "topic": "Animals"
+  },
+  "HB90": {
+   "n": "HB 90",
+   "title": "relative to the definition of part-time teachers.",
+   "sponsor": "Rick Ladd",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB93": {
+   "n": "HB 93",
+   "title": "enabling school districts to appoint a school district treasurer.",
+   "sponsor": "Joe Alexander",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB148": {
+   "n": "HB 148",
+   "title": "permitting classification of individuals based on biological sex under certain circumstances.",
+   "sponsor": "Jim Kofalt",
+   "committees": ["House Judiciary", "Senate Judiciary"],
+   "topic": "State Government"
+  },
+  "HB159": {
+   "n": "HB 159",
+   "title": "authorizing the state to report mental health data for firearms background check purposes and providing for processes for voluntary surrender of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms disabilities.",
+   "sponsor": "Terry Roy",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB162": {
+   "n": "HB 162",
+   "title": "relative to informed consent for law enforcement searches of houses or other property.",
+   "sponsor": "Terry Roy",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB182": {
+   "n": "HB 182",
+   "title": "prohibiting electric vehicles in commercial parking garages.",
+   "sponsor": "Mark Proulx",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB190": {
+   "n": "HB 190",
+   "title": "relative to therapeutic cannabis possession limits.",
+   "sponsor": "Heath Howard",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "HB198": {
+   "n": "HB 198",
+   "title": "relative to legalizing certain quantities of cannabis and establishing penalties for the smoking or vaping of cannabis in public.",
+   "sponsor": "Jared Sullivan",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB211": {
+   "n": "HB 211",
+   "title": "relative to the use of air rifles for hunting game.",
+   "sponsor": "James Spillane",
+   "committees": ["House Fish and Game and Marine Resources", "Senate Energy and Natural Resources"],
+   "topic": "Fish & Game"
+  },
+  "HB217": {
+   "n": "HB 217",
+   "title": "relative to absentee ballots.",
+   "sponsor": "Bob Lynn",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "HB218": {
+   "n": "HB 218",
+   "title": "relative to providing victims of crime with a free police report of the investigation.",
+   "sponsor": "John MacDonald",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB237": {
+   "n": "HB 237",
+   "title": "prohibiting the use of special education state aid funds and differentiated aid special education funds on students not receiving special education services.",
+   "sponsor": "Mike Belcher",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB238": {
+   "n": "HB 238",
+   "title": "prohibiting collective bargaining agreements from requiring employees join or contribute to a labor union.",
+   "sponsor": "Daniel Popovici-Muller",
+   "committees": ["House Labor, Industrial and Rehabilitative Services"],
+   "topic": "Employment"
+  },
+  "HB240": {
+   "n": "HB 240",
+   "title": "relative to nonpayment of dog licensing fees.",
+   "sponsor": "Tom Mannion",
+   "committees": ["House Environment and Agriculture", "Senate Judiciary"],
+   "topic": "Animals"
+  },
+  "HB250": {
+   "n": "HB 250",
+   "title": "enabling local governing bodies to regulate the muzzling of dogs.",
+   "sponsor": "Jodi Newell",
+   "committees": ["House Environment and Agriculture", "Senate Energy and Natural Resources"],
+   "topic": "Animals"
+  },
+  "SB38": {
+   "n": "SB 38",
+   "title": "relative to state recognition of biological sex.",
+   "sponsor": "Kevin Avard",
+   "committees": ["Senate Judiciary"],
+   "topic": "Discrimination"
+  },
+  "HB254": {
+   "n": "HB 254",
+   "title": "relative to options for end of life care.",
+   "sponsor": "Bob Lynn",
+   "committees": ["House Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "HB262": {
+   "n": "HB 262",
+   "title": "relative to group licenses for dogs.",
+   "sponsor": "Mike Bordes",
+   "committees": ["House Environment and Agriculture"],
+   "topic": "Animals"
+  },
+  "HB285": {
+   "n": "HB 285",
+   "title": "relative to determination of parental rights and responsibilities.",
+   "sponsor": "Lorie Ball",
+   "committees": ["House Children and Family Law"],
+   "topic": "Courts and Procedure"
+  },
+  "HB288": {
+   "n": "HB 288",
+   "title": "limiting how far in advance of an election an absentee ballot may be requested.",
+   "sponsor": "Robert Wherry",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "HB294": {
+   "n": "HB 294",
+   "title": "relative to the processing of absentee ballots.",
+   "sponsor": "Gary Daniels",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "HB300": {
+   "n": "HB 300",
+   "title": "relative to directing the department of transportation to issue a request for proposals regarding the Conway Branch rail line and establishing a study committee to investigate the future of railroads in the state.",
+   "sponsor": "Timothy Horrigan",
+   "committees": ["House Public Works and Highways"],
+   "topic": "Transportation and Highways"
+  },
+  "HB302": {
+   "n": "HB 302",
+   "title": "relative to enabling the state treasury to invest in precious metals and digital assets.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Ways and Means"],
+   "topic": "State Government"
+  },
+  "HB310": {
+   "n": "HB 310",
+   "title": "establishing a commission to study the creation of a regulatory framework for stable tokens, tokenized real-world assets, and blockchain-based trusts in New Hampshire.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Commerce"],
+   "topic": "Study Committees and Commissions"
+  },
+  "HB311": {
+   "n": "HB 311",
+   "title": "relative to permissible campaign contributions by business organizations and labor unions.",
+   "sponsor": "Ellen Read",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB319": {
+   "n": "HB 319",
+   "title": "relative to the responsibility of local school districts to provide transportation for pupils in kindergarten.",
+   "sponsor": "Keith Ammon",
+   "committees": ["House Education Funding", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB320": {
+   "n": "HB 320",
+   "title": "relative to enforcement of marital property settlements.",
+   "sponsor": "Jay Markell",
+   "committees": ["House Children and Family Law", "Senate Children and Family Law"],
+   "topic": "Courts and Procedure"
+  },
+  "HB324": {
+   "n": "HB 324",
+   "title": "relative to prohibiting obscene or harmful sexual materials in schools.",
+   "sponsor": "Glenn Cordelli",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "HB328": {
+   "n": "HB 328",
+   "title": "establishing a charitable gaming oversight commission.",
+   "sponsor": "Dick Ames",
+   "committees": ["House Ways and Means", "Senate Ways and Means"],
+   "topic": "Gambling"
+  },
+  "HB344": {
+   "n": "HB 344",
+   "title": "enables the processing of absentee ballots before election day.",
+   "sponsor": "Gary Daniels",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB351": {
+   "n": "HB 351",
+   "title": "requiring landlords to give tenants of at-will tenancies at least 60-days notice to evict.",
+   "sponsor": "Matthew Pitaro",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB352": {
+   "n": "HB 352",
+   "title": "prohibiting possession of a firearm at a polling place.",
+   "sponsor": "Timothy Horrigan",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB358": {
+   "n": "HB 358",
+   "title": "relative to exemption from immunization requirements on the basis of religious belief.",
+   "sponsor": "Jim Kofalt",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
+  },
+  "HB370": {
+   "n": "HB 370",
+   "title": "reestablishing the commission to study the delivery of behavioral crisis services to individuals with mental illness with an impairment primarily due to intellectual disability.",
+   "sponsor": "JD Bernardy",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Study Committees and Commissions"
+  },
+  "HB377": {
+   "n": "HB 377",
+   "title": "relative to health care professionals administering hormone treatments and puberty blockers and relative to recognizing the second Thursday in October as children's environmental health day.",
+   "sponsor": "Lisa Mazur",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Children"
+  },
+  "CACR5": {
+   "n": "CACR 5",
+   "title": "relating to absentee ballots. Providing that no excuse shall be needed by the voter to receive an absentee ballot.",
+   "sponsor": "Connie Lane",
+   "committees": ["House Election Law"],
+   "topic": "CACR"
+  },
+  "HB385": {
+   "n": "HB 385",
+   "title": "reestablishing voter identification exceptions.",
+   "sponsor": "Connie Lane",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB387": {
+   "n": "HB 387",
+   "title": "relative to balloons being released into the air.",
+   "sponsor": "Janet Wall",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Environment - Conservation"
+  },
+  "HB402": {
+   "n": "HB 402",
+   "title": "relative to liability as taxable income of education freedom account payments.",
+   "sponsor": "David Luneau",
+   "committees": ["House Ways and Means"],
+   "topic": "Education - General"
+  },
+  "HB415": {
+   "n": "HB 415",
+   "title": "removing requirements that schools provide menstrual products in restrooms.",
+   "sponsor": "Katy Peternel",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB418": {
+   "n": "HB 418",
+   "title": "relative to eligibility for absentee voting.",
+   "sponsor": "John Sellers",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB434": {
+   "n": "HB 434",
+   "title": "requiring a policyholder's insurance company to provide a rental car for at least 7 days after determination that the vehicle is totaled or unsafe to operate when the policyholder is not at fault for the accident.",
+   "sponsor": "Stephen Pearson",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Housing"
+  },
+  "HB438": {
+   "n": "HB 438",
+   "title": "relative to immigration detention facilities.",
+   "sponsor": "Timothy Horrigan",
+   "committees": ["House Executive Departments and Administration"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HCR7": {
+   "n": "HCR 7",
+   "title": "recognizing abortion as a critical component of comprehensive reproductive health care.",
+   "sponsor": "Alexis Simpson",
+   "committees": ["House Health, Human Services and Elderly Affairs"],
+   "topic": "Public and Mental Health"
+  },
+  "HB442": {
+   "n": "HB 442",
+   "title": "relative to prohibiting payment of subminimum wages.",
+   "sponsor": "Kris Schultz",
+   "committees": ["House Labor, Industrial and Rehabilitative Services"],
+   "topic": "Employment"
+  },
+  "HB466": {
+   "n": "HB 466",
+   "title": "relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.",
+   "sponsor": "Terry Roy",
+   "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB490": {
+   "n": "HB 490",
+   "title": "relative to indemnification for municipalities adopting policies to address homelessness.",
+   "sponsor": "Heath Howard",
+   "committees": ["House Municipal and County Government"],
+   "topic": "Municipalities"
+  },
+  "HB498": {
+   "n": "HB 498",
+   "title": "relative to when a person may receive an absentee ballot.",
+   "sponsor": "Kelley Potenza",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB506": {
+   "n": "HB 506",
+   "title": "relative to background checks during motions to return firearms and ammunition and relative to invalidating out-of-state driver's licenses issued to undocumented immigrants and relative to requiring schools to engage an owner's project manager for construction of school building aid projects at the time of application.",
+   "sponsor": "Dennis Mannion",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Courts and Procedure"
+  },
+  "HB507": {
+   "n": "HB 507",
+   "title": "relative to the timeline for credentialing of mental health care providers.",
+   "sponsor": "Alicia Gregg",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Executive Departments and Administration"],
+   "topic": "Insurance"
+  },
+  "HB511": {
+   "n": "HB 511",
+   "title": "relative to cooperation with federal immigration authorities.",
+   "sponsor": "Joe Sweeney",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Police"
+  },
+  "HB527": {
+   "n": "HB 527",
+   "title": "replacing the statewide education property tax with a local revenue contribution.",
+   "sponsor": "Sallie Fellows",
+   "committees": ["House Education Funding"],
+   "topic": "Taxes - State"
+  },
+  "HB540": {
+   "n": "HB 540",
+   "title": "relative to historic horse racing licenses for large facilities.",
+   "sponsor": "Bill Ohm",
+   "committees": ["House Ways and Means"],
+   "topic": "Gambling"
+  },
+  "HB549": {
+   "n": "HB 549",
+   "title": "relative to the use of education freedom account funds in religious schools and institutions of higher education.",
+   "sponsor": "Timothy Horrigan",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB550": {
+   "n": "HB 550",
+   "title": "modifying the base cost of an adequate education.",
+   "sponsor": "David Luneau",
+   "committees": ["House Education Funding"],
+   "topic": "Education - General"
+  },
+  "HB551": {
+   "n": "HB 551",
+   "title": "repealing the license to sell pistols and revolvers and limiting liability for certain design features of firearms.",
+   "sponsor": "Michael Granger",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Municipalities"
+  },
+  "HB558": {
+   "n": "HB 558",
+   "title": "creating a public county registry of the monthly rent charged by landlords for each owned unit and prohibiting landlords from using algorithms or software to determine rental rates.",
+   "sponsor": "Ellen Read",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "SB54": {
+   "n": "SB 54",
+   "title": "relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "SB62": {
+   "n": "SB 62",
+   "title": "relative to law enforcement participation in a federal immigration program and relative to cooperation with federal immigration authorities.",
+   "sponsor": "Bill Gannon",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Police"
+  },
+  "SB70": {
+   "n": "SB 70",
+   "title": "creating a mobile driver's license and non-driver identification card.",
+   "sponsor": "Timothy Lang",
+   "committees": ["Senate Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB577": {
+   "n": "HB 577",
+   "title": "relative to modifying the definition of ADUs.",
+   "sponsor": "Joe Alexander",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
+  "HB597": {
+   "n": "HB 597",
+   "title": "establishing a designated behavioral health access point within the enhanced 911 system.",
+   "sponsor": "Bill Boyd",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Health and Human Services"],
+   "topic": "State Government"
+  },
+  "HB612": {
+   "n": "HB 612",
+   "title": "enabling the division of motor vehicles to create a temporary traditional driver's license for youth operators about to turn 21 and relative to requiring employers to provide certain information regarding cost sharing to employees receiving workers' compensation benefit and relative to declaring the third week in September to be New Hampshire service dog week.",
+   "sponsor": "Daniel Veilleux",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "HB628": {
+   "n": "HB 628",
+   "title": "prohibiting landlords from discriminating against prospective tenants holding certain vouchers under the housing choice voucher program.",
+   "sponsor": "Timothy Horrigan",
+   "committees": ["House Housing"],
+   "topic": "Housing"
+  },
+  "HB630": {
+   "n": "HB 630",
+   "title": "preventing the dissemination of deepfake materials of political candidates before an election.",
+   "sponsor": "Thomas Cormen",
+   "committees": ["House Election Law"],
+   "topic": "Elections"
+  },
+  "HB636": {
+   "n": "HB 636",
+   "title": "relative to community mental health providers.",
+   "sponsor": "Christal Lloyd",
+   "committees": ["House Health, Human Services and Elderly Affairs"],
+   "topic": "Public and Mental Health"
+  },
+  "HB662": {
+   "n": "HB 662",
+   "title": "requiring the discussion of abortion procedures and viewing of certain videos during health education in public schools.",
+   "sponsor": "John Sellers",
+   "committees": ["House Education Policy and Administration"],
+   "topic": "Education - General"
+  },
+  "HB670": {
+   "n": "HB 670",
+   "title": "adjusting the minimum fine for attacks by nuisance dogs.",
+   "sponsor": "Len Turcotte",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Animals"
+  },
+  "HB685": {
+   "n": "HB 685",
+   "title": "permitting in all residentially zoned areas by right the construction of manufactured housing.",
+   "sponsor": "Joe Alexander",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
+  "HB691": {
+   "n": "HB 691",
+   "title": "prohibiting the addition of fluoridation chemicals to public water systems.",
+   "sponsor": "Peter Schmidt",
+   "committees": ["House Resources, Recreation and Development"],
+   "topic": "Environment - Conservation"
+  },
+  "HB712": {
+   "n": "HB 712",
+   "title": "limiting breast surgeries for minors, relative to residential care and health facility licensing, and relative to the collection and reporting of abortion statistics by health care providers and medical facilities.",
+   "sponsor": "Lisa Mazur",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
+  },
+  "HB715": {
+   "n": "HB 715",
+   "title": "relative to personal electric vehicles.",
+   "sponsor": "Linda Gould",
+   "committees": ["House Transportation"],
+   "topic": "Transportation and Highways"
+  },
+  "HB726": {
+   "n": "HB 726",
+   "title": "relative to the state minimum hourly rate.",
+   "sponsor": "Kathy Staub",
+   "committees": ["House Labor, Industrial and Rehabilitative Services"],
+   "topic": "Employment"
+  },
+  "HB737": {
+   "n": "HB 737",
+   "title": "creating local options for games of chance, authorizing keno throughout the state, and changing charitable gaming license fees and reporting requirements.",
+   "sponsor": "Bill Boyd",
+   "committees": ["House Ways and Means", "Senate Ways and Means"],
+   "topic": "Gambling"
+  },
+  "SB157": {
+   "n": "SB 157",
+   "title": "relative to inspection and registration of certain fleet vehicles and necessary amendments and administrative rules regarding the state implementation plan.",
+   "sponsor": "Denise Ricciardi",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "SB113": {
+   "n": "SB 113",
+   "title": "making appropriations to the department of health and human services for homeless services and homeless prevention.",
+   "sponsor": "Regina Birdsell",
+   "committees": ["Senate Finance"],
+   "topic": "Welfare/Medicare/Medicaid"
+  },
+  "SB96": {
+   "n": "SB 96",
+   "title": "relative to mandatory disclosure by school district employees to parents and relative to enforcement of parental rights against school districts and school employees.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB100": {
+   "n": "SB 100",
+   "title": "relative to the prohibition on teaching discrimination.",
+   "sponsor": "Timothy Lang",
+   "committees": ["House Education Policy and Administration", "Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB133": {
+   "n": "SB 133",
+   "title": "relative to the designation of emergency medical services performed by ambulance service providers as essential services.",
+   "sponsor": "Tim McGough",
+   "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
+   "topic": "Public and Mental Health"
+  },
+  "HB771": {
+   "n": "HB 771",
+   "title": "relative to funding for open enrollment schools.",
+   "sponsor": "Katy Peternel",
+   "committees": ["House Education Funding", "Senate Education Finance"],
+   "topic": "Education - General"
+  },
+  "HB776": {
+   "n": "HB 776",
+   "title": "relative to the crime of aggravated driving while intoxicated and relative to proclaiming the Virginia opossum the state marsupial of New Hampshire.",
+   "sponsor": "Terry Roy",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "SB214": {
+   "n": "SB 214",
+   "title": "enabling no-excuse absentee registration and voting.",
+   "sponsor": "Rebecca Perkins Kwoka",
+   "committees": ["Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "SB218": {
+   "n": "SB 218",
+   "title": "relative to absentee ballots.",
+   "sponsor": "James Gray",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
+  "SB260": {
+   "n": "SB 260",
+   "title": "relative to access to abortion care.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["Senate Judiciary"],
+   "topic": "Public and Mental Health"
+  },
+  "SB272": {
+   "n": "SB 272",
+   "title": "relative to electric-vehicle charging station funding.",
+   "sponsor": "David Watters",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Motor Vehicles"
+  },
+  "SB166": {
+   "n": "SB 166",
+   "title": "relative to notice required prior to sale of a manufactured housing unit located in a resident-owned community.",
+   "sponsor": "Tara Reardon",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
+  "SB173": {
+   "n": "SB 173",
+   "title": "relative to residential property subject to housing covenants under the low income housing tax credit program.",
+   "sponsor": "Keith Murphy",
+   "committees": ["House Housing", "Senate Commerce"],
+   "topic": "Housing"
+  },
+  "SB176": {
+   "n": "SB 176",
+   "title": "relative to the state minimum hourly rate.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["Senate Commerce"],
+   "topic": "Employment"
+  },
+  "SB177": {
+   "n": "SB 177",
+   "title": "relative to requiring New Hampshire employers with over 25 employees use the E-Verify system.",
+   "sponsor": "Bill Gannon",
+   "committees": ["Senate Commerce"],
+   "topic": "Employment"
+  },
+  "SB192": {
+   "n": "SB 192",
+   "title": "establishing a committee to study enhanced coordination between county correctional facilities, the department of corrections, and the department of health and human services.",
+   "sponsor": "Daryl Abbas",
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "Study Committees and Commissions"
+  },
+  "SB198": {
+   "n": "SB 198",
+   "title": "declaring the third week in September to be New Hampshire service dog week.",
+   "sponsor": "David Watters",
+   "committees": ["House Executive Departments and Administration", "Senate Executive Departments and Administration"],
+   "topic": "Animals"
+  },
+  "SB203": {
+   "n": "SB 203",
+   "title": "relative to administration of the education freedom accounts program.",
+   "sponsor": "Debra Altschiller",
+   "committees": ["Senate Education"],
+   "topic": "Education - General"
+  },
+  "SB278": {
+   "n": "SB 278",
+   "title": "including qualifying convictions from other states as grounds for termination of parental rights petitions.",
+   "sponsor": "Suzanne Prentiss",
+   "committees": ["House Children and Family Law", "Senate Children and Family Law"],
+   "topic": "Children"
+  },
+  "SB287": {
+   "n": "SB 287",
+   "title": "requiring applicants for absentee ballots to present a copy of their photo identification with their application.",
+   "sponsor": "Howard Pearl",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "State Government"
+  },
+  "SB295": {
+   "n": "SB 295",
+   "title": "relative to education freedom accounts.",
+   "sponsor": "Victoria Sullivan",
+   "committees": ["House Education Funding", "Senate Education Finance"],
+   "topic": "Education - General"
+  },
+  "HB476": {
+   "n": "HB 476-FN",
+   "title": "relative to restrictions on elective abortion.",
+   "sponsor": "Katy Peternel",
+   "committees": ["House Judiciary"],
+   "topic": ""
+  },
+  "HB736": {
+   "n": "HB 736-FN",
+   "title": "relative to the minimum number of mobile sports wagering agents authorized by the lottery commission.",
+   "sponsor": "Fred Doucette",
+   "committees": ["House Ways and Means"],
+   "topic": ""
   }
- }
+ },
+ "texts": ["HB1442", "SB38", "HB712", "SB520", "HB232", "CACR10", "HB550", "HB1450"]
 }

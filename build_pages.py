@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.125
+# GRANITE_VERSION: 2026-09-04.126
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1760,14 +1760,17 @@ SEATING_JS = """
 # that make it up (SYN and the query groups, the bill order, what a bill
 # number is) between BILLMATCH:BEGIN and BILLMATCH:END; this copies them,
 # unchanged and in order, into site/billmatch.js, inside a function so that
-# none of their names can collide with a page's own, and hands back the five
+# none of their names can collide with a page's own, and hands back the ones
 # the header uses -- looseness since 25 September, so that the header and
 # /search put a bill that has the word itself above one that only has a
-# longer word it begins, as /bills does. find.js loads it only when somebody
-# types, and only on a page that does not already run app.js.
+# longer word it begins, as /bills does; and since 1 October indexAdd (the
+# header hands it sidx/<term>.json, what each bill's analysis and text are
+# about), respell (a search that finds nothing, read again) and whyListed
+# (the line that says why a bill is listed). find.js loads it only when
+# somebody types, and only on a page that does not already run app.js.
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
-                     "looseness")
+                     "looseness", "indexAdd", "respell", "whyListed")
 
 
 def bill_matcher_js(app_js):
@@ -1859,8 +1862,10 @@ const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
 // then shows, and the first five are listed. Before they are counted, or if
 // they cannot be, the card offers the bill search without a number.
 //
-// Its description used to say the bill search reads "the words in its text".
-// It does not: it reads a bill's number, title, sponsor and committee.
+// Its description used to say the bill search reads "the words in its text"
+// when it read a bill's number, title, sponsor and committee. Since 1 October
+// it does read the topic, the analysis and the text (build_search_index.py),
+// and a row found that way says so.
 const WHAT="The bill search has every term since 1989, with filters for "
   +"committee, sponsor and what became of it.";
 const WHAT_ALL="In the bill search, with filters for committee, sponsor and "
@@ -1889,7 +1894,7 @@ const bills=(q,B,C,counting)=>{
       <span class="fwhat">The term the bill search opens on.</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=counted&&B.n
-    ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every)).join("")
+    ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every,B.why.get(b))).join("")
     :counted
     ?`<a href="/bills?q=${encodeURIComponent(q)}">
       <span class="fl1"><span class="fname">Search every bill for
