@@ -108,9 +108,11 @@ STATE.md
 # READINESS.md is written by readiness.py, and the same reasoning applies with
 # more force: it reports how many nights the scheduled work ran clean, which is
 # false the moment it is a day old. launch_register.json, the hand-kept half it
-# reads, IS tracked -- that is a person's record of what is known to be wrong
-# and how far each part of the site has been taken, and it belongs in history.
+# reads, is a person's record of what is known to be wrong and how far each
+# part of the site has been taken: launch planning, kept on their machine since
+# 30 September 2026 with the project's other plans (see /private/ below).
 READINESS.md
+/launch_register.json
 testimony.json
 testimony_probe.json
 floor_H_2026-03-05.json
@@ -143,7 +145,7 @@ probe_calendars*.html
 
 # ---- probe output: page snapshots, re-fetchable in one request --------
 committees_*.html
-probe_db*.json
+probe_*.json
 probe_legacy_*.html
 archive_samples/
 archive_sample_ids.json
@@ -225,13 +227,12 @@ member_party.json
 
 # ---- reader reports ------------------------------------------------------
 # What strangers typed into the report box stays on this machine: the rows
-# pulled nightly (issues-*.jsonl) and the triage files built from them. The
-# schema, the triage rules, and the ledger of what was done about each report
-# -- written in the closer's own words, never the reader's -- are tracked.
+# pulled nightly (issues-*.jsonl) and the triage files built from them. Only
+# the schema is tracked: it is the table report.js writes, and the public can
+# check SECURITY.md's claim about it. The triage rules and the ledger of what
+# was done about each report stay here, where the triage session reads them.
 reports/*
 !reports/schema.sql
-!reports/TRIAGE.md
-!reports/handled.jsonl
 .dev.vars
 
 # GRANIT shapefiles: 4.2 MB of zips, re-fetchable from ftp.granit.unh.edu.
@@ -253,9 +254,18 @@ assets/licensed/
 # General Court's own record, with their evidence, for the person to take to
 # the House and Senate Clerks' offices. The person chose to keep it out of
 # GitHub, so that the Clerks hear about each error from them rather than find
-# it in a public repository. HANDOFF.md says what it is; preflight fails if
-# it is ever tracked.
+# it in a public repository. preflight fails if it is ever tracked.
 /CLERK_CORRECTIONS.md
+
+# THE PROJECT'S PLANNING STAYS ON THE PERSON'S MACHINE (30 September 2026).
+# The public repository holds the code and the documents that explain how the
+# code and the data work. Launch and development plans, design briefs and
+# reviews, and the instructions for this project's own Claude sessions that
+# are about its plans live here instead: CLAUDE.md is public and trimmed to
+# what any contributor needs, and Claude Code loads CLAUDE.local.md beside it.
+# Both are backed up to R2 with everything else git does not track.
+/CLAUDE.local.md
+/private/
 
 # ---- the nightly's new livestreams (livestreams.py) -----------------------
 # Written on GitHub's machine each night and carried to the next by cloud.py.
@@ -264,3 +274,13 @@ assets/licensed/
 # Its state is archive/livestreams.json, beside the project's other small
 # state (refused.json, census.json), and archive/ is ignored above.
 videos_*_livestreams.csv
+
+# ---- left over, untracked on 30 September 2026 ------------------------------
+# Generated or saved once and read by nothing: a log, a list of commands, a
+# list of recording ids, a results page fetch_archive_bills.py can save again,
+# and a browser copy of a page whose CSV is what is read.
+/caption_run.log
+/run.bat
+/senate_vids.txt
+/archive_*.html
+sources/sos-clerks-and-polling-places-2026-09-20.html

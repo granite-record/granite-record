@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.281
+# GRANITE_VERSION: 2026-09-04.282
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -503,6 +503,43 @@ def _no_secrets():
     return "ok", (f"{len(names)} tracked files, none carrying a key. "
                   "secrets.json is gitignored; probe_db.py's published "
                   "credentials are public by design.")
+
+
+@check("files", "the project's plans and private instructions stay out of git")
+def _private_untracked():
+    """On 30 September 2026 the person decided the public repository holds the
+    code and the documents that explain how the code and the data work, and
+    nothing of the project's planning: launch and development plans, design
+    briefs and reviews, the triage rules and ledger, the launch register, and
+    the instructions for this project's own Claude sessions that are about
+    its plans (CLAUDE.local.md, beside the public CLAUDE.md). They moved to
+    private/ or stayed where scripts read them, untracked.
+
+    .gitignore stops a `git add .` and not a `git add -f`, so this asks git
+    what it tracks. Their earlier copies stay in the history, as decided."""
+    import subprocess
+    PRIVATE = ["CLAUDE.local.md", "private", "launch_register.json",
+               "reports/TRIAGE.md", "reports/handled.jsonl",
+               "LAUNCH.md", "HANDOFF.md", "DESIGN.md", "ROADMAP.md",
+               "ARCHIVE_PLAN.md", "ARCHIVE_SESSION_PROMPT.md",
+               "PROPOSAL-civics.md", "FOLLOW.md", "design"]
+    ignore = Path(".gitignore").read_text(encoding="utf-8")
+    for line in ("/CLAUDE.local.md", "/private/", "/launch_register.json", "reports/*"):
+        assert line in ignore.splitlines(), f".gitignore no longer has {line}"
+    assert "!reports/TRIAGE.md" not in ignore and "!reports/handled.jsonl" not in ignore, \
+        ".gitignore tracks the triage rules or ledger again"
+    try:
+        tracked = _run(["git", "ls-files", "--", *PRIVATE], capture_output=True,
+                       text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "skip", f"git would not say what it tracks ({e})"
+    if tracked.returncode != 0:
+        return "skip", "not a git repository"
+    held = tracked.stdout.split()
+    assert not held, (
+        f"git tracks {', '.join(held[:6])}, and the next push would publish the project's "
+        f"plans: `git rm --cached` keeps each file and stops tracking it")
+    return "ok", "CLAUDE.local.md, private/, the triage rules and ledger and the launch register are untracked"
 
 
 @check("files", "the Clerks' corrections list stays out of git and out of its history")
@@ -22947,7 +22984,10 @@ def _triage_file_name(CR, NI):
     day = next((d for d in (first, _dt.date.today().isoformat())
                 if name == NI.TRIAGE_NAME.format(day=d)), None)
     assert day, f"compile_reports.py writes reports/{name}; nightly.py looks for {NI.TRIAGE_NAME}"
-    for doc in ("nightly.py", "reports/TRIAGE.md", "compile_reports.py"):
+    # reports/TRIAGE.md is the person's, on their machine only since 30
+    # September 2026, so a clone and GitHub's machine check the other two.
+    rules = [d for d in ("reports/TRIAGE.md",) if Path(d).exists()]
+    for doc in ("nightly.py", *rules, "compile_reports.py"):
         text = Path(doc).read_text(encoding="utf-8")
         named = re.findall(r"reports/(triage-[A-Za-z0-9<>_-]+\.md)", text)
         assert named, f"{doc} no longer names the triage file"
@@ -22955,13 +22995,14 @@ def _triage_file_name(CR, NI):
             assert n.replace("<db>", "production").replace("<date>", day) == name, \
                 f"{doc} names reports/{n}; compile_reports.py writes reports/{name}"
     marker = NI.FAILED_NAME.format(day=day)
-    for doc in ("nightly.py", "reports/TRIAGE.md"):
+    for doc in ("nightly.py", *rules):
         named = re.findall(r"reports/(FAILED-[A-Za-z0-9<>_-]+\.txt)",
                            Path(doc).read_text(encoding="utf-8"))
         assert named and all(n.replace("<date>", day) == marker for n in named), \
             f"{doc} names {named or 'no failure marker'}; nightly.py writes reports/{marker}"
     return "ok", (f"compile_reports.py writes reports/{name.replace(day, '<date>')}, and "
-                  "nightly.py, TRIAGE.md and its own docstring all say so; the failure marker agrees")
+                  f"nightly.py{', TRIAGE.md' if rules else ''} and its own docstring all say so; "
+                  "the failure marker agrees")
 
 
 @check("build", "a report is deleted a week after it arrives, from the database and from reports/, and never before it is landed",

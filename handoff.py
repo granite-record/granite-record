@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 Write STATE.md from what is actually on disk.
 
@@ -17,8 +17,8 @@ the site, and reports what it finds. Run it at the start of a session and the
 state section is current by construction.
 
 What it does NOT generate: why the project is built this way, what the rules
-are, what to do next. Those are in HANDOFF.md, they change slowly, and a
-person should write them.
+are, what to do next. Those are in CLAUDE.md, README.md and
+ARCHITECTURE.md, they change slowly, and a person should write them.
 """
 
 import argparse
@@ -229,8 +229,8 @@ def main():
         f"{datetime.now(timezone.utc).strftime('%d %B %Y at %H:%M UTC')}. "
         "Do not edit;",
         "run it again instead. The prose that explains the project is in "
-        "`HANDOFF.md`,",
-        "which changes slowly and is written by a person.",
+        "`ARCHITECTURE.md`",
+        "and `CLAUDE.md`, which change slowly and are written by a person.",
         "",
     ]
     section_checks(out)
@@ -245,7 +245,7 @@ def main():
     else:
         Path(a.out).write_text(text, encoding="utf-8")
         print(f"{a.out} written. Paste it into a new chat alongside "
-              "HANDOFF.md.")
+              "CLAUDE.md.")
 
 
 if __name__ == "__main__":
