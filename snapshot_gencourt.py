@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -44,6 +44,15 @@ a build from some of today's files and some of last week's is a record of no
 day at all -- and refuses a file that has shrunk sharply against the copy it
 would replace, because a truncated Docket.txt parses cleanly into a smaller
 site. Exit 0 installed or archived, 1 a failure, 2 refused.
+
+THE ONE REAL FALL (30 September 2026). When a term turns over, the General
+Court's files really do get much smaller, and the shrink rule is right to stop
+every night but that one. --allow-shrink lets that night through; the nightly
+passes it only on the run a person starts by hand with "New term" ticked
+(nightly.py --new-term). Either way, snapshots/<day>/install.json says what
+--into did -- whether it installed, and which files were much smaller -- so
+the night's verdict can tell a refused shrink from a file that never arrived,
+and say on the run's page which box to tick.
 """
 
 import argparse
@@ -92,6 +101,8 @@ UA = {"User-Agent": "granite-record/1.0 (civic transparency archive; "
 # one real fall, a new term starting, is a person's decision (--allow-shrink).
 SHRINK = 0.30
 MIN_BYTES = 40          # smaller than this is not a data file
+# What --into did tonight, beside the manifest: nightly.fetch_status reads it.
+INSTALL_RECORD = "install.json"
 # What may precede a data file's first character: a byte-order mark, which
 # the General Court's files carry, and whitespace.
 LEADING = "".join(map(chr, (0xFEFF, 32, 13, 10, 9)))
@@ -182,21 +193,35 @@ def read_one(url):
     return data, None
 
 
-def install(fetched, into, allow_shrink=False):
-    """Copy tonight's files where the build reads them: all, or none. (ok, lines)"""
+def shrunk(fetched, into):
+    """Tonight's files more than SHRINK smaller than the copies installed in
+    `into`: [(name, bytes tonight, bytes installed)]."""
     into = Path(into)
-    lines, refused = [], []
+    out = []
     for name, data in fetched.items():
         old = into / name
-        if old.exists() and not allow_shrink:
+        if old.exists():
             before = old.stat().st_size
             if before and len(data) < before * (1 - SHRINK):
-                refused.append(f"{name} is {len(data):,} bytes against {before:,} "
-                               f"installed ({(len(data) - before) / before:+.0%})")
-    if refused:
-        return False, ["NOT INSTALLED, any of it: " + "; ".join(refused),
+                out.append((name, len(data), before))
+    return out
+
+
+def install(fetched, into, allow_shrink=False):
+    """Copy tonight's files where the build reads them: all, or none. (ok, lines)
+
+    A file much smaller than the copy it replaces stops all of them, unless
+    allow_shrink -- a new term's night -- and then the log still names each one.
+    """
+    into = Path(into)
+    small = [f"{name} is {now:,} bytes against {before:,} installed "
+             f"({(now - before) / before:+.0%})" for name, now, before in shrunk(fetched, into)]
+    if small and not allow_shrink:
+        return False, ["NOT INSTALLED, any of it: " + "; ".join(small),
                        "A fall that size is a truncated file far more often than a "
                        "record getting shorter. --allow-shrink if it is real."]
+    lines = (["ACCEPTED, much smaller, with --allow-shrink (a new term): " + "; ".join(small)]
+             if small else [])
     for name, data in fetched.items():
         write_atomically(into / name, data)
         lines.append(f"  installed {name} -> {into / name}")
@@ -208,7 +233,9 @@ def main():
     ap.add_argument("--dir", default="nh-archive", help="archive directory")
     ap.add_argument("--into", help="after a complete fetch, install the files here "
                                    "for the build")
-    ap.add_argument("--allow-shrink", action="store_true")
+    ap.add_argument("--allow-shrink", action="store_true",
+                    help="install files much smaller than the copies they replace: a new "
+                         "term's night, and only that one")
     ap.add_argument("--delay", type=float, default=4.0,
                     help="seconds between files (default 4), jittered")
     ap.add_argument("--plan", action="store_true", help="list the requests; make none")
@@ -238,6 +265,9 @@ def run(a, held):
     store = root / "store"
     snap.mkdir(parents=True, exist_ok=True)
     store.mkdir(parents=True, exist_ok=True)
+    # This run's, or none: an earlier run today's record must not speak for it.
+    record = snap / INSTALL_RECORD
+    record.unlink(missing_ok=True)
 
     index_path = root / "index.json"
     index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.exists() else {}
@@ -342,7 +372,12 @@ def run(a, held):
     complete = not stopped and not failed and len(fetched) == len(work)
     if a.into:
         if complete:
+            small = shrunk(fetched, a.into)
             ok, lines = install(fetched, a.into, a.allow_shrink)
+            write_atomically(record, json.dumps(
+                {"installed": ok, "allow_shrink": bool(a.allow_shrink),
+                 "shrunk": [{"name": n, "bytes": now, "installed_bytes": before}
+                            for n, now, before in small]}, indent=2).encode("utf-8"))
             print("\n".join(lines))
             if not ok:
                 return 1

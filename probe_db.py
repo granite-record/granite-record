@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.15
+# GRANITE_VERSION: 2026-09-06.17
 """
 What is actually in the General Court's public database.
 
     python3 probe_db.py              # connect, count, report; writes nothing
     python3 probe_db.py --raw        # also save the raw output for reading later
+    python3 probe_db.py --hold       # the hold on this host, if one is on file; asks nobody
+    python3 probe_db.py --clear-hold # lift it here: a person's decision
 
 WHY THIS EXISTS
 
@@ -45,10 +47,13 @@ name may not be needed, so both forms are tried, plainest first.
 import argparse
 import base64
 import decimal
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 import child
 import refusal
 from pathlib import Path
@@ -60,6 +65,165 @@ INSTANCE = "sqlexpress"
 DATABASE = "NHLegislatureDB"
 USER = "publicuser"
 PASSWORD = "PublicAccess"
+
+# ---- this host's own hold (1 October 2026) -----------------------------------
+#
+# refusal.py is about the web server's firewall. This is another server with
+# another failure, and until the night began to fall back on it (nightly.py,
+# when the General Court's export comes back empty) it had no record of one:
+# a view that failed was "not taken" and asked again the next night. Now a
+# CONNECTION that fails -- no route, a timeout, the login refused -- is
+# recorded in archive/sql-held.json, and run(), run_to_file() and _bridge(),
+# which every query of the host passes through, ask hold_check() first: no
+# more queries that night, from anything.
+#
+#   It expires by itself, and lengthens: HOLD_HOURS, a day, two, four, then
+#   a week, each four hours short so that the night after finds it over.
+#   Each night it has expired one connection is tried; one that opens ends
+#   it. That is the deliberate difference from the web server's rule, where
+#   only a person clears a refusal: a month unattended needs it, and one
+#   connection a night is not what that rule exists to prevent.
+#   A login the server REJECTS is recorded as that, so the night's page can
+#   say the published password may have changed and somebody has to read
+#   the PDF again. It expires and lengthens like any other, and is over at
+#   once when the credentials above are changed. As first written it stood
+#   for ever, on the words "Login failed" alone, and nothing on GitHub's
+#   machine could lift it: but the server ends its message for a database
+#   that is offline or being restored (error 4060, "Cannot open database
+#   ... requested by the login") with the same words, and says them for an
+#   account locked for an hour, so one bad morning on their side would have
+#   ended every query for good. login_refused() leaves 4060 out; the expiry
+#   is for whatever else is worded that way and passes. The wording is
+#   SqlClient's as remembered, not as seen from this host: say so if a real
+#   night shows another.
+#   A query that fails or times out on an OPEN connection (QUERY_FAIL,
+#   "Execution Timeout Expired" included) is not a hold: the host answered.
+#
+# RECORDED ON GITHUB'S MACHINE ONLY, honoured wherever it is on file. The
+# record travels in R2's state/ (cloud_kit.json), and the night is its one
+# writer: the laptop never sends state up, and a failed connection there is
+# the person's to see where they ran it. A refusal from the web server does
+# not hold this host, and the reverse.
+HELD = Path("archive/sql-held.json")
+# nightly.py names the record by its full path for the fetches it starts in a
+# scratch folder (take_views), where "archive/" would be somewhere else.
+HELD_ENV = "GRANITE_SQL_HELD"
+HOLD_HOURS = (20, 44, 92, 164)
+SQL_HELD = 5            # the exit status of a query stopped by the hold
+LOGIN_REFUSED = re.compile(r"Login failed for user", re.I)
+# Error 4060: the database, not the password. Its message ends with the
+# line above all the same.
+DATABASE_UNAVAILABLE = re.compile(r"Cannot open database", re.I)
+
+
+def login_refused(why):
+    """Whether a failed connection's message is the server rejecting the
+    login itself, rather than a database it could not open for it."""
+    why = str(why)
+    return bool(LOGIN_REFUSED.search(why)) and not DATABASE_UNAVAILABLE.search(why)
+
+
+def hold_file():
+    return Path(os.environ.get(HELD_ENV) or HELD)
+
+
+def _login():
+    """Which credentials a refused login was about: a login hold stands only
+    while these are still the ones in this file."""
+    return hashlib.sha256(f"{HOST}|{DATABASE}|{USER}|{PASSWORD}".encode("utf-8")).hexdigest()[:12]
+
+
+def hold_record():
+    try:
+        d = json.loads(hold_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) else None
+
+
+def hold_standing(now=None):
+    """The hold on file, if it still stands, or None."""
+    d = hold_record()
+    if not d or not d.get("held"):
+        return None
+    if d.get("kind") == "login" and d.get("login") != _login():
+        return None             # the credentials it was about have been changed
+    try:
+        until = float(d.get("until"))
+    except (TypeError, ValueError):
+        return None             # no hold stands without a time it ends
+    return d if (time.time() if now is None else now) < until else None
+
+
+def hold_sentence(d):
+    """What a hold on file says: when, how many times in a row, and until when.
+    Its words are this file's and none of the server's: the night's page,
+    which is public, carries it. Short, because that page cuts a note off."""
+    n = int(d.get("nights") or 1)
+    until = f"nothing queries it until {d.get('until_at', '?')}"
+    return (f"the General Court's database could not be connected to at {d.get('at', '?')}"
+            + (f", {n} times in a row" if n > 1 else "")
+            + (f": it refused the published login, and {until}, or until the credentials in "
+               "probe_db.py are changed" if d.get("kind") == "login" else f", and {until}"))
+
+
+def hold_check(who=""):
+    """Stop the caller while a hold on this host stands. Exit SQL_HELD."""
+    d = hold_standing()
+    if d is None:
+        return
+    print(f"\n{who or 'This query'} is not starting: {hold_sentence(d)}. "
+          f"({hold_file().as_posix()})\n", file=sys.stderr)
+    sys.exit(SQL_HELD)
+
+
+def _write_hold(d):
+    path = hold_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".part")
+    tmp.write_text(json.dumps(d, indent=1, sort_keys=True) + "\n", encoding="utf-8",
+                   newline="\n")
+    os.replace(tmp, path)
+
+
+def note_connect_fail(why, now=None):
+    """A connection to this host failed: on GitHub's machine, record it and
+    hold every query. The record, or None where none is kept."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return None
+    now = time.time() if now is None else now
+    was = hold_record() or {}
+    nights = (int(was.get("nights") or 0) if was.get("held") else 0) + 1
+    login = login_refused(why)
+    hours = HOLD_HOURS[min(nights, len(HOLD_HOURS)) - 1]
+    d = {"held": True, "kind": "login" if login else "connection", "nights": nights,
+         "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(now)), "epoch": now,
+         "why": str(why)[:300], "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+         "until": now + hours * 3600, "hours": hours}
+    d["until_at"] = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(d["until"]))
+    if login:
+        d["login"] = _login()
+    try:
+        _write_hold(d)
+    except OSError as e:
+        print(f"  the hold could not be written to {hold_file().as_posix()}: {e}",
+              file=sys.stderr)
+    return d
+
+
+def note_connected():
+    """A connection opened: a hold that had expired is over, and the count of
+    failures in a row starts again."""
+    was = hold_record()
+    if not was or not was.get("held"):
+        return
+    try:
+        _write_hold({"held": False, "nights": 0,
+                     "cleared": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                     "by": "a connection that opened",
+                     "was": {k: was.get(k) for k in ("at", "kind", "nights", "why")}})
+    except OSError:
+        pass
 
 # Every question worth one round trip, and nothing that changes anything.
 QUERIES = [
@@ -270,6 +434,7 @@ def run(connstr, queries):
     # only: the web server's refusal record is a different host's
     # (CLAUDE.md), so it does not govern this one.
     refusal.window_check("A query of the General Court's database")
+    hold_check("A query of the General Court's database")
     payload = "~~".join(f"{n}::{q}" for n, q in queries)
     p = subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS],
@@ -279,6 +444,7 @@ def run(connstr, queries):
              "GR_CONNSTR": connstr, "GR_QUERIES": payload})
     txt = (p.stdout or "").strip()
     if txt.startswith("CONNECT_FAIL"):
+        note_connect_fail(txt)
         return None, txt[len("CONNECT_FAIL"):].strip()
     if not txt:
         return None, (p.stderr or "no output").strip()[:300]
@@ -286,6 +452,7 @@ def run(connstr, queries):
         d = json.loads(txt)
     except ValueError:
         return None, txt[:300]
+    note_connected()
     return (d if isinstance(d, list) else [d]), None
 
 
@@ -389,6 +556,7 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
     """
     import os
     refusal.window_check("A query of the General Court's database")   # as run()
+    hold_check("A query of the General Court's database")
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     proc = child.popen(
@@ -410,9 +578,14 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
     finally:
         proc.wait(timeout=timeout + 60)
     if err:
+        if err.startswith("CONNECT_FAIL"):
+            note_connect_fail(err)
+        else:
+            note_connected()            # it opened; the query is what failed
         return None, err
     if rows is None:
         return None, (proc.stderr.read() or "no output").strip()[:300]
+    note_connected()
     return rows, None
 
 
@@ -570,9 +743,20 @@ def _bridge(script, env, on_line, budget):
     import collections
     import threading
     refusal.window_check("A query of the General Court's database")   # as run()
+    hold_check("A query of the General Court's database")
     proc = child.popen(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    # What the connection did, for this host's hold: whether it opened.
+    link = {"failed": "", "opened": False}
+
+    def heard(s):
+        t = s.strip()
+        if t.startswith("CONNECT_FAIL"):
+            link["failed"] = link["failed"] or t
+        elif t.startswith(("COUNT ", "COLUMNS ", "DONE ", "QUERY_FAIL")):
+            link["opened"] = True
+        on_line(s)
     tail = collections.deque(maxlen=40)
     drain = threading.Thread(target=lambda: tail.extend(proc.stderr), daemon=True)
     drain.start()
@@ -588,7 +772,7 @@ def _bridge(script, env, on_line, budget):
     whole = False
     try:
         for raw in proc.stdout:
-            on_line(raw.rstrip("\r\n"))
+            heard(raw.rstrip("\r\n"))
         whole = True
     finally:
         timer.cancel()
@@ -600,6 +784,10 @@ def _bridge(script, env, on_line, budget):
             proc.kill()
             proc.wait()
         drain.join(timeout=10)
+    if link["failed"]:
+        note_connect_fail(link["failed"])
+    elif link["opened"]:
+        note_connected()
     return proc.returncode, "".join(tail).strip()[-400:], late.is_set()
 
 
@@ -624,8 +812,10 @@ def run_to_file_counted(connstr, count_sql, sql, path, timeout=1800,
     and what went wrong. The file is run_to_file's in every byte.
     """
     # Before the file is touched, as well as in _bridge: stopped for the
-    # window, a run must leave what was on disk as it was.
+    # window, or by this host's hold, a run must leave what was on disk as it
+    # was.
     refusal.window_check("A query of the General Court's database")
+    hold_check("A query of the General Court's database")
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     got = {"count": None, "done": None, "err": None}
@@ -664,6 +854,7 @@ def run_to_jsonl(connstr, count_sql, sql, path, types=None, columns=None,
     # Before `path` is opened for writing, which empties it, as well as in
     # _bridge (run_to_file_counted says why).
     refusal.window_check("A query of the General Court's database")
+    hold_check("A query of the General Court's database")
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     types = {k: (v or "").lower() for k, v in (types or {}).items()}
@@ -738,7 +929,26 @@ def main():
                     help="another database on the same server")
     ap.add_argument("--sample", action="store_true",
                     help="read a few real rows instead of counting them")
+    ap.add_argument("--hold", action="store_true",
+                    help="say whether a hold on this host is on file; asks nobody")
+    ap.add_argument("--clear-hold", action="store_true",
+                    help="lift the hold on file here; asks nobody")
     a = ap.parse_args()
+
+    if a.hold or a.clear_hold:
+        d = hold_record()
+        standing = hold_standing()
+        if not d or not d.get("held"):
+            print(f"No hold on the General Court's database is on file ({hold_file().as_posix()}).")
+        elif a.clear_hold:
+            _write_hold({"held": False, "nights": 0,
+                         "cleared": time.strftime("%Y-%m-%dT%H:%M:%S"), "by": "a person",
+                         "was": {k: d.get(k) for k in ("at", "kind", "nights", "why")}})
+            print(f"Lifted here: {hold_sentence(d)}. GitHub's night keeps its own copy in the "
+                  "private bucket's state/sql-held.json, which this does not touch.")
+        else:
+            print(("Standing: " if standing else "On file, and over: ") + hold_sentence(d) + ".")
+        return 0
 
     base = (f"Database={a.database};User ID={USER};Password={PASSWORD};"
             "Encrypt=False;TrustServerCertificate=True;Connect Timeout=20")
