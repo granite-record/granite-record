@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.3
+# GRANITE_VERSION: 2026-09-25.4
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and left where the build
@@ -38,13 +38,83 @@ Two of YouTube's hosts, and nothing of the General Court's:
   asked for only when `en` is not there, and only at a recording's last ask,
   a week after its stream, before it is taken to have no captions at all.
 
-  One recording at a time, oldest waiting first, one to two minutes apart,
-  six at most a run, with yt-dlp's own pauses between the requests inside one
-  recording (--sleep-requests, --sleep-subtitles). An ordinary session day
-  brings about four recordings and so clears in a run; the busiest, eighteen,
-  takes three. On 30 September 2026 the laptop asked twenty seconds apart,
-  two tracks a recording, and YouTube answered the second recording with
-  "HTTP Error 429: Too Many Requests".
+  One recording at a time, one to two minutes apart, with yt-dlp's own pauses
+  between the requests inside one recording (--sleep-requests,
+  --sleep-subtitles). On 30 September 2026 the laptop asked twenty seconds
+  apart, two tracks a recording, and YouTube answered the second recording
+  with "HTTP Error 429: Too Many Requests".
+
+HOW MUCH A RUN ASKS FOR
+
+What is waiting, up to twenty recordings asked for the first time
+(--max-captions): two on a quiet evening, twenty in session, and the pauses
+the same either way. A fixed six, which this had for a day, does not keep up.
+By the date in their titles the two channels finished 6.0 recordings a weekday
+from 5 January to 31 March 2026, 23 of the 54 days with any brought more than
+six, and the busiest day on record, 18 February 2025, brought 23.
+
+Replayed against every recording of 2025 and of 2026, one run an evening, the
+evening after the night that lists it -- so no wait can be under a day and a
+quarter -- and counting from the end of the stream:
+
+                    recordings   worst wait   waited 3 days or more
+  six a run, 2025          814     9.3 days                     394
+  six a run, 2026          610     6.3 days                     247
+  up to twenty, 2025       814     2.2 days                       0
+  up to twenty, 2026       610     1.5 days                       0
+
+Under twenty, two recordings in the two years missed their first evening: the
+last two of 18 February 2025. 2021 to 2024 replay the same way: nothing waits
+three days.
+
+The longest run is twenty recordings asked for the first time and two asked
+again: 22 caption requests, or 24 if both of the two are at their last ask;
+21 pauses of one to two minutes, 23 with those; and inside each recording
+yt-dlp's own requests for the page, a second and a half apart -- three or
+four, by a reading of its 2026.08.19 source: the watch page, the player script
+unless it has it, and its two default clients. Some 110 requests of
+youtube.com at most, over about forty minutes and under an hour. The 22 and
+the pauses are this file's own; the three or four, and the twenty seconds a
+recording is taken to need inside yt-dlp, are estimates and not measurements.
+--budget, sixty minutes, ends a run that is taking longer, whatever the
+reason.
+
+Nothing on this disk says YouTube will answer twenty in an evening at this
+pace; six was the size the pacing was agreed at. So twenty is what a run works
+up to: see A REFUSAL.
+
+A RECORDING WITHOUT CAPTIONS
+
+Some never get them: 127 of the 3,490 in archive/captions.json. One asked
+for and found without captions is not asked first again. It goes behind
+every recording that has not been asked yet; it is asked again a day later,
+then two, four and eight days after that; and those asks are on top of what
+the run was going to ask for, never out of it -- two a run at least, however
+much else is waiting. A week after its stream, at its second ask or later,
+it is asked for both tracks and then taken to have none.
+
+With six a run and the oldest first, six such recordings filled every run for
+good: replayed, 107 recordings of 2022 and 117 of 2024 were never asked for
+at all, behind the nine without captions of 16 to 19 May 2022 and the seven
+of 4 and 5 June 2024.
+
+The same goes for any answer that is not captions and not a refusal -- a
+failure, a recording gone private -- because the laptop cannot write the
+night's state and would otherwise open every evening with the same one. It
+keeps count itself, in archive/youtube.refused.json, and after five such
+answers stops asking.
+
+A recording is taken to have none, or given up on, only by a run that
+captioned something. "No captions" is also what yt-dlp says when it could
+not get at them: it discards tracks YouTube wants a token for, and says so
+in a warning this step does not see. So a run in which three recordings or
+more answer "no captions" at their first ask, and nothing is captioned, is
+not a normal night. It is read as a refusal that did not say so: the hold
+below starts, nothing is taken to have none, and the run after the hold
+stops at its third such answer if it has captioned nothing by then. Replayed
+with a fortnight of nothing but "no captions" in February 2026, that is 5
+requests the first evening and 3 at each of four runs after it, 17 in all,
+where six a run made 150.
 
 WHAT AN API KEY CAN AND CANNOT DO
 
@@ -70,8 +140,9 @@ WHAT IT WRITES, AND NOTHING ELSE
   archive/livestreams.json        what it has seen, what it waits for, and any
                                   refusal still in force.
   archive/youtube.refused.json    on the laptop only, by --catch-up: YouTube's
-                                  refusal of that machine, and the recordings
-                                  it found to have no captions a week on.
+                                  refusal of that machine, and what it asked
+                                  for and got no captions: how often, when it
+                                  asks again, and which it has stopped asking.
 
 Never a committed file: on GitHub's machine a changed tracked file stops the
 deploy, and nobody commits there.
@@ -106,9 +177,17 @@ recorded; the recording waits. Nothing more is asked of YouTube from that
 machine for twelve hours, so its next night -- or the laptop's next evening --
 opens with one request, the oldest recording waiting, and goes on only if that
 one is answered. Each refusal in a row doubles the wait: a day, two, four,
-then a week. Inside a hold nothing is asked at all. The laptop keeps its own
-record: a refusal is about an address, and the two machines have different
-ones.
+then a week -- each of those two hours short, because a run comes round a day
+later to the minute or the second and never exactly, and a hold of a whole
+day would be one day or two by that accident. Inside a hold nothing is asked
+at all. The laptop keeps its own record: a refusal is about an address, and
+the two machines have different ones.
+
+The run after a refusal is also a small one: six new recordings at most, or
+half of what the refused run had been answered if that is more. Each run
+that then ends without a refusal lets the next ask for two more, until
+twenty is the ceiling again. A refusal is the only measure of "too much"
+YouTube gives, so it is used as one.
 
 THE DATA CENTRE RISK
 
@@ -167,10 +246,12 @@ HERE = Path(__file__).resolve().parent
 STATE = Path("archive/livestreams.json")
 LOCK = Path("archive/livestreams.lock")
 # The laptop's own record of YouTube refusing it, under archive/ with the
-# General Court's: local, never carried. Beside the refusal, under
-# NONE_PUBLISHED, the recordings its last ask found to have no captions.
+# General Court's: local, never carried.
 LAPTOP_REFUSAL = Path("archive/youtube.refused.json")
-NONE_PUBLISHED = "none-published"
+# In that file, beside the refusal: {video: {...}} for each recording this
+# machine asked for and got no captions -- how many such answers counted,
+# when it is asked again, and "closed" once it no longer is.
+ASKED = "asked"
 WORK = Path("work")
 MARKERS = Path("candidate_segments.json")
 
@@ -205,8 +286,9 @@ CAPTION_FILES = ["captions.en.json3", "captions.en-orig.json3"]
 
 MAX_PAGES = 4          # pages of fifty uploads, per channel per night
 LOOKBACK_DAYS = 14     # how far behind the last run a page may reach
-NONE_YET_DAYS = 7      # auto-captions can lag a stream; ask this long, then
-                       # once more for every track, and take it to have none
+NONE_YET_DAYS = 7      # auto-captions can lag a stream; this long after it,
+                       # ask once more, for every track, and take it to
+                       # have none
 MAX_TRIES = 3          # failures that are not refusals, then the laptop's
 PENDING_DAYS = 30      # past its scheduled time, an unaired stream never aired
 STALE_DAYS = 60        # a pre-air committed row this near today is rechecked
@@ -214,9 +296,28 @@ PRUNE_DAYS = 60        # settled entries leave the state after this
 HOLD_HOURS = 12        # after one refusal: nothing more that night; the next
                        # one opens with a single request. Doubles: 24, 48, 96
 HOLD_MAX = 168         # the longest hold, a week
-MAX_CAPTIONS = 6       # recordings asked for in one run, oldest first
+EARLY_HOURS = 2        # a wait of a day or more ends this much short of it:
+                       # the run a day later starts seconds or minutes off
+                       # the last one's time, and must find the wait over
+MAX_CAPTIONS = 20      # the most recordings one run asks for the first time;
+                       # up to that, a run asks for whatever is waiting
+AFTER_REFUSAL = 6      # ...but after a refusal, this many -- the size a run
+                       # had when the pacing was agreed -- or half of what
+                       # the refused run had been answered, if that is more
+EASE = 2               # and this many more after each run without one
+AGAIN_MIN = 2          # recordings asked AGAIN in a run, at least, on top of
+                       # those: a retry never takes a new recording's place
+RETRY_DAYS = (1, 2, 4, 8)  # after an ask that brought no captions, how long
+                       # before the next: a day, then two, four, and eight
+CLOSE_ASKS = 2         # a recording is taken to have no captions at its
+                       # second ask or later, never at its first
+GIVE_UP_ASKS = 5       # asks before the laptop stops asking for one that
+                       # keeps failing, or is gone: 15 days of them
+ALL_NONE = 3           # "no captions" this often in a run that captioned
+                       # nothing is a refusal that did not say so
 DELAY = 60.0           # seconds between two recordings, at least
 JITTER = 60.0          # and up to this many more, so the gaps are not a beat
+BUDGET = 60.0          # minutes of caption requests in one run, at most
 
 # What yt-dlp says, read the way fetch_archive_captions reads it, plus the one
 # answer that script never met: a data centre's bot check, "Sign in to confirm
@@ -864,19 +965,63 @@ class Refusals:
     def held(self, now):
         return now.timestamp() < float(self.record().get("until") or 0)
 
-    def note(self, now, why):
-        n = int(self.record().get("count") or 0) + 1
+    def note(self, now, why, silent=False, answered=0):
+        """Record a refusal and start the hold: the hours it lasts.
+
+        `silent` is a refusal read off a run of nothing but "no captions",
+        which YouTube did not put into words; the record says which.
+        `answered` is how many recordings the run had been answered when a
+        refusal in words stopped it, which sets how many new ones the runs
+        after it may ask for -- see most()."""
+        was = self.record()
+        n = int(was.get("count") or 0) + 1
         hours = min(HOLD_HOURS * 2 ** (n - 1), HOLD_MAX)
-        self.table[self.origin] = {
+        if hours >= 24:
+            hours -= EARLY_HOURS
+        rec = self.table[self.origin] = {
             "at": iso(now), "why": why[:200], "count": n,
             "until": now.timestamp() + hours * 3600,
             "until_iso": iso(now + timedelta(hours=hours))}
+        if silent:
+            rec["silent"] = True
+        if not silent:
+            rec["most"] = max(AFTER_REFUSAL, answered // 2)
+        elif was.get("most"):
+            rec["most"] = was["most"]
         return hours
 
     def answered(self):
         r = self.table.get(self.origin)
         if r and r.get("count"):
             r.update(count=0, until=0, until_iso="")
+
+    def most(self, ceiling):
+        """The most new recordings a run may ask for: `ceiling`, or fewer
+        for a while after a refusal.
+
+        The run after a refusal in words asks for AFTER_REFUSAL, or for half
+        of what the refused run had been answered if that is more; each run
+        that then ends without a refusal lets the next ask for EASE more,
+        until that is the ceiling again. So the larger runs are something
+        this works up to and backs down from, not something it insists on.
+        The half and the EASE are a judgment: YouTube publishes no limit to
+        set them by. A record written before this was kept -- a refusal
+        standing, and no figure -- is read as AFTER_REFUSAL."""
+        r = self.record()
+        m = int(r.get("most") or 0) or (AFTER_REFUSAL if r.get("count")
+                                        and not r.get("silent") else 0)
+        return min(ceiling, m) if m > 0 else ceiling
+
+    def eased(self, was, ceiling):
+        """A run that could ask for `was` new recordings, and captioned
+        something, ended without a refusal."""
+        r = self.table.get(self.origin)
+        if r is None or was >= ceiling:
+            return
+        if was + EASE >= ceiling:
+            r.pop("most", None)
+        else:
+            r["most"] = was + EASE
 
 
 def week_on(v, now):
@@ -893,15 +1038,35 @@ def wait(a):
         time.sleep(a.delay + random.uniform(0, a.jitter))
 
 
-def caption_queue(st, now, work=WORK):
-    """The recordings whose captions are due tonight, oldest stream first.
+def allowance(waiting, most=MAX_CAPTIONS):
+    """How many recordings one run asks for, of `waiting` that are due: all
+    of them, up to `most`. It follows the backlog -- two on a quiet evening,
+    `most` in session -- and the pauses between them do not change."""
+    return max(0, min(int(waiting), int(most)))
 
-    One still without auto-captions a week after its stream stays due for one
-    last ask, where run_captions tries every track and then takes it to have
-    none; one that failed three times for reasons that were not refusals is
-    left for the laptop.
+
+def retry_after(asks):
+    """How long after its `asks`-th ask that brought no captions a recording
+    is asked again: RETRY_DAYS, each EARLY_HOURS short so that the run that
+    many days later finds it due."""
+    days = RETRY_DAYS[min(max(asks, 1), len(RETRY_DAYS)) - 1]
+    return timedelta(hours=24 * days - EARLY_HOURS)
+
+
+def caption_queue(st, now, work=WORK):
+    """(first, again): the recordings whose captions are due, in two lanes.
+
+    `first` has never been asked for and answered with anything but captions
+    or a refusal: oldest stream first. `again` has -- it carries the time it
+    may be asked again, and is here once that has passed: longest due first.
+    A recording asked for and found without captions is therefore never ahead
+    of one that has not been asked, and not due at all until its turn comes
+    round, a day later and then two, four and eight.
+
+    One that failed three times for reasons that were not refusals is left
+    for the laptop.
     """
-    due = []
+    first, again = [], []
     for vid, v in st["videos"].items():
         if v.get("status") != "finished":
             continue
@@ -911,108 +1076,202 @@ def caption_queue(st, now, work=WORK):
         if c == "failed" and int(v.get("tries") or 0) >= MAX_TRIES:
             v["captions"] = "for-laptop"
             continue
-        due.append(vid)
-    due.sort(key=lambda x: (st["videos"][x].get("ended") or "", x))
-    return due
+        if not v.get("again"):
+            first.append(vid)
+        elif (parse_iso(v["again"]) or now) <= now:
+            again.append(vid)
+
+    def age(x):
+        return (st["videos"][x].get("ended") or "", x)
+
+    first.sort(key=age)
+    again.sort(key=lambda x: (st["videos"][x].get("again") or "",) + age(x))
+    return first, again
 
 
-def run_captions(st, vids, refusals, now, a, work=WORK, save=None):
+def tonight(first, again, most=MAX_CAPTIONS):
+    """(the recordings one run asks for, in order; how many due it leaves).
+
+    The run's size is allowance() of everything due. The recordings never
+    asked before come first and take as much of it as they need; the ones
+    asked before take what is left, and AGAIN_MIN at least, so a retry is
+    never asked for in a new recording's place and never waits for ever
+    behind a lane that stays full.
+    """
+    n = allowance(len(first) + len(again), most)
+    new = list(first[:n])
+    old = list(again[:max(n - len(new), AGAIN_MIN if most > 0 else 0)])
+    return new + old, len(first) + len(again) - len(new) - len(old)
+
+
+def run_captions(st, first, again, refusals, now, a, work=WORK, save=None):
     """One at a time, gently, and not one more after a refusal.
 
-    `vids` is oldest first, and no more than --max-captions of them are asked
-    for in one run; the rest wait for the next, where they come first. Each is
-    asked for one track, the first of CAPTION_TRACKS. A recording whose stream
-    ended more than a week ago is at its last ask: there the tracks are tried
-    in order, the next only when the one before is not there, and one with
-    none of them is taken to have no captions and is not asked for again.
+    `first` and `again` are caption_queue's two lanes; tonight() says which
+    of them this run asks for, and the rest wait for the next. Each is asked
+    for one track, the first of CAPTION_TRACKS. A recording whose stream
+    ended more than a week ago, and which has been asked before, is at its
+    last ask: there the tracks are tried in order, the next only when the
+    one before is not there, and one with none of them is taken to have no
+    captions and is not asked for again.
 
-    But only in a run that captioned something. "No captions" is also what
-    yt-dlp says when it could not get at them -- it discards tracks YouTube
-    wants a token for, and says so in a warning this step does not see -- so
-    a run in which every answer was "none" has shown nothing about any one
-    recording, and closes none of them: they are asked for again.
+    Whatever a recording answers that is not captions and not a refusal, it
+    is given a time before which it is not asked again -- RETRY_DAYS, longer
+    with each such answer -- and that puts it behind every recording not yet
+    asked.
+
+    It is taken to have no captions only by a run that captioned something.
+    "No captions" is also what yt-dlp says when it could not get at them --
+    it discards tracks YouTube wants a token for, and says so in a warning
+    this step does not see -- so a run in which nothing was captioned has
+    shown nothing about any one recording, and closes none.
+
+    And such a run, once ALL_NONE recordings have answered "no captions" at
+    their FIRST ask, is read as a refusal that did not say so: recorded as
+    one, with the same hold. Only a first ask: a recording that has said it
+    before is expected to say it again. (Counting those too, a replay of
+    2021 read nine quiet summer evenings as refusals -- each had three
+    retries due and nothing new -- worked the hold up to a week, and kept a
+    new recording waiting six days.) The run after a hold is wary: it stops
+    at the ALL_NONE-th such answer if it has captioned nothing by then,
+    instead of going through the rest.
 
     Returns (Counter of outcomes, the refusal's words or None).
     """
     got = Counter()
-    if vids and refusals.held(now):
+    due = list(first) + list(again)
+    if due and refusals.held(now):
         r = refusals.record()
-        print(f"  captions: YouTube refused this machine at {r.get('at')} "
-              f"({r.get('why')}). Nothing is asked of it until "
-              f"{r.get('until_iso')}; {len(vids)} wait.")
-        for vid in vids:
+        print("  captions: YouTube "
+              + ("gave this machine no captions at all" if r.get("silent")
+                 else "refused this machine")
+              + f" at {r.get('at')} ({r.get('why')}). Nothing is asked of it "
+              f"until {r.get('until_iso')}; {len(due)} wait.")
+        for vid in due:
             st["videos"][vid]["captions"] = "deferred"
-        got["deferred"] = len(vids)
+        got["deferred"] = len(due)
         return got, r.get("why")
-    t0, refused, in_a_row, closing = time.time(), None, 0, []
-    for i, vid in enumerate(vids):
+    wary = bool(refusals.record().get("count"))
+    most = refusals.most(a.max_captions)
+    if most < a.max_captions and len(first) > most:
+        print(f"  asking for {most} new recordings at most, not "
+              f"{a.max_captions}: YouTube refused this machine at "
+              f"{refusals.record().get('at')}, and each run without a refusal "
+              f"since has added {EASE}.")
+    ask, _ = tonight(first, again, most)
+    t0, refused, in_a_row, done, empty = time.time(), None, 0, 0, []
+    new, nones, quiet = set(first), 0, 0
+
+    def hold(why, silent=False):
+        """A refusal, said or not: the hold starts and everything due that
+        this run has not asked waits for it."""
+        hours = refusals.note(now, why, silent, answered=done)
+        rest = [x for x in due if x not in ask[:done]]
+        for vid in rest:
+            st["videos"][vid]["captions"] = "deferred"
+        got["deferred"] += len(rest)
+        return hours
+
+    for vid in ask:
         v = st["videos"][vid]
-        if i >= a.max_captions or time.time() - t0 > a.budget * 60:
-            got["left for tomorrow"] += len(vids) - i
+        if time.time() - t0 > a.budget * 60:
+            print(f"  {a.budget:g} minutes of caption requests: stopping "
+                  "for tonight; the rest wait.")
             break
-        if i:
+        if done:
             wait(a)
-        last = week_on(v, now)
+        last = week_on(v, now) and int(v.get("asks") or 0) >= CLOSE_ASKS - 1
         outcome, why = fetch_captions(
             vid, work, a.captions_from, a.timeout,
             CAPTION_TRACKS if last else CAPTION_TRACKS[:1], lambda: wait(a))
         v["tried"] = iso(now)
         if outcome == "none-yet" and last:
-            closing.append(vid)
             why = ("no auto-captions a week after its stream, as "
                    + " or ".join(CAPTION_TRACKS))
-        if outcome != "refused":
-            got[outcome] += 1
-        if outcome == "captioned":
-            v.update(captions="captioned", fetched=iso(now), by=a.origin, why="")
-            v.pop("tries", None)
-            refusals.answered()
-            in_a_row = 0
-        elif outcome == "refused":
-            v.update(captions="deferred", why=why)
-            hours = refusals.note(now, why)
+        if outcome == "refused":
+            v["why"] = why
+            hours = hold(why)
             refused = why
-            for rest in vids[i + 1:]:
-                st["videos"][rest]["captions"] = "deferred"
-            got["deferred"] += len(vids) - i
             print(f"  {vid}: REFUSED -- {why}\n  Stopping. Nothing more is "
                   f"asked of YouTube from this machine for {hours} hours.")
-        elif outcome == "none-yet":
-            v.update(captions="none-yet", why=why)
+            if save:
+                save()
+            break
+        done += 1
+        got[outcome] += 1
+        if outcome == "captioned":
+            v.update(captions="captioned", fetched=iso(now), by=a.origin, why="")
+            for k in ("tries", "asks", "again"):
+                v.pop(k, None)
+            refusals.answered()
             in_a_row = 0
-        elif outcome == "not-aired":
-            v.update(status="live", why=why)
-        elif outcome == "gone":
-            v.update(status="gone", why=why)
         else:
-            v.update(captions="failed", why=why, tries=int(v.get("tries") or 0) + 1)
-            in_a_row += 1
-        if outcome != "refused":
-            print(f"  {vid}: {outcome}"
-                  + (f" ({why})" if outcome == "captioned" else f" -- {why}")
-                  + f"   {str(v.get('title') or '')[:60]}")
+            empty.append((vid, outcome, last))
+            if outcome == "none-yet":
+                v.update(captions="none-yet", why=why)
+                nones += vid in new
+                quiet += 1
+                in_a_row = 0
+            elif outcome == "not-aired":
+                v.update(status="live", why=why)
+            elif outcome == "gone":
+                v.update(status="gone", why=why)
+            else:
+                v.update(captions="failed", why=why,
+                         tries=int(v.get("tries") or 0) + 1)
+                in_a_row += 1
+        print(f"  {vid}: {outcome}"
+              + (f" ({why})" if outcome == "captioned" else f" -- {why}")
+              + f"   {str(v.get('title') or '')[:60]}")
         if save:
             save()
-        if refused:
-            break
         if in_a_row >= a.stop_after:
-            got["left for tomorrow"] += len(vids) - i - 1
             print(f"  {in_a_row} failures in a row that were not refusals. "
                   "Stopping for tonight; the rest wait.")
             break
-    if closing and got["captioned"]:
-        for vid in closing:
-            st["videos"][vid]["captions"] = "none-published"
-        got["none-yet"] -= len(closing)
-        got["none-published"] = len(closing)
-        print(f"  {len(closing)} taken to have no captions and not asked for "
-              "again: " + ", ".join(closing))
-        if save:
-            save()
-    elif closing:
-        print(f"  {len(closing)} a week old answered that they have no "
-              "captions, in a run that captioned nothing: not taken at "
-              "that, and asked for again next time.")
+        if wary and nones >= ALL_NONE and not got["captioned"]:
+            break
+    sure = bool(got["captioned"])
+    if not refused and not sure and nones >= ALL_NONE:
+        refused = (f"\"no captions\" from {nones} recordings asked for the "
+                   "first time and captions from none: read as a refusal that "
+                   f"did not say so, not as {nones} recordings without captions")
+        hours = hold(refused, silent=True)
+        print(f"  {refused}.\n  Nothing more is asked of YouTube from this "
+              f"machine for {hours} hours, and none of them is taken to have "
+              "no captions.")
+    else:
+        if not refused and done < len(due):
+            got["left for tomorrow"] = len(due) - done
+        if not refused and sure:
+            refusals.eased(most, a.max_captions)
+
+    # What an answer that was not captions costs its recording: a time before
+    # which it is not asked again, further off with each one. That time is
+    # what puts it behind the unasked. Only a run that captioned something
+    # goes further and takes "no captions" for the recording's last word.
+    closed = []
+    for vid, outcome, last in empty:
+        v = st["videos"][vid]
+        n = v["asks"] = int(v.get("asks") or 0) + 1
+        if outcome == "none-yet" and last and sure:
+            v["captions"] = "none-published"
+            v.pop("again", None)
+            closed.append(vid)
+        else:
+            v["again"] = iso(now + retry_after(n))
+    if closed:
+        got["none-yet"] -= len(closed)
+        got["none-published"] = len(closed)
+        print(f"  {len(closed)} taken to have no captions and not asked for "
+              "again: " + ", ".join(closed))
+    if quiet and not sure and not refused:
+        print(f"  {quiet} answered that they have no captions, in a run that "
+              "captioned nothing: not enough to read anything into either "
+              "way. None is taken to have none; each is asked again, later "
+              "and after anything new.")
+    if empty and save:
+        save()
     return +got, refused
 
 
@@ -1237,24 +1496,25 @@ def since_state(a):
     # Not asked for again: a recording the laptop has already read -- its
     # --catch-up, after a night YouTube refused this machine -- and one whose
     # captions are already on this disk.
-    queue = caption_queue(st, now)
-    for vid in list(queue):
-        v = st["videos"][vid]
-        if laptop is not None and vid in laptop:
-            v.update(captions="captioned", by=v.get("by") or "laptop",
-                     fetched=v.get("fetched") or iso(now),
-                     adopted=now.strftime("%Y-%m-%d"), why="")
-            queue.remove(vid)
-        elif has_captions(vid):
-            v.update(captions="captioned", by=v.get("by") or "found",
-                     fetched=v.get("fetched") or iso(now), why="")
-            queue.remove(vid)
-    if queue and not yt_dlp_here(a):
+    first, again = caption_queue(st, now)
+    for lane in (first, again):
+        for vid in list(lane):
+            v = st["videos"][vid]
+            if laptop is not None and vid in laptop:
+                v.update(captions="captioned", by=v.get("by") or "laptop",
+                         fetched=v.get("fetched") or iso(now),
+                         adopted=now.strftime("%Y-%m-%d"), why="")
+                lane.remove(vid)
+            elif has_captions(vid):
+                v.update(captions="captioned", by=v.get("by") or "found",
+                         fetched=v.get("fetched") or iso(now), why="")
+                lane.remove(vid)
+    if (first or again) and not yt_dlp_here(a):
         code = 3
         notes.append(f"not configured: yt-dlp is not installed here, so "
-                     f"{len(queue)} recording(s) wait for captions")
-        queue = []
-    got, refused = run_captions(st, queue, refusals, now, a,
+                     f"{len(first) + len(again)} recording(s) wait for captions")
+        first, again = [], []
+    got, refused = run_captions(st, first, again, refusals, now, a,
                                 save=lambda: save_state(st))
     if refused:
         notes.append(f"captions deferred: YouTube refused ({refused})")
@@ -1300,43 +1560,73 @@ def catch_up(a):
     now = utcnow(a.now)
     st = load_state()
     table = load_laptop_refusals()
-    # What this machine found to have no captions at its last ask. The state
-    # is GitHub's and is not written here, so without this the laptop would
-    # ask for the same captionless recordings first, every evening, for good
-    # -- 127 of the 3,490 recordings in archive/captions.json on 1 October
-    # 2026 have none published -- and under a cap of a few a run they would
-    # come to be all it asked for.
+    # What this machine has asked for and got no captions. The state is
+    # GitHub's and is not written here, so without this the laptop would open
+    # every evening with the same recordings -- 127 of the 3,490 in
+    # archive/captions.json on 1 October 2026 have no captions published --
+    # and never learn to ask them less often, or last.
     # An entry leaves when the night's state has dropped the recording, or
     # says GitHub's machine got captions for it after all.
-    none = {vid: at for vid, at in (table.get(NONE_PUBLISHED) or {}).items()
-            if vid in st["videos"]
+    mine = {vid: dict(e) for vid, e in (table.get(ASKED) or {}).items()
+            if isinstance(e, dict) and vid in st["videos"]
             and st["videos"][vid].get("captions") != "captioned"}
-    want = sorted((vid for vid, v in st["videos"].items()
-                   if v.get("status") == "finished"
-                   and v.get("captions") in ("waiting", "deferred", "failed",
-                                             "for-laptop", "none-yet", "captioned")
-                   and not v.get("adopted") and not has_captions(vid)
-                   and vid not in none),
-                  key=lambda x: (st["videos"][x].get("ended") or "", x))
+    closed = {vid for vid, e in mine.items() if e.get("closed")}
+    want = [vid for vid, v in st["videos"].items()
+            if v.get("status") == "finished"
+            and v.get("captions") in ("waiting", "deferred", "failed",
+                                      "for-laptop", "none-yet", "captioned")
+            and not v.get("adopted") and not has_captions(vid)
+            and vid not in closed]
+    # The night's entry for each, as this machine sees it: waiting, and
+    # carrying what this machine's own asks have counted against it.
+    shadow = {"videos": {}}
+    for vid in want:
+        v = dict(st["videos"][vid], captions="waiting")
+        for k in ("asks", "again", "tries"):
+            v.pop(k, None)
+        v.update({k: mine[vid][k] for k in ("asks", "again")
+                  if (mine.get(vid) or {}).get(k)})
+        shadow["videos"][vid] = v
+    first, again = caption_queue(shadow, now)
+    later = len(want) - len(first) - len(again)
     was = Counter("captioned on GitHub's machine"
                   if st["videos"][v].get("captions") == "captioned"
                   else "not captioned there" for v in want)
     print(f"{len(want)} of the night's recording(s) have no captions here"
           + (": " + ", ".join(f"{n} {k}" for k, n in was.items()) if want else "")
-          + (f"; {len(none)} more had none a week after the stream and "
-             "are not asked for again" if none else ""))
-    shadow = {"videos": {vid: dict(st["videos"][vid], captions="waiting")
-                         for vid in want}}
-    if want and not yt_dlp_here(a):
+          + (f"; {len(again)} of them asked before and due again" if again else "")
+          + (f"; {later} asked before and not due yet" if later else "")
+          + (f"; {len(closed)} more are no longer asked for" if closed else ""))
+    if (first or again) and not yt_dlp_here(a):
         raise Broken("yt-dlp is not installed here: python3 -m pip install "
                      "yt-dlp, at the version the nightly pins")
-    got, refused = run_captions(shadow, want, Refusals(table, "laptop"), now, a)
-    none.update((vid, iso(now)) for vid in want
-                if shadow["videos"][vid].get("captions") == "none-published")
-    table.pop(NONE_PUBLISHED, None)
-    if none:
-        table[NONE_PUBLISHED] = none
-    atomic_write(LAPTOP_REFUSAL, json.dumps(table, indent=1) + "\n")
+    got, refused = run_captions(shadow, first, again, Refusals(table, "laptop"),
+                                now, a)
+    for vid in want:
+        v = shadow["videos"][vid]
+        if v.get("captions") == "captioned":
+            mine.pop(vid, None)
+            continue
+        if int(v.get("asks") or 0) <= int((mine.get(vid) or {}).get("asks") or 0):
+            continue            # not asked this run, or refused: as it was
+        e = {"asks": int(v["asks"]), "tried": iso(now),
+             "why": str(v.get("why") or "")[:200]}
+        if v.get("captions") == "none-published":
+            e["closed"] = "none-published"
+        elif (e["asks"] >= GIVE_UP_ASKS
+              and (got["captioned"] or v.get("status") != "finished")):
+            # Like "no captions", only on the word of a run that captioned
+            # something -- or YouTube's own that the recording is gone.
+            e["closed"] = "given-up"
+            print(f"  {vid}: asked {e['asks']} times and never captioned "
+                  f"({e['why']}); not asked for again")
+        else:
+            e["again"] = v["again"]
+        mine[vid] = e
+    table.pop(ASKED, None)
+    if mine:
+        table[ASKED] = mine
+    atomic_write(LAPTOP_REFUSAL, json.dumps(table, indent=1, sort_keys=True) + "\n")
     done = [vid for vid in want
             if shadow["videos"][vid].get("captions") == "captioned"]
     code = 0
@@ -1445,11 +1735,20 @@ def status(a):
     for k, n in Counter(v.get("captions") for v in vids.values()
                         if v.get("status") == "finished").most_common():
         print(f"  {n:>5}  captions {k}")
+    behind = [v for v in vids.values() if v.get("status") == "finished"
+              and v.get("again") and v.get("captions") in (
+                  "waiting", "deferred", "none-yet", "failed")]
+    if behind:
+        print(f"  {len(behind):>5}  of those asked for and answered without "
+              "captions: behind the rest, next due "
+              + min(v["again"] for v in behind))
     print(f"  {sum(1 for v in vids.values() if v.get('carry'))} reading(s) held "
           "for the laptop, put back each night until it has read them")
     for origin, r in sorted((st.get("refusals") or {}).items()):
         if r.get("count"):
-            print(f"  YouTube refused the {origin} at {r.get('at')} "
+            print("  YouTube "
+                  + ("gave no captions at all to" if r.get("silent") else "refused")
+                  + f" the {origin} at {r.get('at')} "
                   f"({r.get('why')}); held until {r.get('until_iso')}")
     lr = st.get("last_run") or {}
     if lr:
@@ -1489,16 +1788,18 @@ def main(argv=None):
     mode.add_argument("--carry", action="store_true",
                       help="the files carried between nights, one a line")
     ap.add_argument("--max-captions", type=int, default=MAX_CAPTIONS,
-                    help="recordings asked for in one run, oldest first "
-                         f"(default {MAX_CAPTIONS})")
+                    help="the most recordings one run asks for the first "
+                         f"time, oldest first (default {MAX_CAPTIONS}); up "
+                         "to that, it asks for whatever is waiting")
     ap.add_argument("--delay", type=float, default=DELAY,
                     help="seconds between two recordings, at least "
                          f"(default {DELAY:g})")
     ap.add_argument("--jitter", type=float, default=JITTER,
                     help="and up to this many more, at random "
                          f"(default {JITTER:g})")
-    ap.add_argument("--budget", type=float, default=45.0,
-                    help="minutes of caption requests a night (default 45)")
+    ap.add_argument("--budget", type=float, default=BUDGET,
+                    help="minutes of caption requests in one run, at most "
+                         f"(default {BUDGET:g})")
     ap.add_argument("--timeout", type=float, default=300.0,
                     help="seconds allowed for one recording's captions")
     ap.add_argument("--stop-after", type=int, default=3,

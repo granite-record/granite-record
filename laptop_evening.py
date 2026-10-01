@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.2
+# GRANITE_VERSION: 2026-09-30.3
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -26,9 +26,13 @@ WHAT IT RUNS, IN ORDER, STOPPING AT THE FIRST THAT FAILS
        two days old, or nothing is captioned: an older list is a night that
        has not run, and the catch-up would be working from a stale one.
   2. livestreams.py --catch-up
-       captions the waiting recordings -- the six oldest in an evening, a
-       minute or two apart, one caption track each -- and reads the chair's
-       boundaries out of them. What is left comes first the next evening.
+       captions the waiting recordings -- whatever is waiting, the oldest
+       first and twenty at most in an evening, a minute or two apart, one
+       caption track each -- and reads the chair's boundaries out of them.
+       What is left comes first the next evening. A recording that answered
+       without captions is asked again after the new ones, a day later and
+       then two, four and eight. The longest evening is about forty minutes
+       of this step; livestreams.py says what that is in requests.
   3. probe_alignment.py --truth --candidate candidate_segments.json
        CLAUDE.md: nothing about timestamps goes on the site before this has
        been run and the median has not regressed. It is compared with the
@@ -44,7 +48,10 @@ WHAT IT RUNS, IN ORDER, STOPPING AT THE FIRST THAT FAILS
        it reaches the site with a release, never by this back door.
 
 The next night publishes the times. A morning hearing is on its bill's page
-the next morning, and has its exact start the morning after.
+the next morning, and has its exact start the morning after -- unless more
+than twenty recordings were waiting that evening, or YouTube has refused
+this laptop: then it waits its turn. Replayed against 2025 and 2026, two
+recordings in the two years waited an evening longer, and none longer.
 
 WHAT IT ASKS
 
@@ -57,7 +64,10 @@ logs/evening-<day>.log, everything each step printed; and
 archive/cloud/evening.json, when it last ran, how it ended, and the probe of
 the times it last sent. If the laptop is off for a week, nothing breaks: the
 recordings stay on their pages with approximate starts, the night's verdict
-warns that they are waiting, and the first evening back catches them up.
+warns that they are waiting, and the evenings after it is back catch them up,
+the oldest first and twenty an evening. A week off in session leaves forty or
+fifty waiting, which is two or three evenings -- replayed for the weeks of
+3 February 2026 and 12 February 2025.
 """
 
 import argparse
