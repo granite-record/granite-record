@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.17
+# GRANITE_VERSION: 2026-09-10.18
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -361,12 +361,18 @@ def sponsors(out, data):
                  "the bill's text, "
                  "where the first name is taken as prime -- every term before "
                  "2023, and the 2023-2024 bills whose printed line and record "
-                 "disagree; or the House Journal, for the bills the House "
-                 "withdrew that none of the General Court's current files "
-                 "carry, where the first name in its list of bills introduced "
+                 "disagree; or, on a bill of a term before 2023 that no other "
+                 "source names a sponsor for, the General Court's sponsor "
+                 "record again, which gives a chamber and no district and "
+                 "marks the prime itself; or the House Journal, for the bills "
+                 "none of the General Court's lists carry, where the first "
+                 "name in its list of bills introduced "
                  "is taken as prime. member_id is empty where this site has not matched "
-                 "the name to a member: every sponsor before 1999, when the "
-                 "roll-call files it matches against begin, and a few after.")
+                 "the name to a member: a sponsor read off a bill's text before "
+                 "1999, when the roll-call files it matches against begin, "
+                 "and a few after; a sponsor from the sponsor record carries "
+                 "the id its number votes under where any roll call was cast "
+                 "under it, in any term.")
 
 
 # How the tables join, said once here rather than guessed at by everyone

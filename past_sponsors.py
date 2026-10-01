@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.2
+# GRANITE_VERSION: 2026-09-26.3
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
@@ -40,9 +40,39 @@ but the ones --check names, and the status page was not: it left Rep. Steve Shur
 the prime sponsor of 2023 HB 32 and Rep. Terry Roy the only sponsor of 2024 HB 1713 --
 both are Shurtleff's -- listed Rep. Dawn Johnson on 2023 HB 104, which neither the record
 nor the bill names, and carried no link for 5,900 of its 10,310 names. build_site_v2 and
-build_exports call merge_into(), so the page and the download agree. Every other term
-keeps the sponsor line of its own text for now; the rows are here for text_sponsors.py's
-use and for the person's decision about the rest.
+build_exports call merge_into(), so the page and the download agree.
+
+WHAT IS FILLED, AND WHERE (1 October 2026). Every other past term keeps the sponsor line
+of its own text, and takes the record's list ONLY FOR A BILL NOTHING ELSE NAMES A SPONSOR
+FOR: no row in data/sponsors.json and none read off its text. 918 bills of 1989-2022 were
+that -- a bill with no saved page, mostly -- beside the measures build_data adds from the
+database, which have no page either. The person decided it: sponsors are filled in
+wherever the records have them. Never over a list: a bill whose text names anybody keeps
+its text's.
+
+WHAT A FILLED ROW IS WORTH, measured on the bills that do have a page, where the record's
+rows can be held to the printed line (each term's 1,400 to 1,900 bills):
+  - the people: 99.3% or more of a term's live rows are a printed sponsor, by surname, in
+    every term, and the record's prime is the first name printed on all but seven bills
+    of a term at most;
+  - the chamber: the one the row is given -- the one its number voted in that term, else
+    the legislators table's, else the General Court's list of members -- is the printed
+    one on 99.4% or more of a term's rows, and where it is not, the print says "Rep." of
+    a Senate district, or "Sen." of a House one, or the number has no chamber on file
+    and the row carries none;
+  - the link: where the site has a member under the number, the site's own name for them
+    fits the printed surname on all but sixteen of a term's rows at most, and most of
+    those are the print's spelling ("Rep. Paluzzo" for Palazzo);
+  - AND ONE TERM IS SHORT. In 1999-2000 the record lists fewer sponsors than the bill
+    prints: 156 of 1,586 bills differ, by 337 printed names the record does not have
+    (HB 68 of 1999 prints seven sponsors and the record holds its prime alone). The
+    prime is still the first printed on 1,581. So a filled list of that term names the
+    prime and may not name every co-sponsor; it is for the Clerk's list.
+A filled row says where it is from (source) and that its seat is the record's
+(seat_source), which is a chamber and no district: the record holds none, and the roster's
+is today's. Before 1999 a row has no party either -- no roll call of the term exists to
+take one from -- and is linked only where its number is one a later roll call was cast
+under.
 
 A BILL WHERE THE RECORD AND THE PRINT DISAGREE is published as the page prints it: the
 sponsors text_sponsors.py read off that bill's text. --check names every one.
@@ -85,8 +115,9 @@ ROSTER = Path("data/legislators.json")
 PAST_MEMBERS = Path("past_members.json")
 OUT = Path("past_sponsors.json")
 SOURCE = "General Court sponsor record"
-# The terms whose published sponsor lists are this record's. One, until the person decides
-# about the rest: see the module docstring.
+# The terms whose published sponsor lists are this record's, over the list the site had.
+# Every other past term is FILLED: the record's list for a bill no other source names a
+# sponsor for, and for no other bill (see the module docstring).
 MERGED = ("2023-2024",)
 SUFFIXES = TS.SUFFIXES
 
@@ -559,12 +590,33 @@ def page_line(term, bid, bill):
     return None
 
 
-def build(bills, sponsors, people, joined, terms=MERGED, line_of=None):
-    """{term: {bill: entry}}, with the verdict and the published list for the merged terms.
+def filled(rows, people, term):
+    """The list a bill no other source names a sponsor for takes from the record: its live
+    rows, the prime first, each as records() names a row with no page and no status-page
+    row to pair with -- the name and id the site has the number under, the party of its
+    ballots that term, the chamber it voted in that term or the tables give it.
+
+    seat_source says the seat is the record's own, which is a chamber and nothing more:
+    build_site_v2 would otherwise label the row from today's roster, and a label states
+    the seat held when the record was made."""
+    out = records(rows, [], people, term)
+    for r in out:
+        r["seat_source"] = SOURCE
+    return out
+
+
+def build(bills, sponsors, people, joined, terms=MERGED, line_of=None, named=None,
+          current=None):
+    """{term: {bill: entry}}, with the verdict and the published list for the merged terms,
+    and the list to fill with ("fill") for a bill of any other past term that has no
+    sponsor in `sponsors` (data/sponsors.json) and none in `named` (text_sponsors.json, the
+    names read off each bill's own text). `current` is the term the session's own files
+    describe, which is never filled.
 
     `line_of(term, bill, record)` gives the bill's printed sponsor line, or None where it
     has no page; page_line reads the saved pages, and preflight's fixtures stand in."""
     line_of = line_of or page_line
+    named = named or {}
     out = defaultdict(dict)
     for term, recs in joined.items():
         keys = {}
@@ -598,6 +650,10 @@ def build(bills, sponsors, people, joined, terms=MERGED, line_of=None):
                     e["tally"] = dict(tally)
                     if state == "agrees":
                         e["publish"] = records(v["rows"], db, people, term, pieces, pairs)
+            elif term != current and live \
+                    and not (sponsors.get(term) or {}).get(bid) \
+                    and not (named.get(term) or {}).get(bid):
+                e["fill"] = filled(v["rows"], people, term)
             out[term][bid] = e
     return dict(out)
 
@@ -612,8 +668,10 @@ def _load(path, default):
         return default
 
 
-def merge(sponsors, doc, printed, terms=MERGED):
-    """Give each bill of `terms` the list the record publishes for it; see merge_into."""
+def merge(sponsors, doc, printed, terms=MERGED, fill=True):
+    """Give each bill of `terms` the list the record publishes for it, and (`fill`) each
+    bill of any other term that has no sponsor the list the record fills it with; see
+    merge_into."""
     got = Counter()
     for term in terms:
         have = sponsors.setdefault(term, {})
@@ -628,17 +686,34 @@ def merge(sponsors, doc, printed, terms=MERGED):
                     got["page"] += 1
                 else:
                     got["differs, and no page list to publish"] += 1
+    if not fill:
+        return got
+    # NEVER OVER A LIST. A bill of another term takes the record's only while it has
+    # none -- asked here, when the lists are merged, not when the file was written.
+    for term, rows in doc.items():
+        if term in terms:
+            continue
+        for bid, e in rows.items():
+            if e.get("fill") and not (sponsors.get(term) or {}).get(bid):
+                sponsors.setdefault(term, {})[bid] = [dict(r) for r in e["fill"]]
+                got["filled"] += 1
     return got
 
 
 def merge_into(sponsors, path=OUT, text=TS.OUT, terms=MERGED):
-    """Give each bill of `terms` the list this record publishes for it.
+    """Give each bill of `terms` the list this record publishes for it, and each bill of
+    any other past term that still has no sponsor the record's list.
 
-    Where the record agrees with the printed page -- or there is no page to hold it to --
-    the record's list. Where they disagree, the sponsors text_sponsors.py read off the
-    page, from `text`; with no such list the bill keeps what it had. Returns a Counter of
-    how many bills took which ({"record": n, "page": n}); absent the file, nothing happens
-    and the Counter is empty."""
+    IN `terms`: where the record agrees with the printed page -- or there is no page to
+    hold it to -- the record's list. Where they disagree, the sponsors text_sponsors.py
+    read off the page, from `text`; with no such list the bill keeps what it had.
+
+    IN EVERY OTHER TERM: the record's list for a bill `sponsors` names nobody for, and
+    nothing for a bill it names anybody for. Called after text_sponsors.merge_into, so a
+    bill whose text names its sponsors has them by then.
+
+    Returns a Counter of how many bills took which ({"record": n, "page": n, "filled":
+    n}); absent the file, nothing happens and the Counter is empty."""
     doc = _load(path, None)
     if not isinstance(doc, dict):
         return Counter()
@@ -691,7 +766,7 @@ def check(doc, sponsors, printed=None, terms=MERGED):
         # What the merge changes against the list the site had.
         before = sponsors.get(term) or {}
         after = {term: {b: list(v) for b, v in before.items()}}
-        took = merge(after, doc, printed or {}, (term,))
+        took = merge(after, doc, printed or {}, (term,), fill=False)
         after = after[term]
         print(f"  published: {took['record']:,} bills from the record, {took['page']:,} as "
               f"their page prints them"
@@ -739,15 +814,32 @@ def main():
     sponsors = json.loads(SPONSORS.read_text(encoding="utf-8")) if SPONSORS.exists() else {}
     joined, tally = join(bills, read_view("PastSponsors"), read_view("PastLegislation"))
     people = load_people()
-    doc = build(bills, sponsors, people, joined)
+    # The names read off each bill's own text, which a filled list never replaces. Read
+    # as it stands: text_sponsors.py --apply runs before this in a build, and merge()
+    # asks again when the lists are merged.
+    named = _load(TS.OUT, None)
+    if named is None:
+        print(f"{TS.OUT} is not here, so every bill of a past term with no sponsor in "
+              f"{SPONSORS} is given a list to fill with; the merge still fills only a "
+              "bill that has none")
+    doc = build(bills, sponsors, people, joined, named=named or {},
+                current=max(bills) if bills else None)
     print("the sponsor record, joined by each bill's stored LSR:")
     for k, v in tally.most_common():
         print(f"  {v:>7,}  {k}")
     for term in sorted(doc):
         live = [s for e in doc[term].values() for s in e["sponsors"]]
+        fill = [e["fill"] for e in doc[term].values() if e.get("fill")]
+        names_ = [r for rows in fill for r in rows]
         print(f"  {term}: {len(doc[term]):>5,} of {len(bills.get(term) or {}):>5,} bills, "
               f"{len(live):>6,} live sponsors, {sum(1 for s in live if s['member_id']):>6,} "
-              "under an id the site has")
+              "under an id the site has"
+              + (f"; {len(fill):>3,} bills with no other sponsor filled, "
+                 f"{sum(1 for r in names_ if r['member_id']):,} of {len(names_):,} names "
+                 "a member's, the rest as the record names them" if fill else ""))
+    n_fill = sum(1 for t in doc.values() for e in t.values() if e.get("fill"))
+    print(f"  {n_fill:,} bills of the terms outside {', '.join(MERGED)} have no sponsor "
+          "from any other source and take the record's")
     differ = check(doc, sponsors, _load(TS.OUT, {})) if a.check else 0
     if a.apply:
         OUT.write_text(json.dumps(doc, indent=1), encoding="utf-8")

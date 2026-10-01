@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.45
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -36,12 +36,46 @@ except Exception:                                   # noqa: BLE001
     _CONFIRMED_CHAPTERS = {}
 
 
+# AND CHAPTERS THE DATABASE SETTLED. The docket gave one number to two bills
+# on eight pairs of laws, and extract_chapters fills each from the General
+# Court's database where that tells the two apart: HB 1278 of 1992 reads
+# "CHAP.0233" on the docket and is chapter 232, as its own final version is
+# headed. The facts table prints 232, so the history must: for the same
+# reason as above, and from the file the table reads. {(term, bill): (the
+# chapter published, the number the docket's line gives)}, for the records of
+# chapters.json where the two differ; empty unless --chapters names the file,
+# which narrate_archive.py does and the current term's step does not, so a
+# run without it tells every chapter as it did before.
+SETTLED_CHAPTERS = {}
+
+
+def load_settled_chapters(path):
+    """SETTLED_CHAPTERS from chapters.json, or {} where it is not there."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return {}
+    out = {}
+    for term, byb in data.items():
+        for bill, rec in (byb.items() if isinstance(byb, dict) else ()):
+            if isinstance(rec, dict) and rec.get("chapter") and rec.get("docket") \
+                    and rec["chapter"] != rec["docket"]:
+                out[(term, bill)] = (rec["chapter"], rec["docket"])
+    return out
+
+
 def confirmed_chapter(term, bill, n):
     """The person-confirmed chapter where the docket's number is the one the
-    correction replaces; otherwise the number as the docket gives it."""
+    correction replaces, or the one the database settled where the docket's
+    is the one it gave to two bills; otherwise the number as the docket gives
+    it."""
+    said = str(n or "").strip().lstrip("0")
     fix = _CONFIRMED_CHAPTERS.get((term, bill))
-    if fix and str(n or "").strip().lstrip("0") == str(fix[1]):
+    if fix and said == str(fix[1]):
         return str(fix[0])
+    got = SETTLED_CHAPTERS.get((term, bill))
+    if got and said == str(got[1]):
+        return str(got[0])
     return n
 
 # --------------------------------------------------------------- glossary
@@ -589,6 +623,27 @@ ENACTED_RE = re.compile(
     r"^Enacted in accordance with Article\s*44.*?without the signature of the"
     r"\s*governor\.?\s*(?:.*?Chapter\s*(?P<chapter>\d+))?", re.I)
 
+# A BILL WITHDRAWN, on a row that is not a floor vote (1 October 2026). Twelve
+# rows across every docket on disk, all of them on bills the General Court's
+# search page left out and the site had no record of: "Withdrawn Prior to
+# Introduction" on four bills of 2010, "Withdrawn" and "Withdrawn 11/30/2011"
+# on three of 2012, "Read in January 4, 2012 and Withdrawn" on a petition.
+# The whole line, so that "Withdrawn from Committee Without Recommendation"
+# -- a committee discharged -- is not one; a withdrawal the chamber voted,
+# "Withdrawn (Rep Kreis): MA VV", is a floor row and is read as one.
+WITHDRAWN_ROW = re.compile(
+    r"^\s*(?:Read\s+in\s+(?P<read>[A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\s+and\s+)?"
+    r"Withdrawn(?P<prior>\s+Prior\s+to\s+Introduction)?"
+    r"(?:\s+(?P<date>\d{1,2}/\d{1,2}/\d{4}))?\s*$", re.I)
+# "Proposed bill for special sesssion." is the one row of HB 3 of the 2006
+# special session: a bill proposed for it, and nothing after.
+PROPOSED_ROW = re.compile(
+    r"^\s*Proposed\s+bill\s+for\s+(?:the\s+)?special\s+sess+ion\s*$", re.I)
+# The introduction row as the House wrote it weeks ahead: "To Be Introduced
+# 1/6/2010 and Referred to Finance". Every bill of those sessions carries it
+# and was introduced on that day -- except one withdrawn first (build()).
+TO_BE_INTRODUCED = re.compile(r"^\s*To\s+Be\s+Introduced\b", re.I)
+
 PATTERNS = [
     ("introduced", re.compile(
         r"Introduced\s+(?:\(in recess of\)\s*)?(?P<date>\d{1,2}/\d{1,2}/\d{4})"
@@ -681,6 +736,9 @@ PATTERNS = [
         r"[,;]?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})?"
         r"(?:.*?Chapter\s*(?P<chapter>\d+))?"
         r"(?:.*?Effective\s*(?P<eff>\d{1,2}/\d{1,2}/\d{4}))?", re.I)),
+    # Last: nothing above reads these two, which were "other" until now.
+    ("withdrawn", WITHDRAWN_ROW),
+    ("proposed", PROPOSED_ROW),
 ]
 
 
@@ -993,6 +1051,107 @@ def report_lsrs(taken, moved, source):
           f"whose LSR they carry, from {len(keys):,} key(s) no bill carries")
 
 
+# THE DOCKET OF A BILL THE TERM'S OWN FILE HAS NO ROW FOR (1 October 2026).
+# A term's docket file is the database's dump for 1989-2014 and, from 2015,
+# the pages fetched bill by bill off the list the General Court's search gave
+# -- so a bill that list left out has no row in it. SB 499 of 2016 and the
+# House's six organizing resolutions of December 2016 are in no docket file;
+# nor are SB 340 of 2016 and HB 451 of 2019, which have records and had no
+# history; nor HB 459 of 2021, whose record is the House Journal's. The
+# General Court's past docket view (fetch_past_db.py's PastDocket.psv) holds
+# every one of them, in the same words the docket pages print.
+#
+# ONLY A BILL WITH NO ROW AT ALL. A bill the term's file has any row for
+# keeps that file's and takes nothing from here: the two are one record, and
+# one bill told from both would be told twice.
+#
+# BY THE BILL'S OWN LSR, as own_rows chooses rows, AND UNDER ITS OWN NUMBER:
+# a row that carries the bill's LSR under another bill's number is one of
+# the rows own_rows leaves in neither history, and stays in neither. For a
+# record that names no LSR -- a journal record does not -- by its number,
+# where every row the view files under that number in the term carries one
+# LSR.
+#
+# THE VIEW REPEATS ROWS: each of HR 69 of 1992's three is in it twice, under
+# two ids. A row repeated word for word at the same minute is entered once.
+def past_docket_rows(path, bills, lsrs):
+    """{bill: [row]} in parse_docket's shape, from the past docket view, for
+    the bills of this docket's term that `bills` (its rows by bill) has none
+    for. {} where the view or its manifest is not there."""
+    p = Path(path)
+    man = p.with_name("_manifest.json")
+    if not (p.exists() and man.exists()):
+        return {}
+    try:
+        cols = json.loads(man.read_text(encoding="utf-8"))["PastDocket"]["columns"]
+        at = {c: cols.index(c) for c in ("SessionYear", "LSR", "StatusDate",
+                                         "CondensedBillNo", "LegislativeBody",
+                                         "Description", "statusorder")}
+    except (ValueError, KeyError):
+        return {}
+    terms = {P.term_of(rows[0].get("session", "")) for rows in bills.values() if rows}
+    have = {b.upper() for b in bills}
+    by_lsr, by_number = {}, {}
+    for term in terms:
+        for b, (y, n) in (lsrs.get(term) or {}).items():
+            if b.upper() in have:
+                continue
+            if n:
+                by_lsr[(y, n)] = b
+            else:
+                by_number[(term, b.upper())] = b
+    if not (by_lsr or by_number):
+        return {}
+    years = {y for t in terms for y in t.split("-")}
+    got, seen = defaultdict(list), set()
+    with open(p, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if line[:4] not in years:
+                continue
+            f = line.rstrip("\r\n").split("|")
+            if len(f) != len(cols):
+                continue
+            year, lsr = f[at["SessionYear"]].strip(), f[at["LSR"]].strip()
+            number = re.sub(r"\s+", "", f[at["CondensedBillNo"]]).upper()
+            bill = by_lsr.get((year, _lsr_num(lsr))) or \
+                by_number.get((P.term_of(year), number))
+            if not bill:
+                continue
+            # UNDER ITS OWN NUMBER, where the row carries one. The view files
+            # "Introduction, Sen. Trombly - Ought to pass; MA, VV" of 23 March
+            # 1999 under SR1 with LSR 1999-1020, which is SR 5's: own_rows
+            # leaves that row out of SR 1's history and does not give it to
+            # SR 5, because which of the two is mistyped is a person's to say.
+            # This must not give it to SR 5 by another door.
+            if number and number != bill.upper():
+                continue
+            body, desc = f[at["LegislativeBody"]].strip(), f[at["Description"]]
+            stamp = f[at["StatusDate"]].strip()
+            if (bill, year, lsr, stamp, body, desc) in seen:
+                continue
+            seen.add((bill, year, lsr, stamp, body, desc))
+            try:
+                created = datetime.strptime(stamp, "%m/%d/%Y %H:%M:%S")
+            except ValueError:
+                created = datetime.min
+            try:
+                order = int(f[at["statusorder"]] or 0)
+            except ValueError:
+                order = 0
+            got[bill].append((created, order, len(got[bill]), {
+                "lsr": f"{year}-{lsr}", "session": year, "body": body,
+                "desc": desc, "created": created,
+                "flags": re.findall(r"==\s*([A-Z][A-Z ]*?)\s*==", desc)}))
+    out = {}
+    numbered = set(by_number.values())
+    for bill, rows in got.items():
+        if bill in numbered and len({r[3]["lsr"] for r in rows}) > 1:
+            # Two measures under one number, and no LSR to tell them apart.
+            continue
+        out[bill] = [r[3] for r in sorted(rows, key=lambda x: x[:3])]
+    return out
+
+
 def event_date(ev, fallback):
     d = ev.get("date")
     if d:
@@ -1283,6 +1442,13 @@ def collapse(sentences, chamber="House"):
 def stage_of(ev):
     """Which hand the bill is in for this action."""
     t, body = ev["_type"], ev.get("body") or "H"
+    if ev.get("_pre"):
+        # Before the bill was ever introduced: it was in no committee and
+        # on no floor (build() says which rows these are).
+        return (body, "filed")
+    if t == "withdrawn" and ev.get("read"):
+        # "Read in January 4, 2012 and Withdrawn": read in to the chamber.
+        return (body, "floor")
     if t in ("signed", "vetoed", "chaptered", "governor", "enrolled",
              "enrolled_amendment", "unsigned_law"):
         return ("G", "governor")
@@ -1326,6 +1492,9 @@ STAGE_LABEL = {
     ("S", "floor"): "On the Senate floor",
     ("C", "conference"): "Committee of conference",
     ("G", "governor"): "With the governor",
+    # A bill that was never introduced was never in a committee's hands.
+    ("H", "filed"): "Before introduction in the House",
+    ("S", "filed"): "Before introduction in the Senate",
 }
 
 
@@ -1534,6 +1703,35 @@ def describe(ev, body, seen_intro=False):
     """One sentence for one docket event, or None to skip."""
     t = ev["_type"]
     chamber = "House" if body == "H" else "Senate"
+
+    if t == "to_be_introduced":
+        # The row's own words: it was to be, and build() found it withdrawn
+        # on or before that day.
+        return (f"It was to be introduced on {fdate(ev['date'])} and referred to "
+                f"the {chamber} {ev['committee']} committee.")
+
+    if ev.get("_void") and t in ("hearing", "exec", "worksession"):
+        # Scheduled for a day after the bill was withdrawn: a notice, not a
+        # meeting. The past tense of every sentence below would say it sat.
+        what = {"hearing": "A public hearing", "exec": "An executive session",
+                "worksession": "A work session"}[t]
+        return f"{what} had been scheduled for {fdate(ev['date'])}."
+
+    if t == "withdrawn":
+        when = (fdate(ev["date"]) if ev.get("date")
+                else ev["when"].strftime(MONTH) if ev.get("when") else "")
+        on = f" on {when}" if when else ""
+        if ev.get("read"):
+            return (f"It was read in on {re.sub(r'\s+', ' ', ev['read']).strip()} "
+                    "and withdrawn.")
+        if ev.get("prior"):
+            return f"It was withdrawn prior to introduction{on}."
+        return f"It was withdrawn{on}."
+
+    if t == "proposed":
+        when = ev["when"].strftime(MONTH) if ev.get("when") else ""
+        return ("It was proposed as a bill for the special session"
+                + (f" on {when}" if when else "") + ".")
 
     if t == "introduced":
         if seen_intro:
@@ -2063,6 +2261,9 @@ def build(bill, rows):
         clamp_year(ev, r.get("session") or session)
         in_recess(ev, r, fixed)
         ev["when"] = event_date(ev, r["created"])
+        # The moment the row was entered, for the rows a withdrawal turns
+        # back into notices (below).
+        ev["_entered"] = r["created"]
         away, there = misfiled(r, bill) if MISFILED else (None, "")
         if there:
             ev["row_note"] = there
@@ -2083,6 +2284,60 @@ def build(bill, rows):
         evs.append(ev)
     evs.sort(key=day_order)
     hold_in_order(evs)
+
+    # A BILL WITHDRAWN BEFORE THE DAY IT WAS TO BE INTRODUCED WAS NOT
+    # INTRODUCED, AND WHAT WAS SCHEDULED FOR AFTER IT DID NOT HAPPEN. The
+    # House's docket of 2009-2012 enters a bill weeks ahead -- "To Be
+    # Introduced 1/6/2010 and Referred to Finance", a hearing for the 7th --
+    # and every sentence here tells such a row in the past tense, as done.
+    # HB 1587 of 2010 was "Withdrawn Prior to Introduction" on 22 December
+    # 2009 and its history said it was introduced on 6 January; HB 1284 of
+    # 2012 was withdrawn on 4 January and its history held a public hearing
+    # on the 12th and an executive session on the 24th. So where a row
+    # withdraws the bill (not a floor vote: WITHDRAWN_ROW):
+    #   - a "To Be Introduced" row for that day or a later one is told in its
+    #     own words, as what was to be, and typed to_be_introduced so that
+    #     nothing reads it as an introduction;
+    #   - a hearing, executive session or work session set for a later day is
+    #     told as a notice, and leaves the record's events as a cancelled one
+    #     does -- the docket has no flag on it, and the bill was gone.
+    # Both are placed where the docket entered them, so the history runs in
+    # the order things were done: planned, scheduled, withdrawn.
+    # The same day counts as before: the row says "To Be", the withdrawal is
+    # entered that morning, and the docket alone cannot say the bill was
+    # introduced first. (The House Journal of 4 January 2012 can, and prints
+    # "HB 1284 - Withdrawn." in its list of bills introduced where it prints
+    # HB 1512's entry in full; both read "Withdrawn" here, which is all the
+    # docket says of either.)
+    gone = [e for e in evs if e["_type"] == "withdrawn" and not e["cancelled"]]
+    not_introduced = False
+    if gone:
+        cut = min(e["when"] for e in gone).date()
+        stated = any(e.get("prior") for e in gone)
+        for e in evs:
+            if e["cancelled"]:
+                continue
+            if e["_type"] == "introduced" and TO_BE_INTRODUCED.match(e["_raw"]) \
+                    and (stated or e["when"].date() >= cut):
+                e["_type"], not_introduced = "to_be_introduced", True
+                e["when"] = e["_entered"]
+            elif e["_type"] in ("hearing", "exec", "worksession") \
+                    and e["when"].date() > cut:
+                e["_void"] = True
+                e["when"] = e["_entered"]
+    # And a bill only ever proposed for a session: HB 3 of the 2006 special
+    # session, whose one row is PROPOSED_ROW.
+    if any(e["_type"] == "proposed" for e in evs) and not any(
+            e["_type"] == "introduced" for e in evs):
+        not_introduced = True
+    if not_introduced:
+        for e in evs:
+            if e["_type"] in ("to_be_introduced", "withdrawn", "proposed") \
+                    or e.get("_void"):
+                e["_pre"] = True
+    if gone:
+        evs = [e for _i, e in sorted(enumerate(evs),
+                                     key=lambda x: (x[1]["when"].date(), x[0]))]
 
     # Which committee held the bill when each thing happened. Only the referral
     # line names one, so it is carried forward until the next referral -- the
@@ -2311,8 +2566,15 @@ def build(bill, rows):
         # RollCallSummary.txt -- only a roll call is recorded there -- yet they
         # decide a great many bills.
         "events": [{"date": e["when"].strftime("%Y-%m-%d"), "type": e["_type"],
-                    "body": e["body"], "cancelled": e["cancelled"],
+                    # A meeting set for a day after the bill was withdrawn did
+                    # not sit, and is carried as a cancelled one is.
+                    "body": e["body"],
+                    "cancelled": e["cancelled"] or bool(e.get("_void")),
                     "raw": e["_raw"],
+                    # A withdrawal the row itself says came before the bill
+                    # was introduced: "Withdrawn Prior to Introduction".
+                    **({"before_introduction": True}
+                       if e["_type"] == "withdrawn" and e.get("prior") else {}),
                     # The journal or calendar this one action is printed in.
                     # Every event carries it, because every kind of event has
                     # one: a hearing cites the calendar that noticed it, a
@@ -2392,6 +2654,14 @@ def build(bill, rows):
         # (docket_corrections.json "misfiled"): shown with the docket's lines,
         # read by nothing that tells the bill's story.
         **({"misfiled": elsewhere} if elsewhere else {}),
+        # The day a row of the docket withdrew the bill, where one did and it
+        # was not a floor vote; and that the bill was never introduced, where
+        # its own rows say so (the block above). build_site_v2 reads both:
+        # the first to drop a sitting scheduled for after it, the second so
+        # that no rail is drawn from an introduction that did not happen.
+        **({"withdrawn": min(e["when"] for e in gone).strftime("%Y-%m-%d")}
+           if gone else {}),
+        **({"not_introduced": True} if not_introduced else {}),
     }
 
 
@@ -2458,12 +2728,22 @@ def main():
     ap.add_argument("--bills", default="data/bills.json",
                     help="each bill's own LSR, which decides which docket rows "
                          "are its own (own_rows); skipped if not there")
+    ap.add_argument("--past-docket", default="",
+                    help="the General Court's past docket view (db/past/"
+                         "PastDocket.psv), for the bills of this docket's term "
+                         "that it has no row for (past_docket_rows); not read "
+                         "unless named, and narrate_archive.py names it")
+    ap.add_argument("--chapters", default="",
+                    help="chapters.json, so a law the docket numbers as another "
+                         "bill's is told with the chapter the page prints "
+                         "(SETTLED_CHAPTERS); not read unless named")
     a = ap.parse_args()
 
-    global MEMBERS, TESTIMONY, CORRECTIONS, MISFILED
+    global MEMBERS, TESTIMONY, CORRECTIONS, MISFILED, SETTLED_CHAPTERS
     MEMBERS = load_members(a.members)
     CORRECTIONS = load_corrections(a.corrections)
     MISFILED = load_corrections(a.corrections, "misfiled")
+    SETTLED_CHAPTERS = load_settled_chapters(a.chapters) if a.chapters else {}
     try:
         TESTIMONY = json.loads(Path(a.testimony).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -2475,6 +2755,18 @@ def main():
         sys.exit(f"No docket rows found{' for ' + a.bill if a.bill else ''}.")
     report_lsrs(LSR_REPORT["taken"], LSR_REPORT["moved"],
                 a.bills if lsrs else None)
+    if a.past_docket and lsrs:
+        more = past_docket_rows(a.past_docket, bills, lsrs)
+        if a.bill:
+            more = {b: r for b, r in more.items() if b.upper() == a.bill.upper()}
+        bills.update(more)
+        # Said with a marker narrate_archive passes on, like the LSRs' line:
+        # a file that stopped being read looks exactly like a term with
+        # every bill's docket in its own file.
+        print(f"  rows from the past docket ({a.past_docket}): "
+              f"{sum(len(r) for r in more.values()):,} row(s) given to the "
+              f"{len(more):,} bill(s) this docket has no row for"
+              + (f" ({', '.join(sorted(more))})" if more else ""))
 
     # Keyed on the term. Every docket row for a bill carries the same session
     # year -- all 2,233 of them, split 847 in 2025 and 1,386 in 2026 with no

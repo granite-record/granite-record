@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.40
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -357,6 +357,9 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS):
             if bid in by_term[term]:
                 kept.append(f"{bid} {term}")
                 continue
+            # "decided" is the one bill of an earlier term journal_bills reads
+            # (its EARLIER): the House's vote on the committee's report,
+            # where the nine carry "withdrawn".
             rec = {
                 "bill": bid, "lsr": "", "lsr_year": year, "lsr_num": "",
                 "title": j.get("title", ""), "chamber": j.get("chamber") or "H",
@@ -365,7 +368,8 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS):
                 "hearing": "", "hearing_room": "",
                 "designation": j.get("designation") or bid,
                 "suffix": j.get("suffix", ""),
-                "journal": {k: j[k] for k in ("introduced", "withdrawn", "sponsors")
+                "journal": {k: j[k] for k in ("introduced", "withdrawn", "decided",
+                                              "sponsors")
                             if k in j},
             }
             if archived:
@@ -373,7 +377,7 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS):
             by_term[term][bid] = rec
             added[term][bid] = rec
     n = sum(len(v) for v in added.values())
-    print(f"  {p}: {n} withdrawn bill(s) added from the House Journal"
+    print(f"  {p}: {n} bill(s) the General Court's lists lack added from the House Journal"
           + (f" ({', '.join(f'{b} {t}' for t, bb in added.items() for b in bb)})" if n else "")
           + (f"; {len(kept)} already in the record and left alone ({', '.join(kept)})"
              if kept else ""))
@@ -382,7 +386,7 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS):
     return dict(added)
 
 
-def journal_sponsor_rows(printed, term, sat, legs):
+def journal_sponsor_rows(printed, term, sat, legs, current=None):
     """One withdrawn bill's sponsors, as the journal printed them, in the
     shape data/sponsors.json carries them.
 
@@ -394,11 +398,28 @@ def journal_sponsor_rows(printed, term, sat, legs):
     roster gives that member, not the one printed: the January 2025 lists
     print some members' 2023-2024 seats. A member who has since left is
     labelled from their own votes. A name nobody fits stays as printed.
+
+    IN A TERM THAT IS NOT THE CURRENT ONE (`current` names it) THE SEAT IS THE
+    PRINTED ONE. The roster is today's House and Senate, and a label states
+    the seat held when the record was made: HB 459 of 2021 prints "Silber,
+    Belk. 2", and Rep. Norman Silber's roll-call label says Belknap 6. The row
+    is text_sponsors.record's, as every archived bill's sponsors are, and says
+    with seat_source that the seat is the journal's, so that build_site_v2
+    does not put the roster's over it.
     """
     import text_sponsors as TS
     out = []
     for i, sp in enumerate(TS.split("; ".join(printed or []))):
         m = sat.resolve(term, sp)[0] if sat else None
+        if current is not None and term != current:
+            r = TS.record(i, sp, m)
+            row = {k: r[k] for k in ("member_id", "name", "party", "chamber", "label",
+                                     "county", "district")}
+            row.update({"sequence": i, "prime": i == 0, "prime_inferred": True,
+                        "source": JOURNAL_SOURCE, "seat_source": JOURNAL_SOURCE,
+                        "as_printed": sp["printed"]})
+            out.append(row)
+            continue
         mine = legs.get(str(m["id"])) if m else None
         if mine:
             row = {"member_id": str(m["id"]), "name": mine["name"],
@@ -425,6 +446,386 @@ def journal_sponsor_rows(printed, term, sat, legs):
                     "source": JOURNAL_SOURCE, "as_printed": sp["printed"]})
         out.append(row)
     return out
+
+
+# ------------------------------------------------ the General Court's past tables --
+#
+# THE ARCHIVED RECORDS CAME FROM THE SEARCH PAGE, AND THE SEARCH PAGE LEAVES
+# BILLS OUT (1 October 2026). fetch_archive_bills.py asked the General Court's
+# bill search for every bill of a past session year, and 25 measures the
+# General Court's own database holds were not in what it answered: bills
+# withdrawn before or after they were introduced, two the Senate refused to
+# introduce, the House's organizing resolutions of December 2016, a petition
+# read in and withdrawn. The person decided they get pages -- "sometimes they
+# are withdrawn for political reasons, not just procedural". The dump
+# fetch_past_db.py made of the PastLegislation view holds each one's LSR,
+# title, chamber, referral codes and status codes; the dockets on this disk
+# hold their histories.
+PAST_SOURCE = "General Court database"
+PAST_LEGISLATION = Path("db") / "past" / "PastLegislation.psv"
+PAST_MANIFEST = Path("db") / "past" / "_manifest.json"
+# General status 01 is "LEGISLATIVE SERVICES": a request still being drafted.
+# SR 2 of 2006, SR 2 of 2008 and SB 27 of 2009 were numbered and stopped
+# there, with no docket row between them; they were never before a chamber
+# and get no record. 02 and after is a measure a chamber had.
+PAST_NOT_BEFORE_A_CHAMBER = "01"
+# A chamber's status code 24: it refused to introduce the bill.
+REFUSED_INTRODUCTION = "REFUSED INTRODUCTION"
+
+# A MEASURE THE DOCKET HOLDS AND NO TABLE TITLES. HR 69 of 1992 is three
+# docket rows of 29 April 1992 under LSR 2737 -- reported Ought to Pass, a
+# motion to table lost 74-250, adopted on a voice vote -- and nothing else in
+# the General Court's data: no row in PastLegislation (HR 68 and HR 70 are
+# there, either side of it), none in PastSponsors, no text, no saved page. Its
+# title is printed in the bound House Journal of 1992, which is on this disk as
+# the University of New Hampshire's scan (archive/unh/raw/, Internet Archive
+# item journalofhouseof1992newh): on the regular calendar of 29 April 1992,
+# printed page 1154, "HR 69, establishing procedures and deadlines for the
+# filing of bills for the 1993 session. OUGHT TO PASS. Rep. Burns for Rules.",
+# and again, in the same words, at the motion to table (1155), at third
+# reading (1168), in the roll-call index (1359) and in the numerical index
+# (1416). Read on 1 October 2026 and confirmed against the scan's own text;
+# preflight reads it again wherever the scan is on disk. The record says where
+# its title comes from (title_source), and the page says it in a note.
+#
+# {(term, bill): what the journal gives it}. The LSR is the docket's, and the
+# record is added only where the term's docket carries the bill under it.
+TITLED_FROM_JOURNAL = {
+    ("1991-1992", "HR69"): {
+        "lsr_year": "1992", "lsr_num": "2737", "chamber": "H",
+        "title": ("establishing procedures and deadlines for the filing of bills "
+                  "for the 1993 session."),
+        "title_source": {"journal": "House Journal", "date": "1992-04-29",
+                         "page": 1154, "volume": "the bound House Journal of 1992"},
+    },
+}
+DOCKET_SOURCE = "General Court docket"
+
+
+def _bill_number(s):
+    """"HB  0169" and "HB169" are both HB169; anything else is ""."""
+    m = re.match(r"^([A-Z]+)0*(\d+)$", re.sub(r"\s+", "", (s or "").upper()))
+    return f"{m.group(1)}{int(m.group(2))}" if m else ""
+
+
+def past_legislation(d):
+    """[row] of db/past/PastLegislation.psv, each a dict by the column names
+    db/past/_manifest.json gives -- or None where the dump is not on this
+    machine. The .psv carries no header, so the manifest is the only statement
+    of its column order, and a line with another number of fields is counted
+    and left out rather than read one column along."""
+    d = Path(d)
+    path, man = d / PAST_LEGISLATION, d / PAST_MANIFEST
+    if not (path.exists() and man.exists()):
+        return None
+    try:
+        cols = json.loads(man.read_text(encoding="utf-8"))["PastLegislation"]["columns"]
+    except (ValueError, KeyError):
+        print(f"  {man} does not say what PastLegislation's columns are; not read")
+        return None
+    out, odd = [], 0
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            f = line.rstrip("\r\n").split("|")
+            if len(f) != len(cols):
+                odd += 1
+                continue
+            out.append({k: v.strip() for k, v in zip(cols, f)})
+    if odd:
+        print(f"  {path}: {odd:,} line(s) with another number of fields than "
+              f"{man.name} names, left out")
+    return out
+
+
+def status_words(d):
+    """({general status code: words}, {chamber status code: words}) from the
+    General Court's own two tables, GeneralCodes.txt and BodyStatusCodes.txt,
+    which arrive with the checkout: "03" is SENATE, "24" REFUSED INTRODUCTION.
+    The archive's records carry these words, read off the search page; a
+    record made from the database carries the same ones."""
+    def table(name):
+        return {r[0]: r[1] for r in rows(Path(d) / name) if len(r) >= 2 and r[0]}
+    return table("GeneralCodes.txt"), table("BodyStatusCodes.txt")
+
+
+def _code_committee(code, year, committees):
+    """The committee a referral code names in that year, or "".
+
+    committee_names.CODES first, which says what each retired code was and
+    when (H45 was Redress of Grievances in 2011-2012 and is in no table
+    today); then today's Committees.txt. Never the bare code -- "S29" is not
+    a name -- and never the General Court's own word for having none (H29,
+    "No Committee Assignment")."""
+    code = (code or "").strip().upper()
+    if not code:
+        return ""
+    try:
+        import committee_names as CN
+        y = int(str(year)[:4])
+        for _ch, lo, hi, name, c in CN.CODES:
+            if c == code and lo <= y <= hi:
+                return name
+    except Exception:                               # a table that will not read
+        pass
+    name = (committees.get(code) or {}).get("name", "")
+    return "" if _placeholder(name) else name
+
+
+def _docket_numbers(paths, wanted):
+    """{(term, year, lsr number): {bill number}} for the LSRs in `wanted`,
+    from the archived dockets -- the number each docket row files the LSR
+    under. `paths` is {term: docket file}."""
+    out = defaultdict(set)
+    for term, path in paths.items():
+        if not any(t == term for t, _y, _n in wanted) or not Path(path).exists():
+            continue
+        with open(path, encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                p = line.split("|")
+                if len(p) < 7:
+                    continue
+                key = (term, p[0].strip(), p[1].strip().lstrip("0"))
+                if key in wanted and p[3].strip():
+                    out[key].add(p[3].strip())
+    return out
+
+
+def add_past_bills(by_term, past, committees, refs, general, body, current="",
+                   known=(), in_use=None, dockets=None):
+    """{term: {bill: record}}: the measures the General Court's database holds
+    and the term's records lack, added to `by_term`.
+
+    A ROW OF PastLegislation BECOMES A RECORD where it has a title, a status
+    past Legislative Services (PAST_NOT_BEFORE_A_CHAMBER) and a bill number
+    the term has no record under. ONLY INTO A TERM THAT IS ALREADY HERE, NEVER
+    OVER A RECORD THAT IS, AND NEVER INTO THE CURRENT TERM, whose own files
+    are the better record and which this view does not cover.
+
+    The number is the row's own. One row has none: LSR 2007-0765, "requiring
+    interpreting services upon request for persons receiving medical
+    treatment", whose docket row files it under HB633. Where a row carries no
+    number, its LSR is on no record, and the term's docket files that LSR
+    under exactly one number no record carries, that is its number; 26 other
+    such rows are requests no docket row numbers, and stay out.
+
+    The committee is the one the docket's own introduction row names
+    (`refs`, referrals.read_dockets), as for every archived bill, and
+    otherwise the one the row's referral code names -- and none in a chamber
+    whose status is REFUSED INTRODUCTION: the Senate refused to introduce
+    SB 267 of 2007 and SB 499 of 2016, so nothing was referred, whatever
+    code the row still carries. The statuses are the General Court's own
+    words for the row's codes.
+
+    The record says where it comes from ("source"), and carries no hearing
+    and no text address: the search page gave the archive's, and nothing gave
+    these.
+    """
+    added, kept = defaultdict(dict), Counter()
+    if not past:
+        return {}
+    in_use = in_use or {}
+    lsr_on = {t: {(str(r.get("lsr_year") or "").strip(),
+                   str(r.get("lsr_num") or "").strip().lstrip("0"))
+                  for r in byb.values()} for t, byb in by_term.items()}
+    numbered = defaultdict(set)
+    for r in past:
+        bid = _bill_number(r.get("CondensedBillNo"))
+        if bid:
+            numbered[P.term_of(r.get("SessionYear"))].add(bid)
+
+    def wanted(r):
+        """Whether the row is a measure a chamber had, with a title."""
+        return bool(r.get("lsrtitle")) and \
+            (r.get("GeneralStatusCode") or "") > PAST_NOT_BEFORE_A_CHAMBER
+
+    # The unnumbered rows a docket may number.
+    loose = {}
+    for r in past:
+        term = P.term_of(r.get("SessionYear"))
+        if term in by_term and term != current and wanted(r) \
+                and not _bill_number(r.get("CondensedBillNo")):
+            key = (term, r["SessionYear"], (r.get("LSR") or "").lstrip("0"))
+            if key[1:] not in lsr_on.get(term, ()):
+                loose[key] = r
+    if dockets is None and loose:
+        try:
+            import referrals
+            dockets = referrals.term_dockets()
+        except Exception:                           # no docket is not a failure
+            dockets = {}
+    named = _docket_numbers(dockets or {}, loose) if loose else {}
+
+    for r in past:
+        term = P.term_of(r.get("SessionYear"))
+        if term not in by_term or term == current or not wanted(r):
+            continue
+        year, lsr = r["SessionYear"], (r.get("LSR") or "").lstrip("0")
+        bid = _bill_number(r.get("CondensedBillNo"))
+        from_docket = False
+        if not bid:
+            got = {_bill_number(x) for x in named.get((term, year, lsr), ())} - {""}
+            if len(got) != 1:
+                continue
+            bid = next(iter(got))
+            if bid in numbered[term]:
+                continue
+            from_docket = True
+        if bid in by_term[term]:
+            kept[term] += 1
+            continue
+        if bid in added[term]:
+            # Two rows of the database under one number and no record for
+            # either: the first by LSR is kept, and the other is said.
+            print(f"  {PAST_LEGISLATION}: {bid} of {term} is also LSR {year}-{lsr}; "
+                  f"the record keeps LSR {added[term][bid]['lsr']}")
+            continue
+        # The LSR written the way the term's other records write theirs:
+        # "354" before 2017, "0412" from it.
+        padded = any(len(str(x.get("lsr_num") or "")) == 4
+                     and str(x.get("lsr_num")).startswith("0")
+                     for x in by_term[term].values())
+        num = lsr.zfill(4) if padded else lsr
+        gen = general.get(r.get("GeneralStatusCode") or "", "")
+        hs = body.get(r.get("HouseStatusCode") or "", "")
+        ss = body.get(r.get("SenateStatusCode") or "", "")
+        ref = refs.get((term, bid), {})
+        m = re.match(r"([A-Z]+)(\d+)$", bid)
+        rec = {
+            "bill": bid, "lsr": f"{year}-{num}", "lsr_year": year, "lsr_num": num,
+            "title": r.get("lsrtitle", ""),
+            "chamber": (r.get("LegislativeBody") or bid[:1])[:1].upper(),
+            "subject_code": "", "subject": "",
+            "house_committee": "" if hs == REFUSED_INTRODUCTION else _pick_committee(
+                _code_committee(r.get("HouseCommitteeReferralCode"), year, committees),
+                ref.get("H", ""), known, in_use.get((term, "H"), ())),
+            "senate_committee": "" if ss == REFUSED_INTRODUCTION else _pick_committee(
+                _code_committee(r.get("SenateCommitteeReferralCode"), year, committees),
+                ref.get("S", ""), known, in_use.get((term, "S"), ())),
+            "hearing": "", "hearing_room": "",
+            "designation": f"{m.group(1)} {m.group(2)}" if m else bid,
+            "text_pdf": "",
+            "gen_status": gen, "house_status": hs, "senate_status": ss,
+            "archived": True,
+            "source": PAST_SOURCE,
+        }
+        if from_docket:
+            # The number is the docket's, and the record says so.
+            rec["number_source"] = DOCKET_SOURCE
+        by_term[term][bid] = rec
+        added[term][bid] = rec
+    n = sum(len(v) for v in added.values())
+    print(f"  {PAST_LEGISLATION}: {n} measure(s) the terms' own lists lack added from "
+          "the General Court's database"
+          + (f" ({', '.join(f'{b} {t}' for t, bb in sorted(added.items()) for b in sorted(bb))})"
+             if n else ""))
+    return dict(added)
+
+
+def add_journal_titled(by_term, began, table=None, current=""):
+    """{term: {bill: record}}: the measures TITLED_FROM_JOURNAL names, added
+    to `by_term` -- in a term already here, never over a record, and only
+    where the term's docket carries the bill (`began`, referrals.read_dockets'
+    second answer: the chamber each docket key began in). The record is the
+    docket's, with the title the House Journal prints and a statement of that
+    (title_source); it carries no committee, hearing, text or status field,
+    because nothing on disk gives it one, and its status is read from its
+    docket rows like any other bill's."""
+    added = defaultdict(dict)
+    for (term, bid), j in sorted((TITLED_FROM_JOURNAL if table is None else table).items()):
+        if term not in by_term or term == current or bid in by_term[term]:
+            continue
+        if (term, bid) not in began:
+            print(f"  {bid} of {term} has a title from the House Journal and no docket "
+                  "row on this machine, so it is not added")
+            continue
+        m = re.match(r"([A-Z]+)(\d+)$", bid)
+        rec = {
+            "bill": bid, "lsr": f"{j['lsr_year']}-{j['lsr_num']}",
+            "lsr_year": j["lsr_year"], "lsr_num": j["lsr_num"],
+            "title": j["title"], "chamber": j.get("chamber") or began[(term, bid)],
+            "subject_code": "", "subject": "",
+            "house_committee": "", "senate_committee": "",
+            "hearing": "", "hearing_room": "",
+            "designation": f"{m.group(1)} {m.group(2)}" if m else bid,
+            "text_pdf": "",
+            "gen_status": "", "house_status": "", "senate_status": "",
+            "archived": True,
+            "source": DOCKET_SOURCE,
+            "title_source": dict(j["title_source"]),
+        }
+        by_term[term][bid] = rec
+        added[term][bid] = rec
+    if added:
+        print("  the House Journal's title on a measure the docket holds and no table "
+              "titles: " + ", ".join(f"{b} {t}" for t, bb in added.items() for b in bb))
+    return dict(added)
+
+
+def past_flags(by_term, past, current=""):
+    """Put the fiscal-note, appropriation and local flags on an archived
+    bill's designation, from the General Court's database. Returns a Counter
+    of the suffixes written.
+
+    The current term's designation is "HB 1442-FN-A-LOCAL": LSRs.txt carries
+    three flags and the suffixes are built from them. The archive's records
+    came from the search page, which gives the bare number, so 1989-2024 read
+    "HB 1442" for a bill its own text heads "HB 1442-FN". PastLegislation
+    carries the same three columns by name -- AppropriationCode,
+    FiscalImpactCode, LocalCode -- and they are the flags LSRs.txt holds in
+    its fields 5, 6 and 7: on the 1,387 current bills both carry, the
+    database's Legislation view and the file agree on all three.
+
+    MEASURED AGAINST WHAT THE BILLS PRINT, which neither produced (1 October
+    2026). The current term's database flags against the designation the
+    House Journal prints in its lists of bills introduced: all three agree on
+    1,640 of 1,650 House measures -- the appropriation and local flags on
+    every one, the fiscal note on all but ten, nine of them a note the
+    database has and the introduction list does not. The archive's flags
+    against the designation each saved bill page heads its text with: all
+    three agree on 29,435 of 29,629 bills, between 97.1% and 99.9% of a term's.
+
+    ONLY WHERE THE DESIGNATION HAS NONE: an archived record with no flags and
+    no suffix of its own, joined by its stored LSR -- and refused where the
+    database files that LSR under another bill number, as past_sponsors
+    refuses it. A record no flag is set on is left exactly as it was.
+    """
+    done = Counter()
+    if not past:
+        return done
+    yes = lambda v: (v or "").strip().lower() in ("1", "true")
+    said = {}
+    for r in past:
+        try:
+            key = (int(r["SessionYear"]), int(r["LSR"]))
+        except (KeyError, ValueError):
+            continue
+        said[key] = (yes(r.get("AppropriationCode")), yes(r.get("FiscalImpactCode")),
+                     yes(r.get("LocalCode")), _bill_number(r.get("CondensedBillNo")))
+    for term, byb in by_term.items():
+        if term == current:
+            continue
+        for bid, rec in byb.items():
+            des = rec.get("designation") or ""
+            if not rec.get("archived") or rec.get("flags") or rec.get("suffix") \
+                    or "-" in des:
+                continue
+            try:
+                key = (int(rec.get("lsr_year")), int(rec.get("lsr_num")))
+            except (TypeError, ValueError):
+                continue
+            hit = said.get(key)
+            if not hit or (hit[3] and hit[3] != bid):
+                continue
+            a, fn, local = hit[:3]
+            suffix = "".join(x for x, on in (("-FN", fn), ("-A", a), ("-LOCAL", local))
+                             if on)
+            if not suffix:
+                continue
+            rec["flags"] = {"a": a, "fn": fn, "local": local}
+            rec["suffix"] = suffix
+            rec["designation"] = (des or re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid)) + suffix
+            done[suffix] += 1
+    return done
 
 
 def _official_committees(by_term):
@@ -1820,11 +2221,46 @@ def main():
     if stray:
         print(f"  {len(stray):,} bills have no filing year and are left out of "
               f"bills.json: {sorted(stray)[:5]}")
+    # The term the session's own files describe, known here because nothing
+    # below may add to it or change it but the House's own withdrawn bills.
+    _session_term = max(by_term) if by_term else ""
+    # The measures the General Court's database holds and the search page left
+    # out: AFTER every term is in by_term, so one can never stand in for a
+    # term, and BEFORE the journal's, so a record the General Court's own
+    # table gives is never the journal's instead. add_past_bills says what a
+    # row must be to become one.
+    past = past_legislation(d)
+    if past is None:
+        print("=" * 70)
+        print(f"NO {d / PAST_LEGISLATION}. The measures the General Court's search")
+        print("page left out of a past term are in its database and nowhere else")
+        print("this reads, and the fiscal-note, appropriation and local flags of")
+        print("every archived designation come from the same table: without it")
+        print("those bills are not on the site and the designations are bare.")
+        print("fetch_past_db.py dumps it, at a person's word.")
+        print("=" * 70)
+        past_added = {}
+    else:
+        _general, _body = status_words(d)
+        past_added = add_past_bills(by_term, past, committees, refs, _general, _body,
+                                    _session_term, known, in_use)
+    # And the one the docket holds with no title in any table, titled from
+    # the bound House Journal (TITLED_FROM_JOURNAL).
+    add_journal_titled(by_term, began, current=_session_term)
     # The House's withdrawn bills, from its journals: HERE, once every term is
     # in by_term and before the committee names are settled below, so that
     # one of these can never stand in for a term nor over a bill the General
     # Court's files carry. add_journal_bills says why each.
     journal_added = add_journal_bills(by_term, d / JOURNAL_BILLS)
+    # The flags on the archive's designations, last of the records' own
+    # fields, so the ones just added take theirs too.
+    if past:
+        _flagged = past_flags(by_term, past, _session_term)
+        if _flagged:
+            print(f"  designations: {sum(_flagged.values()):,} archived bills given the "
+                  "fiscal-note, appropriation and local flags the General Court's "
+                  "database carries ("
+                  + ", ".join(f"{k} {v:,}" for k, v in _flagged.most_common()) + ")")
     # One name per committee, the one it had at the time: see
     # _official_committees. Said out loud, because a table that stopped
     # matching would otherwise just quietly put the extra spellings back.
@@ -1885,13 +2321,14 @@ def main():
                 if _slice.get(_b):
                     continue
                 _rows = journal_sponsor_rows(
-                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat, legs)
+                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat, legs,
+                    current_term)
                 if _rows:
                     _slice[_b] = _rows
                     _jn += 1
                     _jt += len(_rows)
                     _jr += sum(1 for r in _rows if r.get("member_id"))
-        print(f"  sponsors.json: {_jn} withdrawn bill(s) took their sponsors from "
+        print(f"  sponsors.json: {_jn} bill(s) took their sponsors from "
               f"the House Journal, {_jr} of {_jt} names placed on a member")
     (out / "sponsors.json").write_text(
         json.dumps(sp_by_term, indent=2), encoding="utf-8")

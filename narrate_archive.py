@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.4
+# GRANITE_VERSION: 2026-09-11.5
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -21,6 +21,23 @@ WHICH FILES
 Where both exist for a term the fetched one wins: it is the whole term,
 while the database's stops part way through 2016. The current term's
 Docket.txt is narrated by build_all's own step and is not touched here.
+
+AND THE BILLS A TERM'S FILE HAS NO ROW FOR (1 October 2026)
+
+  db/past/PastDocket.psv   the General Court's past docket view, dumped by
+                           fetch_past_db.py
+
+A fetched docket holds the bills the General Court's search listed, so a bill
+that list left out has no row in it: SB 340 and SB 499 of 2016, HR 1 to HR 6
+of 2017, HB 451 of 2019, HB 459 of 2021. narrative.py takes those bills'
+rows from the view (its past_docket_rows says how, and that a bill with any
+row of its own takes none). The view is 94 MB and is the laptop's to send to
+the nightly's machine; where it is not here those bills have no history, and
+this says so rather than narrating nothing for them in silence.
+
+AND THE CHAPTER THE PAGE PRINTS. chapters.json is passed too, so that a law
+the docket numbers as another bill's is told with the number extract_chapters
+settled: this step runs after that one in a build.
 """
 
 import argparse
@@ -37,6 +54,12 @@ TERM = re.compile(r"^Docket(?:_db)?_(\d{4}-\d{4})\.txt$")
 LSR_SAID = re.compile(r"rows by LSR \(.*\): ([\d,]+) row\(s\) left out of ([\d,]+) "
                       r"histor(?:y|ies)[^;]*; ([\d,]+) given to the ([\d,]+) bill"
                       r"\(s\)[^,]*, from ([\d,]+) key")
+# And its account of the rows it took from the past docket view for the bills
+# a term's own file has none for (narrative.past_docket_rows).
+PAST_DOCKET = Path("db/past/PastDocket.psv")
+PAST_SAID = re.compile(r"rows from the past docket \(.*\): ([\d,]+) row\(s\) given to "
+                       r"the ([\d,]+) bill\(s\)[^(]*(?:\((.*)\))?")
+CHAPTERS = Path("chapters.json")
 
 
 def dockets():
@@ -71,10 +94,17 @@ def main():
         return 0
 
     bills, lsr = 0, None
+    # The past docket view and the settled chapters, where each is here.
+    extra = []
+    if PAST_DOCKET.exists():
+        extra += ["--past-docket", str(PAST_DOCKET)]
+    if CHAPTERS.exists():
+        extra += ["--chapters", str(CHAPTERS)]
+    past = [0, 0, []]
     for term, path in found.items():
         r = subprocess.run(
             [sys.executable, "narrative.py", "--docket", path, "--all",
-             "--out", a.out, "--members", a.members, "--bills", a.bills],
+             "--out", a.out, "--members", a.members, "--bills", a.bills] + extra,
             capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()[-1:]
@@ -95,6 +125,23 @@ def main():
             if said:
                 lsr = [x + int(y.replace(",", "")) for x, y in
                        zip(lsr or [0] * 5, said.groups())]
+            said = PAST_SAID.search(line)
+            if said and int(said.group(2).replace(",", "")):
+                print("    " + line.strip())
+                past[0] += int(said.group(1).replace(",", ""))
+                past[1] += int(said.group(2).replace(",", ""))
+                past[2] += [f"{b} {term}" for b in (said.group(3) or "").split(", ") if b]
+    # What the past docket view gave, or that it is not here to give it.
+    if PAST_DOCKET.exists():
+        print(f"rows from the past docket, every term: {past[0]:,} row(s) given to the "
+              f"{past[1]:,} bill(s) their term's own docket has no row for"
+              + (f" ({', '.join(past[2])})" if past[2] else ""))
+    else:
+        print(f"rows from the past docket: {PAST_DOCKET} IS NOT HERE, so the bills "
+              "whose docket only that view holds have no history (SB 340 and SB 499 "
+              "of 2016, HR 1 to HR 6 of 2017, HB 451 of 2019 and HB 459 of 2021 on "
+              "1 October 2026). fetch_past_db.py dumps it, and the kit carries it "
+              "once the laptop has sent it.")
     # The whole archive's count, last, where build_all's summary of this step
     # shows it: per term it is one line among thirty-six.
     if lsr is None:
