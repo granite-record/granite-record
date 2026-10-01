@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.2
+# GRANITE_VERSION: 2026-10-01.3
 """
 The day's records from the General Court's database, into .night/dbday/.
 
@@ -54,7 +54,9 @@ WHAT STOPS IT
                               and nothing more is asked. Exit 3
     a query that fails, or a  of one of the six: nothing more is asked, and
     view that arrives short   the views are not usable. Exit 1. Of a lookup:
-                              said, and the rest go on
+                              said, and the rest go on. Short is fewer rows
+                              than the server counted a moment before; more
+                              is a row entered meanwhile, and is said
 
 The web server's refusal record does not govern this host, and this never
 calls refusal.check(): a refusal there is a different problem with a different
@@ -180,7 +182,9 @@ def fetch(todo, held, pause):
             lines, bad = scan(part, len(cols)) if part.exists() else (0, 0)
             if count is None:
                 err = "the server gave no count"
-            elif rows != count:
+            elif not DF.arrived_whole(count, rows):
+                # Fewer than it counted. More is a row entered while the view
+                # was read, and is the view (dayfiles_from_db.arrived_whole).
                 err = f"{rows or 0:,} rows were written and the server counted {count:,}"
             elif lines != rows:
                 err = f"the file holds {lines:,} lines for {rows:,} rows"
@@ -206,7 +210,9 @@ def fetch(todo, held, pause):
                 break
             continue
         part.replace(OUT / f"{view}.psv")
-        print(f"  ok    {view:20} {rows:>8,} rows, {entry['seconds']:.0f}s", flush=True)
+        print(f"  ok    {view:20} {rows:>8,} rows, {entry['seconds']:.0f}s"
+              + (f"; the server had counted {count:,}: {rows - count:,} entered while it "
+                 "was read" if rows > count else ""), flush=True)
         src["views"][view] = entry
         write_source(src)
     src["finished"] = datetime.now().isoformat(timespec="seconds")

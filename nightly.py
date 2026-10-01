@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -213,11 +213,20 @@ approved the night asking it, gently, as the fallback. On GitHub's night only:
                       and gains "day_files", which names the database; a
                       warning leads the run's page; DB_NIGHTS_MOST such nights
                       in a row is an error there, and the build still goes out
-  a copy              nh-archive/from-db/<day>/, with a source.json. The
-                      archive's index stays the history of the website's files
+  a copy              nh-archive/from-db/<day>/, with a source.json that names
+                      the files it replaced by their sha256, which is what the
+                      what-changed report compares it with. The archive's
+                      index stays the history of the website's files
 
 If any of it fails nothing is installed, and the night ends as it did before
 there was a fallback, with one sentence added saying what the database did.
+
+THAT HOST'S HOLD, ON A NIGHT THE EXPORT IS WHOLE. A connection to the SQL host
+that fails is held (probe_db.py), and while the hold stands the night does not
+ask it for the study committees' meetings either. That is a warning on the
+night's page, the installed meetings stay, and the day's files are built and
+published: another server's bad week does not hold the day's bills back. The
+night a connection is tried and fails is not clean, as it never was.
 """
 
 import argparse
@@ -376,6 +385,13 @@ DB_NIGHTS_MOST = 7
 # where "archive/" would be somewhere else.
 SQL_HELD = Path("archive/sql-held.json")
 SQL_HELD_ENV = "GRANITE_SQL_HELD"
+# What take_views says of a view it did not ask for because that hold stands.
+# The night chose not to ask and the installed view stays: a warning on its
+# page, and never a reason it was not clean. As first written it was one, and
+# a night that is not clean exits 1, which publishes nothing: two failed
+# connections in a row would have kept the next night's export, whole and
+# built, off the site, and four in a row the next six nights'.
+STUDY_HELD = "not taken: a hold on the General Court's database is on file"
 # Why a fallback that was tried installed nothing. One of these, chosen by the
 # night's own code, is all the run's page says of it: the page is public, and
 # takes none of a server's own words. The detail is in the log and the verdict.
@@ -1136,6 +1152,12 @@ def plain_why(v, weekly=False):
                "kept the build from production.")
     elif v.get("blocking"):
         why = "The site was built, but the night's checks kept it from production."
+    elif study_missed(v):
+        # Asked for, and not taken. This night's page used to say it had
+        # "stopped before it recorded what it did", of a night that had
+        # installed the day's files and built the site.
+        why = ("The day's files were installed and the site was built, but the study "
+               "committees' meetings could not be taken from the General Court's database.")
     else:
         why = "The night stopped before it recorded what it did."
     return why + " Nothing was published."
@@ -1144,6 +1166,42 @@ def plain_why(v, weekly=False):
 def from_db(v):
     """Whether this verdict's day files were installed from the database."""
     return isinstance(v.get("day_files"), dict) and v["day_files"].get("source") == DB_SOURCE
+
+
+def study_held(v):
+    """Whether the night left the study committees' views unasked because a
+    hold on the SQL host stood (take_views)."""
+    got = v.get("study_meetings")
+    return isinstance(got, dict) and any(r == STUDY_HELD for r in got.values())
+
+
+def study_missed(v):
+    """Whether a study committees' view was asked for and not taken."""
+    got = v.get("study_meetings")
+    return isinstance(got, dict) and any(
+        r != STUDY_HELD and not str(r).startswith("installed") for r in got.values())
+
+
+def sql_hold_said():
+    """The hold on the SQL host, in probe_db's own sentence: when, how many
+    times in a row, until when. Its words are this project's and none of the
+    server's, so it is fit for the run's page."""
+    import probe_db
+    d = probe_db.hold_standing() or probe_db.hold_record()
+    if isinstance(d, dict) and d.get("held"):
+        return probe_db.hold_sentence(d)
+    return "a hold on the General Court's database was on file"
+
+
+def db_nights_of(v):
+    """How many nights in a row the day's files had come from the database, by
+    an earlier night's verdict; 0 when it says nothing of it."""
+    if not isinstance(v, dict) or v.get("kind") != "nightly":
+        return 0
+    try:
+        return max(0, int(v.get("db_nights") or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 def db_tried(v):
@@ -1349,15 +1407,24 @@ def tonights_members(archive, since):
     return data if hashlib.sha256(data).hexdigest() == digest else None
 
 
-def keep_db_copy(archive, day, files, block, src):
+def keep_db_copy(archive, day, files, block, src, was=None):
     """nh-archive/from-db/<day>/: what a database night installed, and a
     source.json saying when each view was asked, its rows, and each file's
-    sha256. Beside the archive of the website's files, never in its index."""
+    sha256. Beside the archive of the website's files, never in its index.
+
+    `was` is the installed files the night's replaced, {name: bytes}: their
+    sha256 goes in as "replaced", and gc_changes.py finds the copy to compare
+    with by it. By date it took the archive's newest export, and on a night
+    some of the export arrived whole that is tonight's own, which was never
+    installed: the report compared the database's files with it and said
+    nothing of what had changed since the installed day."""
     root = Path(archive) / FROM_DB / day
     root.mkdir(parents=True, exist_ok=True)
     rec = {"day": day, "asked": src.get("asked"), "views": src.get("views"),
            "compared_with": block.get("compared_with"), "years": block.get("years"),
-           "members": block.get("members"), "files": {}}
+           "members": block.get("members"), "files": {},
+           "replaced": {name: hashlib.sha256(data).hexdigest()
+                        for name, data in sorted((was or {}).items())}}
     for name, data in sorted(files.items()):
         tmp = root / f"{name}.gz.part"
         with gzip.open(tmp, "wb") as fh:
@@ -1473,7 +1540,7 @@ def from_database(a, night, tries, since):
                  nights=night.v["db_nights"] + 1)
     say("\n  INSTALLED FROM THE DATABASE: " + done)
     try:
-        keep_db_copy(a.archive, night.day, fetched, block, src)
+        keep_db_copy(a.archive, night.day, fetched, block, src, was)
     except Exception as e:                                      # noqa: BLE001
         notes.append(f"the copy under {a.archive}/{FROM_DB}/{night.day}/ could not be "
                      f"written ({type(e).__name__})")
@@ -1562,7 +1629,7 @@ def take_views(views, label, shrink=SWAP_SHRINK):
     if held:
         # No more queries of that host, from anything, while its hold stands.
         say(f"  not asked: {probe_db.hold_sentence(held)}", echo=False)
-        out = {v: "not taken: a hold on the General Court's database is on file" for v in views}
+        out = {v: STUDY_HELD for v in views}
         for v, what in out.items():
             say(f"  {v}: {what}")
         return out
@@ -1756,8 +1823,7 @@ class Night:
         # database, carried from the night before: a night that installs the
         # export sets it to 0, one that falls back adds one, and a night that
         # takes neither leaves it.
-        self.v["db_nights"] = (int(prev.get("db_nights") or 0)
-                               if isinstance(prev, dict) and prev.get("kind") == "nightly" else 0)
+        self.v["db_nights"] = db_nights_of(prev)
         if a.new_term:
             # What the New term run let through, filled in as it goes. Kept in
             # this night's verdict; what it accepted reaches a later night
@@ -1897,8 +1963,10 @@ class Night:
                 why.append(f"the day's files: {v.get('fetch', 'not taken')}"
                            + ("." + db_tried(v).rstrip(".") if db_tried(v) else ""))
             else:
+                # A view left unasked for the SQL host's hold is a warning
+                # (warnings(), STUDY_HELD); one asked for and not taken is not.
                 bad = [f"{k}: {r}" for k, r in (v.get("study_meetings") or {}).items()
-                       if not r.startswith("installed")]
+                       if not r.startswith("installed") and r != STUDY_HELD]
                 if not v.get("study_meetings"):
                     bad = ["the study committees' meetings were not taken"]
                 why += bad
@@ -1924,6 +1992,9 @@ class Night:
                        f"its export came back empty on {int(self.v.get('fetch_tries') or 1)} "
                        "tries" + (f" (night {n} in a row)" if n > 1 else ""))
             out += [str(w) for w in df.get("warnings") or []]
+        if study_held(self.v):
+            # Short: the run's page cuts a note off at 300 characters.
+            out.append("the study committees' meetings were not asked for: " + sql_hold_said())
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
             out.append(f"next session's bill requests: {lsrs}")
@@ -2102,11 +2173,18 @@ def close_verdict(a):
         k, _, r = o.partition("=")
         steps[k.strip()] = r.strip()
     if not isinstance(v, dict) or v.get("run_id") != rid:
+        older = v
         v = {"kind": "weekly" if a.weekly else "nightly", "run_id": rid,
              "sha": github("GITHUB_SHA"), "day": f"{datetime.now():%Y-%m-%d}",
              "clean": False, "built": False, "publishable": False,
              "not_clean": [f"the {'weekly job' if a.weekly else 'night'} stopped before "
                            "nightly.py recorded what it did"]}
+        if not a.weekly:
+            # A night that took neither source leaves the count of database
+            # nights in a row as it was. Left out here, one night that never
+            # started set it back to 0 in the middle of an outage, and the
+            # error for DB_NIGHTS_MOST of them came that many nights late.
+            v["db_nights"] = db_nights_of(older)
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
     if failed:

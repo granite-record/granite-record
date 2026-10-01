@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.293
+# GRANITE_VERSION: 2026-09-04.294
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26930,7 +26930,10 @@ def _dayfiles_rebuild(DF):
       - rows of another session year, and a member who has left, stay out
       - the order is the installed file's for every row both hold, whatever
         order the views came in, and a new row goes after them; a row gone
-        from the view is gone
+        from the view is gone; a docket row the clerk reworded keeps its
+        place, as it does in the export
+      - a view that wrote more rows than the server had counted is whole, and
+        said: a row entered while it was read
       - a newer session year in the views is left out and said, not built
       - all seven or none: a view missing, cut short, a line of the wrong
         width, an error or a short count in source.json, or no installed file
@@ -27007,6 +27010,46 @@ def _dayfiles_rebuild(DF):
         assert files3["Docket.txt"].decode("utf-8-sig").split("\r\n")[:-1] == [
             ln for ln in want["Docket.txt"] if "Public Hearing" not in ln], \
             "a row gone from the view was kept, or the rest changed order"
+
+        # A row the clerk rewords keeps its place, as it does in the export:
+        # between 6 and 15 September HB 1218's amendment number was corrected
+        # and the row stayed 18,982nd of 25,313. On the six columns it is a
+        # row gone and a row new, and it used to be sent to the end. A row
+        # entered at the same second as one that is still there takes
+        # nobody's place.
+        reworded = [r.replace("LOB 210-211", "LOB 201-203") for r in _DBDAY_VIEWS["Docket"]]
+        assert sum(a != b for a, b in zip(reworded, _DBDAY_VIEWS["Docket"])) == 1
+        _dbday_views(DF, views, {"Docket": reworded + [
+            "2026|10||02/19/2025 10:47:54|HB54|H|  Executive Session: continued|NHLMS|15|"
+            "01/01/2200 00:00:00|10050001"]})
+        files4, facts4 = DF.rebuild(views, root)
+        docket = files4["Docket.txt"].decode("utf-8-sig").split("\r\n")[:-1]
+        assert docket[:-1] == [ln.replace("LOB 210-211", "LOB 201-203")
+                               for ln in want["Docket.txt"]], (
+            "a reworded docket row did not keep the installed row's place: "
+            f"{[ln.split('|')[5][:40] for ln in docket]}")
+        assert docket[-1].split("|")[5] == "  Executive Session: continued" and \
+            facts4["order"]["Docket.txt"] == {"placed": 8, "new": 1}, (docket[-1], facts4["order"])
+        assert DF.judge(files4, DF.installed_files(root), facts4)["differences"]["Docket.txt"] == {
+            "rows": 9, "installed": 8, "new": 2, "gone": 1}, \
+            "a reworded row is no longer counted as a row gone and a row new"
+        assert set(DF.ORDER_LOOSE) == {"Docket.txt"}, \
+            "another file's rows are placed by a looser key, and the archive shows no edit in one"
+
+        # More rows than the server counted a moment before is a row entered
+        # while the view was being read: it is the view, and the night says
+        # so. Fewer is a view cut short (below).
+        _dbday_views(DF, views, entries={"Docket": {"count": 8, "rows": 9}})
+        files5, facts5 = DF.rebuild(views, root)
+        result5 = DF.judge(files5, DF.installed_files(root), facts5)
+        assert files5 == files and facts5["entered"] == {"Docket": 1} and not facts["entered"], \
+            (facts5.get("entered"), facts.get("entered"))
+        assert not result5["stops"] and len(result5["warnings"]) == 1 and \
+            "1 row more than the server had counted" in result5["warnings"][0] and \
+            "Docket view" in result5["warnings"][0], result5
+        assert DF.arrived_whole(9, 9) and DF.arrived_whole(0, 0) and DF.arrived_whole(8, 9) and \
+            not DF.arrived_whole(9, 8) and not DF.arrived_whole(None, 9) and \
+            not DF.arrived_whole(9, None) and not DF.arrived_whole(True, True)
 
         # A lookup the database disagrees with is a note, and one the export
         # holds more of is not.
@@ -27123,13 +27166,18 @@ def _dayfiles_guards(DF):
       a bill is gone from the docket     though far under 1% of the rows
       a bill record is gone              one (year, LSR)
       a roll call is gone, or its counts differ, or it has fewer ballots
-      the roster moved more than 2%      either way
-      a sponsor file kept under 98%      each of the two
+      the roster moved more than 2%      either way, or that share of its
+                                         members replaced with the count the
+                                         same
+      a sponsor file kept under 98%      LsrSponsors.txt of its rows;
+                                         LsrsOnly.txt of the rows of members
+                                         still sitting
       a line of the wrong width, or a file with no rows
 
     And a day that only grew -- new docket rows, a new roll call, more
     ballots, a new member -- trips none; a newer session year in the views is
-    a warning and no stop.
+    a warning and no stop; and so is a member who has left the roster and
+    taken their rows of LsrsOnly.txt with them, however many they were.
     """
     base = _dbday_bulk()
     installed = {n: _dbday_bytes(v) for n, v in base.items()}
@@ -27173,9 +27221,41 @@ def _dayfiles_guards(DF):
     extra = [ln.replace("|Last", "|New", 1).replace(ln.split("|")[0], str(900 + i), 1)
              for i, ln in enumerate(p[:3])]
     only(stops("legislators.txt", p + extra), "the roster is 103", "the roster gained 3 of 100")
-    for name in ("LsrSponsors.txt", "LsrsOnly.txt"):
+    # By who is on it as well as by how many: the same count of other people
+    # is not the same roster.
+    assert not stops("legislators.txt", p[:-2] + extra[:2]), \
+        "two members of 100 replaced, the count the same, stopped the night"
+    only(stops("legislators.txt", p[:-3] + extra), "3 of the 100 members installed are not on",
+         "three members of 100 were replaced, the count the same")
+    for name, said in (("LsrSponsors.txt", "LsrSponsors.txt keeps 146 of its 150"),
+                       ("LsrsOnly.txt", "LsrsOnly.txt keeps 146 of the 150 installed rows of "
+                                        "members still sitting")):
         assert not stops(name, base[name][3:]), f"{name} keeping exactly 98% stopped the night"
-        only(stops(name, base[name][4:]), f"{name} keeps 146 of its 150", f"{name} lost 4 of 150")
+        only(stops(name, base[name][4:]), said, f"{name} lost 4 of 150")
+    # LsrsOnly.txt lists sitting members only, so a member who leaves takes
+    # their rows out of it, in the export as in the views. Three members each
+    # hold more than 2% of the real file, and held to 98% of ALL its rows one
+    # of them resigning stopped the fallback for as long as the export stayed
+    # down. It is held to the rows of the members still sitting, and the
+    # night says who went.
+    busy = base["LsrsOnly.txt"] + [f"26-{b:04d}|500|{9000 + b}|2026|Sponsor|HB{1000 + b}|H|title {b}"
+                                   for b in range(41, 47)]
+    had = dict(installed, **{"LsrsOnly.txt": _dbday_bytes(busy)})
+    without = [ln for ln in busy if ln.split("|")[1] != "500"]
+    assert len(busy) - len(without) == 8 > (1 - DF.SPONSORS_KEPT_LEAST) * len(busy)
+
+    def after(only_lines):
+        return DF.judge(dict(had, **{"legislators.txt": _dbday_bytes(p[1:]),
+                                     "LsrsOnly.txt": _dbday_bytes(only_lines)}), had)
+    gone = after(without)
+    assert not gone["stops"], ("a member with 8 of LsrsOnly.txt's 156 rows left the roster, "
+                               f"and the fallback stopped: {gone['stops']}")
+    assert gone["warnings"] == ["1 member installed is not on the database's roster, and 8 rows "
+                                "of LsrsOnly.txt went with them"], gone["warnings"]
+    assert not after(without[2:])["stops"], \
+        "2 of the 148 rows of members still sitting gone, under 2%, stopped the night"
+    only(after(without[4:])["stops"], "LsrsOnly.txt keeps 144 of the 148 installed rows of members "
+         "still sitting", "a member left, and 4 rows of members still sitting went as well")
     got = stops("Docket.txt", d[:-1] + ["2026|0040|9/30/2026 9:00:00 AM|HB1040|H|a column short"])
     assert any("do not have 7 columns" in x for x in got), got
     got = stops("RollCallHistory.txt", [])
@@ -27198,9 +27278,10 @@ def _dayfiles_guards(DF):
     assert (DF.DOCKET_GONE_MOST, DF.ROSTER_TOLERANCE, DF.SPONSORS_KEPT_LEAST) == (0.01, 0.02, 0.98), \
         "a guard's threshold moved; the design's are 1%, 2% and 98%"
     return "ok", ("a view behind the export, docket rows or a bill gone, a bill record gone, a "
-                  "roll call gone or changed or short of ballots, a roster 3% off, a sponsor "
-                  "file under 98%, a wrong width and an empty file each stop the night alone; "
-                  "a day that only grew stops nothing")
+                  "roll call gone or changed or short of ballots, a roster 3% off or 3% "
+                  "replaced, a sponsor file under 98%, a wrong width and an empty file each stop "
+                  "the night alone; a day that only grew stops nothing, and nor does a busy "
+                  "sponsor leaving the roster")
 
 
 class _DbdayProc:
@@ -27240,9 +27321,12 @@ def _sql_hold(PD, NI, CL):
         day, two, four and a week less four hours, so the night after finds
         it over; a connection that opens ends it and the count starts again
       - a query that fails on an open connection is no hold
-      - a login the server refuses stands until the credentials in
-        probe_db.py change, or a person lifts it (--clear-hold, which asks
-        nobody)
+      - a login the server refuses is recorded as that, expires and lengthens
+        like any other, and is over at once when the credentials in
+        probe_db.py change; a database the server could not open for the
+        login (its error 4060, worded with the same last line) is a
+        connection failure and no refused login. A person lifts either here
+        with --clear-hold, which asks nobody
       - it travels in the kit's state list, and nightly.py names the same file
         and passes its full path to every step it starts, because take_views
         runs its fetch in a scratch folder; with a hold standing take_views
@@ -27367,15 +27451,47 @@ def _sql_hold(PD, NI, CL):
         assert rows is None and err.startswith("CONNECT_FAIL") and record()["held"], err
         PD.HELD.unlink()
 
-        # A refused login stands until the credentials change, however long.
-        counted(["CONNECT_FAIL Login failed for user 'publicuser'. (fixture)"], 3)
+        # A LOGIN the server rejects is recorded as that, and expires and
+        # lengthens like any other; it is over at once when the credentials
+        # change. As first written it stood for ever, and nothing on GitHub's
+        # machine could lift it.
+        REFUSED = ["CONNECT_FAIL Login failed for user 'publicuser'. (fixture)"]
+        counted(REFUSED, 3)
         d = record()
-        assert d["kind"] == "login" and "until" not in d and \
-            PD.hold_standing(_time.time() + 400 * 86400), d
+        assert d["kind"] == "login" and (d["nights"], d["hours"]) == (1, 20) and \
+            abs(d["until"] - _time.time() - 20 * 3600) < 60, d
+        assert PD.hold_standing() and PD.hold_standing(_time.time() + 21 * 3600) is None, \
+            "a refused login is held with no end, and nothing on GitHub's machine can lift it"
+        said = PD.hold_sentence(d)
+        assert "refused the published login" in said and d["until_at"] in said and \
+            "credentials in probe_db.py are changed" in said and "--clear-hold" not in said, said
         PD.PASSWORD = saved[3] + "-changed"
         assert PD.hold_standing() is None, "a login hold outlived the credentials it was about"
         PD.PASSWORD = saved[3]
         assert PD.hold_standing()
+        lapse()
+        counted(REFUSED, 3)
+        assert (record()["kind"], record()["nights"], record()["hours"]) == ("login", 2, 44), record()
+        # A record with no time it ends holds nothing, whatever its kind.
+        PD.HELD.write_text(json.dumps({"held": True, "kind": "login", "login": PD._login(),
+                                       "nights": 1, "at": "t"}), encoding="utf-8")
+        assert PD.hold_standing() is None, "a hold with no end stands"
+        PD.HELD.unlink()
+
+        # A database that is offline or being restored (the server's error
+        # 4060) ends its message with the same "Login failed for user" line.
+        # It is not the login being refused: a connection failure like any
+        # other, and its sentence does not send a person to read the PDF.
+        OFFLINE = ('CONNECT_FAIL Exception calling "Open" with "0" argument(s): "Cannot open '
+                   'database "NHLegislatureDB" requested by the login. The login failed. Login '
+                   "failed for user 'publicuser'.\" (fixture)")
+        counted([OFFLINE], 3)
+        d = record()
+        assert d["kind"] == "connection" and "login" not in d and d["hours"] == 20 and \
+            "refused the published login" not in PD.hold_sentence(d), (
+                "a database that could not be opened was recorded as a refused login", d)
+        assert PD.login_refused(REFUSED[0]) and not PD.login_refused(OFFLINE) and \
+            not PD.login_refused(FAIL[0]) and not PD.login_refused("The login failed.")
 
         # A person lifts it here, and that asks nobody.
         PD.subprocess.run = PD.child.popen = never
@@ -27434,8 +27550,8 @@ def _sql_hold(PD, NI, CL):
         NI.run = never
         with contextlib.redirect_stdout(io.StringIO()):
             got = NI.take_views(("StatStudMeetings",), "the study committees' meetings")
-        assert got == {"StatStudMeetings": "not taken: a hold on the General Court's database "
-                                           "is on file"}, got
+        assert got == {"StatStudMeetings": NI.STUDY_HELD} and NI.STUDY_HELD == (
+            "not taken: a hold on the General Court's database is on file"), got
     finally:
         os.chdir(here)
         (PD.HELD, PD.subprocess.run, PD.child.popen, PD.PASSWORD, refusal.MARK, refusal.LOCK,
@@ -27448,8 +27564,9 @@ def _sql_hold(PD, NI, CL):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a failed connection is held on GitHub's machine for 20, 44, 92 then 164 hours; "
                   "every bridge stops at it before PowerShell and leaves its file alone; an "
-                  "opened connection ends it, a failed query is none, a refused login lasts "
-                  "until the credentials change; the kit carries it and the night names it")
+                  "opened connection ends it, a failed query is none; a refused login expires "
+                  "as any other does and ends when the credentials change, and a database that "
+                  "would not open is not one; the kit carries it and the night names it")
 
 
 def _dbday_call_views(calls):
@@ -27463,9 +27580,10 @@ def _dbday_calls_named(calls, name):
 def _dbday_bridge(P, DF, calls, how):
     """child.popen for probe_db, answering fetch_day_db.py's statements out of
     the fixture's views as PS_STREAM_COUNTED would. how["short"][view] rows
-    fewer arrive than the server counted; a view in how["refuse"] cannot
-    connect; one in how["fail"] connects and its query fails; one in
-    how["empty"] answers with no rows at all."""
+    fewer arrive than the server counted, and how["more"][view] rows more (the
+    count is asked first, and those were entered since); a view in
+    how["refuse"] cannot connect; one in how["fail"] connects and its query
+    fails; one in how["empty"] answers with no rows at all."""
     def popen(cmd, **kw):
         script, env = cmd[-1], dict(kw.get("env") or {})
         view = re.search(r"FROM \[(\w+)\]", env.get("GR_COUNT") or "").group(1)
@@ -27480,7 +27598,8 @@ def _dbday_bridge(P, DF, calls, how):
         sent = rows[:max(0, len(rows) - how.get("short", {}).get(view, 0))]
         with open(env["GR_OUT"], "w", encoding="utf-8", newline="") as fh:
             fh.write("".join(r + "\r\n" for r in sent))
-        return _DbdayProc([f"COUNT {len(rows)}", f"DONE {len(sent)}"], 0)
+        counted = len(rows) - how.get("more", {}).get(view, 0)
+        return _DbdayProc([f"COUNT {counted}", f"DONE {len(sent)}"], 0)
     return popen
 
 
@@ -27502,7 +27621,9 @@ def _fetch_day_db(FD, DF, P, NI):
         and by hand the rebuilt files to read; the installed files and db/
         are left exactly as they were
       - a view that arrives short, or whose query fails, ends the run with
-        nothing more asked, unless it is a lookup, which is said and passed
+        nothing more asked, unless it is a lookup, which is said and passed;
+        a view with more rows than the server counted a moment before is
+        whole, and said
       - a connection that fails ends it at once, is recorded on GitHub's
         machine as the host's hold, and the next run asks nothing
       - another fetch holding archive/.lock stops it before it asks; the web
@@ -27617,6 +27738,21 @@ def _fetch_day_db(FD, DF, P, NI):
             raise AssertionError("the day's files were rebuilt from a run that ended short")
         except DF.Problem:
             pass
+        # MORE rows than the server counted a moment before is not short: the
+        # count is asked first, of tables the clerks write to, and a row
+        # entered while the view was read is in the view. The run goes on,
+        # says so, and the day's files are rebuilt. Held to equal, one docket
+        # entry made in those seconds lost the night its fallback.
+        del calls[:]
+        how.clear()
+        how["more"] = {"Docket": 1}
+        code, said = go("--fetch-only")
+        got = json.loads(Path(".night/dbday/source.json").read_text(encoding="utf-8"))["views"]
+        n = len(_DBDAY_VIEWS["Docket"])
+        assert code == 0 and len(calls) == 11 and not got["Docket"].get("error") and \
+            (got["Docket"]["count"], got["Docket"]["rows"]) == (n - 1, n), (code, got.get("Docket"))
+        assert f"the server had counted {n - 1}: 1 entered while it was read" in said, said[-600:]
+        assert DF.rebuild(DF.VIEWS_DIR, ".")[1]["entered"] == {"Docket": 1}
         # ... and so does a query that fails; but a lookup's is said and passed.
         del calls[:]
         how.clear()
@@ -27727,7 +27863,14 @@ def _nightly_falls_back(NI, DF, PD, SG):
         and its page says in one sentence of nightly.py's own what the
         database did
       - seven database nights in a row is an error on the page and the build
-        still goes out; a night the export installs starts the count again
+        still goes out; a night the export installs starts the count again,
+        and a night that never started does not
+      - a hold on the SQL host on a night the export arrives whole: the study
+        committees' views are not asked for, which is a warning with the
+        hold's own sentence, and the night is clean, built and publishable;
+        the night a connection to it is tried and fails is not clean, and its
+        page says that and not that it "stopped before it recorded what it
+        did"
     """
     import contextlib
     import gzip
@@ -27747,7 +27890,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
     calls = []
     # What the fakes do tonight.
     knob = {"export": "empty", "left": 0, "refuse_on": 0, "db_rc": 0, "views": None,
-            "entries": None, "members": None}
+            "entries": None, "members": None, "study": None}
     today = f"{datetime.now():%Y-%m-%d}"
     MEMBERS = _dbday_bytes(_DBDAY_EXPORT["Members.txt"] + ["Birch, Ben|ben.birch@example.gov||Member"])
 
@@ -27796,6 +27939,13 @@ def _nightly_falls_back(NI, DF, PD, SG):
             return knob["db_rc"]
         if name == "build_all.py":
             _runner_site(100)
+        elif name == "fetch_archive_db.py" and knob["study"] == "fail":
+            # The study views' fetch, on a night its connection fails: it
+            # exits 0 and says so in its manifest, view by view.
+            (Path(cwd) / "db").mkdir(parents=True, exist_ok=True)
+            (Path(cwd) / "db" / "_manifest.json").write_text(json.dumps(
+                {args[i + 1]: {"error": "CONNECT_FAIL no route (fixture)"}
+                 for i, x in enumerate(args) if x == "--only"}), encoding="utf-8")
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -27832,7 +27982,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
 
     def reset(keep=False, **kw):
         knob.update(export="empty", left=0, refuse_on=0, db_rc=0, views=None, entries=None,
-                    members=None)
+                    members=None, study=None)
         knob.update(kw)
         if not keep:
             _dbday_install(".")
@@ -27929,6 +28079,10 @@ def _nightly_falls_back(NI, DF, PD, SG):
             gzip.open(kept / "Docket.txt.gz").read() == Path("Docket.txt").read_bytes() and \
             src["files"]["Docket.txt"]["sha256"] == hashlib.sha256(
                 Path("Docket.txt").read_bytes()).hexdigest() and src["views"]["Docket"]["rows"] == 9, src
+        # ... and it names the files it replaced, which is how the
+        # what-changed report finds the copy to compare it with.
+        assert src["replaced"] == {n: hashlib.sha256(_dbday_bytes(_DBDAY_EXPORT[n])).hexdigest()
+                                   for n in DF.DAY_FILES}, src.get("replaced")
         assert json.loads(Path("nh-archive/index.json").read_text(encoding="utf-8"))[
             "Docket.txt"]["history"][-1][0] == "2026-09-30", \
             "a database night was written into the archive's history of the website's files"
@@ -27977,11 +28131,94 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert code == 0 and len(notes) == 1 and notes[0].startswith(
             "::error title=The night was built%2C with an error to act on::the day's files have "
             "come from the General Court's database 7 nights in a row"), (code, notes)
+        # A night that stops before nightly.py records anything -- the kit
+        # did not come down -- has its verdict written by --close, and that
+        # one keeps the count. It started it again, so one such night in the
+        # middle of an outage put the error off by as long as the outage had
+        # already lasted.
+        code, _ = night("--runner", "--close", "--outcome", "kit-down=failure", run_id="305b")
+        v = verdict()
+        assert code == 1 and v["run_id"] == "305b" and not v["clean"] and v.get("db_nights") == 7, (
+            "the verdict of a night that never started lost the count of database nights", v)
+        reset()
+        code, _ = night("--runner", run_id="305c")
+        v = verdict()
+        assert code == 0 and v["db_nights"] == 8 and v["alarms"] and \
+            "8 nights in a row" in v["alarms"][0], (code, v["db_nights"], v.get("alarms"))
+        assert NI.db_nights_of({"kind": "nightly", "db_nights": 3}) == 3 and \
+            NI.db_nights_of({"kind": "weekly", "db_nights": 3}) == 0 and \
+            NI.db_nights_of({"kind": "nightly", "db_nights": "x"}) == 0 and NI.db_nights_of(None) == 0
         # ... and the night the export installs starts the count again.
         reset(export="whole")
         code, _ = night("--runner", run_id="306")
         v = verdict()
         assert code == 0 and v["db_nights"] == 0 and v["clean"] and not v["alarms"], v
+
+        # A HOLD ON THE SQL HOST, ON A NIGHT THE EXPORT ARRIVES WHOLE. The
+        # study committees' views are not asked for, which is a warning, and
+        # the day's files are built and go out. It was a reason the night was
+        # not clean, which is exit 1, and the workflow sends a site to the
+        # publish job only after a step that succeeded: two failed
+        # connections in a row kept the next night's build off the site, and
+        # four the next six nights'. Its page said the night had "stopped
+        # before it recorded what it did".
+        for kind, word in (("connection", ", and nothing queries it until 2026-10-03T00:50:00"),
+                           ("login", ": it refused the published login, and nothing queries it "
+                                     "until 2026-10-03T00:50:00, or until the credentials in "
+                                     "probe_db.py are changed")):
+            reset(export="whole")
+            held = {"held": True, "kind": kind, "nights": 2, "at": "2026-10-01T04:50:00",
+                    "until_at": "2026-10-03T00:50:00", "until": __import__("time").time() + 30 * 3600}
+            if kind == "login":
+                held["login"] = PD._login()
+            PD.HELD.write_text(json.dumps(held), encoding="utf-8")
+            summary.unlink(missing_ok=True)
+            os.environ.update(GITHUB_ACTIONS="true", GITHUB_STEP_SUMMARY=str(summary))
+            try:
+                code, _ = night("--runner", run_id="307")
+                asked = _dbday_calls_named(calls, "fetch_archive_db.py")
+                page = summary.read_text(encoding="utf-8")
+                code2, out = night("--runner", "--close", "--outcome", "night=success", run_id="307")
+            finally:
+                os.environ.pop("GITHUB_ACTIONS", None)
+                os.environ.pop("GITHUB_STEP_SUMMARY", None)
+            v = verdict()
+            assert code == 0 and code2 == 0 and v["clean"] and v["built"] and v["publishable"] and \
+                not v["not_clean"], ("a hold on the SQL host kept a night whose export arrived "
+                                     f"whole from being clean ({kind})", code, code2, v["not_clean"])
+            assert not asked and set(v["study_meetings"].values()) == {NI.STUDY_HELD} and \
+                v["fetch"] == "installed" and "day_files" not in v and \
+                v["lsrs"].startswith("installed"), (asked, v["study_meetings"], v["fetch"])
+            said = [w for w in v["warnings"] if w.startswith("the study committees' meetings")]
+            assert len(said) == 1 and said[0] == (
+                "the study committees' meetings were not asked for: the General Court's database "
+                "could not be connected to at 2026-10-01T04:50:00, 2 times in a row" + word), said
+            assert len(said[0]) <= 300 - len(", 10 times in a row") + len(", 2 times in a row"),                 "the warning is longer than the run's page shows of one"
+            assert f"- warning: {said[0]}" in page and page.splitlines()[0].endswith(": clean"), page
+            notes = [ln for ln in out.splitlines() if ln.startswith("::")]
+            assert len(notes) == 1 and notes[0].startswith(
+                "::warning title=The night was clean%2C with a warning::the study committees' "
+                "meetings were not asked for"), notes
+        # The night a connection to it is tried and fails is not clean, as it
+        # never was -- and its page says why.
+        reset(export="whole", study="fail")
+        code, _ = night("--runner", run_id="308")
+        os.environ["GITHUB_ACTIONS"] = "true"
+        try:
+            code2, out = night("--runner", "--close", "--outcome", "night=failure", run_id="308")
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        v = verdict()
+        assert code == 1 and code2 == 1 and v["built"] and not v["clean"] and any(
+            "CONNECT_FAIL" in w for w in v["not_clean"]), (code, code2, v["not_clean"])
+        why = NI.plain_why(v)
+        assert why == ("The day's files were installed and the site was built, but the study "
+                       "committees' meetings could not be taken from the General Court's "
+                       "database. Nothing was published."), why
+        notes = [ln for ln in out.splitlines() if ln.startswith("::")]
+        assert len(notes) == 1 and notes[0] == "::error title=Why the night failed::" + why, notes
+        assert NI.study_missed(v) and not NI.study_held(v) and not NI.study_missed(
+            {"study_meetings": {"a": NI.STUDY_HELD, "b": "installed, 3 rows (was 3)"}})
 
         # IT DOES NOT START: a refusal on file; one met during the tries; a
         # hold on the SQL host; a New term run; another kind of failure; no
@@ -28076,7 +28313,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
                   "verdict names it and a warning leads the page; a refusal, a held host, a New "
                   "term run, another failure or no installed files and it does not start; a "
                   "failed view, a guard or the shrink rule and nothing is installed; seven "
-                  "nights is an error and the build still goes out")
+                  "nights is an error and the build still goes out, and a night that never "
+                  "started keeps the count; a held host on a night the export is whole is a "
+                  "warning and the build goes out")
 
 
 @check("build", "the what-changed report compares a database night on the columns both sources "
@@ -28087,9 +28326,17 @@ def _gc_changes_db_night(GC, DF):
     new (13,060 of 25,279 on the real pair) and the 29 bills whose Senate
     status code the two sources disagree on as changed. gc_changes.py
     --db-night compares on the docket's first six columns and on the bill
-    record without that code, against the newest export -- or an earlier
-    database night, when one is newer than it -- and its heading says the
-    files came from the database. An ordinary night is compared as before.
+    record without that code, and its heading says the files came from the
+    database. An ordinary night is compared as before.
+
+    Against what: the files the night replaced, which its copy names by
+    sha256 (nightly.keep_db_copy) -- an export in the archive, or an earlier
+    database night's. A copy that does not say, or names a file no copy on
+    disk has, is compared by date with the newest export archived before
+    that day, or an earlier database night as new as it. Never with the
+    export of its own night: on a night some of the export arrives whole,
+    snapshot_gencourt.py writes it into the archive's index and installs
+    nothing, and compared with that the report said nothing had changed.
     """
     import gzip
     import hashlib
@@ -28108,17 +28355,50 @@ def _gc_changes_db_night(GC, DF):
         (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
         want = _dbday_expected()
 
-        def keep(day, **more):
+        def keep(day, replaced=None, **more):
+            """A database night's copy, as nightly.keep_db_copy leaves one.
+            Its source.json says which files it replaced only when told to."""
             (tmp / "from-db" / day).mkdir(parents=True)
+            rec = {"day": day, "files": {}}
             for name in ("Docket.txt", "RollCallSummary.txt", "LSRs.txt"):
+                data = _dbday_bytes(want[name] + more.get(name.split(".")[0], []))
                 with gzip.open(tmp / "from-db" / day / f"{name}.gz", "wb") as fh:
-                    fh.write(_dbday_bytes(want[name] + more.get(name.split(".")[0], [])))
-        keep("2026-10-01", Docket=["2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought "
-                                   "to Pass|9/30/2026 9:00:00 AM"])
+                    fh.write(data)
+                rec["files"][name] = {"sha256": hashlib.sha256(data).hexdigest()}
+            if replaced is not None:
+                rec["replaced"] = replaced
+            (tmp / "from-db" / day / "source.json").write_text(json.dumps(rec), encoding="utf-8")
+            return {n: e["sha256"] for n, e in rec["files"].items()}
+
+        def partial(day, row):
+            """A night some of the export arrived whole and nothing was
+            installed: snapshot_gencourt.py still writes the docket that
+            arrived into the archive's index, under that day."""
+            data = _dbday_bytes(_DBDAY_EXPORT["Docket.txt"] + [row])
+            digest = hashlib.sha256(data).hexdigest()
+            with gzip.open(tmp / "store" / f"{digest}.gz", "wb") as fh:
+                fh.write(data)
+            index["Docket.txt"]["history"].append([day, digest])
+            index["Docket.txt"]["last_sha256"] = digest
+            (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
+        def pairs(md):
+            """Which copy the docket, the roll calls and the bill records
+            were each compared with, in the report's order."""
+            return re.findall(r"^\((.+) -> from the database [0-9-]+\)$", md, re.M)
+        # The night of 1 October some of the export arrived: its docket is the
+        # archive's newest, and it was never installed. The database night is
+        # compared with the export before it, not with that one.
+        partial("2026-10-01", "2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought to "
+                              "Pass|10/1/2026 6:01:00 AM")
+        first = keep("2026-10-01", Docket=["2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought "
+                                           "to Pass|9/30/2026 9:00:00 AM"])
         md = GC.report(db_night="2026-10-01")
+        assert "(archived 2026-10-01 -> " not in md, (
+            "a database night was compared with the export of its own night, which nobody "
+            "installed, and reported nothing changed: " + md[:500])
         assert "From the General Court's database, not its bulk files" in md and \
             "## Docket: 1 new lines on 1 bills" in md and \
-            "(archived 2026-09-30 -> from the database 2026-10-01)" in md and \
+            pairs(md) == ["archived 2026-09-30"] * 3 and \
             "## Bill records: 0 new, 0 changed" in md and "## Roll calls: 0 new" in md, md[:900]
         # Line for line it would have been five docket rows and a bill.
         old, new = _dbday_bytes(_DBDAY_EXPORT["Docket.txt"]), _dbday_bytes(want["Docket.txt"])
@@ -28134,17 +28414,51 @@ def _gc_changes_db_night(GC, DF):
                                    "2026|0010|10/1/2026 9:00:00 AM|HB54|S|Ought to Pass: MA VV|"
                                    "10/1/2026 9:00:00 AM"])
         md = GC.report(db_night="2026-10-02")
-        assert "(from the database 2026-10-01 -> from the database 2026-10-02)" in md and \
+        # (All three files: the docket too, though an export of it is as new
+        # as the first database night.)
+        assert pairs(md) == ["from the database 2026-10-01"] * 3 and \
+            "(from the database 2026-10-01 -> from the database 2026-10-02)" in md and \
             "## Docket: 1 new lines on 1 bills" in md, md[:700]
         # An ordinary night: the archive's own versions, whole lines, the old heading.
         md = GC.report()
         assert "From the General Court's bulk files" in md and "database" not in md, md[:300]
+
+        # A NIGHT THAT SAYS WHAT IT REPLACED is compared with exactly that, by
+        # sha256, whatever the dates say. The files installed before the night
+        # of the 5th were the first database night's, though a later one's
+        # copy and a newer export are both on disk. (The roll calls and the
+        # bill records were the same bytes on both database nights, and the
+        # later one is named.) ...
+        third = ["2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought to Pass|"
+                 "9/30/2026 9:00:00 AM",
+                 "2026|0010|10/4/2026 9:00:00 AM|HB54|S|Signed by Governor|10/4/2026 9:00:00 AM"]
+        keep("2026-10-05", replaced=first, Docket=third)
+        md = GC.report(db_night="2026-10-05")
+        assert pairs(md) == ["from the database 2026-10-01", "from the database 2026-10-02",
+                             "from the database 2026-10-02"] and \
+            "## Docket: 1 new lines on 1 bills" in md and "Signed by Governor" in md, md[:700]
+        # ... and the files installed before the night of the 7th were the
+        # export of 30 September. (Its roll calls are the bytes every
+        # database night since has rebuilt, and the latest is named.)
+        keep("2026-10-07", replaced={n: e["history"][0][1] for n, e in index.items()},
+             Docket=third)
+        md = GC.report(db_night="2026-10-07")
+        assert pairs(md) == ["archived 2026-09-30", "from the database 2026-10-05",
+                             "archived 2026-09-30"] and \
+            "## Docket: 2 new lines on 1 bills" in md, md[:700]
+        # A sha256 no copy on disk has falls back on the dates.
+        keep("2026-10-09", replaced={"Docket.txt": "0" * 64}, Docket=third)
+        md = GC.report(db_night="2026-10-09")
+        assert pairs(md) == ["from the database 2026-10-07"] * 3 and \
+            "## Docket: 0 new lines" in md, md[:700]
     finally:
         GC.ARCHIVE = saved
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("a database night is compared with the newest export, or the database night "
-                  "before it, on the docket's first six columns and the bill record without "
-                  "its Senate status code; the heading says the files came from the database")
+    return "ok", ("a database night is compared with the files it replaced, found by the sha256 "
+                  "it recorded, or by date with the export before it or the database night "
+                  "before it, and never with its own night's export; on the docket's first six "
+                  "columns and the bill record without its Senate status code; the heading says "
+                  "the files came from the database")
 
 
 def _dbday_from_dump(DF, db, out, installed):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.16
+# GRANITE_VERSION: 2026-09-06.17
 """
 What is actually in the General Court's public database.
 
@@ -83,9 +83,19 @@ PASSWORD = "PublicAccess"
 #   it. That is the deliberate difference from the web server's rule, where
 #   only a person clears a refusal: a month unattended needs it, and one
 #   connection a night is not what that rule exists to prevent.
-#   A login the server rejects stands until the credentials above are
-#   changed -- the published password has changed, and somebody has to read
-#   the PDF again -- or a person lifts it here with --clear-hold.
+#   A login the server REJECTS is recorded as that, so the night's page can
+#   say the published password may have changed and somebody has to read
+#   the PDF again. It expires and lengthens like any other, and is over at
+#   once when the credentials above are changed. As first written it stood
+#   for ever, on the words "Login failed" alone, and nothing on GitHub's
+#   machine could lift it: but the server ends its message for a database
+#   that is offline or being restored (error 4060, "Cannot open database
+#   ... requested by the login") with the same words, and says them for an
+#   account locked for an hour, so one bad morning on their side would have
+#   ended every query for good. login_refused() leaves 4060 out; the expiry
+#   is for whatever else is worded that way and passes. The wording is
+#   SqlClient's as remembered, not as seen from this host: say so if a real
+#   night shows another.
 #   A query that fails or times out on an OPEN connection (QUERY_FAIL,
 #   "Execution Timeout Expired" included) is not a hold: the host answered.
 #
@@ -100,7 +110,17 @@ HELD = Path("archive/sql-held.json")
 HELD_ENV = "GRANITE_SQL_HELD"
 HOLD_HOURS = (20, 44, 92, 164)
 SQL_HELD = 5            # the exit status of a query stopped by the hold
-LOGIN_REFUSED = re.compile(r"Login failed", re.I)
+LOGIN_REFUSED = re.compile(r"Login failed for user", re.I)
+# Error 4060: the database, not the password. Its message ends with the
+# line above all the same.
+DATABASE_UNAVAILABLE = re.compile(r"Cannot open database", re.I)
+
+
+def login_refused(why):
+    """Whether a failed connection's message is the server rejecting the
+    login itself, rather than a database it could not open for it."""
+    why = str(why)
+    return bool(LOGIN_REFUSED.search(why)) and not DATABASE_UNAVAILABLE.search(why)
 
 
 def hold_file():
@@ -126,24 +146,25 @@ def hold_standing(now=None):
     d = hold_record()
     if not d or not d.get("held"):
         return None
-    if d.get("kind") == "login":
-        return d if d.get("login") == _login() else None
+    if d.get("kind") == "login" and d.get("login") != _login():
+        return None             # the credentials it was about have been changed
     try:
         until = float(d.get("until"))
     except (TypeError, ValueError):
-        return None
+        return None             # no hold stands without a time it ends
     return d if (time.time() if now is None else now) < until else None
 
 
 def hold_sentence(d):
-    """What a hold on file says: when, how many times in a row, and until when."""
+    """What a hold on file says: when, how many times in a row, and until when.
+    Its words are this file's and none of the server's: the night's page,
+    which is public, carries it. Short, because that page cuts a note off."""
     n = int(d.get("nights") or 1)
+    until = f"nothing queries it until {d.get('until_at', '?')}"
     return (f"the General Court's database could not be connected to at {d.get('at', '?')}"
             + (f", {n} times in a row" if n > 1 else "")
-            + (": it refused the published login, and nothing queries it until the credentials "
-               "in probe_db.py are changed or a person lifts the hold (python3 probe_db.py "
-               "--clear-hold)" if d.get("kind") == "login" else
-               f", and nothing queries it until {d.get('until_at', '?')}"))
+            + (f": it refused the published login, and {until}, or until the credentials in "
+               "probe_db.py are changed" if d.get("kind") == "login" else f", and {until}"))
 
 
 def hold_check(who=""):
@@ -173,17 +194,15 @@ def note_connect_fail(why, now=None):
     now = time.time() if now is None else now
     was = hold_record() or {}
     nights = (int(was.get("nights") or 0) if was.get("held") else 0) + 1
-    login = bool(LOGIN_REFUSED.search(str(why)))
+    login = login_refused(why)
     hours = HOLD_HOURS[min(nights, len(HOLD_HOURS)) - 1]
     d = {"held": True, "kind": "login" if login else "connection", "nights": nights,
          "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(now)), "epoch": now,
-         "why": str(why)[:300], "run_id": os.environ.get("GITHUB_RUN_ID", "")}
+         "why": str(why)[:300], "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+         "until": now + hours * 3600, "hours": hours}
+    d["until_at"] = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(d["until"]))
     if login:
         d["login"] = _login()
-    else:
-        d["until"] = now + hours * 3600
-        d["until_at"] = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(d["until"]))
-        d["hours"] = hours
     try:
         _write_hold(d)
     except OSError as e:

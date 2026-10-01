@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.1
+# GRANITE_VERSION: 2026-10-01.2
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -76,6 +76,15 @@ versions share never change order, and new rows arrive at the end. The roll
 calls need none of it: sorted by chamber, number and member they are the
 export's bytes.
 
+A docket row the clerk EDITS stays where it was. One has been, in those eight
+versions: between 6 and 15 September HB 1218's amendment number was corrected
+from 2026-0596h to 2026-0956h, and the row kept its place, 18,982nd of
+25,313. Told apart only on the six columns both sources carry it is a row
+gone and a new row, and it went to the end. So a docket row with no place by
+those six takes the place of the installed row, taken by no other, with its
+year, request, entry time, bill and chamber (ORDER_LOOSE): the same event,
+reworded. The differences still count it as one row gone and one new.
+
 THE GUARDS, judge(), before anything is installed
 
 Tonight's files against the installed ones, on the columns both carry. A
@@ -88,9 +97,21 @@ guard that fires stops the night's fallback and nothing is installed:
     bill records               every (year, LSR) installed is there tonight
     roll calls                 every one installed is there with the same four
                                counts, and no roll call has fewer ballots
-    the roster                 within ROSTER_TOLERANCE of the installed count
-    sponsors                   each file keeps SPONSORS_KEPT_LEAST of its rows
+    the roster                 within ROSTER_TOLERANCE of the installed count,
+                               and at most that share of the installed
+                               members gone from it
+    sponsors                   LsrSponsors.txt keeps SPONSORS_KEPT_LEAST of its
+                               rows; LsrsOnly.txt, which lists sitting members
+                               only, that share of the rows of the members
+                               still on tonight's roster
     the shape                  every line has its file's number of columns
+
+LsrsOnly.txt was first held to the same share of ALL its rows. But a member
+who leaves takes every row of theirs out of it, in the export as here, and
+three members each hold more than 2% of it (155, 153 and 144 of 6,963 on
+30 September): one resignation would have stopped the fallback for as long as
+the export stayed down. Who has left is the roster guard's question, and it
+now asks it by person rather than by count alone.
 
 The thresholds for rows going are guesses: the archive begins out of session,
 where a day moves 1 to 35 docket rows. The night's verdict reports the
@@ -255,9 +276,25 @@ def read_view(folder, name, columns=None):
     return out
 
 
+def arrived_whole(count, rows):
+    """Whether a view that wrote `rows` rows is the whole of the view the
+    server counted `count` rows of.
+
+    Fewer is a view cut short. MORE is not: the count is asked first, on the
+    same connection, of tables the clerks are writing to, and a row entered
+    while the view was being read is a row the view holds. As first written
+    the two had to be equal, so one docket entry made in those seconds lost
+    the night its fallback, and nothing is asked twice in one night. The
+    guards judge what arrived either way, and the night says how many."""
+    def number(x):
+        return isinstance(x, int) and not isinstance(x, bool)
+    return number(count) and number(rows) and rows >= count
+
+
 def read_source(folder, views):
     """fetch_day_db.py's record of what it asked, checked: every view named
-    answered without an error and wrote the rows the server counted."""
+    answered without an error and wrote the rows the server counted, or more
+    (arrived_whole)."""
     path = Path(folder) / SOURCE
     try:
         src = json.loads(path.read_text(encoding="utf-8"))
@@ -273,7 +310,7 @@ def read_source(folder, views):
             raise Problem(f"the {v} view was not asked for")
         if e.get("error"):
             raise Problem(f"the {v} view failed: {str(e['error'])[:160]}")
-        if not isinstance(e.get("count"), int) or e.get("rows") != e.get("count"):
+        if not arrived_whole(e.get("count"), e.get("rows")):
             raise Problem(f"the {v} view wrote {e.get('rows')} rows and the server counted "
                           f"{e.get('count')}")
     return src
@@ -468,12 +505,19 @@ def _first(n):
 
 ORDER_KEY = {"Docket.txt": _first(6), "LSRs.txt": _first(2), "LsrSponsors.txt": _first(4),
              "LsrsOnly.txt": _first(7), "legislators.txt": _first(1)}
+# A docket row the clerk edited: the same year, request, entry time, bill and
+# chamber, with other words. The export keeps it where it was (the docstring's
+# HB 1218), so it takes that place here. The docket only: it is the one file
+# the archive shows an edit in.
+ORDER_LOOSE = {"Docket.txt": _first(5)}
 
 
-def in_installed_order(new, old, key):
+def in_installed_order(new, old, key, loose=None):
     """`new`, with every row the installed file also holds in the installed
-    file's place, and the rest after them in the order they came. The lines
-    are all `new`'s own. (placed, fresh) counts beside it."""
+    file's place, and the rest after them in the order they came. With
+    `loose`, a row with no place by `key` takes the place of an installed row
+    no other row took and that `loose` calls the same: an edited row. The
+    lines are all `new`'s own. (placed, fresh) counts beside it."""
     where = collections.defaultdict(collections.deque)
     for i, ln in enumerate(old):
         where[key(ln)].append(i)
@@ -484,6 +528,18 @@ def in_installed_order(new, old, key):
             placed.append((q.popleft(), ln))
         else:
             fresh.append(ln)
+    if loose and fresh:
+        spare = collections.defaultdict(collections.deque)
+        for i in sorted(i for q in where.values() for i in q):
+            spare[loose(old[i])].append(i)
+        rest = []
+        for ln in fresh:
+            q = spare.get(loose(ln))
+            if q:
+                placed.append((q.popleft(), ln))
+            else:
+                rest.append(ln)
+        fresh = rest
     placed.sort(key=lambda x: x[0])
     return [ln for _, ln in placed] + fresh, len(placed), len(fresh)
 
@@ -523,12 +579,16 @@ def rebuild(views, installed, need_source=True):
     if src is not None:
         facts["asked"] = src.get("asked")
         facts["view_rows"] = {name: (src["views"].get(name) or {}).get("rows") for name in VIEWS}
+        # Rows entered while a view was being read (arrived_whole).
+        facts["entered"] = {name: e["rows"] - e["count"] for name, e in src["views"].items()
+                            if name in VIEWS and e["rows"] > e["count"]}
     out = {}
     for name in DAY_FILES:
         lines = made[name]
         if name in ORDER_KEY:
             lines, placed, fresh = in_installed_order(
-                lines, export_lines(was[name], WIDTH[name]), ORDER_KEY[name])
+                lines, export_lines(was[name], WIDTH[name]), ORDER_KEY[name],
+                ORDER_LOOSE.get(name))
             facts["order"][name] = {"placed": placed, "new": fresh}
         bad = next((ln for ln in lines if ln.count("|") != WIDTH[name] - 1), None)
         if bad is not None:
@@ -660,19 +720,49 @@ def judge(files, installed, facts=None):
                      + ", ".join(f"{' '.join(k)} {was[k]} now {now.get(k, 0)}"
                                  for k in fewer[:4]))
 
-    # The roster.
+    # The roster: by count, and by who is on it.
+    def people(lines):
+        return {ln.split("|")[0] for ln in lines}
     a, b = len(old["legislators.txt"]), len(rows["legislators.txt"])
+    sitting = people(rows["legislators.txt"])
+    left = people(old["legislators.txt"]) - sitting
     if a and abs(b - a) > ROSTER_TOLERANCE * a:
         stops.append(f"the roster is {b:,} members against {a:,} installed, more than "
                      f"{ROSTER_TOLERANCE:.0%} apart")
+    elif a and len(left) > ROSTER_TOLERANCE * a:
+        stops.append(f"{len(left):,} of the {a:,} members installed are not on the "
+                     f"database's roster, more than {ROSTER_TOLERANCE:.0%}")
 
     # Sponsors.
-    for name in ("LsrSponsors.txt", "LsrsOnly.txt"):
-        a = len(old[name])
-        kept = a - diff[name]["gone"]
-        if a and kept < SPONSORS_KEPT_LEAST * a:
-            stops.append(f"{name} keeps {kept:,} of its {a:,} installed rows, fewer than "
-                         f"{SPONSORS_KEPT_LEAST:.0%}")
+    a = len(old["LsrSponsors.txt"])
+    kept = a - diff["LsrSponsors.txt"]["gone"]
+    if a and kept < SPONSORS_KEPT_LEAST * a:
+        stops.append(f"LsrSponsors.txt keeps {kept:,} of its {a:,} installed rows, fewer than "
+                     f"{SPONSORS_KEPT_LEAST:.0%}")
+    # LsrsOnly.txt lists sitting members only, so a member who leaves takes
+    # their rows out of it: it is held to the rows of the members still on
+    # tonight's roster. Who has left is the roster's question, above.
+    def member(ln):
+        f = ln.split("|")
+        return f[1] if len(f) > 1 else ""
+    only = shared_columns("LsrsOnly.txt")
+    theirs = [ln for ln in old["LsrsOnly.txt"] if member(ln) in sitting]
+    kept = _kept(theirs, rows["LsrsOnly.txt"], only)[0]
+    if theirs and kept < SPONSORS_KEPT_LEAST * len(theirs):
+        stops.append(f"LsrsOnly.txt keeps {kept:,} of the {len(theirs):,} installed rows of "
+                     f"members still sitting, fewer than {SPONSORS_KEPT_LEAST:.0%}")
+    others = [ln for ln in old["LsrsOnly.txt"] if member(ln) not in sitting]
+    went = len(others) - _kept(others, rows["LsrsOnly.txt"], only)[0]
+    if left and went:
+        warnings.append(f"{len(left):,} member{'s' if len(left) != 1 else ''} installed "
+                        f"{'are' if len(left) != 1 else 'is'} not on the database's roster, "
+                        f"and {went:,} rows of LsrsOnly.txt went with them")
+
+    # A row entered while its view was being read (arrived_whole).
+    for view, n in sorted(((facts or {}).get("entered") or {}).items()):
+        warnings.append(f"{n:,} row{'s' if n != 1 else ''} more than the server had counted "
+                        f"arrived from the database's {view} view: entered while it was "
+                        "being read, and in tonight's files")
 
     # The session has not turned -- or, if it has, the night says so.
     newer = (facts or {}).get("newer_years") or {}

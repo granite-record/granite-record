@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 """
 What changed at the General Court between two copies of its bulk files.
 
@@ -30,10 +30,11 @@ line for line with an export they would report 13,060 docket lines as new --
 the export's seventh column, when a row was last changed, is not in the
 database's view -- and 29 bills as changed, for a Senate status code the two
 sources have always disagreed on. So --db-night DAY compares that night's
-files with the newest export, or with an earlier database night newer than
-it, on the columns both sources carry, and the report's heading says which
-source it was. The next export night compares export with export as ever, and
-so repeats what the database night reported: correct, if repetitive.
+files with the files they replaced -- an export, or an earlier database
+night's, found by the sha256 the night recorded (db_pair) -- on the columns
+both sources carry, and the report's heading says which source it was. The
+next export night compares export with export as ever, and so repeats what
+the database night reported: correct, if repetitive.
 """
 
 import argparse
@@ -98,8 +99,21 @@ def whole(ln):
 
 def db_pair(name, day):
     """(old_label, old_bytes, new_label, new_bytes) for a night whose files
-    came from the database, or None: that night's copy against the newest
-    export, or against an earlier database night newer than that export."""
+    came from the database, or None: that night's copy against the file it
+    replaced.
+
+    The night's source.json names what it replaced by sha256 ("replaced",
+    nightly.keep_db_copy), and the copy with those bytes is found by it: an
+    export in the archive's store, or an earlier database night's. A copy that
+    does not say is compared by date: with the newest export archived BEFORE
+    that day, or an earlier database night as new as it.
+
+    Before that day, because snapshot_gencourt.py writes every file that
+    arrives whole into the index, on a night it installs nothing too: on a
+    night some of the export arrived (20 and 28 September), the archive's
+    newest Docket.txt was that night's own, and this compared the database's
+    files with a copy nobody had installed.
+    """
     root = ARCHIVE / "from-db"
     mine = root / day / f"{name}.gz"
     if not mine.exists():
@@ -108,15 +122,37 @@ def db_pair(name, day):
     def gz(path):
         with gzip.open(path, "rb") as fh:
             return fh.read()
+
+    def source(d):
+        try:
+            rec = json.loads((root / d / "source.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return rec if isinstance(rec, dict) else {}
+
+    def of_db(d):
+        return (f"from the database {d}", gz(root / d / f"{name}.gz"))
+    new = (f"from the database {day}", gz(mine))
     hist = versions(name)
     earlier = sorted(d.name for d in root.iterdir()
                      if d.is_dir() and d.name < day and (d / f"{name}.gz").exists())
-    if earlier and (not hist or earlier[-1] > hist[-1][0]):
-        return (f"from the database {earlier[-1]}", gz(root / earlier[-1] / f"{name}.gz"),
-                f"from the database {day}", gz(mine))
+    replaced = source(day).get("replaced")
+    digest = replaced.get(name) if isinstance(replaced, dict) else None
+    if digest:
+        nights = [d for d in earlier
+                  if ((source(d).get("files") or {}).get(name) or {}).get("sha256") == digest]
+        days = [h[0] for h in hist if h[1] == digest
+                and (ARCHIVE / "store" / f"{digest}.gz").exists()]
+        if nights and (not days or nights[-1] >= days[-1]):
+            return of_db(nights[-1]) + new
+        if days:
+            return (f"archived {days[-1]}", blob(digest)) + new
+    hist = [h for h in hist if h[0] < day]
+    if earlier and (not hist or earlier[-1] >= hist[-1][0]):
+        return of_db(earlier[-1]) + new
     if not hist:
         return None
-    return (f"archived {hist[-1][0]}", blob(hist[-1][1]), f"from the database {day}", gz(mine))
+    return (f"archived {hist[-1][0]}", blob(hist[-1][1])) + new
 
 
 def docket(old, new, key=whole):
