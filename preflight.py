@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.303
+# GRANITE_VERSION: 2026-09-04.304
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6568,8 +6568,23 @@ def _no_control_bytes():
     So: no control character except tab, newline and carriage return, in any
     source file in the tree. Naming ten files by hand was the first version of
     this check and it did not cover the second incident.
+
+    C1 AS WELL AS C0, in the one pass (2 October 2026; until then a second
+    check, "no source file carries a mangled control character", read the
+    root's files again for these). app.css carried U+0083 inside the citation
+    control's content string, with a capital A after it, and every page on
+    the site drew a small empty box and a stray letter A in front of "Cite
+    this page". U+0083 is NO BREAK HERE, a C1 control that no editor puts
+    there on purpose; it is what is left of a glyph that went through a
+    cp1252 round trip, and the A beside it is debris from the same accident.
+    It survived because nothing errored: the stylesheet parsed, the page
+    rendered, and the damage was one character wide.
+
+    So the range is U+0000 to U+001F and U+007F to U+009F, less the three
+    whitespace characters source legitimately contains. Nothing else in that
+    span belongs in a text file here, and the failure names each character
+    it found, so which of the two accidents it was is in the message.
     """
-    ok = {0x09, 0x0A, 0x0D}
     exts = {".py", ".css", ".js", ".html", ".json", ".md", ".bat"}
     # town_sites/ added 20 September: 234 town pages fetched by another
     # session, one of which is a binary response saved with an .html name, and
@@ -6585,33 +6600,64 @@ def _no_control_bytes():
             "review/", ".git/", "sources/", "brand/", "assets/",
             "town_sites/")
     #
-    # AND THE SAME CACHES UNDER A WORKTREE'S OWN ROOT. On 1 October a session
-    # working in .claude/worktrees/ws-front kept a copy of legislation/ there,
-    # and this went red on four General Court pages in it (0x1e in 2016's HB
-    # 625, 0x02 in three of 2022) while another session's change was being
-    # checked in the main tree. A worktree's source files are still read; its
-    # copies of the folders skipped above are skipped as they are here.
-    worktree = re.compile(r"^claude/worktrees/[^/]+/")
-    bad, n = [], 0
-    for f in sorted(Path(".").rglob("*")):
-        if not f.is_file() or f.suffix.lower() not in exts:
-            continue
-        rel = f.as_posix().lstrip("./")
-        if worktree.sub("", rel).startswith(skip):
+    # GIT'S LIST, WHICH IS THAT CHANGE (2 October 2026). The walk was every
+    # file under the folder -- 91,000 entries in a worktree, and in the main
+    # folder the caption folders as well -- and it read what the tuple above
+    # did not name: 660 MB of generated JSON at a worktree's root; in the main
+    # folder 858 MB in 6,364 files, the fetched page caches among them; and
+    # then every source file of every worktree under .claude/worktrees/, with
+    # a pattern added on 1 October to skip their caches. And the tuple's ".git/"
+    # never matched: the path was compared after lstrip("./"), which takes
+    # the dot off ".git" as well as off "./". What is read now is what git
+    # tracks and what it would track if added -- a patch script written a
+    # minute ago is the file most likely to carry an eaten escape -- less the
+    # folders above, matched as git spells them. .gitignore keeps the caches,
+    # the generated files and the worktrees out, so no list here has to.
+    #
+    # WITHOUT GIT -- an export of the tree, a copy -- the folder is walked,
+    # without going into a folder the tuple names or into a worktree.
+    try:
+        out = _run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                   capture_output=True, text=True, timeout=120)
+        listed = out.stdout.split("\0") if out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        listed = None
+    how = "that git tracks or would"
+    if listed is None:
+        how, listed = "in the folder (no git here)", []
+        for d, dirs, files in os.walk("."):
+            rel = Path(d).as_posix()
+            rel = "" if rel == "." else rel + "/"
+            dirs[:] = sorted(x for x in dirs if not (rel + x + "/").startswith(skip)
+                             and rel + x != ".claude/worktrees")
+            listed += [rel + x for x in files]
+    # One pattern for both ranges, over the bytes: C0 less tab, newline and
+    # carriage return, with DEL; and C1, which UTF-8 writes as 0xC2 and then
+    # the character's own number.
+    ctl = re.compile(rb"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]|\xc2[\x80-\x9f]")
+    bad, n, c0, c1 = [], 0, False, False
+    for rel in sorted(listed):
+        f = Path(rel)
+        if f.suffix.lower() not in exts or rel.startswith(skip) or not f.is_file():
             continue
         n += 1
         raw = f.read_bytes()
-        hits = sorted({c for c in raw if c < 0x20 and c not in ok})
-        if hits:
-            at = raw.count(b"\n", 0, min(raw.index(bytes([hits[0]])),
-                                         len(raw))) + 1
-            bad.append(f"{rel}: {', '.join(hex(h) for h in hits)}"
-                       f" (first near line {at})")
+        first = ctl.search(raw)
+        if first:
+            hits = sorted({m[-1] for m in ctl.findall(raw)})
+            c0, c1 = c0 or hits[0] < 0x80, c1 or hits[-1] >= 0x80
+            bad.append(f"{rel}: {', '.join(f'U+{h:04X}' for h in hits)}"
+                       f" (first near line {raw.count(b'\n', 0, first.start()) + 1})")
+    assert n, ("no source file was read: the list of files came back with none "
+               "of this folder's in it")
     assert not bad, (
-        "control characters in " + "; ".join(bad[:4]) + ". Write the escape "
-        "rather than the byte -- a heredoc turns \\1 into 0x01 and \\0 into NUL, "
-        "and neither is visible in a diff.")
-    return "ok", f"{n} source files, none with a control character"
+        "control characters in " + "; ".join(bad[:4])
+        + (". Write the escape rather than the byte -- a heredoc turns \\1 into "
+           "U+0001 and \\0 into NUL, and neither is visible in a diff" if c0 else "")
+        + (". U+0080 to U+009F is what a cp1252 round trip leaves of a glyph, "
+           "and it is drawn as a box, a stray letter, or nothing at all" if c1 else "")
+        + ".")
+    return "ok", f"{n} source files {how}, none with a control character, C0 or C1"
 
 
 @check("frontend", "a heading outline never skips a level")
@@ -39665,56 +39711,6 @@ def _nothing_stranded():
     m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
     where = f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked"
     return "ok", f"nothing stranded ({where})"
-
-
-@check("files", "no source file carries a mangled control character")
-def _no_c1():
-    """A C1 control character in a source file is always damage.
-
-    app.css carried `content:"\u0083A "` on the citation control, which every
-    page on the site drew as a small empty box followed by a stray letter A in
-    front of "Cite this page". U+0083 is NO BREAK HERE, a C1 control that no
-    editor puts there on purpose; it is what is left of a glyph that went
-    through a cp1252 round trip, and the A beside it is debris from the same
-    accident rather than a fallback.
-
-    It survived because nothing errored. The stylesheet parsed, the page
-    rendered, and the damage was one character wide on a control most readers
-    never open.
-
-    C0 AS WELL AS C1, and C0 is the one that has actually cost time twice.
-    A patch script wrote a replacement containing a backslash-one, meaning "the
-    first capture group"; the escape was eaten in transit, Python read the
-    remaining \\1 in a non-raw string as the character U+0001, and design_home.py
-    ended up substituting a SOH over the <head> tag it was meant to keep. The
-    generated pages then had no head element at all and every relative URL
-    resolved against the wrong directory. Nothing errored, and the file looked
-    correct in any editor that draws control characters as nothing.
-
-    So the range is U+0000 to U+001F and U+007F to U+009F, less the three
-    whitespace characters source legitimately contains -- tab, newline and
-    carriage return. Nothing else in that span belongs in a text file here.
-    """
-    ok = {0x09, 0x0A, 0x0D}
-    bad = []
-    for pat in ("*.py", "*.js", "*.css", "*.html", "*.json", "*.md"):
-        for f in sorted(Path(".").glob(pat)):
-            try:
-                text = f.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
-            for i, line in enumerate(text.splitlines(), 1):
-                hit = [c for c in line
-                       if (ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F)
-                       and ord(c) not in ok]
-                if hit:
-                    bad.append(f"{f.name}:{i} carries "
-                               + ", ".join(f"U+{ord(c):04X}" for c in hit))
-    assert not bad, ("a control character is in the source. These come from a "
-                     "cp1252 round trip or from an escape eaten by a shell, "
-                     "and they render as a box, a stray letter, or nothing at "
-                     "all:\n  " + "\n  ".join(bad[:10]))
-    return "ok", "no control characters in the source"
 
 
 @check("files", "every place has exactly one district of its own, and every floterial is laid over them")
