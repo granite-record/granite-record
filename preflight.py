@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.311
+# GRANITE_VERSION: 2026-09-04.312
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6573,6 +6573,30 @@ def _palette():
     return "ok", f"{n} pairs across both schemes, all above their threshold"
 
 
+def _built_stylesheets():
+    """[(what to call it, the site folder it is in)] for each built style.css
+    the stylesheet checks read: the fixture's, which the builders write once
+    a run (_fixture_site_shared), wherever the builders are; and site/'s,
+    where a site has been built.
+
+    THE FIXTURE'S, SO THAT THESE GUARD THE NIGHT (2 October 2026). The three
+    checks that read the built stylesheet -- _shared_region, _nothing_stranded
+    and the end of _one_stylesheet -- read site/style.css and nothing else,
+    and nightly.py runs the code checks BEFORE it builds: on GitHub's machine
+    there is no site/ yet, so two of them skipped and the third passed having
+    read no stylesheet, on the one run that stands between a change to
+    build_pages.py or app.css and the deploy. The laptop's built site is
+    still read where there is one: it is what a reader's browser was given.
+    """
+    here = Path(".").resolve()
+    sheets = []
+    if not [x for x in CHAIN_NEEDS if not (here / x).exists()]:
+        sheets.append(("the fixture's style.css", _fixture_site_shared()[0] / "site"))
+    if Path("site/style.css").exists():
+        sheets.append(("site/style.css", Path("site")))
+    return sheets
+
+
 @check("frontend", "the built stylesheet carries one copy of the shared region")
 def _shared_region():
     """A comment that named a slot pasted the whole region into itself.
@@ -6595,33 +6619,36 @@ def _shared_region():
     unfilled -- which also catches a shared() that reads to the wrong marker
     and hands over half a component.
     """
-    built = Path("site/style.css")
-    if not built.exists():
-        return "skip", "site/style.css not built"
-    t = built.read_text(encoding="utf-8")
+    sheets = _built_stylesheets()
+    if not sheets:
+        return "skip", ("site/style.css not built, and the builders are not here to "
+                        "build the fixture's")
     src = Path("app.css").read_text(encoding="utf-8")
-
-    left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", t)))
-    assert not left, (
-        "site/style.css still has " + ", ".join(left) + " in it: a slot in "
-        "build_pages.py's CSS string that nothing filled. The page will load "
-        "and most of it will look right.")
-
-    n = t.count("/* SHARED:START")
-    assert n == 1, (
-        f"site/style.css has {n} copies of the shared region, not one. A "
-        "comment that names __SHARED__ is how this happens; the substitution "
-        "does not know it is inside a comment, and a CSS comment does not "
-        "nest.")
-
     a, b = src.index("/* SHARED:START"), src.index("/* SHARED:END")
     region = src[a:b].rstrip()
-    assert region in t, (
-        "the shared region in site/style.css is not app.css's. shared() reads "
-        "between the two markers and rstrips; if the built copy differs, one "
-        "of the markers has moved or something is rewriting the region on the "
-        "way through.")
-    return "ok", f"{len(region):,} bytes, once, identical to app.css's"
+    for what, site in sheets:
+        t = (site / "style.css").read_text(encoding="utf-8")
+
+        left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", t)))
+        assert not left, (
+            f"{what} still has " + ", ".join(left) + " in it: a slot in "
+            "build_pages.py's CSS string that nothing filled. The page will load "
+            "and most of it will look right.")
+
+        n = t.count("/* SHARED:START")
+        assert n == 1, (
+            f"{what} has {n} copies of the shared region, not one. A "
+            "comment that names __SHARED__ is how this happens; the substitution "
+            "does not know it is inside a comment, and a CSS comment does not "
+            "nest.")
+
+        assert region in t, (
+            f"the shared region in {what} is not app.css's. shared() reads "
+            "between the two markers and rstrips; if the built copy differs, one "
+            "of the markers has moved or something is rewriting the region on the "
+            "way through.")
+    return "ok", (f"{len(region):,} bytes, once, identical to app.css's, in "
+                  + " and in ".join(what for what, _site in sheets))
 
 
 @check("frontend", "no source file carries a control character")
@@ -17773,12 +17800,14 @@ def _one_stylesheet():
     assert not stray, (
         f"{len(stray)} rules in the PAGES region are not scoped to the pages "
         f"that read it, so every record page takes them: {stray[:3]}")
-    built = Path("site/style.css")
-    if built.exists():
-        text = built.read_text(encoding="utf-8")
+    sheets = _built_stylesheets()
+    for what, site in sheets:
+        text = (site / "style.css").read_text(encoding="utf-8")
         assert "__PAGES__" not in text and ":where(body.pg)" in text, (
-            "site/style.css was not written from app.css's regions")
-    return "ok", f"{len(re.findall(r':where\(body.pg\)', pages)):,} page rules, one file"
+            f"{what} was not written from app.css's regions")
+    return "ok", (f"{len(re.findall(r':where\(body.pg\)', pages)):,} page rules, one file"
+                  + ("; " + " and ".join(what for what, _site in sheets)
+                     + " written from it" if sheets else ""))
 
 
 @check("frontend", "the status box without JavaScript says what the scripted one says")
@@ -40022,24 +40051,28 @@ def _nothing_stranded():
     audit_css.py is the tool; this runs it against the built site so the
     answer is what a reader's browser would actually resolve.
     """
-    site = Path("site")
-    if not (site / "style.css").exists():
-        return "skip", "no built site here; run build_all.py --local first"
+    sheets = _built_stylesheets()
+    if not sheets:
+        return "skip", ("no built site here, and the builders are not here to build "
+                        "the fixture's; run build_all.py --local first")
     node = str(Path("audit_css.py"))
-    r = subprocess.run([sys.executable, node, "--site", str(site)],
-                       capture_output=True, timeout=300)
-    out = r.stdout.decode("utf-8", "replace")
-    assert "built pages" in out, ("audit_css.py did not run: "
-                                  + r.stderr.decode("utf-8", "replace")[-300:])
-    if "STRANDED" in out:
-        tail = out[out.index("STRANDED"):][:600]
-        raise AssertionError(
-            "a component is styled only in the region style.css does not "
-            "take, so the home page, the roster, About and 404 do not get "
-            "it:\n  " + tail.replace("\n", "\n  "))
-    m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
-    where = f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked"
-    return "ok", f"nothing stranded ({where})"
+    where = []
+    for what, site in sheets:
+        r = subprocess.run([sys.executable, node, "--site", str(site)],
+                           capture_output=True, timeout=300)
+        out = r.stdout.decode("utf-8", "replace")
+        assert "built pages" in out, (f"audit_css.py did not run on the pages of {what}: "
+                                      + r.stderr.decode("utf-8", "replace")[-300:])
+        if "STRANDED" in out:
+            tail = out[out.index("STRANDED"):][:600]
+            raise AssertionError(
+                "a component is styled only in the region style.css does not "
+                "take, so the home page, the roster, About and 404 do not get "
+                f"it (the pages of {what}):\n  " + tail.replace("\n", "\n  "))
+        m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
+        where.append((f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked")
+                     + f" loading {what}")
+    return "ok", f"nothing stranded ({'; '.join(where)})"
 
 
 @check("files", "every place has exactly one district of its own, and every floterial is laid over them")
