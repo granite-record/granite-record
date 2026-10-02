@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.22
+# GRANITE_VERSION: 2026-09-10.23
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -630,9 +630,11 @@ def data_page(site, out, tables, base, cov=()):
       site does not read it from there yet, as with some committee referrals
       the docket records.</p>
     <!-- The box scrolls sideways on a phone (the table is 420px in 336), so
-         it can be reached and panned with a keyboard; each heading says it
-         heads a column and each term that it heads its row. -->
-    <div class="covwrap" tabindex="0" role="region"
+         there it can be reached and panned with a keyboard: app.js makes a
+         box so marked a Tab stop while its content is wider than it is, and
+         only then (scrollStops). Each heading says it heads a column and
+         each term that it heads its row. -->
+    <div class="covwrap" data-scrollstop="1" role="region"
       aria-label="How much of each column is filled, by term"><table class="cov">
       <thead><tr><th scope="col">Term</th><th scope="col">Bills</th>
         <th scope="col">Sponsor</th><th scope="col">Committee</th>

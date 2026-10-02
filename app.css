@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.193 */
+/* GRANITE_VERSION: 2026-09-07.194 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -397,8 +397,17 @@ nav.top .brand:hover::before{background:var(--pine)}
    centre, the wordmark ends near 190 and the controls begin near 810, so
    nothing meets. Below that the auto margins above do the job, because a
    strip that is 39px off centre is better than one sitting on top of the
-   site's own name. */
-@media (min-width:980px){
+   site's own name.
+   1100px SINCE 2 OCTOBER, FOR THE SAME REASON. Those numbers were four tabs
+   and a wordmark with no drawing beside it. With Calendar the strip is
+   504px and with the drawing the brand ends at 265, so the strip, centred,
+   starts at half the window less 252: under the brand's box up to 1034px,
+   its first word 8px from the name at 1000, and at 980 too wide for the
+   half of the bar an element placed at left:50% is given, so Calendar
+   dropped to a second row over the bar's top edge (measured in the review of
+   2 October 2026). At 1100 the strip starts 33px clear of the brand, and 9px
+   clear before the serif has loaded, when the name is 24px wider. */
+@media (min-width:1100px){
   nav.top .in{position:relative}
   .navtabs{position:absolute;left:50%;transform:translateX(-50%);margin:0}
   /* AND THE CONTROLS HAVE TO BE PUSHED. Taking the strip out of the flow left
@@ -1131,8 +1140,38 @@ line-height:1.1}
   color-scheme:light}
   /* The footer's feedback button with them: it is white words on a pine
      ground, and with no ground printed it is white on white. */
-  nav.top,.skip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,.findscrim,
-  details.report,.player,.fbk{display:none !important}
+  nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
+  .findscrim,details.report,.player iframe,.fbk{display:none !important}
+  /* A RECORDING'S BOX IS NOT ITS PLAYER. The whole box was left off, and the
+     box is where the times are: Play's own words -- "Play from 04:33:32,
+     where the clerk takes it up" -- and the line under it, "09:14:11 the
+     vote", "approximate", the motions. On paper a bill's Hearings tab said
+     no time at all for any sitting, and kept the notes that point at the
+     recording (the review of 2 October 2026). The timestamp is the claim
+     this site makes, so it prints: the frame of a recording that is playing
+     is left off, and Play is set as the line of text it is, without the
+     still it is drawn on or its triangle. */
+  .player{background:none}
+  .pstub{display:block;aspect-ratio:auto;padding:var(--sp-4) var(--sp-5);
+  background:none;color:var(--ink);text-align:left}
+  .pstub > span:first-child{display:none}
+  /* A GROUND THAT CARRIES WHITE WORDS IS PRINTED WITH THEM. A browser prints
+     no background unless asked, and these are set in --on-pine or --surface
+     on a filled ground: the tick in a stop a bill has passed and the cross in
+     one where it died, the Calendar's chosen day and view, "Open the PDF",
+     a filter's count, the home page's Search. Without the ground they were
+     white on white, and a passed stop printed as an empty ring -- the same
+     mark as a stop not yet reached. A ticked kind of meeting on the Calendar
+     is the same thing drawn with a border: a white tick on the kind's own
+     colour, which printed as an empty box. And the home page's heading is a
+     ground cut to the shape of the site's name (h1.lockup, a mask), which
+     printed as an empty band with the name nowhere on the sheet. The ground
+     is part of what these say, so it is asked for. preflight holds every
+     rule that sets type in --on-pine to this list or to the one above. */
+  .stop.s-p b,.stop.s-x b,.fhead .badge,.wkchips button[aria-pressed="true"],
+  .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
+  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup{
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
 /* SHARED:END ------------------------------------------------------------ */
@@ -1176,9 +1215,10 @@ mask:url(/mark.png) center/contain no-repeat}
    the search button where it used to fit.
    The brand's side padding is the 24px that buys it back. It pads nothing
    anyone sees -- the brand has no box -- and without it the mark sits on the
-   page's own left edge. Only below 980px: above that the tab strip is out of
-   the flow, the brand takes the free space, and nothing can wrap. */
-@media (max-width:979.98px){nav.top .brand{padding-left:0;padding-right:0}}
+   page's own left edge. Only below 1100px: above that the tab strip is out of
+   the flow and nothing can wrap. The two widths are one: preflight holds
+   this one to the block that takes the strip out of the flow. */
+@media (max-width:1099.98px){nav.top .brand{padding-left:0;padding-right:0}}
 /* MARK:END ----------------------------------------------------------------- */
 
 *{box-sizing:border-box}html,body{margin:0}
@@ -3949,9 +3989,15 @@ white-space:nowrap}
 /* THE LINE UP, above the day's heading: the chamber's list of session days
    and, where the calendar has it, the week. A Learn article's crumb, with the
    same quiet weight (2 October 2026: a sitting's page led nowhere above
-   itself). */
+   itself).
+   AND THE SAME SPACE ABOVE IT. The row of "Cite this page" ends 4px into
+   whatever follows it (.pageacts, margin-bottom:-4px) and is drawn over it:
+   a Learn article's heading block opens with 6px of its own, and this line
+   had none, so the top three rows of its letters lay under that row at every
+   width, and at 360px the button's bottom edge sat on the words "the
+   Calendar" (the review of 2 October 2026). */
 .sesspage .crumb{font-family:var(--sans);font-size:var(--t-sm);color:var(--ink-2);
-margin:0 0 var(--sp-2)}
+margin:var(--sp-3) 0 var(--sp-2)}
 .sesspage .crumb a{color:var(--ink-2)}
 
 .sitem{border:1px solid var(--rule);border-radius:6px;background:var(--surface);
@@ -4352,8 +4398,14 @@ table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:42
    WCAG 2.5.8, which asks 24px; 44 is this site's own floor for a control on
    a phone. Here, after all of them, so these are the rules that win.
    The line above a Learn article's heading and above a sitting's is a link
-   on a line of its own: it takes its 44px as padding given back as margin,
-   so the heading under it does not move. */
+   on a line of its own, with the row of "Cite this page" 2px above it and
+   the heading 6px below on a Learn article: there is no 44px there to give
+   it without moving the heading. It was given 14px of padding either side,
+   taken back as margin, and the link's box and its focus ring then ran 12px
+   into the heading under it (the review of 2 October 2026). So the link
+   stays the size of its words, which is where its ring is drawn, and what
+   can be pressed is a box laid over it: from the row above, which is drawn
+   over anything that reaches into it, to 14px below the words. */
 @media (max-width:720px){
   .cmbtn{min-width:44px;min-height:44px}
   .calviews button,.calfold,.calcat{min-height:44px}
@@ -4365,7 +4417,9 @@ table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:42
      top of the line beside an address in the middle of it. */
   .offhow{align-items:center}
   .offhow a{display:inline-flex;align-items:center;min-height:44px;padding:0}
-  :is(.civics,.civhead,.sesspage) .crumb a{display:inline-block;padding:14px 0;margin:-14px 0}
+  :is(.civics,.civhead,.sesspage) .crumb a{display:inline-block;position:relative}
+  :is(.civics,.civhead,.sesspage) .crumb a::after{content:"";position:absolute;
+  left:0;right:0;top:-2px;bottom:-14px}
 }
 
 /* PAGES:START ---------------------------------------------------------

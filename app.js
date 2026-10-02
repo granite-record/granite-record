@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.137
+// GRANITE_VERSION: 2026-09-07.138
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2258,7 +2258,7 @@ function tabAddress(slug){
   const m=TAB_PATH.exec(location.pathname);
   const base=m&&isTabSlug(m[2].toLowerCase())?m[1]:location.pathname.replace(/\/$/,"");
   try{history.replaceState(history.state,"",base+(slug?"/"+slug:"")+location.search);}catch(_){}
-  skipHere();
+  addressed();
 }
 
 // THE SKIP LINK MUST POINT AT THIS DOCUMENT, and after a tab is opened it did
@@ -2275,6 +2275,18 @@ function skipHere(){
   if(s)s.setAttribute("href",location.pathname+"#results");
 }
 const slugOf=(map,v)=>Object.keys(map).find(k=>map[k]===v)||"";
+// WHERE THE ADDRESS STOOD, WITHOUT ITS FRAGMENT, when this script last wrote
+// it or was last told it had moved. A link to a place on the page -- the skip
+// link is one -- adds an entry to history and fires popstate with no state,
+// which is also what going back from a bill to the list fires. The two are
+// told apart by this: only the fragment moved, or the page did. Everything
+// here that writes the address calls addressed(), which also keeps the skip
+// link naming this document.
+let STOOD=location.pathname+location.search;
+function addressed(){
+  STOOD=location.pathname+location.search;
+  skipHere();
+}
 try{skipHere();}catch(_){}
 
 // A BILL NUMBER IS NOT UNIQUE ACROSS TERMS, and four of those five are keyed
@@ -2342,6 +2354,7 @@ const need=(f)=>fetch(DATA(f)).then(r=>{
 if(/^\/(?:bill|legislator|committee)\/.+\.html$/.test(location.pathname)){
   try{history.replaceState(history.state,"",
     location.pathname.slice(0,-5)+location.search+location.hash);}catch(_){}
+  try{addressed();}catch(_){}
 }
 // WHICH TERM TO LOAD FIRST. A record page names it in its own address --
 // /bill/2026/hb1442 -- so a 1995 bill loads the 1995 index and not the
@@ -5019,8 +5032,9 @@ const repaint=()=>{
 // controls that key matches, for the few that share one.
 //
 // "Show more" is left out on purpose: what a reader wants after pressing it
-// is the first of the rows it brought, which is where the browser's own
-// starting point already is, not the next "Show more" a hundred rows down.
+// is the first of the rows it brought, not the next "Show more" a hundred
+// rows down. Its own handlers put focus there. The browser does not: the
+// redraw replaces the whole list, so its starting point is the top of it.
 function focusKey(a){
   if(a===undefined)a=document.activeElement;
   if(!a||a===document.body||!a.tagName||!a.closest)return null;
@@ -6270,8 +6284,17 @@ document.addEventListener("click",e=>{
   // Not data-more: that one belongs to the bill list, is read by the
   // handler above this in the file, and calls render(), which would draw the
   // search over the member's record.
+  // The keyboard goes to the first of the votes it brought, as "Show 3 more"
+  // on a docket puts it on the first line it reveals: the button is drawn
+  // again a page further down, and focus left on nothing sent the next Tab
+  // press to the top of the member's page (the review of 2 October 2026).
   const vm=e.target.closest("[data-vmore]");
-  if(vm){PAGE.vshow=(PAGE.vshow||VOTES_SHOWN)+VOTES_SHOWN;renderPage();return;}
+  if(vm){
+    const from=PAGE.vshow||VOTES_SHOWN;
+    PAGE.vshow=from+VOTES_SHOWN;renderPage();
+    const row=$("#results").querySelectorAll("table.vfull tbody tr")[from];
+    if(row&&row.focus){row.tabIndex=-1;row.focus({preventScroll:true});}
+    return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
   const head=e.target.closest(".chead");
@@ -6348,6 +6371,25 @@ function staticChromeDown(){
   const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
   const c=$("#count"); if(c)c.textContent="";
   hideListControls();
+  scrollStops();
+}
+// A BOX THAT SCROLLS SIDEWAYS IS A TAB STOP WHILE IT SCROLLS, AND ONLY THEN.
+// The exports page's coverage table is 420px in a 336px box on a phone, and a
+// keyboard has to be able to reach the box to pan it; the page carried
+// tabindex="0" on it at every width, so on a desktop, where the table fits
+// with room to spare, the Tab key stopped on a box that does nothing (the
+// review of 2 October 2026). The page marks the box and this gives it the
+// stop where its content is wider than it is, again when the window changes.
+// Without this script Chrome and Firefox make a scrolling box a stop
+// themselves.
+function scrollStops(){
+  const boxes=[...document.querySelectorAll("[data-scrollstop]")];
+  const set=()=>boxes.forEach(b=>{
+    if(b.scrollWidth>b.clientWidth+1)b.setAttribute("tabindex","0");
+    else b.removeAttribute("tabindex");});
+  if(!boxes.length)return;
+  set();
+  window.addEventListener("resize",set);
 }
 
 // Every term this record has anything in, newest first. Worked out once,
@@ -6621,19 +6663,26 @@ function focusBill(id,href){
   if(_y){
     try{history.pushState({focus:id},"",
       `${BASE}bill/${_y}/${id.toLowerCase()}`);}catch(_){}
+    addressed();
   }
   openBill(id);
   window.scrollTo(0,0);
 }
 
-// IS THE PAGE BEFORE THIS ONE THE BILL SEARCH? In the search itself a bill is
-// opened by pushing its address over the list (focusBill), so back is the
-// list by construction. On a bill's own page it is so only if the reader
-// came from this site's /bills, which the referrer says; a page opened from
-// a link elsewhere, a bookmark or a member's page has something else behind
-// it, or nothing, and "Back to bill search" must not go there.
+// IS THE PAGE BEFORE THIS ONE THE BILL SEARCH? In the search itself it is
+// where this bill's entry in history is the one focusBill pushed over the
+// list, which the entry's own state says. A bill the address named when the
+// page loaded -- /bills#2025/HB2, which the home page's Latest activity and
+// the calendar link to -- pushed nothing: behind it is the home page, another
+// site, or nothing at all, and "Back to bill search" did nothing in a new
+// tab and went back to the home page from the home page (the review of
+// 2 October 2026). There the click draws the list instead (unfocus). On a
+// bill's own page back is the search only if the reader came from this
+// site's /bills, which the referrer says; a page opened from a link
+// elsewhere, a bookmark or a member's page has something else behind it, or
+// nothing, and "Back to bill search" must not go there.
 function backIsSearch(){
-  if(!window.GR_STANDALONE)return true;
+  if(!window.GR_STANDALONE)return !!(history.state&&history.state.focus);
   // A bill opened in a new tab came from the search and has no page behind
   // it in this tab: back would do nothing at all.
   if(history.length<2)return false;
@@ -6658,14 +6707,35 @@ function unfocus(y){
   // it, which is not where the reader is standing.
   // Back to the list's own address rather than the bill's.
   try{history.pushState({},"",BASE+"bills");}catch(_){}
+  addressed();
   render();
   window.scrollTo(0,y);
 }
 
+// BACK AND FORWARD, WITHIN THIS DOCUMENT. An entry focusBill pushed carries
+// the bill it opened; going back from it to the list arrives with no state,
+// and that used to be the whole test: no state and a bill open meant "back
+// to the list". But a link to a place on the page fires the same event, and
+// "Skip to this bill" is one. On a bill's own page -- where it has been the
+// first Tab stop since the box stopped taking focus on load -- pressing it
+// ran unfocus(), which there leaves for /bills: the skip link threw the
+// reader off the bill on all 33,717 bill pages, and on /bills#2025/HB2 it
+// shut the bill (the review of 2 October 2026). So: where only the fragment
+// moved, nothing is redrawn; and an address that is still a bill's own is
+// that bill, whatever its fragment and whichever tab it names.
+const BILL_PATH=/^\/bill\/\d{4}\/[a-z]{2,5}\d+(?:\.html)?(?:\/[a-z]+)?\/?$/i;
 window.addEventListener("popstate",e=>{
   const f=e.state&&e.state.focus;
-  if(f){focused=f;openBill(f);window.scrollTo(0,0);}
-  else if(focused)unfocus();
+  const was=STOOD;
+  addressed();
+  if(f){
+    // Back from a place on the bill's page to the entry that opened it: the
+    // bill is already drawn, and the browser puts the scroll back itself.
+    if(focused!==f){focused=f;openBill(f);window.scrollTo(0,0);}
+    return;
+  }
+  if(!focused||was===STOOD||BILL_PATH.test(location.pathname))return;
+  unfocus();
 });
 
 function openBill(id){
@@ -6864,14 +6934,28 @@ document.addEventListener("click",e=>{
   // "Back to bill search" is a link to the search. Where the page before
   // this one in history is the search itself, a plain click goes back to it
   // instead, so the list comes back as the reader left it -- same filters,
-  // same place. A modified or middle click is left to the link.
+  // same place. In the search with something else behind the bill, the list
+  // is drawn here, where its bills already are, and not fetched again. A
+  // modified or middle click, and a bill's own page with anything else
+  // behind it, are left to the link.
   if(e.target.closest("[data-back]")){
-    if(e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&backIsSearch()){
-      e.preventDefault();history.back();}
+    if(e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
+      if(backIsSearch()){e.preventDefault();history.back();}
+      else if(!window.GR_STANDALONE){e.preventDefault();unfocus();}
+    }
     return;}
   // The same thing the observer does, for a keyboard, a reader, or a
-  // browser with no IntersectionObserver.
-  if(e.target.closest("[data-more]")){SHOWN+=PAGE_SIZE;render(true);return;}
+  // browser with no IntersectionObserver. The button is replaced by the rows
+  // it asked for, so the keyboard goes to the first of them: left on nothing,
+  // the next Tab press started from the top of a list two hundred bills long
+  // (the review of 2 October 2026). The observer moves nothing.
+  if(e.target.closest("[data-more]")){
+    const from=SHOWN;
+    SHOWN+=PAGE_SIZE;render(true);
+    const next=$("#results").querySelectorAll(".card")[from];
+    const head=next&&next.querySelector(".chead");
+    if(head&&head.focus)head.focus({preventScroll:true});
+    return;}
   // Everything below reads .card. A member's or a committee's page has none,
   // so a tab click here threw on tab.closest(".card").dataset and the tab did
   // nothing. Those pages have their own handler, registered above.
@@ -6971,6 +7055,7 @@ function addressSearch(q,always){
     if(q)p.set("q",q);else p.delete("q");
     const s=p.toString();
     history.replaceState(history.state,"",location.pathname+(s?"?"+s:"")+location.hash);
+    addressed();
   }catch(_){}
 }
 // Running a search from one bill's own view means leaving that bill, so it
@@ -6981,16 +7066,33 @@ function submitSearch(){
   // From a member's or a committee's page, searching means going to the bill
   // search -- that is where results are drawn. Running render() here wrote
   // the list over the record instead, and the only way back was a reload.
-  if(PAGE||window.GR_STATIC){
+  //
+  // AND FROM A BILL'S OWN PAGE, which keeps the box. There the search left
+  // for /bills by unfocus(), which carries nothing: the words were thrown
+  // away and the reader landed on the whole list with an empty box, and the
+  // address written for the search went onto the bill's own entry in history
+  // instead, /bill/2025/hb2?q=housing (the review of 2 October 2026). It goes
+  // where the others go, with the words -- and with the term, where the
+  // picker beside the box names one that is not the newest: on a bill's own
+  // page that picker chooses the term the next search runs in (its change
+  // handler, above), and /bills opens on the newest unless told.
+  if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
+    const to=[];
+    const newest=((META&&META.terms)||[])[0];
+    if(window.GR_STANDALONE&&!PAGE&&term&&newest&&term!==newest)
+      to.push("term="+encodeURIComponent(term));
     // Half an emoji is not an address: encodeURIComponent throws on a
     // surrogate with no partner (find.js, _fwell).
-    location.href=BASE+"bills"+(query?`?q=${encodeURIComponent(
-      query.replace(/[\uD800-\uDFFF]/gu,"\uFFFD"))}`:"");
+    if(query)to.push("q="+encodeURIComponent(
+      query.replace(/[\uD800-\uDFFF]/gu,"\uFFFD")));
+    location.href=BASE+"bills"+(to.length?"?"+to.join("&"):"");
     return;
   }
-  // From a bill's own view, running the search means leaving that bill. Back
-  // out to the top: the scroll position from before it was opened belongs to
-  // a list that is no longer the one on screen.
+  // From a bill opened in the search, running the search means leaving that
+  // bill. Back out to the top: the scroll position from before it was opened
+  // belongs to a list that is no longer the one on screen. unfocus() has
+  // pushed /bills by the time the search is written into the address, so it
+  // is the list's entry that names it.
   if(focused){unfocus(0);addressSearch(query,true);return;}
   // On the list the results narrow as they type, a moment behind the typing
   // (QWAIT). Return means they have finished: draw now, let go of the

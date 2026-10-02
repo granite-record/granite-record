@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.135
+# GRANITE_VERSION: 2026-09-04.136
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1788,10 +1788,27 @@ SEATING_JS = """
       e.preventDefault();
       stopAt(seats[j]); seats[j].focus(); centre(seats[j]);
     });
-    svg.addEventListener("focusin",function(e){
+    /* HEARD ON THE BOX ROUND THE CHART, NOT ON THE CHART. Chrome takes an
+       <svg> that listens for focus to be something the Tab key stops on, so
+       with these two on the svg the chart itself became a stop between Fit
+       and the seat: a ring round all 400 seats, drawn where the box clips
+       it, and no key that did anything there. And leaving a seat emptied the
+       note under the chart -- which holds the link to the member's page, the
+       next thing Tab reaches -- while focus was on its way to it, so that
+       press landed on nothing and the link could not be reached from a seat
+       at all (the review of 2 October 2026). The note is left as it is while
+       focus goes into it, and put back when focus leaves it: for the list
+       under the chart it says again whatever is chosen, and for a seat the
+       seat's own focus names its member a moment later. */
+    var host=wrap||svg.parentNode;
+    host.addEventListener("focusin",function(e){
       var c=seatHit(e.target); if(c){stopAt(c);say(c);}
     });
-    svg.addEventListener("focusout",function(){say();});
+    host.addEventListener("focusout",function(e){
+      if(note&&e.relatedTarget&&note.contains(e.relatedTarget))return;
+      say();
+    });
+    if(note)note.addEventListener("focusout",function(){say();});
     // Hovering names who is in a seat without choosing it, so a mouse can
     // read the floor quickly; leaving restores whatever was chosen.
     svg.addEventListener("mouseover",function(e){

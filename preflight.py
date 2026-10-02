@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.316
+# GRANITE_VERSION: 2026-09-04.317
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8310,7 +8310,8 @@ def _rings_edges_opacity():
                   "greys, and --ink-2 on the week's band above 4.5:1 in both themes")
 
 
-@check("frontend", "on paper the page is the light theme, whichever theme is on, and the controls are not printed")
+@check("frontend", "on paper the page is the light theme, whichever theme is on; the controls are not "
+                   "printed, a recording's times are, and no white words lose their ground")
 def _print_is_light():
     """The audit of 2 October 2026, M24. app.css had no print rules, and with
     the dark theme on a page printed in the dark theme's light ink on white
@@ -8324,6 +8325,21 @@ def _print_is_light():
     it: every colour the dark palette redefines is given back, at the light
     value, and nothing else. And the block must be in the shared region, or
     the pages that take style.css print as they did.
+
+    WHAT IS LEFT OFF IS THE CONTROL, NOT THE RECORD (the review of 2 October).
+    The block hid .player whole, and that box holds each sitting's times:
+    Play's own words, the line of moments under it, "approximate", the
+    motions. On paper a bill's Hearings tab named no time at all. The frame
+    of a playing recording is left off; Play prints as the line of text it
+    is.
+
+    AND WHITE WORDS KEEP THEIR GROUND. A browser prints no background unless
+    asked, so type set in --on-pine, or in --surface on a filled stop of the
+    passage rail, was white on white: a stop a bill had passed printed as an
+    empty ring. Every rule in app.css that sets type in --on-pine, --surface
+    or white is either under something the block leaves off, or under
+    something it asks the ground for (print-color-adjust:exact). Read from
+    the rules, so the next white label on a filled ground cannot be missed.
     """
     css = Path("app.css")
     if not css.exists():
@@ -8353,14 +8369,48 @@ def _print_is_light():
              for n in dark if on_paper[n].strip().lower() != light.get(n, "").strip().lower()]
     assert not drift, "; ".join(drift[:4])
     assert "color-scheme:light" in m.group(1), "on paper the page still asks for a dark colour scheme"
-    hidden = re.search(r"([^{}]+)\{display:none !important\}", strip(m.group(2)))
+    rest = strip(m.group(2))
+    hidden = re.search(r"([^{}]+)\{display:none !important\}", rest)
     gone = {s.strip() for s in hidden.group(1).split(",")} if hidden else set()
-    want = {"nav.top", ".searchrow", ".backto", ".pageacts", "details.report", ".player"}
+    want = {"nav.top", ".searchrow", ".backto", ".pageacts", "details.report", ".player iframe"}
     assert want <= gone, (
         "printed, though it is a control and does nothing on paper: "
         + ", ".join(sorted(want - gone)))
+    assert not ({".player", ".pbar", ".tolnote", ".jump", ".pstub"} & gone), (
+        "a recording's box is left off the sheet, and it holds the times: where in the "
+        "recording the bill was taken up, the vote, and whether a time is approximate")
+    stub = re.search(r"(?:^|\})\s*\.pstub\{([^}]*)\}", rest)
+    assert stub and "display:block" in stub.group(1) and "aspect-ratio:auto" in stub.group(1) \
+        and "color:var(--ink)" in stub.group(1) and "background:none" in stub.group(1), (
+            "on paper Play is not set as a line of text: it carries the time the recording "
+            "is played from, in the still's light ink on a ground that does not print")
+    exact = re.search(r"([^{}]+)\{\s*-webkit-print-color-adjust:exact;print-color-adjust:exact\}", rest)
+    kept = {s.strip() for s in exact.group(1).split(",")} if exact else set()
+    under = lambda sel, group: any(sel == g or sel.startswith(g + " ") or sel.startswith(g + ":")
+                                   or sel.startswith(g + ".") for g in group)
+    white, lost = 0, []
+    for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", strip(text)):
+        if not re.search(r"(?<![-\w])color:\s*(?:var\(--(?:on-pine|surface|paper)\)|#fff(?:fff)?\b|white\b)",
+                         rule.group(2), re.I):
+            continue
+        for sel in rule.group(1).split(","):
+            sel = sel.strip().replace(":where(body.pg) ", "")
+            white += 1
+            if not (under(sel, gone) or under(sel, kept)):
+                lost.append(sel)
+    assert white >= 10 and not lost, (
+        "set in white, or in the colour of the page, on a ground that does not print, and "
+        "neither left off the sheet nor given its ground on paper: " + ", ".join(sorted(set(lost))[:6]))
+    # One is not type: the Calendar's ticked kind of meeting is a white tick,
+    # drawn as a border, on the kind's own colour.
+    assert re.search(r"\.cbx::after\{[^}]*border:solid var\(--surface\)", strip(text)) \
+        and ".calcat input:checked + .cbx" in kept, (
+            "a ticked kind of meeting prints as an empty box: its tick is the colour of the "
+            "page on a ground that is not asked for on paper")
     return "ok", (f"{len(dark)} colours given back at their light values under both dark "
-                  f"selectors, in the shared region; {len(gone)} controls left off the sheet")
+                  f"selectors, in the shared region; {len(gone)} controls left off the sheet, "
+                  f"a recording's box not among them; {white} rules that set white type each "
+                  f"left off or printed on their ground ({len(kept)} grounds asked for)")
 
 
 @check("frontend", "the small things of the audit of 2 October stay fixed: targets, the wordmark, "
@@ -12637,8 +12687,15 @@ def _chain():
                 if re.match(r'<table\b[^>]*\brole="grid"', tab):
                     continue
                 n_tab += 1
-                if "<th" not in tab:
+                if not re.search(r"<th\b", tab):
                     headless.append(f"{rel}: {' '.join(tab.split())[:70]}")
+                # A table that is all data, as the exports page's coverage
+                # is: every row of its body opens with the cell that heads it.
+                if 'class="cov"' in tab:
+                    body = tab[tab.index("<tbody"):]
+                    trs = re.findall(r"<tr>\s*<(t[hd])\b([^>]*)>", body)
+                    if not trs or any(t != "th" or 'scope="row"' not in a for t, a in trs):
+                        headless.append(f"{rel}: a term of the coverage table does not head its row")
             if 'class="searchrow"' in page:
                 assert re.search(r'<div class="searchrow" role="search" aria-label="[^"]+">', page), (
                     f"{rel}: the bill search row is not a named search landmark")
@@ -20286,14 +20343,70 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 """
 
 
-@check("frontend", "a bill's own page starts at the top and leaves by a link to the bill search")
+# What the two harnesses below share, run in node beside page.js (app.js) and
+# stub.js (dom_stub.js). The stub drops what the window and the document are
+# asked to listen for, and its history writes nothing down; here both are
+# kept, so a check can press a key, click, and go back, and read what the
+# page then did to the address. A raw string: it carries a regular expression.
+_HEARD_PRELUDE = r"""
+require("./stub.js");
+const fs = require("fs");
+const heard = {window: {}, document: {}};
+globalThis.addEventListener = (t, f) => (heard.window[t] = heard.window[t] || []).push(f);
+document.addEventListener = (t, f) => (heard.document[t] = heard.document[t] || []).push(f);
+globalThis.CSS = {escape: s => String(s).replace(/["\\|#.:\[\]]/g, "\\$&")};
+// The address as the page writes it: what was pushed, replaced or gone back
+// from, and location following each as a browser's does.
+const wrote = [];
+const go = u => { const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(u);
+  location.pathname = m[1]; location.search = m[2] || ""; location.hash = m[3] || ""; };
+history.pushState = (st, t, u) => { wrote.push("push " + u); history.state = st; go(u); };
+history.replaceState = (st, t, u) => { wrote.push("replace " + u); history.state = st; go(u); };
+history.back = () => { wrote.push("back"); };
+location.origin = "https://x";
+let s;
+function load(names) {
+  try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({" + names + "})"); }
+  catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+}
+// Stand the page at an address, as if it had loaded there or written it.
+// location.href is a mark: anything else in it afterwards is where the page
+// sent the reader.
+function place(path, state, standalone) {
+  go(path); history.state = state; window.GR_STANDALONE = standalone;
+  s.addressed(); wrote.length = 0; location.href = "HERE";
+}
+const pop = state => { history.state = state; heard.window.popstate.forEach(f => f({state})); };
+// A click on something `hit` answers for: hit(selector) is what
+// e.target.closest(selector) finds.
+function click(hit, ev) {
+  const e = Object.assign({button: 0, detail: 1, prevented: 0,
+    preventDefault() { this.prevented++; },
+    target: {closest: q => hit(q) || null, dataset: {}, id: ""}}, ev || {});
+  heard.document.click.forEach(f => f(e));
+  return e;
+}
+const seen = () => ({href: location.href, wrote: wrote.slice(), focused: s.getFocused()});
+"""
+
+
+@check("frontend", "a bill's own page starts at the top, stays on the bill at its skip link, and leaves "
+                   "by a link to the bill search with the words of a search run from it")
 def _bill_page_start_and_exit():
-    """The audit of 2 October 2026, S7 and S14.
+    """The audit of 2 October 2026, S7 and S14, and what the review of their
+    fixes found.
 
     S7. app.js put focus in the bill search box on load, on the search page
     and on every bill's own page: on /bill/2025/hb2 the first Tab press went
     to the box's button, so "Skip to this bill" and the nav were behind the
     starting point. The box takes focus only where there is no bill named.
+
+    AND THE SKIP LINK STAYS ON THE BILL. That made "Skip to this bill" the
+    first Tab stop on 33,717 pages, and pressing it left for the bill search:
+    a link to a place on the page fires popstate with no state, which the
+    handler took for "back to the list", and on a bill's own page going back
+    to the list is leaving the page. The handler does nothing where only the
+    fragment moved, or where the address is still a bill's own.
 
     S14. "Back to bill search" was a button that called history.back(). Opened
     directly, a bill's page left the site; reached from a member's page, it
@@ -20301,6 +20414,17 @@ def _bill_page_start_and_exit():
     back in history only where back is the search: in the search itself,
     where the bill was opened over the list, or on a bill's own page when the
     referrer is this site's /bills and there is a page behind it in the tab.
+
+    AND WHERE THE ADDRESS OPENED THE BILL, IT DRAWS THE LIST. /bills#2025/HB2
+    -- the home page's Latest activity and the calendar link to it -- pushed
+    nothing, so in the search back was the home page, or nothing in a new tab.
+    There the click shows the list in place.
+
+    AND A SEARCH RUN FROM A BILL'S OWN PAGE TAKES ITS WORDS. It left for
+    /bills with an empty box and wrote the search onto the bill's own entry
+    in history. It goes to /bills?q=, with the term where the picker beside
+    the box names one that is not the newest; and Return on the list writes
+    the search into the list's address, which is run here, not read.
     """
     js, stub = Path("app.js"), Path("dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
@@ -20312,34 +20436,32 @@ def _bill_page_start_and_exit():
     assert onload == ['if(!window.GR_BILL)$("#q").focus();'], (
         f"the bill search box is focused as the page loads by {onload}: on a bill's own "
         "page that puts the skip link and the nav behind the starting point")
-    guarded = re.findall(
-        r"if\(e\.button===0[^{]*backIsSearch\(\)\)\{\s*e\.preventDefault\(\);history\.back\(\);\}",
-        src)
-    assert len(guarded) == 1 and src.count("history.back();") == 1, (
-        "something in app.js calls history.back() without asking backIsSearch(): "
-        "back is wherever the reader came from, which a label naming a place cannot promise")
+    assert src.count("history.back();") == 1 and \
+        "if(backIsSearch()){e.preventDefault();history.back();}" in src, (
+            "something in app.js calls history.back() without asking backIsSearch(): "
+            "back is wherever the reader came from, which a label naming a place cannot promise")
     root = Path(tempfile.mkdtemp())
     try:
         (root / "page.js").write_text(src, encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "go.js").write_text(r"""
-require("./stub.js");
-const fs = require("fs");
-let s;
-try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({render, IDX, backIsSearch, setFocused:(x)=>{focused=x;}})"); }
-catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+        (root / "go.js").write_text(_HEARD_PRELUDE + r"""
+load("render, IDX, backIsSearch, addressed, focusBill, setFocused:(x)=>{focused=x;},"
+  + " getFocused:()=>focused, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
 const out = {};
+s.setMeta({terms: ["2025-2026", "2003-2004"], committee_codes: {}, topics: []});
 s.IDX.length = 0;
 s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind: "active",
-  committees: [], topic: "", sponsor: "", term: "2026", year: "2026", hay: "hb1442"});
+  committees: [], topic: "", sponsor: "", term: "2025-2026", year: "2026", hay: "hb1442"});
+s.setTerm("2025-2026");
 s.setFocused("HB1442"); s.render();
 out.back = (/<(\w+) class="backto"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
-const at = (standalone, referrer, length) => { window.GR_STANDALONE = standalone;
-  document.referrer = referrer; history.length = length; return s.backIsSearch(); };
-location.origin = "https://x";
+const at = (standalone, referrer, length, state) => { window.GR_STANDALONE = standalone;
+  document.referrer = referrer; history.length = length; history.state = state || null;
+  return s.backIsSearch(); };
 out.is = {
-  inSearch: at(false, "", 1),
+  inSearch: at(false, "", 1, {focus: "HB1442"}),
+  inSearchByItsAddress: at(false, "https://x/", 2, null),
+  inSearchAtAPlaceOnIt: at(false, "", 3, null),
   fromSearch: at(true, "https://x/bills?q=budget", 2),
   fromSearchHtml: at(true, "https://x/bills.html", 3),
   newTab: at(true, "https://x/bills", 1),
@@ -20347,6 +20469,73 @@ out.is = {
   fromMember: at(true, "https://x/legislator/jane-doe", 4),
   fromElsewhere: at(true, "https://example.org/bills", 2),
   fromABill: at(true, "https://x/bills/x", 2),
+};
+
+// THE SKIP LINK, AND BACK AND FORWARD. Each is what the browser does to the
+// address, then the popstate it fires.
+out.pop = {};
+// A bill's own page; "Skip to this bill" moves the fragment and nothing else.
+place("/bill/2026/hb1442", null, true); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipOwn = seen();
+// The same on a tab's address, and back from it to an entry of another tab.
+place("/bill/2026/hb1442/votes", null, true); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipOwnTab = seen();
+place("/bill/2026/hb1442/text", null, true); s.setFocused("HB1442");
+go("/bill/2026/hb1442/votes"); pop(null); out.pop.backOwnTab = seen();
+// The search, a bill its address opened: the skip link there.
+place("/bills#2026/HB1442", null, false); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipByAddress = seen();
+// The search, a bill opened over the list: the skip link, then back to the
+// entry that opened the bill, then back to the list.
+place("/bill/2026/hb1442", {focus: "HB1442"}, false); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipOverList = seen();
+location.hash = ""; pop({focus: "HB1442"}); out.pop.backToItsEntry = seen();
+go("/bills"); pop(null); out.pop.backToList = seen();
+// And opened for real, by the card's arrow: the skip link has to name the
+// address the bill was given, or pressing it is a journey to another page;
+// and name the list's again once the bill is left.
+const skip = document.querySelector("a.skip");
+skip.setAttribute = (k, v) => { if (k === "href") skip.href = v; };
+place("/bills", null, false); s.setFocused(null);
+s.focusBill("HB1442");
+out.opened = {wrote: wrote.slice(), skip: skip.href};
+location.hash = "#results"; pop(null);
+out.opened.atSkip = s.getFocused();
+go("/bills"); pop(null);
+out.opened.left = {skip: skip.href, focused: s.getFocused()};
+
+// "BACK TO BILL SEARCH", clicked.
+const back = q => q === "[data-back]" ? {} : null;
+const pressed = (path, state, standalone, referrer, ev) => {
+  place(path, state, standalone); document.referrer = referrer || ""; history.length = 2;
+  s.setFocused("HB1442");
+  const e = click(back, ev);
+  return Object.assign(seen(), {prevented: e.prevented});
+};
+out.click = {
+  byAddress: pressed("/bills#2026/HB1442", null, false, "https://x/"),
+  overList: pressed("/bill/2026/hb1442", {focus: "HB1442"}, false),
+  ownFromMember: pressed("/bill/2026/hb1442", null, true, "https://x/legislator/jane-doe"),
+  ownFromSearch: pressed("/bill/2026/hb1442", null, true, "https://x/bills?q=budget"),
+  newTabOfIt: pressed("/bills#2026/HB1442", null, false, "", {ctrlKey: true}),
+  // Over the list, but at a place on the bill: the entry is the fragment's.
+  overListAtAPlace: pressed("/bill/2026/hb1442#results", null, false),
+};
+out.click.overListAtAPlace.skip = skip.href;
+
+// A SEARCH, RUN WITH RETURN in the box.
+const box = document.querySelector("#q");
+const run = (words, path, state, standalone, open, term) => {
+  place(path, state, standalone); s.setFocused(open); s.setTerm(term || "2025-2026");
+  box.value = words; box.fire("keydown", {key: "Enter"});
+  return seen();
+};
+out.search = {
+  own: run("housing aid", "/bill/2026/hb1442", null, true, "HB1442"),
+  ownOlderTerm: run("housing", "/bill/2003/hb1", null, true, "HB1", "2003-2004"),
+  ownNoWords: run("", "/bill/2026/hb1442", null, true, "HB1442"),
+  overList: run("housing", "/bill/2026/hb1442", {focus: "HB1442"}, false, "HB1442"),
+  list: run("HB 2", "/bills", null, false, null),
 };
 process.stdout.write("\n@@" + JSON.stringify(out));
 """, encoding="utf-8")
@@ -20359,14 +20548,57 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     assert got["back"] == '<a class="backto" href="/bills" data-back="1">', (
         "\"Back to bill search\" is drawn as " + (got["back"] or "nothing")
         + ": it must be a link to /bills, which is where its label says it goes")
-    want = {"inSearch": True, "fromSearch": True, "fromSearchHtml": True, "newTab": False,
+    want = {"inSearch": True, "inSearchByItsAddress": False, "inSearchAtAPlaceOnIt": False,
+            "fromSearch": True, "fromSearchHtml": True, "newTab": False,
             "direct": False, "fromMember": False, "fromElsewhere": False, "fromABill": False}
     assert got["is"] == want, (
         "back is taken for the bill search where it is not, or not where it is: "
         + "; ".join(f"{k}: {got['is'].get(k)}" for k, v in want.items() if got["is"].get(k) != v))
-    return "ok", ("the search box takes focus on load only where no bill is named; \"Back to "
-                  "bill search\" is a link to /bills, and goes back in history only where "
-                  "back is the search")
+
+    def off(group, want):
+        return [f"{k}: {got[group].get(k)}, not {v}" for k, v in want.items()
+                if got[group].get(k) != v]
+
+    stay = {"href": "HERE", "wrote": [], "focused": "HB1442"}
+    bad = off("pop", {"skipOwn": stay, "skipOwnTab": stay, "backOwnTab": stay,
+                      "skipByAddress": stay, "skipOverList": stay, "backToItsEntry": stay,
+                      "backToList": {"href": "HERE", "wrote": ["push /bills"], "focused": None}})
+    assert not bad, (
+        "a link to a place on the page, or back from one, leaves the bill or draws the "
+        "list over it (the skip link is the first Tab stop on every bill's page): "
+        + "; ".join(bad[:3]))
+    opened = {"wrote": ["push /bill/2026/hb1442"], "skip": "/bill/2026/hb1442#results",
+              "atSkip": "HB1442", "left": {"skip": "/bills#results", "focused": None}}
+    assert got["opened"] == opened, (
+        "a bill opened over the list, and left again: the skip link must name the address "
+        f"the page is at each time, and pressing it must leave the bill open: {got['opened']}")
+    bad = off("click", {
+        "byAddress": {"href": "HERE", "wrote": ["push /bills"], "focused": None, "prevented": 1},
+        "overList": {"href": "HERE", "wrote": ["back"], "focused": "HB1442", "prevented": 1},
+        "ownFromMember": {"href": "HERE", "wrote": [], "focused": "HB1442", "prevented": 0},
+        "ownFromSearch": {"href": "HERE", "wrote": ["back"], "focused": "HB1442", "prevented": 1},
+        "newTabOfIt": {"href": "HERE", "wrote": [], "focused": "HB1442", "prevented": 0},
+        "overListAtAPlace": {"href": "HERE", "wrote": ["push /bills"], "focused": None,
+                             "prevented": 1, "skip": "/bills#results"}})
+    assert not bad, (
+        "\"Back to bill search\", clicked, does not go to the search: where the address "
+        "opened the bill it must draw the list, where the list is behind it go back, and "
+        "anywhere else be the link it is: " + "; ".join(bad[:3]))
+    bad = off("search", {
+        "own": {"href": "/bills?q=housing%20aid", "wrote": [], "focused": "HB1442"},
+        "ownOlderTerm": {"href": "/bills?term=2003-2004&q=housing", "wrote": [], "focused": "HB1"},
+        "ownNoWords": {"href": "/bills", "wrote": [], "focused": "HB1442"},
+        "overList": {"href": "HERE", "wrote": ["push /bills", "replace /bills?q=housing"],
+                     "focused": None},
+        "list": {"href": "HERE", "wrote": ["replace /bills?q=HB+2"], "focused": None}})
+    assert not bad, (
+        "a search run with Return loses its words or writes them onto the wrong address: "
+        + "; ".join(bad[:3]))
+    return "ok", ("the search box takes focus on load only where no bill is named; the skip "
+                  "link and back from it leave the bill as it is, in 6 cases; \"Back to bill "
+                  "search\" goes back only where back is the search and draws the list where "
+                  "the address opened the bill; a search run from a bill's page keeps its "
+                  "words and its term")
 
 
 @check("frontend", "focus survives every redraw: the control that had it has it again, through each of the three renderers")
@@ -20385,8 +20617,9 @@ def _focus_survives():
     of each kind is given a key that names it and nothing else; each renderer,
     with focus on a control it then replaces, leaves focus on the copy; "Show
     more" is given no key, because what a reader wants after it is the rows it
-    brought; and focus on something the redraw does not replace -- the search
-    box while the list narrows -- is not moved.
+    brought, where its own handler puts focus (_review_of_audit_fixes); and
+    focus on something the redraw does not replace -- the search box while
+    the list narrows -- is not moved.
     """
     js, stub = Path("app.js"), Path("dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
@@ -20424,8 +20657,337 @@ def _focus_survives():
         "keyboard while the list narrows under it")
     return "ok", ("a tab, a facet's checkbox, a card's header, a legend row, a select and a "
                   "filter's head are each keyed and refocused through render(), renderPage() "
-                  "and renderFacets(); Show more is left to the browser, and focus a redraw "
+                  "and renderFacets(); Show more is given no key, and focus a redraw "
                   "did not take is not moved")
+
+
+@check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "
+                   "Play and a long analysis, the seat map's one stop, a box that scrolls, the "
+                   "line above a sitting, the header below 1100px and the rules a look had added",
+       needs=("build_pages",))
+def _review_of_audit_fixes(BP):
+    """Two reviews of the audit's fixes, 2 October 2026, and the gaps they
+    found in the checks: eleven of the fixes could be taken out, one at a
+    time, with every check still passing. What each of these holds was read
+    out of a browser first; what can be run here is run, and a fix is never
+    passed for carrying the right words.
+
+    Show more. The list's and a member's votes' redraw everything, so focus
+    fell to <body> and the next Tab press went to the top of the page. The
+    handlers put it on the first card, or the first vote, they brought.
+
+    Play, and a long analysis. Each is a click that moves focus: to the
+    player that replaces Play where Play had it, on a bill and on the home
+    page; to the start of the text "Show more" opened. Clicked here.
+
+    The seat map. Its focus listeners sat on the <svg>, which made the chart
+    itself a Tab stop, and leaving a seat emptied the note under the chart
+    while focus was on its way to the link in it. Run: nothing on the svg
+    listens for focus, the note keeps its link while focus goes into it, and
+    the arrow keys still walk the seats.
+
+    A box that scrolls sideways is a Tab stop while it scrolls: the exports
+    page marks its coverage table's box and app.js gives it the stop only
+    where the table is wider than the box.
+
+    And read, because they are a stylesheet's: the line above a sitting's
+    heading has the space above it that keeps it out from under "Cite this
+    page"; that line's link, on a phone, is the size of its words with what
+    can be pressed laid over it, not padding that runs into the heading; the
+    tab strip is taken out of the header's flow only from the width where it
+    clears the wordmark, and the brand's padding changes at that same width;
+    a phone's footer links are 44px; the menu's rows draw their ring inside
+    the panel that clips them; the home page's activity is a list with no
+    bullets; and the roster says what its finder found.
+    """
+    css = Path("app.css").read_text(encoding="utf-8")
+    bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+
+    # ---- read: the stylesheet ------------------------------------------
+    m = re.search(r"\.sesspage \.crumb\{[^}]*margin:([^;}]+)", bare)
+    if not m or m.group(1).split()[0] in ("0", "0px"):
+        bad.append("the line above a sitting's heading has no space above it, so its "
+                   "letters lie under the row of \"Cite this page\"")
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:720px\)\{(.*?)\n\}\n",
+                      css, re.S)
+    crumb = re.sub(r"/\*.*?\*/", "", phone.group(1), flags=re.S) if phone else ""
+    link = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a\{([^}]*)\}", crumb)
+    over = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a::after\{([^}]*)\}", crumb)
+    if not (link and over):
+        bad.append("on a phone the line above a heading is no bigger a target than its words")
+    else:
+        if "padding" in link.group(1) or "position:relative" not in link.group(1):
+            bad.append("the link above a heading is padded out on a phone: its box and its "
+                       "focus ring run into the heading under it")
+        box = dict(re.findall(r"(top|bottom|left|right):(-?\d+)", over.group(1)))
+        if "position:absolute" not in over.group(1) or int(box.get("bottom", 0)) > -14 \
+                or int(box.get("top", 0)) < -2:
+            bad.append("what can be pressed on the line above a heading must reach 14px below "
+                       "its words and no higher than the row above it, which is drawn over it: "
+                       + over.group(1))
+    out_of_flow = re.search(r"@media \(min-width:(\d+)px\)\{\s*nav\.top \.in\{position:relative\}\s*"
+                            r"\.navtabs\{position:absolute", bare)
+    padded = re.search(r"@media \(max-width:([\d.]+)px\)\{nav\.top \.brand\{padding-left:0;padding-right:0\}\}",
+                       bare)
+    if not (out_of_flow and padded):
+        bad.append("the header's two width rules are not where this check reads them")
+    else:
+        at = int(out_of_flow.group(1))
+        if abs(float(padded.group(1)) - (at - 0.02)) > 1e-9:
+            bad.append(f"the tab strip leaves the header's flow at {at}px and the brand's "
+                       f"padding changes at {padded.group(1)}px: the two are one width")
+        if at < 1100:
+            bad.append(f"the tab strip is centred on the bar from {at}px: with five tabs and the "
+                       "drawing beside the name it lies under the brand below 1034px, and at "
+                       "980 it wraps")
+    if not re.search(r"@media \(max-width:720px\)\{[^@]*?\.flinks a\{[^}]*min-height:44px", bare, re.S):
+        bad.append("a phone's footer links are not held to 44px")
+    if ".navdrop .navtabs a:focus-visible,.navdrop .themer:focus-visible{outline-offset:-2px}" not in bare:
+        bad.append("the menu's rows draw their focus ring outside the panel, which clips it")
+    if not re.search(r":where\(body\.pg\) \.actlist\{list-style:none;margin:0;padding:0", bare):
+        bad.append("the home page's activity list has its bullets and indent again below 1180px")
+
+    # ---- read: the pages' own markup -----------------------------------
+    pages = Path("build_pages.py").read_text(encoding="utf-8")
+    if '<p class="sr" id="lsay" role="status"></p>' not in pages \
+            or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
+            or "say.textContent=text" not in BP.LEGFIND_JS:
+        bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
+                   "and the script that writes the count into it")
+    exports = Path("build_exports.py").read_text(encoding="utf-8")
+    cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
+    if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
+            or "aria-label=" not in cov.group(1) or "tabindex" in cov.group(1):
+        bad.append("the exports page's coverage box must be a named region marked "
+                   "data-scrollstop, with no tabindex of its own: app.js gives it the stop "
+                   "only where it scrolls")
+    if not re.search(r"cov_rows = .{0,80}?<tr><th scope=\"row\">", exports, re.S) \
+            or exports.count('<th scope="col">') < 6:
+        bad.append("the coverage table's terms are not row headers, or its columns not "
+                   "column headers")
+
+    # ---- run: app.js ---------------------------------------------------
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
+        home = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest\('
+                         r'"\[data-embed\]"\);.*?\n\}\);', BP.HOME_JS, re.S)
+        assert home, "the home page's script has no handler that turns Play into the player"
+        (root / "home.js").write_text(home.group(0), encoding="utf-8")
+        (root / "go.js").write_text(_HEARD_PRELUDE + _REVIEW_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    if got["more"] != {"card": 100, "others": 0}:
+        bad.append(f"\"show 100 more\" on the list leaves focus on {got['more']}, not on the "
+                   "header of the first card it brought, the 101st")
+    if got["observer"] != {"card": None, "others": 0}:
+        bad.append("the list growing as it is scrolled moves the keyboard, which nobody asked "
+                   f"for: {got['observer']}")
+    if got["vmore"] != {"row": 200, "tabIndex": -1, "others": 0}:
+        bad.append(f"\"Show 200 more\" on a member's votes leaves focus on {got['vmore']}, "
+                   "not on the first vote it brought")
+    if got["analysis"] != {"opened": 1, "tabIndex": -1, "shut": 1, "intoView": 1}:
+        bad.append("\"Show more\" on an analysis must put focus at the start of the text it "
+                   f"opened, and \"Show less\" bring its button back into view: {got['analysis']}")
+    if got["play"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
+        bad.append(f"the player that replaces Play on a bill takes focus only where Play had "
+                   f"it, and is named for its sitting: {got['play']}")
+    if got["homePlay"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
+        bad.append(f"the home page's player takes focus only where Play had it: {got['homePlay']}")
+    if got["stops"] != {"wide": "0", "fits": None, "after": [None, "0"], "resize": True}:
+        bad.append("a box marked data-scrollstop is a Tab stop exactly while its content is "
+                   f"wider than it is: {got['stops']}")
+    seat = got["seat"]
+    if seat.get("svgHears"):
+        bad.append("the seat map's <svg> listens for " + ", ".join(seat["svgHears"])
+                   + ": Chrome makes an svg that does a Tab stop, round all 400 seats")
+    if not (seat.get("named") and seat.get("keptGoingIn") and seat.get("clearedOnLeaving")
+            and seat.get("namedGoingBack")):
+        bad.append("focus on a seat names its member under the chart, and that link has to "
+                   f"be there when Tab reaches it and gone when focus has left both: {seat}")
+    if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
+        bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
+                  "on a member's votes; Play and a long analysis move focus when clicked; the "
+                  "seat map's svg hears no focus and its note keeps its link; a marked box is a "
+                  "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
+                  "rules of the stylesheet and the pages stand")
+
+
+def _seat_script(BP):
+    """The seat map's own function out of build_pages.SEATING_JS: from its
+    opening to the block that follows it, which is the tabs'."""
+    sj = BP.SEATING_JS
+    a = sj.index('(function(){\n  var list=document.getElementById("seatlist");')
+    b = sj.index("})();", a) + len("})();")
+    return sj[a:b]
+
+
+# The harness of _review_of_audit_fixes, after _HEARD_PRELUDE. A raw string.
+_REVIEW_HARNESS = r"""
+load("render, renderPage, IDX, addressed, scrollStops, VOTES_SHOWN, getFocused:()=>focused,"
+  + " setPage:(p)=>{PAGE=p;}, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
+const out = {};
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.setTerm("2025-2026");
+s.IDX.length = 0;
+for (let i = 0; i < 250; i++) s.IDX.push({id: "HB" + (i + 1), n: "HB " + (i + 1), title: "a bill",
+  status: "Passed", kind: "active", committees: [], topic: "", sponsor: "", term: "2025-2026",
+  year: "2025", hay: "hb" + (i + 1), hayT: "hb" + (i + 1), hayS: "", hayC: ""});
+place("/bills", null, false);
+const results = document.querySelector("#results");
+// What focus() was called on, by kind and place in its list.
+let took = [];
+const thing = (kind, i) => ({kind, i, tabIndex: 0, focus() { took.push(this); },
+  querySelector(q) { return q === ".chead" ? this.head : null; }});
+const cards = Array.from({length: 250}, (_, i) => {
+  const c = thing("card", i); c.head = thing("head", i); return c; });
+const rows = Array.from({length: 450}, (_, i) => thing("row", i));
+results.querySelectorAll = q => q === ".card" ? cards : q === "table.vfull tbody tr" ? rows : [];
+const only = q => sel => sel === q ? {dataset: {}} : null;
+
+// SHOW MORE, on the list: the button, and then the observer, which is a
+// render(true) nobody pressed anything for.
+s.render(); took = [];
+click(only("[data-more]"));
+out.more = {card: (took.find(t => t.kind === "head") || {}).i ?? null,
+            others: took.filter(t => t.kind !== "head").length};
+took = []; s.render(true);
+out.observer = {card: (took.find(t => t.kind === "head") || {}).i ?? null, others: took.length};
+
+// ...AND ON A MEMBER'S VOTES. The handler asks only that a page is open.
+s.setPage({kind: "committee", data: {code: "H34", name: "Finance", chamber: "H", bills: [],
+  sessions: [], members: []}, terms: ["2025-2026"], term: "2025-2026", status: ""});
+took = [];
+click(only("[data-vmore]"));
+const row = took.find(t => t.kind === "row");
+out.vmore = {row: row ? row.i : null, tabIndex: row ? row.tabIndex : null,
+             others: took.filter(t => t.kind !== "row").length};
+s.setPage(null);
+
+// A LONG ANALYSIS, opened and shut.
+const text = {focused: 0, tabIndex: 0, focus() { this.focused++; }};
+const an = {dataset: {an: "HB1#0"}, intoView: 0, scrollIntoView() { this.intoView++; },
+  closest: q => q === ".anbox" ? {querySelector: q2 => q2 === ".antext" ? text : null} : null};
+click(q => q === ".anmore" ? an : null);
+out.analysis = {opened: text.focused, tabIndex: text.tabIndex};
+click(q => q === ".anmore" ? an : null);
+out.analysis.shut = text.focused; out.analysis.intoView = an.intoView;
+
+// PLAY, on a bill: with focus on it, and pressed through a time under it.
+const frame = document.getElementById("yt_p1");
+let framed = 0; frame.focus = () => { framed++; };
+const play = () => ({dataset: {embed: "vid|10|p1", title: "Recording of HB 1 - House Finance"}});
+let st = play(); document.activeElement = st;
+click(q => q === "[data-embed]" ? st : null);
+out.play = {hadFocus: framed, title: /title="Recording of HB 1 - House Finance"/.test(st.outerHTML || "")};
+st = play(); document.activeElement = document.body; framed = 0;
+click(q => q === "[data-embed]" ? st : null);
+out.play.elsewhere = framed;
+
+// A BOX THAT SCROLLS SIDEWAYS.
+const box = (sw, cw) => ({scrollWidth: sw, clientWidth: cw, a: {tabindex: "x"},
+  setAttribute(k, v) { this.a[k] = v; }, removeAttribute(k) { delete this.a[k]; }});
+const wide = box(420, 336), fits = box(900, 900);
+const all = document.querySelectorAll;
+document.querySelectorAll = q => q === "[data-scrollstop]" ? [wide, fits] : [];
+const before = (heard.window.resize || []).length;
+s.scrollStops();
+out.stops = {wide: wide.a.tabindex ?? null, fits: fits.a.tabindex ?? null};
+wide.clientWidth = 900; fits.clientWidth = 336;
+(heard.window.resize || []).slice(before).forEach(f => f());
+out.stops.after = [wide.a.tabindex ?? null, fits.a.tabindex ?? null];
+out.stops.resize = (heard.window.resize || []).length === before + 1;
+document.querySelectorAll = all;
+
+// PLAY, on the home page: its own handler, alone.
+(() => {
+  const mine = [];
+  const esc = x => String(x);
+  const doc = {activeElement: null, addEventListener: (t, f) => mine.push(f)};
+  new Function("document", "esc", fs.readFileSync("./home.js", "utf8"))(doc, esc);
+  const run = had => { let n = 0;
+    const frame = {focus() { n++; }};
+    const st = {dataset: {embed: "vid", title: "Recording of the House floor session"},
+      parentNode: {querySelector: q => q === "iframe" ? frame : null}};
+    doc.activeElement = had ? st : {};
+    mine.forEach(f => f({target: {closest: q => q === "[data-embed]" ? st : null}}));
+    return {n, title: /title="Recording of the House floor session"/.test(st.outerHTML || "")}; };
+  const a = run(true), b = run(false);
+  out.homePlay = {hadFocus: a.n, elsewhere: b.n, title: a.title};
+})();
+
+// THE SEAT MAP, in a page of four seats.
+(() => {
+  const node = (tag, attrs) => { const n = {tag, attrs: Object.assign({}, attrs), on: {}, kids: [],
+    hidden: false, style: {}, dataset: {}, focused: 0, clientWidth: 1000, scrollLeft: 0, scrollTop: 0,
+    classList: {toggle() {}, add() {}, remove() {}},
+    addEventListener(t, f) { (this.on[t] = this.on[t] || []).push(f); },
+    fire(t, e) { (this.on[t] || []).forEach(f => f(Object.assign({target: this, preventDefault() {}}, e))); },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    appendChild(c) { this.kids.push(c); return c; },
+    contains(x) { return this.kids.includes(x); },
+    closest(q) { return q === "[data-slug]" && "data-slug" in this.attrs ? this : null; },
+    querySelectorAll() { return []; }, querySelector() { return null; },
+    getBoundingClientRect() { return {left: 0, top: 0, width: 10, height: 10}; },
+    setPointerCapture() {}, focus() { this.focused++; }};
+    Object.defineProperty(n, "textContent", {get() { return this._t || ""; },
+      set(v) { this._t = String(v); this.kids = []; }});
+    return n; };
+  const seats = [1, 2, 3, 4].map(i => node("circle", {"data-slug": "m" + i, "data-seat": "100" + i,
+    "data-name": "Rep. " + i, tabindex: "-1"}));
+  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div");
+  svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
+  svg.parentNode = wrap;
+  const doc = {createElement: t => node(t), createTextNode: t => ({text: t}),
+    getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
+    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap})[q] || null};
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
+  const stops = () => seats.map((c, i) => c.attrs.tabindex === "0" ? i : -1).filter(i => i >= 0);
+  const hears = n => ["focus", "blur", "focusin", "focusout"].filter(t => (n.on[t] || []).length);
+  const seat = {svgHears: hears(svg), first: stops()};
+  // Tab reaches the one stop: the note names its member, as a link.
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+  const named = note.kids[0];
+  seat.named = !!(named && named.tag === "a" && /m1/.test(named.href || ""));
+  // Tab again: focus leaves the seat for that link.
+  [svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: named}));
+  seat.keptGoingIn = note.kids[0] === named;
+  // Shift+Tab from the link back to the seat: the seat's focus names it again.
+  note.fire("focusout", {target: named, relatedTarget: seats[0]});
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+  seat.namedGoingBack = !!(note.kids[0] && note.kids[0].tag === "a");
+  // And on from the link to the list under the chart, whose rows carry a
+  // member's slug as a seat does: the note is put back as it was.
+  note.fire("focusout", {target: note.kids[0], relatedTarget: node("a", {"data-slug": "m9"})});
+  seat.clearedOnLeaving = note.kids.length === 0;
+  // The arrow keys, from the seat that has focus.
+  const key = (k, from) => svg.fire("keydown", {key: k, target: seats[from]});
+  key("ArrowRight", 0);
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[1]}));
+  seat.arrow = {focused: seats.findIndex(c => c.focused), stops: stops()};
+  seats.forEach(c => { c.focused = 0; });
+  key("End", 1);
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[3]}));
+  seat.end = {focused: seats.findIndex(c => c.focused), stops: stops()};
+  out.seat = seat;
+})();
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")

@@ -502,7 +502,26 @@ control that had focus is replaced with it. `render()`, `renderPage()` and
 tag and classes; and its place among what that matches) and focus the control
 with that key after (`refocus`), but only if the redraw took focus away. A
 new control inside those three needs nothing, provided it has an id or a data
-attribute that says what it is. "Show more" is deliberately given no key.
+attribute that says what it is. "Show more" is deliberately given no key: its
+own handlers put focus on the first card, or the first vote, it brought,
+because the redraw replaces the whole list and the browser's own starting
+point is then the top of it.
+
+**The address, and what going back means.** `app.js` writes the address in
+four places (`tabAddress`, `focusBill`, `unfocus`, `addressSearch`) and each
+calls `addressed()`, which keeps two things true: the skip link names the
+document as it is addressed now, and `STOOD` holds the address without its
+fragment. `popstate` needs the second. A link to a place on the page, which
+the skip link is, fires `popstate` with no state, and so does going back from
+a bill to the list; where only the fragment moved, or the address is still a
+bill's own (`BILL_PATH`), nothing is redrawn. A bill's own page never leaves
+for `/bills` because of one. "Back to bill search" goes back in history only
+where this entry is the one `focusBill` pushed over the list (its state says
+so) or, on a bill's own page, where the referrer is this site's `/bills`;
+where the address itself opened the bill in the search (`/bills#2025/HB2`) it
+draws the list in place. A search run from a bill's own page goes to
+`/bills?q=`, with `term=` where the picker beside the box names a term that
+is not the newest.
 
 **The header's menu and search** (`find.js`) put focus inside when they open
 and close when focus goes somewhere else in the page; focus that goes nowhere
@@ -516,10 +535,27 @@ header, Play, a filter group's head), and **a text box's edge is `--edge`**.
 4.5:1, computed from the tokens.
 
 **On a phone a control is 44px**, in one block placed after the rules it has
-to outrank; a person's chip is its link to the edges. **On paper the page is
-the light theme**: one `@media print` block writes the light palette again
-under the dark palette's two selectors, and `preflight` fails if the two
-stop matching.
+to outrank; a person's chip is its link to the edges. The line above a Learn
+article's heading and a sitting's is the exception: there is no 44px between
+the row of "Cite this page" and the heading, so the link stays the size of
+its words and what can be pressed is laid over it (`::after`), 35px. **On
+paper the page is the light theme**: one `@media print` block writes the
+light palette again under the dark palette's two selectors, and `preflight`
+fails if the two stop matching. What that block leaves off is a control and
+never the record: a recording's box prints, with Play set as the line of text
+that carries its time. And a ground that carries white marks is asked for
+(`print-color-adjust:exact`): `preflight` reads every rule that sets type in
+white and fails if one is neither left off the sheet nor on that list.
+
+**A box that scrolls sideways** is marked `data-scrollstop` and `app.js`
+(`scrollStops`) makes it a Tab stop only while its content is wider than it
+is. **The seat map** listens for focus on the box round the chart, not on the
+`<svg>`: Chrome makes an `<svg>` that listens for focus a Tab stop.
+
+**The header's tab strip** is centred on the bar from 1100px, the width from
+which it clears the wordmark; below that it sits between its neighbours. The
+brand's side padding changes at the same width, and `preflight` holds the two
+numbers together.
 
 ## What is structurally wrong
 
