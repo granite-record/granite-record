@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.130
+# GRANITE_VERSION: 2026-09-04.131
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1968,7 +1968,7 @@ const bills=(q,B,C,counting)=>{
   const none=every?`None in any of the ${B.terms.length} terms.`
     :counted?`None in the ${esc(B.term)} term.`:"";
   const now=every&&C&&C.state==="ready"&&C.n&&C.n<B.n
-    ?`<a class="fbills" href="/bills?q=${encodeURIComponent(q)}">
+    ?`<a class="fbills" href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
         the ${esc(C.term)} term</span></span>
       <span class="fwhat">The term the bill search opens on.</span></a>`:"";
@@ -1976,7 +1976,7 @@ const bills=(q,B,C,counting)=>{
   const body=counted&&B.n
     ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every,B.why.get(b))).join("")
     :counted
-    ?`<a href="/bills?q=${encodeURIComponent(q)}">
+    ?`<a href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">Search every bill for
         &ldquo;${esc(q)}&rdquo;</span></span>
       <span class="fwhat">${none} ${counting?what:WHAT}</span></a>`
@@ -2069,7 +2069,7 @@ function draw(q){
       offer.wait.then(()=>draw(box.value));
     }
     const did=offer.words.map(d=>
-      `<a href="/search?q=${encodeURIComponent(d)}">${esc(d)}</a>`);
+      `<a href="/search?q=${_fenc(d)}">${esc(d)}</a>`);
     if(did.length)html=`<p class="note">Did you mean ${did.join(" or ")}?</p>`+html;
   }
   out.innerHTML=html;
@@ -2090,7 +2090,7 @@ findRows().then(()=>{
     tm=setTimeout(()=>{
       const v=box.value.trim();
       draw(v);
-      const u=v?`/search?q=${encodeURIComponent(v)}`:"/search";
+      const u=v?`/search?q=${_fenc(v)}`:"/search";
       history.replaceState(null,"",u);
     },120);
   });
@@ -2540,7 +2540,9 @@ document.addEventListener("click",e=>{
 // is what the host serves and what the header lands on.
 function goBills(v){
   v=(v||"").trim();
-  location.href="/bills"+(v?"?q="+encodeURIComponent(v):"");
+  // Half an emoji is not an address (find.js, _fwell).
+  location.href="/bills"+(v?"?q="+encodeURIComponent(
+    v.replace(/[\\uD800-\\uDFFF]/gu,"\\uFFFD")):"");
 }
 document.getElementById("hq").addEventListener("keydown",e=>{
   if(e.key==="Enter")goBills(e.target.value);

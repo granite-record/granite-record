@@ -220,7 +220,8 @@
    "q": "minimum wage",
    "at_most": 15,
    "must": ["HB1484", "HB726", "SB176", "HB442"],
-   "never": ["HB736"]
+   "never": ["HB736"],
+   "why": "the third review, 2 October: SB 404, on economic revitalization zone tax credits, is listed for '2.5 times the then current state minimum wage', four times in its text. It is not about the wage and is not held out here: the rule that would drop it was measured and dropped seven bills these cases must list (build_search_index.py, A PHRASE ONLY THE TEXT HAS)"
   },
   {
    "q": "right to work",
@@ -307,7 +308,7 @@
   {
    "q": "campaign finance",
    "at_most": 25,
-   "must": ["HB1201", "HB311", "SB405"]
+   "must": ["HB1201", "HB311", "SB405", "HB1031"]
   },
   {
    "q": "fluoride",
@@ -382,7 +383,7 @@
    "q": "social media",
    "must": ["HB1589", "HB1650"],
    "at_most": 15,
-   "why": "neither title says it; both texts do; the second review, 2 October: SB 225 and HB 71 amend two sections with one sentence each about posting a notice on 'social media accounts', and HB 175 prints 'mailing or social media lists' in two definitions; SB 217 says it in two sentences of its own and is still listed",
+   "why": "neither title says it; both texts do; the second review, 2 October: SB 225 and HB 71 amend two sections with one sentence each about posting a notice on 'social media accounts', and HB 175 prints 'mailing or social media lists' in two definitions; SB 217 says it in two sentences of its own and is still listed; the third review, 2 October: SB 217 is not about social media and is third of four. The rule that would drop it also dropped HB 1650, which this case must list (build_search_index.py, A PHRASE ONLY THE TEXT HAS)",
    "never": ["SB225", "HB71", "HB175"]
   },
   {
@@ -793,6 +794,73 @@
    "must": ["HB1546", "HB1629", "HB1597", "HB255", "HB502", "HB503"],
    "never": ["HB595"],
    "why": "the second review, 2 October: the bills say 'business profits tax' and 'business enterprise tax', and as two words 'business' had to stand beside 'tax'; HB 595 is coastal resilience zones"
+  },
+  {
+   "q": "bail",
+   "at_most": 15,
+   "must": ["HB57", "HB592", "HB1637", "HB1454"],
+   "never": ["HB1436"],
+   "why": "the third review, 2 October: HB 1436, on cloud-stored files, was listed for 'bailment' in its analysis: in a text a longer word is read only for a word of six letters or more. HB 1454 has the word itself, in its analysis"
+  },
+  {
+   "q": "dwi",
+   "at_most": 20,
+   "first": ["HB776", "SB149", "HB466"],
+   "must": ["HB1486", "SB143"],
+   "why": "the third review, 2 October: opened on HB 1486, an insurance bill whose analysis mentions a spouse's DWI conviction, above every bill titled 'driving while intoxicated': a term that is the letters typed, written out, is the word"
+  },
+  {
+   "q": "solar panels",
+   "at_most": 30,
+   "must": ["SB540", "HB1002", "SB65"],
+   "never": ["HB1618"],
+   "why": "the third review, 2 October: HB 1618, on solar radiation modification, was second: the entry supplied the bare word 'solar' for a phrase"
+  },
+  {
+   "q": "eviction",
+   "at_most": 30,
+   "first": ["HB1171", "HB1499", "HB1598", "HB60", "HB351"],
+   "must": ["HB65", "HB309"],
+   "why": "the third review, 2 October: HB 351, 'notice to evict', was tenth under 'title says: landlord', below bills on rent payments (HB 65, HB 309): a term that is the word with another ending is the word. HB 60 says eviction in its analysis"
+  },
+  {
+   "q": "flouride",
+   "offer": "fluoride",
+   "must": ["HB691"],
+   "why": "the third review, 2 October: offered nothing: one bill of 2003 prints it, and 42 say fluoride, short of the hundred a slip of the record's own needed. Two letters swapped need ten"
+  },
+  {
+   "q": "dcyf",
+   "at_most": 10,
+   "must": ["HB518", "HB1565", "HB243"],
+   "why": "the third review, 2 October: listed nothing in a term with three bills titled for the division for children, youth, and families"
+  },
+  {
+   "q": "pfas",
+   "at_most": 15,
+   "must": ["HB167", "HB199", "HB1258", "HB1389", "HB1080", "HB1275"],
+   "why": "the third review, 2 October: HB 167, a signed law, says 'per and polyfluorinated alkyl substances', which the group did not have"
+  },
+  {
+   "q": "ufo",
+   "at_most": 5,
+   "must": ["HB436"]
+  },
+  {
+   "q": "ozempic",
+   "at_most": 5,
+   "must": ["SB455"]
+  },
+  {
+   "q": "license plates",
+   "at_most": 20,
+   "must": ["HB1287", "HB1176", "HB105", "HB1059"],
+   "why": "the third review, 2 October: the statutes say 'number plate', and HB 1287, special number plates for veterans, was not listed"
+  },
+  {
+   "q": "e-bike",
+   "at_most": 10,
+   "must": ["HB1533", "HB1703"]
   }
  ],
  "same": [
@@ -852,6 +920,13 @@
    "sponsor": "Erica Layon",
    "committees": ["House Children and Family Law"],
    "topic": "Children"
+  },
+  "HB65": {
+   "n": "HB 65",
+   "title": "directing landlords to offer tenants the option of reporting rental payments to consumer reporting agencies.",
+   "sponsor": "Loren Selig",
+   "committees": ["House Housing"],
+   "topic": "Housing"
   },
   "HB392": {
    "n": "HB 392-FN",
@@ -1308,6 +1383,13 @@
    "committees": ["House Ways and Means", "Senate Finance"],
    "topic": "State Government"
   },
+  "SB540": {
+   "n": "SB 540-FN",
+   "title": "relative to plug-in solar generation systems.",
+   "sponsor": "David Watters",
+   "committees": ["House Science, Technology and Energy", "Senate Energy and Natural Resources"],
+   "topic": "Energy and Utilities"
+  },
   "SB628": {
    "n": "SB 628-FN",
    "title": "enabling curbside electric-vehicle charging.",
@@ -1378,6 +1460,13 @@
    "committees": ["House Legislative Administration", "Senate Executive Departments and Administration"],
    "topic": "Legislature"
   },
+  "SB455": {
+   "n": "SB 455-FN",
+   "title": "relative to coverage for GLP-1 medication under the state Medicaid plan.",
+   "sponsor": "Suzanne Prentiss",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Health and Human Services"],
+   "topic": "Insurance"
+  },
   "SB623": {
    "n": "SB 623-FN",
    "title": "relative to requirements for law enforcement officers assisting in immigration enforcement.",
@@ -1447,6 +1536,13 @@
    "sponsor": "Victoria Sullivan",
    "committees": ["House Health, Human Services and Elderly Affairs", "Senate Health and Human Services"],
    "topic": "Study Committees and Commissions"
+  },
+  "HB1002": {
+   "n": "HB 1002",
+   "title": "repealing the solar energy systems tax exemption.",
+   "sponsor": "Len Turcotte",
+   "committees": ["House Science, Technology and Energy"],
+   "topic": "Taxes - Local"
   },
   "HB1136": {
    "n": "HB 1136",
@@ -1623,6 +1719,13 @@
    "committees": ["House Judiciary"],
    "topic": "Crimes, Crim.Proc. & Corr."
   },
+  "HB1565": {
+   "n": "HB 1565-FN",
+   "title": "relative to the penalty for false reports of suspected abuse and neglect made to the division for children, youth, and families, relative to owner's project manager services for school building aid projects, and relative to long-term care eligibility and making an appropriation therefor.",
+   "sponsor": "James Spillane",
+   "committees": ["House Children and Family Law", "Senate Children and Family Law"],
+   "topic": "Domestic Relations"
+  },
   "HB1792": {
    "n": "HB 1792-FN",
    "title": "relative to the prohibition on teaching discrimination.",
@@ -1651,6 +1754,13 @@
    "committees": ["House Criminal Justice and Public Safety"],
    "topic": "Municipalities"
   },
+  "HB1499": {
+   "n": "HB 1499-FN",
+   "title": "relative to additional grounds for eviction under the landlord and tenant statute, relative to the responsibility of local school districts to provide meals to students during school hours, and reimbursing schools for meals provided to students at no cost and making an appropriation therefor.",
+   "sponsor": "Joe Alexander",
+   "committees": ["House Housing", "Senate Judiciary"],
+   "topic": "Housing"
+  },
   "HB1165": {
    "n": "HB 1165",
    "title": "relative to gender designation on state-issued identification.",
@@ -1665,12 +1775,26 @@
    "committees": ["House Criminal Justice and Public Safety"],
    "topic": "Police"
   },
+  "HB1436": {
+   "n": "HB 1436-FN",
+   "title": "relative to the classification and protection of personal digital information and cloud-stored files.",
+   "sponsor": "James Spillane",
+   "committees": ["House Judiciary"],
+   "topic": "Property - Real and Personal"
+  },
   "HB1171": {
    "n": "HB 1171",
    "title": "relative to eviction safeguards for tenants whose Social Security payments are disrupted.",
    "sponsor": "Terri O'Rorke",
    "committees": ["House Housing"],
    "topic": "Housing"
+  },
+  "HB1176": {
+   "n": "HB 1176-FN",
+   "title": "relative to the display of license plates on vehicles.",
+   "sponsor": "Jeanine Notter",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
   },
   "CACR15": {
    "n": "CACR 15",
@@ -1699,6 +1823,13 @@
    "sponsor": "Kristin Noble",
    "committees": ["House Education Policy and Administration", "Senate Education"],
    "topic": "Education - General"
+  },
+  "HB1059": {
+   "n": "HB 1059",
+   "title": "relative to the use of number plate scanning devices.",
+   "sponsor": "Buzz Scherr",
+   "committees": ["House Transportation", "Senate Transportation"],
+   "topic": "Police"
   },
   "HB1270": {
    "n": "HB 1270",
@@ -1742,12 +1873,26 @@
    "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
    "topic": "Elections"
   },
+  "HB1031": {
+   "n": "HB 1031",
+   "title": "enabling candidates for state office to use campaign funds to pay for security measures.",
+   "sponsor": "Wendy Thomas",
+   "committees": ["House Election Law", "Senate Election Law and Municipal Affairs"],
+   "topic": "Elections"
+  },
   "HB1835": {
    "n": "HB 1835-FN",
    "title": "relative to the formula for distribution of aid to school districts.",
    "sponsor": "Heather Raymond",
    "committees": ["House Education Funding"],
    "topic": "Education - General"
+  },
+  "HB1533": {
+   "n": "HB 1533-FN",
+   "title": "relative to the use of electric bicycles and alternative electric micromobility devices.",
+   "sponsor": "Cyril Aures",
+   "committees": ["House Transportation"],
+   "topic": "Motor Vehicles"
   },
   "HB1201": {
    "n": "HB 1201",
@@ -1812,6 +1957,13 @@
    "committees": ["House Education Policy and Administration", "Senate Education"],
    "topic": "Education - General"
   },
+  "HB1486": {
+   "n": "HB 1486",
+   "title": "prohibiting insurance companies from considering the driving record of household members not covered by the motor vehicle insurance policy when establishing policy premiums.",
+   "sponsor": "Ellen Read",
+   "committees": ["House Commerce and Consumer Affairs"],
+   "topic": "Motor Vehicles"
+  },
   "HB1671": {
    "n": "HB 1671-FN",
    "title": "relative to prohibiting state Medicaid payments to facilities that discriminate against employees, students, or trainees for exercising lawful medical or religious vaccine exemptions.",
@@ -1825,6 +1977,13 @@
    "sponsor": "Matt Sabourin dit Choinière",
    "committees": ["House Judiciary"],
    "topic": "Domestic Relations"
+  },
+  "HB1618": {
+   "n": "HB 1618-FN",
+   "title": "prohibiting solar radiation modification, weather modification, and other polluting atmospheric interventions.",
+   "sponsor": "Melissa Litchfield",
+   "committees": ["House Science, Technology and Energy"],
+   "topic": "Environment - Conservation"
   },
   "HB1181": {
    "n": "HB 1181-FN",
@@ -1993,6 +2152,13 @@
    "sponsor": "Suzanne Vail",
    "committees": ["House Resources, Recreation and Development"],
    "topic": "Environment - Administration"
+  },
+  "HB1287": {
+   "n": "HB 1287",
+   "title": "relative to special number plates for veterans and eligibility therefore.",
+   "sponsor": "Travis Corcoran",
+   "committees": ["House State-Federal Relations and Veterans Affairs", "Senate Executive Departments and Administration"],
+   "topic": "Military & Veterans' Affairs"
   },
   "HB1725": {
    "n": "HB 1725-FN",
@@ -2218,6 +2384,13 @@
    "committees": ["House Criminal Justice and Public Safety"],
    "topic": "Crimes, Crim.Proc. & Corr."
   },
+  "HB1637": {
+   "n": "HB 1637",
+   "title": "relative to the scheduling of hearings on certain motions to modify or revoke bail.",
+   "sponsor": "Zoe Manos",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
   "HB1778": {
    "n": "HB 1778-FN",
    "title": "relative to prohibiting the use of personal identity ideology in public school instruction and policies.",
@@ -2365,6 +2538,13 @@
    "committees": ["House Commerce and Consumer Affairs"],
    "topic": "Motor Vehicles"
   },
+  "HB1703": {
+   "n": "HB 1703-FN",
+   "title": "relative to establishing a registration fee for bicycles and electric bicycles using state or municipally funded bike paths, trails, or roadways.",
+   "sponsor": "Thomas Walsh",
+   "committees": ["House Transportation"],
+   "topic": "Environment - Conservation"
+  },
   "HR40": {
    "n": "HR 40",
    "title": "urging the legislature to adequately fund public education.",
@@ -2385,6 +2565,13 @@
    "sponsor": "John Janigian",
    "committees": ["House Ways and Means", "Senate Ways and Means"],
    "topic": "Business and Industry"
+  },
+  "HB1598": {
+   "n": "HB 1598-FN",
+   "title": "relative to notice and proceedings for tenants and landlords engaged in eviction processes.",
+   "sponsor": "Dillon Dumont",
+   "committees": ["House Housing", "Senate Judiciary"],
+   "topic": "Housing"
   },
   "HB1389": {
    "n": "HB 1389",
@@ -2468,6 +2655,13 @@
    "title": "requiring a background check and mandatory waiting period during certain firearm transfers.",
    "sponsor": "David Meuse",
    "committees": ["House Criminal Justice and Public Safety"],
+   "topic": "Crimes, Crim.Proc. & Corr."
+  },
+  "HB57": {
+   "n": "HB 57",
+   "title": "relative to the standards applicable to bail in criminal matters.",
+   "sponsor": "David Meuse",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
    "topic": "Crimes, Crim.Proc. & Corr."
   },
   "HB58": {
@@ -2596,6 +2790,13 @@
    "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
    "topic": "Crimes, Crim.Proc. & Corr."
   },
+  "HB167": {
+   "n": "HB 167",
+   "title": "prohibiting the sale of ski, boat, and board waxes that contain intentionally added per and polyfluorinated alkyl substances.",
+   "sponsor": "Wendy Thomas",
+   "committees": ["House Commerce and Consumer Affairs", "Senate Energy and Natural Resources"],
+   "topic": "Environment - Conservation"
+  },
   "HB175": {
    "n": "HB 175",
    "title": "relative to defined coordinated expenditures.",
@@ -2686,6 +2887,13 @@
    "sponsor": "Tom Mannion",
    "committees": ["House Environment and Agriculture", "Senate Judiciary"],
    "topic": "Animals"
+  },
+  "HB243": {
+   "n": "HB 243",
+   "title": "relative to relative to the penalty for false reports of suspected abuse and neglect made to the division for children, youth, and families, and relative to the maternal mortality review committee, electric vehicle charging stations and fees for annual testing by the division of weights and measures, and relative to the acceptance of portraits of Senator Sylvia Larsen and Senator Jeb Bradley for the state house.",
+   "sponsor": "James Spillane",
+   "committees": ["House Children and Family Law", "Senate Children and Family Law"],
+   "topic": "Children"
   },
   "HB245": {
    "n": "HB 245",
@@ -2981,6 +3189,13 @@
    "committees": ["House Commerce and Consumer Affairs"],
    "topic": "Housing"
   },
+  "HB436": {
+   "n": "HB 436",
+   "title": "establishing a commission to solicit reports and testimony regarding unidentified anomalous phenomena in the state.",
+   "sponsor": "Aidan Ankarberg",
+   "committees": ["House Science, Technology and Energy"],
+   "topic": "Military & Veterans' Affairs"
+  },
   "HB438": {
    "n": "HB 438",
    "title": "relative to immigration detention facilities.",
@@ -3142,6 +3357,13 @@
    "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
    "topic": "Police"
   },
+  "SB65": {
+   "n": "SB 65",
+   "title": "relative to stormwater management for solar arrays.",
+   "sponsor": "Howard Pearl",
+   "committees": ["House Science, Technology and Energy", "Senate Energy and Natural Resources"],
+   "topic": "Energy and Utilities"
+  },
   "SB70": {
    "n": "SB 70",
    "title": "creating a mobile driver's license and non-driver identification card.",
@@ -3162,6 +3384,13 @@
    "sponsor": "Joe Alexander",
    "committees": ["House Housing", "Senate Commerce"],
    "topic": "Housing"
+  },
+  "HB592": {
+   "n": "HB 592",
+   "title": "relative to magistrates and the standards applicable to and the administration of bail.",
+   "sponsor": "Ross Berry",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
   },
   "HB597": {
    "n": "HB 597",
@@ -3358,6 +3587,13 @@
    "sponsor": "Suzanne Prentiss",
    "committees": ["Senate Health and Human Services"],
    "topic": "Public and Mental Health"
+  },
+  "SB143": {
+   "n": "SB 143",
+   "title": "relative to the impaired driver care management program and recovery residences.",
+   "sponsor": "Suzanne Prentiss",
+   "committees": ["House Criminal Justice and Public Safety", "Senate Judiciary"],
+   "topic": "Crimes, Crim.Proc. & Corr."
   },
   "HB771": {
    "n": "HB 771",
@@ -3583,6 +3819,22 @@
    "q": "reassessment",
    "must": [["SB225", 2025]],
    "why": "a title that says 're-assessment' is the same word"
+  },
+  {
+   "q": "solar panels",
+   "must": [["SB540", 2026], ["HB1002", 2026]],
+   "never": [["HB1471", 2024], ["HB1618", 2026]],
+   "why": "the third review, 2 October: a school holiday for the solar eclipse was seventh, and solar radiation modification third"
+  },
+  {
+   "q": "pfas",
+   "must": [["HB167", 2025], ["HB1590", 2018], ["HB1618", 2018]],
+   "why": "the third review, 2 October: thirteen titles since 2018 say 'perfluorinated chemicals'"
+  },
+  {
+   "q": "license plates",
+   "must": [["HB1287", 2026], ["HB587", 1989]],
+   "why": "the third review, 2 October: 132 titles say 'number plate' and 61 'license plate'"
   }
  ]
 }

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.13
+// GRANITE_VERSION: 2026-09-16.14
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -48,6 +48,16 @@ const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
   page:"Page",former:"Former member",topic:"Subject"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"
+   on a surrogate with no partner, which is what the box holds for a moment
+   while some keyboards type an emoji and what a paste cut in the wrong place
+   leaves: the panel stopped drawing for that keystroke, on every page, and
+   so did /search (2 October). What is typed goes into an address through
+   this, which reads the stray half as the replacement character -- under
+   the u flag the class matches a surrogate only where it stands alone.
+   /search and the home page's box use it too. */
+const _fwell=s=>String(s==null?"":s).replace(/[\uD800-\uDFFF]/gu,"\uFFFD");
+const _fenc=s=>encodeURIComponent(_fwell(s));
 
 function findRows(){
   if(FIND.rows)return Promise.resolve(FIND.rows);
@@ -175,6 +185,19 @@ const _ftitled=s=>s.split(/\s+/).map(w=>
 // `limit` is the panel's eight by default. /search passes Infinity: it is a
 // page and not a dropdown, so it shows everything that matched -- which is the
 // whole reason it exists.
+/* A SHORT WORD IS THE START OF A WORD, NOT THE MIDDLE OF ONE (2 October).
+   What was typed was looked for anywhere in a row, so "dwi" listed, under
+   the bills about driving while intoxicated, the town of Sandwich and six
+   members named Baldwin, Edwin, Hardwick and Goodwin. Under five letters a
+   word must begin a word of the row -- "dwi" still finds Rep. Dwinell, whose
+   name it starts. From five it may stand anywhere, as it did: "field" is
+   Litchfield and "borough" Hillsborough. */
+function _fhas(hay,w){
+  if(w.length>=5)return hay.includes(w);
+  for(let i=hay.indexOf(w);i>=0;i=hay.indexOf(w,i+1))
+    if(!i||!/[\p{L}\p{N}]/u.test(hay[i-1]))return true;
+  return false;
+}
 function findMatch(q,limit){
   const s=_ftitled((q||"").trim().toLowerCase());
   if(!s||!FIND.rows)return [];
@@ -183,7 +206,7 @@ function findMatch(q,limit){
   const hit=[];
   for(const r of FIND.rows){
     const hay=`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase();
-    if(!words.every(w=>hay.includes(w)))continue;
+    if(!words.every(w=>_fhas(hay,w)))continue;
     const name=_fbare(r[1]).toLowerCase();
     const rank=_frank(r,s,edge);
     // Match quality decides first -- the words typed as whole words of the
@@ -251,12 +274,16 @@ function findSuggest(q){
   // something: at four letters nearly everything is two edits from
   // everything, and the offer would be noise.
   if(!/^[a-z][a-z'-]{4,}$/.test(s))return "";
-  let best="",dist=3;
+  // Two letters apart only from seven: "comittee" is committee, and "ebike"
+  // was offered "mike" (2 October) -- in a word of five or six, two letters
+  // are a third of it, and what is that near is another word.
+  const most=s.length>=7?2:1;
+  let best="",dist=most+1;
   for(const w of findWords()){
-    const d=_fdist(s,w,2);
+    const d=_fdist(s,w,most);
     if(d<dist||(d===dist&&w.length<best.length)){best=w;dist=d;}
   }
-  return dist<=2?best:"";
+  return dist<=most?best:"";
 }
 
 // ROOT-RELATIVE, ALWAYS. find.json's rows all carry a relative path, and
@@ -301,8 +328,10 @@ function _fmark(text,q){
    that "All 30 bills found for firearms" is the number /bills?q=firearms
    then shows. The term is the one /bills opens on: away from a bill's own
    page app.js's wantedTerm() takes the first of meta.json's terms, and so
-   does this. That term's index is about 135 KB over the wire, fetched the
-   first time somebody types something that is not a bill number and kept
+   does this. That term's index is about 153 KB over the wire, and with what
+   its bills' text is about (238 KB), the matcher and meta.json the first
+   word typed costs 443 KB (measured 2 October; this said 135 KB, for the
+   index alone). It is fetched the first time somebody types something that is not a bill number and kept
    for the rest of the visit; opening the box, or looking up HB 1442, costs
    nothing.
 
@@ -570,7 +599,7 @@ function findBillsAll(B,q,what){
     :ready?`In the ${_fesc(B.term)} term.`
     :B&&B.state==="loading"?"Counting this term&rsquo;s bills&hellip;":"";
   const line=[where,what||(where?"":"In the bill search.")].filter(Boolean).join(" ");
-  return `<a class="fbills" href="/bills?q=${encodeURIComponent(q)}${every?"&amp;term=all":""}">
+  return `<a class="fbills" href="/bills?q=${_fenc(q)}${every?"&amp;term=all":""}">
     <span class="fl1"><span class="fname">${name}</span></span>
     <span class="fwhat">${line}</span></a>`;
 }
@@ -596,7 +625,7 @@ function findDraw(q){
   // term, so "SB 412" led to this term's SB 412 and nowhere else, and the
   // 2000 bill a reader may have meant was a term picker away. /search lists
   // the number in every term, so it is offered under the number.
-  const every=`<a class="fall" href="/search?q=${encodeURIComponent(s)}">
+  const every=`<a class="fall" href="/search?q=${_fenc(s)}">
     <span class="fl1"><span class="fname">See all search results for ${_fesc(s)}</span></span>
     <span class="fwhat">${num?"this number in every term since 1989"
       :"every member, committee, town and subject that matches, and the bills of every term"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.3
+# GRANITE_VERSION: 2026-10-01.4
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -80,6 +80,24 @@ reader types ("law enforcement") is kept when it is in the analysis or
 central; one the table lists as the bills' own wording ("gender transition",
 "risk protection order") is chosen for being specific, and is kept when the
 text uses it twice and that comes to FLOOR.
+
+A PHRASE ONLY THE TEXT HAS IS STILL KEPT, AND TWO OF THEM ARE WRONG (2
+October). SB 404 of 2026, on economic revitalization zone tax credits, sets
+the credit's tiers at "2.5 times the then current state minimum wage", four
+times, and is listed sixth of seven under "minimum wage"; SB 217, on public
+notice of tax impacts, says twice where a graph is to be posted -- "the
+town's social media pages" -- and is listed third of four under "social
+media". Each uses the thing and is not about it. The rule that would take
+them out was tried and is NOT here: keep such a phrase at FLOOR only where
+the bill's title or analysis has a word of it, and otherwise ask that it be
+CENTRAL. It took out both, and with them seven bills the cases hold the
+search to and that are right: HB 712 (six mentions of "gender reassignment"
+in a text whose title says "breast surgeries for minors"), HB 1650, the
+age-appropriate design code, which is the bill "social media" is typed for
+and whose title and analysis never say it, and HB 1376. Nothing counted
+here tells the two kinds apart -- not how often, not how central (SB 217 is
+the shortest of them and its two mentions weigh most), not where. Until
+something does, the two stay listed, each under "in the bill's text".
 
 Matter a bill removes is printed [in brackets] and is still the bill's text:
 HB 712 of 2025 retitles the chapter on "[genital] gender [reassignment]
@@ -183,6 +201,19 @@ to stop. The run prints how many words go. Read against the record, about
 one in ten of them is a real word ("planet", beside "plant"); what that
 costs is an offer the reader can ignore, and never a list.
 
+TWO LETTERS SWAPPED NEED ONLY TEN (2 October). "flouride" was offered
+nothing: one bill of 2003 prints it, and 42 bills say "fluoride", not a
+hundred. Lowering the hundred for every kind of slip would have been wrong:
+between ten bills and a hundred, half the words a dropped or added letter
+turns up are real ones (carving beside caring, strayed beside stayed,
+cramping beside camping -- 171 words, read 2 October). Two letters swapped
+are not: of the twelve the record has in that range eleven are slips
+(assualts, pennslyvania, pyschotherapist, flouride) and one is a word
+(fliers, beside filers). So a swap is a slip of a word ten bills use, ten
+times the one bill that prints it; a letter dropped or added still needs
+the hundred. The bill that prints the slip is still found by it: only
+words.json leaves it out.
+
 A WRITER RUN ON A SUBSET DESTROYS THE REST, so this one cannot: a file is one
 term's, --terms writes only the terms named, and the manifest is read and
 merged rather than rewritten. words.json is every term's, so a run with
@@ -191,6 +222,21 @@ merged rather than rewritten. words.json is every term's, so a run with
 SILENCE IS NOT SUCCESS. A term with bills and no text at all is said out
 loud; and if the texts were asked for and none could be read for any term the
 run fails rather than leave nineteen empty files that look like an index.
+
+AND A TERM AT A TIME (2 October). "None for any term" let through a run that
+had lost eighteen terms' texts and kept one: exit 0, eighteen files of 12 KB
+each, and a words.json short by 14,600 words. So the run fails when any term
+before the newest has text for fewer than half its bills -- every one has 93%
+or more, and nothing adds to an archived term -- and when the newest has
+none where the manifest on disk says it had some. The newest term with no
+text and no such record is said out loud and allowed: in the first days of a
+session the bills are numbered before their text is fetched, and a build
+that stopped there would stop the night.
+
+NOTHING IS WRITTEN BY A RUN THAT FAILS. Every file is made in memory, the
+checks are run, and only then is anything in --out replaced, each file
+written beside itself and renamed. Until 2 October the failing run had
+already overwritten all twenty.
 """
 
 import argparse
@@ -254,6 +300,9 @@ ENOUGH = 6
 # long, and one letter inside it away from a word this many bills use.
 SLIP_LETTERS = 6
 SLIP_OF = 100
+# Two letters swapped with each other, and the word ten bills use: see
+# slips().
+SLIP_SWAP_OF = 10
 # The words that join two others, which then share what stands beside them.
 JOINS = {"and", "or"}
 
@@ -862,9 +911,18 @@ def dumps(data):
 # A word as the page reads a typed one: a run of letters. Five or more,
 # because the page never offers another spelling for a shorter word.
 KNOWN_WORD = re.compile(r"[a-z]{5,}")
-# Fewer words than this and the file is not a vocabulary: one term's texts
-# alone come to fifteen thousand.
-WORDS_FEWEST = 10_000
+# Fewer words than this and the file is not a vocabulary. Every term's bills
+# come to 33,000. The titles, sponsors and names alone, with no text at all,
+# come to 11,900, and with the archive's texts gone and the current term's
+# read, 18,900: the floor was 10,000 until 2 October, under both, and a run
+# that had lost eighteen terms' texts wrote a words.json that called 14,600
+# real words misspellings.
+WORDS_FEWEST = 25_000
+# A term before the newest whose bills have text for fewer than this share
+# has lost its texts: every one of them has 93% or more (2 October), and
+# nothing adds to an archived term.
+TEXT_SHARE = 0.5
+TERM_NAME = re.compile(r"\d{4}-\d{4}")
 
 
 def known_words(text):
@@ -917,12 +975,14 @@ def slips(seen, names=()):
 
     `seen` is how many bills use each word. A slip is a word one bill uses,
     of SLIP_LETTERS letters or more and no member's or town's name, that is a
-    word SLIP_OF bills use with one letter inside it dropped ("goverment"),
-    added ("harrassment") or swapped with its neighbour ("hopsital"). The
-    first and last letters are left alone: a letter on the end is a plural or
-    a tense, and a letter gone from the front is how a page was cut. A
-    changed letter is never a slip: "incest" is not "invest"."""
+    word SLIP_OF bills use with one letter inside it dropped ("goverment")
+    or added ("harrassment"), or a word SLIP_SWAP_OF bills use with two
+    letters inside it swapped ("hopsital", "flouride"). The first and last
+    letters are left alone: a letter on the end is a plural or a tense, and
+    a letter gone from the front is how a page was cut. A changed letter is
+    never a slip: "incest" is not "invest"."""
     often = {w for w, n in seen.items() if n >= SLIP_OF}
+    swapped = {w for w, n in seen.items() if n >= SLIP_SWAP_OF}
     short = {}
     for v in often:
         for i in range(1, len(v) - 1):
@@ -933,14 +993,16 @@ def slips(seen, names=()):
     for w, n in seen.items():
         if n != 1 or len(w) < SLIP_LETTERS or w in names:
             continue
-        near = [short[w]] if w in short else []
+        near, swap = [short[w]] if w in short else [], []
         for i in range(1, len(w) - 1):
             near.append(w[:i] + w[i + 1:])
             if i < len(w) - 2 and w[i] != w[i + 1]:
-                near.append(w[:i] + w[i + 1] + w[i] + w[i + 2:])
-        near = [v for v in near if v in often]
+                swap.append(w[:i] + w[i + 1] + w[i] + w[i + 2:])
+        # A swap of the word, or of its plural: "flourides" is the same
+        # slip, and left in it made "flouride" the start of a word.
+        near = [v for v in near if v in often]             + [v for v in swap if v in swapped or stem(v) in swapped]
         if near:
-            out[w] = max(near, key=lambda v: (seen[v], v))
+            out[w] = max(near, key=lambda v: (seen.get(v, 0), v))
     return out
 
 
@@ -999,7 +1061,6 @@ def main():
           "wording in the search's tables")
 
     out = Path(a.out)
-    out.mkdir(parents=True, exist_ok=True)
     man_path = out / "manifest.json"
     try:
         manifest = json.loads(man_path.read_text(encoding="utf-8"))
@@ -1007,8 +1068,19 @@ def main():
             manifest = {"terms": {}}
     except (OSError, ValueError):
         manifest = {"terms": {}}
+    before = {t: (v or {}).get("with_text", 0)
+              for t, v in manifest["terms"].items() if isinstance(v, dict)}
     manifest.update(v=VERSION, central=CENTRAL, telling=TELLING, floor=FLOOR)
+    # Said in the file, for check_site: a build told that no text was
+    # expected is not held to having read any.
+    if a.allow_no_text:
+        manifest["no_text_expected"] = True
+    elif not a.terms:
+        manifest.pop("no_text_expected", None)
     total_text = 0
+    # What the run will write, held until the checks below have passed
+    # (NOTHING IS WRITTEN BY A RUN THAT FAILS): {file name: bytes}.
+    made = {}
     # How many bills use each word: a word one bill uses may be a slip.
     seen = Counter()
     for f in files:
@@ -1029,7 +1101,7 @@ def main():
                     seen.update(known_words(rec.get("text") or ""))
         data, tally = build_term(term, rows, texts.get(term) or {}, table)
         raw = dumps(data).encode("utf-8")
-        (out / f"{term}.json").write_bytes(raw)
+        made[f"{term}.json"] = raw
         tally.update(bytes=len(raw), gzip=len(gzip.compress(raw, 9, mtime=0)))
         manifest["terms"][term] = tally
         total_text += tally["with_text"]
@@ -1040,12 +1112,29 @@ def main():
               f"{tally.get('postings', 0):,} entries, "
               f"{tally.get('pairs', 0):,} pairs, {len(raw):,} bytes "
               f"({tally['gzip']:,} gzipped){note}")
+    # A TERM AT A TIME: which of the terms this run read have lost their text.
+    real = sorted(t for t in manifest["terms"] if TERM_NAME.fullmatch(t))
+    newest = real[-1] if real else None
+    lost = []
+    for f in files:
+        t = manifest["terms"][f.stem]
+        if not TERM_NAME.fullmatch(f.stem) or not t["bills"]:
+            continue
+        if f.stem != newest:
+            if t["with_text"] < TEXT_SHARE * t["bills"]:
+                lost.append(f"{f.stem} has text for {t['with_text']:,} of its "
+                            f"{t['bills']:,} bills")
+        elif not t["with_text"] and before.get(f.stem):
+            lost.append(f"{f.stem} has text for none of its {t['bills']:,} "
+                        f"bills, and had it for {before[f.stem]:,} when this "
+                        "was last run here")
     # EVERY WORD THE BILLS USE, for the page to tell a misspelt word from a
     # real one (app.js, A SEARCH THAT LISTS NOTHING). It is every term's, so
     # it is written only by a run over every term: one made from a subset
     # would call the rest of the record's words misspellings.
     words_path = out / "words.json"
     thin = False
+    known = set()
     if a.terms:
         print(f"  words.json: left as it is ({'there' if words_path.exists() else 'NOT THERE'}"
               ") -- it is every term's words, and this run read "
@@ -1056,45 +1145,53 @@ def main():
             print("  names, " + s)
         slipped = slips(seen, names)
         known = (set(seen) - set(slipped)) | names
+        # Too few to be a vocabulary: with a thin list every word it lacks
+        # would be offered as some other word. The checks below stop the run.
         thin = len(known) < WORDS_FEWEST
-        if thin and not a.allow_no_text:
-            # Not written: with a thin list every word it lacks would be
-            # offered as some other word. With none the page offers nothing.
-            if words_path.exists():
-                words_path.unlink()
-            manifest.pop("words", None)
-        else:
-            raw = dumps(words_file(known)).encode("utf-8")
-            words_path.write_bytes(raw)
-            manifest["words"] = {"n": len(known), "bytes": len(raw),
-                                 "gzip": len(gzip.compress(raw, 9, mtime=0)),
-                                 "slips": len(slipped)}
-            print(f"  words.json: {len(known):,} words the bills, members and "
-                  f"towns use, {len(raw):,} bytes "
-                  f"({manifest['words']['gzip']:,} gzipped) -- fetched only "
-                  f"when a search lists nothing; {len(slipped):,} slips of the "
-                  "record's own left out of it ("
-                  + ", ".join(f"{w} for {v}" for w, v in sorted(slipped.items())[:3])
-                  + ", ...)")
-    man_path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n",
-                        encoding="utf-8")
+        raw = dumps(words_file(known)).encode("utf-8")
+        made["words.json"] = raw
+        manifest["words"] = {"n": len(known), "bytes": len(raw),
+                             "gzip": len(gzip.compress(raw, 9, mtime=0)),
+                             "slips": len(slipped)}
+        print(f"  words.json: {len(known):,} words the bills, members and "
+              f"towns use, {len(raw):,} bytes "
+              f"({manifest['words']['gzip']:,} gzipped) -- fetched only "
+              f"when a search lists nothing; {len(slipped):,} slips of the "
+              "record's own left out of it ("
+              + ", ".join(f"{w} for {v}" for w, v in sorted(slipped.items())[:3])
+              + ", ...)")
+    # The checks, before anything in --out is touched.
+    if not a.allow_no_text:
+        why = None
+        if not total_text:
+            why = ("NOT ONE bill text was read, so every file would be empty "
+                   "and the search would read titles only. bill_text.json and "
+                   "archive_text.json are what it reads")
+        elif lost:
+            why = ("the texts of " + "; ".join(lost) + ". Those bills would be "
+                   "found by title and topic only, and their words would be "
+                   "missing from words.json. bill_text.json is the current "
+                   "term's text and archive_text.json every term's before it")
+        elif thin:
+            why = (f"only {len(known):,} words were read from every term's "
+                   f"bills, fewer than {WORDS_FEWEST:,}: a words.json that "
+                   "short would have every word it lacks offered as another. "
+                   "The texts are what it is read from")
+        if why:
+            raise SystemExit(
+                f"search index: {why}. NOTHING WAS WRITTEN: {out} is as it "
+                "was. --allow-no-text says that is expected.")
+    out.mkdir(parents=True, exist_ok=True)
+    made["manifest.json"] = (json.dumps(manifest, indent=1, sort_keys=True)
+                             + "\n").encode("utf-8")
+    for name, raw in made.items():
+        tmp = out / (name + ".writing")
+        tmp.write_bytes(raw)
+        tmp.replace(out / name)
     t = manifest["terms"]
     print(f"search index: {len(files)} term files written to {out}; all "
           f"{len(t)} on record come to {sum(v['bytes'] for v in t.values()):,} "
           f"bytes, {sum(v['gzip'] for v in t.values()):,} gzipped")
-    if not total_text and not a.allow_no_text:
-        raise SystemExit(
-            "search index: NOT ONE bill text was read, so every file written "
-            "is empty and the search would read titles only. bill_text.json "
-            "and archive_text.json are what it reads; --allow-no-text says "
-            "that is expected.")
-    if thin and not a.allow_no_text:
-        raise SystemExit(
-            f"search index: only {len(known):,} words were read from every "
-            f"term's bills, fewer than {WORDS_FEWEST:,}, so words.json was "
-            "NOT written and a misspelt search will be offered nothing. The "
-            "texts are what it is read from; --allow-no-text says that is "
-            "expected.")
 
 
 if __name__ == "__main__":

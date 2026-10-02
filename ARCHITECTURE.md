@@ -280,7 +280,7 @@ It reads, for each bill, in the order it lists them:
    above; a single word of it in titles and analyses, and in the body of a
    text only under an entry's `with` rule.
 
-Nine things in it are easy to undo by accident.
+Twelve things in it are easy to undo by accident.
 
 *A single word the table supplies is not read in the body of a text.* A
 phrase ("risk protection order") is specific and a single word is not: read
@@ -301,7 +301,10 @@ itself, with no such file: it showed 98 investment bills for "incest" under
 out of the file -- a word one bill uses that is a common word with a letter
 dropped, added or swapped inside it ("goverment") -- so that a reader who
 makes the same slip is offered the word; never a changed letter, which is
-what "incest" and "invest" differ by.
+what "incest" and "invest" differ by. A dropped or added letter needs the
+common word to be a hundred bills'; two letters swapped need ten ("flouride",
+beside the 42 bills that say fluoride), because a swap is almost never
+another word and a dropped letter often is (carving, caring).
 
 A search of several words that lists nothing says which of them list bills
 on their own, and, for three words or more, which searches with one word left
@@ -309,6 +312,34 @@ out do; each is a button, and none is drawn in the search's place. In the
 header's panel the offered word is a button too, and its click stops at the
 panel: left to reach the document it shut the panel, and on a page `app.js`
 draws it listed bills over the page.
+
+*The word typed, in another form, is still the word typed.* What the table
+supplies is listed after everything that has the reader's own word, which is
+right for wording that names another thing ("landlord", for "eviction") and
+wrong for a term that is the word itself: its letters written out ("dwi" and
+"driving while intoxicated", "dmv" and the division of motor vehicles), which
+counts as the word in a title; or the word with another ending ("eviction"
+and "evict"), which counts as a longer word in a title does. Only among the
+terms of the entry the word is an ask of.
+
+*In a text, a longer word is read from six letters.* A word that is the
+whole search also finds a longer word it begins. In a title that holds from
+any length, lower down, as the person ruled ("bail" and the bailiffs). In an
+analysis or a text it holds from six letters: below that the longer word is
+mostly another word (fee and feet, plan and plant, "bail" and a bill on
+cloud-stored files that says "bailment"), and from six it is mostly the same
+one (municipal, municipality). The card says which word it was listed for.
+
+*A search is read to its twelfth word, and a bill is asked once.* Every word
+typed is a part every bill is asked for, so a pasted paragraph is read to
+`MAXWORDS` words that carry a subject and the page says so; what a part
+found in a bill is kept on the part (`recall`) for the list, the filters'
+counts, the order and the cards; the box draws when the typing pauses; and
+what a search that lists nothing is offered is counted after the page has
+said so, one search at a time. Before that, 200 pasted words stopped the
+page for 17 seconds and every letter on All terms for half a second.
+`preflight` counts the searches one drawing runs and how often a bill is
+asked, rather than timing a machine.
 
 *What "about" means is decided at build time.* A word a text uses once is
 nearly always a passing mention, so the build keeps a word for a bill when the
@@ -366,6 +397,14 @@ one key, looked up under another, and nothing fails.
 looked up in are made with no prototype, and a list out of a fetched file is
 checked to be a list. "constructor" is a word, and on a plain object it was
 a function: the search stopped with a TypeError and drew nothing.
+
+*The build stops before it writes.* `build_search_index.py` makes every
+file in memory and replaces nothing in `site/sidx` unless the texts were
+there: a term before the newest with text for fewer than half its bills, the
+newest with none where it had some, or a vocabulary under 25,000 words stops
+the run with `site/sidx` as it was. `check_site.py`, which the nightly runs,
+reads `sidx/manifest.json` against `idx/` and refuses a site whose search
+index is missing or has an earlier term without text.
 
 `tests/search_cases.json` holds real searches against real bills, with
 `tests/search_index.json` cut from the real index for them;

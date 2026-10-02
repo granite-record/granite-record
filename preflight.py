@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.306
+# GRANITE_VERSION: 2026-09-04.307
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6658,6 +6658,28 @@ def _search_cases(BP):
     - the record's own slips are offered their word: "goverment", "libary";
     - and a word that is a property of an object ("constructor") is a word.
 
+    AND FROM THE THIRD (2 October), forty searches written blind, of which
+    nine failed, five in ways the second pass had introduced:
+
+    - a longer word in a text is read only for a word of six letters:
+      "bail" does not list a bill on cloud-stored files for "bailment";
+    - the letters typed, written out, are the word: "dwi" opens on the bills
+      titled "driving while intoxicated" and not on an insurance bill whose
+      analysis mentions a DWI conviction; and a term that is the word with
+      another ending is the word: "eviction" lists "notice to evict" above
+      the bills on rent payments;
+    - a phrase is not answered with a bare word: "solar panels" does not
+      list solar radiation modification;
+    - two letters swapped are a slip of a word ten bills use: "flouride" is
+      offered fluoride;
+    - and the words the record never uses for bills it has: "dcyf", "ufo",
+      "ozempic", "e-bike", and "license plates" for the statutes' number
+      plates.
+    Two it found are NOT held here, because the rule that would fix them was
+    measured and cost seven bills these cases must list: SB 404 under
+    "minimum wage" and SB 217 under "social media" (build_search_index.py,
+    A PHRASE ONLY THE TEXT HAS).
+
     The cases are machine-judged, by reading; they are a seed and not the
     person's reference. A title is never typed into the file; it is copied
     from the index.
@@ -6675,9 +6697,9 @@ def _search_cases(BP):
     got = _search_cases_node(BP)
     assert not got["fails"], "search: " + _search_cases_said(got["fails"])
     # A check that passes by asking nothing proves nothing.
-    assert got["cases"] >= 110 and got["found"] >= 400 and got["kept"] >= 110 \
+    assert got["cases"] >= 130 and got["found"] >= 450 and got["kept"] >= 120 \
         and got["pairs"] >= 15 and got["entries"] >= 60 and got["byText"] >= 25 \
-        and got["offered"] >= 8 and got["nothing"] >= 12, (
+        and got["offered"] >= 9 and got["nothing"] >= 12, (
         f"the cases no longer exercise the search: {got['cases']} searches, "
         f"{got['found']} bills they must list ({got['byText']} of them found "
         f"by the bill's own analysis or text), {got['kept']} they must not, "
@@ -6731,7 +6753,7 @@ def _search_cases_real(BP):
                     if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
     got = _search_cases_node(BP, [own, *others], "site/sidx")
     assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
-    assert not got["whole"] or (got["across"] >= 8 and got["apart"] >= 4), (
+    assert not got["whole"] or (got["across"] >= 11 and got["apart"] >= 4), (
         f"over every term, {got['across']} searches were held to bills of "
         f"other terms and {got['apart']} SYN entries no title uses were "
         "read: the checks of the whole record are no longer asking")
@@ -7094,6 +7116,489 @@ def _search_index_builds(BP, SI):
                   f"singulars, on {len(table[0])} phrases and {len(table[1])} "
                   f"words the tables name, and on {len(counts)} phrases found "
                   "in those texts")
+
+
+# A PASTED PARAGRAPH, AND ONE DRAWING OF THE LIST (2 October 2026). Nothing
+# among the checks measured how much work a search is, which is how a page
+# that stopped for 17 seconds on 200 pasted words passed 419 of them. This
+# loads app.js as bills.html does, over the bills the search cases name, and
+# counts: how many searches one drawing runs, and how many times it asks a
+# bill what a part of the search found in it.
+_SEARCH_WORK_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const C = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const rows = Object.entries(C.bills).map(([id, b]) => ({ id, term: C.term, year: 2025, ...b }));
+const words = new Set();
+for (const b of rows) for (const w of (b.title + " " + b.sponsor).toLowerCase().match(/[a-z]{5,}/g) || []) words.add(w);
+const FIX = { "/meta.json": { terms: [C.term], topics: [], committees: [], sponsors: [], votedays: [], years: [2025, 2026] },
+  ["/idx/" + C.term + ".json"]: rows, ["/sidx/" + C.term + ".json"]: JSON.parse(fs.readFileSync("./sidx.json", "utf8")),
+  "/sidx/words.json": { v: 1, n: words.size, words: [...words].sort().join(" ") } };
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in FIX)) return { ok: false, status: 404, json: async () => { throw new Error("404"); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+let moved = null;
+history.replaceState = (s, t, u) => { moved = u; };
+const box = document.querySelector("#q"); box.disabled = true;
+let scope;
+try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8")
+  + ";({getIDX: () => IDX, addressSearch: typeof addressSearch === 'undefined' ? null : addressSearch,"
+  + " most: typeof MAXWORDS === 'undefined' ? null : MAXWORDS})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+// Counted where the page itself calls them: a function app.js declares is
+// the global one, so a wrapper put in its place is what the page then calls.
+const calls = { queryGroups: 0, fitAlone: 0 };
+for (const name of Object.keys(calls)) { const real = globalThis[name];
+  globalThis[name] = function () { calls[name]++; return real.apply(this, arguments); }; }
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = { bills: scope.getIDX().length, most: scope.most, draws: {} };
+  const type = async (s) => { box.value = s; box.fire("input"); await ticks(30); };
+  await type("firearms");           // the term's text arrives on the first search
+  const draw = async (name, s) => {
+    await type("");
+    const groups = globalThis.queryGroups(s);
+    calls.queryGroups = calls.fitAlone = 0;
+    const t = process.hrtime.bigint();
+    box.value = s; box.fire("input");
+    const ms = Number(process.hrtime.bigint() - t) / 1e6;
+    out.draws[name] = { ms: Math.round(ms), groups: groups.length, cut: groups.cut || 0,
+      searches: calls.queryGroups, fits: calls.fitAlone,
+      count: document.querySelector("#count").textContent,
+      hint: document.querySelector("#synhint").textContent,
+      says: document.querySelector("#results").innerHTML.replace(/<article[\s\S]*$/, "")
+        .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 600) };
+  };
+  const para = "relative to the regulation of certain municipal water systems and establishing a commission to study the effects of groundwater withdrawal on private wells in towns bordering public forest lands and requiring annual reports to the general court by department heads on the cost of compliance with federal standards for treatment plants";
+  const ws = para.split(" ");
+  const two = Array.from({ length: 200 }, (_, i) => ws[i % ws.length] + (i >= ws.length ? String.fromCharCode(97 + (i % 26)) : "")).join(" ");
+  await draw("one word", "abortion");
+  await draw("three words", "college students voting");
+  await draw("200 words", two);
+  await draw("tax, 5000 times", "tax ".repeat(5000));
+  await draw("20,000 letters", "a".repeat(20000));
+  await draw("a title", "permitting classification of individuals based on biological sex under certain limited circumstances.");
+  // An offered search, taken, is the one the address names.
+  out.address = {};
+  if (scope.addressSearch) {
+    location.search = "?q=vacine%20exemption&term=all"; moved = null;
+    scope.addressSearch("vaccine exemption");
+    out.address.named = moved;
+    location.search = ""; moved = null; scope.addressSearch("vaccine exemption");
+    out.address.unnamed = moved;
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# What one drawing may cost, on the cases' few hundred bills. The page before
+# 2 October took 5.6 seconds over them for 200 pasted words and ran 361
+# searches doing it; it takes 25 ms and runs 13.
+SEARCH_DRAW_MS = 1500
+SEARCH_DRAW_SEARCHES = 40
+
+
+@check("frontend", "a pasted paragraph is read to its twelfth word, and one "
+                   "drawing of the list asks each bill once")
+def _search_work():
+    """The second review's performance lens, 2 October: 200 words pasted into
+    the search box stopped /bills for 17 seconds in the current term and 220
+    on All terms, and every letter typed on All terms held the page for half
+    a second on a desktop and five on a phone. Every check passed, because
+    none measured how much work a search is.
+
+    Three causes, each held here by counting what the page does, so that the
+    check does not turn on how fast this machine is:
+
+    - a search was read to its last word, and every word is a part every
+      bill is asked for: it is read to its twelfth now (queryGroups,
+      MAXWORDS), the page says so, and a pasted title still finds its bill;
+    - a search that listed nothing ran one more whole search for every word
+      typed, and another for every word left out: 361 for 200 words. One
+      drawing may run SEARCH_DRAW_SEARCHES;
+    - one drawing asked every bill the same question six times -- the list,
+      four filters' counts and the order. It asks once: fitAlone() is called
+      at most twice a bill for a one-word search.
+
+    The time is held too, loosely: SEARCH_DRAW_MS for any of them, where the
+    old page took 5.6 seconds for the paste and the new one 25 ms.
+
+    And an offered search, taken, is the one the address names: a reader who
+    arrived at /bills?q=vacine%20exemption and took "vaccine exemption" was
+    left at an address that still said "No bills match" on reload.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = ("app.js", "dom_stub.js", "tests/search_cases.json", "tests/search_index.json")
+    if not all(Path(f).exists() for f in need):
+        return "skip", "app.js, dom_stub.js or the search cases are not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        for name, src in (("stub.js", "dom_stub.js"), ("app.js", "app.js"),
+                          ("cases.json", "tests/search_cases.json"),
+                          ("sidx.json", "tests/search_index.json")):
+            (root / name).write_text(Path(src).read_text(encoding="utf-8"),
+                                     encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_WORK_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
+                 timeout=180)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    n, d = got["bills"], got["draws"]
+    assert n >= 300, f"only {n} bills were loaded: the counts below prove little"
+    assert got["most"] and got["most"] <= 15, (
+        f"app.js reads a search to its word {got['most']!r}: there is no "
+        "limit on how many parts a pasted paragraph becomes")
+    paste = d["200 words"]
+    assert paste["groups"] <= got["most"] and paste["cut"] >= 100, (
+        f"200 pasted words are read as {paste['groups']} parts with "
+        f"{paste['cut']} left unread: every one is a part every bill is asked for")
+    assert "first twelve words" in paste["says"].lower(), (
+        "a search cut short does not say so where nothing is listed: "
+        f"{paste['says'][:160]!r}")
+    assert "first twelve words" in d["tax, 5000 times"]["hint"].lower(), (
+        "a search cut short does not say so under the box where bills are "
+        f"listed: {d['tax, 5000 times']['hint'][:160]!r}")
+    for name, x in d.items():
+        assert x["searches"] <= SEARCH_DRAW_SEARCHES, (
+            f"drawing {name!r} ran {x['searches']} searches over every bill "
+            f"(at most {SEARCH_DRAW_SEARCHES}): the offers for a search that "
+            "lists nothing are counted without limit again")
+        assert x["ms"] <= SEARCH_DRAW_MS, (
+            f"drawing {name!r} took {x['ms']:,} ms over {n} bills, more than "
+            f"{SEARCH_DRAW_MS:,}: on the 2,243 of a term that is a page that "
+            "has stopped answering")
+    one = d["one word"]
+    assert n <= one["fits"] <= 2 * n, (
+        f"one drawing of a one-word search asked a bill what it found "
+        f"{one['fits']:,} times for {n} bills: each bill is to be asked once, "
+        "and its answer kept (app.js, recall)")
+    three = d["three words"]
+    assert "Without one word" in three["says"] and "On their own" in three["says"], (
+        "a search of three words that lists nothing no longer offers its "
+        f"parts: {three['says'][:200]!r}")
+    assert d["a title"]["count"].split(" ")[0] not in ("", "0"), (
+        "a bill's whole title, pasted, does not find the bill: "
+        f"{d['a title']['count']!r}")
+    a = got["address"]
+    assert a.get("named") and "q=vaccine+exemption" in a["named"] \
+        and "term=all" in a["named"] and a.get("unnamed") is None, (
+        "an offered search, taken, does not rewrite an address that named "
+        f"the misspelt one, or rewrites one that named none: {a}")
+    return "ok", (f"over {n} bills: 200 pasted words are read as "
+                  f"{paste['groups']} and drawn in {paste['ms']} ms with "
+                  f"{paste['searches']} searches run; a one-word search asks "
+                  f"each bill once ({one['fits']} for {n}); a pasted title "
+                  "finds its bill; an offered search rewrites the address "
+                  "that named the misspelling")
+
+
+# The header's box (find.js) on its own: the three things the third review
+# found in it, 2 October.
+_FIND_DETAILS_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch, findSuggest, _fenc: typeof _fenc === 'undefined' ? null : _fenc})");
+F.FIND.rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = { match: {}, suggest: {}, draw: {} };
+for (const q of ["dwi", "wich", "bald", "sand", "field", "edwin", "win"]) out.match[q] = F.findMatch(q, 50).map(r => r[1]);
+for (const q of ["ebike", "comittee", "litchfeild", "sandwhich", "baldwni"]) out.suggest[q] = F.findSuggest(q);
+const panel = document.getElementById("findout");
+for (const [name, q] of [["half an emoji", "\ud83d tax"], ["the other half", "tax \ude00"], ["a whole one", "😀 tax"]]) {
+  try { F.findDraw(q); out.draw[name] = { html: panel.innerHTML }; }
+  catch (e) { out.draw[name] = { threw: String(e && e.message) }; }
+}
+out.enc = F._fenc ? [F._fenc("\ud83d tax"), F._fenc("😀")] : null;
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's box reads a short word as the start of a "
+                   "word, offers no name two letters off a short one, and "
+                   "does not stop on half an emoji", needs=("build_pages",))
+def _find_details(BP):
+    """Three things the third review found in the header's search, 2 October.
+
+    "dwi" listed, under the bills, the town of Sandwich and six members
+    named Baldwin, Edwin, Hardwick and Goodwin: what was typed was looked
+    for anywhere in a row. Under five letters it must now begin a word of
+    the row; from five it may stand anywhere, as "field" is Litchfield.
+
+    "ebike" was offered "Did you mean mike?": two letters apart, in a word
+    of five. Two are allowed from seven letters ("comittee") and one below.
+
+    And a search holding half an emoji -- a surrogate with no partner, which
+    is what the box holds for a moment on some keyboards -- threw "URI
+    malformed" from encodeURIComponent and the panel was not drawn for that
+    keystroke; /search did the same. Every address a typed search goes into
+    is written through find.js's _fenc, here, on /search and on the home
+    page.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not (Path("find.js").exists() and Path("dom_stub.js").exists()):
+        return "skip", "find.js or dom_stub.js not in this directory"
+    rows = [
+        ["town", "Sandwich", "Carroll County", "town/sandwich", "Carroll"],
+        ["town", "Litchfield", "Hillsborough County", "town/litchfield", "Hillsborough"],
+        ["legislator", "Rep. Heather Baldwin (D - Graf 4)", "House", "legislator/heather-baldwin", "Grafton"],
+        ["former", "Former Rep. Edwin Smith", "House · Ches 11 · 2015–2018", "legislator/edwin-smith", "Cheshire", 2018],
+        ["former", "Former Rep. Richard Dwinell", "House · Merr 12 · 1999–2002", "legislator/richard-dwinell", "Merrimack", 2002],
+        ["former", "Former Rep. Mike Smith", "House · Rock 1 · 2001–2002", "legislator/mike-smith", "Rockingham", 2002],
+        ["committee", "House Finance", "House committee", "committee/H01", ""],
+        ["page", "Committees", "Every committee", "committees", ""],
+    ]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(Path("find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_DETAILS_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m = got["match"]
+    assert m["dwi"] == ["Former Rep. Richard Dwinell"], (
+        f"'dwi' finds {m['dwi']}: a word of three letters is found in the "
+        "middle of Sandwich and Baldwin again, not only at the start of Dwinell")
+    assert not m["wich"] and not m["win"] and m["bald"] == ["Rep. Heather Baldwin (D - Graf 4)"] \
+        and m["sand"] == ["Sandwich"], (
+        f"a short word is not read as the start of a word: {m}")
+    assert m["field"] == ["Litchfield"] and m["edwin"] == ["Former Rep. Edwin Smith"], (
+        f"a word of five letters no longer finds the name it is inside of: {m}")
+    s = got["suggest"]
+    assert s["ebike"] == "" and s["comittee"] == "committees" and s["litchfeild"] == "litchfield", (
+        f"the names offered for a misspelt word are {s}: none for 'ebike' "
+        "(it was 'mike'), 'committees' for 'comittee', 'litchfield' for "
+        "'litchfeild'")
+    for name, x in got["draw"].items():
+        assert "threw" not in x, (
+            f"the header's box stops on {name}: {x.get('threw')}")
+        assert "/search?q=" in x["html"], f"the panel drew nothing for {name}"
+    assert got["enc"] == ["%EF%BF%BD%20tax", "%F0%9F%98%80"], (
+        f"find.js's _fenc writes {got['enc']}: a stray half is the "
+        "replacement character, and a whole emoji is itself")
+    js = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S).group(1)
+    assert "encodeURIComponent(" not in js, (
+        "/search's script puts what was typed into an address with "
+        "encodeURIComponent, which throws on half an emoji: use find.js's _fenc")
+    home = getattr(BP, "HOME_JS", "")
+    assert "goBills" not in home or "uD800" in home, (
+        "the home page's search box puts what was typed into an address "
+        "without reading a stray surrogate as the replacement character")
+    return "ok", ("'dwi' finds Dwinell and not Sandwich or Baldwin; 'field' "
+                  "still finds Litchfield; 'ebike' is offered nothing and "
+                  "'comittee' committees; half an emoji is drawn, and goes "
+                  "into an address as the replacement character")
+
+
+@check("build", "the search index builder stops, and writes nothing, when a "
+               "term's texts are gone; and check_site refuses a site without "
+               "its search index or with a file over the host's cap",
+       needs=("build_search_index", "check_site"))
+def _search_index_main(SI, CS):
+    """The second review, 2 October: build_search_index.py did not fail when
+    some terms' texts were missing. With archive_text.json gone it wrote
+    empty indexes for eighteen of nineteen terms and a words.json short by
+    14,600 words, and exited 0; the only check that would have noticed an
+    empty term was one the nightly does not run; and the checks that ran
+    its functions on the fixture never ran its main().
+
+    So main() is run here, as build_all runs it, on two terms made of the
+    eight real texts tests/search_texts.json holds:
+
+    - whole, it writes both terms' files, words.json and the manifest;
+    - with the earlier term's texts withheld it exits non-zero and --out is
+      byte for byte what it was (NOTHING IS WRITTEN BY A RUN THAT FAILS);
+    - with no text at all, the same; and with the newest term's texts gone
+      where the manifest on disk says it had them;
+    - with the newest term's texts not there and no such record, it says so
+      and goes on: in the first days of a session the bills are numbered
+      before their text is fetched;
+    - with the vocabulary under its floor (the real WORDS_FEWEST, which
+      eight bills cannot reach), the same;
+    - with --terms it writes that term's file, leaves words.json as it was
+      and keeps the other term's entry in the manifest.
+
+    And check_site, which the nightly does run, reads what was written:
+    it passes the whole index, refuses a site with bill indexes and no
+    search index, refuses one whose earlier term has no text, and takes a
+    build made with --allow-no-text (preflight's fixture site) as said.
+    A file within a tenth of Cloudflare Pages' 25 MiB is warned of and one
+    over it refused: index.json stood at 22.6 MiB with nothing measuring it.
+    """
+    import contextlib
+    import hashlib
+    import io
+    texts_at, cases_at = Path("tests/search_texts.json"), Path("tests/search_cases.json")
+    if not (texts_at.exists() and cases_at.exists() and Path("app.js").exists()):
+        return "skip", "tests/search_texts.json, the cases or app.js not here"
+    held = json.loads(texts_at.read_text(encoding="utf-8"))
+    bills = json.loads(cases_at.read_text(encoding="utf-8"))["bills"]
+    new, old = held["term"], "2023-2024"
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "idx").mkdir()
+        for term in (new, old):
+            (root / "idx" / f"{term}.json").write_text(json.dumps([
+                {"id": bid, "term": term, "title": rec["title"],
+                 "sponsor": (bills.get(bid) or {}).get("sponsor", ""),
+                 "committees": (bills.get(bid) or {}).get("committees", []),
+                 "topic": (bills.get(bid) or {}).get("topic", "")}
+                for bid, rec in held["bills"].items()]), encoding="utf-8")
+        both = {bid: {"text": rec["text"]} for bid, rec in held["bills"].items()}
+        (root / "bill_text.json").write_text(json.dumps({new: both}), encoding="utf-8")
+        (root / "archive_text.json").write_text(json.dumps({old: both}), encoding="utf-8")
+        (root / "no_archive.json").write_text("{}", encoding="utf-8")
+        out = root / "sidx"
+
+        def build(*args, fewest=50, to=None):
+            # main() itself, in a process of its own, with the floor on the
+            # vocabulary lowered to what eight bills can reach.
+            code = ("import sys, build_search_index as SI\n"
+                    f"SI.WORDS_FEWEST = {fewest}\n"
+                    "sys.argv = ['build_search_index.py'] + sys.argv[1:]\n"
+                    "SI.main()\n")
+            return _run([sys.executable, "-c", code, "--idx", str(root / "idx"),
+                         "--out", str(to or out), "--app", str(here / "app.js"),
+                         "--names", *args],
+                        cwd=here, capture_output=True, text=True, timeout=300)
+
+        def state():
+            return {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
+                    for f in sorted(out.glob("*"))} if out.exists() else {}
+
+        text = ["--bill-text", str(root / "bill_text.json")]
+        arch = ["--archive-text", str(root / "archive_text.json")]
+        gone = ["--archive-text", str(root / "no_archive.json")]
+        r = build(*text, *arch)
+        assert r.returncode == 0, (
+            "build_search_index.py fails on two terms with their texts: "
+            + (r.stderr or r.stdout)[-300:])
+        whole = state()
+        assert set(whole) == {f"{new}.json", f"{old}.json", "words.json", "manifest.json"}, (
+            f"a whole run wrote {sorted(whole)}")
+        man = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert all(man["terms"][t]["with_text"] == len(both) for t in (new, old)) \
+            and not man.get("no_text_expected"), f"the manifest says {man['terms']}"
+        said = []
+        for what, args, kw in (
+                ("the earlier term's texts are gone", [*text, *gone], {}),
+                ("no text can be read at all",
+                 ["--bill-text", str(root / "no_archive.json"), *gone], {}),
+                ("the newest term's texts are gone where it had them",
+                 ["--bill-text", str(root / "no_archive.json"), *arch], {}),
+                ("the vocabulary is under its floor", [*text, *arch],
+                 {"fewest": SI.WORDS_FEWEST})):
+            r = build(*args, **kw)
+            assert r.returncode != 0, (
+                f"build_search_index.py exits 0 when {what}: a build that "
+                "lost its texts would publish a search that reads titles only")
+            assert "NOTHING WAS WRITTEN" in (r.stderr + r.stdout), (
+                f"when {what} the run does not say that nothing was written: "
+                + (r.stderr or r.stdout)[-200:])
+            assert state() == whole, (
+                f"when {what} the run fails and has already replaced "
+                f"{sorted(k for k, v in state().items() if whole.get(k) != v)} "
+                "in --out")
+            said.append(what)
+        # The newest term with no text and no record of having had any: the
+        # first days of a session, said out loud and allowed.
+        r = build("--bill-text", str(root / "no_archive.json"), *arch,
+                  to=root / "fresh")
+        assert r.returncode == 0 and "NO TEXT for this term" in r.stdout, (
+            "a newest term with bills and no text yet stops the build, or is "
+            "not said out loud: in January that would stop the night: "
+            + (r.stderr or r.stdout)[-200:])
+        assert SI.WORDS_FEWEST >= 20_000, (
+            f"WORDS_FEWEST is {SI.WORDS_FEWEST:,}: the titles and names alone "
+            "come to 11,900 words and a record that has lost eighteen terms' "
+            "texts to 18,900, so a floor under those lets both through")
+        # --terms: that term's file, and nothing of the rest.
+        (root / "bill_text.json").write_text(json.dumps(
+            {new: dict(list(both.items())[:5])}), encoding="utf-8")
+        r = build(*text, *arch, "--terms", new)
+        assert r.returncode == 0, "--terms fails: " + (r.stderr or r.stdout)[-300:]
+        after = state()
+        man2 = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert after[f"{new}.json"] != whole[f"{new}.json"] \
+            and after[f"{old}.json"] == whole[f"{old}.json"] \
+            and after["words.json"] == whole["words.json"], (
+            "--terms did not write only the term it was given: changed "
+            f"{sorted(k for k in after if after[k] != whole.get(k))}")
+        assert man2["terms"][old] == man["terms"][old] \
+            and man2["terms"][new]["with_text"] == 5, (
+            "--terms lost the other term's entry in the manifest, or kept "
+            f"its own stale: {man2['terms']}")
+        # check_site, on what a site would hold.
+        site = root / "site"
+        (site / "sidx").mkdir(parents=True)
+        shutil.copytree(root / "idx", site / "idx")
+
+        def verdict():
+            errors, warnings = [], []
+            with contextlib.redirect_stdout(io.StringIO()):
+                CS.search_index(site, errors, warnings)
+            return errors, warnings
+
+        errors, _w = verdict()
+        assert errors and "search index is not in the site" in errors[0], (
+            f"check_site passes a site with bill indexes and no search index: {errors}")
+        build(*text, *arch)
+        for f in out.glob("*"):
+            shutil.copy(f, site / "sidx" / f.name)
+        errors, warnings = verdict()
+        assert not errors and not warnings, (
+            f"check_site refuses a whole search index: {errors} {warnings}")
+        m3 = json.loads((site / "sidx" / "manifest.json").read_text(encoding="utf-8"))
+        m3["terms"][old]["with_text"] = 0
+        (site / "sidx" / "manifest.json").write_text(json.dumps(m3), encoding="utf-8")
+        errors, _w = verdict()
+        assert any(old in e and "text" in e for e in errors), (
+            f"check_site passes a search index with no text for {old}: {errors}")
+        m3["no_text_expected"] = True
+        (site / "sidx" / "manifest.json").write_text(json.dumps(m3), encoding="utf-8")
+        errors, warnings = verdict()
+        assert not errors and any(old in w for w in warnings), (
+            "a build told that no text was expected is refused, or says "
+            f"nothing: {errors} {warnings}")
+        (site / "sidx" / "words.json").unlink()
+        errors, _w = verdict()
+        assert any("words.json" in e for e in errors), (
+            f"check_site passes a search index without words.json: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    errors, warnings = [], []
+    cap = CS.FILE_CAP
+    CS.near_the_cap([(cap + 1, "data/big.csv"), (int(cap * 0.905), "index.json"),
+                     (int(cap * 0.5), "ok.json")], errors, warnings)
+    assert len(errors) == 1 and "data/big.csv" in errors[0] \
+        and len(warnings) == 1 and "index.json" in warnings[0], (
+        f"a file over Cloudflare Pages' cap is not refused, or one within a "
+        f"tenth of it not warned of: {errors} {warnings}")
+    return "ok", ("main() on two terms of eight real texts: whole, it writes "
+                  "both and the words; it stops with nothing written when "
+                  + ", when ".join(said) + "; --terms writes its own term "
+                  "only; check_site refuses a site with no search index, or "
+                  "an earlier term without text, or a file over 25 MiB")
 
 
 # What a term's search index may weigh. The page fetches it when somebody
@@ -11186,7 +11691,8 @@ def _proceedings_term_shrink():
         shutil.rmtree(root, ignore_errors=True)
 
 
-CHAIN_NEEDS = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
+CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
+               "build_bill_pages.py",
                "build_session_pages.py", "session_days.py", "journal_days.py",
                "build_legislator_pages.py", "build_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
@@ -11312,6 +11818,15 @@ def _built_site(here, root, brand=True):
     steps = [
         ("build_site_v2.py", ["--data", "data", "--out", "site",
                               "--segments", "work"], "site/index.json"),
+        # IN BUILD_ALL'S ORDER, after the site data whose indexes it reads
+        # (2 October). The fixture carries no bill text, which the builder is
+        # told and says in its manifest (--allow-no-text); check_site then
+        # warns of the term without text and refuses nothing. Without this
+        # step check_site refuses the fixture's site as it would a real one:
+        # bill indexes and no search index beside them. Until then no check
+        # ran this script's main() at all.
+        ("build_search_index.py", ["--idx", "site/idx", "--out", "site/sidx",
+                                   "--allow-no-text"], "site/sidx/manifest.json"),
         ("build_pages.py", ["--out", "site"], "site/legislators.html"),
         ("build_bill_pages.py", ["--site", "site", "--base", base],
          "site/sitemap.xml"),
