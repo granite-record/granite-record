@@ -55,6 +55,12 @@
                 "db/Legislators.psv"]
     },
     {
+      "what": "The General Court's docket of past terms as its database's past view holds it (fetch_past_db.py; 94 MB). narrate_archive.py reads it for the bills whose rows the term's own docket file lacks -- SB 340 and SB 499 of 2016, HR 1 to HR 6 of 2017, HB 451 of 2019 and HB 459 of 2021 on 1 October 2026 -- which have no history without it. Optional because the laptop has to send it first: a night that has none builds those bills with no history, and narrate_archive.py says so in its log. It changes only when the laptop dumps the views again.",
+      "owner": "laptop",
+      "optional": true,
+      "paths": ["db/past/PastDocket.psv"]
+    },
+    {
       "what": "The study and statutory committees -- their details, meetings and members, and the dump's temporary view of them -- and the dump's manifest, whose StatStudMeetings date the calendar reads. The night's study-committee refresh swaps all four views in whole.",
       "owner": "night",
       "paths": ["db/StatStudDetails.psv", "db/StatStudMeetings.psv", "db/StatStudMembers.psv",

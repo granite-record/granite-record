@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.2
+# GRANITE_VERSION: 2026-09-30.4
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -93,6 +93,18 @@ What it reads and understands but records nothing for -- a bill members took
 off the consent calendar, a Senate measure the House withdrew -- is a note.
 A folder holding only December's organization day -- the next term's first
 file -- has no introductions yet, and is reported rather than refused.
+
+AND ONE BILL OF AN EARLIER TERM (EARLIER, 1 October 2026)
+
+HB 459 of 2021 was introduced on 6 January 2021 and killed on 24 February,
+198-153, on roll call 35 of that year. The General Court's bill search for
+2021-2022 does not list it and its table of past bills has no row for it, so
+the site had no record of it and that roll call's ballots linked to nothing.
+The 2021 journal prints its introduction in the form the 2025 journals use
+(HJ 2, page 49), and the vote on its committee's report (HJ 3, page 83). Those
+two things are read for that one bill and no other, which is as far as the
+reader was measured: its record carries "decided" where the nine carry
+"withdrawn".
 """
 
 import argparse
@@ -107,6 +119,11 @@ import journal_days as JD
 ROOT = Path("journals")
 OUT = Path("journal_bills.json")
 FIRST_YEAR = 2025
+# {year: (bill, ...)} -- the bills of years before FIRST_YEAR read from that
+# year's journals: the introduction entry, and the House's vote on the
+# committee's report. Named one by one, because no list of an earlier year was
+# measured beyond the entry named here (read_earlier).
+EARLIER = {2021: ("HB459",)}
 HOUSE_KINDS = ("HB", "HCR", "HJR", "HR", "CACR")
 # A CACR is either chamber's: CACR 8 of 2025 and CACR 11 of 2026 are the
 # Senate's, introduced in the House under INTRODUCTION OF SENATE BILLS. The
@@ -814,6 +831,273 @@ def read_all(root=ROOT, first=FIRST_YEAR):
     return intros, dict(records), report, problems
 
 
+# ------------------------------------------------------- one earlier bill --
+
+# The question a committee's report is put on, and what it recommends: "The
+# question being adoption of the majority committee report of Inexpedient to
+# Legislate."
+REPORT_QUESTION = re.compile(
+    r"The\s+question\s+being\s+adoption\s+of\s+the\s+(?:majority\s+)?committee\s+"
+    r"report\s+of\s+(?P<what>[A-Z][A-Za-z ]+?)\s*\.")
+# A roll call prints its members under their counties, each a heading of its
+# own; they are not where the business after the vote begins.
+COUNTIES = {"BELKNAP", "CARROLL", "CHESHIRE", "COOS", "GRAFTON", "HILLSBOROUGH",
+            "MERRIMACK", "ROCKINGHAM", "STRAFFORD", "SULLIVAN"}
+# What the House did with the report. Lower case, and matched with case: the
+# names of a roll call are capitalised, and no member is called "adopted".
+REPORT_CARRIED = re.compile(r"\badopted\b")
+REPORT_LOST = re.compile(r"\bnot\s+adopted\b|\bfailed\b|\blost\b")
+
+
+def _decided(lines, pg, start, end, bid, cite):
+    """(record, problem) for the House's vote on `bid`'s committee report in
+    one sitting, or (None, None) where the sitting does not take it up.
+
+    The entry is the bill's own line on the regular calendar, the one that
+    states the committee's recommendation -- "HB 459, prohibiting ... MAJORITY:
+    INEXPEDIENT TO LEGISLATE. MINORITY: OUGHT TO PASS WITH AMENDMENT." -- and
+    what is read runs from it to the next bill's entry or the next heading
+    after the vote. Three things, each of which must be there: the question
+    put, the roll call's count, and what the journal says became of the
+    report.
+
+    THE LAST IS PRINTED THROUGH THE ROLL CALL'S COLUMNS. The sentence "and the
+    majority committee report was adopted." comes out of the PDF in three
+    pieces among the names of Strafford and Sullivan. So the word is looked
+    for anywhere after the count, in lower case, and held to the count: a
+    report "adopted" on fewer yeas than nays is not read as adopted or as
+    anything else.
+    """
+    at = None
+    for i in range(start, end):
+        m = ENTRY.match(lines[i].lstrip(" \t\f"))
+        if not m or bill_id(m.group("kind"), m.group("num")) != bid:
+            continue
+        j = i
+        while j < end and lines[j].strip(" \t\f"):
+            j += 1
+        if RECOMMENDS.search(_blob(lines, i, j)):
+            at = i
+            break
+    if at is None:
+        return None, None
+    where = f"{cite(at)['file']}:{at + 1}"
+    stop, voted = end, False
+    for k in range(at + 1, end):
+        ln = lines[k]
+        if TALLY.search(ln):
+            voted = True
+        m = ENTRY.match(ln.lstrip(" \t\f"))
+        if m and bill_id(m.group("kind"), m.group("num")) != bid and (
+                voted or RECOMMENDS.search(_blob(lines, k, min(end, k + 4)))):
+            stop = k
+            break
+        if voted and JD.NEXT_HEAD.match(ln) and ln.strip() not in COUNTIES \
+                and not HEAD.match(ln):
+            stop = k
+            break
+    text = _blob(lines, at, stop)
+    q = REPORT_QUESTION.search(text)
+    if not q:
+        return None, f"{where} {bid}: no question on its committee's report is read"
+    t = TALLY.search(text, q.end())
+    if not t:
+        return None, (f"{where} {bid}: the question on its committee's report is read "
+                      "and no roll call's count after it")
+    yeas, nays = int(t.group(1)), int(t.group(2))
+    after = text[t.end():]
+    carried = bool(REPORT_CARRIED.search(after)) and not REPORT_LOST.search(after)
+    if not carried or yeas <= nays:
+        return None, (f"{where} {bid}: what became of its committee's report is not "
+                      f"read ({yeas}-{nays}, and the journal's words after the roll "
+                      "call do not say adopted)")
+    return {**cite(at), "question": squash(q.group("what")),
+            "vote": f"{yeas}-{nays}", "how": "roll call", "carried": True}, None
+
+
+def read_earlier(root=ROOT, earlier=None):
+    """({term: {bill: record}}, report, problems) for the bills EARLIER names.
+
+    A record is the one read_all writes for a withdrawn bill, with "decided"
+    in place of "withdrawn": the vote on the committee's report, the day and
+    page it is printed on, the question, the count. It is written only for a
+    bill whose introduction and decision are both read. A year whose folder
+    is not on this machine is a note; a folder that is here and does not
+    give the bill is a problem, like any list read short.
+    """
+    root = Path(root)
+    earlier = EARLIER if earlier is None else earlier
+    names = committee_names()
+    records, report, problems = defaultdict(dict), [], []
+    for year, wanted in sorted(earlier.items()):
+        files = sorted((root / str(year)).glob("*.txt"))
+        if not files:
+            report.append(f"journals/{year} is not here, so {', '.join(wanted)} of "
+                          f"{year} is not read from it")
+            continue
+        intro, decided = {}, {}
+        for f in files:
+            r = read_file(f, year)
+            for e in r["intros"]:
+                if e["bill"] in wanted and not e["placeholder"] \
+                        and e.get("chamber") != "S":
+                    intro.setdefault(e["bill"], e)
+            lines = read_lines(f)
+            pg = pages(lines)
+            fm = FILE_NUMBER.match(f.name)
+            for start, end, date in sittings(lines):
+                num = (JD.DAY_HEADER.match(lines[start]).group("num") or "").strip()
+
+                def cite(i, date=date, num=num):
+                    return {"date": date, "journal": f"HJ {fm.group(1) if fm else num}",
+                            "page": pg[i], "file": f.as_posix(), "line": i + 1}
+                for bid in wanted:
+                    if bid in decided:
+                        continue
+                    got, why = _decided(lines, pg, start, end, bid, cite)
+                    if why:
+                        problems.append(why)
+                    elif got:
+                        decided[bid] = got
+        for bid in wanted:
+            e, d = intro.get(bid), decided.get(bid)
+            if not e or not d:
+                problems.append(
+                    f"{bid} of {year}: journals/{year} gives no "
+                    + " and no ".join(x for x, have in (
+                        ("introduction", e), ("vote on its committee's report", d))
+                        if not have) + " read here")
+                continue
+            if not (e["title"] and e["sponsors"] and e["committee"]):
+                problems.append(f"{bid} of {year}: its introduction at {e['cite']['file']}:"
+                                f"{e['cite']['line']} is read without a title, sponsors "
+                                "or committee")
+                continue
+            if e["cite"]["date"] > d["date"]:
+                problems.append(f"{bid} of {year}: decided {d['date']}, before the "
+                                f"introduction read on {e['cite']['date']}")
+                continue
+            records[term_of(year)][bid] = {
+                "bill": bid, "designation": e["designation"], "suffix": e["suffix"],
+                "title": e["title"], "chamber": "H", "year": e["year"],
+                "committee": names.get(_ckey(e["committee"]), e["committee"]),
+                "sponsors": e["sponsors"],
+                "introduced": e["cite"], "decided": d,
+            }
+    return dict(records), report, problems
+
+
+# ------------------------------------------ the resolutions of introduction --
+
+# THE HOUSE INTRODUCES ITS BILLS BY RESOLUTION, AND THE RESOLUTION NAMES THEM
+# BY NUMBER (1 October 2026). "Rep. Foster offered the following: Resolved,
+# that in accordance with the list in the possession of the Clerk, House Bills
+# numbered 31 through 86, 88 through 133 and 135 through 223, House Concurrent
+# Resolutions numbered 1 through 4 and Constitutional Amendment Concurrent
+# Resolutions numbered 1 through 4 shall be by this resolution read a first
+# and second time by the therein listed titles, sent for printing and referred
+# to the therein designated committees. Adopted." (journals/2009/HJ002.txt,
+# line 821). A number it names was introduced that day. A number it steps
+# over -- 87 and 134 there, 633 on 4 January 2007, 1284 and 1472 on 4 January
+# 2012 -- was not, whatever a docket row typed ahead of the day says: HB 87 and
+# HB 134 of 2009 each carry "Introduced 1/7/2009 and Referred to ...; HJ 8",
+# the row every bill of that day was given, and were published as introduced
+# and in committee. And HB 1512 of 2012, whose docket enters "Withdrawn" at
+# 8.49 that morning, is inside "1473 through 1709" and printed in full in the
+# list beneath: the docket cannot tell it from HB 1284, entered withdrawn at
+# 8.11, and the resolution does.
+#
+# READ FOR THE MEASURES SOMEBODY NAMES, NOT FOR A TERM. A number stepped over
+# is as often a number no bill ever had (every twenty-fifth of 2007), and not
+# every introduction is in this wording: HB 1467 of 2002 is stepped over by
+# the one resolution read here that comes near it, and is a law. So "no
+# resolution read here names it" is evidence about a bill only beside the
+# rest of its record. build_data keeps the few readings it publishes in a
+# table of what was read (INTRODUCTION_FROM_JOURNAL), and preflight holds that
+# table to this wherever the journals are on disk.
+INTRO_RESOLUTION = re.compile(
+    r"\bResolved\b,?\s+that\b(?P<body>.{0,1200}?)\bshall\s+be\s+by\s+this\s+"
+    r"resolution\s+read\s+a\s+first", re.I | re.S)
+INTRO_KINDS = (
+    ("HB", r"House\s+Bills?"),
+    ("HCR", r"House\s+Concurrent\s+Resolutions?"),
+    ("HJR", r"House\s+Joint\s+Resolutions?"),
+    ("HR", r"House\s+Resolutions?"),
+    # 2017's "House Constitutional Amendment Concurrent Resolutions" too: the
+    # words are found wherever they stand.
+    ("CACR", r"Constitutional\s+Amendment\s+Concurrent\s+Resolutions?"),
+)
+INTRO_NUMBERED = re.compile(
+    r"(?P<kind>" + "|".join(k for _c, k in INTRO_KINDS) + r")\s+numbered\s+"
+    r"(?P<list>\d+(?:\s*(?:,\s*and|,|and|through)\s*\d+)*)", re.I)
+INTRO_RANGE = re.compile(r"(\d+)(?:\s*through\s*(\d+))?", re.I)
+
+
+def introduction_resolutions(root=ROOT, years=()):
+    """[resolution] for the House Journals of `years`, in the order printed:
+    {"date", "journal", "file", "line", "numbered": {kind: [(first, last)]},
+    "words": {kind: the numbers as the resolution words them}}.
+
+    Only the House's own measures: a resolution reading in Senate bills is
+    another list. A sitting with no dateline is not dated and its resolutions
+    are left out, as sittings() leaves the sitting out."""
+    out = []
+    for year in years:
+        for f in sorted((Path(root) / str(year)).glob("*.txt")):
+            lines = read_lines(f)
+            text = "\n".join(lines)
+            sat = sittings(lines)
+            for m in INTRO_RESOLUTION.finditer(text):
+                at = text.count("\n", 0, m.start())
+                day = next(((s, d) for s, e, d in sat if s <= at < e), None)
+                if not day:
+                    continue
+                # One line of words: the PDF breaks "Concur-rent" across two.
+                body = re.sub(r"([a-z])-\s+([a-z])", r"\1\2", squash(m.group("body")))
+                numbered, words = {}, {}
+                for seg in INTRO_NUMBERED.finditer(body):
+                    kind = next(c for c, k in INTRO_KINDS
+                                if re.fullmatch(k, seg.group("kind"), re.I))
+                    numbered.setdefault(kind, []).extend(
+                        (int(a), int(b or a)) for a, b in INTRO_RANGE.findall(seg.group("list")))
+                    words[kind] = (words[kind] + ", " if kind in words else "") + seg.group("list")
+                if not numbered:
+                    continue
+                num = (JD.DAY_HEADER.match(lines[day[0]]).group("num") or "").strip()
+                out.append({"date": day[1],
+                            "journal": "House Journal" + (f" No. {num}" if num else ""),
+                            "file": f.as_posix(), "line": at + 1,
+                            "numbered": {k: sorted(v) for k, v in numbered.items()},
+                            "words": words})
+    return out
+
+
+def resolution_reading(resolutions, bid):
+    """What the resolutions say of one measure, or None where they say nothing.
+
+    {"introduced": True, ...} with the resolution that names its number;
+    {"introduced": False, ...} where none names it and one steps over it --
+    names numbers of its kind on both sides of it in one list, as "31 through
+    86, 88 through 133" steps over 87. A number past the end of every list is
+    not stepped over, and nothing is said of it."""
+    m = re.match(r"^([A-Z]+)(\d+)$", bid or "")
+    if not m:
+        return None
+    kind, n = m.group(1), int(m.group(2))
+
+    def cite(r, introduced):
+        return {"introduced": introduced, "date": r["date"], "journal": r["journal"],
+                "numbered": r["words"].get(kind, ""), "file": r["file"], "line": r["line"]}
+    for r in resolutions:
+        if any(a <= n <= b for a, b in r["numbered"].get(kind, ())):
+            return cite(r, True)
+    for r in resolutions:
+        rs = r["numbered"].get(kind, [])
+        if any(b < n < c for (_a, b), (c, _d) in zip(rs, rs[1:])):
+            return cite(r, False)
+    return None
+
+
 # ------------------------------------------------------------------ --check --
 
 def _letters(s):
@@ -972,8 +1256,29 @@ def main():
 
     intros, records, report, problems = read_all(a.root)
     n = sum(len(v) for v in records.values())
+    # The bills of earlier years named one by one (EARLIER), into the same
+    # file: never over a record read_all wrote, which no term of theirs has.
+    earlier, e_report, e_problems = read_earlier(a.root)
+    report += e_report
+    problems += e_problems
+    n_earlier = 0
+    for t, byb in earlier.items():
+        for bid, r in byb.items():
+            if bid in records.get(t, {}):
+                report.append(f"{bid} ({t}) is read as withdrawn and is also named in "
+                              "EARLIER; the withdrawal's record is kept")
+                continue
+            records.setdefault(t, {})[bid] = r
+            n_earlier += 1
     for t in sorted(records):
         for bid, r in sorted(records[t].items(), key=lambda kv: int(re.sub(r"\D", "", kv[0]) or 0)):
+            if "withdrawn" not in r:
+                d = r["decided"]
+                print(f"  {t} {r['designation']:12} introduced {r['introduced']['date']} "
+                      f"({r['introduced']['journal']} p.{r['introduced']['page']}), its "
+                      f"committee's report of {d['question']} adopted {d['date']} "
+                      f"({d['journal']} p.{d['page']}) on a {d['how']}, {d['vote']}")
+                continue
             w = r["withdrawn"]
             print(f"  {t} {r['designation']:12} introduced {r['introduced']['date']} "
                   f"({r['introduced']['journal']} p.{r['introduced']['page']}), withdrawn "
@@ -1001,8 +1306,12 @@ def main():
     tmp.write_text(json.dumps(records, indent=1, sort_keys=True, ensure_ascii=False),
                    encoding="utf-8")
     tmp.replace(out)
-    print(f"{out}: {n} withdrawn bill(s) across {len(records)} term(s), "
+    w_terms = sum(1 for t in records
+                  if any("withdrawn" in r for r in records[t].values()))
+    print(f"{out}: {n} withdrawn bill(s) across {w_terms} term(s), "
           f"from {len(intros):,} introductions read"
+          + (f"; and {n_earlier} bill(s) of earlier years read one by one"
+             if n_earlier else "")
           + (f"; {len(report)} note(s) above" if report else ""))
     return 0
 

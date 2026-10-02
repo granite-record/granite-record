@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.125
+# GRANITE_VERSION: 2026-09-05.127
 """
 Generate the faceted site from real General Court data.
 
@@ -677,7 +677,30 @@ STATED = [
     ("concurred", "active", "Passed, awaiting the governor"),
     ("passed/adopted", "active", "Passed one chamber"),
     ("in committee", "active", "In committee"),
+    # A CHAMBER REFUSED TO INTRODUCE THE BILL: BodyStatusCodes.txt code 24,
+    # in the General Court's own words. SB 267 of 2007 and SB 499 of 2016
+    # carry it in their Senate field and nothing else -- the Senate voted
+    # down the motion to introduce each -- and with no row here they read
+    # "In committee", a committee neither ever reached. LAST, so that it is
+    # the answer only where nothing above is: HB 2002 and HCO 1 of 2002
+    # passed the House before the Senate refused them, and stay "Passed one
+    # chamber".
+    ("refused introduction", "done", "Refused introduction"),
 ]
+
+# The statuses of a bill that was never introduced: the passage rail starts
+# at Introduced, and none is drawn for these (build_bills).
+WITHDRAWN_PRIOR = "Withdrawn prior to introduction"
+PROPOSED_ONLY = "Proposed for the special session"
+# AND ONE WHOSE DOCKET SAYS "INTRODUCED" AND WHOSE HOUSE DID NOT INTRODUCE IT.
+# HB 87 and HB 134 of 2009 and HB 633 of 2007 each have one docket row, the
+# introduction row typed ahead of the day, and the House's resolution of
+# introduction steps over each number (build_data.INTRODUCTION_FROM_JOURNAL;
+# narrative.build types the row entered_introduced). Nothing on disk says
+# what became of them -- withdrawn, most likely, and no row says so -- so the
+# status says the one thing the record bears out.
+NOT_INTRODUCED = "Not introduced"
+NEVER_INTRODUCED = {"Refused introduction", WITHDRAWN_PRIOR, PROPOSED_ONLY, NOT_INTRODUCED}
 
 
 # Docket lines that are procedural bookkeeping rather than steps in a bill's
@@ -1445,6 +1468,31 @@ def classify(narr, rcs, prefix=""):
     _w = floor_disposed(narr)
     if _w and _w[1] == "Withdrawn":
         return _w
+    # AND A WITHDRAWAL THE DOCKET RECORDS ON A ROW OF ITS OWN, with no vote
+    # (narrative.WITHDRAWN_ROW, event type "withdrawn"): "Withdrawn" and
+    # "Withdrawn 11/30/2011" on three House bills of 2012, "Read in January
+    # 4, 2012 and Withdrawn" on a petition -- and "Withdrawn Prior to
+    # Introduction" on four of 2010, which says so in the row's own words,
+    # because a bill never introduced was never "withdrawn" from anything a
+    # reader would take that word to mean. Each read "In committee". Only
+    # where it is the last thing the record says the bill did: a floor
+    # decision after it would be the answer.
+    _gone = [i for i, e in enumerate(evs) if e.get("type") == "withdrawn"]
+    if _gone and not any(e.get("type") == "floor" for e in evs[_gone[-1] + 1:]):
+        return "done", (WITHDRAWN_PRIOR if evs[_gone[-1]].get("before_introduction")
+                        else "Withdrawn")
+    # A BILL ONLY EVER PROPOSED. HB 3 of the 2006 special session has one
+    # row, "Proposed bill for special sesssion.", and no introduction: it was
+    # in no committee, and "In committee" is what the foot of this function
+    # would have called it.
+    if evs and all(e.get("type") == "proposed" for e in evs):
+        return "done", PROPOSED_ONLY
+    # AN INTRODUCTION THE DOCKET ENTERS AND THE HOUSE JOURNAL DOES NOT HAVE
+    # (NOT_INTRODUCED). Read "In committee", of a committee nothing was
+    # referred to.
+    if (narr or {}).get("not_introduced") and any(
+            e.get("type") == "entered_introduced" for e in evs):
+        return "done", NOT_INTRODUCED
     # A DISPOSAL THE CHAMBER RECONSIDERED IS NOT ONE. HB 323 of 2005 read
     # "Killed": the House adopted Inexpedient to Legislate on 23 March, 164-153,
     # and on 30 March reconsidered it, 153-150, voted the kill down and passed
@@ -1555,11 +1603,19 @@ def classify(narr, rcs, prefix=""):
     # And a resolution of one chamber "Introduced and Adopted", which the
     # clerk writes with no motion code: HR 13 of 2007 read "In committee"
     # over the one line of its docket that adopted it.
+    # And the 1989-1998 reader's word for it: "REP MAVIGLIO MOVED LOT, ML
+    # RC(74-250); ADOPTED VV" is told as the action "Adopt", carried. Every
+    # other resolution of those years states PASSED/ADOPTED in its fields and
+    # never reaches this line; HR 69 of 1992 has a docket and no fields, and
+    # read "In committee" beside a journey that had the House adopting it.
     adopted_floor = any(
         (e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
          and re.search(r"ought to pass|adopted", e.get("action") or "", re.I))
         or (prefix in SINGLE_CHAMBER
             and re.match(r"\s*introduced\s+and\s+adopted\b", e.get("raw") or "", re.I))
+        or (prefix in SINGLE_CHAMBER and e.get("type") == "floor"
+            and (e.get("motion") or "").upper() == "MA"
+            and re.match(r"\s*adopt\s*$", e.get("action") or "", re.I))
         for e in (narr or {}).get("events", []) if not e.get("cancelled"))
     if adopted_floor or any(r.get("passed") for r in rcs):
         # A resolution of one chamber that has carried a vote is finished.
@@ -4592,7 +4648,7 @@ def _j_rows(evs):
     return out
 
 
-def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
+def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""):
     """(the date it was introduced, [one dict a decision]) -- from the docket.
 
     Each decision carries its date, its body (H, S, the Governor G, the Law L
@@ -4955,6 +5011,20 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
         intro = ""
     if chapter:
         eff = _j_effective(gov_raw, *gov_more, law_line)
+        # A LINE THAT CARRIES ANOTHER BILL'S CHAPTER CARRIES ITS EFFECTIVE DATE
+        # TOO. SB 28 of 2009 reads "Signed by the Governor on 05/15/09;
+        # Effective 07/07/09; Chapter 0028" -- SB 109's line, signed a week
+        # earlier, with the day of the signature changed: sixty days from 15
+        # May is 14 July, which is what SB 28's enrolled text prints
+        # ("Effective Date: July 14, 2009") and what the database holds. Once
+        # extract_chapters settled the chapter at 31 the rail read "Chapter
+        # 31, in effect 7 Jul 2009". `db_effective` is the database's date on
+        # a settled record whose docket number is not its chapter
+        # (chapters.json's database_effective), and it is taken only where
+        # the line states one date and the database another: a line that
+        # states none, or several, is left saying none.
+        if eff and db_effective and eff != db_effective:
+            eff = db_effective
         steps.append({"date": "", "body": "L", "act": "law",
                       "text": f"Chapter {chapter}" + (
                           f", in effect {_j_prose_date(eff)}" if eff else ""),
@@ -5710,7 +5780,21 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # ... or whose seat was dated from it: seat_into puts the bill's own
         # printed chamber, county and district on a database sponsor, and the
         # roster must not then be preferred over the thing that corrected it.
-        if _s.get("source") == TS.SOURCE or _s.get("seat_source") == TS.SOURCE:
+        # ... AND A ROW WHOSE SEAT IS ITS OWN RECORD'S AND NOTHING ELSE'S: the
+        # General Court's sponsor record filling a bill no other source names
+        # a sponsor for (past_sponsors.filled), which holds a chamber and no
+        # district, and the House Journal's list on a bill of a past term
+        # (build_data.journal_sponsor_rows), which prints the seat of the
+        # day. Neither takes anything from the roster: a 1993 bill's sponsor
+        # who sits in the Senate today was drawn "Sen." at today's district,
+        # and one with no party on that term's ballots is given none.
+        if _s.get("seat_source") in (PSP.SOURCE, JOURNAL_SOURCE):
+            _lab = member_labels(
+                _s.get("name"),
+                chamber=_s.get("chamber") or _m.get("chamber"),
+                party=_s.get("party"),
+                district=_s.get("district"), county=_s.get("county"))
+        elif _s.get("source") == TS.SOURCE or _s.get("seat_source") == TS.SOURCE:
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_s.get("chamber") or _m.get("chamber"),
@@ -6287,6 +6371,19 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     if (b or {}).get("journal", {}).get("withdrawn") and not (settled or told or narr):
         return Disposition("done", "Withdrawn", told, settled, prefix,
                            0, 0, False, JOURNAL_SOURCE)
+    # AND THE ONE WHOSE JOURNAL RECORD IS A VOTE ON ITS COMMITTEE'S REPORT
+    # (journal_bills.EARLIER: HB 459 of 2021, Inexpedient to Legislate adopted
+    # 198-153). The report's recommendation, adopted, is the decision DISPOSED
+    # names for the docket's own floor rows. Where its docket is on this
+    # machine (the past docket view) the history is narrated and this gives
+    # way to it, as above; the two say the same thing.
+    _dec = (b or {}).get("journal", {}).get("decided") or {}
+    if _dec.get("carried") and not (settled or told or narr):
+        _hit = next((res for pat, res in DISPOSED
+                     if pat.search(_dec.get("question") or "")), None)
+        if _hit:
+            return Disposition(_hit[0], _hit[1], told, settled, prefix,
+                               0, 0, False, JOURNAL_SOURCE)
     disposed = floor_disposed(narr)
     if settled:
         # A dated docket line beats a status field that has not caught up.
@@ -6513,6 +6610,8 @@ def journal_story(b, jkeys):
     """
     j = b.get("journal") or {}
     i, w = j.get("introduced") or {}, j.get("withdrawn") or {}
+    if j.get("decided") and not w:
+        return journal_decided_story(b, jkeys)
     committee = names.committee(b.get("house_committee") or "")
     vote, _, kind = (w.get("vote") or "").partition(", ")
     if not re.search(r"\d", vote):
@@ -6565,6 +6664,198 @@ def journal_story(b, jkeys):
                        "mark": "x", "text": step, "short": "withdrawn"}] if w else [],
             "dates": sorted(d for d in (i.get("date"), w.get("date")) if d),
             "stages": stages, "notes": notes, "docs": docs}
+
+
+# What the House Journal's question on a committee report becomes as a line
+# of the journey, by the status DISPOSED gives it.
+J_DECIDED_ACT = {"Killed": "killed", "Indefinitely postponed": "postponed",
+                 "Referred for interim study": "study"}
+
+
+def journal_decided_story(b, jkeys):
+    """journal_story for the bill whose journal record is the House's vote on
+    its committee's report rather than a withdrawal (journal_bills.EARLIER:
+    HB 459 of 2021), told only where its docket is not on this machine --
+    with the docket narrated, the page is the docket's like any other bill's.
+
+    The same shape and the same restraint: the day it was introduced and the
+    committee it went to, the day the House voted and the count, each in this
+    site's words with the journal cited, and one note of where the record
+    comes from. The floor sentence is narrative.py's for the docket's own row
+    of the vote, "Inexpedient to Legislate: MA RC 198-153", so the two builds
+    read alike.
+    """
+    j = b.get("journal") or {}
+    i, d = j.get("introduced") or {}, j.get("decided") or {}
+    committee = names.committee(b.get("house_committee") or "")
+    what = d.get("question") or ""
+    hit = next((res for pat, res in DISPOSED if pat.search(what)), None)
+    act = J_DECIDED_ACT.get(hit[1] if hit else "", "")
+    y, _, n = (d.get("vote") or "").partition("-")
+    counted = y.strip().isdigit() and n.strip().isdigit()
+    tally = f"{int(y)}–{int(n)}" if counted else ""
+    verb = N.RECOMMENDATION.get(what.strip().lower())
+    said = (f"On {_long_day(d.get('date'))} the House "
+            + (f"voted to {verb}" if verb else f"adopted “{what}”")
+            + (f" on a {d['how']}" if d.get("how") else "")
+            + (f" {tally}" if tally else "") + ".")
+    stages = [
+        {"label": "In House committee" + (f" — {committee}" if committee else ""),
+         "hand": "H:committee", "notes": [],
+         "text": (f"It was introduced on {_long_day(i.get('date'))}"
+                  + (f" and referred to the House {committee} committee." if committee
+                     else "."))},
+        {"label": "On the House floor", "hand": "H:floor", "notes": [], "text": said},
+    ]
+
+    def where(c):
+        return (f"{c.get('journal')}, {_long_day(c.get('date'))}, page {c.get('page')}"
+                if c else "")
+    # ONLY WHAT WAS LOOKED AT: the list the bill search gave for the term and
+    # the database's table of past bills, neither of which has it.
+    notes = [("This bill is not in the list the General Court's bill search gave "
+              "for the term, and its database's table of past bills has no row for "
+              "it. This record is the House Journal's, which prints its "
+              f"introduction ({where(i)}) and the vote on its committee's report "
+              f"({where(d)}).")]
+    vols = {}
+    for c in (i, d):
+        url = journal_url(c.get("date", ""), c.get("journal", ""), jkeys) if c else ""
+        if url:
+            v = vols.setdefault(c["journal"], {"url": url, "pages": []})
+            if str(c.get("page")) not in v["pages"]:
+                v["pages"].append(str(c.get("page")))
+    docs = [(f"{k}, page{'s' if len(v['pages']) > 1 else ''} {' and '.join(v['pages'])}",
+             v["url"]) for k, v in vols.items()]
+    steps = []
+    if act and d:
+        st = {"date": d.get("date", ""), "body": "H", "act": act,
+              "mark": J_MARK.get(act, "x"),
+              "vote": ("RC", int(y), int(n)) if counted else None}
+        st["text"], st["short"] = _j_words(st, b.get("bill") or "")
+        st.pop("vote")
+        steps = [st]
+    return {"intro": i.get("date", ""), "steps": steps,
+            "dates": sorted(x for x in (i.get("date"), d.get("date")) if x),
+            "stages": stages, "notes": notes, "docs": docs}
+
+
+# WHERE A RECORD COMES FROM, where that is not the list the General Court's
+# bill search gave for the term. build_data marks each: "source" on a measure
+# added from the database's table of past bills (its PAST_SOURCE) or from the
+# docket alone (DOCKET_SOURCE, with title_source naming the journal that
+# titles it), "number_source" where the database has no bill number and the
+# docket's is used, "journal" on a House Journal record. preflight holds the
+# two files' words to each other.
+PAST_SOURCE = "General Court database"
+DOCKET_SOURCE = "General Court docket"
+
+
+# A DOCKET ROW THAT NAMES ANOTHER BILL, on a record build_data made from the
+# database: quoted as the docket has it, because the page shows the docket's
+# lines, and said. SB 267 of 2007's one vote is entered "Sen. Foster Moved
+# Suspend All Rules Necessary to Allow for Consideration of SB 266 ...; RC
+# 14Y-10N, MF; SJ 25, Pg. 1406-1407". The Senate Journal of 5 September 2007
+# prints two motions on those pages: SB 266-FN-A's, "Adopted by the necessary
+# 2/3 vote", and then SB 267-FN's, on which Senator Estabrook asked for the
+# roll call the docket records, 14 to 10 (journals_senate/2007/SJ 25.txt,
+# lines 50-80). The row is under the right bill and names the wrong one.
+# {(term, bill): the note}. For the Clerk's list.
+ROW_NAMES_ANOTHER = {
+    ("2007-2008", "SB267"): (
+        "The docket's row for this vote names \u201cSB 266\u201d. The Senate Journal of "
+        "September 5, 2007 (pages 1406\u20131407) records the motion, and the 14\u201310 "
+        "roll call on it, as being on SB 267-FN, this bill; the row is quoted here as "
+        "the docket has it."),
+}
+
+
+def record_notes(b, narr, status_source="", sponsors=(), term="", bid=""):
+    """The notes a page carries about where its record comes from, as a list
+    (empty for a record of the bill search's own list, which is nearly every
+    one). One plain sentence or two each, in this site's words: a reader shown
+    a bill the General Court's own search does not return is owed where it was
+    read. Said after the docket's own notes, and never on a journal record
+    told by journal_story, which says its own.
+
+    ONLY WHAT IS TRUE OF THIS PAGE. The first note said "Its title, committee
+    and status here are from the General Court's database" on every one of
+    these records -- on the ones with no committee at all, and on the ones
+    whose status_source beside it read "derived from the docket". The title is
+    always the database's. The status is said to be where status_source says
+    it is from. The committee is not placed: it is the docket's introduction
+    row's where there is one and the referral code's otherwise, as on every
+    archived bill, and no page says which.
+    """
+    b = b or {}
+    out = []
+    if b.get("source") == PAST_SOURCE:
+        said = b.get("introduction") or {}
+        from_db = status_source == PAST_SOURCE
+        from_journal = status_source == JOURNAL_SOURCE
+        note = ("This bill is not in the list the General Court's bill search gave "
+                "for the term, which is where this site's other records of the term "
+                "come from. Its title" + (" and status here are" if from_db else " here is")
+                + " from the General Court's database of past sessions"
+                + ((", and its history from its docket." if from_db or from_journal
+                    else ", and its history and status from its docket.") if narr
+                   else "."))
+        if b.get("number_source") == DOCKET_SOURCE:
+            note += (" The database's row for it carries no bill number; the number "
+                     "is the one its docket files it under.")
+        out.append(note)
+        if said:
+            # What the House Journal's resolution of introduction says of it
+            # (build_data.INTRODUCTION_FROM_JOURNAL), where that decided how
+            # the docket is told.
+            where = (f"The House introduces its bills by a resolution that names them "
+                     f"by number. The resolution of {_long_day(said.get('date'))} "
+                     f"({said.get('journal')}) names House Bills "
+                     f"{said.get('numbered')}")
+            if said.get("introduced"):
+                out.append(where + ", which takes in this one, and the journal's list "
+                           "prints its entry with its committee. Its docket enters its "
+                           "withdrawal on the morning of the same day, so it is told "
+                           "here as introduced and then withdrawn.")
+            elif (narr or {}).get("withdrawn"):
+                out.append(where + ", which leaves this number out, so it is told here "
+                           "as withdrawn without having been introduced.")
+            else:
+                out.append(where + ", which leaves this number out, and no later "
+                           "resolution of the term names it. Its docket has one row, "
+                           "which enters it as introduced; it is told here as not "
+                           "introduced, and no record on this site says what became "
+                           "of it.")
+        if (term, bid) in ROW_NAMES_ANOTHER and narr:
+            out.append(ROW_NAMES_ANOTHER[(term, bid)])
+    # A SPONSOR LIST THAT MAY BE SHORT. In 1999-2000 the General Court's
+    # sponsor record lists fewer sponsors than the bills print
+    # (past_sponsors.SHORT_TERMS says what was measured), and a bill filled
+    # from it has nothing else to be held to.
+    if term in PSP.SHORT_TERMS and any(
+            x.get("seat_source") == PSP.SOURCE for x in sponsors or ()):
+        out.append("This bill's sponsors are from the General Court's sponsor record, "
+                   "the only source this site has for them. For 1999\u20132000 that "
+                   "record leaves co-sponsors off some bills that print them, so this "
+                   "list may not be complete.")
+    if out:
+        return out
+    ts = b.get("title_source") or {}
+    if ts:
+        return [("The General Court's data holds this measure's docket and no title "
+                 f"for it. The title here is as the {ts.get('journal', 'journal')} "
+                 f"prints it ({_long_day(ts.get('date'))}, page {ts.get('page')} of "
+                 f"{ts.get('volume', 'the bound volume')}).")]
+    j = b.get("journal") or {}
+    if j.get("decided") and narr:
+        i = j.get("introduced") or {}
+        return [("This bill is not in the list the General Court's bill search gave "
+                 "for the term, and its database's table of past bills has no row for "
+                 "it. Its title and sponsors here are as the House Journal prints "
+                 f"them in its list of bills introduced ({i.get('journal')}, "
+                 f"{_long_day(i.get('date'))}, page {i.get('page')}); its history is "
+                 "from its docket.")]
+    return []
 
 
 def bill_text_url(b, st):
@@ -7124,6 +7415,29 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # interim study. These are exactly the bills someone loses when they
         # search the current year and the bill was filed in the previous one.
         carried = len(act_years) > 1
+        # NOT A BILL THAT WAS NEVER INTRODUCED. Its "To Be Introduced" row is
+        # dated the day it was typed, in the December before -- HB 1308 of
+        # 2010's on 10 December 2009 -- and two years of rows made it a bill
+        # "carried over" from a session it was never in.
+        if status in NEVER_INTRODUCED or (narr or {}).get("not_introduced"):
+            carried = False
+        # "General Court docket" where a dated docket line decided the status
+        # over the fields: settled (the governor, a veto), or between the
+        # chambers (a refusal to concur, a conference report voted down, a
+        # resolution the second chamber adopted).
+        # "House Journal" where the bill is in none of the General Court's
+        # files and the journal is its record (journal_story) -- and where
+        # the journal's resolution of introduction is what says the bill was
+        # not introduced (NOT_INTRODUCED).
+        # "General Court database" where the fields that state it are the
+        # database's own, on a record build_data made from it: no status page
+        # was read for that bill.
+        status_source = (
+            JOURNAL_SOURCE if disp.source == JOURNAL_SOURCE or status == NOT_INTRODUCED
+            else "General Court docket" if settled or disp.between
+            else PAST_SOURCE if told and b.get("source") == PAST_SOURCE
+            else "General Court bill status page" if told
+            else "derived from the docket")
         # Committees carry their chamber. Both chambers have a Finance, a
         # Judiciary and a Ways and Means, and the ones that differ differ
         # slightly -- Senate "Health and Human Services" against House "Health,
@@ -7148,7 +7462,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # rail's marks are read with it and the rail's dates are read from
         # it, so the list card, the bill's own rail and On the record are
         # one account. journey_disagrees() is the test that they are.
-        intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term)
+        intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term,
+                                db_effective=dl.get("database_effective", ""))
         # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
         # journey to read; its introduction and withdrawal are the journal's,
         # and so are its dates (journal_story).
@@ -7162,6 +7477,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             passed={c for c in ("H", "S") if journey_state(jsteps, c) == "p"},
             acted=list(dict.fromkeys(s["body"] for s in jsteps
                                      if s["body"] in ("H", "S"))))
+        # NO RAIL FOR A BILL THAT WAS NEVER INTRODUCED. The rail's first stop
+        # is "Introduced", drawn as passed, and its second is a chamber the
+        # bill is shown stopping in. A bill the Senate refused to introduce,
+        # one withdrawn before the day it was to be introduced, one only ever
+        # proposed for a session, entered neither: its status says what
+        # became of it, its history says when, and a rail would say it was
+        # introduced. narrative.build says which dockets say so
+        # (not_introduced); the status says it for a field (NEVER_INTRODUCED).
+        if status in NEVER_INTRODUCED or (narr or {}).get("not_introduced"):
+            row["passage"] = ""
         index.append(row)
         jrail = journey_rail(intro, jsteps, row["passage"], bid, status)
         why = journey_disagrees(jsteps, kind, status, row["passage"], bid)
@@ -7207,6 +7532,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # in the other; adjacent functions make that visible, which one long
         # function did not.
         stations = bill_stations(bid, term, procs, segs, marks)
+        # A SITTING SET FOR A DAY AFTER THE BILL WAS WITHDRAWN DID NOT TAKE
+        # IT UP. The proceedings table reads the docket's notices -- "Public
+        # Hearing: 1/12/2012 10:30 AM LOB 207", entered on 15 December -- and
+        # HB 1284 of 2012 was withdrawn on 4 January. narrative.build dates
+        # the withdrawal and tells such a notice as one; here the notice is
+        # not drawn as a hearing the committee held.
+        _gone = (narr or {}).get("withdrawn")
+        if _gone:
+            stations = [x for x in stations if (x.get("when") or "") <= _gone]
         # The sign-in counts, on the hearing itself. They already reach the
         # docket line that records the hearing -- 2,115 of them across 2,018
         # bills -- but that line sits inside a collapsed disclosure on another
@@ -7303,7 +7637,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                           if x]),
             # Where the record comes from, on a bill the House Journal alone
             # carries; the docket's own notes everywhere else.
-            "notes": story["notes"] if story else (narr or {}).get("notes", []),
+            # And where the record itself comes from, on the few that are not
+            # of the bill search's own list (record_notes).
+            "notes": (story["notes"] if story else
+                      (narr or {}).get("notes", [])
+                      + record_notes(b, narr, status_source, sp_list, term, bid)),
             # Belongs on the Votes tab, not above the history.
             # NOT OVER THE TOP OF THE ROLL CALLS. narrative counts the
             # floor votes the DOCKET records as voice or division votes; the
@@ -7356,16 +7694,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 status, term, current, kind)),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
-            # "General Court docket" where a dated docket line decided the
-            # status over the fields: settled (the governor, a veto), or
-            # between the chambers (a refusal to concur, a conference report
-            # voted down, a resolution the second chamber adopted).
-            # "House Journal" where the bill is in none of the General Court's
-            # files and the journal is its record (journal_story).
-            "status_source": (JOURNAL_SOURCE if disp.source == JOURNAL_SOURCE
-                              else "General Court docket" if settled or disp.between
-                              else "General Court bill status page" if told
-                              else "derived from the docket"),
+            # Where the status is from (computed above, beside the status).
+            "status_source": status_source,
             "chapter": chapter,
             # HOW IT GOT HERE: each chamber's floor decisions, the governor,
             # the chapter and a CACR's referendum, dated, one line each; and
@@ -7722,6 +8052,9 @@ def main():
     # past_sponsors.py says what was measured against what. After merge_into, whose
     # page lists it takes for the bills that disagree; before seat_into, which dates the
     # seats on the record's rows as it did on the status page's.
+    # AND EVERY OTHER PAST TERM FILLED FROM IT, never replaced: a bill with no
+    # sponsor from the database's files, the status pages or its own text takes
+    # the record's list (past_sponsors.filled), and a bill with any keeps it.
     _ps = PSP.merge_into(sponsors)
     if _ps:
         print(f"  sponsors: 2023-2024 from the General Court's sponsor record on "
@@ -7729,6 +8062,8 @@ def main():
               + (f"; {_ps['differs, and no page list to publish']:,} kept the status "
                  "page's, having no page list to take"
                  if _ps['differs, and no page list to publish'] else "")
+              + f"; {_ps['filled']:,} bills of the other past terms, which no other "
+                "source names a sponsor for, filled from it"
               + " (past_sponsors.json)")
     elif (PSP.PAST / "_manifest.json").exists():
         # Not silent: the dump is here and the file made from it is not, so 2023-2024

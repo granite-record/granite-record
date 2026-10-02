@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.6
+# GRANITE_VERSION: 2026-09-11.8
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -51,6 +51,25 @@ the previous year's laws still being numbered (HB 778 of 2025, signed
 The enrolled text settles each one -- its first line is "CHAPTER 263 SB 45 -
 FINAL VERSION" -- and fetch_legislation.py is bringing it down.
 
+AND WHAT THE DATABASE SETTLES (1 October 2026). The General Court's database
+holds a chapter for each of those bills too, and for seven of the eight
+pairs it gives the two bills two numbers, one of them the docket's. HB 1278
+and HB 1330 of 1992 both read "CHAP.0233" on the docket; the
+database has HB 1278 at 232 and HB 1330 at 233. So a number withheld for
+that clash is filled from the database -- only a withheld one, and only
+where the database's number is no other bill's of that year, by the
+database or by the docket. Its own text bears it out wherever one is on
+disk: SB 45 of 2013 is headed "CHAPTER 262" and SB 48 "CHAPTER 263", HB
+1417 of 2006 262 and HB 1426 263, SB 28 of 2009 31 and SB 109 28, HB 1152
+of 2014 48 and HB 1121 43. The eighth pair was never a clash: SB 244 of
+2015 and SB 524 of 2016 are each chapter 127, of two years' laws. The docket
+dates SB 244's signature "06/11/16" on a row entered on 16 June 2015, so it
+read as a law of 2016; a signature cannot be entered a year before it is
+made, and a clash is settled by the year the row was entered where that is
+the earlier. Each one's enrolled text is headed CHAPTER 127. The mistyped
+year is for the Clerk's list. The person decided the fill on 1 October
+2026.
+
 --check also scores the numbers against every enrolled text already on disk
 under legislation/, which nothing here wrote.
 
@@ -79,7 +98,8 @@ BILLS = Path("data/bills.json")
 OUT = Path("chapters.json")
 # The General Court's PastLegislation view, dumped by fetch_past_db.py. Its
 # ChapterNo is a check on the docket, never its replacement: a number is read
-# from it only where the docket records the signature and gives none.
+# from it only where the docket records the signature and gives none, or
+# gives one number to two bills and the database tells them apart.
 PAST = Path("db/past/PastLegislation.psv")
 PAST_MAN = Path("db/past/_manifest.json")
 
@@ -174,7 +194,7 @@ def read(bills):
     passed over."""
     found = defaultdict(lambda: {"numbers": {}, "law": False,
                                  "special": False, "dates": [],
-                                 "failed": ""})
+                                 "entered": [], "failed": ""})
     skipped = Counter()
     for src, year, lsr, bid, rowdate, text in rows():
         term = P.term_of(year)
@@ -190,6 +210,9 @@ def read(bills):
             f["law"] = True
             if not FAILED.search(text):
                 f["dates"].append(when(text, rowdate))
+                # And the day the row itself was entered, which a mistyped
+                # date in its text cannot move (settle_clashes).
+                f["entered"].append(when(None, rowdate))
         if VETO_STOOD.search(text) and not f["failed"]:
             f["failed"] = text.strip()
         plain = SEE.sub(" ", text)
@@ -210,6 +233,16 @@ def read(bills):
     return found, skipped
 
 
+def law_date(f, n):
+    """(year, month) one bill's law is dated by: the last act that made it
+    law -- the signature, or the second chamber's override -- and not the
+    line holding the number `n`, whose first date is as often an effective
+    date: SB 39 of 2009, signed 17 April 2009, has "Sec 3 eff 12/31/10 ...
+    Chapter 0014" and would otherwise clash with 2010's chapter 14."""
+    _line, dated = f["numbers"].get(n, ("", (None, None)))
+    return next((d for d in reversed(f["dates"]) if d[0]), dated)
+
+
 def settle(found):
     """{term: {bill: record}}, and what was withheld and why."""
     out = defaultdict(dict)
@@ -227,13 +260,8 @@ def settle(found):
         if len(f["numbers"]) > 1:
             many.append((term, bid, sorted(f["numbers"])))
             continue
-        (n, (line, dated)), = f["numbers"].items()
-        # Dated by the last act that made it law -- the signature, or the
-        # second chamber's override -- and not by the line holding the
-        # number, whose first date is as often an effective date: SB 39 of
-        # 2009, signed 17 April 2009, has "Sec 3 eff 12/31/10 ... Chapter
-        # 0014" and would otherwise clash with 2010's chapter 14.
-        dated = next((d for d in reversed(f["dates"]) if d[0]), dated)
+        (n, (line, _on_line)), = f["numbers"].items()
+        dated = law_date(f, n)
         out[term][bid] = {"chapter": n, "line": line[:200]}
         if f["special"]:
             out[term][bid]["special"] = True
@@ -285,13 +313,17 @@ def database_check(out, found, bills):
     the bill's stored LSR (lsr_year, lsr_num), never by its number: a number is
     reused within a term. Where they differ and no person has confirmed which
     is right, the chapter is withheld with both numbers named. Where the docket
-    records the signature and gives no number, the database's fills it.
-    None when the dump is not on this machine."""
+    records the signature and gives no number, the database's fills it. And
+    where the docket gave one number to two bills and both were withheld, the
+    database's number fills each one it tells apart (settle_clashes).
+    None when the dump is not on this machine. Returns (agree, differ, filled,
+    settled, unsettled)."""
     if not (PAST.exists() and PAST_MAN.exists()):
         return None
     cols = json.loads(PAST_MAN.read_text(encoding="utf-8"))["PastLegislation"]["columns"]
     iy, il, ic = cols.index("SessionYear"), cols.index("LSR"), cols.index("ChapterNo")
-    said = {}
+    ie = cols.index("EffectiveDate") if "EffectiveDate" in cols else None
+    said, took_effect = {}, {}
     with PAST.open(encoding="utf-8") as fh:
         for line in fh:
             f = line.rstrip("\r\n").split("|")
@@ -300,7 +332,13 @@ def database_check(out, found, bills):
             n = f[ic].strip()
             if n.isdigit() and int(n) and f[iy].strip().isdigit() and f[il].strip().isdigit():
                 said[(int(f[iy]), int(f[il]))] = int(n)
-    agree, differ, filled = 0, [], []
+                # "07/14/2009 00:00:00"; the database's 1900 is its blank.
+                e = (re.match(r"(\d{2})/(\d{2})/(\d{4})\b", f[ie].strip())
+                     if ie is not None else None)
+                if e and int(e.group(3)) > 1900:
+                    took_effect[(int(f[iy]), int(f[il]))] = (
+                        f"{e.group(3)}-{e.group(1)}-{e.group(2)}")
+    agree, differ, filled, clash, effective = 0, [], [], {}, {}
     for term, tb in bills.items():
         for bid, b in tb.items():
             y, l = str(b.get("lsr_year") or ""), str(b.get("lsr_num") or "")
@@ -311,7 +349,14 @@ def database_check(out, found, bills):
                 continue
             rec = out.get(term, {}).get(bid) or {}
             have = rec.get("chapter")
-            if have == db:
+            if have is None and rec.get("withheld") and rec.get("docket") \
+                    and "database" not in rec:
+                # Withheld because another bill claims the docket's number:
+                # settled below, once every bill's own number is known.
+                clash[(term, bid)] = db
+                if (int(y), int(l)) in took_effect:
+                    effective[(term, bid)] = took_effect[(int(y), int(l))]
+            elif have == db:
                 agree += 1
             elif have:
                 out[term][bid] = {"chapter": None, "docket": have, "database": db,
@@ -324,7 +369,89 @@ def database_check(out, found, bills):
                 out[term][bid] = {"chapter": db, "source": "the General Court's database",
                                   "line": ""}
                 filled.append(f"{bid} of {term}: {db}")
-    return agree, differ, filled
+    settled, unsettled = settle_clashes(out, found, clash, effective)
+    return agree, differ, filled, settled, unsettled
+
+
+def settle_clashes(out, found, clash, effective=None):
+    """Fill a chapter withheld because the docket gave its number to two
+    bills, from the database's number for each: (settled, unsettled), each a
+    list of sentences.
+
+    `clash` is {(term, bill): the database's chapter} for the withheld bills
+    the database has a number for. ONLY A WITHHELD NUMBER IS FILLED, AND ONLY
+    WHERE THE DATABASE'S IS NO OTHER BILL'S OF THAT YEAR'S LAWS -- not another
+    claimant's by the database, and not a bill's that holds it by the docket.
+    Two laws of one year cannot be one chapter: where the database gives
+    both claimants of one year the docket's number, it settles nothing and
+    both stay withheld.
+
+    BY THE YEAR OF THE LAWS, as the clash was found -- except that a law line
+    entered in an earlier year than the one it states is of the earlier
+    year's (year, below). That is the one pair the database gives one number:
+    SB 244 of 2015 and SB 524 of 2016 are each chapter 127, and were never
+    one year's.
+
+    A filled record keeps the docket's line and the docket's number beside
+    the database's ("docket"), and says where its number is from ("source")
+    and what was settled ("settled"); narrative.py tells the history with the
+    same number (--chapters).
+
+    AND WHERE THE DOCKET'S NUMBER WAS THE OTHER BILL'S, the record carries the
+    database's effective date too ("database_effective", from `effective`,
+    {(term, bill): ISO day}): a line that carries another bill's chapter can
+    carry its effective date with it. SB 28 of 2009's reads "Signed by the
+    Governor on 05/15/09; Effective 07/07/09; Chapter 0028", which is SB 109's
+    line with the signature's day changed; SB 28's enrolled text and the
+    database both say 14 July. build_site_v2 takes the database's day where
+    the line states one day and the database another, and nowhere else."""
+    def year(term, bid, n):
+        """The year of the laws the bill is a chapter of: the year its law
+        line states, or the year that row was entered where that is earlier.
+        A signature is entered after it is made: "Signed by the Governor on
+        06/11/16", entered 16 June 2015, is SB 244 of 2015 signed in 2015."""
+        f = found.get((term, bid))
+        if not f:
+            return None
+        said = law_date(f, n)[0]
+        entered = next((d[0] for d in reversed(f.get("entered") or []) if d[0]), None)
+        return min(said, entered) if said and entered else said or entered
+
+    held = defaultdict(set)
+    for (term, bid), f in found.items():
+        rec = out.get(term, {}).get(bid) or {}
+        if rec.get("chapter") and not rec.get("special"):
+            n = next(iter(f["numbers"]), rec["chapter"])
+            held[(term, year(term, bid, n), rec["chapter"])].add(bid)
+    wants = defaultdict(set)
+    for (term, bid), db in clash.items():
+        wants[(term, year(term, bid, out[term][bid]["docket"]), db)].add(bid)
+    settled, unsettled = [], []
+    for (term, bid), db in sorted(clash.items()):
+        rec = out[term][bid]
+        y = year(term, bid, rec["docket"])
+        rivals = sorted((wants[(term, y, db)] | held.get((term, y, db), set())) - {bid})
+        if rivals:
+            unsettled.append(f"{bid} of {term}: the docket says chapter {rec['docket']} "
+                             f"and the database {db}, which is also "
+                             f"{', '.join(rivals)}'s")
+            continue
+        stated = law_date(found[(term, bid)], rec["docket"])[0]             if (term, bid) in found else None
+        out[term][bid] = {
+            "chapter": db, "docket": rec["docket"], "line": rec.get("line", ""),
+            **({"database_effective": effective[(term, bid)]}
+               if db != rec["docket"] and (effective or {}).get((term, bid)) else {}),
+            "source": "the General Court's database",
+            "settled": (f"{rec['withheld']} on the docket; the General Court's "
+                        f"database gives this bill chapter {db}"
+                        + (f", and the row that dates its signature in {stated} was "
+                           f"entered in {y}, so it is of {y}'s laws"
+                           if stated and y and stated != y else ""))}
+        settled.append(f"{bid} of {term}: {db}"
+                       + ("" if db == rec["docket"] else f" (the docket says {rec['docket']})")
+                       + (f" (of {y}'s laws; its signature row says {stated})"
+                          if stated and y and stated != y else ""))
+    return settled, unsettled
 
 
 def enrolled_check(out):
@@ -398,7 +525,7 @@ def main():
         print(f"  {PAST} is not here: the database's chapter numbers were not "
               "checked, and no signed bill's missing number was filled")
     else:
-        agree_db, differ_db, filled_db = dbc
+        agree_db, differ_db, filled_db, settled_db, unsettled_db = dbc
         print(f"  against the General Court's database: {agree_db:,} agree, "
               f"{len(differ_db)} differ and are withheld, {len(filled_db)} "
               "signed bills with no number on the docket filled from it")
@@ -406,6 +533,15 @@ def main():
             print(f"    withheld: {x}")
         for x in filled_db[:5]:
             print(f"    filled: {x}")
+        print(f"  {len(settled_db)} numbers the docket gave to two bills settled "
+              f"by the database, {len(unsettled_db)} it cannot settle")
+        for x in settled_db:
+            print(f"    settled: {x}")
+        for x in unsettled_db:
+            print(f"    still withheld: {x}")
+        # Not for the count below: these have a number now.
+        withheld = [w for w in withheld
+                    if out.get(w[0], {}).get(w[1], {}).get("withheld")]
 
     total = 0
     for term in sorted(bills):
