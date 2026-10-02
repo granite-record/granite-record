@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.189 */
+/* GRANITE_VERSION: 2026-09-07.190 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -850,6 +850,13 @@ background:var(--wash)}
 .pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
 cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:var(--t-ui);gap:var(--sp-4);text-align:center;padding:var(--sp-6)}
 .pstub:hover{background:var(--film-stub-hot)}
+/* THE RING, INSIDE THE STILL. .player clips to its rounded corners, so the
+   site's ring -- 2px, 2px out -- was cut away on all four sides and Play
+   showed no focus at all, in either theme (the audit of 2 October 2026, S5:
+   WCAG 2.4.7). Drawn inside the button it is not clipped; and in the still's
+   own ink rather than pine, because the still is near-black in both themes
+   and the light theme's pine on it is 2:1. */
+.pstub:focus-visible{outline:2px solid var(--film-stub-ink);outline-offset:-4px}
 /* A FRAME WHERE THERE IS ONE RECORDING, A BAR WHERE THERE ARE TWENTY-NINE.
    The stub reserves a 16:9 area so that clicking play does not shove the page
    down, which is right on a bill: there is one recording and the shape says
@@ -2221,6 +2228,14 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
 /* Focus must be visible. Keyboard users navigate by it, and the default
    outline is removed by most resets without anything put back. */
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
+/* WHERE THE BOX AROUND A CONTROL CUTS THAT RING OFF, it is drawn inside the
+   control. A bill card's header fills its card edge to edge and the card
+   clips, so in the bill list the header showed no ring at all and on a
+   bill's own page one line under it; a filter group's head lost three sides
+   to the filter rail (the audit of 2 October 2026, S5). .calmeet > summary
+   and the town page's tabs were already drawn this way; Play is with its
+   own rules, above. */
+.chead:focus-visible,.fhead:focus-visible{outline-offset:-2px}
 /* The same footer the pages built from style.css have carried all along.
    It reaches every record page because bills.html is their template. */
 footer{border-top:1px solid var(--rule);background:var(--surface);
@@ -2432,7 +2447,9 @@ overflow-wrap:anywhere}
 .citestate:empty{margin:0}
 .feedurl{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:center;margin:0}
 .feedurl input{flex:1 1 16rem;min-width:0;font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
-  background:var(--paper);border:1px solid var(--rule-2);border-radius:var(--r-in)}
+  background:var(--paper);border:1px solid var(--edge);border-radius:var(--r-in)}
+/* --edge, as every text box's is; it was --rule-2 (see the pages' input
+   rule). */
 /* A committee's officers and its staff, side by side, the way the General
    Court's own committee page presents them -- which is the layout the people
    who already use those pages know how to read. */
@@ -3342,7 +3359,9 @@ text-transform:uppercase;color:var(--ink-2);flex:1 1 16rem;min-width:0}
 .wkfind input{font:inherit;font-size:var(--t-ui);font-weight:400;
 letter-spacing:0;text-transform:none;color:var(--ink);
 padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
-background:var(--surface);border:1px solid var(--rule-2);border-radius:4px}
+background:var(--surface);border:1px solid var(--edge);border-radius:4px}
+/* --edge, as every text box's is (see the pages' own input rule): it was
+   --rule-2, 1.68:1 against the page. */
 .wkfind input:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
 .wkcount{flex:1 0 100%;margin:0;font-size:var(--t-sm);color:var(--ink-2)}
 .calday[hidden],.calmeet[hidden]{display:none}
@@ -3452,11 +3471,16 @@ font-size:var(--t-ui);font-weight:500}
 .cmnow .cmn{box-shadow:inset 0 0 0 2px var(--pine);font-weight:700}
 .cmnow.cmpick .cmn{box-shadow:inset 0 0 0 2px var(--on-pine)}
 /* PAST DAYS SLIGHTLY GREYED, and still a day a reader may choose. The days
-   of the months either side are fainter again; outside the calendar's range
-   a day is only a number. */
+   of the months either side take the same grey; outside the calendar's range
+   a day is only a number.
+   NO OPACITY ON THE NUMBER. The days of the months either side were fainter
+   again by `opacity:.75`, which took 14px --ink-2 to 3.17:1 on the selected
+   week's band and 3.71:1 on the page in light, and 3.98:1 on the band in
+   dark (the audit of 2 October 2026, S11; text needs 4.5:1). --ink-2 as it
+   stands is 5.1:1 on the band and preflight holds it; the dots, which are
+   not text, keep theirs. */
 .cmpast .cmn,.cmout .cmn{color:var(--ink-2);font-weight:400}
 .cmpast .cmdots,.cmout .cmdots{opacity:.6}
-.cmout .cmn{opacity:.75}
 .cmgrid td.cmpick .cmn{color:var(--on-pine);opacity:1}
 .cmgrid td.cmoff{cursor:default;background:none}
 .cmgrid td.cmoff .cmn{opacity:.4}
@@ -4083,7 +4107,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
      this can be asked for directly and which every engine honours. */
   display:block;max-height:2.7em;overflow:hidden}
 .votes .vq{display:block;color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--sp-2)}
-.votes .vq .dim{opacity:.8}
+/* The record's own word for the motion, in brackets after the plain one,
+   takes the line's --ink-2 and no opacity: `opacity:.8` on it was 4.14:1 on
+   the page in light, at 12px, about 190 times on a member's Votes tab (the
+   audit of 2 October 2026, S11). */
 /* Not nowrap: "Not Voting/Not Excused" is 22 characters and ran out of its
    own column. */
 .votes .vcast{font-weight:600}
@@ -4298,8 +4325,14 @@ color:var(--ink);max-width:none}
 :where(body.pg) .reading li{margin-bottom:var(--sp-4)}
 :where(body.pg) .note{font-size:var(--t-ui);color:var(--ink-2);background:var(--surface);border-left:3px solid var(--rule-2);
 padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.6}
+/* A TEXT BOX'S EDGE IS --edge, the token the bill search's box has always
+   used. These were --rule-2, which is a card's hairline: 1.68:1 against the
+   page in light and 2.52:1 in dark, and the box's fill differs from the page
+   by 1.16:1, so the edge is the whole of what says "type here" (the audit of
+   2 October 2026, S10; WCAG 1.4.11 asks 3:1). --edge is 3.98:1 and 4.64:1,
+   and preflight holds it there. */
 :where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-body);
-border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surface)}
+border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface)}
 :where(body.pg) input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
 :where(body.pg) th{text-align:left;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);padding:0 0 var(--sp-3);border-bottom:1px solid var(--rule)}

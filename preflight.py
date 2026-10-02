@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.312
+# GRANITE_VERSION: 2026-09-04.313
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8187,6 +8187,127 @@ def _palette():
                 "show this; only the number can.")
     assert not bad, "; ".join(bad[:4])
     return "ok", f"{n} pairs across both schemes, all above their threshold"
+
+
+def _css_hex(v):
+    h = v.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _css_ratio(a, b):
+    """WCAG contrast of two (r, g, b) colours."""
+    def lum(c):
+        ch = [v / 255 for v in c]
+        ch = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in ch]
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+    x, y = sorted((lum(a), lum(b)), reverse=True)
+    return (x + 0.05) / (y + 0.05)
+
+
+@check("frontend", "a focus ring is not cut off by the box around its control, a text box's edge is "
+                   "the control edge, and small grey text carries no opacity")
+def _rings_edges_opacity():
+    """Three findings of the audit of 2 October 2026 that are one kind of
+    thing: a rule that looks right in the stylesheet and measures wrong on the
+    page.
+
+    S5. The site's focus ring is 2px, 2px outside the control. A bill card's
+    header fills its card and the card clips, Play fills .player and .player
+    clips, a filter group's head fills the filter rail: no ring on a card's
+    header in the list or on Play, one line of it elsewhere. Each is drawn
+    inside its control now. Play's is in the still's own ink, because the
+    still is near-black in both themes and the light theme's pine on it is
+    2:1; that pair is measured here. Play's rule must sit in the shared
+    region, or the home page, which takes style.css, has none.
+
+    S10. Six text boxes were edged in --rule-2, a card's hairline: 1.68:1
+    against the page in light, 2.52:1 in dark, where WCAG 1.4.11 asks 3:1.
+    Every rule that draws a text box's border uses --edge, which _palette
+    already holds at 3:1 on the page and on a card in both themes.
+
+    S11. Two pieces of small --ink-2 text had an opacity on top: the days of
+    the months either side in the Calendar's grid (3.17:1 on the selected
+    week's band) and the bracketed motion on a member's Votes tab (4.14:1).
+    Neither rule carries an opacity now, and --ink-2 on the band -- pine mixed
+    16% into the page -- is computed here for both themes and held to 4.5:1.
+    """
+    css = Path("app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    bare = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+
+    def rules(selector):
+        """Every declaration block whose selector list names `selector`."""
+        return [body for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", bare)
+                if selector in [s.strip() for s in sel.split(",")]]
+
+    bad = []
+    # S5
+    for sel in (".chead:focus-visible", ".fhead:focus-visible", ".pstub:focus-visible"):
+        got = rules(sel)
+        off = [m for b in got for m in re.findall(r"outline-offset:\s*(-?\d+)px", b)]
+        if not off or int(off[-1]) >= 0:
+            bad.append(f"{sel} is not drawn inside its control (outline-offset "
+                       f"{off[-1] + 'px' if off else 'unset'}): the box around it clips the ring")
+    a, b = text.index("/* SHARED:START"), text.index("/* SHARED:END")
+    if ".pstub:focus-visible{" not in text[a:b]:
+        bad.append(".pstub:focus-visible is outside the shared region, so style.css "
+                   "and the home page's Play have no ring")
+    stub = rules(".pstub:focus-visible")
+    if not any("var(--film-stub-ink)" in x for x in stub):
+        bad.append("Play's ring is not in the still's own ink")
+    film = dict(re.findall(r"--(film-stub(?:-ink)?):\s*(#[0-9A-Fa-f]{3,6})", text))
+    if len(film) == 2:
+        r = _css_ratio(_css_hex(film["film-stub-ink"]), _css_hex(film["film-stub"]))
+        if r < 3:
+            bad.append(f"Play's ring, --film-stub-ink on --film-stub, is {r:.2f}:1; a focus "
+                       "indicator needs 3:1")
+    else:
+        bad.append("--film-stub or --film-stub-ink is no longer a hex colour this can measure")
+    # S10
+    boxes = [(sel, body) for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", bare)
+             if re.search(r"(^|[\s,>])(?:#q|input(?:\[type=(?:search|text)\])?)\s*(,|$)",
+                          sel.strip()) and re.search(r"\bborder:\s*1px solid", body)]
+    if len(boxes) < 3:
+        bad.append(f"only {len(boxes)} rules were found drawing a text box's border; the "
+                   "bill search's, the pages' and the Calendar's are three")
+    for sel, body in boxes:
+        m = re.search(r"\bborder:\s*1px solid\s*([^;}]+)", body)
+        if m.group(1).strip() != "var(--edge)":
+            bad.append(f"{' '.join(sel.split())[:60]} edges a text box in "
+                       f"{m.group(1).strip()}, not --edge")
+    # S11
+    for sel in (".cmout .cmn", ".votes .vq .dim"):
+        if any(re.search(r"\bopacity:\s*(0?\.\d+)", b) for b in rules(sel)):
+            bad.append(f"{sel} carries an opacity: small --ink-2 text under one "
+                       "measured 3.17:1 and 4.14:1")
+    band = re.search(r"\.cmrow\.cmsel td\{background:color-mix\(in srgb,var\(--pine\) "
+                     r"(\d+)%,var\(--paper\)\)\}", bare)
+    if not band:
+        bad.append("the selected week's band is no longer pine mixed into the page; "
+                   "measure --ink-2 on what it is now")
+    else:
+        k = int(band.group(1)) / 100
+        light = text[text.index(":root{"):text.index("/* DARK:OS")]
+        dark = text[text.index("/* DARK:CHOSEN"):text.index("/* PALETTE END")]
+        for scheme, block in (("light", light), ("dark", dark)):
+            tok = dict(re.findall(r"--(ink-2|pine|paper):\s*(#[0-9A-Fa-f]{3,6})", block))
+            if len(tok) != 3:
+                bad.append(f"--ink-2, --pine or --paper is not a hex colour in {scheme}")
+                continue
+            pine, paper = _css_hex(tok["pine"]), _css_hex(tok["paper"])
+            mixed = tuple(p * k + q * (1 - k) for p, q in zip(pine, paper))
+            r = _css_ratio(_css_hex(tok["ink-2"]), mixed)
+            if r < 4.5:
+                bad.append(f"--ink-2 on the selected week's band is {r:.2f}:1 in {scheme}; "
+                           "a day's number is text and needs 4.5")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"three rings drawn inside their controls, Play's in the still's ink; "
+                  f"{len(boxes)} text boxes edged in --edge; no opacity on the two small "
+                  "greys, and --ink-2 on the week's band above 4.5:1 in both themes")
 
 
 @check("frontend", "the built stylesheet carries one copy of the shared region")
