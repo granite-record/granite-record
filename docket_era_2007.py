@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.3
+# GRANITE_VERSION: 2026-09-11.4
 """
 The 2007-2016 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -229,6 +229,9 @@ def normalise(ev, created):
     if m:
         d = ev["date"] = (f"{MONTHS.index(m.group(1)[:3].lower()) + 1:02d}/"
                           f"{int(m.group(2)):02d}/{m.group(3)}")
+        # Said, so that a day in words the bill's own rows rule out is not
+        # taken (narrative.before_the_bill: SB 106 of 2009's "January 10").
+        ev["_spelled"] = True
     if d and re.fullmatch(r"\d{1,2}/\d{1,2}/\d{2}", d):      # 3/12/08
         mo, dy, yr = d.split("/")
         ev["date"] = f"{int(mo):02d}/{int(dy):02d}/{2000 + int(yr) if int(yr) < 50 else 1900 + int(yr)}"

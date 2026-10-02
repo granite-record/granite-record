@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.6
+# GRANITE_VERSION: 2026-09-11.7
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -117,6 +117,15 @@ FLOOR_H_PROC = re.compile(
 FLOOR_H_FAILED = re.compile(
     r"^(?:Comm(?:ittee)?\s+Rep(?:or)?t\s+|Rep\s+[A-Z][\w']+\s+moved\s+)?"
     r"(?P<action>" + H_MOTION + r")" + MOVER_H + r"\s*,?\s*(?P<motion>ML|MF)\b" + HVOTE, re.I)
+# THE QUESTION IN QUOTATION MARKS: '"Ought NOT to Pass", MA RC(256-58)' is
+# the House adopting the joint committee's report against HA 1 of 1999, the
+# address for the removal of a justice, on 1 July 1999 -- the one row of
+# 1999-2006 that opens on a quoted phrase. The marks kept every pattern off
+# it, so the address read "Killed" over a history that stopped at the
+# committee's executive session. The same words without them -- "Ought Not to
+# Pass, MA, VV" on HA 1 of 2006 -- are read below, and told the same way.
+FLOOR_H_QUOTED = re.compile(
+    r'^"(?P<action>[^"]+)"\s*,\s*(?P<motion>MA|ML|MF)\b' + HVOTE, re.I)
 
 # --- Senate floor: "Ought to Pass, MA, VV; OT3rdg", "Inexpedient to Legislate,
 # RC 14Y-10N, MA", "Sen. Flanders Moved Laid on Table; MA, VV",
@@ -377,6 +386,7 @@ OLD = [
     ("floor", FLOOR_S_OT3),
     ("floor", FLOOR_S_MOVER_AFTER),
     ("floor", FLOOR_S_MOVER_FIRST),
+    ("floor", FLOOR_H_QUOTED),
     ("floor", FLOOR_H_ADOPTED),
     ("floor", FLOOR_S_ADOPTED),
     ("floor", FLOOR_H_PROC),
@@ -654,6 +664,9 @@ def normalise(ev, created):
         if lead and plain(lead.group("rest")) != lead.group("rest"):
             mover, a = lead.group("mover"), lead.group("rest")
         ev["action"] = plain(a) if not re.match(r"^Sen", a) else a
+        # The clerk's capitals on HA 1 of 1999, '"Ought NOT to Pass"'.
+        if re.fullmatch(r"ought\s+not\s+to\s+pass", ev["action"], re.I):
+            ev["action"] = "Ought Not to Pass"
         if mover:
             # "(Sen. Johnson)", which narrative.split_mover takes back off.
             name = re.sub(r"^Sen(?:ator|\.)?\s*", "", mover)

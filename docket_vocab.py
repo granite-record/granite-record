@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.11
+# GRANITE_VERSION: 2026-09-11.12
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -211,9 +211,25 @@ def _ensure_date(d, created, session=None, desc=None):
 # knows how to read all but a handful of them. The 1989 table expanded its own
 # matches from the start; the 1999 and 2007 tables did not, so a reader of a
 # 2003 bill was told "House Mun & Cnty Govt committee".
+# A JOINT COMMITTEE OF TWO, IN THE CLERK'S SHORTHAND: "Rules Comm Approved:
+# Introduced 1/30/08 & Ref to a Jt Comm of Exec Depts & Admin & Fin" (HB 1643
+# of 2008; HB 1645's row says "... & Admin and Fin"). referrals.expand finds
+# the first committee in the words and returns it alone, so the two bills read
+# "referred to the House Executive Departments and Administration committee":
+# one committee, where the row names a joint committee of it and Finance.
+# Named as the docket's other joint referrals are -- "a Joint Committee of
+# Finance and Ways and Means" (SB 152 of 2013) -- with each half written out.
+JOINT_WITH_FINANCE = re.compile(
+    r"^\s*(?:a\s+)?Jt\.?\s+Comm\.?\s+of\s+(?P<first>.+?)\s+(?:&|and)\s+Fin(?:ance)?\.?\s*$",
+    re.I)
+
+
 def _committee_name(raw):
     if not raw or not raw.strip():
         return raw
+    joint = JOINT_WITH_FINANCE.match(raw)
+    if joint:
+        return f"a Joint Committee of {_committee_name(joint.group('first'))} and Finance"
     try:
         import names
         import referrals

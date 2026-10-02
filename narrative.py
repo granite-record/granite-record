@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.54
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -114,6 +114,7 @@ CALENDAR = {
 
 # Said only where the docket records a bill actually coming off the consent
 # calendar, which classify() reads as consent_off.
+REMOVED_FROM_CONSENT = re.compile(r"^\s*Removed\s+from\s+(?:the\s+)?Consent\b", re.I)
 CONSENT_OFF_NOTE = ("Ten members may file a petition to pull a bill off the "
                     "consent calendar and have it debated and voted on "
                     "separately, which is what happened here.")
@@ -353,9 +354,10 @@ def clamp_year(ev, session, entered=None):
 # ---- the day a row states, where the row was entered on another ---------------
 #
 # A ROW NO PATTERN READS TAKES THE DAY IT WAS ENTERED, which is right for a row
-# entered as the thing happened and wrong for three kinds the clerks enter on
+# entered as the thing happened and wrong for four kinds the clerks enter on
 # another day and date in their own words. Each states the day of what it
-# records, so the row is dated by it:
+# records, so the row is dated by it (the fourth, a petition read in, is set
+# out after the cautions below):
 #
 #   THE END OF A TABLED BILL AT ADJOURNMENT. "Inexpedient to Legislate, Senate
 #   Rule 3-23, Adjournment 09/16/2020" was entered on 8, 9 and 10 September
@@ -393,6 +395,14 @@ def clamp_year(ev, session, entered=None):
 # [11/30/2011]", entered that same day on sixteen House measures, names the
 # House's; "Report due 1/29/2004" and "RE-REF MAJ REPORT ITL FOR 1/5/94" name
 # days to come. Read each kind before adding it here.
+#
+#   A PETITION READ IN. "Read In January 4, 2012; HJ 7, PG.367" was entered on
+#   13 December 2011 on nine petitions of the 2012 session, PET 20 to PET 28,
+#   three weeks before the House sat: each petition's first action read as a
+#   day of 2011, and each was "carried over" from a session it was never in.
+#   The same words on PET 11, entered on the day itself, were always right.
+#   Entered ahead of the day, as a hearing notice is; and the journal it
+#   cites is the day's own, so the citation is looked up in the day's year.
 STATES_ITS_DAY = (
     ("adjournment", re.compile(
         r"\bSenate\s+Rule\s+3-23\b\W*(?:Adjournment\W*)?"
@@ -402,7 +412,21 @@ STATES_ITS_DAY = (
         r".*\b(?:Adopted|Failed)\b.*?(?<![\d/])(?P<date>\d{1,2}/\d{1,2}/\d{4})\W*$", re.I)),
     ("notice", re.compile(
         r"^\s*(?:Public\s+)?Hearing\s*:\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})\b", re.I)),
+    ("read in", re.compile(
+        r"^\s*Read\s+In\s+(?P<month>[A-Z][a-z]+)\s+(?P<day>\d{1,2}),?\s+(?P<year>\d{4})\b"
+        r"(?!\s+and\s+Withdrawn)", re.I)),
 )
+# The kinds entered ahead of the day they state.
+STATED_AHEAD = ("notice", "read in")
+
+
+def _stated(m):
+    """The day a STATES_ITS_DAY match names: "01/20/2026", or the month
+    written out. ValueError where it is no day."""
+    d = m.groupdict()
+    if d.get("date"):
+        return datetime.strptime(d["date"], "%m/%d/%Y")
+    return datetime.strptime(f"{d['month']} {d['day']} {d['year']}", "%B %d %Y")
 
 
 def stated_day(ev, r):
@@ -416,14 +440,14 @@ def stated_day(ev, r):
         if not m:
             continue
         try:
-            said = datetime.strptime(m.group("date"), "%m/%d/%Y")
+            said = _stated(m)
             session = int(str(r.get("session"))[:4])
         except (TypeError, ValueError):
             return ev
         if not in_term(said.year, said.month, said.day, session):
             return ev
-        if kind != "notice" and not (isinstance(created, datetime)
-                                     and said.date() <= created.date()):
+        if kind not in STATED_AHEAD and not (isinstance(created, datetime)
+                                             and said.date() <= created.date()):
             return ev
         ev["date"] = said.strftime("%m/%d/%Y")
         # THE VOLUME IT CITES IS OF THE YEAR IT WAS ENTERED. A citation carries
@@ -431,8 +455,10 @@ def stated_day(ev, r):
         # "Hearing: 01/20/2026, Map Room, SL, 09:15 am", entered on 11 December
         # 2025, is Senate Calendar 46 of that December, and dated by its
         # hearing the row lost the link to it. The year the row was entered
-        # in travels with it (cite_year), so the link is what it was.
-        if (isinstance(created, datetime) and created != datetime.min
+        # in travels with it (cite_year), so the link is what it was. Not
+        # for a petition read in: "HJ 7" on that row is the journal of the
+        # day it was read.
+        if (kind != "read in" and isinstance(created, datetime) and created != datetime.min
                 and created.year != said.year):
             ev["cite_year"] = str(created.year)
         return ev
@@ -468,10 +494,16 @@ def stated_day(ev, r):
 #   - the same day a year on is in the bill's term and is a day the row can
 #     have been entered for: from the day it was entered (a week before, for a
 #     meeting entered once it had recessed) to YEAR_SLIP_AHEAD days after;
-#   - and nothing else on the bill in that chamber was entered within
-#     YEAR_SLIP_ALONE days of the day the row states: the chamber did not have
-#     the bill then. An introduction must also come out on or before the next
-#     row of its chamber.
+#   - and nothing else on the bill in that chamber had been entered by the
+#     day the row states, or was within YEAR_SLIP_ALONE days after it: the
+#     chamber did not have the bill then. Measured from the day the row
+#     states to the chamber's first row, whenever that was entered -- SB 268
+#     of 2014's conference "RECONVENE === 5/29/2013" was entered on 27 May
+#     2014, and its introduction row on 11 December 2013 for 8 January: 196
+#     days after the day stated, which a test of "more than 200 days" let
+#     through as the Senate having the bill, seven months before it was
+#     filed. An introduction must also come out on or before the next row of
+#     its chamber.
 #
 # Meetings and introductions only. A floor row's stated day has rules of its
 # own (docket_vocab.as_of), a report's is the calendar it was written for,
@@ -479,7 +511,7 @@ def stated_day(ev, r):
 # same day -- "Introduction and referring to Judiciary 1/28/98", entered on 28
 # January 1999 -- that is left to it and nothing is noted.
 YEAR_SLIP_KINDS = ("introduced", "hearing", "exec", "worksession", "conference_meeting")
-YEAR_SLIP_FAR, YEAR_SLIP_AHEAD, YEAR_SLIP_ALONE = 150, 90, 200
+YEAR_SLIP_FAR, YEAR_SLIP_AHEAD, YEAR_SLIP_ALONE = 150, 90, 30
 CHAMBER_NAME = {"H": "House", "S": "Senate"}
 
 
@@ -522,10 +554,115 @@ def year_slip(ev, r, rows):
     return ev
 
 
+# ---- a meeting stated for a day before the chamber had the bill -----------------
+#
+# THE MONTH WRITTEN OUT, AND WRONG. The Senate's notices of 2007 to 2010 write
+# the day in words (docket_era_2007.normalise turns them into dates), and one
+# of the 2,684 names a day its bill did not exist on: "Hearing; January 10,
+# 2009, Room 103, State House, 2:45 p.m.; SC10" on SB 106 of 2009, entered on
+# 5 February, the day after the Senate's first row on the bill, "Introduced
+# and Referred to Judiciary". Taken as written, the bill's history opened with
+# a hearing 25 days before its introduction. Senate Calendar 10 prints the
+# hearing under Tuesday 10 February: the month is the clerk's slip. A slip of
+# a month is not a rule this reader can prove -- the year's slip above is, by
+# the bill's own rows -- so the day is NOT TAKEN: the row keeps the day it
+# was entered, as every such notice did before the month was read, and says
+# so beside it. Putting the right day on it is a person's correction
+# (docket_corrections.json), which outranks this.
+#
+# Only a day the reader made out of a month in words (the event's "_spelled"),
+# and only where no row of that chamber on the bill had been entered by it.
+# A year's slip is found first and is not this.
+STATED_BEFORE_THE_BILL = (
+    "The docket's row states {said}, and the {chamber} has no row on the bill before "
+    "{first}. The row is shown on the day it was entered.")
+
+
+def before_the_bill(ev, r, rows):
+    """Leave a written-out meeting day untaken where it is before the day the
+    chamber's first row on the bill was entered (STATED_BEFORE_THE_BILL)."""
+    created = r.get("created")
+    if (not ev.get("_spelled") or ev.get("date_as_recorded")
+            or not ONE_DATE.match(str(ev.get("date") or ""))
+            or not isinstance(created, datetime) or created == datetime.min):
+        return ev
+    said = datetime.strptime(ev["date"], "%m/%d/%Y")
+    first = min((o["created"] for o in rows
+                 if o.get("body") == r.get("body") and isinstance(o.get("created"), datetime)
+                 and o["created"] != datetime.min), default=None)
+    if first is None or said.date() >= first.date():
+        return ev
+    ev["row_note"] = STATED_BEFORE_THE_BILL.format(
+        said=said.strftime(MONTH), chamber=CHAMBER_NAME.get(r.get("body"), "chamber"),
+        first=first.strftime(MONTH))
+    ev["date"] = created.strftime("%m/%d/%Y")
+    return ev
+
+
+# ---- a row stamped decades outside its term --------------------------------------
+#
+# THE STAMP IS TYPED TOO. Five rows of the database's dockets carry an entry
+# stamp in another century's year: 04/13/1900 (SB 391 of 1990), 01/06/1904 (SB
+# 623 of 1994), 01/04/1905 (HB 171 of 1995), 01/29/1927 (HB 685 of 1997) and
+# 12/02/1939 (SCR 1 of 1999). Four are rows that print a date, which the
+# vocabulary's glue brings back into the bill's session. The fifth is the
+# citation "SJ Org. Day, P 12-13", a row cut off the Senate's action of
+# Organization Day, 2 December 1998 -- the rows either side of it are stamped
+# 10:01 and 10:40 that morning, and it is stamped 10:03 -- and it states no
+# date, so SCR 1 of 1999's list of docket lines opened in 1939 and the
+# resolution was "carried over" across sixty years.
+#
+# A stamp more than STAMP_FAR years from the bill's session keeps its month,
+# day and time and takes the year, of the session's and the two beside it,
+# that puts it nearest another row of the bill. Real stamps outside a term
+# are a year or two out, and are left alone: an opinion of the justices
+# printed on 30 January 1997 for HB 1549 of 1996, SB 503 of 1998's meetings
+# into 2000.
+STAMP_FAR = 5
+STAMP_REREAD = ("The General Court's docket stamps this row {stamp}. The rows entered beside "
+                "it are of {near}, and the year is read as {year}.")
+
+
+def stamps_in_reach(rows):
+    """The rows, with a stamp decades outside the bill's session brought to
+    the year nearest the bill's other rows (STAMP_FAR). A row put right
+    carries its own stamp as "stamp_as_recorded"."""
+    def far(r):
+        c = r.get("created")
+        try:
+            return (isinstance(c, datetime) and c != datetime.min
+                    and abs(c.year - int(str(r.get("session"))[:4])) > STAMP_FAR)
+        except (TypeError, ValueError):
+            return False
+    if not any(far(r) for r in rows):
+        return rows
+    sane = [r["created"] for r in rows
+            if isinstance(r.get("created"), datetime) and r["created"] != datetime.min
+            and not far(r)]
+    out = []
+    for r in rows:
+        if not far(r) or not sane:
+            out.append(r)
+            continue
+        c, session = r["created"], int(str(r["session"])[:4])
+        tries = []
+        for y in (session - 1, session, session + 1):
+            try:
+                tries.append(c.replace(year=y))
+            except ValueError:
+                continue
+        if not tries:
+            out.append(r)
+            continue
+        best = min(tries, key=lambda t: min(abs((t - s).total_seconds()) for s in sane))
+        out.append({**r, "created": best, "stamp_as_recorded": c})
+    return out
+
+
 # ---- the day of an introduction, read from the journal -------------------------
 #
 # AN INTRODUCTION ROW THAT STATES NO DAY IS DATED THE DAY IT WAS ENTERED, and
-# these eleven were entered on another. A TABLE OF WHAT WAS READ, on 2 October
+# these twelve were entered on another. A TABLE OF WHAT WAS READ, on 2 October
 # 2026, not a rule: the House Record a row cites prints more than one sitting
 # too often for a citation to date a row by itself.
 #
@@ -552,15 +689,29 @@ def year_slip(ev, r, rows):
 #              carries the resolution that read HB 1-A, HB 2-FN-A-L and HB
 #              25-FN-A a first and second time (journals/2015/HJ020.txt lines
 #              3704-3712); HB 2 and HB 25 are dated the 18th by their own rows.
+#   2021-2022  CACR 21, the amendment on registers of probate that went to
+#              the voters, has "Introduced and referred to Judiciary", entered
+#              on 3 November 2021 with no day in it; the rows of CACR 13 to 20
+#              and 22 to 35, entered with it, read "Introduced 01/05/2022 and
+#              referred to ...". The House Journal of Wednesday 5 January 2022
+#              carries the resolution that read "Constitutional Amendment
+#              Concurrent Resolutions numbered 13 through 15, and 17 through
+#              35" a first and second time ("journals/2022/HJ 01 January 5,
+#              2022.txt" lines 1609-1614). Its introduction read 3 November
+#              2021, and it was "carried over" from a year it was not in.
 #
 # {(term, bill): (the day, the chamber, what the page says of it)}. The row is
 # the first of that chamber that begins "Introduced"; the day it was entered
 # is kept beside it (date_as_recorded), as a person's correction keeps the
 # docket's date. preflight reads the journals and the docket again wherever
 # they are on disk.
+#
+# WHAT THE SEVEN OF 2006 SAY BESIDE THE ROW is that the day is read from the
+# citation, because it is: no journal of 4 January 2006 was opened. The
+# others name the journal that was.
 _ENTERED_AHEAD = ("The docket's row was entered on {entered}, ahead of the day, and states no "
-                  "date. It cites the page of the House Record on which the House's bills of "
-                  "2006 were introduced, on {day}.")
+                  "date. It cites House Record 7 at a page that the other House bills of 2006 "
+                  "cite in rows entered on {day}, and the day is read from that citation.")
 _ENTERED_AFTER = ("The docket's row was entered on {entered} and states no date. The House "
                   "Journal records it on {day}.")
 INTRODUCED_ON = {
@@ -570,6 +721,7 @@ INTRODUCED_ON = {
     ("2007-2008", "HR6"): ("2006-12-06", "H", _ENTERED_AFTER),
     ("2007-2008", "HB332"): ("2007-01-04", "H", _ENTERED_AFTER),
     ("2015-2016", "HB1"): ("2015-02-18", "H", _ENTERED_AFTER),
+    ("2021-2022", "CACR21"): ("2022-01-05", "H", _ENTERED_AFTER),
 }
 INTRODUCTION_ROW = re.compile(r"^\s*Introduced\b", re.I)
 
@@ -921,6 +1073,18 @@ PROPOSED_ROW = re.compile(
 # 1/6/2010 and Referred to Finance". Every bill of those sessions carries it
 # and was introduced on that day -- except one withdrawn first (build()).
 TO_BE_INTRODUCED = re.compile(r"^\s*To\s+Be\s+Introduced\b", re.I)
+# AN INTRODUCTION ROW WITH NO DAY IN IT, in a docket of 2017 on: "Introduced
+# and referred to Judiciary", CACR 21 of 2022, the one such row of those
+# dockets. The pattern below wants a day, so the row was read by nothing: the
+# amendment's history never said the House had introduced it, and opened "It
+# was introduced on February 24, 2022 and referred to the Senate ...", of a
+# House measure. Read in build(), for these dockets only -- the older ones
+# have their own readers of the same words -- and dated the day it was
+# entered, which the journal's reading then puts right (INTRODUCED_ON). Not
+# "To Be Introduced and referred to ...", which is a plan (CACR 6 of 2021's
+# last row, another measure's).
+INTRODUCED_UNDATED = re.compile(
+    r"^\s*Introduced\s+and\s+referred\s+to\s+(?P<committee>[A-Z][^;:(]*?)\s*$", re.I)
 
 PATTERNS = [
     ("introduced", re.compile(
@@ -1138,6 +1302,16 @@ def parse_docket(path, want_bill=None, want_session=None, lsrs=None):
     what a checkout with no data/bills.json gets.
     """
     bills = defaultdict(list)
+    # ONE MEASURE UNDER BOTH YEARS OF ITS TERM IS STILL ONE DOCKET. The
+    # database holds HBI 5 of 1993 under session 1993 and again under 1994,
+    # with one LSR, and the dump gives its eight rows twice, word for word and
+    # stamp for stamp. Read as sixteen, its history said it "crossed to the
+    # House" on the day the House introduced it -- the second copy of the
+    # introduction row -- and every line of its docket was printed twice. A
+    # row repeated under another session year of the same number and LSR is
+    # entered once, as the past docket view's repeats are (past_docket_rows).
+    # It is the one measure of the nineteen dockets entered that way.
+    entered = {}
     with open(path, encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             p = line.rstrip("\n").split("|")
@@ -1148,6 +1322,9 @@ def parse_docket(path, want_bill=None, want_session=None, lsrs=None):
             # are chosen by LSR: a row of that bill's can be filed under
             # another key, and the rows are chosen before the one is kept.
             if want_bill and not lsrs and bill.upper() != want_bill.upper():
+                continue
+            again = (bill, p[1].strip(), p[2].strip(), p[4].strip(), p[5])
+            if entered.setdefault(again, p[0].strip()) != p[0].strip():
                 continue
             try:
                 created = datetime.strptime(p[2].strip(), "%m/%d/%Y %I:%M:%S %p")
@@ -2083,12 +2260,16 @@ def describe(ev, body, seen_intro=False):
                 + (f" on {when}" if when else "") + ".")
 
     if t == "introduced":
+        # A joint committee is named whole by its row -- "a Joint Committee
+        # of Finance and Ways and Means" (SB 152 of 2013) -- and "the House a
+        # Joint Committee of ... committee" is not a sentence.
+        to = (ev["committee"] if re.match(r"a\s+Joint\s+Committee\b", ev.get("committee") or "")
+              else f"the {chamber} {ev['committee']} committee")
         if seen_intro:
             # Crossover: the second chamber records receipt as an introduction.
             return (f"It crossed to the {chamber} on {fdate(ev['date'])} and was "
-                    f"referred to the {chamber} {ev['committee']} committee.")
-        return (f"It was introduced on {fdate(ev['date'])} and referred to the "
-                f"{chamber} {ev['committee']} committee.")
+                    f"referred to {to}.")
+        return f"It was introduced on {fdate(ev['date'])} and referred to {to}."
 
     if t == "vacated":
         return (f"The {chamber} withdrew that referral and sent the bill to the "
@@ -2490,22 +2671,41 @@ def in_recess(ev, r, fixed=None):
 # docket lines says so beside it. Not a floor row: "Sen. Francoeur Rules
 # Suspension 2/3 nec. for Introduction, MF" is the Senate's one row on HB 2002
 # of 2002, and it is the Senate refusing the bill.
+#
+# AND ONLY WHERE THE OTHER CHAMBER CANNOT HAVE HAD THE BILL. A docket still
+# being written can show the same shape for a moment and mean the opposite:
+# the House passes a bill, and the Senate's first row on it is a hearing
+# notice, entered before its row of introduction. That row is the Senate's.
+# So the chamber the row is given to must not have passed the measure on --
+# no floor row of its own carrying a motion to pass or adopt it -- and must
+# have gone on acting on it afterwards, with a row entered after this one. HB
+# 1371's is followed by "ITL REPORT ADOPTED" in the House, and HB 1188's by
+# the House's referral to interim study: neither left the House.
 COMMITTEE_ROWS = ("hearing", "exec", "worksession", "report", "interim_report", "retained")
 FILED_UNDER = ("The General Court's docket files this row under the {wrong}. It is the only "
                "row there, and a committee's: it is told as the {right}'s.")
+CARRIED_ON = re.compile(r"^\W*(?:ought\s+to\s+pass|OTP\b|pass|adopt)", re.I)
 
 
 def other_chambers_row(evs):
     """Give a committee row filed under the chamber that never had the bill
-    to the chamber that did (COMMITTEE_ROWS). evs is every row of the bill."""
+    to the chamber that did (COMMITTEE_ROWS). evs is every row of the bill,
+    in the order entered."""
     for wrong, right in (("S", "H"), ("H", "S")):
         mine = [e for e in evs if (e.get("body") or "").upper() == wrong]
         theirs = [e for e in evs if (e.get("body") or "").upper() == right]
-        if len(mine) == 1 and len(theirs) >= 2 and mine[0].get("_type") in COMMITTEE_ROWS:
-            mine[0]["body"] = right
-            if not mine[0].get("row_note"):
-                mine[0]["row_note"] = FILED_UNDER.format(
-                    wrong=CHAMBER[wrong], right=CHAMBER[right])
+        if not (len(mine) == 1 and len(theirs) >= 2
+                and mine[0].get("_type") in COMMITTEE_ROWS):
+            continue
+        sent_on = any(e.get("_type") == "floor" and (e.get("motion") or "").upper() == "MA"
+                      and CARRIED_ON.search(e.get("action") or "") for e in theirs)
+        later = any(e.get("_row", -1) > mine[0].get("_row", 0) for e in theirs)
+        if sent_on or not later:
+            continue
+        mine[0]["body"] = right
+        if not mine[0].get("row_note"):
+            mine[0]["row_note"] = FILED_UNDER.format(
+                wrong=CHAMBER[wrong], right=CHAMBER[right])
     return evs
 
 
@@ -2609,7 +2809,7 @@ def notice_note(ev):
 
 
 def build(bill, rows, introduction=None):
-    rows = sorted(rows, key=lambda r: r["created"])
+    rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
     if CORRECTIONS:
         SIBLINGS.extend(_sibling_rows(bill, rows))
     # A DATABASE-ERA BILL IS READ IN ITS OWN DECADE'S VOCABULARY. The dump
@@ -2631,6 +2831,13 @@ def build(bill, rows, introduction=None):
         ev = r.get("event") or (
             vocab.classify(r["desc"], r["created"], r.get("session"))
             if vocab is not None else None) or classify(r["desc"])
+        if vocab is None and ev["_type"] == "other":
+            undated = INTRODUCED_UNDATED.match(ev["_raw"])
+            if undated and isinstance(r.get("created"), datetime) \
+                    and r["created"] != datetime.min:
+                ev = {**ev, "_type": "introduced",
+                      "committee": undated.group("committee"),
+                      "date": r["created"].strftime("%m/%d/%Y")}
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
         if ev.get("chapter"):
@@ -2671,6 +2878,18 @@ def build(bill, rows, introduction=None):
             # of an introduction (INTRODUCED_ON).
             year_slip(ev, r, rows)
             introduced_on(ev, r, bill, read_from_journal)
+            # And a day in words that is before the chamber had the bill.
+            before_the_bill(ev, r, rows)
+        if r.get("stamp_as_recorded") and not ev.get("row_note"):
+            near = min((o["created"] for o in rows
+                        if o is not r and not o.get("stamp_as_recorded")
+                        and isinstance(o.get("created"), datetime)
+                        and o["created"] != datetime.min),
+                       key=lambda c: abs((c - r["created"]).total_seconds()), default=None)
+            if near is not None:
+                ev["row_note"] = STAMP_REREAD.format(
+                    stamp=r["stamp_as_recorded"].strftime(MONTH),
+                    near=near.strftime(MONTH), year=r["created"].year)
         clamp_year(ev, r.get("session") or session, r.get("created"))
         in_recess(ev, r, fixed)
         ev["when"] = event_date(ev, r["created"])
@@ -2847,8 +3066,13 @@ def build(bill, rows, introduction=None):
     # Whether this bill ever came OFF the consent calendar, known before the
     # loop because the note that goes on beside the placing has to know what
     # happened after it. See the CALENDAR["CC"] note below.
-    consent_off = any(e["_type"] == "consent_off" and not e["cancelled"]
-                      for e in evs)
+    # A row no pattern reads says it too: "Removed from Consent (Rep.
+    # Testerman) 04/07/2021", the House's form since 2017, is told by nothing
+    # here, and the note beside the placing went on saying "It then passes
+    # without floor debate" -- over HB 68, HB 372, HB 429 and HB 570 of 2021,
+    # which were taken off the consent calendar and never voted on at all.
+    consent_off = any((e["_type"] == "consent_off" or REMOVED_FROM_CONSENT.match(e["_raw"]))
+                      and not e["cancelled"] for e in evs)
     # An amendment announced on one row and decided on another is told once,
     # by the row that decides it (amendment_outcome). "Not Voted On" decides
     # nothing when another row does: SB 535 of 2016's 2016-1160s is "Not
