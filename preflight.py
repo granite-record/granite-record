@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.298
+# GRANITE_VERSION: 2026-09-04.299
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16731,6 +16731,12 @@ def _calendar_documents():
         General Court's does, a year and a set refill what follows them, a
         year the set does not have falls back to its newest, nothing moves
         the page, and a list that will not load leaves the links and says so.
+      - ONE ROW THAT FITS. The three pickers and the button are one row, and
+        the row's minimums fit the schedule's column where it is narrowest:
+        at 1024px, beside the month, less a scrollbar. As first written they
+        needed 679px of a 652px row and the button stood 27px past its box,
+        which only a browser showed. At 700px and under they stack, 44px tall
+        with 16px text, so a phone does not zoom the page on focus.
     """
     import contextlib
     import datetime as _dt
@@ -16741,6 +16747,39 @@ def _calendar_documents():
     import shell as S
     if not Path("bills.html").exists():
         return "skip", "bills.html is not here"
+    # ---- the stylesheet: one row, and it fits ----
+    css = Path("app.css").read_text(encoding="utf-8")
+    at = css.find("/* THE GENERAL COURT'S OWN CALENDARS AND JOURNALS, AS PDFs")
+    assert at > css.find("/* THE CALENDAR, AS A CALENDAR") > 0, (
+        "app.css has no rules for the Calendars & Journals section in the calendar's region")
+    mine = css[at:css.index("/* HOW THE DAY BEGAN.", at)]
+    row = _braced(mine, ".cdpick{")
+    cols = re.search(r"grid-template-columns:minmax\(([\d.]+)rem,1fr\) ([\d.]+)rem "
+                     r"minmax\(([\d.]+)rem,2fr\) auto;", row)
+    assert cols and "gap:var(--sp-4) var(--sp-5)" in row and "padding:var(--sp-6)" in row, (
+        "the pickers are not one row of kind, year, document and the button, 12px apart "
+        "in a 16px box")
+    side = re.search(r"\.calapp\.on\{display:grid;grid-template-columns:clamp\((\d+)px", css)
+    assert side, "the month's column has no width to take from the schedule's"
+    # Open the PDF measured 131px in Chrome on 1 October 2026; 140 allows for
+    # another face. Three 12px gaps, the box's 16px sides and its 1px edges.
+    need = round(sum(float(x) for x in cols.groups()) * 16) + 140 + 3 * 12 + 2 * 16 + 2
+    have = 1024 - 2 * 24 - 15 - int(side.group(1)) - 32
+    assert need <= have, (
+        f"the pickers' row needs {need}px and the schedule's column has {have}px at 1024px, "
+        "beside the month: the button would stand past its box")
+    stacked = _braced(mine, "@media (max-width:700px){")
+    assert ".cdpick{grid-template-columns:minmax(0,1fr)" in stacked \
+        and ".cdf select{min-height:44px;font-size:var(--t-body)}" in stacked \
+        and ".cdopen{min-height:44px}" in stacked and ".cdnow{display:block}" in stacked, (
+        "at 700px and under the pickers do not stack 44px tall with 16px text, or the "
+        "document chosen is not said whole under them")
+    assert need <= 701 - 2 * 12 - 15, (
+        f"the row needs {need}px and a 701px screen, the narrowest it is one row on, has "
+        f"{701 - 2 * 12 - 15}px")
+    assert ".cdpick[hidden],.cdyears[hidden]{display:none}" in mine, (
+        "the pickers have a display of their own and no rule that keeps them hidden "
+        "without script")
     root = Path(tempfile.mkdtemp(prefix="gr-cdocs-"))
     try:
         H = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
