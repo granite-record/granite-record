@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.183 */
+/* GRANITE_VERSION: 2026-09-07.184 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3684,7 +3684,13 @@ font-weight:600;color:var(--pine);text-decoration:underline;text-underline-offse
 /* The heading takes focus when the link under the week's name is followed. */
 .cdocs h2:focus{outline:none}
 .cdocs h2:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
-.cdpick{display:grid;grid-template-columns:minmax(11rem,1fr) 7rem minmax(14rem,2fr) auto;
+/* ONE ROW WHEREVER ONE ROW FITS. The schedule's column is at its narrowest
+   not on a tablet but at 1024px, where the month comes up beside it and
+   leaves the row 652px; the first minimums written here (11rem, 7rem, 14rem)
+   needed 679px and put the button 27px past the box at that width, measured
+   in a browser on 1 October. These need 583px, which every width above
+   700px gives; at 700px and under the pickers stack. */
+.cdpick{display:grid;grid-template-columns:minmax(9.5rem,1fr) 5.5rem minmax(11rem,2fr) auto;
 gap:var(--sp-4) var(--sp-5);align-items:end;margin:0;padding:var(--sp-6);
 background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
 .cdpick[hidden],.cdyears[hidden]{display:none}
@@ -3717,7 +3723,10 @@ font-size:var(--t-ui);line-height:1.4}
 .cdlatest li{padding:var(--sp-2) 0;min-width:0;overflow-wrap:anywhere}
 .cdset{color:var(--ink-2)}
 .cdlatest .cdset::after{content:":"}
-.cdlatest a{display:inline-block;padding:var(--sp-1) 0;font-weight:600}
+/* Inline, so a name too long for its column runs on from the kind before it
+   and breaks where the words do; as a block it dropped whole to the next
+   line in one column and not in the other. */
+.cdlatest a{padding:var(--sp-1) 0;font-weight:600}
 .cdsets{font-size:var(--t-ui);line-height:1.4}
 .cdsets > li{margin:0 0 var(--sp-4)}
 .cdsets > li > .cdset{display:block;margin:0 0 var(--sp-1)}
@@ -3732,13 +3741,7 @@ font-size:var(--t-ui);line-height:1.4}
 /* Down to the section from the week's name: a busy week is a long scroll. */
 .cdjump{margin:var(--sp-3) 0 0;font-size:var(--t-ui);font-weight:600}
 .cdjump a{display:inline-block;padding:var(--sp-1) 0}
-@media (max-width:860px){
-  /* The kind and the year share a row and the document takes its own, so its
-     name has the width; the button under them, as wide as they are. */
-  .cdpick{grid-template-columns:minmax(0,1fr) 7rem}
-  .cdpick > .cdf:nth-child(3),.cdopen{grid-column:1 / -1}
-}
-@media (max-width:640px){
+@media (max-width:700px){
   /* Stacked, each as wide as the column and 44px tall, with the select's
      text at 16px so a phone does not zoom the page on focus. */
   .cdpick{grid-template-columns:minmax(0,1fr);padding:var(--sp-5)}
