@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.305
+# GRANITE_VERSION: 2026-09-04.306
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -37582,14 +37582,37 @@ def _one_head():
     substitutes it into bills.html -- which left the template's own <title>
     in place, so every generated page carried two. Browsers show the first;
     a crawler may take either.
+
+    THE HEAD, AND NOT THE PAGE (2 October 2026). This read every page whole,
+    1.4 GB, to look at its first 6,000 characters -- and 700 of the 38,028
+    pages have a head longer than that: 7,655 characters on CACR 23 of 2000,
+    whose title and description are long. A second canonical link past
+    character 6,000 of those was never seen, and nothing said so. Now the
+    first HEAD_BYTES of a page are read, the tags are counted in its first
+    6,000 characters as before AND on to the end of its head, and a page
+    whose head does not end in what was read fails by name.
     """
+    HEAD_BYTES = 16384              # the longest head was 7,665 bytes on 2 October 2026
     site = Path("site")
     if not site.exists():
         return "skip", "site is not built"
     bad, n = [], 0
     for p in sorted(site.rglob("*.html")):
-        h = p.read_text(encoding="utf-8", errors="replace")[:6000]
+        with open(p, "rb") as fh:
+            raw = fh.read(HEAD_BYTES)
+        h = raw.decode("utf-8", errors="replace")
+        end = h.find("</head>")
+        if len(raw) == HEAD_BYTES and len(h) < 6000:
+            # Three bytes to a character and more: read it as it always was.
+            h = p.read_text(encoding="utf-8", errors="replace")
+            end = h.find("</head>")
         n += 1
+        if end < 0 and len(raw) == HEAD_BYTES:
+            bad.append(f"{p.relative_to(site)}'s head does not end in its first "
+                       f"{HEAD_BYTES:,} bytes, so its tags were not all read (raise "
+                       "HEAD_BYTES in this check if a head has really grown that long)")
+            continue
+        h = h[:max(6000, end + len("</head>"))]
         for what, pat in (("title", r"<title>"),
                           ("description", r'<meta name="description"'),
                           ("canonical", r'<link rel="canonical"')):
@@ -37600,9 +37623,9 @@ def _one_head():
                 bad.append(f"{p.relative_to(site)} has no title")
         if len(bad) > 12:
             break
-    assert not bad, (f"{len(bad)} page(s) name themselves more than once: "
-                     + "; ".join(bad[:4]))
-    return "ok", f"{n:,} pages, one head each"
+    assert not bad, (f"{len(bad)} page(s) name themselves more than once, or have "
+                     "a head that was not read to its end: " + "; ".join(bad[:4]))
+    return "ok", f"{n:,} pages, one head each, each read to its end"
 
 
 @check("data", "nobody is named surname-first on a page")
