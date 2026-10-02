@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.2
+# GRANITE_VERSION: 2026-09-11.4
 """
 The 1989-1998 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -102,6 +102,10 @@ FLOOR_ACTION = (
     r"|PASSED(?:/ADOPTED)?(?:\s+(?:WITH|W/)\s*AMS?(?:END(?:ED|MENTS?)?)?)?"
     r"|(?<!,\s)(?<!,)(?:INTRODUCED\s+AND\s+)?ADOPTED(?:\s+(?:WITH|W/)\s*AMS?(?:END(?:ED|MENTS?)?)?)?"
     r"|(?:RE-?)?REFERRED\s+(?:TO\s+" + CMTE + r"\s+)?(?:FOR|TO)\s+(?:INT(?:ERIM)?\.?\s+)?STUDY"
+    # and the committee named in brackets, or after FOR: "REFERRED TO (JOINT
+    # COMMS) INTERIM STUDY VV" (HB 442 of 1993), "REFERRED FOR MUN & CNTY GOVT
+    # FOR INTERIM STUDY" (SB 27 of 1993)
+    r"|REFERRED\s+(?:TO|FOR)\s+\(?" + CMTE + r"\)?\s+(?:FOR\s+)?INT(?:ERIM)?\.?\s+STUDY"
     r"|(?:INT(?:ERIM)?|REF(?:ER)?\s+FOR)\s+STUDY\s+(?:REPORT|REPT)\s+ADOPTED"
     r"|INDEF(?:INITELY)?\.?\s+POST(?:PONED|PONE)?\.?"
     r"|LAID\s+ON\s+(?:THE\s+)?TABLE"
@@ -471,6 +475,18 @@ STANDALONE = re.compile(
 # A row that opens on a connector word finishes the phrase before it:
 # "REFERRED TO SCI,TECH&EN" + "  FOR INTERIM STUDY VV; HJ54,P1454".
 CONNECT = re.compile(r"^(?:FOR|TO|WITH|AND|OF|BY|IN|ON|AT)\s+(?!SEAT\b)", re.I)
+# A REFERRAL TO INTERIM STUDY CUT AFTER "FOR": "REP MURPHY SUBST OTP/AM, ML VV;
+# REFERRED TO JUDICIARY FOR" and then "INTERIM STUDY VV; HJ27,P816-817" (HB
+# 1138 of 1994). The second row opens the way a notice of the study's own
+# meetings does ("INT STUDY SUBCOM WORK SESS APR21"), which STANDALONE keeps
+# apart, so the two were never joined: the first was told as a re-referral to
+# Judiciary and the second as nothing. What follows the words here is a vote,
+# a citation or the end of the row -- never a meeting or a report. Only where
+# the row before it has not already said the study carried: "REP HOLDEN MOVED
+# REF FOR STUDY, MA VV; REFERRED TO CON & STAT FOR" (CACR 25 of 1992) is told
+# from its own motion, with its mover, and stays as it is.
+STUDY_TAIL = re.compile(r"^INT(?:ERIM)?\.?\s+STUDY\s*(?:[;,]|$|(?:VV|RC|DIV|DV|MA|ML)\b)", re.I)
+ENDS_FOR = re.compile(r"\b(?:FOR|TO)\s*$", re.I)
 MOTION_NO_OUTCOME = re.compile(r"\b(?:SUSP\w*|MOVED?|MOTION|SUBST?|SUB)\b", re.I)
 OUTCOME = re.compile(r"\b(?:MA|ML|MF|AA|AL|AF|ADOPTED|FAILED|LOST|PASSED)\b", re.I)
 
@@ -495,6 +511,9 @@ def _why(prev, row):
         return None
     if FRAG.match(d):
         return "fragment"
+    if (STUDY_TAIL.match(d) and ENDS_FOR.search(pd)
+            and not re.search(r"\bSTUDY\b", pd, re.I)):
+        return "open end"
     if STANDALONE.match(d):
         return None
     if OPEN_END.search(pd):
@@ -504,6 +523,50 @@ def _why(prev, row):
     if (MOTION_NO_OUTCOME.search(pd) and not OUTCOME.search(pd)
             and OUTCOME.search(d[:45])):
         return "outcome"
+    return None
+
+
+# THE QUESTION ON ONE ROW AND ITS ANSWER ON THE NEXT: "REF FOR STUDY, ML
+# RC(121-142); REP KURK MOVED ITL, ITL REPORT" and then "ADOPTED RC(158-105);
+# HJ78,P2527-2530" (HB 1674 of 1998) is the House refusing a study and then
+# killing the bill, 158-105. The outcome rule above does not join them,
+# because the first row already holds an outcome -- the ML of the motion
+# before -- and the second, read alone, is a measure adopted: 23 histories of
+# 1991-1998 said a chamber "voted to adopt" a bill it had killed, and HB 1674
+# read "Committee report filed". Cut the other way round, "...; REP HOLDEN
+# MOVED ITL, ITL" and "REPORT ADOPTED VV" (CACR 21 of 1996), the second row
+# was read by nothing and the history stopped before the kill, on five more.
+#
+# NOT JOINED, because a line is told by its last deciding clause and the first
+# row has one of its own to tell: the study the House refused 121-142, the
+# roll call that carried a substitute motion (HB 1246 of 1994, 186-146). The
+# second row is READ with the question in front of it and shown as the clerk
+# typed it.
+#
+# THE ROW BEFORE MUST END ON THE QUESTION, after another clause of the same
+# row. "COMM AM, AA VV; REP DANIELS SUBST ITL, ML DIV(140-192);" and then
+# "ADOPTED WITH AM VV" (HCR 7 of 1991) is the kill refused and the resolution
+# adopted; "MIN REPORT ITL" and, days later, "ADOPTED AND REF TO FINANCE
+# DIV(181-163)" (HJR 6 of 1997) is a committee's report and a real adoption;
+# "...; CONF COMM" and "REPORT ADOPTED VV" (HB 1295 of 1992) is a conference
+# report. None of those ends on it.
+ITL_REPORT_OPEN = re.compile(r"[;,]\s*ITL\s+(?:REPORT|REPT)\s*$", re.I)
+ITL_OPEN = re.compile(r"[;,]\s*ITL\s*$", re.I)
+ADOPTED_FIRST = re.compile(r"^ADOPTED\b(?!\s+(?:WITH|W/|AND)\b)", re.I)
+REPORT_ADOPTED_FIRST = re.compile(r"^(?:REPORT|REPT)\s+ADOPTED\b", re.I)
+
+
+def answered(prev, row):
+    """The words to READ `row` by where it answers the question the row
+    before it ends on -- same bill, chamber and day -- or None. Both are
+    (created, bill, body, desc)."""
+    if not _same_action(prev, row):
+        return None
+    pd, d = prev[3].rstrip(), row[3].lstrip()
+    if ADOPTED_FIRST.match(d) and ITL_REPORT_OPEN.search(pd):
+        return "ITL REPORT " + d
+    if REPORT_ADOPTED_FIRST.match(d) and ITL_OPEN.search(pd):
+        return "ITL " + d
     return None
 
 

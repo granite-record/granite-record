@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.38
+# GRANITE_VERSION: 2026-09-07.39
 """
 A page's worth of data for every committee.
 
@@ -1171,7 +1171,8 @@ def main():
     if notices:
         print(f"  {len(notices)} docket notice(s) left off the committees' days, each "
               "for a bill its history tells as withdrawn before the day or never "
-              "introduced: " + ", ".join(notices[:8])
+              "introduced, or for a day its history puts no sitting on: "
+              + ", ".join(notices[:8])
               + (", ..." if len(notices) > 8 else ""))
     # SILENCE IS NOT SUCCESS: the pages are written, and the build stops here
     # if the names that reach none of them have grown past the ceiling.

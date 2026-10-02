@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -233,9 +233,18 @@ def notice_only(row, narr):
     in it, because it holds what the docket scheduled, and the recordings are
     matched against that.
 
+    AND A DAY THE BILL'S HISTORY DOES NOT PUT A SITTING ON ("no_sitting"). Two
+    more rows: SB 106 of 2009's Senate hearing at 10 January 2009, the day its
+    notice states -- 25 days before the bill was introduced, the clerk's slip
+    for the 10 February that Senate Calendar 10 prints, which no rule here can
+    prove and so no page states -- and HA 1 of 2008's hearing set for 25 April
+    2008, two days after the House took the address from its joint committee
+    and laid it on the table.
+
     `narr` is the bill's history as narrative.build tells it, which dates a
-    withdrawal ("withdrawn") and says where a bill was never introduced
-    ("not_introduced"); None, for a bill with no history, is no notice.
+    withdrawal ("withdrawn"), says where a bill was never introduced
+    ("not_introduced") and lists those days ("no_sitting"); None, for a bill
+    with no history, is no notice.
 
     ONE RULE FOR EVERYTHING THAT SAYS A COMMITTEE SAT ON A BILL: the bill's
     own stations (build_site_v2), its committee's days (build_committees),
@@ -252,7 +261,8 @@ def notice_only(row, narr):
     if narr.get("not_introduced"):
         return True
     gone = narr.get("withdrawn") or ""
-    return bool(gone) and (row.get("date") or "") > gone
+    return ((bool(gone) and (row.get("date") or "") > gone)
+            or (row.get("date") or "-") in (narr.get("no_sitting") or ()))
 
 
 def sittings(rows, histories):
