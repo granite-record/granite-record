@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.26
+# GRANITE_VERSION: 2026-09-08.27
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -366,7 +366,10 @@ def record_figures(site, root=Path(".")):
     # each page asserts -- and from the docket's own floor lines for the votes.
     cacrs = [r for r in cur if (r.get("id") or "").startswith("CACR")]
     # A hearing of a bill, once however many recordings it was matched against.
-    procs = P.load()
+    # Not the docket's notice of one for a bill withdrawn before the day or
+    # never introduced, which no page of the site calls a hearing
+    # (proceedings.notice_only): three of the rows this counted.
+    procs, _notices = P.sittings(P.load(), every_narr)
     hearings = len({(r.get("term"), r.get("bill"), r.get("body"), r.get("date")) for r in procs
                     if r.get("kind") in ("public hearing", "hearing")})
     # WHICH BILLS HAVE A HEARING ON VIDEO, and the term from which nearly all

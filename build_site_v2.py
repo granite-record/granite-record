@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.127
+# GRANITE_VERSION: 2026-09-05.129
 """
 Generate the faceted site from real General Court data.
 
@@ -698,9 +698,20 @@ PROPOSED_ONLY = "Proposed for the special session"
 # introduction steps over each number (build_data.INTRODUCTION_FROM_JOURNAL;
 # narrative.build types the row entered_introduced). Nothing on disk says
 # what became of them -- withdrawn, most likely, and no row says so -- so the
-# status says the one thing the record bears out.
+# status says the one thing the record bears out. HB 177, HB 273, HB 274 and
+# HB 277 of 2017 are the same, on records the bill search's own list carries.
 NOT_INTRODUCED = "Not introduced"
 NEVER_INTRODUCED = {"Refused introduction", WITHDRAWN_PRIOR, PROPOSED_ONLY, NOT_INTRODUCED}
+
+
+def journal_not_introduced(narr):
+    """Whether the bill's history is one the House Journal's resolution of
+    introduction decided against its docket: narrative.build found the
+    record's reading, typed the docket's introduction row entered_introduced
+    and marked the bill not_introduced. The one question classify() and
+    bill_disposition() both ask."""
+    return bool((narr or {}).get("not_introduced")) and any(
+        e.get("type") == "entered_introduced" for e in (narr or {}).get("events", []))
 
 
 # Docket lines that are procedural bookkeeping rather than steps in a bill's
@@ -1490,8 +1501,7 @@ def classify(narr, rcs, prefix=""):
     # AN INTRODUCTION THE DOCKET ENTERS AND THE HOUSE JOURNAL DOES NOT HAVE
     # (NOT_INTRODUCED). Read "In committee", of a committee nothing was
     # referred to.
-    if (narr or {}).get("not_introduced") and any(
-            e.get("type") == "entered_introduced" for e in evs):
+    if journal_not_introduced(narr):
         return "done", NOT_INTRODUCED
     # A DISPOSAL THE CHAMBER RECONSIDERED IS NOT ONE. HB 323 of 2005 read
     # "Killed": the House adopted Inexpedient to Legislate on 23 March, 164-153,
@@ -6352,6 +6362,17 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     between = None
     prefix = bill_prefix(bid)
     told = classify_stated(st, prefix, origin_of(bid, narr, st))
+    # A STATUS FIELD DOES NOT INTRODUCE A BILL THE HOUSE JOURNAL LEAVES OUT.
+    # HB 177, HB 273, HB 274 and HB 277 of 2017 are records of the bill
+    # search's own list, and its House status for each is IN COMMITTEE: the
+    # field that goes with the row typed ahead of 4 January 2017, on bills the
+    # House's resolution of that day steps over and no committee was sent
+    # (build_data.INTRODUCTION_FROM_JOURNAL). The three of 2007 and 2009 carry
+    # no such field, so classify() answered for them; these four read "In
+    # committee", from the field. Where the history says the journal decided,
+    # the field is not asked, here or for the status box (bill_next_step).
+    if told and journal_not_introduced(narr):
+        told = None
     settled = docket_outcome(narr)
     # THE DOCKET LINE THAT NUMBERED THE CHAPTER, OR RECORDED A FAILED
     # OVERRIDE, COUNTS WHENEVER THE HISTORY ITSELF SAYS NOTHING -- not only
@@ -6770,7 +6791,44 @@ ROW_NAMES_ANOTHER = {
 }
 
 
-def record_notes(b, narr, status_source="", sponsors=(), term="", bid=""):
+def _docket_as_entered(b, narr):
+    """The close of the note on a bill told as not introduced: what its docket
+    holds, in the docket's own tense, and what this site does with it.
+
+    HB 87 of 2009 has one row, which enters it as introduced. HB 177 and
+    HB 277 of 2017 have one that still reads "To Be Introduced 01/04/2017 and
+    referred to ...". HB 273 of 2017 has a second, "Public Hearing: 01/10/2017
+    01:30 PM LOB 306", which narrative.build tells as the docket's notice: it
+    is quoted here, beside the row that enters the bill, and the page's list
+    of docket lines shows both (docket_lines). And
+    on a record of the bill search's own list, the House status that list
+    gives -- IN COMMITTEE on all four of 2017 -- is said, because it is what
+    the General Court's own page shows and this page does not repeat."""
+    evs = [e for e in (narr or {}).get("events", []) if not e.get("in_line")]
+    entered = [e for e in evs if e.get("type") == "entered_introduced"]
+    notices = [e for e in evs if e.get("cancelled")
+               and e.get("type") in ("hearing", "exec", "worksession")]
+    as_ = ("to be introduced" if entered and N.TO_BE_INTRODUCED.match(
+        entered[0].get("raw") or "") else "introduced")
+    field = ((b or {}).get("house_status") or "").strip() \
+        if (b or {}).get("source") != PAST_SOURCE else ""
+    field = (f"the General Court's bill search gives its House status as "
+             f"\u201c{field}\u201d") if field else ""
+    told = "told here as not introduced, and no record on this site says what became of it."
+    if len(entered) == 1 and len(evs) == 1:
+        return (f"Its docket has one row, which enters it as {as_}"
+                + (f", and {field}" if field else "") + f"; it is {told}")
+    if len(entered) == 1 and notices and len(evs) == 1 + len(notices):
+        count = {2: "two", 3: "three", 4: "four"}.get(len(evs), str(len(evs)))
+        rows = ", and ".join(f"one reads \u201c{e.get('raw')}\u201d" for e in notices)
+        return (f"Its docket has {count} rows: one enters it as {as_}, and {rows}. "
+                + (f"{field[0].upper()}{field[1:]}. " if field else "") + f"It is {told}")
+    return (f"Its docket enters it as {as_}" + (f", and {field}" if field else "")
+            + f"; it is {told}")
+
+
+def record_notes(b, narr, status_source="", sponsors=(), term="", bid="",
+                 text_version=""):
     """The notes a page carries about where its record comes from, as a list
     (empty for a record of the bill search's own list, which is nearly every
     one). One plain sentence or two each, in this site's words: a reader shown
@@ -6789,8 +6847,8 @@ def record_notes(b, narr, status_source="", sponsors=(), term="", bid=""):
     """
     b = b or {}
     out = []
+    said = b.get("introduction") or {}
     if b.get("source") == PAST_SOURCE:
-        said = b.get("introduction") or {}
         from_db = status_source == PAST_SOURCE
         from_journal = status_source == JOURNAL_SOURCE
         note = ("This bill is not in the list the General Court's bill search gave "
@@ -6804,30 +6862,40 @@ def record_notes(b, narr, status_source="", sponsors=(), term="", bid=""):
             note += (" The database's row for it carries no bill number; the number "
                      "is the one its docket files it under.")
         out.append(note)
-        if said:
-            # What the House Journal's resolution of introduction says of it
-            # (build_data.INTRODUCTION_FROM_JOURNAL), where that decided how
-            # the docket is told.
-            where = (f"The House introduces its bills by a resolution that names them "
-                     f"by number. The resolution of {_long_day(said.get('date'))} "
-                     f"({said.get('journal')}) names House Bills "
-                     f"{said.get('numbered')}")
-            if said.get("introduced"):
-                out.append(where + ", which takes in this one, and the journal's list "
-                           "prints its entry with its committee. Its docket enters its "
-                           "withdrawal on the morning of the same day, so it is told "
-                           "here as introduced and then withdrawn.")
-            elif (narr or {}).get("withdrawn"):
-                out.append(where + ", which leaves this number out, so it is told here "
-                           "as withdrawn without having been introduced.")
-            else:
-                out.append(where + ", which leaves this number out, and no later "
-                           "resolution of the term names it. Its docket has one row, "
-                           "which enters it as introduced; it is told here as not "
-                           "introduced, and no record on this site says what became "
-                           "of it.")
-        if (term, bid) in ROW_NAMES_ANOTHER and narr:
-            out.append(ROW_NAMES_ANOTHER[(term, bid)])
+    if said:
+        # What the House Journal's resolution of introduction says of it
+        # (build_data.INTRODUCTION_FROM_JOURNAL), where that decided how
+        # the docket is told: on a record made from the database, and on the
+        # four of 2017 that are the bill search's own, which carry this note
+        # and not the one above.
+        where = (f"The House introduces its bills by a resolution that names them "
+                 f"by number. The resolution of {_long_day(said.get('date'))} "
+                 f"({said.get('journal')}) names House Bills "
+                 f"{said.get('numbered')}")
+        if said.get("introduced"):
+            out.append(where + ", which takes in this one, and the journal's list "
+                       "prints its entry with its committee. Its docket enters its "
+                       "withdrawal on the morning of the same day, so it is told "
+                       "here as introduced and then withdrawn.")
+        elif (narr or {}).get("withdrawn"):
+            out.append(where + ", which leaves this number out, so it is told here "
+                       "as withdrawn without having been introduced.")
+        else:
+            note = (where + ", which leaves this number out, and no later "
+                    "resolution of the term names it. "
+                    + _docket_as_entered(b, narr))
+            # AND THE HEADING ON ITS TEXT IS NOT AN INTRODUCTION. The four of
+            # 2017 have a text on the General Court's site, each headed "HB
+            # 273 - AS INTRODUCED" (legislation/2017/HB0273.html), and the Bill
+            # Text tab shows that heading under a status of Not introduced.
+            # `text_version` is the heading as the tab prints it.
+            if (text_version or "").strip().lower() == "as introduced":
+                note += (" The General Court's text of it is headed \u201cAs "
+                         "introduced\u201d, the heading it gives a bill's first "
+                         "printing, and the Bill Text tab shows it under that heading.")
+            out.append(note)
+    if b.get("source") == PAST_SOURCE and (term, bid) in ROW_NAMES_ANOTHER and narr:
+        out.append(ROW_NAMES_ANOTHER[(term, bid)])
     # A SPONSOR LIST THAT MAY BE SHORT. In 1999-2000 the General Court's
     # sponsor record lists fewer sponsors than the bills print
     # (past_sponsors.SHORT_TERMS says what was measured), and a bill filled
@@ -7168,9 +7236,18 @@ def docket_lines(narr):
 
     A line told question by question (docket_vocab.questions) is listed
     once, whole, by the event that carries it: the page shows the clerk's
-    lines, and a clause of one is not a line."""
+    lines, and a clause of one is not a line.
+
+    A row the docket cancelled is not listed. A MEETING ROW TOLD AS A NOTICE
+    IS: narrative.build carries it as cancelled, so that nothing reads it as
+    a sitting, and the docket did not cancel it -- "Public Hearing: 01/10/2017
+    01:30 PM LOB 306" on HB 273 of 2017, a bill the House did not introduce,
+    and the notices HB 1284 and HB 1512 of 2012 were withdrawn ahead of. The
+    list is every action the General Court recorded, and HB 273's note said
+    "Its docket has two rows" above a list of one. The row comes with the
+    note narrative.notice_note gives it."""
     evs = [e for e in (narr or {}).get("events", [])
-           if not e.get("cancelled") and not e.get("in_line")]
+           if (not e.get("cancelled") or e.get("notice")) and not e.get("in_line")]
     away = [e for e in (narr or {}).get("misfiled", []) if not e.get("cancelled")]
     if not away:
         return evs
@@ -7538,9 +7615,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # HB 1284 of 2012 was withdrawn on 4 January. narrative.build dates
         # the withdrawal and tells such a notice as one; here the notice is
         # not drawn as a hearing the committee held.
-        _gone = (narr or {}).get("withdrawn")
-        if _gone:
-            stations = [x for x in stations if (x.get("when") or "") <= _gone]
+        # NOR DID ONE SET FOR A BILL THAT WAS NEVER INTRODUCED, withdrawal or
+        # none: no committee was sent it. HB 273 of 2017 has no withdrawal on
+        # its docket and one notice, "Public Hearing: 01/10/2017 01:30 PM LOB
+        # 306", and was drawn a station for a hearing nothing on disk says
+        # was held. Its history tells the notice as the docket's.
+        # The rule is proceedings.notice_only, and the committee's page, the
+        # download and the Learn pages' count ask it of the same rows, so none
+        # of them says a committee sat where this page draws nothing.
+        stations = [x for x in stations
+                    if not P.notice_only({"date": x.get("when")}, narr)]
         # The sign-in counts, on the hearing itself. They already reach the
         # docket line that records the hearing -- 2,115 of them across 2,018
         # bills -- but that line sits inside a collapsed disclosure on another
@@ -7641,7 +7725,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # of the bill search's own list (record_notes).
             "notes": (story["notes"] if story else
                       (narr or {}).get("notes", [])
-                      + record_notes(b, narr, status_source, sp_list, term, bid)),
+                      + record_notes(b, narr, status_source, sp_list, term, bid,
+                                     (btext or {}).get("version", ""))),
             # Belongs on the Votes tab, not above the history.
             # NOT OVER THE TOP OF THE ROLL CALLS. narrative counts the
             # floor votes the DOCKET records as voice or division votes; the
@@ -7673,6 +7758,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                         # nowhere else on the page; the bill it belongs to
                         # carries a note on its own row of the same vote.
                         **({"row_note": e["row_note"]} if e.get("row_note") else {}),
+                        # A meeting row told as a notice (docket_lines): the
+                        # Hearings tab says the docket noticed one where it
+                        # draws none.
+                        **({"notice": True} if e.get("notice") else {}),
                         **hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None),
                         **_cite(e, sources, (e.get("date") or "")[:4])}

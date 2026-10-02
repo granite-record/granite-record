@@ -107,6 +107,18 @@ hearings across the whole term, with video on its rows from the 14th of May
 2020 onwards.
 Run `python3 handoff.py` for the row and recording counts.
 
+**A row is what the docket scheduled, which is not always a sitting.** The
+docket enters a meeting's notice ahead of the day, and a few bills never
+reached theirs: withdrawn first, or never introduced by the House at all.
+`proceedings.notice_only` says which rows those are, from the bill's own
+history in `narratives.json`, and `proceedings.sittings` parts the table by
+it. Everything that says a committee sat reads through that one rule -- a
+bill's stations, its committee's days, the download `data/proceedings.csv`
+and the Learn pages' count of hearings -- and the table itself keeps the row,
+because the notice is on the docket. `build_committees.py` prints the rows it
+leaves off, and stops if a row is filed for a bill the index says was never
+introduced.
+
 ### Where the proceedings come from
 
 `docket_parser.parse_proceedings` takes a docket and returns structured
