@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.2
+# GRANITE_VERSION: 2026-09-11.3
 """
 The 2007-2016 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -202,6 +202,10 @@ AFTER = [(f"2007:{t}", t, p, {}) for t, p in ERA]
 ROUTINE = []
 
 
+MONTHS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+MONTH_DATE = re.compile(rf"({MON})\s+(\d{{1,2}})\s*,?\s*(\d{{4}})", re.I)
+
+
 def normalise(ev, created):
     """The date these lines leave out is the row's own timestamp.
 
@@ -212,6 +216,19 @@ def normalise(ev, created):
     for gets one."""
     t = ev.get("_type")
     d = ev.get("date")
+    # "February 13, 2007". The Senate's clerk wrote the month out on every
+    # hearing and conference notice of 2007 to 2010 -- "Hearing; February 13,
+    # 2007, Room 102, LOB, 10:15 a.m." -- and the patterns above have always
+    # matched it (D_ANY). Nothing turned it into the 2/13/2007 the rest of
+    # the glue requires, so docket_vocab._ensure_date took it for a mistyped
+    # date and dated the meeting by the moment its notice was entered: 2,555
+    # hearings and 68 conference meetings were told on the day of their
+    # notice, days or weeks before they were held. The 1999-2006 reader has
+    # always read the same words (docket_era_1999.full_date).
+    m = MONTH_DATE.fullmatch((d or "").strip())
+    if m:
+        d = ev["date"] = (f"{MONTHS.index(m.group(1)[:3].lower()) + 1:02d}/"
+                          f"{int(m.group(2)):02d}/{m.group(3)}")
     if d and re.fullmatch(r"\d{1,2}/\d{1,2}/\d{2}", d):      # 3/12/08
         mo, dy, yr = d.split("/")
         ev["date"] = f"{int(mo):02d}/{int(dy):02d}/{2000 + int(yr) if int(yr) < 50 else 1900 + int(yr)}"

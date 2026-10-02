@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.318
+# GRANITE_VERSION: 2026-09-04.319
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2912,6 +2912,82 @@ def _introductions_read_from_the_journal(N, B):
                   "day; HR 1 of 2007 and HB 2 of 2015 keep theirs. "
                   + ("Read again: " + ", ".join(read) + "." if read else
                      "No journal or docket of these is on this machine to read again."))
+
+
+# Real rows: Docket_db_2007-2008.txt lines 1-3 (SB 42), 16332-16335 (HB 1405)
+# and 1120 and 1149 (SB 233); Docket_db_2009-2010.txt 22607-22609 (SB 329) and
+# 8216-8218 (SB 106); Docket_db_2011-2012.txt 8130-8131 (HB 1).
+_DOCKET_MONTH_WRITTEN_OUT = {
+    ("2007-2008", "SB42"): [
+        "2007|0003|01/04/2007 03:39:03 PM|SB42|S|Introduced and Referred to Commerce, Labor and Consumer Protection; SJ 2, Pg.24|01/04/2007 03:39:03 PM",
+        "2007|0003|02/08/2007 01:14:10 PM|SB42|S|Hearing; February 13, 2007, Room 102, LOB, 10:15 a.m.|02/08/2007 01:14:10 PM"],
+    ("2007-2008", "HB1405"): [
+        "2008|2008|03/13/2008 07:58:04 PM|HB1405|S|Introduced and Referred to Energy, Environment and Economic Development; SJ 9, Pg.241|03/13/2008 07:58:04 PM",
+        "2008|2008|04/04/2008 09:09:27 AM|HB1405|S|Hearing; === RECESSED === April 3, 2007, Room 101, LOB, 2:30 p.m.; SC13|04/04/2008 09:09:27 AM",
+        "2008|2008|04/09/2008 03:20:13 PM|HB1405|S|Hearing; === RECONVENE === April 21, 2008, Room 100, State House, 9:30 a.m.; SC15|04/09/2008 03:20:13 PM",
+        "2008|2008|04/30/2008 04:26:04 PM|HB1405|S|Committee Report; Ought to Pass with Amendment{1567} [05/08/08]; SC18, Pg.16-18|04/30/2008 04:26:04 PM"],
+    ("2007-2008", "SB233"): [
+        "2007|0150|02/08/2007 08:30:40 AM|SB233|S|Introduced and Referred to Executive Departments and Administration; SJ 3, Pg.51|02/08/2007 08:30:40 AM",
+        "2007|0150|06/14/2007 05:03:51 PM|SB233|S|Conference Committee Meeting; June 19, 2007, Room 103, State House, 12:00 p.m.|06/14/2007 05:03:51 PM"],
+    ("2009-2010", "SB329"): [
+        "2010|2855|01/06/2010 02:06:43 PM|SB329|S|Introduced 1/6/2010 and Referred to Judiciary Committee; SJ 1, Pg.5|01/06/2010 02:06:43 PM",
+        "2010|2855|01/07/2010 10:41:25 AM|SB329|S|Hearing: January 12, 2009, Room 103, State House, 2:15 p.m.; SC2|01/07/2010 10:41:25 AM",
+        "2010|2855|03/17/2010 08:44:09 AM|SB329|S|Committee Report: Ought to Pass with Amendment 1050s, NT, 3/24/10; SC12|03/17/2010 08:44:09 AM"],
+    ("2009-2010", "SB106"): [
+        "2009|0936|02/04/2009 09:03:49 AM|SB106|S|Introduced and Referred to Judiciary|02/04/2009 09:03:49 AM",
+        "2009|0936|02/05/2009 01:53:50 PM|SB106|S|Hearing; January 10, 2009, Room 103, State House, 2:45 p.m.; SC10|02/05/2009 01:53:50 PM",
+        "2009|0936|02/11/2009 10:24:10 AM|SB106|S|Committee Report; Ought to Pass [2/18/09]; SC11|02/11/2009 10:24:10 AM"],
+    ("2011-2012", "HB1"): [
+        "2011|1083|04/04/2011 12:00:27 PM|HB1|S|Introduced 3/30/2011 and Referred to Finance; SJ 12, Pg.243|04/04/2011 12:00:27 PM",
+        "2011|1083|04/12/2011 02:01:34 PM|HB1|S|Hearing: April 21, 2011, Representatives Hall 2:00 p.m.-4:00 p.m.; and 6:00 p.m.-8:00 p.m. HB1 and HB2; SC20|04/12/2011 02:01:34 PM"],
+}
+
+
+@check("narrative", "a Senate hearing of 2007 to 2010 is told on the day its notice names, "
+                    "\"February 13, 2007\", not the day the notice was entered",
+       needs=("narrative",))
+def _month_written_out(N):
+    """The Senate's clerk wrote the month out on every hearing and conference
+    notice of 2007 to 2010: "Hearing; February 13, 2007, Room 102, LOB, 10:15
+    a.m.", entered on 8 February. The 2007-2016 reader's patterns matched the
+    words and nothing made a date of them, so the glue took the date for a
+    mistyped one and used the moment the row was entered: SB 42 of 2007 was
+    heard "on February 8, 2007", and 2,555 hearings and 68 conference
+    meetings were told on the day of their notice, up to two months before
+    they were held. The 1999-2006 reader has always read the same words.
+
+    With the day read, a year one off shows (narrative.year_slip): "Hearing;
+    === RECESSED === April 3, 2007" on HB 1405 of 2008, entered on 4 April
+    2008, and "Hearing: January 12, 2009" on SB 329 of 2010, entered on 7
+    January 2010.
+
+    AND THE DOCKET'S OWN SLIP IS TOLD AS THE DOCKET HAS IT. "Hearing; January
+    10, 2009" on SB 106 of 2009 was entered on 5 February, the day after the
+    bill was introduced, and cites Senate Calendar 10, whose hearings are of
+    10 and 11 February: a month slip nothing here corrects, which is for a
+    person and docket_corrections.json.
+    """
+    narr = {k: _narrated(N, k[0], k[1], rows) for k, rows in _DOCKET_MONTH_WRITTEN_OUT.items()}
+    bad = []
+    for key, words, kind, day, was in (
+            (("2007-2008", "SB42"), "February 13", "hearing", "2007-02-13", None),
+            (("2007-2008", "HB1405"), "April 21", "hearing", "2008-04-21", None),
+            (("2007-2008", "HB1405"), "April 3", "hearing", "2008-04-03", "2007-04-03"),
+            (("2007-2008", "SB233"), "June 19", "conference_meeting", "2007-06-19", None),
+            (("2009-2010", "SB329"), "January 12", "hearing", "2010-01-12", "2009-01-12"),
+            (("2009-2010", "SB106"), "January 10", "hearing", "2009-01-10", None),
+            (("2011-2012", "HB1"), "April 21", "hearing", "2011-04-21", None)):
+        e = _first(narr[key], words)
+        got = (e["type"], e["date"], e.get("date_as_recorded"))
+        if got != (kind, day, was):
+            bad.append(f"{key[1]} of {key[0]}, {words!r}: {got}")
+    said = narr[("2007-2008", "SB42")]["narrative"]
+    if "The committee held a public hearing on February 13, 2007." not in said:
+        bad.append("SB42 of 2007 is told: " + said)
+    assert not bad, "; ".join(bad)
+    return "ok", ("SB 42 of 2007 was heard on February 13, SB 233's conferees met on June 19 "
+                  "and HB 1 of 2011 was heard on April 21; two hearings typed with last "
+                  "year's year are of the year they were entered for")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
