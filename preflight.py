@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.310
+# GRANITE_VERSION: 2026-09-04.311
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -402,6 +402,35 @@ def _upcoming_shape():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _tracked():
+    """What git tracks, listed and read once a run for the two checks that
+    search every tracked file -- _one_address and _no_secrets, each of which
+    asked git for the list and read all of it. (names, {name: its text}): a
+    file over 4 MB, or not here, or that will not read, is among the names
+    and has no text, as neither check read one. (None, why) where git will
+    not say what it tracks."""
+    def make():
+        try:
+            out = _run(["git", "ls-files"], capture_output=True,
+                       text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError) as e:
+            return None, f"git would not list the tracked files ({e})"
+        if out.returncode != 0:
+            return None, "not a git repository"
+        names = [n for n in out.stdout.splitlines() if n.strip()]
+        text = {}
+        for n in names:
+            f = Path(n)
+            if not f.exists() or f.stat().st_size > 4_000_000:
+                continue
+            try:
+                text[n] = f.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+        return names, text
+    return _once_a_run("the tracked files", make)
+
+
 @check("files", "one contact address, and it is the working one")
 def _one_address():
     """Thirty occurrences across twenty-seven files, and they must agree.
@@ -419,25 +448,13 @@ def _one_address():
     graniterecord.org, everywhere, and it is the one that works.
     """
     import re
-    import subprocess
     CORRECT = "contact@graniterecord.org"
-    try:
-        out = _run(["git", "ls-files"], capture_output=True,
-                             text=True, timeout=60)
-    except (OSError, subprocess.SubprocessError) as e:
-        return "skip", f"git would not list the tracked files ({e})"
-    if out.returncode != 0:
-        return "skip", "not a git repository"
+    names, text = _tracked()
+    if names is None:
+        return "skip", text
     rx = re.compile(r"[A-Za-z0-9._%+-]+@graniterecord\.org")
     found, wrong = 0, {}
-    for n in out.stdout.splitlines():
-        f = Path(n)
-        if not n.strip() or not f.exists() or f.stat().st_size > 4_000_000:
-            continue
-        try:
-            body = f.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+    for n, body in text.items():
         for m in rx.finditer(body):
             found += 1
             if m.group(0) != CORRECT:
@@ -510,15 +527,9 @@ def _no_secrets():
     documented as such in probe_db.py, and hiding a published credential would
     protect nothing while stopping somebody reproducing this work.
     """
-    import subprocess
-    try:
-        out = _run(["git", "ls-files"], capture_output=True,
-                             text=True, timeout=60)
-    except (OSError, subprocess.SubprocessError) as e:
-        return "skip", f"git would not list the tracked files ({e})"
-    if out.returncode != 0:
-        return "skip", "not a git repository"
-    names = [n for n in out.stdout.splitlines() if n.strip()]
+    names, text = _tracked()
+    if names is None:
+        return "skip", text
     if not names:
         return "skip", "git tracks nothing here"
 
@@ -537,14 +548,7 @@ def _no_secrets():
                                           r"[\"\']?[A-Za-z0-9_\-]{20,}")),
     ]
     found = []
-    for n in names:
-        f = Path(n)
-        if not f.exists() or f.stat().st_size > 4_000_000:
-            continue
-        try:
-            body = f.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+    for n, body in text.items():
         for what, rx in SHAPES:
             m = rx.search(body)
             if m:
@@ -7512,39 +7516,6 @@ def _stamps():
     return "ok", f"{seen} files agree with the manifest, and no stamped file is left out of it"
 
 
-@check("files", "no generator writes the bench's record")
-def _bench_untouched():
-    """review/checked.jsonl is made by hand, and is protected the way
-    ground_truth.csv is.
-
-    The bench appends and never rewrites a line: a later look at the same item
-    is a second judgment rather than a correction of the first. A build_ or
-    fetch_ script that opens it for writing is the next loss waiting to
-    happen, and this project has lost hand-made measurements twice.
-
-    The bench also stays off the network. It shows unpublished judgments about
-    named people, and it binds the loopback address for that reason.
-    """
-    bad = [f.name for f in
-           sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py"))
-           if "checked.jsonl" in f.read_text(encoding="utf-8", errors="replace")]
-    assert not bad, ("these name the bench's record and must not: "
-                     + ", ".join(bad))
-
-    rv = Path("review.py")
-    if rv.exists():
-        src = rv.read_text(encoding="utf-8", errors="replace")
-        # The BIND, not the file: the first version of this check read the
-        # whole source and failed on the comment explaining why the bind is
-        # what it is.
-        binds = re.findall(r"HTTPServer\(\s*\(\s*[\"']([\d.]+)[\"']", src)
-        assert binds, "review.py no longer opens an HTTPServer"
-        assert all(b.startswith("127.") for b in binds), (
-            "review.py binds " + ", ".join(binds)
-            + "; it must stay on the loopback address")
-    return "ok", "only a person writes it, and it is not on the site"
-
-
 @check("files", "no generator writes a file a person made by hand")
 def _record_untouched():
     """The files nobody can regenerate, and nothing may overwrite.
@@ -7570,15 +7541,26 @@ def _record_untouched():
 
     Naming only the first one meant the check grew stale as quietly as the
     thing it guards against: most of these had no guard at all.
+
+    THE BENCH'S RECORD IS HELD TO MORE, in the same reading of the scripts
+    (2 October 2026; a check of its own until then, "no generator writes the
+    bench's record"). It appends and never rewrites a line: a later look at
+    the same item is a second judgment rather than a correction of the first.
+    So a build_ or fetch_ script may not so much as name checked.jsonl,
+    where the other files here may be read by one. And the bench stays off
+    the network: it shows unpublished judgments about named people, and it
+    binds the loopback address for that reason.
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
                 "officials.json", "member_corrections.json",
                 "place_corrections.json", "launch_register.json",
                 "docket_corrections.json"]
-    bad = []
+    bad, names = [], []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):
         src = f.read_text(encoding="utf-8", errors="replace")
+        if "checked.jsonl" in src:
+            names.append(f.name)
         for name in HANDMADE:
             stem = re.escape(name.split("/")[-1])
             if not re.search(stem, src):
@@ -7590,10 +7572,25 @@ def _record_untouched():
                re.search(r'(?:TRUTH|LEDGER|NOTES|OFFICIALS)\s*\.\s*'
                          r'open\s*\(\s*["\']w', src):
                 bad.append(f"{f.name} writes {name}")
+    assert not names, ("these name the bench's record and must not: "
+                       + ", ".join(names))
     assert not bad, "these write a hand-made file: " + "; ".join(bad)
+
+    rv = Path("review.py")
+    if rv.exists():
+        src = rv.read_text(encoding="utf-8", errors="replace")
+        # The BIND, not the file: the first version of this check read the
+        # whole source and failed on the comment explaining why the bind is
+        # what it is.
+        binds = re.findall(r"HTTPServer\(\s*\(\s*[\"']([\d.]+)[\"']", src)
+        assert binds, "review.py no longer opens an HTTPServer"
+        assert all(b.startswith("127.") for b in binds), (
+            "review.py binds " + ", ".join(binds)
+            + "; it must stay on the loopback address")
     present = [n for n in HANDMADE if Path(n).exists()]
     return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
-                  "writes them: " + ", ".join(present))
+                  "writes them: " + ", ".join(present) + "; no generator names "
+                  "the bench's record, and the bench is not on the network")
 
 
 @check("markers", "every phrasing read from a transcript still matches")
@@ -17880,6 +17877,63 @@ def _reports_old_shape():
     return "ok", "both reports files must name their term"
 
 
+def _fixture_site_terms(root):
+    """The fixture with HB1442 put into two earlier terms and build_site_v2.py
+    run over it, copied into `root` -- an empty folder the caller made and
+    deletes -- from the run's one build of it, for the two checks below that
+    ask which term a bill reads from. Returns that build's finished run. Each
+    built its own until 2 October 2026: the same fixture, the same bill, one
+    more term in the files.
+
+    2023-2024's HB1442 has a record of its own in bill_status.json and in
+    bill_text.json. 2021-2022's has one in neither, and sponsors.json is the
+    flat file the fixture carries: there is nothing in any file for it to
+    read, so whatever its page shows was borrowed.
+    """
+    def build():
+        here = Path(".").resolve()
+        shared = _shared_root("gr-fixture-terms-")
+        _site_fixture(shared)
+        bills = json.loads((shared / "data" / "bills.json").read_text(encoding="utf-8"))
+        # The same number in two earlier terms, which the flat files also carry.
+        for year, term in (("2024", "2023-2024"), ("2022", "2021-2022")):
+            old = dict(bills["2025-2026"]["HB1442"])
+            old.update({"lsr_year": year, "lsr": f"{year}-0503",
+                        "title": "an entirely different bill of the same number"})
+            # text_pdf off the bill record is the fallback for a term the status
+            # file does not hold. Clearing it is what makes the assertions
+            # about the FILE rather than about the fallback.
+            old.pop("text_pdf", None)
+            bills[term] = {"HB1442": old}
+        (shared / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+
+        st = json.loads((shared / "bill_status.json").read_text(encoding="utf-8"))
+        if not all(re.match(r"^\d{4}-\d{4}$", k) for k in st):
+            st = {"2025-2026": st}
+        st["2023-2024"] = {"HB1442": {
+            "gen_status": "SIGNED BY GOVERNOR", "house_status": "",
+            "senate_status": "", "text_pdf": "https://gc.nh.gov/archived.pdf",
+            "chapter": "", "lsr": "2024-0503", "body": "H"}}
+        (shared / "bill_status.json").write_text(json.dumps(st), encoding="utf-8")
+
+        (shared / "bill_text.json").write_text(json.dumps({
+            "2025-2026": {"HB1442": {
+                "version": "as introduced", "title": "the current bill",
+                "text": "ANALYSIS\nThe current term's analysis.\n"
+                        "Be it Enacted by the Senate and House"}},
+            "2023-2024": {"HB1442": {
+                "version": "as amended", "title": "the archived bill",
+                "text": "ANALYSIS\nThe archived term's analysis.\n"
+                        "Be it Enacted by the Senate and House"}},
+        }), encoding="utf-8")
+        return shared, _run([sys.executable, str(here / "build_site_v2.py"),
+                             "--data", "data", "--out", "site", "--segments", "work"],
+                            cwd=shared, capture_output=True, text=True, timeout=180)
+    shared, r = _once_a_run("build_site_v2.py over the fixture with two earlier terms", build)
+    shutil.copytree(shared, root, dirs_exist_ok=True)
+    return r
+
+
 @check("build", "an archived term's bill cannot borrow the current term's text")
 def _bills_by_term():
     """The last file the whole pipeline was driven from by bill number alone.
@@ -17893,36 +17947,30 @@ def _bills_by_term():
     archived bill the CURRENT bill's sponsors would be worse than showing it
     none. bill_status.json and bill_text.json are keyed on the term now; the
     check below this one covers what an archived bill reads OUT of them.
+
+    Read off 2021-2022's HB1442 in the build both checks take a copy of
+    (_fixture_site_terms): the term whose bill no file holds anything for.
     """
     here = Path(".").resolve()
     if not (here / "build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
-        # The same number in an earlier term, which the flat files also carry.
-        old = dict(bills["2025-2026"]["HB1442"])
-        old.update({"lsr_year": "2024", "lsr": "2024-0503",
-                    "title": "an entirely different bill of the same number"})
-        bills["2023-2024"] = {"HB1442": old}
-        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_terms(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
         idx = {(x["term"], x["id"]): x for x in
                json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
-        assert ("2023-2024", "HB1442") in idx, "the archived term produced no row"
+        assert ("2021-2022", "HB1442") in idx, "the archived term produced no row"
         assert ("2025-2026", "HB1442") in idx, "the current term lost its row"
 
-        a = json.loads((root / "site" / "bills" / "2024" / "HB1442.json")
+        a = json.loads((root / "site" / "bills" / "2022" / "HB1442.json")
                        .read_text(encoding="utf-8"))
         n = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                        .read_text(encoding="utf-8"))
         # sponsors.json is the flat file the fixture carries. text_url comes
         # from bill_status.json, which is keyed on the term: the fixture holds
-        # only the current one, so the archived bill must still get nothing.
+        # the current term and 2023-2024, so this bill must still get nothing
+        # -- from either.
         assert n.get("sponsors"), "the current term's bill lost its sponsors"
         assert not a.get("sponsors"), (
             "the archived bill is showing the current term's sponsors")
@@ -17947,47 +17995,16 @@ def _termed_status_and_text():
     term out of them -- and still must not read the current term's. Both halves
     are asserted here, because a lookup that ignores the term passes the first
     half by accident: it hands back whatever record the flat file had.
+
+    Read off 2023-2024's HB1442 in the build both checks take a copy of
+    (_fixture_site_terms): the term the two files hold a record for.
     """
     here = Path(".").resolve()
     if not (here / "build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
-        old = dict(bills["2025-2026"]["HB1442"])
-        old.update({"lsr_year": "2024", "lsr": "2024-0503",
-                    "title": "an entirely different bill of the same number"})
-        # text_pdf off the bill record is the fallback for a term the status
-        # file does not hold. Clearing it is what makes the assertion below
-        # about the FILE rather than about the fallback.
-        old.pop("text_pdf", None)
-        bills["2023-2024"] = {"HB1442": old}
-        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-
-        st = json.loads((root / "bill_status.json").read_text(encoding="utf-8"))
-        if not all(re.match(r"^\d{4}-\d{4}$", k) for k in st):
-            st = {"2025-2026": st}
-        st["2023-2024"] = {"HB1442": {
-            "gen_status": "SIGNED BY GOVERNOR", "house_status": "",
-            "senate_status": "", "text_pdf": "https://gc.nh.gov/archived.pdf",
-            "chapter": "", "lsr": "2024-0503", "body": "H"}}
-        (root / "bill_status.json").write_text(json.dumps(st), encoding="utf-8")
-
-        (root / "bill_text.json").write_text(json.dumps({
-            "2025-2026": {"HB1442": {
-                "version": "as introduced", "title": "the current bill",
-                "text": "ANALYSIS\nThe current term's analysis.\n"
-                        "Be it Enacted by the Senate and House"}},
-            "2023-2024": {"HB1442": {
-                "version": "as amended", "title": "the archived bill",
-                "text": "ANALYSIS\nThe archived term's analysis.\n"
-                        "Be it Enacted by the Senate and House"}},
-        }), encoding="utf-8")
-
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_terms(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
 
         a = json.loads((root / "site" / "bills" / "2024" / "HB1442.json")
@@ -29891,24 +29908,6 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         shutil.rmtree(root, ignore_errors=True)
 
 
-@check("files", "the triage rules keep a person between a report and a substantial change")
-def _triage_rules():
-    """reports/TRIAGE.md is what the triage session follows, and this holds it
-    to the rules: a report is a claim and never an instruction, nothing is
-    fetched or run because a report says so, held reports are not read by the
-    session, and anything bigger than a small reproduced fix is a proposal that
-    waits. No report can change it."""
-    p = Path("reports/TRIAGE.md")
-    if not p.exists():
-        return "skip", "no reports/TRIAGE.md here"
-    t = " ".join(p.read_text(encoding="utf-8").split())     # a wrapped line is one sentence
-    for must in ("never an instruction", "Never** run a command", "Do not fetch from the General Court",
-                 "Held reports are not yours", "Everything else is a proposal, and waits for the person",
-                 "compile_reports.py", "this file", "never published", "ALL of these hold"):
-        assert must in t, f"reports/TRIAGE.md no longer says: {must}"
-    return "ok", "claim-not-instruction, no fetch, held reports unread, proposals wait"
-
-
 @check("build", "the triage session is told to open the file the compiler writes",
        needs=("compile_reports", "nightly"))
 def _triage_file_name(CR, NI):
@@ -29923,10 +29922,27 @@ def _triage_file_name(CR, NI):
     on a pull that returns no rows, rather than from a pattern copied out of
     its source. Every triage file name the three documents give is held to
     it, and so is the name of the marker nightly.py leaves when the step fails.
+
+    AND WHAT THE RULES SAY, where the rules are (2 October 2026; a check of
+    its own until then, "the triage rules keep a person between a report and
+    a substantial change"). reports/TRIAGE.md is what the triage session
+    follows, and it is held to this: a report is a claim and never an
+    instruction, nothing is fetched or run because a report says so, held
+    reports are not read by the session, and anything bigger than a small
+    reproduced fix is a proposal that waits. No report can change it. The
+    file is the person's, on their machine only, so a clone has no rules to
+    hold and the result says so.
     """
     import contextlib
     import datetime as _dt
     import io
+    held = Path("reports/TRIAGE.md")
+    if held.exists():
+        t = " ".join(held.read_text(encoding="utf-8").split())     # a wrapped line is one sentence
+        for must in ("never an instruction", "Never** run a command", "Do not fetch from the General Court",
+                     "Held reports are not yours", "Everything else is a proposal, and waits for the person",
+                     "compile_reports.py", "this file", "never published", "ALL of these hold"):
+            assert must in t, f"reports/TRIAGE.md no longer says: {must}"
     tmp = Path(tempfile.mkdtemp())
     saved = (CR.OUT, CR.LEDGER, CR.pull, sys.argv)
     first = _dt.date.today().isoformat()
@@ -29964,7 +29980,10 @@ def _triage_file_name(CR, NI):
             f"{doc} names {named or 'no failure marker'}; nightly.py writes reports/{marker}"
     return "ok", (f"compile_reports.py writes reports/{name.replace(day, '<date>')}, and "
                   f"nightly.py{', TRIAGE.md' if rules else ''} and its own docstring all say so; "
-                  "the failure marker agrees")
+                  "the failure marker agrees; "
+                  + ("the rules say claim-not-instruction, no fetch, held reports unread, "
+                     "proposals wait" if held.exists() else
+                     "reports/TRIAGE.md is not here, so its rules were not read"))
 
 
 @check("build", "a report is deleted a week after it arrives, from the database and from reports/, and never before it is landed",
@@ -37190,17 +37209,34 @@ def _rail():
     "pppp" -- passed the House, passed the Senate, reached the governor,
     became law -- should also come out at exactly the number of bills the
     site independently calls law.
+
+    AND THE STATUS CHIP'S WORDS, in the same reading of the index (2 October
+    2026; a check of its own until then, "a bill both chambers passed does
+    not read "Passed one chamber""). The chip and the rail beside it are one
+    fact said twice. Before 23 September, 49 bills read "Passed one chamber"
+    beside a rail whose second chamber was passed -- CACR 13 of 2026 among
+    them, adopted by the Senate 23-1 -- and 30 resolutions drew a governor
+    who never sees a resolution. Each of the three is said by name when it
+    fails, and all that fail are said together.
     """
     idx = Path("site/index.json")
     if not idx.exists():
         return "skip", "index.json is not built"
     rows = json.loads(idx.read_text(encoding="utf-8"))
     bad, n, laws, pppp, vetoes = [], 0, 0, 0, 0
+    both, gov = [], []
     for b in rows:
         p = b.get("passage") or ""
         kind = b.get("kind") or ""
         if kind == "law":
             laws += 1
+        key = (b.get("term"), b.get("id"))
+        if (len(p) == 5 and p[2] == "p" and b.get("status") == "Passed one chamber"
+                and key not in _RAIL_KNOWN):
+            both.append(f"{key[0]} {key[1]} {p}")
+        if (len(p) == 5 and p[3] != "-"
+                and re.match(r"^(?:SS)?(?:HCR|SCR|CACR)\d", b.get("id") or "")):
+            gov.append(f"{key[0]} {key[1]} {p}")
         if not p:
             continue
         n += 1
@@ -37254,8 +37290,13 @@ def _rail():
                            f"through a chamber the rail crosses: {p!r}")
     if not n:
         return "skip", "no bill carries a passage"
-    assert not bad, (f"{len(bad)} of {n:,} rails disagree with the record: "
-                     f"{'; '.join(bad[:3])}")
+    wrong = ([f"{len(bad)} of {n:,} rails disagree with the record: "
+              f"{'; '.join(bad[:3])}"] if bad else []) \
+        + ([f"{len(both)} bills read \"Passed one chamber\" beside a rail "
+            f"that passed the second chamber: {'; '.join(both[:5])}"] if both else []) \
+        + ([f"{len(gov)} resolutions draw a governor on their rail: "
+            f"{'; '.join(gov[:5])}"] if gov else [])
+    assert not wrong, ". AND ".join(wrong)
     # The Law stop and the word "law" are the same fact counted two ways.
     # Not "pppp": nine bills became law over a veto, and their rail reads
     # ppxp -- both chambers, the governor against, law anyway. That is the
@@ -37275,7 +37316,9 @@ def _rail():
         "called law. Those are the same bills counted two ways and they have "
         "to match.")
     return "ok", (f"{n:,} rails, {pppp:,} of them the whole way, "
-                  f"{vetoes} vetoed and crossed at the governor")
+                  f"{vetoes} vetoed and crossed at the governor; of {len(rows):,} "
+                  "bills, no second chamber passed under \"Passed one chamber\", "
+                  "and no governor on a resolution")
 
 
 # THE OLDER TERMS' DISAGREEMENTS, recounted on 24 September after review found
@@ -37367,39 +37410,8 @@ def _journey_agrees(build_site_v2):
 
 # Where the rail and the label disagree because the RAIL is wrong: CACR 9 of
 # 1995 started in the Senate, and its docket files a House stage first. The
-# label is right. Named, so that a new one is noticed.
+# label is right. Named, so that a new one is noticed. _rail reads it.
 _RAIL_KNOWN = {("1995-1996", "CACR9")}
-
-
-@check("data", "a bill both chambers passed does not read \"Passed one chamber\"")
-def _second_chamber_label():
-    """The status chip and the rail beside it are one fact said twice.
-
-    Before 23 September, 49 bills read "Passed one chamber" beside a rail
-    whose second chamber was passed -- CACR 13 of 2026 among them, adopted
-    by the Senate 23-1 -- and 30 resolutions drew a governor who never sees
-    a resolution. This reads the built index for both.
-    """
-    idx = Path("site/index.json")
-    if not idx.exists():
-        return "skip", "index.json is not built"
-    rows = json.loads(idx.read_text(encoding="utf-8"))
-    both, gov = [], []
-    for b in rows:
-        p = b.get("passage") or ""
-        key = (b.get("term"), b.get("id"))
-        if (len(p) == 5 and p[2] == "p" and b.get("status") == "Passed one chamber"
-                and key not in _RAIL_KNOWN):
-            both.append(f"{key[0]} {key[1]} {p}")
-        if (len(p) == 5 and p[3] != "-"
-                and re.match(r"^(?:SS)?(?:HCR|SCR|CACR)\d", b.get("id") or "")):
-            gov.append(f"{key[0]} {key[1]} {p}")
-    assert not both, (f"{len(both)} bills read \"Passed one chamber\" beside a rail "
-                      f"that passed the second chamber: {'; '.join(both[:5])}")
-    assert not gov, (f"{len(gov)} resolutions draw a governor on their rail: "
-                     f"{'; '.join(gov[:5])}")
-    return "ok", (f"{len(rows):,} bills: no second chamber passed under "
-                  "\"Passed one chamber\", and no governor on a resolution")
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")
