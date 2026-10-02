@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -426,6 +426,15 @@ def stated_day(ev, r):
                                      and said.date() <= created.date()):
             return ev
         ev["date"] = said.strftime("%m/%d/%Y")
+        # THE VOLUME IT CITES IS OF THE YEAR IT WAS ENTERED. A citation carries
+        # no year and is looked up in the year of its row's date: "SC 46" on
+        # "Hearing: 01/20/2026, Map Room, SL, 09:15 am", entered on 11 December
+        # 2025, is Senate Calendar 46 of that December, and dated by its
+        # hearing the row lost the link to it. The year the row was entered
+        # in travels with it (cite_year), so the link is what it was.
+        if (isinstance(created, datetime) and created != datetime.min
+                and created.year != said.year):
+            ev["cite_year"] = str(created.year)
         return ev
     return ev
 
@@ -3053,6 +3062,9 @@ def build(bill, rows, introduction=None):
                     # one: a hearing cites the calendar that noticed it, a
                     # floor vote the journal page that recorded it.
                     "cite": e.get("cite", ""), "cite_page": e.get("cite_page", ""),
+                    # The year of the volume cited, where it is not the year
+                    # of the date above (stated_day).
+                    **({"cite_year": e["cite_year"]} if e.get("cite_year") else {}),
                     # Where a person corrected the date (docket_corrections
                     # .json), the date the docket itself gives, and why.
                     **({"date_as_recorded": e["date_as_recorded"],

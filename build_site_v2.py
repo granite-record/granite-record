@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.141
+# GRANITE_VERSION: 2026-09-05.142
 """
 Generate the faceted site from real General Court data.
 
@@ -446,6 +446,10 @@ def _cite(ev, sources, year=""):
     search of it found nothing, on every event of every bill. narrative.py
     takes the citation off the raw line and carries it on the event.
     """
+    # `year` is the year of the action's date -- or, where narrative.py dated
+    # a row by the day it states in another year than it was entered, the
+    # year it was entered (the event's "cite_year"): a notice of December
+    # for a hearing in January cites December's calendar.
     key = (ev.get("cite") or "").strip()
     if not key:
         return {}
@@ -7038,7 +7042,7 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
     for e in (narr or {}).get("events", []):
         if e.get("cancelled"):
             continue
-        c = _cite(e, sources, (e.get("date") or "")[:4])
+        c = _cite(e, sources, e.get("cite_year") or (e.get("date") or "")[:4])
         if not c.get("cite_url"):
             continue
         key = (e.get("cite") or "").strip()
@@ -8253,7 +8257,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                         **({"notice": True} if e.get("notice") else {}),
                         **hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None),
-                        **_cite(e, sources, (e.get("date") or "")[:4])}
+                        **_cite(e, sources,
+                                e.get("cite_year") or (e.get("date") or "")[:4])}
                        for e in docket_lines(narr)],
             # Prefer what the General Court says over what we would infer.
             # Where the docket has settled the bill, the per-chamber fields

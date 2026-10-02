@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.320
+# GRANITE_VERSION: 2026-09-04.321
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2618,6 +2618,21 @@ def _a_row_states_its_day(N, B):
         if (got[-1], {d[:4] for d in got}) != (last, years):
             bad.append(f"{key[1]} of {key[0]} was acted on {sorted({d[:4] for d in got})}, "
                        f"last on {got[-1]}")
+    # AND THE CALENDAR A NOTICE CITES IS OF THE YEAR IT WAS ENTERED: "SC 46" on
+    # SB 429's notice of 11 December 2025 is that December's Senate Calendar,
+    # and dated by its hearing in January the row lost the link to it.
+    notice = next(e for e in narr[("2025-2026", "SB429")]["events"]
+                  if "09:15 am" in (e.get("raw") or ""))
+    sources = {"SC 46 2025": "https://gc.nh.gov/senate/calendars_journals/viewer.aspx?"
+                             "fileName=Calendars%5C2025%5CNo%2046%20December%2011%202025.pdf"}
+    link = B._cite(notice, sources, notice.get("cite_year") or notice["date"][:4])
+    if (notice.get("cite"), notice.get("cite_year"), link.get("cite_url")) != (
+            "SC 46", "2025", sources["SC 46 2025"]):
+        bad.append(f"SB429's notice cites {notice.get('cite')!r} of "
+                   f"{notice.get('cite_year')!r}: {link}")
+    # A row re-dated within its own year carries no year of its own.
+    if any(e.get("cite_year") for e in narr[("2015-2016", "HB1660")]["events"]):
+        bad.append("HB1660's rows carry a cite_year, and each is of 2016")
     # The rail's stop for the report takes the day too.
     _, steps = B.journey(narr[("2015-2016", "HB1660")], "HB1660", [], "", "", "2015-2016")
     got = [(s["date"], s["act"]) for s in steps if s["body"] == "S"]
