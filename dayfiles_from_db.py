@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.8
+# GRANITE_VERSION: 2026-10-01.9
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -141,9 +141,10 @@ which -- and what it stopped that was right: the Senate's own late entries,
 on eight nights of the term. What holds now:
 
     what no export holds       a character read in the wrong encoding, a field
-                               that reads NULL or True; a view that is not
-                               UTF-8, or begins with a byte-order mark, is not
-                               read at all (read_view)
+                               that reads NULL or True (a member's name may:
+                               the House has had a Rep. True); a view that is
+                               not UTF-8, or begins with a byte-order mark, is
+                               not read at all (read_view)
     no row twice               a bill record, a bill number, a member, a roll
                                call, a ballot, a sponsor's row, a request's
                                prime sponsor: once each, or as often as the
@@ -165,35 +166,44 @@ on eight nights of the term. What holds now:
     the docket's old rows      no bill missing; at most DOCKET_GONE_MOST gone,
                                DOCKET_CITED_MOST with a journal citation
                                written onto them, DOCKET_MARKED_MOST given a
-                               mark, DOCKET_REWORDED_MOST reworded any other
-                               way
+                               mark, DOCKET_REMARKED_MOST of those with other
+                               words after it, DOCKET_REWORDED_MOST reworded
+                               any other way
     bill records               every (year, LSR) installed is there tonight,
                                with the chamber and the bill number it had;
                                at most LSR_UNBACKED_MOST changed where the
                                build reads them with nothing in the docket to
-                               say why; LSR_RETITLED_MOST with another title,
+                               say why, a first committee in a chamber whose
+                               docket has no row of the bill yet aside
+                               (LSR_ALONE_MOST); LSR_RETITLED_MOST with
+                               another title, each named,
                                LSR_REWRITTEN_MOST with a value replaced or
                                lost, LSR_CHANGED_MOST changed at all; and
                                LSR_NEW_MOST new, each with a title, a chamber
                                and a bill number of its own, and all but
                                LSR_UNSPONSORED_MOST with a sponsor
-    roll calls                 every one installed is there with the same four
-                               counts and the same ballots, none added; at
-                               most ROLLCALLS_CHANGED_MOST read otherwise --
-                               the time, the bill, the question, the title --
-                               and BALLOTS_CHANGED_MOST ballots are cast
-                               otherwise; a roll call's Yea and Nay ballots
-                               are its counts; at most ROLLCALLS_NEW_MOST new,
-                               each numbered on from its chamber's last, taken
-                               by the time the views were asked, with counts
-                               that are numbers and ballots of members the
-                               roster's view knows
+    roll calls                 every one installed is there with the ballots
+                               it had, none added; at most
+                               ROLLCALLS_CHANGED_MOST read otherwise -- the
+                               time, the bill, the question, the title -- as
+                               many have other counts, and
+                               BALLOTS_CHANGED_MOST ballots are cast
+                               otherwise; one whose Yea and Nay ballots were
+                               its counts still adds up; at most
+                               ROLLCALLS_NEW_MOST new, each numbered on from
+                               its chamber's last, taken by the time the views
+                               were asked, with counts that are numbers and
+                               ballots of members the roster's view knows,
+                               which are its counts -- or, on
+                               ROLLCALLS_CHANGED_MOST of them, within
+                               ROLLCALL_ADRIFT_MOST ballots of them
     the roster                 within ROSTER_TOLERANCE of the installed count,
                                and at most ROSTER_MOVED_MOST joined or left;
                                at most ROSTER_CHANGED_MOST with another name,
                                chamber, county, district or party,
-                               ROSTER_TOUCHED_MOST changed in anything the
-                               build reads
+                               ROSTER_TOUCHED_MOST changed in anything else
+                               the build reads, another seat or e-mail address
+                               that reads as one aside
     sponsors                   LsrSponsors.txt loses at most
                                SPONSORS_GONE_MOST of its rows and gains at
                                most SPONSORS_NEW_MOST, SPONSORS_LATE_MOST of
@@ -222,10 +232,23 @@ measured nothing, and are small on purpose.
 WHAT A NIGHT TELLS. Under a ceiling a few rows may differ and the night be
 right: a clerk's correction looks like that. Every count that sits under a
 ceiling which is a guess, or a correction's, comes with its rows:
-judge()'s "told". The night's warning says how many and where they are
-named; the rows themselves, which are the General Court's words and
-members' names, go to the verdict (day_files, told), the log and the
-what-changed report, never to the run's page.
+judge()'s "told", all of them up to TOLD_MOST, which is as many as the
+largest of the handfuls. The night's warning says how many and where they
+are named -- "each", or "the first 50" of a longer list -- and the rows
+themselves, which are the General Court's words and members' names, go to
+the verdict (day_files, told), the log and the what-changed report, never to
+the run's page.
+
+A STOP OR A NAME (2 October 2026, the third pass). Two reviewers read the
+guards against each other's purpose: one found the honest nights they stop,
+the other what still went in unnamed. Where a count could be one of a few
+honest rows or one of a few wrong ones and nothing in the files tells them
+apart, the night goes through and the rows are named; a whole file, or many
+rows, stops. So a tally the clerk corrects, a new roll call a ballot from
+its typed counts, every member's e-mail address at another domain and a
+first referral typed ahead of its docket row are named now, and no longer
+stop; a row reworded behind a mark is counted as reworded, and a title
+replaced is named.
 
 LsrsOnly.txt was first held to 98% of ALL its rows. But a member who leaves
 takes every row of theirs out of it, in the export as here, and three
@@ -239,14 +262,22 @@ allowance is now for.
 
 WHAT STILL PASSES, and is named and not stopped
 
-    one or two of anything a      a docket row gone (5), reworded (40) or
-    clerk corrects                moved to another bill; a roll call refiled
-                                  or two ballots exchanged (2 each); a
-                                  member's name, party or district (2); four
-                                  members joined or left; five bill records
-                                  changed with the docket at rest; two new
-                                  ones with no sponsor; five sponsors' rows
-                                  gone, or added to an old bill
+    one or two of anything a      a docket row gone (5), reworded (40),
+    clerk corrects                reworded behind a mark (50) or moved to
+                                  another bill; a roll call refiled, a tally
+                                  corrected or two ballots exchanged (2
+                                  each); a new roll call a ballot or two from
+                                  its counts (2); a member's name, party or
+                                  district (2); four members joined or left;
+                                  five bill records changed with the docket
+                                  at rest; two new ones with no sponsor; five
+                                  sponsors' rows gone, or added to an old
+                                  bill
+    any number, if it reads       a member's seat or e-mail address, changed
+    as what it is                 to another that reads as one; up to 600
+                                  bill records' first committee in a chamber
+                                  whose docket has no row of the bill yet,
+                                  the code one an installed record holds
     a new Senate docket row       up to 40, each on a bill the files know and
     with an old entry time        not older than the bill: the Senate's own
                                   late entries cannot be told from a row
@@ -258,22 +289,42 @@ WHAT STILL PASSES, and is named and not stopped
                                   another bill pass, and nothing in the files
                                   could say otherwise
     in session, changes to the    a record whose bill has a docket row in the
-    bills that are moving         last fortnight is held only to the session
-                                  day's ceilings (40 titles, 170 rewritten,
-                                  700 changed)
+    bills that are moving         last fortnight, or a new one tonight, is
+                                  held only to the session day's ceilings (40
+                                  titles, 170 rewritten, 700 changed). A
+                                  title replaced is named; a committee or a
+                                  subject code is not, and is in the
+                                  what-changed report's own list: 53 such
+                                  bills given another of each passed
+
+And NOT named, because nothing in the files tells them from a day's work:
+new docket rows on real bills, dated since the installed file's newest and
+under 1,000 a day (900 bills each "Signed by Governor" yesterday passed);
+and new bill records that each come with a title, a number of their own and
+a sponsor's row (300 passed: it is the ones with NO sponsor's row that are
+held to two). Both are in the what-changed report's ordinary sections, by
+bill, the morning after.
 
 WHAT A RIGHT NIGHT CAN STILL BE STOPPED BY
 
 Every guard fails closed, and some real days are on the wrong side of one:
 
-    a roll call's tally corrected       the four counts are held to nothing
-                                        changing, and the ballots to the
-                                        counts, so one corrected tally stops
-                                        every database night until the export
-                                        is back. So does a new roll call whose
-                                        ballots are not its counts: the
-                                        Senate's are typed, and 2 of the 4,262
-                                        of 2016 to 2025 are not
+    the roster at a new term            on Organization Day, the first
+                                        Wednesday of December (2 December
+                                        2026), about a third of the House is
+                                        new: far past the 2% and the four,
+                                        and so every database night from that
+                                        day until an export installs the new
+                                        roster. It was so before these guards
+                                        (the 2% is the first version's); the
+                                        export's own install has only the
+                                        shrink rule. Like a new term's files,
+                                        a person's decision
+    three tallies corrected at          or one changed with no ballot to go
+    once                                with it; or a new roll call three
+                                        ballots from its typed counts (one in
+                                        27 years: the House's first of 2000,
+                                        by twelve)
     a bill carried into the             its docket rows are filed again under
     second year                         the new year and request (SB 66, on
                                         19 November 2025): the bill is gone
@@ -287,7 +338,8 @@ Every guard fails closed, and some real days are on the wrong side of one:
                                         data on this disk
     more than a handful of what         six docket rows deleted, three members'
     is a guess                          parties, five members sworn in on one
-                                        day, six records corrected at rest
+                                        day, six records corrected at rest, 41
+                                        members' street addresses
     more in a night than the            over 1,000 citations in a night, 100
     days it covers have                 rows marked, 40 reworded, 170 bill
                                         records rewritten, 142 roll calls --
@@ -296,12 +348,17 @@ Every guard fails closed, and some real days are on the wrong side of one:
 
 What the night says then: nothing is installed and yesterday's files stay;
 the verdict's day_files has source "none", why_code "guard" and "stops", one
-sentence a guard, each naming the file, the count and a row; the run's page,
-which is public, says how many checks stopped it and where they are named,
-that the site still serves the last build, and that the same check will
-stop the next night: tonight's files are compared with the installed ones,
-and those have not moved. The second such night in a row is an error on the
-page (nightly.DB_STOPPED_MOST). There is no switch that installs a night a
+sentence a guard, each naming the file, the count and a row, and
+"stops_wider", how many of them are on a ceiling that SPAN widens (_Wider);
+the run's page, which is public, says how many checks stopped it and where
+they are named, that the site still serves the last build, and what the
+next night will do. Tonight's files are compared with the installed ones,
+and those have not moved: a check on what they hold stops the next night
+too. A ceiling on a night's work does not, of itself -- it is wider a night
+later, and the same views may pass it with nobody deciding; the page says
+which kind stopped it, and the night that then installs says that it did.
+The second night the checks stop it is an error on the page
+(nightly.DB_STOPPED_MOST). There is no switch that installs a night a
 person has read and found right.
 
 And a stop ends the night's asking. The night turns here straight after the
@@ -519,6 +576,16 @@ DOCKET_CITED_MOST = 1000
 # -- before their words: 477 rows of the term, the most in a day 50
 # (23 January 2026), in fourteen days 101.
 DOCKET_MARKED_MOST = 100
+# ... and of those, the rows whose words AFTER the mark are not the installed
+# words. A mark was all that was looked for, so 100 committee reports reworded
+# from Ought to Pass to Inexpedient to Legislate behind "==AMENDED==" were
+# installed, and nobody told which. A hearing moved is such a row -- its day,
+# its hour or its room is in its words: 130 rows of the term are marked
+# RESCHEDULED, ROOM CHANGE, TIME CHANGE or RECONVENE, the most changed on one
+# day 23 (8 October 2025), in fourteen days 41. Twice the day's, rounded up,
+# and each is named. A GUESS as to what such a row was before: no pair on
+# this disk shows one being marked.
+DOCKET_REMARKED_MOST = 50
 # Installed rows reworded any other way -- an amendment's number corrected, a
 # room changed: at most 283 rows of the term (changed on a later day, with no
 # citation and no mark; some of those only had their stamp moved), the most
@@ -542,6 +609,8 @@ LSR_NEW_MOST = 400
 # each is named: 300 invented records, each with a title and a bill number of
 # its own, passed. (The docket cannot be asked instead: a request is made a
 # bill two days before its first docket row, at the median, and up to 47.)
+# With one invented sponsor's row each they pass still, unnamed: nothing in
+# the files tells such a record from a request made a bill.
 LSR_UNSPONSORED_MOST = 2
 # Installed records whose title is replaced by another. A title changes when
 # an amendment names a new one, and the most bills with a new title named in
@@ -572,17 +641,46 @@ LSR_CHANGED_MOST = 700
 # this long before the session-day ceilings above.
 LSR_ACTIVE_DAYS = timedelta(days=14)
 LSR_UNBACKED_MOST = 5
+# A FIRST REFERRAL AHEAD OF ITS DOCKET ROW is held apart from those, and named
+# rather than stopped at a handful. A record whose one change is a committee
+# of referral where it had none, in a chamber whose docket has no row of the
+# bill yet, counted against the 5 above; and whether the General Court sets
+# the code before it types the row is on no copy on this disk. Three bills
+# hold a Senate committee today with no Senate docket row at all (HB 216, HB
+# 129, HB 133), so the one can be there without the other; and the first
+# Senate row of 148 bills was entered on one day (17 March 2026), of 292 in
+# the House (1 December 2025; 448 in seven days). If the code comes first,
+# each of those nights was 148 or 292 against 5. So up to twice the busiest
+# day's pass, the first TOLD_MOST named -- and only with a code some
+# installed record already holds in that column: an invented committee is
+# still one of the 5. Not multiplied by SPAN: 646 records have no Senate
+# committee, and a view that filled every one in must stop however old the
+# installed files are. A GUESS that it is ever met at all.
+LSR_ALONE_MOST = 600
 
 # The roll calls. One installed roll call changed on the eleven pairs (the
 # Senate's 49th of 2026, moved from SB 655 to SB 665, with its title), and no
 # ballot in a column the build reads. The other correction on record, SB 331
 # of 2018, is one tally and one senator's ballot. Twice the one of each: they
 # were 5 and 10, GUESSES, which let five roll calls be refiled and ten tallies
-# be changed by a ballot each. The four counts are held apart, to nothing;
-# and a roll call's Yea and Nay ballots to its counts (all 419 installed add
-# up; 14 of the 9,146 of 27 years do not, two of them since 2015).
+# be changed by a ballot each.
 ROLLCALLS_CHANGED_MOST = 2
 BALLOTS_CHANGED_MOST = 2
+# THE FOUR COUNTS were held to nothing changing, and a roll call's Yea and Nay
+# ballots to its counts exactly. Both stopped a right night, and then every
+# night after it, since the installed files do not move: the one correction of
+# a tally on record (above), and a new roll call whose typed counts are not
+# its ballots -- the Senate's are typed, and 14 of the 9,146 roll calls of 27
+# years do not add up, two of them since 2015 (2017 S 104, 2018 S 55), every
+# one but the House's first of 2000 by one ballot or two. The page's headline is the ballots
+# counted (rollcall_parser.py), with the stated tally beside it where the two
+# differ. So: an installed roll call's counts may move on
+# ROLLCALLS_CHANGED_MOST of them, each named, and never away from its
+# ballots -- one that added up and no longer does stops the night, which is
+# what a tally changed alone is. And ROLLCALLS_CHANGED_MOST new roll calls
+# may be up to ROLLCALL_ADRIFT_MOST ballots from their counts, each named;
+# one further off, or with no ballots at all, stops.
+ROLLCALL_ADRIFT_MOST = 2
 # New roll calls in a night: the most taken in one day in 27 years is 71, both
 # chambers (12 March 2020; 114 in any week). Times SPAN. A new one's number
 # is no further past its chamber's highest installed than that many: the
@@ -607,6 +705,16 @@ ROSTER_TOLERANCE = 0.02
 ROSTER_MOVED_MOST = 4
 ROSTER_CHANGED_MOST = 2
 ROSTER_TOUCHED_MOST = 40
+# ... except another seat or e-mail address that reads as one (from 0: the
+# sixth column, digits; the fifteenth, name@host). Those are named and not
+# counted against the 40: every member's address moved to another domain in
+# one night -- which no copy on this disk shows, and which the General Court
+# would do in one night if it did -- stopped the fallback, and every night
+# after. A column lost or moved along is not let by with it: a blank is not
+# an address, what lands in the e-mail column of a row moved along is a ZIP
+# code, and the address columns are still held to the 40.
+ROSTER_SHAPED = {5: re.compile(r"\s*\d+\s*"),
+                 14: re.compile(r"\s*[^@\s|]+@[^@\s|]+\.[^@\s|]+\s*")}
 
 # The sponsors. No row of LsrSponsors.txt came or went on any pair (its rows
 # changed order once). New rows in a night, times SPAN: the 202 bills made on
@@ -625,8 +733,12 @@ SPONSORS_GONE_MOST = 5
 # one has never gone.
 SPONSORS_KEPT_LEAST = 0.98
 
-# How many rows a count names in what the night tells (judge()'s "told").
-TOLD_MOST = 20
+# How many rows a count names in what the night tells (judge()'s "told"): as
+# many as the largest ceiling that is a handful's, so that all of those are
+# named. It was 20 under ceilings of 40, and the night's warning said "each
+# named" of 35 rows when 20 were. A longer list names its first TOLD_MOST, and
+# the warning says that it does.
+TOLD_MOST = 50
 
 # The pair --check is about, and what it found on it. preflight holds
 # check_pair()'s answer to these, so a change to a mapping that moves one of
@@ -1109,13 +1221,27 @@ MARK = re.compile(r"^\s*==[A-Z][A-Z ]*==")
 # the block a continuation byte lands in: a no-break space becomes U+00C2 and a
 # no-break space, and an e-acute U+00C3 U+00A9. The installed files hold neither (their
 # 128 characters outside ASCII are no-break spaces, en dashes, an é and an è).
-MOJIBAKE = re.compile("[\u00c2-\u00f4][\u0080-\u00bf\u0152\u0153\u0160\u0161\u0178\u017d\u017e"
-                      "\u0192\u02c6\u02dc\u2013\u2014\u2018-\u201e\u2020-\u2022\u2026\u2030"
-                      "\u2039\u203a\u20ac\u2122]")
+# As many of the second kind as the first one's byte asks for -- one after
+# U+00C2 to U+00DF, two after U+00E0 to U+00EF, three after that: with one
+# after any of them, a new docket row that read "Floor Amendment by Rep.
+# Côté’s motion" -- an é before a curly quote -- was the wrong encoding, and
+# the night stopped. No docket of fifteen terms holds an accented letter at
+# all, so that row has not been written yet; a capital one before a quote or
+# a no-break space still reads as wrong.
+_SECOND = ("[\u0080-\u00bf\u0152\u0153\u0160\u0161\u0178\u017d\u017e\u0192\u02c6\u02dc\u2013"
+           "\u2014\u2018-\u201e\u2020-\u2022\u2026\u2030\u2039\u203a\u20ac\u2122]")
+MOJIBAKE = re.compile(f"[\u00c2-\u00df]{_SECOND}|[\u00e0-\u00ef]{_SECOND}{{2}}"
+                      f"|[\u00f0-\u00f4]{_SECOND}{{3}}")
 # What a field never reads in an export: a database's word for nothing, or a
 # bit that was not turned into 1 or 0. No field of the seven installed files
 # is one of them.
 NO_VALUE = re.compile(r"(?m)(?:^|\|)[ \t]*(?:NULL|null|None|True|False)[ \t]*(?=\||$)")
+# ... a member's name aside, where it reads True or False (legislators.txt,
+# from 0: last, first, middle): no bit lands in a name. The General Court's
+# own table holds a representative True (PersonID 908, of Sandown, not
+# sitting on 2 October 2026), and the night he is on the roster again was a
+# night stopped, and every night after it. A name that reads NULL still stops.
+NO_VALUE_NOT_IN = {"legislators.txt": (1, 2, 3)}
 # What a ballot reads: fetch_rollcalls_db.VOTE_WORD's words. A code it does
 # not know passes through as its own digit.
 VOTE_WORDS = frozenset(RC.VOTE_WORD.values())
@@ -1192,6 +1318,16 @@ def _ceiling(most, nights):
     return int(round(most * by))
 
 
+class _Wider(str):
+    """A stop on a ceiling that _ceiling() made: one that is wider the older
+    the installed files are. A night it stops leaves those files where they
+    were, so the next night's ceiling is wider and the same views may pass it
+    with nobody deciding (1,631 docket rows: stopped at one night and at two,
+    installed at three). Every other stop is on something that does not move
+    until the installed files do. judge() counts these ("wider"), and the
+    night's page says which kind stopped it."""
+
+
 def _fields(ln, width):
     f = ln.split("|")
     return f + [""] * (width - len(f))
@@ -1228,6 +1364,13 @@ def _name(rows):
         [f"... and {len(rows) - TOLD_MOST:,} more"] if len(rows) > TOLD_MOST else [])
 
 
+def _named(n):
+    """How a warning says where `n` counted rows are named: all of them, or
+    the first TOLD_MOST (_name)."""
+    return (("each named" if n <= TOLD_MOST else f"the first {TOLD_MOST} named")
+            + " in the night's verdict (day_files, told) and in its what-changed report")
+
+
 def _hold_text(old, rows):
     """What no export holds, in any of the seven: a character read in the
     wrong encoding, a field that reads NULL or True. [stops]. Each is held to
@@ -1236,11 +1379,16 @@ def _hold_text(old, rows):
     for name in DAY_FILES:
         if rows[name] == old[name]:
             continue
+        names = NO_VALUE_NOT_IN.get(name, ())
+
+        def valued(ln, names=names):    # the row, without a name that honestly reads True
+            return ln if not names else "|".join(
+                "" if i in names and x.strip() in BIT else x for i, x in enumerate(ln.split("|")))
 
         def counted(lines):
             text = "\n".join(lines)
             return (text.count("\ufffd") + len(MOJIBAKE.findall(text)),
-                    len(NO_VALUE.findall(text)))
+                    len(NO_VALUE.findall("\n".join(valued(ln) for ln in lines))))
         (was_bad, was_no), (bad, no) = counted(old[name]), counted(rows[name])
         if bad > was_bad:
             eg = next(ln for ln in rows[name] if "\ufffd" in ln or MOJIBAKE.search(ln))
@@ -1249,7 +1397,7 @@ def _hold_text(old, rows):
                          f"the installed file has {'none' if not was_bad else f'{was_bad:,}'} of: "
                          f"{ascii(eg[max(0, m.start() - 40):m.start() + 20])}")
         if no > was_no:
-            eg = next(ln for ln in rows[name] if NO_VALUE.search(ln))
+            eg = next(ln for ln in rows[name] if NO_VALUE.search(valued(ln)))
             stops.append(f"{name}: {no - was_no:,} fields read NULL, None, True or False, which "
                          f"no field of an export does: {_eg(eg)}")
     return stops
@@ -1324,8 +1472,10 @@ def _hold_docket(old, rows, records, asked=None, nights=1):
     A changed row is an installed row and a row of tonight's alike in year,
     request, entry time, bill and chamber and unlike in words -- the same
     pairing its place in the order is given by (ORDER_LOOSE): cited, when the
-    words only gained a citation; marked, when they were given a mark;
-    reworded otherwise. What is left of the installed rows is gone, and of
+    words only gained a citation; marked, when they were given a mark and
+    are otherwise the installed words; marked and reworded, when they are
+    not (DOCKET_REMARKED_MOST); reworded otherwise. What is left of the
+    installed rows is gone, and of
     tonight's, new. A new row must sit under a bill somebody knows, in one of
     the two chambers, with words, and carry an entry time that reads as one;
     no one day may bring more of them than a day has, nor the night more than
@@ -1335,13 +1485,16 @@ def _hold_docket(old, rows, records, asked=None, nights=1):
     stops, told = [], {}
     if rows == old:                     # the installed docket, row for row
         return stops, {"new": 0, "busiest_day": None, "late": 0, "ahead": 0, "cited": 0,
-                       "marked": 0, "reworded": 0, "gone": 0}, told, set()
+                       "marked": 0, "remarked": 0, "reworded": 0, "gone": 0}, told, set()
     gone, new = _apart(old, rows, shared_columns("Docket.txt"))
     loose = ORDER_LOOSE["Docket.txt"]
     spare = collections.defaultdict(list)
     for i, ln in enumerate(new):
         spare[loose(ln)].append(i)
-    taken, cited, marked, reworded, vanished, rest = set(), [], [], [], [], []
+    taken, cited, marked, remarked, reworded, vanished, rest = set(), [], [], [], [], [], []
+
+    def unmarked(words):                # a row's words, without the mark before them
+        return " ".join(MARK.sub("", words, 1).split())
     for ln in gone:                     # first the rows that only gained a citation
         q = spare.get(loose(ln)) or []
         words = _fields(ln, 7)[5]
@@ -1357,8 +1510,9 @@ def _hold_docket(old, rows, records, asked=None, nights=1):
         if q:
             taken.add(q[0])
             now = new[q.pop(0)]
-            mark = _marked(_fields(ln, 7)[5], _fields(now, 7)[5])
-            (marked if mark else reworded).append((ln, now))
+            a, b = _fields(ln, 7)[5], _fields(now, 7)[5]
+            (reworded if not _marked(a, b) else
+             marked if unmarked(a) == unmarked(b) else remarked).append((ln, now))
         else:
             vanished.append(ln)
     fresh = [ln for i, ln in enumerate(new) if i not in taken]
@@ -1435,19 +1589,28 @@ def _hold_docket(old, rows, records, asked=None, nights=1):
         stops.append(f"Docket.txt: {busiest[1]:,} new rows entered on {busiest[0]}, more than "
                      f"the {DOCKET_NEW_A_DAY_MOST:,} a day brings: {first(of_day)}")
     elif len(fresh) > in_all:
-        stops.append(f"Docket.txt: {len(fresh):,} new rows, more than the {in_all:,} that "
-                     f"{nights} night{'s bring' if nights != 1 else ' brings'}: {first(fresh)}")
+        stops.append(_Wider(
+            f"Docket.txt: {len(fresh):,} new rows, more than the {in_all:,} that "
+            f"{nights} night{'s bring' if nights != 1 else ' brings'}: {first(fresh)}"))
     most = _ceiling(DOCKET_CITED_MOST, nights)
     if len(cited) > most:
-        stops.append(f"Docket.txt: {len(cited):,} installed rows gained a journal citation, "
-                     f"more than {most:,}: {first([cited[0][1]])}")
-    if len(marked) > DOCKET_MARKED_MOST:
-        stops.append(f"Docket.txt: {len(marked):,} installed rows are marked in the database's, "
-                     f"more than {DOCKET_MARKED_MOST:,}: {first([marked[0][1]])}")
+        stops.append(_Wider(f"Docket.txt: {len(cited):,} installed rows gained a journal "
+                            f"citation, more than {most:,}: {first([cited[0][1]])}"))
+    if len(marked) + len(remarked) > DOCKET_MARKED_MOST:
+        stops.append(f"Docket.txt: {len(marked) + len(remarked):,} installed rows are marked in "
+                     f"the database's, more than {DOCKET_MARKED_MOST:,}: "
+                     f"{first([(marked + remarked)[0][1]])}")
 
     def turned(pair):
         was, now = pair
         return f"{'|'.join(_fields(was, 7)[:5])}|" + _differ(_fields(was, 7)[5], _fields(now, 7)[5])
+    if len(remarked) > DOCKET_REMARKED_MOST:
+        stops.append(f"Docket.txt: {len(remarked):,} installed rows are given a mark in the "
+                     f"database's and other words after it, more than {DOCKET_REMARKED_MOST:,}: "
+                     f"{turned(remarked[0])}")
+    elif remarked:
+        told["Docket.txt: installed rows given a mark, and other words after it"] = \
+            list(turned(p) for p in remarked)
     if len(reworded) > DOCKET_REWORDED_MOST:
         stops.append(f"Docket.txt: {len(reworded):,} installed rows are reworded in the "
                      f"database's, more than {DOCKET_REWORDED_MOST:,}: {turned(reworded[0])}")
@@ -1462,12 +1625,12 @@ def _hold_docket(old, rows, records, asked=None, nights=1):
         told[f"Docket.txt: new Senate rows entered more than {DOCKET_STAMP_SLACK.days} days "
              "before the installed file's newest"] = list(six(ln) for ln in late)
     stirred = {(f[0].strip(), f[1].strip()) for f in (
-        _fields(ln, 7) for ln in fresh + [now for _, now in cited + marked + reworded])}
+        _fields(ln, 7) for ln in fresh + [now for _, now in cited + marked + remarked + reworded])}
     return stops, {"new": len(fresh),
                    "busiest_day": [busiest[0].isoformat(), busiest[1]] if busiest else None,
                    "late": len(late), "ahead": len(ahead), "cited": len(cited),
-                   "marked": len(marked), "reworded": len(reworded),
-                   "gone": len(vanished)}, told, stirred
+                   "marked": len(marked) + len(remarked), "remarked": len(remarked),
+                   "reworded": len(reworded), "gone": len(vanished)}, told, stirred
 
 
 def _hold_records(old, rows, docket=(), stirred=(), sponsors=(), asked=None, nights=1):
@@ -1492,8 +1655,10 @@ def _hold_records(old, rows, docket=(), stirred=(), sponsors=(), asked=None, nig
             moved[k] = d
     since = (asked or (max(moved.values()) if moved else datetime.max)) - LSR_ACTIVE_DAYS
 
-    changed, rewritten, retitled, itself, unbacked = [], [], [], [], []
+    changed, rewritten, retitled, itself, unbacked, ahead = [], [], [], [], [], []
     unread = collections.Counter()
+    # The committees of referral the installed records hold, a column each.
+    codes = {i: {f[i].strip() for f in was.values()} - {""} for i in LSR_REFERRAL}
     for k, a in was.items():
         b = now.get(k)
         if b is None:
@@ -1515,7 +1680,14 @@ def _hold_records(old, rows, docket=(), stirred=(), sponsors=(), asked=None, nig
         at_rest = k not in stirred and moved.get(k, datetime.min) < since
         alone = [i for i, body in LSR_REFERRAL.items()
                  if i in read and not a[i].strip() and body not in chambers[k]]
-        if at_rest or alone:
+        # A first referral ahead of its docket row, and nothing else: held
+        # apart (LSR_ALONE_MOST). With a code no installed record has, or
+        # anything else changed while the bill's docket is at rest, it is
+        # one of the handful.
+        if alone and all(b[i].strip() in codes[i] for i in alone) and (
+                not at_rest or len(alone) == len(read)):
+            ahead.append((k, alone))
+        elif at_rest or alone:
             unbacked.append((k, read))
 
     def said(found, most=2):
@@ -1534,8 +1706,8 @@ def _hold_records(old, rows, docket=(), stirred=(), sponsors=(), asked=None, nig
                      f"or a chamber that is neither H nor S: {'-'.join(bare[0])} "
                      f"{now[bare[0]][10]}")
     if len(fresh) > most:
-        stops.append(f"LSRs.txt: {len(fresh):,} new bill records, more than {most:,}: "
-                     f"{'-'.join(fresh[0])} {now[fresh[0]][10]}")
+        stops.append(_Wider(f"LSRs.txt: {len(fresh):,} new bill records, more than {most:,}: "
+                            f"{'-'.join(fresh[0])} {now[fresh[0]][10]}"))
     signed = {(f[0].strip(), f[1].strip().zfill(4)) for f in (_fields(ln, 5) for ln in sponsors)}
     unsigned = [k for k in fresh if (k[0].strip(), k[1].strip().zfill(4)) not in signed]
     if len(unsigned) > LSR_UNSPONSORED_MOST:
@@ -1558,6 +1730,13 @@ def _hold_records(old, rows, docket=(), stirred=(), sponsors=(), asked=None, nig
     elif unbacked:
         told["LSRs.txt: installed bill records changed with nothing in the docket to say why"] = \
             list(said(x, 4) for x in unbacked)
+    if len(ahead) > LSR_ALONE_MOST:
+        stops.append(f"LSRs.txt: {len(ahead):,} installed bill records gained a committee in a "
+                     f"chamber whose docket has no row of the bill, more than {LSR_ALONE_MOST}: "
+                     + _cut(said(ahead[0])))
+    elif ahead:
+        told["LSRs.txt: installed bill records that gained a committee in a chamber whose "
+             "docket has no row of the bill yet"] = list(said(x) for x in ahead)
     for found, ceiling, what in (
             (retitled, LSR_RETITLED_MOST, "have another title"),
             (rewritten, LSR_REWRITTEN_MOST,
@@ -1565,12 +1744,19 @@ def _hold_records(old, rows, docket=(), stirred=(), sponsors=(), asked=None, nig
             (changed, LSR_CHANGED_MOST, "changed in a column the build reads")):
         most = _ceiling(ceiling, nights)
         if len(found) > most:
-            stops.append(f"LSRs.txt: {len(found):,} installed bill records {what}, more than "
-                         f"{most:,}: " + _cut(said(found[0])))
+            stops.append(_Wider(f"LSRs.txt: {len(found):,} installed bill records {what}, more "
+                                f"than {most:,}: " + _cut(said(found[0]))))
             break
+    else:
+        # A title is what a page says a bill is, and a night may replace 40:
+        # 53 bills with a docket row that fortnight were given another, and 55
+        # more each with one new row, and nobody was told which.
+        if retitled:
+            told["LSRs.txt: installed bill records with another title"] = \
+                list(said(x) for x in retitled)
     return stops, {"new": len(fresh), "unsponsored": len(unsigned), "changed": len(changed),
                    "rewritten": len(rewritten), "retitled": len(retitled),
-                   "unbacked": len(unbacked),
+                   "unbacked": len(unbacked), "ahead_of_docket": len(ahead),
                    "unread": {LSR_NAMES.get(i, f"column {i + 1}"): n
                               for i, n in sorted(unread.items())}}, told
 
@@ -1588,7 +1774,8 @@ def _hold_rollcalls(old_s, new_s, old_h, new_h, known=(), asked=None, nights=1):
     `known` is the bill numbers the docket and the bill records hold."""
     stops, told = [], {}
     if new_s == old_s and new_h == old_h:       # both files as installed, row for row
-        return stops, {"calls": 0, "ballots": 0, "new": 0, "strangers": 0}, told
+        return stops, {"calls": 0, "counts": 0, "ballots": 0, "new": 0, "strangers": 0,
+                       "unsummed": 0}, told
 
     def counts(lines):
         return {tuple(f[:3]): tuple(f[5:9]) for f in (ln.split("|") for ln in lines)
@@ -1599,10 +1786,17 @@ def _hold_rollcalls(old_s, new_s, old_h, new_h, known=(), asked=None, nights=1):
     if lost:
         stops.append(f"{len(lost):,} roll calls installed are not in the database's: "
                      + ", ".join(" ".join(k) for k in lost[:6]))
-    if moved:
-        stops.append(f"{len(moved):,} roll calls have other counts in the database: "
+    # A tally the clerk corrects, one or two; and never away from the ballots
+    # (below): a roll call that added up and no longer does stops the night.
+    if len(moved) > ROLLCALLS_CHANGED_MOST:
+        stops.append(f"{len(moved):,} roll calls have other counts in the database, more than "
+                     f"{ROLLCALLS_CHANGED_MOST}: "
                      + ", ".join(f"{' '.join(k)} {'-'.join(was[k])} now {'-'.join(now[k])}"
                                  for k in moved[:4]))
+    elif moved:
+        told["RollCallSummary.txt: installed roll calls with other counts (Yeas-Nays-Present-"
+             "Absent)"] = list(f"{' '.join(k)} {'-'.join(was[k])} now {'-'.join(now[k])}"
+                               for k in moved)
 
     def ballots(lines):
         return collections.Counter(tuple(ln.split("|", 3)[:3]) for ln in lines)
@@ -1666,35 +1860,56 @@ def _hold_rollcalls(old_s, new_s, old_h, new_h, known=(), asked=None, nights=1):
                      f"writes: {' '.join(odd[0][:3])} member {odd[0][3]} reads "
                      f"{now_h[odd[0]][6]!r}")
 
-    # A roll call's Yea and Nay ballots are its counts, as they were.
+    # A roll call's Yea and Nay ballots are its counts, as they were: an
+    # installed one that added up still does. A new one may be a ballot or
+    # two from its typed counts (ROLLCALL_ADRIFT_MOST), and is named.
     def adrift(summary, ballots):
+        """{roll call: (Yea ballots, Nay ballots, how many ballots from its
+        counts)} for each whose ballots are not its counts."""
         yn = collections.Counter((k[:3], f[6]) for k, f in ballots.items())
-        return {k for k, f in summary.items()
-                if (str(yn[(k, "Yea")]), str(yn[(k, "Nay")])) != (f[5].strip(), f[6].strip())}
-    off = sorted(adrift(now_s, now_h) - adrift(was_s, was_h))
-    if off:
-        k = off[0]
-        yn = collections.Counter(f[6] for b, f in now_h.items() if b[:3] == k)
-        stops.append(f"{len(off):,} roll calls' Yea and Nay ballots are not their counts: "
-                     f"{' '.join(k)} says {now_s[k][5].strip()}-{now_s[k][6].strip()} and has "
-                     f"{yn['Yea']} Yea and {yn['Nay']} Nay ballots"
-                     + ("" if k in was_s else ", a new roll call"))
+        out = {}
+        for k, f in summary.items():
+            yea, nay = yn[(k, "Yea")], yn[(k, "Nay")]
+            if (str(yea), str(nay)) != (f[5].strip(), f[6].strip()):
+                both = f[5].strip().isdigit() and f[6].strip().isdigit()
+                out[k] = (yea, nay, abs(int(f[5]) - yea) + abs(int(f[6]) - nay)
+                          if both and yea + nay else None)
+        return out
+    off = adrift(now_s, now_h)
+
+    def unsummed(k):
+        return (f"{' '.join(k)} says {now_s[k][5].strip()}-{now_s[k][6].strip()} and has "
+                f"{off[k][0]} Yea and {off[k][1]} Nay ballots")
+    near = sorted(k for k in off if k not in was_s and off[k][2] is not None
+                  and off[k][2] <= ROLLCALL_ADRIFT_MOST)
+    if len(near) > ROLLCALLS_CHANGED_MOST:
+        near = []
+    far = sorted(set(off) - set(adrift(was_s, was_h)) - set(near))
+    if far:
+        k = far[0]
+        stops.append(f"{len(far):,} roll calls' Yea and Nay ballots are not their counts: "
+                     + unsummed(k) + ("" if k in was_s else ", a new roll call"))
+    if near:
+        told["RollCallSummary.txt: new roll calls whose Yea and Nay ballots are not their "
+             "counts"] = list(unsummed(k) for k in near)
 
     # The new ones.
     fresh = sorted(k for k in now_s if k not in was_s)
     most = _ceiling(ROLLCALLS_NEW_MOST, nights)
     if len(fresh) > most:
-        stops.append(f"RollCallSummary.txt: {len(fresh):,} new roll calls, more than {most:,}: "
-                     + " ".join(fresh[0]))
+        stops.append(_Wider(f"RollCallSummary.txt: {len(fresh):,} new roll calls, more than "
+                            f"{most:,}: " + " ".join(fresh[0])))
     top = collections.defaultdict(int)
     for k in was_s:
         if k[2].isdigit():
             top[k[:2]] = max(top[k[:2]], int(k[2]))
-    astray, untimed, uncounted, unnamed, strangers = [], [], [], [], []
+    astray, beyond, untimed, uncounted, unnamed, strangers = [], [], [], [], [], []
     for k in fresh:
         f = now_s[k]
-        if not k[2].isdigit() or not 0 < int(k[2]) <= top[k[:2]] + most or k[1] not in ("H", "S"):
+        if not k[2].isdigit() or int(k[2]) <= 0 or k[1] not in ("H", "S"):
             astray.append(k)
+        elif int(k[2]) > top[k[:2]] + most:     # past a run that is longer on a later night
+            beyond.append(k)
         d = _when(f[3])
         if d is None or (asked and d > asked + ROLLCALL_AHEAD_SLACK):
             untimed.append(k)
@@ -1703,10 +1918,11 @@ def _hold_rollcalls(old_s, new_s, old_h, new_h, known=(), asked=None, nights=1):
         if f[4].strip() and f[4].strip().upper() not in known:
             strangers.append(k)
     unnamed = sorted({k[:3] for k, f in now_h.items() if k[:3] not in was_s and not f[4].strip()})
-    if astray:
-        k = astray[0]
-        stops.append(f"RollCallSummary.txt: {len(astray):,} new roll calls are numbered out of "
-                     f"their chamber's run, which stands at {top[k[:2]]}: {' '.join(k)}")
+    if astray or beyond:
+        k = (astray + beyond)[0]
+        stops.append((str if astray else _Wider)(
+            f"RollCallSummary.txt: {len(astray) + len(beyond):,} new roll calls are numbered out "
+            f"of their chamber's run, which stands at {top[k[:2]]}: {' '.join(k)}"))
     if untimed:
         k = untimed[0]
         stops.append(f"RollCallSummary.txt: {len(untimed):,} new roll calls were taken at no "
@@ -1727,8 +1943,8 @@ def _hold_rollcalls(old_s, new_s, old_h, new_h, known=(), asked=None, nights=1):
     elif strangers:
         told["RollCallSummary.txt: new roll calls on a bill no file knows"] = \
             list(f"{' '.join(k)} {now_s[k][4]} {now_s[k][11]}" for k in strangers)
-    return stops, {"calls": len(calls), "ballots": len(cast), "new": len(fresh),
-                   "strangers": len(strangers)}, told
+    return stops, {"calls": len(calls), "counts": len(moved), "ballots": len(cast),
+                   "new": len(fresh), "strangers": len(strangers), "unsummed": len(near)}, told
 
 
 def _hold_roster(old, rows):
@@ -1741,6 +1957,12 @@ def _hold_roster(old, rows):
                  if k in now and any(a[i] != now[k][i] for i in ROSTER_WHO))
     any_ = sorted(k for k, a in was.items()
                   if k in now and any(a[i] != now[k][i] for i in ROSTER_READ))
+    # ... of whom, the members with nothing changed but a seat or an e-mail
+    # address that still reads as one (ROSTER_SHAPED): named, and not counted.
+    shaped = {k for k in any_ if k not in set(who) and all(
+        i in ROSTER_SHAPED and ROSTER_SHAPED[i].fullmatch(now[k][i])
+        for i in ROSTER_READ if was[k][i] != now[k][i])}
+    touched = [k for k in any_ if k not in shaped]
     left = sorted(k for k in was if k not in now)
     joined = sorted(k for k in now if k not in was)
 
@@ -1755,16 +1977,18 @@ def _hold_roster(old, rows):
         stops.append(f"legislators.txt: {len(who):,} installed members have another name, "
                      f"chamber, county, district or party in the database's, more than "
                      f"{ROSTER_CHANGED_MOST}: {said(who[0], ROSTER_WHO)}")
-    elif len(any_) > ROSTER_TOUCHED_MOST:
-        k = any_[0]
+    elif len(touched) > ROSTER_TOUCHED_MOST:
+        k = next((k for k in touched if k not in set(who)), touched[0])
         cols = [i for i in ROSTER_READ if was[k][i] != now[k][i]]
-        stops.append(f"legislators.txt: {len(any_):,} installed members changed in a column "
-                     f"the build reads, more than {ROSTER_TOUCHED_MOST}: {said(k, cols)}")
+        stops.append(f"legislators.txt: {len(touched):,} installed members changed in a column "
+                     f"the build reads, more than {ROSTER_TOUCHED_MOST}: {said(k, cols)} (a "
+                     "member with only another seat or e-mail address, each still reading as "
+                     "one, is not counted)")
     if who and len(who) <= ROSTER_CHANGED_MOST:
         told["legislators.txt: installed members with another name, chamber, county, district "
              "or party"] = list(said(k, ROSTER_WHO) for k in who)
     rest = [k for k in any_ if k not in set(who)]
-    if rest and len(any_) <= ROSTER_TOUCHED_MOST:
+    if rest and len(touched) <= ROSTER_TOUCHED_MOST:
         # Which columns, and not what they hold: an address is a person's.
         told["legislators.txt: installed members with another seat, address or e-mail"] = [
             f"member {k}, {was[k][1]}|{was[k][2]}: column "
@@ -1781,8 +2005,8 @@ def _hold_roster(old, rows):
     if nameless:
         stops.append(f"legislators.txt: {len(nameless):,} new members have no last name, or a "
                      f"chamber that is neither H nor S: {_eg(member(now[nameless[0]]))}")
-    return stops, {"who": len(who), "any": len(any_), "left": len(left),
-                   "joined": len(joined)}, told
+    return stops, {"who": len(who), "any": len(any_), "seat_or_mail": len(shaped),
+                   "left": len(left), "joined": len(joined)}, told
 
 
 def _hold_sponsors(old, rows, docket, asked=None, nights=1):
@@ -1809,7 +2033,8 @@ def _hold_sponsors(old, rows, docket, asked=None, nights=1):
             late.append(ln)
     most = _ceiling(SPONSORS_NEW_MOST, nights)
     if len(new) > most:
-        stops.append(f"LsrSponsors.txt: {len(new):,} new rows, more than {most:,}: {_eg(new[0])}")
+        stops.append(_Wider(f"LsrSponsors.txt: {len(new):,} new rows, more than {most:,}: "
+                            f"{_eg(new[0])}"))
     if len(late) > SPONSORS_LATE_MOST:
         stops.append(f"LsrSponsors.txt: {len(late):,} new rows are on a bill whose docket began "
                      f"more than {SPONSOR_LATE_DAYS.days} days before, more than "
@@ -1963,8 +2188,7 @@ def judge(files, installed, facts=None):
     # What sits under a ceiling and is somebody's name or a bill's words: how
     # many, and where each is named.
     for what, named in told.items():
-        warnings.append(f"{what}: {len(named):,}, each named in the night's verdict "
-                        "(day_files, told) and in its what-changed report")
+        warnings.append(f"{what}: {len(named):,}, {_named(len(named))}")
 
     # A row entered while its view was being read (arrived_whole).
     for view, n in sorted(((facts or {}).get("entered") or {}).items()):
@@ -1980,8 +2204,9 @@ def judge(files, installed, facts=None):
                         + ", ".join(years) + ", newer than the installed files': tonight's "
                         "files keep the installed files' years, and a new term is a person's "
                         "decision")
-    return {"stops": stops, "warnings": warnings, "differences": diff, "held": held,
-            "told": {what: _name(named) for what, named in told.items()}}
+    return {"stops": [str(s) for s in stops], "warnings": warnings, "differences": diff,
+            "held": held, "told": {what: _name(named) for what, named in told.items()},
+            "wider": sum(1 for s in stops if isinstance(s, _Wider))}
 
 
 def lookup_notes(views, installed):
@@ -2130,8 +2355,10 @@ def held_said(held):
                       else "")
                    + (f", {d['twice']:,} there once more than a row is" if d.get("twice") else "")
                    + f"; of the installed rows {d['cited']:,} gained a citation, "
-                     f"{d.get('marked', 0):,} a mark, {d['reworded']:,} reworded, "
-                     f"{d['gone']:,} gone")
+                     f"{d.get('marked', 0):,} a mark"
+                   + (f" ({d['remarked']:,} of them with other words after it)"
+                      if d.get("remarked") else "")
+                   + f", {d['reworded']:,} reworded, {d['gone']:,} gone")
     d = held.get("LSRs.txt")
     if d:
         out.append(f"  LSRs.txt, on the columns the build reads: {d['new']:,} new records"
@@ -2140,6 +2367,8 @@ def held_said(held):
                    f"the installed {d['changed']:,} changed, {d['rewritten']:,} with a value "
                    f"replaced or lost, {d.get('retitled', 0):,} with another title, "
                    f"{d.get('unbacked', 0):,} with nothing in the docket to say why"
+                   + (f", {d['ahead_of_docket']:,} with a first committee in a chamber whose "
+                      "docket has no row of the bill yet" if d.get("ahead_of_docket") else "")
                    + ("; in columns it does not read: "
                       + ", ".join(f"{k} on {n:,}" for k, n in d["unread"].items())
                       if d.get("unread") else ""))
@@ -2148,13 +2377,18 @@ def held_said(held):
         out.append(f"  the roll calls: {d.get('new', 0):,} new"
                    + (f", {d['strangers']:,} of them on a bill no file knows"
                       if d.get("strangers") else "")
+                   + (f", {d['unsummed']:,} of them a ballot or two from their counts"
+                      if d.get("unsummed") else "")
                    + f"; of the installed {d['calls']:,} read otherwise, "
-                     f"{d['ballots']:,} ballots cast otherwise")
+                   + (f"{d['counts']:,} have other counts, " if d.get("counts") else "")
+                   + f"{d['ballots']:,} ballots cast otherwise")
     d = held.get("legislators.txt")
     if d:
         out.append(f"  the members: {d.get('joined', 0):,} joined, {d.get('left', 0):,} left; of "
                    f"the rest {d['who']:,} with another name, district or party, "
-                   f"{d['any']:,} changed at all")
+                   f"{d['any']:,} changed at all"
+                   + (f" ({d['seat_or_mail']:,} of them in a seat or an e-mail address only)"
+                      if d.get("seat_or_mail") else ""))
     d = held.get("LsrSponsors.txt")
     if d:
         out.append(f"  LsrSponsors.txt: {d['new']:,} new rows, {d['late']:,} of them on a bill "

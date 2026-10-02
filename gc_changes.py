@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.6
+# GRANITE_VERSION: 2026-09-12.7
 """
 What changed at the General Court between two copies of its bulk files.
 
@@ -64,6 +64,22 @@ added to an old bill. The night's page says how many. Which ones is said
 here, row by row, from the same judge() on the same two sets of files: the
 morning's reader is the one who can tell a clerk's correction from a view
 gone wrong.
+
+A ROLL CALL ALREADY ON FILE IS CHANGED, NOT NEW (2 October 2026). Every line
+of the newer summary that was not in the older one was "new": the Senate's
+50th of 2026, taken in March and refiled under another bill, was reported
+under "Roll calls: 1 new". A line whose year, chamber and number the older
+copy holds is listed as changed, as a bill record is.
+
+AN EXPORT THE SAME AS THE ONE BEFORE THE DATABASE NIGHT. The archive's index
+gains a version of a file only when its bytes change. When the export that
+returned after a database night was, for one file, byte for byte the export
+of before it, that night lay after the index's newest day, after_db_night()
+did not find it, and the section fell back to the archive's last two
+versions: "archived 2026-09-18 -> archived 2026-09-30", dated and true and
+weeks old, on the morning the export had put 16 status codes back. The
+newest day the archive fetched those bytes is read from its snapshots
+(fetched_until), and the heading says both days.
 """
 
 import argparse
@@ -202,15 +218,33 @@ def after_db_night(name):
     if not hist or not root.is_dir():
         return None
     first = hist[-2][0] if len(hist) > 1 else ""
+    last = fetched_until(name, hist[-1][1], hist[-1][0])
     nights = sorted(d.name for d in root.iterdir()
-                    if d.is_dir() and first <= d.name <= hist[-1][0]
+                    if d.is_dir() and first <= d.name <= last
                     and (d / f"{name}.gz").exists())
     if not nights:
         return None
     with gzip.open(root / nights[-1] / f"{name}.gz", "rb") as fh:
         was = fh.read()
     return (f"from the database {nights[-1]}", was,
-            f"archived {hist[-1][0]}", blob(hist[-1][1]))
+            f"archived {hist[-1][0]}" + (f", and the export still on {last}"
+                                         if last != hist[-1][0] else ""), blob(hist[-1][1]))
+
+
+def fetched_until(name, digest, day):
+    """The newest day the archive fetched `name` and it was these bytes, by
+    its snapshots (snapshots/<day>/<name>.sha256); `day`, the day the index
+    first had them, when no snapshot says later. The index gains a version
+    only when a file changes, so an export that returns unchanged is on no
+    new line of it."""
+    days = [day]
+    for ref in (ARCHIVE / "snapshots").glob(f"*/{name}.sha256"):
+        try:
+            if ref.read_text(encoding="utf-8").strip() == digest:
+                days.append(ref.parent.name)
+        except OSError:
+            continue
+    return max(days)
 
 
 def night_checks(day, DF):
@@ -266,16 +300,21 @@ def docket(old, new, key=whole):
 
 
 def rollcalls(old, new):
+    """([new roll calls], [roll calls the older copy holds that read
+    otherwise now]), a line each, as they read in the newer copy. A roll call
+    is its year, chamber and number."""
     before = set(lines_of(old))
-    out = []
+    on_file = {tuple(ln.split("|")[:3]) for ln in before}
+    out, changed = [], []
     for ln in lines_of(new):
         if ln in before:
             continue
         f = ln.split("|")
         if len(f) > 12:
-            out.append(f"{f[1]} #{f[2]} {f[3].split(' ')[0]}  {f[4] or '(no bill)'}  "
-                       f"{f[12]}  {f[5]}-{f[6]}")
-    return out
+            (changed if tuple(f[:3]) in on_file else out).append(
+                f"{f[1]} #{f[2]} {f[3].split(' ')[0]}  {f[4] or '(no bill)'}  "
+                f"{f[12]}  {f[5]}-{f[6]}")
+    return out, changed
 
 
 def lsrs(old, new, key=whole):
@@ -332,6 +371,10 @@ def report(against_installed=False, db_night=None):
     # export's night.
     after = ("The older side is a database night's copy: compared on the columns both sources "
              "carry, so what that night reported is not repeated here.")
+    # ... and under the bill records, which are compared whole there.
+    after_whole = ("The older side is a database night's copy: compared whole, since the one "
+                   "column that copy does not take from the database, the Senate status code, "
+                   "is the export's own in it. What that night reported is not repeated here.")
     if db_night:
         def pick(name):
             p = db_pair(name, db_night)
@@ -370,11 +413,14 @@ def report(against_installed=False, db_night=None):
     p = got["RollCallSummary.txt"]
     if p:
         any_pair = True
-        rc = rollcalls(p[1], p[3])
-        L += [f"## Roll calls: {len(rc)} new",
+        rc, moved = rollcalls(p[1], p[3])
+        L += [f"## Roll calls: {len(rc)} new, {len(moved)} changed",
               f"({p[0]} -> {p[2]})"] + ([after] if p[4] and not db_night else []) + [""]
         if rc:
             L += ["```"] + rc[:40] + ([f"... and {len(rc) - 40} more"] if len(rc) > 40 else []) + ["```"]
+        if moved:
+            L += ["changed, as each reads now:", "```"] + moved[:40] + (
+                [f"... and {len(moved) - 40} more"] if len(moved) > 40 else []) + ["```"]
         L.append("")
     p = got["LSRs.txt"]
     if p:
@@ -393,7 +439,7 @@ def report(against_installed=False, db_night=None):
             apart = [b for b in changed if not any(i in DF.LSR_READ for i in cols[b])]
             changed = [b for b in changed if b not in set(apart)]
         L += [f"## Bill records: {len(new_bills)} new, {len(changed)} changed",
-              f"({p[0]} -> {p[2]})"] + ([after] if p[4] and not db_night else []) + [""]
+              f"({p[0]} -> {p[2]})"] + ([after_whole] if p[4] and not db_night else []) + [""]
         if new_bills:
             L.append("new: " + ", ".join(new_bills[:60]))
         if changed:
