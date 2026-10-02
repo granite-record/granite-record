@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.12
+// GRANITE_VERSION: 2026-09-16.13
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -123,8 +123,12 @@ function _frank(r,s,edge){
    test orders them (_fpart, below), and then _frank. A letter or digit in
    any alphabet belongs to its word, so "2" is not whole in "Straf 20", and
    "josé" is whole in José. */
+// "senator" and "representative" are the words a row prints as "Sen." and
+// "Rep." (A TITLE AS IT IS SAID, below): "senator carson" has every word of
+// it a whole word of her name, and leads with her, as "sen. carson" does.
 const _fwords=s=>String(s||"").toLowerCase().split(/\s+/)
-  .map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,"")).filter(Boolean);
+  .map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,""))
+  .map(w=>w==="senator"?"sen":w==="representative"?"rep":w).filter(Boolean);
 const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
   +w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}\\p{N}])","u").test(name);
 function _fwhole(r,s){
@@ -158,11 +162,21 @@ function _fpart(r,s){
   return _fwords(s).filter(w=>!_fisword(name,w)).length;
 }
 
+/* A TITLE AS IT IS SAID (2 October). "senator carson" was answered "No
+   matching results.": a member's row is named "Sen. Sharon Carson", and
+   "senator" is not in it. The four ways a title is typed are read as the one
+   way a row prints it, so "senator carson", "sen carson" and "sen. carson"
+   are the same search; "representative" and "rep" likewise. Whole words
+   only: "senate" and "representation" are left alone. */
+const FTITLE={senator:"sen.",sen:"sen.",representative:"rep.",rep:"rep."};
+const _ftitled=s=>s.split(/\s+/).map(w=>
+  Object.prototype.hasOwnProperty.call(FTITLE,w)?FTITLE[w]:w).join(" ");
+
 // `limit` is the panel's eight by default. /search passes Infinity: it is a
 // page and not a dropdown, so it shows everything that matched -- which is the
 // whole reason it exists.
 function findMatch(q,limit){
-  const s=(q||"").trim().toLowerCase();
+  const s=_ftitled((q||"").trim().toLowerCase());
   if(!s||!FIND.rows)return [];
   const words=s.split(/\s+/);
   const edge=_fedge(s);
@@ -335,7 +349,8 @@ function _fbillApi(){
      &&typeof readShort==="function"&&typeof whyListed==="function"
      &&typeof spelling==="function"&&typeof wordsAdd==="function")
     return {queryGroups,groupWeight,billNumbers,billKey,looseness,indexAdd,
-            readShort,whyListed,spelling,wordsAdd};
+            readShort,whyListed,spelling,wordsAdd,
+            matchScore:typeof matchScore==="function"?matchScore:null};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -412,7 +427,9 @@ function findBillsLoadAll(){
    before the start of a longer one -- "bail" before "bailiffs" -- then the
    most of the search in the title, then the sponsor, then the committee, the
    search's own words in order worth two more, and bill number within each.
-   A search for bill numbers is number order.
+   That second number is the matcher's own matchScore(), the one /bills
+   orders by: this file added it up for itself until 2 October, a copy that
+   could drift. A search for bill numbers is number order.
 
    `allTerms` counts every term's bills (findBillsLoadAll) where /bills
    would with ?term=all. A bill number is unique only within a term, so
@@ -439,7 +456,13 @@ function findBills(q,limit,allTerms){
   for(const b of src.rows){
     let sc=0,loose=0;
     if(ids){if(!ids.includes(String(b.id).toUpperCase()))continue;}
+    else if(A.matchScore){
+      sc=A.matchScore(b,gs);
+      if(!sc)continue;
+      loose=A.looseness(b,gs);
+    }
     else{
+      // A matcher from before matchScore, still in a reader's cache.
       let every=true;
       for(const g of gs){const w=A.groupWeight(b,g);if(!w){every=false;break;}sc+=w;}
       if(!every)continue;
@@ -493,12 +516,16 @@ function findBillSpelling(q,allTerms){
 // The bills' first: it goes by sound, and for "medicade" it is Medicaid,
 // where the nearest name is the subject Medicare, one letter away. `wait` is
 // there while the bills' words are on their way: draw again after.
+// The name is offered beside the bills' word only where it is as close to
+// what was typed: "vacine" was offered "vaccine or marine", and "morgage"
+// "mortgage or morgan" (2 October).
 function findOffers(q,allTerms){
   const words=[],sp=findBillSpelling(q,allTerms);
   const wait=sp&&sp.state==="loading"?FWORDS.loading:null;
   if(sp&&sp.q)words.push(sp.q);
-  const did=findSuggest(q);
-  if(did&&!words.includes(did))words.push(did);
+  const did=findSuggest(q),s=(q||"").trim().toLowerCase();
+  if(did&&!words.includes(did)
+     &&(!words.length||_fdist(s,did,2)<=_fdist(s,words[0],2)))words.push(did);
   return {words,wait};
 }
 
@@ -622,8 +649,10 @@ function findDraw(q){
         const box=document.getElementById("findq");
         if(box)findDraw(box.value);});
     }
+    // data-find, not data-q: app.js reads data-q anywhere on the page as
+    // "run this search in the bill list" (see the panel's click, below).
     const did=offer.words.map(d=>
-      `<button type="button" class="fdym" data-q="${_fesc(d)}">${_fesc(d)}</button>`);
+      `<button type="button" class="fdym" data-find="${_fesc(d)}">${_fesc(d)}</button>`);
     if(none||did.length)tail=`<p class="fnote">${none}${did.length
       ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
   }
@@ -694,10 +723,22 @@ function findMount(){
   clr.addEventListener("click",()=>{box.value="";findDraw("");box.focus();});
   // The offer is a button rather than a link because it searches again here
   // rather than going anywhere.
+  //
+  // AND THE CLICK STOPS HERE (2 October). Choosing the offered word closed
+  // the panel, and on the Calendar, a Learn article, a session day and a town
+  // page it replaced the page with a list of bills under the page's own
+  // title. Drawing the answer takes the button out of the document, and the
+  // click then went on up to two listeners on the document: the one below,
+  // which no longer found its target inside the panel and so shut it; and
+  // app.js's, which read the button's data-q as "search the bill list for
+  // this" and drew that list over whatever page it was. The button had been
+  // the name matcher's since 18 September and did the same then; since 1
+  // October it is also how every misspelt bill word is answered.
   document.getElementById("findpanel").addEventListener("click",e=>{
     const d=e.target.closest(".fdym");
     if(!d)return;
-    box.value=d.dataset.q||"";findDraw(box.value);box.focus();
+    e.stopPropagation();
+    box.value=d.dataset.find||"";findDraw(box.value);box.focus();
   });
   box.addEventListener("keydown",e=>{
     if(e.key==="Escape"){shut();btn.focus();}
@@ -713,7 +754,15 @@ function findMount(){
   const cancel=panel.querySelector("#findcancel");
   if(cancel)cancel.addEventListener("click",shut);
   scrim.addEventListener("click",shut);
-  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)shut();});
+  // Escape from a row of the panel, or its offer, puts the focus back on the
+  // button that opened it, as Escape in the box does: shutting the panel
+  // hides whatever had the focus, and it was left on nothing.
+  document.addEventListener("keydown",e=>{
+    if(e.key!=="Escape"||panel.hidden)return;
+    const inside=panel.contains(document.activeElement);
+    shut();
+    if(inside)btn.focus();
+  });
   document.addEventListener("click",e=>{
     if(!panel.hidden&&!panel.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)
        &&e.target!==scrim)shut();

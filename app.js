@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.130
+// GRANITE_VERSION: 2026-09-07.131
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -104,7 +104,9 @@ const SYN=[
   ["climate","emission","greenhouse gas","renewable","solar"],
   ["trash","landfill","solid waste","recycling"],
   // Two groups: "opioids" found the prescription drug affordability board.
-  ["opioid","fentanyl","narcotic","heroin","overdose","naloxone","substance use",
+  // "narcan": three titles say it, and it listed nothing in a term where
+  // eight bills are about the drug it is the brand of (2 October).
+  ["opioid","fentanyl","narcotic","heroin","overdose","naloxone","narcan","substance use",
    "substance misuse","addiction"],
   ["drug","controlled substance"],
   ["vaccine","vaccination","immunization"],
@@ -126,7 +128,14 @@ const SYN=[
   ["disability","disabled","accessible","accessibility"],
   ["farm","agriculture","livestock","dairy"],
 ];
-const SYNMAP={};
+/* A WORD SOMEBODY TYPES IS NOT A PROPERTY OF AN OBJECT. These tables are
+   looked up by whatever was typed, and "constructor" is a word: on a plain
+   object SYNMAP["constructor"] is a function, the search took it for a group
+   of synonyms and stopped with a TypeError, and the page drew nothing (2
+   October; so did "__proto__"). Every table a typed word is looked up in is
+   made with no prototype, and a list read out of a fetched file is checked
+   to be a list before it is read. */
+const SYNMAP=Object.create(null);
 SYN.forEach(g=>g.forEach(t=>{SYNMAP[t]=g;}));
 /* AN APOSTROPHE TYPED ON A PHONE IS A CURLY ONE. "driver's license" found 8
    bills and the same words from an iPhone keyboard found none; "children's"
@@ -139,7 +148,7 @@ const rxEsc=t=>t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/'/g,"['’]");
 // makes "gun" hit "begun" and "act" hit "enacted". Matching at the START of a
 // word still catches plurals and endings, so "firearm" finds "firearms" and
 // "incarcerat" finds "incarcerated".
-const RXC={};
+const RXC=Object.create(null);
 function hasTerm(hay, term){
   if(term.includes(" ")&&!term.includes("'")) return hay.includes(term);
   let rx=RXC[term];
@@ -274,6 +283,9 @@ const STOPSET=new Set(STOP);
      "digital assets" is what the statutes call cryptocurrency, and the
      Uniform Fiduciary Access to Digital Assets Act is about a dead person's
      email.
+   And one that is not about the text at all:
+   - `like`: a word of SYN whose group the ask is read as, in a title, as
+     if the reader had typed that word ("cops", like "police").
 
    WHERE A BILL FOUND THIS WAY IS LISTED: after every bill that has the
    reader's own word, and after a bill that has only a longer word it begins
@@ -383,8 +395,7 @@ const CONCEPTS=[
     "gun reform","gun regulation","gun regulations","gun restrictions","gun ban",
     "gun bans","gun owners","gun ownership","guns","gun","firearms","firearm",
     "second amendment","2nd amendment","2a","right to bear arms","concealed carry",
-    "open carry","constitutional carry","gun background checks","assault weapons",
-    "assault weapon"],
+    "open carry","constitutional carry","gun background checks"],
    terms:["gun","firearm","weapon","pistol","rifle","revolver","handgun","shotgun",
     "ammunition","second amendment","bear arms","risk protection order"]},
   // Its own entry: under the firearms one, "red flag law" listed 33 bills
@@ -755,7 +766,64 @@ const CONCEPTS=[
   // Not in SYN beside "ammunition": a word there is also read as the start
   // of a longer one, and "ammonia" would have listed these.
   {ask:["ammo"],
-   terms:["ammunition"]}
+   terms:["ammunition"]},
+
+  // --- FROM THE SECOND REVIEW (2 October): thirty searches nobody had
+  // tuned. Each of these is a word a reader types and the record does not
+  // use; the terms are what the bills say instead, read out of their titles.
+  // 2009 HB 105 "replaces the term voting machines or devices with
+  // electronic ballot counting devices", and every bill since says that.
+  {ask:["voting machine","voting machines","vote counting machine","vote counting machines",
+    "ballot counting machine","ballot counting machines","ballot counting device",
+    "ballot counting devices","ballot machines"],
+   terms:["ballot counting device","electronic ballot counting","voting machine"]},
+  // Half the bills say one and half the other.
+  {ask:["telehealth","telemedicine"],
+   terms:["telehealth","telemedicine"]},
+  // New Hampshire annuls a record; nobody types that.
+  {ask:["expungement","expungements","expunge","expunged","expunging"],
+   terms:["expungement","expunge","annul","annulment","annulling","annulled"]},
+  {ask:["uber","lyft","rideshare","ridesharing","ride share","ride sharing","ride hailing"],
+   terms:["transportation network company","transportation network companies","uber",
+    "rideshare"]},
+  {ask:["silencer","silencers","suppressor","suppressors"],
+   terms:["silencing device","suppressor","silencer"]},
+  // `like`: the word is read as SYN reads "police" -- law enforcement, peace
+  // officers, sheriffs, in a title -- and whole, which a word in SYN is not:
+  // there, "cop" would also be the start of "copy" and "copayment", and
+  // every word that begins with it would be read as the police.
+  {ask:["cops","cop"],like:"police",
+   terms:["police"]},
+  {ask:["booze"],
+   terms:["alcohol","alcoholic","liquor","beer","wine"]},
+  // A phrase, so that it is not "child" and "labor": that listed hard labor
+  // as a sentence for assaults on children, first.
+  {ask:["child labor","child labour"],
+   terms:["youth employment","child labor","employment of minors"]},
+  {ask:["tax break","tax breaks"],
+   terms:["tax exemption","tax credit","tax relief","tax abatement","tax deferral"]},
+  // The two taxes a business pays here. As two words it needed "business"
+  // beside "tax", and the bills say "business profits tax".
+  {ask:["business tax","business taxes"],
+   terms:["business profits tax","business enterprise tax","business tax"]},
+  // Read whole: as the start of a word "condo" was also "condoms".
+  {ask:["condo","condos"],
+   terms:["condominium"]},
+  // Its own entry: as an ask of the firearms one it listed criminal
+  // threatening and air rifles for hunting game. No bill of 2025-2026 says
+  // any of these, and the search then lists none, which is the answer.
+  {ask:["assault weapons","assault weapon","assault rifle","assault rifles"],
+   terms:["assault weapon","semi automatic","semiautomatic","large capacity ammunition"]},
+  // What an agency is called for short. `named` and no terms: a department
+  // is named in the text of every bill that gives it something to do, and
+  // a bill that names it in its title or its analysis is about it.
+  {ask:["dmv"],terms:[],named:["division of motor vehicles"]},
+  {ask:["dhhs"],terms:[],named:["department of health and human services"]},
+  {ask:["dot"],terms:[],named:["department of transportation"]},
+  {ask:["des"],terms:[],named:["department of environmental services"]},
+  {ask:["doe"],terms:[],named:["department of education"]},
+  {ask:["doj"],terms:[],named:["department of justice"]},
+  {ask:["puc"],terms:[],named:["public utilities commission"]}
 ];
 /* THE MARKS A QUESTION IS ASKED WITH, taken off the ENDS of words and nowhere
    else. Only the comma and the hyphen were being removed, so a reader who
@@ -783,7 +851,7 @@ const qnorm=s=>String(s||"").toLowerCase().replace(/[‘’]/g,"'").replace(/[,\
   .filter(Boolean).join(" ");
 // A term, as a title is searched: hyphens are spaces.
 const cnorm=s=>String(s).toLowerCase().replace(/-/g," ");
-const CWORD={},CPHRASES=[];
+const CWORD=Object.create(null),CPHRASES=[];
 CONCEPTS.forEach(c=>{
   c.ask=c.ask.map(qnorm);
   c.terms=c.terms.map(cnorm);
@@ -802,8 +870,18 @@ CONCEPTS.forEach(c=>{
    others stay off until theirs are -- "health care" as a phrase would widen
    to every title with "health" in it. A phrase SYN no longer lists is
    skipped rather than left to stop the page loading, and preflight fails if
-   one of these stops being read as a phrase. */
-const SYNPHRASES=["mental health","behavioral health","law enforcement"];
+   one of these stops being read as a phrase.
+
+   AND EVERY ENTRY NO TITLE HAS EVER USED (2 October). "forever chemicals"
+   listed nothing in any term, with "forever chemical" sitting in the PFAS
+   group: read as two words it needs a title that says "forever". An entry
+   the titles do use ("solid waste", "drinking water") is found as its two
+   words. One they never use -- it is in SYN as the public's word for the
+   group -- can only be found as the group, so it is read as a phrase: four
+   of them, and preflight fails if SYN gains a fifth that is not listed
+   here. */
+const SYNPHRASES=["mental health","behavioral health","law enforcement",
+  "forever chemical","impaired driving","older adult","high speed internet"];
 SYNPHRASES.forEach(p=>{ if(SYNMAP[p])CPHRASES.push([p,{syn:SYNMAP[p].map(cnorm)}]); });
 CPHRASES.sort((a,b)=>b[0].length-a[0].length);
 /* A PLURAL IS READ AS ITS SINGULAR, from four letters: "dogs" found only the
@@ -844,7 +922,7 @@ function phraseAt(words,stems,e){
    never reaches these. Each is read as the other, in a title, as a plural is
    read as its singular. Not life and lives, leaf and leaves, half and halves:
    the plural is also a verb, and "leaf" would list every leave of absence. */
-const ODDPLURAL={};
+const ODDPLURAL=Object.create(null);
 [["knife","knives"],["wife","wives"],["wolf","wolves"],["calf","calves"],
  ["shelf","shelves"],["thief","thieves"],["child","children"],["woman","women"],
  ["tooth","teeth"],["goose","geese"],["mouse","mice"]]
@@ -858,10 +936,13 @@ const VERBEND=/(ize|ise)$/;
 // what the reader typed (and its singular); `tab` is where the entry's terms
 // begin and `nam` where its `named` terms do.
 function conceptGroup(word,own,c){
-  own=[...new Set(own)];
+  const asked=[...new Set(own)];
+  // `like`: SYN's group for that word stands beside the reader's own, and
+  // is read where a synonym is read -- in a title.
+  own=[...new Set([...asked,...(c.like&&SYNMAP[c.like]||[]).map(cnorm)])];
   const alts=[...new Set([...own,...c.terms])];
   const g={word,alts:alts.concat(c.named.filter(t=>!alts.includes(t))),
-    tab:own.length,nam:alts.length,exact:true,asked:own};
+    tab:own.length,nam:alts.length,exact:true,asked};
   // The reader's own word, where the entry says it counts only in a title
   // or an analysis: typed "gender identity" is read as the table reads it.
   const on=own.filter(o=>c.named.includes(o));
@@ -883,6 +964,7 @@ function conceptGroup(word,own,c){
 // the reader's word is read whole, never as the start of a longer one.
 function queryGroups(raw){
   let q=" "+qnorm(raw)+" ";
+  const asTyped=q.trim();
   const out=[];
   let typed=q.split(" ").filter(Boolean),stems=typed.map(stem);
   for(const e of CPHRASES){
@@ -900,12 +982,15 @@ function queryGroups(raw){
   }
   const words=q.split(" ").filter(Boolean);
   const kept=words.filter(w=>!STOPSET.has(w));
+  // The plain word before this one, for two words typed that a title writes
+  // as one (WRITTEN AS ONE WORD, OR TWO, below).
+  let before=null;
   (kept.length||out.length?kept:words).forEach(w=>{
     // The table's word, whole, and only as the table spells it: "weeds" is
     // not "weed". Its singular is still the reader's own word -- "hormones"
     // lost the title that says "hormone products" without it.
     const one=stem(w),c=CWORD[w];
-    if(c&&!c.also){ out.push(conceptGroup(w,[w,one],c)); return; }
+    if(c&&!c.also){ out.push(conceptGroup(w,[w,one],c)); before=null; return; }
     // A word that is itself an entry is not a plural to take the s off: "pfas".
     const g={word:w,alts:[...new Set([w,...expand(SYNMAP[w]?w:one)].map(cnorm))]};
     const odd=ODDPLURAL[w]||ODDPLURAL[one];
@@ -916,8 +1001,19 @@ function queryGroups(raw){
       g.tab=g.alts.length;g.alts=[...new Set([...g.alts,...c.terms])];
       g.nam=g.alts.length;g.alts=g.alts.concat(c.named.filter(t=>!g.alts.includes(t)));
     }
+    if(HONORIFIC[w])g.hon=HONORIFIC[w];
+    if(before){
+      const j=before.word+w;
+      (before.joins||(before.joins=[])).push(j);
+      g.joins=[j];
+    }
+    before=c?null:g;
     out.push(g);
   });
+  // The search as typed, the skipped words still in it: a title that says
+  // "medical bills" in those words is the one a reader of them wants first
+  // (matchScore, below).
+  out.typed=asTyped;
   // What a part of a search may not do alone. `solo`: it is the whole search.
   // `rest`: for a search of several parts, what a title must say for each of
   // the others to be in it -- their own words, not the table's (see fitAlone).
@@ -953,7 +1049,7 @@ function queryGroups(raw){
      -ing only where English adds them without doubling the last letter
      ("taxing", "towed" -- not "rating", which is not "rat"). In a phrase it
      is the last word that takes the ending. */
-const RXW={};
+const RXW=Object.create(null);
 function altRx(term){
   if(RXW[term])return RXW[term];
   const n=term.length-term.lastIndexOf(" ")-1;
@@ -1027,23 +1123,84 @@ function inText(hay,g,alt,term){ return typedAlt(g,alt,term)?hasTerm(hay,alt):al
    there as it is in a title, but only when the word is the whole search:
    "organ donation" listed political donations to organizations.
 
-   IN A SEARCH OF SEVERAL WORDS each must be found, and each may be found
-   in a different place: "birth control" still lists a bill on reporting
-   fetal deaths to the Centers for Disease Control whose text is about
-   birth certificates. The index holds words, not where they stand, so only
-   a phrase the table lists is read as a phrase. Each such card says "in
-   the bill's text", and is listed after every bill whose title has the
-   words.
+   IN A SEARCH OF SEVERAL WORDS each must be found, and a word found
+   outside the title must stand beside another word of the search there
+   (WORDS THAT STAND TOGETHER, below). Until 2 October each could be found
+   in a different place, because the index held words and not where they
+   stand. Each such card says "in the bill's text", and is listed after
+   every bill whose title has the words.
 
    The file names a bill by its id and is asked for by the bill's term, so a
-   stale file can fail to find a bill and cannot find the wrong one. */
-const SIDX={};
+   stale file can fail to find a bill and cannot find the wrong one.
+
+   WORDS THAT STAND TOGETHER (2 October). "Each may be found in a different
+   place" was the paragraph above this one, and it listed bills that are not
+   about what was typed: for "medical debt" the consolidation of the health
+   and education facilities authority (its analysis mentions the assumption
+   of debts); for "small claims" a tariff tax credit for small businesses,
+   whose text says "approved claims"; for "child labor" hard labor as a
+   sentence for assaults on children. Six of thirty searches nobody had tuned
+   put such a bill in the first ten, and in three it was the first or the
+   only one. Before the text was read none of them was listed.
+
+   So in a search of several words, a plain word found only in a bill's
+   analysis or text counts only where it STANDS BESIDE another word of the
+   search there -- next to it, either way round, with nothing between them
+   but words that carry no subject ("custody of children"). The file says
+   which pairs of words do: under "b", for each bill, five letters a pair
+   (pairCode; build_search_index.py makes them and explains why a pair is a
+   code and not two words). The word beside it may be any wording of the
+   other part: its synonyms, the table's terms, the first or last word of a
+   phrase. Read against every judged search (2 October), every bill that was
+   wanted and had been found this way has its words together -- "domestic
+   violence", "nursing homes", "town meeting", "child custody
+   determination" -- and each of the wrong ones above has them apart.
+
+   Not asked of a word the table owns or supplies (that wording is specific
+   already), of a typed phrase, of a word beside a sponsor's name ("lang
+   cannabis" is his bills that say it), nor beside a two-letter word read as
+   a start, which is itself a last resort. Nor where every other part of the
+   search is the table's and the TITLE has it: a bill titled for the
+   right-to-know law is about public records, and "public records request"
+   lists it for the requests its text is about, wherever they stand. That
+   is not said of a plain word in a title -- "small" in "small businesses"
+   settles nothing about "small claims". And a file from before the pairs
+   has none: the search then lists less, and nothing wrong. */
+const SIDX=Object.create(null);
 let SIDXGEN=0;
 function indexAdd(term,data){
   if(!term||!data||data.v!==1||!Array.isArray(data.ids))return false;
-  SIDX[term]={ids:data.ids,w:data.w||{},p:data.p||{},keys:null};
+  SIDX[term]={ids:data.ids,w:data.w||{},p:data.p||{},
+    b:Array.isArray(data.b)?data.b:[],keys:null,near:null};
   SIDXGEN++;
   return true;
+}
+// Two words that stand together, as the file keeps them: thirty bits of the
+// FNV-1a hash of "first second", in five letters. build_search_index.py's
+// pair_code() is this, and preflight runs both over the same pairs.
+const CODE64=".BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+function pairCode(first,second){
+  const s=first+" "+second;
+  let h=0x811c9dc5;
+  for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),0x01000193)>>>0;
+  h=(h^(h>>>30))&0x3fffffff;
+  let out="";
+  for(let k=24;k>=0;k-=6)out+=CODE64[(h>>>k)&63];
+  return out;
+}
+// One term's pairs, as {code: the bills that have it}. Made the first time a
+// search of several words needs it.
+function nearMap(X){
+  if(X.near)return X.near;
+  const m=new Map();
+  X.b.forEach((codes,i)=>{
+    if(typeof codes!=="string")return;
+    for(let j=0;j+5<=codes.length;j+=5){
+      const c=codes.slice(j,j+5),at=m.get(c);
+      if(at)at.push(X.ids[i]);else m.set(c,[X.ids[i]]);
+    }
+  });
+  return X.near=m;
 }
 const indexHas=term=>!!SIDX[term];
 // The keys a word is filed under: itself, its singular, and itself with the
@@ -1056,7 +1213,7 @@ function wordKeys(alt){
 // One list of the file as [how far short, in the analysis, the bill's word,
 // found by a term this file supplied] per bill id; the best kept.
 function readPosts(X,posts,m,base,step,alt,tab,onlyA,once){
-  if(!posts)return;
+  if(!Array.isArray(posts))return;
   let i=0;
   for(const n of posts){
     i+=Math.floor(n/20);
@@ -1112,6 +1269,77 @@ function withHit(b,g){
   const h=memo[b.term].hits.get(b.id);
   return h?[h[1]?"analysis":"text",h[2]]:null;
 }
+// What the reader typed for one part of a search: the word, its singular, a
+// verb without its last letter. Not a synonym, nor a term the table supplied.
+const ownAlts=g=>g.alts.filter(alt=>!alt.includes(" ")
+  &&(typedAlt(g,alt)||alt===g.word||alt===stem(g.word)));
+// The keys the file's pairs are made of, for these words: the word and its
+// singular, and the word with an ending where some bill of the term is
+// filed under that. A phrase stands beside a word by its first or last word.
+function pairKeys(X,alts){
+  const out=new Set();
+  for(const alt of alts){
+    const ws=alt.split(" ");
+    for(const w of ws.length>1?[ws[0],ws[ws.length-1]]:ws){
+      if(!/^[a-z0-9']+$/.test(w))continue;
+      const bare=w.replace(/'s$/,"").replace(/'/g,"");
+      out.add(bare);out.add(stem(bare));
+      for(const k of wordKeys(bare))if(Array.isArray(X.w[k]))out.add(k);
+    }
+  }
+  out.delete("");
+  return out;
+}
+// The bills of one term in whose analysis or text this part of a search
+// stands beside another part of it (WORDS THAT STAND TOGETHER, above).
+function besideHits(g,term){
+  const X=SIDX[term];
+  if(!X)return null;
+  const memo=g._bx||(g._bx={});
+  if(memo[term]&&memo[term].X===X)return memo[term].hits;
+  const beside=new Set(),near=nearMap(X);
+  const mine=pairKeys(X,ownAlts(g));
+  const theirs=pairKeys(X,g.peers.flatMap(o=>o.alts));
+  for(const x of mine)for(const y of theirs){
+    if(x===y)continue;
+    for(const c of [pairCode(x,y),pairCode(y,x)]){
+      const at=near.get(c);
+      if(at)for(const id of at)beside.add(id);
+    }
+  }
+  memo[term]={X,hits:beside};
+  return beside;
+}
+/* WRITTEN AS ONE WORD, OR TWO, OR WITH A HYPHEN (2 October). Seven titles
+   say "E-Z Pass" and only that spelling found them: "ez pass", "ezpass" and
+   "e-zpass" each listed nothing in any term. A hyphen is read as a space on
+   both sides, so the title was the three words "e z pass" and no joined
+   spelling could match. The same letters are one thing however they are
+   spaced -- "nonprofit" and "non-profit", "reassessment" and
+   "re-assessment", "day care" and "daycare" -- so a title is also read with
+   the hyphens taken out of each word of it, and with each two words of it
+   that stand together run into one; and two plain words typed next to each
+   other are also read as one. A run of two is read only for a word of five
+   letters or more, and never across a word the search skips ("in come" is
+   not income). */
+function joinedTitle(b){
+  if(b.hayJ!==undefined)return b.hayJ;
+  const h=[],j=[];
+  let prev="";
+  for(const raw of String(b.title||"").toLowerCase().split(/[^a-z0-9\-]+/)){
+    const w=raw.replace(/^-+|-+$/g,"");
+    if(!w){prev="";continue;}
+    const one=w.replace(/-/g,"");
+    if(one!==w)h.push(one);
+    if(prev&&!STOPSET.has(prev)&&!STOPSET.has(one)&&!/^\d+$/.test(prev)&&!/^\d+$/.test(one))j.push(prev+one);
+    prev=one;
+  }
+  return b.hayJ=h.length||j.length?{h:" "+h.join(" ")+" ",j:" "+j.join(" ")+" "}:null;
+}
+function asOne(b,alt){
+  const J=joinedTitle(b);
+  return !!J&&(altRx(alt).test(J.h)||(alt.length>=5&&altRx(alt).test(J.j)));
+}
 // The topic's name as searched: what stands before " - ", and nothing at all
 // where that names more than one subject.
 const topicHay=b=>{
@@ -1155,7 +1383,7 @@ const topicHay=b=>{
    owns. Across the nineteen terms "gay" is also Rep. Betty Gay, and her 36
    bills -- election officers, drivers' licenses -- stood above every bill
    the word was typed to find. They are still listed, after them. */
-const RXN={};
+const RXN=Object.create(null);
 function nameRx(term){
   return RXN[term]||(RXN[term]=new RegExp("\\b"+rxEsc(term)+"\\b"));
 }
@@ -1171,11 +1399,15 @@ function fitAlone(b,g){
     // A name is the word as typed, never its singular: "weeds" is not Rep.
     // Weed, whose bills stood above every bill about weeds.
     const own=typedAlt(g,alt)||alt===g.word,name=alt===g.word&&!g.exact;
-    if(altRx(alt).test(b.hayT)||(name&&nameRx(alt).test(b.hayS))){d=0;why=null;break;}
+    if(altRx(alt).test(b.hayT)||(name&&nameRx(alt).test(b.hayS))
+       ||(own&&!g.exact&&asOne(b,alt))){d=0;why=null;break;}
     if(d>1&&(inText(b.hayT,g,alt,b.term)||(name&&altRx(alt).test(b.hayS)))){d=1;why=null;}
     if(d>2&&own&&(altRx(alt).test(b.hayC)||(g.exact&&altRx(alt).test(b.hayS)))){d=2;why=null;}
     if(d>3&&own&&inText(b.hayC,g,alt,b.term)){d=3;why=null;}
   }
+  // Two words typed that the title writes as one: "day care" and daycare,
+  // "e zpass" and E-ZPass.
+  if(d>0&&g.joins&&g.joins.some(j=>altRx(j).test(b.hayT)||asOne(b,j))){d=0;why=null;}
   // The topic. For a word that is the whole search, a word of the topic's
   // name. In a search of several words a topic stands for one of them only
   // when it is that word and nothing else, and the title has every other:
@@ -1221,13 +1453,84 @@ function fitAlone(b,g){
    non-profit organizations for "organ donation". So the start of a longer
    title word does not count beside a word found only outside the title.
    Not for a two-letter word read as a start (readShort): that reading is
-   itself the last resort of a search that listed nothing. */
+   itself the last resort of a search that listed nothing.
+
+   THE SAME OF EVERY GUESS (2 October). A committee's name is a guess too,
+   and so is a sponsor's name with an ending. "child labor" listed two bills
+   heard by a Labor committee whose text says "child"; "tim lang", across
+   the terms, listed one bill -- "compensation for time lost by state
+   employees", sponsor Ray Langer. So none of the three counts beside a word
+   found only outside the title, and no two of them count together, unless
+   both are the committee's name ("ways means").
+   And a two-letter word read as a start counts beside the reader's own
+   words, not beside a synonym this file supplied: "student id" listed
+   "identifying certain school district offices" (id, identifying; student,
+   school).
+
+   A TITLE BEFORE A NAME, AND A FIRST NAME BEFORE A SURNAME. "senator
+   carson" listed nothing in a term where Sen. Sharon Carson has nine bills,
+   and "tim lang" nothing where Sen. Timothy Lang has his: the sponsor's
+   name was read a word at a time, each whole. Beside a word that is a whole
+   word of the sponsor's name, "rep", "representative", "sen" and "senator"
+   are read as the sponsor's title -- and agree with it, where the index
+   says which chamber -- and another word may be the start of another word
+   of that name. Such a bill is listed after the ones that have the name
+   whole.
+
+   And a plain word found only in the analysis or the text counts only
+   where it stands beside another word of the search there: WORDS THAT
+   STAND TOGETHER, above. */
+const HONORIFIC=Object.assign(Object.create(null),
+  {rep:"Rep.",representative:"Rep.",sen:"Sen.",senator:"Sen."});
+// A longer word in the title, a name with an ending, a committee's name.
+const weakFit=f=>f[0]>=1&&!f[1];
+// This part of the search is a whole word of the sponsor's name.
+const namesSponsor=(b,o)=>!o.exact&&!o.hon&&!o.word.includes(" ")&&nameRx(o.word).test(b.hayS);
+// This part begins another word of the sponsor's name than the one a peer
+// is: "tim", of Timothy Lang -- not "car", of Carson, beside "carson".
+const startsName=(b,g,peers)=>b.hayS.split(/[^a-z0-9']+/).some(w=>
+  w.length>g.word.length&&w.startsWith(g.word)&&!peers.some(o=>o.word===w));
+// The title has this part in the reader's own word, not a synonym of it.
+const ownInTitle=(b,o)=>ownAlts(o).some(a=>altRx(a).test(b.hayT)||asOne(b,a))
+  ||!!(o.joins&&o.joins.some(j=>altRx(j).test(b.hayT)||asOne(b,j)));
+// The title has this part of the search, and the part is the table's.
+function tableInTitle(b,o){
+  if(!o.exact&&o.tab==null)return false;
+  const x=fitAlone(b,o);
+  return !!x&&(x[1]?x[1][0]==="title":x[0]===0);
+}
 function fit(b,g){
-  const f=fitAlone(b,g);
-  if(!f||f[0]!==1||!g.peers||(g.short&&g.short.has(b.term||"")))return f;
-  for(const o of g.peers){
-    const x=fitAlone(b,o);
-    if(x&&x[1]&&x[1][0]!=="title")return null;
+  let f=fitAlone(b,g);
+  const peers=g.peers;
+  if(!peers)return f;
+  const t=b.term||"";
+  if(g.hon&&(!f||f[0]>0)&&peers.some(o=>namesSponsor(b,o))
+     &&(!b.sponsor_label||String(b.sponsor_label).startsWith(g.hon)))f=[0,null];
+  if(!f&&!g.exact&&g.tab==null&&!g.word.includes(" ")&&g.word.length>2
+     &&peers.some(o=>namesSponsor(b,o))&&startsName(b,g,peers))f=[1,null];
+  if(!f)return null;
+  if(weakFit(f)){
+    const short=!!(g.short&&g.short.has(t));
+    for(const o of peers){
+      const x=fitAlone(b,o);
+      if(!x)continue;
+      if(short){
+        if(x[0]===0&&!x[1]&&!o.exact&&!namesSponsor(b,o)&&!ownInTitle(b,o))return null;
+        continue;
+      }
+      if(x[1]&&x[1][0]!=="title")return null;
+      if(weakFit(x)&&!(f[0]>=2&&x[0]>=2))return null;
+    }
+    return f;
+  }
+  if(!g.exact&&g.tab==null&&!g.word.includes(" ")&&f[1]&&!f[1][1]
+     &&(f[1][0]==="analysis"||f[1][0]==="text")){
+    const others=peers.filter(o=>!o.hon&&!namesSponsor(b,o));
+    if(others.length&&!others.some(o=>o.short&&o.short.has(t))
+       &&!others.every(o=>tableInTitle(b,o))){
+      const beside=besideHits(g,t);
+      if(!beside||!beside.has(b.id))return null;
+    }
   }
   return f;
 }
@@ -1253,6 +1556,30 @@ function looseness(b,gs){
   let n=0;
   for(const g of gs){const f=fit(b,g);n+=f?f[0]:3;}
   return n;
+}
+/* HOW MUCH OF A SEARCH A BILL HAS: what best match orders by after
+   looseness. 0 where it lacks a part of it. /bills, the header's panel,
+   /search and preflight's cases each added this up for themselves, in four
+   copies of one sentence; it is one function now, so that they cannot
+   differ.
+   Each part by where it was found (groupWeight); half a point more where
+   the title has the reader's own word and not only a synonym of it; and two
+   more where the title has the words of the search in order -- as they were
+   typed, the skipped words still in them. "medical bills" is read as
+   "medical", which SYN reads as health too: 183 bills, and the one titled
+   "payment and dispute resolution for medical bills" was 57th of them (2
+   October). */
+function matchScore(b,gs){
+  let s=0;
+  for(const g of gs){
+    const w=groupWeight(b,g);
+    if(!w)return 0;
+    s+=w+(ownInTitle(b,g)?0.5:0);
+  }
+  const words=gs.map(g=>g.word).join(" "),typed=gs.typed||"";
+  if((gs.length>1&&b.hayT.includes(words))
+     ||(typed.includes(" ")&&typed!==words&&b.hayT.includes(typed)))s+=2;
+  return s;
 }
 /* WHY A BILL IS LISTED, where its title does not have the reader's word: in
    the bill's own words, never the reader's. "topic: Housing"; "in the bill's
@@ -1363,13 +1690,18 @@ function vocabOf(rows){
    and one letter apart, or two in a word of eight letters or more; or
    another sound and one letter apart ("pention", "morgage"). That offered
    26 of the 36 their word, and 3 of the 182 another (photon as photo; 6
-   over every term, Mormon as Morton among them). */
+   over every term, Mormon as Morton among them).
+   The second letter may differ where the sound is the same (2 October):
+   "tabacco" is tobacco, the same consonants in the same order, and was
+   offered nothing because its second letter is a vowel spelt by ear. */
 function soundsLike(word,rows){
-  const key=soundKey(word),head=asSaid(word).slice(0,2),most=word.length>=8?2:1;
+  const key=soundKey(word),said=asSaid(word),head=said.slice(0,2),most=word.length>=8?2:1;
   let best=null;
   for(const [v,n] of vocabOf(rows)){
-    if(asSaid(v).slice(0,2)!==head)continue;
+    const sv=asSaid(v);
+    if(sv[0]!==said[0])continue;
     const same=soundKey(v)===key;
+    if(!same&&sv.slice(0,2)!==head)continue;
     const far=lettersApart(word,v,same?most:1);
     if(far>(same?most:1)||!far)continue;
     const score=[same?0:1,far,-n];
@@ -1456,8 +1788,16 @@ function emptyResult(){
   // that was the whole search ("teacher pay" finds nothing this term).
   const words=gs.length>1?gs.map(g=>g.word)
     :gs.length===1&&gs[0].word.includes(" ")?gs[0].word.split(" ").filter(w=>!STOPSET.has(w)):[];
-  const parts=words.map(w=>{const g2=queryGroups(w);
-    return [w,inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length];}).filter(p=>p[1]);
+  const count=q=>{const g2=readShort(queryGroups(q),inTerm);
+    return inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length;};
+  const parts=words.map(w=>[w,count(w)]).filter(p=>p[1]);
+  // A search of three words or more, with one of them left out: "college
+  // students voting" lists nothing, because the bill on student
+  // identification at the polls never says "college", and "students voting"
+  // lists it (2 October). Offered like the words on their own, and never
+  // drawn in the search's place.
+  const fewer=gs.length>2?gs.map((g,i)=>gs.filter((x,j)=>j!==i).map(x=>x.word).join(" "))
+    .map(q=>[q,count(q)]).filter(p=>p[1]):[];
   // A word no bill has ever used, offered as the word it sounds like -- an
   // offer, and never a list drawn in its place (see A SEARCH THAT LISTS
   // NOTHING, above). Only where the search itself lists nothing in the
@@ -1474,10 +1814,12 @@ function emptyResult(){
   // sentence read "No bills match in the in the 2025-2026 term." -- or, with
   // the picker on All terms, "in the across all terms". The two callers at
   // the count line pass it bare and were always right; this one doubled it.
+  const offer=list=>list.map(([w,n])=>
+    `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
+    .join(" &middot; ");
   return `<div class="empty">No bills match${words.length?" all of that":""}
-    ${esc(termPhrase())}.${did}${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
-      `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
-      .join(" &middot; ")}`:""}<br><br>Try removing a filter, or a different term.</div>`;
+    ${esc(termPhrase())}.${did}${fewer.length?`<br><br>Without one word: ${offer(fewer)}`:""}${
+    parts.length?`<br><br>On their own: ${offer(parts)}`:""}<br><br>Try removing a filter, or a different term.</div>`;
 }
 /* THE BILLS' OWN TEXT, FETCHED WHEN SOMEBODY SEARCHES. site/sidx/<term>.json
    is what build_search_index.py made of the analyses and texts of one term's
@@ -1577,13 +1919,10 @@ function whyLine(b){
   const y=whyListed(b,groupsFor(q));
   return y?`<div class="cwhy">Listed for &mdash; ${esc(y)}</div>`:"";
 }
+// The search's own words, in order, in the title, is the strongest sign
+// there is: matchScore() counts it, for this page, the header and /search.
 function scoreOf(b){
-  const gs=groupsFor(query.trim());
-  let s=gs.reduce((t,g)=>t+groupWeight(b,g),0);
-  // The search's own words, in order, in the title, is the strongest sign there is.
-  const words=gs.map(g=>g.word).join(" ");
-  if(gs.length>1&&b.hayT.includes(words))s+=2;
-  return s;
+  return matchScore(b,groupsFor(query.trim()));
 }
 const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
   return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
@@ -6212,9 +6551,14 @@ document.addEventListener("click",e=>{
     render();return;}
   const jt=e.target.closest("[data-term]");
   if(jt){term=jt.dataset.term;$("#year").value=term;forgetCardState();render();return;}
-  // A part of a search that found nothing, offered on its own.
+  // A part of a search that found nothing, offered on its own. Chosen from
+  // the keyboard (a click with no pointer behind it), the focus goes to the
+  // search box, which now holds the word: drawing the list again takes the
+  // button away, and the focus was left on nothing.
   const jq=e.target.closest("[data-q]");
-  if(jq){query=jq.dataset.q;$("#q").value=query;render();return;}
+  if(jq){query=jq.dataset.q;$("#q").value=query;render();
+    if(e.detail===0)$("#q").focus();
+    return;}
   if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}
 });
 document.addEventListener("change",e=>{

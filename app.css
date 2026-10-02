@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.187 */
+/* GRANITE_VERSION: 2026-09-07.188 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -756,8 +756,11 @@ margin-top:var(--sp-2)}
 border-bottom:1px solid var(--rule);margin-bottom:var(--sp-2)}
 /* "Did you mean firearms?" -- a button, because it searches again here
    rather than going anywhere, and it should look like the offer it is. */
-.fdym{background:none;border:0;padding:0;font:inherit;color:var(--pine);
+.fdym{background:none;border:0;padding:0;margin:0 2px;font:inherit;color:var(--pine);
 text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+/* The ring drawn round the offer when it has the focus stood on the words
+   either side of it: drawn a little way off, it sits in the space between. */
+.fdym:focus-visible,.empty button.link:focus-visible{outline-offset:1px;border-radius:2px}
 .fdym:hover{color:var(--ink)}
 
 /* THE CLEAR. Faint until it is wanted, which is the whole brief for it: "an
@@ -2024,6 +2027,13 @@ font-size:var(--t-ui);color:var(--pine)}
 color:var(--ink-2);margin:var(--sp-7) 0 var(--sp-4);display:flex;align-items:baseline;gap:var(--sp-4)}
 .grp:first-child{margin-top:var(--sp-1)}
 .grp span{font-weight:400;font-size:var(--t-sm);letter-spacing:0;text-transform:none;color:var(--ink-2)}
+/* A word offered in place of a search that listed nothing ("Did you mean
+   medicaid?", "On their own: dental"). It is a button, and inside a sentence
+   it was told from the words round it by colour alone: underlined, like the
+   header panel's offer, and the same size as the sentence it is in. */
+.empty button.link{background:none;border:0;padding:0;margin:0 2px;font:inherit;color:var(--pine);
+text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.empty button.link:hover{color:var(--ink)}
 .empty{background:var(--surface);border:1px dashed var(--rule-2);border-radius:var(--r-out);padding:var(--sp-9);
 text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
 .spin{padding:var(--sp-7) var(--sp-1);color:var(--ink-2);font-size:var(--t-ui)}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.304
+# GRANITE_VERSION: 2026-09-04.305
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5563,6 +5563,11 @@ document.head.appendChild = (s) => {
 };
 let ready = null;
 document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+// The panel mounts itself where there is no search button yet. The stub
+// hands back an element for any id, so the first question is answered no.
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
 let F;
 try { script("./find.js");
       F = vm.runInThisContext("({FIND, FBILLS, FALL, findDraw, findBills, findBillsLoad," +
@@ -5591,6 +5596,14 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
   // it sounds like is offered once the words every bill uses have arrived.
   draw("pistal"); await ticks(10);
   res.offer = {typo: draw("pistal"), word: draw("pistil")};
+  // The offered word is chosen: the panel's own listener, handed a click on
+  // the button. It must stop the click there and draw that word's answer.
+  draw("pistal");
+  let stopped = 0;
+  const chose = byId("findpanel")._on.click || [];
+  chose.forEach(f => f({target: {closest: (sel) => sel === ".fdym" ? {dataset: {find: "pistol"}} : null},
+                        stopPropagation() { stopped++; }, preventDefault() {}}));
+  res.chosen = {listeners: chose.length, stopped, html: panel.innerHTML};
   // The header panel never asks for another term's bills: they are /search's.
   res.askedPanel = ASKED.slice();
   if (MODE !== "fail") {
@@ -5823,7 +5836,7 @@ def _find_bills(BP):
         "/sidx/words.json" not in A["asked"], (
         "sidx/words.json was fetched before any search had listed nothing: "
         f"the header asked for {P['asked']}, /bills for {A['asked']}")
-    offers = [("the header", P["offer"], 'data-q="pistol"'),
+    offers = [("the header", P["offer"], 'data-find="pistol"'),
               ("/bills", A["offer"], 'data-q="pistol"')]
     for where, o, mark in offers:
         assert "Did you mean" in o["typo"] and mark in o["typo"], (
@@ -5844,6 +5857,26 @@ def _find_bills(BP):
     assert "Did you mean" not in FO["offer"]["typo"], (
         "with sidx/words.json unreachable the header still offers a word: "
         "nothing says the word typed is not a real one")
+    # CHOOSING THE OFFERED WORD KEEPS THE PANEL AND THE PAGE (2 October).
+    # The click went on to two listeners on the document. One no longer
+    # found the button inside the panel, because drawing the answer had
+    # taken it out, and shut the panel. The other is app.js's, which reads
+    # data-q anywhere as "search the bill list for this": on the Calendar, a
+    # Learn article, a session day and a town page it drew 44 bills over the
+    # page. So the click stops at the panel, and the button is not one
+    # app.js knows.
+    ch = P["chosen"]
+    assert ch["listeners"] >= 1 and ch["stopped"] == ch["listeners"], (
+        f"the panel's click on an offered word is heard by {ch['listeners']} "
+        f"listeners and stopped by {ch['stopped']}: it goes on to the "
+        "document, which shuts the panel and, on a page app.js draws, lists "
+        "bills over it")
+    assert "/bills?q=pistol" in ch["html"] and "Did you mean" not in ch["html"], (
+        "choosing the offered word does not draw that word's answer in the "
+        f"panel: {ch['html'][-200:]!r}")
+    assert "data-q=" not in P["offer"]["typo"], (
+        "the header's offer is a button with data-q, which app.js reads on "
+        "any page as a search to run in the bill list")
 
     # The panel is this term's; the other term's index is /search's alone.
     assert "/idx/2023-2024.json" not in P["askedPanel"], (
@@ -6333,7 +6366,7 @@ const window = {};
 new Function("window", fs.readFileSync(matcherFile, "utf8"))(window);
 const A = window.GR_BILLMATCH;
 const C = JSON.parse(fs.readFileSync(casesFile, "utf8"));
-const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", "readShort", "spelling", "wordsAdd", "whyListed", "CONCEPTS", "altRx", "wordKeys", "stem"];
+const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", "readShort", "spelling", "wordsAdd", "whyListed", "matchScore", "CONCEPTS", "SYN", "altRx", "wordKeys", "stem"];
 const lacking = need.filter(f => !A || A[f] == null);
 if (lacking.length) { out.fails.push("the matcher cut from app.js does not define " + lacking.join(", ")
   + ": it is the search as it was before it read the bills' own words"); done(); process.exit(0); }
@@ -6365,17 +6398,17 @@ else { const ws = new Set(C.known || []);
 if (!KNOWN || !A.wordsAdd(KNOWN)) out.fails.push("sidx/words.json, the words every bill uses, is not there or was refused: a misspelt search is offered nothing");
 else for (const w of C.known || []) if (!(" " + KNOWN.words + " ").includes(" " + w + " "))
   out.fails.push(`${JSON.stringify(w)} is a word bills use and is not in sidx/words.json: it would be offered as another word`);
-// What /bills?q= lists, in best-match order: find.js's findBills.
+// What /bills?q= lists, in best-match order: find.js's findBills. The newer
+// term first among equals, as both of those break a tie across terms.
 function search(rows, q) {
-  const gs = A.readShort(A.queryGroups(q), rows), words = gs.map(g => g.word).join(" "), hit = [];
+  const gs = A.readShort(A.queryGroups(q), rows), hit = [];
   for (const b of rows) {
-    let sc = 0, ok = true;
-    for (const g of gs) { const w = A.groupWeight(b, g); if (!w) { ok = false; break; } sc += w; }
-    if (!ok) continue;
-    if (gs.length > 1 && b.hayT.includes(words)) sc += 2;
+    const sc = A.matchScore(b, gs);
+    if (!sc) continue;
     hit.push([A.looseness(b, gs), -sc, A.billKey(b), b, A.whyListed(b, gs), gs.length]);
   }
-  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
+  const newer = (x, y) => { const a = String(x[3].term || ""), b = String(y[3].term || ""); return a < b ? 1 : a > b ? -1 : 0; };
+  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || newer(x, y) || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
   return hit;
 }
 const fails = out.fails, stale = out.stale, said = q => JSON.stringify(q);
@@ -6413,9 +6446,26 @@ for (const c of C.cases) {
   const late = first.filter(id => at.has(id) && (c.must || []).some(m => at.has(m) && at.get(m) < at.get(id)));
   if (late.length) fails.push(`${said(c.q)} lists ${late.join(", ")}, which has the word itself, below a bill the table found`);
   if (real && c.at_most && got.length > c.at_most) fails.push(`${said(c.q)} lists ${got.length} bills, more than ${c.at_most}: a flood`);
+  // The bill titled in the reader's own words leads: among the first five.
+  for (const id of c.top || []) {
+    if (!have.has(id)) fails.push(`${said(c.q)} names ${id}, which is not a bill of ${C.term}`);
+    else if (!at.has(id) || (real && at.get(id) >= 5)) fails.push(`${said(c.q)} lists ${id} ${at.has(id) ? "at " + (at.get(id) + 1) : "nowhere"}, not among the first five`);
+  }
   // A bill listed for a word its title does not have says which of its own words put it there.
   const mute = hits.filter(h => h[5] === 1 && h[0] >= 1.2 && h[0] < 2 && !h[4]);
   if (mute.length) fails.push(`${said(c.q)} lists ${mute[0][3].id} through the table and does not say which of the bill's words found it`);
+}
+// Searches over every term's bills, each bill named with the year it was
+// filed: a title only an earlier term has ("E-Z Pass"), and a wrong bill only
+// the whole record listed. Asked where most of the terms' indexes are here.
+let across = 0;
+if (whole) for (const c of C.across || []) {
+  const got = new Set(search(all, c.q).map(h => h[3].id + "/" + h[3].year));
+  across++;
+  const lost = (c.must || []).filter(([id, y]) => !got.has(id + "/" + y)), wrong = (c.never || []).filter(([id, y]) => got.has(id + "/" + y));
+  if (lost.length) fails.push(`across the terms ${said(c.q)} does not list ${lost.map(x => x.join(" of ")).join(", ")}`);
+  if (wrong.length) fails.push(`across the terms ${said(c.q)} lists ${wrong.map(x => x.join(" of ")).join(", ")}`);
+  if (!got.size && (c.must || []).length) fails.push(`across the terms ${said(c.q)} returns nothing`);
 }
 // Two sides' words for one subject return one list.
 for (const group of C.same) {
@@ -6428,9 +6478,13 @@ const T = A.CONCEPTS, seen = new Map(), phrases = new Map();
 let asks = 0, terms = 0;
 const inText = t => Object.values(SIDX).some(X => t.includes(" ") ? !!(X.p || {})[t]
   : [...A.wordKeys(t)].some(k => !!(X.w || {})[k]));
+const SYNWORDS = new Set(A.SYN.flat());
 T.forEach((c, i) => {
-  if (!Array.isArray(c.ask) || !Array.isArray(c.terms) || !c.ask.length || !c.terms.length) {
+  // An agency's short name ("dmv") has no terms and one `named`: wording that
+  // counts in a title or an analysis.
+  if (!Array.isArray(c.ask) || !Array.isArray(c.terms) || !c.ask.length || !(c.terms.length || (c.named || []).length)) {
     fails.push(`entry ${i} has no ask or no term`); return; }
+  if (c.like != null && !SYNWORDS.has(c.like)) fails.push(`entry ${i} (${said(c.ask[0])}) is read like ${said(c.like)}, which is no word of SYN`);
   if (c.once && !c.with) fails.push(`entry ${i} (${said(c.ask[0])}) counts a single mention without a second list the bill must also say`);
   for (const a of c.ask) {
     asks++;
@@ -6460,7 +6514,25 @@ for (const p of ["mental health", "law enforcement"]) {
   const gs = A.queryGroups(p);
   if (gs.length !== 1 || gs[0].word !== p || gs[0].alts.length < 2) fails.push(`${said(p)} is no longer read as one phrase with its group`);
 }
-Object.assign(out, { cases: C.cases.length, found, kept, byText, offered, nothing, pairs: C.same.length,
+// And every SYN entry of two words that no title of any term has ever used:
+// read as its two words it can only be found apart, which is nothing
+// ("forever chemical" listed no bill in any term, 2 October). It is the
+// table's, or it is read as a phrase with its group.
+let apart = 0;
+if (whole) for (const g of A.SYN) for (const p of g) {
+  if (!p.includes(" ") || all.some(b => A.altRx(p).test(b.hayT))) continue;
+  apart++;
+  const gs = A.queryGroups(p);
+  if (gs.length !== 1 || gs[0].word !== p) fails.push(`SYN's ${said(p)} is in no title of any term and is read as ${gs.length} words: typed, it can only be found apart. Add it to SYNPHRASES`);
+  else if (!search(all, p).length) fails.push(`SYN's ${said(p)}, typed, lists nothing in any term, and the group it is in lists ${all.filter(b => g.some(t => A.altRx(t).test(b.hayT))).length} by title`);
+}
+// A word somebody types is not a property of an object: these two stopped
+// the search with a TypeError (2 October).
+for (const w of ["constructor", "__proto__", "constructor permits", "tostring valueof"]) {
+  try { search(own, w); A.spelling(A.readShort(A.queryGroups(w), own), own); }
+  catch (e) { fails.push(`the search ${said(w)} stops with ${e && e.message}`); }
+}
+Object.assign(out, { cases: C.cases.length, found, kept, byText, offered, nothing, pairs: C.same.length, across, apart,
   entries: T.length, asks, terms, bills: own.length, every: all.length, files: byTerm.length, whole, read });
 done();
 """
@@ -6484,7 +6556,7 @@ def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
     # typeof, so that a matcher from before the table (or before the search
     # index) is reported as that and not as a ReferenceError.
     extra = ",".join(f'{n}:typeof {n}==="undefined"?null:{n}'
-                     for n in ("CONCEPTS", "altRx", "wordKeys", "stem"))
+                     for n in ("CONCEPTS", "SYN", "altRx", "wordKeys", "stem"))
     matcher = matcher.replace(hook, "return {" + extra + ",queryGroups,")
     root = Path(tempfile.mkdtemp())
     try:
@@ -6567,6 +6639,25 @@ def _search_cases(BP):
       registry that counts bathrooms;
     - a bill found through the table says which of its own words found it.
 
+    AND FROM THE SECOND REVIEW (2 October), thirty searches nobody had
+    tuned, of which thirteen put a wrong bill in the first ten and twelve
+    listed nothing or left the obvious bill out. Every case until then was a
+    table ask or a single word; none held a search of two ordinary words to
+    bills it must never list. Now:
+
+    - two words found apart are not a bill: "medical debt", "eminent domain"
+      and "college students voting" list nothing, "small claims" not the
+      tariff credit for small businesses, "data centers" not the Electronic
+      Registration Information Center;
+    - a repeat is not a second mention: "social media" does not list the
+      bills that say where a notice is posted, in one sentence printed twice;
+    - the word people use finds the bills that use another: "voting
+      machines", "telehealth", "expungement", "cops", "dmv", "forever
+      chemicals";
+    - a name is found as it is said: "senator carson", "tim lang";
+    - the record's own slips are offered their word: "goverment", "libary";
+    - and a word that is a property of an object ("constructor") is a word.
+
     The cases are machine-judged, by reading; they are a seed and not the
     person's reference. A title is never typed into the file; it is copied
     from the index.
@@ -6584,9 +6675,9 @@ def _search_cases(BP):
     got = _search_cases_node(BP)
     assert not got["fails"], "search: " + _search_cases_said(got["fails"])
     # A check that passes by asking nothing proves nothing.
-    assert got["cases"] >= 50 and got["found"] >= 280 and got["kept"] >= 60 \
-        and got["pairs"] >= 15 and got["entries"] >= 40 and got["byText"] >= 25 \
-        and got["offered"] >= 2 and got["nothing"] >= 8, (
+    assert got["cases"] >= 110 and got["found"] >= 400 and got["kept"] >= 110 \
+        and got["pairs"] >= 15 and got["entries"] >= 60 and got["byText"] >= 25 \
+        and got["offered"] >= 8 and got["nothing"] >= 12, (
         f"the cases no longer exercise the search: {got['cases']} searches, "
         f"{got['found']} bills they must list ({got['byText']} of them found "
         f"by the bill's own analysis or text), {got['kept']} they must not, "
@@ -6640,9 +6731,14 @@ def _search_cases_real(BP):
                     if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
     got = _search_cases_node(BP, [own, *others], "site/sidx")
     assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
+    assert not got["whole"] or (got["across"] >= 8 and got["apart"] >= 4), (
+        f"over every term, {got['across']} searches were held to bills of "
+        f"other terms and {got['apart']} SYN entries no title uses were "
+        "read: the checks of the whole record are no longer asking")
     return "ok", (f"{got['cases']} searches over the {got['bills']:,} bills of {term} "
                   f"and the pairs over {got['every']:,} bills of {got['files']} terms, "
-                  f"{got['read']} of them with their text read"
+                  f"{got['read']} of them with their text read; {got['across']} "
+                  f"searches held to bills of other terms"
                   + (f"; all {got['terms']} terms of the table are in a title, "
                      "an analysis or a text"
                      if got["whole"] else
@@ -6672,6 +6768,8 @@ for (const c of A.CONCEPTS) {
 }
 const out = {
   wordsTaken: A.wordsAdd(IN.wordsFile),
+  codes: IN.pairs.map(p => A.pairCode(p[0], p[1])),
+  stop: A.STOP.map(norm).sort(),
   stem: IN.words.map(w => A.stem(w)),
   keys: IN.words.slice(0, 400).map(w => [...A.wordKeys(w)].sort()),
   phrases: [...new Set([...said, ...typed])].filter(t => t.includes(" ")).sort(),
@@ -6797,6 +6895,83 @@ def _search_index_builds(BP, SI):
             keep = [x for x in posts if x[0] in ("HB712", "HB232")]
             assert part[p].get(k, []) == keep, (
                 f"only() changed what the index says of {k!r}")
+    assert part["b"] == {b: got["b"][b] for b in ("HB712", "HB232")}, (
+        "only() changed the pairs the index holds for a bill")
+
+    # WORDS THAT STAND TOGETHER (2 October). A search of two ordinary words
+    # listed any bill with each of them somewhere. The index holds, per bill,
+    # the pairs of words that stand next to each other in its analysis or
+    # twice in its text; the page counts a word found outside a title only
+    # beside another word of the search.
+    def pair(bill, a, b):
+        return SI.pair_code(a, b) in got["b"].get(bill, set())
+    assert isinstance(data["b"], list) and len(data["b"]) == len(data["ids"]) \
+        and all(isinstance(x, str) and len(x) % 5 == 0 for x in data["b"]), (
+        "the pairs are not one string of five-letter codes for each bill of ids")
+    wrong = []
+    if not (pair("HB232", "abortion", "service") and pair("HB232", "health", "care")):
+        wrong.append("HB232's analysis says 'abortion services' and 'health "
+                     "care institutions' and the index holds neither pair")
+    if pair("HB232", "service", "abortion") or pair("HB232", "abortion", "care"):
+        wrong.append("HB232 is filed under a pair its analysis does not have "
+                     "in that order, or with a word between")
+    if not pair("HB712", "limit", "breast"):
+        wrong.append("HB712's analysis 'limits breast surgeries' is not a "
+                     "pair: a word of the title beside one of the analysis")
+    assert not wrong, "the pairs, on eight real texts: " + "; ".join(wrong)
+
+    # A REPEAT IS NOT A SECOND MENTION. A constitutional amendment printed
+    # as the amendment and again as the ballot question; one sentence in two
+    # sections; a word twice in one sentence. A heading counts each time.
+    def count(text, word):
+        keys, sent, _clause, _at, heads = SI.read(SI.norm(text))
+        return SI.distinct([i for i, k in enumerate(keys) if k == word],
+                           keys, sent, heads)
+    twice = ("Nothing herein shall be construed to modify any provision of law "
+             "relating to eminent domain, trespass, or property rights.\n")
+    said = {
+        "the same sentence printed twice": (count(
+            "I. " + twice + "The ballot shall ask whether the voter approves.\n"
+            "II. " + twice, "eminent"), 1),
+        "one sentence, changed by a word, in two sections": (count(
+            "Such notice shall be by public notice on the main website or any "
+            "social media accounts utilized by the municipality.\nThe town "
+            "shall hold a hearing.\nSuch notice shall be by public notice on "
+            "the main website and any social media accounts utilized by the "
+            "municipality.", "media"), 1),
+        "a word twice in one sentence": (count(
+            "Kits for covid 19 (covid 19 tests or test kits) may be sold.",
+            "covid"), 1),
+        "a word in two sentences that say different things": (count(
+            "The landlord shall return the deposit within 30 days.\nNo "
+            "landlord shall charge an application fee to a prospective "
+            "tenant.", "landlord"), 2),
+        "a heading two sections share": (count(
+            "1 New Paragraph; Protection of Persons from Domestic Violence; "
+            "Temporary Relief. Amend RSA 173-B:4 by inserting the following:\n"
+            "III. The clerk shall transmit any orders.\n"
+            "2 New Paragraph; Protection of Persons from Domestic Violence; "
+            "Relief. Amend RSA 173-B:5 by inserting the following:\n"
+            "XI. The clerk shall transmit any orders.", "violence"), 2),
+    }
+    off = [f"{k}: counted {a}, not {b}" for k, (a, b) in said.items() if a != b]
+    assert not off, "a repeat is counted as a second mention, or the reverse: " \
+        + "; ".join(off)
+
+    # THE RECORD'S OWN SLIPS are not words (sidx/words.json): one bill says
+    # "goverment", and a reader who typed it was offered nothing. Never a
+    # changed letter, which is how "incest" was read as "invest".
+    from collections import Counter
+    seen = Counter({"government": 3500, "goverment": 1, "hospital": 1400,
+                    "hopsital": 1, "harassment": 140, "harrassment": 1,
+                    "invest": 300, "incest": 1, "plants": 500, "planted": 1,
+                    "lender": 150, "blender": 1, "allen": 1, "alien": 400,
+                    "recieve": 4, "receive": 5000})
+    slipped = SI.slips(seen, {"allen"})
+    assert slipped == {"goverment": "government", "hopsital": "hospital",
+                       "harrassment": "harassment"}, (
+        "slips() no longer takes exactly a letter dropped, added or swapped "
+        "inside a word one bill uses: it found " + str(slipped))
 
     # EVERY WORD THE BILLS USE (sidx/words.json). The page offers a misspelt
     # word as the word it sounds like only when this file says no bill has
@@ -6838,14 +7013,19 @@ def _search_index_builds(BP, SI):
         raise AssertionError(f"build_pages cannot cut the matcher out of app.js: {e}")
     hook = "return {queryGroups,"
     assert matcher.count(hook) == 1, "billmatch.js no longer returns queryGroups first"
-    matcher = matcher.replace(hook, "return {SYN,CONCEPTS,altRx,wordKeys,stem,queryGroups,")
+    matcher = matcher.replace(hook, "return {SYN,CONCEPTS,STOP,pairCode,altRx,wordKeys,stem,queryGroups,")
+    # Pairs of words to code both ways: real ones, and ones with a digit and
+    # an apostrophe's remains in them.
+    pairs = [[a, b] for a, b in zip(words, words[1:])][:300] + [
+        ["data", "center"], ["child", "custody"], ["91", "a"], ["rsa", "540"],
+        ["driver", "license"], ["e", "z"]]
     root = Path(tempfile.mkdtemp())
     try:
         (root / "billmatch.js").write_text(matcher, encoding="utf-8")
         (root / "go.js").write_text(_SEARCH_INDEX_JS, encoding="utf-8")
         (root / "words.json").write_text(json.dumps(
             {"words": words, "phrases": table[0], "texts": norm_texts,
-             "wordsFile": words_file}),
+             "wordsFile": words_file, "pairs": pairs}),
             encoding="utf-8")
         r = _run(["node", "go.js", "billmatch.js", "words.json"], cwd=root,
                  capture_output=True, text=True, timeout=120)
@@ -6867,6 +7047,20 @@ def _search_index_builds(BP, SI):
             if sorted(SI.word_keys(w)) != k]
     assert not keys, (f"word_keys and app.js's wordKeys() differ on {len(keys)} "
                       f"words: {keys[:2]}")
+    codes = [(p, SI.pair_code(*p), c) for p, c in zip(pairs, js["codes"])
+             if SI.pair_code(*p) != c]
+    assert not codes and len(js["codes"]) == len(pairs) >= 200, (
+        f"pair_code and app.js's pairCode() differ on {len(codes)} of "
+        f"{len(pairs)} pairs, so the page asks for a pair under a code the "
+        f"build never wrote: {codes[:2]}")
+    assert len({SI.pair_code(*p) for p in pairs}) == len({tuple(p) for p in pairs}), (
+        "two of a few hundred pairs share a code: thirty bits are not being used")
+    assert js["stop"] == sorted(table[3]) and len(table[3]) >= 30, (
+        "the words a search is read without (STOP), read out of app.js by "
+        "build_search_index and by app.js itself, differ: two words stand "
+        "together across them in the index and not on the page, or the other "
+        f"way round. Only the build has {sorted(set(table[3]) - set(js['stop']))[:3]}, "
+        f"only the page has {sorted(set(js['stop']) - set(table[3]))[:3]}")
     for name, mine in (("phrases", table[0]), ("words", table[1]),
                        ("wording", table[2])):
         only_py = sorted(set(mine) - set(js[name]))[:3]
@@ -6890,7 +7084,10 @@ def _search_index_builds(BP, SI):
         f"only {len(counts)} of the tables' phrases occur in the eight texts: "
         "the comparison proves little")
     return "ok", (f"an index built from {len(bills)} real texts says what they "
-                  f"say, and not what a fiscal note says; {len(known):,} words "
+                  f"say, and not what a fiscal note says; it holds the pairs "
+                  f"of words that stand together in them, coded alike by the "
+                  f"build and the page; a repeat is not a second mention; "
+                  f"{len(known):,} words "
                   f"of theirs and {len(names):,} of members' and towns' names "
                   f"make a words file the page takes; the build and the page "
                   f"agree on {len(words):,} words' "
@@ -6903,8 +7100,15 @@ def _search_index_builds(BP, SI):
 # searches; /search fetches every term's. Measured on 1 October: 197,000 to
 # 303,000 bytes a term, 4.4 MB for all twenty. A file past this has stopped
 # choosing what a bill is about.
+#
+# That is its words and phrases. Since 2 October the file also holds, for each
+# bill, the pairs of those words that stand together, and they are held to a
+# size of their own: 102,000 to 186,000 bytes a term that day, with the whole
+# file 285,000 to 461,000 and all twenty 6.5 MB. Pairs past this would mean
+# the build had stopped choosing which pairs the page could ask for.
 SEARCH_INDEX_MOST = 450_000
-SEARCH_INDEX_MOST_ALL = 7_000_000
+SEARCH_PAIRS_MOST = 250_000
+SEARCH_INDEX_MOST_ALL = 9_000_000
 
 
 @check("data", "every term has a search index, for its own bills, within its size")
@@ -6920,6 +7124,13 @@ def _search_index_built():
     has no text at all (the requests, which are a title and a sponsor). And
     it is within its size: the build keeps what a bill is ABOUT, and a file
     of a megabyte would mean it had started keeping what a bill mentions.
+
+    Since 2 October it also holds the pairs of words that stand together in
+    each bill, one string of codes a bill ("b"). A file without them is an
+    older build's: a search of several words would then find no word outside
+    a title, and nothing on the page would say why. And words.json leaves
+    out the record's own slips, so that a reader who types "goverment", as
+    one bill does, is offered the word.
     """
     site = Path("site")
     if not (site / "idx").is_dir() or not (site / "meta.json").exists():
@@ -6959,8 +7170,24 @@ def _search_index_built():
         entries += n
         if not n:
             empty.append(t)
-        if size > SEARCH_INDEX_MOST:
-            bad.append(f"{t}: {size:,} bytes, more than {SEARCH_INDEX_MOST:,}")
+        # The pairs: without them a search of several words finds no word
+        # outside a title, and nothing on the page says why.
+        # A term with no text at all (the bill requests) has no words and
+        # an empty list of pairs.
+        b = d.get("b")
+        if not isinstance(b, list) or (n and len(b) != len(d.get("ids") or [])):
+            bad.append(f"{t}: holds no pairs of words for its bills (\"b\"): "
+                       "built by an older build_search_index.py")
+        elif n and not any(b):
+            bad.append(f"{t}: has words and not one pair of them")
+        pairs = len(json.dumps(d.get("b") or [], ensure_ascii=False,
+                               separators=(",", ":")).encode("utf-8"))
+        if size - pairs > SEARCH_INDEX_MOST:
+            bad.append(f"{t}: {size - pairs:,} bytes of words and phrases, "
+                       f"more than {SEARCH_INDEX_MOST:,}")
+        if pairs > SEARCH_PAIRS_MOST:
+            bad.append(f"{t}: {pairs:,} bytes of pairs, more than "
+                       f"{SEARCH_PAIRS_MOST:,}")
     # EVERY WORD THE BILLS USE. Without sidx/words.json a misspelt search is
     # offered nothing, and nothing on the page says so; with a thin one, real
     # words would be offered as other words. The cases file lists real words
@@ -6991,6 +7218,14 @@ def _search_index_built():
             if lost:
                 bad.append(f"words.json lacks {lost[:6]}: words bills use, "
                            "which the search would offer as other words")
+        # The record's own slips are not words: one bill says each of these,
+        # and a reader who typed one was offered nothing (2 October).
+        kept = [s for s, v in (("goverment", "government"), ("libary", "library"),
+                               ("hopsital", "hospital")) if s in ws and v in ws]
+        if kept:
+            bad.append(f"words.json holds {kept}: slips one bill makes, which "
+                       "a reader who makes the same one is then offered "
+                       "nothing for")
     assert not bad, "the search index: " + "; ".join(bad[:4])
     real = [t for t in empty if re.fullmatch(r"\d{4}-\d{4}", t)]
     assert not real, (
@@ -8504,7 +8739,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, searchHint, indexAdd, whyListed, looseness, readShort, spelling, wordsAdd, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, searchHint, indexAdd, whyListed, looseness, readShort, spelling, wordsAdd, pairCode, matchScore, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -9115,8 +9350,13 @@ if (scope.looseness(tb("HBX", "hb20 relative to housing"), housing) >= scope.loo
 // WHERE A WORD THIS FILE SUPPLIED MAY BE FOUND, and what two weak findings
 // make together (the second review, 1 October). Posting = place in ids * 20,
 // + 10 in the analysis, + the weight.
-if (!scope.indexAdd("V", {v: 1, ids: ["HB10", "HB11", "HB12", "HB13"],
-      w: {gun: [7], insurance: [57, 37]}, p: {"risk protection order": [26]}})) {
+// The pairs (WORDS THAT STAND TOGETHER, 2 October): HB13's analysis says
+// "car insurance" in those words; HB18's says "insurance" and, further on,
+// "car"; HB19's text says "custody of children", which is custody beside
+// child once the words that carry no subject are out.
+if (!scope.indexAdd("V", {v: 1, ids: ["HB10", "HB11", "HB12", "HB13", "HB18", "HB19"],
+      w: {gun: [7], insurance: [57, 37, 37], custody: [107]}, p: {"risk protection order": [26]},
+      b: ["", "", "", scope.pairCode("car", "insurance"), "", scope.pairCode("custody", "child")]})) {
   console.log("SEARCH: a second term's search index is refused"); process.exit(1); }
 var vb = function (id, t, topic, s) { var b = bill(t, s); b.id = id; b.term = "V"; b.topic = topic || ""; return b; };
 var all = function (b, gs) { return gs.every(function (g) { return scope.groupWeight(b, g) > 0; }); };
@@ -9130,7 +9370,20 @@ var ci = scope.queryGroups("car insurance");
 if (all(vb("HB12", "hb12 relative to health care provider networks"), ci)
     || !all(vb("HB13", "hb13 relative to rental car coverage"), ci)
     || all(vb("HB14", "hb14 relative to health care billing", "Insurance"), ci)) {
-  console.log("SEARCH: 'car insurance' lists a bill with 'care' in its title and 'insurance' only in its analysis or its topic, or no longer lists one with 'car' in its title and insurance in its analysis"); process.exit(1); }
+  console.log("SEARCH: 'car insurance' lists a bill with 'care' in its title and 'insurance' only in its analysis or its topic, or no longer lists one with 'car' in its title whose analysis says 'car insurance'"); process.exit(1); }
+// Two words found apart are not a bill (2 October): "small claims" listed a
+// tariff credit for small businesses whose text says "approved claims".
+var cc = scope.queryGroups("child custody");
+if (all(vb("HB18", "hb18 relative to car registration fees"), ci)
+    || !all(vb("HB19", "hb19 relative to parenting plans for a child"), cc)
+    || !all(vb("HB19", "hb19 relative to children"), scope.queryGroups("children custody"))
+    || all(vb("HB19", "hb19 relative to labor"), scope.queryGroups("labor custody"))) {
+  console.log("SEARCH: in a search of several words, a word found only in a bill's analysis or text is counted where it does not stand beside another word of the search ('car' in the title, 'insurance' elsewhere in the analysis), or is not counted where it does ('custody of children')"); process.exit(1); }
+// A stale file, from before the pairs: the search lists less, never more.
+scope.indexAdd("W", {v: 1, ids: ["HB13"], w: {insurance: [17]}, p: {}});
+var stale = bill("hb13 relative to rental car coverage"); stale.id = "HB13"; stale.term = "W";
+if (all(stale, ci)) {
+  console.log("SEARCH: with a search index that has no pairs, a word in the analysis is still counted beside a word of the title"); process.exit(1); }
 var pt = scope.queryGroups("property taxes");
 if (!all(vb("HB15", "hb15 requiring the assessment of real property", "Taxes - Local"), pt)
     || scope.whyListed(vb("HB15", "hb15 requiring the assessment of real property", "Taxes - Local"), pt) !== "topic: Taxes - Local"
@@ -40574,6 +40827,53 @@ def _formfeed_heading():
         "a heading at the start of an ordinary line is no longer read as one")
     return "ok", ("a page break starts a heading, a mid-sentence bill number "
                   "does not")
+
+
+@check("frontend", "every class the header search draws is styled on the pages "
+                   "that load style.css", needs=("build_pages",))
+def _find_classes_shared(BP):
+    """The check below reads the pages as they are built. find.js draws its
+    panel when somebody opens it, so a class it writes is in no page's HTML,
+    and the check below cannot see it.
+
+    That is how the line that says why a bill is listed ("Listed for --
+    text says: lavatory") was unstyled on the home page, /search, the roster,
+    About and 404 for a day: `.findout .fwhy` sat beside the bill card's
+    `.cwhy`, below SHARED:END, where style.css does not read. On those pages
+    it was set at body size in full ink, larger and louder than the title
+    above it, and every check passed (1 October).
+
+    So this reads the scripts instead. Every class find.js or /search's own
+    script writes into a `class="..."`, if app.css styles it anywhere, must be
+    styled in what style.css takes -- the palette, the shared region, the
+    page region. A class nothing styles is left alone: it is a hook, not a
+    component.
+    """
+    need = [Path(f) for f in ("find.js", "app.css")]
+    if not all(f.exists() for f in need):
+        return "skip", "find.js or app.css not in this directory"
+    css = Path("app.css").read_text(encoding="utf-8")
+    sheet = BP.stylesheet(False)
+    drawn = set()
+    for src in (Path("find.js").read_text(encoding="utf-8"), BP.SEARCH_JS):
+        for m in re.finditer(r'class(?:Name)?\s*=\s*\\?"([^"$\\]+)\\?"', src):
+            drawn.update(c for c in m.group(1).split() if re.fullmatch(r"[a-z][\w-]*", c))
+    assert {"fdym", "fwhy", "fname", "fbills"} <= drawn, (
+        "find.js's classes are no longer read out of it: found only "
+        f"{sorted(drawn)[:8]}")
+
+    def styled(text, cls):
+        return re.search(r"\." + re.escape(cls) + r"(?![\w-])", text) is not None
+
+    lost = sorted(c for c in drawn if styled(css, c) and not styled(sheet, c))
+    assert not lost, (
+        f"find.js draws {lost} on every page, and app.css styles "
+        f"{'it' if len(lost) == 1 else 'them'} only outside the regions "
+        "style.css takes: on the home page, /search, the roster, About and "
+        "404 the browser's own defaults apply. Move the rule into the shared "
+        "region (SHARED:START to SHARED:END)")
+    return "ok", (f"{len(drawn)} classes drawn by find.js and /search's script; "
+                  f"each one app.css styles is styled in style.css too")
 
 
 @check("frontend", "no component is stranded in the region style.css skips")

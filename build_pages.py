@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.129
+# GRANITE_VERSION: 2026-09-04.130
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1850,7 +1850,7 @@ SEATING_JS = """
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
                      "looseness", "indexAdd", "readShort", "whyListed",
-                     "spelling", "wordsAdd")
+                     "spelling", "wordsAdd", "matchScore")
 
 
 def bill_matcher_js(app_js):

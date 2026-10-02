@@ -259,15 +259,16 @@ It reads, for each bill, in the order it lists them:
    and nothing else and the title has the rest;
 3. **the drafters' analysis and the bill's text**, from
    `site/sidx/<term>.json`, which `build_search_index.py` writes: for each
-   word, the bills it is central to and how central, 1 to 9. The page fetches
-   that file only when somebody searches, per term;
+   word, the bills it is central to and how central, 1 to 9; and, for each
+   bill, which pairs of those words stand next to each other. The page
+   fetches that file only when somebody searches, per term;
 4. **a table of public words** (`CONCEPTS`), for what a reader types that no
    bill says -- "lgbtq", "weed", "bathroom bill" -- each standing for wording
    the bills do use. A phrase of the table is looked for in all of the
    above; a single word of it in titles and analyses, and in the body of a
    text only under an entry's `with` rule.
 
-Five things in it are easy to undo by accident.
+Nine things in it are easy to undo by accident.
 
 *A single word the table supplies is not read in the body of a text.* A
 phrase ("risk protection order") is specific and a single word is not: read
@@ -284,7 +285,18 @@ it is offered as the word of the bills it sounds like ("medicade", Medicaid),
 as a "Did you mean" that the reader chooses. The file is fetched only when a
 search has listed nothing. For one day the page read such a word again by
 itself, with no such file: it showed 98 investment bills for "incest" under
-"no bill says incest", which three bills do.
+"no bill says incest", which three bills do. The record's own slips are left
+out of the file -- a word one bill uses that is a common word with a letter
+dropped, added or swapped inside it ("goverment") -- so that a reader who
+makes the same slip is offered the word; never a changed letter, which is
+what "incest" and "invest" differ by.
+
+A search of several words that lists nothing says which of them list bills
+on their own, and, for three words or more, which searches with one word left
+out do; each is a button, and none is drawn in the search's place. In the
+header's panel the offered word is a button too, and its click stops at the
+panel: left to reach the document it shut the panel, and on a page `app.js`
+draws it listed bills over the page.
 
 *What "about" means is decided at build time.* A word a text uses once is
 nearly always a passing mention, so the build keeps a word for a bill when the
@@ -294,22 +306,62 @@ thing the bill must also say): four vetoed bills say "lavatory" once, beside
 "biological sex", and that is all that marks them as what the public calls the
 bathroom bills.
 
+*Two words found apart are not a bill.* In a search of several words, a
+plain word found only in a bill's analysis or text counts only where it
+stands beside another word of the search there -- next to it, either way
+round, with only words that carry no subject between ("custody of
+children"); and words joined by "and" or "or" share what stands beside them
+("meals and rooms tax" is the meals tax). Before that each word could be
+found in a different place, and
+"medical debt" listed the consolidation of the health and education
+facilities authority, "small claims" a tariff credit for small businesses and
+"eminent domain" the right to hunt and fish. The index keeps each pair as
+five letters of a hash, under `"b"`, because spelt out they were more than
+the rest of the file; the docstring of `build_search_index.py` has the
+numbers. Not asked of the table's own wording, of a word beside a sponsor's
+name, nor where every other part of the search is the table's and the title
+has it ("public records request", for a bill titled for the right-to-know
+law). The same rule covers the other guesses: a longer word in the title, a
+committee's name and a sponsor's name with an ending each count beside words
+the title has, and never two of them together.
+
+*A repeat is not a second mention.* "The text uses it twice" is counted in
+sentences that say different things: a constitutional amendment printed as
+the amendment and again as the ballot question, or one sentence amended into
+two sections, is one mention, and so is a word used twice in one sentence. A
+section's heading counts each time, because it names the statute being
+amended. `distinct()` in `build_search_index.py` is the rule.
+
+*The same letters are one word however they are spaced.* A title is also
+read with its hyphens taken out and with each two neighbouring words run
+together, and two plain words typed together are also read as one: "ezpass",
+"ez pass" and "e-zpass" find "E-Z Pass", and "reassessment" finds
+"re-assessment".
+
 *A bill is listed for its own words.* A table term finds a bill because the
 bill's title, analysis or text has it; a card listed that way says which
 ("text says: lavatory"). The table never lists a bill for what it is said to
 do.
 
-*Two programs read the same words.* `stem()`, `wordKeys()` and `altRx()` in
-`app.js` have twins in `build_search_index.py`, and the build reads the
-tables' phrases out of `app.js` with a regular expression. `preflight` runs
-both over the same words and texts and fails when they differ; without that
-check a word is filed under one key, looked up under another, and nothing
-fails.
+*Two programs read the same words.* `stem()`, `wordKeys()`, `altRx()` and
+`pairCode()` in `app.js` have twins in `build_search_index.py`, and the build
+reads the tables' phrases and the words a search skips out of `app.js` with a
+regular expression. `preflight` runs both over the same words, pairs and
+texts and fails when they differ; without that check a word is filed under
+one key, looked up under another, and nothing fails.
+
+*A typed word is not a property of an object.* The tables a typed word is
+looked up in are made with no prototype, and a list out of a fetched file is
+checked to be a list. "constructor" is a word, and on a plain object it was
+a function: the search stopped with a TypeError and drew nothing.
 
 `tests/search_cases.json` holds real searches against real bills, with
 `tests/search_index.json` cut from the real index for them;
 `python3 build_search_index.py --fixture tests/search_cases.json` refreshes
-both from the record.
+both from the record. Its `across` list is searches held to bills of other
+terms, which only the built site can answer. `matchScore()` is the one place
+a bill's score is added up, for `/bills`, the header, `/search` and those
+cases.
 
 ## Sitting days, built 19 September
 

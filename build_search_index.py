@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.2
+# GRANITE_VERSION: 2026-10-01.3
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -85,16 +85,77 @@ Matter a bill removes is printed [in brackets] and is still the bill's text:
 HB 712 of 2025 retitles the chapter on "[genital] gender [reassignment]
 surgery". The brackets are read as spaces, so the phrase is found.
 
+A REPEAT IS NOT A SECOND MENTION (2 October). "The text uses it at least
+twice" was counted off the page, and a bill prints the same words twice for
+reasons that have nothing to do with what it is about. CACR 15, the right to
+hunt and fish, prints its amendment and then prints it again as the question
+on the ballot: "nothing herein shall be construed to modify any provision of
+law relating to eminent domain" was two mentions, and the amendment was the
+only bill listed for "eminent domain". SB 225 amends two sections with one
+sentence each about where a notice is posted -- "the municipalities' main
+website or any social media accounts" -- and was listed under "social media";
+HB 1249 names "COVID-19" twice inside one pair of brackets. So a mention
+that says the same thing as one already counted (four in five of the words
+either side are the same) is not counted again, and "at least twice" means
+in two sentences: a word a bill says three times in one sentence it has said
+once. A section's heading is the exception: "1 New Paragraph;
+Protection of Persons from Domestic Violence; Temporary Relief." names the
+statute the section amends, a bill that amends two sections of it prints it
+twice, and each counts. distinct() is the rule; MOST and ENOUGH say where it
+stops looking, because a word a bill uses thirteen times is leaned on however
+it is counted.
+
+WORDS THAT STAND TOGETHER (2 October). The file held words, not where they
+stand, so a search of two ordinary words listed any bill that had each of
+them somewhere: "medical debt" listed the consolidation of the health and
+education facilities authority (its analysis mentions the assumption of
+debts), "small claims" a tariff tax credit for small businesses ("approved
+claims"), "child labor" hard labor as a sentence for assaults on children.
+So the file also holds PAIRS, under "b": two words that stand next to each
+other in a bill's analysis, or twice in its text, with the words that carry
+no subject taken out from between them ("custody of children" is custody
+beside children) and never across a comma or a full stop. Words joined by
+"and" or "or" share what stands beside them: "meals and rooms tax" is the
+meals tax and the rooms tax, "city or town clerk" both clerks. Only pairs the
+page could ask for are kept: each of the two is a word the bill is filed
+under, a word of its title or an end of a phrase it is filed under, and one
+of them is a word it is filed under. app.js counts a word found outside a
+title, in a search of several words, only where it stands beside another
+word of the search.
+
+A pair is kept as a CODE, not as its two words: five letters, thirty bits of
+a hash of "first second" (pair_code(); app.js has the same function and
+preflight holds the two together). Spelt out, the pairs of 2025-2026 were
+440,000 bytes beside 270,000 for everything else in the file, and 150,000
+of them over the wire, for 28,000 pairs; as codes its 33,000 pairs are
+174,000 and 125,000. The page asks
+"does this bill have this pair", never "which pairs has it", so nothing is
+lost but the chance, about one in forty thousand for each pair it asks
+about, that another pair of the term has the same code -- and a bill is
+then listed only if it has every word of the search as well, which is what
+such a bill was listed for before there were pairs.
+
+WHAT THE PAIRS COST. They double what a search fetches: 2025-2026 is
+461,000 bytes with them and 288,000 without, 240,000 against 116,000 over
+the wire; all twenty files 6.5 MB against 4.1, 3.4 MB against 1.6 gzipped
+(2 October; the run prints the day's own figures). That is the price of
+knowing which words stand together, and it is paid only by a reader who
+searches.
+
 WHAT THE FILE IS
 
     {"v": 1, "term": "2025-2026", "n": 2243, "ids": ["HB561", ...],
      "w": {"lavatory": [n, n, ...], ...},     one word, plural read as singular
-     "p": {"gender identity": [n, ...], ...}} a phrase the page can ask for
+     "p": {"gender identity": [n, ...], ...}, a phrase the page can ask for
+     "b": ["", "Qx3/aB7kZp", ...]}            the pairs of each bill of ids,
+                                              in order, five letters a pair
 
 Each n is one bill: (its place in ids, counted from the one before) * 20, plus
 10 if the word is in the analysis, plus the weight, 0 to 9. A bill is named by its id,
 never by its row in the index, so a file left over from an older build can
-only fail to find a bill, never find the wrong one.
+only fail to find a bill, never find the wrong one. A file from before the
+pairs has no "b", and the page then finds no word of a search of several
+beside another: it lists less, and nothing wrong.
 
 EVERY WORD
 
@@ -110,6 +171,18 @@ as "invest" and said no bill says incest, when three do. A word used once, in
 one bill, is in it: the file answers "has any bill said this", not "is any
 bill about it".
 
+EXCEPT THE RECORD'S OWN SLIPS (2 October). One bill in 33,000 says
+"goverment", one "libary", one "hopsital", and each was therefore a word: a
+reader who typed the same slip was told no bill matched and was offered
+nothing. A word is left out of the file when exactly one bill uses it, it is
+six letters or more, it is no member's or town's name, and it is a word a
+hundred bills use with one letter inside it dropped, added or swapped with
+its neighbour (slips(), below). Never a changed letter: "incest" is one
+changed letter from "invest", and that reading is the one this file exists
+to stop. The run prints how many words go. Read against the record, about
+one in ten of them is a real word ("planet", beside "plant"); what that
+costs is an offer the reader can ignore, and never a list.
+
 A WRITER RUN ON A SUBSET DESTROYS THE REST, so this one cannot: a file is one
 term's, --terms writes only the terms named, and the manifest is read and
 merged rather than rewritten. words.json is every term's, so a run with
@@ -121,6 +194,7 @@ run fails rather than leave nineteen empty files that look like an index.
 """
 
 import argparse
+import bisect
 import gzip
 import json
 import math
@@ -167,6 +241,21 @@ K1, B = 1.5, 0.75
 ANALYSIS_WORTH = 1.6
 # An analysis of ordinary length is about 27 words. HB 2's is 5,900.
 USUAL_ANALYSIS = 27
+# A repeat is not a second mention (see the note above). Two mentions say the
+# same thing when this share of the WINDOW words either side of them are the
+# same words. A word or a pair used more than MOST times is counted as it
+# stands, and so is whatever follows ENOUGH mentions that were not repeats:
+# either way the bill leans on it.
+WINDOW = 6
+ALIKE = 0.8
+MOST = 12
+ENOUGH = 6
+# A slip of the record's own (EVERY WORD, above): used by one bill, this
+# long, and one letter inside it away from a word this many bills use.
+SLIP_LETTERS = 6
+SLIP_OF = 100
+# The words that join two others, which then share what stands beside them.
+JOINS = {"and", "or"}
 
 # The same marks build_site_v2.bill_text_block cuts on, with the resolving
 # clause added: a CACR opens "Be it Resolved by the House of Representatives",
@@ -256,18 +345,91 @@ WORD = re.compile(r"[a-z][a-z0-9]*(?:'[a-z]+)?")
 _KEY = {}
 
 
+def key(w):
+    """The key one word of normalised text is filed under, or "" for none."""
+    k = _KEY.get(w)
+    if k is None:
+        k = w[:-2] if w.endswith("'s") else w
+        k = k.replace("'", "")
+        k = _KEY[w] = stem(k) if len(k) > 1 else ""
+    return k
+
+
 def words(text):
     """The words of normalised text, each as the key it is filed under."""
-    out = []
-    for w in WORD.findall(text):
-        k = _KEY.get(w)
-        if k is None:
-            k = w[:-2] if w.endswith("'s") else w
-            k = k.replace("'", "")
-            k = _KEY[w] = stem(k) if len(k) > 1 else ""
-        if k:
-            out.append(k)
-    return out
+    return [k for k in map(key, WORD.findall(text)) if k]
+
+
+# A word; the end of a line; the end of a sentence; the end of a clause. A
+# full stop inside "173-b:4" or "u.s." ends nothing: one before a space does.
+TOKEN = re.compile(
+    r"([a-z][a-z0-9]*(?:'[a-z]+)?)|(\n)|([.;?!])(?=\s|$)|([,:()\"\u201c\u201d])")
+# A section of a bill opens with its number and its heading, on a line of its
+# own: "1 new paragraph; protection of persons from domestic violence;
+# temporary relief. amend rsa 173 b:4 by ...". The heading runs to the first
+# full stop.
+HEADING = re.compile(r"[ \t]*\d+ (?=[a-z])")
+
+
+def read(text):
+    """Normalised text as (keys, sentence, clause, offset, headings): the
+    words in order, as words() gives them; for each, the sentence and the
+    clause it stands in and where in the text it starts; and {sentence:
+    line} for the sentences that are a section's heading."""
+    keys, sent, clause, at, heads = [], [], [], [], {}
+    s = c = line = 0
+    head = bool(HEADING.match(text))
+    if head:
+        heads[0] = 0
+    for m in TOKEN.finditer(text):
+        g = m.lastindex
+        if g == 1:
+            k = key(m.group(1))
+            if k:
+                keys.append(k)
+                sent.append(s)
+                clause.append(c)
+                at.append(m.start())
+            continue
+        c += 1
+        if g == 4:
+            continue
+        s += 1
+        if g == 2:
+            line += 1
+            head = bool(HEADING.match(text, m.end()))
+        elif m.group(3) == ".":
+            head = False
+        if head:
+            heads[s] = line
+    return keys, sent, clause, at, heads
+
+
+def distinct(places, keys, sent, heads, span=1):
+    """How many of the mentions at these places count: the ones that are not
+    repeats of one before, or 1 where they are all in one sentence. `span`:
+    how many words the thing mentioned is, so that its own words are not
+    counted among the words either side of it."""
+    n, kept, lines, where = 0, [], set(), set()
+    for i in places:
+        s = sent[i]
+        if s in heads:
+            if heads[s] not in lines:
+                lines.add(heads[s])
+                where.add(s)
+                n += 1
+            continue
+        if len(kept) >= ENOUGH:
+            n += 1
+            continue
+        win = frozenset(keys[max(0, i - WINDOW):i]
+                        + keys[i + span:i + span + WINDOW])
+        if any(len(win & kw) >= ALIKE * len(win | kw) for kw in kept):
+            continue
+        kept.append(win)
+        where.add(s)
+        n += 1
+    return n if len(where) > 1 or n >= ENOUGH else min(n, 1)
 
 
 def phrase_rx(term):
@@ -293,7 +455,8 @@ def word_keys(alt):
 
 
 def table_terms(app_js):
-    """(phrases, words, wording phrases) the search's tables name, in app.js.
+    """(phrases, words, wording phrases, skipped words) the search's tables
+    name, in app.js.
 
     phrases: every string of two words or more in SYN and in CONCEPTS -- what
     a reader may type as well as what a bill may say, since a typed phrase is
@@ -302,6 +465,9 @@ def table_terms(app_js):
     words, wording phrases: what CONCEPTS lists as the record's wording
     (`terms`, `named`, `with`), for which one mention in the text is kept, at
     weight 0.
+    skipped words: STOP, the words a search is read without ("of", "bill",
+    "law"). Two words stand together across them here because the page pairs
+    what is left of a search once they are gone.
 
     Read with regular expressions rather than a JavaScript parser: the tables
     are lists of quoted strings, and preflight asks node for the same lists
@@ -327,10 +493,31 @@ def table_terms(app_js):
         typed.update(clean(t) for t in quoted.findall(part))
     return (sorted(t for t in said | typed if " " in t),
             sorted(t for t in said if t and " " not in t),
-            sorted(t for t in said if " " in t))
+            sorted(t for t in said if " " in t),
+            sorted(set(clean(t) for t in quoted.findall(block("STOP")))))
 
 
 # --- one term ----------------------------------------------------------------
+
+# Sixty-four characters a code is written in: the usual ones but for three.
+# A run of codes is 100,000 letters of noise, and with a hyphen in it the
+# first fixture built held "sk-" and thirty-two letters after it, which is
+# the shape of a key, and preflight's check for a credential in a tracked
+# file said so. No hyphen, no underscore and no capital A: none of the
+# shapes that check knows can be written without one of them.
+CODE = ".BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+
+def pair_code(first, second):
+    """The five letters two words that stand together are kept as: thirty
+    bits of the FNV-1a hash of "first second". app.js's pairCode() is this,
+    and preflight runs both over the same pairs."""
+    h = 0x811C9DC5
+    for ch in f"{first} {second}".encode("utf-8"):
+        h = ((h ^ ch) * 0x01000193) & 0xFFFFFFFF
+    h = (h ^ (h >> 30)) & 0x3FFFFFFF
+    return "".join(CODE[(h >> s) & 63] for s in (24, 18, 12, 6, 0))
+
 
 def centrality(tf, length, usual):
     return tf / (tf + K1 * (1 - B + B * length / usual)) if tf else 0.0
@@ -338,7 +525,10 @@ def centrality(tf, length, usual):
 
 def build_term(term, rows, texts, table):
     """The file for one term, and a tally of what went into it."""
-    phrases, table_words, table_phrases = table
+    phrases, table_words, table_phrases = table[:3]
+    # What two words stand together across: the words that say nothing, and
+    # the ones the page reads a search without.
+    skip = FUNCTION | set(table[3] if len(table) > 3 else ())
     once_keys = set()
     for t in table_words:
         once_keys |= word_keys(t)
@@ -353,11 +543,26 @@ def build_term(term, rows, texts, table):
     tally = {"bills": len(ids), "with_text": len(docs)}
     if not docs:
         return {"v": VERSION, "term": term, "n": len(ids), "ids": ids,
-                "w": {}, "p": {}}, tally
-    tok = {bid: (Counter(words(a)), Counter(words(b)), set(words(t)))
-           for bid, (a, b, t) in docs.items()}
-    la = {bid: sum(c[0].values()) for bid, c in tok.items()}
-    lb = {bid: sum(c[1].values()) for bid, c in tok.items()}
+                "w": {}, "p": {}, "b": []}, tally
+    # Each text as its words in order, with the sentence and the clause each
+    # stands in, and each word counted: as it stands, then with the repeats
+    # taken out (A REPEAT IS NOT A SECOND MENTION).
+    seq, tok = {}, {}
+    la, lb = {}, {}
+    for bid, (a, b, t) in docs.items():
+        ra, rb = read(a), read(b)
+        seq[bid] = (ra, rb)
+        ca, cb = Counter(ra[0]), Counter(rb[0])
+        la[bid], lb[bid] = len(ra[0]), len(rb[0])
+        again = {w for w, n in cb.items() if 2 <= n <= MOST and w not in FUNCTION}
+        if again:
+            where = {}
+            for i, w in enumerate(rb[0]):
+                if w in again:
+                    where.setdefault(w, []).append(i)
+            for w, places in where.items():
+                cb[w] = distinct(places, rb[0], rb[1], rb[4])
+        tok[bid] = (ca, cb, set(words(t)))
     usual_b = sum(lb.values()) / max(1, sum(1 for v in lb.values() if v)) or 1
     df, df_text = Counter(), Counter()
     for a, b, _t in tok.values():
@@ -369,7 +574,8 @@ def build_term(term, rows, texts, table):
     common = {w for w, d in df.items()
               if d > max(COMMON * n_docs, FEW)} - once_keys
     pos = {bid: i for i, bid in enumerate(ids)}
-    w_post, p_post = {}, {}
+    w_post, p_post, b_post = {}, {}, {}
+    filed, edge = {}, {}
 
     def weigh(tfa, tfb, bid, telling, once_ok):
         """The weight to keep, 0 to 9, or None for a word that is not kept.
@@ -393,6 +599,7 @@ def build_term(term, rows, texts, table):
                          for w, n in b.items() if n >= 2 and w not in common),
                         reverse=True)
         telling = {w for _s, w in ranked[:TELLING]}
+        mine = filed[bid] = set()
         for w in set(a) | set(b):
             if w in title or w in common or w in FUNCTION:
                 continue
@@ -402,16 +609,19 @@ def build_term(term, rows, texts, table):
             wt = weigh(a[w], b[w], bid, w in telling, w in once_keys)
             if wt is not None:
                 w_post.setdefault(w, []).append((pos[bid], bool(a[w]), wt))
+                if wt:
+                    mine.add(w)
     # Phrases: counted in the text as written, since a phrase is its words in
     # order. A bill is read for a phrase only when it has every word of it
     # but the last, which may carry an ending.
     plan = []
     for p in phrases:
         need = [k[0] for k in (words(x) for x in p.split(" ")[:-1]) if k]
-        plan.append((p, phrase_rx(p), need, p in once_phrases))
+        plan.append((p, phrase_rx(p), need, p in once_phrases, len(words(p))))
     for bid, (a, b, t) in docs.items():
         ta, tb, _tt = tok[bid]
-        for p, rx, need, once_ok in plan:
+        keys, sent, _clause, at, heads = seq[bid][1]
+        for p, rx, need, once_ok, span in plan:
             if any(not (ta[k] or tb[k]) for k in need):
                 continue
             # The phrase as written is in whatever the pattern finds, and
@@ -421,13 +631,62 @@ def build_term(term, rows, texts, table):
             if not (in_a or in_b) or rx.search(t):
                 continue          # not there, or the page finds it in the title
             tfa = len(rx.findall(a)) if in_a else 0
-            tfb = len(rx.findall(b)) if in_b else 0
+            found = [m.start() for m in rx.finditer(b)] if in_b else []
+            tfb = len(found)
+            if 2 <= tfb <= MOST:
+                tfb = distinct([bisect.bisect_left(at, x) for x in found],
+                               keys, sent, heads, span)
             if not (tfa or tfb):
                 continue
             wt = weigh(tfa, tfb, bid, once_ok, once_ok)
             if wt is None:
                 continue
             p_post.setdefault(p, []).append((pos[bid], bool(tfa), wt))
+            # A word may stand beside the first or the last word of a phrase
+            # the bill is filed under ("request" beside "governmental
+            # records"): those two are words the page can ask a pair of.
+            ends = words(p)
+            if wt and ends:
+                edge.setdefault(bid, set()).update((ends[0], ends[-1]))
+    # Pairs (WORDS THAT STAND TOGETHER): two words next to each other in one
+    # clause once the words that carry no subject are out from between them.
+    # Kept where the analysis has the pair, or the text has it twice -- the
+    # rule a phrase of the table is kept by -- and only where the page could
+    # ask: each of the two is a word this bill is filed under, a word of its
+    # title, or the first or last word of a phrase it is filed under; one of
+    # them is a word it is filed under. (With any word allowed beside a filed
+    # one there were half as many again: 41,000 for 2025-2026 against
+    # 28,000.)
+    for bid, (ra, rb) in seq.items():
+        title, mine = tok[bid][2], filed[bid]
+        if not mine:
+            continue
+        may = mine | title | edge.get(bid, set())
+        near = {}
+        for part, (keys, sent, clause, _at, heads) in enumerate((ra, rb)):
+            # `last` and `before`: the two words before this one. `joined`:
+            # an "and" or an "or" stands between this word and `last`;
+            # `was`: one stood between `last` and `before`.
+            last = before = -1
+            joined = was = False
+            for i, w in enumerate(keys):
+                if w in skip:
+                    joined = joined or w in JOINS
+                    continue
+                for j in ((last, before) if joined or was else (last,)):
+                    if j >= 0 and clause[j] == clause[i]:
+                        v = keys[j]
+                        if v in may and w in may and v != w \
+                                and (v in mine or w in mine):
+                            near.setdefault((v, w), ([], []))[part].append(j)
+                before, last, was, joined = last, i, joined, False
+        keys, sent, _clause, _at, heads = rb
+        for (v, w), (in_a, in_b) in near.items():
+            tfb = len(in_b)
+            if 2 <= tfb <= MOST:
+                tfb = distinct(in_b, keys, sent, heads, 2)
+            if weigh(len(in_a), tfb, bid, True, False) is not None:
+                b_post.setdefault(bid, set()).add(pair_code(v, w))
 
     def pack(posts):
         out, last = [], 0
@@ -438,10 +697,12 @@ def build_term(term, rows, texts, table):
 
     data = {"v": VERSION, "term": term, "n": len(ids), "ids": ids,
             "w": {w: pack(p) for w, p in sorted(w_post.items())},
-            "p": {w: pack(p) for w, p in sorted(p_post.items())}}
+            "p": {w: pack(p) for w, p in sorted(p_post.items())},
+            "b": ["".join(sorted(b_post.get(bid, ()))) for bid in ids]}
     tally.update(words=len(w_post), phrases=len(p_post),
                  postings=sum(len(p) for p in w_post.values())
-                 + sum(len(p) for p in p_post.values()))
+                 + sum(len(p) for p in p_post.values()),
+                 pairs=sum(len(p) for p in b_post.values()))
     return data, tally
 
 
@@ -451,7 +712,8 @@ def read_posting(n):
 
 
 def unpack(data):
-    """{key: [(bill id, in the analysis, weight), ...]} for "w" and for "p"."""
+    """{key: [(bill id, in the analysis, weight), ...]} for "w" and for "p",
+    and {bill id: {code, ...}} for "b", the pairs (pair_code())."""
     out = {}
     for part in ("w", "p"):
         got = out[part] = {}
@@ -462,6 +724,8 @@ def unpack(data):
                 i += step
                 rows.append((data["ids"][i], in_a, w))
             got[key] = rows
+    out["b"] = {bid: {codes[i:i + 5] for i in range(0, len(codes), 5)}
+                for bid, codes in zip(data["ids"], data.get("b") or []) if codes}
     return out
 
 
@@ -472,9 +736,10 @@ def only(data, keep):
     ids = [i for i in data["ids"] if i in keep]
     pos = {b: i for i, b in enumerate(ids)}
     out = {"v": data["v"], "term": data["term"], "n": len(ids), "ids": ids}
-    for part, posts in unpack(data).items():
+    whole = unpack(data)
+    for part in ("w", "p"):
         got = out[part] = {}
-        for key, rows in posts.items():
+        for key, rows in whole[part].items():
             last, packed = 0, []
             for bid, in_a, w in rows:
                 if bid in pos:
@@ -482,6 +747,7 @@ def only(data, keep):
                     last = pos[bid]
             if packed:
                 got[key] = packed
+    out["b"] = ["".join(sorted(whole["b"].get(bid, ()))) for bid in ids]
     return out
 
 
@@ -521,7 +787,7 @@ def write_fixture(cases_path, a, table, texts):
     for c in cases["cases"]:
         # "near": bills a case names as tempting a wrong reading, carried so
         # that the fixture can be wrong in the way the real index could.
-        for k in ("first", "must", "never", "near"):
+        for k in ("first", "must", "never", "near", "top"):
             named.update(c.get(k) or [])
     named.update(cases.get("texts") or [])
     missing = sorted(named - set(by_id))
@@ -646,6 +912,38 @@ def name_words(paths):
     return got, said
 
 
+def slips(seen, names=()):
+    """{slip: the word it is a slip of}, among the words bills use.
+
+    `seen` is how many bills use each word. A slip is a word one bill uses,
+    of SLIP_LETTERS letters or more and no member's or town's name, that is a
+    word SLIP_OF bills use with one letter inside it dropped ("goverment"),
+    added ("harrassment") or swapped with its neighbour ("hopsital"). The
+    first and last letters are left alone: a letter on the end is a plural or
+    a tense, and a letter gone from the front is how a page was cut. A
+    changed letter is never a slip: "incest" is not "invest"."""
+    often = {w for w, n in seen.items() if n >= SLIP_OF}
+    short = {}
+    for v in often:
+        for i in range(1, len(v) - 1):
+            d = v[:i] + v[i + 1:]
+            if d not in short or seen[v] > seen[short[d]]:
+                short[d] = v
+    out = {}
+    for w, n in seen.items():
+        if n != 1 or len(w) < SLIP_LETTERS or w in names:
+            continue
+        near = [short[w]] if w in short else []
+        for i in range(1, len(w) - 1):
+            near.append(w[:i] + w[i + 1:])
+            if i < len(w) - 2 and w[i] != w[i + 1]:
+                near.append(w[:i] + w[i + 1] + w[i] + w[i + 2:])
+        near = [v for v in near if v in often]
+        if near:
+            out[w] = max(near, key=lambda v: (seen[v], v))
+    return out
+
+
 def words_file(words):
     """sidx/words.json: {"v": 1, "n": N, "words": "a b c"}, in order."""
     ws = sorted(words)
@@ -711,19 +1009,24 @@ def main():
         manifest = {"terms": {}}
     manifest.update(v=VERSION, central=CENTRAL, telling=TELLING, floor=FLOOR)
     total_text = 0
-    known = set()
+    # How many bills use each word: a word one bill uses may be a slip.
+    seen = Counter()
     for f in files:
         term = f.stem
         rows = json.loads(f.read_text(encoding="utf-8"))
         rows = [r for r in rows if isinstance(r, dict)
                 and (not r.get("term") or r["term"] == term)]
         if not a.terms:
+            mine = texts.get(term) or {}
             for r in rows:
-                known |= known_words(" ".join(
+                seen.update(known_words(" ".join(
                     [str(r.get("title") or ""), str(r.get("sponsor") or ""),
-                     str(r.get("topic") or ""), *map(str, r.get("committees") or [])]))
-            for rec in (texts.get(term) or {}).values():
-                known |= known_words(rec.get("text") or "")
+                     str(r.get("topic") or ""), *map(str, r.get("committees") or []),
+                     (mine.get(r.get("id")) or {}).get("text") or ""])))
+            listed = {r.get("id") for r in rows}
+            for bid, rec in mine.items():
+                if bid not in listed:
+                    seen.update(known_words(rec.get("text") or ""))
         data, tally = build_term(term, rows, texts.get(term) or {}, table)
         raw = dumps(data).encode("utf-8")
         (out / f"{term}.json").write_bytes(raw)
@@ -734,7 +1037,8 @@ def main():
             "  -- NO TEXT for this term: its bills are found by title and topic only"
         print(f"  {term}: {tally['bills']:,} bills, {tally['with_text']:,} with "
               f"text, {tally.get('words', 0):,} words, "
-              f"{tally.get('postings', 0):,} entries, {len(raw):,} bytes "
+              f"{tally.get('postings', 0):,} entries, "
+              f"{tally.get('pairs', 0):,} pairs, {len(raw):,} bytes "
               f"({tally['gzip']:,} gzipped){note}")
     # EVERY WORD THE BILLS USE, for the page to tell a misspelt word from a
     # real one (app.js, A SEARCH THAT LISTS NOTHING). It is every term's, so
@@ -750,7 +1054,8 @@ def main():
         names, said = name_words(a.names)
         for s in said:
             print("  names, " + s)
-        known |= names
+        slipped = slips(seen, names)
+        known = (set(seen) - set(slipped)) | names
         thin = len(known) < WORDS_FEWEST
         if thin and not a.allow_no_text:
             # Not written: with a thin list every word it lacks would be
@@ -762,11 +1067,15 @@ def main():
             raw = dumps(words_file(known)).encode("utf-8")
             words_path.write_bytes(raw)
             manifest["words"] = {"n": len(known), "bytes": len(raw),
-                                 "gzip": len(gzip.compress(raw, 9, mtime=0))}
+                                 "gzip": len(gzip.compress(raw, 9, mtime=0)),
+                                 "slips": len(slipped)}
             print(f"  words.json: {len(known):,} words the bills, members and "
                   f"towns use, {len(raw):,} bytes "
                   f"({manifest['words']['gzip']:,} gzipped) -- fetched only "
-                  "when a search lists nothing")
+                  f"when a search lists nothing; {len(slipped):,} slips of the "
+                  "record's own left out of it ("
+                  + ", ".join(f"{w} for {v}" for w, v in sorted(slipped.items())[:3])
+                  + ", ...)")
     man_path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n",
                         encoding="utf-8")
     t = manifest["terms"]
