@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.17
+# GRANITE_VERSION: 2026-09-09.18
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1151,6 +1151,13 @@ def tabbed(label, panels):
 # pushState, so Back leaves the page rather than stepping through its tabs.
 # A hash that names no tab -- #results, from the skip link -- is left alone
 # and the first tab shown.
+#
+# THE ADDRESS IS WRITTEN WITH THE PAGE'S OWN PATH. The page carries
+# <base href="/">, so a bare "#officials" resolves against the site's root:
+# choosing "Town officials" on /town/acworth wrote /#officials into the address
+# bar, and a reload, a bookmark or a link copied from there opened the home
+# page (the audit of 2 October 2026, on all 320 pages). The trap is written
+# down in six other places in the build; this call had been missed.
 TABS_JS = """<script>
 (function(){
   var bar=document.querySelector(".twntabs");
@@ -1169,7 +1176,8 @@ TABS_JS = """<script>
       var pane=document.getElementById(t.dataset.pane);
       if(pane)pane.hidden=!on;
     });
-    if(write&&history.replaceState)history.replaceState(null,"","#"+id);
+    if(write&&history.replaceState)
+      history.replaceState(null,"",location.pathname+location.search+"#"+id);
   }
   tabs.forEach(function(t){
     t.addEventListener("click",function(){show(t.dataset.pane,true);});

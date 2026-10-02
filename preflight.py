@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.307
+# GRANITE_VERSION: 2026-09-04.308
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43191,6 +43191,13 @@ def _town_tabs(B, BP):
     history entry, or Back walks through the tabs instead of leaving the page.
     The script runs in node against dom_stub.js, with the page's own tabs.
 
+    AND THE ADDRESS IT WRITES IS THE TOWN'S OWN. The page carries
+    <base href="/">, and the script wrote a bare "#officials", which a browser
+    resolves against the base: choosing a tab on /town/acworth put /#officials
+    in the address bar, and a reload, a bookmark or a copied link opened the
+    home page (the audit of 2 October 2026; all 320 pages). So what is
+    written must start with the page's own path, query included.
+
     The strip scrolls inside itself and the panels' grid tracks are
     minmax(0, 1fr), so no number of tabs and no long address can make a
     360px page scroll sideways; that is read off app.css.
@@ -43301,6 +43308,7 @@ history.replaceState = (a, b, u) => wrote.push(u);
 history.pushState = () => { pushed++; };
 const on = {}; globalThis.addEventListener = (t, f) => (on[t] = on[t] || []).push(f);
 location.hash = process.argv[2];
+location.pathname = "/town/lyme"; location.search = "?from=test";
 const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
 const out = {};
 %s
@@ -43329,13 +43337,20 @@ process.stdout.write(JSON.stringify(out));
                     or got["back"] != ["representatives"]:
                 bad.append(f"click, arrow and address showed {got['click']}, "
                            f"{got['arrow']} and {got['back']}")
-            if got["wrote"] != ["#officials", "#vote"] or got["pushed"]:
+            if got["wrote"] != ["/town/lyme?from=test#officials",
+                                "/town/lyme?from=test#vote"] or got["pushed"]:
                 bad.append(f"switching wrote {got['wrote']} and pushed "
-                           f"{got['pushed']} history entries")
+                           f"{got['pushed']} history entries: the address must "
+                           "be the town's own path, its query and the tab, "
+                           'because a bare #tab resolves against <base href="/"> '
+                           "and names the home page")
+    if '<base href="/">' not in lyme:
+        bad.append('the town page no longer carries <base href="/">: read '
+                   "TABS_JS again, the address it writes was built around it")
     assert not bad, "\n  ".join(bad)
     return "ok", ("tabs wired as the roster's, none empty, none for a place with "
                   "no town government; #vote opens its tab and a click writes "
-                  "the address without a history entry"
+                  "the town's own address and the tab, without a history entry"
                   + ("" if node else " (node absent: script not run)"))
 
 
