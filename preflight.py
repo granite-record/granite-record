@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.307
+# GRANITE_VERSION: 2026-09-04.308
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1516,6 +1516,105 @@ def _bill_of_intent(N, B):
     assert not bad, "; ".join(bad)
     return "ok", ("a bill of intent the House passed reads Adopted by the House on a rail of "
                   "the House alone, in the docket's own word, Passed")
+
+
+# Real rows: Docket_db_1993-1994.txt lines 12917-12923 (HB 1138), 10137-10144
+# (HB 442) and 12496-12498 with 12501-12507 (SB 27); Docket_db_1991-1992.txt
+# 13384-13388 (CACR 25).
+_DOCKET_STUDY_UNREAD = {
+    ("HB1138", "1993-1994"): [
+        "1994|2028|02/04/1994 04:31:40 PM|HB1138|H|MAJ REPORT REF FOR STUDY FOR FEB15  (VOTE 12-3)|02/04/1994 04:31:40 PM",
+        "1994|2028|02/04/1994 04:31:50 PM|HB1138|H|MIN REPORT OTP/AM|02/04/1994 04:31:50 PM",
+        "1994|2028|02/04/1994 04:32:08 PM|HB1138|H|MIN PROP AM<4905>(NEW TITLE); HC23,P675|02/04/1994 04:32:08 PM",
+        "1994|2028|02/16/1994 02:39:14 PM|HB1138|H|REP MURPHY SUBST OTP/AM, ML VV; REFERRED TO JUDICIARY FOR|02/16/1994 02:39:14 PM",
+        "1994|2028|02/16/1994 03:41:46 PM|HB1138|H|INTERIM STUDY VV; HJ27,P816-817|02/16/1994 03:41:46 PM",
+        "1994|2028|04/12/1994 10:15:04 AM|HB1138|H|INT STUDY SUBCOM WORK SESS APR21 10:00 RM208,LOB    FOR: JUD|04/12/1994 10:15:04 AM",
+        "1994|2028|04/28/1994 02:16:13 PM|HB1138|H|INT STUDY REPORT:  NOT REC FOR LEG FOR 1995   (VOTE: 13-1)|04/28/1994 02:16:13 PM"],
+    ("HB442", "1993-1994"): [
+        "1994|0242|02/03/1994 02:37:45 PM|HB442|H|MAJ APPROP REPORT REF FOR STUDY(APPROP&COMM) FOR FEB08(VOTE 17-0)|02/03/1994 02:37:45 PM",
+        "1994|0242|02/08/1994 04:10:32 PM|HB442|H|REFERRED TO (JOINT COMMS) INTERIM STUDY VV; HJ19,P561|02/08/1994 04:10:32 PM",
+        "1994|0242|02/09/1994 03:39:27 PM|HB442|H|JOINT COMMS: COMMERCE & APPROP|02/09/1994 03:39:27 PM",
+        "1994|0242|10/05/1994 03:17:03 PM|HB442|H|INTERIM STUDY SUBCOM WK SESSION  OCT12  1:00 RM207,LOB  :COMMERCE|10/05/1994 03:17:03 PM",
+        "1994|0242|10/13/1994 04:11:36 PM|HB442|H|COMMERCE & APPROP JT MTG WK SESSION OCT19  11:00  RM103,SH|10/13/1994 04:11:36 PM",
+        "1994|0242|10/20/1994 08:33:24 AM|HB442|H|INT STDY FULL COMM EXEC SESSION RM 100,SH 10:00 NOV 1  FOR APPROP|10/20/1994 08:33:24 AM",
+        "1994|0242|10/25/1994 01:51:29 PM|HB442|H|REPORT FILED|10/25/1994 01:51:29 PM",
+        "1994|0242|10/25/1994 01:52:54 PM|HB442|H|INT STUDY REPORT:  REC FOR 1995 LEGISLATION (VOTE: 14-0)|10/25/1994 01:52:54 PM"],
+    ("SB27", "1993-1994"): [
+        "1994|1009|02/11/1993 06:22:17 PM|SB27|S|COMM AM<1151>, AA VV; COMM AM<1369>, AA VV; PASSED WITH AM VV;|02/11/1993 06:22:17 PM",
+        "1994|1009|02/11/1993 07:00:00 PM|SB27|S|SJ4,P56-57 + 58|02/11/1993 07:00:00 PM",
+        "1994|1009|03/10/1993 03:02:45 PM|SB27|H|INTRODUCED AND REF TO MUN & CNTY GOVT; HJ36,P853|03/10/1993 03:02:45 PM",
+        "1994|1009|04/02/1993 11:21:39 AM|SB27|H|MAJ REPORT RE-REF FOR APR08  (VOTE 14-0;CC)|04/02/1993 11:21:39 AM",
+        "1994|1009|04/08/1993 02:43:01 PM|SB27|H|RE-REFERRED TO MUN & CNTY GOVT; HJ52,P1254|04/08/1993 02:43:01 PM",
+        "1994|1009|11/01/1993 02:28:05 PM|SB27|H|RE-REF MAJ REPORT REF FOR STUDY FOR  01/05/94  (VOTE: 15-1;CC)|11/01/1993 02:28:05 PM",
+        "1994|1009|01/05/1994 02:28:18 PM|SB27|H|REFERRED FOR MUN & CNTY GOVT FOR INTERIM STUDY; HJ7,P215|01/05/1994 02:28:18 PM",
+        "1994|1009|09/07/1994 09:50:36 AM|SB27|H|INT STUDY SUBCOM WORK SESSION SEP14 01:00 RM211,LOB   :M&CG|09/07/1994 09:50:36 AM",
+        "1994|1009|10/06/1994 11:04:49 AM|SB27|H|INT STUDY EXEC SESS OCT19 10:00 RM211,LOB    FOR: M&CG|10/06/1994 11:04:49 AM",
+        "1994|1009|10/19/1994 02:35:01 PM|SB27|H|INT STUDY REPORT:  REC FOR 1995 LEGISLATION  (VOTE 16-0)|10/19/1994 02:35:01 PM"],
+    ("CACR25", "1991-1992"): [
+        "1992|2060|03/05/1992 03:50:06 PM|CACR25|H|COMM AM, AA VV; COMM REPORT OTP/AM FAILED RC(158-175); REP|03/05/1992 03:50:06 PM",
+        "1992|2060|03/05/1992 03:50:34 PM|CACR25|H|HOLDEN MOVED REF FOR STUDY, MA VV; REFERRED TO CON & STAT FOR|03/05/1992 03:50:34 PM",
+        "1992|2060|03/05/1992 03:50:43 PM|CACR25|H|INTERIM STUDY VV; HJ54,P1481-1484|03/05/1992 03:50:43 PM",
+        "1992|2060|09/25/1992 09:31:47 AM|CACR25|H|INT STUDY WORK SESS OCT07 10:00 RM302,LOB    FOR: CON & STAT|09/25/1992 09:31:47 AM",
+        "1992|2060|10/12/1992 04:10:15 PM|CACR25|H|INTERIM STUDY REPORT (ITL) FILED  (VOTE     )|10/12/1992 04:10:15 PM"],
+}
+
+
+@check("status", "a referral to interim study is read in the three ways the 1994 House wrote "
+                 "it, and the bill reads Referred for interim study",
+       needs=("narrative", "build_site_v2"))
+def _interim_study_read(N, B):
+    """Three bills of 1993-1994 were sent to interim study by the House and
+    reported on by the study that autumn, and none read so. HB 1138's
+    referral was cut after "FOR" -- "...; REFERRED TO JUDICIARY FOR" and then
+    "INTERIM STUDY VV; HJ27,P816-817" -- and the second row opens like a
+    notice of the study's own meetings, so the two were never joined: the
+    first was told as a re-referral to Judiciary. HB 442's "REFERRED TO (JOINT
+    COMMS) INTERIM STUDY VV" and SB 27's "REFERRED FOR MUN & CNTY GOVT FOR
+    INTERIM STUDY" were wordings no pattern read. Their House field is REPORT
+    FILED, the study's report, so HB 1138 and HB 442 read "Committee report
+    filed" and SB 27 "Passed one chamber", from the Senate's field.
+
+    CACR 25 of 1992 is cut the same way after a row that had already said the
+    study carried, with its mover: that one stays as it is told.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_STUDY_UNREAD.items()}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    def study(key):
+        return [(e["date"], e["type"], e.get("motion"), e.get("action"))
+                for e in narr[key]["events"]
+                if e["type"] == "floor" and "Study" in (e.get("action") or "")]
+
+    is_("HB1138's referral", study(("HB1138", "1993-1994")),
+        [("1994-02-16", "floor", "MA", "Refer for Interim Study")])
+    is_("HB442's referral", study(("HB442", "1993-1994")),
+        [("1994-02-08", "floor", "MA", "Refer for Interim Study")])
+    is_("SB27's referral", study(("SB27", "1993-1994")),
+        [("1994-01-05", "floor", "MA", "Refer for Interim Study")])
+    assert "referred to the Judiciary" not in narr[("HB1138", "1993-1994")]["narrative"], (
+        narr[("HB1138", "1993-1994")]["narrative"])
+    for bill, st in (("HB1138", {"gen_status": "HOUSE", "house_status": "REPORT FILED"}),
+                     ("HB442", {"gen_status": "HOUSE", "house_status": "REPORT FILED"}),
+                     ("SB27", {"gen_status": "HOUSE", "house_status": "REPORT FILED",
+                               "senate_status": "PASSED/ADOPTED WITH AMENDMENT"})):
+        d = B.bill_disposition({}, bill, st, narr[(bill, "1993-1994")], [], "1993-1994",
+                               "2025-2026")
+        is_(f"{bill} of 1994", (d.kind, d.status), ("study", "Referred for interim study"))
+    # CACR 25: the row that carried the study keeps its mover, and the tail
+    # stays a row of its own.
+    n = narr[("CACR25", "1991-1992")]
+    is_("CACR25's rows", [(e["type"], e["raw"]) for e in n["events"][:2]], [
+        ("floor", "COMM AM, AA VV; COMM REPORT OTP/AM FAILED RC(158-175); REP HOLDEN MOVED "
+                  "REF FOR STUDY, MA VV; REFERRED TO CON & STAT FOR"),
+        ("other", "INTERIM STUDY VV; HJ54,P1481-1484")])
+    assert "on a motion by Rep. Holden" in n["narrative"], n["narrative"]
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 1138, HB 442 and SB 27 of 1994 each tell the House sending them to "
+                  "interim study and read so; CACR 25 of 1992 keeps its mover")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
