@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.192 */
+/* GRANITE_VERSION: 2026-09-07.193 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -470,6 +470,11 @@ box-shadow:inset 0 -2px 0 var(--pine)}
   justify-content:flex-start}
   .navdrop .navtabs a[aria-current]{box-shadow:inset 3px 0 0 var(--pine);
   background:var(--pine-soft)}
+  /* The panel clips to its corners and its rows fill it edge to edge, so the
+     site's ring, 2px outside, showed as one line under a row. Opening the
+     menu puts focus on its first link now (find.js), so the ring is drawn
+     inside the row, as it is wherever a box would cut it off. */
+  .navdrop .navtabs a:focus-visible,.navdrop .themer:focus-visible{outline-offset:-2px}
   .navmenu{display:inline-flex;align-items:center;justify-content:center;
   min-height:44px;min-width:44px;padding:0 var(--sp-3);background:none;
   border:1px solid var(--edge);border-radius:var(--r-in);color:var(--ink-2)}
@@ -1124,8 +1129,10 @@ line-height:1.1}
   --rep-soft:#F6E7E6;--dem-soft:#E6EDF7;--ind-soft:#EEEAF3;
   --yes:#215C43;--no:#CE6A62;--brick:#9E2B25;
   color-scheme:light}
+  /* The footer's feedback button with them: it is white words on a pine
+     ground, and with no ground printed it is white on white. */
   nav.top,.skip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,.findscrim,
-  details.report,.player{display:none !important}
+  details.report,.player,.fbk{display:none !important}
 }
 
 /* SHARED:END ------------------------------------------------------------ */
@@ -4442,6 +4449,17 @@ border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
 :where(body.pg) th{text-align:left;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);padding:0 0 var(--sp-3);border-bottom:1px solid var(--rule)}
 :where(body.pg) td{padding:var(--sp-4) 0;border-bottom:1px solid var(--rule);vertical-align:top}
+/* THE HOME PAGE'S LATEST ACTIVITY IS A LIST, drawn as the two-column table it
+   was until 2 October 2026: the day in a column of its own, 80px, and what
+   happened beside it, each row ruled off as a table's are. A table with no
+   header cell is read out as a grid with nothing to say what its columns
+   are; this is five things, each a day and an action. At every width: the
+   three-column layout only draws the rows closer (see .hrecent). */
+:where(body.pg) .actlist{list-style:none;margin:0;padding:0;font-size:var(--t-ui)}
+:where(body.pg) .actlist li{display:flex;align-items:flex-start;padding:var(--sp-4) 0;
+border-bottom:1px solid var(--rule);margin:0;max-width:none}
+:where(body.pg) .actd{flex:0 0 80px;white-space:nowrap}
+:where(body.pg) .actb{flex:1 1 0;min-width:0}
 /* THE SAME CARD app.css draws. It was a --rule border at 9px here
    and a --rule-2 border at 6px there: one name, two objects, and
    the edge at 1.19:1 against the page instead of 1.66:1. */:where(body.pg) .card{background:var(--surface);border:1px solid var(--rule-2);
@@ -4706,17 +4724,11 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
    than in a band below all three. It is the thing that changes most often on
    the site and it was the last thing on the page. */
 :where(body.pg) .hrecent{margin-top:var(--sp-7)}
-/* A LIST, drawn as the two-column table it was until 2 October 2026: the day
-   in a column of its own, 80px and the gap, and what happened beside it. A
-   table with no header cell is read out as a grid with nothing to say what
-   its columns are; this is five things, each a day and an action. */
-:where(body.pg) .hrecent .actlist{list-style:none;margin:0;padding:0}
-:where(body.pg) .hrecent .actlist li{display:flex;align-items:flex-start;
-padding:var(--sp-3) 0;border-bottom:1px solid var(--rule);font-size:var(--t-ui);
-margin:0;max-width:none}
-:where(body.pg) .hrecent .actd{flex:0 0 80px;white-space:nowrap;color:var(--ink-2);
-padding-right:var(--sp-5)}
-:where(body.pg) .hrecent .actb{flex:1 1 0;min-width:0}
+/* In the three-column layout the rows are closer and the day is quieter, as
+   they were when this was a table (the list's own rules are with the pages'
+   table rules, above, because they hold at every width). */
+:where(body.pg) .hrecent .actlist li{padding:var(--sp-3) 0}
+:where(body.pg) .hrecent .actd{color:var(--ink-2);padding-right:var(--sp-5)}
 
 :where(body.pg) .hside > :first-child{margin-top:0}
 
