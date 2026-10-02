@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.15
+# GRANITE_VERSION: 2026-09-18.16
 """
 The General Court's week, one page per week.
 
@@ -30,6 +30,9 @@ can send to somebody, and the whole thing works with no script at all.
                                 it, for the page's script (month_files)
   site/calendar/data/committees.json
                                 every committee on the calendar, for its picker
+  site/calendar/documents.json  every calendar and journal the General Court
+                                serves, for the pickers under the schedule
+  site/calendar/documents.html  the same list as plain links, a year at a time
 
 A CALENDAR ON TOP OF THE WEEKS (24 September 2026). The person asked for the
 General Court's schedule done properly: a month down the left with the week
@@ -75,6 +78,13 @@ the sitemap lists and a canonical link names; moving about the calendar with
 the script keeps the reader on /calendar, with the week, the day, the view
 and the filters in the query -- /calendar?week=2026-W28 -- so a reload or a
 link sent opens what was on the screen. WEEK_JS says how.
+
+CALENDARS & JOURNALS, AS PDFs (1 October 2026). Under the schedule of every
+week: pickers in a row -- House or Senate calendars or journals, the year, the
+document -- and a button that opens the General Court's own PDF, as its own
+pages do. calendar_documents.py reads the list and writes the section, its
+script and the list page; this hands the section to every week's page and
+writes the two files beside them. Without script the section is plain links.
 """
 
 import argparse
@@ -87,6 +97,7 @@ from pathlib import Path
 
 import bill_order as BO
 import build_pages as BP
+import calendar_documents as CD
 import proceedings
 import shell as S
 import structured as LD
@@ -2347,11 +2358,22 @@ BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
             'Reset filters</button></div>')
 
 
+# Where a week's heading links down to the Calendars & Journals section. The
+# link's address is the page's own, and the current week is written at two
+# addresses, so it is put in as each copy is written.
+JUMP_SLOT = "<!--cdjump-->"
+
+
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
-              today, sessions=frozenset(), study=False, docs=None):
+              today, sessions=frozenset(), study=False, docs=None, picker=""):
     """Write one week's page. `study` is whether the calendar holds the study
     and statutory committees' meetings from the database copy; the page's
     description claims them only then.
+
+    `picker` is the Calendars & Journals section (calendar_documents.
+    block_html), the same on every week because a reader may be on any of
+    them; "" where there is no list, and then the page carries no section, no
+    link down to one and no script for one.
 
     NO NOTE OF WHERE THEY COME FROM. The page said under its key that they
     come "from the General Court's own database, as copied on 8 September
@@ -2403,7 +2425,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              '<div class="calhead">'
              f'<h1>The week of {S.E(label)}</h1>'
              f'<p class="src">{lead}</p>'
-             f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
+             + (JUMP_SLOT if picker else "")
+             + f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
              '</div>'
              + side_html()
              + '<div class="calmain">'
@@ -2411,7 +2434,12 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              + cats_html()
              + f'<div class="calview" id="calview">{body}</div>'
              f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
-             '</div>'
+             # BELOW THE SCHEDULE AND ITS ARROWS, inside the schedule's column:
+             # as wide as the schedule on a desktop, the last block of the page
+             # on a phone. The script redraws #calview and the arrows and
+             # leaves this alone.
+             + picker
+             + '</div>'
              # The hover preview: one element, placed beside whichever day
              # it describes, so it never covers the day being read.
              '<div class="calpeek" id="calpeek" role="tooltip" hidden></div>'
@@ -2420,7 +2448,10 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # script on this site lives -- shell.page takes no script -- and
              # without its comment lines, which stay here for the reader of
              # the source rather than travelling with 103 pages.
-             f"<script>{lean_js(WEEK_JS)}</script>")
+             f"<script>{lean_js(WEEK_JS)}</script>"
+             # A SCRIPT OF ITS OWN, after the Calendar's: neither reads the
+             # other, and a fault in one leaves the other running.
+             + (f"<script>{lean_js(CD.PICKER_JS)}</script>" if picker else ""))
     for f in copies:
         html = S.page(S.template(site), path=f, canonical=path, base=base,
                       title=f"The week of {label} | Granite Record",
@@ -2438,13 +2469,64 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                       jsonld=LD.listing(f"The week of {label}",
                                         f"The General Court's business, {label}.",
                                         base, S.canon(path)))
-        html = html.replace('<div id="results"></div>', block, 1)
+        html = html.replace('<div id="results"></div>',
+                            block.replace(JUMP_SLOT, CD.jump_html(S.canon(f))), 1)
         assert '<div class="wkpage calapp"' in html, f"{f}: the template has no results slot"
         out = site / f.lstrip("/")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(html, encoding="utf-8")
     urls.append(base + S.canon(path))
     return n
+
+
+# The House prints a calendar most weeks of the year, in session and out of
+# it. Three weeks with no new one in the list is more likely a list nobody
+# has refreshed than a quiet House, so the build says so; it does not stop.
+CD_STALE_DAYS = 21
+
+
+def documents_files(site, base, cdocs, left_out, urls, today=None):
+    """Write calendar/documents.json and calendar/documents.html, and put the
+    list page's address in `urls`; returns the index's size in bytes.
+
+    BESIDE THE WEEK PAGES, not in calendar/data/, which month_files prunes of
+    everything it did not write. And the page's address goes in this run's
+    urls, or sitemap_merge would take it out as a /calendar address nobody
+    wrote. With nothing to link, neither file is left on disk: a list page
+    from an older build would be a page the Calendar no longer links.
+    """
+    index_f = Path(site) / CD.INDEX_PATH.lstrip("/")
+    list_f = Path(site) / CD.LIST_PATH.lstrip("/")
+    if not cdocs:
+        for f in (index_f, list_f):
+            if f.exists():
+                f.unlink()
+        return 0
+    index_f.parent.mkdir(parents=True, exist_ok=True)
+    blob = json.dumps(CD.index(cdocs, made=today), ensure_ascii=False, separators=(",", ":"))
+    index_f.write_text(blob, encoding="utf-8")
+
+    heading, lead, body = CD.list_body(cdocs, left_out)
+    first, last = CD.span(cdocs)
+    path = CD.LIST_PATH
+    description = ("Every House and Senate calendar and journal the New Hampshire General "
+                   f"Court publishes as a PDF, {first} to {last}: {len(cdocs):,} documents, "
+                   "by year, each linked at the General Court's own address.")
+    html = S.page(S.template(site), path=path, base=base,
+                  title=f"{heading}, {first}–{last} | Granite Record",
+                  description=description, og_title=heading,
+                  globals={"GR_STATIC": True}, noscript="",
+                  skip_label="Skip to the list", sr_title="", og_type="website",
+                  nav_current="calendar.html",
+                  jsonld=LD.listing(heading, description, base, S.canon(path)))
+    html = html.replace('<div id="results"></div>',
+                        '<div id="results"><div class="clist dirlist cdpage">'
+                        f'<h1>{S.E(heading)}</h1><p class="src">{lead}</p>{body}</div></div>'
+                        f"<script>{lean_js(CD.LIST_JS)}</script>", 1)
+    assert '<div class="clist dirlist cdpage">' in html, f"{path}: the template has no results slot"
+    list_f.write_text(html, encoding="utf-8")
+    urls.append(base + S.canon(path))
+    return len(blob.encode("utf-8"))
 
 
 def lean_js(js):
@@ -2598,11 +2680,34 @@ def main():
     print(f"  {n_cal:,} meetings linked to the calendar that printed their notice, "
           f"{n_jnl:,} floor sittings to their journal ({len(cal_urls):,} calendars "
           f"and {len(journal_keys):,} journals in archive/queue.csv)")
+    # CALENDARS & JOURNALS: the list is read once and the same section goes on
+    # every week. SILENCE IS NOT SUCCESS: what was read is printed either way,
+    # so a queue that stopped being read shows as a line and not as nothing,
+    # and a list that has fallen behind the General Court's is said to be.
+    cdocs, cd_out = CD.read(today=today)
+    picker = CD.block_html(cdocs, cd_out)
+    if cdocs:
+        print(f"  {CD.summary(cdocs, cd_out)}")
+        newest = CD.newest_date(cdocs, "hc")
+        age = (today - datetime.date.fromisoformat(newest)).days if newest else 0
+        if age > CD_STALE_DAYS:
+            print(f"  WARNING: the newest House Calendar listed is {CD.day_words(newest)}, "
+                  f"{age} days ago -- if the House has printed one since, "
+                  f"{CD.QUEUE.as_posix()} has not been refreshed and the pickers are "
+                  "behind the General Court's own list")
+    else:
+        print(f"  WARNING: no calendars or journals to link -- {CD.QUEUE.as_posix()} is not "
+              "on disk or lists nothing served, so the week pages carry no Calendars & "
+              "Journals section")
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits,
-                           study=bool(study_rows), docs=docs)
+                           study=bool(study_rows), docs=docs, picker=picker)
+    size = documents_files(site, base, cdocs, cd_out, urls, today=today)
+    if size:
+        print(f"  calendar/documents.json ({size:,} bytes) and calendar/documents.html, "
+              "the same list as plain links")
 
     # THE MONTH FILES, which the page's month grid and its other weeks read.
     # SILENCE IS NOT SUCCESS: a run that wrote weeks and no months is a
