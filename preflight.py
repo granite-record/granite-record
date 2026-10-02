@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.298
+# GRANITE_VERSION: 2026-09-04.299
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18739,7 +18739,10 @@ def _documents_night(NI, CA, CL):
         and the listing on file are byte for byte what they were, the night
         is clean and exits 0, and its page carries a warning in this
         project's own words;
-      - a request that fails is the same; one the General Court refuses is
+      - a request that fails and a page that has changed shape are the
+        same, and the warning says which, in the listing's own words; a fetch
+        that ends on 2 with no refusal on file -- argparse's status too -- is
+        not read as the General Court saying no; one it does refuse is
         recorded, stops the listing where it is, and is still only a warning
         that night -- the next night does not ask at all;
       - a night that does not fetch, or defers its fetch, asks for no list.
@@ -18797,12 +18800,14 @@ def _documents_night(NI, CA, CL):
         "                                time=real.time, strftime=real.strftime)\n"
         "CA.today = lambda: date(2026, 10, 2)\n"
         "sys.argv = ['fetch_calendar_archive.py'] + sys.argv[1:]\n"
+        "if cfg['exit']:\n"
+        "    sys.exit(cfg['exit'])\n"
         "sys.exit(CA.main())\n")
 
-    def serve(pages, fail=None):
+    def serve(pages, fail=None, status=0):
         Path("pages.json").write_text(json.dumps(
-            {"pages": pages, "fail": {str(k): v for k, v in (fail or {}).items()}}),
-            encoding="utf-8")
+            {"pages": pages, "fail": {str(k): v for k, v in (fail or {}).items()},
+             "exit": status}), encoding="utf-8")
         Path("asked.json").unlink(missing_ok=True)
 
     def requests():
@@ -18942,17 +18947,27 @@ def _documents_night(NI, CA, CL):
             "calendars\\2026\\HC 35.pdf")})
         empty = dict(pages, **{"S journal 2026": _docs_page(
             CA, pages["S calendar 2026"], _DOCS_S, "SenateJournal", years, "2026", [], "")})
+        moved = dict(pages, **{"H calendar 2026": _docs_page(
+            CA, pages["S calendar 2026"], _DOCS_H, "Calendar", years, "2026", _DOCS_HC,
+            "calendars\\2027\\HC 35.pdf")})
         n_file = len(rows) + 4
-        for what, served, fail, want, asked_n in (
-                ("short", short, None,
+        for what, served, fail, status, want, asked_n in (
+                ("short", short, None, 0,
                  "not taken: the House Calendar list for 2026 came back without 5 of the 7 "
                  f"documents on file; the earlier {n_file} kept", 4),
-                ("empty", empty, None,
+                ("empty", empty, None, 0,
                  "not taken: the Senate Journal list for 2026 came back empty, with 2 documents "
                  f"on file; the earlier {n_file} kept", 4),
-                ("failed", pages, {3: 500},
-                 f"not taken: the fetch did not complete (exit 1); the earlier {n_file} kept", 3)):
-            serve(served, fail)
+                ("changed", moved, None, 0,
+                 "not taken: the listing stopped: the page's own link does not name the House "
+                 "Calendar list for 2026 or the document it has selected: its shape has "
+                 f"changed; the earlier {n_file} kept", 1),
+                ("usage", pages, None, 2,
+                 f"not taken: the fetch did not complete (exit 2); the earlier {n_file} kept", 0),
+                ("failed", pages, {3: 500}, 0,
+                 "not taken: the listing stopped: a request failed; the earlier "
+                 f"{n_file} kept", 3)):
+            serve(served, fail, status)
             code, out = night("--runner", run_id=f"404-{what}")
             v = verdict()
             assert code == 0 and v["clean"] and v["built"] and v["publishable"], (
@@ -18974,7 +18989,7 @@ def _documents_night(NI, CA, CL):
         notes = [ln for ln in out.splitlines() if ln.startswith("::")]
         assert code == 0 and len(notes) == 1 and notes[0].startswith(
             "::warning title=The night was clean%2C with a warning::the General Court's list of "
-            "calendars and journals: not taken: the fetch did not complete"), (code, notes)
+            "calendars and journals: not taken: the listing stopped: a request failed"), (code, notes)
 
         # The General Court says no: recorded, the listing stops there, and
         # tonight it is still a warning. Tomorrow nothing is asked.

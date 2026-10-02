@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.7
+# GRANITE_VERSION: 2026-09-08.8
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -92,7 +92,9 @@ nightly.take_documents() runs it under the night's lock:
                    (a row marked wanted, in the page's own order), and
                    documents_listed.json beside it: each list as the page
                    gave it, name and label, the folder, and when it was read.
-                   The night installs both or neither (judge(), below).
+                   The night installs both or neither (judge(), below). A
+                   read that stops writes only why, in that second file,
+                   for the night's warning to say
                    Without --out, on a machine that keeps its own list, it
                    judges and installs them itself
   the label        the queue kept a document's file name and not the words
@@ -361,7 +363,7 @@ class Stop(Exception):
 
     def __init__(self, code, why):
         super().__init__(why)
-        self.code, self.why = code, why
+        self.code, self.why, self.requests = code, why, 0
 
 
 def today():
@@ -536,10 +538,14 @@ def listing(held, day=None):
 
     day = day or today()
     lists = []
-    for chamber in ("H", "S"):
-        print(f"  {'House' if chamber == 'H' else 'Senate'}: reading "
-              f"{SOURCES[(chamber, 'calendar')][0]}", flush=True)
-        lists += read_index(chamber, ask, day)
+    try:
+        for chamber in ("H", "S"):
+            print(f"  {'House' if chamber == 'H' else 'Senate'}: reading "
+                  f"{SOURCES[(chamber, 'calendar')][0]}", flush=True)
+            lists += read_index(chamber, ask, day)
+    except Stop as e:
+        e.requests = len(asked)
+        raise
     return lists, len(asked)
 
 
@@ -702,6 +708,15 @@ def take_listing(a, rows):
             lists, n = listing(held)
         except Stop as e:
             print(f"\nThe lists were not read: {e.why}. Nothing is written.")
+            if a.out:
+                # WHY, WHERE THE NIGHT CAN READ IT. Its warning said only
+                # "exit 1" of a page that had changed shape, and the reason
+                # was a line in a log nobody opens for a warning.
+                said = Path(a.out).with_name(LISTED_NAME)
+                said.parent.mkdir(parents=True, exist_ok=True)
+                said.write_text(json.dumps(
+                    {"read": time.strftime("%Y-%m-%dT%H:%M:%S"), "requests": e.requests,
+                     "stopped": e.why}, indent=1) + "\n", encoding="utf-8", newline="\n")
             return e.code
     rec = {"read": time.strftime("%Y-%m-%dT%H:%M:%S"), "requests": n, "lists": lists}
     new, added = merged(rows, lists)

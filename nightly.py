@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1688,11 +1688,18 @@ def take_documents():
     rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
              "the calendars and journals the General Court lists")
     why, got = "", []
-    if rc == 2:
+    if rc == 2 and refusal.MARK.exists():
+        # Only with the record on file: a script's own usage error ends on
+        # 2 as well, and that is not the General Court saying no.
         why = ("the General Court refused a request: it is recorded, and every fetch "
                "waits for a person")
     elif rc != 0:
-        why = f"the fetch did not complete (exit {rc})"
+        # The listing says why it stopped, in its own words (its Stop), and
+        # only words of that kind are passed on: the run's page is public.
+        said = (load_json(listed) or {}).get("stopped") if listed.exists() else None
+        why = (f"the listing stopped: {said}"
+               if isinstance(said, str) and re.fullmatch(r"[A-Za-z0-9 ,.:;'()/-]{1,200}", said)
+               else f"the fetch did not complete (exit {rc})")
     else:
         try:
             got, rec = CA.read_rows(new), load_json(listed)
