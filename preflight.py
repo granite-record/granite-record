@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.319
+# GRANITE_VERSION: 2026-09-04.320
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -37482,7 +37482,15 @@ def _gc_changes(GC):
     """gc_changes.py writes the morning's account of the General Court's day
     from two versions of its bulk files in the snapshot archive. A new veto
     vote, a scheduled session and a new roll call must each be found, and a
-    line that did not change must not be reported as new."""
+    line that did not change must not be reported as new.
+
+    A changed bill record is listed under the column that moved: HB 224's
+    own record, as its House status code went from 07 to 04 between the
+    exports of 14 and 15 September 2026. The column's name is
+    dayfiles_from_db.py's, which is the fallback's code; a night whose files
+    are all the export's is written all the same if that will not import,
+    with the column's number, because a night without its report is not
+    clean."""
     import gzip
     import hashlib
     tmp = Path(tempfile.mkdtemp())
@@ -37496,7 +37504,12 @@ def _gc_changes(GC):
         rc_old = b"2026|H|1|1/7/2026 10:15:33 AM||321|2|34|38|||Call of the Roll|||\n"
         rc_new = rc_old + b"2026|H|2|8/19/2026 2:50:26 PM|HB2|152|167|0|0|||Override|||\n"
         index = {}
-        for name, versions in (("Docket.txt", (old, new)), ("RollCallSummary.txt", (rc_old, rc_new))):
+        record = _DBGUARD_REAL["LSRs.txt"][1].split("|")
+        assert (record[10], record[16]) == ("HB224", "04")
+        lsr_new = ("|".join(record) + "\n").encode("utf-8")
+        lsr_old = ("|".join(record[:16] + ["07"] + record[17:]) + "\n").encode("utf-8")
+        for name, versions in (("Docket.txt", (old, new)), ("RollCallSummary.txt", (rc_old, rc_new)),
+                               ("LSRs.txt", (lsr_old, lsr_new))):
             hist = []
             for day, body in zip(("2026-09-05", "2026-09-06"), versions):
                 d = hashlib.sha256(body).hexdigest()
@@ -37507,15 +37520,32 @@ def _gc_changes(GC):
         (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
         GC.ARCHIVE = tmp
         md = GC.report()
+        # ... and with dayfiles_from_db.py out of reach.
+        was = sys.modules.get("dayfiles_from_db", tmp)
+        sys.modules["dayfiles_from_db"] = None
+        try:
+            bare = GC.report()
+        finally:
+            if was is tmp:
+                del sys.modules["dayfiles_from_db"]
+            else:
+                sys.modules["dayfiles_from_db"] = was
     finally:
         GC.ARCHIVE = saved
         shutil.rmtree(tmp, ignore_errors=True)
+    assert "## Bill records: 0 new, 1 changed" in md and \
+        "changed, by what changed:\n- House status code (1): HB224" in md, md[-400:]
+    assert bare == md.replace("House status code", "column 17") != md, (
+        "without dayfiles_from_db.py an ordinary night's report was not the same report with "
+        "the column's number for its name:\n" + bare[-400:])
     assert "2 new lines on 2 bills" in md, md[:400]
     assert "signed, vetoed or became law -- 1" in md and "Veto Sustained" in md
     assert "hearing or session scheduled -- 1" in md and "09/30/2026" in md
     assert "Roll calls: 1 new" in md
     assert "Introduced 01/07/2026" not in md, "an unchanged docket line was reported as new"
-    return "ok", "a veto vote, a scheduled session and a roll call found; the unchanged line not"
+    return "ok", ("a veto vote, a scheduled session and a roll call found; the unchanged line "
+                  "not; a changed bill record under the column that moved, by name, or by number "
+                  "where the fallback's module will not import")
 
 
 @check("build", "a guessed topic is withheld rather than guessed twice",

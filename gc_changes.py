@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """
 What changed at the General Court between two copies of its bulk files.
 
@@ -261,12 +261,24 @@ def by_columns(bills, cols, names):
 
 
 def report(against_installed=False, db_night=None):
-    import dayfiles_from_db as DF
+    # dayfiles_from_db.py says what a bill record's columns are called and,
+    # for a pair one side of which is the database's, which columns both
+    # sources carry. A night whose files are all the export's needs only the
+    # names, and is written without them ("column 17") if that module will
+    # not import: the report is one of the things a night must have written
+    # to be clean, and an export's night does not hang on the fallback's code.
+    try:
+        import dayfiles_from_db as DF
+    except Exception:                                           # noqa: BLE001
+        if db_night:
+            raise
+        DF = None
+    names = DF.LSR_NAMES if DF else {}
     L = [f"# What changed at the General Court, {date.today().isoformat()}", ""]
-    # The columns both sources carry, as dayfiles_from_db.py compares them:
-    # for a pair one side of which is the database's. A pair is (old label,
-    # old bytes, new label, new bytes, whether a side is the database's).
-    docket_key, lsr_key = DF.shared_columns("Docket.txt"), DF.shared_columns("LSRs.txt")
+    # A pair is (old label, old bytes, new label, new bytes, whether a side
+    # is the database's).
+    docket_key, lsr_key = ((DF.shared_columns("Docket.txt"), DF.shared_columns("LSRs.txt"))
+                           if DF else (whole, whole))
     if db_night:
         def pick(name):
             p = db_pair(name, db_night)
@@ -278,7 +290,7 @@ def report(against_installed=False, db_night=None):
               "carry. The docket lines are the clerk's, quoted as written.", ""]
     else:
         def pick(name):
-            p = None if against_installed else after_db_night(name)
+            p = None if against_installed or DF is None else after_db_night(name)
             if p:
                 return p + (True,)
             p = pair(name, against_installed)
@@ -333,11 +345,11 @@ def report(against_installed=False, db_night=None):
         if new_bills:
             L.append("new: " + ", ".join(new_bills[:60]))
         if changed:
-            L += ["changed, by what changed:"] + by_columns(changed, cols, DF.LSR_NAMES)
+            L += ["changed, by what changed:"] + by_columns(changed, cols, names)
         if apart:
             L += [f"not counted: {len(apart)} that differ only in columns no page is built "
                   "from, which between the database and an export may be one source's word "
-                  "against the other's:"] + by_columns(apart, cols, DF.LSR_NAMES)
+                  "against the other's:"] + by_columns(apart, cols, names)
         L.append("")
     if not any_pair:
         L += ["Nothing to compare: the archive has fewer than two versions of these files"
