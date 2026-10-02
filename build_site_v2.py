@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.137
+# GRANITE_VERSION: 2026-09-05.138
 """
 Generate the faceted site from real General Court data.
 
@@ -1305,7 +1305,28 @@ SESSION_ENDED_AFTER_VOTES = (
     "time -- and it would have to be filed again as a new bill in a later term.")
 
 
-def closing_stage(label, narr, decided=False):
+# AND "IT RAN OUT OF TIME" IS A CLAIM TOO, which the record can contradict.
+# SSSB 1 of the 2010 special session passed the Senate 14-9 and the House
+# voted it down 141-191 an hour before "Died, Session Ended": the paragraph
+# above called that "a procedural end rather than a decision". HB 1534 of
+# 2016's last row is "Pursuant to House Rule 35e HB 1534 returned to the
+# Senate", and HB 1048, HB 1216 and HB 1562 of 2026 were "returned to the House
+# per Senate Rule 3-21": sent back, which is not the clock.
+SESSION_ENDED_AFTER_FAILED = (
+    "The last vote on it was a motion to pass it, which failed, and nothing more "
+    "was done on it before the session ended. It would have to be filed again as "
+    "a new bill in a later term.")
+# Where the record shows something else than time running out, or shows
+# nothing either way and the ending is this site's reading of a finished term
+# (ended_with_the_term): what is known, and no more.
+SESSION_ENDED_PLAINLY = (
+    "It had not finished its passage when the session ended, and the bill died "
+    "then. It would have to be filed again as a new bill in a later term.")
+# A measure one chamber sent back to the other.
+RETURNED_ROW = re.compile(r"\breturned\s+to\s+(?:the\s+)?(?:house|senate)\b", re.I)
+
+
+def closing_stage(label, narr, decided=False, steps=None, inferred=False):
     """A last paragraph for a bill whose ending the docket never narrates.
 
     The docket records actions, and a session ending is not an action: it just
@@ -1315,6 +1336,11 @@ def closing_stage(label, narr, decided=False):
 
     `decided` is whether the journey has a chamber deciding anything on the
     bill. Returns None where the history already says it.
+
+    `steps` is the journey's lines, where the caller has them, and `inferred`
+    whether the ending is this site's reading of a finished term rather than
+    the General Court's word (ended_with_the_term): together they say which
+    of the session-ended paragraphs the record bears out.
     """
     hit = CLOSING.get(label)
     if not hit:
@@ -1325,6 +1351,13 @@ def closing_stage(label, narr, decided=False):
         return None
     if decided and label == "Died when the session ended":
         text = SESSION_ENDED_AFTER_VOTES
+        last = next((s for s in reversed(steps or []) if s.get("body") in ("H", "S")), None)
+        if last and last.get("act") == "failed":
+            text = SESSION_ENDED_AFTER_FAILED
+        elif inferred or any(RETURNED_ROW.search(e.get("raw") or "")
+                             for e in (narr or {}).get("events", [])
+                             if not e.get("cancelled")):
+            text = SESSION_ENDED_PLAINLY
     if label == CONF_UNABLE:
         failed = conference_failure([e for e in (narr or {}).get("events", [])
                                      if not e.get("cancelled")])
@@ -6599,6 +6632,91 @@ def fill_status_from_db(st, b, bid, term, current, db=None):
     return {**(st or {}), **fill} if fill else None
 
 
+# ---- a measure of a finished term cannot still be moving ---------------------
+#
+# Where every narrower reading has had its say and a measure of a finished
+# term still carries a word for a stage it was at -- "In committee",
+# "Committee report filed", "In a committee of conference", "Passed one
+# chamber" -- the stage is where it died, and the site's words for that are
+# "Died when the session ended": the General Court's own code for the same
+# end on the bills beside them. 71 House measures of 2021 were reported out
+# of committee and never voted on before the House's deadline of 9 April
+# 2021; the code on each is MISCELLANEOUS, and they read "In committee" or
+# "Committee report filed", five years on. HB 1716 and HB 2020 of 2020 and 75
+# House bills of 2026, with the same docket, are coded DIED, SESSION ENDED.
+#
+# IT SAYS NO MORE THAN THE RECORD DOES, so each label has its own test:
+#
+#   - "In committee", "In progress", "Committee report filed", "Retained in
+#     committee": only where a chamber's field is MISCELLANEOUS or RECOMMIT,
+#     the General Court's own word that no ordinary disposition was reached.
+#     A docket that ends on a committee report with no floor row is also what
+#     a consent-calendar vote the clerk did not itemise looks like (HB 1154
+#     of 2022 reads "Killed" only because its field says so), so the absence
+#     of a row is not enough. Not where the general status is PASSED over it
+#     (HB 160 of 2021: the two records disagree), and not where the chamber
+#     refused to consider the measure ("Shall House Consider: MF", HB 520 of
+#     2017), which is a decision this site has no word for yet.
+#   - "In a committee of conference": only where the docket says a chamber
+#     would not take the conference's report up -- a report after the
+#     deadline (CONF_LATE_RE: HB 1410 of 2002), or a vote to suspend the rules
+#     for the report that failed ("MOVED TO SUSP RULES FOR CONF COMM REPT,
+#     FAILED 2/3RC(185-133)", SB 437 of 1998). It is the shape the General
+#     Court codes DIED, SESSION ENDED on HB 1091 of 2026. A conference with
+#     no row after it formed is left: nothing says whether it reported.
+#   - "Passed one chamber": only a bill or joint resolution with no row of
+#     the other chamber at all (HB 462 of 1989, HB 1027 of 1992, SB 23 of
+#     1999, SSSB 1 of 2008). One the other chamber refused, returned or held
+#     in committee has a row that says more, and a concurrent resolution's
+#     refusal by the Senate is not always in its docket.
+#
+# AND NOT THE ONES THE RECORD DOES NOT SETTLE, held at their last word until a
+# person decides. Each was read against everything on disk on 2 October 2026.
+ENDING_NOT_ON_RECORD = {
+    ("2015-2016", "HB1702"): "one row, \"Introduced and Adopted\", on 1 June 2016; the "
+                             "database gives a Senate introduction that day and no docket "
+                             "row says what the Senate did",
+    ("2015-2016", "HB1703"): "one row, \"Introduced and Adopted: MA RC 314-25\", on 1 June "
+                             "2016; as HB 1702",
+    ("2019-2020", "HB1717"): "passed the House 243-92 on 11 June 2020 and has no Senate row",
+}
+UNFINISHED = {"In committee", "In progress", "Committee report filed", "Retained in committee"}
+NO_DISPOSITION = {"MISCELLANEOUS", "RECOMMIT"}
+CONSIDERATION_REFUSED = re.compile(
+    r"^\s*shall\s+(?:the\s+)?(?:house|senate)\s+(?:now\s+)?consider\b", re.I)
+CONF_NOT_TAKEN_UP = re.compile(
+    r"\bsusp\w*\.?\s+rules?\s+for\s+(?:the\s+)?conf\w*\.?\s*comm\w*\.?\s*rep\w*\s*,\s*"
+    r"(?:failed|fails|ML\b|MF\b)", re.I)
+ENDED_WITH_TERM = "the term's end"
+
+
+def ended_with_the_term(status, st, narr, bid, term):
+    """Whether a measure of a finished term, still carrying `status` after
+    every other rule, died where it stood when the term ended -- by the tests
+    above. The caller asks it only of a finished term."""
+    if (term, bid) in ENDING_NOT_ON_RECORD:
+        return False
+    prefix = bill_prefix(bid)
+    evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+    said = [((st or {}).get(f) or "").strip().upper()
+            for f in ("gen_status", "house_status", "senate_status")]
+    if status in UNFINISHED:
+        if said[0] == "PASSED" or not set(said[1:]) & NO_DISPOSITION:
+            return False
+        return not any(CONSIDERATION_REFUSED.search(e.get("raw") or "") for e in evs)
+    if status == "In a committee of conference":
+        return any(CONF_LATE_RE.search(e.get("raw") or "")
+                   or CONF_NOT_TAKEN_UP.search(e.get("raw") or "") for e in evs)
+    if status == "Passed one chamber":
+        if prefix in NO_GOVERNOR or prefix in SINGLE_CHAMBER:
+            return False
+        own = origin_of(bid, narr, st)
+        return bool(evs) and not any(
+            (e.get("body") or "").upper()[:1] in ("H", "S")
+            and (e.get("body") or "").upper()[:1] != own for e in evs)
+    return False
+
+
 def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                      override_failed="", term_over=False, text="", today=None,
                      db_st=None):
@@ -6813,6 +6931,13 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
             told, stated, source = said, 1, PAST_SOURCE
     if status == TO_THE_VOTERS:
         status = cacr_to_the_voters(narr, term, current, text, today)
+    # A MEASURE OF A FINISHED TERM CANNOT STILL BE MOVING (ended_with_the_term).
+    # The word is this site's reading and no field's, so no field is named as
+    # having stated it.
+    if (term != current or term_over) and not settled and ended_with_the_term(
+            status, st, narr, bid, term):
+        kind, status = "done", "Died when the session ended"
+        told, stated, source = None, 0, ENDED_WITH_TERM
     if kind == "active" and (term != current or term_over):
         kind = "done"
         stale = 1
@@ -8030,7 +8155,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                        (narr or {}).get("stages", [])
                        + [x for x in [closing_stage(
                            status, narr,
-                           decided=any(s_["body"] in ("H", "S") for s_ in jsteps))]
+                           decided=any(s_["body"] in ("H", "S") for s_ in jsteps),
+                           steps=jsteps, inferred=disp.source == ENDED_WITH_TERM)]
                           if x]),
             # Where the record comes from, on a bill the House Journal alone
             # carries; the docket's own notes everywhere else.

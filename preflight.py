@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.315
+# GRANITE_VERSION: 2026-09-04.316
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2310,6 +2310,194 @@ def _database_fills_a_blank_status(N, B):
                   "and the bill's own journey each outrank it")
 
 
+# Real rows: Docket_2021-2022.txt lines 1664-1666 (HB 113), 6755-6756 (HB
+# 160) and 1909 (HB 1154); Docket_2017-2018.txt 12127-12129 (HB 520);
+# Docket_db_1997-1998.txt 23765-23766, 23769-23770 and 23773 (SB 508) and
+# 21613, 21625-21626, 21628 and 21632-21635 (SB 437);
+# Docket_db_1991-1992.txt 211 and 213-214 (HB
+# 146) and 1980-1982 (HB 258); Docket_db_1989-1990.txt 1382-1384 (HB 462);
+# Docket_2019-2020.txt 14023 (HCR 8); Docket_2015-2016.txt 14430 (HB 1702)
+# and 12680-12681 (HB 1534); Docket_db_1999-2000.txt 20909-20910 (HR 24);
+# Docket_db_2011-2012.txt 12215 (PET 10). SSSB 1 of 2010 is in
+# _DOCKET_FAILED_PASSAGE.
+_DOCKET_TERM_ENDED = {
+    ("HB113", "2021-2022"): [
+        "2021|0197|3/15/2021 12:00:00 AM|HB113|H|Majority Committee Report: Inexpedient to Legislate (Vote 11-9; RC) HC 18 P. 77|3/15/2021 12:00:00 AM",
+        "2021|0197|3/15/2021 12:00:00 AM|HB113|H|Minority Committee Report: Ought to Pass|3/15/2021 12:00:00 AM",
+        "2021|0197|4/9/2021 12:00:00 AM|HB113|H|Special Order (Rep. Cahill): MF DV 72-298 04/09/2021 HJ 7 P. 22|4/9/2021 12:00:00 AM"],
+    ("HB160", "2021-2022"): [
+        "2021|0115|3/9/2021 12:00:00 AM|HB160|H|Majority Committee Report: Inexpedient to Legislate (Vote 11-10; RC) HC 18 P. 75|3/9/2021 12:00:00 AM",
+        "2021|0115|3/9/2021 12:00:00 AM|HB160|H|Minority Committee Report: Ought to Pass|3/9/2021 12:00:00 AM"],
+    ("HB1154", "2021-2022"): [
+        "2022|2404|3/4/2022 12:00:00 AM|HB1154|H|Committee Report: Inexpedient to Legislate (Vote 16-0; CC)|3/4/2022 12:00:00 AM"],
+    ("HB520", "2017-2018"): [
+        "2017|0687|2/27/2017 12:00:00 AM|HB520|H|Majority Committee Report: Inexpedient to Legislate for 03/08/2017 (Vote 14-7; RC)|2/27/2017 12:00:00 AM",
+        "2017|0687|2/27/2017 12:00:00 AM|HB520|H|Minority Committee Report: Ought to Pass|2/27/2017 12:00:00 AM",
+        "2017|0687|3/9/2017 12:00:00 AM|HB520|H|Shall House Consider: MF DV 157-204 lacking necessary two-thirds vote 03/09/2017 HJ 10 P. 41|3/9/2017 12:00:00 AM"],
+    ("SB508", "1997-1998"): [
+        "1998|2947|05/21/1998 05:36:20 PM|SB508|S|COMM AM, AA RC(15-9); LAID ON THE TABLE, SEN BARNES MA VV; SJ16,|05/21/1998 05:36:20 PM",
+        "1998|2947|05/21/1998 05:37:00 PM|SB508|S|P378-379|05/21/1998 05:37:00 PM",
+        "1998|2947|06/30/1998 03:41:44 PM|SB508|S|TAKEN FROM THE TABLE, SEN RUBENS MA VV; RECOMMITTED TO EDUCATION,|06/30/1998 03:41:44 PM",
+        "1998|2947|06/30/1998 03:41:55 PM|SB508|S|SEN RUBENS MA VV; SJ21,P712|06/30/1998 03:41:55 PM",
+        "1998|2947|07/28/1998 10:48:41 AM|SB508|S|EXECUTIVE SESSION AUG 3 RM 105A SH 1:00  FOR EDUCATION|07/28/1998 10:48:41 AM"],
+    ("SB437", "1997-1998"): [
+        "1998|2808|04/16/1998 01:27:35 PM|SB437|S|PASSED VV; SJ11,P289 + 294|04/16/1998 01:27:35 PM",
+        "1998|2808|05/28/1998 12:07:43 PM|SB437|H|PASSED WITH AM RC(210-104); HJ51,P2043-2048 + 2057|05/28/1998 12:07:43 PM",
+        "1998|2808|06/10/1998 12:47:27 PM|SB437|S|SEN NONC WITH HOUSE AM REQ CONF COMM, SEN PODLES MA VV; SJ19,P535|06/10/1998 12:47:27 PM",
+        "1998|2808|06/11/1998 01:04:41 PM|SB437|H|HOUSE ACCEDED TO REQ FOR CONF COMM, REP LOZEAU MA 2/3; HJ57,P2163|06/11/1998 01:04:41 PM",
+        "1998|2808|06/16/1998 05:00:00 PM|SB437|H|CONF COMM REPORT (SEN AM + NEW AM<2164>) FILED;|06/16/1998 05:00:00 PM",
+        "1998|2808|06/18/1998 11:12:50 AM|SB437|H|REPS WHEELER & BURLING MOVED TO SUSP RULES FOR CONF COMM REPT,|06/18/1998 11:12:50 AM",
+        "1998|2808|06/18/1998 11:13:08 AM|SB437|H|FAILED 2/3RC(185-133); HJ60,P2208-2209|06/18/1998 11:13:08 AM",
+        "1998|2808|06/18/1998 12:40:22 PM|SB437|H|REP VAILLANCOURT MOVED TO RECONSIDER, ML DIV(109-209); HJ60,P2218|06/18/1998 12:40:22 PM"],
+    ("HB146", "1991-1992"): [
+        "1991|0033|05/29/1991 05:00:00 PM|HB146|S|SEN ACCEDED TO REQ FOR CONF COMM, SEN MCLANE MA VV; SJ29,P548-549|05/29/1991 05:00:00 PM",
+        "1991|0033|06/03/1991 12:34:12 PM|HB146|H|CONF COMM MEETING JUN04 03:00 RM204,LOB|06/03/1991 12:34:12 PM",
+        "1991|0033|06/26/1991 09:30:32 AM|HB146|H|REPS COWENHOVEN & GURECKIS REPLACE AHRENS & LAMAR;|06/26/1991 09:30:32 AM"],
+    ("HB258", "1991-1992"): [
+        "1991|0292|04/02/1991 03:32:30 PM|HB258|H|PASSED VV; HJ60,P1372 + 1393|04/02/1991 03:32:30 PM",
+        "1991|0292|04/09/1991 02:20:44 PM|HB258|S|INTRODUCED AND REF TO CAP BUDGET;  SJ16,P230|04/09/1991 02:20:44 PM",
+        "1991|0292|04/15/1991 04:43:38 PM|HB258|S|HEARING APR19 09:00 RM103,SH    FOR: CAPITAL BUDGET|04/15/1991 04:43:38 PM"],
+    ("HB462", "1989-1990"): [
+        "1989|0168|04/25/1989 09:00:54 AM|HB462|H|REPS PALUMBO & CHAMBERS SUSP OF RULES MA VV BY NEC 2/3|04/25/1989 09:00:54 AM",
+        "1989|0168|04/25/1989 09:09:26 AM|HB462|H|REP FLANAGAN RECONSIDER MA VV; REP FLANAGAN SUB OTP/AM MA VV|04/25/1989 09:09:26 AM",
+        "1989|0168|04/25/1989 09:48:30 AM|HB462|H|REP FLANAGAN FL AM (NEW TITLE), AA VV; HJ75, P2269-2270|04/25/1989 09:48:30 AM"],
+    ("HCR8", "2019-2020"): [
+        "2020|2048|3/11/2020 12:00:00 AM|HCR8|H|Ought to Pass : MA VV 03/11/2020 HJ 7 P. 20|3/11/2020 12:00:00 AM"],
+    ("HB1702", "2015-2016"): [
+        "2016|2991|6/1/2016 12:00:00 AM|HB1702|H|Introduced and Adopted: MA VV By Necessary Two-Thirds Vote 06/01/2016 HJ 42 P. 3|6/1/2016 12:00:00 AM"],
+    ("HB1534", "2015-2016"): [
+        "2016|2507|5/12/2016 12:00:00 AM|HB1534|S|Ought to Pass with Amendment 1849s, NT, MA, VV; OT3rdg; 05/12/2016; SJ 17|5/12/2016 12:00:00 AM",
+        "2016|2507|5/13/2016 12:00:00 AM|HB1534|H|Pursuant to House Rule 35e HB 1534 returned to the Senate 05/13/2016|5/13/2016 12:00:00 AM"],
+    ("HR24", "1999-2000"): [
+        "2000|2835|03/30/2000 04:59:12 PM|HR24|H|Introduced;  HJ29, p970|03/30/2000 04:59:12 PM",
+        "2000|2835|03/30/2000 04:59:22 PM|HR24|H|Reps Chandler & Burling Susp Rules for deadline, MA 2/3VV;  HJ29, p970|03/30/2000 04:59:22 PM"],
+    ("PET10", "2011-2012"): [
+        "2012|1101|08/08/2012 08:41:22 AM|PET10|H|Committee Report: Grievance Founded (Vote 9-1); HC 55, PG.2671|08/08/2012 08:41:22 AM"],
+}
+
+
+@check("status", "a measure of a finished term is not left moving, where the record bears out "
+                 "that it died with the term -- and is left at its last word where it does not",
+       needs=("narrative", "build_site_v2"))
+def _finished_term_is_finished(N, B):
+    """71 House measures of 2021 were reported out of committee and never
+    voted on before the House's deadline of 9 April 2021. The General Court's
+    code for each is MISCELLANEOUS, which no table reads, and five years on
+    they said "In committee" or "Committee report filed". The General Court's
+    own code for that end, on the bills beside them, is DIED, SESSION ENDED.
+
+    "Died when the session ended" is this site's reading there, so it is held
+    to what the record bears out, label by label, and the cases the record
+    does not settle stay at their last word:
+
+      HB 113 of 2021    reported, a failed special order, MISCELLANEOUS: died
+      SB 508 of 1998    recommitted, RECOMMIT, nothing after: died
+      SB 437 of 1998    the House would not suspend its rules for the
+                        conference report: died
+      HB 462 of 1989    passed the House, no Senate row at all: died
+
+      HB 160 of 2021    MISCELLANEOUS under a general status of PASSED: left
+      HB 1154's docket with no field (made for the guard): left -- a docket
+                        ending on a report is also an un-itemised consent vote
+      HB 520 of 2017    the House refused to consider it: left
+      HR 24 of 2000     NO ACTION: left;  PET 10 of 2012, a petition: left
+      HB 146 of 1991    a conference with no row after it formed: left
+      HB 258 of 1991    the Senate referred and heard it: left
+      HCR 8 of 2020     a concurrent resolution: left
+      HB 1702 of 2016   held by name (ENDING_NOT_ON_RECORD): left
+
+    and nothing of the current term changes while it has session days left.
+    The paragraph that goes with the ending says "it ran out of time" only
+    where nothing in the record says otherwise.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_TERM_ENDED.items()}
+    misc = {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS", "senate_status": ""}
+    conf = {"gen_status": "HOUSE", "house_status": "CONFERENCE COMMITTEE",
+            "senate_status": "CONFERENCE COMMITTEE"}
+    died = "Died when the session ended"
+    bad = []
+
+    def read(bill, term, st, current="2025-2026", **kw):
+        return B.bill_disposition({}, bill, st, narr[(bill, term)], [], term, current, **kw)
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    for bill, term, st in (
+            ("HB113", "2021-2022", misc),
+            ("SB508", "1997-1998", {"gen_status": "SENATE", "senate_status": "RECOMMIT"}),
+            ("SB437", "1997-1998", conf),
+            ("HB462", "1989-1990", {"gen_status": "HOUSE",
+                                    "house_status": "PASSED/ADOPTED WITH AMENDMENT"})):
+        d = read(bill, term, st)
+        is_(f"{bill} of {term}", (d.kind, d.status, bool(d.told), d.source),
+            ("done", died, False, B.ENDED_WITH_TERM))
+    for bill, term, st, want in (
+            ("HB160", "2021-2022", {**misc, "gen_status": "PASSED"}, "Committee report filed"),
+            # MADE FOR THE GUARD: HB 1154's own field is INEXPEDIENT TO LEGISLATE.
+            ("HB1154", "2021-2022", {"gen_status": "HOUSE"}, "Committee report filed"),
+            ("HB520", "2017-2018", misc, "In committee"),
+            ("HR24", "1999-2000", {"gen_status": "HOUSE", "house_status": "NO ACTION"},
+             "In committee"),
+            ("PET10", "2011-2012", {"gen_status": "HOUSE", "house_status": "REPORT FILED"},
+             "Committee report filed"),
+            ("HB146", "1991-1992", {**conf, "gen_status": "SENATE"},
+             "In a committee of conference"),
+            ("HB258", "1991-1992", {"gen_status": "SENATE", "house_status": "PASSED/ADOPTED",
+                                    "senate_status": "IN COMMITTEE"}, "Passed one chamber"),
+            ("HCR8", "2019-2020", {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED"},
+             "Passed one chamber"),
+            ("HB1702", "2015-2016", {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED"},
+             "Passed one chamber")):
+        d = read(bill, term, st)
+        is_(f"{bill} of {term}", (d.kind, d.status), ("done", want))
+    assert ("2015-2016", "HB1702") in B.ENDING_NOT_ON_RECORD
+    # HB 1154 as it is: the field's Killed stands.
+    is_("HB1154 of 2022", read("HB1154", "2021-2022", {
+        "gen_status": "HOUSE", "house_status": "INEXPEDIENT TO LEGISLATE"}).status, "Killed")
+    # The current term, while it has session days left: still moving. HB
+    # 113's rows as a bill of the current term (made for the guard).
+    d = read("HB113", "2021-2022", misc, current="2021-2022")
+    is_("a bill of a term still sitting", (d.kind, d.status), ("active", "In committee"))
+    d = read("HB113", "2021-2022", misc, current="2021-2022", term_over=True)
+    is_("the same bill once the session is over", (d.kind, d.status), ("done", died))
+
+    # THE PARAGRAPH. Never voted on: the General Court's own shape, as before.
+    def end(bill, term, st):
+        n = narr.get((bill, term)) or _narrated(N, term, bill,
+                                                 _DOCKET_FAILED_PASSAGE[(bill, term)])
+        d = B.bill_disposition({}, bill, st, n, [], term, "2025-2026")
+        _i, steps = B.journey(n, bill, term=term)
+        got = B.closing_stage(d.status, n, decided=any(s["body"] in ("H", "S") for s in steps),
+                              steps=steps, inferred=d.source == B.ENDED_WITH_TERM)
+        return d.status, (got or {}).get("text", "")
+
+    status, text = end("HB113", "2021-2022", misc)
+    assert text.startswith("Neither chamber ever voted on the bill itself"), text
+    # Decided on, and the ending is this site's reading: no more than that.
+    for bill, term, st in (("SB437", "1997-1998", conf),
+                           ("HB462", "1989-1990", {"house_status": "PASSED/ADOPTED WITH AMENDMENT"})):
+        status, text = end(bill, term, st)
+        is_(f"{bill}'s paragraph", text, B.SESSION_ENDED_PLAINLY)
+    # The General Court's word, over a vote the bill lost: SSSB 1 of 2010.
+    status, text = end("SSSB1", "2009-2010", {"gen_status": "HOUSE",
+                                              "house_status": "DIED, SESSION ENDED",
+                                              "senate_status": "PASSED/ADOPTED"})
+    is_("SSSB1 of 2010", (status, text), (died, B.SESSION_ENDED_AFTER_FAILED))
+    # And over a bill one chamber sent back: HB 1534 of 2016.
+    status, text = end("HB1534", "2015-2016", {"gen_status": "HOUSE",
+                                               "house_status": "PASSED/ADOPTED",
+                                               "senate_status": "PASSED/ADOPTED WITH AMENDMENT"})
+    is_("HB1534 of 2016", (status, text), (died, B.SESSION_ENDED_PLAINLY))
+    for text in (B.SESSION_ENDED_PLAINLY, B.SESSION_ENDED_AFTER_FAILED):
+        assert "ran out of time" not in text and "rather than a decision" not in text, text
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 113 of 2021, SB 508 and SB 437 of 1998 and HB 462 of 1989 died when the "
+                  "session ended; nine the record does not settle keep their last word, and no "
+                  "paragraph says a bill ran out of time over a vote it lost or a return")
+
+
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
        needs=("build_site_v2",))
 def _conferees_could_not_agree(build_site_v2):
@@ -2730,9 +2918,16 @@ def _conferees_never_signed(build_site_v2):
              ev("H", "(Conf Comm Report Not Signed)", date="2002-05-01"),
              ev("S", "Sen. Wheeler Rules Suspension; To Allow C of C Report After Deadline 2/3 nec., MF",
                 date="2002-05-02"))
-    d = B.bill_disposition({}, "HB1410", sitting, n, [], "2001-2002", "2025-2026")
+    # Not conferees who could not agree. While its term sits it is still in
+    # conference; in a finished term it died when the session ended
+    # (build_site_v2.ended_with_the_term), the General Court's own code for
+    # HB 1091 of 2026, whose late report the House would not take up.
+    d = B.bill_disposition({}, "HB1410", sitting, n, [], "2001-2002", "2001-2002")
     if d.status != "In a committee of conference":
         bad.append(f"HB1410 of 2002, a report the Senate would not allow late: {d.status!r}")
+    d = B.bill_disposition({}, "HB1410", sitting, n, [], "2001-2002", "2025-2026")
+    if d.status != "Died when the session ended":
+        bad.append(f"HB1410 of 2002, in a finished term: {d.status!r}")
     # HB 723 of 1997: its report of no agreement was rejected, and the new
     # conference the chambers formed never reported. That one is the last.
     n = _nar(ev("H", "HOUSE NONC WITH SEN AM REQ CONF COMM, REP A MERRILL MA; HJ70", "floor", "MA",
