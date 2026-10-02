@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.127
+// GRANITE_VERSION: 2026-09-07.130
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -57,7 +57,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 /* THE BILL MATCHER IS SHARED WITH THE HEADER SEARCH. Every line between a
    "BILLMATCH:BEGIN" and the "BILLMATCH:END" after it is copied by
    build_pages.py into site/billmatch.js, which find.js loads on the pages
-   that do not run this file -- so the header's "All 30 bills that mention
+   that do not run this file -- so the header's "All 30 bills found for
    firearms" is counted by the same code that lists /bills?q=firearms, not by
    a second matcher that drifts from this one. What is inside the markers must
    therefore stand alone: no DOM, no page state, and nothing it names that is
@@ -70,7 +70,10 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
    term in a group matches every other, so nothing is declared the real name for
    anything else. That matters on contested subjects, where deciding that one
    word "means" another is a framing choice rather than a translation. Matching
-   is by substring, so a singular form also catches its plural. */
+   is by substring, so a singular form also catches its plural.
+   A term is written with spaces, never a hyphen: titles are searched with
+   their hyphens read as spaces, so "gender-affirming" sat in this list for
+   weeks and could not match one (1 October). */
 const SYN=[
   ["gun","firearm","weapon","pistol","rifle"],
   ["school","education","student","teacher","classroom"],
@@ -97,7 +100,8 @@ const SYN=[
   // the group it returned obscenity filters and wiretaps.
   ["broadband","internet service","high speed internet"],
   ["road","highway","transportation","bridge"],
-  ["climate","emission","greenhouse","renewable","solar"],
+  // "greenhouse gas", not "greenhouse": a cannabis greenhouse came up for "solar".
+  ["climate","emission","greenhouse gas","renewable","solar"],
   ["trash","landfill","solid waste","recycling"],
   // Two groups: "opioids" found the prescription drug affordability board.
   ["opioid","fentanyl","narcotic","heroin","overdose","naloxone","substance use",
@@ -106,32 +110,40 @@ const SYN=[
   ["vaccine","vaccination","immunization"],
   ["betting","wagering","gambling","casino"],
   ["abortion","reproductive","pregnancy termination"],
-  ["transgender","gender identity","gender-affirming"],
+  ["transgender","gender identity","gender affirming"],
   ["immigration","immigrant","noncitizen","alien"],
   ["minimum wage","hourly rate","wage"],
   ["union","collective bargaining"],
   // Two groups: "pfas" found every bill naming water, docks and dams included.
   ["water","groundwater","drinking water"],
   ["pfas","perfluoroalkyl","polyfluoroalkyl","forever chemical"],
-  ["prison","correctional","department of corrections","inmate","incarcerated","incarceration"],
+  // "jail" found nothing: the record says "county correctional facility".
+  ["prison","jail","correctional","department of corrections","inmate","incarcerated","incarceration"],
   ["court","judicial","judge","judiciary"],
   ["property tax","assessment","abatement"],
   ["energy","electric","ratepayer"],
-  ["mental health","behavioral health","psychiatric"],
+  ["mental health","behavioral health","mental illness","psychiatric"],
   ["disability","disabled","accessible","accessibility"],
   ["farm","agriculture","livestock","dairy"],
 ];
 const SYNMAP={};
 SYN.forEach(g=>g.forEach(t=>{SYNMAP[t]=g;}));
+/* AN APOSTROPHE TYPED ON A PHONE IS A CURLY ONE. "driver's license" found 8
+   bills and the same words from an iPhone keyboard found none; "children's"
+   9 against none (1 October). The mark is inside the word, so taking marks
+   off the ends of words never reached it. The search reads a curly one as a
+   straight one, and a straight one in a term matches either in a title --
+   119 titles across the nineteen terms are printed with the curly one. */
+const rxEsc=t=>t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/'/g,"['’]");
 // Match at a word boundary, not anywhere in the string. Plain substring search
 // makes "gun" hit "begun" and "act" hit "enacted". Matching at the START of a
 // word still catches plurals and endings, so "firearm" finds "firearms" and
 // "incarcerat" finds "incarcerated".
 const RXC={};
 function hasTerm(hay, term){
-  if(term.includes(" ")) return hay.includes(term);
+  if(term.includes(" ")&&!term.includes("'")) return hay.includes(term);
   let rx=RXC[term];
-  if(!rx){ rx=new RegExp("\\b"+term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+  if(!rx){ rx=new RegExp("\\b"+rxEsc(term));
            RXC[term]=rx; }
   return rx.test(hay);
 }
@@ -174,76 +186,577 @@ const STOP=[
   "a","an","the","of","and","or","for","to","in","on","at","by","about","with",
   "from","regarding","relative","related","relating","concerning","bill","bills",
   "law","laws","act","acts","legislation","nh","hampshire","reform","reforms",
-  "committee","committees"
+  "committee","committees",
+  // A word for an attitude toward a subject, not for the subject (1 October):
+  // "hormone therapy ban" found nothing, because no title says "ban" -- they
+  // say "prohibiting" -- and nor did "anti trans" or "assault weapons ban".
+  "ban","bans","banned","banning","anti"
 ];
 const STOPSET=new Set(STOP);
-/* A PHRASE IS ONE IDEA, and the words people ask in are not the words a bill
-   is titled in: nobody files "public education funding", they file "the cost
-   of an adequate education". Groups, like SYN -- any phrase of a concept in a
-   search stands for all of its terms -- and the terms are the record's own
-   wording, read out of the titles, not a judgment about what a bill is for.
-   The longest phrase is taken first, and what it covers is not read again. */
+/* THE WORDS PEOPLE TYPE THAT NO BILL USES. Nobody files a "bathroom bill" or
+   writes "weed" or "ICE" into a statute. The person, 1 October: "typing lgbtq
+   or trans doesn't show the several bathroom ban bills put forward this past
+   session, or the hormone therapy ban" -- "lgbtq" found nothing, and "trans"
+   found 162 bills titled transfer, transparency and transportation or heard
+   by a Transportation committee.
+
+   THIS TABLE IS THE SMALLER HALF OF THE ANSWER. It was written first, alone,
+   and measured on fifteen searches nobody had written an entry for: it
+   recovered none of them. A table covers what somebody thought of. The larger
+   half is below it (THE BILLS' OWN WORDS): the search now reads each bill's
+   topic, the drafters' analysis and the text itself, so a word a bill uses is
+   found without anyone having listed it. The table is for the rest -- the
+   word a reader types that the bills never use ("lgbtq", "weed", "bathroom
+   bill", "drunk driving"), and the phrase that must be read as one thing
+   ("income tax" is not every bill with "income" and "tax" in it).
+
+   Each entry is a FINDING AID and nothing more: `ask` is what a person might
+   type, `terms` is wording the bills themselves use. It says "a reader who
+   types one of these is shown the bills that say one of those". It never
+   says what a bill is, whom it helps or which side it is on, and it is never
+   printed as a label on a bill. Three rules keep it that way:
+
+   - THE BILL'S OWN WORDS OR NOTHING. A term goes in because bills print it,
+     in a title, an analysis or their text, and for no other reason: not who
+     sponsored a bill, not what a newspaper called it, not what it would do in
+     practice. A bill is listed because ITS OWN title, analysis or text has
+     the term. SB 520 of 2026, "relative to breast surgeries for minors", was
+     listed under "lgbtq" and "sex change" by its title alone; its text is
+     about breast reduction for musculoskeletal pain and never mentions
+     gender, and it is not listed now. HB 712, with the same words in its
+     title, is: its text says "transgender" and "gender reassignment".
+     preflight reads every term against every term's titles and search index
+     and fails on one that no bill has ever used.
+   - EVERY SIDE'S WORD FOR A SUBJECT, ONE LIST. "gun control" and "gun rights"
+     return the same bills; so do "pro life" and "pro choice", "gender
+     identity" and "biological sex", "trans rights" and "gender ideology",
+     "sex change" and "gender affirming care". preflight holds those pairs to
+     identical results: if two ever differ, the table has taken a side.
+   - WHAT THE READER SEES IS THE BILL'S WORDING. The words typed are never
+     shown back as a description. The line under the search box lists the
+     terms the bills were searched for, and a bill listed for a word its
+     title does not have says which of its own words put it there ("text
+     says: lavatory"), so anyone can see why a bill is in the list and argue
+     with the list.
+
+   HOW AN ENTRY IS READ. The longest ask is taken first and what it covers is
+   not read again. A word or phrase found here is read WHOLE, never as the
+   start of a longer word -- that is what stops "trans" being transfer and
+   "adu" being adult -- and it stands for the entry's terms instead of
+   anything SYN says about it ("teachers" was every school bill of the term,
+   321, through SYN). A plural reaches an entry only if the entry lists it:
+   "weeds" is aquatic weeds, and was 23 bills about cannabis while the table
+   took the s off for itself. A term matches as itself or with an ending. An
+   entry marked `also` is the exception, for a word whose older behaviour the
+   person ruled on (25 September) and a check holds: "gun" keeps its SYN
+   group and still finds the Gunstock Area Commission lower down, "bail"
+   still finds the bailiffs, and the entry's terms are added after them.
+
+   THREE THINGS AN ENTRY MAY SAY BESIDES ITS TERMS, each because a bare list
+   of terms listed the wrong bills when it was read against the text:
+   - `named`: wording that counts where a bill is named or summarised -- its
+     title or its analysis -- and not in the body of its text. "gender
+     identity" and "sexual orientation" are printed once each wherever a
+     statute lists who may not be discriminated against: in a housing voucher
+     bill, a zoning bill, a resolution on bearing arms. A bill whose title or
+     analysis says them is about them.
+   - `with`: a second list, one of which the bill must also say. The four
+     vetoed bills the person meant say "lavatory" once, in the text; so do a
+     rent registry and a bill on dwellings over water say "bathroom". A
+     lavatory AND biological sex is the eight bills. A bill whose TITLE has
+     the reader's own word, or a term the entry also lists as an ask, stands
+     without it: "restroom" still lists restroom access for truck drivers.
+     With `once` beside it, and only then, a single mention in a bill's text
+     counts for either list: that is the bathroom and the sports entries,
+     and not voter ID, where it listed every absentee ballot bill that
+     mentions photo identification in passing.
+   - `not`: a title phrase that takes a bill out of what the terms found.
+     "digital assets" is what the statutes call cryptocurrency, and the
+     Uniform Fiduciary Access to Digital Assets Act is about a dead person's
+     email.
+
+   WHERE A BILL FOUND THIS WAY IS LISTED: after every bill that has the
+   reader's own word, and after a bill that has only a longer word it begins
+   (looseness, below). "undocumented" lists the two titles that say so first.
+
+   tests/search_cases.json holds real searches to the real bills they must
+   and must not return, each named with its title as the record has it. */
 const CONCEPTS=[
-  {phrases:["public education funding","public school funding","education funding",
+  // --- gender identity, sex and sexual orientation ---------------------
+  // A bill is in whichever of these its own words put it in, whatever it
+  // would do: the amendment protecting the right to marry is listed beside
+  // the bill removing gender identity from the statutes.
+  // Not "basis of sex" alone: it listed the resolution marking the amendment
+  // that gave women the vote. Not "pronoun" alone: the analysis of a bill
+  // making the register of deeds chapter gender neutral says it. Not "gender
+  // dysphoria": a bill on reproductive care says it twice.
+  {ask:["lgbtq","lgbt","lgbtqia","glbt","gay","gays","lesbian",
+    "lesbians","queer","bisexual","homosexual","homosexuality","gay rights",
+    "lgbtq rights","lgbt rights","lgbtq youth","lgbtq kids","lgbtq students",
+    "sexual orientation"],
+   terms:["homosexual","transsexual","transgender","biological sex","gender transition",
+    "gender affirming","gender reassignment","sex reassignment","puberty blocker",
+    "puberty blocking","cross sex hormone","alter a minor's gender","gender designation",
+    "facilities on the basis of sex","personal identity ideology","names and pronouns",
+    "conversion therapy"],
+   named:["gender identity","gender expression","sexual orientation","hormone treatment",
+    "same sex","same gender","right to marry","civil union","civil marriage"]},
+  // Both sides' words are asks here, and return one list: "gender identity"
+  // listed 19 bills and "biological sex" 10 while only the first was one.
+  {ask:["trans","transgender","transgendered","transsexual","trans rights",
+    "transgender rights","trans people","transgender people","trans kids",
+    "transgender kids","trans youth","transgender youth","trans women","trans men",
+    "nonbinary","non binary","gender identity","gender expression","gender ideology",
+    "biological sex","biological male","biological males","biological female",
+    "biological females"],
+   terms:["transsexual","transgender","biological sex","gender transition","gender affirming",
+    "gender reassignment","sex reassignment","puberty blocker","puberty blocking",
+    "cross sex hormone","alter a minor's gender","gender designation",
+    "facilities on the basis of sex","personal identity ideology","names and pronouns"],
+   named:["gender identity","gender expression","hormone treatment"]},
+  // No title says bathroom. The bills say "lavatory facilities or locker
+  // rooms" in their text, and for four of the eight nowhere else, once.
+  // Not "gender identity" in `with`: a 2021 landlord and tenant omnibus
+  // counts bathrooms and lists who may not be discriminated against.
+  {ask:["bathroom","bathrooms","restroom","restrooms","lavatory","lavatories",
+    "bathroom bill","bathroom bills","bathroom ban","bathroom bans","locker room",
+    "locker rooms","single sex spaces","women's spaces"],
+   terms:["bathroom","restroom","lavatory","locker room"],
+   with:["biological sex","basis of sex","transgender"],once:true},
+  // Three entries, so that "hormone therapy" is not answered with the
+  // surgery bills nor "top surgery" with the hormone bill; the first is all
+  // of it, under every name for it.
+  {ask:["gender affirming care","gender affirming","trans healthcare","trans health care",
+    "transgender healthcare","transgender health care","transition care",
+    "gender transition","medical transition","sex change","sex changes",
+    "gender reassignment","sex reassignment"],
+   terms:["gender transition","gender affirming","gender reassignment","sex reassignment",
+    "alter a minor's gender","puberty blocker","puberty blocking","cross sex hormone"],
+   named:["hormone treatment"]},
+  {ask:["hormone therapy","hormone treatment","hormone treatments","hormones",
+    "hormone blockers","puberty blockers","puberty blocker","cross sex hormones","hrt"],
+   terms:["puberty blocker","puberty blocking","cross sex hormone","alter a minor's gender",
+    "sex reassignment"],
+   named:["hormone treatment","hormone therapy"]},
+  {ask:["top surgery","bottom surgery","gender surgery","gender surgeries",
+    "gender reassignment surgery","sex change surgery","sex reassignment surgery",
+    "transgender surgery"],
+   terms:["gender reassignment","sex reassignment","gender transition surgery",
+    "alter a minor's gender"]},
+  // The text of the classification bills covers athletic or sporting
+  // competition and their titles do not say so. Sport alone is every bill
+  // about a ski area; sport AND one of these is the subject. A 1991 bill
+  // titled "relative to women's sports" is listed for those words and not
+  // for "trans sports".
+  {ask:["trans sports","trans athletes","transgender athletes","transgender sports",
+    "trans kids sports","girls sports","girls athletics","women's sports","womens sports",
+    "women's athletics","save women's sports","fairness in women's sports"],
+   terms:["sport","athletic","athlete"],
+   with:["biological sex","basis of sex","transgender"],once:true},
+  // `named`, as in the first entry: a form for recording a fetal death asks
+  // whether it was the mother's "first marriage or civil union", and that
+  // bill was listed under "gay marriage" while these were plain terms.
+  {ask:["gay marriage","same sex marriage","same sex marriages","marriage equality",
+    "same sex couples","civil unions","civil union","traditional marriage",
+    "defense of marriage","definition of marriage"],
+   terms:["one man and one woman","definition of marriage"],
+   named:["right to marry","same sex","same gender","civil union","civil marriage"]},
+
+  // --- abortion ---------------------------------------------------------
+  {ask:["abortion","abortions","abortion ban","abortion bans","abortion rights",
+    "abortion access","abortion pill","abortion pills","abortion law","abortion laws",
+    "anti abortion","pro life","pro choice","right to life","reproductive rights",
+    "reproductive freedom","reproductive health","roe","roe v wade",
+    "late term abortion","late term abortions"],
+   terms:["abortion","reproductive","pregnancy termination","terminate a pregnancy",
+    "termination of the minor's pregnancy","fetal life protection"]},
+
+  // --- firearms ---------------------------------------------------------
+  // `also`: "gun" and "firearm" keep their SYN group, and "gun" still finds
+  // Gunstock, lower down. Not "background checks": teachers and child care
+  // workers have them too, and it listed eight of those bills first.
+  // "concealed carry" is here because no bill says "concealed": the bills
+  // it means decide where a firearm may be carried. It lists every bill
+  // here, the ones with "carry" in the title first (see fit, below).
+  {also:true,
+   ask:["gun control","gun laws","gun law","gun rights","gun safety","gun violence",
+    "gun reform","gun regulation","gun regulations","gun restrictions","gun ban",
+    "gun bans","gun owners","gun ownership","guns","gun","firearms","firearm",
+    "second amendment","2nd amendment","2a","right to bear arms","concealed carry",
+    "open carry","constitutional carry","gun background checks","assault weapons",
+    "assault weapon"],
+   terms:["gun","firearm","weapon","pistol","rifle","revolver","handgun","shotgun",
+    "ammunition","second amendment","bear arms","risk protection order"]},
+  // Its own entry: under the firearms one, "red flag law" listed 33 bills
+  // with the two it means at 21st and 33rd.
+  {ask:["red flag","red flag law","red flag laws","extreme risk protection order",
+    "extreme risk protection orders","erpo"],
+   terms:["risk protection order","extreme risk protection"]},
+
+  // --- cannabis ---------------------------------------------------------
+  // Not "hemp": it is a different crop in the statutes, and a reader who
+  // types it gets the bills that say it.
+  {ask:["weed","pot","marijuana","cannabis","legal weed","legalize weed","legalizing weed",
+    "legalize marijuana","legalizing marijuana","legalize cannabis","legalizing cannabis",
+    "legalize pot","legal pot","marijuana legalization","cannabis legalization",
+    "recreational marijuana","recreational cannabis","recreational weed","recreational pot",
+    "medical marijuana","medical cannabis","thc"],
+   terms:["marijuana","cannabis","thc","alternative treatment center"]},
+  // "dispensary" is the public's word for what the statute calls an
+  // alternative treatment center. Its own entry: under the cannabis one the
+  // five bills it means were scattered through 22.
+  {ask:["dispensary","dispensaries","marijuana dispensary","marijuana dispensaries",
+    "cannabis dispensary","cannabis dispensaries"],
+   terms:["alternative treatment center","dispensary"]},
+
+  // --- schools ----------------------------------------------------------
+  // Not "adequacy" alone: it listed the adequacy of electricity generation
+  // and of access to mental health care.
+  {ask:["public education funding","public school funding","education funding",
     "school funding","funding for public schools","funding for schools","education aid",
-    "school aid","adequate education","education adequacy"],
-   terms:["education funding","school funding","adequate education","adequacy",
-    "education trust fund","education grant","school building aid","opportunity budget"]},
-  {phrases:["school choice","education freedom account","education freedom accounts",
-    "education savings account","education savings accounts","school voucher",
-    "school vouchers"],
-   // Not "voucher" alone: housing vouchers are vouchers too, and a landlord
-   // bill came up for "school choice".
-   terms:["education freedom account","school choice","education savings account",
-    "school voucher","scholarship organization","open enrollment"]},
+    "school aid","adequate education","education adequacy","school finance",
+    "school funding formula","fair funding","claremont decision","claremont lawsuit",
+    "claremont ruling"],
+   terms:["education funding","school funding","adequate education","education adequacy",
+    "educational adequacy","adequacy grant","adequacy aid","education trust fund",
+    "education grant","school building aid","opportunity budget","education financing",
+    "education property tax","fund public education","funding public education",
+    "aid to school districts","public school expenses"]},
+  // Not "voucher" as a term: housing vouchers are vouchers too, and a landlord
+  // bill came up for "school choice". A reader who types "vouchers" still gets
+  // every title that says so, as their own word. Not "open enrollment" alone:
+  // health insurance has open enrollment periods.
+  {ask:["school choice","education freedom account","education freedom accounts",
+    "education freedom","education savings account","education savings accounts",
+    "school voucher","school vouchers","voucher","vouchers","efa","efas"],
+   terms:["education freedom account","education freedom savings account","school choice",
+    "education savings account","scholarship organization","open enrollment school",
+    "school open enrollment","open enrollment in all school districts",
+    "charter school and open enrollment","charter schools and open enrollment","efa"]},
+  {ask:["homeschool","homeschooling","homeschooled","home school","home schooling",
+    "home schooled","homeschoolers"],
+   terms:["home education","home school","home schooled"]},
+  {ask:["school lunch","school lunches","school meals","school meal","free lunch",
+    "free lunches","free school lunch","free school meals","school breakfast","lunch debt"],
+   terms:["school lunch","school meal","school breakfast","free and reduced",
+    "reduced price","meals to students","breakfast and lunch","meal program",
+    "meal balances"]},
+  {ask:["book ban","book bans","banned books","banning books","book banning",
+    "school library books","library books","obscene books","explicit books",
+    "sexually explicit books","inappropriate books","age appropriate books"],
+   terms:["public school materials","harmful sexual materials",
+    "obscene material by schools","school library"]},
+  // The law people call "divisive concepts" and "the CRT ban" is titled the
+  // prohibition on teaching discrimination, and before that the right to
+  // freedom from discrimination in public workplaces and education.
+  {ask:["critical race theory","crt","divisive concepts","divisive concept",
+    "divisive concepts law","banned concepts","anti crt","crt ban"],
+   terms:["teaching discrimination","divisive concept","freedom from discrimination"]},
+  {ask:["dei","diversity equity and inclusion","diversity equity inclusion",
+    "diversity and inclusion","diversity training"],
+   terms:["dei","diversity training"]},
+  // Two entries. "parental rights" is also what family court calls custody
+  // ("parental rights and responsibilities"), and those titles have the
+  // reader's own words. But "forced outing" and "parental bill of rights"
+  // listed them too, 75 across the terms, through the term "parental
+  // rights". Those asks have their own entry, without it.
+  {ask:["parental rights","parents rights","parent rights","rights of parents"],
+   terms:["parental bill of rights","parental rights","parents' bill of rights",
+    "parents bill of rights","rights of parents",
+    "disclosure by school district employees to parents"]},
+  {ask:["parental bill of rights","parents bill of rights",
+    "forced outing","outing students","parental notification in schools"],
+   terms:["parental bill of rights","parents' bill of rights","parents bill of rights",
+    "disclosure by school district employees to parents"]},
+  // "teachers" was every title with school, education or student in it, 321,
+  // because SYN groups them. The word stands for itself here.
+  {ask:["teacher","teachers","educator","educators"],
+   terms:["teacher","educator"]},
   // Phrases, because as two words each found bills about something else:
-  // "climate" and "change" a portfolio standard's changes, "teacher" and "pay"
-  // payments to schools, "sex" and "education" biological sex in athletics.
-  {phrases:["climate change","global warming"],
-   terms:["climate change","global warming","greenhouse gas","carbon emission"]},
-  {phrases:["teacher pay","teacher salary","teacher salaries","teacher wages",
+  // "teacher" and "pay" payments to schools, "sex" and "education" biological
+  // sex in athletics.
+  {ask:["teacher pay","teacher salary","teacher salaries","teacher wages",
     "teacher compensation","educator pay"],
-   terms:["teacher pay","teacher salary","teacher salaries","teacher compensation",
-    "educator salary","educator salaries","minimum teacher salary","salaries of teachers"]},
-  {phrases:["sex education","sex ed","sexual education","sexuality education",
+   terms:["teacher compensation","compensation and benefits of teachers"]},
+  {ask:["sex education","sex ed","sexual education","sexuality education",
     "sexual health education"],
-   terms:["sex education","sexual education","sexuality education","human sexuality",
-    "sexual health education"]},
-  {phrases:["right to work","right-to-work"],
-   terms:["right to work","union membership","labor organization"]},
-  {phrases:["term limits","term limit"],
-   terms:["term limit","term limits","consecutive terms"]},
+   terms:["sex education","sexual education","human sexuality"]},
   // A phrase, because as two words "child" and "care" found foster care.
-  {phrases:["child care","childcare","day care","daycare"],
+  {ask:["child care","childcare","day care","daycare"],
    terms:["child care","childcare","day care","daycare"]},
-  {phrases:["paid family leave","paid family and medical leave","family leave","paid leave"],
-   terms:["family and medical leave","paid family","family leave","paid leave"]},
-  {phrases:["short term rental","short term rentals","vacation rental","vacation rentals","airbnb"],
+
+  // --- housing ----------------------------------------------------------
+  {ask:["adu","adus","accessory dwelling unit","accessory dwelling units",
+    "in law apartment","in law apartments","granny flat","accessory apartment"],
+   terms:["accessory dwelling","adu"]},
+  {ask:["mobile home","mobile homes","trailer park","trailer parks","manufactured home",
+    "manufactured homes","manufactured housing"],
+   terms:["manufactured housing","manufactured home","mobile home"]},
+  {ask:["rent control","rent stabilization","rent cap","rent caps","rent increase",
+    "rent increases","rent hikes","rent prices"],
+   terms:["rent control","rent increase","monthly rent","rent charged"]},
+  // Not "tenancy" alone: a joint tenancy is how two people own a house.
+  {ask:["eviction","evictions","evict","landlord","landlords","tenant","tenants",
+    "renters","renter","tenant rights","tenants rights","renters rights"],
+   terms:["landlord","tenant","eviction","evict","rental housing","termination of tenancy",
+    "terminate a tenancy","residential tenancy","residential tenancies",
+    "tenancy protections","residential rental","rental properties","rent payments"]},
+  {ask:["homeless","homelessness","unhoused","homeless shelter","homeless shelters"],
+   terms:["homeless","homelessness","emergency shelter","young adult shelter"]},
+  // Not "land use" alone, as a term: a quarter of the titles that say it are
+  // about the land use change tax, which is current use taxation.
+  {ask:["zoning","zoning laws","zoning reform","land use","planning board","planning boards"],
+   terms:["zoning","zoned","downzoning","planning board","parking requirements",
+    "land use board","land use regulation","land use control","land use planning",
+    "land use decision","planning and land use","governmental land use"]},
+  {ask:["affordable housing","workforce housing","housing affordability"],
+   terms:["affordable housing","workforce housing","housing champion"]},
+  {ask:["short term rental","short term rentals","vacation rental","vacation rentals","airbnb"],
    terms:["short term rental","vacation rental"]},
-  {phrases:["bail reform","bail","pretrial release"],
-   terms:["bail","pretrial"]},
-  {phrases:["affordable housing","workforce housing","housing affordability"],
-   terms:["affordable housing","workforce housing","housing affordability","housing champion"]},
-  {phrases:["right to know","public records","open records","freedom of information","foia"],
-   terms:["right to know","91 a","public records","governmental records"]},
-  {phrases:["death penalty","capital punishment"],
-   terms:["death penalty","capital punishment","capital murder"]},
-  {phrases:["voter id","voter identification","photo id"],
-   terms:["voter identification","photo identification","government issued identification",
-    "voter id","proof of identity","voter identity","identification of voter"]},
+
+  // --- taxes ------------------------------------------------------------
+  // A phrase, because as two words it found "low-income" beside "tax".
+  {ask:["income tax","income taxes","state income tax","personal income tax"],
+   terms:["income tax","tax on personal income","interest and dividends tax"]},
+  {ask:["sales tax","sales taxes"],
+   terms:["sales tax"]},
+
+  // --- immigration ------------------------------------------------------
+  // Not "immigration laws" nor "federal immigration" alone: they listed a
+  // 2003 resolution on citizenship for veterans and a 2005 bill on labor
+  // statutes.
+  {ask:["ice","ice agents","287g","deportation","deportations","deport","sanctuary city",
+    "sanctuary cities","sanctuary","sanctuary state","immigration enforcement",
+    "immigration and customs enforcement"],
+   terms:["immigration enforcement","federal immigration authorities",
+    "federal immigration program","federal immigration checkpoint",
+    "enforcement of immigration laws","enforcement of federal immigration laws",
+    "enforcing federal immigration laws","immigration detention","immigration detainer",
+    "immigration authorities","immigration and customs enforcement","civil immigration",
+    "sanctuary"]},
+  // Not "refugees" as an ask: it turned a search with two exact answers into 22.
+  {ask:["immigration","immigrant","immigrants","illegal immigrants","illegal immigrant",
+    "illegal immigration","illegal aliens","illegal alien","undocumented",
+    "undocumented immigrants","undocumented immigrant","migrants","migrant"],
+   terms:["immigration","immigrant","noncitizen","non citizen","alien",
+    "undocumented immigrant","unlawfully present","refugee","e verify"]},
+
+  // --- elections --------------------------------------------------------
+  // Identification AND voting: "photo identification" alone listed photo
+  // cards for food stamps and for people leaving prison.
+  {ask:["voter id","voter identification","photo id","voter id law","voter id laws"],
+   terms:["voter identification","photo identification","proof of identity",
+    "voter identity","identification of voter","photographic means of identification",
+    "proof of identification"],
+   with:["vote","voter","voting","ballot","election"]},
+  // "absentee ballot" was 142 bills, every election bill of the term: both
+  // words expanded to the whole voting group. The record's word is "absentee".
+  {ask:["mail in voting","mail in ballot","mail in ballots","vote by mail","voting by mail",
+    "absentee voting","absentee ballot","absentee ballots","absentee","no excuse absentee",
+    "early voting"],
+   terms:["absentee","early voting"]},
+  // The bills that draw the districts are titled "apportioning ...". Not
+  // "apportionment" alone: that is also how cooperative school districts
+  // split their costs and how the business profits tax divides income.
+  {ask:["redistricting","gerrymandering","gerrymander","district maps","redistricting maps"],
+   terms:["redistricting","reapportioning","drawing of district boundaries",
+    "apportioning state representative districts","apportioning state senate districts",
+    "apportioning congressional districts","apportioning executive council districts",
+    "apportioning county commissioner districts","apportioning electoral districts",
+    "apportionment of state representative districts"]},
+  {ask:["term limits","term limit"],
+   terms:["term limit","term limitations"]},
+
+  // --- work -------------------------------------------------------------
+  {ask:["minimum wage","tipped wage","tipped minimum wage","raise the wage","living wage"],
+   terms:["minimum wage","minimum hourly rate","subminimum wage","tipped employees"]},
+  // A phrase, so that it is not read as "right" and "work". The bill that
+  // is one says so in its text; its title says "join or contribute to a
+  // labor union", and that link is the bill's to make, not this table's.
+  {ask:["right to work"],
+   terms:["right to work"]},
+  {ask:["paid family leave","paid family and medical leave","family leave","paid leave"],
+   terms:["family and medical leave","paid family","family leave","paid leave"]},
+
+  // --- roads ------------------------------------------------------------
+  // Not "intoxicated" alone: it listed possession of a firearm while intoxicated.
+  {ask:["drunk driving","drunk drivers","drunk driver","driving drunk","dwi","dui","duis",
+    "driving under the influence"],
+   terms:["dwi","driving while intoxicated","intoxicated driver","impaired driver",
+    "alcohol concentration","under the influence","ignition interlock"]},
+  // An inspection AND a vehicle: "safety inspection" alone listed fire
+  // inspections of foster homes and the workers' compensation safety program.
+  {ask:["car inspection","car inspections","vehicle inspection","vehicle inspections",
+    "inspection sticker","inspection stickers","state inspection","auto inspection",
+    "annual inspection"],
+   terms:["motor vehicle inspection","vehicle inspection","safety inspection",
+    "inspection sticker","inspection station","inspection and registration",
+    "emission control test"],
+   with:["vehicle","motorcycle","automobile"]},
+  {ask:["ev","evs","electric car","electric cars","electric vehicle","electric vehicles",
+    "ev charging","ev chargers"],
+   terms:["electric vehicle","plug in hybrid","charging station","vehicle charging"]},
+
+  // --- health -----------------------------------------------------------
+  // "vaccine" alone is left to SYN, which has it with vaccination and
+  // immunization. This is the requirement: without it "vaccine mandate" found
+  // nothing, and with every vaccine title it found rabies shots for cats.
+  {ask:["vaccine mandate","vaccine mandates","vaccine requirement","vaccine requirements",
+    "vaccination requirements","vaccine exemption","vaccine exemptions",
+    "mandatory vaccination","mandatory vaccines","school vaccines","vaccine choice"],
+   terms:["vaccine mandate","mandatory vaccine","vaccine requirement",
+    "vaccination requirement","immunization requirement","immunization is required",
+    "requiring certain immunizations","vaccine exemption","exemption from immunization",
+    "vaccination status","immunization status","mandate vaccination"]},
+  // Not "end of life" alone: it listed the disposal of end of life vehicles.
+  {ask:["assisted suicide","physician assisted suicide","medical aid in dying",
+    "aid in dying","death with dignity","right to die","euthanasia","end of life"],
+   terms:["aid in dying","death with dignity","end of life care","end of life decision",
+    "end of life choice"]},
+  {ask:["vaping","vape","vapes","e cigarettes","e cigarette","juul"],
+   terms:["vape","vaping","e cigarette","electronic cigarette","e liquid"]},
+
+  // --- technology and money ---------------------------------------------
+  // "ai" is two letters and reads as nothing else; the bills say it in full.
+  {ask:["ai","a.i","artificial intelligence","chatbot","chatbots","deepfake","deepfakes",
+    "chatgpt"],
+   terms:["artificial intelligence","deepfake","synthetic media"]},
+  {ask:["social media","tiktok","instagram","facebook"],
+   terms:["social media"]},
+  {ask:["crypto","cryptocurrency","cryptocurrencies","bitcoin","blockchain"],
+   terms:["blockchain","digital currency","digital currencies","digital asset",
+    "stable token","cryptocurrency","bitcoin","virtual currency"],
+   not:["access to digital assets"]},
+  {ask:["casino","casinos","gambling","slot machines","slot machine","slots","betting"],
+   terms:["casino","betting","wagering","gambling","charitable gaming",
+    "gaming facilities","games of chance","historic horse racing","video lottery",
+    "slot machine","keno"]},
   // Sports only: with gambling in it, "sports betting" returned 26 bills about
-  // horse racing and video lottery. "gambling" alone still finds those (SYN).
-  {phrases:["sports betting","sports wagering","sports gambling","sportsbook"],
-   terms:["sports betting","sports wagering","sports book","sportsbook"]}
+  // horse racing and video lottery. "gambling" alone still finds those.
+  {ask:["sports betting","sports wagering","sports gambling","sportsbook"],
+   terms:["sports betting","sports wagering","sports book"]},
+
+  // --- animals, energy and the climate ------------------------------------
+  {ask:["animal cruelty","animal abuse","animal welfare","cruelty to animals"],
+   terms:["animal cruelty","animal abuse","abuse of animals","cruelty"]},
+  // Not "climate" alone: it listed climate control in school buildings and
+  // the culture and climate of schools.
+  {ask:["climate change","global warming","climate crisis","climate action"],
+   terms:["climate change","climate action","climate damage","climate resilience",
+    "climate education","climate protection","climate registry","climate initiative",
+    "climate corps","climate and health","climate and conservation",
+    "climate and environmental","global warming","greenhouse gas","carbon sequestration",
+    "carbon pricing","carbon reduction"]},
+  // `also`: whether a reader typing "solar" wants the emissions and renewable
+  // portfolio bills SYN groups with it is the person's to decide; until then
+  // the word finds what it found, and net metering is added.
+  {also:true,
+   ask:["solar","solar panels","solar power","solar energy","net metering","rooftop solar"],
+   terms:["solar","net metering","net energy metering","customer generator"]},
+
+  // --- courts and the record ---------------------------------------------
+  // `also`: "bail" still finds the bailiffs, lower down.
+  {also:true,
+   ask:["bail reform","bail","pretrial release"],
+   terms:["bail","pretrial release","pretrial detention","pretrial services"]},
+  {ask:["death penalty","capital punishment"],
+   terms:["death penalty","capital murder"]},
+  {ask:["right to know","public records","open records","freedom of information","foia"],
+   terms:["right to know","91 a","public records","governmental records"]},
+
+  // --- ADDED AFTER THE TABLE WAS FIRST MEASURED (1 October) ---------------
+  // Everything above was scored on fifteen searches nobody had written an
+  // entry for, and recovered none of them. These were then written for those
+  // searches, from the titles -- so they proved nothing about the next
+  // fifteen. What did was reading the bills' own text, below; the entries
+  // that are still here are the ones for a word the bills do not use.
+  {ask:["drug prices","drug pricing","drug costs","prescription drug prices",
+    "prescription prices","prescription costs","cost of prescriptions","pbm","pbms",
+    "pharmacy benefit managers"],
+   terms:["prescription drug affordability","drug affordability","drug pricing",
+    "pharmacy benefit manager","pharmacy benefits manager"]},
+  {ask:["food stamps","food stamp","snap","snap benefits","ebt"],
+   terms:["snap","supplemental nutrition","supplemental nutritional","food stamp",
+    "electronic benefit transfer","ebt"]},
+  {ask:["campaign finance","campaign financing","campaign donations","campaign donation",
+    "campaign contributions","political donations","money in politics","dark money",
+    "super pac","super pacs"],
+   terms:["campaign finance","campaign contribution","campaign expenditure",
+    "political committee","political contribution","political expenditure"]},
+  {ask:["legislator pay","legislators pay","legislator salary","legislator salaries",
+    "legislative pay","legislative salary","lawmaker pay","legislator compensation"],
+   terms:["legislative salary","legislative compensation","compensation of the legislature",
+    "compensation for members of the general court",
+    "compensation of members of the legislature"]},
+  {ask:["youth detention","juvenile detention","youth detention center","ydc",
+    "sununu center","sununu youth center"],
+   terms:["youth development center","youth services center","juvenile detention"]},
+  {ask:["pornography","porn","pornographic"],
+   terms:["pornographic","pornography","obscenity","obscene material"]},
+  {ask:["psychedelics","psychedelic","magic mushrooms","shrooms","psilocybin"],
+   terms:["psilocybin","psychedelic"]},
+  // Not "vessel" alone: a pressure vessel is a boiler.
+  {ask:["boating","boaters","boater","boat registration","boater safety"],
+   terms:["boat","watercraft","mooring","vessel registration"]},
+  {ask:["ems","emt","emts","paramedic","paramedics"],
+   terms:["emergency medical services","emergency medical care provider",
+    "emergency medical transport","emergency medical technician","ambulance","paramedic"]},
+  {ask:["pension","pensions","state pension","state pensions","public pensions","nhrs"],
+   terms:["pension","retirement system"]},
+  {ask:["data privacy","online privacy","internet privacy","consumer privacy",
+    "personal data","data brokers","data broker"],
+   terms:["personal data","personal information","expectation of privacy","data broker",
+    "biometric"]},
+  {ask:["fluoride","fluoridation"],
+   terms:["fluoride","fluoridation"]},
+  {ask:["license plate readers","license plate reader","license plate scanners",
+    "license plate scanner","plate readers","alpr"],
+   terms:["number plate scanning","license plate scanning","license plate reader"]},
+
+  // --- FROM THE REVIEW OF THAT TABLE (1 October): everyday words it still
+  // missed that the bills never use. The statutes call the gas tax the road
+  // toll, an ATV an OHRV, and nobody under 18 a kid.
+  // `named`: in a title or an analysis. Read in the text too, "kids" was
+  // 183 bills -- every bill that mentions a child twice.
+  {ask:["kids","kid"],
+   terms:["children"],named:["child","minor","youth","juvenile"]},
+  {ask:["atv","atvs","four wheeler","four wheelers","utv","utvs"],
+   terms:["ohrv","off highway recreational vehicle","all terrain vehicle"]},
+  {ask:["gas tax","gasoline tax","fuel tax"],
+   terms:["road toll","motor fuel tax","gasoline tax"]},
+  {ask:["scam","scams","scammers"],
+   terms:["fraud","fraudulent","deceptive"]},
+  {ask:["jury duty"],
+   terms:["juror","jury service","jury duty"]},
+
+  // --- FROM THE REVIEW OF THE TEXT INDEX (1 October): four searches on
+  // subjects where a wrong answer costs most. None is from a set the search
+  // is measured on. "ghost guns" and "gun free zones" are not here: no bill
+  // has said the first, and the second is "safe school zone", which is also
+  // pocket knives and discipline statistics.
+  // As two words "birth control" was one bill, on reporting fetal deaths to
+  // the Centers for Disease Control, and "family planning" multi-family
+  // housing with a planning board in its analysis.
+  {ask:["birth control","contraception","contraceptive","contraceptives","family planning"],
+   terms:["contraception","contraceptive","birth control","family planning"]},
+  // "pronoun" alone is the grammar of a statute: the register of deeds
+  // chapter made gender neutral, a retirement system's "he or she". A
+  // pronoun AND one of these is the subject, and one mention counts, since
+  // one is all the 2026 bill has.
+  {ask:["pronouns","pronoun","preferred pronouns","preferred pronoun","misgendering",
+    "deadnaming"],
+   terms:["pronoun"],
+   with:["gender identity","gender expression","biological sex","transgender",
+    "personal identity ideology"],once:true},
+  // No bill says "marker". The bills on what a licence or a birth record
+  // says say "designation".
+  {ask:["gender marker","gender markers","sex marker","sex markers"],
+   terms:["gender designation","sex designation"]},
+  // Not in SYN beside "ammunition": a word there is also read as the start
+  // of a longer one, and "ammonia" would have listed these.
+  {ask:["ammo"],
+   terms:["ammunition"]}
 ];
-const CPHRASES=CONCEPTS.flatMap(c=>c.phrases.map(p=>[p,c]))
-  .sort((a,b)=>b[0].length-a[0].length);
-function stem(w){
-  if(w.length<5||/(ss|us|is)$/.test(w))return w;
-  if(/ies$/.test(w))return w.slice(0,-3)+"y";
-  if(/(xes|ches|shes|sses)$/.test(w))return w.slice(0,-2);
-  return w.endsWith("s")?w.slice(0,-1):w;
-}
 /* THE MARKS A QUESTION IS ASKED WITH, taken off the ENDS of words and nowhere
    else. Only the comma and the hyphen were being removed, so a reader who
    typed the way people type -- "right to know?" -- got 0 bills where "right
@@ -257,105 +770,676 @@ function stem(w){
    citation intact. "children's" keeps its apostrophe for the same reason: it
    is inside a word, not around one. And this strips a named list of marks
    rather than "anything that is not a-z0-9", which would have eaten the
-   final letter of an accented word. */
-const EDGEMARK=/^[.?!;:'"“”‘’()\[\]{}…]+|[.?!;:'"“”‘’()\[\]{}…]+$/g;
+   final letter of an accented word.
+   The plus sign with them (1 October): "lgbtq+ rights" found 2 bills where
+   "lgbtq rights" found 19. And a bracket inside a word goes too: "287(g)"
+   found nothing where "287g" found 9. */
+const EDGEMARK=/^[.?!;:'"“”‘’()\[\]{}…+]+|[.?!;:'"“”‘’()\[\]{}…+]+$/g;
+// What was typed, as the words it is read as: lower case, a curly apostrophe
+// straightened, commas and hyphens as spaces, marks off the ends of words.
+// The table's asks are read the same way, so one spelling there is enough.
+const qnorm=s=>String(s||"").toLowerCase().replace(/[‘’]/g,"'").replace(/[,\-]/g," ")
+  .split(/\s+/).map(w=>w.replace(EDGEMARK,"").replace(/(\w)[()]+(?=\w)/g,"$1"))
+  .filter(Boolean).join(" ");
+// A term, as a title is searched: hyphens are spaces.
+const cnorm=s=>String(s).toLowerCase().replace(/-/g," ");
+const CWORD={},CPHRASES=[];
+CONCEPTS.forEach(c=>{
+  c.ask=c.ask.map(qnorm);
+  c.terms=c.terms.map(cnorm);
+  c.named=(c.named||[]).map(cnorm);
+  if(c.with)c.with=c.with.map(cnorm);
+  if(c.not)c.not=c.not.map(cnorm);
+  // What the entry lists both as a word people type and as wording bills use.
+  c.plain=[...c.terms,...c.named].filter(t=>c.ask.includes(t));
+  c.ask.forEach(a=>{ if(a.includes(" "))CPHRASES.push([a,c]); else CWORD[a]=c; });
+});
+/* A SYN ENTRY OF TWO WORDS could never fire when typed: the search was split
+   into words before SYN was asked, so "law enforcement" searched
+   "enforcement" ("law" carries no subject and is skipped) and listed
+   building-code enforcement. Thirty-one entries are like that. Two groups
+   are switched on here, the two whose results were read (1 October); the
+   others stay off until theirs are -- "health care" as a phrase would widen
+   to every title with "health" in it. A phrase SYN no longer lists is
+   skipped rather than left to stop the page loading, and preflight fails if
+   one of these stops being read as a phrase. */
+const SYNPHRASES=["mental health","behavioral health","law enforcement"];
+SYNPHRASES.forEach(p=>{ if(SYNMAP[p])CPHRASES.push([p,{syn:SYNMAP[p].map(cnorm)}]); });
+CPHRASES.sort((a,b)=>b[0].length-a[0].length);
+/* A PLURAL IS READ AS ITS SINGULAR, from four letters: "dogs" found only the
+   titles with the plural and missed five that say "dog"; "cars", "bees",
+   "kids" and "jobs" found little or nothing (1 October). A four-letter word
+   just loses its s -- the -ies rule would make "ties" into "ty". Three are
+   kept whole because their singular is a different word.
+   build_search_index.py has this function too, in Python: the search index
+   files a word under what this returns, and preflight runs both over the
+   same words and fails if they ever differ. */
+const STEMKEEP=new Set(["news","arms","dues"]);
+function stem(w){
+  if(w.length<4||/(ss|us|is)$/.test(w)||STEMKEEP.has(w))return w;
+  if(w.length===4)return w.endsWith("s")?w.slice(0,-1):w;
+  if(/ies$/.test(w))return w.slice(0,-3)+"y";
+  if(/(xes|ches|shes|sses)$/.test(w))return w.slice(0,-2);
+  return w.endsWith("s")?w.slice(0,-1):w;
+}
+/* A PHRASE OF THE TABLE, TYPED WITH ANOTHER ENDING. "transgender athletes"
+   listed eleven bills and "transgender athlete ban" one: the table has the
+   plural, and the singular was read as two words. A phrase is the table's
+   when each of its words is, read as its singular -- so one spelling of a
+   phrase in the table is enough. A single word is still the table's only as
+   the table spells it ("weeds" is the plant). */
+CPHRASES.forEach(e=>{e.push(e[0].split(" ").map(stem));});
+// Where in `words` the phrase `e` is typed, or -1.
+function phraseAt(words,stems,e){
+  const want=e[2];
+  for(let i=0;i+want.length<=words.length;i++){
+    let k=0;
+    while(k<want.length&&stems[i+k]===want[k])k++;
+    if(k===want.length)return i;
+  }
+  return -1;
+}
+/* A PLURAL THAT IS NOT MADE WITH AN S. "knife" found nothing in a term with
+   a bill titled about "knives", and "woman" not "women": taking the s off
+   never reaches these. Each is read as the other, in a title, as a plural is
+   read as its singular. Not life and lives, leaf and leaves, half and halves:
+   the plural is also a verb, and "leaf" would list every leave of absence. */
+const ODDPLURAL={};
+[["knife","knives"],["wife","wives"],["wolf","wolves"],["calf","calves"],
+ ["shelf","shelves"],["thief","thieves"],["child","children"],["woman","women"],
+ ["tooth","teeth"],["goose","geese"],["mouse","mice"]]
+  .forEach(([a,b])=>{ODDPLURAL[a]=b;ODDPLURAL[b]=a;});
+// "legalize" did not find "legalizing" or "legalization". A verb in -ize or
+// -ise is also read without its final e, as the start of a word. Not -ate,
+// which was here too: "appropriate" listed 81 bills making appropriations,
+// "educate" 316 about education and "moderate" the town moderators.
+const VERBEND=/(ize|ise)$/;
+// One entry of the table as the part of a search it stands for. `own` is
+// what the reader typed (and its singular); `tab` is where the entry's terms
+// begin and `nam` where its `named` terms do.
+function conceptGroup(word,own,c){
+  own=[...new Set(own)];
+  const alts=[...new Set([...own,...c.terms])];
+  const g={word,alts:alts.concat(c.named.filter(t=>!alts.includes(t))),
+    tab:own.length,nam:alts.length,exact:true,asked:own};
+  // The reader's own word, where the entry says it counts only in a title
+  // or an analysis: typed "gender identity" is read as the table reads it.
+  const on=own.filter(o=>c.named.includes(o));
+  if(on.length)g.ownNamed=on;
+  if(c.not)g.not=c.not;
+  // The words of a typed phrase, for the order of what its entry finds.
+  if(word.includes(" "))g.parts=word.split(" ").filter(w=>w.length>2&&!STOPSET.has(w));
+  // The reader's word is read in a bill's text only where the entry lists it
+  // as the bills' own wording too ("abortion", "restroom"): "trans" in a
+  // text is the first half of "trans-portation" broken across a line.
+  g.plain=c.plain;
+  if(c.with){g.with=c.with;g.once=!!c.once;g.stands=[...new Set([...own,...c.plain])];}
+  return g;
+}
 // The search as groups, every one required: a concept's phrase is one group of
-// its terms, each other word a group of its synonyms.
+// its terms, each other word a group of its synonyms. In a group, `alts` is
+// everything a bill may say; from index `tab` on they are terms the table
+// supplied (looseness lists those after the reader's own word); `exact` says
+// the reader's word is read whole, never as the start of a longer one.
 function queryGroups(raw){
-  let q=" "+String(raw||"").toLowerCase().replace(/[,\-]/g," ")
-    .split(/\s+/).map(w=>w.replace(EDGEMARK,"")).filter(Boolean).join(" ")+" ";
+  let q=" "+qnorm(raw)+" ";
   const out=[];
-  for(const [p,c] of CPHRASES){
-    if(q.includes(" "+p+" ")){
-      out.push({word:p,alts:[...new Set([p,...c.terms])]});
-      q=q.split(" "+p+" ").join(" ");
+  let typed=q.split(" ").filter(Boolean),stems=typed.map(stem);
+  for(const e of CPHRASES){
+    const p=e[0],c=e[1];
+    let as=p;
+    if(!q.includes(" "+p+" ")){
+      const i=typed.length>=e[2].length?phraseAt(typed,stems,e):-1;
+      if(i<0)continue;
+      as=typed.slice(i,i+e[2].length).join(" ");
     }
+    out.push(c.syn?{word:as,alts:[...new Set([as,p,...c.syn])]}
+      :conceptGroup(as,[...new Set([as,p])],c));
+    q=q.split(" "+as+" ").join(" ");
+    typed=q.split(" ").filter(Boolean);stems=typed.map(stem);
   }
   const words=q.split(" ").filter(Boolean);
   const kept=words.filter(w=>!STOPSET.has(w));
   (kept.length||out.length?kept:words).forEach(w=>{
-    const s=stem(w);
-    out.push({word:w,alts:[...new Set([w,...expand(s)])]});
+    // The table's word, whole, and only as the table spells it: "weeds" is
+    // not "weed". Its singular is still the reader's own word -- "hormones"
+    // lost the title that says "hormone products" without it.
+    const one=stem(w),c=CWORD[w];
+    if(c&&!c.also){ out.push(conceptGroup(w,[w,one],c)); return; }
+    // A word that is itself an entry is not a plural to take the s off: "pfas".
+    const g={word:w,alts:[...new Set([w,...expand(SYNMAP[w]?w:one)].map(cnorm))]};
+    const odd=ODDPLURAL[w]||ODDPLURAL[one];
+    if(odd&&!g.alts.includes(odd))g.alts.push(odd);
+    if(w.length>=7&&VERBEND.test(w)){g.pre=w.slice(0,-1);g.alts.push(g.pre);}
+    if(c){
+      g.terms=c.terms;
+      g.tab=g.alts.length;g.alts=[...new Set([...g.alts,...c.terms])];
+      g.nam=g.alts.length;g.alts=g.alts.concat(c.named.filter(t=>!g.alts.includes(t)));
+    }
+    out.push(g);
+  });
+  // What a part of a search may not do alone. `solo`: it is the whole search.
+  // `rest`: for a search of several parts, what a title must say for each of
+  // the others to be in it -- their own words, not the table's (see fitAlone).
+  // `peers`: the other parts themselves, kept where copying or printing a
+  // group does not follow them round in a circle.
+  if(out.length===1)out[0].solo=true;
+  else out.forEach(g=>{
+    const others=out.filter(x=>x!==g);
+    g.rest=others.map(x=>x.alts.slice(0,x.tab!=null?x.tab:x.alts.length));
+    Object.defineProperty(g,"peers",{value:others,enumerable:false});
   });
   return out;
 }
-let QG_KEY=null,QG=[];
-function groupsFor(q){ if(q!==QG_KEY){QG_KEY=q;QG=queryGroups(q);} return QG; }
 
 /* WHERE A WORD MATCHES, AND HOW. Read against the bills 36 searches returned
    (14 September), the irrelevant ones came from four places:
    - the TOPIC label, a broad bucket: "mental health" returned 80 bills --
      ambulance services, the prescription drug board -- whose only link was a
-     topic reading "...Mental Health". Text matching leaves it out; the Topic
-     filter is still there for anyone who wants the bucket.
+     topic reading "...Mental Health". See THE BILLS' OWN WORDS, below, for
+     how a topic counts now and why that search is still not answered by one.
    - a SPONSOR's name read as the start of a word: "bail" found every bill of a
      member named Bailey. A name matches as a whole word.
    - a SYNONYM read as the start of a word: "alien" found "parental alienation".
      The reader's own word still matches as a start ("educat" finds education),
      but a word this file supplies matches as itself, or with an ending.
    - no order: the 33 bills titled about school funding sat among 74 that only
-     share the Education Funding committee. Best match puts the title first. */
+     share the Education Funding committee. Best match puts the title first.
+   And on 1 October, read against 312 searches, from a fifth:
+   - an ENDING on a short word makes another word. "ai" with a d is "aid" and
+     "car" with a d is "card": "ai" listed 33 bills about aid and air and none
+     about artificial intelligence. A word of one or two letters takes a
+     plural s and nothing else; one of three letters a plural, and -ed or
+     -ing only where English adds them without doubling the last letter
+     ("taxing", "towed" -- not "rating", which is not "rat"). In a phrase it
+     is the last word that takes the ending. */
 const RXW={};
 function altRx(term){
-  return RXW[term]||(RXW[term]=new RegExp("\\b"
-    +term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?:s|es|ed|d|ing|ings|er|ers|al)?\\b"));
+  if(RXW[term])return RXW[term];
+  const n=term.length-term.lastIndexOf(" ")-1;
+  const ends=n<3?"s?":n===3?(/[wxy]$/.test(term)?"(?:s|es|ed|ing|ings)?":"(?:s|es)?")
+    :"(?:s|es|ed|d|ing|ings|er|ers|al)?";
+  return RXW[term]=new RegExp("\\b"+rxEsc(term)+ends+"\\b");
 }
-// The reader's own word, or its singular: matched as the start of a word.
-const typedAlt=(g,alt)=>!alt.includes(" ")&&(alt===g.word||alt===stem(g.word));
-function inText(hay,g,alt){ return typedAlt(g,alt)?hasTerm(hay,alt):altRx(alt).test(hay); }
-// 3 in the title, 2 in the sponsor's name, 1 in a committee's name, 0 not at all.
-// A sponsor's name or a committee's matches only what the reader typed: a
-// synonym found in a committee's name ("energy", for "electric vehicles") put a
-// bill about hunting from a vehicle in the results.
-function groupWeight(b,g){
-  let w=0;
-  for(const alt of g.alts){
-    if(inText(b.hayT,g,alt))return 3;
-    if(!(typedAlt(g,alt)||alt===g.word))continue;
-    if(w<2&&altRx(alt).test(b.hayS))w=2;
-    if(w<1&&inText(b.hayC,g,alt))w=1;
+/* The reader's own word, or its singular: matched as the start of a word.
+   Not a word the table owns (`exact`). Not a word of one or two letters:
+   nothing "ai" or "ev" began was ever what the reader meant. And not the
+   singular of a four-letter plural -- "cars" is "car", not "care" and "card";
+   the plural itself, as typed, still is.
+   One exception, `short`, set by readShort() below, term by term: in a
+   term where the search as typed lists nothing, a word of two letters is
+   read as a start after all. "special ed" found 21 bills while "ed" began
+   "education", and none once a two-letter word had to be a word. */
+const typedAlt=(g,alt,term)=>!g.exact&&(alt.length>2||(!!g.short&&g.short.has(term||"")))
+  &&!alt.includes(" ")
+  &&(alt===g.word||alt===g.pre||(g.word.length>4&&alt===stem(g.word)));
+function inText(hay,g,alt,term){ return typedAlt(g,alt,term)?hasTerm(hay,alt):altRx(alt).test(hay); }
+
+/* THE BILLS' OWN WORDS: THE TOPIC, THE ANALYSIS AND THE TEXT (1 October).
+   The person: "I want the system to be smart enough to find what a user is
+   likely looking for if they don't know the bill number, so that may also
+   include the bill text itself or the topic."
+
+   A title is ten words in statutory vocabulary. Of 499 bills a reader who
+   had never seen this file wanted from fifty everyday searches, 268 share no
+   word with their own title. What says what a bill is about is the bill:
+   - its TOPIC, the heading the General Court files it under (or, for an
+     archived term, the one this site's model gave it). It is in the index
+     already. A single word the reader typed that is a word of the topic's
+     name lists the topic's bills: "housing", "elections", "gambling",
+     "insurance". Only a single typed word, never a phrase or a synonym (in a
+     search of several words, only as fitAlone() says below), and only a topic
+     that names ONE subject: "mental health" would be all 118
+     bills filed under Public and Mental Health, ambulances and prescription
+     prices among them, which is the 14 September finding above and still
+     true; and under Welfare/Medicare/Medicaid a Medicare supplement bill is
+     not a Medicaid bill. In "Taxes - Local" the subject is "taxes".
+   - its ANALYSIS and its TEXT. Those are 16 MB for one term, so the build
+     (build_search_index.py) reduces them to site/sidx/<term>.json: for each
+     word, the bills it is central to and how central, 1 to 9. A word used
+     once in a forty-page budget is not there; a word in the drafters' own
+     summary is. The page fetches that file only when somebody searches, and
+     hands it to indexAdd(). Until it arrives, and if it never does, the
+     search reads titles as it always did.
+
+   WHAT IS READ THERE. The reader's own word, whole, or its singular, and the
+   table's terms. Not a synonym SYN supplied: those were chosen for titles,
+   and read in the text "law enforcement" listed a bill on smoking in cars,
+   whose text says "police" twice. A weight of 0 is a mention that is not
+   central, kept for the table's wording only; it counts under an entry's
+   `with` and `once`, and nowhere else.
+
+   A SINGLE WORD THE TABLE SUPPLIED IS READ IN THE ANALYSIS, NOT THE TEXT
+   UNDER IT. A phrase of the table is specific ("risk protection order",
+   "gender reassignment"); a single word is not. Read in the body of a text,
+   "gun control" listed a speed enforcement fund (radar guns), two bills on
+   single-use bags and one on Selective Service; "abortion" a ban on
+   bisphenol A in baby food ("reproductive toxicants"); "illegal immigrants"
+   invasive species and five bills on alien insurers; "landlord" balloons
+   released into the air. Measured over the 115 judged searches on 1
+   October, a single table word found in a text and nowhere else was never
+   a bill a search was judged to want, and was six of the bills judged
+   wrong. The drafters' analysis is where a bill says what it is about; the
+   text is still read for the word the reader typed, and for a single word
+   under an entry's `with`, where a second thing must be there too.
+
+   A LONGER WORD THE READER'S BEGINS ("legaliz" and legalization) is found
+   there as it is in a title, but only when the word is the whole search:
+   "organ donation" listed political donations to organizations.
+
+   IN A SEARCH OF SEVERAL WORDS each must be found, and each may be found
+   in a different place: "birth control" still lists a bill on reporting
+   fetal deaths to the Centers for Disease Control whose text is about
+   birth certificates. The index holds words, not where they stand, so only
+   a phrase the table lists is read as a phrase. Each such card says "in
+   the bill's text", and is listed after every bill whose title has the
+   words.
+
+   The file names a bill by its id and is asked for by the bill's term, so a
+   stale file can fail to find a bill and cannot find the wrong one. */
+const SIDX={};
+let SIDXGEN=0;
+function indexAdd(term,data){
+  if(!term||!data||data.v!==1||!Array.isArray(data.ids))return false;
+  SIDX[term]={ids:data.ids,w:data.w||{},p:data.p||{},keys:null};
+  SIDXGEN++;
+  return true;
+}
+const indexHas=term=>!!SIDX[term];
+// The keys a word is filed under: itself, its singular, and itself with the
+// endings a title match allows. build_search_index.py's word_keys() is this.
+function wordKeys(alt){
+  const n=alt.length;
+  const ends=n<3?[]:n===3?(/[wxy]$/.test(alt)?["ed","ing"]:[]):["ed","d","ing","er","al"];
+  return new Set([alt,stem(alt),...ends.map(e=>alt+e)]);
+}
+// One list of the file as [how far short, in the analysis, the bill's word,
+// found by a term this file supplied] per bill id; the best kept.
+function readPosts(X,posts,m,base,step,alt,tab,onlyA,once){
+  if(!posts)return;
+  let i=0;
+  for(const n of posts){
+    i+=Math.floor(n/20);
+    const w=n%10,inA=n%20>=10;
+    if((onlyA&&!inA)||(!w&&!once))continue;
+    const d=base+(9-w)*step,id=X.ids[i],cur=m.get(id);
+    if(!cur||d<cur[0])m.set(id,[d,inA,alt,tab]);
   }
-  return w;
 }
-/* THE WORD ITSELF BEFORE A LONGER WORD IT BEGINS (the person, 25 September:
-   "have direct word matches be at the top of the best match sorting"). The
-   reader's own word matches as the start of a word, so "bail" finds bills
-   about bailiffs, "gun" the Gunstock Area Commission and "tax" "taxpayer
-   funded investigations" -- and they stay found, lower down. A part of the
-   search is met directly where it is a word of the bill's title -- the word
-   itself, with one of altRx's endings ("guns", "taxes"), or one of its
-   synonyms -- or exactly a word of its sponsor's name, since a name is not a
-   word with an ending: "fish" is not Rep. Fisher, nor "mun" Rep. Muns. Each
-   part a bill does not meet that way adds how far short it falls: 1 where
-   the title has only a longer word the part begins, or the sponsor's name
-   only the word with an ending; 2 where only a committee's name has it; 3
-   where a committee's name has only a longer word. Best match orders by the
-   total before anything else, so a bill whose title or sponsor has every
-   word of the search is never listed below one that has only the start of
-   one.
+// What one part of a search finds in one term's analyses and texts.
+function textHits(g,term){
+  const X=SIDX[term];
+  if(!X)return null;
+  const memo=g._tx||(g._tx={});
+  if(memo[term]&&memo[term].X===X)return memo[term].hits;
+  const m=new Map(),once=!!g.once;
+  g.alts.forEach((alt,i)=>{
+    const tab=(g.tab!=null&&i>=g.tab)||!!(g.terms&&g.terms.includes(alt));
+    const own=g.exact?(!tab&&g.plain.includes(alt))
+      :(typedAlt(g,alt)||alt===g.word||alt===stem(g.word));
+    if(!own&&!tab)return;                  // a synonym: titles only
+    const base=own?0.6:1.6;
+    // In the analysis only: wording the entry marks `named`, and any single
+    // word this file supplied, unless the entry asks for a second thing as
+    // well (`with`). See WHAT IS READ THERE, above.
+    const onlyA=(g.nam!=null&&i>=g.nam)||!!(g.ownNamed&&g.ownNamed.includes(alt))
+      ||(tab&&!own&&!g.with&&!alt.includes(" "));
+    if(alt.includes(" ")){readPosts(X,X.p[alt],m,base,0.04,alt,!own,onlyA,once);return;}
+    const keys=wordKeys(alt);
+    for(const k of keys)readPosts(X,X.w[k],m,base,0.04,alt,!own,onlyA,once);
+    if(g.solo&&typedAlt(g,alt)&&alt.length>=4)
+      for(const k of X.keys||(X.keys=Object.keys(X.w)))
+        if(k.length>alt.length&&k.startsWith(alt)&&!keys.has(k))
+          readPosts(X,X.w[k],m,1.2,0.03,k,false,false,false);
+  });
+  memo[term]={X,hits:m};
+  return m;
+}
+// Under `with`: the second thing the bill must say, and where it says it.
+function withHit(b,g){
+  for(const t of g.with)if(altRx(t).test(b.hayT))return ["title",t];
+  const X=b.term&&SIDX[b.term];
+  if(!X)return null;
+  const memo=g._wx||(g._wx={});
+  if(!memo[b.term]||memo[b.term].X!==X){
+    const m=new Map();
+    for(const t of g.with){
+      if(t.includes(" "))readPosts(X,X.p[t],m,0,0,t,true,false,g.once);
+      else for(const k of wordKeys(t))readPosts(X,X.w[k],m,0,0,t,true,false,g.once);
+    }
+    memo[b.term]={X,hits:m};
+  }
+  const h=memo[b.term].hits.get(b.id);
+  return h?[h[1]?"analysis":"text",h[2]]:null;
+}
+// The topic's name as searched: what stands before " - ", and nothing at all
+// where that names more than one subject.
+const topicHay=b=>{
+  if(b.hayP!==undefined)return b.hayP;
+  const head=String(b.topic||"").toLowerCase().split(" - ")[0];
+  return b.hayP=/[,&\/]| and /.test(head)?"":head.replace(/[^a-z0-9']+/g," ");
+};
+/* HOW FAR SHORT OF THE WORD ITSELF ONE PART OF A SEARCH FALLS ON ONE BILL
+   (the person, 25 September: "have direct word matches be at the top of the
+   best match sorting"; and 1 October, the order for what the bill's own
+   words add). null where the bill does not have the part at all. Otherwise
+   [how far short, why, and under `with` the second thing found]:
+     0     a word of the title -- the word itself, with one of altRx's
+           endings ("guns", "taxes"), or one of its synonyms -- or exactly a
+           word of the sponsor's name, since a name is not a word with an
+           ending: "fish" is not Rep. Fisher, nor "mun" Rep. Muns;
+     0.5   a word of the topic the bill is filed under;
+     0.6 to 0.96   in the analysis or the text, the most central first;
+     1     the title has only a longer word the part begins ("bail" and the
+           bailiffs, "gun" and the Gunstock Area Commission), or the
+           sponsor's name only the word with an ending;
+     1.2 to 1.5    the analysis or text has only such a longer word;
+     1.45  the bill has both things an entry's `with` asks for;
+     1.5   the title has none of the reader's words and has one of the terms
+           the table (CONCEPTS) stands them for;
+     1.6 to 2      the analysis or text has one of those terms;
+           (either, a tenth less for each word of a typed phrase that the
+           title has: "concealed carry" lists the titles that say "carry"
+           before the rest of the firearms entry;)
+     2     only a committee's name has it; 3 where that has a longer word.
+   Best match orders by the total before anything else, so a bill whose title
+   or sponsor has every word of the search is never listed below one that has
+   only the start of one, and a bill the table found is never listed above
+   either.
    A committee's name counts for less than a longer word in the title: that
    is "Best match puts the title first", above, kept. Counted as direct, the
    committee put the 187 bills of 2025-2026 whose only link to "municipal"
    is a committee named for municipal affairs above the 26 whose titles say
-   "municipalities". */
+   "municipalities".
+   A sponsor's name counts for as little, when the word is one the table
+   owns. Across the nineteen terms "gay" is also Rep. Betty Gay, and her 36
+   bills -- election officers, drivers' licenses -- stood above every bill
+   the word was typed to find. They are still listed, after them. */
 const RXN={};
 function nameRx(term){
-  return RXN[term]||(RXN[term]=new RegExp("\\b"
-    +term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b"));
+  return RXN[term]||(RXN[term]=new RegExp("\\b"+rxEsc(term)+"\\b"));
+}
+function fitAlone(b,g){
+  let d=4,why=null;
+  const out=g.not&&g.not.some(t=>hasTerm(b.hayT,t));
+  for(let i=0;i<g.alts.length;i++){
+    const alt=g.alts[i];
+    if(g.tab!=null&&i>=g.tab){
+      if(!out&&d>1.5&&altRx(alt).test(b.hayT)){d=1.5;why=["title",alt];}
+      continue;
+    }
+    // A name is the word as typed, never its singular: "weeds" is not Rep.
+    // Weed, whose bills stood above every bill about weeds.
+    const own=typedAlt(g,alt)||alt===g.word,name=alt===g.word&&!g.exact;
+    if(altRx(alt).test(b.hayT)||(name&&nameRx(alt).test(b.hayS))){d=0;why=null;break;}
+    if(d>1&&(inText(b.hayT,g,alt,b.term)||(name&&altRx(alt).test(b.hayS)))){d=1;why=null;}
+    if(d>2&&own&&(altRx(alt).test(b.hayC)||(g.exact&&altRx(alt).test(b.hayS)))){d=2;why=null;}
+    if(d>3&&own&&inText(b.hayC,g,alt,b.term)){d=3;why=null;}
+  }
+  // The topic. For a word that is the whole search, a word of the topic's
+  // name. In a search of several words a topic stands for one of them only
+  // when it is that word and nothing else, and the title has every other:
+  // "property taxes" lists a bill titled about real property and filed
+  // under Taxes, but "car insurance" listed seventeen health insurance
+  // bills (the topic Insurance, and "care" or "carrier" in the title) and
+  // "civil rights" a bill on rights in private roads (the topic Civil
+  // Actions).
+  if(d>0.5&&!g.exact&&!g.word.includes(" ")&&b.topic){
+    const t=topicHay(b);
+    if(t&&(altRx(g.word).test(t)||(g.word.length>4&&altRx(stem(g.word)).test(t)))
+       &&(g.solo||(g.rest&&!/\S\s+\S/.test(t)
+          &&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){d=0.5;why=["topic"];}
+  }
+  if(d>0.6&&b.term){
+    const m=textHits(g,b.term),h=m&&m.get(b.id);
+    if(h&&h[0]<d&&!(out&&h[3])){d=h[0];why=[h[1]?"analysis":"text",h[3]?h[2]:""];}
+  }
+  if(d>=4)return null;
+  // A bill the table found whose title has words of the phrase typed is
+  // listed before one that has none: "concealed carry" is an ask of the
+  // whole firearms entry, and the titles that say "carry" come first of it.
+  if(d>=1.5&&d<2&&g.parts){
+    let n=0;
+    for(const w of g.parts)if(altRx(w).test(b.hayT)||altRx(stem(w)).test(b.hayT))n++;
+    d-=Math.min(n,3)*0.1;
+  }
+  if(g.with&&!g.stands.some(t=>altRx(t).test(b.hayT))){
+    const second=withHit(b,g);
+    if(!second)return null;
+    // Two things the bill says together are worth more than one term in a
+    // title: listed just ahead of those.
+    return [Math.min(d,1.45),why,second];
+  }
+  return [d,why];
+}
+/* IN A SEARCH OF SEVERAL WORDS, TWO WEAK FINDINGS ARE NOT A BILL. A longer
+   word in the title is a guess at what the reader meant, and so is a word
+   that only the topic, the analysis or the text has. One guess a bill is
+   listed for, after the bills that have the words. Both together listed nine
+   bills on health carriers for "car insurance" -- "care" or "carrier" in the
+   title, "insurance" in the analysis -- and tax dollars donated to
+   non-profit organizations for "organ donation". So the start of a longer
+   title word does not count beside a word found only outside the title.
+   Not for a two-letter word read as a start (readShort): that reading is
+   itself the last resort of a search that listed nothing. */
+function fit(b,g){
+  const f=fitAlone(b,g);
+  if(!f||f[0]!==1||!g.peers||(g.short&&g.short.has(b.term||"")))return f;
+  for(const o of g.peers){
+    const x=fitAlone(b,o);
+    if(x&&x[1]&&x[1][0]!=="title")return null;
+  }
+  return f;
+}
+// 3 in the title, 2 in the sponsor's name, 1 in a committee's name, 0 not at
+// all; and 2.5 where it is the topic, the analysis or the text that has it.
+// A sponsor's name or a committee's matches only what the reader typed: a
+// synonym found in a committee's name ("energy", for "electric vehicles") put a
+// bill about hunting from a vehicle in the results.
+function groupWeight(b,g){
+  const f=fit(b,g);
+  if(!f)return 0;
+  if(f[1])return f[1][0]==="title"?3:2.5;
+  let w=0;
+  for(const alt of g.alts){
+    if(inText(b.hayT,g,alt,b.term))return 3;
+    if(!(typedAlt(g,alt)||alt===g.word))continue;
+    if(w<2&&altRx(alt).test(b.hayS))w=2;
+    if(w<1&&inText(b.hayC,g,alt,b.term))w=1;
+  }
+  return w||2.5;
 }
 function looseness(b,gs){
   let n=0;
-  for(const g of gs){
-    let d=3;
-    for(const alt of g.alts){
-      const own=typedAlt(g,alt)||alt===g.word;
-      if(altRx(alt).test(b.hayT)||(own&&nameRx(alt).test(b.hayS))){d=0;break;}
-      if(d>1&&(inText(b.hayT,g,alt)||(own&&altRx(alt).test(b.hayS))))d=1;
-      if(d>2&&own&&altRx(alt).test(b.hayC))d=2;
-    }
-    n+=d;
-  }
+  for(const g of gs){const f=fit(b,g);n+=f?f[0]:3;}
   return n;
+}
+/* WHY A BILL IS LISTED, where its title does not have the reader's word: in
+   the bill's own words, never the reader's. "topic: Housing"; "in the bill's
+   text" for the word typed; "text says: lavatory" for a word this file
+   stood the typed one for. Nothing for a bill whose title, sponsor or
+   committee has the word -- the card shows those. */
+function whyListed(b,gs){
+  const said=[];
+  for(const g of gs){
+    const f=fit(b,g);
+    if(!f)continue;
+    const y=f[1],z=f[2];
+    if(!y)continue;
+    let s=y[0]==="topic"?"topic: "+b.topic
+      :y[1]?y[0]+" says: "+y[1]:"in the bill's "+y[0];
+    if(z)s+=y[1]&&z[0]===y[0]?" and "+z[1]:", "+z[0]+" says: "+z[1];
+    if(!said.includes(s))said.push(s);
+  }
+  return said.join("; ");
+}
+/* A SEARCH THAT LISTS NOTHING. Two things, and neither changes a search
+   that lists a bill.
+
+   A WORD OF TWO LETTERS, AS THE START OF A WORD. "special ed" found 21
+   bills while "ed" began "education", and none once a two-letter word had
+   to be a word -- which is right for "ai" and "ev", where the table has
+   the word, and for a search that finds something. It is decided term by
+   term: read over every term at once, "special ed" listed one bill, a 2001
+   bill on number plates whose sponsor is an Ed, where this term alone
+   listed 29. A wider search must never list less.
+
+   A WORD NO BILL HAS EVER USED, OFFERED AS THE WORD IT SOUNDS LIKE.
+   "medicade" and "fentynal" find nothing. The page then offers the word of
+   the bills being searched that sounds the same -- the same consonants in
+   the same order, which is what a misspelling by ear keeps -- or, failing
+   that, a word one letter away: "Did you mean medicaid?", with how many
+   bills that finds. By sound first: "medicade" is one letter from Medicare
+   and two from Medicaid, and it is Medicaid that it sounds like.
+
+   IT IS AN OFFER, AND ONLY FOR A WORD THAT IS NOT ONE. For one day
+   (1 October) the search was read again by itself, and the page said "no
+   bill says incest: showing invest" over 98 bills about investment -- when
+   three bills of the term say incest, in texts that are not about it.
+   "white" was read as "with", "bible" as "bill", "syria" as "sharia", a
+   former senator's name as "house" (2,052 bills), "salem" as "sale". What
+   was missing was any way to know a real word from a misspelt one. So:
+   - sidx/words.json (build_search_index.py) is every word of five letters
+     or more that any bill of any term uses -- title, analysis, text,
+     sponsor or committee -- with the names of members and towns. A word in
+     it is a word, and is never offered as another. Nor is the start of
+     one: "londo" is somebody typing Londonderry. The page fetches the file
+     only when a search has listed nothing, and offers nothing without it;
+   - a word is never offered as one the search skips ("with", "bill");
+   - nothing is done until the reader chooses. A word the bills have never
+     used can still be a word -- Haiti, lynching -- and offering "hate" for
+     it is a poor guess; listing the hate crime bills under it unasked would
+     be a wrong answer. */
+const asSaid=w=>w.replace(/ph/g,"f").replace(/c(?=[eiy])/g,"s").replace(/[ckq]/g,"k").replace(/z/g,"s");
+function soundKey(w){
+  const s=asSaid(w);
+  return (s[0]+s.slice(1).replace(/[aeiouyh']/g,"")).replace(/(.)\1+/g,"$1");
+}
+// Letters added, dropped, changed or swapped with a neighbour, up to `max`.
+function lettersApart(a,b,max){
+  if(Math.abs(a.length-b.length)>max)return max+1;
+  let p2=null,p1=[];
+  for(let j=0;j<=b.length;j++)p1[j]=j;
+  for(let i=1;i<=a.length;i++){
+    const row=[i];
+    let low=i;
+    for(let j=1;j<=b.length;j++){
+      const c=a[i-1]===b[j-1]?0:1;
+      row[j]=Math.min(p1[j]+1,row[j-1]+1,p1[j-1]+c);
+      if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])row[j]=Math.min(row[j],p2[j-2]+1);
+      if(row[j]<low)low=row[j];
+    }
+    if(low>max)return max+1;
+    p2=p1;p1=row;
+  }
+  return p1[b.length];
+}
+// The words the bills being searched can be found by, with how many bills:
+// what a title says and what the search index files a bill under. Not a word
+// the search skips: "white" is two letters from "with".
+let VOCAB=null;
+function vocabOf(rows){
+  if(VOCAB&&VOCAB.rows===rows&&VOCAB.n===rows.length&&VOCAB.gen===SIDXGEN)return VOCAB.list;
+  const words=new Map(),add=(w,n)=>{if(w.length>=4&&/^[a-z]+$/.test(w)&&!STOPSET.has(w))
+    words.set(w,(words.get(w)||0)+n);};
+  const terms=new Set();
+  for(const b of rows){
+    terms.add(b.term);
+    for(const w of b.hayT.split(/[^a-z]+/))add(w,1);
+  }
+  for(const t of terms){
+    const X=SIDX[t];
+    if(X)for(const k in X.w)add(k,X.w[k].length);
+  }
+  VOCAB={rows,n:rows.length,gen:SIDXGEN,list:words};
+  return words;
+}
+/* HOW CLOSE. Read against 182 real words no bill has used and 36 common
+   misspellings (1 October): two letters apart is a misspelling only in a
+   long word -- "medicade", "fentynal" -- and in a short one it is another
+   word (Haiti and hate, Kenya and keno, Amish and amass). And a word spelt
+   by ear keeps how it starts: "lynching" is not "launching", nor "proton"
+   "portion". So: the first two letters as they sound; then the same sound
+   and one letter apart, or two in a word of eight letters or more; or
+   another sound and one letter apart ("pention", "morgage"). That offered
+   26 of the 36 their word, and 3 of the 182 another (photon as photo; 6
+   over every term, Mormon as Morton among them). */
+function soundsLike(word,rows){
+  const key=soundKey(word),head=asSaid(word).slice(0,2),most=word.length>=8?2:1;
+  let best=null;
+  for(const [v,n] of vocabOf(rows)){
+    if(asSaid(v).slice(0,2)!==head)continue;
+    const same=soundKey(v)===key;
+    const far=lettersApart(word,v,same?most:1);
+    if(far>(same?most:1)||!far)continue;
+    const score=[same?0:1,far,-n];
+    if(!best||score[0]<best[0][0]||(score[0]===best[0][0]&&(score[1]<best[0][1]
+      ||(score[1]===best[0][1]&&score[2]<best[0][2]))))best=[score,v];
+  }
+  return best&&best[1];
+}
+// A part of a search that is one plain word: not the table's, not a phrase.
+const plainWord=g=>!g.exact&&g.tab==null&&!g.word.includes(" ")&&/^[a-z]+$/.test(g.word);
+// The groups of a search as they are read against these bills. In each term
+// where the search as typed lists nothing, a word of two letters is read as
+// the start of a word. The groups handed in are the ones handed back.
+function readShort(gs,rows){
+  const two=gs.filter(g=>plainWord(g)&&g.word.length<3);
+  if(!two.length)return gs;
+  two.forEach(g=>{g.short=null;});
+  const seen=new Set(),found=new Set();
+  for(const b of rows){
+    const t=b.term||"";
+    seen.add(t);
+    if(!found.has(t)&&gs.every(g=>fit(b,g)))found.add(t);
+  }
+  const none=new Set([...seen].filter(t=>!found.has(t)));
+  if(none.size)two.forEach(g=>{g.short=none;});
+  return gs;
+}
+/* Every word any bill has used, and the names of members and towns: what
+   build_search_index.py writes as sidx/words.json. A file of another
+   version, or one with no words in it, is refused, and nothing is offered. */
+let KNOWN=null;
+function wordsAdd(data){
+  if(!data||data.v!==1||typeof data.words!=="string"||!data.words)return false;
+  KNOWN={set:new Set(data.words.split(" ")),starts:new Map()};
+  return true;
+}
+// A word the bills use, or the start of one.
+function knownWord(w){
+  if(KNOWN.set.has(w)||KNOWN.set.has(stem(w)))return true;
+  if(!KNOWN.starts.has(w)){
+    let yes=false;
+    for(const k of KNOWN.set)if(k.length>w.length&&k.startsWith(w)){yes=true;break;}
+    KNOWN.starts.set(w,yes);
+  }
+  return KNOWN.starts.get(w);
+}
+/* For a search that lists nothing among these bills: null where there is
+   nothing to offer; {need:true} where there may be and the known words have
+   not been handed over (wordsAdd); or {q, read, n} -- the search to offer in
+   its place, the [word typed, word offered] pairs, and how many of these
+   bills it lists. The whole search is read again, so that "vacine mandate"
+   is offered as the phrase "vaccine mandate". Only where every term's text
+   has been read: the words a bill can be found by are half in that file. */
+function spelling(gs,rows){
+  const odd=gs.filter(g=>plainWord(g)&&g.word.length>=5&&!rows.some(b=>fit(b,g)));
+  if(!odd.length)return null;
+  for(const b of rows)if(!b.term||!SIDX[b.term])return null;
+  if(!KNOWN)return {need:true};
+  const read=[];
+  const words=gs.map(g=>{
+    if(!odd.includes(g)||knownWord(g.word))return g.word;
+    const v=soundsLike(g.word,rows);
+    if(v)read.push([g.word,v]);
+    return v||g.word;
+  });
+  if(!read.length)return null;
+  const q=words.join(" "),again=readShort(queryGroups(q),rows);
+  let n=0;
+  for(const b of rows)if(again.every(g=>fit(b,g)))n++;
+  return n?{q,read,n}:null;
 }
 // BILLMATCH:END
 // NOTHING FOUND is still an answer with somewhere to go. A search of several
@@ -364,6 +1448,9 @@ function looseness(b,gs){
 // who does not know a bill number and has no other way in.
 function emptyResult(){
   const gs=query.trim()&&!billNumbers(query)?groupsFor(query.trim()):[];
+  // While the bills' text is on its way, "no bills match" is not known yet.
+  if(gs.length&&textState()==="loading")
+    return `<div class="empty">Reading the bills&rsquo; text&hellip;</div>`;
   const inTerm=IDX.filter(inTermOf);
   // The parts: each group of a search of several, or each word of a phrase
   // that was the whole search ("teacher pay" finds nothing this term).
@@ -371,15 +1458,124 @@ function emptyResult(){
     :gs.length===1&&gs[0].word.includes(" ")?gs[0].word.split(" ").filter(w=>!STOPSET.has(w)):[];
   const parts=words.map(w=>{const g2=queryGroups(w);
     return [w,inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length];}).filter(p=>p[1]);
+  // A word no bill has ever used, offered as the word it sounds like -- an
+  // offer, and never a list drawn in its place (see A SEARCH THAT LISTS
+  // NOTHING, above). Only where the search itself lists nothing in the
+  // term: a list a filter emptied is not a spelling.
+  let did="";
+  if(gs.length&&!inTerm.some(b=>gs.every(g=>groupWeight(b,g)>0))){
+    const sp=spelling(gs,inTerm);
+    if(sp&&sp.need)wantWords();
+    else if(sp)did=`<br><br>Did you mean <button class="link" data-q="${esc(sp.q)}">${
+      esc(sp.q)}</button> (${sp.n.toLocaleString()})?`;
+  }
   // termPhrase() brings its own preposition ("in the 2025-2026 term",
   // "across all terms"), so the "in the" that used to sit here made the
   // sentence read "No bills match in the in the 2025-2026 term." -- or, with
   // the picker on All terms, "in the across all terms". The two callers at
   // the count line pass it bare and were always right; this one doubled it.
   return `<div class="empty">No bills match${words.length?" all of that":""}
-    ${esc(termPhrase())}.${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
+    ${esc(termPhrase())}.${did}${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
       `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
       .join(" &middot; ")}`:""}<br><br>Try removing a filter, or a different term.</div>`;
+}
+/* THE BILLS' OWN TEXT, FETCHED WHEN SOMEBODY SEARCHES. site/sidx/<term>.json
+   is what build_search_index.py made of the analyses and texts of one term's
+   bills (see THE BILLS' OWN WORDS, above). Nobody who only browses the list
+   pays for it: it is asked for the first time a search in words is run on a
+   term, once, and the list is drawn again when it arrives. On All terms that
+   is every term's file. If one cannot be had, that term's bills are found by
+   title and topic as before, and the line under the search box says so --
+   silence there would read as "nothing in the text". */
+const TEXT={};
+let TEXTGEN=0,TEXTDRAW=0;
+function wantText(){
+  const q=query.trim();
+  if(!q||billNumbers(q))return;
+  const terms=term===ALL_TERMS?((META&&META.terms)||[]):[term];
+  for(const t of terms){
+    if(!t||TEXT[t])continue;
+    TEXT[t]="loading";
+    fetch(DATA("sidx/"+encodeURIComponent(t)+".json"))
+      .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+      .then(j=>{TEXT[t]=indexAdd(t,j)?"ready":"failed";})
+      .catch(()=>{TEXT[t]="failed";})
+      .then(()=>{
+        TEXTGEN++;
+        // One redraw for a batch of terms, not nineteen.
+        clearTimeout(TEXTDRAW);
+        TEXTDRAW=setTimeout(()=>{if(query.trim())render();},40);
+      });
+  }
+}
+// "loading" while any term being searched is still on its way, "failed" if
+// one could not be had, "ready" otherwise.
+function textState(){
+  const terms=term===ALL_TERMS?((META&&META.terms)||[]):[term];
+  const st=terms.map(t=>TEXT[t]);
+  return st.includes("loading")?"loading":st.includes("failed")?"failed":"ready";
+}
+/* EVERY WORD THE BILLS USE, FETCHED WHEN A SEARCH LISTS NOTHING.
+   sidx/words.json is what tells a misspelt word from a real one that no
+   bill of this term is about (spelling(), above). It is about 100 KB over
+   the wire, so it is asked for once, the first time a search in words
+   comes back empty with a word in it that might be a misspelling, and the
+   empty result is drawn again when it arrives. If it cannot be had,
+   nothing is offered. */
+let WORDS="";
+function wantWords(){
+  if(WORDS)return;
+  WORDS="loading";
+  fetch(DATA("sidx/words.json"))
+    .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+    .then(j=>{WORDS=wordsAdd(j)?"ready":"failed";})
+    .catch(()=>{WORDS="failed";})
+    .then(()=>{if(WORDS==="ready"&&query.trim())render();});
+}
+/* The search as it is read against the bills in view: the groups of
+   queryGroups(), with readShort()'s reading of a two-letter word in a term
+   where the search lists nothing ("special ed"). Kept until the search, the
+   term or what has been fetched changes. */
+let QG_KEY=null,QG=[];
+function groupsFor(q){
+  const key=[q,term,IDX.length,TEXTGEN].join("\u0001");
+  if(key!==QG_KEY){QG_KEY=key;QG=readShort(queryGroups(q),IDX.filter(inTermOf));}
+  return QG;
+}
+/* WHY THE LIST IS WHAT IT IS, in the bills' own words. A reader who types
+   "lgbtq" is shown bills whose titles never say it. This line under the
+   search box says what the bills were searched for: the words that stand
+   beside the reader's own (SYN), then the wording of the table (CONCEPTS)
+   that found a bill now listed -- only those, because each card says which
+   of its own words put it there, and a list of thirty terms that found
+   nothing was four lines long. The words typed are not repeated back, and
+   nothing here describes a bill -- only what it says. */
+function searchHint(gs,rows){
+  rows=rows||[];
+  const typed=g=>[g.word,stem(g.word),g.pre,...(g.asked||[])];
+  const syn=[...new Set(gs.flatMap(g=>g.alts.slice(0,g.tab!=null?g.tab:g.alts.length)
+    .filter(x=>!typed(g).includes(x))))];
+  const found=new Set();
+  for(const b of rows)for(const g of gs){
+    const f=g.tab!=null&&fit(b,g);
+    if(!f)continue;
+    if(f[1]&&f[1][1])found.add(f[1][1]);
+    if(f[2])found.add(f[2][1]);
+  }
+  const tab=[...found].filter(x=>!syn.includes(x)&&!gs.some(g=>typed(g).includes(x)));
+  const state=textState();
+  return [syn.length?`also matching: ${syn.join(", ")}`:"",
+    tab.length?`${syn.length?"then":"also listing"} bills that say: ${tab.join(", ")}`:"",
+    state==="loading"?"reading the bills\u2019 text\u2026"
+      :state==="failed"?"the bills\u2019 text could not be read: titles and topics only":""]
+    .filter(Boolean).join("; ");
+}
+// The line on a card that says why it is listed, where its title does not.
+function whyLine(b){
+  const q=query.trim();
+  if(!q||billNumbers(q)||b.lsr)return "";
+  const y=whyListed(b,groupsFor(q));
+  return y?`<div class="cwhy">Listed for &mdash; ${esc(y)}</div>`:"";
 }
 function scoreOf(b){
   const gs=groupsFor(query.trim());
@@ -3409,7 +4605,7 @@ function cardHtml(b,focus){
           ?` <span class="chip" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
         <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
-        <div class="cmeta">${cmeta(b)}</div>
+        <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
         ${(open||focus)&&detail[dkey(b.id)]?datedRail(b,detail[dkey(b.id)]):rail(b)}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
@@ -4628,15 +5824,16 @@ function render(more){
     const want=query.trim()&&!billNumbers(query)?"best":"num";
     if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
   }
+  wantText();
   const rows=sortRows(IDX.filter(b=>matches(b)));
   const inTerm=IDX.filter(inTermOf).length;
   // Say when a search matched on a synonym, so nobody wonders why a bill about
   // firearms turned up for "guns".
-  const used=query.trim()?[...new Set(groupsFor(query.trim()).flatMap(g=>
-    g.alts.filter(x=>x!==g.word&&x!==stem(g.word)).slice(0,3)))]:[];
+  // Nothing when nothing is listed: "also listing bills whose titles say ..."
+  // beside "0 of 2,243 bills" is a sentence about a list that is not there.
   const sh=$("#synhint");
-  if(sh)sh.textContent=used.length&&!billNumbers(query)
-    ? `also matching: ${used.join(", ")}` : "";
+  if(sh)sh.textContent=rows.length&&query.trim()&&!billNumbers(query)
+    ? searchHint(groupsFor(query.trim()),rows) : "";
   const ids0=billNumbers(query);
   // A focused view is one bill. The count describes a list that is not on
   // screen, and on a bill's own page it read "2,234 of 2,234 bills in the

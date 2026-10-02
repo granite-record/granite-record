@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.10
+// GRANITE_VERSION: 2026-09-16.12
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -284,7 +284,7 @@ function _fmark(text,q){
    So it searches the current term's bills as well, and counts them with the
    bill search's own matcher -- app.js's, which a page that does not run
    app.js loads as billmatch.js, cut out of app.js by build_pages.py -- so
-   that "All 30 bills that mention firearms" is the number /bills?q=firearms
+   that "All 30 bills found for firearms" is the number /bills?q=firearms
    then shows. The term is the one /bills opens on: away from a bill's own
    page app.js's wantedTerm() takes the first of meta.json's terms, and so
    does this. That term's index is about 135 KB over the wire, fetched the
@@ -304,6 +304,20 @@ function _fmark(text,q){
    through findBillsLoadAll below. */
 const FBILLS={rows:null,file:null,term:"",terms:[],api:null,loading:null,
   failed:false,redraw:false};
+/* THE BILLS' OWN TEXT (1 October). The bill search reads each bill's topic,
+   the drafters' analysis and its text as well as its title, from
+   sidx/<term>.json (app.js, "THE BILLS' OWN WORDS"; build_search_index.py
+   writes the files). The count here has to be the one /bills?q= then shows,
+   so this fetches the same file for the same term and hands it to the same
+   matcher, before the first count is shown. A file that cannot be had is not
+   an error: that term's bills are counted by title and topic, as /bills
+   counts them when its own fetch fails. */
+function _ftext(term){
+  const A=_fbillApi();
+  if(!A||!A.indexAdd)return Promise.resolve(false);
+  return _fjson("sidx/"+encodeURIComponent(term)+".json")
+    .then(j=>A.indexAdd(term,j)).catch(()=>false);
+}
 // The three haystacks exactly as app.js's ensureTerm() builds them.
 function _fprep(rows){
   const norm=s=>String(s||"").toLowerCase().replace(/-/g," ");
@@ -317,8 +331,11 @@ function _fbillApi(){
   // On bills.html and every record page, app.js is already loaded.
   if(typeof queryGroups==="function"&&typeof groupWeight==="function"
      &&typeof billNumbers==="function"&&typeof billKey==="function"
-     &&typeof looseness==="function")
-    return {queryGroups,groupWeight,billNumbers,billKey,looseness};
+     &&typeof looseness==="function"&&typeof indexAdd==="function"
+     &&typeof readShort==="function"&&typeof whyListed==="function"
+     &&typeof spelling==="function"&&typeof wordsAdd==="function")
+    return {queryGroups,groupWeight,billNumbers,billKey,looseness,indexAdd,
+            readShort,whyListed,spelling,wordsAdd};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -352,7 +369,7 @@ function findBillsLoad(){
     FBILLS.file=_fprep(rows);
     FBILLS.rows=FBILLS.file.filter(b=>!b.term||b.term===FBILLS.term);
     FBILLS.api=api;
-    return true;
+    return _ftext(FBILLS.term).then(()=>true);
   }).catch(()=>{FBILLS.failed=true;return false;});
   return FBILLS.loading;
 }
@@ -361,6 +378,8 @@ function findBillsLoad(){
    2.2 MB over the wire between them where the current term's is 135 KB, so
    the panel never asks for them: /search does, once a reader has searched
    for something, and after the current term, whose answer it shows first.
+   With each goes that term's sidx file, what its bills' analyses and texts
+   are about (build_search_index.py prints what they weigh).
    The rows are every file's, concatenated, as app.js's IDX holds them when
    /bills is opened on "All terms" -- so "All 412 bills" here is the count
    /bills?q=...&term=all then shows. If any term cannot be had, none of them
@@ -372,7 +391,8 @@ function findBillsLoadAll(){
   if(!FALL.loading)FALL.loading=findBillsLoad().then(ok=>{
     if(!ok)throw new Error("the current term did not load");
     return Promise.all(FBILLS.terms.filter(t=>t!==FBILLS.term).map(t=>
-      _fjson("idx/"+encodeURIComponent(t)+".json").then(rows=>{
+      Promise.all([_fjson("idx/"+encodeURIComponent(t)+".json"),_ftext(t)])
+      .then(([rows])=>{
         if(!Array.isArray(rows))throw new Error(`idx/${t}.json holds no list`);
         return _fprep(rows);})));
   }).then(parts=>{
@@ -409,6 +429,10 @@ function findBills(q,limit,allTerms){
   if(!ids){
     gs=A.queryGroups(s);
     if(!gs.length)return null;
+    // In a term where the search lists nothing, a two-letter word is read
+    // as the start of one ("special ed"). app.js's groupsFor() does the
+    // same, over the same bills.
+    if(A.readShort)gs=A.readShort(gs,src.rows);
     words=gs.map(g=>g.word).join(" ");
   }
   const hit=[];
@@ -429,16 +453,60 @@ function findBills(q,limit,allTerms){
   const num=(x,y)=>x[1][0]-y[1][0]||x[1][1]-y[1][1];
   hit.sort(ids?(x,y)=>num(x,y)||newer(x,y)
     :(x,y)=>x[3]-y[3]||y[0]-x[0]||newer(x,y)||num(x,y));
+  const top=hit.slice(0,limit==null?3:limit).map(h=>h[2]);
+  // Why each row shown is listed, where its title does not have the word.
+  const why=new Map();
+  if(gs&&A.whyListed)for(const b of top){const y=A.whyListed(b,gs);if(y)why.set(b,y);}
   return {state:"ready",n:hit.length,term:FBILLS.term,every:!!allTerms,
-          terms:allTerms?FALL.terms:[FBILLS.term],numbers:!!ids,
-          top:hit.slice(0,limit==null?3:limit).map(h=>h[2])};
+          terms:allTerms?FALL.terms:[FBILLS.term],numbers:!!ids,why,top};
+}
+
+/* A SEARCH THAT LISTS NO BILL, OFFERED AS THE WORD IT SOUNDS LIKE (app.js,
+   A SEARCH THAT LISTS NOTHING). For a day the bills row read the word
+   again by itself: a former member's surname opened with "All 2,052 bills
+   found for houde ... showing house" above the member, and Return went
+   there. Now nothing is counted under another word. Where no bill and no
+   name matches, the "Did you mean" line the names already had offers the
+   bills' word as well.
+
+   What tells a misspelling from a word is sidx/words.json, every word the
+   bills use. It is fetched the first time it is needed and not before:
+   {state:"loading"} until it is here, with FWORDS.loading to wait on; null
+   where there is nothing to offer, or the file cannot be had; else
+   {q, n}, the search to offer and how many bills it lists. */
+const FWORDS={state:"",loading:null,redraw:false};
+function findBillSpelling(q,allTerms){
+  const s=(q||"").trim(),src=allTerms?FALL:FBILLS,A=FBILLS.api;
+  if(!s||!src.rows||!A||!A.spelling||A.billNumbers(s))return null;
+  const sp=A.spelling(A.readShort(A.queryGroups(s),src.rows),src.rows);
+  if(!sp||!sp.need)return sp;
+  if(FWORDS.state==="failed")return null;
+  if(!FWORDS.loading){
+    FWORDS.state="loading";
+    FWORDS.loading=_fjson("sidx/words.json")
+      .then(j=>{FWORDS.state=A.wordsAdd(j)?"ready":"failed";})
+      .catch(()=>{FWORDS.state="failed";});
+  }
+  return FWORDS.state==="loading"?{state:"loading"}:null;
+}
+// The words to offer for a search nothing matched: the bills', and a name's.
+// The bills' first: it goes by sound, and for "medicade" it is Medicaid,
+// where the nearest name is the subject Medicare, one letter away. `wait` is
+// there while the bills' words are on their way: draw again after.
+function findOffers(q,allTerms){
+  const words=[],sp=findBillSpelling(q,allTerms);
+  const wait=sp&&sp.state==="loading"?FWORDS.loading:null;
+  if(sp&&sp.q)words.push(sp.q);
+  const did=findSuggest(q);
+  if(did&&!words.includes(did))words.push(did);
+  return {words,wait};
 }
 
 // One bill as a row: its number, and its title under it. A resolution's
 // title can run past 600 characters, and a row is read at a glance. `dated`
 // names the year as the bill's own page does -- "SB 412 (2000)" -- for a
 // list that crosses terms, where the number alone names nineteen bills.
-function findBillRow(b,q,dated){
+function findBillRow(b,q,dated,why){
   const y=String(b.year||String(b.term||"").slice(0,4));
   let t=String(b.title||"");
   const cut=t.length>160;
@@ -446,7 +514,8 @@ function findBillRow(b,q,dated){
   return `<a href="/bill/${encodeURIComponent(y)}/${encodeURIComponent(String(b.id).toLowerCase())}">
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}${dated&&y?` (${_fesc(y)})`:""}</span>
     <span class="fkind">Bill</span></span>
-    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}</a>`;
+    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
+    ${why?`<span class="fwhy">Listed for &mdash; ${_fesc(why)}</span>`:""}</a>`;
 }
 
 // "1989 to 2026", from the terms newest first.
@@ -455,16 +524,18 @@ function _fspan(terms){
   return a&&b?`${a} to ${b}`:"";
 }
 
-// The row that opens the bill search on what was typed: "All N bills that
-// mention" it once they are counted, and a plain offer before then or when
-// they could not be. `what` is a sentence about the bill search, for /search.
+// The row that opens the bill search on what was typed: "All N bills found
+// for" it once they are counted, and a plain offer before then or when they
+// could not be. `what` is a sentence about the bill search, for /search.
 // Counted across every term, it opens the bill search on All terms.
+// "Found for", not "that mention": the 19 bills listed for "lgbtq" do not
+// mention it, and the sentence said they did (1 October).
 function findBillsAll(B,q,what){
   const quoted=`&ldquo;${_fesc(q)}&rdquo;`;
   const ready=B&&B.state==="ready";
   const every=ready&&B.every;
   // "HB 1, SB 5" is a list of numbers, not words a bill mentions.
-  const verb=B&&B.numbers?["numbered","numbered"]:["that mentions","that mention"];
+  const verb=B&&B.numbers?["numbered","numbered"]:["found for","found for"];
   const name=ready?(B.n===1?`1 bill ${verb[0]} ${quoted}`
       :`All ${B.n.toLocaleString()} bills ${verb[1]} ${quoted}`)
     :`Search the bills for ${quoted}`;
@@ -523,7 +594,7 @@ function findDraw(q){
   }
   const counted=B&&B.state==="ready";
   const bills=B&&(!counted||B.n)?findBillsAll(B,s)
-    +(counted?B.top.map(b=>findBillRow(b,s)).join(""):""):"";
+    +(counted?B.top.map(b=>findBillRow(b,s,false,B.why.get(b))).join(""):""):"";
   // WHERE THE BILLS GO: after the sitting members, committees, towns and
   // subjects that have every word typed as a whole word of their name
   // (_fwhole), and ahead of everything else, which is every former member
@@ -536,16 +607,25 @@ function findDraw(q){
   const list=named.map(row).join("")+bills
     +rows.filter(r=>!named.includes(r)).map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here
-  // and no bill matches; "Did you mean" only when no bill does either, since
-  // its guesses come from names alone ("voting" was offered "zoning" over
-  // 141 bills). While the bills are being counted, neither: it is not known.
+  // and no bill matches; "Did you mean" only when no bill does either
+  // ("voting" was offered "zoning" over 141 bills). Its guesses are a name
+  // close to what was typed and, since 1 October, the word of the bills
+  // that a misspelt one sounds like (findOffers). While the bills are being
+  // counted, neither: it is not known.
   let tail="";
   if(!rows.length&&!num&&(!B||(counted&&!B.n)||B.state==="failed")){
     const none=!B||counted?"No matching results.":"";
-    const did=findSuggest(s);
-    if(none||did)tail=`<p class="fnote">${none}${did?`${none?" ":""}Did you mean
-      <button type="button" class="fdym" data-q="${_fesc(did)}">${_fesc(did)}</button>?`
-      :""}</p>`;
+    const offer=findOffers(s,false);
+    if(offer.wait&&!FWORDS.redraw){
+      FWORDS.redraw=true;
+      offer.wait.then(()=>{
+        const box=document.getElementById("findq");
+        if(box)findDraw(box.value);});
+    }
+    const did=offer.words.map(d=>
+      `<button type="button" class="fdym" data-q="${_fesc(d)}">${_fesc(d)}</button>`);
+    if(none||did.length)tail=`<p class="fnote">${none}${did.length
+      ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
   }
   out.innerHTML=num?all+list+every+tail:list+all+tail;
 }

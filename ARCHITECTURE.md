@@ -242,6 +242,75 @@ live on every page.
 
 Those four commands are the check on a change of this kind.
 
+## The bill search, and what it reads
+
+One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it
+there; `build_pages.py` cuts the marked lines into `site/billmatch.js`, which
+`find.js` loads for the header's search box and for `/search`. So the three
+count the same bills, and a change to the marked lines changes all three.
+
+It reads, for each bill, in the order it lists them:
+
+1. **the title**, the prime sponsor's name and the committees' names, from
+   `site/idx/<term>.json` -- the word itself before a longer word it begins;
+2. **the topic** the bill is filed under, for a single typed word that is the
+   topic's name, and only where the topic names one subject. In a search of
+   several words a topic stands for one of them only when it is that word
+   and nothing else and the title has the rest;
+3. **the drafters' analysis and the bill's text**, from
+   `site/sidx/<term>.json`, which `build_search_index.py` writes: for each
+   word, the bills it is central to and how central, 1 to 9. The page fetches
+   that file only when somebody searches, per term;
+4. **a table of public words** (`CONCEPTS`), for what a reader types that no
+   bill says -- "lgbtq", "weed", "bathroom bill" -- each standing for wording
+   the bills do use. A phrase of the table is looked for in all of the
+   above; a single word of it in titles and analyses, and in the body of a
+   text only under an entry's `with` rule.
+
+Five things in it are easy to undo by accident.
+
+*A single word the table supplies is not read in the body of a text.* A
+phrase ("risk protection order") is specific and a single word is not: read
+in texts, "gun control" listed a speed enforcement fund for its radar guns
+and "illegal immigrants" five bills on alien insurers. The word the reader
+typed is still read there.
+
+*A search that lists nothing is offered a word, never read as one.*
+`site/sidx/words.json`, which the same build writes, is every word of five
+letters or more that any bill of any term uses, with the names of members and
+towns. A typed word that lists nothing and is in that file is a real word no
+bill of the term is about, and nothing is offered for it; one that is not in
+it is offered as the word of the bills it sounds like ("medicade", Medicaid),
+as a "Did you mean" that the reader chooses. The file is fetched only when a
+search has listed nothing. For one day the page read such a word again by
+itself, with no such file: it showed 98 investment bills for "incest" under
+"no bill says incest", which three bills do.
+
+*What "about" means is decided at build time.* A word a text uses once is
+nearly always a passing mention, so the build keeps a word for a bill when the
+analysis has it, or the text uses it twice and leans on it. The exception is
+kept at weight 0 and counts only under a table entry's `with` rule (a second
+thing the bill must also say): four vetoed bills say "lavatory" once, beside
+"biological sex", and that is all that marks them as what the public calls the
+bathroom bills.
+
+*A bill is listed for its own words.* A table term finds a bill because the
+bill's title, analysis or text has it; a card listed that way says which
+("text says: lavatory"). The table never lists a bill for what it is said to
+do.
+
+*Two programs read the same words.* `stem()`, `wordKeys()` and `altRx()` in
+`app.js` have twins in `build_search_index.py`, and the build reads the
+tables' phrases out of `app.js` with a regular expression. `preflight` runs
+both over the same words and texts and fails when they differ; without that
+check a word is filed under one key, looked up under another, and nothing
+fails.
+
+`tests/search_cases.json` holds real searches against real bills, with
+`tests/search_index.json` cut from the real index for them;
+`python3 build_search_index.py --fixture tests/search_cases.json` refreshes
+both from the record.
+
 ## Sitting days, built 19 September
 
 A page for every day the House sat, at `/session/H/<date>`, and for every day
