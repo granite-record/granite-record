@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.140
+# GRANITE_VERSION: 2026-09-05.141
 """
 Generate the faceted site from real General Court data.
 
@@ -3619,6 +3619,17 @@ def passage(stages, kind, status="", bill="", passed=None, acted=None):
     # than as where the bill stopped.
     if not {"H", "S"} <= {h.split(":")[0] for h in hands}:
         hands = [h for h in hands if not h.startswith("G")]
+    # AND THE GOVERNOR DID NOT ACT ON A BILL A CHAMBER ENDED. HB 613 and HB 614
+    # of 1993 passed both chambers; the Senate recalled and tabled each the
+    # next day and killed it with every tabled bill on 25 May, the day of a
+    # House row "ENROLLED", which stage_of files with the governor. The rail
+    # read "Senate: Passed, Governor: Passed, Law: Did not become law" beside
+    # "Killed". A bill that reached the governor is law, or was vetoed, or is
+    # there now: where the status is none of those and a chamber's own last
+    # word did not carry the bill on, the enrolment is no governor's stop.
+    if (kind == "done" and passed is not None and "veto" not in (status or "").lower()
+            and not {"H", "S"} <= set(passed)):
+        hands = [h for h in hands if not h.startswith("G")]
     if not hands:
         return ""
     seen = {h.split(":")[0] for h in hands}
@@ -3692,6 +3703,14 @@ def passage(stages, kind, status="", bill="", passed=None, acted=None):
             # bill on: SB 223 of 2020's docket dates the House's referral
             # before the Senate's final vote, so the Senate was the last hand,
             # and the House -- which then laid it on the table -- read passed.
+            out.append("x")
+        elif stop == other and status == "Passed one chamber":
+            # ONE CHAMBER PASSED IT, AND THIS IS THE OTHER. CACR 9 of 1995
+            # passed the Senate 18-6 on 21 February; the House's row of
+            # introduction states the 16th, so the Senate was the last hand,
+            # and the House -- which vacated it from committee and "RETURNED
+            # TO SENATE PER HOUSE RULE 19B" without a vote -- read passed,
+            # beside a chip saying one chamber had.
             out.append("x")
         else:
             out.append("p")

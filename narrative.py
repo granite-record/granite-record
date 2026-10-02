@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.51
+# GRANITE_VERSION: 2026-09-04.52
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2465,6 +2465,41 @@ def in_recess(ev, r, fixed=None):
     return ev
 
 
+# A ROW FILED UNDER THE OTHER CHAMBER. The docket's chamber column is typed by
+# hand, and HB 1371 of 1992 carries its House committee's report under S:
+# "1992|2256|02/04/1992|HB1371|S|MAJ REPORT ITL FOR FEB11 (VOTE 14-0;CC)", the
+# one row of that letter, between the committee's work session and "ITL REPORT
+# ADOPTED" in the House on 11 February. HB 1188 of 1992 carries a subcommittee
+# work session of House Transportation the same way. The history gave each a
+# stage "In Senate committee", and the rail drew "House: Passed, Senate:
+# Passed" for a bill the House killed and one it sent to interim study.
+#
+# A committee's row needs a referral, and a referral an introduction. So where
+# a chamber's ONLY row on a measure is a committee's -- a hearing, a session
+# or a report -- and the other chamber has every other row, at least two, the
+# row is told as the chamber's whose bill it is, and the bill's list of
+# docket lines says so beside it. Not a floor row: "Sen. Francoeur Rules
+# Suspension 2/3 nec. for Introduction, MF" is the Senate's one row on HB 2002
+# of 2002, and it is the Senate refusing the bill.
+COMMITTEE_ROWS = ("hearing", "exec", "worksession", "report", "interim_report", "retained")
+FILED_UNDER = ("The General Court's docket files this row under the {wrong}. It is the only "
+               "row there, and a committee's: it is told as the {right}'s.")
+
+
+def other_chambers_row(evs):
+    """Give a committee row filed under the chamber that never had the bill
+    to the chamber that did (COMMITTEE_ROWS). evs is every row of the bill."""
+    for wrong, right in (("S", "H"), ("H", "S")):
+        mine = [e for e in evs if (e.get("body") or "").upper() == wrong]
+        theirs = [e for e in evs if (e.get("body") or "").upper() == right]
+        if len(mine) == 1 and len(theirs) >= 2 and mine[0].get("_type") in COMMITTEE_ROWS:
+            mine[0]["body"] = right
+            if not mine[0].get("row_note"):
+                mine[0]["row_note"] = FILED_UNDER.format(
+                    wrong=CHAMBER[wrong], right=CHAMBER[right])
+    return evs
+
+
 def hold_in_order(evs):
     """An as-of date (docket_vocab.as_of) may not move an action ahead of one
     it followed. evs is sorted; it is re-sorted if anything is put back.
@@ -2651,6 +2686,7 @@ def build(bill, rows, introduction=None):
         # it takes the key off again.
         ev["_row"] = len(evs)
         evs.append(ev)
+    other_chambers_row(evs)
     evs.sort(key=day_order)
     hold_in_order(evs)
 

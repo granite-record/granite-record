@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.319
+# GRANITE_VERSION: 2026-09-04.320
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2988,6 +2988,136 @@ def _month_written_out(N):
     return "ok", ("SB 42 of 2007 was heard on February 13, SB 233's conferees met on June 19 "
                   "and HB 1 of 2011 was heard on April 21; two hearings typed with last "
                   "year's year are of the year they were entered for")
+
+
+# Real rows: Docket_db_1995-1996.txt lines 3001-3010 (CACR 9);
+# Docket_db_1993-1994.txt 2095-2104 (HB 613); Docket_db_1991-1992.txt
+# 15504-15509 (HB 1371) and 15915-15923 (HB 1188); Docket_db_2001-2002.txt
+# 17545-17550 (HB 2002). The status fields beside each are its record's.
+_DOCKET_RAIL_AGAINST_RECORD = {
+    ("1995-1996", "CACR9"): ({"gen_status": "SENATE", "house_status": "NO ACTION",
+                              "senate_status": "PASSED/ADOPTED"}, [
+        "1995|0339|01/05/1995 10:08:37 AM|CACR9|S|INTRODUCED AND REF TO PUBLIC AFFAIRS; SJ2,P33|01/05/1995 10:08:37 AM",
+        "1995|0339|01/18/1995 09:46:30 AM|CACR9|S|HEARING FEB02 10:30 RM102,LOB    FOR: PUBLIC AFFAIRS|01/18/1995 09:46:30 AM",
+        "1995|0339|02/06/1995 01:59:34 PM|CACR9|S|COMM REPORT  OTP  FEB07|02/06/1995 01:59:34 PM",
+        "1995|0339|02/07/1995 01:54:04 PM|CACR9|S|RECOMMITTED TO PUBLIC AFFAIRS, SEN RUBENS MA VV; SJ3,P41|02/07/1995 01:54:04 PM",
+        "1995|0339|02/17/1995 04:35:17 PM|CACR9|S|COMM REPORT  OTP  FEB21|02/17/1995 04:35:17 PM",
+        "1995|0339|02/21/1995 03:48:28 PM|CACR9|S|ADOPTED RC(18-6); SJ6,P57 + 75|02/21/1995 03:48:28 PM",
+        "1995|0339|02/22/1995 11:55:36 AM|CACR9|H|02/16/95  INTRODUCED AND REF TO CON & STAT; HJ31,P738|02/22/1995 11:55:36 AM",
+        "1995|0339|02/22/1995 11:58:37 AM|CACR9|H|COPY TO CHAIRMAN ON  02/28/95 DUE ON  05/03/95|02/22/1995 11:58:37 AM",
+        "1995|0339|03/09/1995 11:12:09 AM|CACR9|H|VACATED FROM CON & STAT, REPS FLANAGAN & HOLDEN MA VV; HJ35,P943|03/09/1995 11:12:09 AM",
+        "1995|0339|03/09/1995 01:13:01 PM|CACR9|H|RETURNED TO SENATE PER HOUSE RULE 19B     (SUBJECT INDEF POST)|03/09/1995 01:13:01 PM"]),
+    ("1993-1994", "HB613"): ({"gen_status": "SENATE", "house_status": "PASSED/ADOPTED",
+                              "senate_status": "INEXPEDIENT TO LEGISLATE"}, [
+        "1993|0227|04/15/1993 02:39:58 PM|HB613|H|PASSED RC(291-58); HJ58,P1411-1413 + 1433|04/15/1993 02:39:58 PM",
+        "1993|0227|04/20/1993 10:08:28 AM|HB613|S|INTRODUCED AND REF TO PUBLIC INST/H&HS; SJ15,P283|04/20/1993 10:08:28 AM",
+        "1993|0227|04/26/1993 12:06:58 PM|HB613|S|HEARING MAY05 09:10 RM102,LOB    FOR:PUB INST/H&HS|04/26/1993 12:06:58 PM",
+        "1993|0227|05/17/1993 05:42:54 PM|HB613|S|COMM REPORT  OTP  MAY18|05/17/1993 05:42:54 PM",
+        "1993|0227|05/18/1993 10:09:45 AM|HB613|S|PASSED RC(15-7); SJ18,P364 + 373|05/18/1993 10:09:45 AM",
+        "1993|0227|05/19/1993 09:13:27 AM|HB613|S|SEN BLAISDELL MOVED TO RECALL, MA VV; LAID ON THE TABLE, SEN|05/19/1993 09:13:27 AM",
+        "1993|0227|05/19/1993 09:13:45 AM|HB613|S|BLAISDELL MA VV; SJ19,P454|05/19/1993 09:13:45 AM",
+        "1993|0227|05/25/1993 04:06:33 PM|HB613|H|ENROLLED; HJ82,P1921  (SEE MAY 25TH PERM JRNL)|05/25/1993 04:06:33 PM",
+        "1993|0227|05/25/1993 04:07:00 PM|HB613|S|SEN RUSSMAN MOVED ALL LOT BILLS BE ITL, ITL REPORT ADOPTED;|05/25/1993 04:07:00 PM",
+        "1993|0227|05/25/1993 04:08:00 PM|HB613|S|SJ20,P480|05/25/1993 04:08:00 PM"]),
+    ("1991-1992", "HB1371"): ({"gen_status": "HOUSE",
+                               "house_status": "INEXPEDIENT TO LEGISLATE", "senate_status": ""}, [
+        "1992|2256|01/08/1992 11:41:04 AM|HB1371|H|INTRODUCED AND REF TO CHILD Y&JJ;  HJ 9,P268|01/08/1992 11:41:04 AM",
+        "1992|2256|01/08/1992 11:45:22 AM|HB1371|H|IN SEAT POCKET ON  01/08/92   DUE ON  02/26/92|01/08/1992 11:45:22 AM",
+        "1992|2256|01/08/1992 12:51:38 PM|HB1371|H|HEARING JAN21 10:00 RM206,LOB    FOR: CHILD Y&JJ|01/08/1992 12:51:38 PM",
+        "1992|2256|01/21/1992 01:06:51 PM|HB1371|H|SUBCOM WORK SESSION JAN29 10:00 RM206,LOB    FOR: CHILD Y&JJ|01/21/1992 01:06:51 PM",
+        "1992|2256|02/04/1992 03:57:51 PM|HB1371|S|MAJ REPORT ITL FOR FEB11  (VOTE 14-0;CC)|02/04/1992 03:57:51 PM",
+        "1992|2256|02/11/1992 02:10:08 PM|HB1371|H|ITL REPORT ADOPTED; HJ30,P763|02/11/1992 02:10:08 PM"]),
+    ("1991-1992", "HB1188"): ({"gen_status": "HOUSE", "house_status": "INTERIM STUDY",
+                               "senate_status": ""}, [
+        "1992|2304|01/08/1992 12:07:43 PM|HB1188|H|INTRODUCED AND REF TO RES, REC & DEV;  HJ 9,P259|01/08/1992 12:07:43 PM",
+        "1992|2304|01/08/1992 02:00:12 PM|HB1188|H|IN SEAT POCKET ON  01/08/92   DUE ON  02/26/92|01/08/1992 02:00:12 PM",
+        "1992|2304|01/08/1992 03:16:49 PM|HB1188|H|==CANCELLED==HEARING JAN28 10:00 RM301,LOB    FOR: RES, REC & DEV|01/08/1992 03:16:49 PM",
+        "1992|2304|01/08/1992 03:17:00 PM|HB1188|H|VACATED TO TRANSPORTATION, REP DICKINSON MA VV; HJ9,P278|01/08/1992 03:17:00 PM",
+        "1992|2304|01/10/1992 12:28:37 PM|HB1188|H|HEARING JAN21 02:00 RM203,LOB    FOR: TRANSPORTATION|01/10/1992 12:28:37 PM",
+        "1992|2304|02/03/1992 10:50:49 AM|HB1188|S|SUBCOM WORK SESSION FEB11 10:00 RM203,LOB    FOR: TRANSPORTATION|02/03/1992 10:50:49 AM",
+        "1992|2304|02/13/1992 09:45:14 AM|HB1188|H|SUBCOM WORK SESSION FEB19 08:00 RM203,LOB    FOR: TRANSPORTATION|02/13/1992 09:45:14 AM",
+        "1992|2304|02/19/1992 01:47:59 PM|HB1188|H|MAJ REPORT REF FOR STUDY FOR FEB27  (VOTE 10-0;CC)|02/19/1992 01:47:59 PM",
+        "1992|2304|02/27/1992 02:50:29 PM|HB1188|H|REFERRED TO TRANSPORTATION FOR INTERIM STUDY; HJ46,P1148|02/27/1992 02:50:29 PM"]),
+    ("2001-2002", "HB2002"): ({"gen_status": "HOUSE",
+                               "house_status": "PASSED/ADOPTED WITH AMENDMENT",
+                               "senate_status": "REFUSED INTRODUCTION"}, [
+        "2002|2469|06/27/2002 10:31:51 AM|HB2002|H|Reps Hess & Francoeur moved Susp Rules to Consider, ML nec 2/3RC(212-122);  HJ48, p1585-1587|06/27/2002 10:31:51 AM",
+        "2002|2469|06/27/2002 11:40:25 AM|HB2002|H|Rep Dunlap moved Reconsider on Rules Susp, MA nec 2/3DIV(169-34);|06/27/2002 11:40:25 AM",
+        "2002|2469|06/27/2002 02:43:11 PM|HB2002|H|Reps Hess & Francoeur Susp Rules to Consider, MA nec 2/3VV; Introduced; Rep Vaillancourt|06/27/2002 02:43:11 PM",
+        "2002|2469|06/27/2002 02:44:12 PM|HB2002|H|moved OTP;  Reps Pepino et al Fl Am{3810}(New Title), AA nec 2/3VV; Reps Hess et al Fl|06/27/2002 02:44:12 PM",
+        "2002|2469|06/27/2002 02:45:36 PM|HB2002|H|Am{3811}(New Title), AA nec 2/3VV; Passed with Am by nec 2/3VV;   HJ48, p1594-1595|06/27/2002 02:45:36 PM",
+        "2002|2469|06/27/2002 04:56:18 PM|HB2002|S|Sen. Francoeur Rules Suspension 2/3 nec. for Introduction, RC 13 y - 11n, MF; SJ 16, Pg.610|06/27/2002 04:56:18 PM"]),
+}
+
+
+@check("status", "a rail does not pass a chamber or a governor the record has doing no such "
+                 "thing: CACR 9 of 1995, HB 613 of 1993, HB 1371 and HB 1188 of 1992",
+       needs=("narrative", "build_site_v2"))
+def _rail_against_the_record(N, B):
+    """Five rails said what their own docket does not.
+
+      CACR 9 of 1995   "House: Passed" beside "Passed one chamber". The
+                       Senate adopted it 18-6; the House vacated it from
+                       committee and "RETURNED TO SENATE PER HOUSE RULE 19B"
+                       without a vote.
+      HB 613 of 1993   "Senate: Passed, Governor: Passed, Law: Did not become
+      (and HB 614)     law" beside "Killed". The Senate passed it, recalled
+                       and tabled it the next day, and killed it with every
+                       tabled bill on 25 May -- the day of a House row
+                       "ENROLLED", which is filed with the governor.
+      HB 1371 of 1992  "House: Passed, Senate: Passed" beside "Killed". The
+                       House committee's report is filed under S, the one row
+                       of that letter; the House adopted it.
+      HB 1188 of 1992  the same, on a subcommittee work session of House
+                       Transportation, beside "Referred for interim study".
+
+    The row filed under the other chamber is told as the chamber's whose bill
+    it is (narrative.other_chambers_row), and its docket line says so. NOT A
+    FLOOR ROW: the Senate's one row on HB 2002 of 2002 is its refusal to
+    introduce the bill, and that rail stops in the Senate.
+    """
+    bad = []
+
+    def told(key):
+        st, rows = _DOCKET_RAIL_AGAINST_RECORD[key]
+        term, bill = key
+        n = _narrated(N, term, bill, rows)
+        d = B.bill_disposition({}, bill, st, n, [], term, "2025-2026")
+        _intro, steps = B.journey(n, bill, [], "", "", term)
+        passed = {c for c in ("H", "S") if B.journey_state(steps, c) == "p"}
+        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in ("H", "S")))
+        rail = B.passage(n.get("stages"), d.kind, d.status, bill, passed, acted)
+        why = B.journey_disagrees(steps, d.kind, d.status, rail, bill)
+        if why:
+            bad.append(f"{bill} of {term}: {why}")
+        return n, d.status, rail
+
+    for key, status, rail in ((("1995-1996", "CACR9"), "Passed one chamber", "Spx-x"),
+                              (("1993-1994", "HB613"), "Killed", "Hpx-x"),
+                              (("1991-1992", "HB1371"), "Killed", "Hx--x"),
+                              (("1991-1992", "HB1188"), "Referred for interim study", "Hx---"),
+                              (("2001-2002", "HB2002"), "Passed one chamber", "Hpx-x")):
+        n, got_status, got_rail = told(key)
+        if (got_status, got_rail) != (status, rail):
+            bad.append(f"{key[1]} of {key[0]}: {got_status!r} {got_rail!r}, not {rail!r}")
+        hands = {s.get("hand", "").split(":")[0] for s in n.get("stages", [])}
+        if key[1] in ("HB1371", "HB1188"):
+            if "S" in hands:
+                bad.append(f"{key[1]}: the history still has a Senate stage")
+            noted = [e for e in n["events"] if e.get("row_note")]
+            if len(noted) != 1 or noted[0]["body"] != "H" or "under the Senate" not in noted[0]["row_note"]:
+                bad.append(f"{key[1]}: the row filed under S is not told as the House's, with a note")
+    n, _s, _r = told(("1991-1992", "HB1371"))
+    if "recommended that the House kill it" not in n["narrative"]:
+        bad.append("HB1371's report is told: " + n["narrative"])
+    # The Senate's one row on HB 2002 stays the Senate's.
+    n, _s, _r = told(("2001-2002", "HB2002"))
+    if [e["body"] for e in n["events"]].count("S") != 1 or any(e.get("row_note") for e in n["events"]):
+        bad.append("HB2002 of 2002: the Senate's refusal was given to the House")
+    assert not bad, "; ".join(bad)
+    return "ok", ("CACR 9 of 1995 stops in the House, HB 613 of 1993 in the Senate, and HB 1371 "
+                  "and HB 1188 of 1992 never left the House; HB 2002 of 2002 keeps the "
+                  "Senate's refusal")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
@@ -38977,9 +39107,18 @@ def _rail():
 # "Passed one chamber"; and SB 200 of 1989's "CONF COMM REPORT ADOPTED", three
 # months after the Senate killed it, is not read as a conference no passage
 # could have called.
+# ON 2 OCTOBER 2026 THE COUNT STOOD AT 28, and eight more were fixed rather
+# than explained, which leaves 20. Three went with statuses a sweep of all
+# nineteen terms corrected: HBI 2011 of 1990, a bill of intent drawn as a
+# bill; SB 27 of 1994, whose referral to interim study no pattern read; HB
+# 1674 of 1998, a report adopted on the row after the one naming it. Five
+# were rails the record contradicts, and each now stops where its docket
+# does: CACR 9 of 1995 in the House that returned it, HB 613 and HB 614 of
+# 1993 in the Senate that killed them, HB 1371 and HB 1188 of 1992 in the
+# House they never left (_rail_against_the_record).
 # None is in the current term, which is held to none. A ceiling rather than a
 # list, so a regression anywhere in the archive fails.
-_JOURNEY_EXPLAINED = 31
+_JOURNEY_EXPLAINED = 20
 
 
 def _journey_story(records, rows, B):
@@ -39043,10 +39182,11 @@ def _journey_agrees(build_site_v2):
                   f"{n['empty']:,} have no floor decision on record")
 
 
-# Where the rail and the label disagree because the RAIL is wrong: CACR 9 of
-# 1995 started in the Senate, and its docket files a House stage first. The
-# label is right. Named, so that a new one is noticed.
-_RAIL_KNOWN = {("1995-1996", "CACR9")}
+# Where the rail and the label disagree because the RAIL is wrong. None: CACR
+# 9 of 1995 was the one named here until 2 October 2026, when its rail was
+# made to stop in the House (build_site_v2.passage). Kept, empty, so that a
+# new one has to be named to pass.
+_RAIL_KNOWN = set()
 
 
 @check("data", "a bill both chambers passed does not read \"Passed one chamber\"")
