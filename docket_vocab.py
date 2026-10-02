@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.10
+# GRANITE_VERSION: 2026-09-11.11
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -194,7 +194,9 @@ def _ensure_date(d, created, session=None, desc=None):
     # its term -- a retained bill's session is its second year, and its
     # introduction was entered the December before its first.
     if not narrative.session_keeps(yr, mo, dy, year):
-        for y in (year, year - 1, year + 1):
+        # The year the row was entered for, before the session's
+        # (narrative.years_to_try).
+        for y in narrative.years_to_try(year, mo, dy, created):
             try:
                 d["date"] = _date(y, mo, dy).strftime("%m/%d/%Y")
                 break

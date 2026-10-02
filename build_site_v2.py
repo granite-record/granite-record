@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.139
+# GRANITE_VERSION: 2026-09-05.140
 """
 Generate the faceted site from real General Court data.
 
@@ -4654,6 +4654,17 @@ def _j_introduced(evs, bid, term=""):
     rows = [e for e in evs
             if e.get("type") == "introduced" or J_INTRO_ROW.search(e.get("raw") or "")]
     pre = bill_prefix(bid)
+    # The chamber the number names, a special session's "SSHB" included: SSHB
+    # 1 of 2013 was read as a Senate bill by its first letter, and its rail's
+    # Introduced stop took 21 November, the day the Senate introduced it, a
+    # fortnight after "Introduced: MA RC 183-141 and Referred to Finance" in
+    # the House on the 7th.
+    # Only where that chamber has an introduction row: SSHB 1 of 2010's House
+    # rows begin at "Ought to Pass", and its stop keeps the Senate's row of
+    # the same day, 9 June, the one day that session sat.
+    named = pre[2:] if pre.startswith("SS") and len(pre) > 3 else pre
+    if named != pre and any((e.get("body") or "")[:1].upper() == named[:1] for e in rows):
+        pre = named
     own = "S" if pre.startswith("S") else "H" if pre.startswith("H") else ""
     # Where the first chamber's own row is missing, no date: SB 109 of 2009
     # has only the House's "Introduced and Referred to Transportation", a

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.317
+# GRANITE_VERSION: 2026-09-04.318
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2628,6 +2628,290 @@ def _a_row_states_its_day(N, B):
                   "three hearing notices take the day their row states; five rows that "
                   "state another kind of day keep the day they were entered, and SB 331 of "
                   "2018 was last acted on in 2018")
+
+
+# Real rows: Docket_2015-2016.txt lines 13452-13454 (HB 1615), 17517-17518 (SB
+# 307) and 8196-8197 (HB 1), with 8097 (HB 2); Docket_db_2003-2004.txt 17675-17677
+# (SB 407) and 820-822 (HB 69); Docket_db_2005-2006.txt 3323-3327 (HB 307) and
+# 17116-17117 (HB 1216); Docket.txt 11955, 13729 and 13740 (HR 24) and 11758,
+# 3373 and 4426 (SB 215); Docket_2019-2020.txt 20357-20360 (SB 69);
+# Docket_2017-2018.txt 1-4 (CACR 1); Docket_2021-2022.txt 12263 and 12265 (HB
+# 549); Docket_db_2009-2010.txt 11496-11501 (HB 50), 15741-15742 (HB 1277) and
+# 24075, 24092 and 24095 (SSHB 1); Docket_db_2011-2012.txt 2243-2244 (HB 89);
+# Docket_db_2013-2014.txt 7979 and 8008 (SSHB 1); Docket_db_2007-2008.txt 6757
+# (HR 1), 6759 (HR 3) and 7567-7568 (HB 332).
+_DOCKET_YEAR_ONE_OFF = {
+    ("2015-2016", "HB1615"): [
+        "2016|2670|12/14/2015 12:00:00 AM|HB1615|H|To Be Introduced 01/06/2015 and referred to Environment and Agriculture|12/14/2015 12:00:00 AM",
+        "2016|2670|2/2/2016 12:00:00 AM|HB1615|H|Public Hearing: 02/16/2016 10:00 AM LOB 303|2/2/2016 12:00:00 AM",
+        "2016|2670|2/17/2016 12:00:00 AM|HB1615|H|Executive Session: 03/01/2016 10:00 AM LOB 303|2/17/2016 12:00:00 AM"],
+    ("2015-2016", "SB307"): [
+        "2016|2828|1/11/2016 12:00:00 AM|SB307|S|To Be Introduced 01/06/2016 and Referred to Commerce; SJ 1|1/11/2016 12:00:00 AM",
+        "2016|2828|1/13/2016 12:00:00 AM|SB307|S|Hearing: 01/19/2016, Room 100, SH, 01:15 pm; SC2|1/13/2016 12:00:00 AM"],
+    ("2003-2004", "SB407"): [
+        "2004|3127|01/07/2004 05:59:04 PM|SB407|S|Introduced and Referred to Public Affairs; SJ 1, Pg.7|01/07/2004 05:59:04 PM",
+        "2004|3127|01/12/2004 04:21:11 PM|SB407|S|Hearing; February 4, 2003, Room 105-A, SH, 8:30 a.m.; SC3|01/12/2004 04:21:11 PM",
+        "2004|3127|02/23/2004 11:52:52 AM|SB407|S|Committee Report; Ought to Pass with Amendment{0521},(New Title), [03/04/04]; SC9, Pg.9-10|02/23/2004 11:52:52 AM"],
+    ("2003-2004", "HB69"): [
+        "2003|0094|03/13/2003 10:30:29 AM|HB69|S|Introduced and Ref. to Executive Departments & Administration; SJ 8, Pg.105|03/13/2003 10:30:29 AM",
+        "2003|0094|03/21/2003 12:58:30 PM|HB69|S|Hearing; March 26, 2002, Room 102, LOB, 1:55 p.m.; SC15|03/21/2003 12:58:30 PM",
+        "2003|0094|03/28/2003 11:10:44 AM|HB69|S|Committee Report; Ought to Pass [04/03/03]; SC16|03/28/2003 11:10:44 AM"],
+    ("2005-2006", "HB307"): [
+        "2005|0477|03/31/2005 09:06:08 AM|HB307|S|Introduced and Referred to Public and Municipal Affairs; SJ 11, Pg.213|03/31/2005 09:06:08 AM",
+        "2005|0477|04/07/2005 11:14:21 AM|HB307|S|Hearing; May 11, 2005, Room 100, SH, 10:45 a.m.; SC15|04/07/2005 11:14:21 AM",
+        "2005|0477|05/11/2005 01:43:48 PM|HB307|S|Hearing; === RECONVENE === May 18, 2004, Room 100, SH, 11:15 a.m.; SC20|05/11/2005 01:43:48 PM",
+        "2005|0477|05/19/2005 01:05:55 PM|HB307|S|Committee Report; Ought to Pass with Amendment{1492}(New Title)  [05/26/05]; SC21, Pg.11|05/19/2005 01:05:55 PM"],
+    ("2025-2026", "HR24"): [
+        "2026|2344|11/12/2025 1:35:07 PM|HR24|H|  Introduced 01/07/2025 and referred to State-Federal Relations and Veterans Affairs  HJ 1  P. 39|3/27/2026 1:33:37 PM",
+        "2026|2344|1/8/2026 3:25:04 PM|HR24|H|Public Hearing: 01/16/2026 11:30 am GP 228|1/8/2026 3:25:04 PM",
+        "2026|2344|1/8/2026 3:27:42 PM|HR24|H|Executive Session: 01/16/2026 02:00 pm GP 228|1/8/2026 3:27:42 PM"],
+    ("2025-2026", "SB215"): [
+        "2025|1062|11/3/2025 3:19:58 PM|SB215|S|  Introduced 01/09/2025 and Referred to Election Law and Municipal Affairs;  SJ 3|11/3/2025 3:20:04 PM",
+        "2025|1062|2/18/2025 3:46:14 PM|SB215|S| Hearing: 03/04/2025, Room 103, LOB, 09:30 am;  SC 11|2/18/2025 3:46:14 PM",
+        "2025|1062|3/7/2025 9:07:51 AM|SB215|S|Committee Report: Ought to Pass, 03/13/2025; Vote 5-0; CC;  SC 12|3/7/2025 9:07:51 AM"],
+    ("2019-2020", "SB69"): [
+        "2020|1027|1/17/2019 12:00:00 AM|SB69|S|Introduced 01/03/2019 and Referred to Election Law and Municipal Affairs; SJ 4|1/17/2019 12:00:00 AM",
+        "2020|1027|12/24/2019 12:00:00 AM|SB69|S|Hearing: 01/30/2019, Room 102, LOB, 10:15 am; SC 8|12/24/2019 12:00:00 AM",
+        "2020|1027|3/13/2019 12:00:00 AM|SB69|S|Committee Report: Rereferred to Committee, 03/21/2019; Vote 5-0; CC; SC 14|3/13/2019 12:00:00 AM",
+        "2020|1027|3/21/2019 12:00:00 AM|SB69|S|Rereferred to Committee, MA, VV; 03/21/2019; SJ 9|3/21/2019 12:00:00 AM"],
+    ("2017-2018", "CACR1"): [
+        "2017|0412|12/21/2016 12:00:00 AM|CACR1|H|Introduced 01/04/2017 and referred to Legislative Administration HJ 2 P. 23|12/21/2016 12:00:00 AM",
+        "2017|0412|1/4/2017 12:00:00 AM|CACR1|H|Public Hearing: 01/10/2017 09:00 AM LOB 104|1/4/2017 12:00:00 AM",
+        "2017|0412|12/6/2017 12:00:00 AM|CACR1|H|Executive Session: 01/10/2017 LOB 104|12/6/2017 12:00:00 AM",
+        "2017|0412|1/19/2017 12:00:00 AM|CACR1|H|Committee Report: Inexpedient to Legislate for 01/26/2017 (Vote 12-0; CC) HC 8 P. 5|1/19/2017 12:00:00 AM"],
+    ("2021-2022", "HB549"): [
+        "2022|0717|1/12/2022 12:00:00 AM|HB549|H|Introduced 01/06/2021 and referred to Science, Technology and Energy HJ 2|1/12/2022 12:00:00 AM",
+        "2022|0717|3/23/2021 12:00:00 AM|HB549|H|Retained in Committee|3/23/2021 12:00:00 AM"],
+    ("2009-2010", "HB50"): [
+        "2010|0594|01/07/2009 01:41:09 PM|HB50|H|Introduced 1/7/2009 and referred to Judiciary; HJ 8, PG. 120|01/07/2009 01:41:09 PM",
+        "2010|0594|02/03/2009 01:30:10 PM|HB50|H|Public Hearing: 2/10/2009 10:00 AM LOB 208|02/03/2009 01:30:10 PM",
+        "2010|0594|02/18/2009 09:03:21 AM|HB50|H|Subcommittee Work Session: 3/3/2008 10:00 AM LOB 208|02/18/2009 09:03:21 AM",
+        "2010|0594|03/04/2009 04:38:23 PM|HB50|H|Executive Session: 3/9/2009 11:00 AM LOB 208|03/04/2009 04:38:23 PM",
+        "2010|0594|03/10/2009 08:50:03 AM|HB50|H|Retained in Committee|03/10/2009 08:50:03 AM",
+        "2010|0594|09/14/2009 08:58:01 AM|HB50|H|Retained Bill - Subcommittee Work Session: 10/21/2009 10:00 AM LOB 208|09/14/2009 08:58:01 AM"],
+    ("2009-2010", "HB1277"): [
+        "2010|2256|12/10/2009 04:13:12 PM|HB1277|H|Introduced 1/6/2010 & Referred to Executive Departments & Administration; HJ 6, PG.234  <FIN>|12/10/2009 04:13:12 PM",
+        "2010|2256|01/06/2010 09:28:44 AM|HB1277|H|Public Hearing: 1/20/2010 10:00 AM LOB 306|01/06/2010 09:28:44 AM"],
+    ("2011-2012", "HB89"): [
+        "2011|0335|12/30/2010 11:35:46 AM|HB89|H|Introduced and Referred 1/5/11 to State-Federal Relations and Veterans Affairs; HJ 8, PG.130  <Consti Rev & Stat Recod>|12/30/2010 11:35:46 AM",
+        "2011|0335|01/05/2011 03:02:02 PM|HB89|H|Public Hearing: 1/13/2011 1:00 PM LOB 203|01/05/2011 03:02:02 PM"],
+    ("2013-2014", "SSHB1"): [
+        "2013|1029|11/07/2013 11:03:21 AM|SSHB1|H|Introduced: MA RC 183-141 and Referred to Finance|11/07/2013 11:03:21 AM",
+        "2013|1029|11/21/2013 04:12:42 PM|SSHB1|S|Sen. Bradley Moved Introduction of SSHB1, MA, VV; Special Session|11/21/2013 04:12:42 PM"],
+    ("2009-2010", "SSHB1"): [
+        "2010|2974|06/09/2010 11:35:24 AM|SSHB1|H|Ought to Pass (Rep M.Smith); 2010 Special Session HJ 1, PG.11|06/09/2010 11:35:24 AM",
+        "2010|2974|06/09/2010 05:19:53 PM|SSHB1|H|Ought to Pass w/AM 2388h, 2372h, 2373h, 2404h, 2392h: MA RC 177-167; 2010 Spec Sess HJ 1, PG.11-41|06/09/2010 05:19:53 PM",
+        "2010|2974|06/09/2010 05:56:04 PM|SSHB1|S|Sen. D\u2019Allesandro Moved Introduction of SS HB1, MA, VV; Special Session|06/09/2010 05:56:04 PM"],
+}
+_DOCKET_INTRODUCED_ON = {
+    ("2005-2006", "HB1216"): [
+        "2006|2616|12/14/2005 10:04:01 AM|HB1216|H|Introduced and ref to Environment & Agriculture    HJ 7, pg 337|12/14/2005 10:04:01 AM",
+        "2006|2616|01/04/2006 03:50:42 PM|HB1216|H|Public Hearing  Jan 10   10:00  RM303/LOB|01/04/2006 03:50:42 PM"],
+    ("2007-2008", "HR3"): [
+        "2007|0831|12/07/2006 04:08:58 PM|HR3|H|Introduced and adopted VV; HJ 3, p.24|12/07/2006 04:08:58 PM"],
+    ("2007-2008", "HR1"): [
+        "2007|0829|12/06/2006 03:43:31 PM|HR1|H|Introduced and adopted VV; HJ 3, p.24|12/06/2006 03:43:31 PM"],
+    ("2007-2008", "HB332"): [
+        "2007|0941|01/25/2007 11:16:01 AM|HB332|H|Introduced and ref to Environment and Agriculture; HJ 14, pg.207|01/25/2007 11:16:01 AM",
+        "2007|0941|03/07/2007 12:00:38 PM|HB332|H|==ROOM CHANGE==Public Hearing: 3/16/2007 10:30 AM LOB 305-307|03/07/2007 12:00:38 PM"],
+    ("2015-2016", "HB1"): [
+        "2015|1033|02/24/2015 12:35:53 PM|HB1|H|Introduced and Referred to Finance|02/24/2015 12:35:53 PM",
+        "2015|1033|02/25/2015 03:35:20 PM|HB1|H|Public Hearing: 3/5/2015 4:00 PM Representatives Hall|02/25/2015 03:35:20 PM"],
+    ("2015-2016", "HB2"): [
+        "2015|1032|02/18/2015 02:52:52 PM|HB2|H|Introduced and Referred to Finance|02/18/2015 02:52:52 PM"],
+}
+
+
+def _first(narr, words):
+    """The one event of a narrated bill whose row has these words."""
+    got = [e for e in narr["events"] if words in (e.get("raw") or "")]
+    assert len(got) == 1, (words, [e.get("raw") for e in narr["events"]])
+    return got[0]
+
+
+@check("narrative", "a meeting or an introduction dated in the year before the one its row was "
+                    "entered for is put in that year, only where the chamber has no other row "
+                    "near the day stated; and SB 307 of 2016 does not move",
+       needs=("narrative", "build_site_v2"))
+def _a_year_one_off(N, B):
+    """"To Be Introduced 01/06/2015 and referred to Environment and
+    Agriculture" was entered on 14 December 2015, on HB 1615 of 2016, whose
+    next row is a hearing notice of 2 February 2016: it read as introduced a
+    year before anything else happened to it, and as carried over. "Hearing;
+    February 4, 2003" was entered on 12 January 2004 on five Senate bills
+    introduced on the 7th, and each history opened with the hearing.
+
+    THE BILL'S OWN RECORD IS THE TEST (narrative.year_slip), and each of these
+    states a day long before its row was entered and is right about it:
+
+      SB 307 of 2016   "To Be Introduced 01/06/2016", entered on the 11th
+      SB 215 of 2025   "Introduced 01/09/2025", entered on 3 November: the
+                       Senate heard the bill that March
+      SB 69 of 2019    "Hearing: 01/30/2019", entered on 24 December
+      CACR 1 of 2017   "Executive Session: 01/10/2017", entered on 6 December
+      HB 549 of 2021   "Introduced 01/06/2021", entered on 12 January 2022
+
+    AND A DATE OUTSIDE THE TERM is brought back to the year its row was
+    entered for before the session's (narrative.years_to_try): HB 50 of 2009,
+    retained into 2010, carries the session 2010 on "Subcommittee Work
+    Session: 3/3/2008", entered on 18 February 2009.
+
+    Two shapes of the introduction row the 2007-2016 reader did not read, and
+    the chamber a special session's House bill starts in, are held here too.
+    """
+    narr = {k: _narrated(N, k[0], k[1], rows) for k, rows in _DOCKET_YEAR_ONE_OFF.items()}
+    bad = []
+    for key, words, day, was in (
+            (("2015-2016", "HB1615"), "To Be Introduced", "2016-01-06", "2015-01-06"),
+            (("2003-2004", "SB407"), "Hearing;", "2004-02-04", "2003-02-04"),
+            (("2003-2004", "HB69"), "Hearing;", "2003-03-26", "2002-03-26"),
+            (("2005-2006", "HB307"), "May 18", "2005-05-18", "2004-05-18"),
+            (("2025-2026", "HR24"), "Introduced", "2026-01-07", "2025-01-07"),
+            # right about the day they state
+            (("2015-2016", "SB307"), "To Be Introduced", "2016-01-06", None),
+            (("2025-2026", "SB215"), "Introduced", "2025-01-09", None),
+            (("2019-2020", "SB69"), "Hearing:", "2019-01-30", None),
+            (("2017-2018", "CACR1"), "Executive Session", "2017-01-10", None),
+            (("2021-2022", "HB549"), "Introduced", "2021-01-06", None),
+            (("2005-2006", "HB307"), "May 11", "2005-05-11", None),
+            # outside the term: the year the row was entered for, unnoted
+            (("2009-2010", "HB50"), "3/3/2008", "2009-03-03", None)):
+        e = _first(narr[key], words)
+        got = (e["date"], e.get("date_as_recorded"), bool(e.get("date_note")))
+        if got != (day, was, bool(was)):
+            bad.append(f"{key[1]} of {key[0]}, {words!r}: {got}")
+    said = narr[("2015-2016", "HB1615")]["narrative"]
+    if not said.startswith("It was introduced on January 6, 2016 and referred to the House "
+                           "Environment and Agriculture committee."):
+        bad.append("HB1615 of 2016 is told: " + said[:90])
+    for key in (("2015-2016", "HB1615"), ("2025-2026", "HR24"), ("2003-2004", "SB407")):
+        days = B.action_dates(narr[key]["events"])
+        if len({d[:4] for d in days}) != 1:
+            bad.append(f"{key[1]} of {key[0]} is still acted on in {sorted({d[:4] for d in days})}")
+    # The two shapes of the introduction row.
+    for key, day, to in ((("2009-2010", "HB1277"), "2010-01-06",
+                          "House Executive Departments and Administration committee"),
+                         (("2011-2012", "HB89"), "2011-01-05",
+                          "House State-Federal Relations and Veterans Affairs committee")):
+        e = _first(narr[key], "Introduced")
+        if (e["type"], e["date"]) != ("introduced", day) or to not in narr[key]["narrative"]:
+            bad.append(f"{key[1]} of {key[0]}: {e['type']} {e['date']}; "
+                       + narr[key]["narrative"][:80])
+    # The chamber a special session's House bill starts in.
+    for key, day in ((("2013-2014", "SSHB1"), "2013-11-07"), (("2009-2010", "SSHB1"), "2010-06-09")):
+        got = B._j_introduced([e for e in narr[key]["events"] if not e.get("cancelled")],
+                              "SSHB1", key[0])
+        if got != day:
+            bad.append(f"SSHB1 of {key[0]} was introduced on {got!r}, not {day}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 1615 of 2016, HR 24 of 2026 and three Senate hearings take the year their "
+                  "row was entered for; SB 307 of 2016, SB 215 of 2025 and three more rows "
+                  "entered late keep the day they state")
+
+
+@check("narrative", "eleven introductions are dated by the journal's reading of them, each "
+                    "with the day its row was entered kept beside it, and the journals and "
+                    "the docket on this disk still say so",
+       needs=("narrative", "build_site_v2"))
+def _introductions_read_from_the_journal(N, B):
+    """An introduction row that states no day is dated the day it was
+    entered. HB 1216 of 2006's was entered on 14 December 2005, three weeks
+    before the session convened; HR 3 of 2007's on 7 December 2006, the day
+    after Organization Day; HB 332 of 2007's on 25 January, three weeks after
+    the House introduced it; HB 1 of 2015's on 24 February, six days after.
+    narrative.INTRODUCED_ON is the table of what was read, and its comment
+    says where.
+
+    Read again here wherever the files are on the disk: the House Journals of
+    6 December 2006, 4 January 2007 and 18 February 2015, and for the seven
+    of 2006 -- whose journal is not on disk -- the docket's own rows, where
+    every other introduction citing the same page of House Record 7 was
+    entered on 4 January 2006.
+    """
+    narr = {k: _narrated(N, k[0], k[1], rows) for k, rows in _DOCKET_INTRODUCED_ON.items()}
+    bad = []
+    for key, day, was in ((("2005-2006", "HB1216"), "2006-01-04", "2005-12-14"),
+                          (("2007-2008", "HR3"), "2006-12-06", "2006-12-07"),
+                          (("2007-2008", "HB332"), "2007-01-04", "2007-01-25"),
+                          (("2015-2016", "HB1"), "2015-02-18", "2015-02-24"),
+                          # in no table: the day their rows were entered
+                          (("2007-2008", "HR1"), "2006-12-06", None),
+                          (("2015-2016", "HB2"), "2015-02-18", None)):
+        e = _first(narr[key], "Introduced")
+        got = (e["date"], e.get("date_as_recorded"), bool(e.get("date_note")))
+        if got != (day, was, bool(was)):
+            bad.append(f"{key[1]} of {key[0]}: {got}")
+        if B._j_introduced(narr[key]["events"], key[1], key[0]) != day:
+            bad.append(f"{key[1]} of {key[0]}: the rail's Introduced stop is not {day}")
+    # HR 3 was adopted on the row that introduced it.
+    _, steps = B.journey(narr[("2007-2008", "HR3")], "HR3", [], "", "", "2007-2008")
+    if [(s["date"], s["act"]) for s in steps if s["body"] == "H"] != [("2006-12-06", "passed")]:
+        bad.append(f"HR3 of 2007's journey: {[(s['date'], s['act']) for s in steps]}")
+    assert sorted(N.INTRODUCED_ON) == [
+        ("2005-2006", "HB1216"), ("2005-2006", "HB1278"), ("2005-2006", "HB1281"),
+        ("2005-2006", "HB1283"), ("2005-2006", "HB1305"), ("2005-2006", "HB1612"),
+        ("2005-2006", "HB1615"), ("2007-2008", "HB332"), ("2007-2008", "HR3"),
+        ("2007-2008", "HR6"), ("2015-2016", "HB1")], sorted(N.INTRODUCED_ON)
+    assert not bad, "; ".join(bad)
+
+    # ---- the record itself, where it is on this disk --------------------------
+    read = []
+
+    def text(path):
+        p = Path(path)
+        return p.read_text(encoding="utf-8", errors="replace") if p.exists() else None
+
+    def squashed(s):
+        return re.sub(r"\s+", " ", s)
+
+    t = text("journals/2015/HJ020.txt")
+    if t is not None:
+        t = squashed(t)
+        assert "Wednesday, February 18, 2015" in t and (
+            "House Bills numbered HB 1-A, HB 2-FN-A-L and HB 25-FN-A shall be by this "
+            "resolution read a first and second time") in t, (
+            "journals/2015/HJ020.txt no longer carries the resolution that introduced HB 1 "
+            "on 18 February 2015")
+        read.append("the House Journal of 18 February 2015")
+    t = text("journals/2007/HJ004.txt")
+    if t is not None:
+        t = squashed(t)
+        assert "Thursday, January 4, 2007" in t and "HB 332, relative to the procurement" in t, (
+            "journals/2007/HJ004.txt no longer lists HB 332 under 4 January 2007")
+        read.append("of 4 January 2007")
+    t = text("journals/2007/HJ001.txt")
+    if t is not None:
+        t = squashed(t)
+        assert "Wednesday, December 6, 2006" in t and all(
+            f"HOUSE RESOLUTION NO. {n}" in t for n in (3, 6)), (
+            "journals/2007/HJ001.txt no longer prints House Resolutions 3 and 6 under "
+            "6 December 2006")
+        read.append("of 6 December 2006")
+    t = text("Docket_db_2005-2006.txt")
+    if t is not None:
+        cite = re.compile(r"\bHJ\s*7\s*,\s*pg\s*(\d+)", re.I)
+        rows = []
+        for line in t.splitlines():
+            f = line.split("|")
+            m = cite.search(f[5]) if len(f) >= 7 else None
+            if m and f[0].strip() == "2006" and re.match(r"\s*Introduced\b", f[5], re.I):
+                rows.append((f[3].strip(), int(m.group(1)), f[2].strip()[:10]))
+        seven = {b for (term, b) in N.INTRODUCED_ON if term == "2005-2006"}
+        ahead = {b for b, _, day in rows if day != "01/04/2006"}
+        assert ahead == seven, (
+            "the introduction rows citing House Record 7 that were not entered on 4 January "
+            f"2006 are {sorted(ahead)}, and INTRODUCED_ON names {sorted(seven)}")
+        for b, page, _ in [r for r in rows if r[0] in seven]:
+            beside = [d for x, p, d in rows if p == page and x not in seven]
+            assert len(beside) >= 20 and set(beside) == {"01/04/2006"}, (
+                f"{b} cites page {page} of House Record 7, which {len(beside)} other "
+                f"introductions cite, entered {sorted(set(beside))}")
+        read.append(f"the docket of 2005-2006 ({len(rows) - len(seven)} introductions citing "
+                    "House Record 7 were entered on 4 January 2006, and the seven were not)")
+    return "ok", ("HB 1216 of 2006, HR 3 and HB 332 of 2007 and HB 1 of 2015 take the journal's "
+                  "day; HR 1 of 2007 and HB 2 of 2015 keep theirs. "
+                  + ("Read again: " + ", ".join(read) + "." if read else
+                     "No journal or docket of these is on this machine to read again."))
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",

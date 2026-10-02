@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.1
+# GRANITE_VERSION: 2026-09-11.2
 """
 The 2007-2016 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -44,7 +44,23 @@ ERA = [
         r"^(?:Rules\s+Comm\w*\s+Approved\s*:\s*)?Introduced\b\s*"
         r"(?:\((?:in\s+recess\b[^)]*|Approved\s+by\s+Rules\s+Comm\w*)\)\s*)?"
         r"(?P<date>\d{1,2}/\d{1,2}/\d{2,4})?\s*,?\s*"
-        r"and\s+(?:Referred|Ref)\.?\s+to\s+(?P<committee>[^;(\[]+?)\s*(?:[;(\[].*)?$", re.I)),
+        r"(?:and|&)\s+(?:Referred|Ref)\.?\s+to\s+(?P<committee>[^;(\[]+?)\s*(?:[;(\[].*)?$", re.I)),
+    # "Introduced 1/6/2010 & Referred to Executive Departments &
+    # Administration" (HB 1220 and HB 1277 of 2010) is the pattern above with
+    # an ampersand, as are "Rules Comm Approved: Introduced 1/30/08 & Ref to a
+    # Jt Comm of ..." (HB 1643 and HB 1645 of 2008) and the House's "Introduced
+    # & Referred to Labor, Industrial & Rehabilitative Svcs [3/26/2009]" on SB
+    # 67, SB 89 and SB 144 of 2009, which keep the day they were entered: the
+    # day in brackets is the sitting the House was in recess of, six days
+    # before the Senate passed them. "Introduced and Referred 1/5/11 to
+    # State-Federal Relations and Veterans Affairs" (HB 89 of 2011) puts the
+    # day after the verb. Read by nothing, each was dated the day its row was
+    # entered -- 10 December 2009, 30 December 2010 -- the two of 2010 were
+    # "carried over" from a year they were never in, and four histories
+    # opened with the Senate's introduction as the bill's own.
+    ("introduced", re.compile(
+        r"^Introduced\s+and\s+Referred\s+(?P<date>\d{1,2}/\d{1,2}/\d{2,4})\s+to\s+"
+        r"(?P<committee>[^;(\[]+?)\s*(?:[;(\[].*)?$", re.I)),
     ("introduced", re.compile(
         r"^Late\s+Drafting\s*(?:&|and)\s*Intro\w*\s+Approved\s+by\s+Rules\s+Comm\w*\s*:\s*"
         r"(?:Referred|Ref)\.?\s+to\s+(?P<committee>[^;(\[]+?)\s*(?:[;(\[].*)?$(?P<date>)", re.I)),
