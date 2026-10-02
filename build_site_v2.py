@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.138
+# GRANITE_VERSION: 2026-09-05.139
 """
 Generate the faceted site from real General Court data.
 
@@ -7653,6 +7653,26 @@ def vote_note_for(narr, rollcalls):
     return note
 
 
+# A CLERK'S NOTE ON THE RECORD IS NOT AN ACTION ON THE BILL. "(SENATE CLERK'S
+# NOTE: The roll call vote below on SB 331 was inadvertently entered in the
+# Daily Journal and has been corrected in the Senate Permanent Journal from
+# 12-12 to 13-11)" was entered on 20 April 2020 on a bill the Senate tabled on
+# 15 March 2018. It states no day, so it keeps the day it was entered -- and
+# with it SB 331 of 2018's last action was of 2020, sixteen months after its
+# term ended, and the bill was "carried over". The note stays on the bill's
+# list of docket lines; it is left out of the days the bill was acted on.
+CLERKS_NOTE = re.compile(r"^\W*(?:senate\s+|house\s+)?clerk'?s\s+note\b", re.I)
+
+
+def action_dates(evs):
+    """The days a bill was acted on, in order: the day of every docket row
+    that is not cancelled and is not a clerk's note on the record. The last
+    is the bill's last action, and two years among them make it one carried
+    over from the first."""
+    return sorted(e["date"] for e in evs
+                  if e.get("date") and not CLERKS_NOTE.match(e.get("raw") or ""))
+
+
 def docket_line(e):
     """The docket line an event was read from, as the clerk typed it: the
     whole line where the event is one question of a line told question by
@@ -7923,7 +7943,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
-        dates = sorted(e["date"] for e in ev if e.get("date"))
+        dates = action_dates(ev)
         act_years = {d[:4] for d in dates}
         # Filed one year, acted on the next: retained in committee or sent to
         # interim study. These are exactly the bills someone loses when they

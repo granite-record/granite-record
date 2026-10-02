@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.316
+# GRANITE_VERSION: 2026-09-04.317
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2496,6 +2496,138 @@ def _finished_term_is_finished(N, B):
     return "ok", ("HB 113 of 2021, SB 508 and SB 437 of 1998 and HB 462 of 1989 died when the "
                   "session ended; nine the record does not settle keep their last word, and no "
                   "paragraph says a bill ran out of time over a vote it lost or a return")
+
+
+# Real rows: Docket_2019-2020.txt lines 369-370 (HB 1101) and 6969-6970 (HB
+# 201); Docket_2017-2018.txt 12330 and 12332 (HB 538) and 17126-17138 (SB 331);
+# Docket_2015-2016.txt 13949-13950 (HB 1660) and 17501-17502 (SB 305);
+# Docket.txt 10449, 10500, 11272 and 11764 (HB 377), 12159, 13012, 13017 and
+# 15937 (SB 429) and 12275, 13467, 17285 and 17811 (SB 581);
+# Docket_db_2011-2012.txt 624 (HB 37) and 5923 (HB 542).
+_DOCKET_STATES_ITS_DAY = {
+    ("2019-2020", "HB1101"): [
+        "2020|2003|6/16/2020 12:00:00 AM|HB1101|S|Vacated from Committee and Laid on Table, MA, VV; 06/16/2020 SJ 8|6/16/2020 12:00:00 AM",
+        "2020|2003|9/9/2021 12:00:00 AM|HB1101|S|Inexpedient to Legislate, Senate Rule 3-23, Adjournment 09/16/2020; SJ 10|9/9/2021 12:00:00 AM"],
+    ("2019-2020", "HB201"): [
+        "2020|0201|6/16/2020 12:00:00 AM|HB201|S|Vacated from Committee and Laid on Table, MA, VV; 06/16/2020 SJ 8|6/16/2020 12:00:00 AM",
+        "2020|0201|9/9/2021 12:00:00 AM|HB201|S|Inexpedient to Legislate, Senate Rule 3-23, Adjournment 09/16/2021; SJ 10|9/9/2021 12:00:00 AM"],
+    ("2017-2018", "HB538"): [
+        "2017|0398|4/20/2017 12:00:00 AM|HB538|S|Sen. Carson Moved Laid on Table, MA, VV; 04/20/2017; SJ 14|4/20/2017 12:00:00 AM",
+        "2017|0398|1/3/2018 12:00:00 AM|HB538|S|Inexpedient to Legislate, Senate Rule 3-23, Adjournment 06/22/2017; SJ 1|1/3/2018 12:00:00 AM"],
+    ("2017-2018", "SB331"): [
+        "2018|2938|12/8/2017 12:00:00 AM|SB331|S|To Be Introduced 01/03/2018 and Referred to Finance; SJ 1|12/8/2017 12:00:00 AM",
+        "2018|2938|12/21/2017 12:00:00 AM|SB331|S|==TIME CHANGE== Hearing: 01/09/2018, Room 103, SH, 01:40 pm; SC 49|12/21/2017 12:00:00 AM",
+        "2018|2938|3/12/2018 12:00:00 AM|SB331|S|Committee Report: Inexpedient to Legislate, 03/15/2018; SC 12A|3/12/2018 12:00:00 AM",
+        "2018|2938|4/20/2020 12:00:00 AM|SB331|S|(SENATE CLERK'S NOTE: The roll call vote below on SB 331 was inadvertently entered in the Daily Journal and has been corrected in the Senate Permanent Journal from 12-12 to 13-11)|4/20/2020 12:00:00 AM",
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 12Y-12N, MF; 03/15/2018; SJ 8|3/15/2018 12:00:00 AM",
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Sen. Bradley Moved Laid on Table, MA, VV; 03/15/2018; SJ 8|3/15/2018 12:00:00 AM"],
+    ("2015-2016", "HB1660"): [
+        "2016|2072|5/26/2016 12:00:00 AM|HB1660|S|Conference Committee Report Filed, #2016-2072c ; 05/26/2016|5/26/2016 12:00:00 AM",
+        "2016|2072|6/22/2016 12:00:00 AM|HB1660|S|Conference Committee Report 2072c; RC 11Y-13N, Failed; 06/01/2016 SJ 19|6/22/2016 12:00:00 AM"],
+    ("2015-2016", "SB305"): [
+        "2016|2812|5/27/2016 12:00:00 AM|SB305|H|Conference Committee Report #2016-2102c Filed 05/26/2016; House Amendment + New Amendment|5/27/2016 12:00:00 AM",
+        "2016|2812|6/3/2016 12:00:00 AM|SB305|H|Conference Committee Report Not Accepted by House pursuant to House Rule 49(j) 05/19/2016|6/3/2016 12:00:00 AM"],
+    ("2025-2026", "HB377"): [
+        "2025|0436|6/18/2025 4:42:12 PM|HB377|S|Conference Committee Report Filed, # 2025-2809c; 06/26/2025|7/8/2025 8:29:45 AM",
+        "2025|0436|6/26/2025 2:51:06 PM|HB377|H|Conference Committee Report 2025-2809c: Adopted, RC 202-161 06/26/2025  HJ 18  P. 27|10/21/2025 11:22:23 AM",
+        "2025|0436|8/11/2025 9:24:03 AM|HB377|H|Signed by Governor Ayotte 08/01/2025; Chapter 275; eff. I. Sec 1 & 2 eff 01/01/2026 II. Rem eff 09/30/2025|11/3/2025 3:36:10 PM",
+        "2025|0436|11/3/2025 3:34:35 PM|HB377|S|Conference Committee Report # 2025-2809c; RC 16Y-8N, Adopted; 06/26/2025;  SJ 17|11/3/2025 3:34:44 PM"],
+    ("2025-2026", "SB429"): [
+        "2026|2211|11/21/2025 4:16:57 PM|SB429|S|  Introduced 01/07/2026 and Referred to Education;  SJ 1|1/8/2026 12:29:40 PM",
+        "2026|2211|12/11/2025 10:18:04 AM|SB429|S|==CANCELLED== Hearing: 01/13/2026, Map Room, SL, 09:00 am;  SC 45|12/11/2025 10:18:13 AM",
+        "2026|2211|12/11/2025 10:22:01 AM|SB429|S|  Hearing: 01/20/2026, Map Room, SL, 09:15 am;  SC 46|12/11/2025 10:23:31 AM",
+        "2026|2211|2/5/2026 7:46:24 AM|SB429|S|Committee Report: Ought to Pass, 02/19/2026; Vote 5-0; CC;  SC 6|2/9/2026 11:17:17 AM"],
+    ("2025-2026", "SB581"): [
+        "2026|2018|11/25/2025 10:17:04 AM|SB581|S|  Introduced 01/07/2026 and Referred to Education Finance;  SJ 1|1/8/2026 1:45:04 PM",
+        "2026|2018|12/22/2025 10:55:07 AM|SB581|S|  Hearing: 01/22/2026, Room 103, SH, 11:25 am;  SC 47A|12/23/2025 9:36:08 AM",
+        "2026|2018|2/17/2026 2:43:05 PM|SB581|S|Committee Report: Referred to Interim Study, 03/05/2026; Vote 6-0; CC;  SC 8|2/20/2026 10:57:24 AM",
+        "2026|2018|2/24/2026 10:38:28 AM|SB581|S|Refer to Interim Study, MA, VV; 03/05/2026;  SJ 5|3/5/2026 10:35:53 AM"],
+    ("2011-2012", "HB37"): [
+        "2011|0074|01/04/2012 05:58:32 PM|HB37|H|Died on Table [11/30/2011]|01/04/2012 05:58:32 PM"],
+    ("2011-2012", "HB542"): [
+        "2011|0828|01/04/2012 02:05:46 PM|HB542|S|9/7/11-Notwithstanding the Governor\u2019s Veto, Shall HB 542 Become Law:  RC 17Y-5N, Veto Overridden by required two-thirds vote; SJ 22, Pg.747|01/04/2012 02:05:46 PM"],
+}
+
+
+@check("narrative", "a row is dated by the day it states where that is the day of what it "
+                    "records -- a death at adjournment, a vote on a conference report, a "
+                    "hearing notice -- and a clerk's note is no action on the bill",
+       needs=("narrative", "build_site_v2"))
+def _a_row_states_its_day(N, B):
+    """A row no pattern reads took the day it was entered. "Inexpedient to
+    Legislate, Senate Rule 3-23, Adjournment 09/16/2020" was entered in
+    September 2021 on 427 bills, "... Adjournment 06/22/2017" in January 2018
+    and "... Adjournment 06/24/2021" in January 2022: 432 measures
+    introduced, tabled and dead within one year carried a last action of the
+    next and the words "carried over". Twelve Senate bills of 2026 did so on
+    a hearing notice entered in December 2025; SB 331 of 2018 on a clerk's
+    note of April 2020; and the Senate's rejection of HB 1660 of 2016's
+    conference report, "RC 11Y-13N, Failed; 06/01/2016", was dated 22 June.
+
+    NOT EVERY ROW THAT STATES A DAY, and each of these is held where it is:
+
+      HB 201 of 2020    "Adjournment 09/16/2021", entered on 9 September 2021:
+                        a day after its own entry, and outside the term
+      HB 377 of 2025    "Conference Committee Report Filed, # 2025-2809c;
+                        06/26/2025": the day the report is to be taken up
+      SB 305 of 2016    "Not Accepted by House pursuant to House Rule 49(j)
+                        05/19/2016": the sitting it was done in recess of, a
+                        week before the report was filed
+      HB 37 of 2011     "Died on Table [11/30/2011]", entered on 4 January
+                        2012: the House's legislative day, which ended then
+      HB 542 of 2011    "9/7/11-Notwithstanding the Governor's Veto ...", a
+                        Senate vote of 4 January 2012 under its legislative day
+    """
+    narr = {k: _narrated(N, k[0], k[1], rows) for k, rows in _DOCKET_STATES_ITS_DAY.items()}
+    bad = []
+
+    def day(key, words):
+        got = [e["date"] for e in narr[key]["events"] if words in (e.get("raw") or "")]
+        return got[0] if len(got) == 1 else got
+
+    for key, words, want in (
+            (("2019-2020", "HB1101"), "Rule 3-23", "2020-09-16"),
+            (("2017-2018", "HB538"), "Rule 3-23", "2017-06-22"),
+            (("2015-2016", "HB1660"), "Failed", "2016-06-01"),
+            (("2025-2026", "HB377"), "RC 16Y-8N, Adopted", "2025-06-26"),
+            (("2025-2026", "SB429"), "09:15 am", "2026-01-20"),
+            (("2025-2026", "SB429"), "09:00 am", "2026-01-13"),
+            (("2025-2026", "SB581"), "Hearing:", "2026-01-22"),
+            # held where they are
+            (("2019-2020", "HB201"), "Rule 3-23", "2021-09-09"),
+            (("2015-2016", "HB1660"), "Report Filed", "2016-05-26"),
+            (("2025-2026", "HB377"), "Report Filed", "2025-06-18"),
+            (("2015-2016", "SB305"), "Not Accepted", "2016-06-03"),
+            (("2011-2012", "HB37"), "Died on Table", "2012-01-04"),
+            (("2011-2012", "HB542"), "Veto Overridden", "2012-01-04"),
+            (("2017-2018", "SB331"), "CLERK'S NOTE", "2020-04-20")):
+        if day(key, words) != want:
+            bad.append(f"{key[1]} of {key[0]}, {words!r}: {day(key, words)}, not {want}")
+
+    def acted(key):
+        return B.action_dates([e for e in narr[key]["events"] if not e.get("cancelled")])
+
+    for key, last, years in ((("2019-2020", "HB1101"), "2020-09-16", {"2020"}),
+                             (("2017-2018", "HB538"), "2017-06-22", {"2017"}),
+                             (("2017-2018", "SB331"), "2018-03-15", {"2018"}),
+                             (("2025-2026", "SB429"), "2026-02-19", {"2026"}),
+                             (("2025-2026", "SB581"), "2026-03-05", {"2026"}),
+                             (("2025-2026", "HB377"), "2025-08-01", {"2025"}),
+                             (("2015-2016", "HB1660"), "2016-06-01", {"2016"})):
+        got = acted(key)
+        if (got[-1], {d[:4] for d in got}) != (last, years):
+            bad.append(f"{key[1]} of {key[0]} was acted on {sorted({d[:4] for d in got})}, "
+                       f"last on {got[-1]}")
+    # The rail's stop for the report takes the day too.
+    _, steps = B.journey(narr[("2015-2016", "HB1660")], "HB1660", [], "", "", "2015-2016")
+    got = [(s["date"], s["act"]) for s in steps if s["body"] == "S"]
+    if got != [("2016-06-01", "conf_rejected")]:
+        bad.append(f"HB1660's journey in the Senate: {got}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("three bills dead at an adjournment, two votes on conference reports and "
+                  "three hearing notices take the day their row states; five rows that "
+                  "state another kind of day keep the day they were entered, and SB 331 of "
+                  "2018 was last acted on in 2018")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",

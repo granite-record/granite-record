@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -320,6 +320,86 @@ def clamp_year(ev, session):
             break
         except ValueError:
             continue
+    return ev
+
+
+# ---- the day a row states, where the row was entered on another ---------------
+#
+# A ROW NO PATTERN READS TAKES THE DAY IT WAS ENTERED, which is right for a row
+# entered as the thing happened and wrong for three kinds the clerks enter on
+# another day and date in their own words. Each states the day of what it
+# records, so the row is dated by it:
+#
+#   THE END OF A TABLED BILL AT ADJOURNMENT. "Inexpedient to Legislate, Senate
+#   Rule 3-23, Adjournment 09/16/2020" was entered on 8, 9 and 10 September
+#   2021 on 427 bills of 2020, "... Adjournment 06/22/2017" on 3 January 2018
+#   on 23 of 2017, "... Adjournment 06/24/2021" on 5 January 2022 on 26 of
+#   2021. Each bill's last action read as a day in the year after it died,
+#   and 432 measures introduced, tabled and dead within one year were
+#   "carried over" into the next.
+#
+#   A VOTE ON A CONFERENCE REPORT. "Conference Committee Report 2072c; RC
+#   11Y-13N, Failed; 06/01/2016" (HB 1660 of 2016) was entered on 22 June, and
+#   the Senate's rejection of the report was dated three weeks after it:
+#   House Journal 42 of 1 June prints the Senate's message, and the roll call
+#   is of 1 June. "... RC 16Y-8N, Adopted; 06/26/2025" (HB 377 of 2025) was
+#   entered on 3 November, three months after the governor signed the bill.
+#
+#   A HEARING NOTICE THE HEARING PATTERN DOES NOT READ. "Hearing: 01/20/2026,
+#   Map Room, SL, 09:15 am" was entered on 11 December 2025, and "Hearing:
+#   01/22/2026, Room 103, SH, 11:25 am; SC 47A" on 22 December: twelve Senate
+#   bills of 2026 carried one row of 2025 and were "carried over". Every
+#   notice the pattern does read is dated the day of its hearing.
+#
+# ONLY WHERE THE DAY CAN BE THE DAY. In the bill's own term; and for the first
+# two, not after the row was entered -- a row cannot record what has not
+# happened, and a day ahead of its entry is the sitting the row was entered
+# ahead of, which build_site_v2's journey reads. "Adjournment 09/16/2021" on
+# HB 201 of 2020, entered on 9 September 2021, is neither and keeps the day it
+# was entered. Not a row that names the sitting it was done in recess of, and
+# not a report filed: "Conference Committee Report Filed, # 2025-2809c;
+# 06/26/2025" states the day the report is to be taken up.
+#
+# NOT EVERY ROW THAT STATES A DAY. "9/7/11-Notwithstanding the Governor's
+# Veto, Shall HB 542 Become Law: RC 17Y-5N", entered on 4 January 2012, names
+# the legislative day the Senate was still sitting in; "Died on Table
+# [11/30/2011]", entered that same day on sixteen House measures, names the
+# House's; "Report due 1/29/2004" and "RE-REF MAJ REPORT ITL FOR 1/5/94" name
+# days to come. Read each kind before adding it here.
+STATES_ITS_DAY = (
+    ("adjournment", re.compile(
+        r"\bSenate\s+Rule\s+3-23\b\W*(?:Adjournment\W*)?"
+        r"(?P<date>\d{1,2}/\d{1,2}/\d{4})\W*$", re.I)),
+    ("conference vote", re.compile(
+        r"^\s*Conference\s+Committee\s+Report\b(?!.*\b(?:Filed|recess)\b)"
+        r".*\b(?:Adopted|Failed)\b.*?(?<![\d/])(?P<date>\d{1,2}/\d{1,2}/\d{4})\W*$", re.I)),
+    ("notice", re.compile(
+        r"^\s*(?:Public\s+)?Hearing\s*:\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})\b", re.I)),
+)
+
+
+def stated_day(ev, r):
+    """Date a row no pattern reads by the day it states, where that is the
+    day of what it records (STATES_ITS_DAY)."""
+    if ev.get("_type") != "other" or ev.get("date"):
+        return ev
+    created = r.get("created")
+    for kind, pat in STATES_ITS_DAY:
+        m = pat.search(ev.get("_raw") or "")
+        if not m:
+            continue
+        try:
+            said = datetime.strptime(m.group("date"), "%m/%d/%Y")
+            session = int(str(r.get("session"))[:4])
+        except (TypeError, ValueError):
+            return ev
+        if not in_term(said.year, said.month, said.day, session):
+            return ev
+        if kind != "notice" and not (isinstance(created, datetime)
+                                     and said.date() <= created.date()):
+            return ev
+        ev["date"] = said.strftime("%m/%d/%Y")
+        return ev
     return ev
 
 
@@ -2353,6 +2433,10 @@ def build(bill, rows, introduction=None):
                 entry.get("stated_date") or "")
             ev["date_note"] = (entry.get("note") or "").strip()
             ev["date"] = fixed
+        if not fixed:
+            # The day the row states (STATES_ITS_DAY), before clamp_year,
+            # which then has nothing of its to bring back.
+            stated_day(ev, r)
         clamp_year(ev, r.get("session") or session)
         in_recess(ev, r, fixed)
         ev["when"] = event_date(ev, r["created"])
