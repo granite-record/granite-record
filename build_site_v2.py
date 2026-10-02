@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.131
+# GRANITE_VERSION: 2026-09-05.132
 """
 Generate the faceted site from real General Court data.
 
@@ -1463,7 +1463,31 @@ def floor_disposed(narr):
     return out
 
 
-def classify(narr, rcs, prefix=""):
+def last_decision(narr, bid, rcs=(), term=""):
+    """The last decision either chamber made on the measure, as the journey
+    reads it -- one of journey()'s lines -- or None where neither decided
+    anything.
+
+    The journey is the one reading of a docket that knows a tabling undone by
+    a carried removal from the table, a decision reconsidered, a day's
+    motions in the order they stood, a suspension of the rules that is not
+    the business it would have allowed, and a row wrapped onto the next. What
+    ended a measure is asked of it rather than of a second reading of the
+    same rows: the tests in classify() that looked for a word among the
+    carried motions could not tell CACR 4 of 2009's special order from a
+    decision, and so could not see that its last decision was a vote it
+    lost.
+    """
+    steps = [s for s in journey(narr, bid, rcs, term=term)[1] if s["body"] in ("H", "S")]
+    return steps[-1] if steps else None
+
+
+# The docket's own row for a term's end: "Died, Session ended 10/10/2024",
+# "Died on Table, Session ended", "Died, Session Ended" (SSSB 1 of 2010).
+SESSION_ENDED_ROW = re.compile(r"\bsession\s+ended\b", re.I)
+
+
+def classify(narr, rcs, prefix="", bid="", term=""):
     """Map a bill to one of four display states, from the docket alone.
 
     Only the fallback for bills the status page does not cover: 804 of
@@ -1609,6 +1633,22 @@ def classify(narr, rcs, prefix=""):
     # bills of 2017-2026 say exactly that and nothing else.
     if re.search(r"inexpedient to legislate,\s*(?:senate|house)\s+rule", text):
         return "done", "Killed"
+    # THE LAST DECISION ON THE MEASURE WAS A MOTION TO PASS IT THAT FAILED.
+    # The test above answers only where no motion of any kind carried, and a
+    # carried special order, reconsideration, recommittal or tabling since
+    # undone is not a decision on the measure: CACR 4 of 2009 was special
+    # ordered on 12 February and lost 193-176 on the 18th, "Lacking Necessary
+    # Three-Fifths", and read "In committee"; CACR 26 of 2008 lost, was
+    # reconsidered and lost again; CACR 8 and CACR 11 of 2012 were retained,
+    # lost, were tabled and taken off the table, and read "Retained in
+    # committee"; CACR 2 of 2004's "OTP/AM failed 3/5 RC(186-172)" followed an
+    # amendment it adopted. The LAST decision, of any kind: a tabling that
+    # stood (HB 1681 of 1998, HB 1176 of 2026), a kill, a study, a
+    # postponement or a recommittal after the vote is the answer instead, and
+    # so is the docket's own row for the end, tested above.
+    last = last_decision(narr, bid or prefix, rcs, term)
+    if last and last["act"] == "failed":
+        return "done", "Failed to pass"
     # RETAINED IS WHERE A BILL WAS, NOT WHERE IT IS once anything came after.
     # Read as "any retention anywhere" it called 21 bills "Retained in
     # committee" that had since been reported, passed both chambers and gone
@@ -6397,6 +6437,9 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     """
     stated = stale = 0
     between = None
+    # A dated docket line decided the status over a field that says otherwise,
+    # where between_chambers() below did not: for status_source.
+    from_docket = False
     prefix = bill_prefix(bid)
     told = classify_stated(st, prefix, origin_of(bid, narr, st))
     # A STATUS FIELD DOES NOT INTRODUCE A BILL THE HOUSE JOURNAL LEAVES OUT.
@@ -6464,11 +6507,32 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
         # then said "No vote was ever taken on it" over the docket's vote.
         kind, status = disposed
         stated = 1
+    elif (told and told[1] == "Died when the session ended"
+          and not any(SESSION_ENDED_ROW.search(e.get("raw") or "")
+                      for e in (narr or {}).get("events", []) if not e.get("cancelled"))
+          and (last_decision(narr, bid, rcs, term) or {}).get("act") == "failed"):
+        # AND "DIED, SESSION ENDED" IS NOT THE OUTCOME WHERE THE LAST DECISION
+        # WAS A VOTE THE MEASURE LOST, for the reason above. Which word a
+        # constitutional amendment that fell short of three fifths carried
+        # depended on the code the clerk typed: CACR 4, 10, 14, 15, 21 and 24
+        # of 2026, with a blank or MISCELLANEOUS field, read "Failed to pass",
+        # and CACR 9 and CACR 18 of the same term, CACR 2 and CACR 7 of 2023
+        # and CACR 9 of 2019, the same docket under DIED, SESSION ENDED, read
+        # "Died when the session ended" over a page saying no chamber had
+        # voted on them. So do CACR 8 of 2025 and CACR 11 and CACR 12 of 2026,
+        # which passed the Senate and lost in the House.
+        # NOT WHERE THE DOCKET'S OWN ROW SAYS THE SESSION ENDED IT: "Died,
+        # Session ended 10/10/2024" is the last row of CACR 15, 17, 19, 22 and
+        # 23 of 2024, and "Died, Session Ended" of SSSB 1 of 2010, each after a
+        # vote it lost. That is the record's last word and is left as it is.
+        kind, status = "done", "Failed to pass"
+        stated = 1
+        from_docket = True
     elif told:
         kind, status = told
         stated = 1
     else:
-        kind, status = classify(narr, rcs, prefix)
+        kind, status = classify(narr, rcs, prefix, bid, term)
         # classify's last two answers, "In committee" and "In progress", are
         # this site's words for a bill it knows nothing more about. Where
         # the status fields name a stage STATED has no entry for, that is
@@ -6558,7 +6622,7 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                            "Vetoed, override vote pending")):
         status = "Vetoed"
     return Disposition(kind, status, told, settled, prefix,
-                       stated, stale, bool(between))
+                       stated, stale, bool(between) or from_docket)
 
 
 def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):

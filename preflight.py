@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.309
+# GRANITE_VERSION: 2026-09-04.310
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1709,6 +1709,147 @@ def _answer_on_the_next_row(N, B):
     assert not bad, "; ".join(bad)
     return "ok", ("HB 1674 of 1998 is killed 158-105 and CACR 21 of 1996 on a voice vote, each "
                   "from the row that answers the question the row before it ends on")
+
+
+# Real rows: Docket_db_2009-2010.txt lines 6619-6621 (CACR 4) and 24127-24132
+# (SSSB 1); Docket_db_2011-2012.txt 10400, 10404-10405 and 10413-10419 (CACR
+# 11) and 8666 with 8673-8675 (CACR 8, as its docket stood on 5 January
+# 2012); Docket_db_2003-2004.txt 9982 and 9985-9988 (CACR 2);
+# Docket_2019-2020.txt 146-147 (CACR 9) and 96-97 (CACR 21);
+# Docket_2023-2024.txt 102 and 108-110 (CACR 22); Docket_db_1997-1998.txt
+# 23538-23540 (HB 1681); Docket.txt 17060-17061 and 25179 (HB 1176) and 8761
+# (CACR 8 of 2025).
+_DOCKET_FAILED_PASSAGE = {
+    ("CACR4", "2009-2010"): [
+        "2009|0768|02/12/2009 03:10:20 PM|CACR4|H|Special Ordered to Follow First Bill on Regular Calendar for Feb 18: MA VV; HJ 17, PG.430|02/12/2009 03:10:20 PM",
+        "2009|0768|02/18/2009 10:43:47 AM|CACR4|H|Amendment #0156h Adopted, VV; HJ 18, PG.456|02/18/2009 10:43:47 AM",
+        "2009|0768|02/18/2009 10:57:21 AM|CACR4|H|Ought to Pass with AM #0156h: MF DIV 193-176 Lacking Necessary Three-Fifths; HJ 18, PG.455-456|02/18/2009 10:57:21 AM"],
+    ("CACR11", "2011-2012"): [
+        "2012|0564|03/01/2011 09:14:19 AM|CACR11|H|Retained in Committee; HC 27, PG.824|03/01/2011 09:14:19 AM",
+        "2012|0564|01/05/2012 05:01:49 PM|CACR11|H|Inexpedient to Legislate: MF RC 151-160; HJ 8, PG.520-522|01/05/2012 05:01:49 PM",
+        "2012|0564|01/05/2012 05:03:17 PM|CACR11|H|Recommit (Rep Giuda): MA RC 207-102; HJ 8, PG.522-524|01/05/2012 05:03:17 PM",
+        "2012|0564|03/07/2012 03:47:26 PM|CACR11|H|Amendment #0951h(NT) Adopted, VV; HJ 21, PG.1338-1339|03/07/2012 03:47:26 PM",
+        "2012|0564|03/07/2012 04:04:43 PM|CACR11|H|Ought to Pass with Amendment #0951h(NT): MF RC 218-120 Lacking Necessary Three-Fifths Vote; HJ 21, PG.1339-1341|03/07/2012 04:04:43 PM",
+        "2012|0564|03/07/2012 04:06:47 PM|CACR11|H|Inexpedient to Legislate (Rep Serlin); HJ 21, PG.1341|03/07/2012 04:06:47 PM",
+        "2012|0564|03/07/2012 04:07:28 PM|CACR11|H|Lay On The Table (Rep Bettencourt): MA DIV 244-97 By Necessary Three-Fifths Vote; HJ 21, PG.1341|03/07/2012 04:07:28 PM",
+        "2012|0564|03/21/2012 12:25:05 PM|CACR11|H|Remove From Table (Rep Itse): MA DIV 209-144; HJ 28, PG.1676|03/21/2012 12:25:05 PM",
+        "2012|0564|03/21/2012 12:25:45 PM|CACR11|H|Inexpedient to Legislate: MF DIV 156-200; HJ 28, PG.1676|03/21/2012 12:25:45 PM",
+        "2012|0564|03/21/2012 01:28:51 PM|CACR11|H|Reconsider Ought to Pass (Rep B.Murphy): MF DIV 172-176; HJ 28, PG.1678|03/21/2012 01:28:51 PM"],
+    ("CACR8", "2011-2012"): [
+        "2012|0080|02/24/2011 04:24:43 PM|CACR8|H|Retained in Committee; HC 27, PG.823|02/24/2011 04:24:43 PM",
+        "2012|0080|01/05/2012 11:35:45 AM|CACR8|H|Ought to Pass: MF RC 219-127 Lacking Required Three-Fifths Vote; HJ 8, PG.479-482|01/05/2012 11:35:45 AM",
+        "2012|0080|01/05/2012 11:39:13 AM|CACR8|H|Laid on Table (Rep Vaillancourt): MF DIV 114-234; HJ 8, PG.482|01/05/2012 11:39:13 AM",
+        "2012|0080|01/05/2012 11:41:26 AM|CACR8|H|Recommit (Rep Balboni): MA DIV 246-103; HJ 8, PG.482|01/05/2012 11:41:26 AM"],
+    ("CACR2", "2003-2004"): [
+        "2004|0014|03/06/2003 09:42:59 AM|CACR2|H|Retained in Committee|03/06/2003 09:42:59 AM",
+        "2004|0014|01/15/2004 10:59:56 AM|CACR2|H|Special Order to Jan 22, 1st Item, Rep Hess MA VV;  HJ 8, p 381|01/15/2004 10:59:56 AM",
+        "2004|0014|01/16/2004 10:28:47 AM|CACR2|H|Reps M Carter et al Prop Fl Am{0105}(New Title);  HC 6, p322-323|01/16/2004 10:28:47 AM",
+        "2004|0014|01/22/2004 10:35:01 AM|CACR2|H|Comm Am{0528}, AL VV; Rep M Carter Fl Am{0105}(New Title), AA RC(206-147);  OTP/AM failed 3/5|01/22/2004 10:35:01 AM",
+        "2004|0014|01/22/2004 11:49:32 AM|CACR2|H|RC(186-172);  HJ 9, p 456-463|01/22/2004 11:49:32 AM"],
+    ("CACR9", "2019-2020"): [
+        "2020|0769|1/8/2020 12:00:00 AM|CACR9|H|Amendment #2019-2742h : AA VV 01/08/2020 HJ 1 P. 93|1/8/2020 12:00:00 AM",
+        "2020|0769|1/8/2020 12:00:00 AM|CACR9|H|Ought to Pass with Amendment 2019-2742h: MF RC 217-150 Lacking Necessary Three-Fifths Vote 01/08/2020 HJ 1 P. 93|1/8/2020 12:00:00 AM"],
+    ("CACR8", "2025-2026"): [
+        "2025|0957|5/8/2025 11:49:06 AM|CACR8|H|Ought to Pass: MF DV 203-158 Lacking Necessary Two-Thirds Vote 05/08/2025  HJ 14  P. 14|6/17/2025 2:37:09 PM"],
+    ("CACR22", "2023-2024"): [
+        "2024|2906|1/18/2024 12:00:00 AM|CACR22|S|Ought to Pass, RC 24Y-0N, MA, by Necessary 3/5; OT3rdg; 01/18/2024 SJ 2|1/18/2024 12:00:00 AM",
+        "2024|2906|5/23/2024 12:00:00 AM|CACR22|H|Lay CACR22 on Table (Rep. Lane): MF RC 175-187 05/23/2024 HJ 14 P. 47|5/23/2024 12:00:00 AM",
+        "2024|2906|5/23/2024 12:00:00 AM|CACR22|H|Ought to Pass: MF RC 195-165 Lacking Necessary Three-Fifths Vote 05/23/2024 HJ 14 P. 49|5/23/2024 12:00:00 AM",
+        "2024|2906|10/10/2024 12:00:00 AM|CACR22|H|Died, Session ended 10/10/2024 HJ 17|10/10/2024 12:00:00 AM"],
+    ("SSSB1", "2009-2010"): [
+        "2010|2976|06/09/2010 11:20:33 AM|SSSB1|S|Sen. D\u2019Allesandro Moved Ought to Pass; RC 14Y-9N, MA, OT3rdg; Special Session|06/09/2010 11:20:33 AM",
+        "2010|2976|06/09/2010 11:21:42 AM|SSSB1|S|Passed by Third Reading Resolution|06/09/2010 11:21:42 AM",
+        "2010|2976|06/09/2010 05:37:40 PM|SSSB1|H|Introduction and Consideration: MA VV; 2010 Special Session HJ 1, PG.48|06/09/2010 05:37:40 PM",
+        "2010|2976|06/09/2010 05:41:10 PM|SSSB1|H|Lay on the Table (Rep Hess): MF RC 108-235; 2010 Special Session HJ 1, PG.48-50|06/09/2010 05:41:10 PM",
+        "2010|2976|06/09/2010 06:45:22 PM|SSSB1|H|Ought to Pass (Rep D.Sullivan): MF RC 141-191; 2010 Special Session HJ 1, PG.50-52|06/09/2010 06:45:22 PM",
+        "2010|2976|06/09/2010 07:30:49 PM|SSSB1|H|Died, Session Ended|06/09/2010 07:30:49 PM"],
+    ("CACR21", "2019-2020"): [
+        "2020|3143|6/8/2020 12:00:00 AM|CACR21|H|Introduced 03/12/2020 HJ 8 P. 228|6/8/2020 12:00:00 AM",
+        "2020|3143|6/12/2020 12:00:00 AM|CACR21|H|Rules Suspension to consider at the present time without required referral to commmittee, public hearing and report from committee, and if passed, allow for immediate third reading MF lacking necessary 2/3 RC 197-143 06/11/2020|6/12/2020 12:00:00 AM"],
+    ("HB1681", "1997-1998"): [
+        "1998|2936|09/24/1998 06:31:19 PM|HB1681|H|ITL REPORT, ML RC(126-126); REP BURLING MOVED OTP, ML FAILS NEC|09/24/1998 06:31:19 PM",
+        "1998|2936|09/24/1998 06:31:55 PM|HB1681|H|2/3RC(127-125); LAID ON THE TABLE, REP KURK MA BY NEC 2/3VV;|09/24/1998 06:31:55 PM",
+        "1998|2936|09/24/1998 06:32:00 PM|HB1681|H|HJ78,P2536-2540|09/24/1998 06:32:00 PM"],
+    ("HB1176", "2025-2026"): [
+        "2026|2473|2/12/2026 3:50:13 PM|HB1176|H|Ought to Pass with Amendment 2026-0197h: MF DV 159-188 02/12/2026  HJ 4  P. 68|4/22/2026 10:25:14 AM",
+        "2026|2473|2/12/2026 3:52:09 PM|HB1176|H|Lay HB1176 on Table (Rep. S. Smith): MA RC 321-27 02/12/2026  HJ 4  P. 68|4/22/2026 10:25:34 AM",
+        "2026|2473|8/20/2026 12:33:45 PM|HB1176|H|Died on Table, Session ended 08/19/2026  HJ 16|8/20/2026 12:33:45 PM"],
+}
+
+
+@check("status", "a measure whose last decision was a vote to pass it that failed reads Failed "
+                 "to pass, whatever carried before it and whichever code the clerk typed",
+       needs=("narrative", "build_site_v2"))
+def _failed_passage_is_the_last_decision(N, B):
+    """classify() said "Failed to pass" only where no motion of any kind had
+    carried, and a carried special order, reconsideration, recommittal or
+    tabling since undone is no decision on the measure: CACR 4 of 2009 was
+    special ordered and then lost 193-176 for want of three fifths, and read
+    "In committee"; CACR 11 of 2012 was retained, recommitted, lost 218-120,
+    was tabled and taken off the table, and read "Retained in committee";
+    CACR 2 of 2004's row says "OTP/AM failed 3/5 RC(186-172)" after an
+    amendment it adopted. And where the House's field says DIED, SESSION
+    ENDED the same docket read "Died when the session ended", over a page
+    saying no chamber had voted: CACR 9 of 2019, CACR 8 of 2025.
+
+    The answer is the LAST decision, as the journey reads the docket
+    (build_site_v2.last_decision). So a tabling that stood is not a failed
+    vote (HB 1681 of 1998, HB 1176 of 2026); a recommittal after the vote is
+    not one (CACR 8 of 2012, as its docket stood that January); a rules
+    suspension that failed is not a vote on the bill (CACR 21 of 2020); and a
+    docket whose own last row says the session ended it keeps that word (CACR
+    22 of 2024, SSSB 1 of 2010).
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_FAILED_PASSAGE.items()}
+    misc = {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS", "senate_status": ""}
+    ended = {"gen_status": "HOUSE", "house_status": "DIED, SESSION ENDED", "senate_status": ""}
+    bad = []
+
+    def status(bill, term, st, current="2025-2026", **kw):
+        return B.bill_disposition({}, bill, st, narr[(bill, term)], [], term, current, **kw)
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    for bill, term in (("CACR4", "2009-2010"), ("CACR11", "2011-2012"), ("CACR2", "2003-2004")):
+        d = status(bill, term, misc)
+        is_(f"{bill} of {term}", (d.kind, d.status), ("done", "Failed to pass"))
+    # The same docket under DIED, SESSION ENDED, and the source is the docket.
+    d = status("CACR9", "2019-2020", ended)
+    is_("CACR9 of 2019", (d.status, d.between), ("Failed to pass", True))
+    d = status("CACR8", "2025-2026", {"house_status": "DIED, SESSION ENDED"}, term_over=True)
+    is_("CACR8 of 2025", (d.kind, d.status), ("done", "Failed to pass"))
+    # The docket's own row for the session's end is the record's last word.
+    d = status("CACR22", "2023-2024", {**ended, "senate_status": "PASSED/ADOPTED"})
+    is_("CACR22 of 2024", d.status, "Died when the session ended")
+    d = status("SSSB1", "2009-2010", {**ended, "senate_status": "PASSED/ADOPTED"})
+    is_("SSSB1 of 2010", d.status, "Died when the session ended")
+    # A failed suspension of the rules is not the bill failing.
+    d = status("CACR21", "2019-2020", ended)
+    is_("CACR21 of 2020", d.status, "Died when the session ended")
+    is_("CACR21 of 2020's last decision",
+        B.last_decision(narr[("CACR21", "2019-2020")], "CACR21", term="2019-2020"), None)
+    # A tabling after the vote, a recommittal after it: not Failed to pass.
+    for bill, term, st in (("HB1681", "1997-1998", {"gen_status": "HOUSE",
+                                                    "house_status": "REPORT FILED"}),
+                           ("HB1176", "2025-2026", {"gen_status": "HOUSE"}),
+                           ("CACR8", "2011-2012", misc)):
+        d = status(bill, term, st, term_over=term == "2025-2026")
+        if d.status == "Failed to pass":
+            bad.append(f"{bill} of {term}: Failed to pass, over a later decision")
+    is_("HB1176 of 2026", status("HB1176", "2025-2026", {"gen_status": "HOUSE"},
+                                 term_over=True).status, "Died on the table")
+    is_("CACR8 of 2012's last decision, that January",
+        B.last_decision(narr[("CACR8", "2011-2012")], "CACR8", term="2011-2012")["act"],
+        "recommitted")
+    is_("HB1681 of 1998's last decision",
+        B.last_decision(narr[("HB1681", "1997-1998")], "HB1681", term="1997-1998")["act"],
+        "tabled")
+    assert not bad, "; ".join(bad)
+    return "ok", ("CACR 4 of 2009, CACR 11 of 2012, CACR 2 of 2004, CACR 9 of 2019 and CACR 8 of "
+                  "2025 read Failed to pass; a later tabling or recommittal, a failed suspension "
+                  "and the docket's own Session ended row each keep theirs")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
