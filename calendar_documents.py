@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.2
+# GRANITE_VERSION: 2026-10-01.3
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -36,27 +36,43 @@ its chamber's viewer prefix, cut from the recorded text and never encoded
 again, so the page's script cannot produce an address the record does not
 hold. preflight holds every link to that.
 
-WHAT A LABEL SAYS. The General Court's own name for the document -- its file
-name, which is what its dropdown shows -- with nothing rewritten: "No 01
-January 04 1012" stays as the House filed it. Where a name states no date
-("HC 32", "SC 29", "SJ 15") the date the document itself prints is added
-after a dash, read from the text beside the PDF where that text is on disk:
-a calendar's masthead, taken only where it carries the document's own
-number, and a Senate journal's sitting (journal_days.senate_openings), taken
-only where the journal holds one day's. Anywhere else the name stands alone:
-a date nobody could check is not offered. printed_date holds the measure of
-both readings against the names that do state a date.
+WHAT A LABEL SAYS. The name of the General Court's file, with nothing
+rewritten: "No 01 January 04 1012" stays as the House filed it. THE FILE'S
+NAME, WHICH IS NOT ALWAYS THE GENERAL COURT'S LABEL. Its own dropdown shows
+the file's name for all but the newest document, which it posts under a short
+name and labels in full: on the saved probe_calendars.html the option
+"SC 29.pdf" reads "No 29 September 3 2026". The queue records the file's name
+and not that label, so the list page says a document is under its file's
+name, and not "named as the General Court names it", which it said on
+1 October. Where a name states no date ("HC 32", "SC 29", "SJ 15") the date
+the document itself prints is added after a dash, read from the text beside
+the PDF where that text is on disk: a calendar's masthead, taken only where
+it carries the document's own number, and a Senate journal's sitting
+(journal_days.senate_openings), taken only where the journal holds one day's.
+Anywhere else the name stands alone: a date nobody could check is not
+offered. printed_date holds the measure of both readings against the names
+that do state a date.
 
 EACH DOCUMENT ONCE, UNDER ITS OWN DATE'S YEAR. The General Court files
 December's documents under the next year, and lists some twice -- twenty of
 2011's House journals are under 2010 as well. Here a document is under the
 year its date gives, once. A document whose date is not known stays under
-the year list the General Court put it in.
+the year list the General Court put it in -- so for those a year is the
+General Court's filing and not a date, and the list page says so and says
+how many they are. A year is not guessed from a neighbour's date: the guess
+would be taken back the night the document's own text is read.
 
-WHAT IS LEFT OUT, AND SAID. A document the General Court lists and does not
-serve -- the queue marks it withheld, gone or failed, or holds the error its
-address answered with -- is not linked. The block says how many in one line
-and the list page names them.
+WHAT IS LEFT OUT, AND SAID. A row the queue marks withheld, gone or failed,
+or holds an error against, is not linked. The block says how many in one
+line and the list page names them. "NOT LINKED HERE", AND NOT "DOES NOT
+SERVE". The page said "the General Court lists but does not serve" of 45
+documents, and the queue bears that out for two: 2008's "09A" and "09B"
+answered 403. Forty-two more were set aside for having names of the same
+form and were never asked for, and the forty-fifth answered 500 at an
+address carrying this project's own unescaped "&#39;". A statement about the
+General Court's server, on a page its staff read, has to be one the record
+holds. What the record holds is that this page does not link them, and how
+many of them were ever asked for.
 
 THE LIST GROWS. The nightly refreshes the queue, so nothing here counts on
 its size, its years or its states: a row in a state this has not seen is
@@ -92,13 +108,14 @@ CHAMBER = {sid: ch for sid, ch, _kind, _many, _one in SETS}
 # Where the section and its list live. The list is beside the week pages and
 # not in calendar/data/, which build_calendar.month_files prunes.
 ANCHOR = "cdocs"
+NOT_LINKED = "notlinked"    # the list page's section that names what is left out
 LIST_PATH = "/calendar/documents.html"
 INDEX_PATH = "/calendar/documents.json"
 
 # Only the General Court's own addresses are linked.
 HOST = "https://gc.nh.gov/"
-# A state that says the General Court did not serve the document.
-UNSERVED = ("withheld", "gone", "failed")
+# A state that says the address is not one to send a reader to.
+HELD_BACK = ("withheld", "gone", "failed")
 
 MONTHS = ("January February March April May June July August September "
           "October November December").split()
@@ -122,12 +139,12 @@ _NUMBER = re.compile(r"^(?i:(?:(?:daily|special\s+session)\s+journal\s+|hj_ss\s+
                      r"(?:no\.?\s*|#)?)0*(\d{1,3})(?!\d)([A-Za-z](?![a-z]))?")
 
 Doc = namedtuple("Doc", "set year listed name label url date number order")
-Doc.__doc__ = """One listed document.
+Doc.__doc__ = """One listed document, linked.
 
 set     "hc", "hj", "sc" or "sj"
 year    the year it is shown under: its date's, else the General Court's list
 listed  the year list the General Court put it in
-name    the General Court's name for it, as its dropdown shows it
+name    the name of the General Court's file, without its extension
 label   the name, with the document's own date added where the name has none
 url     the address the General Court's own button uses, as recorded
 date    ISO, or "" where none is known
@@ -135,18 +152,33 @@ number  (number, supplement letter), for the order within a day
 order   its place in the queue, which is the General Court's listed order
 """
 
+Out = namedtuple("Out", "set year name asked")
+Out.__doc__ = """One listed document that is not linked.
+
+set     "hc", "hj", "sc" or "sj"
+year    the year list the General Court put it in
+name    the name of its file
+asked   whether its address was ever asked for, by the queue's count of
+        attempts: False for a row set aside without a request
+"""
+
 
 def rows(path=QUEUE):
-    """The queue's rows as written, or [] where there is no queue."""
+    """The queue's rows as written, or [] where there is no queue.
+
+    Read as utf-8-sig, so a queue saved with a byte-order mark is still a
+    queue. As plain UTF-8 the mark became part of the first column's name, no
+    row had a chamber, and the section left every week's page with the build
+    exiting zero."""
     try:
-        with open(path, encoding="utf-8", newline="") as fh:
+        with open(path, encoding="utf-8-sig", newline="") as fh:
             return list(csv.DictReader(fh))
     except OSError:
         return []
 
 
 def clean(name):
-    """The General Court's name for a document: its file's name without the
+    """The name of the General Court's file for a document, without the
     extension. An entity in it is the page's own escaping ("Governor&#39;s"),
     and runs of spaces are one space, as a browser would show them."""
     s = html.unescape(name or "")
@@ -154,15 +186,23 @@ def clean(name):
     return " ".join(s.split())
 
 
-def served(r):
-    """Whether the General Court serves the document a row lists.
+def linkable(r):
+    """Whether a row's address is one to send a reader to.
 
     Held is fetched. Anything else with an address and no recorded error is
     listed and not yet asked for -- which is what a night's new document is
     -- so it is linked: the picker reads addresses, not files."""
     state = (r.get("state") or "").strip().lower()
     return (bool((r.get("url") or "").startswith(HOST))
-            and state not in UNSERVED and not (r.get("error") or "").strip())
+            and state not in HELD_BACK and not (r.get("error") or "").strip())
+
+
+def asked(r):
+    """Whether a row's address was ever asked for, by the queue's count."""
+    try:
+        return int((r.get("attempts") or "").strip() or 0) > 0
+    except ValueError:
+        return False
 
 
 def name_date(name, last_year=None):
@@ -286,11 +326,11 @@ def printed_date(r, root=Path(".")):
 
 def read(path=QUEUE, root=Path("."), today=None):
     """(docs, left_out) -- every document linked, in the picker's order, and
-    the rows the General Court lists and does not serve.
+    the rows the General Court lists that are not linked.
 
     docs is a list of Doc, grouped by set in SETS' order, then by year newest
-    first, then newest first within the year. left_out is a list of
-    (set, listed year, name) in the queue's order.
+    first, then newest first within the year. left_out is a list of Out in
+    the queue's order.
     """
     last = (today or datetime.date.today()).year + 1
     listed = [r for r in rows(path) if (r.get("chamber"), r.get("kind")) in SET_OF]
@@ -310,13 +350,19 @@ def read(path=QUEUE, root=Path("."), today=None):
         took = [x for x in rs if (x.get("fetched") or "").strip()]
         return len(took) == 1 and took[0] is r
 
-    found, left_out = [], []
+    found, left_out, taken = [], [], set()
     for i, r in enumerate(listed):
         sid = SET_OF[(r["chamber"], r["kind"])]
         name = clean(r.get("name"))
-        if not served(r):
-            left_out.append((sid, (r.get("year") or "").strip(), name))
+        if not linkable(r):
+            left_out.append(Out(sid, (r.get("year") or "").strip(), name, asked(r)))
             continue
+        # ONE ADDRESS IS ONE DOCUMENT. A row written twice is linked once, and
+        # is not counted as left out either. The dated twins below are told
+        # apart by name and date; a row with no date has only its address.
+        if r["url"] in taken:
+            continue
+        taken.add(r["url"])
         date = name_date(name, last)
         added = False
         if not date and owns(r):
@@ -324,7 +370,7 @@ def read(path=QUEUE, root=Path("."), today=None):
             added = bool(date)
         year = date[:4] if date else (r.get("year") or "").strip()
         if not re.fullmatch(r"\d{4}", year):
-            left_out.append((sid, year, name))
+            left_out.append(Out(sid, year, name, asked(r)))
             continue
         found.append(Doc(sid, year, (r.get("year") or "").strip(), name,
                          f"{name} — {day_words(date)}" if added else name,
@@ -391,12 +437,16 @@ def bases(docs):
     return {ch: c.most_common(1)[0][0] for ch, c in n.items() if c}
 
 
-def index(docs, made=None):
+def index(docs):
     """What site/calendar/documents.json holds.
 
     A document is [label, tail, date]: the address is base[chamber] + tail,
     and where an address does not begin with its chamber's base the tail is
-    the whole address. date is absent where none is known."""
+    the whole address. date is absent where none is known.
+
+    NO DATE OF ITS MAKING. It carried one, "made", which nothing read and
+    which made the file a new file every day: a list that had not changed
+    was sent again with each night's deploy."""
     base = bases(docs)
     sets = []
     for sid, years in by_set(docs).items():
@@ -407,7 +457,7 @@ def index(docs, made=None):
                      + ([d.date] if d.date else []) for d in ds]
         sets.append({"id": sid, "chamber": CHAMBER[sid], "name": MANY[sid],
                      "one": ONE[sid], "years": ys})
-    return {"made": (made or datetime.date.today()).isoformat(), "base": base, "sets": sets}
+    return {"base": base, "sets": sets}
 
 
 def address(ix, chamber, doc):
@@ -418,30 +468,91 @@ def address(ix, chamber, doc):
 
 
 def left_out_line(left_out):
-    """The one plain line that says what is not linked, or ""."""
+    """The one plain line that says what is not linked, or "". It says what
+    this page does, and nothing of the General Court's server: the note at
+    the top of this file says why."""
     n = len(left_out)
     if not n:
         return ""
-    return (f"{n:,} document{'' if n == 1 else 's'} the General Court lists but does not "
-            f"serve {'is' if n == 1 else 'are'} left out.")
+    return (f"{n:,} document{'' if n == 1 else 's'} the General Court lists "
+            f"{'is' if n == 1 else 'are'} not linked here.")
+
+
+def left_out_why(left_out):
+    """What the record holds about them, for the list page: how many were
+    asked for and answered with an error, and how many were never asked."""
+    yes = sum(1 for o in left_out if o.asked)
+    no = len(left_out) - yes
+    if yes and no:
+        return (f"Of these, {yes:,} answered with an error when this site asked for "
+                f"{'it' if yes == 1 else 'them'} and {no:,} {'was' if no == 1 else 'were'} "
+                "set aside without being asked for.")
+    one = len(left_out) == 1
+    if yes:
+        return f"{'It' if one else 'Each'} answered with an error when this site asked for it."
+    if no:
+        return f"{'It was' if one else 'They were'} set aside without being asked for."
+    return ""
 
 
 def summary(docs, left_out):
     """What the build prints: how many, the newest of each set, what is out."""
-    newest = []
+    first = []
     for sid, years in by_set(docs).items():
         if years:
             d = next(iter(years.values()))[0]
-            newest.append(f"{ONE[sid]} {d.name}"
-                          + (f" ({day_words(d.date)})" if d.date and d.label != d.name else ""))
+            first.append(f"{ONE[sid]} {d.name}"
+                         + (f" ({day_words(d.date)})" if d.date and d.label != d.name else ""))
     return (f"{len(docs):,} calendars and journals in the picker"
-            + (f"; newest: {'; '.join(newest)}" if newest else "")
-            + f"; {len(left_out):,} listed and not served are left out")
+            + (f"; newest: {'; '.join(first)}" if first else "")
+            + f"; {len(left_out):,} listed and not linked")
 
 
-def newest_date(docs, sid="hc"):
-    """The date of the newest dated document of a set, ISO, or ""."""
-    return max((d.date for d in docs if d.set == sid and d.date), default="")
+def newest_date(docs, sid=None):
+    """The latest date on a document of one set -- of any, given none -- ISO,
+    or "" where no document has a date."""
+    return max((d.date for d in docs if d.date and sid in (None, d.set)), default="")
+
+
+def newest(docs, sid="hc"):
+    """The document a set's picker opens on: the first of its newest year,
+    which has no date where it is a night's new short name. None where the
+    set is empty."""
+    years = by_set(docs).get(sid)
+    return next(iter(years.values()))[0] if years else None
+
+
+def behind(docs, today, days, sid="hc"):
+    """(the set's latest date, its age in days) where the list looks to have
+    fallen behind the General Court's own, else None.
+
+    THE NEWEST LISTED MAY HAVE NO DATE. The age was read off the newest DATED
+    document alone, so a night's new "HC 33", listed and its text not yet
+    read, would have left "the newest House Calendar listed is 4 September"
+    warning on every run of a list that was current. Where the document the
+    picker opens on has no date, the list has moved since the last date it
+    knows and its age cannot be told: no warning."""
+    first = newest(docs, sid)
+    if first is None or not first.date:
+        return None
+    last = newest_date(docs, sid)
+    age = (today - datetime.date.fromisoformat(last)).days
+    return (last, age) if age > days else None
+
+
+def sources(docs):
+    """[(chamber's name, the General Court's own page of its calendars and
+    journals)], for the chambers with a document here.
+
+    Each is a recorded viewer address up to its folder -- the page that
+    address is linked from, https://gc.nh.gov/house/calendars_journals/ --
+    so it is cut from the record as a document's address is, and not made."""
+    out = []
+    for ch, base in sorted(bases(docs).items()):
+        cut = base.rfind("/")
+        if base.startswith(HOST) and cut >= len(HOST):
+            out.append(("House" if ch == "H" else "Senate", base[:cut + 1]))
+    return out
 
 
 # ---- the section under a week's schedule --------------------------------------
@@ -480,26 +591,36 @@ def block_html(docs, left_out, esc=html.escape):
         for sid, years in sets.items() if years)
     # THE PICKERS OPEN ON WHAT THE GENERAL COURT'S DO: the first set, its
     # newest year, its newest document -- written here, so the button is a
-    # real link to a real document before the list has been fetched. The
-    # other years and documents are filled in from the index when it arrives.
+    # real link to a real document before the list has been fetched.
+    # ONE CHOICE EACH UNTIL THE LIST COMES, the first picker too. It was
+    # written with all four kinds, and a reader who chose House Journals
+    # before the list arrived was shown "House Journals, 2026, HC 32" over a
+    # button that still opened the House Calendar: nothing can refill the
+    # other two without the list. Now the row cannot say anything the button
+    # does not do; the kinds, years and documents all arrive together.
     # NOT DISABLED WHILE THEY WAIT: a disabled control is skipped by Tab, and
     # a reader who came by keyboard a moment before the list did would be put
     # past all three.
-    pick = (f'<form class="cdpick" id="cdpick" hidden aria-labelledby="cdhead">'
+    # THE FORM HAS NO NAME OF ITS OWN. Named by the heading, as the section
+    # is, it was a second landmark with the section's name.
+    pick = ('<form class="cdpick" id="cdpick" hidden>'
             '<div class="cdf"><label for="cdset">Calendar or journal</label>'
-            '<select id="cdset">'
-            + "".join(f'<option value="{sid}"{" selected" if sid == first else ""}>'
-                      f'{esc(MANY[sid])}</option>' for sid, years in sets.items() if years)
-            + '</select></div>'
+            f'<select id="cdset"><option value="{first}" selected>{esc(MANY[first])}</option>'
+            '</select></div>'
             '<div class="cdf"><label for="cdyear">Year</label>'
             f'<select id="cdyear"><option value="{y0}" selected>{y0}</option>'
             '</select></div>'
             '<div class="cdf"><label for="cddoc">Document</label>'
             f'<select id="cddoc"><option value="0" selected>{esc(d0.label)}</option>'
             '</select></div>'
-            # THE DOCUMENT CHOSEN, IN FULL, where a closed picker cannot show
-            # it: "Daily Journal No 06 2-21-07-State of Judiciary Final" is
-            # cut off on a phone. Drawn on a narrow screen only (app.css).
+            # THE DOCUMENT CHOSEN, IN FULL, at every width. A closed picker
+            # cuts a long name off, and not only on a phone: the document
+            # picker is 346px at its widest and 243px at 1024px, and "Daily
+            # Journal No 03 1-21-10 State of the State Final" read "Daily
+            # Journal No 03 1-21-10" there with the whole of it nowhere on
+            # the page. Measured in Chrome on 1 October with the picker's
+            # own font, about 167 of the 4,320 names are wider than it has
+            # room for at 1024px, and about 15 at its widest.
             f'<p class="cdnow" id="cdnow">{esc(chosen_name(ONE[first], d0.label))}</p>'
             f'<a class="cdopen" id="cdopen" href="{esc(d0.url)}" rel="noopener" '
             f'aria-label="{esc(open_name(ONE[first], d0.label))}">Open the PDF</a>'
@@ -511,7 +632,12 @@ def block_html(docs, left_out, esc=html.escape):
     return (f'<section class="cdocs" id="{ANCHOR}" aria-labelledby="cdhead">'
             '<h2 id="cdhead">Calendars &amp; Journals</h2>'
             + pick
-            + '<h3 class="cdsub" id="cdnew">The newest of each</h3>'
+            # "LISTED HERE", because the list is as old as the queue. On
+            # 1 October this headed House Calendar 32 of 4 September as "the
+            # newest of each", and the example the person gave when asking
+            # for the pickers was No 35 of 25 September. Each is shown with
+            # its date, and the list page says how far the list reaches.
+            + '<h3 class="cdsub" id="cdnew">The newest listed here</h3>'
             f'<ul class="cdlatest" aria-labelledby="cdnew">{latest}</ul>'
             '<nav class="cdyears" id="cdyears" aria-labelledby="cdby">'
             '<h3 class="cdsub" id="cdby">Every year, as a list</h3>'
@@ -539,9 +665,12 @@ def jump_html(here, esc=html.escape):
     """One link from the week's heading down to the section: on a busy week
     it is a long way under the schedule. `here` is the page's own address,
     because every page carries <base href="/"> and a bare fragment would go
-    to the home page."""
+    to the home page.
+
+    NOT "(PDF)": on this site that ends a link which opens a PDF, and this
+    one goes to a section of the page."""
     return (f'<p class="cdjump"><a href="{esc(here)}#{ANCHOR}" id="cdjump">'
-            'Calendars &amp; Journals (PDF)</a></p>')
+            'Calendars &amp; Journals, as PDFs</a></p>')
 
 
 def _canon(path):
@@ -574,19 +703,53 @@ def span(docs):
     return (min(ys), max(ys)) if ys else (0, 0)
 
 
+def list_lead(docs, esc=html.escape):
+    """What the list page says of itself, under its heading. Three things it
+    said on 1 October were not so, and each is now what the record holds:
+
+    THE NAME is the file's, with the document's printed date after a dash
+    where the name has none -- not "as the General Court names it", whose own
+    label for its newest document is fuller than the file's name.
+    THE YEAR is the date's for a document with a date and the General Court's
+    list for one without, and the page says how many are without: it said "a
+    document is under the year of its date" of all of them, and 645 of 4,320
+    had none.
+    HOW FAR IT REACHES: the latest date on any document here, and where a
+    newer one is. The list is as old as archive/queue.csv, which nothing
+    refreshes at night, so "the newest" is the newest listed and may not be
+    the newest there is. The General Court's own two pages have the rest, at
+    the addresses its documents here are linked from (sources)."""
+    first, last = span(docs)
+    undated = sum(1 for d in docs if not d.date)
+    said = [f"{len(docs):,} documents, {first} to {last}, each a link to the General "
+            "Court&rsquo;s own file, under that file&rsquo;s name. A date after a dash "
+            "is the one the document prints, added where the name has none."]
+    said.append("Each is under the year of its date, newest first"
+                + (f"; the {undated:,} with no date known are under the year the General "
+                   "Court lists them for." if undated else "."))
+    latest = newest_date(docs)
+    if latest:
+        where = " and ".join(f'<a href="{esc(url)}" rel="noopener">the {esc(name)}</a>'
+                             for name, url in sources(docs))
+        said.append(f"The latest date on a document here is {day_words(latest)}"
+                    + (f"; anything published since is on the General Court&rsquo;s own "
+                       f"pages for {where}." if where else "."))
+    return " ".join(said)
+
+
 def list_body(docs, left_out, esc=html.escape):
     """(heading, lead, body) of site/calendar/documents.html: four sections,
     a year to a <details>, the newest year of each open, every document a
-    plain link; then the documents listed and not served, named."""
+    plain link; then the documents listed and not linked, named."""
     sets = by_set(docs)
     here = _canon(LIST_PATH)
-    first, last = span(docs)
     jump = " &middot; ".join(f'<a href="{here}#{sid}">{esc(MANY[sid])}</a>'
                              for sid, years in sets.items() if years)
-    lead = (f"{len(docs):,} documents, {first} to {last}, each a link to the General "
-            "Court&rsquo;s own file. A document is under the year of its date, newest "
-            f"first, and named as the General Court names it. {jump}")
-    body = []
+    lead = list_lead(docs, esc)
+    # The four kinds, on a line of their own: at the end of the lead they ran
+    # on from its links to the General Court's two pages, "the House and the
+    # Senate. House Calendars", links out and links down side by side.
+    body = [f'<p class="src">{jump}</p>']
     for sid, years in sets.items():
         if not years:
             continue
@@ -601,12 +764,15 @@ def list_body(docs, left_out, esc=html.escape):
                         + "</ul></details>")
     if left_out:
         groups = OrderedDict()
-        for sid, year, name in left_out:
-            groups.setdefault((sid, year), []).append(name)
-        body.append('<h2 id="unserved">Listed by the General Court and not served '
+        for o in left_out:
+            groups.setdefault((o.set, o.year), []).append(o.name)
+        why = left_out_why(left_out)
+        body.append(f'<h2 id="{NOT_LINKED}">Listed by the General Court and not linked here '
                     f'<span class="cdn">{len(left_out):,}</span></h2>'
-                    f'<p class="src">{esc(left_out_line(left_out))} They are named here '
-                    "as its own lists name them, under the year it lists them for.</p>"
+                    f'<p class="src">{esc(left_out_line(left_out))} '
+                    + (f"{esc(why)} " if why else "")
+                    + "They are named here by their files&rsquo; names, under the year the "
+                    "General Court lists them for.</p>"
                     '<ul class="cdlist cdout">'
                     + "".join(f'<li><span class="cdset">{esc(MANY[sid])}, {esc(year)}</span> '
                               f'{esc(", ".join(names))}</li>'
@@ -683,17 +849,26 @@ PICKER_JS = r"""
       open=$("cdopen"), stat=$("cdstat"), now=$("cdnow"), years=$("cdyears"), head=$("cdhead"),
       jump=$("cdjump");
   if(!form||!selSet||!selYear||!selDoc||!open) return;
-  var IX=null, LOADING=false, FAILED=false;
+  var IX=null, LOADING=false, FAILED=false, ASKED=false;
 
   // The pickers in place of the years: the years are what a reader without
   // script is given, and stay in the page for the day the list will not load.
   form.hidden=false;
   if(years) years.hidden=true;
 
+  // THE STATUS LINE SPEAKS ONLY TO A READER WHO HAS COME TO THE PICKERS. It
+  // is a live region, and the list is fetched when the section is merely
+  // near: on a week with little on it that is as the page loads, and "36
+  // House Calendars for 2026" was then read out to somebody at the top of
+  // the page who had asked for nothing. ASKED is set by a focus on a picker,
+  // a touch on one or the link from the week's heading; until then nothing
+  // is said, and after it the line says what a change of picker brought.
   function say(t){ if(stat&&stat.textContent!==t) stat.textContent=t; }
   // `from` is the picker that changed -- "set", "year", "doc" -- or "all" when
   // the list has just arrived. Only the pickers after it are filled again, so
-  // the one under the reader's hand is never rewritten.
+  // the one under the reader's hand is never rewritten. Until the list has
+  // come each picker holds one choice, the one the button opens, and there is
+  // nothing to draw.
   function draw(from){
     var s=state(IX,selSet.value,selYear.value,from==="doc"?selDoc.value:0);
     if(!s) return;
@@ -708,18 +883,24 @@ PICKER_JS = r"""
     // nothing leaves the page because a picker changed.
     if(s.href){ open.setAttribute("href",s.href); open.setAttribute("aria-label",s.name); }
     if(now) now.textContent=s.chosen;
-    if(from!=="doc") say(s.count);
+    if(from==="set"||from==="year"||(from==="all"&&ASKED)) say(s.count);
   }
+  // Without the list the section is what it is without script, which needs no
+  // explaining to a reader who was not in it when the pickers went.
   function fail(){
     FAILED=true; LOADING=false;
     form.hidden=true;
     if(years) years.hidden=false;
-    say("The list of documents could not be loaded here. Every year is linked below.");
+    if(ASKED) say("The list of documents could not be loaded here. Every year is linked below.");
   }
-  function load(){
-    if(IX||LOADING||FAILED) return;
+  // `asked` is true where a reader's own act brought the list: only then is
+  // the wait said, and what follows it.
+  function load(asked){
+    if(asked) ASKED=true;
+    if(IX||FAILED) return;
+    if(asked) say("Loading the list of documents.");
+    if(LOADING) return;
     LOADING=true;
-    say("Loading the list of documents.");
     fetch("/calendar/documents.json").then(function(r){
       if(!r.ok) throw new Error("HTTP "+r.status);
       return r.json();
@@ -740,14 +921,18 @@ PICKER_JS = r"""
   // heads for it: one file, once, and not on a visit that never scrolls here.
   if(typeof IntersectionObserver==="function"){
     var io=new IntersectionObserver(function(es){
-      if(es.some(function(e){ return e.isIntersecting; })){ io.disconnect(); load(); }
+      if(es.some(function(e){ return e.isIntersecting; })){ io.disconnect(); load(false); }
     },{rootMargin:"800px 0px"});
     io.observe(sec);
   }else{
-    load();
+    load(false);
   }
-  sec.addEventListener("focusin",load);
-  sec.addEventListener("pointerdown",load);
+  // A reader who reaches for a picker has asked; one who reaches for a link
+  // under them has not, and a line appearing above a link as it is pressed
+  // would move it from under the finger.
+  function reach(e){ load(form.contains(e.target)); }
+  sec.addEventListener("focusin",reach);
+  sec.addEventListener("pointerdown",reach);
 
   // The link from the week's heading: its address is the page's own with the
   // section's name, which is right without script; with it the Calendar keeps
@@ -756,7 +941,7 @@ PICKER_JS = r"""
   if(jump) jump.addEventListener("click",function(e){
     if(e.defaultPrevented||e.button>0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey) return;
     e.preventDefault();
-    load();
+    load(true);
     sec.scrollIntoView({block:"start"});
     if(head){ head.tabIndex=-1; head.focus({preventScroll:true}); }
   });
@@ -767,7 +952,7 @@ PICKER_JS = r"""
 def main():
     docs, left_out = read()
     if not docs:
-        print(f"no calendars or journals: {QUEUE} is not here, or lists nothing served")
+        print(f"no calendars or journals: {QUEUE} is not here, or lists nothing to link")
         return 1
     print(summary(docs, left_out))
     for sid, years in by_set(docs).items():

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.184 */
+/* GRANITE_VERSION: 2026-09-07.185 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3697,17 +3697,24 @@ background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-o
 /* min-width:0, for .bfilt's reason: a select's minimum is its longest option,
    and "Daily Journal No 06 2-21-07-State of Judiciary Final" is wider than a
    phone. The column is what must fit; the option's text is the browser's to
-   shorten, and the button's own name says the document in full. */
+   shorten, and the line under the pickers (.cdnow) says the document in full. */
 .cdf{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
 .cdf label{font-size:var(--t-ui);font-weight:600;line-height:1.3;color:var(--ink)}
 .cdf select{font:inherit;font-size:var(--t-ui);color:var(--ink);width:100%;min-width:0;
 min-height:40px;padding:var(--sp-2) var(--sp-4);background:var(--paper);
 border:1px solid var(--edge);border-radius:var(--r-in)}
 .cdf select:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
-/* The document chosen, in full, for the width at which a closed picker
-   cuts its name off; wider than that the picker shows it. */
-.cdnow{display:none;margin:0;font-size:var(--t-ui);line-height:1.4;color:var(--ink);
-overflow-wrap:anywhere}
+/* THE DOCUMENT CHOSEN, IN FULL, AT EVERY WIDTH: a row of its own under the
+   pickers and the button. It was drawn at 700px and under only, on the word
+   that a wider picker shows the whole name -- which it does not for a long
+   one: the document picker is 346px at its widest and 243px at 1024px, and
+   "Daily Journal No 03 1-21-10 State of the State Final" read "Daily Journal
+   No 03 1-21-10" with the whole of it nowhere on the page. In the markup it
+   comes before the button, which is where it is wanted when the pickers
+   stack, so in the row both are placed by name. */
+.cdnow{grid-column:1 / -1;grid-row:2;margin:0;font-size:var(--t-ui);line-height:1.4;
+color:var(--ink);overflow-wrap:anywhere}
+.cdopen{grid-column:4;grid-row:1}
 .cdopen{display:inline-flex;align-items:center;justify-content:center;min-height:40px;
 padding:var(--sp-3) var(--sp-7);font-size:var(--t-ui);font-weight:600;white-space:nowrap;
 color:var(--on-pine);background:var(--pine);border-radius:var(--r-in);text-decoration:none}
@@ -3746,8 +3753,9 @@ font-size:var(--t-ui);line-height:1.4}
      text at 16px so a phone does not zoom the page on focus. */
   .cdpick{grid-template-columns:minmax(0,1fr);padding:var(--sp-5)}
   .cdf select{min-height:44px;font-size:var(--t-body)}
+  /* In the markup's order again: the document said whole, then the button. */
+  .cdnow,.cdopen{grid-column:auto;grid-row:auto}
   .cdopen{min-height:44px}
-  .cdnow{display:block}
   .cdlatest{grid-template-columns:minmax(0,1fr)}
 }
 

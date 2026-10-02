@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.299
+# GRANITE_VERSION: 2026-09-04.300
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16610,7 +16610,10 @@ function world(files){
   const W=makeWorld({today:[2026,3,11], path:"/calendar", files});
   W.doc.body.innerHTML=jump+text.slice(a,e);
   W.asked=[];
-  W.run=async()=>{ vm.runInContext(text.slice(s2+8,e2),vm.createContext(Object.assign({console},W.G))); await W.settle(); };
+  // start() runs the section's script and returns before the list has come;
+  // run() waits for it.
+  W.start=()=>vm.runInContext(text.slice(s2+8,e2),vm.createContext(Object.assign({console},W.G)));
+  W.run=async()=>{ W.start(); await W.settle(); };
   W.$=(id)=>W.doc.getElementById(id);
   W.opts=(id)=>W.$(id).querySelectorAll("option").map(o=>o.textContent);
   W.choose=async(id,v)=>{ const s=W.$(id); s.value=v; s.dispatchEvent(W.ev("change")); await W.settle(); };
@@ -16625,8 +16628,9 @@ const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[
   // ---- as written, before any script: links, and the row hidden ----
   const P=world(served), $=P.$;
   ok($("cdpick").hidden && !$("cdyears").hidden, "without script the pickers are shown, or the years are not");
-  ok(P.opts("cdyear").length===1 && P.opts("cddoc").length===1 && !$("cdyear").disabled && !$("cddoc").disabled,
-     "as written, the year and the document are not one option each, or are disabled: Tab would pass them");
+  ok(P.opts("cdset").length===1 && P.opts("cdyear").length===1 && P.opts("cddoc").length===1
+     && !$("cdset").disabled && !$("cdyear").disabled && !$("cddoc").disabled,
+     "as written, the three pickers are not one choice each -- a kind could be chosen that nothing can follow until the list comes -- or are disabled, and Tab would pass them");
   const first=IX.sets.find(s=>Object.keys(s.years).length), y0=years(first.id)[0], d0=first.years[y0][0];
   ok($("cdopen").getAttribute("href")===addr(first.id,d0), "the button is not a link to the newest "+first.one+" as written");
 
@@ -16641,7 +16645,9 @@ const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[
   ok($("cdopen").getAttribute("href")===addr(first.id,d0), "the button's address after the list came: "+$("cdopen").getAttribute("href"));
   ok($("cdopen").getAttribute("aria-label")==="Open the PDF: "+first.one+", "+d0[0]+", at the General Court" && $("cdopen").textContent==="Open the PDF",
      "the button's name does not begin with the words it shows and name the document: "+$("cdopen").getAttribute("aria-label"));
-  ok(/^\d+ House Calendars? for \d{4}/.test($("cdstat").textContent), "the status line reads "+$("cdstat").textContent);
+  // NOBODY ASKED: the list came because the section was near, so the live
+  // region says nothing. It speaks once a picker is changed.
+  ok($("cdstat").textContent==="", "the list arrived with nobody in the section and the status line, a live region, said: "+$("cdstat").textContent);
   ok($("cdnow").textContent===first.one+", "+d0[0], "the document chosen is not said whole under the pickers: "+$("cdnow").textContent);
 
   // ---- a year, then a document: the button follows, nothing else moves ----
@@ -16649,6 +16655,7 @@ const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[
   await P.choose("cdyear",y1);
   ok($("cdset").value==="hc" && $("cdyear").value===y1 && $("cddoc").value==="0"
      && $("cdopen").getAttribute("href")===addr("hc",set("hc").years[y1][0]), "choosing "+y1+" did not show its newest document");
+  ok(new RegExp("^\\d+ House Calendars? for "+y1).test($("cdstat").textContent), "after a year was chosen the status line reads "+$("cdstat").textContent);
   await P.choose("cdyear",y0);
   await P.choose("cddoc","1");
   ok($("cdopen").getAttribute("href")===addr("hc",set("hc").years[y0][1]) && $("cddoc").value==="1", "choosing the second document did not move the button to it");
@@ -16679,11 +16686,34 @@ const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[
   ok(ev.defaultPrevented && P.doc._scrolled.includes($("cdocs")) && P.doc.activeElement===$("cdhead"),
      "the link from the week's heading did not scroll to the section and focus its heading");
 
-  // ---- a list that will not load leaves the links, and says so ----
+  // ---- a reader in a picker while the list is on its way is told, and then told what came ----
+  const A=world(served);
+  A.start();
+  ok(A.opts("cdset").length===1 && A.$("cdstat").textContent==="", "before the list has come the first picker offers more than the button opens, or the status line speaks");
+  A.$("cdset").focus();
+  ok(A.$("cdstat").textContent==="Loading the list of documents.", "a reader who reached a picker before the list did is told: "+A.$("cdstat").textContent);
+  await A.settle();
+  ok(/^\d+ House Calendars? for \d{4}/.test(A.$("cdstat").textContent) && A.opts("cdset").length===IX.sets.filter(s=>Object.keys(s.years).length).length,
+     "and when it came: "+A.$("cdstat").textContent+" / "+A.opts("cdset"));
+  // A link under the pickers is not a picker: reaching it brings the list and says nothing.
+  const L=world(served);
+  L.start();
+  L.$("cdocs").querySelector(".cdlatest a").focus();
+  ok(L.$("cdstat").textContent==="", "a focus on a link under the pickers wrote a line above it: "+L.$("cdstat").textContent);
+  await L.settle();
+  ok(L.opts("cdyear").length>1 && L.$("cdstat").textContent==="", "the list did not come for a reader at the links, or was announced to one who touched no picker");
+
+  // ---- a list that will not load leaves the links; a reader who was in the pickers is told ----
   const F=world(()=>null);
   await F.run();
   ok(F.$("cdpick").hidden && !F.$("cdyears").hidden, "a failed fetch left the pickers up, or the years hidden");
-  ok(/could not be loaded/.test(F.$("cdstat").textContent), "a failed fetch says: "+F.$("cdstat").textContent);
+  ok(F.$("cdstat").textContent==="", "a failed fetch nobody asked for says: "+F.$("cdstat").textContent);
+  const F2=world(()=>null);
+  F2.start();
+  F2.$("cdyear").focus();
+  await F2.settle();
+  ok(F2.$("cdpick").hidden && !F2.$("cdyears").hidden && /could not be loaded/.test(F2.$("cdstat").textContent),
+     "a reader in a picker when the list failed is told: "+F2.$("cdstat").textContent);
   const E=world((url)=>url==="/calendar/documents.json"?JSON.stringify({base:{},sets:[]}):null);
   await E.run();
   ok(E.$("cdpick").hidden && !E.$("cdyears").hidden, "an empty list left the pickers up");
@@ -16694,7 +16724,7 @@ const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[
 """
 
 
-@check("frontend", "the calendar's document picker links only addresses the General Court's own list gave, leaves out what it does not serve, and works without script")
+@check("frontend", "the calendar's document picker links only addresses the General Court's own list gave, leaves out an address held back or in error, and works without script")
 def _calendar_documents():
     """Calendars and journals as PDFs, under the Calendar page's schedule.
 
@@ -16707,10 +16737,18 @@ def _calendar_documents():
         at names is what got this project's address blocked. Every address in
         the index, the section and the list page is, byte for byte, one
         archive/queue.csv holds; the script's own state() cannot make another.
-      - WHAT IS NOT SERVED IS NOT LINKED: a withheld row, a row whose address
-        answered with an error, and an address that is not the General
-        Court's. The section says how many in one line; the list page names
-        them. A night's new row, listed and not yet fetched, IS linked.
+      - WHAT IS HELD BACK IS NOT LINKED: a withheld row, a row whose address
+        answered with an error, a row with no address, and an address that
+        is not the General Court's. The section says how many in one line;
+        the list page names them. A night's new row, listed and not yet
+        fetched, IS linked, and a row written twice is linked once.
+      - THE PAGE SAYS ONLY WHAT THE RECORD HOLDS (the review of 1 October).
+        "Not linked here", and how many were asked for, never that the
+        General Court "does not serve" them: 42 of the 45 were never asked.
+        "The newest listed here", not "the newest", of a list as old as the
+        queue. The file's name, not "as the General Court names it". And a
+        document is under the year of its date only where it has one; the
+        page says how many have none.
       - TWO DOCUMENTS THAT SHARE ONE LOCAL FILE are both in the picker, each
         at its own address, and neither takes the date that file prints.
       - LABELS AND ORDER. A name is shown as the General Court wrote it; one
@@ -16730,13 +16768,26 @@ def _calendar_documents():
       - THE SCRIPT, in node on the page a build wrote: it opens where the
         General Court's does, a year and a set refill what follows them, a
         year the set does not have falls back to its newest, nothing moves
-        the page, and a list that will not load leaves the links and says so.
+        the page, and a list that will not load leaves the links. Until the
+        list comes each picker holds the one choice the button opens. The
+        status line, a live region, speaks only to a reader who has reached
+        a picker: not when the list arrives for a section that is merely
+        near, which on a short week is as the page loads.
       - ONE ROW THAT FITS. The three pickers and the button are one row, and
         the row's minimums fit the schedule's column where it is narrowest:
         at 1024px, beside the month, less a scrollbar. As first written they
         needed 679px of a 652px row and the button stood 27px past its box,
         which only a browser showed. At 700px and under they stack, 44px tall
         with 16px text, so a phone does not zoom the page on focus.
+      - THE DOCUMENT CHOSEN IS SAID WHOLE AT EVERY WIDTH, on a row of its own
+        under the pickers: the document picker is 243px at 1024px and 346px
+        at its widest, and a closed one cuts off the longer names -- about
+        167 of the 4,320 at 1024px, measured in Chrome.
+      - A LIST THAT OUGHT TO BE HERE AND IS NOT FAILS THE BUILD. A queue with
+        a byte-order mark is read; one that is here and yields nothing, or
+        is missing from a folder the kit filled, stops build_calendar before
+        it writes anything, where it used to take the section off every week
+        and exit zero.
     """
     import contextlib
     import datetime as _dt
@@ -16771,9 +16822,16 @@ def _calendar_documents():
     stacked = _braced(mine, "@media (max-width:700px){")
     assert ".cdpick{grid-template-columns:minmax(0,1fr)" in stacked \
         and ".cdf select{min-height:44px;font-size:var(--t-body)}" in stacked \
-        and ".cdopen{min-height:44px}" in stacked and ".cdnow{display:block}" in stacked, (
-        "at 700px and under the pickers do not stack 44px tall with 16px text, or the "
-        "document chosen is not said whole under them")
+        and ".cdopen{min-height:44px}" in stacked \
+        and ".cdnow,.cdopen{grid-column:auto;grid-row:auto}" in stacked, (
+        "at 700px and under the pickers do not stack 44px tall with 16px text, with the "
+        "document chosen said whole between them and the button")
+    now = _braced(mine, ".cdnow{")
+    assert "display:none" not in now and "grid-column:1 / -1" in now and "grid-row:2" in now \
+        and ".cdopen{grid-column:4;grid-row:1}" in mine and not re.search(
+            r"\.cdnow\{[^}]*display:none", mine), (
+        "the document chosen is not said whole on a row of its own under the pickers at "
+        "every width: a closed picker cuts a long name off at 1024px and at 1440px alike")
     assert need <= 701 - 2 * 12 - 15, (
         f"the row needs {need}px and a 701px screen, the narrowest it is one row on, has "
         f"{701 - 2 * 12 - 15}px")
@@ -16839,6 +16897,13 @@ def _calendar_documents():
              r"calendars_senate\2010\SC043.pdf", "held", "0", "", ""),
             ("S", "calendar", "2008", "44.pdf", SN + "Calendars%5C2008%5C44.pdf",
              r"calendars_senate\2008\SC044.pdf", "held", "0", "", ""),
+            # The same row again, as a queue written twice would hold it: one
+            # address is one document, and it has no date to be told apart by.
+            ("S", "calendar", "2008", "44.pdf", SN + "Calendars%5C2008%5C44.pdf",
+             r"calendars_senate\2008\SC044.pdf", "held", "0", "", ""),
+            # A row with no address: not linked, and never asked for.
+            ("H", "journal", "2026", "HJ 17.pdf", "",
+             r"journals\2026\HJ 17.pdf", "wanted", "0", "", ""),
         ]
         q = root / "queue.csv"
         with q.open("w", encoding="utf-8", newline="") as fh:
@@ -16880,7 +16945,15 @@ def _calendar_documents():
             (root / rel).write_text(text, encoding="utf-8")
         today = _dt.date(2026, 10, 1)
         docs, left = CD.read(q, root=root, today=today)
-        recorded = {r[4] for r in rows}
+        recorded = {r[4] for r in rows if r[4]}
+        # A QUEUE SAVED WITH A BYTE-ORDER MARK IS THE SAME QUEUE. Read as plain
+        # UTF-8 its first column was not "chamber", nothing was linked, and
+        # the section left every week's page.
+        bom = root / "queue_bom.csv"
+        bom.write_bytes(b"\xef\xbb\xbf" + q.read_bytes())
+        assert CD.read(bom, root=root, today=today) == (docs, left) and docs, (
+            "a queue with a byte-order mark is not read as the same queue")
+        assert CD.rows(root / "no_such_queue.csv") == []
 
         # ---- what is linked, and what is not ----
         by = CD.by_set(docs)
@@ -16909,14 +16982,31 @@ def _calendar_documents():
         pair = by["sc"]["2007"]
         assert not any(d.date for d in pair) and pair[0].url != pair[1].url, (
             "two documents sharing one local file took that file's date, or one address")
-        assert sorted(left) == [("hc", "2026", "HC 31"), ("sc", "2008", "09B"),
-                                ("sj", "2023", _h.unescape(apos[:-4]))], (
+        # NOT LINKED, AND WHETHER IT WAS EVER ASKED FOR: the last of each.
+        assert sorted(left) == [("hc", "2026", "HC 31", False), ("hj", "2026", "HJ 17", False),
+                                ("sc", "2008", "09B", True),
+                                ("sj", "2023", _h.unescape(apos[:-4]), True)], (
             f"left out: {left}")
-        assert CD.left_out_line(left) == ("3 documents the General Court lists but does not "
-                                         "serve are left out."), CD.left_out_line(left)
-        assert CD.left_out_line(left[:1]).startswith("1 document the General Court lists but "
-                                                     "does not serve is ") \
-            and CD.left_out_line([]) == ""
+        assert CD.left_out_line(left) == ("4 documents the General Court lists are not "
+                                         "linked here."), CD.left_out_line(left)
+        assert CD.left_out_line(left[:1]) == ("1 document the General Court lists is not "
+                                             "linked here.") and CD.left_out_line([]) == ""
+        assert CD.left_out_why(left) == (
+            "Of these, 2 answered with an error when this site asked for them and 2 were "
+            "set aside without being asked for."), CD.left_out_why(left)
+        asked_, not_ = [o for o in left if o.asked], [o for o in left if not o.asked]
+        assert CD.left_out_why(asked_[:1]) == "It answered with an error when this site asked for it." \
+            and CD.left_out_why(asked_) == "Each answered with an error when this site asked for it." \
+            and CD.left_out_why(not_[:1]) == "It was set aside without being asked for." \
+            and CD.left_out_why(not_) == "They were set aside without being asked for." \
+            and CD.left_out_why([]) == "", "what is said of the documents not linked"
+        said = " ".join((CD.left_out_line(left), CD.left_out_why(left), CD.block_html(docs, left),
+                         " ".join(CD.list_body(docs, left)))).lower()
+        for claim in ("does not serve", "not served", "unserved", "as the general court names"):
+            assert claim not in said, (
+                f"the page says {claim!r}, which the queue does not bear out: 42 of the 45 "
+                "documents left out on 1 October were never asked for, and the newest "
+                "document's file name is not the General Court's label for it")
         for name, iso in (("No 32 September 4 2026", "2026-09-04"),
                           ("No13aFebruary 21 2025", "2025-02-21"),
                           ("No 18 March31 2023", "2023-03-31"),
@@ -16933,8 +17023,11 @@ def _calendar_documents():
                 f"{name!r} states {CD.name_date(name, 2027) or 'no date'}, not {iso or 'none'}")
 
         # ---- the index: every address whole, and none made ----
-        ix = CD.index(docs, made=today)
+        ix = CD.index(docs)
         assert ix["base"] == {"H": H, "S": SN}, f"the viewer prefixes read as {ix['base']}"
+        assert sorted(ix) == ["base", "sets"], (
+            f"the index holds {sorted(ix)}: a date of its making makes it a new file every "
+            "day, for the deploy to send again unchanged")
         flat = [(s["chamber"], d) for s in ix["sets"] for ds in s["years"].values() for d in ds]
         assert len(flat) == len(docs) and {CD.address(ix, ch, d) for ch, d in flat} == \
             {d.url for d in docs}, "the index's addresses are not the documents' own"
@@ -16945,12 +17038,38 @@ def _calendar_documents():
                                                "Senate Calendars", "Senate Journals"], (
             "the first picker's four kinds are not the four asked for, in order")
         odd = CD.index([docs[0]._replace(url="https://gc.nh.gov/house/elsewhere/HC33.pdf")]
-                       + docs[1:], made=today)
+                       + docs[1:])
         assert CD.address(odd, "H", odd["sets"][0]["years"]["2026"][0]) == \
             "https://gc.nh.gov/house/elsewhere/HC33.pdf", (
             "an address that does not begin with its chamber's prefix is not kept whole")
 
         # ---- the section and the list page, as markup ----
+        # ---- the list's age: told from the newest listed, where it has a date ----
+        assert CD.newest(docs, "hc").name == "HC 33" and CD.newest_date(docs, "hc") == "2026-09-04" \
+            and CD.newest_date(docs) == "2026-09-04" and CD.newest([], "hc") is None
+        assert CD.behind(docs, today, BC.CD_STALE_DAYS) is None, (
+            "a list whose newest House Calendar has no date yet is called behind: a night's "
+            "new short name would warn on every run")
+        dated = [d for d in docs if d.name != "HC 33"]
+        assert CD.behind(dated, today, BC.CD_STALE_DAYS) == ("2026-09-04", 27) \
+            and CD.behind(dated, _dt.date(2026, 9, 20), BC.CD_STALE_DAYS) is None \
+            and CD.behind([], today, BC.CD_STALE_DAYS) is None, (
+            "a list whose newest House Calendar is 27 days old is not called behind, or one "
+            "16 days old is")
+
+        # ---- a list that ought to be here and is not is a failed build ----
+        assert BC.documents_problem(docs, queue=q) == ""
+        assert "no calendar or journal could be read" in BC.documents_problem([], queue=q), (
+            "a queue that is on disk and yields nothing does not fail the build")
+        gone = root / "no_such_queue.csv"
+        assert BC.documents_problem([], queue=gone, kit=False) == "", (
+            "a bare folder with no queue cannot be built at all")
+        assert "filled from the kit" in BC.documents_problem([], queue=gone, kit=True), (
+            "a folder the kit filled, without the queue the kit carries, does not fail the build")
+        kit = Path("cloud_kit.json")
+        assert not kit.exists() or '"archive/queue.csv"' in kit.read_text(encoding="utf-8"), (
+            "cloud_kit.json no longer carries archive/queue.csv, which the pickers are built from")
+
         block = CD.block_html(docs, left)
         assert CD.block_html([], []) == "", "a section is drawn with nothing to link"
         hrefs = re.findall(r'href="([^"]*)"', block)
@@ -16958,8 +17077,20 @@ def _calendar_documents():
         assert out and all(h in recorded for h in out), (
             f"the section links an address the queue does not hold: {out}")
         assert block.count('<section class="cdocs" id="cdocs"') == 1 \
-            and '<form class="cdpick" id="cdpick" hidden' in block, (
+            and '<form class="cdpick" id="cdpick" hidden>' in block, (
             "the section is not one section whose pickers are emitted hidden")
+        assert block.count('aria-labelledby="cdhead"') == 1, (
+            "the form is named by the section's heading too: two landmarks with one name")
+        assert block.count("<option") == 3 and '<option value="hc" selected>House Calendars</option>' \
+            in block, ("as written the pickers offer more than the one document the button "
+                       "opens: a kind chosen before the list comes cannot be followed")
+        assert '<h3 class="cdsub" id="cdnew">The newest listed here</h3>' in block, (
+            "the four links are not headed as the newest LISTED: the list is as old as the "
+            "queue, and on 1 October its newest House Calendar was 27 days old")
+        assert CD.jump_html("/calendar") == ('<p class="cdjump"><a href="/calendar#cdocs" '
+                                             'id="cdjump">Calendars &amp; Journals, as PDFs</a></p>'), (
+            "the link under the week's name ends (PDF), which on this site is a link that "
+            "opens one; this one goes to a section")
         for sid, label, url in (("hc", "HC 33", rows[0][4]),
                                 ("hj", "HJ 16 August 19, 2026", rows[8][4]),
                                 ("sc", f"SC 29 {dash} 3 September 2026", rows[9][4]),
@@ -16973,7 +17104,7 @@ def _calendar_documents():
                     f"without script there is no link to {CD.MANY[sid]} of {y}")
         assert 'target="_blank"' not in block, (
             "the section opens a PDF in a new tab; the cards' links to the same PDFs do not")
-        assert "3 documents the General Court lists but does not serve are left out." in block
+        assert '<p class="cdleft">4 documents the General Court lists are not linked here.</p>' in block
         for i, lab in (("cdset", "Calendar or journal"), ("cdyear", "Year"), ("cddoc", "Document")):
             assert f'<label for="{i}">{lab}</label><select id="{i}">' in block, (
                 f"the {lab} picker has no visible label of its own")
@@ -16981,8 +17112,38 @@ def _calendar_documents():
         assert body.count(' rel="noopener">') == len(docs) and all(
             f'href="{_h.escape(d.url)}"' in body for d in docs), (
             "the list page does not link every document once")
-        for name in ("09B", "HC 31", "Governor&#x27;s Budget Address"):
-            assert name in body.split('id="unserved"')[1], f"the list page does not name {name}"
+        notlinked = body.split('<h2 id="notlinked">Listed by the General Court and not linked here')
+        assert len(notlinked) == 2, "the list page has no section for what is not linked"
+        for name in ("09B", "HC 31", "HJ 17", "Governor&#x27;s Budget Address",
+                     "Of these, 2 answered with an error when this site asked for them and 2 "
+                     "were set aside without being asked for."):
+            assert name in notlinked[1], f"the list page does not say {name!r} of what is not linked"
+        # What the list page says of itself: the name, the year and how far it reaches.
+        undated = sum(1 for d in docs if not d.date)
+        assert undated == 5, f"{undated} of the fixture's documents have no date"
+        assert lead.startswith("16 documents, 2007 to 2026, each a link to the General "
+                               "Court&rsquo;s own file, under that file&rsquo;s name."), lead[:120]
+        assert ("Each is under the year of its date, newest first; the 5 with no date known "
+                "are under the year the General Court lists them for.") in lead, (
+            "the list page says a document is under the year of its date and does not say "
+            "how many have no date and are under the General Court's list year")
+        assert CD.sources(docs) == [("House", "https://gc.nh.gov/house/calendars_journals/"),
+                                    ("Senate", "https://gc.nh.gov/senate/calendars_journals/")] \
+            and all(any(u.startswith(page) for u in recorded) for _n, page in CD.sources(docs)), (
+            "the General Court's own pages are not the folders its recorded addresses are in")
+        assert ("The latest date on a document here is 4 September 2026; anything published "
+                "since is on the General Court&rsquo;s own pages for "
+                '<a href="https://gc.nh.gov/house/calendars_journals/" rel="noopener">the House</a> '
+                'and <a href="https://gc.nh.gov/senate/calendars_journals/" rel="noopener">'
+                "the Senate</a>.") in lead, (
+            "the list page does not say how far the list reaches and where a newer document is")
+        assert "no date known" not in CD.list_lead([d for d in docs if d.date]), (
+            "a list whose every document has a date speaks of ones that have none")
+        assert body.startswith('<p class="src"><a href="/calendar/documents#hc">House Calendars</a>'
+                               ' &middot; <a href="/calendar/documents#hj">House Journals</a>') \
+            and "/calendar/documents#" not in lead, (
+            "the links down to the four kinds are not a line of their own under the lead: "
+            "at its end they ran on from its links out to the General Court's pages")
         assert body.count("<details") == sum(len(v) for v in want.values()) \
             and body.count("<details class=\"cdyear\" id=") == body.count("<details") \
             and body.count(" open>") == 4, "a year is not a <details>, the newest of each set open"
@@ -17004,7 +17165,7 @@ def _calendar_documents():
             for i, k in enumerate(order):
                 BC.week_page(site, base, k, weeks, order, i, {}, {}, {}, urls, cal_today,
                              set(), study=True, picker=block)
-            size = BC.documents_files(site, base, docs, left, urls, today=today)
+            size = BC.documents_files(site, base, docs, left, urls)
             BC.month_files(site, weeks, order, {}, {}, {}, cal_today)
         S.sitemap_merge(site, base, urls, "/calendar")
         assert size and (site / "calendar" / "documents.json").is_file(), (
@@ -17050,8 +17211,8 @@ def _calendar_documents():
         # ---- the script, on that page ----
         node = _cal_node()
         if not node:
-            return "ok", (f"{len(docs)} documents linked at recorded addresses, 3 left out and "
-                          "named; node is not on PATH, so the script was not run")
+            return "ok", (f"{len(docs)} documents linked at recorded addresses, {len(left)} "
+                          "left out and named; node is not on PATH, so the script was not run")
         (root / "minidom.js").write_text(_CAL_DOM, encoding="utf-8")
         (root / "drive.js").write_text(_CD_DRIVE, encoding="utf-8")
         r = _run([node, str(root / "drive.js"), str(site)], capture_output=True, text=True,
@@ -17061,7 +17222,8 @@ def _calendar_documents():
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"{len(docs)} documents linked at recorded addresses, each once under its "
-                  "own year; 3 left out and named; the pickers run on the page a build wrote")
+                  f"own year; {len(left)} left out and named; the pickers run on the page a "
+                  "build wrote")
 
 
 @check("data", "the calendar's picker on this disk links only addresses archive/queue.csv holds")
@@ -17072,7 +17234,8 @@ def _calendar_documents_on_disk():
     records, no two share one, and every row is either linked, left out and
     counted, or one of two listings of one document. Where a site is built,
     its index and its section link nothing the queue does not hold -- which
-    stays true of a site built from an older, shorter list.
+    stays true of a site built from an older, shorter list -- and a page that
+    carries the section has the index it reads and the list page it links.
 
     The list's age is said and never failed on: the queue is refreshed at
     night, a picker a few days behind is no reason to stop a build, and
@@ -17113,6 +17276,9 @@ def _calendar_documents_on_disk():
         t = page.read_text(encoding="utf-8")
         assert t.count('<section class="cdocs" id="cdocs"') == 1, (
             "site/calendar/documents.json is built and site/calendar.html has no section")
+        assert (Path("site") / "calendar" / "documents.html").exists(), (
+            "site/calendar.html links /calendar/documents and site/calendar/documents.html "
+            "is not there: run build_calendar.py")
         sec = t[t.index('<section class="cdocs"'):]
         sec = sec[:sec.index("</section>")]
         ext = {_h.unescape(h) for h in re.findall(r'href="(https://[^"]*)"', sec)}
@@ -17120,8 +17286,21 @@ def _calendar_documents_on_disk():
             f"site/calendar.html's section links {sorted(ext - recorded)[:2]}, which the "
             "queue does not hold")
         said += f"; the built site links {len(on_site):,}, all of them recorded"
+    elif page.exists():
+        t = page.read_text(encoding="utf-8")
+        # A PAGE WITH THE SECTION AND NO INDEX is pickers that load nothing and
+        # a link to a list that is not there. A page with neither was built
+        # before the pickers were, or on a folder with no queue, and is said.
+        assert '<section class="cdocs" id="cdocs"' not in t, (
+            "site/calendar.html carries the Calendars & Journals section and "
+            "site/calendar/documents.json is not there: run build_calendar.py")
+        said += ("; site/calendar.html was built without the section -- "
+                 "build_calendar.py will draw it")
+    first = CD.newest(docs, "hc")
     newest = CD.newest_date(docs, "hc")
-    if newest:
+    if first is not None and not first.date:
+        said += f"; the newest House calendar listed is {first.name}, whose date is not read yet"
+    elif newest:
         age = (_dt.date.today() - _dt.date.fromisoformat(newest)).days
         said += f"; the newest House calendar listed is {CD.day_words(newest)}, {age} days ago"
     return "ok", said

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.17
+# GRANITE_VERSION: 2026-09-18.18
 """
 The General Court's week, one page per week.
 
@@ -30,8 +30,8 @@ can send to somebody, and the whole thing works with no script at all.
                                 it, for the page's script (month_files)
   site/calendar/data/committees.json
                                 every committee on the calendar, for its picker
-  site/calendar/documents.json  every calendar and journal the General Court
-                                serves, for the pickers under the schedule
+  site/calendar/documents.json  every calendar and journal linked, for the
+                                pickers under the schedule
   site/calendar/documents.html  the same list as plain links, a year at a time
 
 A CALENDAR ON TOP OF THE WEEKS (24 September 2026). The person asked for the
@@ -2485,7 +2485,43 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
 CD_STALE_DAYS = 21
 
 
-def documents_files(site, base, cdocs, left_out, urls, today=None):
+def documents_problem(cdocs, queue=None, kit=None):
+    """Why a run that has no calendars or journals to link is a failed run,
+    or "" where it is not one.
+
+    SILENCE IS NOT SUCCESS. With no list this builder draws no section on any
+    week, takes the list page and the index off the disk and the list page
+    out of the sitemap -- and it did all of that behind one WARNING line and
+    an exit of zero, so the night would have published a Calendar page without
+    its pickers and called the build good. Two cases are faults:
+
+      - THE QUEUE IS HERE AND NOTHING CAN BE READ FROM IT: a file cut short, a
+        header that is not the queue's. A fault on any machine.
+      - THE QUEUE IS NOT HERE AND THIS FOLDER WAS FILLED FROM THE KIT. The
+        queue is on cloud_kit.json's list, so the kit's contract is that it
+        arrived (build_all.KIT_RECORD, as the journal step's kit_required).
+
+    A bare folder with no queue -- a fork, preflight's fixture, a first build
+    -- is neither: the page is built without the section and the run says so.
+    """
+    if cdocs:
+        return ""
+    queue = Path(queue or CD.QUEUE)
+    if queue.exists():
+        return (f"{queue.as_posix()} is here and no calendar or journal could be read "
+                "from it, so every week would lose its Calendars & Journals section and "
+                "the list page would go")
+    if kit is None:
+        import build_all
+        kit = build_all.KIT_RECORD.exists()
+    if kit:
+        return (f"{queue.as_posix()} is not here and this folder was filled from the kit, "
+                "whose list (cloud_kit.json) carries it: every week would lose its "
+                "Calendars & Journals section and the list page would go")
+    return ""
+
+
+def documents_files(site, base, cdocs, left_out, urls):
     """Write calendar/documents.json and calendar/documents.html, and put the
     list page's address in `urls`; returns the index's size in bytes.
 
@@ -2503,7 +2539,7 @@ def documents_files(site, base, cdocs, left_out, urls, today=None):
                 f.unlink()
         return 0
     index_f.parent.mkdir(parents=True, exist_ok=True)
-    blob = json.dumps(CD.index(cdocs, made=today), ensure_ascii=False, separators=(",", ":"))
+    blob = json.dumps(CD.index(cdocs), ensure_ascii=False, separators=(",", ":"))
     index_f.write_text(blob, encoding="utf-8")
 
     heading, lead, body = CD.list_body(cdocs, left_out)
@@ -2683,13 +2719,19 @@ def main():
     # CALENDARS & JOURNALS: the list is read once and the same section goes on
     # every week. What was read is said at the end of the run (below).
     cdocs, cd_out = CD.read(today=today)
+    # BEFORE ANYTHING IS WRITTEN: a list that should be here and is not stops
+    # the run with the site as it was, and says why as the run's last line.
+    problem = documents_problem(cdocs)
+    if problem:
+        print(f"  FAILED: {problem}")
+        return 1
     picker = CD.block_html(cdocs, cd_out)
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits,
                            study=bool(study_rows), docs=docs, picker=picker)
-    size = documents_files(site, base, cdocs, cd_out, urls, today=today)
+    size = documents_files(site, base, cdocs, cd_out, urls)
     if size:
         print(f"  calendar/documents.json ({size:,} bytes) and calendar/documents.html, "
               "the same list as plain links")
@@ -2721,17 +2763,19 @@ def main():
     # weeks behind is no reason to hold back the day's schedule.
     if cdocs:
         print(f"  {CD.summary(cdocs, cd_out)}")
-        newest = CD.newest_date(cdocs, "hc")
-        age = (today - datetime.date.fromisoformat(newest)).days if newest else 0
-        if age > CD_STALE_DAYS:
-            print(f"  WARNING: the newest House Calendar listed is {CD.day_words(newest)}, "
-                  f"{age} days ago -- if the House has printed one since, "
+        # The age is told from the newest listed, and only where that one has
+        # a date (CD.behind says why).
+        late = CD.behind(cdocs, today, CD_STALE_DAYS)
+        if late:
+            print(f"  WARNING: the newest House Calendar listed is {CD.day_words(late[0])}, "
+                  f"{late[1]} days ago -- if the House has printed one since, "
                   f"{CD.QUEUE.as_posix()} has not been refreshed and the pickers are "
                   "behind the General Court's own list")
     else:
+        # Only a bare folder comes here: documents_problem stopped the run
+        # above wherever the list ought to have been.
         print(f"  WARNING: no calendars or journals to link -- {CD.QUEUE.as_posix()} is not "
-              "on disk or lists nothing served, so the week pages carry no Calendars & "
-              "Journals section")
+              "on disk, so the week pages carry no Calendars & Journals section")
     return 0
 
 
