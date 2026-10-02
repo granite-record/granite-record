@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.134
+# GRANITE_VERSION: 2026-09-04.135
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1204,7 +1204,7 @@ def shell(title, current, body, wide=False, script="", desc="",
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body class="pg">
-<a class="skip" href="#main">Skip to the content</a>\n<nav class="top"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
+<a class="skip" href="#main">Skip to the content</a>\n<nav class="top" aria-label="Sections"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
 <footer><div class="in">
@@ -1763,6 +1763,35 @@ SEATING_JS = """
       var c=seatHit(e.target); if(!c)return;
       e.preventDefault(); pick(c===picked?null:c);
     });
+    /* ONE STOP FOR THE TAB KEY, AND THE ARROW KEYS WITHIN IT. Every seat was
+       its own Tab stop: 382 of them between the chart's controls and the
+       list under it, from the 6th Tab press to the 387th (the audit of
+       2 October 2026, M22). seating.py writes every seat out of the Tab
+       order now; this makes one of them the stop -- the first, until a seat
+       is chosen or reached -- and the arrow keys walk the seats in the order
+       of their numbers, Home and End to the first and the last. Focus on a
+       seat names its member under the chart, as the pointer over it does. */
+    var seats=[].slice.call(svg.querySelectorAll("[data-slug]"))
+      .filter(function(c){return c.getAttribute("data-slug");});
+    var stopAt=function(c){
+      seats.forEach(function(s){s.setAttribute("tabindex",s===c?"0":"-1");});
+    };
+    if(seats.length)stopAt(seats[0]);
+    svg.addEventListener("keydown",function(e){
+      var c=seatHit(e.target), i=seats.indexOf(c), j=-1;
+      if(i<0)return;
+      if(e.key==="ArrowRight"||e.key==="ArrowDown")j=Math.min(seats.length-1,i+1);
+      else if(e.key==="ArrowLeft"||e.key==="ArrowUp")j=Math.max(0,i-1);
+      else if(e.key==="Home")j=0;
+      else if(e.key==="End")j=seats.length-1;
+      else return;
+      e.preventDefault();
+      stopAt(seats[j]); seats[j].focus(); centre(seats[j]);
+    });
+    svg.addEventListener("focusin",function(e){
+      var c=seatHit(e.target); if(c){stopAt(c);say(c);}
+    });
+    svg.addEventListener("focusout",function(){say();});
     // Hovering names who is in a seat without choosing it, so a mouse can
     // read the floor quickly; leaving restores whatever was chosen.
     svg.addEventListener("mouseover",function(e){
@@ -2496,12 +2525,12 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // there are two renderers for it and the footer has already shown what
   // happens when only one of them is changed.
   document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
-    <table><tbody>${(H.recent||[]).slice(0,5).map(r=>
-      `<tr><td style="width:80px">${fd(r.date)}</td>
-       <td><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
+    <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
+      `<li><span class="actd">${fd(r.date)}</span>
+       <span class="actb"><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
        <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
-       <span style="font-size:12px">${esc(r.what)}</span></td></tr>`).join("")}
-    </tbody></table>
+       <span style="font-size:12px">${esc(r.what)}</span></span></li>`).join("")}
+    </ul>
     <p class="actmore"><a class="morebtn" href="/bills?sort=recent">See all
     recent activity &rarr;</a></p>`;
 
@@ -2549,6 +2578,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
         <span class="statemeta">${dayLink(v)}</span></p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
+          data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
           aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
           <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
     :"";
@@ -2560,9 +2590,11 @@ document.addEventListener("click",e=>{
   // button had; left on nothing, the next Tab press started from the top of
   // the page (the audit of 2 October 2026, S1). app.js does the same.
   const box=st.parentNode, had=document.activeElement===st;
+  // Titled for the chamber and the day, so the two players on this page are
+  // not both "Floor session" to a screen reader (M18).
   st.outerHTML=`<iframe allow="autoplay" allowfullscreen
     src="https://www.youtube-nocookie.com/embed/${st.dataset.embed}?autoplay=1"
-    title="Floor session"></iframe>`;
+    title="${esc(st.dataset.title||"Floor session")}"></iframe>`;
   const frame=had&&box&&box.querySelector("iframe");
   if(frame)frame.focus({preventScroll:true});
 });
@@ -3175,12 +3207,17 @@ it, or a name, county, party or committee to find a member.</p>
 
     static_recent = ""
     if H.get("recent"):
-        static_recent = ("<h2>Latest activity</h2><table><tbody>" + "".join(
-            f'<tr><td>{fd(r.get("date"))}</td><td>'
+        # A LIST, NOT A TABLE. It was a two-column table with no header cell
+        # in it, which a screen reader announces as a table of five rows and
+        # two columns and then reads as a grid with nothing to say what a
+        # column is (the audit of 2 October 2026, M7). It is five things in a
+        # row: the day, and what happened. HOME_JS draws the same markup.
+        static_recent = ('<h2>Latest activity</h2><ul class="actlist">' + "".join(
+            f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
             f'<a href="bills.html#{esc(r.get("bill"))}">{esc(r.get("n"))}</a> '
             f'{esc(r.get("title"))}<br><span style="font-size:12px">'
-            f'{esc(r.get("what"))}</span></td></tr>'
-            for r in H["recent"][:RECENT_SHOWN]) + "</tbody></table>"
+            f'{esc(r.get("what"))}</span></span></li>'
+            for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
                          + RECENT_MORE)
 
     # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is

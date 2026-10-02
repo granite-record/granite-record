@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.25
+# GRANITE_VERSION: 2026-09-08.26
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -654,18 +654,18 @@ may attend and speak at.</p>
 <p>Which chamber a measure starts in follows from its prime sponsor: a
 representative's bill begins in the House, a senator's in the Senate.</p>
 <table><tbody>
-<tr><td><b>HB</b></td><td><b>House Bill:</b> a proposed change to New
+<tr><th scope="row"><b>HB</b></th><td><b>House Bill:</b> a proposed change to New
 Hampshire law. Begins in the House, must pass both chambers, goes to the
 Governor.</td></tr>
-<tr><td><b>SB</b></td><td><b>Senate Bill:</b> begins in the Senate, otherwise
+<tr><th scope="row"><b>SB</b></th><td><b>Senate Bill:</b> begins in the Senate, otherwise
 the same as a House Bill.</td></tr>
-<tr><td><b>HR</b> / <b>SR</b></td><td><b>House or Senate Resolution:</b> a
+<tr><th scope="row"><b>HR</b> / <b>SR</b></th><td><b>House or Senate Resolution:</b> a
 formal, non-binding expression of opinion, policy preference, or internal
 rule. It does not go to the other chamber or the Governor and does not change
 any law.</td></tr>
-<tr><td><b>HCR</b> / <b>SCR</b></td><td><b>House/Senate Concurrent
+<tr><th scope="row"><b>HCR</b> / <b>SCR</b></th><td><b>House/Senate Concurrent
 Resolution:</b> similar to an HR or SR, but voted on by both chambers.</td></tr>
-<tr><td><b>CACR</b></td><td><b>Constitutional Amendment Concurrent
+<tr><th scope="row"><b>CACR</b></th><td><b>Constitutional Amendment Concurrent
 Resolution:</b> a proposed change to the state constitution, requiring a
 three-fifths vote in both chambers and a two-thirds majority of voters. See
 <a href="learn/the-constitution.html">The Constitution</a>.</td></tr>
@@ -682,12 +682,12 @@ went the way its committee recommended.</p>
 
 <p>The motions a committee most often recommends are these:</p>
 <table><tbody>
-<tr><td><b>OTP</b></td><td>Ought to Pass</td></tr>
-<tr><td><b>OTP/A</b></td><td>Ought to Pass as Amended</td></tr>
-<tr><td><b>ITL</b></td><td>Inexpedient to Legislate &mdash; kill the bill</td></tr>
-<tr><td><b>IS</b></td><td>Interim Study &mdash; second year only, and the
+<tr><th scope="row"><b>OTP</b></th><td>Ought to Pass</td></tr>
+<tr><th scope="row"><b>OTP/A</b></th><td>Ought to Pass as Amended</td></tr>
+<tr><th scope="row"><b>ITL</b></th><td>Inexpedient to Legislate &mdash; kill the bill</td></tr>
+<tr><th scope="row"><b>IS</b></th><td>Interim Study &mdash; second year only, and the
 bill dies with the term</td></tr>
-<tr><td><b>Retain</b></td><td>Hold the bill in the committee &mdash; first
+<tr><th scope="row"><b>Retain</b></th><td>Hold the bill in the committee &mdash; first
 year only, and it returns in the second</td></tr>
 </tbody></table>
 """ + SHOWS.format("""
@@ -1479,32 +1479,32 @@ elected members of a planning board, zoning board of adjustment, budget
 committee or conservation commission (RSA 669:17).</p>
 
 <table><tbody>
-<tr><td><b>Town clerk</b></td><td>Keeps the town's records, issues the
+<tr><th scope="row"><b>Town clerk</b></th><td>Keeps the town's records, issues the
 licences and registrations, and runs the mechanics of elections. A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
-<tr><td><b>Tax collector</b></td><td>Collects the taxes the selectmen commit,
+<tr><th scope="row"><b>Tax collector</b></th><td>Collects the taxes the selectmen commit,
 remits them to the treasurer at least weekly, and daily once receipts reach
 $1,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
-<tr><td><b>Clerk/tax collector</b></td><td>Many towns have combined the two
+<tr><th scope="row"><b>Clerk/tax collector</b></th><td>Many towns have combined the two
 into one office. It takes a petitioned article and a majority at the annual
 meeting, and the combined officer is then elected for a term of one year or
 three (RSA 41:45-a).</td></tr>
-<tr><td><b>Treasurer</b></td><td>Has custody of the town's money, pays it out
+<tr><th scope="row"><b>Treasurer</b></th><td>Has custody of the town's money, pays it out
 on the selectmen's orders, keeps the accounts, and invests what is not
 immediately needed under the selectmen's investment policy
 (RSA 41:29).</td></tr>
-<tr><td><b>Supervisors of the checklist</b></td><td>Three legal voters of the
+<tr><th scope="row"><b>Supervisors of the checklist</b></th><td>Three legal voters of the
 town, who keep the voter checklist. One is elected every even-numbered year
 for 6 years, unless the town has adopted 3-year terms
 (RSA 41:46-a).</td></tr>
-<tr><td><b>Trustees of trust funds</b></td><td>Three, or five if the town has
+<tr><th scope="row"><b>Trustees of trust funds</b></th><td>Three, or five if the town has
 voted for five, administering the funds held in trust for the town. The term
 is three years, and on a board of three one trustee is elected each year
 (RSA 31:22).</td></tr>
-<tr><td><b>Library trustees</b></td><td>Any odd number the town decides on,
+<tr><th scope="row"><b>Library trustees</b></th><td>Any odd number the town decides on,
 elected at town meeting for staggered 3-year terms (RSA 202-A:6).</td></tr>
-<tr><td><b>Cemetery trustees</b></td><td>Elected by ballot at the annual town
+<tr><th scope="row"><b>Cemetery trustees</b></th><td>Elected by ballot at the annual town
 meeting to replace those whose terms expire; in a city, chosen as the city's
 ordinance provides (RSA 289:6).</td></tr>
 </tbody></table>
@@ -1626,12 +1626,12 @@ the median notice is <b>[[notice_median]] days</b>. That is the gap between the
 day the calendar is published and the day of the hearing.</p>
 <p>Notices name the room by building:</p>
 <table><tbody>
-<tr><td><b>SH</b></td><td><b>State House:</b> 107 North Main Street,
+<tr><th scope="row"><b>SH</b></th><td><b>State House:</b> 107 North Main Street,
 Concord.</td></tr>
-<tr><td><b>LOB</b></td><td><b>Legislative Office Building:</b> 33 North State
+<tr><th scope="row"><b>LOB</b></th><td><b>Legislative Office Building:</b> 33 North State
 Street, Concord. Out of use for hearings while it is being worked on, and
 named in older notices.</td></tr>
-<tr><td><b>GP</b></td><td><b>Granite Place:</b> 1 Granite Place, Concord, where
+<tr><th scope="row"><b>GP</b></th><td><b>Granite Place:</b> 1 Granite Place, Concord, where
 House committee meetings are now held.</td></tr>
 </tbody></table>
 <p>The Legislative Office Building is expected back in service around the
@@ -1822,23 +1822,23 @@ is the evidence.</p>
 
 <h2>Reading the shorthand</h2>
 <table><tbody>
-<tr><td><b>OTP</b></td><td><b>Ought to Pass:</b> a motion to pass the bill</td></tr>
-<tr><td><b>OTP/A</b></td><td><b>Ought to Pass with Amendment</b></td></tr>
-<tr><td><b>ITL</b></td><td><b>Inexpedient to Legislate:</b> a motion to kill it</td></tr>
-<tr><td><b>MA</b> / <b>MF</b></td><td><b>Motion Adopted / Motion Failed</b></td></tr>
-<tr><td><b>VV</b></td><td><b>Voice vote:</b> no count and no names</td></tr>
-<tr><td><b>DV</b></td><td><b>Division vote:</b> counted, names not recorded</td></tr>
-<tr><td><b>RC</b></td><td><b>Roll call:</b> each member recorded by name</td></tr>
-<tr><td><b>CC</b></td><td><b>Consent Calendar:</b> the committee's
+<tr><th scope="row"><b>OTP</b></th><td><b>Ought to Pass:</b> a motion to pass the bill</td></tr>
+<tr><th scope="row"><b>OTP/A</b></th><td><b>Ought to Pass with Amendment</b></td></tr>
+<tr><th scope="row"><b>ITL</b></th><td><b>Inexpedient to Legislate:</b> a motion to kill it</td></tr>
+<tr><th scope="row"><b>MA</b> / <b>MF</b></th><td><b>Motion Adopted / Motion Failed</b></td></tr>
+<tr><th scope="row"><b>VV</b></th><td><b>Voice vote:</b> no count and no names</td></tr>
+<tr><th scope="row"><b>DV</b></th><td><b>Division vote:</b> counted, names not recorded</td></tr>
+<tr><th scope="row"><b>RC</b></th><td><b>Roll call:</b> each member recorded by name</td></tr>
+<tr><th scope="row"><b>CC</b></th><td><b>Consent Calendar:</b> the committee's
 recommendation, to pass, to kill or to send to interim study, adopted with the
 whole calendar in one vote, without floor debate</td></tr>
-<tr><td><b>OT3rdg</b></td><td><b>Ordered to a third reading</b></td></tr>
-<tr><td><b>HJ</b> / <b>SJ</b></td><td><b>House or Senate Journal:</b> the
+<tr><th scope="row"><b>OT3rdg</b></th><td><b>Ordered to a third reading</b></td></tr>
+<tr><th scope="row"><b>HJ</b> / <b>SJ</b></th><td><b>House or Senate Journal:</b> the
 chamber's own record of the day, cited by issue and sometimes page</td></tr>
-<tr><td><b>-FN</b></td><td><b>Fiscal note:</b> an estimate of what the bill
+<tr><th scope="row"><b>-FN</b></th><td><b>Fiscal note:</b> an estimate of what the bill
 would cost</td></tr>
-<tr><td><b>-A</b></td><td><b>Appropriation:</b> the bill contains one</td></tr>
-<tr><td><b>-LOCAL</b></td><td><b>Local fiscal impact:</b> on towns or schools</td></tr>
+<tr><th scope="row"><b>-A</b></th><td><b>Appropriation:</b> the bill contains one</td></tr>
+<tr><th scope="row"><b>-LOCAL</b></th><td><b>Local fiscal impact:</b> on towns or schools</td></tr>
 </tbody></table>
 
 <h2>Following a bill</h2>

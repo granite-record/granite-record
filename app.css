@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.191 */
+/* GRANITE_VERSION: 2026-09-07.192 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -404,9 +404,13 @@ nav.top .brand:hover::before{background:var(--pine)}
   /* AND THE CONTROLS HAVE TO BE PUSHED. Taking the strip out of the flow left
      nothing between the wordmark and the controls, so they packed against it
      -- the search button measured at x=244 on a 1280px window, beside the
-     name rather than opposite it. The wordmark takes the free space instead;
-     its text stays where it was and everything after it goes right. */
-  nav.top .brand{flex:1 1 auto}
+     name rather than opposite it. The wordmark took the free space instead,
+     and that made the link 974px wide at 1440: its focus ring was drawn round
+     the tabs, and a click in the empty band right of Calendar went home (the
+     audit of 2 October 2026, M3). The first control takes the space as its
+     own margin now -- .themer's `margin-left:auto`, which was always there
+     and had nothing to take while the wordmark took it all -- so the wordmark
+     is the size of its words and everything is where it was. */
 }
 /* display:contents, so the grouping exists for the phone and is invisible to
    the desktop layout: .navtabs and the theme control remain flex items of the
@@ -938,6 +942,14 @@ border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowra
 .mchip.p-I,.mchip.p-L{border-left-color:var(--ind)}
 .mchip a{color:var(--ink);text-decoration:none;font-weight:500}
 .mchip a:hover{text-decoration:underline}
+/* THE WHOLE CHIP IS THE LINK. The chip is 36px tall and its link was the
+   22px line of the name inside it: the padding round the name was not part
+   of what could be pressed (the audit of 2 October 2026, M1; 406 chips on
+   the roster). The link takes the chip's padding as its own and gives it
+   back as a negative margin, so it covers the chip to its edges and nothing
+   moves: the chip is the size and shape it was. */
+.mchip > a{padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
+margin:calc(-1 * var(--sp-3)) calc(-1 * var(--sp-4)) calc(-1 * var(--sp-3)) calc(-1 * var(--sp-3))}
 .mchip:hover{border-color:var(--pine)}
 .mchip:hover.p-R{border-left-color:var(--rep)}
 .mchip:hover.p-D{border-left-color:var(--dem)}
@@ -1015,6 +1027,13 @@ a.out::after{content:"\2197";font-weight:400;margin-left:3px;font-size:.92em}
 .flinks a{font-weight:600}
 .flinks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
 gap:var(--sp-3)}
+/* ON A PHONE A FOOTER LINK IS A 44px TARGET. Each was the 19px line of its
+   own words (the audit of 2 October 2026, M1). The row takes the height and
+   the gap between rows goes, so the three links stand 44px apart. */
+@media (max-width:720px){
+  .flinks{gap:0}
+  .flinks a{display:inline-flex;align-items:center;min-height:44px}
+}
 /* IBM Plex Mono, per the settled footer: these two are a build stamp and a
    licence, which are data about the page rather than prose on it. */
 footer .footdata,footer .footdata .lic{font-family:var(--mono);
@@ -1070,6 +1089,44 @@ line-height:1.1}
    page, and the focus card on a bill's own page. The rule as first written
    was a dead selector and the titles stayed in the interface sans. */
 .prose,.attrib,.lead,.ctitle,.sdtx,.cbt,.billbody{font-family:var(--serif)}
+
+/* ON PAPER. There were no print rules at all (the audit of 2 October 2026,
+   M24), and two things followed. With the dark theme on -- chosen with the
+   control, or the reader's system's -- a page printed in the dark theme's
+   light ink on white paper, because a browser prints no backgrounds unless
+   asked: body text 2.2:1 and a heading 1.2:1 against the sheet. And the
+   controls printed: the header and its buttons, the bill search row, "Back
+   to bill search", "Cite this page" and Follow, the report box and Play.
+
+   PAPER IS THE LIGHT THEME. The declarations below are the light palette's
+   own values for every colour the dark palette redefines, under the dark
+   palette's two selectors, so whichever route made the page dark, print
+   undoes it. They are the light block's numbers written a second time, for
+   the reason the two dark blocks are written twice, and preflight fails if
+   they stop matching it.
+
+   Which tab of a bill is printed -- the open one, as now, or all of them --
+   is not decided here; the tab strip is left as it is. */
+@media print{
+  :root[data-theme="dark"],:root:not([data-theme="light"]){
+  --paper:#E9EAEC;--surface:#FBFBFC;--wash:#DFE1E4;--on-pine:#fff;--shadow:rgba(35,40,42,.10);
+  --ink:#1C2126;--ink-2:#4A5259;--rule:#D3D6DA;--rule-2:#B2B7BD;
+  --film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
+  --edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;
+  --st-active:#7A5A00;--st-active-bg:#FBF2D9;--st-law:#1E5B3C;--st-law-bg:#E3EFE7;
+  --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#94500E;--st-study-bg:#FCEEDF;
+  --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
+  --cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;--cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
+  --cal-exec:#94500E;--cal-exec-bg:#FCEEDF;--cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
+  --cal-floor:#6B3FA0;--cal-floor-bg:#EFE9F7;--cal-study:#9C276C;--cal-study-bg:#F9E8F0;
+  --wait:#8A6D2F;--wait-bg:#FBF3E2;
+  --rep:#B03A32;--dem:#2E5FA3;--ind:#6B5B95;
+  --rep-soft:#F6E7E6;--dem-soft:#E6EDF7;--ind-soft:#EEEAF3;
+  --yes:#215C43;--no:#CE6A62;--brick:#9E2B25;
+  color-scheme:light}
+  nav.top,.skip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,.findscrim,
+  details.report,.player{display:none !important}
+}
 
 /* SHARED:END ------------------------------------------------------------ */
 
@@ -1460,11 +1517,19 @@ a.cite{color:var(--pine)}
 .rcres{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in)}
 .pass{background:var(--st-law-bg);color:var(--st-law)}.fail{background:var(--st-done-bg);color:var(--st-done)}
 .votewrap{display:flex;gap:var(--sp-7);flex-wrap:wrap;align-items:flex-start;margin-top:var(--sp-4)}
-.donut circle{cursor:pointer}.donut circle:hover{opacity:.8}
+/* A POINTER AND A HOVER ONLY ON WHAT CAN BE PRESSED. A roll call's ring and
+   legend choose which members are listed: its segments carry data-seg and
+   its rows are buttons. A division's ring and legend -- and every ring on a
+   sitting day's page -- only show a count, and took the same pointing hand
+   and the same ground under the pointer: 64 rows and their rings on one
+   sitting's page that did nothing when pressed (the audit of 2 October 2026,
+   M10). */
+.donut circle[data-seg]{cursor:pointer}.donut circle[data-seg]:hover{opacity:.8}
 .legend{flex:1;min-width:215px}
-.lrow{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-2) 0;font-size:var(--t-ui);cursor:pointer;width:100%;
+.lrow{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-2) 0;font-size:var(--t-ui);width:100%;
 text-align:left;border-bottom:1px solid var(--rule)}
-.lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
+button.lrow{cursor:pointer}
+button.lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
 .sw{width:11px;height:11px;border-radius:var(--r-in);flex:0 0 auto}
 .sw-o{background:transparent;border:1.5px solid var(--rule-2)}
 .lrow .c{margin-left:auto;color:var(--ink-2)}
@@ -2964,6 +3029,12 @@ padding-left:var(--sp-7);margin:0 0 var(--sp-5)}
 .civics li{margin-bottom:var(--sp-4)}
 :is(.civics,.civhead) .crumb{font-family:var(--sans);font-size:var(--t-sm);margin:0 0 var(--sp-2)}
 :is(.civics,.civhead) .crumb a{color:var(--ink-2)}
+/* A TERM AND WHAT IT MEANS: the term is its row's header. These tables had
+   no header cell at all, so a browser took them for layout and a screen
+   reader was given no table (the audit of 2 October 2026, M7). The cell is a
+   th now and is drawn as the td it was: to the left, and only as heavy as the
+   <b> inside it. */
+.civics th[scope="row"]{text-align:left;font-weight:400}
 
 /* ---- THE COURSE OF A BILL, AS A DIAGRAM -------------------------------
    A diagram and not a picture. It is an ordered list of ordered lists --
@@ -4241,6 +4312,10 @@ table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:42
   border-bottom:1px solid var(--rule);white-space:nowrap}
 .cov th{font-size:var(--t-xs);letter-spacing:.04em;text-transform:uppercase;
   color:var(--ink-2);font-weight:600}
+/* The term heads its row (a th since 2 October 2026) and is drawn as the
+   cell it was. */
+.cov tbody th{font-size:inherit;letter-spacing:0;text-transform:none;
+  color:inherit;font-weight:400}
 .cov td.n{color:var(--ink-2)}
 .cov .c1{color:var(--yes);font-weight:600}
 .cov .c0{color:var(--ink-2)}
@@ -4258,6 +4333,33 @@ table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:42
 
 /* Who moved it, under a voice vote's heading rather than inside it. */
 .rcby{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-2) 0 0}
+
+/* ON A PHONE, A CONTROL IS A 44px TARGET. The narrow-screens block far above
+   says so for every button and summary, and the controls whose own rules
+   come after it -- and set a size of their own -- kept that size: the
+   Calendar's month arrows and Today (36px), its views (40), its kinds of
+   meeting (32) and its folds (36); the bill list's Sort (26) and the Term and
+   Status of a member's or a committee's page (31); the docket's summary
+   (34); a card's arrow (36 wide); the phone and e-mail of a town's officials
+   (26). Measured at 360px (the audit of 2 October 2026, M1). None failed
+   WCAG 2.5.8, which asks 24px; 44 is this site's own floor for a control on
+   a phone. Here, after all of them, so these are the rules that win.
+   The line above a Learn article's heading and above a sitting's is a link
+   on a line of its own: it takes its 44px as padding given back as margin,
+   so the heading under it does not move. */
+@media (max-width:720px){
+  .cmbtn{min-width:44px;min-height:44px}
+  .calviews button,.calfold,.calcat{min-height:44px}
+  #sort{height:44px}
+  .bfilt select{min-height:44px}
+  .docket summary{min-height:44px}
+  .detail{min-width:44px;right:2px}
+  /* The row centres on its links, or a number that is not a link sits at the
+     top of the line beside an address in the middle of it. */
+  .offhow{align-items:center}
+  .offhow a{display:inline-flex;align-items:center;min-height:44px;padding:0}
+  :is(.civics,.civhead,.sesspage) .crumb a{display:inline-block;padding:14px 0;margin:-14px 0}
+}
 
 /* PAGES:START ---------------------------------------------------------
    THE PAGES build_pages.py WRITES -- the home page, the roster, About,
@@ -4604,11 +4706,17 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
    than in a band below all three. It is the thing that changes most often on
    the site and it was the last thing on the page. */
 :where(body.pg) .hrecent{margin-top:var(--sp-7)}
-:where(body.pg) .hrecent table{width:100%;border-collapse:collapse}
-:where(body.pg) .hrecent td{padding:var(--sp-3) 0;border-bottom:1px solid var(--rule);
-vertical-align:top;font-size:var(--t-ui)}
-:where(body.pg) .hrecent td:first-child{white-space:nowrap;color:var(--ink-2);
-padding-right:var(--sp-5);width:1%}
+/* A LIST, drawn as the two-column table it was until 2 October 2026: the day
+   in a column of its own, 80px and the gap, and what happened beside it. A
+   table with no header cell is read out as a grid with nothing to say what
+   its columns are; this is five things, each a day and an action. */
+:where(body.pg) .hrecent .actlist{list-style:none;margin:0;padding:0}
+:where(body.pg) .hrecent .actlist li{display:flex;align-items:flex-start;
+padding:var(--sp-3) 0;border-bottom:1px solid var(--rule);font-size:var(--t-ui);
+margin:0;max-width:none}
+:where(body.pg) .hrecent .actd{flex:0 0 80px;white-space:nowrap;color:var(--ink-2);
+padding-right:var(--sp-5)}
+:where(body.pg) .hrecent .actb{flex:1 1 0;min-width:0}
 
 :where(body.pg) .hside > :first-child{margin-top:0}
 

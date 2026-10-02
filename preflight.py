@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.314
+# GRANITE_VERSION: 2026-09-04.315
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8310,6 +8310,199 @@ def _rings_edges_opacity():
                   "greys, and --ink-2 on the week's band above 4.5:1 in both themes")
 
 
+@check("frontend", "on paper the page is the light theme, whichever theme is on, and the controls are not printed")
+def _print_is_light():
+    """The audit of 2 October 2026, M24. app.css had no print rules, and with
+    the dark theme on a page printed in the dark theme's light ink on white
+    paper: body text 2.2:1 against the sheet and a heading 1.2:1. The header,
+    the bill search row, "Back to bill search", "Cite this page", the report
+    box and Play all printed.
+
+    One @media print block undoes the dark palette by writing the light
+    palette's values again under the dark palette's two selectors. They are
+    the light block's numbers written a second time, so this holds them to
+    it: every colour the dark palette redefines is given back, at the light
+    value, and nothing else. And the block must be in the shared region, or
+    the pages that take style.css print as they did.
+    """
+    css = Path("app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    a, b = text.index("/* SHARED:START"), text.index("/* SHARED:END")
+    m = re.search(r"@media print\{\s*:root\[data-theme=\"dark\"\],"
+                  r":root:not\(\[data-theme=\"light\"\]\)\{(.*?)\}(.*?)\n\}\n", text, re.S)
+    assert m, ("app.css has no @media print block that undoes the dark palette under "
+               "both of its selectors (the reader's choice, and the system's)")
+    assert a < m.start() < b, (
+        "the print block is outside the shared region, so the home page, the roster "
+        "and About, which take style.css, print in whatever theme is on")
+    strip = lambda s: re.sub(r"/\*.*?\*/", "", s, flags=re.S)
+    head = text[:text.index("/* PALETTE END")]
+    light = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)",
+                            strip(head[head.index(":root{"):head.index("/* DARK:OS")])))
+    dark = re.findall(r"(--[\w-]+)\s*:", strip(head[head.index("/* DARK:CHOSEN"):]))
+    on_paper = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)", m.group(1)))
+    missing = [n for n in dark if n not in on_paper]
+    assert not missing, (
+        "on paper the dark theme keeps its own " + ", ".join(missing[:5])
+        + ": every colour the dark palette redefines must be given back")
+    spare = sorted(set(on_paper) - set(dark))
+    assert not spare, "the print block sets " + ", ".join(spare) + ", which the dark palette does not"
+    drift = [f"{n} is {on_paper[n].strip()} on paper and {light[n].strip()} in the light palette"
+             for n in dark if on_paper[n].strip().lower() != light.get(n, "").strip().lower()]
+    assert not drift, "; ".join(drift[:4])
+    assert "color-scheme:light" in m.group(1), "on paper the page still asks for a dark colour scheme"
+    hidden = re.search(r"([^{}]+)\{display:none !important\}", m.group(2))
+    gone = {s.strip() for s in hidden.group(1).split(",")} if hidden else set()
+    want = {"nav.top", ".searchrow", ".backto", ".pageacts", "details.report", ".player"}
+    assert want <= gone, (
+        "printed, though it is a control and does nothing on paper: "
+        + ", ".join(sorted(want - gone)))
+    return "ok", (f"{len(dark)} colours given back at their light values under both dark "
+                  f"selectors, in the shared region; {len(gone)} controls left off the sheet")
+
+
+@check("frontend", "the small things of the audit of 2 October stay fixed: targets, the wordmark, "
+                   "pointers, the address of a search, Escape, a player's name, commas and the seat map",
+       needs=("build_session_pages", "seating", "build_pages"))
+def _audit_minor(BSP, seating, BP):
+    """Nine minor findings of the navigation and accessibility audit of
+    2 October 2026, each small enough to return unnoticed.
+
+    M1   a person's chip is its link to the edges, and on a phone a control
+         whose own rule sets its size is 44px all the same.
+    M3   the wordmark is the size of its words: it grew to push the header's
+         controls right, and was a 974px link whose ring went round the tabs.
+    M10  a pointing hand and a hover only on a ring or a legend row that can
+         be pressed: a division's and a sitting day's only show a count.
+    M13  opening a long analysis leaves the keyboard at the start of the text.
+    M16  a search run with Return is in the address, and an emptied box takes
+         it out again; an address that named none is still left alone.
+    M17  Escape shuts the phone's filter panel.
+    M18  a player's frame is named for the sitting it shows.
+    M20  a name and the comma after it are one item of a speaker line.
+    M22  the seat map is a group with one Tab stop and arrow keys within it.
+    """
+    css = Path("app.css").read_text(encoding="utf-8")
+    bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    js = Path("app.js").read_text(encoding="utf-8")
+    bad = []
+
+    # M1
+    chip = re.search(r"\.mchip\{[^}]*padding:([^;}]+)", bare)
+    link = re.search(r"\.mchip > a\{padding:([^;}]+);\s*margin:([^;}]+)\}", bare)
+    if not (chip and link and link.group(1).split() == chip.group(1).split()):
+        bad.append("a chip's link does not take the chip's padding as its own, so only "
+                   "the line of the name can be pressed")
+    elif re.findall(r"calc\(-1 \* (var\(--sp-\d+\))\)", link.group(2)) != chip.group(1).split():
+        bad.append("a chip's link does not give its padding back as margin, so the chip grows")
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:720px\)\{(.*?)\n\}\n",
+                      css, re.S)
+    if not phone:
+        bad.append("the block that makes a phone's controls 44px is gone")
+    else:
+        for sel in (".cmbtn", ".calviews button", ".calfold", ".calcat", "#sort",
+                    ".bfilt select", ".docket summary", ".detail", ".offhow a"):
+            if not re.search(r"(^|[,\s}])" + re.escape(sel) + r"\s*[,{][^}]*44px", phone.group(1)):
+                bad.append(f"{sel} is not held to 44px on a phone")
+            base = [m.start() for m in re.finditer(r"(^|\n)" + re.escape(sel) + r"\{", css)]
+            if base and max(base) > phone.start(1):
+                bad.append(f"{sel}'s own rule comes after the phone block and outranks it")
+
+    # M3
+    if re.search(r"nav\.top \.brand\{[^}]*flex:\s*1\b", bare):
+        bad.append("the wordmark grows to fill the header again: the link is the width of "
+                   "the bar and its focus ring goes round the tabs")
+
+    # M10
+    if re.search(r"(^|\})\.lrow\{[^}]*cursor:pointer", bare) or \
+            re.search(r"\.donut circle\{[^}]*cursor:pointer", bare):
+        bad.append("every legend row or ring segment takes a pointing hand, pressable or not")
+    if "button.lrow{cursor:pointer}" not in bare or ".donut circle[data-seg]{cursor:pointer}" not in bare:
+        bad.append("a roll call's legend rows and segments, which can be pressed, lost their pointer")
+
+    # M13, M17: read, because both are a key press in a browser.
+    an = js[js.find('const an=e.target.closest(".anmore");'):][:1600]
+    if "text.focus({preventScroll:true})" not in an or "scrollIntoView" not in an:
+        bad.append("\"Show more\" on an analysis leaves focus on a button the text has "
+                   "carried off the screen")
+    esc_ = js[js.find('if(e.key==="Escape"&&e.target.closest'):][:400]
+    if 'closest("#facets,#ftoggle")' not in esc_ or 'classList.remove("fopen")' not in esc_ \
+            or "ftb.focus()" not in esc_:
+        bad.append("Escape no longer shuts the phone's filter panel and returns to its button")
+
+    # M16, M18: run.
+    got = _app_js("""(() => {
+      const wrote = []; history.replaceState = (s, t, u) => wrote.push(u);
+      location.pathname = "/bills"; location.hash = "";
+      const at = (search, q, always) => { location.search = search; wrote.length = 0;
+        scope.addressSearch(q, always); return wrote.length ? wrote[0] : null; };
+      return {run: at("", "HB 2", true), same: at("?q=HB+2", "HB 2", true),
+              typed: at("", "HB 2"), kept: at("?q=budget&sort=recent", "housing"),
+              emptied: at("?q=budget&sort=recent", "", true), emptiedOnly: at("?q=budget", ""),
+              hearing: scope.renderHearings({id: "HB1", n: "HB 1"}, {stations: [
+                {video_id: "abc", state: "whole_video", what: "public hearing",
+                 committee: "Finance", body: "H", when: "2025-03-12"}]}),
+              title: scope.recTitle("House Finance", "2026-05-05"),
+              undated: scope.recTitle("House Finance", "")};
+    })()""", names=("addressSearch", "renderHearings", "recTitle"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    want = {"run": "/bills?q=HB+2", "same": None, "typed": None,
+            "kept": "/bills?q=housing&sort=recent", "emptied": "/bills?sort=recent",
+            "emptiedOnly": "/bills"}
+    off = [f"{k}: {got.get(k)!r}, not {v!r}" for k, v in want.items() if got.get(k) != v]
+    if off:
+        bad.append("the address of a search: " + "; ".join(off))
+    if 'data-title="Recording of HB 1 - House Finance Public Hearing, Mar 12, 2025"' \
+            not in got["hearing"]:
+        bad.append("Play on a bill's sitting does not carry the name its player takes")
+    if got["title"] != "Recording of House Finance, May 5, 2026" or \
+            got["undated"] != "Recording of House Finance":
+        bad.append(f"a player is named {got['title']!r} and, undated, {got['undated']!r}")
+    for src, what in ((js, "app.js"), (BP.HOME_JS, "the home page")):
+        if 'title="Hearing recording"' in src or 'title="Floor session"' in src:
+            bad.append(f"{what} still gives every player one title")
+        if "dataset.title" not in src:
+            bad.append(f"{what}'s player does not take its title from the button it replaces")
+
+    # M20
+    class _M:
+        def slug(self, body, name):
+            return "x" if name == "Hunt" else ""
+    row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
+    if row != ('<span class="swho1"><a href="legislator/x.html">Rep. Hunt</a>,</span> '
+               '<span class="swho1"><span>Rep. Roy</span>,</span> '
+               '<span class="swho1"><span>Rep. Muns</span></span>'):
+        bad.append("a speaker line's names are not each one item with its comma: " + row[:160])
+    page = Path("build_session_pages.py").read_text(encoding="utf-8")
+    if re.search(r'", "\.join\(member_html', page):
+        bad.append("build_session_pages.py joins members with a bare comma again, which a "
+                   "flex row draws as an item of its own with a gap before it")
+
+    # M22
+    who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
+           for s in seating.all_seats() + [seating.SPEAKER_SEAT]}
+    drawn = seating.svg(who)
+    if 'class="seatmap" role="group" aria-label="' not in drawn:
+        bad.append("the seat map is not a labelled group: role=\"img\" promises a screen "
+                   "reader no children, and it holds 382 buttons")
+    if 'tabindex="0"' in drawn or drawn.count('tabindex="-1" role="button"') != len(who):
+        bad.append("a seat is written into the Tab order: 382 stops between the chart's "
+                   "controls and the list under it")
+    sj = BP.SEATING_JS
+    if "stopAt(seats[0])" not in sj or 'e.key==="ArrowRight"' not in sj \
+            or 'setAttribute("tabindex",s===c?"0":"-1")' not in sj:
+        bad.append("the seat map's script no longer keeps one Tab stop and walks the "
+                   "seats with the arrow keys")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", ("a chip is its link; nine phone controls at 44px; the wordmark does not grow; "
+                  "pointers only on what can be pressed; a search run is in the address; a "
+                  "player is named for its sitting; a name carries its comma; the seat map is "
+                  "one Tab stop")
+
+
 @check("frontend", "the built stylesheet carries one copy of the shared region")
 def _shared_region():
     """A comment that named a slot pasted the whole region into itself.
@@ -12423,6 +12616,39 @@ def _chain():
         assert handed.group(1), (
             "the home page links none of the days its floor sessions block names, "
             "though the fixture's newest recorded sitting has a page")
+        # EVERY LANDMARK HAS A NAME, AND EVERY TABLE A HEADER CELL (the audit
+        # of 2 October 2026, M6 and M7). A Learn article carries three navs
+        # and a week of the Calendar four, and the one on every page had no
+        # label; the bill search row was outside every landmark; the home
+        # page's activity and the Learn pages' two-column tables had no header
+        # cell at all, so a screen reader was given a grid with nothing to say
+        # what a column is, or no table. Over every page the chain built.
+        unnamed, headless, n_nav, n_tab = [], [], 0, 0
+        for f in sorted((root / "site").rglob("*.html")):
+            page = INLINE_BODY.sub(r"\1", f.read_text(encoding="utf-8", errors="replace"))
+            rel = f.relative_to(root / "site").as_posix()
+            for tag in re.findall(r"<nav\b[^>]*>", page):
+                n_nav += 1
+                if "aria-label=" not in tag and "aria-labelledby=" not in tag:
+                    unnamed.append(f"{rel}: {tag[:60]}")
+            for tab in re.findall(r"<table\b.*?</table>", page, re.S):
+                # The Calendar's month is a grid its script fills, days and
+                # headings both; what is in the markup is its empty frame.
+                if re.match(r'<table\b[^>]*\brole="grid"', tab):
+                    continue
+                n_tab += 1
+                if "<th" not in tab:
+                    headless.append(f"{rel}: {' '.join(tab.split())[:70]}")
+            if 'class="searchrow"' in page:
+                assert re.search(r'<div class="searchrow" role="search" aria-label="[^"]+">', page), (
+                    f"{rel}: the bill search row is not a named search landmark")
+            if 'id="facets"' in page:
+                assert re.search(r'<aside class="facets" id="facets" aria-label="[^"]+">', page), (
+                    f"{rel}: the filters are an aside with no name")
+        assert n_nav and not unnamed, (
+            f"{len(unnamed)} navs with no name: " + "; ".join(unnamed[:4]))
+        assert n_tab and not headless, (
+            f"{len(headless)} tables with no header cell: " + "; ".join(headless[:4]))
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)

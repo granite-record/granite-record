@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.10
+# GRANITE_VERSION: 2026-09-18.11
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -582,12 +582,21 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     chair is a fact about the House worth showing. A seat with a member
     carries the data attributes the page's script reads; a vacant one says so
     and is not a link.
+
+    A GROUP OF BUTTONS, AND ONE STOP FOR THE TAB KEY. The chart was
+    role="img" holding 382 buttons, each its own Tab stop: an image has no
+    children a screen reader is promised, and a keyboard met 382 stops
+    between the chart's controls and the list under it (the audit of
+    2 October 2026, M22). It is a labelled group now. Every seat is written
+    out of the Tab order; the page's script (build_pages.SEATING_JS) makes one
+    of them the stop and moves among them with the arrow keys. With no script
+    the chart takes no stop at all, and the list under it has every member.
     """
     by_seat = by_seat or {}
     pos = layout()
     paths = label_paths()
     w, h = extent()
-    out = [f'<svg viewBox="0 0 {w:.0f} {h:.0f}" class="seatmap" role="img" '
+    out = [f'<svg viewBox="0 0 {w:.0f} {h:.0f}" class="seatmap" role="group" '
            f'aria-label="{title}: 400 seats in five divisions">',
            f"<title>{title}</title>"]
 
@@ -612,7 +621,7 @@ def svg(by_seat=None, title="New Hampshire House seating"):
         attrs = f'data-seat="{seat}" data-div="{d}" data-n="{n}"'
         if m:
             attrs += (f' data-slug="{m.get("slug", "")}"'
-                      f' data-name="{m.get("name", "")}" tabindex="0" role="button"')
+                      f' data-name="{m.get("name", "")}" tabindex="-1" role="button"')
         label = (f'{m.get("name")} — seat {plate(seat)}' if m
                  else f'Vacant — seat {plate(seat)}')
         out.append(
@@ -631,7 +640,7 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     if sp:
         at = (f' data-seat="{SPEAKER_SEAT}" data-div="6" data-n="2"'
               f' data-slug="{sp.get("slug", "")}" data-name="{sp.get("name", "")}"'
-              f' tabindex="0" role="button"')
+              f' tabindex="-1" role="button"')
     inner = (f'{sp["name"]} — Speaker, on the rostrum' if sp
              else "The Speaker’s chair")
     out.append(

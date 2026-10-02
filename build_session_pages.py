@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.15
+# GRANITE_VERSION: 2026-09-19.16
 """
 A page for every day the House sat.
 
@@ -183,6 +183,23 @@ def member_html(body, name, members, esc):
     if slug:
         return f'<a href="legislator/{esc(slug)}.html">{who}</a>'
     return f"<span>{who}</span>"
+
+
+def members_row(body, names, members, esc):
+    """The members of a line, each with the comma that follows it.
+
+    THE COMMA BELONGS TO THE NAME BEFORE IT. These lines are flex rows
+    (.sspoke) with a gap between their items, and the names were joined with
+    ", ": a comma between two elements is a piece of text on its own, so it
+    became an item of its own and took the gap on both sides -- "Rep. Barbour
+    , Rep. Bridle ,", with a space before every comma, on every sitting's page
+    (the audit of 2 October 2026, M20). Each name and its comma are one item
+    now. The space written between two items is not drawn in a flex row; it
+    is there for a copy of the text and for a screen reader.
+    """
+    out = [member_html(body, n, members, esc) for n in names]
+    return " ".join(f'<span class="swho1">{h}{"," if i + 1 < len(out) else ""}</span>'
+                    for i, h in enumerate(out))
 
 
 def vote_payload(item):
@@ -526,7 +543,7 @@ def absences_html(narrative, body, members, esc):
             f"permission to be away. {one}, and the roll call record does not "
             "always agree with the journal about who was excused.</p>"
             '<p class="sspoke sabs">'
-            + ", ".join(member_html(body, nm, members, esc) for nm in names)
+            + members_row(body, names, members, esc)
             + "</p></section>")
 
 
@@ -699,8 +716,7 @@ def render(day, narrative, titles, years, members, esc):
                     if who:
                         H.append(f'<p class="sspoke"><span class="slab">{label}'
                                  "</span>"
-                                 + ", ".join(member_html(body, n, members, esc)
-                                             for n in who) + "</p>")
+                                 + members_row(body, who, members, esc) + "</p>")
             p = vote_payload(it)
             if p:
                 i = len(payloads)
@@ -732,8 +748,7 @@ def render(day, narrative, titles, years, members, esc):
             if names:
                 H.append('<p class="sspoke sother"><span class="slab">Also '
                          "spoke during this bill</span>"
-                         + ", ".join(member_html(body, n, members, esc)
-                                     for n in names)
+                         + members_row(body, names, members, esc)
                          + '<span class="snote">the record does not say which '
                            "of the day's motions</span></p>")
 

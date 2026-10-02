@@ -469,6 +469,58 @@ debate; the rest are hearings, work sessions and committees of
 conference whose committee the docket did not record. Fixed in
 `build_calendar.floor_name`.
 
+**How a sitting day is reached, since 2 October.** Until then a past sitting
+had a link only from the sitting next to it: 62 of 1,563 had one from
+anything else. Three things lead to one now, and each asks the same question
+first, which is whether the page was built.
+
+- *The date of a vote.* A roll call on a bill and a row of a member's votes
+  name the day and the chamber, and `app.js` draws the date as a link
+  (`sittingLink`). It asks `site/session/days.json`, the list of the pages
+  `build_session_pages.py` wrote, written by that step a chamber at a time
+  with the other chamber's list kept. A date not on the list stays text.
+- *The directory.* `/directory/sessions-house` and `/directory/sessions-senate`
+  list every day by year (`build_indexes.sessions_pages`).
+- *The line up.* Each sitting leads to its chamber's list, and to its week on
+  the Calendar where the calendar has that week.
+
+The home page, the lists and that line are written **before** the pages and
+the weeks they link, so on a machine that starts empty none of them can read
+the disk. `build_session_pages.sittings()` is the one rule for which days get
+a page, and `build_calendar.week_keys()` is the calendar's own reading of
+which weeks do; the earlier steps ask those.
+
+## Keeping the keyboard's place
+
+A navigation and accessibility audit on 2 October measured the built site in
+a browser with real key presses. What it changed in how the code works:
+
+**A redraw gives focus back.** `app.js` draws by replacing markup, and the
+control that had focus is replaced with it. `render()`, `renderPage()` and
+`renderFacets()` each take the key of the focused control before they draw
+(`focusKey`: its id; or its tag and data attributes, inside its card; or its
+tag and classes; and its place among what that matches) and focus the control
+with that key after (`refocus`), but only if the redraw took focus away. A
+new control inside those three needs nothing, provided it has an id or a data
+attribute that says what it is. "Show more" is deliberately given no key.
+
+**The header's menu and search** (`find.js`) put focus inside when they open
+and close when focus goes somewhere else in the page; focus that goes nowhere
+(the window losing it) closes nothing. The search panel has one
+`role="status"` line, written by `findSay` from the markup `findDraw` has just
+drawn.
+
+**A ring is drawn inside a control that fills a clipping box** (a card's
+header, Play, a filter group's head), and **a text box's edge is `--edge`**.
+`preflight` holds both, and holds `--ink-2` on the Calendar's week band to
+4.5:1, computed from the tokens.
+
+**On a phone a control is 44px**, in one block placed after the rules it has
+to outrank; a person's chip is its link to the edges. **On paper the page is
+the light theme**: one `@media print` block writes the light palette again
+under the dark palette's two selectors, and `preflight` fails if the two
+stop matching.
+
 ## What is structurally wrong
 
 Ranked by what it has actually cost, not by how it looks on paper.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.136
+// GRANITE_VERSION: 2026-09-07.137
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3565,6 +3565,14 @@ function renderVotes(b,d){
     :`<p class="note">No roll call votes on this bill.</p>`);
 }
 
+// What a player's frame is titled: "Recording of HB 2 - House Finance Public
+// Hearing, Mar 12, 2025". `when` is the record's own date, drawn as every
+// other date here is where it is one and as it came where it is not.
+function recTitle(what,when){
+  const day=/^\d{4}-\d\d-\d\d$/.test(String(when||""))?fdate(when):String(when||"");
+  return `Recording of ${what}${day?`, ${day}`:""}`;
+}
+
 // "HB 1123 - House Labor Public Hearing", "HB 1123 - Senate Floor Debate".
 // Only the kind is title-cased: a committee's name is the General Court's own
 // and "Labor, Industrial And Rehabilitative Services" is not how it spells it.
@@ -3687,6 +3695,11 @@ function renderHearings(b,d){
     // state strings kept in a second place, which is how "stated" came to be
     // marked pending while an estimate was marked done.
     let placed=false;
+    // WHAT THE PLAYER IS CALLED, once it replaces Play: this sitting, by its
+    // own heading and day. Every frame was titled "Hearing recording", so a
+    // bill with fourteen sittings had fourteen frames a screen reader could
+    // not tell apart (the audit of 2 October 2026, M18).
+    const rec=` data-title="${esc(recTitle(stationTitle(b,s),s.when))}"`;
     // A recording we have is a recording the reader can watch, whether or not
     // we can say where in it the bill is. Pinning down start times is ongoing
     // work; sending somebody to YouTube in the meantime is a worse answer than
@@ -3694,7 +3707,7 @@ function renderHearings(b,d){
     const player=(from,stub,note)=>{
       const pid=`${esc(s.video_id)}_${si}_${Math.max(0,Math.floor(from))}`;
       return `<div class="player" data-player="${pid}">
-        <button type="button" class="pstub"
+        <button type="button" class="pstub"${rec}
           data-embed="${esc(s.video_id)}|${Math.max(0,Math.floor(from))}|${pid}"
           ><span>\u25B6</span><span>${stub}</span></button>
         <div class="pbar">
@@ -3736,7 +3749,7 @@ function renderHearings(b,d){
       const dur = mins >= 1 ? `${mins} min` : (span > 0 ? `${Math.round(span)} sec` : "");
       const range = hasend ? `${hms(s.start)}\u2013${hms(s.end)}` : `from ${hms(s.start)}`;
       inner=`<div class="player" data-player="${pid}">
-        <button type="button" class="pstub" data-embed="${esc(s.video_id)}|${from}|${pid}">
+        <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>▶</span><span>Play ${esc(s.what)} on this bill — ${range}${
             dur?`, about ${dur}`:""}</span></button>
         <div class="pbar">
@@ -3774,7 +3787,7 @@ function renderHearings(b,d){
       placed=true;
       const pid=`${esc(s.video_id)}_${si}_w`;
       inner=`<div class="player" data-player="${pid}">
-        <button type="button" class="pstub" data-embed="${esc(s.video_id)}|0|${pid}">
+        <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|0|${pid}">
           <span>&#9654;</span><span>Play the whole recording &mdash; it covers this
           bill only</span></button>
         <div class="pbar">
@@ -3879,7 +3892,7 @@ function renderHearings(b,d){
         : Math.max(ws,Math.floor(s.debate_end)-600);
       const pid=`${esc(s.video_id)}_${si}_f${Math.floor(s.debate_end)}`;
       inner=`<div class="player" data-player="${pid}">
-        <button type="button" class="pstub" data-embed="${esc(s.video_id)}|${from}|${pid}">
+        <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>▶</span><span>${s.debate_start!=null
             ? `Play from ${hms(from)}, where the clerk takes it up`
             : `Play the floor session from ${hms(from)}`} — debate on
@@ -5907,8 +5920,13 @@ function sessionHtml(s,si){
   // ONE number, shown and seeked. Where the header, the player and the button
   // each carried a slightly different offset, a reader had no way to tell
   // which one was the claim.
+  // The player's name once it replaces Play: this committee, this day.
+  const c=(PAGE&&PAGE.data)||{};
+  const who=[c.chamber==="S"?"Senate":c.chamber==="H"?"House":"",c.name||""]
+    .filter(Boolean).join(" ")||"Committee";
   const player=vid?`<div class="player" data-player="${esc(pid)}">
-      <button type="button" class="pstub" data-embed="${esc(vid)}|${from}|${esc(pid)}">
+      <button type="button" class="pstub" data-title="${esc(recTitle(who,s.date))}"
+        data-embed="${esc(vid)}|${from}|${esc(pid)}">
         <span>&#9654;</span><span>Play this day's recording${timed.length
           ?` from ${hms(from)}, where the first bill is taken up`:""}</span></button>
       <div class="pbar">
@@ -6744,7 +6762,7 @@ document.addEventListener("click",e=>{
     const had=document.activeElement===stub;
     stub.outerHTML=`<iframe id="yt_${pid}" allow="autoplay" allowfullscreen
       src="https://www.youtube-nocookie.com/embed/${vid}?start=${from}&autoplay=1&enablejsapi=1"
-      title="Hearing recording"></iframe>`;
+      title="${esc(stub.dataset.title||"Hearing recording")}"></iframe>`;
     const frame=had&&document.getElementById("yt_"+pid);
     if(frame&&frame.focus)frame.focus({preventScroll:true});
     return;
@@ -6785,8 +6803,20 @@ document.addEventListener("click",e=>{
   const an=e.target.closest(".anmore");
   if(an){
     const id=an.dataset.an;
-    anOpen.has(id)?anOpen.delete(id):anOpen.add(id);
+    const opening=!anOpen.has(id);
+    opening?anOpen.add(id):anOpen.delete(id);
     clampAnalysis();
+    // THE KEYBOARD STAYS WITH WHAT THE READER IS LOOKING AT. The button sits
+    // under the text it opens, so opening HB 2's analysis carried it, and
+    // the focus on it, 12,000px down the page while the reader was still at
+    // the top of the text (the audit of 2 October 2026, M13). Opened, focus
+    // goes to the start of the text that has just been shown -- as "Show 3
+    // more" below puts it on the first line it reveals -- and "Show less" is
+    // at the end of it, a Tab away. Shut, the button is brought back into
+    // view, since the text it was under has gone from above it.
+    const text=an.closest(".anbox")&&an.closest(".anbox").querySelector(".antext");
+    if(opening&&text){text.tabIndex=-1;text.focus({preventScroll:true});}
+    else if(!opening&&an.scrollIntoView)an.scrollIntoView({block:"nearest"});
     return;
   }
   const seg=e.target.closest("[data-seg]");
@@ -6925,12 +6955,22 @@ document.addEventListener("input",e=>{
 // misspelling: a reload, or the link sent to somebody else, said "No bills
 // match" (2 October). Only an address that names a search is rewritten; one
 // that names none is left as it is, as typing in the box leaves it.
-function addressSearch(q){
+//
+// AND A SEARCH THE READER RAN IS IN THE ADDRESS (`always`). Typing "HB 2" and
+// Return on /bills left the address /bills, where the same search from the
+// home page is /bills?q=HB%202: it could not be reloaded, bookmarked or sent
+// to anybody (the audit of 2 October 2026, M16). Return and the Search button
+// name the search in the address whether or not it named one; from then on
+// it does name one, so typing keeps it in step, and an emptied box takes the
+// search out of it again. Replaced, not pushed: the page is the same page.
+function addressSearch(q,always){
   try{
     const p=new URLSearchParams(location.search);
-    if(p.get("q")==null||p.get("q")===q)return;
-    p.set("q",q);
-    history.replaceState(history.state,"",location.pathname+"?"+p+location.hash);
+    const had=p.get("q");
+    if((had==null&&!always)||(had||"")===q)return;
+    if(q)p.set("q",q);else p.delete("q");
+    const s=p.toString();
+    history.replaceState(history.state,"",location.pathname+(s?"?"+s:"")+location.hash);
   }catch(_){}
 }
 // Running a search from one bill's own view means leaving that bill, so it
@@ -6951,11 +6991,12 @@ function submitSearch(){
   // From a bill's own view, running the search means leaving that bill. Back
   // out to the top: the scroll position from before it was opened belongs to
   // a list that is no longer the one on screen.
-  if(focused){unfocus(0);return;}
+  if(focused){unfocus(0);addressSearch(query,true);return;}
   // On the list the results narrow as they type, a moment behind the typing
   // (QWAIT). Return means they have finished: draw now, let go of the
   // keyboard and bring the first result up to where they are looking.
   clearTimeout(QDRAW);
+  addressSearch(query,true);
   render();
   $("#q").blur();
   const first=$("#results")&&$("#results").querySelector(".card");
@@ -6976,7 +7017,8 @@ $("#q").addEventListener("input",e=>{
   if(focused||PAGE||window.GR_STATIC)return;
   query=e.target.value;
   clearTimeout(QDRAW);
-  QDRAW=setTimeout(render,QWAIT);
+  // An address that names a search names the one on screen (addressSearch).
+  QDRAW=setTimeout(()=>{addressSearch(query);render();},QWAIT);
 });
 
 $("#q").addEventListener("keydown",e=>{
@@ -7002,6 +7044,15 @@ const typingIn=el=>!!el&&(/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)
   ||el.isContentEditable||!!(el.closest&&el.closest(".report")));
 document.addEventListener("keydown",e=>{
   if(e.key==="/"&&!typingIn(e.target)){e.preventDefault();$("#q").focus();$("#q").select();}
+  // ESCAPE SHUTS THE PHONE'S FILTER PANEL, from inside it or from its button,
+  // and leaves the keyboard on the button that opens it -- as it does for the
+  // sections menu and the search. It did nothing here (the audit of
+  // 2 October 2026, M17).
+  if(e.key==="Escape"&&e.target.closest&&e.target.closest("#facets,#ftoggle")){
+    const sh=document.querySelector(".shell"),ftb=$("#ftoggle");
+    if(sh&&ftb&&sh.classList.contains("fopen")){
+      sh.classList.remove("fopen");ftb.setAttribute("aria-expanded","false");ftb.focus();}
+  }
   // Tabs carry role="tab", and a screen reader user is told they are tabs, so
   // the arrow keys have to work. They did nothing before.
   const tab=e.target.closest&&e.target.closest(".tab");
