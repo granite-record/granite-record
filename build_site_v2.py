@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.133
+# GRANITE_VERSION: 2026-09-05.134
 """
 Generate the faceted site from real General Court data.
 
@@ -1618,7 +1618,10 @@ def classify(narr, rcs, prefix="", bid="", term=""):
             and re.search(r"ought to pass|passage", e.get("action") or "", re.I)
             for e in evs):
         return "done", "Failed to pass"
-    if "died on table" in text:
+    # With the article and without: "Died on Table, Session ended" is the
+    # current docket's row and "Died on the Table" the House's of 2010 and
+    # 2015, which this did not match.
+    if re.search(r"died on (?:the )?table", text):
         return "done", "Died on the table"
     # THE SESSION ENDING IS AN ENDING. The docket's own last line says so --
     # "Died, Session ended 10/10/2024" -- and without this a bill whose kill
@@ -1631,6 +1634,14 @@ def classify(narr, rcs, prefix="", bid="", term=""):
     # with no motion code: "Inexpedient to Legislate, Senate Rule 3-23,
     # Adjournment" is how a bill left on the table dies at adjournment. 80
     # bills of 2017-2026 say exactly that and nothing else.
+    # SENATE RULE 3-23 IS THE TABLE'S: it ends what is still lying there, and
+    # this site's words for that are "Died on the table", on 669 bills whose
+    # field says DIED ON THE TABLE or LAID ON TABLE over the same row. SB 14,
+    # SB 20, SB 113, SB 227 and SB 304 of 2025 carry the row under a blank
+    # field and read "Killed", of bills no chamber voted to kill: each was
+    # laid on the table by a carried motion and never taken off it.
+    if TABLE_DEATH.search(text):
+        return "done", "Died on the table"
     if re.search(r"inexpedient to legislate,\s*(?:senate|house)\s+rule", text):
         return "done", "Killed"
     # THE LAST DECISION ON THE MEASURE WAS A MOTION TO PASS IT THAT FAILED.
@@ -6420,7 +6431,16 @@ def cacr_to_the_voters(narr, term, current, text="", today=None):
 # LAID ON TABLE. The site already called this ending "Died on the table" on 211
 # bills whose last line is the same, 164 of them in other terms (2015-2016 to
 # 2023-2024) and 47 in 2019-2020 itself.
-TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23,\s*adjournment", re.I)
+#
+# THE 2025 ROW HAS NO "ADJOURNMENT": "Inexpedient to Legislate, Senate Rule
+# 3-23, 10/31/2025". The rule is named, and that is what the row is.
+TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23\b", re.I)
+# AND THE HOUSE'S OWN CLOSING ROW. The House laid 26 measures of 2015 on the
+# table and entered "Died on the Table" on each on 18 November 2015; its field
+# for them was never advanced from LAID ON TABLE, a field outranks what
+# classify() reads in the docket, and they read "Laid on the table" over a
+# last row that says they died there.
+DIED_ON_TABLE_ROW = re.compile(r"^\s*died\s+on\s+(?:the\s+)?table\b", re.I)
 
 
 def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
@@ -6604,7 +6624,8 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                 kind, status = between
         elif status == "Laid on the table":
             evs2 = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
-            if evs2 and TABLE_DEATH.search(evs2[-1].get("raw") or ""):
+            if evs2 and (TABLE_DEATH.search(evs2[-1].get("raw") or "")
+                         or DIED_ON_TABLE_ROW.search(evs2[-1].get("raw") or "")):
                 between = ("done", "Died on the table")
                 kind, status = between
         # "PASSED/ADOPTED" IN BOTH CHAMBERS' FIELDS IS NOT ONE CHAMBER. HB 549

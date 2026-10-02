@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.311
+# GRANITE_VERSION: 2026-09-04.312
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1930,6 +1930,79 @@ def _tabled_is_the_last_decision(N, B):
     return "ok", ("HB 1668 and HB 1681 of 1998 and SB 476 and SB 651 of 2026 read Laid on the "
                   "table from their dockets; a later row that ends the bill, and a tabling "
                   "undone, are not that")
+
+
+# Real rows: Docket_2015-2016.txt lines 714-716 (HB 112), 5731-5733 (HCR 3)
+# and 19933-19934 (SB 476 of 2016). SB 14 of 2025 is in _DOCKET_TABLED_LAST
+# and HA 2 of 2010 in _DOCKET_OUGHT_NOT.
+_DOCKET_DIED_ON_TABLE = {
+    ("HB112", "2015-2016"): [
+        "2015|0094|03/11/2015 06:12:12 PM|HB112|H|Lay on Table (Rep Hoelzel): MA DV 254-85; HJ 24, PG. 878-880|03/11/2015 06:12:12 PM",
+        "2015|0094|03/11/2015 06:12:31 PM|HB112|H|Request opinion of Justices (Rep Hoelzel): MA DV 190-148; HJ 24, PG. 878-880|03/11/2015 06:12:31 PM",
+        "2015|0094|11/18/2015 10:29:09 AM|HB112|H|Died on the Table|11/18/2015 10:29:09 AM"],
+    ("HCR3", "2015-2016"): [
+        "2015|0732|03/04/2015 06:03:21 PM|HCR3|H|Lay on Table (Rep Baldasaro): MA DV 205-101; HJ 22, PG. 624|03/04/2015 06:03:21 PM",
+        "2015|0732|03/12/2015 09:42:00 AM|HCR3|H|Remove from Table (Rep Edelblut): MF DV 71-228; HJ 26, PG. 1204|03/12/2015 09:42:00 AM",
+        "2015|0732|11/18/2015 10:35:25 AM|HCR3|H|Died on the Table|11/18/2015 10:35:25 AM"],
+    ("SB476", "2015-2016"): [
+        "2016|2780|3/10/2016 12:00:00 AM|SB476|S|Sen. Carson Moved Laid on Table, MA, VV; 03/10/2016; SJ 8|3/10/2016 12:00:00 AM",
+        "2016|2780|3/10/2016 12:00:00 AM|SB476|S|Pending Motion, Ought to Pass; 03/10/2016; SJ 8|3/10/2016 12:00:00 AM"],
+}
+
+
+@check("status", "a docket row that says the measure died on the table is its ending, over a "
+                 "field that stopped at LAID ON TABLE and under a field that says nothing",
+       needs=("narrative", "build_site_v2"))
+def _died_on_the_table_row(N, B):
+    """The House laid 26 measures of 2015 on the table and entered "Died on
+    the Table" on each on 18 November 2015. Its field for them was never
+    advanced from LAID ON TABLE, a stated field outranks what classify()
+    reads in the docket, and the rule that turns a tabling into a death knew
+    only the Senate's "Inexpedient to Legislate, Senate Rule 3-23,
+    Adjournment": the 26 read "Laid on the table" over a last row saying they
+    died there.
+
+    And the Rule 3-23 row is a death on the table wherever it is read. The
+    row of 2025 has no "Adjournment" -- "Inexpedient to Legislate, Senate
+    Rule 3-23, 10/31/2025" -- and under a blank field classify() answered
+    "Killed" for SB 14, SB 20, SB 113, SB 227 and SB 304 of 2025, which no
+    chamber voted to kill.
+
+    A tabling with no row after it that says how it ended stays what the
+    record says: "Laid on the table".
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_DIED_ON_TABLE.items()}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    tabled = {"gen_status": "HOUSE", "house_status": "LAID ON TABLE", "senate_status": ""}
+    for bill in ("HB112", "HCR3"):
+        d = B.bill_disposition({}, bill, tabled, narr[(bill, "2015-2016")], [], "2015-2016",
+                               "2025-2026")
+        is_(f"{bill} of 2015", (d.kind, d.status, d.between), ("done", "Died on the table", True))
+    # The same row with the article, under a field that names nothing: HA 2
+    # of 2010's docket alone.
+    n = _narrated(N, "2009-2010", "HA2", _DOCKET_OUGHT_NOT[("HA2", "2009-2010")])
+    is_("HA2 of 2010, from its docket alone",
+        B.bill_disposition({}, "HA2", {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS"},
+                           n, [], "2009-2010", "2025-2026").status, "Died on the table")
+    # The Rule 3-23 row without "Adjournment", under a blank field and under
+    # LAID ON TABLE.
+    n = _narrated(N, "2025-2026", "SB14", _DOCKET_TABLED_LAST[("SB14", "2025-2026")])
+    for st in ({}, {"senate_status": "LAID ON TABLE"}):
+        d = B.bill_disposition({}, "SB14", st, n, [], "2025-2026", "2025-2026", term_over=True)
+        is_(f"SB14 of 2025 under {st or 'a blank field'}", (d.kind, d.status),
+            ("done", "Died on the table"))
+    # No closing row: the record's word stands.
+    d = B.bill_disposition({}, "SB476", {"gen_status": "SENATE", "senate_status": "LAID ON TABLE"},
+                           narr[("SB476", "2015-2016")], [], "2015-2016", "2025-2026")
+    is_("SB476 of 2016", (d.kind, d.status), ("done", "Laid on the table"))
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 112 and HCR 3 of 2015 died on the table by the House's own row, SB 14 of "
+                  "2025 by Senate Rule 3-23; SB 476 of 2016, with no such row, is laid on it")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
