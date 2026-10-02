@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.186 */
+/* GRANITE_VERSION: 2026-09-07.187 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -728,6 +728,12 @@ min-width:0}
    not a label. The only place the panel uses the serif. */
 .findout .fwhat{color:var(--ink-2);font-size:var(--t-ui);
 font-family:var(--serif);min-width:0}
+/* Why a bill is listed, under its title: the panel's twin of .cwhy on the
+   bill cards. HERE, IN THE SHARED REGION, because the panel is on every page:
+   beside .cwhy below SHARED:END, style.css never had it, and on the home page
+   and /search the line was set at body size in full ink, larger and louder
+   than the title above it. */
+.findout .fwhy{display:block;color:var(--ink-2);font-size:var(--t-ui);font-style:italic}
 .findout .fnote{padding:var(--sp-4) var(--sp-4);color:var(--ink-2);font-size:var(--t-ui)}
 
 /* THE PART THEY TYPED. Reported as "a bit too bright", and it was: nothing
@@ -1372,7 +1378,6 @@ line-height:1.5}
    facts, in the same quiet type, so it reads as a note about the search and
    not as something the record says about the bill. */
 .cwhy{font-size:var(--t-ui);color:var(--ink-2);margin-top:var(--sp-2);font-style:italic}
-.findout .fwhy{display:block;color:var(--ink-2);font-size:var(--t-ui);font-style:italic}
 .cbody{border-top:1px solid var(--rule);padding:0 var(--sp-6) var(--sp-7)}
 .cbody[hidden]{display:none}
 .tabs{display:flex;gap:var(--sp-7);border-bottom:1px solid var(--rule);margin:0 0 var(--sp-6);flex-wrap:wrap}
