@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.5
 """
 The text of every archived bill, two requests at a time and never in a hurry.
 

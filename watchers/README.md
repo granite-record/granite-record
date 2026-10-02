@@ -161,13 +161,10 @@ Pulls text out of calendar and journal PDFs as they arrive. No network.
 
 ## `docket_chain.py`
 
-**Superseded by `gc_lane.py`; do not start it.** It ran the archive fetches
-one after another holding `archive/.lock`, and its tail queues bill-text runs
-through `fetch_archive_text.py`, the two-request route `fetch_legislation.py`
-superseded on 10 September. Its seed for 2015-2016 is also wrong: the
-database's "2016" rows are the 2015 history of 190 carried-over bills, so
-seeding from them skips those bills' whole 2016 record. The lane's queue
-uses `Docket_db_2015.txt` instead. Kept for its reasoning.
+**Superseded by `gc_lane.py`, and moved to `obsolete/` on 1 October 2026**,
+with `fetch_archive_text.py`, the two-request bill-text route its tail
+queued and `fetch_legislation.py` superseded on 10 September.
+`obsolete/README.md` says what each was and why it is kept.
 
 ## Not running, on purpose: `narrative_watch.py`
 

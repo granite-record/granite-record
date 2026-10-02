@@ -54,3 +54,56 @@ the Senate rows on their own.
 Superseded by `preflight.py`, which checks both chambers as a matter of course
 and fails rather than printing. Kept as the record of a real failure mode:
 a number that looks healthy because the broken part is a small share of it.
+
+## `design_home.py`
+
+Three arrangements of the home page, drawn from the built one, so that a
+full-width hero could be looked at before anything was changed. It was a
+design aid for one decision, and the decision went the other way: the home
+page keeps its three columns with the hero in the middle one. Nothing in the
+build ran it, and the `site/design/` folder it wrote is in no built site.
+
+Kept because it shows how to try a layout without copying the page: it reads
+`site/index.html` as built, finds its blocks and reorders them, so a variant
+can never drift from the real page's content.
+
+Moved here on 1 October 2026 (the refactor plan's first pruning pass).
+
+## `fetch_archive_text.py`
+
+The first route to the text of an archived bill: two requests a bill, one to
+the bill's status page to read its text id and one to `billText.aspx` with it.
+`fetch_legislation.py` replaced it on 10 September 2026 -- the static
+`legislation/<year>/<HB0000>.html` address is built from a year and a padded
+number, needs no id, and is one request -- and `archive_text.py` reads what
+that saves. Nothing has run this since except `docket_chain.py`, below.
+
+Kept for its opening, which records what was checked before any of it was
+written: that no file or database view on this disk holds a text id for an
+archived bill, and that the id cannot be derived, because its scheme changed
+at least once. That is still the reason the address is read and never
+guessed. Its queue was `archive/text_queue.csv`, not the calendars'
+`archive/queue.csv`.
+
+**It asks the General Court.** It is here to be read. Do not run it: it has
+no place in the lane, and the route it takes is the slow one.
+
+## `docket_chain.py`
+
+Lived in `watchers/`. It waited for the calendar drain to finish and then ran
+the archive fetches one after another under `archive/.lock`: the dockets, the
+last Senate calendars, and the bill text through `fetch_archive_text.py`.
+`watchers/gc_lane.py` replaced it: the lane works a queue that is a file,
+holds the lock with a heartbeat, and stops for a refusal recorded by any
+fetch, where the chain's order was written into its code.
+
+Its seed for 2015-2016 is also wrong, and that is worth remembering: the
+database's "2016" rows are the 2015 history of 190 carried-over bills, so
+seeding from them skips those bills' whole 2016 record. The lane's queue uses
+`Docket_db_2015.txt` instead.
+
+`watchers/narrative_watch.py` still reads `logs/docket_chain.log` for the
+line this wrote when a term's docket was complete. That watcher is dormant
+too, and says so in `watchers/README.md`.
+
+**It starts fetches.** Do not run it.

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
 """
 Three arrangements of the home page, built from the real one.
 

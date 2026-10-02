@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.27
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -227,6 +227,50 @@ ask it for the study committees' meetings either. That is a warning on the
 night's page, the installed meetings stay, and the day's files are built and
 published: another server's bad week does not hold the day's bills back. The
 night a connection is tried and fails is not clean, as it never was.
+
+THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026)
+
+The Calendar page links every House and Senate calendar and journal at the
+General Court's own viewer address, from archive/queue.csv -- a list the
+laptop last read on 13 September, so by 1 October it was three House calendars
+behind and nothing refreshed it. The person approved the night reading it. On
+GitHub's night only, with the day's files, under the same lock:
+
+  what                fetch_calendar_archive.py --listing asks each chamber's
+                      index page for its calendars and its journals of the
+                      newest year: four requests, a few seconds apart and as
+                      long before the first, and eight while two years' lists
+                      can both still grow (its docstring says when). No
+                      document is downloaded
+  after the bill      it asks the address the bill requests were asked of a
+  requests            moment before. If that fetch did not complete -- a
+                      dropped connection ends it on 1 with no refusal on
+                      record -- the list is not asked for that night
+                      (EXITS): the lane's rule, that a step which fails
+                      stops the chain, kept between these two
+  whole or not        its answer goes to the scratch folder, and replaces the
+                      installed list only if every list was read, none came
+                      back empty or sharply shorter than the page listed when
+                      it was last installed, nothing on file is missing or
+                      moved, and each new address is the General Court's own
+                      (its judge()). With it goes
+                      archive/documents_listed.json: what each page listed,
+                      in its words, and when
+  short, night        a list that is only short is not taken that night. One
+  after night         that comes back short the same way LIST_SAME_NIGHTS
+                      nights running is the page's own, not a page half
+                      served, and is taken then: the count rides in the
+                      verdict (documents_short), so nobody has to edit the
+                      night's file to let a real change through
+  one writer          archive/queue.csv is the night's file in the kit from
+                      this day. The laptop's drain still fetches the
+                      documents, and what it fetched reaches this list
+                      through its own file (archive/queue_fetched.csv)
+  a failure           is a warning on the night's page and never a failed
+                      night: the list installed stays, and a picker a few
+                      days behind is no reason to hold back the day's docket.
+                      A refusal met while asking is recorded as every
+                      refusal is, and the next night does not ask at all
 """
 
 import argparse
@@ -323,6 +367,25 @@ STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
 LSRS = Path("lsrs.json")
 LSR_GONE_MOST = 0.10
 LSR_GONE_FLOOR = 5
+
+# THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026): the
+# list the Calendar page's picker is built from, and what its pages listed
+# when they were last read. fetch_calendar_archive.QUEUE and its
+# listed_file(), which preflight holds these to. take_documents() says how
+# the night takes them; like the bill requests, a night that cannot is a
+# warning and never a stop.
+DOCS = Path("archive/queue.csv")
+DOCS_LISTED = Path("archive/documents_listed.json")
+# A list that comes back sharply shorter is refused as a page half served. A
+# page half served is one night's accident; the same documents missing on
+# this many nights running is what the General Court's page now lists, and
+# the night takes it. Without this a real change -- two files renamed in one
+# day is enough, of sixteen -- refused all four lists every night after.
+LIST_SAME_NIGHTS = 3
+# How the night's own requests of the General Court's site ended, by script:
+# take_lsrs writes its fetch's exit status, and take_documents, which asks
+# the same address next, reads it. Emptied before the two are run.
+EXITS = {}
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026). YouTube refuses
 # GitHub's machine the captions, so the laptop's evening job reads them. A
@@ -741,8 +804,13 @@ def main():
                                 night.v["new_term"]["study views"] = "; ".join(
                                     f"{k} {r}" for k, r in night.v["study_meetings"].items())
                             # And next session's bill requests, from the site.
+                            EXITS.clear()
                             if not refusal.MARK.exists():
                                 night.v["lsrs"] = take_lsrs()
+                            # And the calendars and journals the General
+                            # Court lists, from its two index pages.
+                            if not refusal.MARK.exists():
+                                night.v["documents"] = take_documents(night.v)
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
@@ -1588,6 +1656,7 @@ def take_lsrs():
     old = old if isinstance(old, list) else []
     standing = {r.get("lsr") for r in old if isinstance(r, dict) and not r.get("withdrawn")}
     rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
+    EXITS["fetch_lsrs.py"] = rc
     new = load_json(LSRS)
     gone = [r for r in (new if isinstance(new, list) else [])
             if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
@@ -1611,6 +1680,125 @@ def take_lsrs():
     active = sum(1 for r in new if isinstance(r, dict) and not r.get("withdrawn"))
     return (f"installed, {active} requests (was {len(standing)})"
             + (f"; {len(gone)} newly withdrawn" if gone else ""))
+
+
+def take_documents(v=None):
+    """The General Court's list of its calendars and journals into
+    archive/queue.csv, whole or not at all, and a line saying what happened:
+    "installed, ...", "not taken: ..." or "not asked for: ...".
+
+    fetch_calendar_archive.py --listing reads the two index pages -- four
+    requests, under the lock this night holds -- and writes the queue with
+    what is new added, and what each page listed, into the scratch folder.
+    Both replace the installed copies only if the fetch exited 0 and its own
+    judge() finds the list whole: every list read, none empty or sharply
+    shorter than the page listed when it was last installed, every document
+    on file still there at its own address, and each new address the General
+    Court's own. The fetch runs here, in the working folder, so that a
+    refusal it meets is recorded in the refusal record every other fetch
+    reads.
+
+    NOT ASKED AFTER A FETCH THAT DID NOT FINISH. The bill requests are asked
+    of the same address a moment before this (EXITS). fetch_lsrs ends on 1,
+    with no refusal recorded, when a connection is dropped or reset -- which
+    its own docstring calls this address's way of refusing -- and the only
+    thing between it and this step was the refusal record. So where that
+    fetch did not complete, for whatever reason, the list waits for
+    tomorrow: the lane's rule for a chain.
+
+    SHORT THE SAME WAY, NIGHT AFTER NIGHT. `v` is the night's verdict, which
+    carries documents_short from the night before: which documents a list
+    came back without, as a digest, and for how many nights running. A list
+    that is short and has nothing else wrong with it is counted there, and
+    on night LIST_SAME_NIGHTS it is taken as the page's own.
+
+    Every sentence this returns is this project's own -- counts and the
+    lists' names -- because a warning is shown on the run's public page.
+    """
+    v = v if isinstance(v, dict) else {}
+    SCRATCH.mkdir(exist_ok=True)
+    new, listed = SCRATCH / DOCS.name, SCRATCH / DOCS_LISTED.name
+    for f in (new, listed):
+        f.unlink(missing_ok=True)
+    try:
+        import fetch_calendar_archive as CA
+        was = CA.read_rows(DOCS)
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  the list of calendars and journals not taken: {type(e).__name__}: {e}",
+            echo=False)
+        return "not taken: the night's own step for it failed; the list installed stays"
+    kept = f"the earlier {len(was):,} kept" if was else "none on file"
+    if EXITS.get("fetch_lsrs.py"):
+        why = ("next session's bill requests were asked of the same address a moment "
+               f"before and did not complete (exit {EXITS['fetch_lsrs.py']}), so nothing "
+               "more is asked of it tonight")
+        say(f"  the list of calendars and journals not asked for: {why}")
+        return f"not asked for: {why}; {kept}"
+    rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
+             "the calendars and journals the General Court lists")
+    why, got, rec, settled = "", [], None, 0
+    if rc == 2 and refusal.MARK.exists():
+        # Only with the record on file: a script's own usage error ends on
+        # 2 as well, and that is not the General Court saying no.
+        why = ("the General Court refused a request: it is recorded, and every fetch "
+               "waits for a person")
+    elif rc != 0:
+        # The listing says why it stopped, in its own words (its Stop), and
+        # only words of that kind are passed on: the run's page is public.
+        said = (load_json(listed) or {}).get("stopped") if listed.exists() else None
+        why = (f"the listing stopped: {said}"
+               if isinstance(said, str) and re.fullmatch(r"[A-Za-z0-9 ,.:;'()/-]{1,200}", said)
+               else f"the fetch did not complete (exit {rc})")
+    else:
+        try:
+            got, rec, last = CA.read_rows(new), load_json(listed), load_json(DOCS_LISTED)
+            if not got or not isinstance(rec, dict):
+                why = "the fetch wrote no list"
+            else:
+                why = CA.judge(was, got, rec, last)
+                short = CA.shortfall(was, rec, last)
+                if why and short and not CA.judge(was, got, rec, last, shorter=True):
+                    # Short, and nothing else wrong with it: which documents,
+                    # and for how many nights running.
+                    same = hashlib.sha256(json.dumps(sorted(
+                        [list(k), sorted(gone)] for k, gone, _, _ in short)).encode()
+                    ).hexdigest()[:16]
+                    seen = v.get("documents_short")
+                    seen = seen if isinstance(seen, dict) else {}
+                    n = seen.get("nights")
+                    nights = (n if isinstance(n, int) and seen.get("same") == same else 0) + 1
+                    if nights >= LIST_SAME_NIGHTS:
+                        why, settled = "", nights
+                    else:
+                        v["documents_short"] = {"same": same, "nights": nights}
+                        why += (f" (night {nights} of the {LIST_SAME_NIGHTS} running after "
+                                "which the same answer is taken as the page's own)")
+        except Exception as e:                                  # noqa: BLE001
+            say(f"  {type(e).__name__}: {e}", echo=False)
+            why = "what the fetch wrote could not be read"
+    if not why:
+        try:
+            DOCS.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(new, DOCS)
+            os.replace(listed, DOCS_LISTED)
+        except OSError as e:
+            say(f"  {type(e).__name__}: {e}", echo=False)
+            why = "the list could not be put in place"
+    for f in (new, listed):
+        f.unlink(missing_ok=True)
+    if why:
+        say(f"  the list of calendars and journals not taken: {why}")
+        return f"not taken: {why}; {kept}"
+    v.pop("documents_short", None)
+    what = f"installed, {len(got):,} documents (was {len(was):,}): {CA.news(was, got)}"
+    if settled:
+        what += (f"; a list that came back short the same way {settled} nights running "
+                 "is taken as the page's own")
+    for name in CA.unanswered(rec):
+        what += (f"; {name} was not answered, with none on file for it: taken as none "
+                 "posted yet")
+    say(f"  the list of calendars and journals: {what}")
+    return what
 
 
 def take_views(views, label, shrink=SWAP_SHRINK):
@@ -1824,6 +2012,12 @@ class Night:
         # export sets it to 0, one that falls back adds one, and a night that
         # takes neither leaves it.
         self.v["db_nights"] = db_nights_of(prev)
+        # A list of calendars and journals that came back short, and for how
+        # many nights running the same way (take_documents). Carried, so
+        # that a night which does not ask leaves the count where it was.
+        short = prev.get("documents_short") if isinstance(prev, dict) else None
+        if isinstance(short, dict):
+            self.v["documents_short"] = short
         if a.new_term:
             # What the New term run let through, filled in as it goes. Kept in
             # this night's verdict; what it accepted reaches a later night
@@ -1998,6 +2192,9 @@ class Night:
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
             out.append(f"next session's bill requests: {lsrs}")
+        docs = self.v.get("documents")
+        if docs and not str(docs).startswith("installed"):
+            out.append(f"the General Court's list of calendars and journals: {docs}")
         n = captions_waiting()
         if n:
             out.append(f"{n} recording{'s' if n != 1 else ''} finished more than "
