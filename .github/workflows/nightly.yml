@@ -18,10 +18,18 @@
 # (an empty file's byte-order mark), and the move to 08:17 was made on the
 # guess that the General Court rewrites them around 2 a.m. The next night, at
 # 4:42 a.m. EDT, got eight of them empty, so no hour is safe on the evidence:
-# the files are sometimes half written in the early morning. The night asks
-# again instead -- every 30 minutes, up to six tries (nightly.EMPTY_TRIES) --
-# which is why the night's job allows 300 minutes. refusal.NIGHT_WINDOWS,
-# which keeps the laptop's fetches clear of the night, moves with the cron line.
+# the files are sometimes half written in the early morning. From 28 September
+# the night asked again instead -- every 30 minutes, up to six tries
+# (nightly.EMPTY_TRIES). Since 2 October 2026 a scheduled night does not:
+# an export that comes back empty sends it to the General Court's database
+# at once (nightly.DB_AFTER_TRIES; the person's decision, because asking
+# again half an hour later tended not to bring the files), and only when
+# the database cannot be used is the export asked once more, half an hour
+# later (nightly.TRIES_AFTER_DB). The six tries are now only a New term
+# run's, started by hand, which never asks the database: it is the longest
+# run there is, and is why the night's job still allows 300 minutes.
+# refusal.NIGHT_WINDOWS, which keeps the laptop's fetches clear of the
+# night, moves with the cron line.
 #
 # By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
 # its four boxes say; a scheduled night fetches, deploys a preview, and asks
@@ -221,17 +229,22 @@ jobs:
           exit $rc
 
       # A NIGHT THE EXPORT FAILS (1 October 2026). When the General Court's
-      # daily files come back empty on every try, the night asks the SQL host
-      # the General Court publishes credentials for instead (fetch_day_db.py,
-      # then dayfiles_from_db.py) and installs all seven changing files or
-      # none; nightly.py's docstring says when it may. It needs nothing new
+      # daily files come back empty, the night asks the SQL host the General
+      # Court publishes credentials for instead (fetch_day_db.py, then
+      # dayfiles_from_db.py) and installs all seven changing files or none --
+      # since 2 October at once, after the export's first try, and no longer
+      # after its sixth; nightly.py's docstring says when it may, and when
+      # the export is asked once more afterwards. It needs nothing new
       # from this workflow, and NO SECRET: the credentials are the published
       # ones in probe_db.py; PowerShell, which reaches that host, is on this
       # image, as the study committees' views already use it; the hold on
       # that host (archive/sql-held.json) comes down and goes back with the
       # state files; and the copy kept under nh-archive/from-db/ goes back
-      # with the kit. Six tries are two and a half hours of the job's five,
-      # the database a few minutes, the build under thirty.
+      # with the kit. A scheduled night waits half an hour at most, and
+      # only when the database cannot be used and the export is asked a
+      # second time. The longest run is a New term run by hand: its six
+      # tries are two and a half hours of the job's five, and the build is
+      # under thirty minutes.
       - name: The night
         id: night
         run: |

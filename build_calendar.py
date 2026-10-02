@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.19
+# GRANITE_VERSION: 2026-09-18.20
 """
 The General Court's week, one page per week.
 
@@ -96,6 +96,7 @@ from collections import Counter, OrderedDict, defaultdict
 from pathlib import Path
 
 import bill_order as BO
+import build_date
 import build_pages as BP
 import calendar_documents as CD
 import proceedings
@@ -2029,7 +2030,7 @@ def week_keys(site, today=None):
     weeks = collect(Path(site), statstud()[0])[0]
     if not weeks:
         return set()
-    every_week(weeks, today or datetime.date.today())
+    every_week(weeks, today or build_date.today())
     return set(weeks)
 
 
@@ -2698,7 +2699,7 @@ def main():
         # recordings on no bill that fit no meeting here, said out loud.
         on_bills = {(r.get("video_id") or "").strip() for r in proceedings.load()} - {""}
         linked, unmatched = study_recordings(study_rows, recordings_by_day(), on_bills,
-                                             datetime.date.today().isoformat())
+                                             build_date.today().isoformat())
         print(f"  {len(linked):,} study and statutory meetings link their recording"
               + (f"; {len(unmatched):,} recordings since {FROM} on no bill fit no meeting "
                  "here, the newest: " + "; ".join(f"{t} ({d})" for d, t in unmatched[-3:])
@@ -2708,7 +2709,7 @@ def main():
     # and a build that said so only by printing a zero.
     assert weeks, f"no proceedings dated {FROM} or later; the calendar would be empty"
 
-    today = datetime.date.today()
+    today = build_date.today()
     here = week_key(today)
     # Every week from the first to the last, the current one included, so the
     # arrows step one week at a time and every week has an address.

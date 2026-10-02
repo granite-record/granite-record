@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.16
+# GRANITE_VERSION: 2026-09-19.17
 """
 A page for every day the House sat.
 
@@ -54,6 +54,7 @@ import re
 from pathlib import Path
 
 import bill_order as BO
+import build_date
 import session_days
 import journal_days
 import shell as S
@@ -851,7 +852,7 @@ def sittings(days=None, today=None):
     build_indexes.py ask this instead, and link the days it says are built.
     """
     days = session_days.load() if days is None else days
-    today = today or datetime.date.today().isoformat()
+    today = today or build_date.today().isoformat()
     return (sorted(k for k in days if k[1] <= today),
             sorted(k for k in days if k[1] > today))
 
@@ -941,7 +942,7 @@ def main():
     body = a.body.strip().upper()
 
     days = session_days.load()
-    today = datetime.date.today().isoformat()
+    today = build_date.today().isoformat()
     built, later = sittings(days, today)
     ahead = [k for k in later if k[0] == body]
     mine = [k for k in built if k[0] == body]

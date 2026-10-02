@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.9
+# GRANITE_VERSION: 2026-09-11.12
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -194,7 +194,9 @@ def _ensure_date(d, created, session=None, desc=None):
     # its term -- a retained bill's session is its second year, and its
     # introduction was entered the December before its first.
     if not narrative.session_keeps(yr, mo, dy, year):
-        for y in (year, year - 1, year + 1):
+        # The year the row was entered for, before the session's
+        # (narrative.years_to_try).
+        for y in narrative.years_to_try(year, mo, dy, created):
             try:
                 d["date"] = _date(y, mo, dy).strftime("%m/%d/%Y")
                 break
@@ -209,9 +211,25 @@ def _ensure_date(d, created, session=None, desc=None):
 # knows how to read all but a handful of them. The 1989 table expanded its own
 # matches from the start; the 1999 and 2007 tables did not, so a reader of a
 # 2003 bill was told "House Mun & Cnty Govt committee".
+# A JOINT COMMITTEE OF TWO, IN THE CLERK'S SHORTHAND: "Rules Comm Approved:
+# Introduced 1/30/08 & Ref to a Jt Comm of Exec Depts & Admin & Fin" (HB 1643
+# of 2008; HB 1645's row says "... & Admin and Fin"). referrals.expand finds
+# the first committee in the words and returns it alone, so the two bills read
+# "referred to the House Executive Departments and Administration committee":
+# one committee, where the row names a joint committee of it and Finance.
+# Named as the docket's other joint referrals are -- "a Joint Committee of
+# Finance and Ways and Means" (SB 152 of 2013) -- with each half written out.
+JOINT_WITH_FINANCE = re.compile(
+    r"^\s*(?:a\s+)?Jt\.?\s+Comm\.?\s+of\s+(?P<first>.+?)\s+(?:&|and)\s+Fin(?:ance)?\.?\s*$",
+    re.I)
+
+
 def _committee_name(raw):
     if not raw or not raw.strip():
         return raw
+    joint = JOINT_WITH_FINANCE.match(raw)
+    if joint:
+        return f"a Joint Committee of {_committee_name(joint.group('first'))} and Finance"
     try:
         import names
         import referrals
@@ -311,7 +329,7 @@ def join_rows(rows, session=None):
     if isinstance(out, tuple):
         out = out[0]
     if len(out) == len(rows):
-        return rows
+        return _answers(rows, era[0], session)
     # Map each joined line back onto the row it started from, in order.
     joined, at, i = [], [], 0
     for created, _b, _body, desc in out:
@@ -352,6 +370,28 @@ def join_rows(rows, session=None):
             elif floor > 1 and len(told) == 1:
                 told[0]["joined"] = floor
         out.extend(parts)
+    return _answers(out, era[0], session)
+
+
+def _answers(rows, mod, session):
+    """Rows, with one that answers the question the row before it ends on read
+    with that question (the era's `answered`: docket_era_1989 says which rows
+    and why). The row keeps its own words -- it is shown as the clerk typed it
+    -- and carries its event ready-made, as a question of a split line does."""
+    said = getattr(mod, "answered", None)
+    if said is None:
+        return rows
+    out = []
+    for r in rows:
+        prev = out[-1] if out else None
+        text = said((prev.get("created"), "", prev.get("body", ""), prev.get("desc", "")),
+                    (r.get("created"), "", r.get("body", ""), r.get("desc", ""))) \
+            if prev is not None and not r.get("event") else None
+        if text:
+            ev = classify(text, r.get("created"), session) or narrative.classify(text)
+            ev["_raw"] = narrative.clean(r.get("desc", ""))
+            r = {**r, "event": ev}
+        out.append(r)
     return out
 
 
