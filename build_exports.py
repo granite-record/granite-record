@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.21
+# GRANITE_VERSION: 2026-09-10.22
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -304,7 +304,8 @@ def proceedings_table(out, site, table=None, histories=None):
     rows.sort(key=lambda r: (r[4], BO.bill_key(r[1])))
     print(f"  proceedings.csv: {placed:,} rows carry the time their page "
           "prints" + (f"; {len(notices)} docket notice(s) for a bill withdrawn "
-                      "before the day or never introduced are left out ("
+                      "before the day or never introduced, or for a day its "
+                      "history puts no sitting on, are left out ("
                       + ", ".join(f"{r.get('bill')} {r.get('date')}"
                                   for r in notices[:8])
                       + (", ..." if len(notices) > 8 else "") + ")"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.54
+# GRANITE_VERSION: 2026-09-04.55
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -99,22 +99,59 @@ MOTION = {
 # Which calendar a committee report was placed on. CC is not decoration: a bill
 # on the Consent Calendar passed without floor debate because no member pulled
 # it off. That is real information about how contested a bill was.
+#
+# The second sentence of the consent calendar's note, apart, because it is
+# left off beside a chamber that took the bill off its consent calendar.
+CC_THEN = " The chamber then adopts the committee's recommendation without floor debate."
 CALENDAR = {
     # Two halves. The first explains what the consent calendar IS and is
     # said whenever a bill is put on one. The second explains how a bill comes
     # OFF it, and is said only when one did -- the docket records that as its
     # own action, so it is a fact about this bill rather than a rule recited
     # at every reader.
+    #
+    # WHAT THE CONSENT CALENDAR DOES IS ADOPT THE COMMITTEE'S REPORT, whatever
+    # the report recommends. The clause read "It then passes without floor
+    # debate", beside every report on a consent calendar that recommended
+    # killing the bill or studying it -- HA 1 of 2018, "Committee Report:
+    # Ought Not to Pass for 03/06/2018 (Vote 17-0; CC)", under a status of
+    # Killed.
     "CC": ("the consent calendar",
            "A bill goes on the consent calendar when the committee vote was "
            "unanimous or nearly so, and any members who dissented did not "
-           "object to placing it there. It then passes without floor debate."),
+           "object to placing it there." + CC_THEN),
     "RC": ("the regular calendar", None),
 }
 
 # Said only where the docket records a bill actually coming off the consent
 # calendar, which classify() reads as consent_off.
-REMOVED_FROM_CONSENT = re.compile(r"^\s*Removed\s+from\s+(?:the\s+)?Consent\b", re.I)
+#
+# EVERY FORM THE DOCKETS WRITE IT IN, wherever in the row it stands: "Removed
+# from Consent (Rep. Testerman) 04/07/2021", the House's since 2017; "Removed
+# from CC (Rep. Vaillancourt)", the House's of 2006; "Rep Sorg: Removed from
+# Consent Calendar" (HB 87 of 2007); "Remove from Consent Calendar (Rep Kurk)"
+# (HB 676 of 2015); "Sen. Carson Moved Remove From Consent Calendar" (HB 1410
+# of 2014); "MA VV; Removed from Consent Cal, req Rep Mock" (HB 605 of 1999);
+# "REMOV FR CC, REQ KEANS" (HB 51 of 1989); and the Senate's "SB 60-FN was
+# Removed from the Consent Calendar; 02/13/2025", which CONSENT_OFF_RE reads
+# only without the "-FN". It was the first alone, at the start of the row,
+# and 36 measures kept "It then passes without floor debate" beside the
+# chamber that took them off.
+#
+# Not a row about OTHER bills: "Special Order to after the Bills removed from
+# the Consent Calendar, Without Objection, MA" (HB 275 of 2022) orders this
+# bill behind them.
+REMOVED_FROM_CONSENT = re.compile(
+    r"\bRemov(?:e|ed)?\s+(?:from|fr)\s+(?:the\s+)?(?:Consent\b|Cons\.?\s*Cal\b|CC\b)", re.I)
+NOT_THIS_BILL_REMOVED = re.compile(r"\bSpecial\s+Order\b", re.I)
+
+
+def removed_from_consent(raw):
+    """Does this docket row take its own bill off the consent calendar?"""
+    return bool(REMOVED_FROM_CONSENT.search(raw or "")
+                and not NOT_THIS_BILL_REMOVED.search(raw or ""))
+
+
 CONSENT_OFF_NOTE = ("Ten members may file a petition to pull a bill off the "
                     "consent calendar and have it debated and voted on "
                     "separately, which is what happened here.")
@@ -123,6 +160,14 @@ RECOMMENDATION = {
     "ought to pass with amendment": "pass it with changes",
     "ought to pass": "pass it",
     "inexpedient to legislate": "kill it",
+    # The report against an address for the removal of an officer, which is
+    # how an address is killed: "Ought Not to Pass: MA DIV 220-106" (HA 1 of
+    # 2010). The site's word for the outcome is the one it uses for
+    # Inexpedient to Legislate, in the status and here. Without it the report
+    # was printed in the docket's words with its calendar day inside them --
+    # "The committee reported: Ought Not to Pass for unanimously, 17–0" (HA 1
+    # of 2018) -- and the House "adopted “Ought Not to Pass”".
+    "ought not to pass": "kill it",
     "interim study": "study it after the session ends",
     "refer for interim study": "study it after the session ends",
     # The clerk writes this one both ways and the site had only the first, so
@@ -570,12 +615,24 @@ def year_slip(ev, r, rows):
 # so beside it. Putting the right day on it is a person's correction
 # (docket_corrections.json), which outranks this.
 #
+# AND THE DAY IT WAS ENTERED IS NOT THE DAY THE COMMITTEE SAT. With the row on
+# 5 February the history said "The committee held a public hearing on February
+# 5, 2009", the day the notice was typed, while the bill's stations and the
+# download still gave the 10 January the row states: one hearing, three days
+# on one page, none of them the calendar's. The row keeps its place in the
+# list of docket lines; the history tells the hearing without a day
+# ("_no_day"), and the day the row states is carried out of build() as one
+# the docket puts a sitting on and the history does not ("no_sitting"), which
+# proceedings.notice_only reads, so that no station, committee's day or row
+# of the download says 10 January either.
+#
 # Only a day the reader made out of a month in words (the event's "_spelled"),
 # and only where no row of that chamber on the bill had been entered by it.
 # A year's slip is found first and is not this.
 STATED_BEFORE_THE_BILL = (
     "The docket's row states {said}, and the {chamber} has no row on the bill before "
-    "{first}. The row is shown on the day it was entered.")
+    "{first}. The row is shown on the day it was entered, and the history gives the "
+    "meeting no day.")
 
 
 def before_the_bill(ev, r, rows):
@@ -596,6 +653,7 @@ def before_the_bill(ev, r, rows):
         said=said.strftime(MONTH), chamber=CHAMBER_NAME.get(r.get("body"), "chamber"),
         first=first.strftime(MONTH))
     ev["date"] = created.strftime("%m/%d/%Y")
+    ev["_no_day"] = said.strftime("%Y-%m-%d")
     return ev
 
 
@@ -2263,7 +2321,13 @@ def describe(ev, body, seen_intro=False):
         # A joint committee is named whole by its row -- "a Joint Committee
         # of Finance and Ways and Means" (SB 152 of 2013) -- and "the House a
         # Joint Committee of ... committee" is not a sentence.
+        # And one the row names without the article, "Joint Committee on
+        # Address" (HA 1 of 1999) and "Joint Legislative Committee on Address"
+        # (HA 1 of 2010), is of both chambers: "the House Joint Committee on
+        # Address committee" names neither it nor a House committee.
         to = (ev["committee"] if re.match(r"a\s+Joint\s+Committee\b", ev.get("committee") or "")
+              else f"the {ev['committee']}"
+              if re.match(r"Joint\s+(?:Legislative\s+)?Committee\s+on\b", ev.get("committee") or "")
               else f"the {chamber} {ev['committee']} committee")
         if seen_intro:
             # Crossover: the second chamber records receipt as an introduction.
@@ -2285,6 +2349,11 @@ def describe(ev, body, seen_intro=False):
 
     if t == "worksession" and ahead(ev.get("date")):
         return f"A work session is scheduled for {fdate(ev['date'])}."
+
+    if t == "hearing" and ev.get("_no_day"):
+        # The day its row states is not taken, and the day the row was
+        # entered is not the day the committee sat (before_the_bill).
+        return "The committee held a public hearing."
 
     if t == "hearing":
         # Counts only, and only for THIS hearing's date. Who signed in is not
@@ -2520,6 +2589,9 @@ def describe(ev, body, seen_intro=False):
                 "passing in a block. Ten members may petition for this.")
 
     if t == "conference_meeting":
+        if ev.get("_no_day"):
+            return ("A committee of conference met to try to settle the differences "
+                    "between the two chambers' versions of the bill.")
         return (f"A committee of conference met on {fdate(ev['date'])} to try to "
                 "settle the differences between the two chambers' versions of "
                 "the bill.")
@@ -2805,7 +2877,19 @@ def notice_note(ev):
                 "site says whether it was held.")
     if ev.get("_void") == "withdrawn":
         return "A notice. The bill was withdrawn before the day it names."
+    if ev.get("_void") == "taken":
+        return (f"A notice. The {CHAMBER_NAME.get(ev.get('body'), 'chamber')} took the "
+                "measure from the committee before the day it names.")
     return "A notice, for a bill that was never introduced."
+
+
+# "Withdraw From Joint Committee (Reps Wallner and Hess): MA VV" (HA 1 of
+# 2008): the chamber's vote to take a measure from the committee it is in.
+# Not "Per House Rule 50, Withdrawn from Committee" (HB 457 of 2015) or
+# "Withdrawn from Committee Without Recommendation" (SB 416 of 2022), which
+# are no vote and are followed by the committee's report.
+TAKEN_FROM_COMMITTEE = re.compile(r"^\s*Withdraw\s+from\s+(?:the\s+)?(?:Joint\s+)?Committee\b",
+                                  re.I)
 
 
 def build(bill, rows, introduction=None):
@@ -3036,6 +3120,24 @@ def build(bill, rows, introduction=None):
             if e["_type"] in ("to_be_introduced", "entered_introduced", "withdrawn",
                               "proposed") or e.get("_void"):
                 e["_pre"] = True
+    # AND A MEETING NOTICED BEFORE THE CHAMBER TOOK THE MEASURE FROM ITS
+    # COMMITTEE, FOR A DAY AFTER IT DID. HA 1 of 2008: "Public Hearing:
+    # 4/25/2008 9:00 AM LOB 206-208", entered on 8 April; on 23 April the
+    # House voted "Withdraw From Joint Committee (Reps Wallner and Hess): MA
+    # VV" and laid the address on the table, where it died. The history said
+    # the committee held a public hearing on the 25th, two days after it had
+    # nothing to hear. A notice, told as one (the rule a withdrawn bill's
+    # notices follow above); a meeting noticed after the vote is another
+    # committee's, or a later referral's, and is not this.
+    for out_ in [e for e in evs if not e["cancelled"]
+                 and TAKEN_FROM_COMMITTEE.match(e["_raw"])
+                 and (e.get("motion") or "").upper() == "MA"]:
+        for e in evs:
+            if (not e["cancelled"] and not e.get("_void") and e["body"] == out_["body"]
+                    and e["_type"] in ("hearing", "exec", "worksession")
+                    and e["_entered"] < out_["_entered"]
+                    and e["when"].date() > out_["when"].date()):
+                e["_void"] = "taken"
     if gone or journal_out:
         evs = [e for _i, e in sorted(enumerate(evs),
                                      key=lambda x: (x[1]["when"].date(), x[0]))]
@@ -3071,8 +3173,17 @@ def build(bill, rows, introduction=None):
     # here, and the note beside the placing went on saying "It then passes
     # without floor debate" -- over HB 68, HB 372, HB 429 and HB 570 of 2021,
     # which were taken off the consent calendar and never voted on at all.
-    consent_off = any((e["_type"] == "consent_off" or REMOVED_FROM_CONSENT.match(e["_raw"]))
-                      and not e["cancelled"] for e in evs)
+    #
+    # BY CHAMBER, because the clause is true of the other one. HB 273 of 2025
+    # went on the Senate's consent calendar and passed there on a voice vote;
+    # the House later took its conference report off the House's consent
+    # calendar, and with one answer for the whole bill the note under the
+    # Senate's committee lost a clause that was true: 113 notes, 38 of them
+    # among the 298 that lost it when "Removed from Consent" was first read.
+    consent_off = {e["body"] for e in evs if not e["cancelled"]
+                   and (e["_type"] == "consent_off" or removed_from_consent(e["_raw"]))}
+    # The consent calendar is explained once a bill, beside its first placing.
+    cc_explained = False
     # An amendment announced on one row and decided on another is told once,
     # by the row that decides it (amendment_outcome). "Not Voted On" decides
     # nothing when another row does: SB 535 of 2016's 2016-1160s is "Not
@@ -3210,10 +3321,18 @@ def build(bill, rows, introduction=None):
             # Neither is wrong on its own; the first is a rule and the second
             # is this bill's history. So the rule keeps its first half, which
             # is the part a reader needs to understand what they are looking
-            # at, and drops the clause the bill went on to disprove.
-            if cnote and cm.group("cal").upper() == "CC" and consent_off:
-                cnote = cnote.replace(
-                    " It then passes without floor debate.", "")
+            # at, and drops the clause the bill went on to disprove -- in the
+            # chamber that took the bill off its consent calendar, and not in
+            # the other (consent_off). Said once: the note with the clause
+            # and the note without it are two texts, and a bill placed on
+            # both chambers' consent calendars would have carried both.
+            if cnote and cm.group("cal").upper() == "CC":
+                if ev["body"] in consent_off:
+                    cnote = cnote.replace(CC_THEN, "")
+                if cc_explained:
+                    cnote = None
+                elif stages:
+                    cc_explained = True
             _note(cnote)
         if ev["_type"] == "consent_off":
             _note(CONSENT_OFF_NOTE)
@@ -3258,6 +3377,9 @@ def build(bill, rows, introduction=None):
                # they came up.
                "notes": st["notes"]}
               for st in stages]
+    no_sitting = sorted({e["_no_day"] for e in evs if e.get("_no_day")}
+                        | {e["when"].strftime("%Y-%m-%d") for e in evs
+                           if e.get("_void") == "taken"})
     return {
         "bill": bill,
         "narrative": " ".join(x["text"] for x in staged),
@@ -3379,6 +3501,12 @@ def build(bill, rows, introduction=None):
         **({"withdrawn": min(e["when"] for e in gone).strftime("%Y-%m-%d")}
            if gone else {}),
         **({"not_introduced": True} if not_introduced else {}),
+        # The days the docket's rows put a committee's sitting on that this
+        # history does not: the day a row states and the reader did not take
+        # (before_the_bill), and the day of a notice the chamber overtook by
+        # taking the measure from its committee. proceedings.notice_only
+        # reads it, for the stations, the committee's days and the download.
+        **({"no_sitting": no_sitting} if no_sitting else {}),
     }
 
 

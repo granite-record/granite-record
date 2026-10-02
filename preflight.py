@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.322
+# GRANITE_VERSION: 2026-09-04.323
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1369,11 +1369,28 @@ def _ought_not_to_pass(N, B):
     is_("HA1 of 1999's vote", (vote["type"], vote.get("action"), vote.get("motion"),
                                vote.get("yeas"), vote.get("nays")),
         ("floor", "Ought Not to Pass", "MA", "256", "58"))
+    #
+    # IN THE SITE'S WORD FOR IT, the one an adopted Inexpedient to Legislate
+    # is told in: the House "voted to kill it", under a status of Killed. It
+    # read 'the House adopted \u201cOught Not to Pass\u201d', and the report was printed
+    # in the docket's words with its calendar day inside them -- "The
+    # committee reported: Ought Not to Pass for unanimously, 17\u20130" (HA 1 of
+    # 2018), "Ought Not to Pass for May 12 by a vote of 8\u20133" (HA 1 of 2010).
     assert narr[("HA1", "1999-2000")]["narrative"].endswith(
-        "On July 1, 1999 the House adopted \u201cOught Not to Pass\u201d on a roll call "
-        "256\u201358."), narr[("HA1", "1999-2000")]["narrative"]
-    assert "the House adopted \u201cOught Not to Pass\u201d on a division vote 220\u2013106" in (
+        "On July 1, 1999 the House voted to kill it on a roll call 256\u201358."), (
+        narr[("HA1", "1999-2000")]["narrative"])
+    assert "On June 2, 2010 the House voted to kill it on a division vote 220\u2013106." in (
         narr[("HA1", "2009-2010")]["narrative"]), narr[("HA1", "2009-2010")]["narrative"]
+    is_("HA1 of 2018's history", narr[("HA1", "2017-2018")]["narrative"],
+        "The committee recommended that the House kill it unanimously, 17\u20130, and the "
+        "report was placed on the consent calendar. On March 6, 2018 the House voted to "
+        "kill it on a voice vote.")
+    for key in _DOCKET_OUGHT_NOT:
+        said = narr[key]["narrative"]
+        if "Ought Not to Pass" in said or "reported:" in said:
+            bad.append(f"{key[0]} of {key[1]} is told in the docket's words: {said}")
+    is_("HB31 of 2023's minority report", "the minority recommended that the House kill it"
+        in narr[("HB31", "2023-2024")]["narrative"], True)
     # A DOCKET WHOSE LAST ROW IS THE REPORT: HA 1 of 2018 as it stood on 27
     # February 2018, a week before the House voted. A report decides nothing,
     # whatever the fields say or do not.
@@ -2068,6 +2085,20 @@ def _died_on_the_table_row(N, B):
         d = B.bill_disposition({}, "SB14", st, n, [], "2025-2026", "2025-2026", term_over=True)
         is_(f"SB14 of 2025 under {st or 'a blank field'}", (d.kind, d.status),
             ("done", "Died on the table"))
+    # MADE FOR THE GUARD: the same rows with a clerk's note entered after the
+    # closing one, in the words of the one such note on disk (SB 331 of 2018,
+    # Docket_2017-2018.txt 17129). A note on the record is not an action on
+    # the bill, and with it last the rule read the note and not the row that
+    # ended the bill: "Laid on the table", under a field stopped at LAID ON
+    # TABLE.
+    n = _narrated(N, "2025-2026", "SB14", _DOCKET_TABLED_LAST[("SB14", "2025-2026")] + [
+        "2025|0228|11/20/2025 12:00:00 AM|SB14|S|(SENATE CLERK'S NOTE: The roll call vote below "
+        "on SB 14 was inadvertently entered in the Daily Journal and has been corrected in the "
+        "Senate Permanent Journal)|11/20/2025 12:00:00 AM"])
+    d = B.bill_disposition({}, "SB14", {"senate_status": "LAID ON TABLE"}, n, [], "2025-2026",
+                           "2025-2026", term_over=True)
+    is_("SB14 of 2025 with a clerk's note after its closing row", (d.kind, d.status),
+        ("done", "Died on the table"))
     # No closing row: the record's word stands.
     d = B.bill_disposition({}, "SB476", {"gen_status": "SENATE", "senate_status": "LAID ON TABLE"},
                            narr[("SB476", "2015-2016")], [], "2015-2016", "2025-2026")
@@ -3309,7 +3340,7 @@ def _month_written_out(N):
     before the month was read, and says so beside it (narrative.before_the_
     bill); the right day is a person's correction (docket_corrections.json).
     It is the one of 2,684 such rows that is before its chamber's first row
-    and is not a year's slip.
+    and is not a year's slip. The hearing itself is told without a day.
     """
     narr = {k: _narrated(N, k[0], k[1], rows) for k, rows in _DOCKET_MONTH_WRITTEN_OUT.items()}
     bad = []
@@ -3328,9 +3359,30 @@ def _month_written_out(N):
         noted = "has no row on the bill before" in (e.get("row_note") or "")
         if noted != (key[1] == "SB106"):
             bad.append(f"{key[1]} of {key[0]}, {words!r}: row_note {e.get('row_note')!r}")
-    said = narr[("2009-2010", "SB106")]["narrative"]
-    if not said.startswith("It was introduced on February 4, 2009") or "January 10" in said:
-        bad.append("SB106 of 2009 is told: " + said[:120])
+    # NO DAY AT ALL, THEN: not the one the row states, and not the day it was
+    # entered either. The history said "The committee held a public hearing
+    # on February 5, 2009", the day the notice was typed, while the bill's
+    # stations and the download gave 10 January; this check pinned the 5th
+    # and passed. The hearing is told without a day, and the day the row
+    # states is one proceedings.notice_only leaves off every page that says
+    # a committee sat.
+    sb106 = narr[("2009-2010", "SB106")]
+    said = sb106["narrative"]
+    if said != ("It was introduced on February 4, 2009 and referred to the Senate Judiciary "
+                "committee. The committee held a public hearing. The committee recommended "
+                "that the Senate pass it."):
+        bad.append("SB106 of 2009 is told: " + said)
+    if sb106.get("no_sitting") != ["2009-01-10"]:
+        bad.append(f"SB106 of 2009's no_sitting is {sb106.get('no_sitting')!r}")
+    import proceedings as _P
+    hearing = {"term": "2009-2010", "bill": "SB106", "kind": "hearing", "date": "2009-01-10"}
+    if not _P.notice_only(hearing, sb106):
+        bad.append("SB106's hearing at 10 January 2009 would still be drawn as a sitting")
+    if _P.notice_only({**hearing, "date": "2009-03-31"}, sb106):
+        bad.append("SB106's hearing of 31 March 2009 would be left off its page")
+    for key in narr:
+        if key[1] != "SB106" and narr[key].get("no_sitting"):
+            bad.append(f"{key[1]} of {key[0]} has no_sitting {narr[key]['no_sitting']}")
     # The calendar itself, where it is on this disk.
     p = Path("calendars_senate/2009/SC010.txt")
     if p.exists():
@@ -3408,6 +3460,18 @@ _DOCKET_RAIL_AGAINST_RECORD = {
         "2002|2469|06/27/2002 02:45:36 PM|HB2002|H|Am{3811}(New Title), AA nec 2/3VV; Passed with Am by nec 2/3VV;   HJ48, p1594-1595|06/27/2002 02:45:36 PM",
         "2002|2469|06/27/2002 04:56:18 PM|HB2002|S|Sen. Francoeur Rules Suspension 2/3 nec. for Introduction, RC 13 y - 11n, MF; SJ 16, Pg.610|06/27/2002 04:56:18 PM"]),
 }
+
+
+# Real rows: Docket.txt lines 1662, 6183, 11748 and 14657 (SB 286 of 2025).
+# The last is the row of SB 268 entered under this number: Docket.txt 14674,
+# and the Senate Journal of 7 January 2026's report of the Committee on
+# Enrolled Bills, which names HB 480, SB 189 and SB 268.
+_DOCKET_SB286 = [
+    "2025|1080|1/24/2025 10:37:36 AM|SB286|S|  Introduced 01/09/2025 and Referred to Executive Departments and Administration;  SJ 3|1/24/2025 10:37:36 AM",
+    "2025|1080|3/20/2025 12:31:43 PM|SB286|S|Sen. Pearl Moved Laid on Table, MA, VV; 03/20/2025;  SJ 8|3/20/2025 12:31:43 PM",
+    "2025|1080|11/3/2025 1:21:53 PM|SB286|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:21:53 PM",
+    "2025|1080|1/21/2026 3:17:21 PM|SB286|S|Enrolled Adopted, VV, (In recess 01/07/2026);  SJ 2|1/21/2026 3:17:21 PM",
+]
 
 
 @check("status", "a rail does not pass a chamber or a governor the record has doing no such "
@@ -3503,16 +3567,46 @@ def _rail_against_the_record(N, B):
     if "x" in moving:
         bad.append(f"a bill still moving is drawn as stopped: {moving!r}")
     # AND THE HISTORY HAS NO STAGE "WITH THE GOVERNOR" for a bill a chamber
-    # ended: HB 613's "ENROLLED" row is told under the House, which entered
-    # it. A bill that did reach the governor keeps the heading.
+    # ended, AND DOES NOT SAY IT WAS ENROLLED: a bill is enrolled when both
+    # chambers have passed it. The stage was re-headed "On the House floor"
+    # and went on saying "The bill was enrolled on May 25, 1993 -- the final
+    # check of the text before it goes to the governor", and this check read
+    # the heading alone. HB 613's "ENROLLED" row is not told, is not a day
+    # the bill was acted on, and stays a docket line. A bill that did reach
+    # the governor keeps the heading and the sentence.
     n, _s, rail = told(("1993-1994", "HB613"))
     if "With the governor" not in [s["label"] for s in n["stages"]]:
         bad.append("HB613's rows no longer make a stage headed With the governor: nothing is tested")
-    labels = [s["label"] for s in B.stages_told(n, "done", rail)]
-    if "With the governor" in labels or labels[-2:] != ["On the House floor", "On the Senate floor"]:
+    stages = B.stages_told(n, "done", rail)
+    labels = [s["label"] for s in stages]
+    if "With the governor" in labels or labels[-2:] != ["On the Senate floor", "On the Senate floor"]:
         bad.append(f"HB613 of 1993's history is headed {labels[-3:]}")
-    if "With the governor" not in [s["label"] for s in B.stages_told(n, "law", "Hpppp")]:
-        bad.append("a bill that became law lost its stage With the governor")
+    if any("enrolled" in s["text"].lower() or "governor" in s["text"].lower() for s in stages):
+        bad.append("HB613 of 1993's history still says the bill was enrolled")
+    rows = B.enrolled_untold(n, "done", rail)
+    if [e["raw"][:8] for e in rows] != ["ENROLLED"]:
+        bad.append(f"HB613 of 1993's untold enrolment is {[e['raw'] for e in rows]}")
+    law = B.stages_told(n, "law", "Hpppp")
+    if "With the governor" not in [s["label"] for s in law] or not any(
+            "The bill was enrolled on May 25, 1993" in s["text"] for s in law):
+        bad.append("a bill that became law lost its stage With the governor, or its enrolment")
+    if B.enrolled_untold(n, "law", "Hpppp") or B.enrolled_untold(n, "active", "Hpx--"):
+        bad.append("an enrolment is left untold on a bill that is law, or still moving")
+    # SB 286 of 2025, whose one stage under the governor is the row of SB 268
+    # entered under its number: the stage goes, the bill's last action is the
+    # day the Senate killed it on its table, and it is not carried into 2026.
+    sb286 = _narrated(N, "2025-2026", "SB286", _DOCKET_SB286)
+    rows = B.enrolled_untold(sb286, "done", "Sx--x")
+    if len(rows) != 1 or not rows[0]["raw"].startswith("Enrolled Adopted"):
+        bad.append(f"SB286 of 2025's untold enrolment is {[e['raw'] for e in rows]}")
+    stages = B.stages_told(sb286, "done", "Sx--x")
+    if len(stages) != len(sb286["stages"]) - 1 or any("enrolled" in s["text"] for s in stages):
+        bad.append(f"SB286 of 2025's history ends {[s['text'] for s in stages][-1:]}")
+    acted = B.action_dates([e for e in sb286["events"] if not any(e is u for u in rows)])
+    if acted[-1:] != ["2025-10-31"] or B.carried_over(acted, "2025-01-09"):
+        bad.append(f"SB286 of 2025 was last acted on {acted[-1:]}, or is carried over")
+    if "did not go to the governor" not in B.ENROLLED_NOT_TOLD.format(chamber="Senate"):
+        bad.append("the untold enrolment's note no longer says why")
     if n["stages"] != _narrated(N, "1993-1994", "HB613",
                                 _DOCKET_RAIL_AGAINST_RECORD[("1993-1994", "HB613")][1])["stages"]:
         bad.append("stages_told changed the narrative's own stages")
@@ -3541,13 +3635,94 @@ _DOCKET_SECOND_PASS = {
     ("2007-2008", "HB1643"): [
         "2008|2905|01/30/2008 03:12:47 PM|HB1643|H|Rules Comm Approved: Introduced 1/30/08 & Ref to a Jt Comm of Exec Depts & Admin & Fin; HJ14, PG.726|01/30/2008 03:12:47 PM"],
     ("2007-2008", "HA1"): [
-        "2008|2911|03/19/2008 12:40:12 PM|HA1|H|Introduced and Referred to a Joint Committee on Address; HJ 29, PG.1603|03/19/2008 12:40:12 PM"],
+        "2008|2911|03/19/2008 12:40:12 PM|HA1|H|Introduced and Referred to a Joint Committee on Address; HJ 29, PG.1603|03/19/2008 12:40:12 PM",
+        "2008|2911|04/08/2008 03:56:40 PM|HA1|H|Public Hearing: 4/25/2008 9:00 AM LOB 206-208|04/08/2008 03:56:40 PM",
+        "2008|2911|04/23/2008 10:30:00 AM|HA1|H|Withdraw From Joint Committee (Reps Wallner and Hess): MA VV; HJ 33, PG.1745|04/23/2008 10:30:00 AM",
+        "2008|2911|04/23/2008 10:31:55 AM|HA1|H|Laid on the Table (Reps Wallner and Hess): MA VV; HJ 33, PG.1745|04/23/2008 10:31:55 AM",
+        "2008|2911|09/24/2008 08:39:58 AM|HA1|H|Died on the Table|09/24/2008 08:39:58 AM"],
+    ("1999-2000", "HA1"): [
+        "1999|0588|01/28/1999 05:47:43 PM|HA1|H|Introduced and ref to Joint Committee on Address; HJ18, p272|01/28/1999 05:47:43 PM"],
+    ("2009-2010", "HA1"): [
+        "2010|2472|12/10/2009 10:18:01 AM|HA1|H|Introduced 1/6/2010 and Referred to Joint Legislative Committee on Address; HJ 6, PG.248|12/10/2009 10:18:01 AM"],
     ("2013-2014", "SB152"): [
         "2013|0917|04/03/2013 09:43:48 AM|SB152|H|Introduced and Referred to a Joint Committee of Finance and Ways and Means; HJ35, PG.1192|04/03/2013 09:43:48 AM"],
     ("2021-2022", "HB68"): [
         "2021|0013|1/4/2021 12:00:00 AM|HB68|H|Introduced (in recess of) 01/06/2021 and referred to Children and Family Law HJ 2 P. 34|1/4/2021 12:00:00 AM",
         "2021|0013|2/23/2021 12:00:00 AM|HB68|H|Committee Report: Inexpedient to Legislate (Vote 15-0; CC) HC 18 P. 2|2/23/2021 12:00:00 AM",
         "2021|0013|4/7/2021 12:00:00 AM|HB68|H|Removed from Consent (Rep. Testerman) 04/07/2021 HJ 5 P. 2|4/7/2021 12:00:00 AM"],
+}
+# Real rows, one bill for each form a docket writes a removal from the consent
+# calendar in: Docket_db_2005-2006.txt lines 12453-12457 (CACR 32);
+# Docket_db_2007-2008.txt 3136-3141 (HB 87); Docket_db_2015-2016.txt
+# 5274-5278 (HB 676); Docket_db_2013-2014.txt 11786-11799 (HB 1410);
+# Docket.txt 710-3216 (SB 60) and 278-10550 (HB 273); Docket_2021-2022.txt
+# 19049-19067 (SB 58) and 9251-9269 (HB 275); Docket_db_1999-2000.txt
+# 2967-2972 (HB 605). Each with the heading its note sits under and whether
+# the note keeps its second sentence.
+_DOCKET_CONSENT_OFF = {
+    ("2005-2006", "CACR32"): ([
+        "2006|2082|01/04/2006 03:37:38 PM|CACR32|H|Introduced and ref to Judiciary  HJ 7, pg 355|01/04/2006 03:37:38 PM",
+        "2006|2082|02/09/2006 01:08:21 PM|CACR32|H|Comm Rprt:   ref Interim Study  for Feb 15  (vote 15-6; CC)  HC 15, pg 780|02/09/2006 01:08:21 PM",
+        "2006|2082|02/15/2006 10:09:27 AM|CACR32|H|Removed from CC (Rep. Vaillancourt)    HJ 19, pg 1069|02/15/2006 10:09:27 AM"],
+        "In House committee", False),
+    ("2007-2008", "HB87"): ([
+        "2007|0396|01/04/2007 10:12:49 AM|HB87|H|Introduced and ref to Education; HJ 10, pg.137|01/04/2007 10:12:49 AM",
+        "2007|0396|01/23/2007 03:27:58 PM|HB87|H|Committee Report: Ought to Pass for Jan 31 (vote 14-0; CC); HC 11, Pg.142|01/23/2007 03:27:58 PM",
+        "2007|0396|01/31/2007 04:54:24 PM|HB87|H|Rep Sorg: Removed from Consent Calendar; HJ 14, Pg.221|01/31/2007 04:54:24 PM",
+        "2007|0396|01/31/2007 04:55:14 PM|HB87|H|Ought to Pass: MA VV; HJ 14, Pg.224|01/31/2007 04:55:14 PM"],
+        "In House committee", False),
+    ("2015-2016", "HB676"): ([
+        "2015|0665|01/08/2015 09:22:04 AM|HB676|H|Introduced and Referred to Education; HJ 12, PG. 235|01/08/2015 09:22:04 AM",
+        "2015|0665|02/12/2015 11:30:37 AM|HB676|H|Committee Report: Inexpedient to Legislate for Feb 18 (Vote 19-0; CC); HC13, PG. 237-238|02/12/2015 11:30:37 AM",
+        "2015|0665|02/18/2015 10:48:22 AM|HB676|H|Remove from Consent Calendar (Rep Kurk); HJ 20, PG. 496|02/18/2015 10:48:22 AM"],
+        "In House committee", False),
+    ("2013-2014", "HB1410"): ([
+        "2014|2070|12/16/2013 02:08:18 PM|HB1410|H|Introduced 1/8/2014 and Referred to Criminal Justice and Public Safety|12/16/2013 02:08:18 PM",
+        "2014|2070|03/19/2014 03:58:40 PM|HB1410|H|Ought to Pass: MA VV|03/19/2014 03:58:40 PM",
+        "2014|2070|03/24/2014 03:38:07 PM|HB1410|S|Introduced 3/13/2014 and Referred to Judiciary|03/24/2014 03:38:07 PM",
+        "2014|2070|05/07/2014 12:40:29 PM|HB1410|S|Committee Report: Ought to Pass with Amendment #2014-1732s, 5/15/14; Vote 5-0; CC; SC18|05/07/2014 12:40:29 PM",
+        "2014|2070|05/15/2014 11:14:19 AM|HB1410|S|Sen. Carson Moved Remove From Consent Calendar|05/15/2014 11:14:19 AM",
+        "2014|2070|05/15/2014 08:27:53 PM|HB1410|S|Ought to Pass with Amendment 1732s, 1840s, MA, VV; OT3rdg; SJ 13|05/15/2014 08:27:53 PM"],
+        "In Senate committee", False),
+    ("2025-2026", "SB60"): ([
+        "2025|0430|1/14/2025 3:57:55 PM|SB60|S|  Introduced 01/09/2025 and Referred to Ways and Means;  SJ 3|1/14/2025 3:57:55 PM",
+        "2025|0430|2/6/2025 8:29:25 AM|SB60|S|Committee Report: Ought to Pass with Amendment #2025-0281s, 02/13/2025; Vote 5-0; CC;  SC 9|2/6/2025 8:29:25 AM",
+        "2025|0430|2/13/2025 2:50:37 PM|SB60|S|SB 60-FN was Removed from the Consent Calendar; 02/13/2025;  SJ 5|2/13/2025 2:50:37 PM",
+        "2025|0430|2/13/2025 2:53:21 PM|SB60|S|Ought to Pass with Amendment #2025-0374s, MA, VV; OT3rdg; 02/13/2025;  SJ 5|5/5/2025 11:40:04 AM"],
+        "In Senate committee", False),
+    # Off the Senate's, and later on the House's and left there: one note,
+    # under the first placing, and no second one in other words.
+    ("2021-2022", "SB58"): ([
+        "2021|0935|1/19/2021 12:00:00 AM|SB58|S|Introduced 01/06/2021 and Referred to Executive Departments and Administration; SJ 3|1/19/2021 12:00:00 AM",
+        "2021|0935|3/4/2021 12:00:00 AM|SB58|S|Committee Report: Ought to Pass with Amendment #2021-0617s , 03/11/2021; Vote 5-0; CC; SC 14|3/4/2021 12:00:00 AM",
+        "2021|0935|3/11/2021 12:00:00 AM|SB58|S|Sen. Cavanaugh moved that SB 58 was Removed from the Consent Calendar; 03/11/2021; SJ 7|3/11/2021 12:00:00 AM",
+        "2021|0935|3/11/2021 12:00:00 AM|SB58|S|Ought to Pass with Amendment 2021-0617s Section 1, RSA 310-A:1-d, II(h)(2), Section 164, RSA 319-C:6, and Section 178, RC 24Y-0N, MA; OT3rdg; 03/11/2021; SJ 7|3/11/2021 12:00:00 AM",
+        "2021|0935|3/17/2021 12:00:00 AM|SB58|H|Introduced (in recess of) 02/25/2021 and referred to Executive Departments and Administration HJ 4 P. 50|3/17/2021 12:00:00 AM",
+        "2021|0935|5/25/2021 12:00:00 AM|SB58|H|Committee Report: Ought to Pass with Amendment #2021-1531h (Vote 18-0; CC) HC 26 P. 6|5/25/2021 12:00:00 AM",
+        "2021|0935|6/3/2021 12:00:00 AM|SB58|H|Ought to Pass with Amendment 2021-1531h: MA VV 06/03/2021 HJ 8 P. 8|6/3/2021 12:00:00 AM"],
+        "In Senate committee", False),
+    ("1999-2000", "HB605"): ([
+        "1999|0365|02/10/1999 08:05:59 PM|HB605|H|Introduced and ref to Judiciary;  HJ18, p297|02/10/1999 08:05:59 PM",
+        "1999|0365|04/06/1999 11:07:57 AM|HB605|H|Maj Report  ITL  for  Apr 14   (vote 13-1;CC#2)|04/06/1999 11:07:57 AM",
+        "1999|0365|04/14/1999 02:25:49 PM|HB605|H|ITL Report adopted;  Consent Cal reconsidered, Rep Mock|04/14/1999 02:25:49 PM",
+        "1999|0365|04/14/1999 03:36:29 PM|HB605|H|MA VV; Removed from Consent Cal, req Rep Mock; Recommitted to|04/14/1999 03:36:29 PM"],
+        "In House committee", False),
+    # A row about OTHER bills removed: this one stayed on, and passed.
+    ("2021-2022", "HB275"): ([
+        "2022|0749|1/18/2022 12:00:00 AM|HB275|S|Introduced 01/05/2022 and Referred to Executive Departments and Administration; SJ 2|1/18/2022 12:00:00 AM",
+        "2022|0749|4/20/2022 12:00:00 AM|HB275|S|Committee Report: Ought to Pass, 04/28/2022; Vote 5-0; CC; SC 17|4/20/2022 12:00:00 AM",
+        "2022|0749|4/28/2022 12:00:00 AM|HB275|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 04/28/2022; SJ 10|4/28/2022 12:00:00 AM",
+        "2022|0749|5/5/2022 12:00:00 AM|HB275|S|Special Order to after the Bills removed from the Consent Calendar, Without Objection, MA; 05/05/2022; SJ 11|5/5/2022 12:00:00 AM",
+        "2022|0749|5/5/2022 12:00:00 AM|HB275|S|Ought to Pass : MA, VV; OT3rdg; 05/05/2022; SJ 11|5/5/2022 12:00:00 AM"],
+        "In Senate committee", True),
+    # The House took the conference report off ITS consent calendar; the
+    # Senate had passed the bill on the Senate's.
+    ("2025-2026", "HB273"): ([
+        "2025|0549|3/24/2025 11:03:30 AM|HB273|S|  Introduced 03/20/2025 and Referred to Children and Family Law;  SJ 9|3/24/2025 11:03:30 AM",
+        "2025|0549|5/13/2025 8:45:46 AM|HB273|S|Committee Report: Ought to Pass with Amendment # 2025-2048s, 05/15/2025; Vote 3-0; CC;  SC 21A|5/13/2025 8:45:46 AM",
+        "2025|0549|5/15/2025 3:26:02 PM|HB273|S|Ought to Pass with Amendment #2025-2048s, MA, VV; OT3rdg; 05/15/2025;  SJ 13|5/15/2025 3:26:02 PM",
+        "2025|0549|6/24/2025 1:28:08 PM|HB273|H|Removed from Consent (Reps. Berch, Scherr, C. Harvey, D. Fox, N. Germana, O'Rorke, Horrigan, Turer, Meuse, Manos) 06/24/2025  HJ 18  P. 17|10/21/2025 10:52:31 AM"],
+        "In Senate committee", True),
 }
 _DOCKET_HBI5 = [
     "INTRODUCED AND REF TO ENV & AGRIC; HJ8,P125|01/06/1993 01:40:01 PM",
@@ -3645,19 +3820,80 @@ def _rows_read_on_the_second_pass(N, B):
              "Joint Committee of Executive Departments and Administration and Finance."),
             (("2013-2014", "SB152"), "referred to a Joint Committee of Finance and Ways and "
              "Means."),
-            (("2007-2008", "HA1"), "referred to a Joint Committee on Address.")):
+            (("2007-2008", "HA1"), "referred to a Joint Committee on Address."),
+            # And one its row names without the article, which is of both
+            # chambers and was "the House Joint Committee on Address committee".
+            (("1999-2000", "HA1"), "It was introduced on January 28, 1999 and referred to the "
+             "Joint Committee on Address."),
+            (("2009-2010", "HA1"), "It was introduced on January 6, 2010 and referred to the "
+             "Joint Legislative Committee on Address.")):
         said = narr[key]["narrative"]
-        if want not in said or "the House a " in said:
+        if want not in said or "the House a " in said or "the House Joint" in said:
             bad.append(f"{key[1]} of {key[0]} is told: {said}")
+    # ---- a hearing noticed before the House took the address from its
+    # committee, for a day after it did: HA 1 of 2008's of 25 April, entered
+    # on the 8th, two days after the House withdrew the address from the
+    # joint committee and tabled it. A notice, told as one, and not a day a
+    # committee sat (proceedings.notice_only).
+    ha1 = narr[("2007-2008", "HA1")]
+    row = _first(ha1, "Public Hearing: 4/25/2008")
+    if (not row.get("notice") or not row["cancelled"]
+            or "took the measure from the committee" not in (row.get("row_note") or "")):
+        bad.append(f"HA1 of 2008's hearing of 25 April is {row}")
+    if "held a public hearing" in ha1["narrative"] or (
+            "A public hearing had been scheduled for April 25, 2008." not in ha1["narrative"]):
+        bad.append("HA1 of 2008 is told: " + ha1["narrative"])
+    import proceedings as _P
+    if ha1.get("no_sitting") != ["2008-04-25"] or not _P.notice_only(
+            {"kind": "public hearing", "date": "2008-04-25"}, ha1):
+        bad.append(f"HA1 of 2008's no_sitting is {ha1.get('no_sitting')!r}")
+    #   MADE FOR THE GUARD: the same notice entered the day AFTER the vote is
+    #   some later referral's, and is a hearing.
+    rows = list(_DOCKET_SECOND_PASS[("2007-2008", "HA1")])
+    rows[1] = rows[1].replace("04/08/2008 03:56:40 PM", "04/24/2008 03:56:40 PM")
+    later = _narrated(N, "2007-2008", "HA1", rows)
+    if later.get("no_sitting") or _first(later, "Public Hearing: 4/25/2008").get("notice"):
+        bad.append("a hearing noticed after the address left its committee is told as a notice")
     # ---- the consent calendar
+    then = "The chamber then adopts the committee's recommendation without floor debate."
     hb68 = narr[("2021-2022", "HB68")]
     notes = [n for s in hb68["stages"] for n in s.get("notes", [])]
-    if len(notes) != 1 or "consent calendar" not in notes[0] or "passes without floor debate" in notes[0]:
+    if len(notes) != 1 or "consent calendar" not in notes[0] or then in notes[0]:
         bad.append(f"HB68 of 2021's note on the consent calendar: {notes}")
     placed = _narrated(N, "2021-2022", "HB68", _DOCKET_SECOND_PASS[("2021-2022", "HB68")][:2])
-    if not any("It then passes without floor debate" in n
-               for s in placed["stages"] for n in s.get("notes", [])):
-        bad.append("a bill left on the consent calendar lost the note that it passes without debate")
+    if not any(n.endswith(then) for s in placed["stages"] for n in s.get("notes", [])):
+        bad.append("a bill left on the consent calendar lost the note that its report is "
+                   "adopted without debate")
+    # WHAT THE CONSENT CALENDAR ADOPTS IS THE REPORT. HB 68's was to kill the
+    # bill, and the clause read "It then passes without floor debate".
+    if any("passes" in n for s in placed["stages"] for n in s.get("notes", [])):
+        bad.append("a report to kill a bill, on the consent calendar, is said to pass")
+    # EVERY FORM THE DOCKETS WRITE A REMOVAL IN, each on its own bill's rows,
+    # and the note beside the chamber that removed it and no other. The one
+    # form above was the only one read, and 36 measures -- five of 2025 --
+    # kept the clause beside the chamber that took them off; and with one
+    # answer for the whole bill, 113 notes were without it under a chamber
+    # that had adopted the report on consent (HB 273 of 2025, under the
+    # Senate's committee, for the House's removal of the conference report).
+    for key, (rows, under, kept) in _DOCKET_CONSENT_OFF.items():
+        n = _narrated(N, key[0], key[1], rows)
+        notes = [(s["label"], x) for s in n["stages"] for x in s.get("notes", [])
+                 if "goes on the consent calendar" in x]
+        if len(notes) != 1 or not notes[0][0].startswith(under) or (
+                notes[0][1].endswith(then) != kept):
+            bad.append(f"{key[1]} of {key[0]}: its consent calendar note is {notes}, wanted "
+                       f"one under {under!r} {'with' if kept else 'without'} the clause")
+    for raw, want in (("Removed from CC (Rep. Vaillancourt)", True),
+                      ("REMOV FR CC, REQ KEANS", True),
+                      ("REMOVED FROM CONS CAL, REQ REP R FOSTER", True),
+                      ("Feb 27 Session Cancelled. Removed from Consent Calendar, End of Mar 6 "
+                       "Part I Regular Calendar", True),
+                      ("Special Order to End of Regular Calendar Including Bills Removed from "
+                       "Consent Calendar (Rep Balboni): MA VV", False),
+                      ("RETURNED TO CONSENT CALENDAR, REP R FOSTER", False),
+                      ("Committee Report: Ought to Pass (Vote 17-0; CC)", False)):
+        if N.removed_from_consent(raw) != want:
+            bad.append(f"{raw!r} is {'not ' if want else ''}read as a removal from consent")
     assert not bad, "; ".join(bad)
     return "ok", ("SCR 1 of 1999's row stamped 1939 is of 2 December 1998 and says so; HBI 5 of "
                   "1993 is eight rows, introduced once; HB 1643 of 2008 went to a joint "
@@ -3848,6 +4084,9 @@ def _held_where_build_bills_makes_the_record(N, B):
         senate_status="NONCONCURRED")
     st613, rows613 = _DOCKET_RAIL_AGAINST_RECORD[("1993-1994", "HB613")]
     add("1993-1994", "HB613", rows613, "0227", **st613)
+    add(cur, "SB286", _DOCKET_SB286, "1080")
+    add("1997-1998", "HB723", _DOCKET_NEW_CONFERENCE["HB723"], "1022", gen_status="SENATE",
+        house_status="CONFERENCE COMMITTEE", senate_status="CONFERENCE COMMITTEE")
     calendar = ("https://gc.nh.gov/senate/calendars_journals/viewer.aspx?"
                 "fileName=Calendars%5C2025%5CNo%2046%20December%2011%202025.pdf")
     here = Path(".").resolve()
@@ -3925,6 +4164,27 @@ def _held_where_build_bills_makes_the_record(N, B):
         is_("HB613 of 1993", (r["status"], r["passage"]), ("Killed", "Hpx-x"))
         if any(s["label"] == "With the governor" for s in p["stages"]):
             bad.append("HB613 of 1993's page has a stage headed With the governor")
+        # And it was not enrolled: no stage says so, the row says why, and
+        # the page's one-string history is the stages' text.
+        for term, bill, ended in (("1993-1994", "HB613", "Senate"), (cur, "SB286", "Senate")):
+            p = page(term, bill)
+            if any("enrolled" in s["text"].lower() for s in p["stages"]) or (
+                    "enrolled" in p["narrative"].lower()):
+                bad.append(f"{bill}'s page still says the bill was enrolled")
+            noted = [e.get("row_note") for e in p["events"] if e["text"].upper().startswith("ENROLLED")]
+            is_(f"{bill}'s Enrolled row", noted, [B.ENROLLED_NOT_TOLD.format(chamber=ended)])
+        # SB 286 of 2025: last acted on the day the Senate killed it on its
+        # table, and not carried into 2026 by the row of SB 268.
+        r = row[(cur, "SB286")]
+        is_("SB286 of 2025", (r["status"], r["passage"], r["last_action"], r["carried"]),
+            ("Died on the table", "Sx--x", "2025-10-31", False))
+        # A report voted down and a new conference agreed to: the Senate
+        # passed HB 723 of 1997 and is not where it stopped.
+        r, p = row[("1997-1998", "HB723")], page("1997-1998", "HB723")
+        is_("HB723 of 1997", (r["status"], r["passage"]), ("Died when the session ended", "Hpp-x"))
+        is_("HB723 of 1997's Senate stop",
+            [(s["mark"], s["say"]) for s in p["journey"]["rail"] if s["stop"] == "Senate"],
+            [("p", "Passed with an amendment, 19–5")])
         assert not bad, "; ".join(bad)
     finally:
         B._DB_STATUS.clear()
@@ -3934,6 +4194,83 @@ def _held_where_build_bills_makes_the_record(N, B):
                   "notice links that December's calendar; SB 331 of 2018 was last acted on in "
                   "2018; HB 462 of 1989, SB 437 of 1998 and SB 95 of 2001 end as the record "
                   "has them; HB 613 of 1993 was never with the governor")
+
+
+@check("status", "a session_over day left in the file from the term before ends no bill of the "
+                 "next term, and the build names each of the two newest terms no dump holds",
+       needs=("narrative", "build_site_v2"))
+def _the_new_terms_first_night(N, B):
+    """Two things nothing checked that go wrong the night 2027-2028 becomes
+    the current term, each found by replaying this term's files two years on.
+
+    A SESSION_OVER DAY IS A DAY OF ONE TERM. status/status.txt's line is taken
+    out by hand ("Delete the line in December"). Left in, "session_over:
+    2026-08-19" turned the next term's bills over as well: every measure that
+    had passed its own chamber and awaited the other read "Died when the
+    session ended" (build_site_v2.ended_with_the_term, which the day switches
+    on for the current term). build_bills takes the day only where it is a
+    day of the current term (session_over_in).
+
+    AND THE DUMP OF THE TERM JUST FINISHED. The build's last line asked only
+    whether a dump holds the newest term. Once the General Court's views hold
+    2027-2028 and no copy of 2025-2026 was frozen under db/term/, the five
+    measures the database answers for go back to "In committee" and "In
+    progress", and the build said nothing: the check that asks about both
+    terms is a data check, which the night does not run.
+    """
+    bad = []
+    for day, current, want in (("2026-08-19", "2025-2026", "2026-08-19"),
+                               ("2026-08-19", "2027-2028", ""),
+                               ("2027-06-30", "2027-2028", "2027-06-30"),
+                               ("", "2025-2026", ""), ("2026-08-19", "", ""),
+                               ("soon", "2025-2026", "")):
+        if B.session_over_in(day, current) != want:
+            bad.append(f"session_over {day!r} in {current or 'no term'}: "
+                       f"{B.session_over_in(day, current)!r}, not {want!r}")
+    src = Path("build_site_v2.py").read_text(encoding="utf-8")
+    if "session_over = session_over_in(session_over, current)" not in src:
+        bad.append("build_bills no longer takes session_over through session_over_in")
+    # What the day does to a bill that has passed its own chamber: SB 12 of
+    # 2025 as its docket stood on 13 February 2025 (Docket.txt 15 and 3156).
+    n = _narrated(N, "2025-2026", "SB12", [
+        "2025|0244|12/19/2024 11:48:06 AM|SB12|S|  Introduced 01/08/2025 and Referred to Transportation;  SJ 2|1/8/2025 11:21:09 AM",
+        "2025|0244|2/13/2025 1:41:24 PM|SB12|S|Ought to Pass: MA, VV; OT3rdg; 02/13/2025;  SJ 5|2/13/2025 1:41:24 PM"])
+    st = {"gen_status": "SENATE", "house_status": "", "senate_status": "PASSED/ADOPTED"}
+    for over, want in ((False, ("active", "Passed one chamber")),
+                       (True, ("done", "Died when the session ended"))):
+        d = B.bill_disposition({}, "SB12", st, n, [], "2025-2026", "2025-2026", term_over=over)
+        if (d.kind, d.status) != want:
+            bad.append(f"SB12 with term_over {over}: {(d.kind, d.status)}, not {want}")
+    # The dump: a term the cache says no dump holds, with a measure whose page
+    # states nothing, is named; one a dump holds, or with nothing blank, is not.
+    cache = dict(B._DB_STATUS)
+    bills = {"2023-2024": {"HB1": {"gen_status": ""}},
+             "2025-2026": {"HB1708": {"gen_status": ""}, "HB2": {"gen_status": "HOUSE"}},
+             "2027-2028": {"HB3": {"gen_status": "HOUSE"}, "HB4": {}}}
+    row = {"lsr": "1", "gen_status": "HOUSE", "house_status": "", "senate_status": ""}
+    try:
+        B._DB_STATUS.clear()
+        B._DB_STATUS.update({"2025-2026": {}, "2027-2028": {"HB4": row}})
+        got = B.terms_without_a_dump(bills, {})
+        if got != [("2025-2026", ["HB1708"])]:
+            bad.append(f"with the views turned over and nothing frozen: {got}")
+        B._DB_STATUS.update({"2025-2026": {"HB1708": row}})
+        if B.terms_without_a_dump(bills, {}):
+            bad.append("a term a frozen dump holds is named as held by none")
+        B._DB_STATUS.update({"2025-2026": {}, "2027-2028": {}})
+        got = [t for t, _b in B.terms_without_a_dump(bills, {})]
+        if got != ["2025-2026", "2027-2028"]:
+            bad.append(f"with no dump at all: {got}")
+        if B.terms_without_a_dump({}, {}) != []:
+            bad.append("no bills at all names a term")
+    finally:
+        B._DB_STATUS.clear()
+        B._DB_STATUS.update(cache)
+    if "for term_, blank_ in terms_without_a_dump(bills, load(\"bill_status.json\", {})):" not in src:
+        bad.append("main() no longer says which of the two newest terms no dump holds")
+    assert not bad, "; ".join(bad)
+    return "ok", ("a day of 2026 ends 2025-2026 and not 2027-2028; the build names 2025-2026 "
+                  "where the dump on disk has turned over and no copy was frozen")
 
 
 @check("data", "a database dump on this disk holds each of the two newest terms that has a "
@@ -3980,6 +4317,69 @@ def _a_dump_holds_the_terms_it_fills():
                 "Legislation.psv, the copy frozen at the term's end")
     assert not problems, "\n".join(problems)
     return "ok", "; ".join(said)
+
+
+@check("data", "no history says a report is adopted on consent beside a chamber that took the "
+               "bill off its consent calendar, and no page puts SB 106 of 2009's Senate hearing "
+               "on a day")
+def _consent_and_no_sitting_on_disk():
+    """The two readings above, asked of what is built.
+
+    THE CONSENT CALENDAR'S NOTE, on every history in narratives.json: where
+    it keeps its second sentence, no row of the chamber it sits under takes
+    the bill off the consent calendar, in any form a docket writes that
+    (narrative.removed_from_consent) or as an event the reader types. The
+    check beside the rule tested one form on one bill, and 36 measures kept
+    the sentence beside the chamber that removed them.
+
+    SB 106 OF 2009'S HEARING. One hearing carried three days on one page --
+    5 February in the history, 10 January on the stations and in the
+    download -- and none was the 10 February that Senate Calendar 10 prints.
+    Until a person enters that day (docket_corrections.json), no page gives
+    the hearing a day at all.
+    """
+    N = imp("narrative")
+    if N is None:
+        return "skip", "narrative will not import"
+    fn = Path("narratives.json")
+    if not fn.exists():
+        return "skip", "no narratives.json here"
+    narr = json.loads(fn.read_text(encoding="utf-8"))
+    kept = dropped = 0
+    bad = []
+    for term, byb in narr.items():
+        for bill, n in byb.items():
+            off = {e.get("body") for e in n.get("events", []) if not e.get("cancelled")
+                   and (e.get("type") == "consent_off" or N.removed_from_consent(e.get("raw")))}
+            for s in n.get("stages", []):
+                for note in s.get("notes", []):
+                    if "goes on the consent calendar" not in note:
+                        continue
+                    has = note.endswith(N.CC_THEN)
+                    kept += has
+                    dropped += not has
+                    if has and (s.get("hand") or "")[:1] in off:
+                        bad.append(f"{bill} of {term}")
+                    if "passes without floor debate" in note:
+                        bad.append(f"{bill} of {term} (the old clause)")
+    assert not bad, (f"{len(bad)} histories say the report is adopted on consent beside the "
+                     f"chamber that took the bill off it: {', '.join(bad[:8])}")
+    sb106 = (narr.get("2009-2010") or {}).get("SB106") or {}
+    if sb106:
+        text = " ".join(s.get("text") or "" for s in sb106.get("stages", [])[:1])
+        assert "held a public hearing." in text and sb106.get("no_sitting") == ["2009-01-10"], (
+            f"SB 106 of 2009's first stage is told: {text!r}; no_sitting "
+            f"{sb106.get('no_sitting')!r}")
+    said = f"{kept:,} notes keep the sentence and {dropped:,} are without it"
+    page, table = Path("site/bill/2009/sb106.html"), Path("site/data/proceedings.csv")
+    if not (page.exists() and table.exists()):
+        return "ok", said + "; no built site here to read SB 106's page in"
+    assert "2009-01-10" not in page.read_text(encoding="utf-8"), (
+        "site/bill/2009/sb106.html still carries 10 January 2009")
+    rows = [line for line in table.read_text(encoding="utf-8").splitlines()
+            if line.startswith("2009-2010,SB106,S,")]
+    assert not rows, f"the download still lists a Senate sitting on SB 106 of 2009: {rows}"
+    return "ok", said + "; SB 106 of 2009's Senate hearing is on no day, on its page and in the download"
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
@@ -4224,9 +4624,40 @@ def _rail_reconsider_own_outcome(build_site_v2):
                   "its own ML; HB 278's note between reports quotes the whole line")
 
 
+# Real rows: Docket_db_1997-1998.txt lines 8360 and 8365-8383 (HB 723);
+# Docket_db_1989-1990.txt 17563-17584 (HB 1182).
+_DOCKET_NEW_CONFERENCE = {
+    "HB723": [
+        "1997|1022|03/12/1997 04:20:14 PM|HB723|H|PASSED VV; HJ38A,P1105 + 1110|03/12/1997 04:20:14 PM",
+        "1997|1022|05/20/1997 09:09:05 AM|HB723|S|OTP MA RC(19-5); SEN F KING FL AM<1494>, WITHDRAWN; SEN SQUIRES|05/20/1997 09:09:05 AM",
+        "1997|1022|05/20/1997 09:09:15 AM|HB723|S|FL AM<1504>, AA VV; SEN RUBENS MOVED LOT, ML VV; PASSED WITH AM|05/20/1997 09:09:15 AM",
+        "1997|1022|05/20/1997 01:07:32 PM|HB723|S|VV;  SJ19,P373-377 + 387|05/20/1997 01:07:32 PM",
+        "1997|1022|05/29/1997 03:48:09 PM|HB723|H|HOUSE NONC WITH SEN AM REQ CONF COMM, REP A MERRILL MA; HJ70,|05/29/1997 03:48:09 PM",
+        "1997|1022|05/29/1997 03:51:14 PM|HB723|H|(SPKR APPTS REPS:  R FOSTER, CALVERT, F TORR & FRENCH) P2037-38|05/29/1997 03:51:14 PM",
+        "1997|1022|05/29/1997 05:33:07 PM|HB723|S|SEN ACCEDED TO REQ FOR CONF COMM, SEN D WHEELER MA VV; SJ22,P484-|05/29/1997 05:33:07 PM",
+        "1997|1022|06/05/1997 09:31:59 AM|HB723|S|CONF COMM REPORT (UNABLE TO AGREE) FILED|06/05/1997 09:31:59 AM",
+        "1997|1022|06/10/1997 04:41:43 PM|HB723|S|CONF COMM REPT, ML DIV(10-13); SEN MCCARLEY MOVED TO DISCHARGE|06/10/1997 04:41:43 PM",
+        "1997|1022|06/10/1997 04:41:48 PM|HB723|S|CONF COMM, REQ NEW CONF COMM, MA RC(13-10); SJ23(I),P552|06/10/1997 04:41:48 PM",
+        "1997|1022|06/10/1997 04:43:22 PM|HB723|H|HOUSE ACCEDED TO REQ FOR NEW CONF COMM, REP R FOSTER MA VV; HJ73,|06/10/1997 04:43:22 PM",
+        "1997|1022|06/10/1997 04:43:28 PM|HB723|H|P2092|06/10/1997 04:43:28 PM",
+        "1997|1022|06/10/1997 04:44:12 PM|HB723|H|CONF COMM MEETING JUN11 11:00 RM205,LOB|06/10/1997 04:44:12 PM"],
+    "HB1182": [
+        "1990|2629|02/15/1990 02:25:18 PM|HB1182|H|PASSED WITH AM; HJ41,P1326-1327 + 1377|02/15/1990 02:25:18 PM",
+        "1990|2629|04/12/1990 10:42:31 AM|HB1182|S|PASSED/ADOPTED WITH AM   SJ 19 P 331|04/12/1990 10:42:31 AM",
+        "1990|2629|04/12/1990 12:00:00 PM|HB1182|H|HOUSE NONC WITH SEN AM REQ CONF COMM, REP PHELPS MA VV;HJ62,P1754|04/12/1990 12:00:00 PM",
+        "1990|2629|04/12/1990 12:31:06 PM|HB1182|S|SENATE ACCEDED TO REQ FOR CONF COMM,|04/12/1990 12:31:06 PM",
+        "1990|2629|04/19/1990 09:20:00 AM|HB1182|S|CONF COMM REPORT ADOPTED         SJ:20  P: 416|04/19/1990 09:20:00 AM",
+        "1990|2629|04/19/1990 06:08:39 PM|HB1182|H|CONF COMM REPORT LOST RC(147-167); REQ NEW CONF COMM, REP|04/19/1990 06:08:39 PM",
+        "1990|2629|04/19/1990 06:08:54 PM|HB1182|H|SALATIELLO MA VV; HJ65,P1795-1798|04/19/1990 06:08:54 PM",
+        "1990|2629|04/19/1990 06:10:00 PM|HB1182|S|SENATE ACCEDED TO REQ FOR NEW CONF COMM,|04/19/1990 06:10:00 PM",
+        "1990|2629|04/19/1990 06:12:59 PM|HB1182|S|SECOND CONF COMM REPORT ADOPTED  SJ 20 P 430|04/19/1990 06:12:59 PM",
+        "1990|2629|04/19/1990 11:51:00 PM|HB1182|H|NEW CONF COMM REPORT ADOPTED RC(173-134); HJ65,P1816-1818|04/19/1990 11:51:00 PM"],
+}
+
+
 @check("status", "conferees who never signed a report end the bill too, and a report signed late does not",
-       needs=("build_site_v2",))
-def _conferees_never_signed(build_site_v2):
+       needs=("narrative", "build_site_v2"))
+def _conferees_never_signed(N, build_site_v2):
     """Until 25 September 193 bills of 1989-2026, 24 of them this term, read
     "In a committee of conference", "One chamber did not concur; a committee
     of conference was asked for" or "Died when the session ended" where the
@@ -4438,6 +4869,43 @@ def _conferees_never_signed(build_site_v2):
     d = B.bill_disposition({}, "HB723", sitting, n, [], "1997-1998", "2025-2026")
     if d.status != "Died when the session ended":
         bad.append(f"HB723 of 1997, in a finished term: {d.status!r}")
+    # AND THE SENATE DID NOT STOP IT. It had passed the bill 19-5; it voted
+    # down the conferees' report 10-13 and asked for a new conference, and the
+    # House acceded. The rail marked the Senate "x, Rejected the conference
+    # report, 10–13" under "Died when the session ended", beside HB 430 and
+    # HB 564, held by the same journal note, which read Hpp-x. On its real
+    # rows (Docket_db_1997-1998.txt 8360-8383): the Senate's last word is its
+    # passage.
+    n = _narrated(N, "1997-1998", "HB723", _DOCKET_NEW_CONFERENCE["HB723"])
+    _i, steps = B.journey(n, "HB723", term="1997-1998")
+    got = [(s["body"], s["act"]) for s in steps]
+    if got != [("H", "passed"), ("S", "passed"), ("H", "nonconcurred")] or (
+            B.journey_state(steps, "S") != "p"):
+        bad.append(f"HB723 of 1997's journey is {got}")
+    rail = B.passage(n.get("stages"), "done", "Died when the session ended", "HB723",
+                     {c for c in ("H", "S") if B.journey_state(steps, c) == "p"}, ["H", "S"])
+    if rail != "Hpp-x":
+        bad.append(f"HB723 of 1997's rail is {rail!r}")
+    # A rejection the new conference's report followed stays on the record
+    # beside it: HB 1182 of 1990, "CONF COMM REPORT LOST RC(147-167); REQ NEW
+    # CONF COMM", then "NEW CONF COMM REPORT ADOPTED RC(173-134)" that night
+    # (Docket_db_1989-1990.txt 17563-17584).
+    n = _narrated(N, "1989-1990", "HB1182", _DOCKET_NEW_CONFERENCE["HB1182"])
+    _i, steps = B.journey(n, "HB1182", term="1989-1990")
+    got = [(s["body"], s["act"]) for s in steps if s["act"].startswith("conf_")]
+    if got != [("S", "conf_adopted"), ("H", "conf_rejected"), ("S", "conf_adopted"),
+               ("H", "conf_adopted")]:
+        bad.append(f"HB1182 of 1990's conference votes are {got}")
+    # And a new conference the other chamber REFUSED is no new conference:
+    # "REFUSED TO ACCEDE TO REQUEST OF NEW CONFERENCE COMMITTEE" (HB 1248 of
+    # 1990).
+    for raw, want in (("HOUSE ACCEDED TO REQ FOR NEW CONF COMM, REP R FOSTER MA VV", True),
+                      ("Senator Foster Moved Accede to House Request for New C of C; MA, VV", True),
+                      ("REFUSED TO ACCEDE TO REQUEST OF NEW CONFERENCE COMMITTEE", False),
+                      ("House Refused to Accede to req for New Conf Comm, Rep Mock MA VV", False),
+                      ("SEN ACCEDED TO REQ FOR CONF COMM, SEN D WHEELER MA VV", False)):
+        if bool(B.J_NEW_CONFERENCE.search(raw)) != want:
+            bad.append(f"{raw!r} is {'not ' if want else ''}read as a new conference agreed to")
     # And nothing after it may carry the bill on. Two of HB 1210 of 2002's
     # rows, without the new conference that came between them: a report not
     # signed, then the bill enrolled -- which is not a bill that died.
@@ -47794,10 +48262,20 @@ def _introductions_against_journal(J, BD):
     noticed = {(r["term"], r["bill"], r["date"]) for r in notices}
     for r in notices:
         h = (narr.get(r["term"]) or {}).get(r["bill"]) or {}
-        if not (h.get("not_introduced") or (h.get("withdrawn") and r["date"] > h["withdrawn"])):
+        # Or a day its history puts no sitting on ("no_sitting"), and then
+        # one of its docket lines says why beside it: the day a notice states
+        # that is before the chamber had the bill (SB 106 of 2009), or a
+        # notice the chamber overtook by taking the measure from its
+        # committee (HA 1 of 2008).
+        unsat = r["date"] in (h.get("no_sitting") or []) and any(
+            "has no row on the bill before" in (e.get("row_note") or "")
+            or "took the measure from the committee" in (e.get("row_note") or "")
+            for e in h.get("events", []))
+        if not (h.get("not_introduced") or (h.get("withdrawn") and r["date"] > h["withdrawn"])
+                or unsat):
             bad.append(f"{r['bill']} of {r['term']} ({r['kind']} {r['date']}) is left off as "
                        "a notice, and its history tells it neither as never introduced nor "
-                       "as withdrawn before that day")
+                       "as withdrawn before that day, nor says why no committee sat that day")
         page = _SR.one("site", (idx.get((r["term"], r["bill"])) or {}).get("year"),
                        r["bill"]) or {}
         if any(s.get("when") == r["date"] and (s.get("what") or "").lower()

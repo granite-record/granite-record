@@ -109,7 +109,9 @@ Run `python3 handoff.py` for the row and recording counts.
 
 **A row is what the docket scheduled, which is not always a sitting.** The
 docket enters a meeting's notice ahead of the day, and a few bills never
-reached theirs: withdrawn first, or never introduced by the House at all.
+reached theirs: withdrawn first, never introduced by the House at all, or
+taken from the committee by the chamber before the day; and one notice states
+a day before its bill existed (the history's `no_sitting`).
 `proceedings.notice_only` says which rows those are, from the bill's own
 history in `narratives.json`, and `proceedings.sittings` parts the table by
 it. Everything that says a committee sat reads through that one rule -- a

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.143
+# GRANITE_VERSION: 2026-09-05.144
 """
 Generate the faceted site from real General Court data.
 
@@ -3112,6 +3112,22 @@ def session_over(path):
     return ""
 
 
+def session_over_in(day, current):
+    """`day`, the file's session_over, where it is a day of the term `current`;
+    else "".
+
+    THE LINE IS TAKEN OUT BY HAND ("Delete the line in December"), AND A LINE
+    LEFT IN SAYS NOTHING OF THE NEXT TERM. With "session_over: 2026-08-19"
+    still in the file when 2027-2028 is the current term, every measure of
+    2027 that had passed its own chamber and awaited the other read "Died
+    when the session ended", over a paragraph saying it went no further
+    (ended_with_the_term, which the day turns on for the current term): 138
+    of 138, when this term's docket was replayed two years on and cut at 15
+    March. The day is of a term, and it ends that one.
+    """
+    return day if day and current and P.term_of(str(day)) == current else ""
+
+
 def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
     """The site's "where the session is" panel.
 
@@ -4170,6 +4186,14 @@ J_ROW_DAY = re.compile(r";\s*(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\s*$")
 J_INTRO_ROW = re.compile(r"^\s*(?:\d{1,2}/\d{1,2}/\d{2,4}\s+)?introduc(?:ed|ing|tion)\b|"
                          r"\bmoved\s+introduction\b", re.I)
 J_REF_TALLY = re.compile(r"\(\s*([\d,]{3,})\s*[-–]\s*([\d,]{3,})\s*\)")
+# The other chamber agreeing to a second committee of conference: "HOUSE
+# ACCEDED TO REQ FOR NEW CONF COMM, REP R FOSTER MA VV" (HB 723 of 1997),
+# "Senator Foster Moved Accede to House Request for New C of C; MA, VV" (HB
+# 1640 of 2008). Not "REFUSED TO ACCEDE TO REQUEST OF NEW CONFERENCE
+# COMMITTEE" (HB 1248 of 1990).
+J_NEW_CONFERENCE = re.compile(
+    r"(?<!refused to )(?<!refuses to )\bacced\w*\s+to\s+(?:(?:house|senate)\s+)?req(?:uest)?\s+"
+    r"(?:for|of)\s+(?:a\s+)?new\s+(?:conf|c\s?of\s?c|committee\s+of\s+conf)", re.I)
 J_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
          "Nov", "Dec"]
 # The glyph each decision is drawn with, which carries its state as well as
@@ -5320,6 +5344,25 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
              or not any(t["act"] in J_ENDING for t in steps[:i])
              or any(t["act"] in ("passed", "referred", "concurred", "nonconcurred")
                     for t in steps[:i])]
+    # A REPORT VOTED DOWN AND A NEW CONFERENCE AGREED TO IS NOT WHERE THE BILL
+    # STOPPED. HB 723 of 1997: the Senate, which had passed the bill 19-5,
+    # voted down its conferees' "unable to agree" report 10-13 and asked for a
+    # new committee of conference 13-10, and the House acceded the same day
+    # ("HOUSE ACCEDED TO REQ FOR NEW CONF COMM"). The new conference never
+    # reported (CONFERENCE_NOT_REPORTED), and the rail marked the Senate as
+    # where the bill was stopped -- "Rejected the conference report, 10–13"
+    # -- under "Died when the session ended". A rejection the other chamber
+    # answered by acceding to a new conference, with no vote on a report in
+    # the rejecting chamber after it, is not that chamber's last word: its
+    # passage is. Where the new conference did report, the rejection stays
+    # on the record beside the vote that followed it (HB 1182 of 1990).
+    renewed = max((e.get("date") or "" for e in evs
+                   if J_NEW_CONFERENCE.search(e.get("raw") or "")), default="")
+    if renewed:
+        steps = [s for i, s in enumerate(steps)
+                 if s["act"] != "conf_rejected" or (s["date"] or "") > renewed
+                 or any(t["body"] == s["body"] and t["act"].startswith("conf_")
+                        for t in steps[i + 1:])]
     # An introduction dated after the first decision on the bill is a date
     # something has wrong, and the stop goes undated rather than out of
     # order. HB 113 of 2005's "Introduced and ref to Crim Just & PSfty" stood
@@ -6793,6 +6836,35 @@ def db_statuses(term, folder="."):
     return out
 
 
+def terms_without_a_dump(bills, pages):
+    """[(term, its measures whose status page states nothing)] for each of
+    the two newest terms that has such measures and that no database dump
+    holds.
+
+    THE NIGHT THE GENERAL COURT'S VIEWS TURN OVER, the dump on disk holds the
+    new term and, unless a copy was frozen under db/term/, nothing holds the
+    one just finished: HB 1708 and HB 1824 of 2026 and HCR 1, HCR 4 and HCR 9
+    of 2025 go back to "In committee" and "In progress". The build asked only
+    about the newest term, which the new dump answers, and said nothing; the
+    check that asks about both (preflight's "a database dump on this disk
+    holds each of the two newest terms ...") is a data check, which the night
+    does not run. main() says this as its last lines.
+    """
+    if not bills:
+        return []
+    current = max(bills)
+    fields = ("gen_status", "house_status", "senate_status")
+    out = []
+    for term in sorted(bills)[-2:]:
+        page = P.per_term(pages, term, current)
+        blank = sorted(b for b, rec in bills[term].items()
+                       if not any(((page.get(b) or {}).get(f) or rec.get(f) or "").strip()
+                                  for f in fields))
+        if blank and no_dump_for(term):
+            out.append((term, blank))
+    return out
+
+
 def no_dump_for(term):
     """What to say of a term no database dump holds, or "" where one does."""
     if not term:
@@ -7145,7 +7217,12 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                            else "Adopted by both chambers")
                 kind, status = between
         elif status == "Laid on the table":
-            evs2 = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+            # The last row that is an action on the bill: a clerk's note
+            # entered after the closing row (CLERKS_NOTE) is not one, and
+            # with it last the bill stayed "Laid on the table" under a field
+            # that had stopped at LAID ON TABLE.
+            evs2 = [e for e in (narr or {}).get("events", [])
+                    if not e.get("cancelled") and not CLERKS_NOTE.match(e.get("raw") or "")]
             if evs2 and (TABLE_DEATH.search(evs2[-1].get("raw") or "")
                          or DIED_ON_TABLE_ROW.search(evs2[-1].get("raw") or "")):
                 between = ("done", "Died on the table")
@@ -7942,25 +8019,62 @@ def carried_over(dates, intro=""):
 # tabled bill; SB 286 of 2025, dead on the Senate's table since October,
 # carries "Enrolled Adopted, VV, (In recess 01/07/2026)". Each history had a
 # stage headed "With the governor", under a rail saying "Governor: Never
-# reached". The row is still told, in the docket's words, under the chamber
-# that entered it. Only for a bill that is finished and whose rail does not
-# reach the governor; a resolution's enrolment is another matter and is left.
-def stages_told(narr, kind, rail):
-    """The history's stages, with a "With the governor" stage of a bill the
-    rail has ending in a chamber headed by the chamber that entered the
-    row."""
+# reached". Only for a bill that is finished and whose rail does not reach
+# the governor; a resolution's enrolment is another matter and is left.
+#
+# AND THE SENTENCE WENT ON SAYING IT WAS ENROLLED. Under the chamber's heading
+# the stage still read "The bill was enrolled on January 7, 2026 -- the final
+# check of the text before it goes to the governor", on SB 286 of 2025, which
+# the Senate had killed on its table on 31 October 2025 and which was never
+# enrolled: the report of the Committee on Enrolled Bills in the Senate Journal
+# that row cites (SJ 2 of 2026) names HB 480, SB 189 and SB 268, and the row on
+# SB 286 is the row of SB 268 entered under the wrong number. A bill is
+# enrolled when both chambers have passed it, and HB 613, HB 614 and SB 286
+# each ended in one. The sentence is not said
+# (ENROLLED_SAID); the row stays on the bill's list of docket lines with why
+# (ENROLLED_NOT_TOLD); and it is not a day the bill was acted on, so SB 286's
+# last action is 31 October 2025 and it is not "carried over" into 2026
+# (enrolled_untold, which the build asks for all three).
+ENROLLED_SAID = re.compile(
+    r"\s*The bill was enrolled(?: on [A-Z][a-z]+ \d{1,2}, \d{4})? — the final check of "
+    r"the text before it goes to the governor\.")
+ENROLLED_NOT_TOLD = ("The docket carries this row on a bill that ended in the {chamber} and "
+                     "did not go to the governor. The history does not tell it as the bill's "
+                     "enrolment, and it is not counted as a day the bill was acted on.")
+
+
+def enrolled_untold(narr, kind, rail):
+    """The docket's "Enrolled" rows of a finished bill whose rail ends in a
+    chamber and does not reach the governor, which the history does not tell
+    as an enrolment; [] for every other bill."""
     stages = (narr or {}).get("stages", [])
     if (kind != "done" or len(rail or "") < 4 or rail[3] != "-" or "x" not in rail[1:3]
             or not any(s.get("hand") == "G:governor" for s in stages)):
-        return stages
-    body = next(((e.get("body") or "")[:1].upper() for e in (narr or {}).get("events", [])
-                 if not e.get("cancelled") and e.get("type") in ("enrolled",
-                                                                 "enrolled_amendment")), "")
+        return []
+    return [e for e in (narr or {}).get("events", [])
+            if not e.get("cancelled") and e.get("type") in ("enrolled", "enrolled_amendment")]
+
+
+def stages_told(narr, kind, rail):
+    """The history's stages, with a "With the governor" stage of a bill the
+    rail has ending in a chamber left without the sentence that says the bill
+    was enrolled, and headed by the chamber that entered the row where
+    anything of it is left."""
+    stages = (narr or {}).get("stages", [])
+    rows = enrolled_untold(narr, kind, rail)
+    body = next(((e.get("body") or "")[:1].upper() for e in rows), "")
     if body not in ("H", "S"):
         return stages
     label = f"On the {'House' if body == 'H' else 'Senate'} floor"
-    return [{**s, "label": label, "hand": f"{body}:floor"} if s.get("hand") == "G:governor"
-            else s for s in stages]
+    told = []
+    for s in stages:
+        if s.get("hand") != "G:governor":
+            told.append(s)
+            continue
+        text = ENROLLED_SAID.sub("", s.get("text") or "").strip()
+        if text:
+            told.append({**s, "text": text, "label": label, "hand": f"{body}:floor"})
+    return told
 
 
 def docket_line(e):
@@ -8135,6 +8249,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # no text. testimony.json is still flat and is read through the `own`
     # guard below for the same reason.
     current = max(bills) if bills else ""
+    session_over = session_over_in(session_over, current)
     n_stale = 0
     n_db = 0
     n_chapter = Counter()
@@ -8323,6 +8438,19 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # (not_introduced); the status says it for a field (NEVER_INTRODUCED).
         if status in NEVER_INTRODUCED or (narr or {}).get("not_introduced"):
             row["passage"] = ""
+        # AN "ENROLLED" ROW ON A BILL A CHAMBER ENDED IS NOT A DAY IT WAS ACTED
+        # ON (enrolled_untold). Asked here because the rail is what says the
+        # bill ended in a chamber: SB 286 of 2025's last action is the day the
+        # Senate killed it on its table, and it was not carried into 2026.
+        unenrolled = [] if story else enrolled_untold(narr, kind, row["passage"])
+        ended_in = ""
+        if unenrolled:
+            rail_ = row["passage"]
+            ended_in = {"H": "House", "S": "Senate"}[
+                rail_[0] if rail_[1] == "x" else "S" if rail_[0] == "H" else "H"]
+            dates = action_dates([e for e in ev if not any(e is u for u in unenrolled)])
+            row["last_action"] = dates[-1] if dates else ""
+            row["carried"] = bool(row["carried"]) and carried_over(dates, intro)
         index.append(row)
         jrail = journey_rail(intro, jsteps, row["passage"], bid, status)
         why = journey_disagrees(jsteps, kind, status, row["passage"], bid)
@@ -8468,7 +8596,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         (_bd / f"{bid}.json").write_text(json.dumps({
             "id": bid, "year": year, "term": term,
             "title": b.get("title", ""),
-            "narrative": (narr or {}).get("narrative", ""),
+            # The stages' text run together; of the stages as they are told,
+            # where one of them is told without its enrolment (stages_told).
+            "narrative": (" ".join(s_["text"] for s_ in
+                                   stages_told(narr, kind, row["passage"]))
+                          if unenrolled else (narr or {}).get("narrative", "")),
             # The history, plus a closing paragraph where the bill's ending
             # is only on the status page. 120 bills showed a settled headline
             # over a story that stopped at the committee report.
@@ -8509,6 +8641,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                 "other records of the sitting place it on the "
                                 "date shown.")}
                            if e.get("date_as_recorded") else {}),
+                        # An "Enrolled" row on a bill a chamber ended, with
+                        # why the history does not tell it (enrolled_untold).
+                        **({"row_note": ENROLLED_NOT_TOLD.format(chamber=ended_in)}
+                           if any(e is u for u in unenrolled) else {}),
                         # A ROW FILED UNDER THE WRONG BILL (docket_corrections
                         # .json "misfiled") is listed here, with its note, and
                         # nowhere else on the page; the bill it belongs to
@@ -9432,6 +9568,12 @@ def main():
     # Last, so that it is one of the lines build_all prints of this step.
     if no_dump_for(newest_):
         print("WARNING: " + no_dump_for(newest_))
+    # And of the term before it, where it has measures only a dump answers
+    # for (terms_without_a_dump): the one the views have just turned away from.
+    for term_, blank_ in terms_without_a_dump(bills, load("bill_status.json", {})):
+        if term_ != newest_:
+            print(f"WARNING: {no_dump_for(term_)} ({len(blank_):,} of its measures have a "
+                  "status page that states nothing)")
 
 
 if __name__ == "__main__":
