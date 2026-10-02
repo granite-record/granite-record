@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.308
+# GRANITE_VERSION: 2026-09-04.309
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -372,20 +372,10 @@ def _upcoming_shape():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp(prefix="gr-upcoming-"))
     try:
-        _site_fixture(root)
-        # EVERY module, not a guessed list. build_site_v2 imports a dozen
-        # of this project's own files and naming them here means the check
-        # breaks whenever one is added -- and it breaks as "wrote no
-        # home.json", which reads like the thing under test failing rather
-        # than the fixture being short a file. Copying them all costs
-        # milliseconds.
-        for f in [x.name for x in here.glob("*.py")]:
-            if (here / f).exists():
-                shutil.copy(here / f, root / f)
-        r = _run(
-            [sys.executable, "build_site_v2.py", "--data", "data",
-             "--out", "site", "--segments", "work"],
-            cwd=root, capture_output=True, text=True, timeout=300)
+        # A copy of the run's one build of the fixture (_fixture_site_v2),
+        # which runs the script where it stands. This check used to copy
+        # every script into its folder and build there, to read one file.
+        r = _fixture_site_v2(root)
         hp = root / "site" / "home.json"
         assert hp.exists(), ("build_site_v2 wrote no home.json on the "
                              "fixture: " + (r.stderr or r.stdout or "")[-200:])
@@ -10255,6 +10245,87 @@ def _built_site(here, root, brand=True):
     return base, ran
 
 
+# ONE BUILD OF THE FIXTURE A RUN, FOR THE CHECKS THAT READ IT AS IT IS BUILT (2
+# October 2026). build_site_v2.py was started more than a dozen times a run,
+# and five of those were the same build of the unchanged fixture, each thrown
+# away after one check had read it: _upcoming_shape,
+# _disposed_beats_stale_status, _senate_reports, _rollcalls_by_term and
+# _chain_output. _chain and _addresses_have_slash each ran all twelve builders
+# over it. Those are two builds now -- build_site_v2 alone, whose per-bill
+# files the later builders fold into the pages, and the whole chain -- made
+# the first time a check asks and deleted when the run ends.
+#
+# EACH CHECK IS HANDED A COPY, in the folder it made and will delete, so it
+# reads and writes there as it always did: copying a fixture's few hundred
+# small files takes a tenth of a second, where building them took one to
+# four. A check that changes the fixture BEFORE it builds still builds its
+# own. And a build that fails, fails every check that takes a copy, in the
+# builder's own words: what it raised is kept and raised again.
+_MADE_ONCE = {}
+
+
+def _once_a_run(what, make):
+    """make() the first time this run asks for `what`; after that what it
+    returned, or raised."""
+    if what not in _MADE_ONCE:
+        try:
+            _MADE_ONCE[what] = (make(), None)
+        except Exception as e:                                  # noqa: BLE001
+            _MADE_ONCE[what] = (None, e)
+    got, err = _MADE_ONCE[what]
+    if err is not None:
+        raise err
+    return got
+
+
+def _shared_root(prefix):
+    """A folder under the system temp directory that goes when the run ends."""
+    import atexit
+    root = Path(tempfile.mkdtemp(prefix=prefix))
+    atexit.register(shutil.rmtree, root, ignore_errors=True)
+    return root
+
+
+def _fixture_site_v2(root):
+    """The fixture project with build_site_v2.py run over it, copied into
+    `root` -- an empty folder the caller made and deletes -- from the run's
+    one build of it. Returns that build's finished run, for the caller to
+    assert on as it did on its own."""
+    def build():
+        here = Path(".").resolve()
+        shared = _shared_root("gr-fixture-v2-")
+        _site_fixture(shared)
+        return shared, _run([sys.executable, str(here / "build_site_v2.py"),
+                             "--data", "data", "--out", "site", "--segments", "work"],
+                            cwd=shared, capture_output=True, text=True, timeout=180)
+    shared, r = _once_a_run("build_site_v2.py over the fixture", build)
+    shutil.copytree(shared, root, dirs_exist_ok=True)
+    return r
+
+
+def _fixture_site_shared():
+    """(where it stands, base, how many builders ran, the day it was
+    finished): _built_site(), once a run. For reading only -- nothing may
+    write under it; a check that writes takes a copy (_fixture_site_whole).
+    The day is the build's own, for a check that asks which week the calendar
+    was built in."""
+    def build():
+        from datetime import date
+        shared = _shared_root("gr-fixture-site-")
+        base, ran = _built_site(Path(".").resolve(), shared)
+        return shared, base, ran, date.today()
+    return _once_a_run("every builder over the fixture", build)
+
+
+def _fixture_site_whole(root):
+    """_built_site(here, root), from the run's one build: the built project
+    is copied into `root`, an empty folder the caller made and deletes, and
+    (base, how many builders ran) returned as _built_site returns them."""
+    shared, base, ran, _day = _fixture_site_shared()
+    shutil.copytree(shared, root, dirs_exist_ok=True)
+    return base, ran
+
+
 @check("build", "every builder runs end to end on a fixture site")
 def _chain():
     """The check that would have caught the worst bug of the session.
@@ -10284,7 +10355,7 @@ def _chain():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
-        base, steps = _built_site(here, root)
+        base, steps = _fixture_site_whole(root)
         # llms.txt (24 September): it exists, says the one thing that must
         # never move -- this is not the General Court's official record --
         # and the example bill address it gives is a page that was built.
@@ -13817,7 +13888,7 @@ def _addresses_have_slash():
                              "instead of refusing it")
     root = Path(tempfile.mkdtemp())
     try:
-        base, _steps = _built_site(here, root)
+        base, _steps = _fixture_site_whole(root)
         site = root / "site"
         want = base + "/"
         at_base = re.compile(re.escape(base) + r'[^\s"<,}&]*')
@@ -13847,8 +13918,7 @@ def _addresses_have_slash():
             assert seen[need], f"the fixture site gave this check no {need} to read"
 
         # The current week at both its addresses, one page to index.
-        import datetime as _dt
-        key = BC.week_key(_dt.date.today())
+        key = BC.week_key(_fixture_site_shared()[3])      # the day that build finished
         copy = site / "calendar" / f"{key}.html"
         assert copy.exists(), (
             f"calendar/{key}.html was not written: the dated address of the "
@@ -17840,10 +17910,7 @@ def _disposed_beats_stale_status():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         idx = {x["id"]: x for x in
                json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
@@ -17881,10 +17948,7 @@ def _senate_reports():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         hb = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                         .read_text(encoding="utf-8"))
@@ -17934,10 +17998,7 @@ def _rollcalls_by_term():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         hb = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                         .read_text(encoding="utf-8"))
@@ -18002,10 +18063,7 @@ def _chain_output():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         s = root / "site"
         hb = json.loads(
