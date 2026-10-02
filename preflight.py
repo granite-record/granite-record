@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.299
+# GRANITE_VERSION: 2026-09-04.300
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18678,6 +18678,13 @@ def _documents_listing(CA):
         # list is not written, and both are read as one; a row drops out of
         # the laptop's file once the night's list says the same.
         assert CA.list_is_the_nights()
+        # The stand-down that counts is the one beside the queue: a queue in
+        # a folder of its own -- every test's, _calendar_drain's among them --
+        # is never the night's because the machine running it has stood down.
+        CA.QUEUE = tmp / "elsewhere" / "queue.csv"
+        assert not CA.list_is_the_nights(), \
+            "a queue in another folder was taken for the night's because this machine has stood down"
+        CA.QUEUE = tmp / "archive" / "queue.csv"
         mine = CA.load_queue()
         listed_bytes = CA.QUEUE.read_bytes()
         want = next(r for r in mine if r["name"] == "HC 35.pdf")

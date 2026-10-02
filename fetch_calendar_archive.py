@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.8
+# GRANITE_VERSION: 2026-09-08.9
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -256,8 +256,16 @@ def listed_file():
 
 def list_is_the_nights():
     """Whether the queue is GitHub's night's to write and not this machine's:
-    on a laptop that has stood down. Never on GitHub's own machine."""
-    return refusal.stood_down() is not None
+    where the folder that holds it holds the stand-down as well, which is
+    archive/ on a laptop that has stood down. Never on GitHub's own machine.
+
+    THE FOLDER'S STAND-DOWN, NOT THE MACHINE'S, as refusal.py reads the one
+    beside a refusal record: a queue somewhere else -- every test's -- is not
+    the night's because the laptop running the test has stood down. Judged
+    by the machine, preflight's check of the drain, which seeds its queue in
+    a temp folder through save_queue(), wrote nothing there on the laptop."""
+    return (os.environ.get("GITHUB_ACTIONS") != "true"
+            and (QUEUE.parent / refusal.STANDDOWN.name).exists())
 
 
 def load_queue():
