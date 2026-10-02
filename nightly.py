@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -213,13 +213,26 @@ approved the night asking it, gently, as the fallback. On GitHub's night only:
                       and gains "day_files", which names the database; a
                       warning leads the run's page; DB_NIGHTS_MOST such nights
                       in a row is an error there, and the build still goes out
+  what it let by      under a ceiling a few rows may differ from the installed
+                      ones and the night install: a warning says how many,
+                      and the rows -- the General Court's words, a member's
+                      name -- are in the verdict (day_files, told), the log
+                      and the what-changed report, never on the page
+  a night it stops    one of the checks fired and nothing was installed: the
+                      page says how many did, where they are named, that the
+                      site is as it was, and that the same check will stop
+                      the next night, since the installed files have not
+                      moved; DB_STOPPED_MOST such nights in a row is an error
+  how old             the checks' ceilings are a night's, and the installed
+                      files may be older (nights_since): the checks are told
   a copy              nh-archive/from-db/<day>/, with a source.json that names
                       the files it replaced by their sha256, which is what the
                       what-changed report compares it with. The archive's
                       index stays the history of the website's files
 
 If any of it fails nothing is installed, and the night ends as it did before
-there was a fallback, with one sentence added saying what the database did.
+there was a fallback, with a sentence or two added saying what the database
+did.
 
 THAT HOST'S HOLD, ON A NIGHT THE EXPORT IS WHOLE. A connection to the SQL host
 that fails is held (probe_db.py), and while the hold stands the night does not
@@ -285,7 +298,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import child
@@ -443,6 +456,13 @@ DB_SOURCE = "database"
 # page: the export has been down that long, the committee list and the other
 # lookups are that old, and it is time to tell the General Court's IT office.
 DB_NIGHTS_MOST = 7
+# This many nights in a row the fallback was tried and stopped by one of its
+# own checks is an error too. The files tonight's are compared with are the
+# installed ones, and a stopped night leaves those where they were: the check
+# that stopped one night stops the next, and the one after, until the export
+# returns or a person reads what it named and decides. The first such night
+# may be the export's bad day; the second is a fallback that is stuck.
+DB_STOPPED_MOST = 2
 # The SQL host's own hold (probe_db.HELD and HELD_ENV). Every step the night
 # starts is told its full path: take_views runs its fetch in a scratch folder,
 # where "archive/" would be somewhere else.
@@ -462,7 +482,7 @@ DB_WHY = {
     "held": "a hold on it is on file, so it was not asked",
     "connect": "its server could not be connected to",
     "query": "a query of it failed, and nothing is asked twice in one night",
-    "short": "what came back from it was not whole",
+    "short": "what came back from it was not whole, or could not be read",
     "guard": "what came back from it did not pass the night's checks against the installed files",
     "shrink": "the files rebuilt from it were much smaller than the copies installed",
     "error": "the night's own step for it failed",
@@ -820,6 +840,9 @@ def main():
                     night.v["fetch"] = fetch_status(rc, a.archive, asked)
                     night.v["db_nights"] = (0 if rc == 0 else
                                             night.v["db_nights"] + (1 if db_day else 0))
+                    stopped = (night.v.get("day_files") or {}).get("why_code") == "guard"
+                    night.v["db_stopped"] = (0 if rc == 0 or db_day else
+                                             night.v["db_stopped"] + (1 if stopped else 0))
                     if a.new_term and rc == 0:
                         night.v["new_term"]["files"] = shrink_accepted(a.archive, asked)
                     if page_said:
@@ -1272,15 +1295,40 @@ def db_nights_of(v):
         return 0
 
 
+def db_stopped_of(v):
+    """How many nights in a row the fallback had been stopped by its own
+    checks, by an earlier night's verdict; 0 when it says nothing of it."""
+    if not isinstance(v, dict) or v.get("kind") != "nightly":
+        return 0
+    try:
+        return max(0, int(v.get("db_stopped") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def db_tried(v):
     """" The General Court's database is the fallback, and ..." for a night
-    whose fallback was tried and installed nothing, or "". A sentence of this
-    file's own (DB_WHY), fit for the public run page."""
+    whose fallback was tried and installed nothing, or "". Sentences of this
+    file's own (DB_WHY), fit for the public run page: a night its checks
+    stopped says how many did, where they are named, that the site is as it
+    was, and that the same checks will stop the next night -- and none of
+    what they named, which is the General Court's words."""
     df = v.get("day_files") if isinstance(v.get("day_files"), dict) else {}
-    why = DB_WHY.get(str(df.get("why_code") or ""))
+    code = str(df.get("why_code") or "")
+    why = DB_WHY.get(code)
     if not why or df.get("source") == DB_SOURCE:
         return ""
-    return f" The General Court's database is the fallback, and {why}."
+    said = f" The General Court's database is the fallback, and {why}."
+    if code == "guard":
+        n = len(df["stops"]) if isinstance(df.get("stops"), list) else 0
+        row = db_stopped_of(v)
+        said += ((f" {n} checks stopped it, each" if n > 1 else " One check stopped it,")
+                 + " named in the night's verdict (day_files, stops) and in its log. The site "
+                 "still serves the last build published. The files tonight's were compared with "
+                 "have not moved, so the same check stops the fallback every night until the "
+                 "export returns or a person decides"
+                 + (f": this is night {row} in a row." if row > 1 else "."))
+    return said
 
 
 def page_try(v):
@@ -1458,6 +1506,36 @@ def installed_day(archive, docket):
     return ""
 
 
+def nights_since(archive, docket, day):
+    """How many nights old the installed files are on the night of `day`, by
+    the docket: the days since the archive last had these bytes as the
+    General Court's newest -- the last night its export was fetched and was
+    this, or a database night's copy -- and 1 when the archive cannot say.
+
+    A database night's ceilings are a night's (dayfiles_from_db.SPAN), and a
+    night that installs nothing leaves the files where they were: the next
+    night's are compared with files two nights old, and four real days
+    running bring more citations than a night's ceiling allows. One is the
+    strictest answer, and the one given when nothing is known."""
+    digest = hashlib.sha256(docket).hexdigest()
+    days = []
+    for ref in (Path(archive) / "snapshots").glob("*/Docket.txt.sha256"):
+        try:
+            if ref.read_text(encoding="utf-8").strip() == digest:
+                days.append(ref.parent.name)
+        except OSError:
+            continue
+    for src in (Path(archive) / FROM_DB).glob("*/source.json"):
+        rec = load_json(src) or {}
+        if ((rec.get("files") or {}).get("Docket.txt") or {}).get("sha256") == digest:
+            days.append(src.parent.name)
+    try:
+        last = max(date.fromisoformat(d) for d in days if d < day)
+        return max(1, (date.fromisoformat(day) - last).days)
+    except ValueError:
+        return 1
+
+
 def tonights_members(archive, since):
     """Members.txt as the website served it tonight, or None. It is not part
     of the failing export, lives under /downloads/, and arrived whole on every
@@ -1477,8 +1555,9 @@ def tonights_members(archive, since):
 
 def keep_db_copy(archive, day, files, block, src, was=None):
     """nh-archive/from-db/<day>/: what a database night installed, and a
-    source.json saying when each view was asked, its rows, and each file's
-    sha256. Beside the archive of the website's files, never in its index.
+    source.json saying when each view was asked, its rows, how many nights
+    old the files it was judged against were, and each file's sha256. Beside
+    the archive of the website's files, never in its index.
 
     `was` is the installed files the night's replaced, {name: bytes}: their
     sha256 goes in as "replaced", and gc_changes.py finds the copy to compare
@@ -1490,6 +1569,7 @@ def keep_db_copy(archive, day, files, block, src, was=None):
     root.mkdir(parents=True, exist_ok=True)
     rec = {"day": day, "asked": src.get("asked"), "views": src.get("views"),
            "compared_with": block.get("compared_with"), "years": block.get("years"),
+           "nights": (block.get("held") or {}).get("nights"),
            "members": block.get("members"), "files": {},
            "replaced": {name: hashlib.sha256(data).hexdigest()
                         for name, data in sorted((was or {}).items())}}
@@ -1514,11 +1594,14 @@ def from_database(a, night, tries, since):
     nothing), when the views were asked and how long they took, their rows,
     which day's files tonight's were compared with, the differences, what the
     content guards counted ("held": rows reworded, records changed, ballots
-    cast otherwise -- every night, so a threshold can be set from what a
-    session shows), what was carried from the last good export, and the
-    warnings. A night that may not
-    fall back at all -- a New term run, a refusal on file, no installed files
-    -- gets no "day_files" and one line in the log.
+    cast otherwise, and how many nights old the installed files were -- every
+    night, so a threshold can be set from what a session shows), the rows
+    behind every count that sits under a ceiling ("told": the General Court's
+    own words, so they are in the verdict, the log and the what-changed
+    report, and a warning says only how many), what was carried from the last
+    good export, and the warnings. A night that may not fall back at all -- a
+    New term run, a refusal on file, no installed files -- gets no
+    "day_files" and one line in the log.
     """
     import dayfiles_from_db as DF
     import probe_db
@@ -1571,9 +1654,12 @@ def from_database(a, night, tries, since):
             files, facts = DF.rebuild(DB_DAY, ".")
         except DF.Problem as e:
             return stop("short", str(e))
+        # The ceilings are a night's, and the installed files may be older.
+        facts["nights"] = nights_since(a.archive, was["Docket.txt"], night.day)
         result = DF.judge(files, was, facts)
         block.update(years=facts["years"], files=facts["rows"],
                      differences=result["differences"], held=result.get("held"),
+                     told=result.get("told") or {},
                      compared_with=installed_day(a.archive, was["Docket.txt"]))
         for ln in DF.report(result, facts):
             say(ln, echo=False)
@@ -2015,6 +2101,10 @@ class Night:
         # export sets it to 0, one that falls back adds one, and a night that
         # takes neither leaves it.
         self.v["db_nights"] = db_nights_of(prev)
+        # ... and how many in a row the fallback was tried and stopped by its
+        # own checks: one more for a night they stop, 0 for a night either
+        # source installs, and left as it was by a night that asks neither.
+        self.v["db_stopped"] = db_stopped_of(prev)
         # A list of calendars and journals that came back short, and for how
         # many nights running the same way (take_documents). Carried, so
         # that a night which does not ask leaves the count where it was.
@@ -2215,6 +2305,15 @@ class Night:
                     "in a row: its export has been down that long, the committee list and "
                     "the other lookups are that old, and it is time to tell the General "
                     "Court's IT office"]
+        df = self.v.get("day_files") if isinstance(self.v.get("day_files"), dict) else {}
+        n = int(self.v.get("db_stopped") or 0)
+        if df.get("why_code") == "guard" and n >= DB_STOPPED_MOST:
+            return [f"the fallback on the General Court's database has been stopped by the "
+                    f"night's own checks {n} nights in a row, and the site has not moved in "
+                    "that time: the files it is compared with are the installed ones, so it "
+                    "is stopped every night until the export returns. What stopped it is "
+                    "named in the verdict (day_files, stops), and whether that is a wrong "
+                    "file or a busy day is a person's to read"]
         return []
 
     def exit_code(self):
@@ -2385,6 +2484,7 @@ def close_verdict(a):
             # started set it back to 0 in the middle of an outage, and the
             # error for DB_NIGHTS_MOST of them came that many nights late.
             v["db_nights"] = db_nights_of(older)
+            v["db_stopped"] = db_stopped_of(older)
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
     if failed:

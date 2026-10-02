@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.320
+# GRANITE_VERSION: 2026-09-04.321
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32981,9 +32981,10 @@ def _dayfiles_rebuild(DF):
         said: a row entered while it was read
       - a newer session year in the views is left out and said, not built
       - all seven or none: a view missing, cut short, a line of the wrong
-        width, an error or a short count in source.json, or no installed file
-        to take the years from, is a Problem and writes nothing; and nothing
-        is written when a guard fires
+        width, an error or a short count in source.json, a view that is not
+        UTF-8 or begins with a byte-order mark, or no installed file to take
+        the years from, is a Problem and writes nothing; and nothing is
+        written when a guard fires
       - it asks nobody: its command runs sealed from the network
     """
     here = Path(".").resolve()
@@ -33136,6 +33137,30 @@ def _dayfiles_rebuild(DF):
         problem("a view wrote fewer rows than the server counted",
                 entries={"RollCallHistory": {"count": 9, "rows": 6}})
         problem("there was no source.json", source=False)
+        # A view that is not UTF-8 is not read at all. Every byte that would
+        # not decode used to be replaced, and a set of views in Windows-1252
+        # was installed with U+FFFD in fifteen titles and two members' names,
+        # each count under its ceiling. And one that begins with a byte-order
+        # mark is not the file fetch_day_db.py wrote: the mark stayed on the
+        # first row's first field and took that row out of its year.
+        accent = "\r\n".join(_DBDAY_VIEWS["Legislators"]).replace("Cedar", "C" + chr(0xE9) + "dar")
+        for what, raw, words in (
+                ("a view was written in Windows-1252", accent.encode("cp1252"),
+                 "Legislators.psv is not UTF-8 (byte 4 is 0xe9)"),
+                ("a view began with a byte-order mark",
+                 bytes([0xEF, 0xBB, 0xBF]) + accent.encode("utf-8"),
+                 "Legislators.psv begins with a byte-order mark")):
+            shutil.rmtree(views, ignore_errors=True)
+            _dbday_views(DF, views)
+            (views / "Legislators.psv").write_bytes(raw)
+            try:
+                DF.rebuild(views, root)
+                raise AssertionError(f"{what}, and the seven files were rebuilt all the same")
+            except DF.Problem as e:
+                assert words in str(e), f"{what}, and the reason given was: {e}"
+        (views / "Legislators.psv").write_bytes(accent.encode("utf-8"))
+        assert ("|C" + chr(0xE9) + "dar|Cy|").encode("utf-8") in DF.rebuild(views, root)[0][
+            "legislators.txt"], "a name with an accent, in UTF-8, was not carried through"
         shutil.rmtree(views, ignore_errors=True)
         _dbday_views(DF, views)
         (root / "LSRs.txt").rename(root / "LSRs.txt.away")
@@ -33221,7 +33246,7 @@ def _dayfiles_guards(DF):
     to trip it and it alone, and at its threshold from both sides:
 
       the view is behind                 its newest docket entry is older
-      the docket lost rows               more than 25 of the installed rows,
+      the docket lost rows               more than 5 of the installed rows,
                                          none of them reworded
       a bill is gone from the docket     though it is one row
       a bill record is gone              one (year, LSR)
@@ -33229,16 +33254,18 @@ def _dayfiles_guards(DF):
       the roster moved more than 2%      either way, or that share of its
                                          members replaced with the count the
                                          same
-      a sponsor file kept under 98%      LsrSponsors.txt of its rows
+      LsrSponsors.txt lost rows          more than 5 of them
       LsrsOnly.txt lost a sponsor        one row of a member still sitting,
                                          on a numbered bill; or more than 2%
                                          of their rows, with no bill number
       a line of the wrong width, or a file with no rows
 
-    And a day that only grew -- new docket rows, a new roll call, more
-    ballots, a new member -- trips none; a newer session year in the views is
-    a warning and no stop; and so is a member who has left the roster and
-    taken their rows of LsrsOnly.txt with them, however many they were.
+    And a day that only grew -- new docket rows, a new roll call with its
+    ballots, a new member, a sponsor -- trips none; a newer session year in
+    the views is a warning and no stop; and so is a member who has left the
+    roster and taken their rows of LsrsOnly.txt with them, however many they
+    were. What a night lets through under a ceiling that is a guess it says
+    in a warning, by how many, and names in "told".
     """
     base = _dbday_bulk()
     installed = {n: _dbday_bytes(v) for n, v in base.items()}
@@ -33254,15 +33281,20 @@ def _dayfiles_guards(DF):
     def only(got, word, what):
         assert len(got) == 1 and word in got[0], f"{what}: the guards said {got}"
 
+    NAMED = "each named in the night's verdict (day_files, told) and in its what-changed report"
     d = base["Docket.txt"]
     only(stops("Docket.txt", d[:-1]), "is behind", "the newest docket row was dropped")
-    # One row of each of 25 bills, and then of 26: no bill goes, no row is
-    # reworded, and the newest stays.
-    assert not stops("Docket.txt", [ln for i, ln in enumerate(d) if i % 10 or i >= 250]), \
-        "25 docket rows gone, the most allowed, stopped the night"
-    only(stops("Docket.txt", [ln for i, ln in enumerate(d) if i % 10 or i >= 260]),
-         "26 installed rows are not in the database's, more than 25",
-         "26 docket rows were dropped")
+    # One row of each of 5 bills, and then of 6: no bill goes, no row is
+    # reworded, and the newest stays. The five are let through and named.
+    got = DF.judge(dict(installed, **{"Docket.txt": _dbday_bytes(
+        [ln for i, ln in enumerate(d) if i % 10 or i >= 50])}), installed)
+    assert not got["stops"], f"5 docket rows gone, the most allowed, stopped the night: {got['stops']}"
+    assert got["warnings"] == [f"Docket.txt: installed rows gone: 5, {NAMED}"] and \
+        got["told"] == {"Docket.txt: installed rows gone": [
+            "|".join(d[i].split("|")[:6]) for i in range(0, 50, 10)]}, (got["warnings"], got["told"])
+    only(stops("Docket.txt", [ln for i, ln in enumerate(d) if i % 10 or i >= 60]),
+         "6 installed rows are not in the database's, more than 5",
+         "6 docket rows were dropped")
     only(stops("Docket.txt", [ln for ln in d if "HB1999" not in ln]), "bills in the installed docket",
          "a bill's only docket row was dropped")
     # The same rows with another seventh column are the same rows: the
@@ -33272,7 +33304,10 @@ def _dayfiles_guards(DF):
     only(stops("LSRs.txt", base["LSRs.txt"][1:]), "bill records installed",
          "a bill record was dropped")
     s = base["RollCallSummary.txt"]
-    only(stops("RollCallSummary.txt", s[:-1]), "roll calls installed", "a roll call was dropped")
+    # (Its hundred ballots are then on a roll call the summary does not hold.)
+    got = stops("RollCallSummary.txt", s[:-1])
+    assert len(got) == 2 and "1 roll calls installed are not in the database's: 2026 H 5" in got[0] \
+        and "100 ballots are on a roll call RollCallSummary.txt does not hold" in got[1], got
     only(stops("RollCallSummary.txt", s[:-1] + [s[-1].replace("|60|30|", "|61|29|")]),
          "other counts", "a roll call's counts were changed")
     # A clerk's correction moves a roll call to another bill and keeps its counts.
@@ -33293,8 +33328,9 @@ def _dayfiles_guards(DF):
     only(stops("legislators.txt", p[:-3] + extra), "3 of the 100 members installed are not on",
          "three members of 100 were replaced, the count the same")
     name = "LsrSponsors.txt"
-    assert not stops(name, base[name][3:]), f"{name} keeping exactly 98% stopped the night"
-    only(stops(name, base[name][4:]), "LsrSponsors.txt keeps 146 of its 150", f"{name} lost 4 of 150")
+    assert not stops(name, base[name][5:]), f"{name} losing 5 rows, the most allowed, stopped the night"
+    only(stops(name, base[name][6:]), "LsrSponsors.txt: 6 installed rows are not in the "
+         "database's, more than 5: 2026|1|1|500|1", f"{name} lost 6 of 150")
     # LsrsOnly.txt: a row of a sitting member on a numbered bill is a sponsor
     # on a bill's page, and one gone stops the night. The 2% that may go is
     # for rows with no bill number -- what the Legislation view does not
@@ -33333,8 +33369,12 @@ def _dayfiles_guards(DF):
     gone = after(without)
     assert not gone["stops"], ("a member with 8 of LsrsOnly.txt's 156 rows left the roster, "
                                f"and the fallback stopped: {gone['stops']}")
-    assert gone["warnings"] == ["1 member installed is not on the database's roster, and 8 rows "
-                                "of LsrsOnly.txt went with them"], gone["warnings"]
+    assert gone["warnings"] == [
+        "1 member installed is not on the database's roster, and 8 rows of LsrsOnly.txt went "
+        "with them",
+        f"legislators.txt: installed members not on the database's roster: 1, {NAMED}"] and \
+        gone["told"] == {"legislators.txt: installed members not on the database's roster": [
+            "member 500, Last0|First0||H|1|1|D"]}, (gone["warnings"], gone["told"])
     only(after(without[1:])["stops"], "LsrsOnly.txt: 1 installed rows of members still sitting",
          "a member left, and a row of a member still sitting went as well")
     got = stops("Docket.txt", d[:-1] + ["2026|0040|9/30/2026 9:00:00 AM|HB1040|H|a column short"])
@@ -33342,28 +33382,41 @@ def _dayfiles_guards(DF):
     got = stops("RollCallHistory.txt", [])
     assert any("gave no rows" in x for x in got), got
 
+    # A DAY THAT ONLY GREW: a docket row, a roll call with the ballots its
+    # counts say, a member, and a sponsor on a bill made the day before.
+    sixth = [f"2026|H|6|{70000 + i}|{500 + i}|HB1006|{'Yea' if i < 50 else 'Nay'}|"
+             for i in range(90)]
+    made = ["2026|0041|9/29/2026 9:00:00 AM|HB1041|H|Introduced|x",
+            "2026|0040|9/30/2026 9:00:00 AM|HB1040|H|Newer|x"]
+    record = "|".join(["2026", "0041", "title 41", "H", "1", "0", "0", "0", "26-0041",
+                       "HB  1041", "HB1041"] + [""] * 28)
     grown = DF.judge(dict(
         installed,
-        **{"Docket.txt": _dbday_bytes(d + ["2026|0040|9/30/2026 9:00:00 AM|HB1040|H|Newer|x"]),
+        **{"Docket.txt": _dbday_bytes(d + made), "LSRs.txt": _dbday_bytes(base["LSRs.txt"] + [record]),
            "RollCallSummary.txt": _dbday_bytes(s + ["2026|H|6|9/30/2026 10:00:00 AM|HB1006|50|40|5|"
                                                     "5|||Ought to Pass|t||"]),
-           "RollCallHistory.txt": _dbday_bytes(h + ["2026|H|6|70000|500|HB1006|Yea|",
-                                                    "2026|H|1|79999|999|HB1001|Yea|"]),
+           "RollCallHistory.txt": _dbday_bytes(h + sixth),
            "legislators.txt": _dbday_bytes(p + extra[:1]),
-           "LsrSponsors.txt": _dbday_bytes(base["LsrSponsors.txt"] + ["2026|999|1|500|1"])}),
-        installed, {"newer_years": {"Docket": {"2027": 3}}})
+           "LsrSponsors.txt": _dbday_bytes(base["LsrSponsors.txt"] + ["2026|41|1|500|1"])}),
+        installed, {"newer_years": {"Docket": {"2027": 3}}, "asked": "2026-10-01T05:00:00"})
     assert not grown["stops"], f"a day that only grew was stopped: {grown['stops']}"
-    assert len(grown["warnings"]) == 1 and "2027" in grown["warnings"][0], grown["warnings"]
-    assert grown["differences"]["Docket.txt"]["new"] == 1 and \
-        grown["differences"]["RollCallHistory.txt"]["new"] == 2, grown["differences"]
-    assert (DF.DOCKET_GONE_MOST, DF.ROSTER_TOLERANCE, DF.SPONSORS_KEPT_LEAST) == (25, 0.02, 0.98), \
-        "a guard's threshold moved; they are 25 rows, 2% and 98%"
-    return "ok", ("a view behind the export, 26 docket rows or a bill gone, a bill record gone, a "
+    assert len(grown["warnings"]) == 2 and "2027" in grown["warnings"][1] and grown["warnings"][0] \
+        == f"legislators.txt: members on the database's roster and not the installed one: 1, {NAMED}", \
+        grown["warnings"]
+    assert grown["differences"]["Docket.txt"]["new"] == 2 and \
+        grown["differences"]["RollCallHistory.txt"]["new"] == 90 and \
+        grown["held"]["roll calls"] == {"calls": 0, "ballots": 0, "new": 1, "strangers": 0} and \
+        grown["held"]["LsrSponsors.txt"] == {"new": 1, "late": 0, "gone": 0}, (
+            grown["differences"], grown["held"])
+    assert (DF.DOCKET_GONE_MOST, DF.SPONSORS_GONE_MOST, DF.ROSTER_TOLERANCE,
+            DF.SPONSORS_KEPT_LEAST) == (5, 5, 0.02, 0.98), \
+        "a guard's threshold moved; they are 5 rows, 5 rows, 2% and 98%"
+    return "ok", ("a view behind the export, 6 docket rows or a bill gone, a bill record gone, a "
                   "roll call gone or changed or short of ballots, a roster 3% off or 3% "
-                  "replaced, LsrSponsors.txt under 98%, one sponsor of a numbered bill gone from "
-                  "LsrsOnly.txt, a wrong width and an empty file each stop the night alone; a "
-                  "day that only grew stops nothing, and nor does a busy sponsor leaving the "
-                  "roster")
+                  "replaced, 6 rows of LsrSponsors.txt gone, one sponsor of a numbered bill gone "
+                  "from LsrsOnly.txt, a wrong width and an empty file each stop the night; 5 "
+                  "docket rows gone pass and are named; a day that only grew stops nothing, and "
+                  "nor does a busy sponsor leaving the roster")
 
 
 # Real rows, for the content guards: cut on 2 October 2026 from the files the
@@ -33656,17 +33709,20 @@ _DBGUARD_TONIGHT = {
 }
 
 
-@check("build", "a database night's files are held to what the installed ones say: a real night "
-       "passes, and real rows doctored one way at a time stop it, each guard at its edge",
-       needs=("dayfiles_from_db",))
+@check("build", "a database night's files are held to what the installed ones say and to what "
+       "they add: a real night passes and names what it counted, and real rows doctored one "
+       "way at a time stop it, each guard at its edge", needs=("dayfiles_from_db",))
 def _dayfiles_content(DF):
     """dayfiles_from_db.judge() compared counts and keys until 2 October 2026.
     Two checkers doctored copies of that day's rebuilt files, and a wrong
     committee and title on a third of the bills, 5,000 invented docket rows,
     250 reworded ones, a docket row dated a year back, every Yea and Nay
     swapped, every roll call filed under HB 1 and every member's party
-    swapped each passed every guard. It holds the files to their content now,
-    on the columns the build reads, and each guard is tried here.
+    swapped each passed every guard. It was made to hold the files to their
+    content; and two reviewers then found what that still let in -- rows
+    ADDED, rows twice, a view in another encoding, a handful of anything
+    under a ceiling that was a guess -- and what it stopped that was right:
+    the Senate's own late entries. Each guard is tried here.
 
     The rows are the General Court's own (_DBGUARD_REAL, above). The night
     they make is real in every part, though the parts are of four days:
@@ -33674,19 +33730,21 @@ def _dayfiles_content(DF):
     as the clerk corrected it on 14 September; Senate roll call 49 as it was
     moved from SB 655 to SB 665 between the 6th and the 13th, its 24 ballots
     with it; and the House status code the view has at 07 where the export
-    has 04. That night passes every guard, with what each counted said.
+    has 04. That night passes every guard, says what each counted, and names
+    the two rows that changed under a ceiling.
 
-    Then one thing is doctored at a time, and each guard fires alone, at its
-    edge from both sides. A ceiling set from a session day -- 1,000 docket
-    rows, 170 bill records -- is lowered for the test to what a fixture of
-    twenty rows can cross, and held to its real value at the end; the ones a
-    few real rows reach are tried as they are: no stranger, no unread or
-    backdated entry time, 5 roll calls, 10 ballots, 8 members, no sponsor of a
-    numbered bill. A row made for a guard is said to be.
+    Then one thing is doctored at a time, and each guard fires, at its edge
+    from both sides. A ceiling set from a session day -- 1,000 docket rows,
+    170 bill records -- is lowered for the test to what a fixture of twenty
+    rows can cross, and held to its real value at the end; the ones a few
+    real rows reach are tried as they are. A row made for a guard is said to
+    be.
     """
     from datetime import timedelta
     real, part = _DBGUARD_REAL, _DBGUARD_TONIGHT
     installed = {n: _dbday_bytes(v) for n, v in real.items()}
+    ASKED = {"asked": "2026-10-02T09:55:27"}        # when the real views were asked
+    NAMED = "each named in the night's verdict (day_files, told) and in its what-changed report"
 
     def six(ln):
         """A docket row as the reshaper writes one: the seventh column the third."""
@@ -33709,36 +33767,77 @@ def _dayfiles_content(DF):
         "HB100", "HB224", "SB532", "SB633", "SB570", "HB1218"] and \
         sum(a != b for a, b in zip(real["LSRs.txt"], tonight["LSRs.txt"])) == 2
 
-    def judged(had=None, **now):
+    def judged(had=None, facts=ASKED, **now):
         return DF.judge({n: _dbday_bytes(now.get(n.split(".")[0], tonight[n])) for n in real},
-                        dict(installed, **{n: _dbday_bytes(v) for n, v in (had or {}).items()}))
+                        dict(installed, **{n: _dbday_bytes(v) for n, v in (had or {}).items()}),
+                        facts)
 
-    def stops(had=None, **now):
-        return judged(had, **now)["stops"]
+    def stops(had=None, facts=ASKED, **now):
+        return judged(had, facts, **now)["stops"]
 
     def only(got, words, what):
         assert len(got) == 1 and words in got[0], f"{what}: the guards said {got}"
 
-    was = {name: getattr(DF, name) for name in (
-        "DOCKET_NEW_A_DAY_MOST", "DOCKET_CITED_MOST", "DOCKET_REWORDED_MOST", "LSR_NEW_MOST",
-        "LSR_REWRITTEN_MOST", "LSR_CHANGED_MOST", "ROSTER_TOUCHED_MOST", "SPONSORS_KEPT_LEAST")}
+    def has(got, words, what):
+        assert any(words in s for s in got), f"{what}: the guards said {got}"
+
+    names = ("DOCKET_NEW_A_DAY_MOST", "DOCKET_LATE_MOST", "DOCKET_AHEAD_MOST", "DOCKET_TWICE_MOST",
+             "DOCKET_CITED_MOST", "DOCKET_MARKED_MOST", "DOCKET_REWORDED_MOST", "DOCKET_GONE_MOST",
+             "LSR_NEW_MOST", "LSR_RETITLED_MOST", "LSR_REWRITTEN_MOST", "LSR_CHANGED_MOST",
+             "LSR_UNBACKED_MOST", "ROLLCALLS_CHANGED_MOST", "BALLOTS_CHANGED_MOST",
+             "ROLLCALLS_NEW_MOST", "ROLLCALL_STRANGERS_MOST", "ROSTER_TOLERANCE",
+             "ROSTER_MOVED_MOST", "ROSTER_CHANGED_MOST", "ROSTER_TOUCHED_MOST",
+             "SPONSORS_NEW_MOST", "SPONSORS_LATE_MOST", "SPONSORS_GONE_MOST", "SPONSORS_KEPT_LEAST")
+    was = {name: getattr(DF, name) for name in names}
+
+    def at(**ceilings):
+        """The ceilings as they really stand, but for these."""
+        for name, value in was.items():
+            setattr(DF, name, ceilings.get(name, value))
     try:
         # THE REAL NIGHT, at the real thresholds.
         got = judged()
-        assert not got["stops"] and not got["warnings"], got["stops"] + got["warnings"]
+        assert not got["stops"], got["stops"]
         assert got["held"] == {
-            "Docket.txt": {"new": 9, "busiest_day": ["2026-09-30", 5], "cited": 0, "reworded": 1,
-                           "gone": 0},
-            "LSRs.txt": {"new": 0, "changed": 0, "rewritten": 0,
-                         "unread": {"House status code": 2}},
-            "roll calls": {"calls": 1, "ballots": 0},
-            "legislators.txt": {"who": 0, "any": 0},
-            "LsrsOnly.txt": {"gone_numbered": 0, "gone_unnumbered": 0}}, got["held"]
+            "nights": 1,
+            "Docket.txt": {"new": 9, "busiest_day": ["2026-09-30", 5], "late": 0, "ahead": 0,
+                           "cited": 0, "marked": 0, "reworded": 1, "gone": 0, "twice": 0},
+            "LSRs.txt": {"new": 0, "unsponsored": 0, "changed": 0, "rewritten": 0, "retitled": 0,
+                         "unbacked": 0, "unread": {"House status code": 2}},
+            "roll calls": {"calls": 1, "ballots": 0, "new": 0, "strangers": 0},
+            "legislators.txt": {"who": 0, "any": 0, "left": 0, "joined": 0},
+            "LsrSponsors.txt": {"new": 0, "late": 0, "gone": 0},
+            "LsrsOnly.txt": {"gone_numbered": 0, "gone_unnumbered": 0, "new": 0}}, got["held"]
         said = "\n".join(DF.held_said(got["held"]))
         assert "9 new, the most entered on one day 5 (2026-09-30)" in said and \
-            "0 gained a citation, 1 reworded, 0 gone" in said and \
+            "0 gained a citation, 0 a mark, 1 reworded, 0 gone" in said and \
             "in columns it does not read: House status code on 2" in said and \
-            "1 read otherwise, 0 ballots cast otherwise" in said, said
+            "of the installed 1 read otherwise, 0 ballots cast otherwise" in said, said
+        # ... and the two rows that changed under a ceiling are named, each
+        # shown where it differs, and the warnings say how many and no more:
+        # the rows are the record's words, and a warning is on the run's page.
+        assert got["warnings"] == [
+            f"Docket.txt: installed rows reworded: 1, {NAMED}",
+            f"RollCallSummary.txt: installed roll calls that read otherwise: 1, {NAMED}"], \
+            got["warnings"]
+        told = got["told"]
+        assert list(told) == ["Docket.txt: installed rows reworded",
+                              "RollCallSummary.txt: installed roll calls that read otherwise"] and \
+            told["Docket.txt: installed rows reworded"] == [
+                "2026|2711|3/4/2026 5:50:17 PM|HB1218|H|'...h Amendment # 2026-0596h' now "
+                "'...h Amendment # 2026-0956h'"] and \
+            told["RollCallSummary.txt: installed roll calls that read otherwise"][0].startswith(
+                "2026 S 49 bill 'SB655' now 'SB665'; title \"... Title) relative to employee "
+                "leasing companies, workers' com...\" now '... Title) relative to pharmacy "
+                "benefits managers"), told
+        assert "\n".join(DF.told_said(told)).startswith(
+            "  named, Docket.txt: installed rows reworded:\n      2026|2711|"), DF.told_said(told)
+        assert not any("HB1218" in w or "SB665" in w for w in got["warnings"])
+        # Two titles cut at 40 characters before the place they part printed
+        # as the same words; and a difference in spaces alone is shown.
+        assert DF._differ("a" * 70 + "X tail", "a" * 70 + "Y tail") == \
+            "'..." + "a" * 20 + "X tail' now '..." + "a" * 20 + "Y tail'" and \
+            DF._differ(" Hearing", "Hearing") == "' Hearing' now 'Hearing' (8 characters, now 7)"
 
         # ---- THE DOCKET'S NEW ROWS --------------------------------------
         d = tonight["Docket.txt"]
@@ -33757,30 +33856,139 @@ def _dayfiles_content(DF):
         only(stops(Docket=d + [put(put(session, 2, "10/01/2026 12:40:40"), 5, "Executive Session")]),
              "Docket.txt: 1 new rows carry an entry time that does not read as one",
              "a new docket row with an entry time that is not one")
-        # The checkers' row: an installed row's own stamp, of February, under
-        # other words. The installed file's newest entry is 29 September
-        # 12:41:48; 14 days before it to the second is allowed, and a second
-        # more is not. (An entry time runs up to a week AHEAD of the day a
-        # row is written -- the conference meeting of 26 May in the fixture,
-        # written on the 19th -- which is why the slack is not nothing.)
+        # A row with no words, or in no chamber: the 31 real rows passed with
+        # NULL for both.
+        only(stops(Docket=d + [put(put(session, 5, " "), 2, "10/1/2026 12:45:00 PM")]),
+             "Docket.txt: 1 new rows have no words, or a chamber that is neither H nor S",
+             "a new docket row with no words")
+        only(stops(Docket=d + [put(put(session, 4, "J"), 5, "Executive Session: adjourned")]),
+             "have no words, or a chamber that is neither H nor S", "a new docket row in chamber J")
+        got = stops(Docket=d[:-1] + [put(put(session, 4, "NULL"), 5, "NULL")])
+        assert len(got) == 2 and "Docket.txt: 2 fields read NULL, None, True or False, which no " \
+            "field of an export does" in got[0] and "have no words, or a chamber" in got[1], got
+
+        # ENTERED LONG BEFORE. The checkers' row: an installed House row's own
+        # stamp, of February, under other words. It still stops the night.
         old = put(d[0], 5, "Signed by Governor 01/02/2025")
         only(stops(Docket=d + [old]), "Docket.txt: 1 new rows were entered more than 14 days "
-             "before the installed file's newest (2026-09-29 12:41:48): 2026|2711|2/17/2026 3:29:16 "
-             "PM|HB1218|H|Signed by Governor", "a new docket row dated seven months back")
+             "before the installed file's newest (2026-09-29 12:41:48), and are not the Senate's "
+             "late entries -- a House row, or one older than its bill's first: 2026|2711|2/17/2026 "
+             "3:29:16 PM|HB1218|H|Signed by Governor", "a new House row dated seven months back")
+        # The installed file's newest entry is 29 September 12:41:48; 14 days
+        # before it to the second is an ordinary row, and a second more is
+        # not. (An entry time runs up to a week AHEAD of the day a row is
+        # written -- the conference meeting of 26 May in the fixture, written
+        # on the 19th -- which is why the slack is not nothing.)
         edge = put(put(session, 5, "Executive Session: continued"), 2, "9/15/2026 12:41:48 PM")
         assert not stops(Docket=d + [edge]), "a new row 14 days before the newest stopped the night"
         only(stops(Docket=d + [put(edge, 2, "9/15/2026 12:41:47 PM")]), "more than 14 days before",
-             "a new row 14 days and a second before the newest")
+             "a new House row 14 days and a second before the newest")
         assert DF.DOCKET_STAMP_SLACK == timedelta(days=14)
-        # More in a day than a day brings. The real ceiling is 1,000; the
-        # fixture's busiest day has 5 rows, so it is 5 here, and a sixth
-        # (made: one more interim study report that day) stops.
-        DF.DOCKET_NEW_A_DAY_MOST = 5
-        assert not stops(), "5 new rows on one day, the most allowed, stopped the night"
+        # THE SENATE'S LATE ENTRIES ARE REAL, and one is no reason to stop: a
+        # row entered late carries the day of the action and the clock of the
+        # moment it was typed. HB 609's hearing of 10 March 2026 was entered
+        # on 28 April, at 2:22:39 PM, as of 9 March at 2:22:39 PM (the export
+        # of 30 September, with its seventh column). Stopping at the first
+        # such row stopped eight real nights of the term, and every database
+        # night after each. It passes, counted and named.
+        hb609 = ["2026|0889|1/16/2025 9:25:16 AM|HB609|H|  Introduced (in recess of) 01/09/2025 "
+                 "and referred to Criminal Justice and Public Safety  HJ 3  P. 18|"
+                 "2/18/2025 3:08:19 PM",
+                 "2026|0889|1/30/2026 9:15:02 AM|HB609|S|  Introduced 01/29/2026 and Referred to "
+                 "Judiciary;  SJ 3|1/30/2026 9:15:02 AM"]
+        late = ("2026|0889|3/9/2026 2:22:39 PM|HB609|S| Hearing: 03/10/2026, Room 100, SH, "
+                "01:30 pm;  SC 9|4/28/2026 2:22:39 PM")
+        had = {"Docket.txt": real["Docket.txt"] + hb609}
+        with_609 = d + [six(ln) for ln in hb609]
+        got = judged(had, Docket=with_609 + [six(late)])
+        label = "Docket.txt: new Senate rows entered more than 14 days before the installed file's newest"
+        assert not got["stops"] and got["held"]["Docket.txt"]["late"] == 1 and \
+            got["held"]["Docket.txt"]["new"] == 10, (got["stops"], got["held"]["Docket.txt"])
+        assert got["told"][label] == ["2026|0889|3/9/2026 2:22:39 PM|HB609|S| Hearing: 03/10/2026, "
+                                      "Room 100, SH, 01:30 pm;  SC 9"] and \
+            f"{label}: 1, {NAMED}" in got["warnings"], (got["told"], got["warnings"])
+        # More of them than the Senate enters late in a night is a stop: 17
+        # is the most, and 40 the ceiling. (made: a second, a day earlier; the
+        # ceiling lowered to one)
+        at(DOCKET_LATE_MOST=1)
+        only(stops(had, Docket=with_609 + [six(late), put(six(late), 2, "3/8/2026 2:22:39 PM")]),
+             "Docket.txt: 2 new Senate rows were entered more than 14 days before the installed "
+             "file's newest (2026-09-29 12:41:48), more than the 1 the Senate enters late",
+             "two late Senate rows against one")
+        at()
+        # ... and so is one dated before its bill's first row (made), which
+        # no late entry of the term is.
+        only(stops(had, Docket=with_609 + [put(six(late), 2, "1/15/2025 2:22:39 PM")]),
+             "a House row, or one older than its bill's first: 2026|0889|1/15/2025 2:22:39 PM|HB609|S|",
+             "a late Senate row older than its bill")
+
+        # ENTERED AFTER THE VIEWS WERE ASKED. A conference meeting is stamped
+        # midnight of its own day, up to a week ahead: counted. (made: HB
+        # 427's session as a meeting of 6 October)
+        ahead = put(put(session, 2, "10/6/2026 12:00:00 AM"), 5,
+                    "Conference Committee Meeting: 10/06/2026 10:00 am GP 228")
+        got = judged(Docket=d + [ahead])
+        assert not got["stops"] and got["held"]["Docket.txt"]["ahead"] == 1, got
+        at(DOCKET_AHEAD_MOST=1)
+        only(stops(Docket=d + [ahead, put(ahead, 2, "10/7/2026 12:00:00 AM")]),
+             "Docket.txt: 2 new rows are entered after the views were asked (2026-10-02 09:55:27), "
+             "more than 1", "two rows entered ahead against one")
+        at()
+        # A row stamped a year ahead passed every guard, and once it was
+        # installed every honest row after it was "entered more than 14 days
+        # before the installed file's newest": the fallback stopped for good.
+        year_on = put(put(session, 2, "10/2/2027 9:00:00 AM"), 5,
+                      "Executive Session: 10/14/2027 10:00 am GP 229")
+        only(stops(Docket=d + [year_on]), "Docket.txt: 1 new rows are entered more than 14 days "
+             "after the views were asked (2026-10-02 09:55:27): 2026|0602|10/2/2027 9:00:00 AM|"
+             "HB427|H|Executive Session: 10/14/2027", "a new docket row stamped a year ahead")
+        assert not stops(Docket=d + [put(ahead, 2, "10/16/2026 9:55:27 AM")]) and stops(
+            Docket=d + [put(ahead, 2, "10/16/2026 9:55:28 AM")]), "the edge is not 14 days after"
+        # ... and were such a row installed all the same, the next night's
+        # honest row is measured from the time the views were asked.
+        honest = put(put(session, 2, "10/5/2026 10:00:00 AM"), 5,
+                     "Executive Session: 10/20/2026 10:00 am GP 229")
+        assert not stops({"Docket.txt": real["Docket.txt"] + [year_on]}, {"asked": "2026-10-06T05:00:00"},
+                         Docket=d + [year_on, honest]), \
+            "with a row stamped a year ahead installed, an honest new row stopped the night"
+
+        # MORE IN A DAY THAN A DAY BRINGS, and in a night than its nights. The
+        # real ceiling is 1,000 for both; the fixture's busiest day has 5
+        # rows and the night 9. With the installed files five nights old the
+        # night's is 2.2 times the day's, 11: a sixth row on the 30th (made:
+        # one more interim study report) stops by the day.
+        five = dict(ASKED, nights=5)
+        at(DOCKET_NEW_A_DAY_MOST=5)
+        assert not stops(facts=five), "5 new rows on one day, the most allowed, stopped the night"
         sixth = put(put(d[-5], 5, " Interim Study Report: a sixth"), 2, "9/30/2026 4:00:00 PM")
-        only(stops(Docket=d + [sixth]), "Docket.txt: 6 new rows entered on 2026-09-30, more than "
-             "the 5 a day brings", "6 new docket rows on one day against 5")
-        DF.DOCKET_NEW_A_DAY_MOST = was["DOCKET_NEW_A_DAY_MOST"]
+        only(stops(facts=five, Docket=d + [sixth]), "Docket.txt: 6 new rows entered on 2026-09-30, "
+             "more than the 5 a day brings", "6 new docket rows on one day against 5")
+        # ... and the night: 20,000 invented rows spread at 953 a day passed
+        # the day's ceiling alone. Nine rows are a night's nine, and not
+        # eight's.
+        at(DOCKET_NEW_A_DAY_MOST=9)
+        assert not stops(), "9 new rows in a night, the most allowed, stopped the night"
+        at(DOCKET_NEW_A_DAY_MOST=8)
+        only(stops(), "Docket.txt: 9 new rows, more than the 8 that 1 night brings: 2026|0038|"
+             "9/30/2026 1:10:39 PM|HB100|H|", "9 new docket rows in a night against 8")
+        assert not stops(facts=dict(ASKED, nights=2)), \
+            "9 new rows over two nights, against 8 a night, stopped the night"
+        at()
+
+        # A ROW TWICE. Every row entered in a fortnight came back twice from
+        # a doctored view, 70 of them, and was installed. A conference
+        # meeting's notice really is entered twice now and then (three pairs
+        # in the term), so four are let be, and named.
+        got = judged(Docket=d + [session] * 4)
+        assert not got["stops"] and got["held"]["Docket.txt"]["twice"] == 4 and got["told"][
+            "Docket.txt: rows there more than once, and not so in the installed file"] == [
+                "|".join(session.split("|")[:6])], (got["stops"], got["told"])
+        only(stops(Docket=d + [session] * 5), "Docket.txt: 5 rows are there once more than a row "
+             "is, or than the installed file has them, more than 4: 2026|0602|10/1/2026 12:40:40 "
+             "PM|HB427|H|Executive Session", "a new docket row six times")
+        has(stops(Docket=d + d[3:9]), "Docket.txt: 6 rows are there once more than a row is",
+            "six installed docket rows twice")
+        assert DF.DOCKET_TWICE_MOST == 4
 
         # ---- THE DOCKET'S OLD ROWS --------------------------------------
         # A citation written onto a row. Four of the fixture's rows carry
@@ -33793,135 +34001,422 @@ def _dayfiles_content(DF):
             real["Docket.txt"][i].split("|")[5]) for i in cited), cited
         assert not DF._cited("Ought to Pass: MA VV 03/05/2026", "Inexpedient to Legislate: MA VV "
                              "03/05/2026  HJ 6  P. 2") and not DF._cited("a", "a")
+        # A citation completed is one written on; a citation REPLACED is a
+        # row reworded: 1,000 rows moved to "HJ 99 P. 999" passed as cited.
+        assert DF._cited("Ought to Pass  HJ 6", "Ought to Pass  HJ 6  P. 2") and \
+            not DF._cited("Ought to Pass  HJ 6  P. 2", "Ought to Pass  HJ 99 P. 999") and \
+            not DF._cited("Ought to Pass  HJ 6", "Ought to Pass  HJ 62  P. 2")
 
         def uncited(n):
             return [put(ln, 5, DF.CITATION.sub("", ln.split("|")[5])) if i in cited[:n] else ln
                     for i, ln in enumerate(real["Docket.txt"])]
-        DF.DOCKET_CITED_MOST = 3
+        at(DOCKET_CITED_MOST=3)
         got = judged({"Docket.txt": uncited(3)})
         assert not got["stops"] and got["held"]["Docket.txt"]["cited"] == 3 and \
             got["held"]["Docket.txt"]["reworded"] == 1, (got["stops"], got["held"]["Docket.txt"])
         only(stops({"Docket.txt": uncited(4)}), "Docket.txt: 4 installed rows gained a journal "
              "citation, more than 3", "4 citations against 3")
-        DF.DOCKET_CITED_MOST = was["DOCKET_CITED_MOST"]
-        # Reworded any other way. HB 1218's corrected number is one. The mark
-        # on SB 633's cancelled session is another: the installed row is made
-        # by taking the mark off. At the real ceiling of 100 both pass; at 1,
-        # the second stops.
+        # Four real days running wrote 1,078 citations, against 1,000 a
+        # night: with the installed files two nights old a night's ceiling
+        # is one and a half days', which is 4 here (3 x 1.5, rounded).
+        assert not stops({"Docket.txt": uncited(4)}, dict(ASKED, nights=2)), \
+            "4 citations over two nights, against 3 a night, stopped the night"
+        at()
+        other = [put(ln, 5, DF.CITATION.sub("HJ 99 P. 999", ln.split("|")[5])) if i in cited else ln
+                 for i, ln in enumerate(d)]
+        got = judged(Docket=other)
+        assert not got["stops"] and got["held"]["Docket.txt"]["cited"] == 0 and \
+            got["held"]["Docket.txt"]["reworded"] == 5, got["held"]["Docket.txt"]
+        # A mark put before a row's words. SB 633's cancelled session carries
+        # one: the installed row is made by taking the mark off. It is
+        # counted apart from a rewording (the most in a real day is 50).
         unmarked = [ln.replace("==CANCELLED== ", "") for ln in real["Docket.txt"]]
         assert sum(a != b for a, b in zip(unmarked, real["Docket.txt"])) == 1
         got = judged({"Docket.txt": unmarked})
-        assert not got["stops"] and got["held"]["Docket.txt"]["reworded"] == 2, got
-        DF.DOCKET_REWORDED_MOST = 1
+        assert not got["stops"] and got["held"]["Docket.txt"]["marked"] == 1 and \
+            got["held"]["Docket.txt"]["reworded"] == 1, got["held"]["Docket.txt"]
+        at(DOCKET_MARKED_MOST=0)
+        only(stops({"Docket.txt": unmarked}), "Docket.txt: 1 installed rows are marked in the "
+             "database's, more than 0: 2026|2187|3/19/2026 9:14:15 AM|SB633|H|==CANCELLED==",
+             "one marked row against none")
+        at()
+        # Reworded any other way: HB 1218's corrected number is one, and the
+        # real ceiling is 40 (the most in a real day is 18). 100 outcomes
+        # rewritten passed at 100. (made: the second, an outcome turned round)
+        turned = [put(ln, 5, ln.split("|")[5].replace("Ought to Pass:", "Inexpedient to Legislate:"))
+                  if "HB1228" in ln else ln for ln in d]
+        assert sum(a != b for a, b in zip(turned, d)) == 1
+        at(DOCKET_REWORDED_MOST=1)
         assert not stops(), "one reworded row, the most allowed, stopped the night"
-        only(stops({"Docket.txt": unmarked}), "Docket.txt: 2 installed rows are reworded in the "
-             "database's, more than 1: 2026|2711|3/4/2026 5:50:17 PM|HB1218|H|Minority Committee "
-             "Report: Ought to Pass with Amendment # 2026-0596h now reads Minority Committee Report: "
-             "Ought to Pass with Amendment # 2026-0956h", "2 reworded rows against 1")
-        DF.DOCKET_REWORDED_MOST = was["DOCKET_REWORDED_MOST"]
-        # A row gone is counted apart from one reworded (the ceiling's edge is
-        # tried on 402 rows, in the check before this one).
+        only(stops(Docket=turned), "Docket.txt: 2 installed rows are reworded in the database's, "
+             "more than 1: 2026|2711|3/4/2026 5:50:17 PM|HB1218|H|'...h Amendment # 2026-0596h' "
+             "now '...h Amendment # 2026-0956h'", "2 reworded rows against 1")
+        at()
+        got = judged(Docket=turned)
+        assert not got["stops"] and got["told"]["Docket.txt: installed rows reworded"][1] == (
+            "2026|2947|3/5/2026 9:24:15 AM|HB1228|H|'Ought to Pass: MA VV 03/05/2026  HJ 6  P. 2' "
+            "now 'Inexpedient to Legislate: MA VV 03/05/2026  HJ 6  P. 2' (43 characters, now "
+            "54)"), got["told"]
+        # A row gone is counted apart from one reworded, and named (the
+        # ceiling's edge is tried on 402 rows, in the check before this one).
         got = judged(Docket=d[1:])
         assert not got["stops"] and got["held"]["Docket.txt"]["gone"] == 1 and \
-            got["held"]["Docket.txt"]["reworded"] == 1, got["held"]["Docket.txt"]
+            got["held"]["Docket.txt"]["reworded"] == 1 and \
+            got["told"]["Docket.txt: installed rows gone"] == [
+                "2026|2711|2/17/2026 3:29:16 PM|HB1218|H|Executive Session: 03/03/2026 10:00 am "
+                "GP 231"], (got["held"]["Docket.txt"], got["told"])
 
         # ---- THE BILL RECORDS -------------------------------------------
-        # A value the build reads replaced or lost: the real ceiling is 170,
-        # and 2 here. Blank titles are one of the checkers' cases, a wrong
-        # committee another. A hearing moved to another day is not it.
         r = tonight["LSRs.txt"]
 
-        def records(which, at, value):
-            return [put(ln, at, value) if i in which else ln for i, ln in enumerate(r)]
-        DF.LSR_REWRITTEN_MOST, DF.LSR_CHANGED_MOST = 2, 3
-        assert not stops(LSRs=records((0, 1), 2, "")), \
+        def records(which, at_, value):
+            return [put(ln, at_, value) if i in which else ln for i, ln in enumerate(r)]
+        # A CHANGED RECORD IS HELD TO THE DOCKET. Tonight's docket has a new
+        # row for HB 100 and a reworded one for HB 1218, and SB 570's last is
+        # three days old: those three are moving. HB 224 has no docket row in
+        # the fixture, SB 532's last is of February and SB 633's of March: at
+        # rest. A changed record at rest is one of a handful, named, or the
+        # night stops: a subject code changed on 100 bills, a Senate committee
+        # invented on 646 and a hearing moved on 700 each passed.
+        MOVING, AT_REST = (0, 4, 5), (1, 2, 3)
+        label = "LSRs.txt: installed bill records changed with nothing in the docket to say why"
+        got = judged(LSRs=records(AT_REST[:1], 12, "STG"))
+        assert not got["stops"] and got["held"]["LSRs.txt"]["unbacked"] == 1 and got["told"][label] \
+            == ["2026-0213 HB224, subject code 'ENU' now 'STG'"] and \
+            f"{label}: 1, {NAMED}" in got["warnings"], (got["stops"], got["told"], got["warnings"])
+        got = judged(LSRs=records(MOVING, 12, "STG"))
+        assert not got["stops"] and got["held"]["LSRs.txt"] == {
+            "new": 0, "unsponsored": 0, "changed": 3, "rewritten": 3, "retitled": 0, "unbacked": 0,
+            "unread": {"House status code": 2}} and label not in got["told"], got["held"]["LSRs.txt"]
+        at(LSR_UNBACKED_MOST=2)
+        assert not stops(LSRs=records(AT_REST[:2], 12, "ZZZ")), \
+            "2 bill records at rest changed, the most allowed, stopped the night"
+        only(stops(LSRs=records(AT_REST, 12, "ZZZ")), "LSRs.txt: 3 installed bill records changed "
+             "where the build reads them with nothing in the docket to say why, more than 2: "
+             "2026-0213 HB224, subject code 'ENU' now 'ZZZ'", "3 bill records at rest changed")
+        at()
+        # The fortnight is from when the views were asked: asked a fortnight
+        # later, SB 570 is at rest too.
+        assert judged(LSRs=records((4,), 12, "STG"))["held"]["LSRs.txt"]["unbacked"] == 0 and judged(
+            facts={"asked": "2026-10-14T09:55:27"},
+            LSRs=records((4,), 12, "STG"))["held"]["LSRs.txt"]["unbacked"] == 1
+        # A committee of referral in a chamber whose docket has no row for
+        # the bill is not backed by it, though the bill is moving: HB 100 has
+        # never been to the Senate. (made: a Senate committee for it) ...
+        got = judged(LSRs=records((0,), 21, "S24"))
+        assert not got["stops"] and got["held"]["LSRs.txt"]["unbacked"] == 1 and got["told"][label] \
+            == ["2026-0038 HB100, Senate committee of referral '' now 'S24' (0 characters, now 3)"], \
+            got["told"]
+        # ... and with the Senate's row of it tonight (made), it is what a
+        # referral is.
+        referred = put(put(session, 1, "0038"), 3, "HB100")
+        referred = put(put(referred, 4, "S"), 5, "  Introduced 10/01/2026 and Referred to Finance")
+        got = judged(LSRs=records((0,), 21, "S24"), Docket=d + [referred])
+        assert not got["stops"] and got["held"]["LSRs.txt"]["unbacked"] == 0 and \
+            got["held"]["LSRs.txt"]["changed"] == 1 and got["held"]["LSRs.txt"]["rewritten"] == 0, got
+        # A bill does not change the chamber it began in, nor its number.
+        only(stops(LSRs=records((0,), 10, "HB74")), "LSRs.txt: 1 installed bill records have "
+             "another chamber or bill number in the database's, which a bill does not change: "
+             "2026-0038 HB74, bill number 'HB100' now 'HB74'", "a bill record under another number")
+        only(stops(LSRs=records((5,), 3, "S")), "which a bill does not change: 2026-2711 HB1218, "
+             "chamber 'H' now 'S'", "a bill record in the other chamber")
+        # THE SESSION DAY'S CEILINGS, for the bills that are moving. The real
+        # ones are 40 titles, 170 records rewritten and 700 changed.
+        at(LSR_RETITLED_MOST=1, LSR_REWRITTEN_MOST=2, LSR_CHANGED_MOST=2)
+        assert not stops(LSRs=records(MOVING[:1], 2, "(New Title) relative to rail.")), \
+            "one bill record with a new title, the most allowed, stopped the night"
+        only(stops(LSRs=records(MOVING[:2], 2, "(New Title) relative to rail.")), "LSRs.txt: 2 "
+             "installed bill records have another title, more than 1: 2026-0038 HB100, title "
+             "'prohibiting the use of state funds for new passenger rail pr...' now '(New Title) "
+             "relative to rail.'", "2 bill records were given another title")
+        # (A title lost is a value lost, and no new title.)
+        assert not stops(LSRs=records(MOVING[:2], 2, "")), \
             "2 bill records without a title, the most allowed, stopped the night"
-        only(stops(LSRs=records((0, 1, 2), 2, "")), "LSRs.txt: 3 installed bill records hold "
-             "another value, or none, where the build reads one, more than 2: 2026-0038 HB100, "
-             "title 'prohibiting the use of state funds fo...' now ''",
+        only(stops(LSRs=records(MOVING, 2, "")), "LSRs.txt: 3 installed bill records hold another "
+             "value, or none, where the build reads one, more than 2: 2026-0038 HB100, title "
+             "'prohibiting the use of state funds for new passenger rail pr...' now ''",
              "3 bill records lost their titles")
-        # (SB 532 has no House committee yet: given one, it has gained a
-        # value, which is what a referral is, and is not among these.)
-        only(stops(LSRs=records((0, 1, 3), 13, "H99")), "House committee of referral 'H20' now "
-             "'H99'", "3 bill records were given another committee")
-        assert not stops(LSRs=records((0, 1, 2), 13, "H99")), \
-            "2 committees replaced and one bill referred for the first time stopped the night"
-        only(stops(LSRs=records((0, 1, 2), 31, "")), "hearing date",
-             "3 bill records lost their hearing")
-        assert not stops(LSRs=records((0, 1, 2), 31, "10/14/2026 10:00:00 AM")), \
-            "3 hearings moved to another day, the most allowed, stopped the night"
-        only(stops(LSRs=records((0, 1, 2, 3), 31, "10/14/2026 10:00:00 AM")), "LSRs.txt: 4 "
-             "installed bill records changed in a column the build reads, more than 3",
-             "4 bill records with a hearing moved")
+        only(stops(LSRs=records(MOVING, 31, "")), "hearing date", "3 bill records lost their hearing")
+        # A hearing moved to another day is a change, and no value replaced.
+        assert not stops(LSRs=records(MOVING[:2], 31, "10/14/2026 10:00:00 AM")), \
+            "2 hearings moved to another day, the most allowed, stopped the night"
+        only(stops(LSRs=records(MOVING, 31, "10/14/2026 10:00:00 AM")), "LSRs.txt: 3 installed bill "
+             "records changed in a column the build reads, more than 2",
+             "3 bill records with a hearing moved")
+        at()
         # A column the build does not read is counted and never judged, on
         # every record at once: the House status code, here.
         got = judged(LSRs=[put(ln, 16, "99") for ln in r])
         assert not got["stops"] and got["held"]["LSRs.txt"]["unread"] == {"House status code": 6} \
             and got["held"]["LSRs.txt"]["changed"] == 0, (got["stops"], got["held"]["LSRs.txt"])
-        # New records (made: HB 224's under other numbers).
-        DF.LSR_NEW_MOST = 1
+        # New records (made: HB 224's under other numbers): a day's, with a
+        # title, a chamber and a bill number that is no other record's.
+        second = put(put(put(brought, 1, "9998"), 10, "HB9998"), 9, "HB  9998")
+        at(LSR_NEW_MOST=1)
         assert not stops(LSRs=r + [brought]), "one new bill record stopped the night"
-        only(stops(LSRs=r + [brought, put(put(brought, 1, "9998"), 10, "HB9998")]),
+        only(stops(LSRs=r + [brought, second]),
              "LSRs.txt: 2 new bill records, more than 1: 2026-9999 HB9999", "2 new bill records")
-        for name in ("LSR_REWRITTEN_MOST", "LSR_CHANGED_MOST", "LSR_NEW_MOST"):
-            setattr(DF, name, was[name])
+        assert not stops(facts=dict(ASKED, nights=5), LSRs=r + [brought, second]), \
+            "2 new bill records over five nights, against one a night, stopped the night"
+        at()
+        only(stops(LSRs=r + [put(brought, 2, "")]), "LSRs.txt: 1 new bill records have no title, "
+             "no bill number, or a chamber that is neither H nor S: 2026-9999 HB9999",
+             "a new bill record with no title")
+        # A bill has a sponsor: all but one of the 1,387 real records have a
+        # row in LsrSponsors.txt. 300 invented records, each with a title and
+        # a number of its own, passed. Two without one are named, and pass
+        # (HB 9999 and HB 9998 have none); a third stops; and with a sponsor
+        # each, none is named. (made: a third record, and their sponsors)
+        third = put(put(put(brought, 1, "9997"), 10, "HB9997"), 9, "HB  9997")
+        got = judged(LSRs=r + [brought, second])
+        assert not got["stops"] and got["held"]["LSRs.txt"]["unsponsored"] == 2 and got["told"][
+            "LSRs.txt: new bill records with no sponsor in LsrSponsors.txt"][0] == (
+            "2026-9999 HB9999, relative to rebates to ratepayers from the renewable energy "
+            "fund."), (got["stops"], got["told"])
+        only(stops(LSRs=r + [brought, second, third]), "LSRs.txt: 3 new bill records have no "
+             "sponsor in LsrSponsors.txt, more than 2: 2026-9999 HB9999", "3 new bill records "
+             "with no sponsor")
+        got = judged(LSRs=r + [brought, second, third], LsrSponsors=tonight["LsrSponsors.txt"] + [
+            f"2026|{n}|1|35|1" for n in (9999, 9998, 9997)])
+        assert not got["stops"] and got["held"]["LSRs.txt"]["unsponsored"] == 0 and \
+            got["held"]["LSRs.txt"]["new"] == 3, (got["stops"], got["held"]["LSRs.txt"])
+        assert DF.LSR_UNSPONSORED_MOST == 2
+        # 50 new records under new request numbers and EXISTING bill numbers
+        # passed, and build_data.py keeps the last record of a number.
+        only(stops(LSRs=r + [put(brought, 10, "HB100")]), "LSRs.txt: 1 bill numbers are on more "
+             "than one bill record: HB100", "a new bill record under HB 100's number")
+        has(stops(LSRs=r + [put(r[0], 2, "another title")]), "LSRs.txt: 1 bill records are there "
+            "more than once: 2026 0038, 2 times", "a bill record twice")
 
         # ---- THE ROLL CALLS, at the real ceilings ---------------------------
-        # Senate roll call 49's move to SB 665 is one. Four more refiled make
-        # the five allowed; a fifth more stops. The checkers' case was all
-        # 419 under HB 1.
+        # Senate roll call 49's move to SB 665 is one. One more refiled makes
+        # the two allowed; a third stops. Five passed, and nobody was told
+        # which.
         s = tonight["RollCallSummary.txt"]
         others = [i for i, ln in enumerate(s) if ln.split("|")[2] != "49"]
 
         def refiled(n):
             return [put(put(ln, 4, "HB1"), 11, "Ought to Pass") if i in others[:n] else ln
                     for i, ln in enumerate(s)]
-        assert not stops(RollCallSummary=refiled(4)), "5 roll calls corrected stopped the night"
-        only(stops(RollCallSummary=refiled(5)), "RollCallSummary.txt: 6 installed roll calls read "
-             "otherwise in the database's, more than 5: 2026 S 45 bill 'SB566' now 'HB1'",
-             "6 roll calls were refiled under HB 1")
+        got = judged(RollCallSummary=refiled(1))
+        assert not got["stops"] and len(got["told"][
+            "RollCallSummary.txt: installed roll calls that read otherwise"]) == 2, got
+        only(stops(RollCallSummary=refiled(2)), "RollCallSummary.txt: 3 installed roll calls read "
+             "otherwise in the database's, more than 2: 2026 S 45 bill 'SB566' now 'HB1'",
+             "3 roll calls were refiled")
         # A tally is held to nothing changing, as it was.
         only(stops(RollCallSummary=[put(put(s[0], 5, "23"), 6, "1")] + s[1:]),
              "1 roll calls have other counts in the database: 2026 S 45 24-0-24-0 now 23-1-24-0",
              "a roll call's tally was changed")
-        # The ballots: its 24 were all Yea. Ten cast otherwise pass, the
-        # eleventh stops; and a ballot under another member is cast otherwise.
+        # THE BALLOTS. Roll call 49's 24 were all Yea, and its counts say 24
+        # to 0: one cast otherwise is a roll call whose ballots are not its
+        # counts. One Yea made a Nay on each of the ten closest roll calls
+        # passed, and changed ten tallies.
         h = tonight["RollCallHistory.txt"]
-        assert not stops(RollCallHistory=[put(ln, 6, "Nay") for ln in h[:10]] + h[10:]), \
-            "10 ballots corrected, the most allowed, stopped the night"
-        only(stops(RollCallHistory=[put(ln, 6, "Nay") for ln in h[:11]] + h[11:]),
-             "RollCallHistory.txt: 11 installed ballots are cast otherwise in the database's, or by "
-             "another member, more than 10: 2026 S 49 member 209076 35|Yea now 35|Nay",
-             "11 ballots were flipped")
-        only(stops(RollCallHistory=[put(ln, 4, "") for ln in h[:11]] + h[11:]),
-             "35|Yea now |Yea", "11 ballots lost their member")
-        assert (DF.ROLLCALLS_CHANGED_MOST, DF.BALLOTS_CHANGED_MOST) == (5, 10)
+        only(stops(RollCallHistory=[put(h[0], 6, "Nay")] + h[1:]), "1 roll calls' Yea and Nay "
+             "ballots are not their counts: 2026 S 49 says 24-0 and has 23 Yea and 1 Nay ballots",
+             "one ballot was flipped")
+        # Two cast by another member pass, and are named; a third stops.
+        got = judged(RollCallHistory=[put(ln, 4, "9999") for ln in h[:2]] + h[2:])
+        assert not got["stops"] and got["told"]["RollCallHistory.txt: installed ballots cast "
+                                                "otherwise"] == [
+            "2026 S 49 member 209076 35|Yea now 9999|Yea",
+            "2026 S 49 member 209091 43|Yea now 9999|Yea"], (got["stops"], got["told"])
+        only(stops(RollCallHistory=[put(ln, 4, "") for ln in h[:3]] + h[3:]),
+             "RollCallHistory.txt: 3 installed ballots are cast otherwise in the database's, or by "
+             "another member, more than 2: 2026 S 49 member 209076 35|Yea now |Yea",
+             "3 ballots lost their member")
+        # ROWS ADDED WERE NEVER JUDGED. Every ballot twice: 419 of 419 roll
+        # calls read otherwise, 321-2 as 642-4, and it was installed.
+        only(stops(RollCallHistory=h + h), "RollCallHistory.txt: 24 ballots are there more than "
+             "once: 2026 S 49 209076, 2 times", "every ballot twice")
+        # (made: a 25th ballot on roll call 49, of an employee number nobody has)
+        got = stops(RollCallHistory=h + [put(put(h[0], 3, "990000"), 4, "990000")])
+        assert len(got) == 2 and "RollCallHistory.txt: 1 ballots are on installed roll calls that " \
+            "did not have them: 2026 S 49 member 990000" in got[0] and \
+            "says 24-0 and has 25 Yea" in got[1], got
+        # A wrong roll call filed in FRONT of the right one: these guards
+        # kept the last copy of a key and rollcall_parser.py keeps the first.
+        wrong = put(put(s[0], 4, "HB1442"), 11, "Inexpedient to Legislate")
+        only(stops(RollCallSummary=[wrong] + s), "RollCallSummary.txt: 1 roll calls are there more "
+             "than once: 2026 S 45, 2 times", "a roll call's summary twice, the first wrong")
+        # A vote the export does not write: an unknown code passes through as
+        # its own digit.
+        has(stops(RollCallHistory=[put(h[0], 6, "8")] + h[1:]), "RollCallHistory.txt: 1 ballots "
+            "are no vote the export writes: 2026 S 49 member 209076 reads '8'", "a ballot of code 8")
+        assert (DF.ROLLCALLS_CHANGED_MOST, DF.BALLOTS_CHANGED_MOST) == (2, 2)
+        # A NEW ROLL CALL. The Senate's 27th of 2026 killed SB 532, 16 to 8,
+        # on 19 February: its summary row and its 24 ballots as the export
+        # has them (the ballots are roll call 49's senators, the eight who
+        # voted Nay marked). It passes, numbered under the chamber's top.
+        rc27 = ("2026|S|27|2/19/2026 12:00:00 AM|SB532|16|8|24|0|||Inexpedient to Legislate|"
+                "increasing the requirements of the education freedom savings account oversight "
+                "committee and modifying the purpose of the committee.||2/19/2026 5:03:22 PM")
+        nays = {"43", "9406", "9839", "9856", "10599", "10600", "11461", "11463"}
+        b27 = [put(put(put(put(ln, 2, "27"), 5, "SB532"), 7, "2/19/2026 5:03:22 PM"), 6,
+                   "Nay" if ln.split("|")[4] in nays else "Yea") for ln in h]
+        got = judged(RollCallSummary=s + [rc27], RollCallHistory=h + b27)
+        assert not got["stops"] and got["held"]["roll calls"] == {
+            "calls": 1, "ballots": 0, "new": 1, "strangers": 0}, (got["stops"], got["held"])
+        # An invented one was published as a veto overridden 300 to 19, and
+        # 300 with no ballots at all passed. Its ballots are its counts ...
+        only(stops(RollCallSummary=s + [rc27], RollCallHistory=h + b27[1:]), "1 roll calls' Yea and "
+             "Nay ballots are not their counts: 2026 S 27 says 16-8 and has 15 Yea and 8 Nay "
+             "ballots, a new roll call", "a new roll call a ballot short")
+        only(stops(RollCallSummary=s + [rc27]), "2026 S 27 says 16-8 and has 0 Yea and 0 Nay "
+             "ballots, a new roll call", "a new roll call with no ballots")
+        # ... it is numbered on from its chamber's last, 52 here ...
+        far = [put(ln, 2, "500") for ln in b27]
+        only(stops(RollCallSummary=s + [put(rc27, 2, "500")], RollCallHistory=h + far),
+             "RollCallSummary.txt: 1 new roll calls are numbered out of their chamber's run, which "
+             "stands at 52: 2026 S 500", "a new roll call numbered 500")
+        assert not stops(RollCallSummary=s + [put(rc27, 2, "194")],
+                         RollCallHistory=h + [put(ln, 2, "194") for ln in b27]) and \
+            DF.ROLLCALLS_NEW_MOST == 142, "a new roll call 142 past the chamber's last stopped"
+        # ... taken by the time the views were asked ...
+        only(stops(RollCallSummary=s + [put(rc27, 3, "10/4/2026 12:00:00 AM")],
+                   RollCallHistory=h + b27), "RollCallSummary.txt: 1 new roll calls were taken at "
+             "no time that reads as one, or after the views were asked: 2026 S 27 '10/4/2026 "
+             "12:00:00 AM'", "a new roll call dated two days ahead")
+        # ... with counts that are numbers, by members the roster's view knows ...
+        has(stops(RollCallSummary=s + [put(rc27, 7, "")], RollCallHistory=h + b27),
+            "RollCallSummary.txt: 1 new roll calls have a count that is not a number: 2026 S 27 "
+            "16-8--0", "a new roll call with a count missing")
+        only(stops(RollCallSummary=s + [rc27], RollCallHistory=h + [put(b27[0], 4, "")] + b27[1:]),
+             "RollCallHistory.txt: 1 new roll calls have a ballot of a member the roster's view "
+             "does not know: 2026 S 27", "a new roll call with a ballot of nobody")
+        # ... and no more of them than a day takes (71 is the most in 27
+        # years; 142 the ceiling, lowered to none here).
+        at(ROLLCALLS_NEW_MOST=0)
+        has(stops(RollCallSummary=s + [rc27], RollCallHistory=h + b27),
+            "RollCallSummary.txt: 1 new roll calls, more than 0: 2026 S 27", "one new roll call "
+            "against none")
+        at()
+        # On a "bill" no file knows it is named, and passes: a question on
+        # the House's own rules is filed under HRULE64. (made: roll call 27
+        # so filed)
+        ruled = put(rc27, 4, "HRULE64")
+        got = judged(RollCallSummary=s + [ruled], RollCallHistory=h + b27)
+        assert not got["stops"] and got["told"]["RollCallSummary.txt: new roll calls on a bill no "
+                                                "file knows"] == [
+            "2026 S 27 HRULE64 Inexpedient to Legislate"], (got["stops"], got["told"])
+        at(ROLLCALL_STRANGERS_MOST=0)
+        only(stops(RollCallSummary=s + [ruled], RollCallHistory=h + b27), "RollCallSummary.txt: 1 "
+             "new roll calls are on a bill that neither the docket nor LSRs.txt knows, more than "
+             "0: 2026 S 27 HRULE64", "a new roll call on an unknown bill against none")
+        at()
+        # Ballots on a roll call the summary does not hold.
+        only(stops(RollCallHistory=h + b27), "RollCallHistory.txt: 24 ballots are on a roll call "
+             "RollCallSummary.txt does not hold: 2026 S 27", "ballots with no roll call")
 
         # ---- THE ROSTER -------------------------------------------------
-        # The 24 senators, at the real ceiling of 8 for who a member is. (The
-        # e-mail addresses are made up, so that none a scraper could use is
-        # in the repository; the rest of each row is the General Court's.)
+        # The 24 senators. (The e-mail addresses are made up, so that none a
+        # scraper could use is in the repository; the rest of each row is
+        # the General Court's.) Who a member is: two may change, and are
+        # named; eight passed, and nobody was told which.
         p = tonight["legislators.txt"]
 
         def swapped(n):
             return [put(ln, 8, "D" if ln.split("|")[8].upper() == "R" else "R") for ln in p[:n]] + p[n:]
-        assert not stops(legislators=swapped(8)), "8 members' parties changed stopped the night"
-        only(stops(legislators=swapped(9)), "legislators.txt: 9 installed members have another "
-             "name, chamber, county, district or party in the database's, more than 8: member "
-             "11458, Rochefort|David||S|5|1|R now Rochefort|David||S|5|1|D",
-             "9 members' parties were swapped")
-        only(stops(legislators=[put(ln, 7, "1") for ln in p]), "more than 8",
+        got = judged(legislators=swapped(2))
+        assert not got["stops"] and got["told"]["legislators.txt: installed members with another "
+                                                "name, chamber, county, district or party"] == [
+            "member 11460, McGough|Tim||S|6|11|R now McGough|Tim||S|6|11|D",
+            "member 11461, Reardon|Tara||S|7|15|D now Reardon|Tara||S|7|15|R"], (got["stops"], got["told"])
+        only(stops(legislators=swapped(3)), "legislators.txt: 3 installed members have another "
+             "name, chamber, county, district or party in the database's, more than 2: member "
+             "11460, McGough|Tim||S|6|11|R now McGough|Tim||S|6|11|D",
+             "3 members' parties were swapped")
+        only(stops(legislators=[put(ln, 7, "1") for ln in p]), "more than 2",
              "every senator was put in district 1")
-        DF.ROSTER_TOUCHED_MOST = 3
-        assert not stops(legislators=[put(ln, 14, "") for ln in p[:3]] + p[3:]), \
-            "3 members without an e-mail address, the most allowed, stopped the night"
+        at(ROSTER_TOUCHED_MOST=3)
+        got = judged(legislators=[put(ln, 14, "") for ln in p[:3]] + p[3:])
+        assert not got["stops"] and got["told"]["legislators.txt: installed members with another "
+                                                "seat, address or e-mail"][0] == \
+            "member 11460, McGough|Tim: column 15", (got["stops"], got["told"])
         only(stops(legislators=[put(ln, 14, "") for ln in p[:4]] + p[4:]), "legislators.txt: 4 "
              "installed members changed in a column the build reads, more than 3",
              "4 members lost their e-mail address")
         # The mail label is read by nothing.
         assert not stops(legislators=[put(ln, 9, "another label") for ln in p])
-        DF.ROSTER_TOUCHED_MOST = was["ROSTER_TOUCHED_MOST"]
-        assert (DF.ROSTER_CHANGED_MOST, DF.ROSTER_TOUCHED_MOST) == (8, 40)
+        at()
+        assert (DF.ROSTER_CHANGED_MOST, DF.ROSTER_TOUCHED_MOST) == (2, 40)
+        # Who is on it. Four may leave and four join in a night, each named;
+        # eight former members marked sitting passed. (The 2% the count may
+        # move by is less than one senator of 24, so it is set aside here; it
+        # is tried on a roster of 100 in the check before this one. The
+        # senators have no row of LsrsOnly.txt that the fixture's others
+        # depend on but their own, which go with them.)
+        at(ROSTER_TOLERANCE=1.0)
+        mine = lambda who: [ln for ln in tonight["LsrsOnly.txt"]          # noqa: E731
+                            if ln.split("|")[1] not in {x.split("|")[0] for x in who}]
+        got = judged(legislators=p[4:], LsrsOnly=mine(p[:4]))
+        assert not got["stops"] and got["held"]["legislators.txt"]["left"] == 4 and got["told"][
+            "legislators.txt: installed members not on the database's roster"][0] == \
+            "member 11460, McGough|Tim||S|6|11|R", (got["stops"], got["told"])
+        only(stops(legislators=p[5:], LsrsOnly=mine(p[:5])), "legislators.txt: 5 installed members "
+             "not on the database's roster, more than 4: member 11459, McConkey|Mark||S|2|3|R",
+             "5 members left in a night")
+        # (made: former senators marked sitting)
+        back = [put(put(put(ln, 0, str(9000 + i)), 1, f"Former{i}"), 14, f"f{i}@example.gov")
+                for i, ln in enumerate(p[:5])]
+        got = judged(legislators=p + back[:4])
+        assert not got["stops"] and got["told"]["legislators.txt: members on the database's roster "
+                                                "and not the installed one"][0] == \
+            "member 9000, Former0|Tara||S|7|15|D", (got["stops"], got["told"])
+        only(stops(legislators=p + back), "legislators.txt: 5 members on the database's roster and "
+             "not the installed one, more than 4: member 9000, Former0|Tara||S|7|15|D",
+             "5 members joined in a night")
+        only(stops(legislators=p + [put(back[0], 1, "")]), "legislators.txt: 1 new members have no "
+             "last name, or a chamber that is neither H nor S", "a new member with no name")
+        at()
+        has(stops(legislators=p + [put(p[0], 8, "R")]), "legislators.txt: 1 members are there "
+            "more than once: 11461, 2 times", "a member twice, the second with another party")
+        assert DF.ROSTER_MOVED_MOST == 4
+
+        # ---- LsrSponsors.txt --------------------------------------------
+        # A row there last night is there tonight: five may go, and are
+        # named. 170 went, the sponsors of bills LsrsOnly.txt does not list.
+        sp = tonight["LsrSponsors.txt"]
+        got = judged(LsrSponsors=sp[5:])
+        assert not got["stops"] and got["held"]["LsrSponsors.txt"] == {"new": 0, "late": 0, "gone": 5} \
+            and got["told"]["LsrSponsors.txt: installed rows gone (year, request, place, member, "
+                            "prime)"] == sp[:5], (got["stops"], got["told"])
+        only(stops(LsrSponsors=sp[6:]), "LsrSponsors.txt: 6 installed rows are not in the "
+             "database's, more than 5: 2026|2187|1|43|1", "6 sponsors' rows gone")
+        # ROWS ADDED. 5,000 sponsors nobody had signed passed. A new row on a
+        # bill whose docket began more than 30 days before is a sponsor added
+        # to a bill long since introduced: five may be, and are named. SB
+        # 633's docket began in March, in the fixture. (made: senators who
+        # did not sponsor it)
+        added = [f"2026|2187|{10 + i}|{m}|0" for i, m in enumerate(
+            ("35", "8739", "9839", "9845", "10698", "10607"))]
+        got = judged(LsrSponsors=sp + added[:5])
+        label = ("LsrSponsors.txt: new rows on a bill whose docket began more than 30 days "
+                 "before (year, request, place, member, prime)")
+        assert not got["stops"] and got["held"]["LsrSponsors.txt"] == {"new": 5, "late": 5, "gone": 0} \
+            and got["told"][label] == added[:5], (got["stops"], got["held"], got["told"])
+        only(stops(LsrSponsors=sp + added), "LsrSponsors.txt: 6 new rows are on a bill whose docket "
+             "began more than 30 days before, more than 5: 2026|2187|10|35|0",
+             "6 sponsors added to SB 633")
+        # A sponsor of a bill made the day before is the bill's own. (made:
+        # HB 9999, its record and its first docket row)
+        new_bill = dict(Docket=d + [stray], LSRs=r + [brought])
+        got = judged(LsrSponsors=sp + [f"2026|9999|{i}|{m}|{int(i == 1)}" for i, m in enumerate(
+            ("35", "8739", "9839", "9845", "10698", "10607"), 1)], **new_bill)
+        assert not got["stops"] and got["held"]["LsrSponsors.txt"] == {"new": 6, "late": 0, "gone": 0}, \
+            (got["stops"], got["held"]["LsrSponsors.txt"])
+        at(SPONSORS_NEW_MOST=5)
+        only(stops(LsrSponsors=sp + [f"2026|9999|{i}|{m}|0" for i, m in enumerate(
+            ("35", "8739", "9839", "9845", "10698", "10607"), 1)], **new_bill),
+            "LsrSponsors.txt: 6 new rows, more than 5: 2026|9999|1|35|0", "6 new sponsors against 5")
+        at()
+        # Every row twice; a second prime sponsor.
+        has(stops(LsrSponsors=sp + sp), "LsrSponsors.txt: 18 sponsors' rows (year, request, member) "
+            "are there more than once: 2026 2083 11461, 2 times", "every sponsor's row twice")
+        has(stops(LsrSponsors=sp + ["2026|2187|10|35|1"]), "LsrSponsors.txt: 1 requests have more "
+            "than one prime sponsor: 2026-2187, 2", "a second prime sponsor of SB 633")
+        assert (DF.SPONSORS_GONE_MOST, DF.SPONSORS_LATE_MOST, DF.SPONSORS_NEW_MOST) == (5, 5, 2400)
 
         # ---- LsrsOnly.txt -----------------------------------------------
         # A sponsor of a numbered bill, a sitting member, is there tonight or
@@ -33932,6 +34427,8 @@ def _dayfiles_content(DF):
              "one sponsor of SB 632 was dropped")
         only(stops(LsrsOnly=[put(ln, 4, "Sponsor") for ln in o]), "LsrsOnly.txt: 4 installed rows",
              "no row was marked Prime")
+        has(stops(LsrsOnly=o + [o[0]]), "LsrsOnly.txt: 1 sponsors' rows (request, member) are "
+            "there more than once: 26-2083 11461, 2 times", "a sponsor's row twice")
         # The ten rows the view cannot give -- the senators' on the two
         # requests with no bill number -- are what the share that may go is
         # for. In the real file they are 13 of 6,963, inside its 2%; of these
@@ -33940,25 +34437,65 @@ def _dayfiles_content(DF):
         only(stops(bare), "LsrsOnly.txt: 10 installed rows with no bill number are not in the "
              "database's, more than 2% of the 28 rows of members still sitting",
              "10 of 28 rows gone, each with no bill number")
-        DF.SPONSORS_KEPT_LEAST = 0.5
+        at(SPONSORS_KEPT_LEAST=0.5)
         got = judged(bare)
         assert not got["stops"] and got["held"]["LsrsOnly.txt"] == {
-            "gone_numbered": 0, "gone_unnumbered": 10}, (got["stops"], got["held"]["LsrsOnly.txt"])
+            "gone_numbered": 0, "gone_unnumbered": 10, "new": 0}, (
+                got["stops"], got["held"]["LsrsOnly.txt"])
         only(stops(bare, LsrsOnly=o[1:]), "each on a numbered bill",
              "the allowance for rows with no bill number let a sponsor of a numbered bill go")
+        at()
+
+        # ---- WHAT NO EXPORT HOLDS ---------------------------------------
+        # A view written in another code page went through with every byte
+        # that would not decode replaced: U+FFFD in fifteen titles, two
+        # members' names and 96 sponsors' rows. Read as Windows-1252 and
+        # written back, a no-break space is two characters. Roll call 49's
+        # real title has a no-break space, and is no such thing.
+        assert "\u00a0" in tonight["RollCallSummary.txt"][4]
+        only(stops(legislators=[put(p[0], 1, "Choini\ufffdre")] + p[1:]), "legislators.txt: 1 "
+             "characters read in the wrong encoding, which the installed file has none of: "
+             "'11461|Choini\\ufffdre|Tara||S|", "a name with U+FFFD in it")
+        got = stops(RollCallSummary=[ln.replace("\u00a0", "\u00c2\u00a0") for ln in s])
+        assert len(got) == 1 and "RollCallSummary.txt: 1 characters read in the wrong encoding" \
+            in got[0] and "\\xc2\\xa0and ph" in got[0], got
+        has(stops(legislators=[put(p[0], 3, "NULL")] + p[1:]), "legislators.txt: 1 fields read "
+            "NULL, None, True or False, which no field of an export does: 11461|Reardon|Tara|NULL|S",
+            "a middle name that reads NULL")
+        has(stops(LsrSponsors=[put(ln, 4, {"1": "True", "0": "False"}[ln.split("|")[4]]) for ln in sp]),
+            "LsrSponsors.txt: 18 fields read NULL, None, True or False", "the prime flag as a word")
+
+        # ---- A NIGHT'S CEILINGS, and the nights the installed files have ---
+        assert [DF._ceiling(1000, n) for n in (1, 2, 3, 4, 5, 7, 10, 14, 30)] == [
+            1000, 1500, 1700, 2200, 2200, 2900, 3100, 3600, 3600], "SPAN moved"
+        assert [DF._nights(f) for f in ({}, None, {"nights": 3}, {"nights": True}, {"nights": 0},
+                                        {"nights": "4"})] == [1, 1, 3, 1, 1, 1]
+        assert judged(facts=dict(ASKED, nights=3))["held"]["nights"] == 3 and \
+            "the installed files are 3 nights old, and a night's ceilings are 1.7 times a day's" in \
+            "\n".join(DF.held_said(judged(facts=dict(ASKED, nights=3))["held"]))
     finally:
-        for name, value in was.items():
-            setattr(DF, name, value)
-    assert (DF.DOCKET_NEW_A_DAY_MOST, DF.DOCKET_CITED_MOST, DF.DOCKET_REWORDED_MOST,
-            DF.DOCKET_GONE_MOST, DF.LSR_NEW_MOST, DF.LSR_REWRITTEN_MOST, DF.LSR_CHANGED_MOST,
-            DF.SPONSORS_KEPT_LEAST) == (1000, 1000, 100, 25, 400, 170, 700, 0.98), \
-        "a ceiling moved: each is twice the busiest real day measured on 2 October 2026"
-    return "ok", ("a night of real rows passes and says what it counted; a stranger's row, an "
-                  "unread or backdated entry time, a sixth row in a day, a fourth citation, a "
-                  "second rewording, three records rewritten or four changed, a second new "
-                  "record, a sixth roll call refiled, an eleventh ballot flipped, a ninth member's "
-                  "party, a fourth e-mail address and one sponsor of a numbered bill each stop it "
-                  "alone")
+        at()
+    assert (DF.DOCKET_NEW_A_DAY_MOST, DF.DOCKET_LATE_MOST, DF.DOCKET_AHEAD_MOST,
+            DF.DOCKET_CITED_MOST, DF.DOCKET_MARKED_MOST, DF.DOCKET_REWORDED_MOST,
+            DF.DOCKET_GONE_MOST, DF.LSR_NEW_MOST, DF.LSR_RETITLED_MOST, DF.LSR_REWRITTEN_MOST,
+            DF.LSR_CHANGED_MOST, DF.LSR_UNBACKED_MOST, DF.ROLLCALL_STRANGERS_MOST,
+            DF.SPONSORS_KEPT_LEAST) == (1000, 40, 80, 1000, 100, 40, 5, 400, 40, 170, 700, 5, 10,
+                                        0.98), \
+        "a ceiling moved: each is twice the busiest real day measured on 2 October 2026, or a " \
+        "handful above a measured nothing"
+    assert (DF.LSR_ACTIVE_DAYS, DF.SPONSOR_LATE_DAYS, DF.DOCKET_AHEAD_SLACK,
+            DF.ROLLCALL_AHEAD_SLACK) == (timedelta(days=14), timedelta(days=30),
+                                         timedelta(days=14), timedelta(days=1))
+    return "ok", ("a night of real rows passes, says what it counted and names the two rows that "
+                  "changed; a Senate row entered late passes and is named, a House one stops; a "
+                  "stranger's row, one with no words, an unread entry time, a row a year ahead, "
+                  "a sixth row in a day or a ninth in a night, a row six times, a fourth "
+                  "citation, a second rewording, a record changed at rest beyond a handful, "
+                  "another bill number, a second new title, a ballot flipped, added or twice, a "
+                  "roll call filed twice, a new one whose ballots are not its counts, a third "
+                  "member's party, a fifth member joined or left, six sponsors gone or added to "
+                  "an old bill, a character in the wrong encoding and a field that reads NULL "
+                  "each stop it")
 
 
 class _DbdayProc:
@@ -34534,6 +35071,12 @@ def _nightly_falls_back(NI, DF, PD, SG):
       - it does not start with a refusal on file, or one met during the tries,
         with a hold on the SQL host on file, on a New term run, when the
         export failed some other way, or with no installed files
+      - a night that installs under a ceiling says how many rows differed
+        and where they are named, and names them in its verdict and its log
+        and nowhere on its page; a night its checks stop says how many
+        stopped it, where they are named, that the site is as it was and
+        that the same check will stop the next night, and the second such
+        night running is an error on the page
       - all or none: a failed or short view, a connection that fails, a guard
         that fires -- on a bill gone, or on what a row says: a docket row
         dated a year back, or under a bill no file knows -- or files much
@@ -34740,10 +35283,12 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert all(d["new"] == 0 and d["gone"] == 0 for d in df["differences"].values()), df
         # ... and what each content guard counted, fired or not, so that a
         # ceiling can be set from what a session's nights really bring.
-        assert df["held"]["Docket.txt"] == {"new": 0, "busiest_day": None, "cited": 0,
-                                            "reworded": 0, "gone": 0} and \
-            df["held"]["roll calls"] == {"calls": 0, "ballots": 0} and \
-            df["held"]["LSRs.txt"]["unread"] == {}, df.get("held")
+        assert df["held"]["Docket.txt"] == {
+            "new": 0, "busiest_day": None, "late": 0, "ahead": 0, "cited": 0, "marked": 0,
+            "reworded": 0, "gone": 0, "twice": 0} and \
+            df["held"]["roll calls"] == {"calls": 0, "ballots": 0, "new": 0, "strangers": 0} and \
+            df["held"]["LSRs.txt"]["unread"] == {} and df["held"]["nights"] == 1 and \
+            df["told"] == {}, (df.get("held"), df.get("told"))
         for name in DF.DAY_FILES:
             assert Path(name).read_bytes() == _dbday_bytes(want[name]), \
                 f"{name} installed from the database is not what the views make"
@@ -34969,8 +35514,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
                  "2026|10||01/06/2025 08:32:24|HB54|H|Signed by Governor 01/02/2025|NHLMS|15|"
                  "01/01/2200 00:00:00|99000001",
                  "Docket.txt: 1 new rows were entered more than 14 days before the installed "
-                 "file's newest (2026-02-04 15:30:58): 2026|0010|1/6/2025 8:32:24 AM|HB54|H|Signed "
-                 "by Governor 01/02/2025", "324b"),
+                 "file's newest (2026-02-04 15:30:58), and are not the Senate's late entries -- a "
+                 "House row, or one older than its bill's first: 2026|0010|1/6/2025 8:32:24 AM|"
+                 "HB54|H|Signed by Governor 01/02/2025", "324b"),
                 ("a docket row under a bill no file knows",
                  "2026|9999||02/05/2026 09:00:00|HB9999|H|Executive Session: 02/12/2026 10:00 am "
                  "LOB 301-303|NHLMS|99|01/01/2200 00:00:00|99000002",
@@ -34985,6 +35531,92 @@ def _nightly_falls_back(NI, DF, PD, SG):
                 "HB9999" not in NI.plain_why(v), (
                 "a guard's sentence, with a row of the record in it, reached the public page: "
                 + NI.plain_why(v))
+        # WHAT A STOPPED NIGHT SAYS. Its page said only that what came back
+        # "did not pass the night's checks". It says how many stopped it and
+        # where they are named, that the site is as it was, and that the same
+        # check will stop the next night: the files tonight's are compared
+        # with have not moved. Three nights running were stopped here (324,
+        # 324b, 324c), and from the second that is an error on the page.
+        why = NI.plain_why(v)
+        assert why.endswith(
+            " The General Court's database is the fallback, and what came back from it did not "
+            "pass the night's checks against the installed files. One check stopped it, named "
+            "in the night's verdict (day_files, stops) and in its log. The site still serves the "
+            "last build published. The files tonight's were compared with have not moved, so "
+            "the same check stops the fallback every night until the export returns or a person "
+            "decides: this is night 3 in a row. Nothing was published."), why
+        assert v["db_stopped"] == 3 and v["db_nights"] == 0 and len(v["alarms"]) == 1 and \
+            v["alarms"][0].startswith(
+                "the fallback on the General Court's database has been stopped by the night's "
+                "own checks 3 nights in a row") and v["alarms"][0] in v["not_clean"] and \
+            NI.DB_STOPPED_MOST == 2, (v.get("db_stopped"), v.get("alarms"))
+        first = failed_night("the fallback's first stopped night", "guard", "324d", views={
+            "Docket": [r for r in _DBDAY_VIEWS["Docket"] if "SB416" not in r]})
+        # (Two checks stop that one: the bill is gone, and the newest entry
+        # with it. It follows three, so it is the fourth.)
+        assert first["db_stopped"] == 4 and len(first["day_files"]["stops"]) == 2 and \
+            " 2 checks stopped it, each named in the night's verdict (day_files, stops) and in " \
+            "its log." in NI.plain_why(first) and "night 4 in a row" in NI.plain_why(first), \
+            NI.plain_why(first)
+        # A night either source installs starts the count again, and a night
+        # that failed another way leaves it.
+        v = failed_night("a view wrote fewer rows than the server counted", "short", "324e",
+                         entries={"Sponsors": {"count": 9, "rows": 7}})
+        assert v["db_stopped"] == 4 and not v["alarms"], (v.get("db_stopped"), v.get("alarms"))
+        reset()
+        code, _ = night("--runner", run_id="324f")
+        v = verdict()
+        assert code == 0 and v["db_stopped"] == 0 and v["db_nights"] == 1 and not v["alarms"], v
+        v = failed_night("the first stopped night after one that installed", "guard", "324g", views={
+            "Docket": [r for r in _DBDAY_VIEWS["Docket"] if "SB416" not in r]})
+        # The first of a run is no error yet, and its page counts no nights.
+        assert v["db_stopped"] == 1 and not v["alarms"] and "in a row" not in NI.plain_why(v) and \
+            NI.plain_why(v).endswith("until the export returns or a person decides. Nothing was "
+                                     "published."), (v.get("db_stopped"), NI.plain_why(v))
+        assert NI.db_stopped_of({"kind": "nightly", "db_stopped": 3}) == 3 and \
+            NI.db_stopped_of({"kind": "weekly", "db_stopped": 3}) == 0 and NI.db_stopped_of(None) == 0
+
+        # WHAT AN INSTALLED NIGHT NAMES. A member's party differs from the
+        # installed roster's: one, under the ceiling of two, so the night
+        # installs. Its warning says how many and where each is named; the
+        # verdict names her; the run's page, which is public, does not.
+        reset()
+        summary.unlink(missing_ok=True)
+        os.environ.update(GITHUB_ACTIONS="true", GITHUB_STEP_SUMMARY=str(summary))
+        try:
+            knob["views"] = {"Legislators": [r.replace("|08|13|R|", "|08|13|D|")
+                                             for r in _DBDAY_VIEWS["Legislators"]]}
+            code, _ = night("--runner", run_id="324h")
+            page = summary.read_text(encoding="utf-8")
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+            os.environ.pop("GITHUB_STEP_SUMMARY", None)
+        v = verdict()
+        label = ("legislators.txt: installed members with another name, chamber, county, district "
+                 "or party")
+        assert code == 0 and v["clean"] and v["day_files"]["told"] == {label: [
+            "member 101, Alder|Ann|B|H|8|13|R now Alder|Ann|B|H|8|13|D"]} and v["warnings"][1] == (
+            f"{label}: 1, each named in the night's verdict (day_files, told) and in its "
+            "what-changed report"), (code, v["not_clean"], v["day_files"].get("told"), v["warnings"])
+        assert f"- warning: {label}: 1, each named" in page and "Alder" not in page, (
+            "a night's page does not say what it let through, or names a member: " + page)
+        log = Path(f"logs/nightly-{today}.log").read_text(encoding="utf-8")
+        assert "member 101, Alder|Ann|B|H|8|13|R now Alder|Ann|B|H|8|13|D" in log
+
+        # HOW OLD THE INSTALLED FILES ARE: the days since the archive last
+        # had this docket as the General Court's newest, or as a database
+        # night's copy; one when it cannot say, which is the strictest.
+        reset()                 # the export's docket again, which no database night's copy is
+        digest = hashlib.sha256(Path("Docket.txt").read_bytes()).hexdigest()
+        assert NI.nights_since("nh-archive", b"some other docket", "2026-10-05") == 1
+        for day in ("2026-09-29", "2026-10-01"):
+            (Path("nh-archive/snapshots") / day).mkdir(parents=True, exist_ok=True)
+            (Path("nh-archive/snapshots") / day / "Docket.txt.sha256").write_text(
+                digest + "\n", encoding="utf-8")
+        assert NI.nights_since("nh-archive", Path("Docket.txt").read_bytes(), "2026-10-05") == 4 and \
+            NI.nights_since("nh-archive", Path("Docket.txt").read_bytes(), "2026-10-02") == 1 and \
+            NI.nights_since("nh-archive", Path("Docket.txt").read_bytes(), "2026-10-01") == 2, (
+            "the nights since the installed docket was last the General Court's newest")
         # Much smaller than the copy installed: snapshot_gencourt's own rule.
         reset()
         Path("Members.txt").write_bytes(_dbday_bytes(_DBDAY_EXPORT["Members.txt"] * 40))
@@ -35027,7 +35659,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
                   "failed view, a guard or the shrink rule and nothing is installed; seven "
                   "nights is an error and the build still goes out, and a night that never "
                   "started keeps the count; a held host on a night the export is whole is a "
-                  "warning and the build goes out")
+                  "warning and the build goes out; a night under a ceiling names what differed "
+                  "in its verdict and its log and not on its page; a night its checks stop says "
+                  "how many and where they are named, and the second running is an error")
 
 
 @check("build", "the what-changed report compares a database night on the columns both sources "
@@ -35210,15 +35844,23 @@ def _gc_changes_db_night(GC, DF):
         before = GC.blob(index["Docket.txt"]["history"][-2][1])
         assert len(GC.docket(before, back)[0]) == 2, "the fixture is not one where the export before would repeat a line"
         # Its bill records: HB 54 has a hearing in another room, which a page
-        # shows, and SB 416's House status code has moved, which none does.
+        # shows; SB 416's House status code has moved, which none does; and
+        # so has its Senate status code. That one is the General Court's own
+        # change -- the database night's copy carried the export's code, not
+        # the view's -- and, compared without the column, it was in neither
+        # list (SB 532's 09 to 13, in the reviewer's run).
         moved = [ln.split("|") for ln in _DBDAY_EXPORT["LSRs.txt"]]
-        assert (moved[1][10], moved[1][32], moved[2][10], moved[2][16]) == (
-            "HB54", "SH Room 100", "SB416", "07")
-        moved[1][32], moved[2][16] = "SH Room 103", "04"
+        assert (moved[1][10], moved[1][32], moved[2][10], moved[2][16], moved[2][24]) == (
+            "HB54", "SH Room 100", "SB416", "07", "12")
+        moved[1][32], moved[2][16], moved[2][24] = "SH Room 103", "04", "13"
         export("2026-10-10", "LSRs.txt", ["|".join(f) for f in moved])
         md = GC.report()
-        assert "From the General Court's bulk files" in md and \
-            "built from the General Court's database, on the night of 2026-10-09" in md, md[:600]
+        AFTER = ("The older side is a database night's copy: compared on the columns both sources "
+                 "carry, so what that night reported is not repeated here.")
+        # Said under each section it is true of, and of no other: the roll
+        # calls here are still one export against nothing.
+        assert "From the General Court's bulk files" in md and md.count(AFTER) == 2 and \
+            md.count(f"(from the database 2026-10-09 -> archived 2026-10-10)\n{AFTER}\n") == 2, md[:900]
         assert "## Docket: 1 new lines on 1 bills" in md and "Chapter 301" in md and \
             "Signed by Governor" not in md and "Committee Report" not in md and \
             "(from the database 2026-10-09 -> archived 2026-10-10)" in md, (
@@ -35226,15 +35868,31 @@ def _gc_changes_db_night(GC, DF):
                 "or was not compared with its copy: " + md[:900])
         assert "## Bill records: 0 new, 1 changed" in md and \
             "changed, by what changed:\n- hearing room (1): HB54" in md and \
-            "not counted: 1 that differ only in columns no page is built from" in md and \
-            "- House status code (1): SB416" in md, md[-700:]
+            "not counted: 1 that differ from the database night's copy only in columns no page " \
+            "is built from (the Senate status code there was the export's own; the rest were " \
+            "the database's word):\n- House status code, Senate status code (1): SB416" in md and \
+            "one source's word against the other's" not in md and \
+            "What the night's checks counted" not in md, md[-900:]
         # Between two exports every column is the export's own, and each
         # change is counted and named: the same two records, an export apart.
         new_bills, changed, cols = GC.lsrs(_dbday_bytes(_DBDAY_EXPORT["LSRs.txt"]),
                                            _dbday_bytes(["|".join(f) for f in moved]))
-        assert (new_bills, changed, cols) == ([], ["HB54", "SB416"], {"HB54": [32], "SB416": [16]}) \
+        assert (new_bills, changed, cols) == ([], ["HB54", "SB416"],
+                                              {"HB54": [32], "SB416": [16, 24]}) \
             and GC.by_columns(changed, cols, DF.LSR_NAMES) == [
-                "- House status code (1): SB416", "- hearing room (1): HB54"], (changed, cols)
+                "- House status code, Senate status code (1): SB416", "- hearing room (1): HB54"], (
+                    changed, cols)
+        # The export night after THAT compares two exports, and says nothing
+        # of a database night above a section that has none in it: the bill
+        # records, which did not change, are still set against the copy.
+        export("2026-10-12", "Docket.txt", _DBDAY_EXPORT["Docket.txt"] + [
+            "2026|0010|10/11/2026 2:00:00 PM|HB54|S|Effective 01/01/2027|10/11/2026 2:00:00 PM"])
+        later = GC.report()
+        assert "(archived 2026-10-10 -> archived 2026-10-12)\n\n" in later and \
+            later.count(AFTER) == 1 and later.index(AFTER) > later.index("## Bill records"), later[:900]
+        index["Docket.txt"]["history"].pop()
+        index["Docket.txt"]["last_sha256"] = index["Docket.txt"]["history"][-1][1]
+        (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
         # A DATABASE NIGHT'S OWN REPORT says the same of its own files. The
         # night of the 11th: the view has SB 416's House status code back at
         # 07, as on 2 October the real one had 16 bills', and nothing else
@@ -35252,6 +35910,61 @@ def _gc_changes_db_night(GC, DF):
         assert set(DF.LSR_READ) == {0, 1, 2, 3, 5, 6, 7, 10, 12, 13, 21, 31, 32}, (
             "the columns of LSRs.txt the build reads are build_data.py's thirteen; a report "
             f"counts a change in these and no other on a database night: {DF.LSR_READ}")
+
+        # WHAT THE NIGHT'S CHECKS COUNTED. Under a ceiling a few rows may
+        # differ from the installed ones and the night install: a member's
+        # party, a sponsor's row gone. Its page says how many. Which ones is
+        # said here, from the same judge() on the same two sets of files:
+        # all seven that the night installed, and the seven they replaced.
+        GC.ARCHIVE = tmp / "seven"
+        (GC.ARCHIVE / "store").mkdir(parents=True)
+        index, replaced = {}, {}
+        for name in DF.DAY_FILES:
+            data = _dbday_bytes(_DBDAY_EXPORT[name])
+            replaced[name] = hashlib.sha256(data).hexdigest()
+            with gzip.open(GC.ARCHIVE / "store" / f"{replaced[name]}.gz", "wb") as fh:
+                fh.write(data)
+            index[name] = {"last_sha256": replaced[name], "history": [["2026-09-30", replaced[name]]]}
+        (GC.ARCHIVE / "index.json").write_text(json.dumps(index), encoding="utf-8")
+
+        def seven(day, **other):
+            (GC.ARCHIVE / "from-db" / day).mkdir(parents=True)
+            for name in DF.DAY_FILES:
+                with gzip.open(GC.ARCHIVE / "from-db" / day / f"{name}.gz", "wb") as fh:
+                    fh.write(_dbday_bytes(other.get(name.split(".")[0], want[name])))
+            (GC.ARCHIVE / "from-db" / day / "source.json").write_text(json.dumps(
+                {"day": day, "asked": "2026-10-02T09:55:27", "nights": 2, "replaced": replaced}),
+                encoding="utf-8")
+        seven("2026-10-02")
+        md = GC.report(db_night="2026-10-02")
+        assert "## What the night's checks counted" in md and \
+            "Nothing under a ceiling needed naming." in md and \
+            "- the installed files are 2 nights old" in md, md[-900:]
+        seven("2026-10-03", LsrSponsors=want["LsrSponsors.txt"][1:], legislators=[
+            ln.replace("|8|13|R|", "|8|13|D|") for ln in want["legislators.txt"]])
+        md = GC.report(db_night="2026-10-03")
+        assert ("### legislators.txt: installed members with another name, chamber, county, "
+                "district or party\n\n```\nmember 101, Alder|Ann|B|H|8|13|R now "
+                "Alder|Ann|B|H|8|13|D\n```") in md and \
+            ("### LsrSponsors.txt: installed rows gone (year, request, place, member, prime)"
+             "\n\n```\n2026|10|3|43|0\n```") in md and \
+            "Nothing under a ceiling needed naming." not in md and \
+            "A check that stops this pair" not in md, md[-1200:]
+        # The files are installed by the time the report is written, and a
+        # report not written makes the night unclean: if the checks cannot
+        # be read again here, the section says so and the rest stands.
+        judge = DF.judge
+
+        def broken(*_a, **_k):
+            raise RuntimeError("fixture")
+        DF.judge = broken
+        try:
+            md = GC.report(db_night="2026-10-03")
+        finally:
+            DF.judge = judge
+        assert "## Docket: 0 new lines" in md and "## What the night's checks counted" in md and \
+            "Not read here (RuntimeError): the night's verdict has them, under day_files, held " \
+            "and told." in md, md[-600:]
     finally:
         GC.ARCHIVE = saved
         shutil.rmtree(tmp, ignore_errors=True)
@@ -35261,7 +35974,9 @@ def _gc_changes_db_night(GC, DF):
                   "columns and the bill record without its Senate status code; the heading says "
                   "the files came from the database; a record changed only in a column no page "
                   "reads is named and not counted; the export night after tells the one new "
-                  "docket line, not the two a comparison with the export before it would")
+                  "docket line, not the two a comparison with the export before it would, and "
+                  "a Senate status code that moved; a database night's report names the rows "
+                  "its checks counted under a ceiling")
 
 
 def _dbday_from_dump(DF, db, out, installed):
@@ -35348,22 +36063,30 @@ def _dayfiles_pair(DF):
                      "; the lookup views are not in db/ here, so they were not compared"))
 
 
-@check("data", "the checkers' doctored files, made again from the real pair, each stop a database "
-       "night at the real ceilings", needs=("dayfiles_from_db",))
+@check("data", "the checkers' and the reviewers' doctored files, made again from the real pair, "
+       "each stop a database night at the real ceilings", needs=("dayfiles_from_db",))
 def _dayfiles_pair_doctored(DF):
     """On 2 October 2026 two checkers doctored copies of the files the one
     supervised test had rebuilt, and seven of the ten ways passed every
     guard: a wrong House committee and title on a third of the bills, 250
     docket rows reworded to a false outcome, 5,000 invented docket rows, a
     docket row dated back, every member's party swapped, every Yea and Nay
-    swapped, every roll call filed under HB 1.
+    swapped, every roll call filed under HB 1. The guards were made to hold
+    what the files say; and two reviewers then doctored the views 130 ways,
+    and what still installed was whatever was ADDED, or twice, or under a
+    ceiling that was a guess: every ballot twice, a wrong roll call filed in
+    front of the right one, ballots added to a roll call, an invented roll
+    call, 500 sponsors nobody signed, 20,000 docket rows spread over three
+    weeks, a row stamped a year ahead, the last 25 signings gone, 100
+    outcomes turned round, 100 subject codes, two bills' numbers exchanged,
+    eight members' parties, one Yea made a Nay on ten roll calls.
 
-    The same ten are made here from the pair that stays on this disk -- the
+    All of them are made here from the pair that stays on this disk -- the
     seven files rebuilt from the dump of 8 September, against the export of
-    the 6th -- with no ceiling lowered, and an eleventh from the second
-    checker: the docket 200 rows short of the installed one with its newest
-    entry still there, which the old 1% let through. Each stops the night,
-    and names the file. The files as rebuilt stop nothing.
+    the 6th -- with no ceiling lowered. Each stops the night, and names the
+    file. The files as rebuilt stop nothing and name nothing; and a Senate
+    row with an old entry time, which is what the Senate's own late entries
+    are, passes and is named.
 
     _dayfiles_content tries each guard at its edge on a few real rows; this
     holds the ceilings as they stand to the whole of the real files.
@@ -35381,7 +36104,13 @@ def _dayfiles_pair_doctored(DF):
         files, facts = DF.rebuild("db", tmp, need_source=False)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    assert not DF.judge(files, was, facts)["stops"], "the pair as rebuilt was stopped"
+    facts = dict(facts, asked="2026-09-08T20:55:00")        # when the dump was taken
+    whole = DF.judge(files, was, facts)
+    assert not whole["stops"] and not whole["told"], (
+        f"the pair as rebuilt was stopped, or named a row: {whole['stops']} {whole['told']}")
+    # Each file as its rows, split once: 25 nights are judged below.
+    files = {n: DF.export_lines(files[n], DF.WIDTH[n]) for n in DF.DAY_FILES}
+    was = {n: DF.export_lines(was[n], DF.WIDTH[n]) for n in DF.DAY_FILES}
 
     def put(ln, **cols):
         f = ln.split("|")
@@ -35392,18 +36121,34 @@ def _dayfiles_pair_doctored(DF):
     def third(ls):
         return [put(ln, c13="H99", c2="WRONG TITLE") if i % 3 == 0 else ln for i, ln in enumerate(ls)]
 
-    def reworded(ls):
-        out = list(ls)
-        for i in random.Random(7).sample(range(len(out)), 250):
-            out[i] = put(out[i], c5="Inexpedient to Legislate: MA VV 01/01/2026")
-        return out
+    def some(n, **cols):
+        """`cols` put on `n` rows, picked the same way every time."""
+        def go(ls):
+            out = list(ls)
+            for i in random.Random(7).sample(range(len(out)), n):
+                out[i] = put(out[i], **cols)
+            return out
+        return go
 
     def flood(ls):
-        return ls + [put(ln, c5="Ought to Pass: MA VV 10/02/2026", c2="10/2/2026 9:00:00 AM",
-                         c6="10/2/2026 9:00:00 AM") for ln in ls[:5000]]
+        return ls + [put(ln, c5="Ought to Pass: MA VV 09/08/2026", c2="9/8/2026 9:00:00 AM",
+                         c6="9/8/2026 9:00:00 AM") for ln in ls[:5000]]
 
-    def backdated(ls):
-        return ls + [put(ls[100], c5="Signed by Governor 01/02/2025")]
+    def spread(ls):
+        """20,000 rows on real bills, 953 to a day, from the day after the
+        installed file's newest entry on."""
+        out = list(ls)
+        for i, ln in enumerate(ls[:20000]):
+            day = 5 + i // 953
+            out.append(put(ln, c5="Signed by Governor Ayotte; Chapter 999", c6="",
+                           c2=f"9/{day}/2026 {1 + i % 11}:{i % 60:02d}:{i // 60 % 60:02d} PM"))
+        return out
+
+    def dated(chamber, when):
+        def go(ls):
+            return ls + [put(next(ln for ln in ls[100:] if ln.split("|")[4] == chamber),
+                             c5="Signed by Governor 01/02/2025", **({"c2": when} if when else {}))]
+        return go
 
     def short(ls):
         """One row gone of each of 200 bills that hold ten or more."""
@@ -35418,6 +36163,19 @@ def _dayfiles_pair_doctored(DF):
         assert len(seen) == 200
         return out + ls[-1:]
 
+    def unsigned(ls):
+        """The last 25 signings gone."""
+        gone = [i for i, ln in enumerate(ls) if "Signed by Governor" in ln.split("|")[5]][-25:]
+        assert len(gone) == 25
+        return [ln for i, ln in enumerate(ls) if i not in set(gone)]
+
+    def turned(ls):
+        """100 outcomes turned round."""
+        at = [i for i, ln in enumerate(ls) if ln.split("|")[5].startswith("Ought to Pass:")][:100]
+        assert len(at) == 100
+        return [put(ln, c5=ln.split("|")[5].replace("Ought to Pass:", "Inexpedient to Legislate:"))
+                if i in set(at) else ln for i, ln in enumerate(ls)]
+
     def twenty_bills(ls):
         seen = []
         for ln in ls:
@@ -35426,47 +36184,127 @@ def _dayfiles_pair_doctored(DF):
                 seen.append(b)
         return [ln for ln in ls if ln.split("|")[5] not in seen]
 
-    def swap(at, a, b):
+    def swap(at, a, b, most=None):
         def go(ls):
-            return [put(ln, **{f"c{at}": {a: b, b: a}.get(ln.split("|")[at], ln.split("|")[at])})
-                    for ln in ls]
+            out, n = [], 0
+            for ln in ls:
+                x = ln.split("|")[at]
+                if x in (a, b) and (most is None or n < most):
+                    ln = put(ln, **{f"c{at}": {a: b, b: a}[x]})
+                    n += 1
+                out.append(ln)
+            return out
         return go
+
+    def exchanged(ls):
+        a, b = ls[0].split("|"), ls[1].split("|")
+        return [put(ls[0], c10=b[10], c9=b[9]), put(ls[1], c10=a[10], c9=a[9])] + ls[2:]
+
+    def one_each(ls):
+        """One Yea made a Nay on each of ten roll calls."""
+        out, seen = [], set()
+        for ln in ls:
+            f = ln.split("|")
+            if f[6] == "Yea" and tuple(f[:3]) not in seen and len(seen) < 10:
+                seen.add(tuple(f[:3]))
+                ln = put(ln, c6="Nay")
+            out.append(ln)
+        return out
+
+    def more_ballots(ls):
+        return ls + [put(ls[0], c3=str(990000 + i), c4=str(990000 + i)) for i in range(30)]
+
+    def invented(ls):
+        top = max(int(ln.split("|")[2]) for ln in ls if ln.split("|")[1] == "H")
+        return ls + [put(ls[0], c2=str(top + 1), c5="300", c6="19")]
+
+    def signed_by_nobody(ls):
+        """500 sponsors: each of the first 25 members, on 20 requests they
+        did not sponsor."""
+        have = {(f[1], f[3]) for f in (ln.split("|") for ln in ls)}
+        members = list(dict.fromkeys(ln.split("|")[3] for ln in ls))[:25]
+        requests = list(dict.fromkeys(ln.split("|")[1] for ln in ls))
+        out = []
+        for m in members:
+            mine = [r for r in requests if (r, m) not in have][:20]
+            out += [f"2026|{r}|{90 + j % 9}|{m}|0" for j, r in enumerate(mine)]
+        assert len(out) == 500
+        return ls + out
     doctored = [
         ("a wrong House committee and title on a third of the bills", "LSRs.txt", third,
-         "LSRs.txt: 463 installed bill records hold another value, or none"),
-        ("250 docket rows reworded to a false outcome", "Docket.txt", reworded,
-         "installed rows are reworded in the database's, more than 100"),
+         "LSRs.txt: 463 installed bill records have another title, more than 40"),
+        ("250 docket rows reworded to a false outcome", "Docket.txt",
+         some(250, c5="Inexpedient to Legislate: MA VV 01/01/2026"),
+         "Docket.txt: 250 installed rows are reworded in the database's, more than 40"),
         ("5,000 invented docket rows", "Docket.txt", flood,
-         "Docket.txt: 5,000 new rows entered on 2026-10-02, more than the 1,000 a day brings"),
-        ("a docket row dated back", "Docket.txt", backdated,
-         "Docket.txt: 1 new rows were entered more than 14 days before"),
+         "Docket.txt: 5,000 new rows entered on 2026-09-08, more than the 1,000 a day brings"),
+        ("20,000 invented docket rows, 953 to a day", "Docket.txt", spread,
+         "Docket.txt: 20,000 new rows, more than the 1,000 that 1 night brings"),
+        ("a House docket row dated back", "Docket.txt", dated("H", None),
+         "Docket.txt: 1 new rows were entered more than 14 days before the installed file's "
+         "newest (2026-09-04"),
+        ("a docket row stamped a year ahead", "Docket.txt", dated("H", "9/8/2027 9:00:00 AM"),
+         "Docket.txt: 1 new rows are entered more than 14 days after the views were asked"),
         ("the docket 200 rows short, its newest still there", "Docket.txt", short,
-         "Docket.txt: 200 installed rows are not in the database's, more than 25"),
+         "Docket.txt: 200 installed rows are not in the database's, more than 5"),
+        ("the last 25 signings gone from the docket", "Docket.txt", unsigned,
+         "Docket.txt: 25 installed rows are not in the database's, more than 5"),
+        ("100 docket outcomes turned round", "Docket.txt", turned,
+         "Docket.txt: 100 installed rows are reworded in the database's, more than 40"),
+        ("100 subject codes changed", "LSRs.txt", some(100, c12="ZZZ"),
+         "installed bill records changed where the build reads them with nothing in the docket"),
+        ("two bills' numbers exchanged", "LSRs.txt", exchanged,
+         "LSRs.txt: 2 installed bill records have another chamber or bill number"),
         ("every sponsor of 20 bills gone", "LsrsOnly.txt", twenty_bills,
          "installed rows of members still sitting, each on a numbered bill"),
         ("no sponsor marked Prime", "LsrsOnly.txt",
          lambda ls: [put(ln, c4="Sponsor") for ln in ls],
          "installed rows of members still sitting, each on a numbered bill"),
         ("the prime flag cleared on every sponsor", "LsrSponsors.txt",
-         lambda ls: [put(ln, c4="0") for ln in ls], "LsrSponsors.txt keeps "),
+         lambda ls: [put(ln, c4="0") for ln in ls],
+         "LsrSponsors.txt: 1,399 installed rows are not in the database's, more than 5"),
+        ("500 sponsors nobody signed", "LsrSponsors.txt", signed_by_nobody,
+         "new rows are on a bill whose docket began more than 30 days before, more than 5"),
+        ("170 sponsors' rows gone", "LsrSponsors.txt", lambda ls: ls[170:],
+         "LsrSponsors.txt: 170 installed rows are not in the database's, more than 5"),
         ("every member's party swapped", "legislators.txt", swap(8, "R", "D"),
          "installed members have another name, chamber, county, district or party"),
+        ("eight members' parties swapped", "legislators.txt", swap(8, "R", "D", 8),
+         "legislators.txt: 8 installed members have another name, chamber, county, district or "
+         "party in the database's, more than 2"),
         ("every Yea and Nay swapped", "RollCallHistory.txt", swap(6, "Yea", "Nay"),
          "RollCallHistory.txt: 113,119 installed ballots are cast otherwise"),
+        ("one Yea made a Nay on each of ten roll calls", "RollCallHistory.txt", one_each,
+         "10 roll calls' Yea and Nay ballots are not their counts"),
+        ("every ballot twice", "RollCallHistory.txt", lambda ls: ls + ls,
+         "RollCallHistory.txt: 131,199 ballots are there more than once"),
+        ("30 ballots added to a roll call", "RollCallHistory.txt", more_ballots,
+         "RollCallHistory.txt: 30 ballots are on installed roll calls that did not have them"),
         ("every roll call filed under HB 1", "RollCallSummary.txt",
          lambda ls: [put(ln, c4="HB1", c11="Ought to Pass") for ln in ls],
          "RollCallSummary.txt: 419 installed roll calls read otherwise"),
+        ("every roll call twice, the first copy under HB 1442", "RollCallSummary.txt",
+         lambda ls: [put(ln, c4="HB1442") for ln in ls] + ls,
+         "RollCallSummary.txt: 419 roll calls are there more than once"),
+        ("an invented roll call, 300 to 19, with no ballots", "RollCallSummary.txt", invented,
+         "says 300-19 and has 0 Yea and 0 Nay ballots, a new roll call"),
     ]
     passed = []
     for what, name, how, words in doctored:
-        lines = how(files[name].decode("utf-8-sig").split("\r\n")[:-1])
-        got = DF.judge(dict(files, **{name: DF.as_bytes(lines)}), was, facts)["stops"]
+        got = DF.judge(dict(files, **{name: how(files[name])}), was, facts)["stops"]
         if not any(words in s for s in got):
             passed.append(f"{what} ({name}): the guards said {got or 'nothing'}")
     assert not passed, ("doctored files that were not stopped, or not for what was done to them:\n"
                         + "\n".join(passed))
-    return "ok", (f"{len(doctored)} doctored copies of the real pair's files each stop the night, "
-                  "and the pair as rebuilt does not")
+    # THE SENATE'S OWN LATE ENTRIES look like the row dated back, and are
+    # real: one passes, counted and named, where a House row stops.
+    got = DF.judge(dict(files, **{"Docket.txt": dated("S", None)(files["Docket.txt"])}), was, facts)
+    assert not got["stops"] and got["held"]["Docket.txt"]["late"] == 1 and len(got["told"]) == 1 \
+        and len(got["warnings"]) == 1 and "new Senate rows entered more than 14 days before" in \
+        got["warnings"][0], (got["stops"], got["held"]["Docket.txt"], got["warnings"])
+    return "ok", (f"{len(doctored)} doctored copies of the real pair's files each stop the night; "
+                  "the pair as rebuilt does not, and names nothing; a Senate row entered late "
+                  "passes and is named")
 
 
 @check("build", "a New term week takes the smaller committee lists once, and never an empty one",

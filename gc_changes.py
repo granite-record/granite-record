@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.5
+# GRANITE_VERSION: 2026-09-12.6
 """
 What changed at the General Court between two copies of its bulk files.
 
@@ -48,7 +48,22 @@ THE EXPORT NIGHT AFTER ONE. It compared the archive's last two exports, and
 so repeated every docket line the database night had reported: 31, on the
 first. An export night now looks for a database night since the export
 before (after_db_night) and, finding one, compares with that night's copy on
-the columns both carry: what is reported is what has happened since.
+the columns both carry: what is reported is what has happened since. The
+bill records are compared whole there: the Senate status code in a database
+night's copy is the export's own (dayfiles_from_db.py never writes the
+view's), so a change in it is something the General Court did, and it was
+being left out of both lists. Each section says, under its own heading,
+when its older side is a database night's copy; said once at the top, it
+was printed above sections that compared two exports.
+
+WHAT THE NIGHT'S CHECKS COUNTED (2 October 2026). A database night's files
+are installed only if dayfiles_from_db.judge() lets them through, and under
+its ceilings a few rows may still differ from the installed ones: a docket
+row gone or reworded, a ballot cast otherwise, a member's party, a sponsor
+added to an old bill. The night's page says how many. Which ones is said
+here, row by row, from the same judge() on the same two sets of files: the
+morning's reader is the one who can tell a clerk's correction from a view
+gone wrong.
 """
 
 import argparse
@@ -198,6 +213,40 @@ def after_db_night(name):
             f"archived {hist[-1][0]}", blob(hist[-1][1]))
 
 
+def night_checks(day, DF):
+    """The section of a database night's report that names what its checks
+    counted: [lines], or [] when the seven files of that night and the seven
+    they replaced are not all on disk. The files are installed by now, and a
+    report that is not written makes the night unclean: whatever goes wrong
+    here is said in the section, and the rest of the report stands."""
+    L = ["## What the night's checks counted",
+         "(the seven files the night installed against the seven they replaced, by "
+         "dayfiles_from_db.judge(); the rows are the General Court's, quoted as written)", ""]
+    try:
+        pairs = {name: db_pair(name, day) for name in DF.DAY_FILES}
+        if not all(pairs.values()):
+            return []
+        try:
+            src = json.loads((ARCHIVE / "from-db" / day / "source.json").read_text(
+                encoding="utf-8"))
+        except (OSError, ValueError):
+            src = {}
+        src = src if isinstance(src, dict) else {}
+        got = DF.judge({n: p[3] for n, p in pairs.items()}, {n: p[1] for n, p in pairs.items()},
+                       {"asked": src.get("asked"), "nights": src.get("nights")})
+    except Exception as e:                                      # noqa: BLE001
+        return L + [f"Not read here ({type(e).__name__}): the night's verdict has them, under "
+                    "day_files, held and told.", ""]
+    L += ["- " + ln.strip() for ln in DF.held_said(got["held"])]
+    for what, rows in got["told"].items():
+        L += ["", f"### {what}", "", "```"] + list(rows) + ["```"]
+    if not got["told"]:
+        L += ["", "Nothing under a ceiling needed naming."]
+    for s in got["stops"]:
+        L += ["", f"A check that stops this pair as it is read here: {s}"]
+    return L + [""]
+
+
 def docket(old, new, key=whole):
     """New docket lines, grouped by kind, each kept as the clerk wrote it.
     key: what makes two lines the same line (the whole of it, unless one side
@@ -279,6 +328,10 @@ def report(against_installed=False, db_night=None):
     # is the database's).
     docket_key, lsr_key = ((DF.shared_columns("Docket.txt"), DF.shared_columns("LSRs.txt"))
                            if DF else (whole, whole))
+    # Under a section whose older side is a database night's copy, on an
+    # export's night.
+    after = ("The older side is a database night's copy: compared on the columns both sources "
+             "carry, so what that night reported is not repeated here.")
     if db_night:
         def pick(name):
             p = db_pair(name, db_night)
@@ -298,19 +351,13 @@ def report(against_installed=False, db_night=None):
         got = {name: pick(name) for name in COMPARED}
         L += ["From the General Court's bulk files, compared by gc_changes.py. The docket "
               "lines are the clerk's, quoted as written.", ""]
-        nights = sorted({p[0].rsplit(" ", 1)[1] for p in got.values() if p and p[4]})
-        if nights:
-            L += ["The files these replaced were built from the General Court's database, on "
-                  "the night of " + " and ".join(nights) + ": the comparison is with that "
-                  "night's copy, on the columns both sources carry, so what it reported is "
-                  "not repeated here.", ""]
     any_pair = False
     p = got["Docket.txt"]
     if p:
         any_pair = True
         added, groups, bills = docket(p[1], p[3], docket_key if p[4] else whole)
         L += [f"## Docket: {len(added):,} new lines on {len(bills):,} bills",
-              f"({p[0]} -> {p[2]})", ""]
+              f"({p[0]} -> {p[2]})"] + ([after] if p[4] and not db_night else []) + [""]
         for kind in [k for k, _ in KINDS] + ["other"]:
             rows = groups.get(kind, [])
             if not rows:
@@ -324,33 +371,47 @@ def report(against_installed=False, db_night=None):
     if p:
         any_pair = True
         rc = rollcalls(p[1], p[3])
-        L += [f"## Roll calls: {len(rc)} new", f"({p[0]} -> {p[2]})", ""]
+        L += [f"## Roll calls: {len(rc)} new",
+              f"({p[0]} -> {p[2]})"] + ([after] if p[4] and not db_night else []) + [""]
         if rc:
             L += ["```"] + rc[:40] + ([f"... and {len(rc) - 40} more"] if len(rc) > 40 else []) + ["```"]
         L.append("")
     p = got["LSRs.txt"]
     if p:
         any_pair = True
-        new_bills, changed, cols = lsrs(p[1], p[3], lsr_key if p[4] else whole)
+        # A database night's own files are compared without the Senate
+        # status code, which is never the view's. The export after one is
+        # compared whole: that code in the night's copy was the export's own.
+        new_bills, changed, cols = lsrs(p[1], p[3], lsr_key if p[4] and db_night else whole)
         # Where one side is the database's, a record that differs only in
         # columns the build does not read is not counted: it may be one
         # source's word against the other's, and nothing that happened.
         apart = []
         if p[4]:
-            cols = {b: [i for i in c if i != DF.LSR_SENATE_STATUS] for b, c in cols.items()}
+            if db_night:
+                cols = {b: [i for i in c if i != DF.LSR_SENATE_STATUS] for b, c in cols.items()}
             apart = [b for b in changed if not any(i in DF.LSR_READ for i in cols[b])]
             changed = [b for b in changed if b not in set(apart)]
         L += [f"## Bill records: {len(new_bills)} new, {len(changed)} changed",
-              f"({p[0]} -> {p[2]})", ""]
+              f"({p[0]} -> {p[2]})"] + ([after] if p[4] and not db_night else []) + [""]
         if new_bills:
             L.append("new: " + ", ".join(new_bills[:60]))
         if changed:
             L += ["changed, by what changed:"] + by_columns(changed, cols, names)
-        if apart:
+        if apart and db_night:
             L += [f"not counted: {len(apart)} that differ only in columns no page is built "
                   "from, which between the database and an export may be one source's word "
                   "against the other's:"] + by_columns(apart, cols, names)
+        elif apart:
+            # The export's own word, tonight. What it is set against is the
+            # database's for every column but the Senate status code.
+            L += [f"not counted: {len(apart)} that differ from the database night's copy only "
+                  "in columns no page is built from (the Senate status code there was the "
+                  "export's own; the rest were the database's word):"]
+            L += by_columns(apart, cols, names)
         L.append("")
+    if db_night:
+        L += night_checks(db_night, DF)
     if not any_pair:
         L += ["Nothing to compare: the archive has fewer than two versions of these files"
               + (" or the build has none installed." if against_installed else "."), ""]
