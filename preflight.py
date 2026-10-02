@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.316
+# GRANITE_VERSION: 2026-09-04.317
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32818,6 +32818,22 @@ _DBDAY_VIEWS = {
 # than the views give, as the real one is; the docket's seventh column is when
 # a row was last changed, which the view does not carry; and SB 416's Senate
 # status code differs, as 29 bills' do in every real export.
+#
+# SB 532 as the two sources had it on 2 October 2026, for a bill record the
+# installed file does not hold yet: one of the 29. The Senate killed it 16-8
+# on 19 February; the export says 09, INEXPEDIENT TO LEGISLATE, and the view
+# 02, IN COMMITTEE.
+_DBDAY_SB532_VIEW = (
+    "0532|SB|2026|2136|increasing the requirements of the education freedom savings account "
+    "oversight committee and modifying the purpose of the committee.|True|S|2|False|False|False|"
+    "26-2136|STG|SB  0532|SB532|11/21/2025 14:39:00||R||||||||0|S05|S05|01/07/2026 00:00:00|02|"
+    "05/08/2026||02/19/2026 00:00:00|0|03||||False|PublicNHLMS||8|S05|02/10/2026 09:15:00|"
+    "SL Room Map Room|False|NHLMS|1327")
+_DBDAY_SB532_EXPORT = (
+    "2026|2136|increasing the requirements of the education freedom savings account oversight "
+    "committee and modifying the purpose of the committee.|S|2|0|0|0|26-2136|SB  0532|SB532||STG|"
+    "|||||||0|S05|S05|1/7/2026 12:00:00 AM|09|05/08/2026||2/19/2026 12:00:00 AM|0|03|S05|"
+    "2/10/2026 9:15:00 AM|SL Room Map Room||||0|0|")
 _DBDAY_EXPORT = {
     "Docket.txt": [
         "2025|0173|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV; 12/04/2024;  SJ 1|"
@@ -32928,16 +32944,16 @@ def _dbday_views(DF, folder, views=None, source=True, entries=None):
 
 def _dbday_expected():
     """The seven day files the fixture's views must make: the export's own
-    lines in the export's own order, but for the two things the database
-    cannot give -- the docket's seventh column, which repeats the third, and
-    SB 416's Senate status code, which is the view's."""
+    lines in the export's own order, but for the one thing the database
+    cannot give -- the docket's seventh column, which repeats the third. SB
+    416's Senate status code is 11 in the view and 12 in the export, and the
+    rebuilt file keeps the installed 12: the view is the side that is wrong."""
     want = {k: list(v) for k, v in _DBDAY_EXPORT.items()}
     want["Docket.txt"] = ["|".join(f[:6] + [f[2]])
                           for f in (ln.split("|") for ln in _DBDAY_EXPORT["Docket.txt"])]
     lsr = want["LSRs.txt"][2].split("|")
-    assert lsr[10] == "SB416" and lsr[24] == "12"
-    lsr[24] = "11"
-    want["LSRs.txt"][2] = "|".join(lsr)
+    assert lsr[10] == "SB416" and lsr[24] == "12" and \
+        _DBDAY_VIEWS["Legislation"][3].split("|")[29] == "11"
     return want
 
 
@@ -32954,6 +32970,9 @@ def _dayfiles_rebuild(DF):
         ballot as a word and the member by PersonID, sponsors only once signed
         off, and LsrsOnly only for a sitting member on this session's request
       - rows of another session year, and a member who has left, stay out
+      - LSRs.txt's Senate status code is never the view's, which has it wrong
+        on 29 real bills: the installed file's for a bill record it holds,
+        none for a new one
       - the order is the installed file's for every row both hold, whatever
         order the views came in, and a new row goes after them; a row gone
         from the view is gone; a docket row the clerk reworded keeps its
@@ -32983,9 +33002,12 @@ def _dayfiles_rebuild(DF):
                 f"{name} rebuilt from the views is not the export's:\n"
                 + "\n".join(f"  got  {a}\n  want {b}" for a, b in zip(got, want[name]) if a != b)[:900]
                 + f"\n  ({len(got) - 1} rows, {len(want[name])} wanted)")
-        for name in ("LsrSponsors.txt", "LsrsOnly.txt", "legislators.txt",
+        for name in ("LSRs.txt", "LsrSponsors.txt", "LsrsOnly.txt", "legislators.txt",
                      "RollCallSummary.txt", "RollCallHistory.txt"):
             assert files[name] == (root / name).read_bytes(), f"{name} is not byte-identical"
+        assert facts["senate_status"] == {"kept": 1, "blank": 0}, (
+            "SB 416's Senate status code is 11 in the view and 12 installed, and the rebuilt "
+            f"file did not keep the installed one, or did not say so: {facts.get('senate_status')}")
         assert facts["years"] == {"docket": ["2025", "2026"], "session": ["2026"],
                                   "sponsors": ["2026"], "rollcalls": ["2026"]}, facts["years"]
         assert all(o["new"] == 0 for o in facts["order"].values()) and not facts["newer_years"], facts
@@ -33011,8 +33033,19 @@ def _dayfiles_rebuild(DF):
         more["Legislators"] = _DBDAY_VIEWS["Legislators"] + [
             "104|Gum|Gil|300104||H|True|2045|05|07|R||2 Example Street||Keene|03431|NH|"
             "gil.gum@example.gov|M||NHLMS"]
+        more["Legislation"] = _DBDAY_VIEWS["Legislation"] + [_DBDAY_SB532_VIEW]
         _dbday_views(DF, views, more)
         files2, facts2 = DF.rebuild(views, root)
+        # A bill record the installed file does not hold is the export's own
+        # line in every column but the Senate status code, where the view
+        # says 02 of a bill the Senate killed: written with none.
+        records = files2["LSRs.txt"].decode("utf-8-sig").split("\r\n")[:-1]
+        sb532 = _DBDAY_SB532_EXPORT.split("|")
+        assert sb532[24] == "09" and _DBDAY_SB532_VIEW.split("|")[29] == "02"
+        assert records[:3] == want["LSRs.txt"] and records[3:] == [
+            "|".join(sb532[:24] + [""] + sb532[25:])], (
+            f"a new bill record is not the export's line with no Senate status code: {records[3:]}")
+        assert facts2["senate_status"] == {"kept": 1, "blank": 1}, facts2["senate_status"]
         docket = files2["Docket.txt"].decode("utf-8-sig").split("\r\n")[:-1]
         kept = want["Docket.txt"]
         assert docket[:len(kept)] == kept and [ln.split("|")[5] for ln in docket[len(kept):]] == [
@@ -34453,9 +34486,13 @@ def _gc_changes_db_night(GC, DF):
         old, new = _dbday_bytes(_DBDAY_EXPORT["Docket.txt"]), _dbday_bytes(want["Docket.txt"])
         assert len(GC.docket(old, new)[0]) == 5 and not GC.docket(
             old, new, DF.shared_columns("Docket.txt"))[0]
-        assert GC.lsrs(_dbday_bytes(_DBDAY_EXPORT["LSRs.txt"]), _dbday_bytes(want["LSRs.txt"]))[1] == [
+        # (The bill record as the view has it: SB 416's Senate status code 11.)
+        theirs = [ln.split("|") for ln in want["LSRs.txt"]]
+        theirs[2][24] = "11"
+        theirs = _dbday_bytes(["|".join(f) for f in theirs])
+        assert GC.lsrs(_dbday_bytes(_DBDAY_EXPORT["LSRs.txt"]), theirs)[1] == [
             "SB416"] and not GC.lsrs(_dbday_bytes(_DBDAY_EXPORT["LSRs.txt"]),
-                                     _dbday_bytes(want["LSRs.txt"]), DF.shared_columns("LSRs.txt"))[1]
+                                     theirs, DF.shared_columns("LSRs.txt"))[1]
         # A second database night is compared with the first, not with the
         # older export again.
         keep("2026-10-02", Docket=["2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought "
@@ -34487,13 +34524,14 @@ def _gc_changes_db_night(GC, DF):
                              "from the database 2026-10-02"] and \
             "## Docket: 1 new lines on 1 bills" in md and "Signed by Governor" in md, md[:700]
         # ... and the files installed before the night of the 7th were the
-        # export of 30 September. (Its roll calls are the bytes every
-        # database night since has rebuilt, and the latest is named.)
+        # export of 30 September. (Its roll calls and its bill records are
+        # the bytes every database night since has rebuilt, and the latest
+        # is named.)
         keep("2026-10-07", replaced={n: e["history"][0][1] for n, e in index.items()},
              Docket=third)
         md = GC.report(db_night="2026-10-07")
         assert pairs(md) == ["archived 2026-09-30", "from the database 2026-10-05",
-                             "archived 2026-09-30"] and \
+                             "from the database 2026-10-05"] and \
             "## Docket: 2 new lines on 1 bills" in md, md[:700]
         # A sha256 no copy on disk has falls back on the dates.
         keep("2026-10-09", replaced={"Docket.txt": "0" * 64}, Docket=third)
@@ -34547,9 +34585,10 @@ def _dayfiles_pair(DF):
     measured on 1 October, and dayfiles_from_db.PAIR_MEASURED holds the
     numbers: RollCallSummary.txt, RollCallHistory.txt, LsrSponsors.txt and
     legislators.txt byte-identical; the docket's 25,279 rows identical in the
-    six columns the view carries; 1,387 bill records identical but for the
-    Senate status code on 29; LsrsOnly.txt short of 13 rows the Legislation
-    view does not carry. Every guard passes, and no lookup differs.
+    six columns the view carries; 1,387 bill records byte-identical with the
+    export's own Senate status code kept on the 29 where the view has another;
+    LsrsOnly.txt short of 13 rows the Legislation view does not carry. Every
+    guard passes, and no lookup differs.
 
     And what fetch_day_db.py asks for is enough: the same views cut down to
     the rows its statements select -- about 168,000 of the dump's 2.6 million
@@ -34585,8 +34624,9 @@ def _dayfiles_pair(DF):
             rows = sum(e["rows"] for e in src["views"].values())
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("4 of the 7 byte-identical, the docket's 25,279 rows in six columns, 1,387 "
-                  "bill records but for one column, LsrsOnly 6,950 of 6,963; every guard passes"
+    return "ok", ("5 of the 7 byte-identical, the 1,387 bill records with the export's Senate "
+                  "status code kept on the 29 where the view has another; the docket's 25,279 "
+                  "rows in six columns, LsrsOnly 6,950 of 6,963; every guard passes"
                   + (f"; the {rows:,} rows fetch_day_db.py would ask for make the same files, "
                      "and no lookup differs" if lookups else
                      "; the lookup views are not in db/ here, so they were not compared"))

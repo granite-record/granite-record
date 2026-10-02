@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.3
+# GRANITE_VERSION: 2026-10-01.4
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -46,9 +46,9 @@ seven from the one and compares them with the other:
                           view; no reader uses it, and the rebuilt file repeats
                           column 3 there
     LSRs.txt              38 of 39 columns identical on all 1,387 rows. Column
-                          25, the Senate status code, differs on 29 bills in
-                          every export since, so it is a standing difference;
-                          build_data.py does not read it
+                          25, the Senate status code, differs on 29 bills, and
+                          is not taken from the view (below): with the
+                          installed file's, byte-identical
     LsrSponsors.txt       byte-identical
     LsrsOnly.txt          6,950 of 6,963 rows. The 13 are two requests with no
                           bill number, which Legislation does not carry and
@@ -59,7 +59,39 @@ seven from the one and compares them with the other:
     RollCallHistory.txt   byte-identical
 
 It was a quiet week: the newest docket row in both is 4 September. What a
-session day shows is not known, and the guards below are set loose for it.
+session day shows is not known.
+
+TWO STATUS CODES IN LSRs.txt, WHICH NOTHING READS
+
+Column 25, the Senate status code, IS NOT THE VIEW'S. On 29 bills the view
+and the export disagree, the same 29 on 8 September and on 2 October, and it
+is the view that is wrong: the General Court's website (bill_status.json)
+has a Senate status for 19 of them and agrees with the export on all 19, and
+the Senate's own docket agrees with the export on every one read -- SB 532
+was killed 16-8 on 19 February 2026, the export says 09 INEXPEDIENT TO
+LEGISLATE and the view 02 IN COMMITTEE. build_data.py does not read the
+column, so no page was wrong; but it was a value known to be wrong, written
+to a file. So an LSR the installed file holds keeps the installed file's
+code, and a new LSR is written with none. The view cannot be shown right for
+a new row: no LSR has been added on any pair on this disk. (Where the export
+has no Senate status, 646 rows, the view has none either, so a blank is also
+what a request with no Senate action most likely carries.)
+
+Column 17, the House status code, IS THE VIEW'S, and that is a decision. On
+2 October it differed from the installed export on 16 bills, 04 REPORT FILED
+there and 07 INTERIM STUDY in the view: the 16 whose interim study report
+had been filed. Unlike column 25 nothing shows the view wrong. On the one
+pair of the same state it equals the export's on all 1,387 rows; the view
+itself moved (two of the 16 read 04 in it on 8 September, and they are the
+only two rows of the whole view to have changed since); it holds no 04 at
+all now, the five reports filed on 30 September included; and 07 is where
+every such bill ended in the ten terms from 2006 (898 of 898 in the
+database's PastLegislation). That reads as the General Court resetting the
+code after the last export, which is likely and not proven:
+the House status on HB 224's own page at gc.nh.gov settles it in one look.
+Carrying the installed code instead would freeze the column for as long as
+the export is down, and on a session day that is hundreds of bills known to
+be stale. held_said() names the column each night it differs.
 
 ROW ORDER IS THE INSTALLED FILE'S
 
@@ -289,8 +321,10 @@ LSR_MAP = [2, 3, 4, 6, 7, 8, 9, 10, 11, 13, 14, 16, 12, 18, 19, 20, 21, 22, 23, 
            26, 27, 28, 29, 30, 31, 32, "0", 34, 42, 43, 44, "", "", "", "0", "0", ""]
 LSR_DATES = {20, 23, 24, 28, 32, 43}        # written the export's way, by clock()
 LSR_CHAPTER = 16                            # padded to four digits; blank stays blank
-# The one column of LSRs.txt the two sources are known to disagree on, from 0:
-# the Senate status code. Compared without it.
+# The Senate status code, from 0: the one column of LSRs.txt the view is known
+# to have wrong (29 bills; the docstring). Never the view's: the installed
+# file's for an LSR it holds, none for a new one. Compared without it, since a
+# new LSR's is not the export's.
 LSR_SENATE_STATUS = 24
 
 BIT = {"True": "1", "False": "0"}
@@ -393,8 +427,8 @@ PAIR_DUMP = "2026-09-08"
 PAIR_EXPORT = "2026-09-06"
 PAIR_MEASURED = {
     "Docket.txt": {"rows": 25279, "export": 25279, "same": 25279, "identical": False},
-    "LSRs.txt": {"rows": 1387, "export": 1387, "same": 1387, "identical": False,
-                 "whole_lines": 1358},
+    "LSRs.txt": {"rows": 1387, "export": 1387, "same": 1387, "identical": True,
+                 "senate_status_kept": 29},
     "LsrSponsors.txt": {"rows": 8571, "export": 8571, "same": 8571, "identical": True},
     "LsrsOnly.txt": {"rows": 6950, "export": 6963, "same": 6950, "identical": False},
     "legislators.txt": {"rows": 406, "export": 406, "same": 406, "identical": True},
@@ -699,13 +733,37 @@ def in_installed_order(new, old, key, loose=None):
     return [ln for _, ln in placed] + fresh, len(placed), len(fresh)
 
 
+def senate_status_kept(lines, installed):
+    """(LSRs.txt's rebuilt lines with the installed file's Senate status code,
+    {"kept": n, "blank": n}): for an LSR the installed file holds, its code
+    there; for a new one, none. `kept` counts the rows whose code in the view
+    was another, `blank` the new rows whose code in the view was not blank."""
+    at = LSR_SENATE_STATUS
+    have = {tuple(f[:2]): f[at] for f in (ln.split("|") for ln in installed) if len(f) > at}
+    out, kept, blank = [], 0, 0
+    for ln in lines:
+        f = ln.split("|")
+        if len(f) > at:
+            mine = have.get(tuple(f[:2]))
+            if mine is None:
+                blank += bool(f[at].strip())
+                mine = ""
+            else:
+                kept += mine != f[at]
+            f[at] = mine
+            ln = "|".join(f)
+        out.append(ln)
+    return out, {"kept": kept, "blank": blank}
+
+
 def rebuild(views, installed, need_source=True):
     """({name: bytes} for all seven, facts) from the views in `views` and the
     files installed in `installed` -- or Problem, and nothing.
 
     facts: the years used, the rows of each file, how many rows took the
-    installed file's place and how many are new, and any session year the
-    views hold beyond the installed files'."""
+    installed file's place and how many are new, on how many bill records
+    the installed Senate status code was kept over another in the view, and
+    any session year the views hold beyond the installed files'."""
     was = installed_files(installed)
     sc = scope(was)
     src = read_source(views, VIEWS) if need_source else None
@@ -745,6 +803,9 @@ def rebuild(views, installed, need_source=True):
                 lines, export_lines(was[name], WIDTH[name]), ORDER_KEY[name],
                 ORDER_LOOSE.get(name))
             facts["order"][name] = {"placed": placed, "new": fresh}
+        if name == "LSRs.txt":
+            lines, facts["senate_status"] = senate_status_kept(
+                lines, export_lines(was[name], WIDTH[name]))
         bad = next((ln for ln in lines if ln.count("|") != WIDTH[name] - 1), None)
         if bad is not None:
             raise Problem(f"a rebuilt line of {name} has {bad.count('|') + 1} columns, not "
@@ -1292,7 +1353,7 @@ def check_pair(db="db", archive="nh-archive"):
         out[name] = {"rows": len(new), "export": len(old), "same": kept,
                      "identical": files[name] == was[name]}
         if name == "LSRs.txt":
-            out[name]["whole_lines"] = _kept(old, new, lambda ln: ln)[0]
+            out[name]["senate_status_kept"] = facts["senate_status"]["kept"]
     return out, judge(files, was, facts), facts
 
 
@@ -1360,6 +1421,12 @@ def report(result, facts, notes=()):
                      + (f"; {o['placed']:,} in the installed order, {o['new']:,} after them"
                         if o else ""))
     lines += held_said(result.get("held") or {})
+    kept = facts.get("senate_status") or {}
+    if kept.get("kept") or kept.get("blank"):
+        lines.append(f"  LSRs.txt's Senate status code is the installed file's on "
+                     f"{kept['kept']:,} records where the database's is another"
+                     + (f", and blank on {kept['blank']:,} new ones" if kept.get("blank") else "")
+                     + ": the view is known to have it wrong")
     for w in list(result["warnings"]) + list(notes):
         lines.append(f"  warning: {w}")
     for s in result["stops"]:
@@ -1408,13 +1475,14 @@ def main():
             ok = ok and same
             print(f"  {name:22} {g['rows']:>8,} rebuilt, {g['export']:>8,} in the export, "
                   f"{g['same']:>8,} the same on the columns both carry"
-                  + (f", {g['whole_lines']:,} whole lines" if "whole_lines" in g else "")
+                  + (f", {g['senate_status_kept']:,} with the export's Senate status code "
+                     "where the view's is another" if "senate_status_kept" in g else "")
                   + ("; byte-identical" if g["identical"] else "")
                   + ("" if same else f"   <-- was {want}"))
         for ln in report(result, facts)[len(DAY_FILES):]:
             print(ln)
-        print("As measured on 1 October 2026." if ok else
-              "NOT as measured on 1 October 2026: a mapping here, or the pair, has changed.")
+        print("As measured on 1 and 2 October 2026." if ok else
+              "NOT as measured on 1 and 2 October 2026: a mapping here, or the pair, has changed.")
         return 0 if ok and not result["stops"] else 1
 
     try:
