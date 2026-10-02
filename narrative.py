@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -18,6 +18,7 @@ missing one.
 """
 
 import argparse
+import build_date
 import json
 import proceedings as P
 import re
@@ -337,8 +338,9 @@ def _stop(s):
 
 # TODAY, so a scheduled meeting is not written as a held one. Overridable
 # because a build that is reproducible cannot ask the clock, and because the
-# fixtures need a fixed answer.
-TODAY = date.today()
+# fixtures need a fixed answer. build_date.today() is the clock, unless the
+# build's day is stated.
+TODAY = build_date.today()
 
 
 def ahead(d):

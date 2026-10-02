@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.57
+# GRANITE_VERSION: 2026-09-04.58
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -45,9 +45,9 @@ import argparse
 import html
 import json
 import re
-from datetime import date
 from pathlib import Path
 
+import build_date
 import shell as S
 import structured as LD
 
@@ -254,7 +254,7 @@ def main():
     idx = json.loads((site / "index.json").read_text(encoding="utf-8"))
     out = site / "bill"
     out.mkdir(parents=True, exist_ok=True)
-    generated = date.today().isoformat()
+    generated = build_date.today().isoformat()
     t = S.template(site)
 
     # The year is part of the path because bill numbers are only unique within

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.37
+# GRANITE_VERSION: 2026-09-07.38
 """
 A page's worth of data for every committee.
 
@@ -54,6 +54,7 @@ from pathlib import Path
 
 import proceedings as P
 import bill_order as BO
+import build_date
 import committee_details as CD
 import committee_names as CN
 import names
@@ -173,7 +174,7 @@ def narrate(name, chamber, date, items, reports):
     # ahead of time -- a committee's executive session booked for the end of
     # the month -- and the page said the committee "met" on a day seventeen
     # days off.
-    ahead = str(date)[:10] > __import__("datetime").date.today().isoformat()
+    ahead = str(date)[:10] > build_date.today().isoformat()
     met, held = (("is scheduled to meet", "It is also scheduled to hold") if ahead
                  else ("met", "It also held"))
     out.append(f"{who} {met} on {fdate(date)} for {art}{noun} on {bills}.")

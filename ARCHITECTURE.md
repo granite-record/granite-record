@@ -726,6 +726,23 @@ state no date anywhere -- so the page shows none for those rather than
 borrowing the docket's, which is the day the veto reached the chamber and not
 the day it was signed.
 
+## Comparing two builds
+
+A change that is meant to leave the site alone is proved by building it before
+and after and comparing a sha256 of every file. The day a build is made is in
+every page -- it is the date a citation falls back on for a reader without
+JavaScript -- and in the sitemap, the feeds, `home.json` and the downloads'
+manifest, and a dozen builders ask what today is to decide what is still to
+come. So two builds made on different days differ in every page.
+
+`GRANITE_BUILD_DATE=2026-10-02` states the day instead, or
+`2026-10-02T01:22:13` the moment, for every builder: `build_date.py` is the
+one place the build's day is read, and `preflight` fails a script on the
+build's path that asks the clock for itself. It is for comparing builds, not
+for publishing one -- `build_all.py` says when the day is stated and records
+it in `site/build.json`, whose own `finished` and step times stay the clock's
+and are left out of the comparison. Without the variable nothing changes.
+
 ## Known rough edges
 
 Each is described where it belongs; this is the list in one place.

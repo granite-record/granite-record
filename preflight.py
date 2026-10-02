@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.304
+# GRANITE_VERSION: 2026-09-04.315
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24,7 +24,10 @@ anything into the project: the marker checks build a throwaway tree under the
 system temp directory and delete it. Running this cannot change the site and
 cannot lose anything. The one file it leaves is its own record of the run,
 logs/preflight-last.json, which handoff.py reads in place of running the
-checks a second time; git ignores logs/ and no build reads it.
+checks a second time; git ignores logs/ and no build reads it. Outside the
+project it keeps one more, in the system temp directory: its parse of the
+officials directory (_officials_read), made again whenever the PDF, its
+parser or the PDF library changes.
 
 TWO HALVES
 
@@ -222,9 +225,86 @@ def imp(name):
         return None
 
 
+# ---- the built bill pages, read once a run ------------------------------------
+#
+# SIX CHECKS EACH WALKED EVERY BILL PAGE OF THE BUILT SITE (2 October 2026):
+# 33,717 pages and 1.2 GB, opened, searched for their record and parsed, six
+# times over, for one field or two apiece. They share one walk now. What is
+# kept of a record is what those six read and nothing else -- a whole record
+# carries every ballot of every roll call and the bill's text, and 33,717 of
+# them are more than this machine's memory -- so a record here answers for
+# the fields below and FAILS the check that asks it for any other: a field
+# that was not kept must not read as a field the page does not have.
+#
+# site/ is not written during a run of these checks, so nothing is hidden by
+# reading it once. A check that reads a fixture's site, or one page, still
+# asks site_read itself.
+_RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
+                 "journey")
+_RECORD_KEPT = _RECORD_WHOLE + (
+    "rollcalls",        # kept as whether the page has any
+    "reports")          # kept as each report's cite_url and source
+_SITE_RECORDS = []
+
+
+class _KeptRecord(dict):
+    """A bill page's record, cut down to _RECORD_KEPT."""
+
+    @staticmethod
+    def _kept(key):
+        assert key in _RECORD_KEPT, (
+            f"_site_records() keeps {', '.join(_RECORD_KEPT)} of a bill page's record, "
+            f"and a check asked it for {key!r}: add the field to _RECORD_KEPT, or walk "
+            "the pages with site_read.records")
+
+    def get(self, key, default=None):
+        self._kept(key)
+        return dict.get(self, key, default)
+
+    def __getitem__(self, key):
+        self._kept(key)
+        return dict.__getitem__(self, key)
+
+
+def _site_records():
+    """[(year, BILLID, record)] for every bill page of site/, in the order
+    site_read.records gives them, from the run's one walk.
+
+    KEPT ONLY ONCE THE WALK HAS ENDED. The first version filled _SITE_RECORDS
+    as it went and took a list with anything in it for the finished walk, so a
+    walk that stopped part-way -- a page another session was rewriting, a
+    record that would not parse -- left its first few hundred pages there, and
+    the five checks after the one that took the error read those as the whole
+    site and reported ok on them. A walk that stops keeps nothing, and the
+    next check walks for itself, as each of the six did before they shared
+    one. And a report that is not an object is kept as it is, for
+    _report_citations to fail on in its own name: one check's field does not
+    stop the walk the other five read.
+    """
+    if not _SITE_RECORDS:
+        import site_read as SR
+        walked = []
+        for year, bid, rec in SR.records("site"):
+            kept = {k: rec[k] for k in _RECORD_WHOLE if k in rec}
+            if "rollcalls" in rec:
+                kept["rollcalls"] = bool(rec["rollcalls"])
+            if "reports" in rec:
+                reps = rec["reports"]
+                kept["reports"] = [{k: rep[k] for k in ("cite_url", "source") if k in rep}
+                                   if isinstance(rep, dict) else rep
+                                   for rep in reps] if isinstance(reps, list) else reps
+            walked.append((year, bid, _KeptRecord(kept)))
+        _SITE_RECORDS.extend(walked)
+    return _SITE_RECORDS
+
+
 # =========================================================== code: the files ==
 
-@check("status", "an archived page says what its own term actually has")
+# A DATA CHECK since 2 October 2026, and filed as one: it reads every page of
+# the built site and nothing else, so it could never run where the code
+# checks gate anything -- the night runs them before it builds -- and on the
+# laptop it added that walk to every run of them.
+@check("data", "an archived page says what its own term actually has")
 def _archived_coverage():
     """One paragraph described 1989 and 2023 identically, on 31,449 pages.
 
@@ -246,14 +326,14 @@ def _archived_coverage():
     if not (site / "bill").is_dir():
         return "skip", "no built site here"
     try:
-        import site_read as SR
+        import site_read as SR                                # noqa: F401
     except ImportError:
         return "skip", "site_read.py will not import"
     KEYS = {"docket", "sponsors", "reports", "votes", "video", "committee",
             "hearings"}
     bare, objects, terms = 0, 0, {}
     seen = 0
-    for year, bid, rec in SR.records(site):
+    for year, bid, rec in _site_records():
         a = rec.get("archived")
         if a is None:
             continue
@@ -308,20 +388,10 @@ def _upcoming_shape():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp(prefix="gr-upcoming-"))
     try:
-        _site_fixture(root)
-        # EVERY module, not a guessed list. build_site_v2 imports a dozen
-        # of this project's own files and naming them here means the check
-        # breaks whenever one is added -- and it breaks as "wrote no
-        # home.json", which reads like the thing under test failing rather
-        # than the fixture being short a file. Copying them all costs
-        # milliseconds.
-        for f in [x.name for x in here.glob("*.py")]:
-            if (here / f).exists():
-                shutil.copy(here / f, root / f)
-        r = _run(
-            [sys.executable, "build_site_v2.py", "--data", "data",
-             "--out", "site", "--segments", "work"],
-            cwd=root, capture_output=True, text=True, timeout=300)
+        # A copy of the run's one build of the fixture (_fixture_site_v2),
+        # which runs the script where it stands. This check used to copy
+        # every script into its folder and build there, to read one file.
+        r = _fixture_site_v2(root)
         hp = root / "site" / "home.json"
         assert hp.exists(), ("build_site_v2 wrote no home.json on the "
                              "fixture: " + (r.stderr or r.stdout or "")[-200:])
@@ -348,6 +418,35 @@ def _upcoming_shape():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _tracked():
+    """What git tracks, listed and read once a run for the two checks that
+    search every tracked file -- _one_address and _no_secrets, each of which
+    asked git for the list and read all of it. (names, {name: its text}): a
+    file over 4 MB, or not here, or that will not read, is among the names
+    and has no text, as neither check read one. (None, why) where git will
+    not say what it tracks."""
+    def make():
+        try:
+            out = _run(["git", "ls-files"], capture_output=True,
+                       text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError) as e:
+            return None, f"git would not list the tracked files ({e})"
+        if out.returncode != 0:
+            return None, "not a git repository"
+        names = [n for n in out.stdout.splitlines() if n.strip()]
+        text = {}
+        for n in names:
+            f = Path(n)
+            if not f.exists() or f.stat().st_size > 4_000_000:
+                continue
+            try:
+                text[n] = f.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+        return names, text
+    return _once_a_run("the tracked files", make)
+
+
 @check("files", "one contact address, and it is the working one")
 def _one_address():
     """Thirty occurrences across twenty-seven files, and they must agree.
@@ -365,25 +464,13 @@ def _one_address():
     graniterecord.org, everywhere, and it is the one that works.
     """
     import re
-    import subprocess
     CORRECT = "contact@graniterecord.org"
-    try:
-        out = _run(["git", "ls-files"], capture_output=True,
-                             text=True, timeout=60)
-    except (OSError, subprocess.SubprocessError) as e:
-        return "skip", f"git would not list the tracked files ({e})"
-    if out.returncode != 0:
-        return "skip", "not a git repository"
+    names, text = _tracked()
+    if names is None:
+        return "skip", text
     rx = re.compile(r"[A-Za-z0-9._%+-]+@graniterecord\.org")
     found, wrong = 0, {}
-    for n in out.stdout.splitlines():
-        f = Path(n)
-        if not n.strip() or not f.exists() or f.stat().st_size > 4_000_000:
-            continue
-        try:
-            body = f.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+    for n, body in text.items():
         for m in rx.finditer(body):
             found += 1
             if m.group(0) != CORRECT:
@@ -456,15 +543,9 @@ def _no_secrets():
     documented as such in probe_db.py, and hiding a published credential would
     protect nothing while stopping somebody reproducing this work.
     """
-    import subprocess
-    try:
-        out = _run(["git", "ls-files"], capture_output=True,
-                             text=True, timeout=60)
-    except (OSError, subprocess.SubprocessError) as e:
-        return "skip", f"git would not list the tracked files ({e})"
-    if out.returncode != 0:
-        return "skip", "not a git repository"
-    names = [n for n in out.stdout.splitlines() if n.strip()]
+    names, text = _tracked()
+    if names is None:
+        return "skip", text
     if not names:
         return "skip", "git tracks nothing here"
 
@@ -483,14 +564,7 @@ def _no_secrets():
                                           r"[\"\']?[A-Za-z0-9_\-]{20,}")),
     ]
     found = []
-    for n in names:
-        f = Path(n)
-        if not f.exists() or f.stat().st_size > 4_000_000:
-            continue
-        try:
-            body = f.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+    for n, body in text.items():
         for what, rx in SHAPES:
             m = rx.search(body)
             if m:
@@ -579,6 +653,29 @@ def _clerk_list_untracked():
     return "ok", f"{NAME} is gitignored, untracked, and in no commit on any ref"
 
 
+# A SCRIPT IS PARSED ONCE A RUN (2 October 2026). Four checks each parsed
+# every script -- the one below, _child_encoding, _every_fetcher_checks_refusal
+# and, for this file, _children_sealed -- and this file is forty-four thousand
+# lines: three parses of it were the largest single cost of the code checks
+# that was not a child process. The tree is kept under the file's path, its
+# size and the time it was last written, so a file a check changes and reads
+# again is parsed again, and a file that will not parse raises for every
+# caller as it did for one.
+_PARSED = {}
+
+
+def _parsed(path):
+    """ast.parse of the script at `path`, from this run's earlier parse of
+    the same bytes if there was one. Read as _parse_all always read it: as
+    UTF-8, with a byte that is not UTF-8 replaced. SyntaxError is the caller's."""
+    p = Path(path)
+    st = p.stat()
+    key = (str(p.resolve()), st.st_size, st.st_mtime_ns)
+    if key not in _PARSED:
+        _PARSED[key] = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+    return _PARSED[key]
+
+
 @check("files", "every listed script parses")
 def _parse_all():
     vp = Path("versions.json")
@@ -592,7 +689,7 @@ def _parse_all():
         if not p.exists():
             continue
         try:
-            ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+            _parsed(p)
         except SyntaxError as e:
             bad.append(f"{n}:{e.lineno} {e.msg}")
     present = sum(1 for n in names if Path(n).exists())
@@ -6492,6 +6589,30 @@ def _palette():
     return "ok", f"{n} pairs across both schemes, all above their threshold"
 
 
+def _built_stylesheets():
+    """[(what to call it, the site folder it is in)] for each built style.css
+    the stylesheet checks read: the fixture's, which the builders write once
+    a run (_fixture_site_shared), wherever the builders are; and site/'s,
+    where a site has been built.
+
+    THE FIXTURE'S, SO THAT THESE GUARD THE NIGHT (2 October 2026). The three
+    checks that read the built stylesheet -- _shared_region, _nothing_stranded
+    and the end of _one_stylesheet -- read site/style.css and nothing else,
+    and nightly.py runs the code checks BEFORE it builds: on GitHub's machine
+    there is no site/ yet, so two of them skipped and the third passed having
+    read no stylesheet, on the one run that stands between a change to
+    build_pages.py or app.css and the deploy. The laptop's built site is
+    still read where there is one: it is what a reader's browser was given.
+    """
+    here = Path(".").resolve()
+    sheets = []
+    if not [x for x in CHAIN_NEEDS if not (here / x).exists()]:
+        sheets.append(("the fixture's style.css", _fixture_site_shared()[0] / "site"))
+    if Path("site/style.css").exists():
+        sheets.append(("site/style.css", Path("site")))
+    return sheets
+
+
 @check("frontend", "the built stylesheet carries one copy of the shared region")
 def _shared_region():
     """A comment that named a slot pasted the whole region into itself.
@@ -6514,33 +6635,36 @@ def _shared_region():
     unfilled -- which also catches a shared() that reads to the wrong marker
     and hands over half a component.
     """
-    built = Path("site/style.css")
-    if not built.exists():
-        return "skip", "site/style.css not built"
-    t = built.read_text(encoding="utf-8")
+    sheets = _built_stylesheets()
+    if not sheets:
+        return "skip", ("site/style.css not built, and the builders are not here to "
+                        "build the fixture's")
     src = Path("app.css").read_text(encoding="utf-8")
-
-    left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", t)))
-    assert not left, (
-        "site/style.css still has " + ", ".join(left) + " in it: a slot in "
-        "build_pages.py's CSS string that nothing filled. The page will load "
-        "and most of it will look right.")
-
-    n = t.count("/* SHARED:START")
-    assert n == 1, (
-        f"site/style.css has {n} copies of the shared region, not one. A "
-        "comment that names __SHARED__ is how this happens; the substitution "
-        "does not know it is inside a comment, and a CSS comment does not "
-        "nest.")
-
     a, b = src.index("/* SHARED:START"), src.index("/* SHARED:END")
     region = src[a:b].rstrip()
-    assert region in t, (
-        "the shared region in site/style.css is not app.css's. shared() reads "
-        "between the two markers and rstrips; if the built copy differs, one "
-        "of the markers has moved or something is rewriting the region on the "
-        "way through.")
-    return "ok", f"{len(region):,} bytes, once, identical to app.css's"
+    for what, site in sheets:
+        t = (site / "style.css").read_text(encoding="utf-8")
+
+        left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", t)))
+        assert not left, (
+            f"{what} still has " + ", ".join(left) + " in it: a slot in "
+            "build_pages.py's CSS string that nothing filled. The page will load "
+            "and most of it will look right.")
+
+        n = t.count("/* SHARED:START")
+        assert n == 1, (
+            f"{what} has {n} copies of the shared region, not one. A "
+            "comment that names __SHARED__ is how this happens; the substitution "
+            "does not know it is inside a comment, and a CSS comment does not "
+            "nest.")
+
+        assert region in t, (
+            f"the shared region in {what} is not app.css's. shared() reads "
+            "between the two markers and rstrips; if the built copy differs, one "
+            "of the markers has moved or something is rewriting the region on the "
+            "way through.")
+    return "ok", (f"{len(region):,} bytes, once, identical to app.css's, in "
+                  + " and in ".join(what for what, _site in sheets))
 
 
 @check("frontend", "no source file carries a control character")
@@ -6568,8 +6692,23 @@ def _no_control_bytes():
     So: no control character except tab, newline and carriage return, in any
     source file in the tree. Naming ten files by hand was the first version of
     this check and it did not cover the second incident.
+
+    C1 AS WELL AS C0, in the one pass (2 October 2026; until then a second
+    check, "no source file carries a mangled control character", read the
+    root's files again for these). app.css carried U+0083 inside the citation
+    control's content string, with a capital A after it, and every page on
+    the site drew a small empty box and a stray letter A in front of "Cite
+    this page". U+0083 is NO BREAK HERE, a C1 control that no editor puts
+    there on purpose; it is what is left of a glyph that went through a
+    cp1252 round trip, and the A beside it is debris from the same accident.
+    It survived because nothing errored: the stylesheet parsed, the page
+    rendered, and the damage was one character wide.
+
+    So the range is U+0000 to U+001F and U+007F to U+009F, less the three
+    whitespace characters source legitimately contains. Nothing else in that
+    span belongs in a text file here, and the failure names each character
+    it found, so which of the two accidents it was is in the message.
     """
-    ok = {0x09, 0x0A, 0x0D}
     exts = {".py", ".css", ".js", ".html", ".json", ".md", ".bat"}
     # town_sites/ added 20 September: 234 town pages fetched by another
     # session, one of which is a binary response saved with an .html name, and
@@ -6585,33 +6724,89 @@ def _no_control_bytes():
             "review/", ".git/", "sources/", "brand/", "assets/",
             "town_sites/")
     #
-    # AND THE SAME CACHES UNDER A WORKTREE'S OWN ROOT. On 1 October a session
-    # working in .claude/worktrees/ws-front kept a copy of legislation/ there,
-    # and this went red on four General Court pages in it (0x1e in 2016's HB
-    # 625, 0x02 in three of 2022) while another session's change was being
-    # checked in the main tree. A worktree's source files are still read; its
-    # copies of the folders skipped above are skipped as they are here.
-    worktree = re.compile(r"^claude/worktrees/[^/]+/")
-    bad, n = [], 0
-    for f in sorted(Path(".").rglob("*")):
-        if not f.is_file() or f.suffix.lower() not in exts:
-            continue
-        rel = f.as_posix().lstrip("./")
-        if worktree.sub("", rel).startswith(skip):
+    # GIT'S LIST, WHICH IS THAT CHANGE (2 October 2026). The walk was every
+    # file under the folder -- 91,000 entries in a worktree, and in the main
+    # folder the caption folders as well -- and it read what the tuple above
+    # did not name: 660 MB of generated JSON at a worktree's root; in the main
+    # folder 858 MB in 6,364 files, the fetched page caches among them; and
+    # then every source file of every worktree under .claude/worktrees/, with
+    # a pattern added on 1 October to skip their caches. And the tuple's ".git/"
+    # never matched: the path was compared after lstrip("./"), which takes
+    # the dot off ".git" as well as off "./". What is read now is what git
+    # tracks and what it would track if added, less the folders above, matched
+    # as git spells them. .gitignore keeps the fetched caches and the
+    # worktrees out, so no list here has to.
+    #
+    # AND WHAT GIT IGNORES THAT IS STILL THIS PROJECT'S OWN WRITING. Git's list
+    # alone left out files the two checks had read, and three kinds of them
+    # are exactly what this is for. A patch script: .gitignore's `_*.py` is
+    # the name this project gives one, so the file likeliest to carry an
+    # eaten escape was the one not read. The generated JSON at the root that
+    # the build publishes from: json.dump writes a C0 character as an escape,
+    # but with ensure_ascii=False it writes C1 and DEL as they are --
+    # senate_hearing_reports.json and past_members.json are written so, and
+    # the first is 10 MB of hearing reports the site prints. And the files a
+    # person keeps on this machine only: launch_register.json, CLAUDE.local.md
+    # and the plans under private/. So every file at the root is read whether
+    # git ignores it or not, which is all the second check ever read, and so
+    # is BY_HAND. The rest of reports/ is left out: a night's triage file
+    # quotes readers' own words, and a character a reader typed is not damage
+    # to the source. Nor are the caches read that git ignores below the root.
+    #
+    # WITHOUT GIT -- an export of the tree, a copy -- the folder is walked,
+    # without going into a folder the tuple names or into a worktree.
+    BY_HAND = ("private", "reports/cloud", "reports/TRIAGE.md")
+    try:
+        out = _run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                   capture_output=True, text=True, timeout=120)
+        listed = out.stdout.split("\0") if out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        listed = None
+    how = "that git tracks or would, at the root, or kept by hand"
+    if listed is None:
+        how, listed = "in the folder (no git here)", []
+        for d, dirs, files in os.walk("."):
+            rel = Path(d).as_posix()
+            rel = "" if rel == "." else rel + "/"
+            dirs[:] = sorted(x for x in dirs if not (rel + x + "/").startswith(skip)
+                             and rel + x != ".claude/worktrees")
+            listed += [rel + x for x in files]
+    else:
+        listed += [f.name for f in Path(".").iterdir() if f.is_file()]
+        for d in map(Path, BY_HAND):
+            listed += [f.as_posix() for f in ([d] if d.is_file() else d.rglob("*"))]
+    # One pattern for both ranges, over the bytes: C0 less tab, newline and
+    # carriage return, with DEL; and C1, which UTF-8 writes as 0xC2 and then
+    # the character's own number. The pattern is run only over a file that
+    # has one of those bytes in it -- taking every other byte out of a file
+    # and looking at what is left is a seventh of the pattern's time, and the
+    # root's generated files are 670 MB.
+    ctl = re.compile(rb"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]|\xc2[\x80-\x9f]")
+    not_c0 = bytes(b for b in range(256) if not ctl.match(bytes([b])))
+    bad, n, c0, c1 = [], 0, False, False
+    for rel in sorted(set(listed)):
+        f = Path(rel)
+        if f.suffix.lower() not in exts or rel.startswith(skip) or not f.is_file():
             continue
         n += 1
         raw = f.read_bytes()
-        hits = sorted({c for c in raw if c < 0x20 and c not in ok})
-        if hits:
-            at = raw.count(b"\n", 0, min(raw.index(bytes([hits[0]])),
-                                         len(raw))) + 1
-            bad.append(f"{rel}: {', '.join(hex(h) for h in hits)}"
-                       f" (first near line {at})")
+        first = (ctl.search(raw) if b"\xc2" in raw or raw.translate(None, not_c0)
+                 else None)
+        if first:
+            hits = sorted({m[-1] for m in ctl.findall(raw)})
+            c0, c1 = c0 or hits[0] < 0x80, c1 or hits[-1] >= 0x80
+            bad.append(f"{rel}: {', '.join(f'U+{h:04X}' for h in hits)}"
+                       f" (first near line {raw.count(b'\n', 0, first.start()) + 1})")
+    assert n, ("no source file was read: the list of files came back with none "
+               "of this folder's in it")
     assert not bad, (
-        "control characters in " + "; ".join(bad[:4]) + ". Write the escape "
-        "rather than the byte -- a heredoc turns \\1 into 0x01 and \\0 into NUL, "
-        "and neither is visible in a diff.")
-    return "ok", f"{n} source files, none with a control character"
+        "control characters in " + "; ".join(bad[:4])
+        + (". Write the escape rather than the byte -- a heredoc turns \\1 into "
+           "U+0001 and \\0 into NUL, and neither is visible in a diff" if c0 else "")
+        + (". U+0080 to U+009F is what a cp1252 round trip leaves of a glyph, "
+           "and it is drawn as a box, a stray letter, or nothing at all" if c1 else "")
+        + ".")
+    return "ok", f"{n} source files {how}, none with a control character, C0 or C1"
 
 
 @check("frontend", "a heading outline never skips a level")
@@ -7389,39 +7584,6 @@ def _stamps():
     return "ok", f"{seen} files agree with the manifest, and no stamped file is left out of it"
 
 
-@check("files", "no generator writes the bench's record")
-def _bench_untouched():
-    """review/checked.jsonl is made by hand, and is protected the way
-    ground_truth.csv is.
-
-    The bench appends and never rewrites a line: a later look at the same item
-    is a second judgment rather than a correction of the first. A build_ or
-    fetch_ script that opens it for writing is the next loss waiting to
-    happen, and this project has lost hand-made measurements twice.
-
-    The bench also stays off the network. It shows unpublished judgments about
-    named people, and it binds the loopback address for that reason.
-    """
-    bad = [f.name for f in
-           sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py"))
-           if "checked.jsonl" in f.read_text(encoding="utf-8", errors="replace")]
-    assert not bad, ("these name the bench's record and must not: "
-                     + ", ".join(bad))
-
-    rv = Path("review.py")
-    if rv.exists():
-        src = rv.read_text(encoding="utf-8", errors="replace")
-        # The BIND, not the file: the first version of this check read the
-        # whole source and failed on the comment explaining why the bind is
-        # what it is.
-        binds = re.findall(r"HTTPServer\(\s*\(\s*[\"']([\d.]+)[\"']", src)
-        assert binds, "review.py no longer opens an HTTPServer"
-        assert all(b.startswith("127.") for b in binds), (
-            "review.py binds " + ", ".join(binds)
-            + "; it must stay on the loopback address")
-    return "ok", "only a person writes it, and it is not on the site"
-
-
 @check("files", "no generator writes a file a person made by hand")
 def _record_untouched():
     """The files nobody can regenerate, and nothing may overwrite.
@@ -7447,15 +7609,26 @@ def _record_untouched():
 
     Naming only the first one meant the check grew stale as quietly as the
     thing it guards against: most of these had no guard at all.
+
+    THE BENCH'S RECORD IS HELD TO MORE, in the same reading of the scripts
+    (2 October 2026; a check of its own until then, "no generator writes the
+    bench's record"). It appends and never rewrites a line: a later look at
+    the same item is a second judgment rather than a correction of the first.
+    So a build_ or fetch_ script may not so much as name checked.jsonl,
+    where the other files here may be read by one. And the bench stays off
+    the network: it shows unpublished judgments about named people, and it
+    binds the loopback address for that reason.
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
                 "officials.json", "member_corrections.json",
                 "place_corrections.json", "launch_register.json",
                 "docket_corrections.json"]
-    bad = []
+    bad, names = [], []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):
         src = f.read_text(encoding="utf-8", errors="replace")
+        if "checked.jsonl" in src:
+            names.append(f.name)
         for name in HANDMADE:
             stem = re.escape(name.split("/")[-1])
             if not re.search(stem, src):
@@ -7467,10 +7640,31 @@ def _record_untouched():
                re.search(r'(?:TRUTH|LEDGER|NOTES|OFFICIALS)\s*\.\s*'
                          r'open\s*\(\s*["\']w', src):
                 bad.append(f"{f.name} writes {name}")
-    assert not bad, "these write a hand-made file: " + "; ".join(bad)
+    # Each of the three in its own words, and all that fail said together:
+    # they were two checks, and one failing did not hide the other.
+    said = []
+    if names:
+        said.append("these name the bench's record and must not: " + ", ".join(names))
+    if bad:
+        said.append("these write a hand-made file: " + "; ".join(bad))
+
+    rv = Path("review.py")
+    if rv.exists():
+        src = rv.read_text(encoding="utf-8", errors="replace")
+        # The BIND, not the file: the first version of this check read the
+        # whole source and failed on the comment explaining why the bind is
+        # what it is.
+        binds = re.findall(r"HTTPServer\(\s*\(\s*[\"']([\d.]+)[\"']", src)
+        if not binds:
+            said.append("review.py no longer opens an HTTPServer")
+        elif not all(b.startswith("127.") for b in binds):
+            said.append("review.py binds " + ", ".join(binds)
+                        + "; it must stay on the loopback address")
+    assert not said, "; and ".join(said)
     present = [n for n in HANDMADE if Path(n).exists()]
     return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
-                  "writes them: " + ", ".join(present))
+                  "writes them: " + ", ".join(present) + "; no generator names "
+                  "the bench's record, and the bench is not on the network")
 
 
 @check("markers", "every phrasing read from a transcript still matches")
@@ -9747,7 +9941,7 @@ def _child_encoding():
         if f.startswith("obsolete/") or not Path(f).exists():
             continue
         try:
-            tree = ast.parse(Path(f).read_text(encoding="utf-8", errors="replace"))
+            tree = _parsed(f)
         except SyntaxError:
             continue
         for node in ast.walk(tree):
@@ -10044,7 +10238,7 @@ def _fixture_brand(here, root, brand=True):
     (assets / "licensed" / BP.HEADER_MARK).write_bytes(png)
 
 
-def _built_site(here, root, brand=True):
+def _built_site(here, root, brand=True, env=None):
     """The fixture project, then build_all's builders over it, in build_all's
     order. Returns (the base address they were built with, how many ran).
 
@@ -10054,6 +10248,8 @@ def _built_site(here, root, brand=True):
     this so that a builder added to the pipeline is added in one place.
 
     brand=False builds it as a fresh clone would: with no logo or icon file.
+    env is laid over the builders' environment, for the check that states
+    the build's date.
     """
     _site_fixture(root)
     (root / "site").mkdir(exist_ok=True)
@@ -10140,7 +10336,7 @@ def _built_site(here, root, brand=True):
         if not (here / script).exists():
             continue
         r = _run([sys.executable, str(here / script), *args],
-                 cwd=root, capture_output=True, text=True, timeout=180)
+                 cwd=root, capture_output=True, text=True, timeout=180, env=env)
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()
             raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
@@ -10149,6 +10345,90 @@ def _built_site(here, root, brand=True):
     # SILENCE IS NOT SUCCESS. A chain that ran no builder at all would have
     # satisfied every assertion above by never reaching one.
     assert ran == len(steps), f"only {ran} of {len(steps)} builders were there to run"
+    return base, ran
+
+
+# ONE BUILD OF THE FIXTURE A RUN, FOR THE CHECKS THAT READ IT AS IT IS BUILT (2
+# October 2026). build_site_v2.py was started more than a dozen times a run,
+# and five of those were the same build of the unchanged fixture, each thrown
+# away after one check had read it: _upcoming_shape,
+# _disposed_beats_stale_status, _senate_reports, _rollcalls_by_term and
+# _chain_output. _chain and _addresses_have_slash each ran all twelve builders
+# over it. Those are two builds now -- build_site_v2 alone, whose per-bill
+# files the later builders fold into the pages, and the whole chain -- made
+# the first time a check asks and deleted when the run ends.
+#
+# EACH CHECK IS HANDED A COPY, in the folder it made and will delete, so it
+# reads and writes there as it always did: copying a fixture's few hundred
+# small files takes a tenth of a second, where building them took one to
+# four. A check that changes the fixture BEFORE it builds still builds its
+# own. And a build that fails, fails every check that takes a copy, in the
+# builder's own words: what it raised is kept and raised again.
+_MADE_ONCE = {}
+
+
+def _once_a_run(what, make):
+    """make() the first time this run asks for `what`; after that what it
+    returned, or raised."""
+    if what not in _MADE_ONCE:
+        try:
+            _MADE_ONCE[what] = (make(), None)
+        except Exception as e:                                  # noqa: BLE001
+            _MADE_ONCE[what] = (None, e)
+    got, err = _MADE_ONCE[what]
+    if err is not None:
+        raise err
+    return got
+
+
+def _shared_root(prefix):
+    """A folder under the system temp directory that goes when the run ends."""
+    import atexit
+    root = Path(tempfile.mkdtemp(prefix=prefix))
+    atexit.register(shutil.rmtree, root, ignore_errors=True)
+    return root
+
+
+def _fixture_site_v2(root):
+    """The fixture project with build_site_v2.py run over it, copied into
+    `root` -- an empty folder the caller made and deletes -- from the run's
+    one build of it. Returns that build's finished run, for the caller to
+    assert on as it did on its own."""
+    def build():
+        here = Path(".").resolve()
+        shared = _shared_root("gr-fixture-v2-")
+        _site_fixture(shared)
+        return shared, _run([sys.executable, str(here / "build_site_v2.py"),
+                             "--data", "data", "--out", "site", "--segments", "work"],
+                            cwd=shared, capture_output=True, text=True, timeout=180)
+    shared, r = _once_a_run("build_site_v2.py over the fixture", build)
+    shutil.copytree(shared, root, dirs_exist_ok=True)
+    return r
+
+
+def _fixture_site_shared():
+    """(where it stands, base, how many builders ran, the days it was built
+    on): _built_site(), once a run. For reading only -- nothing may write
+    under it; a check that writes takes a copy (_fixture_site_whole). The
+    days are the build's own, for a check that asks which day a page cites or
+    which week the calendar was built in: one day, or two where the builders
+    ran across midnight, and then a builder wrote whichever it started on, so
+    a check holds what it reads to either."""
+    def build():
+        from datetime import date
+        shared = _shared_root("gr-fixture-site-")
+        started = date.today()
+        base, ran = _built_site(Path(".").resolve(), shared)
+        return shared, base, ran, sorted({started, date.today()})
+    return _once_a_run("every builder over the fixture", build)
+
+
+def _fixture_site_whole(root):
+    """_built_site(here, root), from the run's one build: the built project
+    is copied into `root`, an empty folder the caller made and deletes, and
+    (base, how many builders ran) returned as _built_site returns them."""
+    shared, base, ran, _days = _fixture_site_shared()
+    shutil.copytree(shared, root, dirs_exist_ok=True)
     return base, ran
 
 
@@ -10181,7 +10461,7 @@ def _chain():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
-        base, steps = _built_site(here, root)
+        base, steps = _fixture_site_whole(root)
         # llms.txt (24 September): it exists, says the one thing that must
         # never move -- this is not the General Court's official record --
         # and the example bill address it gives is a page that was built.
@@ -10375,6 +10655,186 @@ def _chain():
                       f"({named} of {len(members)} members have one)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# The modules on the build's path that ask the clock what day it is and are
+# right to, each with what it writes the answer into: a record of when a
+# thing happened, never a date a reader is shown as the site's own
+# (_build_date_stated, below, fails any other).
+CLOCK_OF_THEIR_OWN = {
+    "build_date.py": "the one place the build's day is read",
+    "build_all.py": "site/build.json's record of when the run itself finished",
+    "cloud.py": "the bucket's records of a send",
+    "refusal.py": "the record of a refusal, and the night's window",
+    "livestreams.py": "the night's own record of its livestream runs",
+    "fetch_legislation.py": "the day a page was asked for, on the gone-list",
+    "parse_town_sites.py": "the day a town's site was read, in its own run by hand",
+    "town_boards.py": "the day a town's boards were read, in its own run by hand",
+}
+
+
+@check("build", "a stated build date is the date every builder writes, and only build_date.py "
+                "reads the clock for them", needs=("build_all", "build_date", "shell"))
+def _build_date_stated(build_all, build_date, shell):
+    """The day the site was built is in every page, so two builds made on
+    different days differed in every page, and a refactor's proof -- the same
+    sha256 for every file -- could only be made within one day.
+    GRANITE_BUILD_DATE states the day (build_date.py). Two halves:
+
+    NO BUILDER READS THE CLOCK FOR ITSELF. Every script build_all.py runs
+    without the network, and every module of this project those import, is
+    read: a call to today(), now() or utcnow() that is not build_date's, or
+    one of time's date functions, is in a module CLOCK_OF_THEIR_OWN names
+    with its reason, or it fails here. So does a name there that no longer
+    applies, and so does a second reader of the variable.
+
+    AND THE STATED DAY IS WHAT IS WRITTEN. The fixture site is built with the
+    day before yesterday stated: every page's citation falls back on that day
+    and none on today, home.json and the downloads' manifest are dated it, no
+    sitemap date is later and the standing pages carry it, every feed's
+    lastBuildDate is it, and the week it falls in is the calendar's current
+    one. A date that is not one stops a builder. And without the variable the
+    day is the clock's, which is what the fixture every other check reads was
+    built by.
+    """
+    from datetime import date, timedelta
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    def imported(f):
+        out = set()
+        for n in ast.walk(_parsed(f)):
+            if isinstance(n, ast.Import):
+                out |= {a.name.split(".")[0] for a in n.names}
+            elif isinstance(n, ast.ImportFrom) and n.module:
+                out.add(n.module.split(".")[0])
+            elif isinstance(n, ast.Call) and getattr(n.func, "id", "") == "__import__" \
+                    and n.args and isinstance(n.args[0], ast.Constant):
+                out.add(str(n.args[0].value).split(".")[0])
+        return {m + ".py" for m in out if Path(m + ".py").exists()}
+
+    def clock(tree):
+        """The places in a parsed script that ask the clock what day it is:
+        today, now or utcnow that is not build_date's, called there or only
+        named (`f = date.today` is called somewhere else); one of time's date
+        functions; and a date made from time.time(). A net for the usual
+        spellings and no more -- `from time import strftime` goes through it
+        -- which is why the other half of this check reads what was built."""
+        out = []
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Attribute) and n.attr in ("today", "now", "utcnow"):
+                if not ast.unparse(n).startswith("build_date."):
+                    out.append((n.lineno, ast.unparse(n)))
+            elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and (
+                    (n.func.attr in ("strftime", "localtime", "gmtime", "ctime")
+                     and ast.unparse(n.func.value) == "time")
+                    or (n.func.attr == "fromtimestamp" and "time.time()" in ast.unparse(n))):
+                out.append((n.lineno, ast.unparse(n.func)))
+        return [f"{at}: {what}()" for at, what in sorted(out)]
+    trial = ast.parse("import datetime as d, time, build_date\n"
+                      "a = d.date.today()\nb = build_date.today()\n"
+                      "c = __import__('datetime').datetime.now()\n"
+                      "e = time.strftime('%Y')\nf = time.time()\n"
+                      "g = d.date.today\nh = d.date.fromtimestamp(time.time())\n"
+                      "i = d.datetime.fromtimestamp(p.stat().st_mtime)\n")
+    assert [c.split(": ")[1] for c in clock(trial)] == [
+        "d.date.today()", "__import__('datetime').datetime.now()", "time.strftime()",
+        "d.date.today()", "d.date.fromtimestamp()"], \
+        f"the reader of clock calls found {clock(trial)}"
+
+    steps = sorted({s.args[0] for s in build_all.plan(A()) if not s.network})
+    assert len(steps) >= 30, f"only {len(steps)} local steps were read off build_all.plan()"
+    seen, todo = set(), list(steps)
+    while todo:
+        f = todo.pop()
+        if f not in seen and Path(f).exists():
+            seen.add(f)
+            todo += sorted(imported(f))
+    own = {f: clock(_parsed(f)) for f in sorted(seen)}
+    stray = [f"{f} ({'; '.join(c[:3])})" for f, c in own.items()
+             if c and f not in CLOCK_OF_THEIR_OWN]
+    assert not stray, (
+        "these are on the build's path and ask the clock what day it is, so a build "
+        f"with its day stated ({build_date.ENV}) would still write today into what they "
+        "write: " + ", ".join(stray) + ". Ask build_date.today(), now() or utcnow(); or, "
+        "where the clock is right, name the module in CLOCK_OF_THEIR_OWN with why.")
+    stale = sorted(f for f in CLOCK_OF_THEIR_OWN if f in seen and not own[f])
+    assert not stale, ("CLOCK_OF_THEIR_OWN names modules that no longer read the clock: "
+                       + ", ".join(stale))
+    readers = sorted(f for f in seen if f != "build_date.py"
+                     and build_date.ENV in Path(f).read_text(encoding="utf-8", errors="replace"))
+    assert not readers, (f"{build_date.ENV} is read in one place, build_date.py, and "
+                         f"{', '.join(readers)} name it too")
+    assert build_date.stated() is None and build_date.today() == date.today(), (
+        "with no day stated, build_date.today() is not the clock's")
+
+    here = Path(".").resolve()
+    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    if absent:
+        return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
+                      "itself; the stated day was not built with: not here, "
+                      + ", ".join(absent))
+    today = date.today()
+    day = today - timedelta(days=2)
+    root = Path(tempfile.mkdtemp(prefix="gr-stated-"))
+    try:
+        stated = {build_date.ENV: day.isoformat()}
+        _built_site(here, root, env=stated)
+        site = root / "site"
+        said, late = 0, []
+        for p in sorted(site.rglob("*.html")):
+            t = p.read_text(encoding="utf-8", errors="replace")
+            said += f'<span class="citeday">{shell.cite_day(day)}</span>' in t
+            if f'<span class="citeday">{shell.cite_day(today)}</span>' in t:
+                late.append(p.relative_to(site).as_posix())
+        assert said, "no page of the fixture cites the stated day as the day it was read"
+        assert not late, (f"{len(late)} page(s) built with {day} stated still cite today, "
+                          f"{shell.cite_day(today)}: {', '.join(late[:4])}")
+        home = json.loads((site / "home.json").read_text(encoding="utf-8"))
+        assert home.get("generated") == day.isoformat(), (
+            f"home.json is dated {home.get('generated')}, not the stated {day}")
+        made = json.loads((site / "data" / "manifest.json").read_text(encoding="utf-8"))
+        assert str(made.get("generated")).startswith(day.isoformat() + "T"), (
+            f"the downloads' manifest was generated {made.get('generated')}, not on {day}")
+        mods = re.findall(r"<lastmod>([^<]*)</lastmod>",
+                          (site / "sitemap.xml").read_text(encoding="utf-8"))
+        assert mods and max(mods) == day.isoformat(), (
+            f"the sitemap's latest date is {max(mods) if mods else None}, not the stated {day}")
+        import build_calendar as BC
+        import build_feeds as BF
+        feed = (site / "feed" / "all.xml").read_text(encoding="utf-8")
+        assert f"<lastBuildDate>{BF.rfc822(day.isoformat())}</lastBuildDate>" in feed, (
+            "feed/all.xml's lastBuildDate is not the stated day: "
+            + "".join(re.findall(r"<lastBuildDate>[^<]*</lastBuildDate>", feed)[:1]))
+        assert (site / "calendar" / f"{BC.week_key(day)}.html").exists(), (
+            f"the calendar's current week is not the stated day's, {BC.week_key(day)}")
+        # A date that is not one stops the builder, and it says which variable.
+        r = _run([sys.executable, str(here / "build_bill_pages.py"), "--site", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=120,
+                 env={build_date.ENV: "next tuesday"})
+        assert r.returncode != 0 and build_date.ENV in (r.stderr or "") + (r.stdout or ""), (
+            "a builder given a stated date that is not a date carried on: "
+            + ((r.stderr or r.stdout).strip()[-160:] or f"exit {r.returncode}"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # And by the clock, where none is stated: the fixture the other checks read.
+    plain, _base, _ran, built_on = _fixture_site_shared()
+    page = next((plain / "site" / "bill").rglob("*.html")).read_text(encoding="utf-8",
+                                                                     errors="replace")
+    assert any(f'<span class="citeday">{shell.cite_day(d)}</span>' in page for d in built_on), (
+        "with no day stated, a bill page does not cite the day it was built")
+    src = Path(build_all.__file__).read_text(encoding="utf-8")
+    assert "build_date.stated()" in src and '"date_stated"' in src, (
+        "build_all.py no longer says, or records in build.json, that its day was stated")
+    return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
+                  f"itself but the {sum(1 for f in CLOCK_OF_THEIR_OWN if own.get(f))} named; "
+                  f"built with {day} stated, {said} pages cite it and none cites today, "
+                  "and the index, the manifest, the sitemap, the feeds and the calendar's "
+                  "week are that day's; a date that is not one stops the builder")
 
 
 # An address as it is written in a page, and the page furniture that is not one.
@@ -11733,6 +12193,164 @@ def _session_speech_on_its_motion(JD, SD, BSP):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# ---- the two large files, read once a run -------------------------------------
+#
+# narratives.json, 246 MB, WAS LOADED SEVEN TIMES A RUN and
+# data/member_votes.json, 561 MB, three (2 October 2026), by ten checks that
+# each read a field or two. Each is read once now, and what is kept is kept
+# under the file's path, its size and the time it was last written: a file
+# written again during a run is read again, and the reading of the file it
+# replaced is dropped. (narratives.json twice, in truth: one of its seven,
+# _introductions_against_journal, still loads its own, because three other
+# branches were changing the lines around that load on the day this was
+# written. It takes _narratives() in one line once they are merged.)
+#
+# THEY ARE FOR READING. Every check that takes one of these shares the same
+# object with the checks after it; one that needs to change what it reads
+# loads its own.
+#
+# THE BALLOTS ARE COUNTED, NOT KEPT, AND NEVER LOADED WHOLE. The file is 2.3
+# million rows: 2.2 GB once loaded and nearly 3 GB while it loads, which was
+# the most a run of these checks asked of the machine, three times over. Its
+# three readers each walked every row for a count: how many ballots sit under
+# each bill number, how many of each year name a member and a party, and
+# which chamber each member voted in each year. One pass takes all three
+# (_ballot_census), a row at a time (_json_rows), in about 100 MB.
+_READ_ONCE = {}
+
+
+def _read_once(path, read):
+    """read(path), or what it returned the last time this run called it for
+    a file of this path, size and time of writing."""
+    p = Path(path)
+    st = p.stat()
+    was = (str(p.resolve()), read.__name__)
+    now = (st.st_size, st.st_mtime_ns)
+    if _READ_ONCE.get(was, (None, None))[0] != now:
+        _READ_ONCE.pop(was, None)
+        _READ_ONCE[was] = (now, read(p))
+    return _READ_ONCE[was][1]
+
+
+def _narratives():
+    """narratives.json, {term: {bill: record}}, as json.loads gives it."""
+    def whole(p):
+        return json.loads(p.read_text(encoding="utf-8"))
+    return _read_once("narratives.json", whole)
+
+
+def _json_rows(path, chunk=1 << 24):
+    """Each element of the JSON list a file holds, in the file's order, read
+    a piece of the file at a time: neither its text nor the list is ever
+    whole in memory. A row is taken only once the comma or the bracket after
+    it is in hand, so one cut by the end of a piece -- a number most of all,
+    whose first digits read as a number -- is read again with the next piece.
+    A file that is not a list, or that ends inside one, raises."""
+    decoder = json.JSONDecoder()
+    space = " \t\r\n"
+    with open(path, encoding="utf-8") as fh:
+        buf = fh.read(chunk)
+        while buf and not buf.strip():                  # white space, a piece long
+            more = fh.read(chunk)
+            if not more:
+                break
+            buf += more
+        i = len(buf) - len(buf.lstrip())
+        if buf[i:i + 1] != "[":
+            raise ValueError(f"{path} does not hold a JSON list")
+        i += 1
+        while True:
+            while i < len(buf) and (buf[i] in space or buf[i] == ","):
+                i += 1
+            if i < len(buf) and buf[i] == "]":
+                return
+            try:
+                if i >= len(buf):
+                    raise json.JSONDecodeError("the piece ends between rows", buf, i)
+                row, end = decoder.raw_decode(buf, i)
+                while end < len(buf) and buf[end] in space:
+                    end += 1
+                if end >= len(buf) or buf[end] not in ",]":
+                    raise json.JSONDecodeError("the piece ends inside a row", buf, i)
+            except json.JSONDecodeError:
+                more = fh.read(chunk)
+                if not more:
+                    raise
+                buf, i = buf[i:] + more, 0
+                continue
+            i = end
+            yield row
+
+
+@check("files", "a list too large to load whole is read a row at a time, every row once")
+def _rows_one_at_a_time():
+    """_json_rows is how the checks read data/member_votes.json, 2.3 million
+    ballots, without holding it: three data checks count what it hands them,
+    and a reader that dropped a row at the seam between two pieces of the
+    file, or stopped early, would leave all three passing on fewer ballots.
+    So it is held to json.loads on a list written to exercise the seams --
+    brackets, commas and quotes inside strings, nested lists, numbers, a row
+    of every length -- with the pieces cut at every size from one character
+    up; and a file that ends inside its list, or is not a list, has to raise."""
+    rows = [{"bill": "HB1", "name": 'Smith, "Al" [R], {x}', "n": [1, [2, 3], {"a": "]"}]},
+            {}, {"bill": "", "year": None, "note": "café \\ ] , ["},
+            {"k": "v" * 70}, [1, 2, {"three": 3}], "a string, with ] in it", 12345, 6.5, None,
+            {"last": True}]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-rows-"))
+    try:
+        for name, text in (("tight.json", json.dumps(rows, separators=(",", ":"))),
+                           ("loose.json", " \n" + json.dumps(rows, indent=1) + "\n"),
+                           ("empty.json", "[]"), ("one.json", '[{"a": 1}]')):
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            want = json.loads(text)
+            for chunk in list(range(1, 41)) + [len(text), len(text) + 1, 1 << 16]:
+                got = list(_json_rows(p, chunk))
+                assert got == want, (f"{name} read {chunk} characters at a time gave "
+                                     f"{len(got)} rows of {len(want)}, or other rows")
+        whole = json.dumps(rows)
+        for name, text, why in (("cut.json", whole[:len(whole) // 2], "ends inside its list"),
+                                ("open.json", whole[:-1], "ends inside its list"),
+                                ("dict.json", '{"a": [1, 2]}', "is not a list"),
+                                ("none.json", "", "is not a list")):
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            for chunk in (3, 1 << 16):
+                try:
+                    got = list(_json_rows(p, chunk))
+                except ValueError:
+                    continue
+                raise AssertionError(f"{name}, which {why}, was read as {len(got)} rows")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("every row once and in order, with the file cut into pieces of 1 to 40 "
+                  "characters and whole; a file that ends inside its list, or is not one, raises")
+
+
+def _ballot_census():
+    """data/member_votes.json, as the three counts its readers take from it,
+    each keyed on the row's own values so that a reader applies its own rule
+    to them:
+
+      bills   {bill as the row writes it: ballots}, in the file's order of
+              first appearance -- _own_lsr_on_disk asks whether each is the
+              bill's own number;
+      named   {(year, has no party, is named "Member #..."): ballots} --
+              _vote_identity sums these into its terms;
+      seats   {(year, body, member id)} -- _past_sponsors_chamber reads the
+              chamber a member voted in.
+    """
+    def count(p):
+        bills, named, seats = Counter(), Counter(), set()
+        for v in _json_rows(p):
+            bills[v.get("bill")] += 1
+            named[(v.get("year"), (v.get("party") or "X") == "X",
+                   str(v.get("name") or "").startswith("Member #"))] += 1
+            seats.add((v.get("year"), v.get("body"), str(v.get("member_id") or "")))
+        return {"bills": bills, "named": named, "seats": seats}
+    return _read_once("data/member_votes.json", count)
+
+
 @check("data", "no history tells a row whose LSR is another measure's, and no bill's own "
        "row or roll call is left under a number typed another way",
        needs=("narrative", "narrate_archive", "rollcall_parser"))
@@ -11758,7 +12376,7 @@ def _own_lsr_on_disk(N, NA, RP):
     if not found:
         return "skip", "no docket on this disk"
     lsrs = N.load_lsrs(fb)
-    narr = json.loads(fn.read_text(encoding="utf-8"))
+    narr = _narratives()
     owner = {}
     for t, recs in lsrs.items():
         for b, (y, n) in recs.items():
@@ -11828,12 +12446,14 @@ def _own_lsr_on_disk(N, NA, RP):
     mv = Path("data/member_votes.json")
     ballots = 0
     if mv.exists():
-        for v in json.loads(mv.read_text(encoding="utf-8")):
-            n = RP.bill_number(v.get("bill"))
-            if n and n != v.get("bill"):
-                ballots += 1
-                if ballots <= 3:
-                    typed.append(f"ballot on {v.get('bill')!r}")
+        # Every ballot under each spelling of a bill number (_ballot_census),
+        # so the number is asked once for each spelling and not once a ballot.
+        for bill, cast in _ballot_census()["bills"].items():
+            n = RP.bill_number(bill)
+            if n and n != bill:
+                if ballots < 3:
+                    typed.append(f"ballot on {bill!r}")
+                ballots += cast
     assert not typed, (f"roll calls or ballots under a bill number typed another way "
                        f"({ballots} ballots): " + "; ".join(typed[:6]))
     return "ok", (f"{checked:,} docket rows whose LSR is another measure's are in no "
@@ -13714,7 +14334,7 @@ def _addresses_have_slash():
                              "instead of refusing it")
     root = Path(tempfile.mkdtemp())
     try:
-        base, _steps = _built_site(here, root)
+        base, _steps = _fixture_site_whole(root)
         site = root / "site"
         want = base + "/"
         at_base = re.compile(re.escape(base) + r'[^\s"<,}&]*')
@@ -13744,8 +14364,10 @@ def _addresses_have_slash():
             assert seen[need], f"the fixture site gave this check no {need} to read"
 
         # The current week at both its addresses, one page to index.
-        import datetime as _dt
-        key = BC.week_key(_dt.date.today())
+        # The week of the day that build ran on -- or, across a midnight that
+        # ends a week, whichever of the two the calendar was written in.
+        keys = [BC.week_key(d) for d in _fixture_site_shared()[3]]
+        key = next((k for k in keys if (site / "calendar" / f"{k}.html").exists()), keys[0])
         copy = site / "calendar" / f"{key}.html"
         assert copy.exists(), (
             f"calendar/{key}.html was not written: the dated address of the "
@@ -17710,12 +18332,14 @@ def _one_stylesheet():
     assert not stray, (
         f"{len(stray)} rules in the PAGES region are not scoped to the pages "
         f"that read it, so every record page takes them: {stray[:3]}")
-    built = Path("site/style.css")
-    if built.exists():
-        text = built.read_text(encoding="utf-8")
+    sheets = _built_stylesheets()
+    for what, site in sheets:
+        text = (site / "style.css").read_text(encoding="utf-8")
         assert "__PAGES__" not in text and ":where(body.pg)" in text, (
-            "site/style.css was not written from app.css's regions")
-    return "ok", f"{len(re.findall(r':where\(body.pg\)', pages)):,} page rules, one file"
+            f"{what} was not written from app.css's regions")
+    return "ok", (f"{len(re.findall(r':where\(body.pg\)', pages)):,} page rules, one file"
+                  + ("; " + " and ".join(what for what, _site in sheets)
+                     + " written from it" if sheets else ""))
 
 
 @check("frontend", "the status box without JavaScript says what the scripted one says")
@@ -18001,10 +18625,7 @@ def _disposed_beats_stale_status():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         idx = {x["id"]: x for x in
                json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
@@ -18042,10 +18663,7 @@ def _senate_reports():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         hb = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                         .read_text(encoding="utf-8"))
@@ -18095,10 +18713,7 @@ def _rollcalls_by_term():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         hb = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                         .read_text(encoding="utf-8"))
@@ -18163,10 +18778,7 @@ def _chain_output():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
-                            "--data", "data", "--out", "site", "--segments", "work"],
-                           cwd=root, capture_output=True, text=True, timeout=180)
+        r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         s = root / "site"
         hb = json.loads(
@@ -24004,8 +24616,7 @@ def _first_referral_on_disk(referrals, build_data):
     # the referral reader takes for a referral and the bill's own history
     # does not (narratives.json's not_introduced; build_data.add_past_bills
     # leaves such a record no committee). Those must show none.
-    fn = Path("narratives.json")
-    narr = json.loads(fn.read_text(encoding="utf-8")) if fn.exists() else {}
+    narr = _narratives() if Path("narratives.json").exists() else {}
     wrong, checked = [], 0
     for (t, b), bodies in refs.items():
         rec = (bills.get(t) or {}).get(b)
@@ -24244,7 +24855,7 @@ def _signed():
         return "skip", "narratives.json or build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
-    nvf = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+    nvf = _narratives()
     # {term: {bill: record}}. This is a check on the whole record, so it reads
     # every term rather than one.
     nv = {b: r for byb in nvf.values() for b, r in byb.items()}
@@ -27819,9 +28430,10 @@ def _every_fetcher_checks_refusal():
     NAMED = ("fetch_committee_details.py",)
     ADDRESSES = ("civics",)         # modules holding gc.nh.gov addresses scripts ask
 
-    def read(name, src):
-        """(asks the General Court, calls refusal.check with refusal imported)."""
-        tree = _ast.parse(src)
+    def read(name, src, tree=None):
+        """(asks the General Court, calls refusal.check with refusal imported).
+        `tree` is the script's parse where this run already has one."""
+        tree = tree or _ast.parse(src)
         imported = {a.name for n in _ast.walk(tree) if isinstance(n, _ast.Import)
                     for a in n.names} | {n.module for n in _ast.walk(tree)
                                          if isinstance(n, _ast.ImportFrom) and n.module}
@@ -27858,7 +28470,7 @@ def _every_fetcher_checks_refusal():
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
         try:
-            ask, checks = read(p.name, src)
+            ask, checks = read(p.name, src, _parsed(p))
         except SyntaxError as e:
             raise AssertionError(f"{p.name} will not parse, so whether it asks the General "
                                  f"Court cannot be read: {e}")
@@ -28068,7 +28680,7 @@ def _children_sealed():
                       '    assert x, "fetch_x.py now writes it"\n'
                       '    return "skip", "run build_all.py first"\n')
     assert bare(trial) == ["b", "d", "e"], f"the reader of spawns found {bare(trial)}"
-    found = bare(ast.parse(Path(__file__).read_text(encoding="utf-8")))
+    found = bare(_parsed(__file__))
     assert not found, ("these checks start a fetcher, the lane or the pipeline as a process "
                        "without the seal, so a regression would reach the network from "
                        "preflight: " + ", ".join(found) + ". Start it with _sealed_run or "
@@ -32940,7 +33552,7 @@ def _sql_hold(PD, NI, CL):
                           "def late(x):\n    child.popen(x)\n    hold_check('q')\n\n"
                           "def bare(x):\n    subprocess.run(x)\n")
         assert unheld(probe)[0] == ["late", "bare"], unheld(probe)
-        bad, starts = unheld(ast.parse(Path(PD.__file__).read_text(encoding="utf-8")))
+        bad, starts = unheld(_parsed(PD.__file__))
         assert {"run", "run_to_file", "_bridge"} <= set(starts) and not bad, (
             f"probe_db starts PowerShell without asking hold_check() first in {bad}")
 
@@ -34790,7 +35402,7 @@ def _night_window(R, PD):
                       "def late(x):\n    child.popen(x)\n    refusal.window_check('q')\n\n"
                       "def bare(x):\n    subprocess.run(x)\n")
     assert unguarded(probe)[0] == ["late", "bare"], unguarded(probe)
-    bad, starts = unguarded(ast.parse(Path(PD.__file__).read_text(encoding="utf-8")))
+    bad, starts = unguarded(_parsed(PD.__file__))
     assert {"run", "run_to_file", "_bridge"} <= set(starts), \
         f"probe_db's bridges were not found to read: {starts}"
     assert not bad, (f"probe_db starts PowerShell without asking refusal.window_check() first "
@@ -36640,7 +37252,6 @@ def _veto_messages():
     # calendar from another year.
     if not Path("site/bill").is_dir():
         return "skip", "no bill pages built"
-    import site_read as SR
     # EXACTLY two stops, not three. The governor quotes a letter in
     # HB475's message with a real ellipsis in it, and a pattern reading
     # "..." as a defect flags the site's most careful quotation as its
@@ -36650,7 +37261,7 @@ def _veto_messages():
     url_year = re.compile(r"(?:calendars|journals)(?:%5C|\\|/)(\d{4})(?:%5C|\\|/)",
                           re.I)
     n, bad = 0, []
-    for _year, _bid, d in SR.records("site"):
+    for _year, _bid, d in _site_records():
         v = d.get("veto_message")
         if not v:
             continue
@@ -36963,9 +37574,8 @@ def _vote_note_truth():
     directly above the record of how they voted."""
     if not Path("site/bill").is_dir():
         return "skip", "no bill pages built"
-    import site_read as SR
     bad, n = [], 0
-    for year, bid, rec in SR.records("site"):
+    for year, bid, rec in _site_records():
         if not rec.get("rollcalls"):
             continue
         n += 1
@@ -37024,12 +37634,11 @@ def _next_step_settled():
     site = Path("site")
     if not (site / "index.json").exists():
         return "skip", "no site built"
-    import site_read as SR
     kinds = {(str(r.get("year")), r["id"].upper()): r.get("kind")
              for r in json.loads((site / "index.json").read_text(
                  encoding="utf-8"))}
     bad, n = [], 0
-    for year, bid, rec in SR.records("site"):
+    for year, bid, rec in _site_records():
         if kinds.get((year, bid)) not in ("law", "veto"):
             continue
         n += 1
@@ -37107,10 +37716,9 @@ def _report_citations():
     names."""
     if not Path("site/bill").is_dir():
         return "skip", "no bill pages built"
-    import site_read as SR
     url_year = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
     n, bad = 0, []
-    for year, bid, rec in SR.records("site"):
+    for year, bid, rec in _site_records():
         for rep in (rec.get("reports") or []):
             m = url_year.search(rep.get("cite_url") or "")
             sy = re.search(r"(\d{4})\s*$", rep.get("source") or "")
@@ -37140,17 +37748,35 @@ def _rail():
     "pppp" -- passed the House, passed the Senate, reached the governor,
     became law -- should also come out at exactly the number of bills the
     site independently calls law.
+
+    AND THE STATUS CHIP'S WORDS, in the same reading of the index (2 October
+    2026; a check of its own until then, "a bill both chambers passed does
+    not read "Passed one chamber""). The chip and the rail beside it are one
+    fact said twice. Before 23 September, 49 bills read "Passed one chamber"
+    beside a rail whose second chamber was passed -- CACR 13 of 2026 among
+    them, adopted by the Senate 23-1 -- and 30 resolutions drew a governor
+    who never sees a resolution. Each of the three is said by name when it
+    fails, and all that fail are said together.
     """
     idx = Path("site/index.json")
     if not idx.exists():
         return "skip", "index.json is not built"
     rows = json.loads(idx.read_text(encoding="utf-8"))
     bad, n, laws, pppp, vetoes = [], 0, 0, 0, 0
+    both, gov = [], []
     for b in rows:
         p = b.get("passage") or ""
         kind = b.get("kind") or ""
         if kind == "law":
             laws += 1
+        key = (b.get("term"), b.get("id"))
+        # _RAIL_KNOWN is named further down, where the second check stood.
+        if (len(p) == 5 and p[2] == "p" and b.get("status") == "Passed one chamber"
+                and key not in _RAIL_KNOWN):
+            both.append(f"{key[0]} {key[1]} {p}")
+        if (len(p) == 5 and p[3] != "-"
+                and re.match(r"^(?:SS)?(?:HCR|SCR|CACR)\d", b.get("id") or "")):
+            gov.append(f"{key[0]} {key[1]} {p}")
         if not p:
             continue
         n += 1
@@ -37204,8 +37830,13 @@ def _rail():
                            f"through a chamber the rail crosses: {p!r}")
     if not n:
         return "skip", "no bill carries a passage"
-    assert not bad, (f"{len(bad)} of {n:,} rails disagree with the record: "
-                     f"{'; '.join(bad[:3])}")
+    wrong = ([f"{len(bad)} of {n:,} rails disagree with the record: "
+              f"{'; '.join(bad[:3])}"] if bad else []) \
+        + ([f"{len(both)} bills read \"Passed one chamber\" beside a rail "
+            f"that passed the second chamber: {'; '.join(both[:5])}"] if both else []) \
+        + ([f"{len(gov)} resolutions draw a governor on their rail: "
+            f"{'; '.join(gov[:5])}"] if gov else [])
+    assert not wrong, ". AND ".join(wrong)
     # The Law stop and the word "law" are the same fact counted two ways.
     # Not "pppp": nine bills became law over a veto, and their rail reads
     # ppxp -- both chambers, the governor against, law anyway. That is the
@@ -37225,7 +37856,9 @@ def _rail():
         "called law. Those are the same bills counted two ways and they have "
         "to match.")
     return "ok", (f"{n:,} rails, {pppp:,} of them the whole way, "
-                  f"{vetoes} vetoed and crossed at the governor")
+                  f"{vetoes} vetoed and crossed at the governor; of {len(rows):,} "
+                  "bills, no second chamber passed under \"Passed one chamber\", "
+                  "and no governor on a resolution")
 
 
 # THE OLDER TERMS' DISAGREEMENTS, recounted on 24 September after review found
@@ -37299,10 +37932,9 @@ def _journey_agrees(build_site_v2):
     idx = Path("site/index.json")
     if not (idx.exists() and Path("site/bill").is_dir()):
         return "skip", "no built index and bill pages"
-    import site_read as SR
     rows = {(r.get("term"), r.get("id")): r
             for r in json.loads(idx.read_text(encoding="utf-8"))}
-    recs = ((rec.get("term") or "", bid, rec) for _y, bid, rec in SR.records("site"))
+    recs = ((rec.get("term") or "", bid, rec) for _y, bid, rec in _site_records())
     n, now, old = _journey_story(recs, rows, build_site_v2)
     if not (n["agree"] or n["disagree"]):
         return "skip", "no bill record carries a journey yet"
@@ -37320,37 +37952,6 @@ def _journey_agrees(build_site_v2):
 # 1995 started in the Senate, and its docket files a House stage first. The
 # label is right. Named, so that a new one is noticed.
 _RAIL_KNOWN = {("1995-1996", "CACR9")}
-
-
-@check("data", "a bill both chambers passed does not read \"Passed one chamber\"")
-def _second_chamber_label():
-    """The status chip and the rail beside it are one fact said twice.
-
-    Before 23 September, 49 bills read "Passed one chamber" beside a rail
-    whose second chamber was passed -- CACR 13 of 2026 among them, adopted
-    by the Senate 23-1 -- and 30 resolutions drew a governor who never sees
-    a resolution. This reads the built index for both.
-    """
-    idx = Path("site/index.json")
-    if not idx.exists():
-        return "skip", "index.json is not built"
-    rows = json.loads(idx.read_text(encoding="utf-8"))
-    both, gov = [], []
-    for b in rows:
-        p = b.get("passage") or ""
-        key = (b.get("term"), b.get("id"))
-        if (len(p) == 5 and p[2] == "p" and b.get("status") == "Passed one chamber"
-                and key not in _RAIL_KNOWN):
-            both.append(f"{key[0]} {key[1]} {p}")
-        if (len(p) == 5 and p[3] != "-"
-                and re.match(r"^(?:SS)?(?:HCR|SCR|CACR)\d", b.get("id") or "")):
-            gov.append(f"{key[0]} {key[1]} {p}")
-    assert not both, (f"{len(both)} bills read \"Passed one chamber\" beside a rail "
-                      f"that passed the second chamber: {'; '.join(both[:5])}")
-    assert not gov, (f"{len(gov)} resolutions draw a governor on their rail: "
-                     f"{'; '.join(gov[:5])}")
-    return "ok", (f"{len(rows):,} bills: no second chamber passed under "
-                  "\"Passed one chamber\", and no governor on a resolution")
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")
@@ -37708,17 +38309,14 @@ def _vote_identity():
     if not mv.exists():
         return "ok", (f"{len(by_emp):,} voters, each with an id of their own; "
                       "data/member_votes.json not built, so no party census")
-    votes = json.loads(mv.read_text(encoding="utf-8"))
     per_term = {}
-    for v in votes:
-        y = int(v.get("year") or 0)
+    for (year, no_party, no_name), cast in _ballot_census()["named"].items():
+        y = int(year or 0)
         if not y:
             continue
         t = f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}"
         tot, nop, non = per_term.get(t, (0, 0, 0))
-        per_term[t] = (tot + 1,
-                       nop + ((v.get("party") or "X") == "X"),
-                       non + str(v.get("name") or "").startswith("Member #"))
+        per_term[t] = (tot + cast, nop + cast * no_party, non + cast * no_name)
 
     # A NAME, EVERYWHERE. This is the guard that holds across the whole
     # archive, and the one that regressed most recently: 24 years of roll
@@ -37774,14 +38372,41 @@ def _one_head():
     substitutes it into bills.html -- which left the template's own <title>
     in place, so every generated page carried two. Browsers show the first;
     a crawler may take either.
+
+    THE HEAD, AND NOT THE PAGE (2 October 2026). This read every page whole,
+    1.4 GB, to look at its first 6,000 characters -- and 700 of the 38,028
+    pages have a head longer than that: 7,655 characters on CACR 23 of 2000,
+    whose title and description are long. A second canonical link past
+    character 6,000 of those was never seen, and nothing said so. Now the
+    first HEAD_BYTES of a page are read, the tags are counted in its first
+    6,000 characters as before AND on to the end of its head, and a page
+    whose head does not end in what was read fails by name.
     """
+    HEAD_BYTES = 16384              # the longest head was 7,665 bytes on 2 October 2026
     site = Path("site")
     if not site.exists():
         return "skip", "site is not built"
     bad, n = [], 0
     for p in sorted(site.rglob("*.html")):
-        h = p.read_text(encoding="utf-8", errors="replace")[:6000]
+        with open(p, "rb") as fh:
+            raw = fh.read(HEAD_BYTES)
+        # A line's end is one character however the file writes it, as it was
+        # when the page was read as text: the built pages end their lines
+        # with two here, and counting both put the 6,000th character a line's
+        # worth of characters early for every line before it.
+        h = raw.decode("utf-8", errors="replace").replace("\r\n", "\n")
+        end = h.find("</head>")
+        if len(raw) == HEAD_BYTES and len(h) < 6000:
+            # Three bytes to a character and more: read it as it always was.
+            h = p.read_text(encoding="utf-8", errors="replace")
+            end = h.find("</head>")
         n += 1
+        if end < 0 and len(raw) == HEAD_BYTES:
+            bad.append(f"{p.relative_to(site)}'s head does not end in its first "
+                       f"{HEAD_BYTES:,} bytes, so its tags were not all read (raise "
+                       "HEAD_BYTES in this check if a head has really grown that long)")
+            continue
+        h = h[:max(6000, end + len("</head>"))]
         for what, pat in (("title", r"<title>"),
                           ("description", r'<meta name="description"'),
                           ("canonical", r'<link rel="canonical"')):
@@ -37792,9 +38417,9 @@ def _one_head():
                 bad.append(f"{p.relative_to(site)} has no title")
         if len(bad) > 12:
             break
-    assert not bad, (f"{len(bad)} page(s) name themselves more than once: "
-                     + "; ".join(bad[:4]))
-    return "ok", f"{n:,} pages, one head each"
+    assert not bad, (f"{len(bad)} page(s) name themselves more than once, or have "
+                     "a head that was not read to its end: " + "; ".join(bad[:4]))
+    return "ok", f"{n:,} pages, one head each, each read to its end"
 
 
 @check("data", "nobody is named surname-first on a page")
@@ -39157,12 +39782,12 @@ def _past_sponsors_chamber():
     ts = Path("text_sponsors.json")
     text = (json.loads(ts.read_text(encoding="utf-8")).get(term) or {}) if ts.exists() else {}
     voted = {}
-    for v in json.loads(mv.read_text(encoding="utf-8")):
-        y = str(v.get("year") or "")
-        if y.isdigit() and v.get("body") in ("H", "S"):
+    for year, body, member in _ballot_census()["seats"]:
+        y = str(year or "")
+        if y.isdigit() and body in ("H", "S"):
             y = int(y)
             if f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}" == term:
-                voted.setdefault(str(v.get("member_id") or ""), set()).add(v["body"])
+                voted.setdefault(member, set()).add(body)
     bad, n, unvoted = [], 0, 0
     for bid, e in sorted(t.items()):
         rows = e.get("publish") or (text.get(bid) if e.get("page") == "differs" else None) or []
@@ -39620,7 +40245,7 @@ def _amend_motions_mapped():
     if bsv is None:
         return "skip", "build_site_v2 will not import"
 
-    n = json.loads(src.read_text(encoding="utf-8"))
+    n = _narratives()
     seen, example = {}, {}
     for term, bills in n.items():
         if not isinstance(bills, dict):
@@ -39941,74 +40566,28 @@ def _nothing_stranded():
     audit_css.py is the tool; this runs it against the built site so the
     answer is what a reader's browser would actually resolve.
     """
-    site = Path("site")
-    if not (site / "style.css").exists():
-        return "skip", "no built site here; run build_all.py --local first"
+    sheets = _built_stylesheets()
+    if not sheets:
+        return "skip", ("no built site here, and the builders are not here to build "
+                        "the fixture's; run build_all.py --local first")
     node = str(Path("audit_css.py"))
-    r = subprocess.run([sys.executable, node, "--site", str(site)],
-                       capture_output=True, timeout=300)
-    out = r.stdout.decode("utf-8", "replace")
-    assert "built pages" in out, ("audit_css.py did not run: "
-                                  + r.stderr.decode("utf-8", "replace")[-300:])
-    if "STRANDED" in out:
-        tail = out[out.index("STRANDED"):][:600]
-        raise AssertionError(
-            "a component is styled only in the region style.css does not "
-            "take, so the home page, the roster, About and 404 do not get "
-            "it:\n  " + tail.replace("\n", "\n  "))
-    m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
-    where = f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked"
-    return "ok", f"nothing stranded ({where})"
-
-
-@check("files", "no source file carries a mangled control character")
-def _no_c1():
-    """A C1 control character in a source file is always damage.
-
-    app.css carried `content:"\u0083A "` on the citation control, which every
-    page on the site drew as a small empty box followed by a stray letter A in
-    front of "Cite this page". U+0083 is NO BREAK HERE, a C1 control that no
-    editor puts there on purpose; it is what is left of a glyph that went
-    through a cp1252 round trip, and the A beside it is debris from the same
-    accident rather than a fallback.
-
-    It survived because nothing errored. The stylesheet parsed, the page
-    rendered, and the damage was one character wide on a control most readers
-    never open.
-
-    C0 AS WELL AS C1, and C0 is the one that has actually cost time twice.
-    A patch script wrote a replacement containing a backslash-one, meaning "the
-    first capture group"; the escape was eaten in transit, Python read the
-    remaining \\1 in a non-raw string as the character U+0001, and design_home.py
-    ended up substituting a SOH over the <head> tag it was meant to keep. The
-    generated pages then had no head element at all and every relative URL
-    resolved against the wrong directory. Nothing errored, and the file looked
-    correct in any editor that draws control characters as nothing.
-
-    So the range is U+0000 to U+001F and U+007F to U+009F, less the three
-    whitespace characters source legitimately contains -- tab, newline and
-    carriage return. Nothing else in that span belongs in a text file here.
-    """
-    ok = {0x09, 0x0A, 0x0D}
-    bad = []
-    for pat in ("*.py", "*.js", "*.css", "*.html", "*.json", "*.md"):
-        for f in sorted(Path(".").glob(pat)):
-            try:
-                text = f.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
-            for i, line in enumerate(text.splitlines(), 1):
-                hit = [c for c in line
-                       if (ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F)
-                       and ord(c) not in ok]
-                if hit:
-                    bad.append(f"{f.name}:{i} carries "
-                               + ", ".join(f"U+{ord(c):04X}" for c in hit))
-    assert not bad, ("a control character is in the source. These come from a "
-                     "cp1252 round trip or from an escape eaten by a shell, "
-                     "and they render as a box, a stray letter, or nothing at "
-                     "all:\n  " + "\n  ".join(bad[:10]))
-    return "ok", "no control characters in the source"
+    where = []
+    for what, site in sheets:
+        r = subprocess.run([sys.executable, node, "--site", str(site)],
+                           capture_output=True, timeout=300)
+        out = r.stdout.decode("utf-8", "replace")
+        assert "built pages" in out, (f"audit_css.py did not run on the pages of {what}: "
+                                      + r.stderr.decode("utf-8", "replace")[-300:])
+        if "STRANDED" in out:
+            tail = out[out.index("STRANDED"):][:600]
+            raise AssertionError(
+                "a component is styled only in the region style.css does not "
+                "take, so the home page, the roster, About and 404 do not get "
+                f"it (the pages of {what}):\n  " + tail.replace("\n", "\n  "))
+        m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
+        where.append((f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked")
+                     + f" loading {what}")
+    return "ok", f"nothing stranded ({'; '.join(where)})"
 
 
 @check("files", "every place has exactly one district of its own, and every floterial is laid over them")
@@ -41568,6 +42147,59 @@ process.stdout.write(JSON.stringify(out));
                   + ("" if node else " (node absent: script not run)"))
 
 
+def _officials_read(P, pdf):
+    """(every office the directory lists, as (town, name, phone, e-mail,
+    position) in its own order; the rows restream() changed; whether an
+    earlier run's parse answered).
+
+    THE PARSE IS KEPT BETWEEN RUNS (2 October 2026). pdfplumber takes ten
+    seconds over the directory's 31 pages to give the answer it gave the run
+    before, and reading only the four rows' pages would have dropped what the
+    check holds the whole document to: exactly four rows re-read, and no half
+    address anywhere. So the answer is kept, in the system temp directory --
+    not in the project, where logs/ is sent to the bucket -- under a digest
+    of everything it depends on: the PDF's bytes, parse_officials.py's bytes
+    (its stamp is among them, and so is an edit that forgot the stamp), and
+    the versions of pdfplumber, of pdfminer underneath it and of Python.
+    Change any of them and the directory is read again. A kept answer that
+    will not load, or is not this shape, is not used.
+    """
+    import hashlib
+    import pdfplumber
+    try:
+        import pdfminer
+        miner = str(getattr(pdfminer, "__version__", ""))
+    except Exception:
+        miner = ""
+    h = hashlib.sha256()
+    for part in (pdf.read_bytes(), Path(P.__file__).read_bytes(),
+                 f"pdfplumber {pdfplumber.__version__}, pdfminer {miner}, "
+                 f"python {sys.version.split()[0]}".encode("utf-8")):
+        h.update(hashlib.sha256(part).digest())
+    key = h.hexdigest()
+    kept = Path(tempfile.gettempdir()) / "granite-record-preflight" / "officials.json"
+    try:
+        doc = json.loads(kept.read_text(encoding="utf-8"))
+        if doc["key"] == key and all(len(r) == 5 and all(isinstance(c, str) for c in r)
+                                     for r in doc["rows"]) \
+                and all(isinstance(s, str) for s in doc["restreamed"]):
+            return [tuple(r) for r in doc["rows"]], list(doc["restreamed"]), True
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    towns, _notes, _raw, restreamed = P.read(pdf)
+    rows = [(t, o["name"], o["phone"], o["email"], o["position"])
+            for t, r in towns.items() for o in r["officials"]]
+    try:
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        part = kept.with_name(f"{kept.name}.{os.getpid()}")
+        part.write_text(json.dumps({"key": key, "rows": rows, "restreamed": restreamed}),
+                        encoding="utf-8")
+        os.replace(part, kept)
+    except OSError:
+        pass                    # not kept: the next run reads the directory again
+    return rows, restreamed, False
+
+
 @check("files", "the officials directory reads as printed where a cell runs into the next")
 def _officials_restream():
     """Four rows of NHDOT's directory print text wider than its cell.
@@ -41590,8 +42222,9 @@ def _officials_restream():
     P = imp("parse_officials")
     if P is None:
         return "skip", "parse_officials.py does not import"
-    towns, _notes, _raw, restreamed = P.read(pdf)
-    rows = {(t, o["name"]): o for t, r in towns.items() for o in r["officials"]}
+    listed, restreamed, kept = _officials_read(P, pdf)
+    rows = {(t, name): {"phone": phone, "email": email, "position": pos}
+            for t, name, phone, email, pos in listed}
     want = {("East Kingston", "Grace Ruelle"): ("603-642-8406 ext 1", "gruelle@eastkingstonnh.gov",
                                                 "Town Administrator"),
             ("Sutton", "Julia Jones"): ("603-927-2400 ext. 4", "townadmin@sutton-nh.org",
@@ -41612,7 +42245,9 @@ def _officials_restream():
     if half:
         bad.append("half an address and half something else: " + ", ".join(half))
     assert not bad, "\n  ".join(bad)
-    return "ok", "four overflowing rows read as printed, and no half-address left"
+    return "ok", ("four overflowing rows read as printed, and no half-address left"
+                  + (" (the parse kept from an earlier run of this parser on this PDF)"
+                     if kept else ""))
 
 
 @check("data", "town_officials.json holds addresses or notes, never half of each")
@@ -44403,7 +45038,7 @@ def _left_out_on_site():
             f"whose vote it was: {s.get('notes')}")
     said = ""
     if Path("db/past/PastDocket.psv").exists() and Path("narratives.json").exists():
-        narr = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+        narr = _narratives()
         told = [("2015-2016", "SB340"), ("2015-2016", "SB499"), ("2019-2020", "HB451"),
                 ("2021-2022", "HB459")] + [("2017-2018", f"HR{i}") for i in range(1, 7)]
         none = [f"{b} of {t}" for t, b in told if not ((narr.get(t) or {}).get(b) or {}).get("events")]
@@ -44540,7 +45175,7 @@ def _chapters_settled_data():
         said += "; SB 28 of 2009 in effect 14 July 2009, not the 7 July of SB 109's line"
     np_ = Path("narratives.json")
     if np_.exists():
-        narr = json.loads(np_.read_text(encoding="utf-8"))
+        narr = _narratives()
         told = ((narr.get("1991-1992") or {}).get("HB1278") or {}).get("narrative") or ""
         assert "Chapter 232" in told and "Chapter 233" not in told, (
             "HB 1278 of 1992's history does not say Chapter 232: " + told[-160:])
@@ -45177,6 +45812,11 @@ def main():
     # R2 while this is set, for this process and everything it runs; a folder
     # bucket (--local-bucket) still works.
     os.environ["GRANITE_NO_BUCKET"] = "1"
+    # THE CHECKS BUILD BY THE CLOCK. A day stated for comparing two builds
+    # (build_date.py) is not carried into the fixtures, which date a hearing
+    # three days from now by the clock and would find it outside a stated
+    # week. _build_date_stated states one for its own builders.
+    os.environ.pop("GRANITE_BUILD_DATE", None)
     # THE RUN IS RECORDED, for handoff.py, which used to run the code checks a
     # second time straight after this had. The record names the commit and
     # the state of the working tree as this run began (handoff.tree_state),

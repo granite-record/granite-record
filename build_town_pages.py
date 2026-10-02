@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.17
+# GRANITE_VERSION: 2026-09-09.18
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -44,11 +44,11 @@ lists. The town clerk comes from the Secretary of State's list.
 """
 
 import argparse
-import datetime as dt
 import json
 import re
 from pathlib import Path
 
+import build_date
 import shell as S
 # The parser's test for an e-mail address, so that what it accepts from a
 # threaded cell and what a page links are the same test.
@@ -744,7 +744,7 @@ def election_line(raw):
     mm, dd, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
     if not 1 <= mm <= 12:
         return ""
-    today = dt.date.today()
+    today = build_date.today()
     when = f"{MONTHS[mm - 1]} {ordinal(dd)}"
     if yy != today.year:
         when += f", {yy}"

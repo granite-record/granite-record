@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.10
+# GRANITE_VERSION: 2026-09-19.11
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -51,6 +51,8 @@ import json
 import re
 from datetime import date as _date
 from pathlib import Path
+
+import build_date
 
 NARRATIVES = "narratives.json"
 
@@ -941,7 +943,7 @@ def doubtful(days, today=None, rollcall_dates=None):
     doubtful and real -- and it cannot see a slipped year (01/08/2019 for
     01/09/2018), which only the corrections file catches.
     """
-    today = today or _date.today()
+    today = today or build_date.today()
     rc = rollcall_dates or {}
     by_cite = collections.defaultdict(collections.Counter)
     for (body, date), d in days.items():

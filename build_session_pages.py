@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.14
+# GRANITE_VERSION: 2026-09-19.15
 """
 A page for every day the House sat.
 
@@ -54,6 +54,7 @@ import re
 from pathlib import Path
 
 import bill_order as BO
+import build_date
 import session_days
 import journal_days
 import shell as S
@@ -842,7 +843,7 @@ def main():
     # A SITTING CANNOT BE AFTER THE BUILD. The Senate enters floor rows up to
     # ten days before the sitting they belong to, and a mistyped month put a
     # House sitting a month ahead of veto day; neither is a day to publish.
-    today = datetime.date.today().isoformat()
+    today = build_date.today().isoformat()
     ahead = sorted(k for k in days if k[0] == body and k[1] > today)
     mine = sorted(k for k in days if k[0] == body and k[1] <= today)
     if ahead:
