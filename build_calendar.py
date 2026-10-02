@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.18
+# GRANITE_VERSION: 2026-09-18.19
 """
 The General Court's week, one page per week.
 
@@ -2013,6 +2013,24 @@ def every_week(weeks, today):
             added += 1
         d += datetime.timedelta(days=7)
     return added
+
+
+def week_keys(site, today=None):
+    """{"2026-W21", ...}: every week main() writes a page for.
+
+    FOR A STEP THAT RUNS BEFORE THIS ONE AND LINKS A WEEK. A sitting's page
+    leads up to its week on the Calendar (build_session_pages.py), and it is
+    written before the weeks are, so on a machine that starts empty it cannot
+    read them off the disk. This is main()'s own reading, in main()'s order:
+    the proceedings and the study committees' meetings, then every week from
+    the first to the last. None when there are no weeks, which is when main()
+    stops without writing one.
+    """
+    weeks = collect(Path(site), statstud()[0])[0]
+    if not weeks:
+        return set()
+    every_week(weeks, today or datetime.date.today())
+    return set(weeks)
 
 
 # ---- the official documents behind a card ----------------------------------

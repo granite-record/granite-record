@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.131
+# GRANITE_VERSION: 2026-09-04.132
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2519,10 +2519,21 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // Both chambers. They sit on different days, so showing one hides the other.
   const ls=(H.latest_sessions&&H.latest_sessions.length)
     ? H.latest_sessions : (H.latest_session?[H.latest_session]:[]);
-  document.getElementById("session").innerHTML=ls.length
+  // THE DATE LEADS TO THE DAY, where the sitting has a page. data-days is
+  // written when the site is built and names the sittings of these dates
+  // that build_session_pages.py writes ("H/2026-08-19"); a date not on it
+  // stays text. Nothing on this page led to a sitting's page before (the
+  // audit of 2 October 2026, B3).
+  const sess=document.getElementById("session");
+  const built=(sess.dataset.days||"").split(" ");
+  const dayLink=v=>{
+    const key=(v.chamber==="Senate"?"S":"H")+"/"+v.date;
+    return built.includes(key)?`<a href="/session/${esc(key)}">${fd(v.date)}</a>`:fd(v.date);
+  };
+  sess.innerHTML=ls.length
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
       `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
-        <span class="statemeta">${fd(v.date)}</span></p>
+        <span class="statemeta">${dayLink(v)}</span></p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
           aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
           <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
@@ -2551,6 +2562,21 @@ document.getElementById("hgo").addEventListener("click",()=>{
   goBills(document.getElementById("hq").value);
 });
 </script>"""
+
+
+def sitting_days():
+    """{(body, date)}: the sittings build_session_pages.py writes a page for.
+
+    Asked of that step's own rule and not read off the disk: it runs after
+    this one, so on a machine that starts empty there is no page to find yet.
+    Empty where narratives.json is not here, which is where that step writes
+    nothing either.
+    """
+    import session_days
+    if not Path(session_days.NARRATIVES).exists():
+        return set()
+    import build_session_pages
+    return set(build_session_pages.sittings()[0])
 
 
 def committees_with_roster(out):
@@ -3115,6 +3141,16 @@ it, or a name, county, party or committee to find a member.</p>
         print("  committees: no site/committees.json to count, so the home "
               "page's Committees card names no number")
 
+    # WHICH OF THE DAYS "MOST RECENT FLOOR SESSIONS" NAMES HAVE A PAGE. The
+    # block is drawn by the script from home.json, a chamber and a date each,
+    # and the date leads to that sitting's page where one is built: asked of
+    # the step that builds them (sitting_days), and handed to the script on
+    # the block itself.
+    sits = sitting_days()
+    latest_days = [f"{b}/{v.get('date')}" for v in (H.get("latest_sessions") or [])
+                   for b in ("S" if v.get("chamber") == "Senate" else "H",)
+                   if (b, v.get("date")) in sits]
+
     static_recent = ""
     if H.get("recent"):
         static_recent = ("<h2>Latest activity</h2><table><tbody>" + "".join(
@@ -3192,7 +3228,7 @@ today.</p>
     <button type="submit">Find</button>
   </form>
 </div>
-<div id="session"></div>
+<div id="session" data-days="{esc(" ".join(latest_days))}"></div>
 </section>
 </div>
 <div id="composition"></div>

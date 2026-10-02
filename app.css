@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.188 */
+/* GRANITE_VERSION: 2026-09-07.189 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3841,6 +3841,13 @@ white-space:nowrap}
    22% of the time and only the motion disambiguates it. */
 .sesspage .sday{margin:var(--sp-8) 0 0}
 .sesspage .sday > h2{font-size:var(--t-h3);margin:0 0 var(--sp-5)}
+/* THE LINE UP, above the day's heading: the chamber's list of session days
+   and, where the calendar has it, the week. A Learn article's crumb, with the
+   same quiet weight (2 October 2026: a sitting's page led nowhere above
+   itself). */
+.sesspage .crumb{font-family:var(--sans);font-size:var(--t-sm);color:var(--ink-2);
+margin:0 0 var(--sp-2)}
+.sesspage .crumb a{color:var(--ink-2)}
 
 .sitem{border:1px solid var(--rule);border-radius:6px;background:var(--surface);
 padding:var(--sp-5);margin:0 0 var(--sp-5)}

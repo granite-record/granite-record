@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.7
+# GRANITE_VERSION: 2026-09-13.8
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -217,6 +217,72 @@ def towns_page(site, base, towns, urls):
     return len(pages)
 
 
+def sessions_pages(site, base, urls):
+    """/directory/sessions-house and /directory/sessions-senate: every day a
+    chamber sat, by year, each linked to its page. Returns {body: how many}.
+
+    A PAST SITTING COULD BE REACHED ONLY FROM THE SITTING NEXT TO IT. Of the
+    791 House and 772 Senate days with a page, 32 and 30 had a link from
+    anything but another sitting, all from a 2025-2026 week of the Calendar
+    (the audit of 2 October 2026, B3): a day in 2019 was hundreds of presses
+    of "The sitting before" away, the header search does not hold them, and
+    this directory listed bills, members, towns and committees. The sitemap
+    named all 1,563, so a search engine found them and a reader did not.
+
+    THE DAYS build_session_pages.py WRITES, asked of it (sittings) and not
+    read off the disk: that step runs after this one, so on a machine that
+    starts empty there is nothing there yet. Newest first, as the terms are.
+    What each day's line says is the sitting page's own opening count.
+
+    No narratives.json, no lists, and it says so: the sitting pages are built
+    from that file and their step stops without it, so a list here would
+    link pages nothing is going to write.
+    """
+    import session_days
+    if not Path(session_days.NARRATIVES).exists():
+        print(f"  no {session_days.NARRATIVES} here, so no lists of session "
+              "days: there are no session day pages to list")
+        return {}
+    import build_session_pages as BSP
+    days = session_days.load()
+    built, _later = BSP.sittings(days)
+    out = {}
+    for ch in ("H", "S"):
+        mine = [k for k in built if k[0] == ch]
+        if not mine:
+            continue
+        name = BSP.CHAMBER[ch]
+        by_year = defaultdict(list)
+        for k in mine:
+            by_year[k[1][:4]].append(k)
+        years = sorted(by_year, reverse=True)
+        body = []
+        for y in years:
+            body.append(f'<h2 id="y{y}">{y} <span class="dircount">{len(by_year[y])}</span></h2>'
+                        '<ul class="dirdays">')
+            for k in sorted(by_year[y], reverse=True):
+                day = days[k]
+                n, b = len(day.items), len(day.bills)
+                body.append(
+                    f'<li><a href="{S.E(S.canon(f"session/{ch}/{k[1]}.html"))}">'
+                    f'{S.E(BSP.words(k[1]))}</a> <span class="dirstatus">'
+                    f'{n:,} action{"" if n == 1 else "s"} on {b:,} bill{"" if b == 1 else "s"}'
+                    '</span></li>')
+            body.append("</ul>")
+        path = "/" + BSP.DAYS_LIST[ch]
+        jump = " &middot; ".join(f'<a href="{S.canon(path)}#y{y}">{y}</a>' for y in years)
+        write(site, base, path,
+              f"Every {name} session day | Granite Record",
+              f"All {len(mine):,} days the New Hampshire {name} sat on the record, "
+              f"{years[-1]} to {years[0]}, each linked to what it did that day.",
+              f"Every {name} session day",
+              f"{len(mine):,} days the {name} sat, newest first, each with what it did "
+              f"to bills that day. {jump}",
+              "".join(body), urls, nav="calendar.html")
+        out[ch] = len(mine)
+    return out
+
+
 def find_index(site, legs, towns):
     """site/find.json: everything the header search can answer instantly.
 
@@ -345,6 +411,7 @@ def main():
     n_leg = legislators_page(site, base, legs, urls)
     towns = json.loads((site / "towns.json").read_text(encoding="utf-8"))
     n_town = towns_page(site, base, towns, urls)
+    n_days = sessions_pages(site, base, urls)
     found = find_index(site, legs, towns)
     print(f"  find.json: {len(found):,} rows for the header search "
           f"({(site / 'find.json').stat().st_size / 1024:.0f} KB)")
@@ -361,6 +428,15 @@ def main():
             f'<li><a href="{S.canon("committees.html")}">Every committee</a></li>',
             f'<li><a href="{S.canon("learn.html")}">How New Hampshire works</a></li>',
             f'<li><a href="{S.canon("data.html")}">The data, as tables</a></li></ul>']
+    if n_days:
+        import build_session_pages as BSP
+        # The Senate and the House under their own names, the Senate first,
+        # as the list of sitting legislators has them.
+        hub += ['<h2>Session days</h2><ul class="dirterms">']
+        hub += [f'<li><a href="{S.canon(BSP.DAYS_LIST[ch])}">Every {BSP.CHAMBER[ch]} '
+                f'session day</a> <span class="dircount">{n_days[ch]:,}</span></li>'
+                for ch in ("S", "H") if ch in n_days]
+        hub += ["</ul>"]
     write(site, base, "/directory.html", "The whole record, as lists | Granite Record",
           # The terms of bills: the requests are a list here and not a term,
           # and counted as one this said "all 20 terms" of a record of 19.
@@ -375,9 +451,11 @@ def main():
         text = sm.read_text(encoding="utf-8")
         add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls if S.E(u) not in text)
         sm.write_text(text.replace("</urlset>", add + "</urlset>"), encoding="utf-8")
-    links = linked + n_leg + n_town
+    links = linked + n_leg + n_town + sum(n_days.values())
     print(f"{len(urls)} directory pages -> {site / 'directory'}, {links:,} links to record pages")
     print(f"  {n_terms} terms of bills, {n_leg} legislators, {n_town} towns and wards"
+          + (f", {n_days.get('H', 0):,} House and {n_days.get('S', 0):,} Senate "
+             "session days" if n_days else "")
           + "".join(f"; {counts[t]:,} of the {label} listed without a link, as a request "
                     "has no page" for t, label in named.items() if t in counts))
     empty = [t for t, n in counts.items() if not n]

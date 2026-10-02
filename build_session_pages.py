@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.14
+# GRANITE_VERSION: 2026-09-19.15
 """
 A page for every day the House sat.
 
@@ -822,6 +822,93 @@ def _debate_html(d, body, members, esc, head=False):
     return "".join(out)
 
 
+def sittings(days=None, today=None):
+    """(built, later): the (body, date) of every sitting a page is written
+    for, and of those after today, which get none. Both sorted.
+
+    A SITTING CANNOT BE AFTER THE BUILD. The Senate enters floor rows up to
+    ten days before the sitting they belong to, and a mistyped month put a
+    House sitting a month ahead of veto day; neither is a day to publish.
+
+    ONE RULE, ASKED BY EVERYTHING THAT LINKS A SITTING. This step runs after
+    the home page and the directory's lists are written, so on a machine that
+    starts empty neither can read the pages off the disk: build_pages.py and
+    build_indexes.py ask this instead, and link the days it says are built.
+    """
+    days = session_days.load() if days is None else days
+    today = today or datetime.date.today().isoformat()
+    return (sorted(k for k in days if k[1] <= today),
+            sorted(k for k in days if k[1] > today))
+
+
+# THE WAY UP. A sitting's page led to the sittings either side of it, to the
+# bills and to the members, and to nothing above itself: no list of sittings
+# and not its week on the Calendar, though that is the tab it is marked
+# under (the audit of 2 October 2026, B3). The list is build_indexes.py's,
+# one per chamber, with a heading for each year.
+DAYS_LIST = {"H": "directory/sessions-house.html",
+             "S": "directory/sessions-senate.html"}
+
+
+def calendar_weeks(site):
+    """{"2026-W21", ...}: the weeks build_calendar.py will write a page for.
+
+    Asked of the calendar's own functions and not read off the disk: that
+    step runs after this one, so on a machine that starts empty there is no
+    week to find yet. The calendar starts in 2025; a sitting before its
+    first week has no week to lead up to, and leads to the list alone.
+    Nothing here if the calendar's rows cannot be read: the list still stands.
+    """
+    import contextlib
+    import io
+    try:
+        import build_calendar as BC
+        with contextlib.redirect_stdout(io.StringIO()):
+            return BC.week_keys(site)
+    except Exception as e:   # an addition: the page stands without it
+        print(f"  WARNING: the calendar's weeks could not be read ({e!r}); "
+              "no sitting links its week")
+        return set()
+
+
+def up_links(body, date, weeks):
+    """The links above a sitting, in the order the line above its heading
+    gives them: the chamber's list, at the sitting's year, and its week on
+    the Calendar where the calendar has that week."""
+    y, m, d = (int(x) for x in date.split("-"))
+    iso = datetime.date(y, m, d).isocalendar()
+    wk = f"{iso[0]}-W{iso[1]:02d}"
+    out = [f'<a href="{S.canon(DAYS_LIST[body])}#y{y}">'
+           f"Every {CHAMBER[body]} session day</a>"]
+    if wk in weeks:
+        out.append(f'<a href="{S.canon(f"calendar/{wk}.html")}">'
+                   "That week on the Calendar</a>")
+    return out
+
+
+def write_days_index(site, body, dates):
+    """site/session/days.json: {"H": [dates], "S": [dates]}, this chamber's
+    list replaced and the other's kept.
+
+    WHAT app.js ASKS BEFORE IT LINKS A DATE. A roll call on a bill and a row
+    of a member's votes name a day and a chamber, and the sitting's page is
+    session/<H|S>/<date> -- where there is one. This is the list of the ones
+    there are, written by the step that writes them, so a date is linked only
+    to a page that was built. Each run writes one chamber; the other's list
+    is the other run's, and is left as it was.
+    """
+    f = site / "session" / "days.json"
+    try:
+        had = json.loads(f.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        had = {}
+    had = {k: v for k, v in had.items() if k in CHAMBER and isinstance(v, list)}
+    had[body] = sorted(dates)
+    f.write_text(json.dumps(had, separators=(",", ":"), sort_keys=True),
+                 encoding="utf-8")
+    return f
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -839,12 +926,10 @@ def main():
     body = a.body.strip().upper()
 
     days = session_days.load()
-    # A SITTING CANNOT BE AFTER THE BUILD. The Senate enters floor rows up to
-    # ten days before the sitting they belong to, and a mistyped month put a
-    # House sitting a month ahead of veto day; neither is a day to publish.
     today = datetime.date.today().isoformat()
-    ahead = sorted(k for k in days if k[0] == body and k[1] > today)
-    mine = sorted(k for k in days if k[0] == body and k[1] <= today)
+    built, later = sittings(days, today)
+    ahead = [k for k in later if k[0] == body]
+    mine = [k for k in built if k[0] == body]
     if ahead:
         print(f"  {len(ahead)} {CHAMBER[body]} day(s) after today not built: "
               + ", ".join(k[1] for k in ahead))
@@ -860,6 +945,7 @@ def main():
     urls, wrote, with_narr, linked, unlinked = [], 0, 0, 0, 0
     excused = 0
     order = mine[: a.limit] if a.limit else mine
+    weeks = calendar_weeks(site)
     import queue_links as B2  # not build_site_v2: see queue_links.py
     journal_keys, jlinked = B2.journal_keys_from_queue(), 0
     for n, key in enumerate(order):
@@ -926,8 +1012,13 @@ def main():
             jlinked += 1
         cite = (f'<a class="jpdf" href="{S.E(jurl)}" rel="noopener">'
                 f'{S.E(day.journal)} (PDF)</a>' if jurl else S.E(day.journal))
+        # The line up, above the heading, as a Learn article's is above its
+        # own: where this page sits, as links.
+        crumb = ('<p class="crumb">'
+                 + " &middot; ".join(up_links(body, date, weeks)) + "</p>")
         full = ('<div id="results"><div class="wkpage sesspage">'
-                f"<h1>{S.E(label)}</h1>"
+                + crumb
+                + f"<h1>{S.E(label)}</h1>"
                 + (f'<p class="src">{cite}. {S.E(lead)}</p>'
                    if day.journal else f'<p class="src">{S.E(lead)}</p>')
                 + f'<nav class="wknav" aria-label="Other sittings">{"".join(nav)}</nav>'
@@ -941,9 +1032,12 @@ def main():
         urls.append(base + S.canon(path))
         wrote += 1
 
-    # A run cut short by --limit leaves every page it did not build.
+    # A run cut short by --limit leaves every page it did not build, and the
+    # list of the pages there are: it names the whole chamber or it is not
+    # written.
     if not a.limit:
         prune(out_dir, {k[1] for k in mine}, a.prune)
+        write_days_index(site, body, [k[1] for k in mine])
 
     # This chamber's days only, and all of them unless --limit cut the run
     # short: a limited run takes out only entries that were never an address.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.133
+// GRANITE_VERSION: 2026-09-07.134
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3482,6 +3482,34 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
 `;
 }
 
+// THE DAY A VOTE WAS TAKEN LEADS TO THE DAY. A roll call on a bill and a row
+// of a member's votes both name the date and the chamber, and each chamber's
+// sitting has a page -- /session/H/2026-05-21 -- that nothing here led to:
+// of 1,563 sitting pages, 62 had a link from anything but the sitting beside
+// them (the audit of 2 October 2026, B3). The date is the link.
+//
+// ONLY WHERE THE PAGE WAS BUILT. session/days.json is written by the step
+// that writes the pages (build_session_pages.py) and lists them; a date not
+// on it stays text, because a vote can be on record for a day the sittings
+// do not hold and a link to nothing is worse than no link. Asked for once,
+// when the first vote is drawn, and the view is drawn again when it lands.
+let SITDAYS=null;       // null while unasked, {} while asked, {H:Set,S:Set}
+function needSittings(){
+  if(SITDAYS)return;
+  SITDAYS={};
+  fetch(DATA("session/days.json"))
+    .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+    .then(j=>{SITDAYS={H:new Set(j.H||[]),S:new Set(j.S||[])};repaint();})
+    .catch(()=>{});    // the dates stay text, which is what they were
+}
+// `text` as a link to that chamber's sitting of `iso` (2026-05-21), or as it
+// came where the sitting has no page. `text` is already escaped.
+function sittingLink(body,iso,text){
+  needSittings();
+  const has=SITDAYS&&SITDAYS[body]&&SITDAYS[body].has(String(iso||""));
+  return has?`<a href="session/${esc(body)}/${esc(iso)}.html">${text}</a>`:text;
+}
+
 function renderVotes(b,d){
   // NOTHING ABOVE THE VOTES. This tab opened, in turn, by explaining the roll
   // call file and the presiding officer's tie-breaking vote; then with one
@@ -3516,8 +3544,8 @@ function renderVotes(b,d){
     return `<section class="rc">
       <div class="rchead"><h2 class="rcq">${esc(rc.question)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
-      <span class="rcd">${fdate(rc.date)} · ${rc.body==="H"?"House":"Senate"}${
-        AVK[vk]?` · ${AVK[vk]}`:""}</span>
+      <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,fdate(rc.date))} · ${
+        rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${AVK[vk]}`:""}</span>
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
       ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
@@ -5502,6 +5530,12 @@ function renderMemberBills(m, prime){
 //
 // A row with neither is still shown rather than silently dropped.
 const voteYear=x=>x.y||String(x.k||"").split("-")[0];
+// The chamber a vote was cast in and its day, as a sitting's address names
+// them: the key is "2026-H-302" and the date "8/19/2026".
+const voteChamber=x=>String(x.k||"").split("-")[1]||"";
+const voteIso=x=>{
+  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(x.d||""));
+  return m?`${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`:"";};
 const memberVotes=m=>(m.votes||[]).filter(x=>{
   const y=voteYear(x);
   return !pageTerm()||!y||termOfYear(y)===pageTerm();});
@@ -5649,7 +5683,8 @@ function voteRow(r){
   const tallies=rc&&rc.y!=null&&rc.n!=null
     ? ` <i>${rc.y}–${rc.n}</i>`:"";
   return `<tr>
-    <td class="d" data-l="Date">${esc(x.d||"")}${r.ch?`<span class="vch">${
+    <td class="d" data-l="Date">${sittingLink(voteChamber(x),voteIso(x),esc(x.d||""))}${
+      r.ch?`<span class="vch">${
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
       ? `<a href="bill/${esc(String(x.y))}/${esc(String(x.b).toLowerCase())

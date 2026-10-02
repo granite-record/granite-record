@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.309
+# GRANITE_VERSION: 2026-09-04.310
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11840,9 +11840,14 @@ def _built_site(here, root, brand=True):
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
         # Before the calendar, whose floor cards link to these, and after the
-        # legislator pages it resolves speaker names against.
+        # legislator pages it resolves speaker names against. BOTH CHAMBERS,
+        # the Senate first, as build_all runs them (2 October 2026): the
+        # directory lists every day each chamber sat, so a fixture that built
+        # the House's pages alone listed a Senate day with no page behind it.
+        ("build_session_pages.py", ["--site", "site", "--base", base, "--body", "S"],
+         "site/session/S"),
         ("build_session_pages.py", ["--site", "site", "--base", base],
-         "site/session"),
+         "site/session/H"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -12089,6 +12094,64 @@ def _chain():
         home = (root / "site" / "index.html").read_text(encoding="utf-8", errors="replace")
         assert '<h1 class="lockup"><span>Granite Record</span></h1>' in home, (
             "the home page's heading is not the lockup with its name kept as text")
+        # EVERY SITTING DAY CAN BE REACHED, AND NOTHING LEADS TO ONE THAT IS
+        # NOT THERE (the audit of 2 October 2026, B3). Of 1,563 sitting pages
+        # 62 had a link from anything but the sitting beside them. What must
+        # hold of the built site: each chamber's list in the directory links
+        # every page that chamber has and no other; the directory names both
+        # lists; session/days.json, which app.js asks before it links a
+        # vote's date, is the pages on disk; each page leads up to its
+        # chamber's list, and to its week only where the calendar wrote that
+        # week; and the home page hands its script only days that have a page.
+        sess = root / "site" / "session"
+        on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")) for b in ("H", "S")}
+        assert all(on_disk.values()), f"the chain built no sitting pages for a chamber: {on_disk}"
+        listed = json.loads((sess / "days.json").read_text(encoding="utf-8"))
+        assert listed == on_disk, (
+            f"session/days.json lists {listed} and the pages on disk are {on_disk}: "
+            "app.js links a vote's date to the days this file names")
+        hub = (root / "site" / "directory.html").read_text(encoding="utf-8")
+        weeks = {p.stem for p in (root / "site" / "calendar").glob("*-W*.html")}
+        n_up = 0
+        for b, name, lst in (("H", "House", "sessions-house"), ("S", "Senate", "sessions-senate")):
+            page = (root / "site" / "directory" / f"{lst}.html").read_text(encoding="utf-8")
+            got = sorted(re.findall(rf'href="session/{b}/(\d{{4}}-\d\d-\d\d)"', page))
+            assert got == on_disk[b], (
+                f"/directory/{lst} links {got} and the {name}'s pages are {on_disk[b]}")
+            assert f'href="directory/{lst}">Every {name} session day</a>' in hub, (
+                f"the directory does not link the list of {name} session days")
+            for d in on_disk[b]:
+                day = (sess / b / f"{d}.html").read_text(encoding="utf-8")
+                up = re.findall(r'<div class="wkpage sesspage"><p class="crumb">(.*?)</p><h1>',
+                                day, re.S)
+                assert len(up) == 1 and f'href="directory/{lst}#y{d[:4]}"' in up[0], (
+                    f"session/{b}/{d} does not lead up to the list of {name} "
+                    "session days, at its year, in a line above its heading")
+                assert f'id="y{d[:4]}"' in page, (
+                    f"/directory/{lst} has no heading for {d[:4]}, which "
+                    f"session/{b}/{d} leads to")
+                y, w, _ = _date.fromisoformat(d).isocalendar()
+                wk = f"{y}-W{w:02d}"
+                assert (f'href="calendar/{wk}"' in up[0]) == (wk in weeks), (
+                    f"session/{b}/{d} {'does not link' if wk in weeks else 'links'} "
+                    f"its week on the Calendar, {wk}, which the calendar "
+                    f"{'wrote' if wk in weeks else 'did not write'}")
+                n_up += wk in weeks
+                # Previous on the left and next on the right, as before.
+                navs = re.findall(r'<nav class="wknav[^"]*" aria-label="Other sittings">(.*?)</nav>',
+                                  day, re.S)
+                order = re.findall(r'class="(wkprev|wknext)"', navs[0]) if navs else None
+                assert len(navs) == 2 and order == sorted(order, reverse=True), (
+                    f"session/{b}/{d}: its nav reads {order}")
+        handed = re.search(r'<div id="session" data-days="([^"]*)">', homepage)
+        assert handed, "the home page's floor sessions block carries no data-days"
+        for key in handed.group(1).split():
+            b, d = key.split("/")
+            assert d in on_disk.get(b, []), (
+                f"the home page links the sitting {key}, which has no page")
+        assert handed.group(1), (
+            "the home page links none of the days its floor sessions block names, "
+            "though the fixture's newest recorded sitting has a page")
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
@@ -12333,6 +12396,123 @@ def _links_resolve():
                       "with the files placed, the lockup and the mark are drawn")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("session", "a vote's date leads to that chamber's sitting where the sitting has a page, and nowhere else",
+       needs=("build_session_pages",))
+def _sitting_links(BSP):
+    """The audit of 2 October 2026, B3: a past sitting could be reached only
+    from the sitting next to it. A roll call on a bill and a row of a member's
+    votes name the day and the chamber and did not link it.
+
+    app.js links the date now, and only to a page that was built: it asks
+    session/days.json, which build_session_pages.py writes from the pages it
+    wrote. Held here, in node against dom_stub.js: before the list lands a
+    date is text and the list is asked for once; a day on the list is a link
+    to session/<body>/<date>; a day that is not on it, or the other chamber's,
+    stays text; and a member's row reads its chamber out of the vote's key
+    and its day out of the m/d/yyyy the roll call file carries.
+
+    And the builder's half, without a build: the days a page is written for
+    are the days up to today and no later; the list of them is written a
+    chamber at a time and the other chamber's is kept (a writer run on a
+    subset destroys the rest); a page leads up to its chamber's list, and to
+    its week only where it is handed that week.
+    """
+    built, later = BSP.sittings({("H", "2026-05-21"): 1, ("S", "2026-05-14"): 1,
+                                 ("H", "2026-12-31"): 1}, today="2026-10-02")
+    assert built == [("H", "2026-05-21"), ("S", "2026-05-14")] and \
+        later == [("H", "2026-12-31")], (
+        f"sittings() builds {built} and holds back {later}: a sitting after "
+        "the build is not a day to publish")
+    up = BSP.up_links("H", "2026-05-21", {"2026-W21"})
+    assert len(up) == 2 and 'href="directory/sessions-house#y2026"' in up[0] and \
+        'href="calendar/2026-W21"' in up[1], up
+    up = BSP.up_links("S", "2003-01-30", {"2026-W21"})
+    assert len(up) == 1 and 'href="directory/sessions-senate#y2003"' in up[0], (
+        "a sitting whose week the calendar does not hold links a week: " + " ".join(up))
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "session").mkdir()
+        BSP.write_days_index(root, "S", ["2026-05-14"])
+        BSP.write_days_index(root, "H", ["2026-05-21", "2025-01-08"])
+        BSP.write_days_index(root, "S", ["2026-05-14", "2026-06-04"])
+        got = json.loads((root / "session" / "days.json").read_text(encoding="utf-8"))
+        assert got == {"H": ["2025-01-08", "2026-05-21"],
+                       "S": ["2026-05-14", "2026-06-04"]}, (
+            f"session/days.json, written a chamber at a time, holds {got}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const asked = [];
+globalThis.fetch = async u => { asked.push(String(u)); return {ok: true, status: 200,
+  json: async () => String(u).endsWith("session/days.json")
+    ? {H: ["2026-05-21"], S: ["2026-05-14"]} : [], text: async () => "[]"}; };
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({sittingLink, voteIso, voteChamber, renderVotes, voteRow})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+(async () => {
+  const out = {};
+  const before = asked.filter(u => u.endsWith("session/days.json")).length;
+  out.early = s.sittingLink("H", "2026-05-21", "May 21, 2026");
+  s.sittingLink("H", "2026-05-21", "x"); s.sittingLink("S", "2026-05-14", "x");
+  out.asked = asked.filter(u => u.endsWith("session/days.json")).length - before;
+  for (let i = 0; i < 20; i++) await null;
+  out.link = s.sittingLink("H", "2026-05-21", "May 21, 2026");
+  out.other = s.sittingLink("S", "2026-05-21", "May 21, 2026");
+  out.absent = s.sittingLink("H", "2026-05-22", "May 22, 2026");
+  out.none = s.sittingLink("", "", "no date");
+  out.iso = [s.voteIso({d: "8/19/2026"}), s.voteIso({d: "12/3/2025"}), s.voteIso({d: ""}),
+             s.voteIso({d: "2026-08-19"})];
+  out.ch = [s.voteChamber({k: "2026-H-302"}), s.voteChamber({k: "2026-S-7"}), s.voteChamber({})];
+  out.rc = s.renderVotes({id: "HB1"}, {rollcalls: [{question: "Ought to Pass",
+    date: "2026-05-21", body: "H", vote_kind: "VV", passed: true}]});
+  out.row = s.voteRow({x: {d: "5/14/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-7",
+    y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  out.rowOff = s.voteRow({x: {d: "5/15/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-8",
+    y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  process.stdout.write("\\n@@" + JSON.stringify(out));
+})();
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["early"] == "May 21, 2026", (
+        "before the list of sittings has landed a date is drawn as a link: " + got["early"])
+    assert got["asked"] == 1, (
+        f"session/days.json was asked for {got['asked']} times by three dates, not once")
+    assert got["link"] == '<a href="session/H/2026-05-21.html">May 21, 2026</a>', (
+        "a day the House sat, with a page, is drawn as: " + got["link"])
+    for k in ("other", "absent", "none"):
+        assert "<a" not in got[k], (
+            f"a date with no sitting page behind it is a link ({k}): {got[k]}")
+    assert got["iso"] == ["2026-08-19", "2025-12-03", "", ""] and got["ch"] == ["H", "S", ""], (
+        f"a member's vote reads as day {got['iso']} and chamber {got['ch']}")
+    assert '<a href="session/H/2026-05-21.html">May 21, 2026</a>' in got["rc"], (
+        "a roll call on a bill does not link its day to the sitting")
+    assert '<a href="session/S/2026-05-14.html">5/14/2026</a>' in got["row"], (
+        "a row of a member's votes does not link its day to the sitting")
+    assert "session/" not in got["rowOff"] and "5/15/2026" in got["rowOff"], (
+        "a row of a member's votes links a day with no sitting page")
+    return "ok", ("a date is a link to session/<body>/<date> where days.json lists the "
+                  "day, text otherwise, and the list is asked once; pages are built up to "
+                  "today, the list is merged a chamber at a time, and a page leads up to "
+                  "its list and to its week only where the calendar has it")
 
 
 @check("session", "a sitting page links each bill to its own term's bill",
