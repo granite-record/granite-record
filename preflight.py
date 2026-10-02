@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.304
+# GRANITE_VERSION: 2026-09-04.305
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -222,9 +222,70 @@ def imp(name):
         return None
 
 
+# ---- the built bill pages, read once a run ------------------------------------
+#
+# SIX CHECKS EACH WALKED EVERY BILL PAGE OF THE BUILT SITE (2 October 2026):
+# 33,717 pages and 1.2 GB, opened, searched for their record and parsed, six
+# times over, for one field or two apiece. They share one walk now. What is
+# kept of a record is what those six read and nothing else -- a whole record
+# carries every ballot of every roll call and the bill's text, and 33,717 of
+# them are more than this machine's memory -- so a record here answers for
+# the fields below and FAILS the check that asks it for any other: a field
+# that was not kept must not read as a field the page does not have.
+#
+# site/ is not written during a run of these checks, so nothing is hidden by
+# reading it once. A check that reads a fixture's site, or one page, still
+# asks site_read itself.
+_RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
+                 "journey")
+_RECORD_KEPT = _RECORD_WHOLE + (
+    "rollcalls",        # kept as whether the page has any
+    "reports")          # kept as each report's cite_url and source
+_SITE_RECORDS = []
+
+
+class _KeptRecord(dict):
+    """A bill page's record, cut down to _RECORD_KEPT."""
+
+    @staticmethod
+    def _kept(key):
+        assert key in _RECORD_KEPT, (
+            f"_site_records() keeps {', '.join(_RECORD_KEPT)} of a bill page's record, "
+            f"and a check asked it for {key!r}: add the field to _RECORD_KEPT, or walk "
+            "the pages with site_read.records")
+
+    def get(self, key, default=None):
+        self._kept(key)
+        return dict.get(self, key, default)
+
+    def __getitem__(self, key):
+        self._kept(key)
+        return dict.__getitem__(self, key)
+
+
+def _site_records():
+    """[(year, BILLID, record)] for every bill page of site/, in the order
+    site_read.records gives them, from the run's one walk."""
+    if not _SITE_RECORDS:
+        import site_read as SR
+        for year, bid, rec in SR.records("site"):
+            kept = {k: rec[k] for k in _RECORD_WHOLE if k in rec}
+            if "rollcalls" in rec:
+                kept["rollcalls"] = bool(rec["rollcalls"])
+            if "reports" in rec:
+                kept["reports"] = [{k: rep[k] for k in ("cite_url", "source") if k in rep}
+                                   for rep in (rec["reports"] or [])]
+            _SITE_RECORDS.append((year, bid, _KeptRecord(kept)))
+    return _SITE_RECORDS
+
+
 # =========================================================== code: the files ==
 
-@check("status", "an archived page says what its own term actually has")
+# A DATA CHECK since 2 October 2026, and filed as one: it reads every page of
+# the built site and nothing else, so it could never run where the code
+# checks gate anything -- the night runs them before it builds -- and on the
+# laptop it added that walk to every run of them.
+@check("data", "an archived page says what its own term actually has")
 def _archived_coverage():
     """One paragraph described 1989 and 2023 identically, on 31,449 pages.
 
@@ -246,14 +307,14 @@ def _archived_coverage():
     if not (site / "bill").is_dir():
         return "skip", "no built site here"
     try:
-        import site_read as SR
+        import site_read as SR                                # noqa: F401
     except ImportError:
         return "skip", "site_read.py will not import"
     KEYS = {"docket", "sponsors", "reports", "votes", "video", "committee",
             "hearings"}
     bare, objects, terms = 0, 0, {}
     seen = 0
-    for year, bid, rec in SR.records(site):
+    for year, bid, rec in _site_records():
         a = rec.get("archived")
         if a is None:
             continue
@@ -36392,7 +36453,6 @@ def _veto_messages():
     # calendar from another year.
     if not Path("site/bill").is_dir():
         return "skip", "no bill pages built"
-    import site_read as SR
     # EXACTLY two stops, not three. The governor quotes a letter in
     # HB475's message with a real ellipsis in it, and a pattern reading
     # "..." as a defect flags the site's most careful quotation as its
@@ -36402,7 +36462,7 @@ def _veto_messages():
     url_year = re.compile(r"(?:calendars|journals)(?:%5C|\\|/)(\d{4})(?:%5C|\\|/)",
                           re.I)
     n, bad = 0, []
-    for _year, _bid, d in SR.records("site"):
+    for _year, _bid, d in _site_records():
         v = d.get("veto_message")
         if not v:
             continue
@@ -36715,9 +36775,8 @@ def _vote_note_truth():
     directly above the record of how they voted."""
     if not Path("site/bill").is_dir():
         return "skip", "no bill pages built"
-    import site_read as SR
     bad, n = [], 0
-    for year, bid, rec in SR.records("site"):
+    for year, bid, rec in _site_records():
         if not rec.get("rollcalls"):
             continue
         n += 1
@@ -36776,12 +36835,11 @@ def _next_step_settled():
     site = Path("site")
     if not (site / "index.json").exists():
         return "skip", "no site built"
-    import site_read as SR
     kinds = {(str(r.get("year")), r["id"].upper()): r.get("kind")
              for r in json.loads((site / "index.json").read_text(
                  encoding="utf-8"))}
     bad, n = [], 0
-    for year, bid, rec in SR.records("site"):
+    for year, bid, rec in _site_records():
         if kinds.get((year, bid)) not in ("law", "veto"):
             continue
         n += 1
@@ -36859,10 +36917,9 @@ def _report_citations():
     names."""
     if not Path("site/bill").is_dir():
         return "skip", "no bill pages built"
-    import site_read as SR
     url_year = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
     n, bad = 0, []
-    for year, bid, rec in SR.records("site"):
+    for year, bid, rec in _site_records():
         for rep in (rec.get("reports") or []):
             m = url_year.search(rep.get("cite_url") or "")
             sy = re.search(r"(\d{4})\s*$", rep.get("source") or "")
@@ -37051,10 +37108,9 @@ def _journey_agrees(build_site_v2):
     idx = Path("site/index.json")
     if not (idx.exists() and Path("site/bill").is_dir()):
         return "skip", "no built index and bill pages"
-    import site_read as SR
     rows = {(r.get("term"), r.get("id")): r
             for r in json.loads(idx.read_text(encoding="utf-8"))}
-    recs = ((rec.get("term") or "", bid, rec) for _y, bid, rec in SR.records("site"))
+    recs = ((rec.get("term") or "", bid, rec) for _y, bid, rec in _site_records())
     n, now, old = _journey_story(recs, rows, build_site_v2)
     if not (n["agree"] or n["disagree"]):
         return "skip", "no bill record carries a journey yet"
