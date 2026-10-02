@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.129
+# GRANITE_VERSION: 2026-09-05.130
 """
 Generate the faceted site from real General Court data.
 
@@ -655,6 +655,14 @@ STATED = [
     ("veto override", "veto", "Vetoed, override vote pending"),
     ("vetoed by governor", "veto", "Vetoed, awaiting an override vote"),
     ("inexpedient to legislate", "done", "Killed"),
+    # OUGHT NOT TO PASS, ADOPTED, IS THE CHAMBER'S REJECTION: BodyStatusCodes.txt
+    # code 26, the House's field on five addresses for the removal of a judge
+    # -- HA 1 of 1999, of 2006 and of 2018, HA 1 and HA 3 of 2010 -- each of
+    # whose dockets has the House adopting that report ("Ought Not to Pass: MA
+    # DIV 220-106"). With no row here they read "In committee" or "In
+    # progress". "Killed" is the word this site gives a chamber's adopted
+    # rejection: HA 1 of 2015, ended by Inexpedient to Legislate, reads it.
+    ("ought not to pass", "done", "Killed"),
     ("died on the table", "done", "Died on the table"),
     ("died, session ended", "done", "Died when the session ended"),
     # Parked for the committee to work on out of session, not killed.
@@ -1406,6 +1414,10 @@ WITHDRAWN_ACT = re.compile(
     r"(?:\s*\(\w\))?\s*,?\s*)?withdrawn\b(?!\s+from)", re.I)
 DISPOSED = [
     (re.compile(r"inexpedient to legislate", re.I), ("done", "Killed")),
+    # The motion a chamber carried, never a committee's report of the same
+    # words: floor_disposed reads the floor rows a chamber adopted, and HA 2
+    # of 2010 and HB 31 of 2023 carry "Ought Not to Pass" on a report alone.
+    (re.compile(r"ought not to pass", re.I), ("done", "Killed")),
     (re.compile(r"indefinitely postpone", re.I),
      ("done", "Indefinitely postponed")),
     (re.compile(r"interim study", re.I), ("study", "Referred for interim study")),
@@ -1530,8 +1542,8 @@ def classify(narr, rcs, prefix=""):
 
     def undone(i, e):
         a = (e.get("action") or "").lower()
-        if not re.search(r"inexpedient to legislate|interim study|refer for study"
-                         r"|indefinitely postpone", a):
+        if not re.search(r"inexpedient to legislate|ought not to pass|interim study"
+                         r"|refer for study|indefinitely postpone", a):
             return False
         body = e.get("body") or ""
         for j in range(i + 1, len(fl)):
@@ -1549,7 +1561,7 @@ def classify(narr, rcs, prefix=""):
         return False
     carried = " | ".join((e.get("action") or "").lower()
                          for i, e in enumerate(fl) if not undone(i, e))
-    if "inexpedient to legislate" in carried:
+    if "inexpedient to legislate" in carried or "ought not to pass" in carried:
         return "done", "Killed"
     if re.search(r"interim study|refer for study", carried):
         # Its own kind, not "done". A bill sent to interim study has not been
@@ -3801,7 +3813,10 @@ J_ACTS = [
     ("postponed", re.compile(r"indefinite\w*\s+postpone|\bindef\w*\.?\s+post", re.I)),
     # "Inexpedient to Lehgislate, MA, VV" (HB 353 of 2002): the clerk's
     # typing, so the first word is enough.
-    ("killed", re.compile(r"\binexpedient\b|\bITL\b|\bkilled\b", re.I)),
+    # And "Ought Not to Pass", the report against an address for the removal
+    # of a judge, adopted: "Ought Not to Pass: MA DIV 220-106" (HA 1 of 2010).
+    ("killed", re.compile(r"\binexpedient\b|\bITL\b|\bkilled\b|"
+                          r"\bought\s+not\s+to\s+pass\b", re.I)),
     ("tabled", re.compile(r"\b(?:lay|laid|lie|placed)\b[^;]{0,40}?\b(?:up)?on\s+(?:the\s+)?table\b"
                           r"|\btabled\b|\bLOT\b", re.I)),
     ("recommitted", re.compile(r"\brecommit\w*|\bre-?\s?refer\w*|\breferred\s+back",
@@ -4526,7 +4541,7 @@ def _j_introduced(evs, bid, term=""):
 
 
 # What a committee report recommended, as the decision its adoption was.
-J_FROM_REPORT = [(re.compile(r"inexpedient", re.I), "killed"),
+J_FROM_REPORT = [(re.compile(r"inexpedient|ought\s+not\s+to\s+pass", re.I), "killed"),
                  (re.compile(r"interim\s+study", re.I), "study"),
                  (re.compile(r"indefinitely\s+postpone", re.I), "postponed"),
                  (re.compile(r"ought\s+to\s+(?:pass|adopt)", re.I), "passed"),

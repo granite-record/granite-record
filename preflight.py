@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.304
+# GRANITE_VERSION: 2026-09-04.305
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1268,6 +1268,114 @@ def _between_chambers(build_site_v2):
     assert not bad, "; ".join(bad)
     return "ok", ("both chambers adopted, a report voted down, a refusal to concur, "
                   "a retention moved past, the voters' answer, each from the docket")
+
+
+# ---- what the record says ended a measure (2 October 2026) -------------------
+#
+# A sweep of all nineteen terms read every status the site gives against the
+# measure's own docket rows, its status codes and, where one is on disk, the
+# journal. The checks from here to the conferees' below each hold one of the
+# readings that came of it, on the rows it was found on.
+
+def _narrated(N, term, bill, lines, introduction=None):
+    """A measure's history as narrative.build tells it from real docket rows
+    (Docket*.txt lines), with no corrections file and no journal reading."""
+    saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
+    try:
+        N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS = [], [], {}
+        N.TERM = term
+        return N.build(bill, _docket_rows(lines), introduction=introduction)
+    finally:
+        N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
+
+
+# Real rows: Docket_db_2009-2010.txt lines 18146-18147 and 18151 (HA 1) and
+# 18159-18164 (HA 2); Docket_2017-2018.txt 179-180 (HA 1 of 2018);
+# Docket_db_1999-2000.txt 4875-4876 (HA 1 of 1999); Docket_2023-2024.txt
+# 11057-11059 (HB 31).
+_DOCKET_OUGHT_NOT = {
+    ("HA1", "2009-2010"): [
+        "2010|2472|05/03/2010 08:57:44 AM|HA1|H|Majority Committee Report: Ought Not to Pass for May 12 (Vote 8-3; RC); HC 37, PG.1748-1749|05/03/2010 08:57:44 AM",
+        "2010|2472|05/03/2010 08:58:56 AM|HA1|H|Minority Committee Report: Ought to Pass; HC 37, PG.1748-1749|05/03/2010 08:58:56 AM",
+        "2010|2472|06/02/2010 12:25:18 PM|HA1|H|Ought Not to Pass: MA DIV 220-106; HJ 51, PG.2301-2302|06/02/2010 12:25:18 PM"],
+    ("HA2", "2009-2010"): [
+        "2010|2473|05/12/2010 01:47:48 PM|HA2|H|Majority Committee Report: Ought Not to Pass for May 19 (Vote 6-4; RC); HC 39, PG.1924-1925|05/12/2010 01:47:48 PM",
+        "2010|2473|05/12/2010 01:48:04 PM|HA2|H|Minority Committee Report: Ought to Pass; HC 39, PG.1924-1925|05/12/2010 01:48:04 PM",
+        "2010|2473|05/19/2010 08:32:41 PM|HA2|H|Special Order to Next Session Day, Without Objection|05/19/2010 08:32:41 PM",
+        "2010|2473|06/02/2010 01:46:47 PM|HA2|H|Special Order to After HA3 (Rep Renzullo): MA VV; HJ 51, PG.2303-2304|06/02/2010 01:46:47 PM",
+        "2010|2473|06/02/2010 03:18:42 PM|HA2|H|Lay on the Table (Rep Eaton): MA RC 204-137; HJ 51, PG.2307-2310|06/02/2010 03:18:42 PM",
+        "2010|2473|10/13/2010 03:33:13 PM|HA2|H|Died on the Table|10/13/2010 03:33:13 PM"],
+    ("HA1", "2017-2018"): [
+        "2018|2286|2/27/2018 12:00:00 AM|HA1|H|Committee Report: Ought Not to Pass for 03/06/2018 (Vote 17-0; CC) HC 9 P. 26|2/27/2018 12:00:00 AM",
+        "2018|2286|3/6/2018 12:00:00 AM|HA1|H|Ought Not to Pass: MA VV 03/06/2018 HJ 6 P. 47|3/6/2018 12:00:00 AM"],
+    ("HA1", "1999-2000"): [
+        "1999|0588|06/25/1999 11:03:46 AM|HA1|H|Special Jt Comm Report:  Ought Not to Pass  for  June 29  (vote 12-0)|06/25/1999 11:03:46 AM",
+        "1999|0588|07/01/1999 08:36:43 AM|HA1|H|\"Ought NOT to Pass\", MA RC(256-58);  HJ77, p2070-2072|07/01/1999 08:36:43 AM"],
+    ("HB31", "2023-2024"): [
+        "2023|0063|2/27/2023 12:00:00 AM|HB31|H|Majority Committee Report: Ought to Pass 02/10/2023 (Vote 11-8; RC) HC 14 P. 9|2/27/2023 12:00:00 AM",
+        "2023|0063|2/27/2023 12:00:00 AM|HB31|H|Minority Committee Report: Ought Not to Pass|2/27/2023 12:00:00 AM",
+        "2023|0063|3/9/2023 12:00:00 AM|HB31|H|Ought to Pass : MA RC 196-176 03/09/2023 HJ 8 P. 14|3/9/2023 12:00:00 AM"],
+}
+
+
+@check("status", "Ought Not to Pass, adopted by a chamber, is that chamber's rejection, and a "
+                 "committee's report of it is not",
+       needs=("narrative", "build_site_v2"))
+def _ought_not_to_pass(N, B):
+    """Five addresses for the removal of a judge -- HA 1 of 1999, of 2006 and
+    of 2018, HA 1 and HA 3 of 2010 -- carry the House's status code 26, OUGHT
+    NOT TO PASS, over a docket whose last vote is the House adopting that
+    report: "Ought Not to Pass: MA DIV 220-106". No table named the code and
+    no test read the motion, so they read "In committee" or "In progress".
+    The site's word for a chamber's adopted rejection is Killed.
+
+    FROM THE FIELD, AND FROM A MOTION THE CHAMBER CARRIED -- NEVER FROM A
+    REPORT. HA 2 of 2010's committee reported Ought Not to Pass and the House
+    laid it on the table, where it died; HB 31 of 2023 carries the words on a
+    minority report and passed the House 196-176.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_OUGHT_NOT.items()}
+    field = {"gen_status": "HOUSE", "house_status": "OUGHT NOT TO PASS", "senate_status": ""}
+    silent = {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS", "senate_status": ""}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    # By the field, on all three shapes -- 1999's row is typed in quotes and
+    # read by nothing but the journey.
+    for bill, term in (("HA1", "2009-2010"), ("HA1", "2017-2018"), ("HA1", "1999-2000")):
+        d = B.bill_disposition({}, bill, field, narr[(bill, term)], [], term, "2025-2026")
+        is_(f"{bill} of {term}, by its field", (d.kind, d.status), ("done", "Killed"))
+    # By the motion alone, where the field names nothing STATED lists.
+    for bill, term in (("HA1", "2009-2010"), ("HA1", "2017-2018")):
+        d = B.bill_disposition({}, bill, silent, narr[(bill, term)], [], term, "2025-2026")
+        is_(f"{bill} of {term}, by its floor row", (d.kind, d.status), ("done", "Killed"))
+        is_(f"{bill} of {term}'s adopted motion", B.floor_disposed(narr[(bill, term)]),
+            ("done", "Killed"))
+    # And the journey tells the vote: the rail's House stop is the kill.
+    _i, steps = B.journey(narr[("HA1", "2009-2010")], "HA1", term="2009-2010")
+    is_("HA1 of 2010's journey", [(s["date"], s["body"], s["act"], s["text"]) for s in steps],
+        [("2010-06-02", "H", "killed", "Killed, 220\u2013106")])
+    _i, steps = B.journey(narr[("HA1", "1999-2000")], "HA1", term="1999-2000")
+    is_("HA1 of 1999's journey", [(s["body"], s["act"], s["text"]) for s in steps],
+        [("H", "killed", "Killed, 256\u201358")])
+    # A report is not a decision. HA 2 of 2010 died on the table, as its
+    # field says; HB 31's minority report kills nothing.
+    n = narr[("HA2", "2009-2010")]
+    is_("HA2 of 2010's adopted disposal", B.floor_disposed(n), None)
+    d = B.bill_disposition({}, "HA2", {"gen_status": "HOUSE", "house_status": "DIED ON THE TABLE"},
+                           n, [], "2009-2010", "2025-2026")
+    is_("HA2 of 2010", d.status, "Died on the table")
+    n = narr[("HB31", "2023-2024")]
+    is_("HB31 of 2023's adopted disposal", B.floor_disposed(n), None)
+    is_("HB31 of 2023, from these rows alone", B.classify(n, [], "HB")[1], "In progress")
+    is_("HB31's journey", [s["act"] for s in B.journey(n, "HB31", term="2023-2024")[1]],
+        ["passed"])
+    assert not bad, "; ".join(bad)
+    return "ok", ("an adopted Ought Not to Pass reads Killed by the field and by the floor row, "
+                  "with its vote on the rail; a committee's report of it decides nothing")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
