@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.45
+# GRANITE_VERSION: 2026-09-05.46
 """
 Run the whole pipeline in the right order.
 
@@ -18,6 +18,9 @@ The order is not obvious and getting it wrong has caused real bugs: narratives
 must exist before the site build reads them, districts before the data build
 checks them, and build_data runs TWICE -- once to produce the roster that
 resolve_members needs, then again to pick up the names and titles it found.
+The second run is skipped when no network step ran between the two (--local,
+and every night on GitHub's machine): build_data reads nothing it writes, so
+with nothing fetched in between it would write the same files again.
 
 Nothing here is clever. It runs the steps, stops at the first genuine failure,
 skips steps whose inputs are missing rather than crashing on them, and writes a
@@ -214,8 +217,12 @@ class building:
 class Step:
     def __init__(self, name, args, needs=(), produces=(), network=False,
                  optional=False, note="", superseded=False, captions=False,
-                 kit_required=False):
+                 kit_required=False, again=False):
         self.name, self.args = name, args
+        # A SECOND RUN OF A SCRIPT THAT HAS ALREADY RUN, there to pick up what
+        # the network steps between the two brought down. Where none of them
+        # ran it has nothing to pick up, and it is not run (second_run_idle).
+        self.again = again
         # A STEP THE NIGHTLY MAY NOT SKIP. Where the build is the kit's
         # (kit_build), a missing input fails this step and stops the build,
         # as a missing carried output does, rather than skipping it: the
@@ -321,9 +328,19 @@ def plan(a):
                   "121 Senate, 188 committee codes. One SELECT, on the SQL "
                   "host, not gc.nh.gov"),
 
+        # NOT RUN WHERE NOTHING WAS FETCHED BETWEEN THE PASSES (1 October
+        # 2026): again=True. It cost 22 to 48 seconds of every --local build,
+        # which is every night on GitHub's machine, to write the same eleven
+        # files twice. Measured before it was skipped, on a real --local
+        # build: a sha256 of every file under data/ after each pass, and the
+        # two lists were identical; and from an empty output folder, twice,
+        # the same again. build_data reads the day's files, the saved status
+        # and roster files and site/districts.json, and nothing it writes.
+        # The steps between the passes are all network steps, so when any of
+        # them has started this runs, as it always did.
         Step("build data (second pass)",
              ["build_data.py", "--dir", ".", "--out", "data"],
-             needs=["Docket.txt"], produces=["data/bills.json"],
+             needs=["Docket.txt"], produces=["data/bills.json"], again=True,
              note="picks up the names and titles the two steps above found"),
 
         # AFTER build_data, because it reads data/bills.json, and before
@@ -779,6 +796,35 @@ def plan(a):
     ]
 
 
+# What a second run that was not needed says, on its own line of the build
+# and in site/build.json. Its status there is NOT_NEEDED and not "skipped":
+# check_site.py warns of every skipped step, and this one is skipped on
+# purpose on every local build.
+NOT_NEEDED = "not needed"
+IDLE = ("no network step between this and the script's last run, so there is "
+        "nothing new for it to pick up")
+
+
+def second_run_idle(steps, i, started=None):
+    """Whether steps[i], a second run of its script (again=True), has
+    nothing to pick up: no network step between it and the last run of the
+    same script.
+
+    `started` is the indexes of the steps the build has actually started.
+    Given it, this is the build's own answer: a network step that was
+    skipped for a missing input fetched nothing. Without it, it is the
+    plan's (--dry-run): a network step listed between them counts.
+    """
+    s = steps[i]
+    if not s.again:
+        return False
+    last = next((j for j in range(i - 1, -1, -1) if steps[j].args[0] == s.args[0]), None)
+    if last is None or (started is not None and last not in started):
+        return False        # no first run to have done the work: run it
+    return not any(steps[j].network and (started is None or j in started)
+                   for j in range(last + 1, i))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--key", help="accepted so `publish YOURKEY` keeps "
@@ -895,7 +941,8 @@ def main():
             miss = s.missing()
             flag = ((("would fail, the kit's build may not skip it: missing "
                       if strict and s.kit_required else "SKIP, missing ")
-                     + ", ".join(miss)) if miss else "run")
+                     + ", ".join(miss)) if miss else
+                    f"{NOT_NEEDED}: {IDLE}" if second_run_idle(steps, i - 1) else "run")
             print(f"{i:>2}. {s.name}")
             print(f"    python3 {' '.join(s.args)}")
             print(f"    {flag}" + (f"  ({s.note})" if s.note else ""))
@@ -909,6 +956,7 @@ def main():
 
 def _run_steps(steps, a):
     results, failed = [], None
+    started = set()         # the steps that were run, by their place in the plan
     t0 = time.time()
     for i, s in enumerate(steps, 1):
         miss = s.missing()
@@ -927,8 +975,13 @@ def _run_steps(steps, a):
             results.append({"step": s.name, "status": "skipped",
                             "missing": miss})
             continue
+        if second_run_idle(steps, i - 1, started):
+            print(f"[{i}/{len(steps)}] {s.name} — {NOT_NEEDED}: {IDLE}")
+            results.append({"step": s.name, "status": NOT_NEEDED, "reason": IDLE})
+            continue
         print(f"[{i}/{len(steps)}] {s.name}", flush=True)
         st = time.time()
+        started.add(i - 1)
         r = child.run([sys.executable] + s.args, capture_output=True, text=True)
         secs = round(time.time() - st, 1)
         if r.returncode == 0:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.297
+# GRANITE_VERSION: 2026-09-04.298
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -22,7 +22,9 @@ WHAT IT DOES NOT DO
 No network, no YouTube, no gencourt. It never runs a build and never writes
 anything into the project: the marker checks build a throwaway tree under the
 system temp directory and delete it. Running this cannot change the site and
-cannot lose anything.
+cannot lose anything. The one file it leaves is its own record of the run,
+logs/preflight-last.json, which handoff.py reads in place of running the
+checks a second time; git ignores logs/ and no build reads it.
 
 TWO HALVES
 
@@ -600,20 +602,42 @@ def _parse_all():
 
 @check("files", "changed modules import")
 def _import_all():
-    # journal_bills: its checks below skip, rather than fail, when it will
-    # not import, and a reader that stopped importing drops nine bills.
-    mods = ["narrative", "build_site_v2", "build_feeds", "floor_markers",
-            "apply_markers", "inventory", "build_all", "rollcall_parser",
-            "journal_bills"]
+    """EVERY MODULE A CHECK NEEDS, NOT A LIST KEPT BY HAND (1 October 2026).
+
+    A check whose `needs=` module will not import is SKIPPED: main() says
+    "x.py will not import" among the skips, the run stays green, and every
+    assertion in that check has stopped guarding anything. This was the one
+    place an import error failed, and it named nine modules by hand while the
+    checks had come to need seventy-six -- so an error importing nightly.py
+    would have skipped the fifteen checks that need it and failed none. The
+    list is read off the checks themselves now: every module named in any
+    `needs=`, and the two the old list named that checks import for
+    themselves. A module a check needs that is not here at all fails too:
+    its checks can never run.
+
+    It is also the alarm for a moved file. The refactor's last phase moves
+    the scripts into folders, and a module left behind by a move shows up
+    here as a failure, where it would otherwise show up as a longer list of
+    skips that nobody reads.
+    """
+    ALSO = ("floor_markers", "apply_markers")
+    mods = sorted({n for c in CHECKS for n in c["needs"]} | set(ALSO))
+    # A floor, so that this cannot pass by reading no list at all.
+    assert len(mods) >= 70, (
+        f"only {len(mods)} modules are named in the checks' needs=; there were 76 when this "
+        "was written, so the list is not being read")
     bad = []
     for m in mods:
         if not Path(m + ".py").exists():
+            bad.append(f"{m}: a check needs it and {m}.py is not here")
             continue
-        if imp(m) is None:
-            bad.append(m + ": " + traceback.format_exc(limit=0).strip()
-                       .splitlines()[-1][:70])
-    assert not bad, "; ".join(bad)
-    return "ok", f"{len([m for m in mods if Path(m + '.py').exists()])} imported"
+        try:
+            __import__(m)
+        except Exception as e:                                  # noqa: BLE001
+            bad.append(f"{m}: {type(e).__name__}: {str(e)[:90]}")
+    assert not bad, (f"{len(bad)} module(s) the checks need will not import, so every check "
+                     "that needs one would be skipped, not failed: " + "; ".join(bad))
+    return "ok", f"all {len(mods)} modules the checks need import"
 
 
 # ============================================================ code: narrative ==
@@ -18995,6 +19019,234 @@ def _documents_night(NI, CA, CL):
     return "ok", ("a night takes the list in four requests under its own lock and marks what the "
                   "laptop fetched; a short, empty, failed or refused list leaves the one on file "
                   "and is a warning on a clean night; archive/queue.csv is the night's in the kit")
+
+
+# ---- the first pruning of the refactor -----------------------------------------
+#
+# Added on 1 October 2026 with the two prunings they hold: build_all's second
+# build_data pass, which is not run where nothing was fetched between the
+# passes, and handoff.py, which reads the preflight run that just happened
+# rather than running the code checks a second time.
+
+@check("pipeline", "build_data's second pass is skipped only where no network step ran since "
+       "the first, and is run wherever one did", needs=("build_all",))
+def _second_pass_only_after_network(BA):
+    """build_all ran build_data twice on every build: once for the roster the
+    network steps need, and again to pick up what they found. On --local, and
+    so every night on GitHub's machine, nothing runs between the two, and the
+    second pass wrote the same eleven files again -- measured on 1 October
+    2026 by hashing data/ after each pass of a real --local build, and again
+    from an empty output folder.
+
+    So the second pass is marked again=True, and is not run where no network
+    step has STARTED since the script's last run. Whenever one has, it runs,
+    as it always did: skipping it then would build on the roster from before
+    the fetch.
+
+      - in the real plan exactly one step is a second run, it is build
+        data's second pass, its first run is the first pass, and every step
+        between them is a network step -- so --local always skips it, and
+        the plan with the network steps in it does not;
+      - the build's own answer follows what really ran: a network step that
+        was skipped for a missing input fetched nothing; a first pass that
+        did not run leaves the second to do the work; a network step that
+        ran and failed still counts;
+      - the skip is recorded in site/build.json as "not needed", not
+        "skipped", which check_site.py warns of.
+    """
+    import contextlib
+    import io
+    import types
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive", "keep_going": False, "allow_prune": False})
+    steps = BA.plan(A())
+    again = [i for i, s in enumerate(steps) if s.again]
+    assert len(again) == 1 and steps[again[0]].name == "build data (second pass)", \
+        [steps[i].name for i in again]
+    i = again[0]
+    first = next(j for j in range(i - 1, -1, -1) if steps[j].args[0] == steps[i].args[0])
+    between = steps[first + 1:i]
+    assert steps[first].name == "build data (first pass)" and between and \
+        all(s.network for s in between), (
+            "a step that is not a network step now sits between build_data's two passes: "
+            "if it writes anything build_data reads, the second pass is needed after it, "
+            "and second_run_idle would skip it: " + ", ".join(s.name for s in between))
+    assert not BA.second_run_idle(steps, i), "with the network steps in the plan the second pass is not run"
+    local = [s for s in steps if not s.network]
+    k = next(n for n, s in enumerate(local) if s.again)
+    assert BA.second_run_idle(local, k) and not BA.second_run_idle(local, k - 1), \
+        "a --local plan does not skip the second pass, or skips the first"
+    S = BA.Step
+    plan = [S("first", ["data.py"]), S("net", ["fetch.py"], network=True),
+            S("other", ["x.py"]), S("second", ["data.py"], again=True)]
+    idle = BA.second_run_idle
+    assert not idle(plan, 3) and not idle(plan, 3, {0, 1, 2}), "a network step ran, and the second run was skipped"
+    assert idle(plan, 3, {0, 2}), "the network step was skipped, and the second run was made all the same"
+    assert not idle(plan, 3, {1, 2}) and not idle(plan, 0) and not idle(plan[1:], 2), \
+        "with no first run to have done the work, the second run was skipped"
+
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-second-pass-"))
+    saved = BA.child
+    ran = []
+
+    def build(plan):
+        del ran[:]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            BA._run_steps(plan, A())
+        return [r for r in json.loads(Path("site/build.json").read_text(encoding="utf-8"))["steps"]
+                if r["step"] == "second"][0], out.getvalue()
+    try:
+        os.chdir(tmp)
+        Path("site").mkdir()
+        BA.child = types.SimpleNamespace(run=lambda cmd, **kw: (
+            ran.append(cmd[1]),
+            types.SimpleNamespace(returncode=1 if cmd[1] == "fetch.py" else 0, stdout="ok\n",
+                                  stderr="no\n"))[1])
+        net = S("net", ["fetch.py"], network=True, optional=True)
+        rec, out = build([S("first", ["data.py"]), S("second", ["data.py"], again=True)])
+        assert ran == ["data.py"] and rec["status"] == BA.NOT_NEEDED == "not needed" and \
+            rec["reason"] == BA.IDLE and "second — not needed" in out, (ran, rec)
+        rec, _ = build([S("first", ["data.py"]), net, S("second", ["data.py"], again=True)])
+        assert ran == ["data.py", "fetch.py", "data.py"] and rec["status"] == "ok", (
+            "a network step ran -- and failed -- between the passes, and the second was not run", ran)
+        rec, _ = build([S("first", ["data.py"]),
+                        S("net", ["fetch.py"], network=True, needs=["not-here.json"]),
+                        S("second", ["data.py"], again=True)])
+        assert ran == ["data.py"] and rec["status"] == BA.NOT_NEEDED, ran
+        rec, _ = build([S("first", ["data.py"], needs=["not-here.json"]),
+                        S("second", ["data.py"], again=True)])
+        assert ran == ["data.py"] and rec["status"] == "ok", (
+            "the first pass was skipped for a missing input, and the second was skipped too", ran)
+    finally:
+        os.chdir(here)
+        BA.child = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("skipped on a --local plan and wherever no network step started since the "
+                  f"first pass; run after any that did; {len(between)} network steps sit between "
+                  "the passes and nothing else")
+
+
+@check("files", "handoff.py reports a preflight run only when it was a run of this code: the "
+       "same commit and the same working tree", needs=("handoff",))
+def _handoff_reads_this_run(H):
+    """handoff.py ran `preflight.py --code` again straight after the person
+    had, which on the laptop is four minutes for a line it had just printed.
+    It reads preflight's record of its last run now (logs/preflight-last.json,
+    which main() below writes through handoff.record_run) -- and a record of
+    other code would be a stale answer stated as a fresh one. So the record
+    carries the commit and a digest of everything in the working tree that
+    differs from it, and handoff.py refuses it unless both are what is here
+    now; then it runs the checks itself, as it always did, and says why.
+
+    In a repository of its own, made here: a record is read back; and it is
+    refused after an edit to a tracked file, after a second edit that leaves
+    `git status` printing the same line, after a new untracked file, after a
+    commit, when the run was of the data checks alone, and when the tree
+    moved while the checks ran. STATE.md's section says which happened, and
+    preflight is started only when the record was refused.
+    """
+    import types
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-handoff-"))
+    saved = H.child
+
+    def git(*args):
+        return _run(["git", "-c", "user.name=preflight", "-c", "user.email=preflight@example.invalid",
+                     "-c", "core.autocrlf=false", *args], capture_output=True, timeout=60)
+    results = [("files", "one", "ok", ""), ("files", "two", "FAIL", "broken"),
+               ("build", "three", "skip", "not here"), ("data", "four", "ok", ""),
+               ("data", "five", "ERROR", "KeyError")]
+    started = []
+
+    def run(cmd, **kw):
+        if len(cmd) > 1 and str(cmd[1]) == "preflight.py":
+            started.append(list(cmd))
+            return types.SimpleNamespace(returncode=0, stderr="", stdout=(
+                "  [ FAIL ] a check that fails\n7 passed, 1 failed, 2 skipped\n"))
+        return saved.run(cmd, **kw)
+
+    def section():
+        del started[:]
+        out = []
+        with __import__("contextlib").redirect_stdout(__import__("io").StringIO()):
+            H.section_checks(out)
+        return "\n".join(out)
+    try:
+        os.chdir(tmp)
+        try:
+            ok = git("init", "-q", ".").returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            ok = False
+        if not ok:
+            return "skip", "git is not here to make a repository with"
+        Path("preflight.py").write_text("print('a stub')\n", encoding="utf-8")
+        Path("code.py").write_text("x = 1\n", encoding="utf-8")
+        Path(".gitignore").write_text("logs/\n", encoding="utf-8")
+        assert git("add", "-A").returncode == 0 and \
+            git("commit", "-q", "-m", "one").returncode == 0, "the fixture's commit failed"
+        H.child = types.SimpleNamespace(run=run)
+
+        clean = H.tree_state()
+        assert clean[0] and clean[1] and clean == H.tree_state(), clean
+        assert H.last_run()[0] is None and "there is no" in H.last_run()[1]
+        assert H.record_run("all", results, clean, 12.3) and H.RUN.exists()
+        assert H.tree_state() == clean, "the record itself changed the tree it is keyed on"
+        rec, why = H.last_run()
+        assert rec and not why and rec["commit"] == clean[0] and rec["mode"] == "all", (rec, why)
+        said = section()
+        assert not started and "1 passed, 1 failed, 1 skipped" in said and \
+            "data checks: 1 passed, 1 failed, 0 skipped" in said and "- two" in said and \
+            "- five" in said and "did not run it again" in said, said
+
+        # An edit, and a second edit that git status prints the same way.
+        Path("code.py").write_text("x = 2\n", encoding="utf-8")
+        edited = H.tree_state()
+        assert edited != clean and H.last_run() == (
+            None, "the working tree has changed since the last preflight run"), (
+                "a record of the tree before an edit was taken for a run of the code here now",
+                H.last_run()[1])
+        said = section()
+        assert len(started) == 1 and started[0][1:] == ["preflight.py", "--code"] and \
+            "7 passed, 1 failed, 2 skipped" in said and "Run by `handoff.py` just now: the " \
+            "working tree has changed since the last preflight run" in said, (started, said)
+        H.record_run("code", results, edited, 1.0)
+        assert H.last_run()[0], H.last_run()[1]
+        Path("code.py").write_text("x = 3\n", encoding="utf-8")
+        assert H.tree_state() != edited and H.last_run()[0] is None, \
+            "a second edit to the same file was taken for the code the run checked"
+        Path("code.py").write_text("x = 2\n", encoding="utf-8")
+        assert H.last_run()[0], "the same tree again was refused"
+        # A new file git does not ignore; one it does.
+        Path("new.py").write_text("y = 1\n", encoding="utf-8")
+        assert H.last_run()[0] is None, "a new untracked file was not noticed"
+        Path("new.py").unlink()
+        Path("logs/other.log").write_text("x\n", encoding="utf-8")
+        assert H.last_run()[0], "an ignored file changed the tree's digest"
+        # A commit.
+        assert git("commit", "-q", "-am", "two").returncode == 0
+        rec, why = H.last_run()
+        assert rec is None and why.startswith("the last preflight run was on commit "), why
+        # The data checks alone; and a tree that moved under the run.
+        now = H.tree_state()
+        H.record_run("data", results, now, 1.0)
+        assert H.last_run() == (None, "the last preflight run was of the data checks alone")
+        H.record_run("code", results, edited, 1.0)
+        rec, why = H.last_run()
+        assert rec is None and "changed while it ran" in why and \
+            json.loads(H.RUN.read_text(encoding="utf-8"))["tree"] is None, why
+        H.record_run("code", results, now, 1.0)
+        said = section()
+        assert not started and "1 passed, 1 failed, 1 skipped" in said and \
+            "The same run's data checks" not in said, said
+    finally:
+        os.chdir(here)
+        H.child = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a record is read back on the same commit and tree, and refused after an "
+                  "edit, a second edit, a new file, a commit, a data-only run and a tree that "
+                  "moved under the run; preflight is started only then")
 
 
 @check("cloud", "seed-kit --only sends only the files it names, and every other copy stands",
@@ -40342,25 +40594,6 @@ def _no_night_sittings():
                   "92 reversed meridiems were corrected at parse")
 
 
-@check("data", "what is on disk for the markers to read")
-def _work():
-    w = Path("work")
-    if not w.exists():
-        return "skip", "no work/ here; run align_all.py first"
-    dirs = [d for d in w.iterdir() if d.is_dir()]
-    tr = sum(1 for d in dirs if (d / "transcript.json").exists())
-    sg = sum(1 for d in dirs if (d / "segments.json").exists())
-    applied = 0
-    for d in dirs:
-        f = d / "segments.json"
-        if f.exists() and "start_stated" in f.read_text(encoding="utf-8"):
-            applied += 1
-    both = sum(1 for d in dirs
-               if (d / "transcript.json").exists() and (d / "segments.json").exists())
-    return "ok", (f"{len(dirs):,} videos, {tr:,} transcripts, {sg:,} aligned, "
-                  f"{both:,} ready for apply_markers, {applied:,} already patched")
-
-
 @check("data", "every bill the House withdrew is on the record")
 def _withdrawn_on_record():
     """Each bill journal_bills.json reads as introduced and withdrawn is in
@@ -40445,6 +40678,13 @@ def main():
     # R2 while this is set, for this process and everything it runs; a folder
     # bucket (--local-bucket) still works.
     os.environ["GRANITE_NO_BUCKET"] = "1"
+    # THE RUN IS RECORDED, for handoff.py, which used to run the code checks a
+    # second time straight after this had. The record names the commit and
+    # the state of the working tree as this run began (handoff.tree_state),
+    # so that handoff.py can refuse it once either has moved.
+    import time as _time
+    handoff = imp("handoff")
+    began, tree = _time.time(), (handoff.tree_state() if handoff else (None, None))
     print("=" * 74)
     print(f"preflight   {Path('.').resolve()}")
     print(f"python {sys.version.split()[0]}")
@@ -40489,6 +40729,9 @@ def main():
     bad = [r for r in results if r[2] in ("FAIL", "ERROR")]
     skipped = [r for r in results if r[2] == "skip"]
     ok = [r for r in results if r[2] == "ok"]
+    if handoff:
+        handoff.record_run("code" if a.code else "data" if a.data else "all", results,
+                           tree, _time.time() - began)
 
     print("\n" + "=" * 74)
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped")
