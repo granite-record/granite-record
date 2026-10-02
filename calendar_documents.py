@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.3
+# GRANITE_VERSION: 2026-10-01.4
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -91,6 +91,8 @@ import json
 import re
 from collections import Counter, OrderedDict, defaultdict, namedtuple
 from pathlib import Path
+
+import build_date
 
 QUEUE = Path("archive") / "queue.csv"
 
@@ -207,7 +209,7 @@ def asked(r):
 
 def name_date(name, last_year=None):
     """The date a name states, ISO, or "" where it states none this can read."""
-    last = last_year or datetime.date.today().year + 1
+    last = last_year or build_date.today().year + 1
     for m in _WORDED.finditer(name or ""):
         d = _date(int(m.group(3)), MONTHS.index(m.group(1).capitalize()) + 1, int(m.group(2)))
         if d and FIRST_YEAR <= d.year <= last:
@@ -332,7 +334,7 @@ def read(path=QUEUE, root=Path("."), today=None):
     first, then newest first within the year. left_out is a list of Out in
     the queue's order.
     """
-    last = (today or datetime.date.today()).year + 1
+    last = (today or build_date.today()).year + 1
     listed = [r for r in rows(path) if (r.get("chamber"), r.get("kind")) in SET_OF]
     # A FILE TWO LISTED DOCUMENTS SHARE IS READ FOR NEITHER, unless the queue
     # records which of them was fetched to it: fetch_calendar_archive names

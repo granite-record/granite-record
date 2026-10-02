@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -29,6 +29,7 @@ same person reading about it afterwards cannot.
 """
 
 import argparse
+import build_date
 import json
 import proceedings as P
 import re
@@ -39,7 +40,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+TODAY = build_date.utcnow().strftime("%Y-%m-%d")
 
 # The first day a reader could have been following a bill and had it end under
 # them: nobody was subscribed by RSS before it. A bill that concluded before
@@ -69,7 +70,7 @@ def rfc822(d):
     try:
         dt = datetime.strptime(d[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
-        dt = datetime.now(timezone.utc)
+        dt = build_date.utcnow()
     return (f"{DAYS[dt.weekday()]}, {dt.day:02d} {MONTHS[dt.month - 1]} "
             f"{dt.year} {dt.hour:02d}:{dt.minute:02d}:00 +0000")
 
@@ -233,7 +234,7 @@ def feed(title, desc, link, self_link, items, base):
             f"<link>{escape(link)}</link>\n"
             f"<description>{escape(desc)}</description>\n"
             "<language>en-us</language>\n"
-            f"<lastBuildDate>{rfc822(datetime.now(timezone.utc).isoformat())}</lastBuildDate>\n"
+            f"<lastBuildDate>{rfc822(build_date.utcnow().isoformat())}</lastBuildDate>\n"
             f'<atom:link href="{escape(self_link)}" rel="self" '
             'type="application/rss+xml"/>\n'
             f"{body}</channel>\n</rss>\n")

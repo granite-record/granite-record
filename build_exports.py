@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.20
+# GRANITE_VERSION: 2026-09-10.21
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -29,11 +29,11 @@ filenames.
 
 import argparse
 import csv
-import datetime as _dt
 import json
 from pathlib import Path
 
 import bill_order as BO
+import build_date
 import past_sponsors as PSP
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
@@ -716,7 +716,7 @@ def main():
         "base": "https://graniterecord.org/data/",
         "site": "https://graniterecord.org",
         "upstream": "https://gc.nh.gov",
-        "generated": _dt.datetime.now().replace(microsecond=0).isoformat(),
+        "generated": build_date.now().replace(microsecond=0).isoformat(),
         "rights": "The underlying record is the New Hampshire General Court's "
                   "and this project claims nothing over it; cite gc.nh.gov "
                   "rather than this site. The software that built these files, "

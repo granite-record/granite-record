@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.127
+# GRANITE_VERSION: 2026-09-05.128
 """
 Generate the faceted site from real General Court data.
 
@@ -23,6 +23,7 @@ Standard library only.
 """
 
 import argparse
+import build_date
 import caption_span
 import committee_names as CN
 # Where the recordings this site links begin: one constant, which about.html
@@ -2914,7 +2915,7 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
                 status[k] = v
         status["milestones"].sort(key=lambda m: m["date"])
         if status.get("updated"):
-            age = (_date.today() - _date.fromisoformat(status["updated"])).days
+            age = (build_date.today() - _date.fromisoformat(status["updated"])).days
             status["stale_days"] = age
             if age > 45:
                 print(f"  status/status.txt was last updated {age} days ago "
@@ -6309,7 +6310,7 @@ def cacr_to_the_voters(narr, term, current, text="", today=None):
     if not m:
         return TO_THE_VOTERS
     when = f"{m.group('month')} {m.group('year')}"
-    over = (today or _date.today()) > election_day(m.group("year"))
+    over = (today or build_date.today()) > election_day(m.group("year"))
     return (f"Passed both chambers, went to the voters in {when}" if over
             else f"Passed both chambers, goes to the voters in {when}")
 
@@ -8392,9 +8393,9 @@ def main():
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records
     # are already in memory rather than making the browser fetch 2,000 files.
-    today = _date.today().isoformat()
-    soon = (_date.today() + _td(days=14)).isoformat()
-    recent_cut = (_date.today() - _td(days=3650)).isoformat()
+    today = build_date.today().isoformat()
+    soon = (build_date.today() + _td(days=14)).isoformat()
+    recent_cut = (build_date.today() - _td(days=3650)).isoformat()
 
     actions = []
     for b in index:

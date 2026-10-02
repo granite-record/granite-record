@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.128
+# GRANITE_VERSION: 2026-09-04.129
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -17,6 +17,7 @@ styles and is untouched.
 import argparse
 import about_figures
 import bill_order as BO
+import build_date
 import html as _html
 import shell as _shell
 import seating
@@ -637,7 +638,7 @@ def calendar_html(out, today=None, rows=None):
     # So it reads the week the way the Calendar tab does, out of the same
     # rows through the same function, from today to that week's Sunday, with
     # no cap. home.json's fortnight is left alone: the hearings feed reads it.
-    today = today or _dt.date.today()
+    today = today or build_date.today()
     weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
     sunday = BC.monday(today) + _dt.timedelta(days=6)
     week = weeks.get(BC.week_key(today)) or {}

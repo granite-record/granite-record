@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.21
+# GRANITE_VERSION: 2026-09-07.22
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -22,11 +22,12 @@ So the template IS bills.html, read at build time, and the substitutions assert
 that what they are replacing was actually there.
 """
 
-import datetime
 import html
 import json
 import re
 from pathlib import Path
+
+import build_date
 
 E = html.escape
 
@@ -110,7 +111,8 @@ def cite_day(d):
 # The day the site was built, as the fallback date in a citation. A file on
 # a CDN cannot know when it is read; app.js puts the reader's own date in
 # where it can, and this is what a reader without JavaScript is given.
-BUILT = cite_day(datetime.date.today())
+# build_date.today() is the clock, unless a day is stated to compare builds.
+BUILT = cite_day(build_date.today())
 
 # The punctuation a name can end on: full stops, spaces and closing double
 # quotes, in whatever order the source typed them. Not an apostrophe: 1994's

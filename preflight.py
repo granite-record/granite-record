@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.312
+# GRANITE_VERSION: 2026-09-04.313
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10161,7 +10161,7 @@ def _fixture_brand(here, root, brand=True):
     (assets / "licensed" / BP.HEADER_MARK).write_bytes(png)
 
 
-def _built_site(here, root, brand=True):
+def _built_site(here, root, brand=True, env=None):
     """The fixture project, then build_all's builders over it, in build_all's
     order. Returns (the base address they were built with, how many ran).
 
@@ -10171,6 +10171,8 @@ def _built_site(here, root, brand=True):
     this so that a builder added to the pipeline is added in one place.
 
     brand=False builds it as a fresh clone would: with no logo or icon file.
+    env is laid over the builders' environment, for the check that states
+    the build's date.
     """
     _site_fixture(root)
     (root / "site").mkdir(exist_ok=True)
@@ -10257,7 +10259,7 @@ def _built_site(here, root, brand=True):
         if not (here / script).exists():
             continue
         r = _run([sys.executable, str(here / script), *args],
-                 cwd=root, capture_output=True, text=True, timeout=180)
+                 cwd=root, capture_output=True, text=True, timeout=180, env=env)
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()
             raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
@@ -10573,6 +10575,174 @@ def _chain():
                       f"({named} of {len(members)} members have one)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# An address as it is written in a page, and the page furniture that is not one.
+# Script and style BODIES go before anything is read out of a page:
+# legislators.html builds its rows in the browser, and
+# `legislator/${esc(m.slug)}.html` inside a template literal is not an address
+# anybody ever requests. The opening tag is kept, because `<script src>` is.
+CLOCK_OF_THEIR_OWN = {
+    "build_date.py": "the one place the build's day is read",
+    "build_all.py": "site/build.json's record of when the run itself finished",
+    "cloud.py": "the bucket's records of a send",
+    "refusal.py": "the record of a refusal, and the night's window",
+    "livestreams.py": "the night's own record of its livestream runs",
+    "fetch_legislation.py": "the day a page was asked for, on the gone-list",
+    "parse_town_sites.py": "the day a town's site was read, in its own run by hand",
+    "town_boards.py": "the day a town's boards were read, in its own run by hand",
+}
+
+
+@check("build", "a stated build date is the date every builder writes, and only build_date.py "
+                "reads the clock for them", needs=("build_all", "build_date", "shell"))
+def _build_date_stated(build_all, build_date, shell):
+    """The day the site was built is in every page, so two builds made on
+    different days differed in every page, and a refactor's proof -- the same
+    sha256 for every file -- could only be made within one day.
+    GRANITE_BUILD_DATE states the day (build_date.py). Two halves:
+
+    NO BUILDER READS THE CLOCK FOR ITSELF. Every script build_all.py runs
+    without the network, and every module of this project those import, is
+    read: a call to today(), now() or utcnow() that is not build_date's, or
+    one of time's date functions, is in a module CLOCK_OF_THEIR_OWN names
+    with its reason, or it fails here. So does a name there that no longer
+    applies, and so does a second reader of the variable.
+
+    AND THE STATED DAY IS WHAT IS WRITTEN. The fixture site is built with the
+    day before yesterday stated: every page's citation falls back on that day
+    and none on today, home.json and the downloads' manifest are dated it, no
+    sitemap date is later and the standing pages carry it, every feed's
+    lastBuildDate is it, and the week it falls in is the calendar's current
+    one. A date that is not one stops a builder. And without the variable the
+    day is the clock's, which is what the fixture every other check reads was
+    built by.
+    """
+    from datetime import date, timedelta
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    def imported(f):
+        out = set()
+        for n in ast.walk(_parsed(f)):
+            if isinstance(n, ast.Import):
+                out |= {a.name.split(".")[0] for a in n.names}
+            elif isinstance(n, ast.ImportFrom) and n.module:
+                out.add(n.module.split(".")[0])
+            elif isinstance(n, ast.Call) and getattr(n.func, "id", "") == "__import__" \
+                    and n.args and isinstance(n.args[0], ast.Constant):
+                out.add(str(n.args[0].value).split(".")[0])
+        return {m + ".py" for m in out if Path(m + ".py").exists()}
+
+    def clock(tree):
+        """The calls in a parsed script that ask the clock what day it is."""
+        return [f"{n.lineno}: {ast.unparse(n.func)}()" for n in ast.walk(tree)
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and ((n.func.attr in ("today", "now", "utcnow")
+                      and not ast.unparse(n.func).startswith("build_date."))
+                     or (n.func.attr in ("strftime", "localtime", "gmtime", "ctime")
+                         and ast.unparse(n.func.value) == "time"))]
+    trial = ast.parse("import datetime as d, time, build_date\n"
+                      "a = d.date.today()\nb = build_date.today()\n"
+                      "c = __import__('datetime').datetime.now()\n"
+                      "e = time.strftime('%Y')\nf = time.time()\n")
+    assert [c.split(": ")[1] for c in clock(trial)] == [
+        "d.date.today()", "__import__('datetime').datetime.now()", "time.strftime()"], \
+        f"the reader of clock calls found {clock(trial)}"
+
+    steps = sorted({s.args[0] for s in build_all.plan(A()) if not s.network})
+    assert len(steps) >= 30, f"only {len(steps)} local steps were read off build_all.plan()"
+    seen, todo = set(), list(steps)
+    while todo:
+        f = todo.pop()
+        if f not in seen and Path(f).exists():
+            seen.add(f)
+            todo += sorted(imported(f))
+    own = {f: clock(_parsed(f)) for f in sorted(seen)}
+    stray = [f"{f} ({'; '.join(c[:3])})" for f, c in own.items()
+             if c and f not in CLOCK_OF_THEIR_OWN]
+    assert not stray, (
+        "these are on the build's path and ask the clock what day it is, so a build "
+        f"with its day stated ({build_date.ENV}) would still write today into what they "
+        "write: " + ", ".join(stray) + ". Ask build_date.today(), now() or utcnow(); or, "
+        "where the clock is right, name the module in CLOCK_OF_THEIR_OWN with why.")
+    stale = sorted(f for f in CLOCK_OF_THEIR_OWN if f in seen and not own[f])
+    assert not stale, ("CLOCK_OF_THEIR_OWN names modules that no longer read the clock: "
+                       + ", ".join(stale))
+    readers = sorted(f for f in seen if f != "build_date.py"
+                     and build_date.ENV in Path(f).read_text(encoding="utf-8", errors="replace"))
+    assert not readers, (f"{build_date.ENV} is read in one place, build_date.py, and "
+                         f"{', '.join(readers)} name it too")
+    assert build_date.stated() is None and build_date.today() == date.today(), (
+        "with no day stated, build_date.today() is not the clock's")
+
+    here = Path(".").resolve()
+    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    if absent:
+        return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
+                      "itself; the stated day was not built with: not here, "
+                      + ", ".join(absent))
+    today = date.today()
+    day = today - timedelta(days=2)
+    root = Path(tempfile.mkdtemp(prefix="gr-stated-"))
+    try:
+        stated = {build_date.ENV: day.isoformat()}
+        _built_site(here, root, env=stated)
+        site = root / "site"
+        said, late = 0, []
+        for p in sorted(site.rglob("*.html")):
+            t = p.read_text(encoding="utf-8", errors="replace")
+            said += f'<span class="citeday">{shell.cite_day(day)}</span>' in t
+            if f'<span class="citeday">{shell.cite_day(today)}</span>' in t:
+                late.append(p.relative_to(site).as_posix())
+        assert said, "no page of the fixture cites the stated day as the day it was read"
+        assert not late, (f"{len(late)} page(s) built with {day} stated still cite today, "
+                          f"{shell.cite_day(today)}: {', '.join(late[:4])}")
+        home = json.loads((site / "home.json").read_text(encoding="utf-8"))
+        assert home.get("generated") == day.isoformat(), (
+            f"home.json is dated {home.get('generated')}, not the stated {day}")
+        made = json.loads((site / "data" / "manifest.json").read_text(encoding="utf-8"))
+        assert str(made.get("generated")).startswith(day.isoformat() + "T"), (
+            f"the downloads' manifest was generated {made.get('generated')}, not on {day}")
+        mods = re.findall(r"<lastmod>([^<]*)</lastmod>",
+                          (site / "sitemap.xml").read_text(encoding="utf-8"))
+        assert mods and max(mods) == day.isoformat(), (
+            f"the sitemap's latest date is {max(mods) if mods else None}, not the stated {day}")
+        import build_calendar as BC
+        import build_feeds as BF
+        feed = (site / "feed" / "all.xml").read_text(encoding="utf-8")
+        assert f"<lastBuildDate>{BF.rfc822(day.isoformat())}</lastBuildDate>" in feed, (
+            "feed/all.xml's lastBuildDate is not the stated day: "
+            + "".join(re.findall(r"<lastBuildDate>[^<]*</lastBuildDate>", feed)[:1]))
+        assert (site / "calendar" / f"{BC.week_key(day)}.html").exists(), (
+            f"the calendar's current week is not the stated day's, {BC.week_key(day)}")
+        # A date that is not one stops the builder, and it says which variable.
+        r = _run([sys.executable, str(here / "build_bill_pages.py"), "--site", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=120,
+                 env={build_date.ENV: "next tuesday"})
+        assert r.returncode != 0 and build_date.ENV in (r.stderr or "") + (r.stdout or ""), (
+            "a builder given a stated date that is not a date carried on: "
+            + ((r.stderr or r.stdout).strip()[-160:] or f"exit {r.returncode}"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # And by the clock, where none is stated: the fixture the other checks read.
+    plain, _base, _ran, built_on = _fixture_site_shared()
+    page = next((plain / "site" / "bill").rglob("*.html")).read_text(encoding="utf-8",
+                                                                     errors="replace")
+    assert f'<span class="citeday">{shell.cite_day(built_on)}</span>' in page, (
+        "with no day stated, a bill page does not cite the day it was built")
+    src = Path(build_all.__file__).read_text(encoding="utf-8")
+    assert "build_date.stated()" in src and '"date_stated"' in src, (
+        "build_all.py no longer says, or records in build.json, that its day was stated")
+    return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
+                  f"itself but the {sum(1 for f in CLOCK_OF_THEIR_OWN if own.get(f))} named; "
+                  f"built with {day} stated, {said} pages cite it and none cites today, "
+                  "and the index, the manifest, the sitemap, the feeds and the calendar's "
+                  "week are that day's; a date that is not one stops the builder")
 
 
 # An address as it is written in a page, and the page furniture that is not one.
@@ -44767,6 +44937,11 @@ def main():
     # R2 while this is set, for this process and everything it runs; a folder
     # bucket (--local-bucket) still works.
     os.environ["GRANITE_NO_BUCKET"] = "1"
+    # THE CHECKS BUILD BY THE CLOCK. A day stated for comparing two builds
+    # (build_date.py) is not carried into the fixtures, which date a hearing
+    # three days from now by the clock and would find it outside a stated
+    # week. _build_date_stated states one for its own builders.
+    os.environ.pop("GRANITE_BUILD_DATE", None)
     # THE RUN IS RECORDED, for handoff.py, which used to run the code checks a
     # second time straight after this had. The record names the commit and
     # the state of the working tree as this run began (handoff.tree_state),

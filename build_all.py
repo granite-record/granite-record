@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.46
+# GRANITE_VERSION: 2026-09-05.47
 """
 Run the whole pipeline in the right order.
 
@@ -37,6 +37,7 @@ import subprocess
 import sys
 import threading
 import time
+import build_date
 import child
 from datetime import datetime
 from pathlib import Path
@@ -830,7 +831,7 @@ def main():
     ap.add_argument("--key", help="accepted so `publish YOURKEY` keeps "
                                   "working, and ignored: the video index "
                                   "reads the key from secrets.json")
-    ap.add_argument("--session", default=str(datetime.now().year))
+    ap.add_argument("--session", default=str(build_date.today().year))
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--archive", default="nh-archive")
     ap.add_argument("--with-superseded", action="store_true",
@@ -955,6 +956,14 @@ def main():
 
 
 def _run_steps(steps, a):
+    # A STATED DAY IS SAID, AND RECORDED. build_date.py lets a build be given
+    # the day to say it was made on, so that two builds can be compared file
+    # for file. Such a build cites a day that may not be today, so it says so
+    # here, where the person running it is looking, and in build.json below.
+    if build_date.stated():
+        print(f"NOTE: {build_date.ENV} is set, so every page of this build says it "
+              f"was built on {build_date.today().isoformat()}. That is for comparing "
+              "two builds, not for publishing one.\n")
     results, failed = [], None
     started = set()         # the steps that were run, by their place in the plan
     t0 = time.time()
@@ -1009,7 +1018,12 @@ def _run_steps(steps, a):
         (site / "build.json").write_text(json.dumps({
             "finished": datetime.now().isoformat(timespec="seconds"),
             "session": a.session, "seconds": total,
-            "ok": failed is None, "steps": results}, indent=2), encoding="utf-8")
+            "ok": failed is None, "steps": results,
+            # Only where the day was stated, so an ordinary build's record is
+            # as it always was. "finished" stays the clock's: it is when this
+            # run ended, which a stated day does not change.
+            **({"date_stated": build_date.today().isoformat()}
+               if build_date.stated() else {})}, indent=2), encoding="utf-8")
 
     print(f"\n{'-' * 58}")
     ok = sum(1 for r in results if r["status"] == "ok")
