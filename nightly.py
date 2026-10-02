@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1512,8 +1512,11 @@ def from_database(a, night, tries, since):
     The verdict's "day_files" is written here: its source ("database", or
     "none" with why_code and why when the fallback was tried and installed
     nothing), when the views were asked and how long they took, their rows,
-    which day's files tonight's were compared with, the differences, what was
-    carried from the last good export, and the warnings. A night that may not
+    which day's files tonight's were compared with, the differences, what the
+    content guards counted ("held": rows reworded, records changed, ballots
+    cast otherwise -- every night, so a threshold can be set from what a
+    session shows), what was carried from the last good export, and the
+    warnings. A night that may not
     fall back at all -- a New term run, a refusal on file, no installed files
     -- gets no "day_files" and one line in the log.
     """
@@ -1570,7 +1573,7 @@ def from_database(a, night, tries, since):
             return stop("short", str(e))
         result = DF.judge(files, was, facts)
         block.update(years=facts["years"], files=facts["rows"],
-                     differences=result["differences"],
+                     differences=result["differences"], held=result.get("held"),
                      compared_with=installed_day(a.archive, was["Docket.txt"]))
         for ln in DF.report(result, facts):
             say(ln, echo=False)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.315
+# GRANITE_VERSION: 2026-09-04.316
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33188,16 +33188,18 @@ def _dayfiles_guards(DF):
     to trip it and it alone, and at its threshold from both sides:
 
       the view is behind                 its newest docket entry is older
-      the docket lost rows               more than 1% of the installed rows
-      a bill is gone from the docket     though far under 1% of the rows
+      the docket lost rows               more than 25 of the installed rows,
+                                         none of them reworded
+      a bill is gone from the docket     though it is one row
       a bill record is gone              one (year, LSR)
       a roll call is gone, or its counts differ, or it has fewer ballots
       the roster moved more than 2%      either way, or that share of its
                                          members replaced with the count the
                                          same
-      a sponsor file kept under 98%      LsrSponsors.txt of its rows;
-                                         LsrsOnly.txt of the rows of members
-                                         still sitting
+      a sponsor file kept under 98%      LsrSponsors.txt of its rows
+      LsrsOnly.txt lost a sponsor        one row of a member still sitting,
+                                         on a numbered bill; or more than 2%
+                                         of their rows, with no bill number
       a line of the wrong width, or a file with no rows
 
     And a day that only grew -- new docket rows, a new roll call, more
@@ -33211,19 +33213,23 @@ def _dayfiles_guards(DF):
     def stops(name, lines):
         return DF.judge(dict(installed, **{name: _dbday_bytes(lines)}), installed)["stops"]
 
-    assert DF.judge(installed, installed) == {
-        "stops": [], "warnings": [],
-        "differences": {n: {"rows": len(v), "installed": len(v), "new": 0, "gone": 0}
-                        for n, v in base.items()}}, "the same files were not judged the same"
+    same = DF.judge(installed, installed)
+    assert (same["stops"], same["warnings"]) == ([], []) and same["differences"] == {
+        n: {"rows": len(v), "installed": len(v), "new": 0, "gone": 0}
+        for n, v in base.items()}, "the same files were not judged the same"
 
     def only(got, word, what):
         assert len(got) == 1 and word in got[0], f"{what}: the guards said {got}"
 
     d = base["Docket.txt"]
     only(stops("Docket.txt", d[:-1]), "is behind", "the newest docket row was dropped")
-    assert not stops("Docket.txt", d[:100] + d[104:]), \
-        "4 of 402 docket rows gone, under 1%, stopped the night"
-    only(stops("Docket.txt", d[:100] + d[105:]), "more than 1%", "5 of 402 docket rows were dropped")
+    # One row of each of 25 bills, and then of 26: no bill goes, no row is
+    # reworded, and the newest stays.
+    assert not stops("Docket.txt", [ln for i, ln in enumerate(d) if i % 10 or i >= 250]), \
+        "25 docket rows gone, the most allowed, stopped the night"
+    only(stops("Docket.txt", [ln for i, ln in enumerate(d) if i % 10 or i >= 260]),
+         "26 installed rows are not in the database's, more than 25",
+         "26 docket rows were dropped")
     only(stops("Docket.txt", [ln for ln in d if "HB1999" not in ln]), "bills in the installed docket",
          "a bill's only docket row was dropped")
     # The same rows with another seventh column are the same rows: the
@@ -33253,17 +33259,35 @@ def _dayfiles_guards(DF):
         "two members of 100 replaced, the count the same, stopped the night"
     only(stops("legislators.txt", p[:-3] + extra), "3 of the 100 members installed are not on",
          "three members of 100 were replaced, the count the same")
-    for name, said in (("LsrSponsors.txt", "LsrSponsors.txt keeps 146 of its 150"),
-                       ("LsrsOnly.txt", "LsrsOnly.txt keeps 146 of the 150 installed rows of "
-                                        "members still sitting")):
-        assert not stops(name, base[name][3:]), f"{name} keeping exactly 98% stopped the night"
-        only(stops(name, base[name][4:]), said, f"{name} lost 4 of 150")
-    # LsrsOnly.txt lists sitting members only, so a member who leaves takes
-    # their rows out of it, in the export as in the views. Three members each
-    # hold more than 2% of the real file, and held to 98% of ALL its rows one
-    # of them resigning stopped the fallback for as long as the export stayed
-    # down. It is held to the rows of the members still sitting, and the
-    # night says who went.
+    name = "LsrSponsors.txt"
+    assert not stops(name, base[name][3:]), f"{name} keeping exactly 98% stopped the night"
+    only(stops(name, base[name][4:]), "LsrSponsors.txt keeps 146 of its 150", f"{name} lost 4 of 150")
+    # LsrsOnly.txt: a row of a sitting member on a numbered bill is a sponsor
+    # on a bill's page, and one gone stops the night. The 2% that may go is
+    # for rows with no bill number -- what the Legislation view does not
+    # carry (two requests, 13 rows of the real file) and build_data skips. It
+    # was 2% of every row, which let the sponsors of ten bills go unremarked.
+    # (The ten rows without a number are made for this, in the real ones' shape.)
+    bare = [f"26-{2012 + b}|{500 + b}|{9500 + b}|2026|Sponsor||H|a request with no bill number"
+            for b in range(10)]
+    with_bare = base["LsrsOnly.txt"] + bare
+    had = dict(installed, **{"LsrsOnly.txt": _dbday_bytes(with_bare)})
+
+    def only_stops(lines):
+        return DF.judge(dict(had, **{"LsrsOnly.txt": _dbday_bytes(lines)}), had)["stops"]
+    only(only_stops(with_bare[1:]), "LsrsOnly.txt: 1 installed rows of members still sitting, each "
+         "on a numbered bill, are not in the database's: 26-0001|500|9000|2026|Prime|HB1001|H",
+         "one sponsor of a numbered bill was dropped")
+    assert not only_stops(with_bare[:-3]), \
+        "3 of 160 rows gone, each with no bill number, under 2%, stopped the night"
+    only(only_stops(with_bare[:-4]), "LsrsOnly.txt: 4 installed rows with no bill number are not "
+         "in the database's, more than 2% of the 160 rows", "4 rows with no bill number were dropped")
+    # It lists sitting members only, so a member who leaves takes their rows
+    # out of it, in the export as in the views. Three members each hold more
+    # than 2% of the real file, and held to 98% of ALL its rows one of them
+    # resigning stopped the fallback for as long as the export stayed down.
+    # It is held to the rows of the members still sitting, and the night says
+    # who went.
     busy = base["LsrsOnly.txt"] + [f"26-{b:04d}|500|{9000 + b}|2026|Sponsor|HB{1000 + b}|H|title {b}"
                                    for b in range(41, 47)]
     had = dict(installed, **{"LsrsOnly.txt": _dbday_bytes(busy)})
@@ -33278,10 +33302,8 @@ def _dayfiles_guards(DF):
                                f"and the fallback stopped: {gone['stops']}")
     assert gone["warnings"] == ["1 member installed is not on the database's roster, and 8 rows "
                                 "of LsrsOnly.txt went with them"], gone["warnings"]
-    assert not after(without[2:])["stops"], \
-        "2 of the 148 rows of members still sitting gone, under 2%, stopped the night"
-    only(after(without[4:])["stops"], "LsrsOnly.txt keeps 144 of the 148 installed rows of members "
-         "still sitting", "a member left, and 4 rows of members still sitting went as well")
+    only(after(without[1:])["stops"], "LsrsOnly.txt: 1 installed rows of members still sitting",
+         "a member left, and a row of a member still sitting went as well")
     got = stops("Docket.txt", d[:-1] + ["2026|0040|9/30/2026 9:00:00 AM|HB1040|H|a column short"])
     assert any("do not have 7 columns" in x for x in got), got
     got = stops("RollCallHistory.txt", [])
@@ -33301,13 +33323,14 @@ def _dayfiles_guards(DF):
     assert len(grown["warnings"]) == 1 and "2027" in grown["warnings"][0], grown["warnings"]
     assert grown["differences"]["Docket.txt"]["new"] == 1 and \
         grown["differences"]["RollCallHistory.txt"]["new"] == 2, grown["differences"]
-    assert (DF.DOCKET_GONE_MOST, DF.ROSTER_TOLERANCE, DF.SPONSORS_KEPT_LEAST) == (0.01, 0.02, 0.98), \
-        "a guard's threshold moved; the design's are 1%, 2% and 98%"
-    return "ok", ("a view behind the export, docket rows or a bill gone, a bill record gone, a "
+    assert (DF.DOCKET_GONE_MOST, DF.ROSTER_TOLERANCE, DF.SPONSORS_KEPT_LEAST) == (25, 0.02, 0.98), \
+        "a guard's threshold moved; they are 25 rows, 2% and 98%"
+    return "ok", ("a view behind the export, 26 docket rows or a bill gone, a bill record gone, a "
                   "roll call gone or changed or short of ballots, a roster 3% off or 3% "
-                  "replaced, a sponsor file under 98%, a wrong width and an empty file each stop "
-                  "the night alone; a day that only grew stops nothing, and nor does a busy "
-                  "sponsor leaving the roster")
+                  "replaced, LsrSponsors.txt under 98%, one sponsor of a numbered bill gone from "
+                  "LsrsOnly.txt, a wrong width and an empty file each stop the night alone; a "
+                  "day that only grew stops nothing, and nor does a busy sponsor leaving the "
+                  "roster")
 
 
 class _DbdayProc:
