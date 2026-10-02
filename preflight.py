@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.310
+# GRANITE_VERSION: 2026-09-04.311
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19702,13 +19702,150 @@ def _tab_keyboard():
     open_page = js[js.find("function openPage("):][:800]
     assert "PAGE_TAB=0" in open_page.replace(" ", ""), "openPage does not reset PAGE_TAB"
     assert 'class="vpick" role="tablist"' not in js, "the version picker is a tablist with no tabs"
+    # That focus survives a redraw is run now, not read: _focus_survives,
+    # below, puts focus on a control and draws through each renderer.
     assert "const repaint=" in js, "app.js has no repaint()"
-    rep = js[js.find("const repaint="):][:700]
-    assert "document.activeElement" in rep and ".focus(" in rep, \
-        "an async redraw (the bill text arriving) drops focus to <body>"
     assert 'id="ptab_${i}" aria-controls="ppane"' in js and 'aria-labelledby="ptab_${PAGE_TAB}"' in js, \
         "member and committee tabs are not tied to their panel"
-    return "ok", "focus survives a redraw, the tab resets per page, the picker is a group"
+    return "ok", "an arrow key focuses after the redraw, the tab resets per page, the picker is a group"
+
+
+# The harness of _focus_survives, run in node beside page.js (app.js) and
+# stub.js (dom_stub.js). A raw string: the selectors it compares carry
+# backslashes.
+_FOCUS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.CSS = {escape: s => String(s).replace(/["\\|#.:\[\]]/g, "\\$&")};
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({focusKey, refocus, render, renderPage, renderFacets, IDX, setPage:(p)=>{PAGE=p;}, setMeta:(m)=>{META=m;}})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+// A control, as focusKey reads one: its tag, id, data attributes, classes,
+// the card it is in, and whether it is inside what a redraw replaces.
+const body = document.body;
+const live = {};                       // selector -> the controls it matches now
+document.querySelectorAll = sel => live[sel] || [];
+function ctl(tag, o) {
+  o = o || {};
+  return {tagName: tag.toUpperCase(), id: o.id || "", dataset: o.data || {},
+    classList: o.classes || [], focused: 0, isConnected: true,
+    getAttribute: k => (o.attrs || {})[k] ?? null,
+    closest: q => q === "#results,#facets" ? (o.outside ? null : {})
+      : q === ".card[data-id]" ? (o.card ? {dataset: {id: o.card}} : null) : null,
+    focus() { this.focused++; document.activeElement = this; }};
+}
+const out = {keys: {}};
+const kinds = {
+  tab: ctl("button", {id: "tab_HB2_1", data: {t: "1"}, classes: ["tab"], card: "HB2"}),
+  facet: ctl("input", {data: {f: "topic"}, attrs: {value: "Education"}}),
+  head: ctl("button", {classes: ["chead"], card: "HB2"}),
+  legend: ctl("button", {data: {seg: "HB2|0|R-Yea"}, classes: ["lrow"], card: "HB2"}),
+  term: ctl("select", {data: {pf: "term"}}),
+  group: ctl("button", {data: {g: "committee"}, classes: ["fhead"]}),
+  more: ctl("button", {data: {more: "1"}, classes: ["link"]}),
+  search: ctl("input", {id: "q", outside: true}),
+};
+for (const [k, e] of Object.entries(kinds)) { const key = s.focusKey(e); out.keys[k] = key && key.sel; }
+out.none = [s.focusKey(null), s.focusKey(body)];
+
+// Each renderer, with focus on a control it is about to replace. The slot the
+// renderer writes is a stand-in whose innerHTML, when set, does what a
+// browser does: the old control is gone, focus is on <body>, and a copy of
+// the control is in its place.
+function through(name, draw, slot, old) {
+  const key = s.focusKey(old);
+  const fresh = ctl("x");
+  live[key.sel] = [old];
+  document.activeElement = old;
+  const real = document.querySelector(slot), find = document.querySelector;
+  const box = Object.create(real, {innerHTML: {get() { return real.innerHTML; },
+    set(v) { real.innerHTML = v; if (document.activeElement === old) document.activeElement = body;
+             live[key.sel] = [fresh]; }}});
+  document.querySelector = q => q === slot ? box : find.call(document, q);
+  try { draw(); out[name] = {refocused: fresh.focused, active: document.activeElement === fresh}; }
+  catch (e) { out[name] = "THREW " + e.message; }
+  delete live[key.sel];
+  document.querySelector = find;
+}
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.IDX.length = 0;
+s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind: "active",
+  committees: ["House Finance"], topic: "Insurance", sponsor: "Nelson, Jodi", term: "2026",
+  year: "2026", hay: "hb1442"});
+through("render", () => s.render(), "#results", kinds.head);
+through("renderFacets", () => s.renderFacets(), "#facets", kinds.facet);
+through("render, of a filter", () => s.render(), "#facets", kinds.group);
+s.setPage({kind: "committee", data: {code: "H34", name: "Finance", chamber: "H", bills: [],
+  sessions: [], members: []}, terms: ["2025-2026"], term: "2025-2026", status: ""});
+through("renderPage", () => s.renderPage(), "#results", kinds.term);
+// Focus the redraw did not take is left where it is.
+s.setPage(null);
+const kept = kinds.search; document.activeElement = kept;
+live["#q"] = [ctl("x")];
+s.render();
+out.kept = document.activeElement === kept && live["#q"][0].focused === 0;
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "focus survives every redraw: the control that had it has it again, through each of the three renderers")
+def _focus_survives():
+    """The audit of 2 October 2026, S1. A redraw replaces the element that has
+    focus, and focus fell to <body>: after a facet's checkbox, a card's
+    header, a filter group's head, a legend row, the Term and Status selects
+    of a member's or a committee's page, and any tab opened with Enter, Space
+    or a click, the next Tab press started from the top of the record.
+    repaint() restored four kinds of control and only on the redraws that
+    went through it.
+
+    render(), renderPage() and renderFacets() each take the key of the control
+    that has focus (focusKey) before they draw and give focus back to the
+    control with that key (refocus) after. This runs them, in node: a control
+    of each kind is given a key that names it and nothing else; each renderer,
+    with focus on a control it then replaces, leaves focus on the copy; "Show
+    more" is given no key, because what a reader wants after it is the rows it
+    brought; and focus on something the redraw does not replace -- the search
+    box while the list narrows -- is not moved.
+    """
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_FOCUS_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    want = {"tab": "#tab_HB2_1",
+            "facet": 'input[data-f="topic"][value="Education"]',
+            "head": '.card[data-id="HB2"] button.chead',
+            "legend": '.card[data-id="HB2"] button[data-seg="HB2\\|0\\|R-Yea"]',
+            "term": 'select[data-pf="term"]',
+            "group": 'button[data-g="committee"]',
+            "more": None, "search": None}
+    assert got["keys"] == want, (
+        "a control is not keyed by what names it: "
+        + "; ".join(f"{k}: {got['keys'].get(k)!r}, not {v!r}"
+                    for k, v in want.items() if got["keys"].get(k) != v))
+    assert got["none"] == [None, None], "nothing focused, or <body>, is given a key"
+    lost = [k for k in ("render", "renderFacets", "render, of a filter", "renderPage")
+            if got.get(k) != {"refocused": 1, "active": True}]
+    assert not lost, (
+        "a redraw leaves focus on <body>: " + "; ".join(f"{k} -> {got.get(k)}" for k in lost))
+    assert got["kept"], (
+        "a redraw moved focus that it had not taken: the search box loses the "
+        "keyboard while the list narrows under it")
+    return "ok", ("a tab, a facet's checkbox, a card's header, a legend row, a select and a "
+                  "filter's head are each keyed and refocused through render(), renderPage() "
+                  "and renderFacets(); Show more is left to the browser, and focus a redraw "
+                  "did not take is not moved")
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.134
+// GRANITE_VERSION: 2026-09-07.135
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2668,6 +2668,10 @@ function renderFacets(){
   const keep=fx?fx.scrollTop:0;
   const inner=fx?fx.querySelectorAll(".fbody"):[];
   const innerKeep=[...inner].map(el=>el.scrollTop);
+  // The checkbox just ticked, or the group head just pressed, is one of the
+  // things replaced: focus goes back on its copy once the scroll is restored
+  // (focusKey, by repaint).
+  const held=focusKey();
   fx.innerHTML=h;
   fx.scrollTop=keep;
   // THE COUNT HAS TO BE VISIBLE WITH THE PANEL SHUT. A reader who filtered by
@@ -2683,6 +2687,7 @@ function renderFacets(){
   [...fx.querySelectorAll(".fbody")].forEach((el,i)=>{
     if(innerKeep[i]!==undefined)el.scrollTop=innerKeep[i];
   });
+  refocus(held);
 }
 
 function simpleDonut(rc,bid,i){
@@ -4968,23 +4973,74 @@ let UPCOMING = null;
 // both. Those called render() unconditionally, which on a committee's page
 // drew four hundred bill cards over the committee.
 // Every redraw after something arrives -- the bill text, a version, a member's
-// record -- goes through here. The redraw replaces the element that held focus
-// with a copy, and focus fell to <body>: a keyboard reader who arrowed onto
-// Bill Text lost their place the moment its text loaded. Put focus back on the
-// copy, matched by id or, for a member or committee tab, by its position.
-// The Votes tab's own controls carry neither an id nor data-pt -- the
-// full-record button and the legend's rows -- so each is found again by
-// the data attribute saying what it opens (24 September).
+// record -- goes through here. Keeping the keyboard's place through it is the
+// renderers' own job now (focusKey and refocus, below), so this only chooses
+// which of the two to run.
 const repaint=()=>{
-  const a=document.activeElement;
-  const sel=a&&a!==document.body
-    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`
-      :a.dataset&&a.dataset.full!==undefined?`[data-full="${CSS.escape(a.dataset.full)}"]`
-      :a.dataset&&a.dataset.seg!==undefined?`[data-seg="${CSS.escape(a.dataset.seg)}"]`:null)
-    :null;
   if(PAGE)renderPage();else render();
-  if(sel){const f=document.querySelector(sel);if(f&&f!==document.activeElement)f.focus({preventScroll:true});}
 };
+
+// FOCUS SURVIVES EVERY REDRAW. A redraw replaces the element that held focus
+// with a copy, and focus fell to <body>. repaint() used to put it back for
+// four kinds of control and only on the redraws that went through it; the
+// audit of 2 October 2026 (S1) found the rest: a facet's checkbox, a card's
+// header, a filter group's head, a legend row, the Term and Status selects of
+// a member's or a committee's page, and every tab opened with Enter, Space or
+// a click -- the commonest keyboard action on the site, since each tab is its
+// own Tab stop. After each, the next Tab press started again from the top of
+// the record. Arrowing between tabs had been held since 12 September.
+//
+// So the three functions that redraw -- render(), renderPage() and
+// renderFacets() -- each take the key of the control that has focus before
+// they draw and hand focus to the control with that key after. The key is the
+// control's own identity as the markup already carries it: its id; or its tag
+// and data attributes (data-seg, data-full, data-pf, data-g, data-f with the
+// checkbox's value ...), inside its card where it is in one; or, for a
+// control with neither, its tag and classes. And its place among the
+// controls that key matches, for the few that share one.
+//
+// "Show more" is left out on purpose: what a reader wants after pressing it
+// is the first of the rows it brought, which is where the browser's own
+// starting point already is, not the next "Show more" a hundred rows down.
+function focusKey(a){
+  if(a===undefined)a=document.activeElement;
+  if(!a||a===document.body||!a.tagName||!a.closest)return null;
+  // Only what a redraw replaces: the list or the record, and the filters.
+  if(!a.closest("#results,#facets"))return null;
+  const d=a.dataset||{};
+  if(d.more!==undefined||d.vmore!==undefined)return null;
+  let sel;
+  if(a.id)sel="#"+CSS.escape(a.id);
+  else{
+    const card=a.closest(".card[data-id]");
+    const within=card&&card!==a?`.card[data-id="${CSS.escape(card.dataset.id)}"] `:"";
+    const tag=a.tagName.toLowerCase();
+    const keys=Object.keys(d).sort();
+    if(keys.length){
+      sel=within+tag+keys.map(k=>`[data-${k.replace(/[A-Z]/g,c=>"-"+c.toLowerCase())}="${
+        CSS.escape(d[k])}"]`).join("");
+      const v=tag==="input"&&a.getAttribute?a.getAttribute("value"):null;
+      if(v!==null)sel+=`[value="${CSS.escape(v)}"]`;
+    }else{
+      const href=tag==="a"&&a.getAttribute?a.getAttribute("href"):null;
+      sel=within+tag+[...(a.classList||[])].map(c=>"."+CSS.escape(c)).join("")
+        +(href?`[href="${CSS.escape(href)}"]`:"");
+    }
+  }
+  try{return {sel,i:Math.max(0,[...document.querySelectorAll(sel)].indexOf(a))};}
+  catch(_){return null;}
+}
+// Focus, back on the control `key` names -- but only if the redraw took it
+// away. Where focus is on something still in the page (the search box while
+// the list narrows, or wherever a handler has just put it) it is left there.
+function refocus(key){
+  if(!key)return;
+  const now=document.activeElement;
+  if(now&&now!==document.body&&now.isConnected!==false)return;
+  let f=null;
+  try{f=document.querySelectorAll(key.sel)[key.i]||null;}catch(_){}
+  if(f&&f.focus)f.focus({preventScroll:true});
+}
 
 // The term a record page is showing. One control for the whole record rather
 // than one per tab: a reader looking at 2023-2024 wants that term's bills AND
@@ -6169,11 +6225,13 @@ function renderPage(){
   if(!PAGE)return;
   const el=$("#results");
   if(!el)return;
+  const held=focusKey();
   el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
                                       : renderCommittee(PAGE.data);
   syncCards([...openCards]);
   showDay();
   showSelectedTab(el);
+  refocus(held);
 }
 
 // The tabs, the cards and the filter selects on these two pages. Kept apart
@@ -6402,6 +6460,9 @@ function render(more){
   // Page scroll only. The facet panel restores itself inside renderFacets,
   // synchronously, which is the only way it survives the repaint.
   const _y=window.scrollY;
+  // And the keyboard's place: the control that has focus now, to be given it
+  // back once the list is drawn again (focusKey, by repaint).
+  const held=focusKey();
   // A search in words is ordered by how well each bill matches it, until the
   // reader picks an order themselves; a list with no search, or a search for
   // bill numbers, keeps number order.
@@ -6505,6 +6566,7 @@ function render(more){
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
   showSelectedTab($("#results"));
   renderFacets();
+  refocus(held);
   if(window.scrollY!==_y)window.scrollTo(0,_y);
 }
 
@@ -6646,9 +6708,16 @@ document.addEventListener("click",e=>{
   const stub=e.target.closest("[data-embed]");
   if(stub){
     const [vid,from,pid]=stub.dataset.embed.split("|");
+    // The button is replaced by the player, so where the button had focus
+    // the player takes it: left on nothing, the next Tab press started from
+    // the top of the record (S1). Only then -- a time pressed under the
+    // player builds it through this same click and keeps its own focus.
+    const had=document.activeElement===stub;
     stub.outerHTML=`<iframe id="yt_${pid}" allow="autoplay" allowfullscreen
       src="https://www.youtube-nocookie.com/embed/${vid}?start=${from}&autoplay=1&enablejsapi=1"
       title="Hearing recording"></iframe>`;
+    const frame=had&&document.getElementById("yt_"+pid);
+    if(frame&&frame.focus)frame.focus({preventScroll:true});
     return;
   }
   const seek=e.target.closest("[data-seek]");

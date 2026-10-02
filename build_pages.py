@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.132
+# GRANITE_VERSION: 2026-09-04.133
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2541,9 +2541,16 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
 });
 document.addEventListener("click",e=>{
   const st=e.target.closest("[data-embed]");
-  if(st)st.outerHTML=`<iframe allow="autoplay" allowfullscreen
+  if(!st)return;
+  // The button is replaced by the player, so the player takes the focus the
+  // button had; left on nothing, the next Tab press started from the top of
+  // the page (the audit of 2 October 2026, S1). app.js does the same.
+  const box=st.parentNode, had=document.activeElement===st;
+  st.outerHTML=`<iframe allow="autoplay" allowfullscreen
     src="https://www.youtube-nocookie.com/embed/${st.dataset.embed}?autoplay=1"
     title="Floor session"></iframe>`;
+  const frame=had&&box&&box.querySelector("iframe");
+  if(frame)frame.focus({preventScroll:true});
 });
 // ONE ADDRESS, AND NO EMPTY QUESTION. Search with nothing typed sent the
 // reader to /bills?q= -- the same page the header's Bills tab reaches at
