@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -631,9 +631,13 @@ ENACTED_RE = re.compile(
 # The whole line, so that "Withdrawn from Committee Without Recommendation"
 # -- a committee discharged -- is not one; a withdrawal the chamber voted,
 # "Withdrawn (Rep Kreis): MA VV", is a floor row and is read as one.
+# AND A PETITION ITS PETITIONER WITHDREW: "Petition Withdrawn By Petitioner",
+# the last row of PET 7 of 2012, entered the day its committee was to vote on
+# it. The row was read by nothing and the petition read "In committee".
 WITHDRAWN_ROW = re.compile(
     r"^\s*(?:Read\s+in\s+(?P<read>[A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\s+and\s+)?"
-    r"Withdrawn(?P<prior>\s+Prior\s+to\s+Introduction)?"
+    r"(?:Petition\s+)?Withdrawn(?P<prior>\s+Prior\s+to\s+Introduction)?"
+    r"(?P<by>\s+By\s+Petitioner)?"
     r"(?:\s+(?P<date>\d{1,2}/\d{1,2}/\d{4}))?\s*$", re.I)
 # "Proposed bill for special sesssion." is the one row of HB 3 of the 2006
 # special session: a bill proposed for it, and nothing after.
@@ -1795,6 +1799,8 @@ def describe(ev, body, seen_intro=False):
                     "and withdrawn.")
         if ev.get("prior"):
             return f"It was withdrawn prior to introduction{on}."
+        if ev.get("by"):
+            return f"It was withdrawn by the petitioner{on}."
         return f"It was withdrawn{on}."
 
     if t == "proposed":

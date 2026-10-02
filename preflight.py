@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.305
+# GRANITE_VERSION: 2026-09-04.306
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1376,6 +1376,55 @@ def _ought_not_to_pass(N, B):
     assert not bad, "; ".join(bad)
     return "ok", ("an adopted Ought Not to Pass reads Killed by the field and by the floor row, "
                   "with its vote on the rail; a committee's report of it decides nothing")
+
+
+# Real rows: Docket_db_2011-2012.txt lines 12187-12191 (PET 7) and 22197
+# (PET 29).
+_DOCKET_PETITION_WITHDRAWN = {
+    "PET7": [
+        "2012|1094|05/18/2011 12:50:37 PM|PET7|H|Read In Recess, May 18, 2011; HJ 44|05/18/2011 12:50:37 PM",
+        "2012|1094|07/27/2011 03:10:02 PM|PET7|H|Petition: 8/11/2011 1:00 PM LOB 307  ==Work Session May Follow==|07/27/2011 03:10:02 PM",
+        "2012|1094|11/30/2011 03:46:36 PM|PET7|H|Public Hearing: 12/15/2011 10:10 AM LOB 303|11/30/2011 03:46:36 PM",
+        "2012|1094|01/05/2012 10:26:07 AM|PET7|H|Executive Session: 1/10/2012 11:00 AM LOB 307|01/05/2012 10:26:07 AM",
+        "2012|1094|01/10/2012 02:29:24 PM|PET7|H|Petition Withdrawn By Petitioner|01/10/2012 02:29:24 PM"],
+    "PET29": [
+        "2012|3043|01/04/2012 04:56:29 PM|PET29|H|Read in January 4, 2012 and Withdrawn; HJ 7, PG.461|01/04/2012 04:56:29 PM"],
+}
+
+
+@check("status", "a petition its petitioner withdrew reads Withdrawn, in the row's own words",
+       needs=("narrative", "build_site_v2"))
+def _petition_withdrawn(N, B):
+    """PET 7 of 2012's last row is "Petition Withdrawn By Petitioner", entered
+    the day its committee was to vote on it. The row a withdrawal is read
+    from allowed "Withdrawn" alone, so this one was read by nothing and the
+    petition read "In committee" -- beside PET 29 of the same term, "Read in
+    January 4, 2012 and Withdrawn", which read Withdrawn. Both carry the
+    House's status NO ACTION, which no table names, so the docket answers.
+    """
+    narr = {b: _narrated(N, "2011-2012", b, rows)
+            for b, rows in _DOCKET_PETITION_WITHDRAWN.items()}
+    field = {"gen_status": "HOUSE", "house_status": "NO ACTION", "senate_status": ""}
+    last = narr["PET7"]["events"][-1]
+    assert (last["date"], last["type"], last["raw"]) == (
+        "2012-01-10", "withdrawn", "Petition Withdrawn By Petitioner"), last
+    assert narr["PET7"]["narrative"].endswith(
+        "It was withdrawn by the petitioner on January 10, 2012."), narr["PET7"]["narrative"]
+    assert narr["PET7"].get("withdrawn") == "2012-01-10" and not narr["PET7"].get(
+        "not_introduced"), narr["PET7"]
+    # The meetings before it were held or noticed before the withdrawal and
+    # stay as they are told: none is turned into a notice.
+    assert not any(e.get("notice") for e in narr["PET7"]["events"]), narr["PET7"]["events"]
+    for b in ("PET7", "PET29"):
+        d = B.bill_disposition({}, b, field, narr[b], [], "2011-2012", "2025-2026")
+        assert (d.kind, d.status) == ("done", "Withdrawn"), (b, d.kind, d.status)
+    # A committee discharged is not a bill withdrawn, and a petition's
+    # meeting is not its withdrawal.
+    for row in ("Withdrawn from Committee Without Recommendation",
+                "Petition: 8/11/2011 1:00 PM LOB 307"):
+        assert not N.WITHDRAWN_ROW.match(row), row
+    return "ok", ("PET 7 of 2012 reads Withdrawn from \"Petition Withdrawn By Petitioner\", "
+                  "as PET 29 does from its own row")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
