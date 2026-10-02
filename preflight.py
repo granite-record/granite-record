@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.314
+# GRANITE_VERSION: 2026-09-04.315
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2171,6 +2171,143 @@ def _conference_report_not_adopted(N, B):
     return "ok", ("SB 95 of 2001 and SB 305 of 2016 died when the conference report was "
                   "rejected; SB 69 of 2001's conferees could not agree, and SB 164's report was "
                   "adopted")
+
+
+# Real rows of db/Legislation.psv as dumped on 8 September 2026 (lines 125,
+# 250 and 1672), with the lines of GeneralCodes.txt and BodyStatusCodes.txt
+# their codes name; and of Docket.txt: 4760 (HCR 1), 16260-16261 and 24790 (HB
+# 1708), 19168-19169 (CACR 10) and 16508 with 17584 (SB 532). HB 1709 and HB
+# 1768 are in _DOCKET_NONCONCUR_UNDER_DIED.
+_DB_LEGISLATION_ROWS = [
+    "0001|HCR|2025|0135|calling for policymakers locally and nationally to fully consider all relevant information and factors pertaining to climate change before pursuing courses of action that could adversely affect any economy or environment.|True|H|5|False|False|False|25-0135|ENA|HCR 0001|HCR1|12/20/2024 17:12:00||R|H25|H25|01/08/2025 00:00:00|10||03/20/2025 00:00:00|03/06/2025 00:00:00|0||||||||0|02||||False|PublicNHLMS||8|H25|02/07/2025 13:00:00|LOB Room 206-208|False|NHLMS|141",
+    "0751|HB|2026|0268|(Second New Title) establishing a committee to study licensure of outpatient substance use disorder treatment facilities, authorizing parents to enroll their children in any public school in the state, and creating a limited exemption from parental consent required for certain recordings under the parental bill of rights.|True|H|1|False|True|False|25-0268|PMH|HB  0751|HB751|01/16/2025 13:16:00||R|H09|H34|01/09/2025 00:00:00|31||03/06/2025 00:00:00|06/04/2026 00:00:00|1|S06|S06|01/07/2026 00:00:00|06|06/04/2026||01/29/2026 00:00:00|1|03||||False|PublicNHLMS||8|S06|01/21/2026 13:50:00|SH Room 103|True|NHLMS|275",
+    "1708|HB|2026|2651|relative to statewide education property taxes and other tax revenues.|True|H|1|False|True|False|26-2651|TAS|HB  1708|HB1708|12/10/2025 12:53:00||R|H28|H28|01/07/2026 00:00:00|31||03/05/2026 00:00:00|03/11/2026 00:00:00|0||||||||0|02||||False|PublicNHLMS||8|H28|01/29/2026 11:00:00|GP Room 154|False|NHLMS|1859",
+]
+_DB_GENERAL_CODES = ["02|HOUSE", "03|SENATE", "04|PASSED"]
+_DB_BODY_CODES = ["02|IN COMMITTEE", "06|LAID ON TABLE", "10|PASSED/ADOPTED",
+                  "31|DIED, SESSION ENDED"]
+_DOCKET_PAGE_STATES_NOTHING = {
+    "HCR1": [
+        "2025|0135|3/6/2025 4:14:35 PM|HCR1|H|Ought to Pass: MA RC 197-156 03/06/2025  HJ 7  P. 83|4/16/2025 3:04:17 PM"],
+    "HB1708": [
+        "2026|2651|2/6/2026 10:58:57 AM|HB1708|H|Majority Committee Report: Inexpedient to Legislate  02/02/2026 (Vote 12-7; RC)  HC 10  P. 111|3/16/2026 11:16:27 AM",
+        "2026|2651|2/6/2026 10:59:30 AM|HB1708|H|Minority Committee Report: Ought to Pass|2/6/2026 10:59:30 AM",
+        "2026|2651|6/24/2026 2:58:06 PM|HB1708|H|Special Order to next order of business (Rep. Malone): MF RC 156-195 03/12/2026  HJ 8  P. 58|6/24/2026 2:58:13 PM"],
+    "CACR10": [
+        "2026|2528|3/5/2026 1:43:34 PM|CACR10|H|FLAM # 2026-1059h(NT) (Rep. Osborne): AA RC 193-158 03/05/2026  HJ 6  P. 77|6/9/2026 2:46:14 PM",
+        "2026|2528|3/5/2026 1:44:10 PM|CACR10|H|Ought to Pass: MF RC 194-158 Lacking Necessary Three-Fifths Vote 03/05/2026  HJ 6  P. 81|6/9/2026 2:46:53 PM"],
+    "SB532": [
+        "2026|2136|2/10/2026 2:06:49 PM|SB532|S|Committee Report: Inexpedient to Legislate, 02/19/2026, Vote 3-1;  SC 6|5/11/2026 8:46:46 AM",
+        "2026|2136|2/19/2026 1:29:10 PM|SB532|S|Inexpedient to Legislate, RC 16Y-8N, MA === BILL KILLED ===; 02/19/2026;  SJ 4|5/11/2026 8:46:46 AM"],
+}
+
+
+@check("status", "where the status page states nothing and the docket gives only a guess, the "
+                 "database on disk answers -- filling, never replacing, and outranked by "
+                 "every dated row",
+       needs=("narrative", "build_site_v2"))
+def _database_fills_a_blank_status(N, B):
+    """The status pages leave fields blank and the General Court's database
+    does not. HB 1708 of 2026 was reported, met a failed motion to take it up
+    at once and was never voted on; the page's House field is blank, the
+    database's is DIED, SESSION ENDED, and it read "In committee". HCR 1 of
+    2025 was adopted by the House 197-156 under a blank field and read "In
+    progress", where the database says PASSED/ADOPTED.
+
+    The dump is older than the pages, so it fills and never replaces. And it
+    answers only where this site would otherwise guess, because a database
+    code is as stale as it is old and STATED's order would let it outrank a
+    page field or a dated row:
+
+      HB 1709 of 2026   LAID ON TABLE on the page's Senate field, DIED,
+                        SESSION ENDED in the database's House code: stays
+                        "Laid on the table"
+      CACR 10 of 2026   lost its vote 194-158: stays "Failed to pass"
+      HB 1768's rows under a blank House field (HB 292's case): stays "One
+                        chamber did not concur"
+      SB 532 of 2026    IN COMMITTEE in the database, killed 16-8: "Killed"
+
+    and a code the bill's own journey contradicts is not taken at all.
+    """
+    cur = "2025-2026"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dbstatus-"))
+    try:
+        (tmp / "db").mkdir()
+        (tmp / "db" / "Legislation.psv").write_text(
+            "\n".join(_DB_LEGISLATION_ROWS) + "\n", encoding="utf-8")
+        (tmp / "GeneralCodes.txt").write_text("\n".join(_DB_GENERAL_CODES) + "\n",
+                                              encoding="utf-8-sig")
+        (tmp / "BodyStatusCodes.txt").write_text("\n".join(_DB_BODY_CODES) + "\n",
+                                                 encoding="utf-8-sig")
+        db = B.db_statuses(cur, tmp)
+        assert B.db_statuses("2023-2024", tmp) == {}, "another term's bills read from this dump"
+        assert B.db_statuses(cur, tmp / "nowhere") == {}, "a dump that is not there read as one"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert db == {
+        "HCR1": {"lsr": "135", "gen_status": "HOUSE", "house_status": "PASSED/ADOPTED",
+                 "senate_status": ""},
+        "HB751": {"lsr": "268", "gen_status": "SENATE", "house_status": "DIED, SESSION ENDED",
+                  "senate_status": "LAID ON TABLE"},
+        "HB1708": {"lsr": "2651", "gen_status": "HOUSE", "house_status": "DIED, SESSION ENDED",
+                   "senate_status": ""}}, db
+
+    # FILL, NEVER REPLACE: the page's own value stands, a blank is filled, and
+    # a row is this bill's only by its LSR and only in the dump's term.
+    page = {"lsr": "268", "gen_status": "SENATE", "house_status": None,
+            "senate_status": "LAID ON TABLE"}
+    got = B.fill_status_from_db(page, {"lsr_num": "0268"}, "HB751", cur, cur, db)
+    assert got == {**page, "house_status": "DIED, SESSION ENDED"}, got
+    assert B.fill_status_from_db({"gen_status": "PASSED", "house_status": "CONCURRED",
+                                  "senate_status": "PASSED/ADOPTED WITH AMENDMENT"},
+                                 {"lsr_num": "0268"}, "HB751", cur, cur, db) is None
+    assert B.fill_status_from_db(page, {"lsr_num": "9999"}, "HB751", cur, cur, db) is None, (
+        "another measure's row filled this one")
+    assert B.fill_status_from_db(page, {"lsr_num": "0268"}, "HB751", "2023-2024", cur, db) is None
+
+    narr = {b: _narrated(N, cur, b, rows) for b, rows in _DOCKET_PAGE_STATES_NOTHING.items()}
+    narr.update({b: _narrated(N, cur, b, rows)
+                 for b, rows in _DOCKET_NONCONCUR_UNDER_DIED.items()})
+    blank = {"gen_status": "HOUSE", "house_status": None, "senate_status": None}
+    ended = {"gen_status": "HOUSE", "house_status": "DIED, SESSION ENDED", "senate_status": ""}
+    bad = []
+
+    def read(bill, st, db_st):
+        return B.bill_disposition({}, bill, st, narr[bill], [], cur, cur, term_over=True,
+                                  db_st=db_st)
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    d = read("HB1708", blank, ended)
+    is_("HB1708 of 2026", (d.kind, d.status, d.source, bool(d.told)),
+        ("done", "Died when the session ended", B.PAST_SOURCE, True))
+    is_("HB1708, with no database", read("HB1708", blank, None).status, "In committee")
+    d = read("HCR1", blank, {**blank, "house_status": "PASSED/ADOPTED"})
+    is_("HCR1 of 2025", (d.status, d.source), ("Passed one chamber", B.PAST_SOURCE))
+    # Outranked by what the docket decided.
+    d = read("CACR10", blank, ended)
+    is_("CACR10 of 2026", (d.status, d.source), ("Failed to pass", ""))
+    d = read("SB532", {}, {"senate_status": "IN COMMITTEE"})
+    is_("SB532 of 2026", (d.status, d.source), ("Killed", ""))
+    st = {"gen_status": "HOUSE", "house_status": None,
+          "senate_status": "PASSED/ADOPTED WITH AMENDMENT"}
+    d = read("HB1768", st, {**st, "house_status": "DIED, SESSION ENDED"})
+    is_("HB1768's rows under HB292's fields", (d.status, d.source),
+        ("One chamber did not concur", ""))
+    # Outranked by a page field that already answers.
+    st = {"gen_status": "SENATE", "house_status": None, "senate_status": "LAID ON TABLE"}
+    d = read("HB1709", st, {**st, "house_status": "DIED, SESSION ENDED"})
+    is_("HB1709 of 2026", (d.status, d.source), ("Laid on the table", ""))
+    # MADE FOR THE GUARD: no row of the dump says this. HCR 1's own rows, with
+    # a database code that its journey contradicts -- the House adopted it.
+    d = read("HCR1", blank, {**blank, "house_status": "IN COMMITTEE"})
+    is_("HCR1 under a stale IN COMMITTEE", (d.status, d.source), ("In progress", ""))
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 1708 of 2026 died when the session ended and HCR 1 of 2025 passed one "
+                  "chamber, by the database; a page field, a vote, a kill, a refusal to concur "
+                  "and the bill's own journey each outrank it")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",

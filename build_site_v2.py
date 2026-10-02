@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.136
+# GRANITE_VERSION: 2026-09-05.137
 """
 Generate the faceted site from real General Court data.
 
@@ -6491,8 +6491,117 @@ TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23\b", 
 DIED_ON_TABLE_ROW = re.compile(r"^\s*died\s+on\s+(?:the\s+)?table\b", re.I)
 
 
+# ---- the database's status codes, where the status page states nothing ------
+#
+# bill_status.json is the status pages, and they leave fields blank: of the
+# 2,243 records of 2025-2026, 577 have no general status there, 311 no House
+# status and 121 no Senate status. The General Court's own database has a
+# code in every one of those columns, and its dump is on this disk
+# (db/Legislation.psv, read with GeneralCodes.txt and BodyStatusCodes.txt; no
+# network). HB 1708 and HB 1824 of 2026 were reported to the floor, met a
+# failed motion to take them up at once, and were never voted on: the
+# database says DIED, SESSION ENDED for each, the page says nothing, and they
+# read "In committee".
+#
+# FILLED, NEVER REPLACED. The dump is older than the pages and behind them
+# where both have a value -- HB 592 of 2025 reads NO ACTION in the Senate
+# there and is Chapter 3 -- so a field the page filled is left exactly as it
+# is.
+#
+# AND IT ANSWERS ONLY WHERE THIS SITE WOULD OTHERWISE GUESS (bill_disposition:
+# the page's fields state nothing, and the docket gives classify() nothing
+# better than "In committee" or "In progress"). A database code beside a page
+# field that already answers would outrank it by STATED's order alone: HB 751
+# and HB 1709 of 2026 are LAID ON TABLE on the page's Senate field, which is
+# what their dockets end on, and the database's House code for both is DIED,
+# SESSION ENDED. A reading of the docket's own decisions outranks it too --
+# CACR 10 of 2026 lost its vote, and the database says DIED, SESSION ENDED --
+# and so does every dated row that outranks a page field: a refusal to
+# concur, a conference's outcome. And a code the bill's own journey
+# contradicts is not taken: the database is stale on some bills (SB 532 of
+# 2026 reads IN COMMITTEE and was killed 16-8), and "In committee" over a
+# chamber's passage would be worse than the guess.
+#
+# The page's table of the General Court's fields still shows what the status
+# page says, and the status's source is "General Court database".
+DB_LEGISLATION = Path("db") / "Legislation.psv"
+DB_STATUS_COLUMNS = {"sessionyear": 2, "lsr": 3, "CondensedBillNo": 14,
+                     "HouseStatusCode": 21, "SenateStatusCode": 29, "GeneralStatusCode": 34}
+_DB_STATUS = {}
+
+
+def _status_codes(path):
+    """GeneralCodes.txt or BodyStatusCodes.txt: {"31": "DIED, SESSION ENDED"}."""
+    out = {}
+    try:
+        for line in Path(path).open(encoding="utf-8-sig", errors="replace"):
+            p = line.rstrip("\n").split("|")
+            if len(p) >= 2 and p[0].strip():
+                out[p[0].strip()] = p[1].strip()
+    except OSError:
+        pass
+    return out
+
+
+def db_statuses(term, folder="."):
+    """{BILL: {"lsr", "gen_status", "house_status", "senate_status"}} for the
+    measures of `term` in the database dump under `folder`, in the status
+    page's own words; {} where the dump or a code table is not there."""
+    folder = Path(folder)
+    at = dict(DB_STATUS_COLUMNS)
+    try:
+        cols = json.loads((folder / "db" / "_columns.json").read_text(
+            encoding="utf-8")).get("Legislation") or []
+        at.update({n: cols.index(n) for n in at if n in cols})
+    except (OSError, ValueError):
+        pass
+    gen = _status_codes(folder / "GeneralCodes.txt")
+    body = _status_codes(folder / "BodyStatusCodes.txt")
+    out = {}
+    if not (gen and body):
+        return out
+    try:
+        fh = (folder / DB_LEGISLATION).open(encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    with fh:
+        for line in fh:
+            f = line.rstrip("\n").split("|")
+            if len(f) <= max(at.values()):
+                continue
+            year = f[at["sessionyear"]].strip()
+            if not year.isdigit() or P.term_of(year) != term:
+                continue
+            out[f[at["CondensedBillNo"]].strip().upper()] = {
+                "lsr": f[at["lsr"]].strip().lstrip("0"),
+                "gen_status": gen.get(f[at["GeneralStatusCode"]].strip(), ""),
+                "house_status": body.get(f[at["HouseStatusCode"]].strip(), ""),
+                "senate_status": body.get(f[at["SenateStatusCode"]].strip(), "")}
+    return out
+
+
+def fill_status_from_db(st, b, bid, term, current, db=None):
+    """The status page's record with each field it left blank taken from the
+    database's row for the same measure, or None where there is nothing to
+    fill: another term than the dump's, no row for this bill and this LSR, or
+    no blank the database has a word for."""
+    if term != current:
+        return None
+    if db is None:
+        if term not in _DB_STATUS:
+            _DB_STATUS[term] = db_statuses(term)
+        db = _DB_STATUS[term]
+    row = db.get(str(bid).upper())
+    if not row or row["lsr"] != str((b or {}).get("lsr_num") or "").lstrip("0"):
+        return None
+    fill = {k: row[k] for k in ("gen_status", "house_status", "senate_status")
+            if row.get(k) and not ((st or {}).get(k) or "").strip()}
+    return {**(st or {}), **fill} if fill else None
+
+
 def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
-                     override_failed="", term_over=False, text="", today=None):
+                     override_failed="", term_over=False, text="", today=None,
+                     db_st=None):
     """What became of this bill, and where that answer came from.
 
     The two counters the build reports at the end leave as data rather than
@@ -6515,8 +6624,13 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     override_failed is the same kind of line for a veto that stood: HB 149
     of 1997, "OVERRIDE GOV VETO, ML RC(17-299)", read "Vetoed, awaiting an
     override vote" because its fields stop at VETOED BY GOVERNOR.
+
+    db_st is the status page's record with its blanks filled from the
+    database (fill_status_from_db), or None. It is asked only where nothing
+    else answers.
     """
     stated = stale = 0
+    source = ""
     between = None
     # A dated docket line decided the status over a field that says otherwise,
     # where between_chambers() below did not: for status_source.
@@ -6688,6 +6802,15 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
               and all((st.get(f) or "").strip().lower().startswith("passed/adopted")
                       for f in ("house_status", "senate_status"))):
             kind, status = "done", "Died when the session ended"
+    # AND THE DATABASE'S OWN CODE, where after all of that the status is
+    # still classify()'s guess (see fill_status_from_db). Not a code the
+    # bill's journey contradicts.
+    if status in ("In committee", "In progress") and db_st and not (settled or told):
+        said = classify_stated(db_st, prefix, origin_of(bid, narr, db_st))
+        if said and not journey_disagrees(
+                journey(narr, bid, rcs, term=term)[1], said[0], said[1], "", bid):
+            kind, status = said
+            told, stated, source = said, 1, PAST_SOURCE
     if status == TO_THE_VOTERS:
         status = cacr_to_the_voters(narr, term, current, text, today)
     if kind == "active" and (term != current or term_over):
@@ -6704,7 +6827,7 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                            "Vetoed, override vote pending")):
         status = "Vetoed"
     return Disposition(kind, status, told, settled, prefix,
-                       stated, stale, bool(between) or from_docket)
+                       stated, stale, bool(between) or from_docket, source)
 
 
 def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
@@ -7578,6 +7701,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # guard below for the same reason.
     current = max(bills) if bills else ""
     n_stale = 0
+    n_db = 0
     n_chapter = Counter()
     # THE ABOUT PAGE'S ARITHMETIC, COUNTED WHERE THE STATIONS ARE MADE.
     # about.html described the site's timing coverage in eight typed figures.
@@ -7641,11 +7765,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             st = {**st, **{k: b.get(k) for k in fields
                            if not (st.get(k) or "").strip() and b.get(k)}}
         dl = (chapters or {}).get(term, {}).get(bid) or {}
+        db_st = fill_status_from_db(st, b, bid, term, current)
         disp = bill_disposition(
             b, bid, st, narr, rcs, term, current,
             term_over=bool(session_over) and term == current,
             law_line=dl.get("line", ""),
             override_failed=dl.get("override_failed", ""),
+            # What the database says where the page states nothing, for a
+            # status that would otherwise be this site's guess.
+            db_st=db_st,
             # A CACR's own text names the election it goes to, which is
             # what decides whether it "goes" or "went" to the voters.
             text=((P.per_term(bill_texts, term, current).get(bid) or {}).get("text", "")
@@ -7654,6 +7782,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         told, settled, prefix = disp.told, disp.settled, disp.prefix
         n_stated += disp.stated
         n_stale += disp.stale
+        n_db += disp.source == PAST_SOURCE
 
         # Sponsor records already carry member_id, party and chamber from
         # build_data.py, and for the LsrSponsors path that id IS the roster's.
@@ -7695,7 +7824,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         status_source = (
             JOURNAL_SOURCE if disp.source == JOURNAL_SOURCE or status == NOT_INTRODUCED
             else "General Court docket" if settled or disp.between
-            else PAST_SOURCE if told and b.get("source") == PAST_SOURCE
+            else PAST_SOURCE if told and (b.get("source") == PAST_SOURCE
+                                          or disp.source == PAST_SOURCE)
             else "General Court bill status page" if told
             else "derived from the docket")
         # Committees carry their chamber. Both chambers have a Finance, a
@@ -7962,7 +8092,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # answer there. In any term, a line claiming another kind of
             # status than the chip's gives way to it (STEP_CLAIM).
             "next_step": (status if story else settled_step(
-                bill_next_step(narr, b, prefix, st, settled, told),
+                # With the database's fields where they are what stated it.
+                bill_next_step(narr, b, prefix,
+                               db_st if disp.source == PAST_SOURCE else st, settled, told),
                 status, term, current, kind)),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
@@ -8082,6 +8214,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             print(f"  {n_stale:,} bills in closed terms read as still moving "
                   "and are marked finished;")
             print("    the status word the record gave them is unchanged")
+    # What the database's dump answered, or that it is not here: a dump that
+    # is missing looks exactly like one with nothing to add.
+    if (Path(".") / DB_LEGISLATION).exists():
+        print(f"  {n_db:,} bills of {current} take their status from the database's own "
+              f"code ({DB_LEGISLATION.as_posix()}), where the status page states nothing "
+              "and the docket gives only a guess")
+    else:
+        print(f"  {DB_LEGISLATION.as_posix()} IS NOT HERE, so a bill of {current} whose "
+              "status page states nothing keeps what the docket alone gives it")
     # THE JOURNEY, THE STATUS AND THE RAIL, AS ONE ACCOUNT. A build that drew
     # a list contradicting the chip above it would otherwise exit zero.
     j_all = Counter()
