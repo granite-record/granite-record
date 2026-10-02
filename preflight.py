@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.308
+# GRANITE_VERSION: 2026-09-04.309
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16809,9 +16809,17 @@ def _directory_pages():
                               {"id": "SB2", "n": "SB 2", "year": 2026, "term": "2025-2026",
                                "title": "a second bill", "status": "Killed"}],
                 "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
-                               "title": "an old bill", "status": ""}]}
+                               "title": "an old bill", "status": ""}],
+                # The term of requests, as build_lsrs.py writes it: rows
+                # marked `lsr`, which no builder writes a page for.
+                "2027-requests": [{"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027,
+                                   "term": "2027-requests", "title": "a request",
+                                   "status": "Filed as a request", "lsr": True}]}
         for term, r in rows.items():
             (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps(
+            {"requests": {"term": "2027-requests", "label": "2027 Bill Requests",
+                          "n": 1, "withdrawn": 0}}), encoding="utf-8")
         (site / "legislators.json").write_text(json.dumps([
             {"id": "1", "name": "Doe, Jane", "chamber": "H", "party": "Democratic",
              "county": "Hillsborough", "district": "12", "slug": "jane-doe-hills-12",
@@ -16837,8 +16845,27 @@ def _directory_pages():
             assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
         hub = (site / "directory.html").read_text(encoding="utf-8")
         assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
+        # A REQUEST HAS NO PAGE, AND ITS LIST LINKS NONE. All 241 links on
+        # /directory/bills-2027-requests answered 404 (the audit of 2 October
+        # 2026): the list wrote bill/2027/lsr20270001 for every row, and
+        # build_bill_pages.py builds no page for a request. The number is
+        # text, the list is named as the bill search's term picker names it,
+        # and the requests are not counted among the terms of bills.
+        reqs = (site / "directory" / "bills-2027-requests.html").read_text(encoding="utf-8")
+        assert "LSR 2027-0001" in reqs and "bill/2027" not in reqs, (
+            "the list of requests links a page for a request, and no builder writes one")
+        assert "<title>2027 Bill Requests | Granite Record</title>" in reqs \
+            and "<h1>2027 Bill Requests</h1>" in reqs, (
+            "the list of requests is not titled as the term picker names it "
+            "(meta.json's requests.label)")
+        assert 'href="bills?term=2027-requests"' in reqs, (
+            "the list of requests does not lead to the one page that holds them")
+        assert ">2027 Bill Requests</a>" in hub and ">2027-requests<" not in hub, (
+            "the directory names the requests by their raw key")
+        assert "all 2 terms from 1989" in hub, (
+            "the directory counts the requests as a term of bills")
         sm = (site / "sitemap.xml").read_text(encoding="utf-8")
-        assert sm.count("<loc>") == 5, sm
+        assert sm.count("<loc>") == 6, sm
         # THE ROUTE IS TWO HOPS NOW, AND THE POINT IS THE ROUTE. The footer
         # linked the directory directly until 18 September, when the owner
         # moved that link to the Data page -- in a grey band it was one of

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.6
+# GRANITE_VERSION: 2026-09-13.7
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -55,7 +55,8 @@ import structured as LD
 KIND_NAME = {"HB": "House bills", "SB": "Senate bills", "CACR": "Constitutional amendments",
              "HCR": "House concurrent resolutions", "SCR": "Senate concurrent resolutions",
              "HJR": "House joint resolutions", "SJR": "Senate joint resolutions",
-             "HR": "House resolutions", "SR": "Senate resolutions", "PET": "Petitions"}
+             "HR": "House resolutions", "SR": "Senate resolutions", "PET": "Petitions",
+             "LSR": "Requests"}
 
 
 def kind_of(bid):
@@ -82,7 +83,33 @@ def write(site, base, path, title, description, heading, lead, body, urls, nav="
     urls.append(base + S.canon(path))
 
 
-def bills_page(site, base, term, rows, urls):
+def requests_label(site):
+    """{term: label} for the term that holds requests and not bills.
+
+    build_lsrs.py writes idx/2027-requests.json beside the terms and names it
+    in meta.json's "requests": the term's key and "2027 Bill Requests", which
+    is what the bill search's term picker calls it. Read from there, so the
+    lists and the picker call it one thing.
+    """
+    mj = site / "meta.json"
+    try:
+        req = json.loads(mj.read_text(encoding="utf-8")).get("requests") or {}
+    except (ValueError, OSError):
+        req = {}
+    return {req["term"]: req.get("label") or req["term"]} if req.get("term") else {}
+
+
+def bills_page(site, base, term, rows, urls, label=""):
+    """One term's list. `label` is given for the term of requests.
+
+    A REQUEST HAS NO PAGE, SO ITS NUMBER IS NOT A LINK. Every row was written
+    as a link to bill/<year>/<id>, and build_bill_pages.py builds no page for
+    a request: the 241 links on /directory/bills-2027-requests all answered
+    404 (the audit of 2 October 2026). The bill list has always known it --
+    an LSR's card there carries no link to a page of its own. A row marked
+    `lsr` is its number as text; the list says where the requests can be
+    searched, which is the one page that holds them.
+    """
     groups = defaultdict(list)
     for r in rows:
         groups[kind_of(r["id"])[0]].append(r)
@@ -94,13 +121,28 @@ def bills_page(site, base, term, rows, urls):
         body.append(f'<h2 id="{S.E(k.lower())}">{S.E(KIND_NAME.get(k, k))} '
                     f'<span class="dircount">{len(items):,}</span></h2><ul class="dirbills">')
         for r in items:
-            href = S.canon(f"bill/{r.get('year')}/{r['id'].lower()}.html")
+            num = S.E(r.get("n") or r["id"])
+            if not r.get("lsr"):
+                href = S.canon(f"bill/{r.get('year')}/{r['id'].lower()}.html")
+                num = f'<a href="{S.E(href)}">{num}</a>'
             status = f' <span class="dirstatus">{S.E(r["status"])}</span>' if r.get("status") else ""
-            body.append(f'<li><a href="{S.E(href)}">{S.E(r.get("n") or r["id"])}</a> '
+            body.append(f'<li>{num} '
                         f'{S.E((r.get("title") or "").strip())}{status}</li>')
         body.append("</ul>")
     jump = " &middot; ".join(f'<a href="{S.canon("/directory/bills-" + term + ".html")}#{k.lower()}">'
                              f'{S.E(KIND_NAME.get(k, k))}</a>' for k in order)
+    if label:
+        write(site, base, f"/directory/bills-{term}.html",
+              f"{label} | Granite Record",
+              f"All {len(rows):,} requests for bills filed so far for the next session of "
+              "the New Hampshire General Court, by request number, with each one's title.",
+              label,
+              f"{len(rows):,} requests, by number. A request has no page of its own "
+              "until it is filed as a bill; "
+              f'<a href="{S.E(S.canon("bills.html") + "?term=" + quote_plus(term))}">'
+              "the bill search lists them</a> with their sponsors.",
+              "".join(body), urls, nav="bills.html")
+        return len(rows)
     write(site, base, f"/directory/bills-{term}.html",
           f"Every bill of the {term} term | Granite Record",
           f"All {len(rows):,} bills and resolutions of the {term} New Hampshire General Court "
@@ -290,11 +332,14 @@ def main():
     urls = []
 
     terms = sorted((p.stem for p in (site / "idx").glob("*.json")), reverse=True)
-    counts = {}
+    counts, linked = {}, 0
+    named = requests_label(site)
     for term in terms:
         rows = json.loads((site / "idx" / f"{term}.json").read_text(encoding="utf-8"))
         rows = rows if isinstance(rows, list) else rows.get("bills", [])
-        counts[term] = bills_page(site, base, term, rows, urls)
+        counts[term] = bills_page(site, base, term, rows, urls, label=named.get(term, ""))
+        linked += sum(1 for r in rows if not r.get("lsr"))
+    n_terms = len([t for t in terms if t not in named])
     legs = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
     assert all(m.get("slug") for m in legs), "a legislator has no slug in legislators.json"
     n_leg = legislators_page(site, base, legs, urls)
@@ -305,7 +350,8 @@ def main():
           f"({(site / 'find.json').stat().st_size / 1024:.0f} KB)")
 
     hub = ['<h2>Bills, by term</h2><ul class="dirterms">']
-    hub += [f'<li><a href="{S.canon("directory/bills-" + t + ".html")}">{t}</a> '
+    hub += [f'<li><a href="{S.canon("directory/bills-" + t + ".html")}">'
+            f'{S.E(named.get(t, t))}</a> '
             f'<span class="dircount">{counts[t]:,}</span></li>' for t in terms]
     hub += ["</ul>", '<h2>People and places</h2><ul class="dirterms">',
             f'<li><a href="{S.canon("directory/legislators.html")}">Every sitting legislator</a> '
@@ -316,7 +362,9 @@ def main():
             f'<li><a href="{S.canon("learn.html")}">How New Hampshire works</a></li>',
             f'<li><a href="{S.canon("data.html")}">The data, as tables</a></li></ul>']
     write(site, base, "/directory.html", "The whole record, as lists | Granite Record",
-          f"Every bill of all {len(terms)} terms from 1989, every sitting legislator and every "
+          # The terms of bills: the requests are a list here and not a term,
+          # and counted as one this said "all 20 terms" of a record of 19.
+          f"Every bill of all {n_terms} terms from 1989, every sitting legislator and every "
           "town in New Hampshire, as plain lists of links.",
           "The whole record, as lists",
           "The same record the search draws, as plain lists: nothing to type, "
@@ -327,9 +375,11 @@ def main():
         text = sm.read_text(encoding="utf-8")
         add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls if S.E(u) not in text)
         sm.write_text(text.replace("</urlset>", add + "</urlset>"), encoding="utf-8")
-    links = sum(counts.values()) + n_leg + n_town
+    links = linked + n_leg + n_town
     print(f"{len(urls)} directory pages -> {site / 'directory'}, {links:,} links to record pages")
-    print(f"  {len(terms)} terms of bills, {n_leg} legislators, {n_town} towns and wards")
+    print(f"  {n_terms} terms of bills, {n_leg} legislators, {n_town} towns and wards"
+          + "".join(f"; {counts[t]:,} of the {label} listed without a link, as a request "
+                    "has no page" for t, label in named.items() if t in counts))
     empty = [t for t, n in counts.items() if not n]
     assert not empty, f"a term index listed no bills: {empty}"
     return 0
