@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.7
+# GRANITE_VERSION: 2026-10-01.8
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -303,6 +303,15 @@ stop the next night: tonight's files are compared with the installed ones,
 and those have not moved. The second such night in a row is an error on the
 page (nightly.DB_STOPPED_MOST). There is no switch that installs a night a
 person has read and found right.
+
+And a stop ends the night's asking. The night turns here straight after the
+export's first empty try, and after a stop it does not ask the export again
+that night (nightly.DB_LOOKED_WRONG): a later try that arrived whole would go
+in on the export's own, coarser, checks. So a stop that was wrong costs the
+night whatever that second try would have brought, and the page says it was
+not made. A view that cannot be read at all -- another encoding, a byte-order
+mark, a line of the wrong width -- is a Problem and no stop: the export is
+asked once more, as after a connection that failed.
 
 THE SESSION YEAR IS THE INSTALLED FILES'. The export decides what a "current"
 file holds; this copies the last good day's years rather than guessing a new
