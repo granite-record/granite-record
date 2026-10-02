@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.5
+# GRANITE_VERSION: 2026-10-01.6
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -87,11 +87,11 @@ only two rows of the whole view to have changed since); it holds no 04 at
 all now, the five reports filed on 30 September included; and 07 is where
 every such bill ended in the ten terms from 2006 (898 of 898 in the
 database's PastLegislation). That reads as the General Court resetting the
-code after the last export, which is likely and not proven:
-the House status on HB 224's own page at gc.nh.gov settles it in one look.
-Carrying the installed code instead would freeze the column for as long as
-the export is down, and on a session day that is hundreds of bills known to
-be stale. held_said() names the column each night it differs.
+code after the last export, which is likely and not proven: the House status
+on HB 224's own page at gc.nh.gov settles it in one look. Carrying the
+installed code instead would freeze the column for as long as the export is
+down, and on a session day that is hundreds of bills known to be stale.
+held_said() names the column each night it differs.
 
 ROW ORDER IS THE INSTALLED FILE'S
 
@@ -167,8 +167,10 @@ the columns the build reads:
                                share of their rows that name none
     the shape                  every line has its file's number of columns
 
-A column no reader reads -- the docket's seventh, LSRs.txt's two status
-codes -- is counted, said (held_said) and never judged.
+A column no reader reads is never judged. The docket's seventh is not
+compared at all; a column of LSRs.txt that build_data.py does not read --
+the two status codes are the only ones to have differed -- is counted and
+said (held_said).
 
 Each threshold is a constant below, with the measurement it came from: the
 real exports of September, night against night (eleven pairs, and no session
@@ -201,7 +203,7 @@ Every guard fails closed, and some real days are on the wrong side of one:
                                         with an old entry time
     a sponsor off a numbered bill       or changed from Sponsor to Prime: the
                                         installed row is not there tonight.
-                                        No sponsor has been withdrawn in any
+                                        No sponsor is marked withdrawn in any
                                         data on this disk
     more in a night than a day has      over 1,000 citations (two of the
                                         term's days running came to 732), 100

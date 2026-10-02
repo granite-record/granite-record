@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.318
+# GRANITE_VERSION: 2026-09-04.319
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33366,6 +33366,601 @@ def _dayfiles_guards(DF):
                   "roster")
 
 
+# Real rows, for the content guards: cut on 2 October 2026 from the files the
+# General Court published, and each as it stood in the export named.
+#
+#   Docket.txt           18 rows of the export of 30 September: three of HB
+#                        1218's, its minority report as the export of
+#                        6 September still had it (amendment 2026-0596h, which
+#                        the clerk corrected to 0956h on the 14th); the last
+#                        row of each bill that 2 October's new rows are under;
+#                        three rows that carry a journal citation and one a
+#                        mark; a conference meeting stamped a week ahead of the
+#                        day it was written; and the file's newest entry
+#   LSRs.txt             six bill records of that export
+#   LsrSponsors.txt,     the senators' rows on four of those bills
+#   LsrsOnly.txt
+#   legislators.txt      the 24 senators. Their e-mail addresses are made up,
+#                        so that none a scraper could use is in the
+#                        repository; every other column is the export's
+#   RollCallSummary.txt  the Senate's roll calls 45 to 52 of 2026, and the 24
+#   RollCallHistory.txt  ballots of the 49th, as the export of 6 September
+#                        had them: filed under SB 655
+#
+# and what a later night really brought (_DBGUARD_TONIGHT): nine of the 31
+# docket rows the database held on 2 October; HB 1218's row as corrected;
+# roll call 49 as the export of 13 September had it, moved to SB 665; and the
+# senators' rows on the two requests with no bill number, which the
+# Legislation view does not carry.
+_DBGUARD_REAL = {
+    "Docket.txt": [
+        "2026|2711|2/17/2026 3:29:16 PM|HB1218|H|Executive Session: 03/03/2026 10:00 am GP 231|2/17/2"
+        "026 3:29:16 PM",
+        "2026|2711|3/4/2026 5:49:51 PM|HB1218|H|Majority Committee Report: Inexpedient to Legislate  "
+        "03/03/2026 (Vote 9-8; RC)  HC 11  P. 94|3/16/2026 11:06:00 AM",
+        "2026|2711|3/4/2026 5:50:17 PM|HB1218|H|Minority Committee Report: Ought to Pass with Amendme"
+        "nt # 2026-0596h|3/4/2026 5:50:17 PM",
+        "2026|0038|9/15/2026 3:58:02 PM|HB100|H|   Full Committee Work Session: 09/29/2026 10:00 am G"
+        "P 228|9/15/2026 3:58:02 PM",
+        "2026|2083|9/15/2026 3:58:54 PM|SB632|H|   Full Committee Work Session: 09/29/2026 10:00 am G"
+        "P 228|9/15/2026 3:58:54 PM",
+        "2026|0001|9/15/2026 3:58:38 PM|HB561|H|   Full Committee Work Session: 09/29/2026 10:00 am G"
+        "P 228|9/15/2026 3:58:38 PM",
+        "2026|2986|8/21/2026 3:00:50 PM|HB1753|H|Executive Session: 09/24/2026 10:30 am GP 228|8/21/2"
+        "026 3:00:50 PM",
+        "2026|3022|8/21/2026 3:01:02 PM|HCR16|H|Executive Session: 09/24/2026 10:30 am GP 228|8/21/20"
+        "26 3:01:02 PM",
+        "2026|0452|9/14/2026 10:00:59 AM|HB312|H|   Subcommittee Work Session: 09/30/2026 10:10 am GP"
+        " 229|9/14/2026 10:00:59 AM",
+        "2026|0393|9/14/2026 10:01:16 AM|HB359|H|   Subcommittee Work Session: 09/30/2026 10:10 am GP"
+        " 229|9/14/2026 10:01:16 AM",
+        "2026|2092|8/21/2026 12:26:15 PM|SB647|H|   Subcommittee Work Session: 09/09/2026 10:00 am GP"
+        " 229|8/21/2026 12:26:15 PM",
+        "2026|0602|9/14/2026 10:01:36 AM|HB427|H|   Subcommittee Work Session: 09/30/2026 10:10 am GP"
+        " 229|9/14/2026 10:01:36 AM",
+        "2026|2136|2/19/2026 1:29:10 PM|SB532|S|Inexpedient to Legislate, RC 16Y-8N, MA === BILL KILL"
+        "ED ===; 02/19/2026;  SJ 4|5/11/2026 8:46:46 AM",
+        "2026|2797|3/5/2026 9:23:44 AM|HB1036|H|Inexpedient to Legislate: MA VV 03/05/2026  HJ 6  P. "
+        "2|6/9/2026 1:21:57 PM",
+        "2026|2947|3/5/2026 9:24:15 AM|HB1228|H|Ought to Pass: MA VV 03/05/2026  HJ 6  P. 2|6/9/2026 "
+        "1:22:14 PM",
+        "2026|2187|3/19/2026 9:14:15 AM|SB633|H|==CANCELLED== Executive Session: 03/23/2026 11:30 am "
+        "GP 159|3/30/2026 2:20:34 PM",
+        "2026|3166|5/26/2026 12:00:00 AM|HB1042|H|Conference Committee Meeting: 05/26/2026 01:00 pm G"
+        "P 228|5/19/2026 12:05:52 PM",
+        "2026|2191|9/29/2026 12:41:48 PM|SB570|H| Interim Study Report: Recommended for Future Legisl"
+        "ation  09/28/2026 (Vote 9-0; )|9/29/2026 12:41:48 PM",
+    ],
+    "LSRs.txt": [
+        "2026|0038|prohibiting the use of state funds for new passenger rail projects.|H|1|0|1|0|25-0"
+        "038|HB  0100|HB100||TRA|H20|H20|1/8/2025 12:00:00 AM|07||3/20/2025 12:00:00 AM|1/7/2026 12:0"
+        "0:00 AM|0||||||||0|02|H20|1/28/2025 11:30:00 AM|LOB Room 201||||0|0|",
+        "2026|0213|relative to rebates to ratepayers from the renewable energy fund.|H|1|0|1|0|25-021"
+        "3|HB  0224|HB224||ENU|H24|H28|1/8/2025 12:00:00 AM|04||3/6/2025 12:00:00 AM|1/7/2026 12:00:0"
+        "0 AM|0||||||||0|02|H28|3/18/2025 10:00:00 AM|LOB Room 202-204||||0|0|",
+        "2026|2136|increasing the requirements of the education freedom savings account oversight com"
+        "mittee and modifying the purpose of the committee.|S|2|0|0|0|26-2136|SB  0532|SB532||STG||||"
+        "||||0|S05|S05|1/7/2026 12:00:00 AM|09|05/08/2026||2/19/2026 12:00:00 AM|0|03|S05|2/10/2026 9"
+        ":15:00 AM|SL Room Map Room||||0|0|",
+        "2026|2187|(New Title) relative to donations received by the granite patron of the arts fund."
+        "|S|2|0|1|0|26-2187|SB  0633|SB633|0144|STG|H28|H28|2/19/2026 12:00:00 AM|11||5/7/2026 12:00:"
+        "00 AM|4/23/2026 12:00:00 AM|0|S17|S17|1/7/2026 12:00:00 AM|12|05/07/2026||2/5/2026 12:00:00 "
+        "AM|0|05|H28|3/23/2026 10:30:00 AM|GP Room 159||||0|0|",
+        "2026|2191|(New Title) relative to legislative ethics.|S|2|0|0|0|26-2191|SB  0570|SB570||LEG|"
+        "H12|H12|3/26/2026 12:00:00 AM|04||5/7/2026 12:00:00 AM|5/14/2026 12:00:00 AM|0|S06|S06|1/7/2"
+        "026 12:00:00 AM|11|03/26/2026||3/26/2026 12:00:00 AM|0|02|H12|4/15/2026 10:00:00 AM|GP Room "
+        "234||||0|0|",
+        "2026|2711|relative to the disclosure of rights and responsibilities during the sale of a mob"
+        "ile home in a mobile home park.|H|1|0|0|0|26-2711|HB  1218|HB1218||PRP|H64|H64|1/7/2026 12:0"
+        "0:00 AM|31||3/5/2026 12:00:00 AM|3/11/2026 12:00:00 AM|0||||||||0|02|H64|2/10/2026 11:00:00 "
+        "AM|GP Room 231||||0|0|",
+    ],
+    "LsrSponsors.txt": [
+        "2026|2187|1|43|1",
+        "2026|2092|3|926|0",
+        "2026|2187|4|926|0",
+        "2026|2092|4|928|0",
+        "2026|2187|2|8747|0",
+        "2026|2092|2|9406|0",
+        "2026|2187|3|9406|0",
+        "2026|2092|5|9839|0",
+        "2026|2136|3|9856|0",
+        "2026|2187|8|9856|0",
+        "2026|2136|2|10599|0",
+        "2026|2187|7|10599|0",
+        "2026|2136|1|10600|1",
+        "2026|2187|9|10604|0",
+        "2026|2092|1|11458|1",
+        "2026|2187|5|11460|0",
+        "2026|2083|1|11461|1",
+        "2026|2092|6|11461|0",
+    ],
+    "LsrsOnly.txt": [
+        "26-2083|11461|1272|2026|Prime|SB632|S|relative to a certain highway sign in Concord.",
+        "26-2092|926|1281|2026|Sponsor|SB647|S|authorizing the department of insurance to participate"
+        " in a cooperative procurement group via an intergovernmental agreement for a prescription dr"
+        "ug discount program.",
+        "26-2092|928|1281|2026|Sponsor|SB647|S|authorizing the department of insurance to participate"
+        " in a cooperative procurement group via an intergovernmental agreement for a prescription dr"
+        "ug discount program.",
+        "26-2092|9406|1281|2026|Sponsor|SB647|S|authorizing the department of insurance to participat"
+        "e in a cooperative procurement group via an intergovernmental agreement for a prescription d"
+        "rug discount program.",
+        "26-2092|9839|1281|2026|Sponsor|SB647|S|authorizing the department of insurance to participat"
+        "e in a cooperative procurement group via an intergovernmental agreement for a prescription d"
+        "rug discount program.",
+        "26-2092|11458|1281|2026|Prime|SB647|S|authorizing the department of insurance to participate"
+        " in a cooperative procurement group via an intergovernmental agreement for a prescription dr"
+        "ug discount program.",
+        "26-2092|11461|1281|2026|Sponsor|SB647|S|authorizing the department of insurance to participa"
+        "te in a cooperative procurement group via an intergovernmental agreement for a prescription "
+        "drug discount program.",
+        "26-2136|9856|1327|2026|Sponsor|SB532|S|increasing the requirements of the education freedom "
+        "savings account oversight committee and modifying the purpose of the committee.",
+        "26-2136|10599|1327|2026|Sponsor|SB532|S|increasing the requirements of the education freedom"
+        " savings account oversight committee and modifying the purpose of the committee.",
+        "26-2136|10600|1327|2026|Prime|SB532|S|increasing the requirements of the education freedom s"
+        "avings account oversight committee and modifying the purpose of the committee.",
+        "26-2187|43|1386|2026|Prime|SB633|S|(New Title) relative to donations received by the granite"
+        " patron of the arts fund.",
+        "26-2187|926|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gran"
+        "ite patron of the arts fund.",
+        "26-2187|8747|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gra"
+        "nite patron of the arts fund.",
+        "26-2187|9406|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gra"
+        "nite patron of the arts fund.",
+        "26-2187|9856|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gra"
+        "nite patron of the arts fund.",
+        "26-2187|10599|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gr"
+        "anite patron of the arts fund.",
+        "26-2187|10604|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gr"
+        "anite patron of the arts fund.",
+        "26-2187|11460|1386|2026|Sponsor|SB633|S|(New Title) relative to donations received by the gr"
+        "anite patron of the arts fund.",
+    ],
+    "legislators.txt": [
+        "11461|Reardon|Tara||S||7|15|D||||NH||senator.11461@example.gov",
+        "11460|McGough|Tim||S||6|11|R|107 North Main Street|State House, Room 105-A|Concord|NH|03301|"
+        "senator.11460@example.gov",
+        "11462|Sullivan|Victoria||S||6|18|R||||NH||senator.11462@example.gov",
+        "11463|Long|Pat||S||6|20|D|25 Capitol Street|State House Annex, Room 239F|Concord|NH|03301|se"
+        "nator.11463@example.gov",
+        "11459|McConkey|Mark||S||2|3|R|107 North Main Street|State House, Room 107|Concord|NH|03301|s"
+        "enator.11459@example.gov",
+        "11458|Rochefort|David||S||5|1|R||||NH||senator.11458@example.gov",
+        "9406|Rosenwald|Cindy||S||6|13|D||||NH||senator.9406@example.gov",
+        "926|Birdsell|Regina||S||8|19|R||||NH||senator.926@example.gov",
+        "35|Carson|Sharon|M.|S||8|14|R|107 North Main Street|State House, Room 302|Concord|NH|03301|s"
+        "enator.35@example.gov",
+        "8739|Gray|James|P.|S||9|6|R|107 North Main Street|State House, Room 105|Concord|NH|03301|sen"
+        "ator.8739@example.gov",
+        "8747|Innis|Daniel|E.|S||1|7|R||||NH||senator.8747@example.gov",
+        "43|Watters|David|H.|S||9|4|D|25 Capitol Street|State House Annex, Room 228|Concord|NH|03301|"
+        "senator.43@example.gov",
+        "9839|Prentiss|Suzanne|M.|S||5|5|D|25 Capitol Street|State House Annex, Room 236|Concord|NH|0"
+        "3301|senator.9839@example.gov",
+        "9856|Perkins Kwoka|Rebecca||S||8|21|D||||NH||senator.9856@example.gov",
+        "9845|Ricciardi|Denise||S||3|9|R||||NH||senator.9845@example.gov",
+        "10599|Fenton|Donovan||S||3|10|D||||NH||senator.10599@example.gov",
+        "10698|Murphy|Keith|R.|S||6|16|R||||NH||senator.10698@example.gov",
+        "10604|Pearl|Howard||S||7|17|r||||NH||senator.10604@example.gov",
+        "10607|Abbas|Daryl||S||8|22|R||||NH||senator.10607@example.gov",
+        "10600|Altschiller|Debra||S||8|24|D||||NH||senator.10600@example.gov",
+        "928|Avard|Kevin|A.|S||6|12|R||||NH||senator.928@example.gov",
+        "8740|Ward|Ruth||S||3|8|R||||NH||senator.8740@example.gov",
+        "8745|Gannon|Bill|M.|S||8|23|R||||NH||senator.8745@example.gov",
+        "10595|Lang|Timothy||S||1|2|R||||NH||senator.10595@example.gov",
+    ],
+    "RollCallSummary.txt": [
+        "2026|S|45|3/12/2026 12:00:00 AM|SB566|24|0|24|0|||Ought to Pass|relative to recruiting incen"
+        "tive programs for the national guard.||3/12/2026 3:10:53 PM",
+        "2026|S|46|3/26/2026 12:00:00 AM|HB1815|16|8|24|0|||Ought to Pass|relative to education finan"
+        "cing.||3/26/2026 3:44:54 PM",
+        "2026|S|47|3/26/2026 12:00:00 AM|CACR13|23|1|24|0|||Ought to Pass|relating to registers of pr"
+        "obate. Providing that the office of register of probate and all references to such office be"
+        " eliminated.||3/26/2026 3:46:32 PM",
+        "2026|S|48|3/26/2026 12:00:00 AM|SB441|16|8|24|0|||Floor Amendment|(New Title) relative to th"
+        "e financial responsibility for local assistance and enabling municipalities to request a hea"
+        "ring regarding the residency of an assisted person.||3/26/2026 3:47:31 PM",
+        "2026|S|49|3/26/2026 12:00:00 AM|SB655|24|0|24|0|||Ought to Pass w/Amendment|(New Title) rela"
+        "tive to employee leasing companies, workers' compensation coverage options, and a minimum wa"
+        "ge exemption for minor league baseball players.||3/26/2026 3:48:57 PM",
+        "2026|S|50|3/26/2026 12:00:00 AM|CACR11|23|1|24|0|||Ought to Pass w/Amendment|(New Title) rel"
+        "ating to sheriffs. Providing that  there shall be no age limitation for a person to hold the"
+        " office of county sheriff.||3/26/2026 3:51:25 PM",
+        "2026|S|51|3/26/2026 12:00:00 AM|SB476|16|8|24|0|||Ought to Pass w/Amendment|relative to cons"
+        "umer health care cost transparency.||3/26/2026 3:53:24 PM",
+        "2026|S|52|3/26/2026 12:00:00 AM|SB459|15|9|24|0|||Reconsideration|(New Title) exempting clas"
+        "sification of individuals based on biological sex from the definition of an unlawful discrim"
+        "inatory practice in certain limited circumstances.||3/26/2026 3:55:40 PM",
+    ],
+    "RollCallHistory.txt": [
+        "2026|S|49|209076|35|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|209091|43|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|209099|928|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|209101|926|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|209106|9406|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218739|8739|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218740|8740|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218745|8745|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218747|8747|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218751|9839|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218752|9845|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218754|9856|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218756|10595|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218757|10599|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218758|10698|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218759|10604|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218760|10607|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218761|10600|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218762|11458|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218763|11459|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218764|11460|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218765|11461|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218766|11462|SB655|Yea|3/26/2026 3:48:57 PM",
+        "2026|S|49|218767|11463|SB655|Yea|3/26/2026 3:48:57 PM",
+    ],
+}
+_DBGUARD_TONIGHT = {
+    "docket_new": [
+        "2026|0038|9/30/2026 1:10:39 PM|HB100|H| Interim Study Report: Not Recommended for Future Leg"
+        "islation  09/29/2026 (Vote 10-0; )|9/30/2026 1:10:39 PM",
+        "2026|2083|9/30/2026 1:12:19 PM|SB632|H| Interim Study Report: Not Recommended for Future Leg"
+        "islation  09/29/2026 (Vote 10-0; )|9/30/2026 1:12:19 PM",
+        "2026|0001|9/30/2026 1:13:25 PM|HB561|H| Interim Study Report: Not Recommended for Future Leg"
+        "islation  09/29/2026 (Vote 8-2; )|9/30/2026 1:13:25 PM",
+        "2026|2986|9/30/2026 3:01:12 PM|HB1753|H| Interim Study Report: Not Recommended for Future Le"
+        "gislation  09/28/2026 (Vote 13-0; )|9/30/2026 3:01:12 PM",
+        "2026|3022|9/30/2026 3:03:43 PM|HCR16|H| Interim Study Report: Recommended for Future Legisla"
+        "tion  09/28/2026 (Vote 11-2; )|9/30/2026 3:03:43 PM",
+        "2026|0452|10/1/2026 12:40:24 PM|HB312|H|Executive Session: 10/14/2026 10:00 am GP 229|10/1/2"
+        "026 12:40:24 PM",
+        "2026|0393|10/1/2026 12:40:31 PM|HB359|H|Executive Session: 10/14/2026 10:00 am GP 229|10/1/2"
+        "026 12:40:31 PM",
+        "2026|2092|10/1/2026 12:44:34 PM|SB647|H|Executive Session: 10/14/2026 10:00 am GP 229|10/1/2"
+        "026 12:44:34 PM",
+        "2026|0602|10/1/2026 12:40:40 PM|HB427|H|Executive Session: 10/14/2026 10:00 am GP 229|10/1/2"
+        "026 12:40:40 PM",
+    ],
+    "docket_reworded": [
+        "2026|2711|3/4/2026 5:50:17 PM|HB1218|H|Minority Committee Report: Ought to Pass with Amendme"
+        "nt # 2026-0956h|9/14/2026 11:08:26 AM",
+    ],
+    "rollcall_49": [
+        "2026|S|49|3/26/2026 12:00:00 AM|SB665|24|0|24|0|||Ought to Pass w/Amendment|(New Title) rela"
+        "tive to pharmacy benefits managers, managed care laws, notice of drug pricing options\u00a0and ph"
+        "armacy benefit manager business practices.||3/26/2026 3:48:57 PM",
+    ],
+    "only_bare": [
+        "26-2012|8740|1201|2026|Sponsor||S|applying to Congress for an Article V Constitutional Conve"
+        "ntion.",
+        "26-2012|8747|1201|2026|Prime||S|applying to Congress for an Article V Constitutional Convent"
+        "ion.",
+        "26-2012|10595|1201|2026|Sponsor||S|applying to Congress for an Article V Constitutional Conv"
+        "ention.",
+        "26-2012|10607|1201|2026|Sponsor||S|applying to Congress for an Article V Constitutional Conv"
+        "ention.",
+        "26-2012|10698|1201|2026|Sponsor||S|applying to Congress for an Article V Constitutional Conv"
+        "ention.",
+        "26-2248|43|1447|2026|Prime||S|regarding the victims of the abuse suffered at the Youth Devel"
+        "opment Center.",
+        "26-2248|9406|1447|2026|Sponsor||S|regarding the victims of the abuse suffered at the Youth D"
+        "evelopment Center.",
+        "26-2248|9856|1447|2026|Sponsor||S|regarding the victims of the abuse suffered at the Youth D"
+        "evelopment Center.",
+        "26-2248|10599|1447|2026|Sponsor||S|regarding the victims of the abuse suffered at the Youth "
+        "Development Center.",
+        "26-2248|10600|1447|2026|Sponsor||S|regarding the victims of the abuse suffered at the Youth "
+        "Development Center.",
+    ],
+}
+
+
+@check("build", "a database night's files are held to what the installed ones say: a real night "
+       "passes, and real rows doctored one way at a time stop it, each guard at its edge",
+       needs=("dayfiles_from_db",))
+def _dayfiles_content(DF):
+    """dayfiles_from_db.judge() compared counts and keys until 2 October 2026.
+    Two checkers doctored copies of that day's rebuilt files, and a wrong
+    committee and title on a third of the bills, 5,000 invented docket rows,
+    250 reworded ones, a docket row dated a year back, every Yea and Nay
+    swapped, every roll call filed under HB 1 and every member's party
+    swapped each passed every guard. It holds the files to their content now,
+    on the columns the build reads, and each guard is tried here.
+
+    The rows are the General Court's own (_DBGUARD_REAL, above). The night
+    they make is real in every part, though the parts are of four days:
+    nine of the 31 docket rows 2 October brought; HB 1218's amendment number
+    as the clerk corrected it on 14 September; Senate roll call 49 as it was
+    moved from SB 655 to SB 665 between the 6th and the 13th, its 24 ballots
+    with it; and the House status code the view has at 07 where the export
+    has 04. That night passes every guard, with what each counted said.
+
+    Then one thing is doctored at a time, and each guard fires alone, at its
+    edge from both sides. A ceiling set from a session day -- 1,000 docket
+    rows, 170 bill records -- is lowered for the test to what a fixture of
+    twenty rows can cross, and held to its real value at the end; the ones a
+    few real rows reach are tried as they are: no stranger, no unread or
+    backdated entry time, 5 roll calls, 10 ballots, 8 members, no sponsor of a
+    numbered bill. A row made for a guard is said to be.
+    """
+    from datetime import timedelta
+    real, part = _DBGUARD_REAL, _DBGUARD_TONIGHT
+    installed = {n: _dbday_bytes(v) for n, v in real.items()}
+
+    def six(ln):
+        """A docket row as the reshaper writes one: the seventh column the third."""
+        f = ln.split("|")
+        return "|".join(f[:6] + [f[2]])
+
+    def put(ln, at, value):
+        f = ln.split("|")
+        f[at] = value
+        return "|".join(f)
+    tonight = {n: list(v) for n, v in real.items()}
+    tonight["Docket.txt"] = [six(part["docket_reworded"][0]) if "2026-0596h" in ln else six(ln)
+                             for ln in real["Docket.txt"]] + [six(ln) for ln in part["docket_new"]]
+    tonight["LSRs.txt"] = [put(ln, 16, "07") if ln.split("|")[10] in ("HB224", "SB570") else ln
+                           for ln in real["LSRs.txt"]]
+    tonight["RollCallSummary.txt"] = [part["rollcall_49"][0] if ln.split("|")[2] == "49" else ln
+                                      for ln in real["RollCallSummary.txt"]]
+    tonight["RollCallHistory.txt"] = [put(ln, 5, "SB665") for ln in real["RollCallHistory.txt"]]
+    assert [ln.split("|")[10] for ln in real["LSRs.txt"]] == [
+        "HB100", "HB224", "SB532", "SB633", "SB570", "HB1218"] and \
+        sum(a != b for a, b in zip(real["LSRs.txt"], tonight["LSRs.txt"])) == 2
+
+    def judged(had=None, **now):
+        return DF.judge({n: _dbday_bytes(now.get(n.split(".")[0], tonight[n])) for n in real},
+                        dict(installed, **{n: _dbday_bytes(v) for n, v in (had or {}).items()}))
+
+    def stops(had=None, **now):
+        return judged(had, **now)["stops"]
+
+    def only(got, words, what):
+        assert len(got) == 1 and words in got[0], f"{what}: the guards said {got}"
+
+    was = {name: getattr(DF, name) for name in (
+        "DOCKET_NEW_A_DAY_MOST", "DOCKET_CITED_MOST", "DOCKET_REWORDED_MOST", "LSR_NEW_MOST",
+        "LSR_REWRITTEN_MOST", "LSR_CHANGED_MOST", "ROSTER_TOUCHED_MOST", "SPONSORS_KEPT_LEAST")}
+    try:
+        # THE REAL NIGHT, at the real thresholds.
+        got = judged()
+        assert not got["stops"] and not got["warnings"], got["stops"] + got["warnings"]
+        assert got["held"] == {
+            "Docket.txt": {"new": 9, "busiest_day": ["2026-09-30", 5], "cited": 0, "reworded": 1,
+                           "gone": 0},
+            "LSRs.txt": {"new": 0, "changed": 0, "rewritten": 0,
+                         "unread": {"House status code": 2}},
+            "roll calls": {"calls": 1, "ballots": 0},
+            "legislators.txt": {"who": 0, "any": 0},
+            "LsrsOnly.txt": {"gone_numbered": 0, "gone_unnumbered": 0}}, got["held"]
+        said = "\n".join(DF.held_said(got["held"]))
+        assert "9 new, the most entered on one day 5 (2026-09-30)" in said and \
+            "0 gained a citation, 1 reworded, 0 gone" in said and \
+            "in columns it does not read: House status code on 2" in said and \
+            "1 read otherwise, 0 ballots cast otherwise" in said, said
+
+        # ---- THE DOCKET'S NEW ROWS --------------------------------------
+        d = tonight["Docket.txt"]
+        session = d[-1]                 # HB 427's executive session, entered 1 October
+        # (made: that row under a bill no file knows)
+        stray = put(put(session, 1, "9999"), 3, "HB9999")
+        only(stops(Docket=d + [stray]), "Docket.txt: 1 new rows are under a bill that neither the "
+             "installed docket nor LSRs.txt knows: 2026|9999|10/1/2026 12:40:40 PM|HB9999|H|",
+             "a new docket row under a bill nobody knows")
+        # ... and it is known once tonight's LSRs.txt brings the bill (made:
+        # HB 224's record under that number).
+        brought = put(put(put(real["LSRs.txt"][1], 1, "9999"), 10, "HB9999"), 9, "HB  9999")
+        assert not stops(Docket=d + [stray], LSRs=tonight["LSRs.txt"] + [brought]), \
+            "a new docket row under a bill tonight's LSRs.txt introduces stopped the night"
+        # An entry time clock() could not read is passed through as it came.
+        only(stops(Docket=d + [put(put(session, 2, "10/01/2026 12:40:40"), 5, "Executive Session")]),
+             "Docket.txt: 1 new rows carry an entry time that does not read as one",
+             "a new docket row with an entry time that is not one")
+        # The checkers' row: an installed row's own stamp, of February, under
+        # other words. The installed file's newest entry is 29 September
+        # 12:41:48; 14 days before it to the second is allowed, and a second
+        # more is not. (An entry time runs up to a week AHEAD of the day a
+        # row is written -- the conference meeting of 26 May in the fixture,
+        # written on the 19th -- which is why the slack is not nothing.)
+        old = put(d[0], 5, "Signed by Governor 01/02/2025")
+        only(stops(Docket=d + [old]), "Docket.txt: 1 new rows were entered more than 14 days "
+             "before the installed file's newest (2026-09-29 12:41:48): 2026|2711|2/17/2026 3:29:16 "
+             "PM|HB1218|H|Signed by Governor", "a new docket row dated seven months back")
+        edge = put(put(session, 5, "Executive Session: continued"), 2, "9/15/2026 12:41:48 PM")
+        assert not stops(Docket=d + [edge]), "a new row 14 days before the newest stopped the night"
+        only(stops(Docket=d + [put(edge, 2, "9/15/2026 12:41:47 PM")]), "more than 14 days before",
+             "a new row 14 days and a second before the newest")
+        assert DF.DOCKET_STAMP_SLACK == timedelta(days=14)
+        # More in a day than a day brings. The real ceiling is 1,000; the
+        # fixture's busiest day has 5 rows, so it is 5 here, and a sixth
+        # (made: one more interim study report that day) stops.
+        DF.DOCKET_NEW_A_DAY_MOST = 5
+        assert not stops(), "5 new rows on one day, the most allowed, stopped the night"
+        sixth = put(put(d[-5], 5, " Interim Study Report: a sixth"), 2, "9/30/2026 4:00:00 PM")
+        only(stops(Docket=d + [sixth]), "Docket.txt: 6 new rows entered on 2026-09-30, more than "
+             "the 5 a day brings", "6 new docket rows on one day against 5")
+        DF.DOCKET_NEW_A_DAY_MOST = was["DOCKET_NEW_A_DAY_MOST"]
+
+        # ---- THE DOCKET'S OLD ROWS --------------------------------------
+        # A citation written onto a row. Four of the fixture's rows carry
+        # one; the row before its citation is on no copy on disk, so the
+        # installed side is made here by cutting each off (House and Senate
+        # alike: "  HJ 6  P. 2", ";  SJ 4").
+        cited = [i for i, ln in enumerate(real["Docket.txt"]) if DF.CITATION.search(ln.split("|")[5])]
+        assert len(cited) == 4 and all(DF._cited(
+            DF.CITATION.sub("", real["Docket.txt"][i].split("|")[5]),
+            real["Docket.txt"][i].split("|")[5]) for i in cited), cited
+        assert not DF._cited("Ought to Pass: MA VV 03/05/2026", "Inexpedient to Legislate: MA VV "
+                             "03/05/2026  HJ 6  P. 2") and not DF._cited("a", "a")
+
+        def uncited(n):
+            return [put(ln, 5, DF.CITATION.sub("", ln.split("|")[5])) if i in cited[:n] else ln
+                    for i, ln in enumerate(real["Docket.txt"])]
+        DF.DOCKET_CITED_MOST = 3
+        got = judged({"Docket.txt": uncited(3)})
+        assert not got["stops"] and got["held"]["Docket.txt"]["cited"] == 3 and \
+            got["held"]["Docket.txt"]["reworded"] == 1, (got["stops"], got["held"]["Docket.txt"])
+        only(stops({"Docket.txt": uncited(4)}), "Docket.txt: 4 installed rows gained a journal "
+             "citation, more than 3", "4 citations against 3")
+        DF.DOCKET_CITED_MOST = was["DOCKET_CITED_MOST"]
+        # Reworded any other way. HB 1218's corrected number is one. The mark
+        # on SB 633's cancelled session is another: the installed row is made
+        # by taking the mark off. At the real ceiling of 100 both pass; at 1,
+        # the second stops.
+        unmarked = [ln.replace("==CANCELLED== ", "") for ln in real["Docket.txt"]]
+        assert sum(a != b for a, b in zip(unmarked, real["Docket.txt"])) == 1
+        got = judged({"Docket.txt": unmarked})
+        assert not got["stops"] and got["held"]["Docket.txt"]["reworded"] == 2, got
+        DF.DOCKET_REWORDED_MOST = 1
+        assert not stops(), "one reworded row, the most allowed, stopped the night"
+        only(stops({"Docket.txt": unmarked}), "Docket.txt: 2 installed rows are reworded in the "
+             "database's, more than 1: 2026|2711|3/4/2026 5:50:17 PM|HB1218|H|Minority Committee "
+             "Report: Ought to Pass with Amendment # 2026-0596h now reads Minority Committee Report: "
+             "Ought to Pass with Amendment # 2026-0956h", "2 reworded rows against 1")
+        DF.DOCKET_REWORDED_MOST = was["DOCKET_REWORDED_MOST"]
+        # A row gone is counted apart from one reworded (the ceiling's edge is
+        # tried on 402 rows, in the check before this one).
+        got = judged(Docket=d[1:])
+        assert not got["stops"] and got["held"]["Docket.txt"]["gone"] == 1 and \
+            got["held"]["Docket.txt"]["reworded"] == 1, got["held"]["Docket.txt"]
+
+        # ---- THE BILL RECORDS -------------------------------------------
+        # A value the build reads replaced or lost: the real ceiling is 170,
+        # and 2 here. Blank titles are one of the checkers' cases, a wrong
+        # committee another. A hearing moved to another day is not it.
+        r = tonight["LSRs.txt"]
+
+        def records(which, at, value):
+            return [put(ln, at, value) if i in which else ln for i, ln in enumerate(r)]
+        DF.LSR_REWRITTEN_MOST, DF.LSR_CHANGED_MOST = 2, 3
+        assert not stops(LSRs=records((0, 1), 2, "")), \
+            "2 bill records without a title, the most allowed, stopped the night"
+        only(stops(LSRs=records((0, 1, 2), 2, "")), "LSRs.txt: 3 installed bill records hold "
+             "another value, or none, where the build reads one, more than 2: 2026-0038 HB100, "
+             "title 'prohibiting the use of state funds fo...' now ''",
+             "3 bill records lost their titles")
+        # (SB 532 has no House committee yet: given one, it has gained a
+        # value, which is what a referral is, and is not among these.)
+        only(stops(LSRs=records((0, 1, 3), 13, "H99")), "House committee of referral 'H20' now "
+             "'H99'", "3 bill records were given another committee")
+        assert not stops(LSRs=records((0, 1, 2), 13, "H99")), \
+            "2 committees replaced and one bill referred for the first time stopped the night"
+        only(stops(LSRs=records((0, 1, 2), 31, "")), "hearing date",
+             "3 bill records lost their hearing")
+        assert not stops(LSRs=records((0, 1, 2), 31, "10/14/2026 10:00:00 AM")), \
+            "3 hearings moved to another day, the most allowed, stopped the night"
+        only(stops(LSRs=records((0, 1, 2, 3), 31, "10/14/2026 10:00:00 AM")), "LSRs.txt: 4 "
+             "installed bill records changed in a column the build reads, more than 3",
+             "4 bill records with a hearing moved")
+        # A column the build does not read is counted and never judged, on
+        # every record at once: the House status code, here.
+        got = judged(LSRs=[put(ln, 16, "99") for ln in r])
+        assert not got["stops"] and got["held"]["LSRs.txt"]["unread"] == {"House status code": 6} \
+            and got["held"]["LSRs.txt"]["changed"] == 0, (got["stops"], got["held"]["LSRs.txt"])
+        # New records (made: HB 224's under other numbers).
+        DF.LSR_NEW_MOST = 1
+        assert not stops(LSRs=r + [brought]), "one new bill record stopped the night"
+        only(stops(LSRs=r + [brought, put(put(brought, 1, "9998"), 10, "HB9998")]),
+             "LSRs.txt: 2 new bill records, more than 1: 2026-9999 HB9999", "2 new bill records")
+        for name in ("LSR_REWRITTEN_MOST", "LSR_CHANGED_MOST", "LSR_NEW_MOST"):
+            setattr(DF, name, was[name])
+
+        # ---- THE ROLL CALLS, at the real ceilings ---------------------------
+        # Senate roll call 49's move to SB 665 is one. Four more refiled make
+        # the five allowed; a fifth more stops. The checkers' case was all
+        # 419 under HB 1.
+        s = tonight["RollCallSummary.txt"]
+        others = [i for i, ln in enumerate(s) if ln.split("|")[2] != "49"]
+
+        def refiled(n):
+            return [put(put(ln, 4, "HB1"), 11, "Ought to Pass") if i in others[:n] else ln
+                    for i, ln in enumerate(s)]
+        assert not stops(RollCallSummary=refiled(4)), "5 roll calls corrected stopped the night"
+        only(stops(RollCallSummary=refiled(5)), "RollCallSummary.txt: 6 installed roll calls read "
+             "otherwise in the database's, more than 5: 2026 S 45 bill 'SB566' now 'HB1'",
+             "6 roll calls were refiled under HB 1")
+        # A tally is held to nothing changing, as it was.
+        only(stops(RollCallSummary=[put(put(s[0], 5, "23"), 6, "1")] + s[1:]),
+             "1 roll calls have other counts in the database: 2026 S 45 24-0-24-0 now 23-1-24-0",
+             "a roll call's tally was changed")
+        # The ballots: its 24 were all Yea. Ten cast otherwise pass, the
+        # eleventh stops; and a ballot under another member is cast otherwise.
+        h = tonight["RollCallHistory.txt"]
+        assert not stops(RollCallHistory=[put(ln, 6, "Nay") for ln in h[:10]] + h[10:]), \
+            "10 ballots corrected, the most allowed, stopped the night"
+        only(stops(RollCallHistory=[put(ln, 6, "Nay") for ln in h[:11]] + h[11:]),
+             "RollCallHistory.txt: 11 installed ballots are cast otherwise in the database's, or by "
+             "another member, more than 10: 2026 S 49 member 209076 35|Yea now 35|Nay",
+             "11 ballots were flipped")
+        only(stops(RollCallHistory=[put(ln, 4, "") for ln in h[:11]] + h[11:]),
+             "35|Yea now |Yea", "11 ballots lost their member")
+        assert (DF.ROLLCALLS_CHANGED_MOST, DF.BALLOTS_CHANGED_MOST) == (5, 10)
+
+        # ---- THE ROSTER -------------------------------------------------
+        # The 24 senators, at the real ceiling of 8 for who a member is. (The
+        # e-mail addresses are made up, so that none a scraper could use is
+        # in the repository; the rest of each row is the General Court's.)
+        p = tonight["legislators.txt"]
+
+        def swapped(n):
+            return [put(ln, 8, "D" if ln.split("|")[8].upper() == "R" else "R") for ln in p[:n]] + p[n:]
+        assert not stops(legislators=swapped(8)), "8 members' parties changed stopped the night"
+        only(stops(legislators=swapped(9)), "legislators.txt: 9 installed members have another "
+             "name, chamber, county, district or party in the database's, more than 8: member "
+             "11458, Rochefort|David||S|5|1|R now Rochefort|David||S|5|1|D",
+             "9 members' parties were swapped")
+        only(stops(legislators=[put(ln, 7, "1") for ln in p]), "more than 8",
+             "every senator was put in district 1")
+        DF.ROSTER_TOUCHED_MOST = 3
+        assert not stops(legislators=[put(ln, 14, "") for ln in p[:3]] + p[3:]), \
+            "3 members without an e-mail address, the most allowed, stopped the night"
+        only(stops(legislators=[put(ln, 14, "") for ln in p[:4]] + p[4:]), "legislators.txt: 4 "
+             "installed members changed in a column the build reads, more than 3",
+             "4 members lost their e-mail address")
+        # The mail label is read by nothing.
+        assert not stops(legislators=[put(ln, 9, "another label") for ln in p])
+        DF.ROSTER_TOUCHED_MOST = was["ROSTER_TOUCHED_MOST"]
+        assert (DF.ROSTER_CHANGED_MOST, DF.ROSTER_TOUCHED_MOST) == (8, 40)
+
+        # ---- LsrsOnly.txt -----------------------------------------------
+        # A sponsor of a numbered bill, a sitting member, is there tonight or
+        # the night stops; "Prime" turned to "Sponsor" is that row gone.
+        o = tonight["LsrsOnly.txt"]
+        only(stops(LsrsOnly=o[1:]), "LsrsOnly.txt: 1 installed rows of members still sitting, each "
+             "on a numbered bill, are not in the database's: 26-2083|11461|1272|2026|Prime|SB632|S",
+             "one sponsor of SB 632 was dropped")
+        only(stops(LsrsOnly=[put(ln, 4, "Sponsor") for ln in o]), "LsrsOnly.txt: 4 installed rows",
+             "no row was marked Prime")
+        # The ten rows the view cannot give -- the senators' on the two
+        # requests with no bill number -- are what the share that may go is
+        # for. In the real file they are 13 of 6,963, inside its 2%; of these
+        # 28 they are a third, so the share is tried at a half here.
+        bare = {"LsrsOnly.txt": real["LsrsOnly.txt"] + part["only_bare"]}
+        only(stops(bare), "LsrsOnly.txt: 10 installed rows with no bill number are not in the "
+             "database's, more than 2% of the 28 rows of members still sitting",
+             "10 of 28 rows gone, each with no bill number")
+        DF.SPONSORS_KEPT_LEAST = 0.5
+        got = judged(bare)
+        assert not got["stops"] and got["held"]["LsrsOnly.txt"] == {
+            "gone_numbered": 0, "gone_unnumbered": 10}, (got["stops"], got["held"]["LsrsOnly.txt"])
+        only(stops(bare, LsrsOnly=o[1:]), "each on a numbered bill",
+             "the allowance for rows with no bill number let a sponsor of a numbered bill go")
+    finally:
+        for name, value in was.items():
+            setattr(DF, name, value)
+    assert (DF.DOCKET_NEW_A_DAY_MOST, DF.DOCKET_CITED_MOST, DF.DOCKET_REWORDED_MOST,
+            DF.DOCKET_GONE_MOST, DF.LSR_NEW_MOST, DF.LSR_REWRITTEN_MOST, DF.LSR_CHANGED_MOST,
+            DF.SPONSORS_KEPT_LEAST) == (1000, 1000, 100, 25, 400, 170, 700, 0.98), \
+        "a ceiling moved: each is twice the busiest real day measured on 2 October 2026"
+    return "ok", ("a night of real rows passes and says what it counted; a stranger's row, an "
+                  "unread or backdated entry time, a sixth row in a day, a fourth citation, a "
+                  "second rewording, three records rewritten or four changed, a second new "
+                  "record, a sixth roll call refiled, an eleventh ballot flipped, a ninth member's "
+                  "party, a fourth e-mail address and one sponsor of a numbered bill each stop it "
+                  "alone")
+
+
 class _DbdayProc:
     """A PowerShell that never started, answering as probe_db's bridges read one."""
 
@@ -33940,10 +34535,12 @@ def _nightly_falls_back(NI, DF, PD, SG):
         with a hold on the SQL host on file, on a New term run, when the
         export failed some other way, or with no installed files
       - all or none: a failed or short view, a connection that fails, a guard
-        that fires, or files much smaller than the installed ones, and the
-        installed files are byte for byte what they were, the night fails,
-        and its page says in one sentence of nightly.py's own what the
-        database did
+        that fires -- on a bill gone, or on what a row says: a docket row
+        dated a year back, or under a bill no file knows -- or files much
+        smaller than the installed ones, and the installed files are byte
+        for byte what they were, the night fails, its verdict names the
+        file, the count and the row, and its page says in one sentence of
+        nightly.py's own what the database did
       - seven database nights in a row is an error on the page and the build
         still goes out; a night the export installs starts the count again,
         and a night that never started does not
@@ -34141,6 +34738,12 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert sorted(df["carried"]) == sorted(set(SG.FILES) - set(DF.DAY_FILES)) and \
             len(df["carried"]) == 6 and "Members.txt" not in df["carried"], df["carried"]
         assert all(d["new"] == 0 and d["gone"] == 0 for d in df["differences"].values()), df
+        # ... and what each content guard counted, fired or not, so that a
+        # ceiling can be set from what a session's nights really bring.
+        assert df["held"]["Docket.txt"] == {"new": 0, "busiest_day": None, "cited": 0,
+                                            "reworded": 0, "gone": 0} and \
+            df["held"]["roll calls"] == {"calls": 0, "ballots": 0} and \
+            df["held"]["LSRs.txt"]["unread"] == {}, df.get("held")
         for name in DF.DAY_FILES:
             assert Path(name).read_bytes() == _dbday_bytes(want[name]), \
                 f"{name} installed from the database is not what the views make"
@@ -34355,6 +34958,33 @@ def _nightly_falls_back(NI, DF, PD, SG):
             "SB416" not in NI.plain_why(v), (
                 "the guard's detail is not in the verdict, or reached the public page",
                 v["day_files"].get("stops"))
+        # The files are held to what they say as well as to what they hold
+        # (2 October 2026). The views bring every installed row and one more:
+        # a docket row under a real bill with an entry time of a year before
+        # the installed file's newest -- the checkers' row, which every guard
+        # passed -- or one under a bill no file knows. Nothing is installed,
+        # and the verdict names the file, the count and the row.
+        for what, row, said, run_id in (
+                ("a docket row dated a year back",
+                 "2026|10||01/06/2025 08:32:24|HB54|H|Signed by Governor 01/02/2025|NHLMS|15|"
+                 "01/01/2200 00:00:00|99000001",
+                 "Docket.txt: 1 new rows were entered more than 14 days before the installed "
+                 "file's newest (2026-02-04 15:30:58): 2026|0010|1/6/2025 8:32:24 AM|HB54|H|Signed "
+                 "by Governor 01/02/2025", "324b"),
+                ("a docket row under a bill no file knows",
+                 "2026|9999||02/05/2026 09:00:00|HB9999|H|Executive Session: 02/12/2026 10:00 am "
+                 "LOB 301-303|NHLMS|99|01/01/2200 00:00:00|99000002",
+                 "Docket.txt: 1 new rows are under a bill that neither the installed docket nor "
+                 "LSRs.txt knows: 2026|9999|2/5/2026 9:00:00 AM|HB9999|H|Executive Session", "324c")):
+            v = failed_night(what, "guard", run_id, views={"Docket": _DBDAY_VIEWS["Docket"] + [row]})
+            df = v["day_files"]
+            assert len(df["stops"]) == 1 and df["stops"][0].startswith(said) and \
+                df["why"].startswith(NI.DB_WHY["guard"] + ": Docket.txt: 1 new rows") and \
+                df["held"]["Docket.txt"]["new"] == 1, (what, df.get("stops"), df.get("held"))
+            assert "Docket.txt" not in NI.plain_why(v) and "HB54" not in NI.plain_why(v) and \
+                "HB9999" not in NI.plain_why(v), (
+                "a guard's sentence, with a row of the record in it, reached the public page: "
+                + NI.plain_why(v))
         # Much smaller than the copy installed: snapshot_gencourt's own rule.
         reset()
         Path("Members.txt").write_bytes(_dbday_bytes(_DBDAY_EXPORT["Members.txt"] * 40))
@@ -34716,6 +35346,127 @@ def _dayfiles_pair(DF):
                   + (f"; the {rows:,} rows fetch_day_db.py would ask for make the same files, "
                      "and no lookup differs" if lookups else
                      "; the lookup views are not in db/ here, so they were not compared"))
+
+
+@check("data", "the checkers' doctored files, made again from the real pair, each stop a database "
+       "night at the real ceilings", needs=("dayfiles_from_db",))
+def _dayfiles_pair_doctored(DF):
+    """On 2 October 2026 two checkers doctored copies of the files the one
+    supervised test had rebuilt, and seven of the ten ways passed every
+    guard: a wrong House committee and title on a third of the bills, 250
+    docket rows reworded to a false outcome, 5,000 invented docket rows, a
+    docket row dated back, every member's party swapped, every Yea and Nay
+    swapped, every roll call filed under HB 1.
+
+    The same ten are made here from the pair that stays on this disk -- the
+    seven files rebuilt from the dump of 8 September, against the export of
+    the 6th -- with no ceiling lowered, and an eleventh from the second
+    checker: the docket 200 rows short of the installed one with its newest
+    entry still there, which the old 1% let through. Each stops the night,
+    and names the file. The files as rebuilt stop nothing.
+
+    _dayfiles_content tries each guard at its edge on a few real rows; this
+    holds the ceilings as they stand to the whole of the real files.
+    """
+    import collections
+    import random
+    why = DF.pair_here()
+    if why:
+        return "skip", why
+    was = DF.export_of("nh-archive", DF.PAIR_EXPORT)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-doctored-"))
+    try:
+        for name, data in was.items():
+            (tmp / name).write_bytes(data)
+        files, facts = DF.rebuild("db", tmp, need_source=False)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert not DF.judge(files, was, facts)["stops"], "the pair as rebuilt was stopped"
+
+    def put(ln, **cols):
+        f = ln.split("|")
+        for at, value in cols.items():
+            f[int(at[1:])] = value
+        return "|".join(f)
+
+    def third(ls):
+        return [put(ln, c13="H99", c2="WRONG TITLE") if i % 3 == 0 else ln for i, ln in enumerate(ls)]
+
+    def reworded(ls):
+        out = list(ls)
+        for i in random.Random(7).sample(range(len(out)), 250):
+            out[i] = put(out[i], c5="Inexpedient to Legislate: MA VV 01/01/2026")
+        return out
+
+    def flood(ls):
+        return ls + [put(ln, c5="Ought to Pass: MA VV 10/02/2026", c2="10/2/2026 9:00:00 AM",
+                         c6="10/2/2026 9:00:00 AM") for ln in ls[:5000]]
+
+    def backdated(ls):
+        return ls + [put(ls[100], c5="Signed by Governor 01/02/2025")]
+
+    def short(ls):
+        """One row gone of each of 200 bills that hold ten or more."""
+        rows_of = collections.Counter(ln.split("|")[3] for ln in ls)
+        seen, out = set(), []
+        for ln in ls[:-1]:
+            b = ln.split("|")[3]
+            if rows_of[b] >= 10 and b not in seen and len(seen) < 200:
+                seen.add(b)
+                continue
+            out.append(ln)
+        assert len(seen) == 200
+        return out + ls[-1:]
+
+    def twenty_bills(ls):
+        seen = []
+        for ln in ls:
+            b = ln.split("|")[5]
+            if b and b not in seen and len(seen) < 20:
+                seen.append(b)
+        return [ln for ln in ls if ln.split("|")[5] not in seen]
+
+    def swap(at, a, b):
+        def go(ls):
+            return [put(ln, **{f"c{at}": {a: b, b: a}.get(ln.split("|")[at], ln.split("|")[at])})
+                    for ln in ls]
+        return go
+    doctored = [
+        ("a wrong House committee and title on a third of the bills", "LSRs.txt", third,
+         "LSRs.txt: 463 installed bill records hold another value, or none"),
+        ("250 docket rows reworded to a false outcome", "Docket.txt", reworded,
+         "installed rows are reworded in the database's, more than 100"),
+        ("5,000 invented docket rows", "Docket.txt", flood,
+         "Docket.txt: 5,000 new rows entered on 2026-10-02, more than the 1,000 a day brings"),
+        ("a docket row dated back", "Docket.txt", backdated,
+         "Docket.txt: 1 new rows were entered more than 14 days before"),
+        ("the docket 200 rows short, its newest still there", "Docket.txt", short,
+         "Docket.txt: 200 installed rows are not in the database's, more than 25"),
+        ("every sponsor of 20 bills gone", "LsrsOnly.txt", twenty_bills,
+         "installed rows of members still sitting, each on a numbered bill"),
+        ("no sponsor marked Prime", "LsrsOnly.txt",
+         lambda ls: [put(ln, c4="Sponsor") for ln in ls],
+         "installed rows of members still sitting, each on a numbered bill"),
+        ("the prime flag cleared on every sponsor", "LsrSponsors.txt",
+         lambda ls: [put(ln, c4="0") for ln in ls], "LsrSponsors.txt keeps "),
+        ("every member's party swapped", "legislators.txt", swap(8, "R", "D"),
+         "installed members have another name, chamber, county, district or party"),
+        ("every Yea and Nay swapped", "RollCallHistory.txt", swap(6, "Yea", "Nay"),
+         "RollCallHistory.txt: 113,119 installed ballots are cast otherwise"),
+        ("every roll call filed under HB 1", "RollCallSummary.txt",
+         lambda ls: [put(ln, c4="HB1", c11="Ought to Pass") for ln in ls],
+         "RollCallSummary.txt: 419 installed roll calls read otherwise"),
+    ]
+    passed = []
+    for what, name, how, words in doctored:
+        lines = how(files[name].decode("utf-8-sig").split("\r\n")[:-1])
+        got = DF.judge(dict(files, **{name: DF.as_bytes(lines)}), was, facts)["stops"]
+        if not any(words in s for s in got):
+            passed.append(f"{what} ({name}): the guards said {got or 'nothing'}")
+    assert not passed, ("doctored files that were not stopped, or not for what was done to them:\n"
+                        + "\n".join(passed))
+    return "ok", (f"{len(doctored)} doctored copies of the real pair's files each stop the night, "
+                  "and the pair as rebuilt does not")
 
 
 @check("build", "a New term week takes the smaller committee lists once, and never an empty one",
