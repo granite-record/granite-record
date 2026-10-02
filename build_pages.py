@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.133
+# GRANITE_VERSION: 2026-09-04.134
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2192,6 +2192,20 @@ function render(){
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
+  /* WHAT THE LIST NOW HOLDS, SAID. It is redrawn at every letter and nothing
+     told a screen reader that it had changed (the audit of 2 October 2026,
+     S4). One line the eye does not see, role="status": how many towns and
+     members match what was typed, or that nothing does. Silent while the box
+     is empty, when the list is every town and is not an answer to anything. */
+  const say=document.getElementById("lsay");
+  if(say){
+    const said=[towns.length?towns.length+(towns.length===1?" town":" towns"):"",
+                mem.length?mem.length+(mem.length===1?" member":" members"):""]
+      .filter(Boolean);
+    const text=!n?"":!said.length?"Nothing matches that."
+      :said.join(" and ")+(towns.length+mem.length===1?" matches":" match");
+    if(say.textContent!==text)say.textContent=text;
+  }
   /* The chips into view, and no further than the row they belong to. */
   const wb=out.querySelector(".wards");
   if(wb){
@@ -3114,6 +3128,7 @@ it, or a name, county, party or committee to find a member.</p>
   <input id="lq" type="search" autocomplete="off"
     placeholder="Your town, or a legislator&rsquo;s name" disabled>
   <p class="count" id="lcount">Loading&hellip;</p>
+  <p class="sr" id="lsay" role="status"></p>
   <div class="lmatch" id="lmatch"></div>
 </div>
 <!-- The roster's #out lives inside the By county pane, and there must be only

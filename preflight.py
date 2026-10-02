@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.311
+# GRANITE_VERSION: 2026-09-04.312
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5629,6 +5629,156 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
   console.log(JSON.stringify(res));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
 """
+
+
+# The harness of _header_keyboard: find.js in node against dom_stub.js, with a
+# class list that keeps what it is given (the menu's open state is a class)
+# and the three elements the search mounts caught as it makes them.
+_HEADER_KEYS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+// A class list that keeps what it is given: the menu's open state is a class.
+const classes = () => { const s = new Set(); return {add: c => s.add(c), remove: c => s.delete(c),
+  contains: c => s.has(c), toggle: (c, on) => { (on === undefined ? !s.has(c) : on) ? s.add(c) : s.delete(c); return s.has(c); }}; };
+const nav = document.querySelector("nav.top"); nav.classList = classes();
+const menuBtn = document.getElementById("navmenu"), drop = document.getElementById("navdrop");
+const link = {focused: 0, focus() { this.focused++; }};
+drop.querySelector = sel => link;
+drop.contains = x => x === link; menuBtn.contains = x => x === menuBtn;
+// The search panel mounts itself where there is no search button yet, and
+// makes its button, scrim and panel in that order.
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = id => id === "findbtn" && !asked++ ? null : byId(id);
+const made = [], create = document.createElement.bind(document);
+document.createElement = t => { const e = create(t); made.push(e); return e; };
+let F;
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+      F = vm.runInThisContext("({findSay, findDraw})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const out = {};
+const [findBtn, scrim, panel] = made;
+const fire = (el, type, ev) => (el._on[type] || []).forEach(f => f(Object.assign(
+  {target: el, relatedTarget: null, preventDefault() {}, stopPropagation() {}}, ev || {})));
+
+// The menu: opening it puts focus on its first link; focus that goes to
+// anything but the panel or its button closes it.
+fire(menuBtn, "click");
+out.menu = {open: nav.classList.contains("open"), focused: link.focused};
+fire(nav, "focusout", {relatedTarget: link});
+out.menu.within = nav.classList.contains("open");
+fire(nav, "focusout", {relatedTarget: null});
+out.menu.nowhere = nav.classList.contains("open");
+fire(nav, "focusout", {relatedTarget: {}});
+out.menu.left = nav.classList.contains("open");
+
+// The panel: the same, and its markup carries the status line and the names.
+const inside = {};
+panel.contains = x => x === inside; findBtn.contains = x => x === findBtn;
+out.panel = {role: null, label: null, html: panel.innerHTML};
+fire(findBtn, "click");
+out.panel.open = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: inside});
+out.panel.within = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: findBtn});
+out.panel.onButton = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: null});
+out.panel.nowhere = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: {}});
+out.panel.left = panel.hidden === false;
+out.panel.scrim = scrim.hidden;
+
+// What the list holds, said.
+const say = byId("findsay");
+const said = html => { F.findSay(html); return say.textContent; };
+const door = '<a class="fall" href="/search?q=x"><span>See all search results for x</span></a>';
+out.say = {
+  seven: said('<a href="/a">a</a>'.repeat(3) + '<a class="fbills" href="/bills?q=x">All 12 bills</a>'
+              + '<a href="/bill/2026/hb1">b</a>'.repeat(3) + door),
+  one: said('<a href="/a">a</a>' + door),
+  none: said(door + '<p class="fnote">No matching results.</p>'),
+  counting: said(door),
+  number: said('<a class="fall" href="/bills?q=HB%202"><span>HB 2</span></a>' + door),
+  empty: said(""),
+};
+F.findDraw("");
+out.say.cleared = say.textContent;
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's menu and search by keyboard: focus goes in, leaving closes, and the list says what it holds")
+def _header_keyboard():
+    """The audit of 2 October 2026, S2, S3 and S4, all in find.js.
+
+    S2. At phone width (and for a desktop reader at 400%) Enter on "Sections"
+    opened the menu and left focus on the button; the panel comes before the
+    button in the document, so the next Tab press went on into the page with
+    the menu still open, and the sections were three Shift+Tab presses back.
+    S3. With the search panel open, Tab past the last answer went on into the
+    page with the panel still open -- on a phone, under the scrim, where the
+    focused link could not be seen. S4. The answers appear as the reader
+    types, and nothing said so to a screen reader.
+
+    Held, by running find.js: opening the menu focuses its first link; focus
+    that goes to something outside the menu and its button closes it, and
+    focus that goes nowhere (the window losing it) or stays within does not;
+    the same for the search panel, with its own button counted as within; the
+    panel is a named search landmark whose box names the list it fills; and
+    the one role="status" line says how many results the list holds, counts
+    the door to every result as no result, says "No matching results." when
+    the list does, and is silent while the bills are still being counted and
+    when the box is empty.
+    """
+    js, stub = Path("find.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "find.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "find.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_HEADER_KEYS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "find.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m = got["menu"]
+    assert m["open"] and m["focused"] == 1, (
+        f"opening the sections menu leaves focus on its button ({m}): the next "
+        "Tab press goes on into the page, past the menu")
+    assert m["within"] and m["nowhere"] and not m["left"], (
+        f"the sections menu and focus leaving it: {m}. It closes when focus goes "
+        "somewhere else in the page, and only then")
+    p = got["panel"]
+    assert p["open"] and p["within"] and p["onButton"] and p["nowhere"], (
+        f"the search panel closed on focus that had not left it: {p}")
+    assert not p["left"] and p["scrim"], (
+        "the search panel stays open, or its scrim up, when focus has gone on "
+        "into the page: on a phone the focused link is then under the scrim")
+    assert 'role="status"' in p["html"] and 'id="findsay"' in p["html"] \
+        and 'aria-controls="findout"' in p["html"], (
+        "the search panel's markup lost its status line, or its box no longer "
+        "names the list it fills")
+    src = js.read_text(encoding="utf-8")
+    assert 'panel.setAttribute("role","search")' in src and \
+        'panel.setAttribute("aria-label",' in src, (
+        "the search panel is not a named search landmark")
+    want = {"seven": "7 results", "one": "1 result", "none": "No matching results.",
+            "counting": "", "number": "1 result", "empty": "", "cleared": ""}
+    assert got["say"] == want, (
+        "the search panel's status line says "
+        + "; ".join(f"{k}: {got['say'].get(k)!r}, not {v!r}"
+                    for k, v in want.items() if got["say"].get(k) != v))
+    draw = src[src.index("function findDraw("):src.index("function findSay(")]
+    assert draw.count("findSay(") == 2, (
+        "findDraw does not say what it drew on both of its ways out (the empty "
+        "box, and a list)")
+    return "ok", ("opening the menu focuses its first link, focus gone elsewhere closes the "
+                  "menu and the search panel, and the panel's status line counts what the "
+                  "list holds")
 
 
 @check("frontend", "the header search finds the bills /bills finds, and "

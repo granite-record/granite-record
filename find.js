@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.14
+// GRANITE_VERSION: 2026-09-16.15
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -611,7 +611,8 @@ function findDraw(q){
   const clr=document.getElementById("findclear");
   if(clr)clr.hidden=!s;
   if(!s){out.innerHTML=`<p class="fnote">Type a legislator, a committee, a
-    town, a subject, a bill number or words from a bill&rsquo;s title.</p>`;return;}
+    town, a subject, a bill number or words from a bill&rsquo;s title.</p>`;
+    findSay("");return;}
   const num=findBill(s);
   const rows=findMatch(s);
   // THE ONE LINE THAT LEAVES THE PANEL, and it leads to two different places.
@@ -686,6 +687,26 @@ function findDraw(q){
       ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
   }
   out.innerHTML=num?all+list+every+tail:list+all+tail;
+  findSay(out.innerHTML);
+}
+
+// WHAT THE LIST NOW HOLDS, SAID. The answers are drawn as the reader types
+// and nothing told a screen reader that they had come, or how many, or that
+// there were none (the audit of 2 October 2026, S4: WCAG 4.1.3). One line
+// the eye does not see, role="status", written each time the list is drawn:
+// "7 results", or the list's own "No matching results." The row that leads
+// to every result ("See all search results for ...") is a door and not a
+// result, and is not counted; while the bills are still being counted and
+// nothing else matches, nothing is said. Read off the markup just written,
+// which is the list as the reader has it.
+function findSay(html){
+  const say=document.getElementById("findsay");
+  if(!say)return;
+  html=String(html||"");
+  const n=(html.match(/<a\s/g)||[]).length-(/See all search results for/.test(html)?1:0);
+  const text=n>0?`${n} result${n===1?"":"s"}`
+    :/No matching results/.test(html)?"No matching results.":"";
+  if(say.textContent!==text)say.textContent=text;
 }
 
 function findMount(){
@@ -717,16 +738,21 @@ function findMount(){
   scrim.className="findscrim";scrim.hidden=true;
   const panel=document.createElement("div");
   panel.id="findpanel";panel.className="findpanel";panel.hidden=true;
+  // A search landmark with a name, the box tied to the list it fills, and
+  // the one line that says what the list holds (findSay).
+  panel.setAttribute("role","search");
+  panel.setAttribute("aria-label","Search the site");
   panel.innerHTML=`<div class="findin">
     <div class="findgrab" aria-hidden="true"></div>
     <div class="findtop">
     <div class="findbox">
       <label class="sr" for="findq">Search for a legislator, committee, town, subject or bill</label>
-      <input id="findq" type="search" autocomplete="off" placeholder="A legislator, a town, a subject or a bill">
+      <input id="findq" type="search" autocomplete="off" aria-controls="findout" placeholder="A legislator, a town, a subject or a bill">
       <button type="button" class="findclear" id="findclear" hidden aria-label="Clear the search box">&#10005;</button>
     </div>
     <button type="button" class="findcancel" id="findcancel">Cancel</button>
     </div>
+    <p class="sr" id="findsay" role="status"></p>
     <div class="findout" id="findout"></div></div>`;
   const nav=document.querySelector("nav.top");
   nav.parentNode.insertBefore(scrim,nav.nextSibling);
@@ -796,6 +822,18 @@ function findMount(){
     if(!panel.hidden&&!panel.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)
        &&e.target!==scrim)shut();
   });
+  // LEAVING IT WITH THE KEYBOARD CLOSES IT. Tab past the last answer went on
+  // into the page with the panel still open, and on a phone the panel is a
+  // sheet over a scrim: the 13th Tab press on /learn/testifying landed on
+  // "Cite this page", under the scrim, where the focused link could not be
+  // seen (the audit of 2 October 2026, S3: WCAG 2.4.11). Only where focus has
+  // gone somewhere else in the page: a press on the panel's own ground, or
+  // the window losing focus, names no such place and closes nothing.
+  panel.addEventListener("focusout",e=>{
+    const to=e.relatedTarget;
+    if(panel.hidden||!to||panel.contains(to)||to===btn||btn.contains(to))return;
+    shut();
+  });
 }
 /* THE SECTIONS, FOLDED BEHIND ONE BUTTON ON A PHONE.
 
@@ -813,9 +851,26 @@ function menuMount(){
   const drop=document.getElementById("navdrop");
   if(!nav||!btn||!drop)return;
   const shut=()=>{nav.classList.remove("open");btn.setAttribute("aria-expanded","false");};
-  const open=()=>{nav.classList.add("open");btn.setAttribute("aria-expanded","true");};
+  // INTO THE MENU. The panel comes before its button in the document, so
+  // with focus left on the button the next Tab press went on into the page
+  // and the sections were three Shift+Tab presses back, behind Search and the
+  // theme control (the audit of 2 October 2026, S2: WCAG 2.4.3). Opening it
+  // puts focus on its first link.
+  const open=()=>{
+    nav.classList.add("open");btn.setAttribute("aria-expanded","true");
+    const first=drop.querySelector("a[href]");
+    if(first)first.focus();
+  };
   btn.addEventListener("click",()=>{
     nav.classList.contains("open")?shut():open();
+  });
+  // AND LEAVING IT CLOSES IT: focus that goes anywhere but the panel or its
+  // button -- on into the page, or back to the site's name -- shuts the
+  // panel, so it is not left open over a page the reader has moved on into.
+  nav.addEventListener("focusout",e=>{
+    const to=e.relatedTarget;
+    if(!nav.classList.contains("open")||!to||drop.contains(to)||btn.contains(to))return;
+    shut();
   });
   // Escape closes and returns the focus to the control that opened it, which
   // is where a keyboard reader expects to be left.
