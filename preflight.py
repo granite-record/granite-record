@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.308
+# GRANITE_VERSION: 2026-09-04.309
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1615,6 +1615,100 @@ def _interim_study_read(N, B):
     assert not bad, "; ".join(bad)
     return "ok", ("HB 1138, HB 442 and SB 27 of 1994 each tell the House sending them to "
                   "interim study and read so; CACR 25 of 1992 keeps its mover")
+
+
+# Real rows: Docket_db_1997-1998.txt lines 23095-23096 (HB 1674), 7422-7423
+# (HJR 6) and 4382-4384 (SB 63); Docket_db_1995-1996.txt 12540-12541 (CACR
+# 21); Docket_db_1993-1994.txt 17340-17341 (HB 1246); Docket_db_1991-1992.txt
+# 3887-3888 (HCR 7) and 17089-17090 (HB 1295).
+_DOCKET_ANSWER_ON_NEXT_ROW = {
+    ("HB1674", "1997-1998"): [
+        "1998|2915|09/24/1998 06:05:22 PM|HB1674|H|REF FOR STUDY, ML RC(121-142); REP KURK MOVED ITL, ITL REPORT|09/24/1998 06:05:22 PM",
+        "1998|2915|09/24/1998 06:05:33 PM|HB1674|H|ADOPTED RC(158-105); HJ78,P2527-2530|09/24/1998 06:05:33 PM"],
+    ("CACR21", "1995-1996"): [
+        "1996|2177|03/06/1996 11:53:06 AM|CACR21|H|REP MCCANN MOVED OTP, ML RC(107-198); REP HOLDEN MOVED ITL, ITL|03/06/1996 11:53:06 AM",
+        "1996|2177|03/06/1996 11:53:10 AM|CACR21|H|REPORT ADOPTED VV; HJ37,P1295-1297|03/06/1996 11:53:10 AM"],
+    ("HB1246", "1993-1994"): [
+        "1994|2425|02/16/1994 03:19:06 PM|HB1246|H|COMM AM, AA VV; REP BOVE SUBST ITL, MA RC(186-146); ITL REPORT|02/16/1994 03:19:06 PM",
+        "1994|2425|02/16/1994 03:19:13 PM|HB1246|H|ADOPTED VV; HJ27,P824-826|02/16/1994 03:19:13 PM"],
+    ("HCR7", "1991-1992"): [
+        "1991|0540|03/07/1991 08:11:46 PM|HCR7|H|COMM AM, AA VV; REP DANIELS SUBST ITL, ML DIV(140-192);|03/07/1991 08:11:46 PM",
+        "1991|0540|03/07/1991 08:12:03 PM|HCR7|H|ADOPTED WITH AM VV; HJ42,P786 + 826|03/07/1991 08:12:03 PM"],
+    ("HJR6", "1997-1998"): [
+        "1997|0908|03/06/1997 03:53:40 PM|HJR6|H|MIN REPORT  ITL|03/06/1997 03:53:40 PM",
+        "1997|0908|03/12/1997 02:26:55 PM|HJR6|H|ADOPTED AND REF TO FINANCE DIV(181-163); HJ38A,P1070|03/12/1997 02:26:55 PM"],
+    ("HB1295", "1991-1992"): [
+        "1992|2408|05/06/1992 07:03:49 PM|HB1295|H|REP KRUEGER SUSP RULES FOR NONGERMANE AM, MA 2/3VV; CONF COMM|05/06/1992 07:03:49 PM",
+        "1992|2408|05/06/1992 07:04:11 PM|HB1295|H|REPORT ADOPTED VV; HJ82,P2132|05/06/1992 07:04:11 PM"],
+    ("SB63", "1997-1998"): [
+        "1997|0539|05/14/1997 03:13:28 PM|SB63|H|COMM AM, AL RC(120-226); OTP, ML VV; REP FERGUSON MOVED ITL, ITL|05/14/1997 03:13:28 PM",
+        "1997|0539|05/14/1997 03:13:51 PM|SB63|H|REPORT ADOPTED VV; INDEFINITELY POSTPONED, REP FERGUSON MA VV;|05/14/1997 03:13:51 PM",
+        "1997|0539|05/14/1997 03:13:55 PM|SB63|H|HJ63,P1814-1819|05/14/1997 03:13:55 PM"],
+}
+
+
+@check("status", "a row that opens ADOPTED after one that ends on the question of Inexpedient "
+                 "to Legislate is the bill killed, not a measure adopted",
+       needs=("narrative", "build_site_v2"))
+def _answer_on_the_next_row(N, B):
+    """The database cut one action across two rows -- "REF FOR STUDY, ML
+    RC(121-142); REP KURK MOVED ITL, ITL REPORT" and "ADOPTED RC(158-105);
+    HJ78,P2527-2530" -- and the second, read alone, was a measure adopted: 23
+    histories of 1991-1998 said a chamber "voted to adopt" a bill it had
+    killed, and HB 1674 of 1998 read "Committee report filed" over the House
+    killing it 158-105. Cut the other way, "...MOVED ITL, ITL" and "REPORT
+    ADOPTED VV", the second row was read by nothing and five more histories
+    stopped before the kill.
+
+    The second row is read with the question in front of it and shown as the
+    clerk typed it; the first keeps what it tells, the study the House
+    refused or the roll call that carried the substitute motion. And only
+    where the row before ENDS on the question: a kill refused and the
+    resolution adopted (HCR 7 of 1991), a committee's report and a real
+    adoption days later (HJR 6 of 1997) and a conference report (HB 1295 of
+    1992) are none of them this.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_ANSWER_ON_NEXT_ROW.items()}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    def rows(key):
+        return [(e["type"], e.get("motion"), e.get("action"), e["raw"])
+                for e in narr[key]["events"]]
+
+    is_("HB1674's rows", rows(("HB1674", "1997-1998")), [
+        ("floor", "ML", "Refer for Interim Study",
+         "REF FOR STUDY, ML RC(121-142); REP KURK MOVED ITL, ITL REPORT"),
+        ("floor", "MA", "Inexpedient to Legislate", "ADOPTED RC(158-105); HJ78,P2527-2530")])
+    text = narr[("HB1674", "1997-1998")]["narrative"]
+    assert "voted to kill it on a roll call 158\u2013105" in text and "to adopt it" not in text \
+        and "rejected a motion to study it" in text, text
+    d = B.bill_disposition({}, "HB1674", {"gen_status": "HOUSE", "house_status": "REPORT FILED"},
+                           narr[("HB1674", "1997-1998")], [], "1997-1998", "2025-2026")
+    is_("HB1674 of 1998", (d.kind, d.status), ("done", "Killed"))
+    # Cut after "ITL": the second row was nothing, and is the kill.
+    is_("CACR21's second row", rows(("CACR21", "1995-1996"))[1],
+        ("floor", "MA", "Inexpedient to Legislate", "REPORT ADOPTED VV; HJ37,P1295-1297"))
+    assert narr[("CACR21", "1995-1996")]["narrative"].endswith(
+        "the House voted to kill it on a voice vote."), narr[("CACR21", "1995-1996")]["narrative"]
+    # The first row keeps the roll call it tells.
+    text = narr[("HB1246", "1993-1994")]["narrative"]
+    assert "voted to kill it on a roll call 186\u2013146, on a motion by Rep. Bove" in text \
+        and "to adopt it" not in text, text
+    # And what is not this stays as it was: a resolution adopted, twice, a
+    # conference report, and a line whose own last clause decides.
+    is_("HCR7's second row", rows(("HCR7", "1991-1992"))[-1][:3], ("floor", "MA", "Adopt"))
+    is_("HJR6's second row", rows(("HJR6", "1997-1998"))[-1][:3], ("floor", "MA", "Adopt"))
+    assert not any(a == "Inexpedient to Legislate"
+                   for _t, _m, a, _r in rows(("HB1295", "1991-1992"))), rows(("HB1295", "1991-1992"))
+    is_("SB63's second row", rows(("SB63", "1997-1998"))[-1][:3],
+        ("floor", "MA", "Indefinitely Postpone"))
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 1674 of 1998 is killed 158-105 and CACR 21 of 1996 on a voice vote, each "
+                  "from the row that answers the question the row before it ends on")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",

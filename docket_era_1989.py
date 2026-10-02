@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.3
+# GRANITE_VERSION: 2026-09-11.4
 """
 The 1989-1998 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -523,6 +523,50 @@ def _why(prev, row):
     if (MOTION_NO_OUTCOME.search(pd) and not OUTCOME.search(pd)
             and OUTCOME.search(d[:45])):
         return "outcome"
+    return None
+
+
+# THE QUESTION ON ONE ROW AND ITS ANSWER ON THE NEXT: "REF FOR STUDY, ML
+# RC(121-142); REP KURK MOVED ITL, ITL REPORT" and then "ADOPTED RC(158-105);
+# HJ78,P2527-2530" (HB 1674 of 1998) is the House refusing a study and then
+# killing the bill, 158-105. The outcome rule above does not join them,
+# because the first row already holds an outcome -- the ML of the motion
+# before -- and the second, read alone, is a measure adopted: 23 histories of
+# 1991-1998 said a chamber "voted to adopt" a bill it had killed, and HB 1674
+# read "Committee report filed". Cut the other way round, "...; REP HOLDEN
+# MOVED ITL, ITL" and "REPORT ADOPTED VV" (CACR 21 of 1996), the second row
+# was read by nothing and the history stopped before the kill, on five more.
+#
+# NOT JOINED, because a line is told by its last deciding clause and the first
+# row has one of its own to tell: the study the House refused 121-142, the
+# roll call that carried a substitute motion (HB 1246 of 1994, 186-146). The
+# second row is READ with the question in front of it and shown as the clerk
+# typed it.
+#
+# THE ROW BEFORE MUST END ON THE QUESTION, after another clause of the same
+# row. "COMM AM, AA VV; REP DANIELS SUBST ITL, ML DIV(140-192);" and then
+# "ADOPTED WITH AM VV" (HCR 7 of 1991) is the kill refused and the resolution
+# adopted; "MIN REPORT ITL" and, days later, "ADOPTED AND REF TO FINANCE
+# DIV(181-163)" (HJR 6 of 1997) is a committee's report and a real adoption;
+# "...; CONF COMM" and "REPORT ADOPTED VV" (HB 1295 of 1992) is a conference
+# report. None of those ends on it.
+ITL_REPORT_OPEN = re.compile(r"[;,]\s*ITL\s+(?:REPORT|REPT)\s*$", re.I)
+ITL_OPEN = re.compile(r"[;,]\s*ITL\s*$", re.I)
+ADOPTED_FIRST = re.compile(r"^ADOPTED\b(?!\s+(?:WITH|W/|AND)\b)", re.I)
+REPORT_ADOPTED_FIRST = re.compile(r"^(?:REPORT|REPT)\s+ADOPTED\b", re.I)
+
+
+def answered(prev, row):
+    """The words to READ `row` by where it answers the question the row
+    before it ends on -- same bill, chamber and day -- or None. Both are
+    (created, bill, body, desc)."""
+    if not _same_action(prev, row):
+        return None
+    pd, d = prev[3].rstrip(), row[3].lstrip()
+    if ADOPTED_FIRST.match(d) and ITL_REPORT_OPEN.search(pd):
+        return "ITL REPORT " + d
+    if REPORT_ADOPTED_FIRST.match(d) and ITL_OPEN.search(pd):
+        return "ITL " + d
     return None
 
 

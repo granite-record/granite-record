@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.9
+# GRANITE_VERSION: 2026-09-11.10
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -311,7 +311,7 @@ def join_rows(rows, session=None):
     if isinstance(out, tuple):
         out = out[0]
     if len(out) == len(rows):
-        return rows
+        return _answers(rows, era[0], session)
     # Map each joined line back onto the row it started from, in order.
     joined, at, i = [], [], 0
     for created, _b, _body, desc in out:
@@ -352,6 +352,28 @@ def join_rows(rows, session=None):
             elif floor > 1 and len(told) == 1:
                 told[0]["joined"] = floor
         out.extend(parts)
+    return _answers(out, era[0], session)
+
+
+def _answers(rows, mod, session):
+    """Rows, with one that answers the question the row before it ends on read
+    with that question (the era's `answered`: docket_era_1989 says which rows
+    and why). The row keeps its own words -- it is shown as the clerk typed it
+    -- and carries its event ready-made, as a question of a split line does."""
+    said = getattr(mod, "answered", None)
+    if said is None:
+        return rows
+    out = []
+    for r in rows:
+        prev = out[-1] if out else None
+        text = said((prev.get("created"), "", prev.get("body", ""), prev.get("desc", "")),
+                    (r.get("created"), "", r.get("body", ""), r.get("desc", ""))) \
+            if prev is not None and not r.get("event") else None
+        if text:
+            ev = classify(text, r.get("created"), session) or narrative.classify(text)
+            ev["_raw"] = narrative.clean(r.get("desc", ""))
+            r = {**r, "event": ev}
+        out.append(r)
     return out
 
 
