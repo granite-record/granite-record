@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.309
+# GRANITE_VERSION: 2026-09-04.310
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11907,6 +11907,161 @@ def _session_speech_on_its_motion(JD, SD, BSP):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# ---- the two large files, read once a run -------------------------------------
+#
+# narratives.json, 246 MB, WAS LOADED SEVEN TIMES A RUN and
+# data/member_votes.json, 561 MB, three (2 October 2026), by ten checks that
+# each read a field or two. Each is read once now, and what is kept is kept
+# under the file's path, its size and the time it was last written: a file
+# written again during a run is read again, and the reading of the file it
+# replaced is dropped.
+#
+# THEY ARE FOR READING. Every check that takes one of these shares the same
+# object with the checks after it; one that needs to change what it reads
+# loads its own.
+#
+# THE BALLOTS ARE COUNTED, NOT KEPT, AND NEVER LOADED WHOLE. The file is 2.3
+# million rows: 2.2 GB once loaded and nearly 3 GB while it loads, which was
+# the most a run of these checks asked of the machine, three times over. Its
+# three readers each walked every row for a count: how many ballots sit under
+# each bill number, how many of each year name a member and a party, and
+# which chamber each member voted in each year. One pass takes all three
+# (_ballot_census), a row at a time (_json_rows), in about 100 MB.
+_READ_ONCE = {}
+
+
+def _read_once(path, read):
+    """read(path), or what it returned the last time this run called it for
+    a file of this path, size and time of writing."""
+    p = Path(path)
+    st = p.stat()
+    was = (str(p.resolve()), read.__name__)
+    now = (st.st_size, st.st_mtime_ns)
+    if _READ_ONCE.get(was, (None, None))[0] != now:
+        _READ_ONCE.pop(was, None)
+        _READ_ONCE[was] = (now, read(p))
+    return _READ_ONCE[was][1]
+
+
+def _narratives():
+    """narratives.json, {term: {bill: record}}, as json.loads gives it."""
+    def whole(p):
+        return json.loads(p.read_text(encoding="utf-8"))
+    return _read_once("narratives.json", whole)
+
+
+def _json_rows(path, chunk=1 << 24):
+    """Each element of the JSON list a file holds, in the file's order, read
+    a piece of the file at a time: neither its text nor the list is ever
+    whole in memory. A row is taken only once the comma or the bracket after
+    it is in hand, so one cut by the end of a piece -- a number most of all,
+    whose first digits read as a number -- is read again with the next piece.
+    A file that is not a list, or that ends inside one, raises."""
+    decoder = json.JSONDecoder()
+    space = " \t\r\n"
+    with open(path, encoding="utf-8") as fh:
+        buf = fh.read(chunk)
+        while buf and not buf.strip():                  # white space, a piece long
+            more = fh.read(chunk)
+            if not more:
+                break
+            buf += more
+        i = len(buf) - len(buf.lstrip())
+        if buf[i:i + 1] != "[":
+            raise ValueError(f"{path} does not hold a JSON list")
+        i += 1
+        while True:
+            while i < len(buf) and (buf[i] in space or buf[i] == ","):
+                i += 1
+            if i < len(buf) and buf[i] == "]":
+                return
+            try:
+                if i >= len(buf):
+                    raise json.JSONDecodeError("the piece ends between rows", buf, i)
+                row, end = decoder.raw_decode(buf, i)
+                while end < len(buf) and buf[end] in space:
+                    end += 1
+                if end >= len(buf) or buf[end] not in ",]":
+                    raise json.JSONDecodeError("the piece ends inside a row", buf, i)
+            except json.JSONDecodeError:
+                more = fh.read(chunk)
+                if not more:
+                    raise
+                buf, i = buf[i:] + more, 0
+                continue
+            i = end
+            yield row
+
+
+@check("files", "a list too large to load whole is read a row at a time, every row once")
+def _rows_one_at_a_time():
+    """_json_rows is how the checks read data/member_votes.json, 2.3 million
+    ballots, without holding it: three data checks count what it hands them,
+    and a reader that dropped a row at the seam between two pieces of the
+    file, or stopped early, would leave all three passing on fewer ballots.
+    So it is held to json.loads on a list written to exercise the seams --
+    brackets, commas and quotes inside strings, nested lists, numbers, a row
+    of every length -- with the pieces cut at every size from one character
+    up; and a file that ends inside its list, or is not a list, has to raise."""
+    rows = [{"bill": "HB1", "name": 'Smith, "Al" [R], {x}', "n": [1, [2, 3], {"a": "]"}]},
+            {}, {"bill": "", "year": None, "note": "café \\ ] , ["},
+            {"k": "v" * 70}, [1, 2, {"three": 3}], "a string, with ] in it", 12345, 6.5, None,
+            {"last": True}]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-rows-"))
+    try:
+        for name, text in (("tight.json", json.dumps(rows, separators=(",", ":"))),
+                           ("loose.json", " \n" + json.dumps(rows, indent=1) + "\n"),
+                           ("empty.json", "[]"), ("one.json", '[{"a": 1}]')):
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            want = json.loads(text)
+            for chunk in list(range(1, 41)) + [len(text), len(text) + 1, 1 << 16]:
+                got = list(_json_rows(p, chunk))
+                assert got == want, (f"{name} read {chunk} characters at a time gave "
+                                     f"{len(got)} rows of {len(want)}, or other rows")
+        whole = json.dumps(rows)
+        for name, text, why in (("cut.json", whole[:len(whole) // 2], "ends inside its list"),
+                                ("open.json", whole[:-1], "ends inside its list"),
+                                ("dict.json", '{"a": [1, 2]}', "is not a list"),
+                                ("none.json", "", "is not a list")):
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            for chunk in (3, 1 << 16):
+                try:
+                    got = list(_json_rows(p, chunk))
+                except ValueError:
+                    continue
+                raise AssertionError(f"{name}, which {why}, was read as {len(got)} rows")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("every row once and in order, with the file cut into pieces of 1 to 40 "
+                  "characters and whole; a file that ends inside its list, or is not one, raises")
+
+
+def _ballot_census():
+    """data/member_votes.json, as the three counts its readers take from it,
+    each keyed on the row's own values so that a reader applies its own rule
+    to them:
+
+      bills   {bill as the row writes it: ballots}, in the file's order of
+              first appearance -- _own_lsr_on_disk asks whether each is the
+              bill's own number;
+      named   {(year, has no party, is named "Member #..."): ballots} --
+              _vote_identity sums these into its terms;
+      seats   {(year, body, member id)} -- _past_sponsors_chamber reads the
+              chamber a member voted in.
+    """
+    def count(p):
+        bills, named, seats = Counter(), Counter(), set()
+        for v in _json_rows(p):
+            bills[v.get("bill")] += 1
+            named[(v.get("year"), (v.get("party") or "X") == "X",
+                   str(v.get("name") or "").startswith("Member #"))] += 1
+            seats.add((v.get("year"), v.get("body"), str(v.get("member_id") or "")))
+        return {"bills": bills, "named": named, "seats": seats}
+    return _read_once("data/member_votes.json", count)
+
+
 @check("data", "no history tells a row whose LSR is another measure's, and no bill's own "
        "row or roll call is left under a number typed another way",
        needs=("narrative", "narrate_archive", "rollcall_parser"))
@@ -11932,7 +12087,7 @@ def _own_lsr_on_disk(N, NA, RP):
     if not found:
         return "skip", "no docket on this disk"
     lsrs = N.load_lsrs(fb)
-    narr = json.loads(fn.read_text(encoding="utf-8"))
+    narr = _narratives()
     owner = {}
     for t, recs in lsrs.items():
         for b, (y, n) in recs.items():
@@ -12002,12 +12157,14 @@ def _own_lsr_on_disk(N, NA, RP):
     mv = Path("data/member_votes.json")
     ballots = 0
     if mv.exists():
-        for v in json.loads(mv.read_text(encoding="utf-8")):
-            n = RP.bill_number(v.get("bill"))
-            if n and n != v.get("bill"):
-                ballots += 1
-                if ballots <= 3:
-                    typed.append(f"ballot on {v.get('bill')!r}")
+        # Every ballot under each spelling of a bill number (_ballot_census),
+        # so the number is asked once for each spelling and not once a ballot.
+        for bill, cast in _ballot_census()["bills"].items():
+            n = RP.bill_number(bill)
+            if n and n != bill:
+                if ballots < 3:
+                    typed.append(f"ballot on {bill!r}")
+                ballots += cast
     assert not typed, (f"roll calls or ballots under a bill number typed another way "
                        f"({ballots} ballots): " + "; ".join(typed[:6]))
     return "ok", (f"{checked:,} docket rows whose LSR is another measure's are in no "
@@ -23901,8 +24058,7 @@ def _first_referral_on_disk(referrals, build_data):
     # the referral reader takes for a referral and the bill's own history
     # does not (narratives.json's not_introduced; build_data.add_past_bills
     # leaves such a record no committee). Those must show none.
-    fn = Path("narratives.json")
-    narr = json.loads(fn.read_text(encoding="utf-8")) if fn.exists() else {}
+    narr = _narratives() if Path("narratives.json").exists() else {}
     wrong, checked = [], 0
     for (t, b), bodies in refs.items():
         rec = (bills.get(t) or {}).get(b)
@@ -24141,7 +24297,7 @@ def _signed():
         return "skip", "narratives.json or build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
-    nvf = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+    nvf = _narratives()
     # {term: {bill: record}}. This is a check on the whole record, so it reads
     # every term rather than one.
     nv = {b: r for byb in nvf.values() for b, r in byb.items()}
@@ -37601,17 +37757,14 @@ def _vote_identity():
     if not mv.exists():
         return "ok", (f"{len(by_emp):,} voters, each with an id of their own; "
                       "data/member_votes.json not built, so no party census")
-    votes = json.loads(mv.read_text(encoding="utf-8"))
     per_term = {}
-    for v in votes:
-        y = int(v.get("year") or 0)
+    for (year, no_party, no_name), cast in _ballot_census()["named"].items():
+        y = int(year or 0)
         if not y:
             continue
         t = f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}"
         tot, nop, non = per_term.get(t, (0, 0, 0))
-        per_term[t] = (tot + 1,
-                       nop + ((v.get("party") or "X") == "X"),
-                       non + str(v.get("name") or "").startswith("Member #"))
+        per_term[t] = (tot + cast, nop + cast * no_party, non + cast * no_name)
 
     # A NAME, EVERYWHERE. This is the guard that holds across the whole
     # archive, and the one that regressed most recently: 24 years of roll
@@ -39073,12 +39226,12 @@ def _past_sponsors_chamber():
     ts = Path("text_sponsors.json")
     text = (json.loads(ts.read_text(encoding="utf-8")).get(term) or {}) if ts.exists() else {}
     voted = {}
-    for v in json.loads(mv.read_text(encoding="utf-8")):
-        y = str(v.get("year") or "")
-        if y.isdigit() and v.get("body") in ("H", "S"):
+    for year, body, member in _ballot_census()["seats"]:
+        y = str(year or "")
+        if y.isdigit() and body in ("H", "S"):
             y = int(y)
             if f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}" == term:
-                voted.setdefault(str(v.get("member_id") or ""), set()).add(v["body"])
+                voted.setdefault(member, set()).add(body)
     bad, n, unvoted = [], 0, 0
     for bid, e in sorted(t.items()):
         rows = e.get("publish") or (text.get(bid) if e.get("page") == "differs" else None) or []
@@ -39536,7 +39689,7 @@ def _amend_motions_mapped():
     if bsv is None:
         return "skip", "build_site_v2 will not import"
 
-    n = json.loads(src.read_text(encoding="utf-8"))
+    n = _narratives()
     seen, example = {}, {}
     for term, bills in n.items():
         if not isinstance(bills, dict):
@@ -43932,7 +44085,7 @@ def _left_out_on_site():
             f"whose vote it was: {s.get('notes')}")
     said = ""
     if Path("db/past/PastDocket.psv").exists() and Path("narratives.json").exists():
-        narr = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+        narr = _narratives()
         told = [("2015-2016", "SB340"), ("2015-2016", "SB499"), ("2019-2020", "HB451"),
                 ("2021-2022", "HB459")] + [("2017-2018", f"HR{i}") for i in range(1, 7)]
         none = [f"{b} of {t}" for t, b in told if not ((narr.get(t) or {}).get(b) or {}).get("events")]
@@ -44069,7 +44222,7 @@ def _chapters_settled_data():
         said += "; SB 28 of 2009 in effect 14 July 2009, not the 7 July of SB 109's line"
     np_ = Path("narratives.json")
     if np_.exists():
-        narr = json.loads(np_.read_text(encoding="utf-8"))
+        narr = _narratives()
         told = ((narr.get("1991-1992") or {}).get("HB1278") or {}).get("narrative") or ""
         assert "Chapter 232" in told and "Chapter 233" not in told, (
             "HB 1278 of 1992's history does not say Chapter 232: " + told[-160:])
@@ -44452,8 +44605,7 @@ def _introductions_against_journal(J, BD):
             if r.get("source") == BD.PAST_SOURCE]
     if not ours:
         return "skip", "no record here is the database's (no db/past/PastLegislation.psv)"
-    narr = (json.loads(Path("narratives.json").read_text(encoding="utf-8"))
-            if Path("narratives.json").exists() else {})
+    narr = _narratives() if Path("narratives.json").exists() else {}
     bad, held, unread, cache = [], 0, set(), {}
     for term, bid, rec in ours:
         row = idx.get((term, bid))
