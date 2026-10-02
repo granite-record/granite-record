@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.16
+# GRANITE_VERSION: 2026-09-18.17
 """
 The General Court's week, one page per week.
 
@@ -2681,24 +2681,9 @@ def main():
           f"{n_jnl:,} floor sittings to their journal ({len(cal_urls):,} calendars "
           f"and {len(journal_keys):,} journals in archive/queue.csv)")
     # CALENDARS & JOURNALS: the list is read once and the same section goes on
-    # every week. SILENCE IS NOT SUCCESS: what was read is printed either way,
-    # so a queue that stopped being read shows as a line and not as nothing,
-    # and a list that has fallen behind the General Court's is said to be.
+    # every week. What was read is said at the end of the run (below).
     cdocs, cd_out = CD.read(today=today)
     picker = CD.block_html(cdocs, cd_out)
-    if cdocs:
-        print(f"  {CD.summary(cdocs, cd_out)}")
-        newest = CD.newest_date(cdocs, "hc")
-        age = (today - datetime.date.fromisoformat(newest)).days if newest else 0
-        if age > CD_STALE_DAYS:
-            print(f"  WARNING: the newest House Calendar listed is {CD.day_words(newest)}, "
-                  f"{age} days ago -- if the House has printed one since, "
-                  f"{CD.QUEUE.as_posix()} has not been refreshed and the pickers are "
-                  "behind the General Court's own list")
-    else:
-        print(f"  WARNING: no calendars or journals to link -- {CD.QUEUE.as_posix()} is not "
-              "on disk or lists nothing served, so the week pages carry no Calendars & "
-              "Journals section")
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
@@ -2728,6 +2713,25 @@ def main():
     print(f"  {len(order)} weeks -> calendar.html and calendar/ "
           f"({total:,} sittings; {here} is this week; {empty} weeks with "
           f"nothing on them written as pages of their own)")
+    # WHAT THE PICKERS HOLD, LAST, because build_all and the night's log show a
+    # step's last three lines and nothing above them. SILENCE IS NOT SUCCESS:
+    # printed either way, so a queue that stopped being read shows as a line
+    # and not as nothing, and a list that has fallen behind the General
+    # Court's own is said to be -- as a warning, never a stop: a picker a few
+    # weeks behind is no reason to hold back the day's schedule.
+    if cdocs:
+        print(f"  {CD.summary(cdocs, cd_out)}")
+        newest = CD.newest_date(cdocs, "hc")
+        age = (today - datetime.date.fromisoformat(newest)).days if newest else 0
+        if age > CD_STALE_DAYS:
+            print(f"  WARNING: the newest House Calendar listed is {CD.day_words(newest)}, "
+                  f"{age} days ago -- if the House has printed one since, "
+                  f"{CD.QUEUE.as_posix()} has not been refreshed and the pickers are "
+                  "behind the General Court's own list")
+    else:
+        print(f"  WARNING: no calendars or journals to link -- {CD.QUEUE.as_posix()} is not "
+              "on disk or lists nothing served, so the week pages carry no Calendars & "
+              "Journals section")
     return 0
 
 
