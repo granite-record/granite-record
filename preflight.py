@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.302
+# GRANITE_VERSION: 2026-09-04.303
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16662,6 +16662,720 @@ def _header_mark():
             assert not draws or (site / BP.HEADER_MARK).is_file(), (
                 f"site/{name} draws the header's mark and site/{BP.HEADER_MARK} "
                 "is not there: an empty box before the site's name")
+    return "ok", said
+
+
+# The reader, for _calendar_documents: the section's own script, run on the
+# section a build wrote, in _calendar_in_a_dom's DOM (_CAL_DOM).
+_CD_DRIVE = r"""const {makeWorld}=require("./minidom.js");
+const fs=require("fs"), vm=require("vm"), path=require("path");
+const SITE=process.argv[2], fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+const text=fs.readFileSync(path.join(SITE,"calendar.html"),"utf8");
+const IX=JSON.parse(fs.readFileSync(path.join(SITE,"calendar","documents.json"),"utf8"));
+// The page's two scripts: the Calendar's own, which _calendar_in_a_dom runs
+// as the first after the results, and then the section's.
+const r=text.indexOf('<div id="results">'), s1=text.indexOf("<script>",r), e1=text.indexOf("</script>",s1),
+      s2=text.indexOf("<script>",e1), e2=text.indexOf("</script>",s2);
+const a=text.indexOf('<section class="cdocs"'), e=text.indexOf("</section>",a)+10;
+const jump=(text.match(/<p class="cdjump">.*?<\/p>/)||[""])[0];
+function world(files){
+  const W=makeWorld({today:[2026,3,11], path:"/calendar", files});
+  W.doc.body.innerHTML=jump+text.slice(a,e);
+  W.asked=[];
+  // start() runs the section's script and returns before the list has come;
+  // run() waits for it.
+  W.start=()=>vm.runInContext(text.slice(s2+8,e2),vm.createContext(Object.assign({console},W.G)));
+  W.run=async()=>{ W.start(); await W.settle(); };
+  W.$=(id)=>W.doc.getElementById(id);
+  W.opts=(id)=>W.$(id).querySelectorAll("option").map(o=>o.textContent);
+  W.choose=async(id,v)=>{ const s=W.$(id); s.value=v; s.dispatchEvent(W.ev("change")); await W.settle(); };
+  return W;
+}
+const served=(url)=>url==="/calendar/documents.json"?JSON.stringify(IX):null;
+const set=(id)=>IX.sets.find(s=>s.id===id);
+const years=(id)=>Object.keys(set(id).years).sort().reverse();
+const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[1];
+(async()=>{
+  ok(s1>0&&s2>e1&&a>0&&a<s1, "the page does not carry the section before the Calendar's script and the section's script after it");
+  // ---- as written, before any script: links, and the row hidden ----
+  const P=world(served), $=P.$;
+  ok($("cdpick").hidden && !$("cdyears").hidden, "without script the pickers are shown, or the years are not");
+  ok(P.opts("cdset").length===1 && P.opts("cdyear").length===1 && P.opts("cddoc").length===1
+     && !$("cdset").disabled && !$("cdyear").disabled && !$("cddoc").disabled,
+     "as written, the three pickers are not one choice each -- a kind could be chosen that nothing can follow until the list comes -- or are disabled, and Tab would pass them");
+  const first=IX.sets.find(s=>Object.keys(s.years).length), y0=years(first.id)[0], d0=first.years[y0][0];
+  ok($("cdopen").getAttribute("href")===addr(first.id,d0), "the button is not a link to the newest "+first.one+" as written");
+
+  // ---- the list arrives ----
+  await P.run();
+  const C=P.win.GRDOCS;
+  ok(!$("cdpick").hidden && $("cdyears").hidden, "with script the pickers did not take the years' place");
+  ok(P.opts("cdset").join()===IX.sets.filter(s=>Object.keys(s.years).length).map(s=>s.name).join(), "the first picker offers "+P.opts("cdset"));
+  ok($("cdset").value===first.id && $("cdyear").value===y0 && P.opts("cdyear").join()===years(first.id).join(),
+     "it does not open on the first set's newest year: "+$("cdset").value+" "+$("cdyear").value+" of "+P.opts("cdyear"));
+  ok(P.opts("cddoc").join("|")===first.years[y0].map(d=>d[0]).join("|"), "the documents offered are not that year's, in order: "+P.opts("cddoc").join("|"));
+  ok($("cdopen").getAttribute("href")===addr(first.id,d0), "the button's address after the list came: "+$("cdopen").getAttribute("href"));
+  ok($("cdopen").getAttribute("aria-label")==="Open the PDF: "+first.one+", "+d0[0]+", at the General Court" && $("cdopen").textContent==="Open the PDF",
+     "the button's name does not begin with the words it shows and name the document: "+$("cdopen").getAttribute("aria-label"));
+  // NOBODY ASKED: the list came because the section was near, so the live
+  // region says nothing. It speaks once a picker is changed.
+  ok($("cdstat").textContent==="", "the list arrived with nobody in the section and the status line, a live region, said: "+$("cdstat").textContent);
+  ok($("cdnow").textContent===first.one+", "+d0[0], "the document chosen is not said whole under the pickers: "+$("cdnow").textContent);
+
+  // ---- a year, then a document: the button follows, nothing else moves ----
+  const y1=years("hc")[1];
+  await P.choose("cdyear",y1);
+  ok($("cdset").value==="hc" && $("cdyear").value===y1 && $("cddoc").value==="0"
+     && $("cdopen").getAttribute("href")===addr("hc",set("hc").years[y1][0]), "choosing "+y1+" did not show its newest document");
+  ok(new RegExp("^\\d+ House Calendars? for "+y1).test($("cdstat").textContent), "after a year was chosen the status line reads "+$("cdstat").textContent);
+  await P.choose("cdyear",y0);
+  await P.choose("cddoc","1");
+  ok($("cdopen").getAttribute("href")===addr("hc",set("hc").years[y0][1]) && $("cddoc").value==="1", "choosing the second document did not move the button to it");
+  ok($("cdnow").textContent==="House Calendar, "+set("hc").years[y0][1][0], "the document chosen, said whole, did not follow the picker: "+$("cdnow").textContent);
+  ok(P.G.location.pathname==="/calendar" && P.hist.length===1, "a picker moved the page");
+
+  // ---- another set keeps the year where it has it, and takes its newest where it has not ----
+  await P.choose("cdset","sc");
+  ok($("cdyear").value===y0 && P.opts("cdyear").join()===years("sc").join() && $("cddoc").value==="0"
+     && $("cdopen").getAttribute("href")===addr("sc",set("sc").years[y0][0]), "Senate Calendars did not keep "+y0+": "+$("cdyear").value);
+  await P.choose("cdset","hj");
+  const lone=years("hj").find(y=>!set("sj").years[y]);
+  ok(lone, "the fixture has no year the House journals have and the Senate's have not");
+  await P.choose("cdyear",lone);
+  ok($("cdopen").getAttribute("href")===addr("hj",set("hj").years[lone][0]), "House Journals of "+lone+": "+$("cdopen").getAttribute("href"));
+  await P.choose("cdset","sj");
+  const ys=years("sj");
+  ok($("cdyear").value===ys[0] && $("cdopen").getAttribute("href")===addr("sj",set("sj").years[ys[0]][0]),
+     "a year the set does not have did not fall back to its newest: "+$("cdyear").value);
+  // Every address the pickers can reach is one the index holds whole.
+  const held=new Set(IX.sets.flatMap(s=>Object.values(s.years).flat().map(d=>addr(s.id,d))));
+  for(const s of IX.sets) for(const y of Object.keys(s.years)) s.years[y].forEach((d,i)=>{
+    const st=C.state(IX,s.id,y,i); ok(st.href===addr(s.id,d) && held.has(st.href), "state() made an address for "+s.id+" "+y+" "+i+": "+st.href); });
+  ok(C.state(IX,"nothing","1066",99).set.id===first.id, "a set the index does not have is not answered with the first");
+
+  // ---- the link under the week's name scrolls and gives the heading focus ----
+  const ev=P.ev("click",{button:0}); $("cdjump").dispatchEvent(ev);
+  ok(ev.defaultPrevented && P.doc._scrolled.includes($("cdocs")) && P.doc.activeElement===$("cdhead"),
+     "the link from the week's heading did not scroll to the section and focus its heading");
+
+  // ---- a reader in a picker while the list is on its way is told, and then told what came ----
+  const A=world(served);
+  A.start();
+  ok(A.opts("cdset").length===1 && A.$("cdstat").textContent==="", "before the list has come the first picker offers more than the button opens, or the status line speaks");
+  A.$("cdset").focus();
+  ok(A.$("cdstat").textContent==="Loading the list of documents.", "a reader who reached a picker before the list did is told: "+A.$("cdstat").textContent);
+  await A.settle();
+  ok(/^\d+ House Calendars? for \d{4}/.test(A.$("cdstat").textContent) && A.opts("cdset").length===IX.sets.filter(s=>Object.keys(s.years).length).length,
+     "and when it came: "+A.$("cdstat").textContent+" / "+A.opts("cdset"));
+  // A link under the pickers is not a picker: reaching it brings the list and says nothing.
+  const L=world(served);
+  L.start();
+  L.$("cdocs").querySelector(".cdlatest a").focus();
+  ok(L.$("cdstat").textContent==="", "a focus on a link under the pickers wrote a line above it: "+L.$("cdstat").textContent);
+  await L.settle();
+  ok(L.opts("cdyear").length>1 && L.$("cdstat").textContent==="", "the list did not come for a reader at the links, or was announced to one who touched no picker");
+
+  // ---- a list that will not load leaves the links; a reader who was in the pickers is told ----
+  const F=world(()=>null);
+  await F.run();
+  ok(F.$("cdpick").hidden && !F.$("cdyears").hidden, "a failed fetch left the pickers up, or the years hidden");
+  ok(F.$("cdstat").textContent==="", "a failed fetch nobody asked for says: "+F.$("cdstat").textContent);
+  const F2=world(()=>null);
+  F2.start();
+  F2.$("cdyear").focus();
+  await F2.settle();
+  ok(F2.$("cdpick").hidden && !F2.$("cdyears").hidden && /could not be loaded/.test(F2.$("cdstat").textContent),
+     "a reader in a picker when the list failed is told: "+F2.$("cdstat").textContent);
+  const E=world((url)=>url==="/calendar/documents.json"?JSON.stringify({base:{},sets:[]}):null);
+  await E.run();
+  ok(E.$("cdpick").hidden && !E.$("cdyears").hidden, "an empty list left the pickers up");
+
+  if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
+  console.log("OK");
+})().catch(e=>{ console.log(e&&e.stack||e); process.exit(1); });
+"""
+
+
+@check("frontend", "the calendar's document picker links only addresses the General Court's own list gave, leaves out an address held back or in error, and works without script")
+def _calendar_documents():
+    """Calendars and journals as PDFs, under the Calendar page's schedule.
+
+    Asked for on 1 October 2026: pickers in a row -- the kind, the year, the
+    document -- and a button that opens the General Court's PDF. The page
+    links the General Court's own addresses and hosts nothing, so what can go
+    wrong is all about WHICH address, and whether there is one:
+
+      - ONLY RECORDED ADDRESSES. A file's name follows no rule, and guessing
+        at names is what got this project's address blocked. Every address in
+        the index, the section and the list page is, byte for byte, one
+        archive/queue.csv holds; the script's own state() cannot make another.
+      - WHAT IS HELD BACK IS NOT LINKED: a withheld row, a row whose address
+        answered with an error, a row with no address, and an address that
+        is not the General Court's. The section says how many in one line;
+        the list page names them. A night's new row, listed and not yet
+        fetched, IS linked, and a row written twice is linked once.
+      - THE PAGE SAYS ONLY WHAT THE RECORD HOLDS (the review of 1 October).
+        "Not linked here", and how many were asked for, never that the
+        General Court "does not serve" them: 42 of the 45 were never asked.
+        "The newest listed here", not "the newest", of a list as old as the
+        queue. The file's name, not "as the General Court names it". And a
+        document is under the year of its date only where it has one; the
+        page says how many have none.
+      - TWO DOCUMENTS THAT SHARE ONE LOCAL FILE are both in the picker, each
+        at its own address, and neither takes the date that file prints.
+      - LABELS AND ORDER. A name is shown as the General Court wrote it; one
+        that states no date gains the date its own text prints: a calendar's
+        masthead, where it carries the document's own number and not a
+        stray date above it, or a Senate journal's sitting -- one sitting's,
+        never the first of a year's bound together. Newest first, an undated
+        new number above the dated one before it.
+      - ONCE, UNDER ITS OWN DATE'S YEAR: a December document filed under the
+        next year is under its own, and one listed in two years is there
+        once, at the address of its own year's list.
+      - WITHOUT SCRIPT the section is the newest of each kind and every year
+        as a link to the list page, the row of pickers hidden; the list page
+        links every document. Both files survive month_files()'s pruning of
+        calendar/data/ and the list page is in the sitemap after
+        sitemap_merge has taken stale weeks out.
+      - THE SCRIPT, in node on the page a build wrote: it opens where the
+        General Court's does, a year and a set refill what follows them, a
+        year the set does not have falls back to its newest, nothing moves
+        the page, and a list that will not load leaves the links. Until the
+        list comes each picker holds the one choice the button opens. The
+        status line, a live region, speaks only to a reader who has reached
+        a picker: not when the list arrives for a section that is merely
+        near, which on a short week is as the page loads.
+      - ONE ROW THAT FITS. The three pickers and the button are one row, and
+        the row's minimums fit the schedule's column where it is narrowest:
+        at 1024px, beside the month, less a scrollbar. As first written they
+        needed 679px of a 652px row and the button stood 27px past its box,
+        which only a browser showed. At 700px and under they stack, 44px tall
+        with 16px text, so a phone does not zoom the page on focus.
+      - THE DOCUMENT CHOSEN IS SAID WHOLE AT EVERY WIDTH, on a row of its own
+        under the pickers: the document picker is 243px at 1024px and 346px
+        at its widest, and a closed one cuts off the longer names -- about
+        167 of the 4,320 at 1024px, measured in Chrome.
+      - A LIST THAT OUGHT TO BE HERE AND IS NOT FAILS THE BUILD. A queue with
+        a byte-order mark is read; one that is here and yields nothing, or
+        is missing from a folder the kit filled, stops build_calendar before
+        it writes anything, where it used to take the section off every week
+        and exit zero.
+    """
+    import contextlib
+    import datetime as _dt
+    import html as _h
+    import io
+    import build_calendar as BC
+    import calendar_documents as CD
+    import shell as S
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    # ---- the stylesheet: one row, and it fits ----
+    css = Path("app.css").read_text(encoding="utf-8")
+    at = css.find("/* THE GENERAL COURT'S OWN CALENDARS AND JOURNALS, AS PDFs")
+    assert at > css.find("/* THE CALENDAR, AS A CALENDAR") > 0, (
+        "app.css has no rules for the Calendars & Journals section in the calendar's region")
+    mine = css[at:css.index("/* HOW THE DAY BEGAN.", at)]
+    row = _braced(mine, ".cdpick{")
+    cols = re.search(r"grid-template-columns:minmax\(([\d.]+)rem,1fr\) ([\d.]+)rem "
+                     r"minmax\(([\d.]+)rem,2fr\) auto;", row)
+    assert cols and "gap:var(--sp-4) var(--sp-5)" in row and "padding:var(--sp-6)" in row, (
+        "the pickers are not one row of kind, year, document and the button, 12px apart "
+        "in a 16px box")
+    side = re.search(r"\.calapp\.on\{display:grid;grid-template-columns:clamp\((\d+)px", css)
+    assert side, "the month's column has no width to take from the schedule's"
+    # Open the PDF measured 131px in Chrome on 1 October 2026; 140 allows for
+    # another face. Three 12px gaps, the box's 16px sides and its 1px edges.
+    need = round(sum(float(x) for x in cols.groups()) * 16) + 140 + 3 * 12 + 2 * 16 + 2
+    have = 1024 - 2 * 24 - 15 - int(side.group(1)) - 32
+    assert need <= have, (
+        f"the pickers' row needs {need}px and the schedule's column has {have}px at 1024px, "
+        "beside the month: the button would stand past its box")
+    stacked = _braced(mine, "@media (max-width:700px){")
+    assert ".cdpick{grid-template-columns:minmax(0,1fr)" in stacked \
+        and ".cdf select{min-height:44px;font-size:var(--t-body)}" in stacked \
+        and ".cdopen{min-height:44px}" in stacked \
+        and ".cdnow,.cdopen{grid-column:auto;grid-row:auto}" in stacked, (
+        "at 700px and under the pickers do not stack 44px tall with 16px text, with the "
+        "document chosen said whole between them and the button")
+    now = _braced(mine, ".cdnow{")
+    assert "display:none" not in now and "grid-column:1 / -1" in now and "grid-row:2" in now \
+        and ".cdopen{grid-column:4;grid-row:1}" in mine and not re.search(
+            r"\.cdnow\{[^}]*display:none", mine), (
+        "the document chosen is not said whole on a row of its own under the pickers at "
+        "every width: a closed picker cuts a long name off at 1024px and at 1440px alike")
+    assert need <= 701 - 2 * 12 - 15, (
+        f"the row needs {need}px and a 701px screen, the narrowest it is one row on, has "
+        f"{701 - 2 * 12 - 15}px")
+    assert ".cdpick[hidden],.cdyears[hidden]{display:none}" in mine, (
+        "the pickers have a display of their own and no rule that keeps them hidden "
+        "without script")
+    root = Path(tempfile.mkdtemp(prefix="gr-cdocs-"))
+    try:
+        H = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+        SN = "https://gc.nh.gov/senate/calendars_journals/viewer.aspx?fileName="
+        apos = "SJ 07 February 14, 2023 - Governor&#39;s Budget Address.pdf"
+        # chamber, kind, year, name, address, local file, state, attempts, error, fetched
+        rows = [
+            ("H", "calendar", "2026", "HC 33.pdf", H + "calendars%5C2026%5CHC%2033.pdf",
+             r"calendars\2026\HC033.pdf", "wanted", "0", "", ""),
+            ("H", "calendar", "2026", "HC 32.pdf", H + "calendars%5C2026%5CHC%2032.pdf",
+             r"calendars\2026\HC032.pdf", "held", "0", "", ""),
+            ("H", "calendar", "2026", "No30 August 14 2026.pdf",
+             H + "calendars%5C2026%5CNo30%20August%2014%202026.pdf",
+             r"calendars\2026\HC030.pdf", "held", "0", "", ""),
+            ("H", "calendar", "2026", "HC 31.pdf", "https://example.org/HC31.pdf",
+             r"calendars\2026\HC031.pdf", "held", "0", "", ""),
+            ("H", "calendar", "2026", "No 02 December 12 2025.pdf",
+             H + "calendars%5C2026%5CNo%2002%20December%2012%202025.pdf",
+             r"calendars\2026\HC002.pdf", "held", "0", "", ""),
+            ("H", "calendar", "2025", "No 51 November 21 2025.pdf",
+             H + "calendars%5C2025%5CNo%2051%20November%2021%202025.pdf",
+             r"calendars\2025\HC051.pdf", "held", "0", "", ""),
+            ("H", "journal", "2010", "Daily Journal No 25 11-30-11 Final.pdf",
+             H + "journals%5C2010%5CDaily%20Journal%20No%2025%2011-30-11%20Final.pdf",
+             r"journals\2010\HJ025.pdf", "held", "0", "", ""),
+            ("H", "journal", "2011", "Daily Journal No 25 11-30-11 Final.pdf",
+             H + "journals%5C2011%5CDaily%20Journal%20No%2025%2011-30-11%20Final.pdf",
+             r"journals\2011\HJ025.pdf", "held", "0", "", ""),
+            ("H", "journal", "2026", "HJ 16 August 19, 2026.pdf",
+             H + "journals%5C2026%5CHJ%2016%20August%2019%2C%202026.pdf",
+             r"journals\2026\HJ 16 August 19, 2026.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2026", "SC 29.pdf", SN + "Calendars%5C2026%5CSC%2029.pdf",
+             r"calendars_senate\2026\SC029.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2026", "No 28 August 20 2026.pdf",
+             SN + "Calendars%5C2026%5CNo%2028%20August%2020%202026.pdf",
+             r"calendars_senate\2026\SC028.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2008", "09B.pdf", SN + "Calendars%5C2008%5C09B.pdf",
+             r"calendars_senate\2008\SC009B.pdf", "withheld", "2", "", ""),
+            ("S", "calendar", "2007", "SC 24.pdf", SN + "Calendars%5C2007%5CSC%2024.pdf",
+             r"calendars_senate\2007\SC024.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2007", "SC 24 (2).pdf", SN + "Calendars%5C2007%5CSC%2024%20(2).pdf",
+             r"calendars_senate\2007\SC024.pdf", "held", "0", "", ""),
+            ("S", "journal", "2023", apos,
+             SN + "Journals%5C2023%5CSJ%2007%20February%2014%2C%202023%20-%20"
+                  "Governor%26%2339%3Bs%20Budget%20Address.pdf",
+             r"journals_senate\2023\SJ 07.pdf", "wanted", "1",
+             "HTTPError: HTTP Error 500: Internal Server Error", ""),
+            ("S", "journal", "2026", "SJ 15.pdf", SN + "Journals%5C2026%5CSJ%2015.pdf",
+             r"journals_senate\2026\SJ 15.pdf", "held", "0", "", ""),
+            ("S", "journal", "2026", "SJ 14 June 4, 2026.pdf",
+             SN + "Journals%5C2026%5CSJ%2014%20June%204%2C%202026.pdf",
+             r"journals_senate\2026\SJ 14 June 4, 2026.pdf", "held", "0", "", ""),
+            ("S", "journal", "2018", "SPJ 2018 - Verbatim.pdf",
+             SN + "Journals%5C2018%5CSPJ%202018%20-%20Verbatim.pdf",
+             r"journals_senate\2018\SPJ 2018 - Verbatim.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2010", "43.pdf", SN + "Calendars%5C2010%5C43.pdf",
+             r"calendars_senate\2010\SC043.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2008", "44.pdf", SN + "Calendars%5C2008%5C44.pdf",
+             r"calendars_senate\2008\SC044.pdf", "held", "0", "", ""),
+            # The same row again, as a queue written twice would hold it: one
+            # address is one document, and it has no date to be told apart by.
+            ("S", "calendar", "2008", "44.pdf", SN + "Calendars%5C2008%5C44.pdf",
+             r"calendars_senate\2008\SC044.pdf", "held", "0", "", ""),
+            # A row with no address: not linked, and never asked for.
+            ("H", "journal", "2026", "HJ 17.pdf", "",
+             r"journals\2026\HJ 17.pdf", "wanted", "0", "", ""),
+        ]
+        q = root / "queue.csv"
+        with q.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["chamber", "kind", "year", "name", "url", "path", "state",
+                        "attempts", "error", "bytes", "fetched"])
+            for r in rows:
+                w.writerow(list(r[:9]) + ["1", r[9]])
+        # The text beside seven of the PDFs, as extract_calendar_text leaves
+        # it: a House masthead, a Senate one, the one file two listed
+        # documents share, a Senate journal's sitting, a year's sittings
+        # bound as one journal, a Senate calendar that opens with a stray
+        # date above its masthead (as 82 of 2010's do), and one whose
+        # masthead carries another issue's number (2008's "44" prints No. 1).
+        for rel, text in (
+                ("calendars/2026/HC032.txt",
+                 "HOUSE RECORD\nVol. 48      Concord, N.H.      Friday, September 4, 2026"
+                 "      No. 32\n"),
+                ("calendars_senate/2026/SC029.txt",
+                 "                                        September 3, 2026\n"
+                 "                                        No. 29\nSENATE CALENDAR\n"),
+                ("calendars_senate/2007/SC024.txt",
+                 "                                        June 7, 2007\n"
+                 "                                        No. 24\nSENATE CALENDAR\n"),
+                ("journals_senate/2026/SJ 15.txt",
+                 "SENATE JOURNAL 15\n\nThe Senate met at 10:00 a.m.          August 19, 2026\n"
+                 "The Chaplain offered the prayer.\n"),
+                ("journals_senate/2018/SPJ 2018 - Verbatim.txt",
+                 "The Senate met at 10:00 a.m.          January 3, 2018\nThe prayer.\n\n"
+                 "The Senate met at 10:00 a.m.          January 18, 2018\nThe prayer.\n"),
+                ("calendars_senate/2010/SC043.txt",
+                 "April 29, 2010\n"
+                 "                                        November 23, 2010\n"
+                 "                                        No. 43\nSENATE CALENDAR\n"),
+                ("calendars_senate/2008/SC044.txt",
+                 "                                        December 4, 2008\n"
+                 "                                        No. 1\nSENATE CALENDAR\n")):
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text, encoding="utf-8")
+        today = _dt.date(2026, 10, 1)
+        docs, left = CD.read(q, root=root, today=today)
+        recorded = {r[4] for r in rows if r[4]}
+        # A QUEUE SAVED WITH A BYTE-ORDER MARK IS THE SAME QUEUE. Read as plain
+        # UTF-8 its first column was not "chamber", nothing was linked, and
+        # the section left every week's page.
+        bom = root / "queue_bom.csv"
+        bom.write_bytes(b"\xef\xbb\xbf" + q.read_bytes())
+        assert CD.read(bom, root=root, today=today) == (docs, left) and docs, (
+            "a queue with a byte-order mark is not read as the same queue")
+        assert CD.rows(root / "no_such_queue.csv") == []
+
+        # ---- what is linked, and what is not ----
+        by = CD.by_set(docs)
+        got = {sid: {y: [d.label for d in ds] for y, ds in ys.items()} for sid, ys in by.items()}
+        dash = "—"
+        want = {
+            "hc": {"2026": ["HC 33", f"HC 32 {dash} 4 September 2026", "No30 August 14 2026"],
+                   "2025": ["No 02 December 12 2025", "No 51 November 21 2025"]},
+            "hj": {"2026": ["HJ 16 August 19, 2026"],
+                   "2011": ["Daily Journal No 25 11-30-11 Final"]},
+            "sc": {"2026": [f"SC 29 {dash} 3 September 2026", "No 28 August 20 2026"],
+                   "2010": [f"43 {dash} 23 November 2010"], "2008": ["44"],
+                   "2007": ["SC 24", "SC 24 (2)"]},
+            "sj": {"2026": [f"SJ 15 {dash} 19 August 2026", "SJ 14 June 4, 2026"],
+                   "2018": ["SPJ 2018 - Verbatim"]},
+        }
+        assert got == want, f"the picker's sets, years, labels and order read as {got}"
+        assert [list(v) for v in got.values()] == [list(v) for v in want.values()], (
+            "a set's years are not newest first")
+        assert all(d.url in recorded and d.url.startswith("https://gc.nh.gov/") for d in docs), (
+            "a document is linked at an address the queue does not hold")
+        assert len({d.url for d in docs}) == len(docs), "two documents share one address"
+        twice = [d for d in docs if d.name.startswith("Daily Journal No 25")]
+        assert len(twice) == 1 and "journals%5C2011%5C" in twice[0].url, (
+            "a document listed under two years is not shown once, at its own year's address")
+        pair = by["sc"]["2007"]
+        assert not any(d.date for d in pair) and pair[0].url != pair[1].url, (
+            "two documents sharing one local file took that file's date, or one address")
+        # NOT LINKED, AND WHETHER IT WAS EVER ASKED FOR: the last of each.
+        assert sorted(left) == [("hc", "2026", "HC 31", False), ("hj", "2026", "HJ 17", False),
+                                ("sc", "2008", "09B", True),
+                                ("sj", "2023", _h.unescape(apos[:-4]), True)], (
+            f"left out: {left}")
+        assert CD.left_out_line(left) == ("4 documents the General Court lists are not "
+                                         "linked here."), CD.left_out_line(left)
+        assert CD.left_out_line(left[:1]) == ("1 document the General Court lists is not "
+                                             "linked here.") and CD.left_out_line([]) == ""
+        assert CD.left_out_why(left) == (
+            "Of these, 2 answered with an error when this site asked for them and 2 were "
+            "set aside without being asked for."), CD.left_out_why(left)
+        asked_, not_ = [o for o in left if o.asked], [o for o in left if not o.asked]
+        assert CD.left_out_why(asked_[:1]) == "It answered with an error when this site asked for it." \
+            and CD.left_out_why(asked_) == "Each answered with an error when this site asked for it." \
+            and CD.left_out_why(not_[:1]) == "It was set aside without being asked for." \
+            and CD.left_out_why(not_) == "They were set aside without being asked for." \
+            and CD.left_out_why([]) == "", "what is said of the documents not linked"
+        said = " ".join((CD.left_out_line(left), CD.left_out_why(left), CD.block_html(docs, left),
+                         " ".join(CD.list_body(docs, left)))).lower()
+        for claim in ("does not serve", "not served", "unserved", "as the general court names"):
+            assert claim not in said, (
+                f"the page says {claim!r}, which the queue does not bear out: 42 of the 45 "
+                "documents left out on 1 October were never asked for, and the newest "
+                "document's file name is not the General Court's label for it")
+        for name, iso in (("No 32 September 4 2026", "2026-09-04"),
+                          ("No13aFebruary 21 2025", "2025-02-21"),
+                          ("No 18 March31 2023", "2023-03-31"),
+                          ("No 17 February 29 (AMENDMENTS) 2008", "2008-02-29"),
+                          ("No 22 March 27 and 28 2007 Amendments", "2007-03-27"),
+                          ("HJ No 25 06-25-1997", "1997-06-25"),
+                          ("Daily Journal No 2 1-7-09-Convening Day Final", "2009-01-07"),
+                          ("Daily Journal No 25 11-30-11 Final", "2011-11-30"),
+                          ("SJ 14 June 4, 2026", "2026-06-04"),
+                          ("No 01 January 04 1012", ""), ("SJ 16 May 8, 208", ""),
+                          ("No 41 Octobet 26 2023", ""), ("No 100 1997", ""), ("HC 32", ""),
+                          ("No 19-19A April 26 2018 - Combined", "2018-04-26")):
+            assert CD.name_date(name, 2027) == iso, (
+                f"{name!r} states {CD.name_date(name, 2027) or 'no date'}, not {iso or 'none'}")
+
+        # ---- the index: every address whole, and none made ----
+        ix = CD.index(docs)
+        assert ix["base"] == {"H": H, "S": SN}, f"the viewer prefixes read as {ix['base']}"
+        assert sorted(ix) == ["base", "sets"], (
+            f"the index holds {sorted(ix)}: a date of its making makes it a new file every "
+            "day, for the deploy to send again unchanged")
+        flat = [(s["chamber"], d) for s in ix["sets"] for ds in s["years"].values() for d in ds]
+        assert len(flat) == len(docs) and {CD.address(ix, ch, d) for ch, d in flat} == \
+            {d.url for d in docs}, "the index's addresses are not the documents' own"
+        assert all(not d[1].startswith("https://") and "%5C" in d[1] for _ch, d in flat), (
+            "the index does not store each address as the part after its chamber's prefix")
+        assert [s["id"] for s in ix["sets"]] == ["hc", "hj", "sc", "sj"] and \
+            [s["name"] for s in ix["sets"]] == ["House Calendars", "House Journals",
+                                               "Senate Calendars", "Senate Journals"], (
+            "the first picker's four kinds are not the four asked for, in order")
+        odd = CD.index([docs[0]._replace(url="https://gc.nh.gov/house/elsewhere/HC33.pdf")]
+                       + docs[1:])
+        assert CD.address(odd, "H", odd["sets"][0]["years"]["2026"][0]) == \
+            "https://gc.nh.gov/house/elsewhere/HC33.pdf", (
+            "an address that does not begin with its chamber's prefix is not kept whole")
+
+        # ---- the section and the list page, as markup ----
+        # ---- the list's age: told from the newest listed, where it has a date ----
+        assert CD.newest(docs, "hc").name == "HC 33" and CD.newest_date(docs, "hc") == "2026-09-04" \
+            and CD.newest_date(docs) == "2026-09-04" and CD.newest([], "hc") is None
+        assert CD.behind(docs, today, BC.CD_STALE_DAYS) is None, (
+            "a list whose newest House Calendar has no date yet is called behind: a night's "
+            "new short name would warn on every run")
+        dated = [d for d in docs if d.name != "HC 33"]
+        assert CD.behind(dated, today, BC.CD_STALE_DAYS) == ("2026-09-04", 27) \
+            and CD.behind(dated, _dt.date(2026, 9, 20), BC.CD_STALE_DAYS) is None \
+            and CD.behind([], today, BC.CD_STALE_DAYS) is None, (
+            "a list whose newest House Calendar is 27 days old is not called behind, or one "
+            "16 days old is")
+
+        # ---- a list that ought to be here and is not is a failed build ----
+        assert BC.documents_problem(docs, queue=q) == ""
+        assert "no calendar or journal could be read" in BC.documents_problem([], queue=q), (
+            "a queue that is on disk and yields nothing does not fail the build")
+        gone = root / "no_such_queue.csv"
+        assert BC.documents_problem([], queue=gone, kit=False) == "", (
+            "a bare folder with no queue cannot be built at all")
+        assert "filled from the kit" in BC.documents_problem([], queue=gone, kit=True), (
+            "a folder the kit filled, without the queue the kit carries, does not fail the build")
+        kit = Path("cloud_kit.json")
+        assert not kit.exists() or '"archive/queue.csv"' in kit.read_text(encoding="utf-8"), (
+            "cloud_kit.json no longer carries archive/queue.csv, which the pickers are built from")
+
+        block = CD.block_html(docs, left)
+        assert CD.block_html([], []) == "", "a section is drawn with nothing to link"
+        hrefs = re.findall(r'href="([^"]*)"', block)
+        out = [_h.unescape(h) for h in hrefs if not h.startswith("/calendar/documents")]
+        assert out and all(h in recorded for h in out), (
+            f"the section links an address the queue does not hold: {out}")
+        assert block.count('<section class="cdocs" id="cdocs"') == 1 \
+            and '<form class="cdpick" id="cdpick" hidden>' in block, (
+            "the section is not one section whose pickers are emitted hidden")
+        assert block.count('aria-labelledby="cdhead"') == 1, (
+            "the form is named by the section's heading too: two landmarks with one name")
+        assert block.count("<option") == 3 and '<option value="hc" selected>House Calendars</option>' \
+            in block, ("as written the pickers offer more than the one document the button "
+                       "opens: a kind chosen before the list comes cannot be followed")
+        assert '<h3 class="cdsub" id="cdnew">The newest listed here</h3>' in block, (
+            "the four links are not headed as the newest LISTED: the list is as old as the "
+            "queue, and on 1 October its newest House Calendar was 27 days old")
+        assert CD.jump_html("/calendar") == ('<p class="cdjump"><a href="/calendar#cdocs" '
+                                             'id="cdjump">Calendars &amp; Journals, as PDFs</a></p>'), (
+            "the link under the week's name ends (PDF), which on this site is a link that "
+            "opens one; this one goes to a section")
+        for sid, label, url in (("hc", "HC 33", rows[0][4]),
+                                ("hj", "HJ 16 August 19, 2026", rows[8][4]),
+                                ("sc", f"SC 29 {dash} 3 September 2026", rows[9][4]),
+                                ("sj", f"SJ 15 {dash} 19 August 2026", rows[15][4])):
+            assert (f'<span class="cdset">{CD.ONE[sid]}</span> <a href="{_h.escape(url)}" '
+                    f'rel="noopener">{_h.escape(label)} (PDF)</a>') in block, (
+                f"the newest {CD.ONE[sid]} is not a plain link in the section")
+        for sid, ys in want.items():
+            for y in ys:
+                assert f'<a href="/calendar/documents#{sid}-{y}">{y}</a>' in block, (
+                    f"without script there is no link to {CD.MANY[sid]} of {y}")
+        assert 'target="_blank"' not in block, (
+            "the section opens a PDF in a new tab; the cards' links to the same PDFs do not")
+        assert '<p class="cdleft">4 documents the General Court lists are not linked here.</p>' in block
+        for i, lab in (("cdset", "Calendar or journal"), ("cdyear", "Year"), ("cddoc", "Document")):
+            assert f'<label for="{i}">{lab}</label><select id="{i}">' in block, (
+                f"the {lab} picker has no visible label of its own")
+        heading, lead, body = CD.list_body(docs, left)
+        assert body.count(' rel="noopener">') == len(docs) and all(
+            f'href="{_h.escape(d.url)}"' in body for d in docs), (
+            "the list page does not link every document once")
+        notlinked = body.split('<h2 id="notlinked">Listed by the General Court and not linked here')
+        assert len(notlinked) == 2, "the list page has no section for what is not linked"
+        for name in ("09B", "HC 31", "HJ 17", "Governor&#x27;s Budget Address",
+                     "Of these, 2 answered with an error when this site asked for them and 2 "
+                     "were set aside without being asked for."):
+            assert name in notlinked[1], f"the list page does not say {name!r} of what is not linked"
+        # What the list page says of itself: the name, the year and how far it reaches.
+        undated = sum(1 for d in docs if not d.date)
+        assert undated == 5, f"{undated} of the fixture's documents have no date"
+        assert lead.startswith("16 documents, 2007 to 2026, each a link to the General "
+                               "Court&rsquo;s own file, under that file&rsquo;s name."), lead[:120]
+        assert ("Each is under the year of its date, newest first; the 5 with no date known "
+                "are under the year the General Court lists them for.") in lead, (
+            "the list page says a document is under the year of its date and does not say "
+            "how many have no date and are under the General Court's list year")
+        assert CD.sources(docs) == [("House", "https://gc.nh.gov/house/calendars_journals/"),
+                                    ("Senate", "https://gc.nh.gov/senate/calendars_journals/")] \
+            and all(any(u.startswith(page) for u in recorded) for _n, page in CD.sources(docs)), (
+            "the General Court's own pages are not the folders its recorded addresses are in")
+        assert ("The latest date on a document here is 4 September 2026; anything published "
+                "since is on the General Court&rsquo;s own pages for "
+                '<a href="https://gc.nh.gov/house/calendars_journals/" rel="noopener">the House</a> '
+                'and <a href="https://gc.nh.gov/senate/calendars_journals/" rel="noopener">'
+                "the Senate</a>.") in lead, (
+            "the list page does not say how far the list reaches and where a newer document is")
+        assert "no date known" not in CD.list_lead([d for d in docs if d.date]), (
+            "a list whose every document has a date speaks of ones that have none")
+        assert body.startswith('<p class="src"><a href="/calendar/documents#hc">House Calendars</a>'
+                               ' &middot; <a href="/calendar/documents#hj">House Journals</a>') \
+            and "/calendar/documents#" not in lead, (
+            "the links down to the four kinds are not a line of their own under the lead: "
+            "at its end they ran on from its links out to the General Court's pages")
+        assert body.count("<details") == sum(len(v) for v in want.values()) \
+            and body.count("<details class=\"cdyear\" id=") == body.count("<details") \
+            and body.count(" open>") == 4, "a year is not a <details>, the newest of each set open"
+
+        # ---- a build: the pages, the two files, the sitemap ----
+        site = root / "site"
+        site.mkdir()
+        shutil.copy(Path("bills.html"), site / "bills.html")
+        base = "https://graniterecord.org"
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+            f"<url><loc>{base}/calendar/1999-W01</loc></url>\n</urlset>\n", encoding="utf-8")
+        cal_today = _dt.date(*CAL_TODAY)
+        weeks = BC.weeks_from(_cal_rows(), names={})
+        BC.every_week(weeks, cal_today)
+        order = sorted(weeks)
+        urls = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, base, k, weeks, order, i, {}, {}, {}, urls, cal_today,
+                             set(), study=True, picker=block)
+            size = BC.documents_files(site, base, docs, left, urls)
+            BC.month_files(site, weeks, order, {}, {}, {}, cal_today)
+        S.sitemap_merge(site, base, urls, "/calendar")
+        assert size and (site / "calendar" / "documents.json").is_file(), (
+            "calendar/documents.json is not beside the week pages after month_files() "
+            "pruned calendar/data/")
+        assert json.loads((site / "calendar" / "documents.json").read_text(
+            encoding="utf-8")) == json.loads(json.dumps(ix)), (
+            "calendar/documents.json is not the index")
+        sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+        assert f"<loc>{base}/calendar/documents</loc>" in sm and "1999-W01" not in sm \
+            and "documents.json" not in sm, (
+            "the list page is not in the sitemap after the stale weeks came out, or the "
+            "index went in")
+        here = BC.week_key(cal_today)
+        pages = {"calendar.html": "/calendar", f"calendar/{here}.html": f"/calendar/{here}",
+                 f"calendar/{order[0]}.html": f"/calendar/{order[0]}"}
+        for f, addr in pages.items():
+            t = (site / f).read_text(encoding="utf-8")
+            assert t.count('<section class="cdocs" id="cdocs"') == 1 and block in t, (
+                f"{f} does not carry the section once, as written")
+            main_ = t[t.index('<div class="calmain">'):]
+            assert main_.index('class="wknav wkfoot"') < main_.index('<section class="cdocs"') \
+                < main_.index('id="calpeek"'), f"{f}: the section is not under the schedule's arrows"
+            assert f'<p class="cdjump"><a href="{addr}#cdocs" id="cdjump">' in \
+                t[t.index('<div class="calhead">'):t.index('<div class="calside"')], (
+                f"{f}: the week's heading has no link down to the section at its own address")
+        lp = (site / "calendar" / "documents.html").read_text(encoding="utf-8")
+        assert body in lp and f'<link rel="canonical" href="{base}/calendar/documents">' in lp \
+            and "<h1>Calendars and journals of the General Court</h1>" in lp, (
+            "the list page was not written with its body, its heading and its own address")
+        bare = (root / "bare")
+        bare.mkdir()
+        shutil.copy(Path("bills.html"), bare / "bills.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.week_page(bare, base, order[0], weeks, order, 0, {}, {}, {}, [], cal_today,
+                         set(), study=True)
+            assert BC.documents_files(bare, base, [], [], []) == 0
+        t = (bare / "calendar" / f"{order[0]}.html").read_text(encoding="utf-8")
+        assert "cdocs" not in t and "cdjump" not in t and t.count("<script>(function(){") == 1 \
+            and not (bare / "calendar" / "documents.html").exists(), (
+            "a build with no list still draws the section, its link or its script")
+
+        # ---- the script, on that page ----
+        node = _cal_node()
+        if not node:
+            return "ok", (f"{len(docs)} documents linked at recorded addresses, {len(left)} "
+                          "left out and named; node is not on PATH, so the script was not run")
+        (root / "minidom.js").write_text(_CAL_DOM, encoding="utf-8")
+        (root / "drive.js").write_text(_CD_DRIVE, encoding="utf-8")
+        r = _run([node, str(root / "drive.js"), str(site)], capture_output=True, text=True,
+                 timeout=120)
+        said = ((r.stdout or "") + (r.stderr or "")).strip()
+        assert r.returncode == 0 and said.endswith("OK"), said[-1500:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(docs)} documents linked at recorded addresses, each once under its "
+                  f"own year; {len(left)} left out and named; the pickers run on the page a "
+                  "build wrote")
+
+
+@check("data", "the calendar's picker on this disk links only addresses archive/queue.csv holds")
+def _calendar_documents_on_disk():
+    """The same rule as _calendar_documents, held against the real list.
+
+    Every document the picker would link today is at an address the queue
+    records, no two share one, and every row is either linked, left out and
+    counted, or one of two listings of one document. Where a site is built,
+    its index and its section link nothing the queue does not hold -- which
+    stays true of a site built from an older, shorter list -- and a page that
+    carries the section has the index it reads and the list page it links.
+
+    The list's age is said and never failed on: the queue is refreshed at
+    night, a picker a few days behind is no reason to stop a build, and
+    build_calendar.py warns on every run when the newest House calendar is
+    three weeks old.
+    """
+    import datetime as _dt
+    import html as _h
+    import calendar_documents as CD
+    rows = CD.rows()
+    if not rows:
+        return "skip", "archive/queue.csv is not here"
+    docs, left = CD.read()
+    recorded = {r.get("url") for r in rows}
+    assert docs, "archive/queue.csv lists nothing the picker can link"
+    stray = [d.url for d in docs if d.url not in recorded]
+    assert not stray, f"{len(stray)} linked addresses are not in the queue: {stray[:2]}"
+    assert len({d.url for d in docs}) == len(docs), "two linked documents share one address"
+    twice = len(rows) - len(docs) - len(left)
+    assert 0 <= twice <= len(docs), (
+        f"{len(rows)} rows became {len(docs)} linked and {len(left)} left out")
+    ix = CD.index(docs)
+    made = {CD.address(ix, s["chamber"], d) for s in ix["sets"]
+            for ds in s["years"].values() for d in ds}
+    assert made == {d.url for d in docs}, (
+        "the index's prefix and tail do not give back the recorded addresses")
+    said = (f"{len(docs):,} linked, {len(left):,} left out, {twice:,} second listings of "
+            "one document")
+    built = Path("site") / "calendar" / "documents.json"
+    page = Path("site") / "calendar.html"
+    if built.exists() and page.exists():
+        sx = json.loads(built.read_text(encoding="utf-8"))
+        on_site = {CD.address(sx, s["chamber"], d) for s in sx["sets"]
+                   for ds in s["years"].values() for d in ds}
+        assert on_site <= recorded, (
+            f"site/calendar/documents.json holds {len(on_site - recorded)} addresses the "
+            f"queue does not: {sorted(on_site - recorded)[:2]}")
+        t = page.read_text(encoding="utf-8")
+        assert t.count('<section class="cdocs" id="cdocs"') == 1, (
+            "site/calendar/documents.json is built and site/calendar.html has no section")
+        assert (Path("site") / "calendar" / "documents.html").exists(), (
+            "site/calendar.html links /calendar/documents and site/calendar/documents.html "
+            "is not there: run build_calendar.py")
+        sec = t[t.index('<section class="cdocs"'):]
+        sec = sec[:sec.index("</section>")]
+        ext = {_h.unescape(h) for h in re.findall(r'href="(https://[^"]*)"', sec)}
+        assert ext and ext <= recorded, (
+            f"site/calendar.html's section links {sorted(ext - recorded)[:2]}, which the "
+            "queue does not hold")
+        said += f"; the built site links {len(on_site):,}, all of them recorded"
+    elif page.exists():
+        t = page.read_text(encoding="utf-8")
+        # A PAGE WITH THE SECTION AND NO INDEX is pickers that load nothing and
+        # a link to a list that is not there. A page with neither was built
+        # before the pickers were, or on a folder with no queue, and is said.
+        assert '<section class="cdocs" id="cdocs"' not in t, (
+            "site/calendar.html carries the Calendars & Journals section and "
+            "site/calendar/documents.json is not there: run build_calendar.py")
+        said += ("; site/calendar.html was built without the section -- "
+                 "build_calendar.py will draw it")
+    first = CD.newest(docs, "hc")
+    newest = CD.newest_date(docs, "hc")
+    if first is not None and not first.date:
+        said += f"; the newest House calendar listed is {first.name}, whose date is not read yet"
+    elif newest:
+        age = (_dt.date.today() - _dt.date.fromisoformat(newest)).days
+        said += f"; the newest House calendar listed is {CD.day_words(newest)}, {age} days ago"
     return "ok", said
 
 

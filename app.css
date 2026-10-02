@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.182 */
+/* GRANITE_VERSION: 2026-09-07.185 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3665,6 +3665,124 @@ font-weight:600;color:var(--pine);text-decoration:underline;text-underline-offse
   .calviews{flex:1 1 100%}
   .calviews button{flex:1 1 0;padding-left:0;padding-right:0}
 }
+
+/* THE GENERAL COURT'S OWN CALENDARS AND JOURNALS, AS PDFs (1 October 2026).
+   Asked for "in a similar way to how GenCourt does it": pickers in a row --
+   which kind, which year, which document -- and a button that opens the one
+   chosen, under the schedule and its arrows, as wide as the schedule. The
+   first picker carries the chamber, so it is one row and not two.
+
+   Without script the section is links: the newest of each kind, and every
+   year of each as a link to that year on the list page (.cdyears). With it
+   the years give way to the row (.cdpick), which is emitted hidden like every
+   other control here. The pickers are native selects: the keyboard, the
+   screen reader and a phone's own wheel come with them. The button is a link
+   whose address the script keeps in step, in the solid pine that means "do
+   this" on this site (.fbk). calendar_documents.py writes the markup. */
+.cdocs{margin:0 0 var(--sp-9);scroll-margin-top:var(--sp-6)}
+.cdocs h2{font-size:var(--t-lead);line-height:1.2;margin:0 0 var(--sp-5)}
+/* The heading takes focus when the link under the week's name is followed. */
+.cdocs h2:focus{outline:none}
+.cdocs h2:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
+/* ONE ROW WHEREVER ONE ROW FITS. The schedule's column is at its narrowest
+   not on a tablet but at 1024px, where the month comes up beside it and
+   leaves the row 652px; the first minimums written here (11rem, 7rem, 14rem)
+   needed 679px and put the button 27px past the box at that width, measured
+   in a browser on 1 October. These need 583px, which every width above
+   700px gives; at 700px and under the pickers stack. */
+.cdpick{display:grid;grid-template-columns:minmax(9.5rem,1fr) 5.5rem minmax(11rem,2fr) auto;
+gap:var(--sp-4) var(--sp-5);align-items:end;margin:0;padding:var(--sp-6);
+background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
+.cdpick[hidden],.cdyears[hidden]{display:none}
+/* min-width:0, for .bfilt's reason: a select's minimum is its longest option,
+   and "Daily Journal No 06 2-21-07-State of Judiciary Final" is wider than a
+   phone. The column is what must fit; the option's text is the browser's to
+   shorten, and the line under the pickers (.cdnow) says the document in full. */
+.cdf{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.cdf label{font-size:var(--t-ui);font-weight:600;line-height:1.3;color:var(--ink)}
+.cdf select{font:inherit;font-size:var(--t-ui);color:var(--ink);width:100%;min-width:0;
+min-height:40px;padding:var(--sp-2) var(--sp-4);background:var(--paper);
+border:1px solid var(--edge);border-radius:var(--r-in)}
+.cdf select:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
+/* THE DOCUMENT CHOSEN, IN FULL, AT EVERY WIDTH: a row of its own under the
+   pickers and the button. It was drawn at 700px and under only, on the word
+   that a wider picker shows the whole name -- which it does not for a long
+   one: the document picker is 346px at its widest and 243px at 1024px, and
+   "Daily Journal No 03 1-21-10 State of the State Final" read "Daily Journal
+   No 03 1-21-10" with the whole of it nowhere on the page. In the markup it
+   comes before the button, which is where it is wanted when the pickers
+   stack, so in the row both are placed by name. */
+.cdnow{grid-column:1 / -1;grid-row:2;margin:0;font-size:var(--t-ui);line-height:1.4;
+color:var(--ink);overflow-wrap:anywhere}
+.cdopen{grid-column:4;grid-row:1}
+.cdopen{display:inline-flex;align-items:center;justify-content:center;min-height:40px;
+padding:var(--sp-3) var(--sp-7);font-size:var(--t-ui);font-weight:600;white-space:nowrap;
+color:var(--on-pine);background:var(--pine);border-radius:var(--r-in);text-decoration:none}
+.cdopen:hover{text-decoration:underline}
+.cdopen:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.cdocs > .calhint{margin:var(--sp-3) 0 0}
+.cdocs > .calhint:empty{margin:0}
+/* What heads the two lists outranks them: larger, and in the ink. */
+.cdsub{margin:var(--sp-7) 0 var(--sp-3);font-size:var(--t-body);font-weight:600;color:var(--ink)}
+.cdlatest,.cdsets,.cdsets ul{list-style:none;margin:0;padding:0}
+.cdlatest{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--sp-8);
+font-size:var(--t-ui);line-height:1.4}
+.cdlatest li{padding:var(--sp-2) 0;min-width:0;overflow-wrap:anywhere}
+.cdset{color:var(--ink-2)}
+.cdlatest .cdset::after{content:":"}
+/* Inline, so a name too long for its column runs on from the kind before it
+   and breaks where the words do; as a block it dropped whole to the next
+   line in one column and not in the other. */
+.cdlatest a{padding:var(--sp-1) 0;font-weight:600}
+.cdsets{font-size:var(--t-ui);line-height:1.4}
+.cdsets > li{margin:0 0 var(--sp-4)}
+.cdsets > li > .cdset{display:block;margin:0 0 var(--sp-1)}
+.cdsets ul{display:flex;flex-wrap:wrap;gap:0 var(--sp-5)}
+/* 28px tall, so one year is one target for a finger. */
+.cdsets a{display:inline-block;padding:var(--sp-2) 0}
+.cdall{margin:var(--sp-6) 0 var(--sp-3);font-size:var(--t-ui);font-weight:600}
+.cdall a{display:inline-block;padding:var(--sp-1) 0}
+/* What the two kinds of document are, and what is not here: said last and
+   quietly, under the links they are about. */
+.cdocs .src,.cdleft{margin:0 0 var(--sp-2);font-size:var(--t-ui);line-height:1.5;color:var(--ink-2)}
+/* Down to the section from the week's name: a busy week is a long scroll. */
+.cdjump{margin:var(--sp-3) 0 0;font-size:var(--t-ui);font-weight:600}
+.cdjump a{display:inline-block;padding:var(--sp-1) 0}
+@media (max-width:700px){
+  /* Stacked, each as wide as the column and 44px tall, with the select's
+     text at 16px so a phone does not zoom the page on focus. */
+  .cdpick{grid-template-columns:minmax(0,1fr);padding:var(--sp-5)}
+  .cdf select{min-height:44px;font-size:var(--t-body)}
+  /* In the markup's order again: the document said whole, then the button. */
+  .cdnow,.cdopen{grid-column:auto;grid-row:auto}
+  .cdopen{min-height:44px}
+  .cdlatest{grid-template-columns:minmax(0,1fr)}
+}
+
+/* EVERY CALENDAR AND JOURNAL, AS A LIST (/calendar/documents): what the
+   section's years link to, and the whole of it without script. A year is a
+   <details>, the newest of each kind open; the documents run in columns as
+   wide as the longest names need, so the page's width is used. */
+/* A kind's heading outranks the years under it, which .clist's small caps at
+   14px did not: a year's row is 16px and bold. */
+.cdpage h2{font-size:var(--t-lead);letter-spacing:0;text-transform:none;color:var(--ink);
+border-bottom-color:var(--rule-2);scroll-margin-top:var(--sp-6)}
+.cdpage h2 .cdn{margin-left:var(--sp-3)}
+.cdyear{border-bottom:1px solid var(--rule);scroll-margin-top:var(--sp-6)}
+/* The summary keeps the browser's own marker, which says it opens. */
+.cdyear > summary{padding:var(--sp-5) 0;font-size:var(--t-body);font-weight:600;color:var(--ink);
+cursor:pointer}
+.cdyear > summary .cdn{margin-left:var(--sp-3)}
+.cdyear > summary:hover{color:var(--pine)}
+.cdyear > summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.cdn{font-family:var(--sans);font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
+.cdlist{list-style:none;margin:0 0 var(--sp-5);padding:0;columns:19rem auto;column-gap:var(--sp-8);
+font-size:var(--t-ui);line-height:1.4}
+.cdlist li{break-inside:avoid;overflow-wrap:anywhere}
+.cdlist a{display:inline-block;padding:var(--sp-2) 0}
+.cdout{columns:auto}
+.cdout li{padding:var(--sp-2) 0;color:var(--ink)}
+.cdout .cdset::after{content:":"}
 
 /* HOW THE DAY BEGAN. One sentence, so it reads as an opening rather than as
    a data field: the hour, the prayer, the Pledge. */
