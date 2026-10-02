@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.20
+# GRANITE_VERSION: 2026-09-10.21
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -228,7 +228,7 @@ def votes(out, data):
     return made
 
 
-def proceedings_table(out, site):
+def proceedings_table(out, site, table=None, histories=None):
     """Every proceeding, with the time its bill's page prints.
 
     THE PAGE'S TIME, NOT THE SCHEDULE. start_seconds was proceedings.csv's
@@ -244,6 +244,18 @@ def proceedings_table(out, site):
     the schedule is kept, named for what it is. A proceeding the page gives
     no time -- none recorded, or captions an hour out of step with their
     recording -- has none here either.
+
+    AND NOT A NOTICE NO BODY SAT FOR (2 October 2026). The table this is read
+    from holds what the docket scheduled, and this file is described as every
+    proceeding on record: it listed a public hearing of Executive Departments
+    and Administration on HB 273 of 2017, a bill the House did not introduce
+    and whose own page says no record tells whether that hearing was held,
+    and three sittings on HB 1284 and HB 1512 of 2012 set for days after each
+    was withdrawn. The bills' pages draw none of the four and their
+    committees' pages list none; the rule is theirs (proceedings.sittings),
+    asked of the same histories, so the download cannot say what the pages do
+    not. `table` and `histories` are proceedings.csv and narratives.json, read
+    from disk unless a caller hands them in.
     """
     import proceedings as P
     import site_read as SR
@@ -266,8 +278,19 @@ def proceedings_table(out, site):
             here = [s for s in here if want in (s.get("what") or "").lower()] or here
         return here[0] if here else {}
 
+    table = P.load() if table is None else table
+    if histories is None:
+        histories = load("narratives.json", {})
+    # SILENCE IS NOT SUCCESS: with no histories every notice is a proceeding.
+    if table and not histories:
+        raise SystemExit("narratives.json is not there, or holds nothing. "
+                         "proceedings.csv leaves out the docket's notices for a "
+                         "bill withdrawn or never introduced, which the bill's "
+                         "history tells apart from a sitting. Run narrative.py "
+                         "--all first.")
+    table, notices = P.sittings(table, histories)
     rows, placed = [], 0
-    for r in P.load():
+    for r in table:
         st = published(r) if r.get("video_id") else {}
         placed += st.get("start") is not None
         rows.append([r.get("term", ""), r.get("bill", ""), r.get("body", ""),
@@ -280,7 +303,12 @@ def proceedings_table(out, site):
                      r.get("predicted_offset") or ""])
     rows.sort(key=lambda r: (r[4], BO.bill_key(r[1])))
     print(f"  proceedings.csv: {placed:,} rows carry the time their page "
-          "prints")
+          "prints" + (f"; {len(notices)} docket notice(s) for a bill withdrawn "
+                      "before the day or never introduced are left out ("
+                      + ", ".join(f"{r.get('bill')} {r.get('date')}"
+                                  for r in notices[:8])
+                      + (", ..." if len(notices) > 8 else "") + ")"
+                      if notices else ""))
     return write(out, "proceedings.csv", cols, rows,
                  "Every hearing, executive session and floor debate on "
                  "record, and the recording it is on where there is one. "
@@ -300,6 +328,10 @@ def proceedings_table(out, site):
                  "adopted in a block on a consent calendar and never taken up "
                  "on its own; and an empty how_placed is a proceeding with no "
                  "recording matched to it. "
+                 "A meeting the docket gave notice of for a bill that was "
+                 "never introduced, or for a day after the bill was "
+                 "withdrawn, is not a row: the bill's own page says what the "
+                 "docket entered. "
                  "scheduled_seconds is the meeting's called time minus the "
                  "stream's start, which is the schedule and not a finding.")
 

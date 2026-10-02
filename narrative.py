@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.47
+# GRANITE_VERSION: 2026-09-04.48
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2273,6 +2273,26 @@ def day_order(ev):
     return (ev["when"].date(), ev.get("_row", 0))
 
 
+def notice_note(ev):
+    """What the bill's list of docket lines says beside a meeting row that
+    build() tells as a notice and not as a meeting.
+
+    The list is headed "every action the General Court recorded", and it left
+    these rows out as it leaves out a row the docket cancelled -- which the
+    docket did not do to them. HB 273 of 2017's note said "Its docket has two
+    rows" over a list of one. The row is shown, and this says why the history
+    does not tell it as a sitting: the journal's word (HB 273's "Public
+    Hearing: 01/10/2017 01:30 PM LOB 306"), the withdrawal that came first
+    (HB 1284 and HB 1512 of 2012), or, where neither names the day, that the
+    bill was never introduced."""
+    if ev.get("_journal"):
+        return ("A notice, for a bill the House did not introduce. No record on this "
+                "site says whether it was held.")
+    if ev.get("_void") == "withdrawn":
+        return "A notice. The bill was withdrawn before the day it names."
+    return "A notice, for a bill that was never introduced."
+
+
 def build(bill, rows, introduction=None):
     rows = sorted(rows, key=lambda r: r["created"])
     if CORRECTIONS:
@@ -2430,7 +2450,8 @@ def build(bill, rows, introduction=None):
         for e in evs:
             if not e["cancelled"] and e["_type"] in ("hearing", "exec", "worksession") \
                     and e["when"].date() > cut:
-                e["_void"] = True
+                # Truthy, and the reason, for the row's note (notice_note).
+                e["_void"] = "withdrawn"
                 # Beside the plan it belonged to, where the bill never was
                 # introduced; a bill that was keeps the notice on its day.
                 if not_introduced:
@@ -2440,10 +2461,13 @@ def build(bill, rows, introduction=None):
             if not e["cancelled"] and e["_type"] == "introduced":
                 e["_type"], not_introduced = "entered_introduced", True
                 e["_journal"] = said
-        for e in evs:
-            if not_introduced and not e["cancelled"] and not e.get("_void") \
-                    and e["_type"] in ("hearing", "exec", "worksession"):
-                e["_void"], e["_journal"] = True, said
+                # On the day the row was entered, as a "To Be Introduced" row
+                # a withdrawal overtook is: HB 177's was typed on 28 December
+                # 2016, and dated by the day it names it put an action of the
+                # House on 4 January 2017, on the bill's list of docket lines
+                # and as the last thing done to it, where the page says the
+                # House did nothing. The sentence still gives the day the row
+                # names, as the row's.
                 e["when"] = e["_entered"]
     # And a bill only ever proposed for a session: HB 3 of the 2006 special
     # session, whose one row is PROPOSED_ROW.
@@ -2451,11 +2475,24 @@ def build(bill, rows, introduction=None):
             e["_type"] == "introduced" for e in evs):
         not_introduced = True
     if not_introduced:
+        # EVERY MEETING SET FOR A BILL THAT WAS NEVER INTRODUCED, whichever
+        # row says it was not and whatever day the meeting was set for: no
+        # committee had the bill. proceedings.notice_only leaves every such
+        # row off the bill's stations, and a history that told one as held
+        # would say what its own page does not draw. The one on disk is
+        # HB 273's (the withdrawal rule above has already made notices of HB
+        # 1284's two), and it carries the journal's word, for its sentence.
+        for e in evs:
+            if not e["cancelled"] and not e.get("_void") \
+                    and e["_type"] in ("hearing", "exec", "worksession"):
+                e["_void"], e["when"] = "not introduced", e["_entered"]
+                if journal_out:
+                    e["_journal"] = said
         for e in evs:
             if e["_type"] in ("to_be_introduced", "entered_introduced", "withdrawn",
                               "proposed") or e.get("_void"):
                 e["_pre"] = True
-    if gone:
+    if gone or journal_out:
         evs = [e for _i, e in sorted(enumerate(evs),
                                      key=lambda x: (x[1]["when"].date(), x[0]))]
 
@@ -2708,6 +2745,14 @@ def build(bill, rows, introduction=None):
                     # This bill's own row of a vote the docket also files
                     # under another bill (docket_corrections.json "misfiled").
                     **({"row_note": e["row_note"]} if e.get("row_note") else {}),
+                    # A meeting row told as a notice. "cancelled" above keeps
+                    # it out of everything that reads what happened; this says
+                    # the docket did not cancel it, so the bill's list of
+                    # docket lines still shows the row, with why it is not
+                    # told as a meeting beside it (notice_note).
+                    **({"notice": True,
+                        "row_note": e.get("row_note") or notice_note(e)}
+                       if e.get("_void") else {}),
                     # One line the clerk typed, read whole from rows the
                     # database cut it into, and how many floor actions those
                     # rows were read as one by one (docket_era_1999.

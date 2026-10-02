@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.36
+# GRANITE_VERSION: 2026-09-07.37
 """
 A page's worth of data for every committee.
 
@@ -252,53 +252,76 @@ def its_own_sitting(r):
                 and (r.get("kind") or "").strip().lower() != "committee of conference")
 
 
-def a_sitting_on_it(page, date):
-    """Does the bill's own page draw a committee proceeding of it on this day?
-
-    A NOTICE IS NOT A SITTING ON THE BILL (1 October 2026). proceedings.csv
-    reads the docket's notices -- "Public Hearing: 1/12/2012 10:30 AM LOB
-    207", entered on 15 December -- and a notice is entered before the day.
-    HB 1284 of 2012 was withdrawn on 4 January, never introduced, and
-    Education's page said the committee met on January 12, 2012 for a public
-    hearing on it and on the 24th for an executive session; HB 273 of 2017,
-    which the House never introduced, stood among the bills Executive
-    Departments and Administration heard on 10 January 2017. The bill's own
-    page draws no proceeding for either: build_site_v2 leaves a sitting set
-    for after the bill's withdrawal, or for a bill that was never
-    introduced, out of its stations. This page already takes each
-    proceeding's time from those stations, so that the two agree; it takes
-    from them whether there was a proceeding to time, for the same reason.
-
-    `page` is the bill's record as its page carries it (site_read.by_bill),
-    or None where the bill has no page: with nothing to hold the row to, it
-    stays, as it did. The day is asked and not the kind, so a row the page
-    draws under another word for its kind is still a sitting."""
-    if page is None or "stations" not in page:
-        return True
-    return any(st.get("when") == date for st in page.get("stations") or [])
-
-
-# How many rows a_sitting_on_it may leave off before the build stops. FOUR OF
-# 95,422 on 1 October 2026: HB 1284 of 2012's two, the hearing of the 12th on
-# HB 1512 of 2012 (introduced, and withdrawn on the 4th) and HB 273 of 2017's.
-# A ceiling well above that lets a few more such bills through and stops the
-# build on a count of another kind.
+# A NOTICE IS NOT A SITTING ON THE BILL (1 October 2026). proceedings.csv
+# reads the docket's notices -- "Public Hearing: 1/12/2012 10:30 AM LOB 207",
+# entered on 15 December -- and a notice is entered before the day. HB 1284 of
+# 2012 was withdrawn on 4 January, never introduced, and Education's page said
+# the committee met on January 12, 2012 for a public hearing on it and on the
+# 24th for an executive session; HB 273 of 2017, which the House never
+# introduced, stood among the bills Executive Departments and Administration
+# heard on 10 January 2017. The rule is proceedings.notice_only, asked of each
+# bill's own history (narratives.json) through proceedings.sittings: the rule
+# build_site_v2 asks for the bill's stations, so this page and the bill's
+# agree by it, and the download and the Learn pages' count with them.
+#
+# IT WAS FIRST TAKEN FROM WHAT THE BILL'S PAGE DID NOT DRAW (a_sitting_on_it):
+# a row with no station on its day was a notice. That left off any row a page
+# happened not to draw, held only by a count, and a lookup that missed kept
+# every row and said nothing. A row is left off for what its bill's history
+# says, and the two guards below hold each direction.
+#
+# How many rows may be left off before the build stops. FOUR OF 95,422 on 1
+# October 2026: HB 1284 of 2012's two, the hearing of the 12th on HB 1512 of
+# 2012 (introduced, and withdrawn on the 4th) and HB 273 of 2017's. A ceiling
+# well above that lets a few more such bills through and stops the build on a
+# count of another kind.
 NOTICE_CEILING = 50
 
 
 def notice_guard(notices, ceiling=NOTICE_CEILING):
     """What to stop the build with when more of proceedings.csv's rows are
-    left off the committees' days than `ceiling`, or "". A rule that reads
-    another page's stations leaves every sitting off every committee's page
-    the day those stations stop being written, and exits 0."""
+    left off the committees' days than `ceiling`, or "". A history that
+    marked whole terms withdrawn or never introduced would take every sitting
+    on their bills off every committee's page, and exit 0."""
     if len(notices) <= ceiling:
         return ""
-    return (f"{len(notices):,} rows of proceedings.csv are on no station of their "
-            f"bill's own page, past the ceiling of {ceiling} (NOTICE_CEILING): "
-            + ", ".join(notices[:6]) + ". These are meant to be the few notices "
-            "for a bill withdrawn or never introduced. If the bill pages have "
-            "stopped carrying their stations, every committee's sitting days go "
-            "with them; rebuild the site data and the bill pages first.")
+    return (f"{len(notices):,} rows of proceedings.csv are for a bill its history "
+            "tells as withdrawn before the day or never introduced, past the "
+            f"ceiling of {ceiling} (NOTICE_CEILING): " + ", ".join(notices[:6])
+            + ". These are meant to be the few notices the docket entered ahead "
+            "for such a bill. Read what narratives.json says of these bills "
+            "before raising the ceiling: left off, they take the committees' "
+            "sitting days with them.")
+
+
+# The statuses build_site_v2 gives a bill that was never introduced: its
+# NEVER_INTRODUCED, and preflight holds the two alike.
+NEVER_INTRODUCED = {"Refused introduction", "Withdrawn prior to introduction",
+                    "Proposed for the special session", "Not introduced"}
+
+
+def untaken_guard(filed):
+    """What to stop the build with when a row filed under a committee's day is
+    for a bill the site's index says was never introduced, or "".
+
+    THE OTHER DIRECTION, and the silent one. With narratives.json of another
+    build, or holding no history for the bill, no row of it is a notice:
+    every row is filed, HB 273 of 2017 is back among the bills Executive
+    Departments and Administration heard on 10 January 2017, and the build
+    exits 0. The index is the second witness -- its status is build_site_v2's
+    word for the same history -- and no committee sat on a bill that was
+    never introduced. `filed` is [(the row, the bill's row of the index)]."""
+    bad = [f"{r.get('bill')} of {r.get('term')} ({r.get('kind')} {r.get('date')}, "
+           f"{meta.get('status')})" for r, meta in filed
+           if (meta or {}).get("status") in NEVER_INTRODUCED]
+    if not bad:
+        return ""
+    return (f"{len(bad)} row(s) of proceedings.csv are filed under a committee's day "
+            "for a bill site/index.json says was never introduced: "
+            + ", ".join(bad[:6]) + ". No committee sat on such a bill. Its history "
+            "in narratives.json does not say what the index says, so the two are "
+            "of different builds or the history is missing: run narrative.py "
+            "--all and build_site_v2.py again, then this.")
 
 
 def years(span):
@@ -688,17 +711,28 @@ def main():
     day_said = collections.defaultdict(lambda: collections.defaultdict(
         collections.Counter))
     names_at = collections.defaultdict(lambda: collections.defaultdict(set))
-    # The docket's notices the bill's own page draws no proceeding for.
-    notices = []
-    for r in P.load():
+    # The rows a committee sat for, and the docket's bare notices left off
+    # (proceedings.notice_only), by each bill's own history. SILENCE IS NOT
+    # SUCCESS: with no histories here every notice would be filed as a
+    # sitting and nothing would say so.
+    rows, histories = P.load(), load("narratives.json", {})
+    if rows and not histories:
+        raise SystemExit("narratives.json is not there, or holds nothing. A docket "
+                         "notice for a bill withdrawn or never introduced is told "
+                         "apart from a sitting by the bill's history, and without it "
+                         "every notice would be filed as a day the committee sat. "
+                         "Run narrative.py --all first.")
+    rows, left_off = P.sittings(rows, histories)
+    del histories
+    notices = [f"{r.get('bill')} {r.get('kind')} {r.get('date')}"
+               for r in left_off if its_own_sitting(r)]
+    # Every row filed, with its bill's row of the index (untaken_guard).
+    filed = []
+    for r in rows:
         if not its_own_sitting(r):
             continue
         meta = bill_meta.get((r.get("term"), r.get("bill"))) or {}
-        if not a_sitting_on_it(
-                _stations.get((str(meta.get("year") or ""), (r.get("bill") or "").upper())),
-                r.get("date")):
-            notices.append(f"{r.get('bill')} {r.get('kind')} {r.get('date')}")
-            continue
+        filed.append((r, meta))
         cname = (r.get("committee") or "").strip()
         code = code_of(cname, r.get("body"), r.get("term"))
         if not code:
@@ -724,9 +758,10 @@ def main():
             "state": (st or {}).get("state") or "",
             "time": r.get("time") or "", "venue": r.get("venue") or "",
         })
-    # Before a page is written: past the ceiling these are not notices, they
-    # are the bill pages' stations gone, and every committee's days with them.
-    stop = notice_guard(notices)
+    # Before a page is written: past the ceiling these are not the few
+    # notices, and a row filed for a bill that was never introduced is one
+    # the rule did not see.
+    stop = notice_guard(notices) or untaken_guard(filed)
     if stop:
         raise SystemExit(stop)
 
@@ -1134,8 +1169,8 @@ def main():
               + ", ".join(empty[:8]))
     if notices:
         print(f"  {len(notices)} docket notice(s) left off the committees' days, each "
-              "for a bill whose own page draws no proceeding of it that day (withdrawn "
-              "before it, or never introduced): " + ", ".join(notices[:8])
+              "for a bill its history tells as withdrawn before the day or never "
+              "introduced: " + ", ".join(notices[:8])
               + (", ..." if len(notices) > 8 else ""))
     # SILENCE IS NOT SUCCESS: the pages are written, and the build stops here
     # if the names that reach none of them have grown past the ceiling.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.128
+# GRANITE_VERSION: 2026-09-05.129
 """
 Generate the faceted site from real General Court data.
 
@@ -6798,9 +6798,9 @@ def _docket_as_entered(b, narr):
     HB 87 of 2009 has one row, which enters it as introduced. HB 177 and
     HB 277 of 2017 have one that still reads "To Be Introduced 01/04/2017 and
     referred to ...". HB 273 of 2017 has a second, "Public Hearing: 01/10/2017
-    01:30 PM LOB 306", which narrative.build tells as the docket's notice and
-    the page's list of docket lines leaves out, as it does a cancelled row: it
-    is quoted here, so the reader is shown the row the history speaks of. And
+    01:30 PM LOB 306", which narrative.build tells as the docket's notice: it
+    is quoted here, beside the row that enters the bill, and the page's list
+    of docket lines shows both (docket_lines). And
     on a record of the bill search's own list, the House status that list
     gives -- IN COMMITTEE on all four of 2017 -- is said, because it is what
     the General Court's own page shows and this page does not repeat."""
@@ -6827,7 +6827,8 @@ def _docket_as_entered(b, narr):
             + f"; it is {told}")
 
 
-def record_notes(b, narr, status_source="", sponsors=(), term="", bid=""):
+def record_notes(b, narr, status_source="", sponsors=(), term="", bid="",
+                 text_version=""):
     """The notes a page carries about where its record comes from, as a list
     (empty for a record of the bill search's own list, which is nearly every
     one). One plain sentence or two each, in this site's words: a reader shown
@@ -6880,9 +6881,19 @@ def record_notes(b, narr, status_source="", sponsors=(), term="", bid=""):
             out.append(where + ", which leaves this number out, so it is told here "
                        "as withdrawn without having been introduced.")
         else:
-            out.append(where + ", which leaves this number out, and no later "
-                       "resolution of the term names it. "
-                       + _docket_as_entered(b, narr))
+            note = (where + ", which leaves this number out, and no later "
+                    "resolution of the term names it. "
+                    + _docket_as_entered(b, narr))
+            # AND THE HEADING ON ITS TEXT IS NOT AN INTRODUCTION. The four of
+            # 2017 have a text on the General Court's site, each headed "HB
+            # 273 - AS INTRODUCED" (legislation/2017/HB0273.html), and the Bill
+            # Text tab shows that heading under a status of Not introduced.
+            # `text_version` is the heading as the tab prints it.
+            if (text_version or "").strip().lower() == "as introduced":
+                note += (" The General Court's text of it is headed \u201cAs "
+                         "introduced\u201d, the heading it gives a bill's first "
+                         "printing, and the Bill Text tab shows it under that heading.")
+            out.append(note)
     if b.get("source") == PAST_SOURCE and (term, bid) in ROW_NAMES_ANOTHER and narr:
         out.append(ROW_NAMES_ANOTHER[(term, bid)])
     # A SPONSOR LIST THAT MAY BE SHORT. In 1999-2000 the General Court's
@@ -7225,9 +7236,18 @@ def docket_lines(narr):
 
     A line told question by question (docket_vocab.questions) is listed
     once, whole, by the event that carries it: the page shows the clerk's
-    lines, and a clause of one is not a line."""
+    lines, and a clause of one is not a line.
+
+    A row the docket cancelled is not listed. A MEETING ROW TOLD AS A NOTICE
+    IS: narrative.build carries it as cancelled, so that nothing reads it as
+    a sitting, and the docket did not cancel it -- "Public Hearing: 01/10/2017
+    01:30 PM LOB 306" on HB 273 of 2017, a bill the House did not introduce,
+    and the notices HB 1284 and HB 1512 of 2012 were withdrawn ahead of. The
+    list is every action the General Court recorded, and HB 273's note said
+    "Its docket has two rows" above a list of one. The row comes with the
+    note narrative.notice_note gives it."""
     evs = [e for e in (narr or {}).get("events", [])
-           if not e.get("cancelled") and not e.get("in_line")]
+           if (not e.get("cancelled") or e.get("notice")) and not e.get("in_line")]
     away = [e for e in (narr or {}).get("misfiled", []) if not e.get("cancelled")]
     if not away:
         return evs
@@ -7595,18 +7615,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # HB 1284 of 2012 was withdrawn on 4 January. narrative.build dates
         # the withdrawal and tells such a notice as one; here the notice is
         # not drawn as a hearing the committee held.
-        _gone = (narr or {}).get("withdrawn")
-        if _gone:
-            stations = [x for x in stations if (x.get("when") or "") <= _gone]
         # NOR DID ONE SET FOR A BILL THAT WAS NEVER INTRODUCED, withdrawal or
         # none: no committee was sent it. HB 273 of 2017 has no withdrawal on
         # its docket and one notice, "Public Hearing: 01/10/2017 01:30 PM LOB
         # 306", and was drawn a station for a hearing nothing on disk says
-        # was held. Its history tells the notice as the docket's; the
-        # committee's page takes its days from these stations
-        # (build_committees), so it does not say the committee heard it.
-        if (narr or {}).get("not_introduced"):
-            stations = []
+        # was held. Its history tells the notice as the docket's.
+        # The rule is proceedings.notice_only, and the committee's page, the
+        # download and the Learn pages' count ask it of the same rows, so none
+        # of them says a committee sat where this page draws nothing.
+        stations = [x for x in stations
+                    if not P.notice_only({"date": x.get("when")}, narr)]
         # The sign-in counts, on the hearing itself. They already reach the
         # docket line that records the hearing -- 2,115 of them across 2,018
         # bills -- but that line sits inside a collapsed disclosure on another
@@ -7707,7 +7725,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # of the bill search's own list (record_notes).
             "notes": (story["notes"] if story else
                       (narr or {}).get("notes", [])
-                      + record_notes(b, narr, status_source, sp_list, term, bid)),
+                      + record_notes(b, narr, status_source, sp_list, term, bid,
+                                     (btext or {}).get("version", ""))),
             # Belongs on the Votes tab, not above the history.
             # NOT OVER THE TOP OF THE ROLL CALLS. narrative counts the
             # floor votes the DOCKET records as voice or division votes; the
@@ -7739,6 +7758,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                         # nowhere else on the page; the bill it belongs to
                         # carries a note on its own row of the same vote.
                         **({"row_note": e["row_note"]} if e.get("row_note") else {}),
+                        # A meeting row told as a notice (docket_lines): the
+                        # Hearings tab says the docket noticed one where it
+                        # draws none.
+                        **({"notice": True} if e.get("notice") else {}),
                         **hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None),
                         **_cite(e, sources, (e.get("date") or "")[:4])}

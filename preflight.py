@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.298
+# GRANITE_VERSION: 2026-09-04.299
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -7983,7 +7983,37 @@ var fixtures = [
          "printed HB 81's report here", "no reasoning is shown for it"],
    // Not the day the dump says it was released, which came after House
    // Calendar 12 had printed the report.
-   wantNot:["gives no reasoning", "February 23"]}
+   wantNot:["gives no reasoning", "February 23"]},
+  // A bill the House did not introduce, as build_site_v2 writes HB 273 of
+  // 2017: its docket's two rows, the second a notice with its reason; no
+  // station; and a status read from the House Journal. The list of docket
+  // lines shows the notice and why, the Hearings tab says the docket noticed
+  // a meeting where it draws none, and the status page is not called the
+  // page the status is taken from -- that page says IN COMMITTEE.
+  {name:"docket notice",
+   d:{next_step:"Not introduced", status_source:"House Journal",
+      events:[{date:"2016-12-30", text:"Introduced 01/04/2017 and referred to "
+                 +"Executive Departments and Administration", routine:false},
+              {date:"2017-01-04", text:"Public Hearing: 01/10/2017 01:30 PM LOB 306",
+               routine:false, notice:true,
+               row_note:"A notice, for a bill the House did not introduce. No record "
+                 +"on this site says whether it was held."}],
+      documents:[{label:"Bill status page", kind:"status",
+                  url:"https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"}]},
+   want:["Public Hearing: 01/10/2017 01:30 PM LOB 306",
+         "A notice, for a bill the House did not introduce.",
+         "The docket gave notice of a meeting on this bill",
+         "the status shown here is read from the House Journal instead"],
+   wantNot:["No scheduled proceedings on file",
+            "the page this site takes a bill's status from"]},
+  // And the same documents under a status the status page did give.
+  {name:"status from the status page",
+   d:{next_step:"Introduced", status_source:"General Court bill status page",
+      documents:[{label:"Bill status page", kind:"status",
+                  url:"https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"}]},
+   want:["the page this site takes a bill's status from",
+         "No scheduled proceedings on file"],
+   wantNot:["read from the House Journal instead"]}
 ];
 
 // BOTH ways a detail can be drawn, on EVERY shape of bill. The expanded view
@@ -15096,15 +15126,60 @@ def _committee_not_conference(BC):
                        + "; ".join(f"{r['bill']} {r['kind']} {r['date']}" for r in wrong))
     src = Path(BC.__file__).read_text(encoding="utf-8")
     main_ = src[src.index("def main("):]
-    assert re.search(r"for r in P\.load\(\):\s+if not its_own_sitting\(r\):\s+continue",
+    assert re.search(r"for r in rows:\s+if not its_own_sitting\(r\):\s+continue",
                      main_), "build_committees.main no longer files its rows through its_own_sitting"
     return "ok", ("HB 1's conference of 12 June 2025 is not House Finance's sitting, nor "
                   "SB 481's of 22 May 2026 Senate Finance's; their hearings are")
 
 
+# proceedings.csv's own rows (lines 69325, 54496, 54759, 54498, 69319, 69336 and
+# 51828), cut to the columns the rule and the builders read; and what
+# narratives.json holds of each bill that the rule asks about.
+_NOTICE_ROWS = {
+    "HB273": {"term": "2017-2018", "bill": "HB273", "body": "H", "kind": "public hearing",
+              "date": "2017-01-10", "time": "13:30", "venue": "LOB 306",
+              "committee": "Executive Departments and Administration", "source": "docket"},
+    "HB1284 hearing": {"term": "2011-2012", "bill": "HB1284", "body": "H",
+                       "kind": "public hearing", "date": "2012-01-12", "time": "10:30",
+                       "venue": "LOB 207", "committee": "Education", "source": "docket"},
+    "HB1284 exec": {"term": "2011-2012", "bill": "HB1284", "body": "H",
+                    "kind": "executive session", "date": "2012-01-24", "time": "10:00",
+                    "venue": "LOB 207", "committee": "Education", "source": "docket"},
+    "HB1512": {"term": "2011-2012", "bill": "HB1512", "body": "H", "kind": "public hearing",
+               "date": "2012-01-12", "time": "12:05", "venue": "LOB 301",
+               "committee": "Municipal and County Government", "source": "docket"},
+}
+_SITTING_ROWS = {
+    "HB255 hearing": {"term": "2017-2018", "bill": "HB255", "body": "H",
+                      "kind": "public hearing", "date": "2017-01-10", "time": "13:00",
+                      "venue": "LOB 306",
+                      "committee": "Executive Departments and Administration",
+                      "source": "docket"},
+    "HB255 exec": {"term": "2017-2018", "bill": "HB255", "body": "H",
+                   "kind": "executive session", "date": "2017-01-10", "time": "",
+                   "venue": "LOB 306",
+                   "committee": "Executive Departments and Administration",
+                   "source": "docket"},
+    # The other HB 273: 2011's, heard by Labor on 8 February 2011. A history
+    # looked up by the number alone would take 2017's.
+    "HB273 of 2011": {"term": "2011-2012", "bill": "HB273", "body": "H",
+                      "kind": "public hearing", "date": "2011-02-08", "time": "10:15",
+                      "venue": "LOB 307",
+                      "committee": "Labor, Industrial and Rehabilitative Services",
+                      "source": "docket"},
+}
+_NOTICE_HISTORIES = {
+    "2017-2018": {"HB273": {"not_introduced": True}, "HB255": {}},
+    "2011-2012": {"HB1284": {"withdrawn": "2012-01-04", "not_introduced": True},
+                  "HB1512": {"withdrawn": "2012-01-04"}, "HB273": {}},
+}
+
+
 @check("build", "a docket notice for a bill withdrawn or never introduced is not a sitting "
-                "of the committee on it", needs=("build_committees",))
-def _committee_not_a_notice(BC):
+                "of the committee on it, nor a proceeding in the download",
+       needs=("build_committees", "proceedings", "build_site_v2", "build_exports",
+              "build_civics"))
+def _committee_not_a_notice(BC, P, B, BE, BV):
     """Education's page said the committee met on January 12, 2012 for a public
     hearing on HB 1284, a bill withdrawn on the 4th and never introduced, and
     Executive Departments and Administration's that it heard HB 273 on
@@ -15112,34 +15187,64 @@ def _committee_not_a_notice(BC):
     over. Both are rows of proceedings.csv, which reads the docket's notices,
     and a notice is entered before the day.
 
-    The bill's own page draws neither: build_site_v2 leaves a sitting set for
-    after the bill's withdrawal, or for a bill that was never introduced, out
-    of its stations (the never-introduced check builds both). The committee's
-    page takes its days from those stations (a_sitting_on_it), so a row the
-    bill's page does not draw is not a day the committee sat on the bill --
-    and a bill with no page, or a record that carries no stations at all, is
-    not judged. Past NOTICE_CEILING the rows left off are not notices but
-    the stations gone, and the build stops before a page is written.
+    ONE RULE, proceedings.notice_only, asked of the bill's own history: a
+    committee row for a bill that was never introduced, or for a day after
+    the bill was withdrawn. build_site_v2 asks it for the bill's stations,
+    build_committees for the committee's days, build_exports for the download
+    and build_civics for the count of hearings, the last three through
+    proceedings.sittings, which looks the history up by the row's own term
+    and bill. The rule was first taken from the stations a bill's page lacked,
+    which left off any row a page happened not to draw and kept every row
+    when the lookup missed; both directions are held here.
 
-    The stations are as site_read.by_bill gives them for HB 273 of 2017,
-    HB 1284 of 2012 and HB 255 of 2017, which the committee heard on 10
-    January 2017 and reported on the 24th.
+    AND THROUGH main(), on a project of three bills: the committee's page is
+    built with HB 255's hearing and without HB 273's; without narratives.json
+    the build stops; and with a history that does not know HB 273 was never
+    introduced it stops on the index's word (untaken_guard), which is the
+    silent direction -- every notice filed as a sitting, exit 0.
+
+    The rows are proceedings.csv's own, and the histories what narratives.json
+    holds of each bill. Two rows are made for the guard and say so.
     """
-    f = getattr(BC, "a_sitting_on_it", None)
-    assert f, "build_committees has no a_sitting_on_it"
-    hb273 = {"stations": []}
-    hb255 = {"stations": [
-        {"when": "2017-01-10", "time": "13:00", "what": "public hearing"},
-        {"when": "2017-01-24", "time": "10:00", "what": "executive session"}]}
-    assert not f(hb273, "2017-01-10"), (
-        "HB 273 of 2017, whose page draws no hearing, is a sitting of its committee")
-    assert not f({"stations": []}, "2012-01-12") and not f({"stations": None}, "2012-01-24"), (
-        "HB 1284 of 2012, withdrawn before the days its notices name, is a sitting")
-    assert f(hb255, "2017-01-10") and f(hb255, "2017-01-24"), (
-        "a hearing the bill's own page draws was left off its committee's day")
-    assert not f(hb255, "2017-01-11"), "a day the bill's page does not draw is a sitting"
-    assert f(None, "2017-01-10") and f({}, "2017-01-10") and f({"events": []}, "2017-01-10"), (
-        "a row with no page, or no stations, to be held to was left off")
+    f, part = getattr(P, "notice_only", None), getattr(P, "sittings", None)
+    assert f and part, "proceedings has no notice_only, or no sittings"
+    hist = _NOTICE_HISTORIES
+
+    def of(r):
+        return (hist.get(r["term"]) or {}).get(r["bill"])
+    for name, r in _NOTICE_ROWS.items():
+        assert f(r, of(r)), f"{name}, a notice no committee sat for, is a sitting"
+    for name, r in _SITTING_ROWS.items():
+        assert not f(r, of(r)), f"{name}, a sitting, is left off as a notice"
+    hb1512, hb1284 = hist["2011-2012"]["HB1512"], hist["2011-2012"]["HB1284"]
+    # MADE FOR THE GUARD, on no docket: a sitting on the day of the withdrawal
+    # itself stands for a bill that was introduced (the rule is "after"), and
+    # for one that never was it does not -- no committee had that bill on any
+    # day; and a bill with no history is not judged.
+    on_the_day = {**_NOTICE_ROWS["HB1512"], "date": "2012-01-04"}
+    assert not f(on_the_day, hb1512), "a sitting on the day of a withdrawal is a notice"
+    assert f({**on_the_day, "bill": "HB1284", "date": "2012-01-03"}, hb1284), (
+        "a meeting set for a bill that was never introduced, for a day before its "
+        "withdrawal, is a sitting")
+    assert not f(_NOTICE_ROWS["HB273"], None) and not f(_NOTICE_ROWS["HB273"], {}), (
+        "a row whose bill has no history is left off")
+    # Never a floor row, nor a conference: neither is a committee's sitting.
+    for kind in sorted(P.FLOOR_KINDS):
+        assert not f({**_NOTICE_ROWS["HB1512"], "kind": kind}, hb1512), (
+            f"a {kind} row is left off as a committee's notice")
+    rows = list(_NOTICE_ROWS.values()) + list(_SITTING_ROWS.values())
+    kept, notices = part(rows, hist)
+    assert notices == list(_NOTICE_ROWS.values()) and kept == list(_SITTING_ROWS.values()), (
+        "proceedings.sittings parts the rows otherwise: "
+        + ", ".join(f"{r['bill']} {r['date']}" for r in notices))
+    assert part(rows, {}) == (rows, []) and part(rows, None) == (rows, []), (
+        "with no histories a row is left off")
+    # The lookup is by the row's term: under the number alone, or the other
+    # term, HB 273 of 2011 goes and HB 273 of 2017 stays.
+    swapped = {"2011-2012": hist["2017-2018"], "2017-2018": hist["2011-2012"]}
+    assert [r["term"] for r in part(
+        [_NOTICE_ROWS["HB273"], _SITTING_ROWS["HB273 of 2011"]], swapped)[1]] == ["2011-2012"]
+
     ceiling = BC.NOTICE_CEILING
     assert 20 <= ceiling <= 500, (
         f"NOTICE_CEILING is {ceiling}: a handful of notices are left off, and "
@@ -15148,23 +15253,147 @@ def _committee_not_a_notice(BC):
         "the guard stops a build at its own ceiling")
     msg = BC.notice_guard(["HB1284 public hearing 2012-01-12"] * (ceiling + 1))
     assert msg and str(ceiling) in msg and "HB1284" in msg, msg
+    # The index's words for a bill never introduced are build_site_v2's.
+    assert BC.NEVER_INTRODUCED == B.NEVER_INTRODUCED, (
+        f"build_committees.NEVER_INTRODUCED is {sorted(BC.NEVER_INTRODUCED)} and "
+        f"build_site_v2's {sorted(B.NEVER_INTRODUCED)}")
+    filed = [(_SITTING_ROWS["HB255 hearing"], {"status": "Signed into law"}),
+             (_NOTICE_ROWS["HB1512"], {"status": "Withdrawn"}),
+             (_SITTING_ROWS["HB273 of 2011"], {})]
+    assert BC.untaken_guard(filed) == "" and BC.untaken_guard([]) == "", (
+        BC.untaken_guard(filed))
+    for status in sorted(B.NEVER_INTRODUCED):
+        msg = BC.untaken_guard(filed + [(_NOTICE_ROWS["HB273"], {"status": status})])
+        assert msg and "HB273 of 2017-2018" in msg and status in msg, (status, msg)
+
+    # Through main().
+    here = Path(".").resolve()
+    if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
+        return "skip", "build_committees.py or bills.html not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-cmte-notice-"))
+    try:
+        (root / "site").mkdir()
+        (root / "data").mkdir()
+        shutil.copy2(here / "bills.html", root / "bills.html")
+        (root / "data" / "committees.json").write_text(json.dumps({
+            "H07": {"code": "H07", "name": "Executive Departments and Administration",
+                    "abbr": "ED&A"},
+            "H18": {"code": "H18", "name": "Municipal and County Government",
+                    "abbr": "M&C"}}), encoding="utf-8")
+
+        def entry(bid, year, term, status, cmte):
+            return {"id": bid, "n": re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid), "term": term,
+                    "year": year, "title": "a title", "status": status, "kind": "done",
+                    "committee": cmte, "committees": [cmte] if cmte else []}
+        (root / "site" / "index.json").write_text(json.dumps([
+            entry("HB255", 2017, "2017-2018", "Signed into law",
+                  "House Executive Departments and Administration"),
+            entry("HB273", 2017, "2017-2018", "Not introduced", ""),
+            entry("HB1512", 2012, "2011-2012", "Withdrawn",
+                  "House Municipal and County Government")]), encoding="utf-8")
+        P.write([_SITTING_ROWS["HB255 hearing"], _SITTING_ROWS["HB255 exec"],
+                 _NOTICE_ROWS["HB273"], _NOTICE_ROWS["HB1512"]], root / "proceedings.csv")
+        histories = {"2017-2018": hist["2017-2018"],
+                     "2011-2012": {"HB1512": hist["2011-2012"]["HB1512"]}}
+
+        def build(narr):
+            path = root / "narratives.json"
+            if narr is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_text(json.dumps(narr), encoding="utf-8")
+            r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
+                      "--data", "data", "--base", "https://graniterecord.org"],
+                     cwd=root, capture_output=True, text=True, timeout=180,
+                     env={"GRANITE_PROCEEDINGS": ""})
+            return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+        def days(code):
+            d = json.loads((root / "site" / "committee" / f"{code}.json").read_text(
+                encoding="utf-8"))
+            return {(s.get("date"), it.get("bill"), it.get("kind"))
+                    for s in d.get("sessions") or [] for it in s.get("items") or []}
+
+        code, out = build(histories)
+        assert code == 0, f"build_committees stopped: {out.strip()[-300:]}"
+        assert days("H07") == {("2017-01-10", "HB255", "public hearing"),
+                               ("2017-01-10", "HB255", "executive session")}, (
+            "Executive Departments and Administration's days, built from HB 255's two "
+            f"sittings and HB 273's notice, are {sorted(days('H07'))}")
+        assert days("H18") == set(), (
+            "Municipal and County Government sat on HB 1512 after its withdrawal: "
+            f"{sorted(days('H18'))}")
+        assert "2 docket notice(s) left off" in out and "HB273 public hearing 2017-01-10" in out, (
+            "the build does not say which notices it left off: " + out.strip()[-300:])
+        # A history that does not know HB 273 was never introduced: the index
+        # does, and the build stops rather than file the notice.
+        code, out = build({"2017-2018": {"HB255": {}}, "2011-2012": histories["2011-2012"]})
+        assert code != 0 and "HB273 of 2017-2018" in out and "Not introduced" in out, (
+            "a notice for HB 273, Not introduced in the index, was filed as a sitting "
+            f"and the build went on ({code}): " + out.strip()[-300:])
+        # And none at all: said as that, before any row is looked at.
+        for none in (None, {}):
+            code, out = build(none)
+            assert code != 0 and "narratives.json is not there, or holds nothing" in out, (
+                f"with no histories in narratives.json ({none!r}) the build went on, or "
+                f"stopped on something else ({code}): " + out.strip()[-300:])
+
+        # THE DOWNLOAD, by the same rule over the same rows: it went on
+        # listing HB 273's hearing under Executive Departments and
+        # Administration, as a proceeding on record, after the bill's page
+        # and the committee's had stopped saying so.
+        import contextlib
+        import io
+        table = [_SITTING_ROWS["HB255 hearing"], _SITTING_ROWS["HB255 exec"],
+                 _NOTICE_ROWS["HB273"], _NOTICE_ROWS["HB1512"]]
+        out_dir = root / "site" / "data"
+        out_dir.mkdir()
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            BE.proceedings_table(out_dir, root / "site", table=table, histories=histories)
+        with (out_dir / "proceedings.csv").open(encoding="utf-8", newline="") as fh:
+            got = {(r["term"], r["bill"], r["kind"], r["date"]) for r in csv.DictReader(fh)}
+        assert got == {("2017-2018", "HB255", "public hearing", "2017-01-10"),
+                       ("2017-2018", "HB255", "executive session", "2017-01-10")}, (
+            f"the download of HB 255's two sittings and two notices holds {sorted(got)}")
+        assert "2 docket notice(s)" in said.getvalue() and "HB273 2017-01-10" in said.getvalue(), (
+            "the download does not say which notices it left out: " + said.getvalue()[-200:])
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                BE.proceedings_table(out_dir, root / "site", table=table, histories={})
+        except SystemExit as e:
+            assert "narratives.json" in str(e), str(e)
+        else:
+            raise AssertionError("with no histories the download was written, every "
+                                 "notice in it as a proceeding")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # And the order main() does it in, and that the other readers ask the
+    # same rule: read from the source, after what main() does has been run.
     src = Path(BC.__file__).read_text(encoding="utf-8")
     main_ = src[src.index("def main("):]
-    loop = main_[main_.index("for r in P.load():"):main_.index("# ---- bills referred")]
-    at = [loop.find(x) for x in ("if not its_own_sitting(r):", "if not a_sitting_on_it(",
-                                 "notices.append(", "day_said[code]", "days[code]",
-                                 "stop = notice_guard(notices)", "raise SystemExit(stop)")]
+    loop = main_[main_.index("rows, histories = P.load()"):main_.index("# ---- bills referred")]
+    at = [loop.find(x) for x in (
+        "if rows and not histories:", "rows, left_off = P.sittings(rows, histories)",
+        "for r in rows:", "if not its_own_sitting(r):", "filed.append((r, meta))",
+        "day_said[code]", "days[code]",
+        "stop = notice_guard(notices) or untaken_guard(filed)", "raise SystemExit(stop)")]
     assert all(x >= 0 for x in at) and at == sorted(at), (
-        "build_committees.main no longer leaves a row its bill's page does not draw off "
-        f"the committee's day before it files it, or no longer stops on the guard: {at}")
-    assert re.search(r"if not a_sitting_on_it\(\s*_stations\.get\(", loop), (
-        "build_committees.main no longer asks the bill's own stations")
-    assert re.search(r"notices\.append\(.*\)\s+continue\s+cname = ", loop), (
-        "build_committees.main notes a row its bill's page does not draw and files it "
-        "all the same")
-    return "ok", ("HB 273 of 2017 and HB 1284 of 2012, drawn no proceeding on their own "
-                  "pages, are no sitting of their committees; HB 255's hearing and "
-                  f"executive session are; past {ceiling} rows left off the build stops")
+        "build_committees.main no longer parts its rows by proceedings.sittings before "
+        f"it files them, or no longer stops on its guards: {at}")
+    site_src = Path(B.__file__).read_text(encoding="utf-8")
+    assert re.search(r"stations = \[x for x in stations\s+if not P\.notice_only\(",
+                     site_src), "build_site_v2 no longer asks proceedings.notice_only"
+    # The count of hearings the Learn pages state: of sittings, by the
+    # histories record_figures has already read.
+    assert "procs, _notices = P.sittings(P.load(), every_narr)" in Path(
+        BV.__file__).read_text(encoding="utf-8"), (
+        "build_civics no longer counts its hearings from proceedings.sittings")
+    return "ok", ("HB 273 of 2017 and HB 1284 and HB 1512 of 2012 are notices by their own "
+                  "histories, HB 255's hearing and executive session and 2011's HB 273 "
+                  "are sittings; through main() the committee's page has HB 255 and not "
+                  f"HB 273, and the download likewise; past {ceiling} notices, on a notice "
+                  "filed for a bill the index says was never introduced, or with no "
+                  "histories, the build stops")
 
 
 @check("build", "committee names that reach no page stop the build past a stated ceiling",
@@ -39945,7 +40174,9 @@ def _past_bills_into_data(BD):
     # AND THE RECORDS OF A TERM'S OWN LIST THAT THE TABLE NAMES
     # (journal_introductions). HB 273 of 2017 as the search page and its
     # docket leave it -- a committee, and the page's IN COMMITTEE -- beside
-    # HB 272, which the resolution names and the table does not.
+    # HB 272, which the resolution names and the table does not. MADE FOR THE
+    # GUARD: its Senate committee, which the real record does not have, so
+    # that "no committee" is held for both chambers' fields.
     def of_the_list():
         return {
             "2011-2012": {"HB1512": {"bill": "HB1512", "archived": True,
@@ -39954,7 +40185,8 @@ def _past_bills_into_data(BD):
             "2017-2018": {
                 "HB272": {"bill": "HB272", "archived": True, "senate_committee": "",
                           "house_committee": "Municipal and County Government"},
-                "HB273": {"bill": "HB273", "archived": True, "senate_committee": "",
+                "HB273": {"bill": "HB273", "archived": True,
+                          "senate_committee": "Executive Departments and Administration",
                           "house_committee": "Executive Departments and Administration",
                           "gen_status": "HOUSE", "house_status": "IN COMMITTEE"}},
             "2025-2026": {"HB1": {"bill": "HB1"}}}
@@ -40409,6 +40641,17 @@ def _never_introduced(N, B, BD):
     held, drawn no station, and quoted in the note. The note is the
     journal's alone; the one about the search's list is not theirs.
 
+    A ROW TOLD AS A NOTICE IS STILL A ROW OF THE DOCKET. The page's list of
+    docket lines is headed "every action the General Court recorded" and left
+    these rows out, as it does a row the docket cancelled; HB 273's note said
+    "Its docket has two rows" over a list of one. Each is listed, on the day
+    it was entered, with why it is not told as a meeting. The rows that enter
+    the four of 2017 are dated the day they were typed too, as a "To Be
+    Introduced" row a withdrawal overtook is: dated 4 January 2017, the day
+    they name, they put an action of the House on a day the page says it took
+    none. And the heading on the four's text, "As introduced", is said to be
+    the General Court's.
+
     A bill never introduced is not "carried over" for having a row typed the
     December before, and its note says only what is true of its own page.
     """
@@ -40556,10 +40799,74 @@ def _never_introduced(N, B, BD):
         + " The docket schedules a public hearing for January 10, 2017, for a bill the "
         "House did not introduce; no record on this site says whether it was held.")], (
         told("HB273"))
-    assert kinds("HB273") == [("2017-01-04", "entered_introduced", False),
+    # EACH ROW ON THE DAY IT WAS ENTERED, not the day it names: the docket
+    # did nothing to these bills on 4 January 2017 but enter HB 273's notice.
+    assert kinds("HB273") == [("2016-12-30", "entered_introduced", False),
                               ("2017-01-04", "hearing", True)], kinds("HB273")
-    assert all(kinds(b) == [("2017-01-04", "entered_introduced", False)]
-               for b in ("HB177", "HB274", "HB277")), [kinds(b) for b in four]
+    assert [kinds(b) for b in ("HB177", "HB274", "HB277")] == [
+        [("2016-12-28", "entered_introduced", False)],
+        [("2016-12-30", "entered_introduced", False)],
+        [("2016-12-30", "entered_introduced", False)]], [kinds(b) for b in four]
+    # A row told as a notice says so, with why, for the bill's list of docket
+    # lines; a row that enters the bill carries neither.
+    notes = {b: [(e.get("notice"), e.get("row_note")) for e in narr[b]["events"]]
+             for b in ("HB273", "HB1284", "HB1512", "HB87")}
+    after = "A notice. The bill was withdrawn before the day it names."
+    assert notes == {
+        "HB273": [(None, None), (True, "A notice, for a bill the House did not introduce. "
+                                       "No record on this site says whether it was held.")],
+        "HB1284": [(None, None), (True, after), (True, after), (None, None)],
+        "HB1512": [(None, None), (None, None), (True, after)],
+        "HB87": [(None, None)]}, notes
+
+    # MADE FOR THE GUARD, on no docket: HB 273's two rows, and beside them an
+    # executive session and a work session set for it and a hearing the
+    # docket itself cancelled, in the docket's words for other bills
+    # (Docket_2017-2018.txt lines 3, 76 and 157). Every meeting set for a bill
+    # that was never introduced is a notice, whatever its kind, and a row the
+    # docket cancelled is left as the docket has it. And HB 1587 of 2010's
+    # two rows with a hearing set for the day of its withdrawal: not "after"
+    # it, and still no sitting on a bill that was withdrawn before its
+    # introduction.
+    made = _docket_rows(_DOCKET_JOURNAL_DECIDES[("HB273", "2017-2018")] + [
+        "2017|0699|1/4/2017 12:00:00 AM|HB273|H|Executive Session: 01/17/2017 LOB 306|"
+        "1/4/2017 12:00:00 AM",
+        "2017|0699|1/4/2017 12:00:00 AM|HB273|H|Subcommittee Work Session: 01/12/2017 "
+        "09:00 AM LOB 306|1/4/2017 12:00:00 AM",
+        "2017|0699|1/5/2017 12:00:00 AM|HB273|H|==CANCELLED== Public Hearing: 01/11/2017 "
+        "10:30 AM LOB 306|1/5/2017 12:00:00 AM"])
+    made[-1]["flags"] = ["CANCELLED"]
+    early = _docket_rows(_DOCKET_NOT_INTRODUCED[("HB1587", "2009-2010")] + [
+        "2010|2002|12/15/2009 09:00:00 AM|HB1587|H|Public Hearing: 12/22/2009 10:00 AM "
+        "LOB 210|12/15/2009 09:00:00 AM"])
+    saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
+    try:
+        N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS = [], [], {}
+        N.TERM = "2017-2018"
+        made = N.build("HB273", made, introduction=said[("2017-2018", "HB273")])
+        N.TERM = "2009-2010"
+        early = N.build("HB1587", early)
+    finally:
+        N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
+    assert [(e["date"], e["type"], e["cancelled"], e.get("notice")) for e in made["events"]] == [
+        ("2016-12-30", "entered_introduced", False, None),
+        ("2017-01-04", "hearing", True, True), ("2017-01-04", "worksession", True, True),
+        ("2017-01-04", "exec", True, True),
+        ("2017-01-11", "hearing", True, None)], made["events"]
+    text = made["narrative"]
+    assert all(x in text for x in (
+        "The docket schedules a public hearing for January 10, 2017, for a bill",
+        "The docket schedules an executive session for January 17, 2017, for a bill",
+        "The docket schedules a work session for January 12, 2017, for a bill")) and (
+        "January 11" not in text and " held " not in text.replace("whether it was held", "")), text
+    assert "row_note" not in made["events"][-1], (
+        "a row the docket cancelled carries a notice's note: " + str(made["events"][-1]))
+    assert [(e["date"], e["type"], e["cancelled"], e.get("row_note")) for e in early["events"]] == [
+        ("2009-12-10", "to_be_introduced", False, None),
+        ("2009-12-15", "hearing", True, "A notice, for a bill that was never introduced."),
+        ("2009-12-22", "withdrawn", False, None)], early["events"]
+    assert "A public hearing had been scheduled for December 22, 2009." in early["narrative"] \
+        and "held a public hearing" not in early["narrative"], early["narrative"]
     assert all(narr[b].get("not_introduced") is True and "withdrawn" not in narr[b]
                and not narr[b]["unrecognised"] for b in four), [narr[b] for b in four]
     assert "held a public hearing" not in narr["HB273"]["narrative"], narr["HB273"]["narrative"]
@@ -40681,8 +40988,12 @@ def _never_introduced(N, B, BD):
 
         # The docket's notices as proceedings.csv carries them, the shape
         # build_site_v2.main hands build_bills: proceedings.csv lines 69325
-        # (HB 273) and 54496 and 54759 (HB 1284); HB 523's is made for the
-        # other side of the rule, a hearing on a bill that was introduced.
+        # (HB 273), 54496 and 54759 (HB 1284) and 54498 (HB 1512); HB 523's is
+        # made for the other side of the rule, a hearing on a bill that was
+        # introduced, and HB 1284's of 3 January for the rule's reach: a
+        # meeting set for the day before its withdrawal, which the withdrawal
+        # alone would leave drawn and which no committee held on a bill that
+        # was never introduced.
         def notice(bid, kind, day, time, cmte, room):
             return {"bill": bid, "body": "H", "committee": cmte, "proceeding": kind,
                     "sched_date": day, "sched_time": time, "venue": room,
@@ -40696,15 +41007,27 @@ def _never_introduced(N, B, BD):
                 notice("HB1284", "public hearing", "2012-01-12", "10:30", "Education",
                        "LOB 207"),
                 notice("HB1284", "executive session", "2012-01-24", "10:00", "Education",
+                       "LOB 207"),
+                notice("HB1284", "public hearing", "2012-01-03", "10:00", "Education",
                        "LOB 207")],
+            ("2011-2012", "HB1512"): [notice(
+                "HB1512", "public hearing", "2012-01-12", "12:05",
+                "Municipal and County Government", "LOB 301")],
             ("2011-2012", "HB523"): [notice(
                 "HB523", "public hearing", "2011-02-01", "10:00",
                 "Fish and Game and Marine Resources", "LOB 307")]}
+        # HB 277's text as archive_text.json holds it, cut to its analysis and
+        # its enacting line: headed "As introduced" by the General Court.
+        texts = {"2017-2018": {"HB277": {
+            "version": "As introduced", "source": "archive page",
+            "text": "ANALYSIS\n\nThis bill establishes a commission on the prevention of "
+                    "trafficking in persons.\n\nBe it Enacted by the Senate and House of "
+                    "Representatives in General Court convened:"}}}
         os.chdir(root)
         try:
             import contextlib
             with open(os.devnull, "w") as quiet, contextlib.redirect_stdout(quiet):
-                idx, *_ = B.build_bills(out, bills, narratives, {}, {}, {}, {}, {}, {}, {},
+                idx, *_ = B.build_bills(out, bills, narratives, {}, {}, {}, texts, {}, {}, {},
                                         procs, {}, {}, {}, {}, {}, {}, {}, {})
         finally:
             os.chdir(here)
@@ -40774,9 +41097,25 @@ def _never_introduced(N, B, BD):
         assert len(page("2011", "HB523")["notes"]) == 1 and row["HB523"]["committee"] == (
             "House Fish and Game and Marine Resources"), (page("2011", "HB523")["notes"],
                                                            row["HB523"])
+        # EVERY ROW THE DOCKET HOLDS IS IN THE PAGE'S LIST OF ITS LINES, the
+        # notices too, each with why it is not told as a meeting. The list
+        # left them out as it does a row the docket cancelled, under "every
+        # action the General Court recorded".
         h = page("2012", "HB1284")
-        assert [e["text"] for e in h["events"]] == [
-            "To Be Introduced 1/4/2012 and Referred to Education", "Withdrawn"], h["events"]
+        assert [(e["date"], e["text"], e.get("notice"), e.get("row_note"))
+                for e in h["events"]] == [
+            ("2011-11-21", "To Be Introduced 1/4/2012 and Referred to Education", None, None),
+            ("2011-12-15", "Public Hearing: 1/12/2012 10:30 AM LOB 207", True, after),
+            ("2011-12-15", "Executive Session: 1/24/2012 10:00 AM LOB 207", True, after),
+            ("2012-01-04", "Withdrawn", None, None)], h["events"]
+        assert [(e["date"], e["text"], e.get("notice")) for e in w["events"]] == [
+            ("2012-01-04", "To Be Introduced 1/4/2012 and Referred to Municipal and County "
+                           "Government", None),
+            ("2012-01-04", "Withdrawn", None),
+            ("2012-01-12", "Public Hearing: 1/12/2012 12:05 PM LOB 301 ==Executive Session "
+                           "May Follow==", True)], w["events"]
+        # And the last thing the docket did to HB 1512 is still its withdrawal.
+        assert row["HB1512"]["last_action"] == "2012-01-04", row["HB1512"]
         assert page("2025", "HB1")["notes"] == [], "a bill of the search's own list has a note"
 
         # The four of 2017: Not introduced over the search page's IN
@@ -40802,24 +41141,59 @@ def _never_introduced(N, B, BD):
                 "The resolution of January 4, 2017 (House Journal No. 2) names House Bills "
                 "76 through 176, 178 through 272, 275 through 276 and 278 through 286, "
                 "which leaves this number out, and no later resolution of the term names "
-                "it. Its docket has ") and f["notes"][0].endswith(
+                "it. Its docket has "), f["notes"]
+            # The close of the note; and on HB 277, whose page here has the
+            # General Court's text, whose heading that text's is.
+            assert f["notes"][0].endswith(
                 "told here as not introduced, and no record on this site says what became "
-                "of it."), f["notes"]
+                "of it." + (
+                    " The General Court's text of it is headed \u201cAs introduced\u201d, the "
+                    "heading it gives a bill's first printing, and the Bill Text tab shows "
+                    "it under that heading." if bid == "HB277" else "")), f["notes"]
+            assert ((f.get("billtext") or {}).get("version") == "As introduced") == (
+                bid == "HB277"), (bid, f.get("billtext"))
             assert "\u201cIN COMMITTEE\u201d" in f["notes"][0], f["notes"]
         n274, n177, n273 = (page("2017", b)["notes"][0] for b in ("HB274", "HB177", "HB273"))
         assert ("Its docket has one row, which enters it as introduced, and the General "
                 "Court's bill search gives its House status as \u201cIN COMMITTEE\u201d; it "
                 "is told here as not introduced") in n274, n274
         assert "one row, which enters it as to be introduced, and the General" in n177, n177
-        # HB 273's notice is quoted: the page's list of docket lines leaves
-        # it out, as it does a cancelled row.
+        # HB 273's notice is quoted, and the page's list of docket lines has
+        # the two rows the note counts: each on the day it was entered, the
+        # notice marked as one, for the Hearings tab, with its reason.
         assert ("Its docket has two rows: one enters it as introduced, and one reads "
                 "\u201cPublic Hearing: 01/10/2017 01:30 PM LOB 306\u201d. The General "
                 "Court's bill search gives its House status as \u201cIN COMMITTEE\u201d. It "
                 "is told here as not introduced") in n273, n273
-        assert [e["text"] for e in page("2017", "HB273")["events"]] == [
-            "Introduced 01/04/2017 and referred to Executive Departments and "
-            "Administration"], page("2017", "HB273")["events"]
+        assert [(e["date"], e["text"], e.get("notice"), e.get("row_note"))
+                for e in page("2017", "HB273")["events"]] == [
+            ("2016-12-30", "Introduced 01/04/2017 and referred to Executive Departments and "
+                           "Administration", None, None),
+            ("2017-01-04", "Public Hearing: 01/10/2017 01:30 PM LOB 306", True,
+             "A notice, for a bill the House did not introduce. No record on this site "
+             "says whether it was held.")], page("2017", "HB273")["events"]
+        # The last action on each is the day the row that enters it was
+        # typed: not 4 January 2017, the day the row names, on which the
+        # House did nothing to any of the four. A notice is no action, so HB
+        # 273's is not its hearing's day either, nor the day that was noticed.
+        assert {b: row[b]["last_action"] for b in four} == {
+            "HB177": "2016-12-28", "HB273": "2016-12-30", "HB274": "2016-12-30",
+            "HB277": "2016-12-30"}, {b: row[b]["last_action"] for b in four}
+        # THE HEADING ON ITS TEXT IS NOT AN INTRODUCTION. The General Court's
+        # text of each of the four is headed "AS INTRODUCED" (legislation/
+        # 2017/HB0273.html, line 1), and the Bill Text tab prints that
+        # heading under Not introduced: the note says whose heading it is,
+        # where the page has such a text and only there.
+        headed = B.record_notes(bills["2017-2018"]["HB274"], narr["HB274"], "House Journal",
+                                (), "2017-2018", "HB274", "As introduced")
+        assert len(headed) == 1 and headed[0].startswith(n274) and headed[0].endswith(
+            "no record on this site says what became of it. The General Court's text of "
+            "it is headed \u201cAs introduced\u201d, the heading it gives a bill's first "
+            "printing, and the Bill Text tab shows it under that heading."), headed
+        for other in ("", "As amended by the House"):
+            assert B.record_notes(bills["2017-2018"]["HB274"], narr["HB274"],
+                                  "House Journal", (), "2017-2018", "HB274", other) == [n274], (
+                f"the note speaks of a text headed {other!r}")
         # The search page's status is said only of a record that is the
         # search page's: made for the guard, HB 87's history under a record
         # of the database that carries a House status.
@@ -40834,7 +41208,12 @@ def _never_introduced(N, B, BD):
         # A notice for a bill that was never introduced is not a station, a
         # withdrawal on its docket or none; a hearing on a bill that was
         # introduced is.
+        # HB 1284's three: the two the docket holds, for days after its
+        # withdrawal, and the one made for the guard, for the day before it.
         assert page("2012", "HB1284")["stations"] == [], page("2012", "HB1284")["stations"]
+        # And HB 1512 was introduced, and withdrawn before the day its notice
+        # names.
+        assert page("2012", "HB1512")["stations"] == [], page("2012", "HB1512")["stations"]
         assert [(x["when"], x["what"]) for x in page("2011", "HB523")["stations"]] == [
             ("2011-02-01", "public hearing")], page("2011", "HB523")["stations"]
     finally:
@@ -42408,6 +42787,46 @@ def _introductions_against_journal(J, BD):
     untaken = {(t, b) for (t, b), row in idx.items()
                if row.get("status") in never
                or ((narr.get(t) or {}).get(b) or {}).get("not_introduced")}
+    # AND NO ROW THE RULE CALLS A NOTICE IS A SITTING ANYWHERE
+    # (proceedings.notice_only): not an item of a committee's day, not a
+    # station of its bill's page and not a row of the download. The download
+    # went on listing HB 273's hearing as a proceeding of Executive
+    # Departments and Administration after both pages had stopped saying so,
+    # and this check did not open it; and a bill introduced and then
+    # withdrawn, HB 1512 of 2012, is not among the `untaken`, so nothing held
+    # its notice off Municipal and County Government's 12 January 2012. The
+    # table's notices are parted out again here, from proceedings.csv and the
+    # histories on disk, and each is held to be what the rule says it is.
+    import proceedings as _P
+    _sat, notices = _P.sittings(_P.load(), narr)
+    noticed = {(r["term"], r["bill"], r["date"]) for r in notices}
+    for r in notices:
+        h = (narr.get(r["term"]) or {}).get(r["bill"]) or {}
+        if not (h.get("not_introduced") or (h.get("withdrawn") and r["date"] > h["withdrawn"])):
+            bad.append(f"{r['bill']} of {r['term']} ({r['kind']} {r['date']}) is left off as "
+                       "a notice, and its history tells it neither as never introduced nor "
+                       "as withdrawn before that day")
+        page = _SR.one("site", (idx.get((r["term"], r["bill"])) or {}).get("year"),
+                       r["bill"]) or {}
+        if any(s.get("when") == r["date"] and (s.get("what") or "").lower()
+               not in _P.FLOOR_KINDS for s in page.get("stations") or []):
+            bad.append(f"{r['bill']} of {r['term']}: its page draws a committee proceeding "
+                       f"on {r['date']}, which its history tells as a notice")
+    dl, listed_rows = Path("site/data/proceedings.csv"), 0
+    if dl.exists():
+        with dl.open(encoding="utf-8", newline="") as fh:
+            for r in csv.DictReader(fh):
+                listed_rows += 1
+                if (r.get("kind") or "").strip().lower() in _P.FLOOR_KINDS:
+                    continue
+                if (r.get("term"), r.get("bill")) in untaken:
+                    bad.append(f"{r.get('bill')} of {r.get('term')}, never introduced, is in "
+                               f"the download as a {r.get('kind')} of {r.get('committee')} "
+                               f"on {r.get('date')} (site/data/proceedings.csv)")
+                elif (r.get("term"), r.get("bill"), r.get("date")) in noticed:
+                    bad.append(f"{r.get('bill')} of {r.get('term')}: the download lists a "
+                               f"{r.get('kind')} on {r.get('date')}, which its history tells "
+                               "as a notice (site/data/proceedings.csv)")
     pages = sorted(Path("site/committee").glob("*.json"))
     for f in pages:
         try:
@@ -42427,6 +42846,10 @@ def _introductions_against_journal(J, BD):
                     bad.append(f"{d.get('name')} ({f.name}) is said to have sat on "
                                f"{it.get('bill')} of {it.get('term')}, never introduced, "
                                f"on {s.get('date')} ({it.get('kind')})")
+                elif (it.get("term"), it.get("bill"), s.get("date")) in noticed:
+                    bad.append(f"{d.get('name')} ({f.name}) is said to have sat on "
+                               f"{it.get('bill')} of {it.get('term')} on {s.get('date')} "
+                               f"({it.get('kind')}), which its history tells as a notice")
     assert not bad, (f"{len(bad)} of the measures the database fills or build_data's "
                      "table names: " + "; ".join(bad[:6]))
     listed = sum(1 for t, b, r in ours if r.get("source") != BD.PAST_SOURCE)
@@ -42436,7 +42859,10 @@ def _introductions_against_journal(J, BD):
                   "the resolution that names or steps over them, none told against it; "
                   "none never introduced carries a committee, a rail, a carried mark or "
                   f"a committee proceeding; none of the {len(untaken)} bills told as never "
-                  f"introduced is on any of {len(pages)} committee pages"
+                  f"introduced is on any of {len(pages)} committee pages, and none of the "
+                  f"{len(notices)} docket notices for a bill withdrawn or never introduced "
+                  f"is a committee's day, a station or one of the download's "
+                  f"{listed_rows:,} rows"
                   + (f"; no journals here for {', '.join(sorted(unread))}" if unread else ""))
 
 

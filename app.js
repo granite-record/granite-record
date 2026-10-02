@@ -1,10 +1,15 @@
-// GRANITE_VERSION: 2026-09-07.127
+// GRANITE_VERSION: 2026-09-07.128
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
   docket:"every recorded action, in the General Court's own words",
   record:"the official record of one action",
   report:"the calendar a committee report was printed in"};
+// The status page of a bill whose status this site reads from the House
+// Journal instead (status_source): seven bills the House's resolution of
+// introduction steps over, on 2 October 2026.
+const STATUS_NOT_FROM_PAGE="the General Court's own status page for this bill; "
+  +"the status shown here is read from the House Journal instead";
 // WHAT THE SHORTHAND STANDS FOR. A citation is printed the way the General
 // Court prints it -- "HJ 1, page 32" is what a reader would quote -- but HJ
 // and SC are insider shorthand, and this site exists to make the record
@@ -2187,7 +2192,16 @@ function renderHearings(b,d){
       <div class="t">${esc(stationTitle(b,s))}</div>${
         signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
           hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
-    :`<p class="note">No scheduled proceedings on file.</p>`;
+    // A MEETING THE DOCKET NOTICED AND THE PAGE DOES NOT DRAW. HB 273 of
+    // 2017's history says "The docket schedules a public hearing for January
+    // 10, 2017", of a bill the House did not introduce, and this tab said
+    // there were no scheduled proceedings on file. The notice is a line of
+    // the docket (e.notice), with its reason beside it.
+    :((d.events||[]).some(e=>e.notice)
+      ? `<p class="note">The docket gave notice of a meeting on this bill, and
+         none is drawn here. The history on the Summary tab says why, and the
+         docket there lists the notice.</p>`
+      : `<p class="note">No scheduled proceedings on file.</p>`);
 }
 
 // Each calendar entry carries the majority's recommendation and, when the
@@ -2631,7 +2645,11 @@ function renderDocuments(b,d){
            ${of?`<span class="docof">${esc(of)}</span>`:""}
            ${acts.length
              ? `<span class="docacts">${acts.map(e=>esc(e.text)).join("<br>")}</span>`
-             : `<span>${DOCWHAT[x.kind]||""}</span>`}</li>`;
+             // NOT "the page this site takes a bill's status from" where it
+             // did not: a bill the House Journal leaves out of those it
+             // introduced reads Not introduced here and IN COMMITTEE there.
+             : `<span>${x.kind==="status"&&d.status_source==="House Journal"
+                 ? STATUS_NOT_FROM_PAGE : (DOCWHAT[x.kind]||"")}</span>`}</li>`;
          }).join("")}</ul>`
       : `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
