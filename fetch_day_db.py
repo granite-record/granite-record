@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.3
+# GRANITE_VERSION: 2026-10-01.4
 """
 The day's records from the General Court's database, into .night/dbday/.
 
@@ -18,8 +18,10 @@ WHY THIS EXISTS
 On 27 and 28 September and 1 October 2026 the General Court's bulk-file export
 came back empty on every try and nothing was built. The person approved the
 night asking the database, gently, as the fallback. nightly.py starts this
-when, and only when, the export came back empty on its last try, with no
-refusal from the web server and no hold on this host on file. This fetches;
+when, and only when, the export came back empty -- since 2 October 2026 on
+its first try (nightly.DB_AFTER_TRIES), and until then on its sixth -- with
+no refusal from the web server and no hold on this host on file, and once a
+night at most. This fetches;
 dayfiles_from_db.py, which asks nobody, reshapes what came back into the
 seven day files and guards them; nightly.py installs.
 
