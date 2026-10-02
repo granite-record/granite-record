@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.4
+# GRANITE_VERSION: 2026-10-01.5
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -352,12 +352,15 @@ ROSTER_READ = ROSTER_WHO + (5, 10, 11, 12, 13, 14)      # ... seat, address, e-m
 ROLLCALL_TOLD = (3, 4, 11, 12)          # when, the bill, the question, the title
 BALLOT_CAST = (4, 6)                    # the member's PersonID, the vote
 # What LSRs.txt's columns are, for a sentence that names one.
-LSR_NAMES = {2: "title", 3: "chamber", 5: "appropriation flag", 6: "fiscal flag",
-             7: "local flag", 10: "bill number", 12: "subject code",
+LSR_NAMES = {2: "title", 3: "chamber", 4: "bill type", 5: "appropriation flag",
+             6: "fiscal flag", 7: "local flag", 8: "request number", 9: "bill number, padded",
+             10: "bill number", 11: "chapter", 12: "subject code",
              13: "House committee of referral", 14: "House current committee",
-             16: "House status code", 17: "House status date",
+             15: "House date introduced", 16: "House status code", 17: "House status date",
+             18: "House due date", 19: "House floor date",
              21: "Senate committee of referral", 22: "Senate current committee",
-             24: "Senate status code", 25: "Senate status date", 29: "general status code",
+             23: "Senate date introduced", 24: "Senate status code", 25: "Senate status date",
+             26: "Senate due date", 27: "Senate floor date", 29: "general status code",
              30: "hearing committee", 31: "hearing date", 32: "hearing room"}
 
 # Docket.txt. New rows entered on any one day: the busiest day of the term

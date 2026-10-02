@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.317
+# GRANITE_VERSION: 2026-09-04.318
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34401,7 +34401,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
 
 
 @check("build", "the what-changed report compares a database night on the columns both sources "
-       "carry, and says which source it was", needs=("gc_changes", "dayfiles_from_db"))
+       "carry, says which source it was, counts a bill record changed only where the build "
+       "reads it, and does not repeat a database night on the export night after",
+       needs=("gc_changes", "dayfiles_from_db"))
 def _gc_changes_db_night(GC, DF):
     """Compared line for line with an export, a database-built docket would
     report every row whose last-changed time differs from its entry time as
@@ -34410,6 +34412,17 @@ def _gc_changes_db_night(GC, DF):
     --db-night compares on the docket's first six columns and on the bill
     record without that code, and its heading says the files came from the
     database. An ordinary night is compared as before.
+
+    A changed bill record is listed under the columns that moved. Where one
+    side is the database's, one that differs only in columns the build does
+    not read is not counted, and is listed as that: on 2 October 2026 the
+    first database night's files differed from the export's on 16 bills in
+    the House status code alone, and "16 changed" with no column named is
+    what the morning would have been told.
+
+    The export night after a database night is compared with that night's
+    copy, on the same columns, not with the export before it: compared with
+    that, it repeated every docket line the database night had reported.
 
     Against what: the files the night replaced, which its copy names by
     sha256 (nightly.keep_db_copy) -- an export in the archive, or an earlier
@@ -34437,13 +34450,15 @@ def _gc_changes_db_night(GC, DF):
         (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
         want = _dbday_expected()
 
-        def keep(day, replaced=None, **more):
+        def keep(day, replaced=None, records=None, **more):
             """A database night's copy, as nightly.keep_db_copy leaves one.
-            Its source.json says which files it replaced only when told to."""
+            Its source.json says which files it replaced only when told to.
+            `records` are its bill records, where they are not the export's."""
             (tmp / "from-db" / day).mkdir(parents=True)
             rec = {"day": day, "files": {}}
             for name in ("Docket.txt", "RollCallSummary.txt", "LSRs.txt"):
-                data = _dbday_bytes(want[name] + more.get(name.split(".")[0], []))
+                lines = records if records is not None and name == "LSRs.txt" else want[name]
+                data = _dbday_bytes(lines + more.get(name.split(".")[0], []))
                 with gzip.open(tmp / "from-db" / day / f"{name}.gz", "wb") as fh:
                     fh.write(data)
                 rec["files"][name] = {"sha256": hashlib.sha256(data).hexdigest()}
@@ -34472,6 +34487,11 @@ def _gc_changes_db_night(GC, DF):
         # compared with the export before it, not with that one.
         partial("2026-10-01", "2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought to "
                               "Pass|10/1/2026 6:01:00 AM")
+        # With no database night on file it is an ordinary night: the
+        # archive's own versions, whole lines, the old heading.
+        md = GC.report()
+        assert "From the General Court's bulk files" in md and "database" not in md and \
+            "## Docket: 1 new lines on 1 bills" in md, md[:300]
         first = keep("2026-10-01", Docket=["2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought "
                                            "to Pass|9/30/2026 9:00:00 AM"])
         md = GC.report(db_night="2026-10-01")
@@ -34505,9 +34525,6 @@ def _gc_changes_db_night(GC, DF):
         assert pairs(md) == ["from the database 2026-10-01"] * 3 and \
             "(from the database 2026-10-01 -> from the database 2026-10-02)" in md and \
             "## Docket: 1 new lines on 1 bills" in md, md[:700]
-        # An ordinary night: the archive's own versions, whole lines, the old heading.
-        md = GC.report()
-        assert "From the General Court's bulk files" in md and "database" not in md, md[:300]
 
         # A NIGHT THAT SAYS WHAT IT REPLACED is compared with exactly that, by
         # sha256, whatever the dates say. The files installed before the night
@@ -34538,6 +34555,73 @@ def _gc_changes_db_night(GC, DF):
         md = GC.report(db_night="2026-10-09")
         assert pairs(md) == ["from the database 2026-10-07"] * 3 and \
             "## Docket: 0 new lines" in md, md[:700]
+
+        # THE EXPORT IS BACK, on the 10th. Its docket holds what the database
+        # nights reported -- with the export's own seventh column, which no
+        # database night's copy has -- and one row more. Compared with the
+        # export before it, as every export night was, the report repeats
+        # the committee report and the signing; compared with the last
+        # database night's copy, on six columns, it tells the one new thing.
+        def export(day, name, lines):
+            data = _dbday_bytes(lines)
+            digest = hashlib.sha256(data).hexdigest()
+            with gzip.open(tmp / "store" / f"{digest}.gz", "wb") as fh:
+                fh.write(data)
+            index[name]["history"].append([day, digest])
+            index[name]["last_sha256"] = digest
+            (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
+            return data
+        back = export("2026-10-10", "Docket.txt", _DBDAY_EXPORT["Docket.txt"] + [
+            "2026|0010|9/30/2026 9:00:00 AM|HB54|S|Committee Report: Ought to Pass|"
+            "10/1/2026 6:01:00 AM",
+            "2026|0010|10/4/2026 9:00:00 AM|HB54|S|Signed by Governor|10/6/2026 8:15:00 AM",
+            "2026|0010|10/9/2026 2:00:00 PM|HB54|S|Chapter 301; Effective 01/01/2027|"
+            "10/9/2026 2:00:00 PM"])
+        before = GC.blob(index["Docket.txt"]["history"][-2][1])
+        assert len(GC.docket(before, back)[0]) == 2, "the fixture is not one where the export before would repeat a line"
+        # Its bill records: HB 54 has a hearing in another room, which a page
+        # shows, and SB 416's House status code has moved, which none does.
+        moved = [ln.split("|") for ln in _DBDAY_EXPORT["LSRs.txt"]]
+        assert (moved[1][10], moved[1][32], moved[2][10], moved[2][16]) == (
+            "HB54", "SH Room 100", "SB416", "07")
+        moved[1][32], moved[2][16] = "SH Room 103", "04"
+        export("2026-10-10", "LSRs.txt", ["|".join(f) for f in moved])
+        md = GC.report()
+        assert "From the General Court's bulk files" in md and \
+            "built from the General Court's database, on the night of 2026-10-09" in md, md[:600]
+        assert "## Docket: 1 new lines on 1 bills" in md and "Chapter 301" in md and \
+            "Signed by Governor" not in md and "Committee Report" not in md and \
+            "(from the database 2026-10-09 -> archived 2026-10-10)" in md, (
+                "the export night after a database night repeated what that night reported, "
+                "or was not compared with its copy: " + md[:900])
+        assert "## Bill records: 0 new, 1 changed" in md and \
+            "changed, by what changed:\n- hearing room (1): HB54" in md and \
+            "not counted: 1 that differ only in columns no page is built from" in md and \
+            "- House status code (1): SB416" in md, md[-700:]
+        # Between two exports every column is the export's own, and each
+        # change is counted and named: the same two records, an export apart.
+        new_bills, changed, cols = GC.lsrs(_dbday_bytes(_DBDAY_EXPORT["LSRs.txt"]),
+                                           _dbday_bytes(["|".join(f) for f in moved]))
+        assert (new_bills, changed, cols) == ([], ["HB54", "SB416"], {"HB54": [32], "SB416": [16]}) \
+            and GC.by_columns(changed, cols, DF.LSR_NAMES) == [
+                "- House status code (1): SB416", "- hearing room (1): HB54"], (changed, cols)
+        # A DATABASE NIGHT'S OWN REPORT says the same of its own files. The
+        # night of the 11th: the view has SB 416's House status code back at
+        # 07, as on 2 October the real one had 16 bills', and nothing else
+        # differs from the export of the 10th. Nothing is counted as changed.
+        moved[2][16] = "07"
+        keep("2026-10-11", records=["|".join(f) for f in moved], Docket=third + [
+            "2026|0010|10/9/2026 2:00:00 PM|HB54|S|Chapter 301; Effective 01/01/2027|"
+            "10/9/2026 2:00:00 PM"])
+        md = GC.report(db_night="2026-10-11")
+        assert pairs(md) == ["archived 2026-10-10", "from the database 2026-10-09",
+                             "archived 2026-10-10"] and "## Docket: 0 new lines" in md and \
+            "## Bill records: 0 new, 0 changed" in md and "changed, by what changed" not in md \
+            and "not counted: 1 that differ only in columns no page is built from" in md and \
+            "- House status code (1): SB416" in md, md[-700:]
+        assert set(DF.LSR_READ) == {0, 1, 2, 3, 5, 6, 7, 10, 12, 13, 21, 31, 32}, (
+            "the columns of LSRs.txt the build reads are build_data.py's thirteen; a report "
+            f"counts a change in these and no other on a database night: {DF.LSR_READ}")
     finally:
         GC.ARCHIVE = saved
         shutil.rmtree(tmp, ignore_errors=True)
@@ -34545,7 +34629,9 @@ def _gc_changes_db_night(GC, DF):
                   "it recorded, or by date with the export before it or the database night "
                   "before it, and never with its own night's export; on the docket's first six "
                   "columns and the bill record without its Senate status code; the heading says "
-                  "the files came from the database")
+                  "the files came from the database; a record changed only in a column no page "
+                  "reads is named and not counted; the export night after tells the one new "
+                  "docket line, not the two a comparison with the export before it would")
 
 
 def _dbday_from_dump(DF, db, out, installed):
