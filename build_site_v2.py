@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.130
+# GRANITE_VERSION: 2026-09-05.131
 """
 Generate the faceted site from real General Court data.
 
@@ -498,7 +498,19 @@ from queue_links import (calendar_keys_from_queue, journal_keys_from_queue,  # n
 # "SS" is a special session's numbering of the same kinds: SSHR 1 of 2008 is
 # the House adopting its rules, SSHCR 1 of 2015 a concurrent resolution both
 # chambers adopted the same day.
-SINGLE_CHAMBER = {"HR": "House", "SR": "Senate", "SSHR": "House", "SSSR": "Senate"}
+#
+# AND A HOUSE BILL OF INTENT, the House's measure of 1989-1994 (HBI, fourteen
+# of them): passing one sends its subject to its committee to study and report
+# on -- "STATEMENT OF INTENT The committee to which this bill is referred
+# shall review existing legislation ... The committee shall submit any
+# recommendations for legislation" (HBI 2 of 1991's own text) -- and it never
+# goes to the Senate; none of the fourteen dockets has a Senate row. Read as a bill,
+# the six the House passed said "Passed one chamber", of a second chamber
+# they were never going to, and HBI 2011 of 1990 "Committee report filed",
+# which is the report of the study it ordered.
+BILL_OF_INTENT = "HBI"
+SINGLE_CHAMBER = {"HR": "House", "SR": "Senate", "SSHR": "House", "SSSR": "Senate",
+                  BILL_OF_INTENT: "House"}
 NO_GOVERNOR = {"HCR", "SCR", "CACR", "SSHCR", "SSSCR"}
 
 
@@ -1648,6 +1660,13 @@ def classify(narr, rcs, prefix=""):
     return "active", "In committee"
 
 
+# What the status box says of a one-chamber measure its chamber carried: a
+# resolution, and a House bill of intent, which is not one and whose docket
+# says PASSED.
+ONE_CHAMBER_DONE = ("Adopted. A resolution of one chamber goes no further",
+                    "Passed by the House, which is as far as a House bill of intent goes")
+
+
 def next_step(narr, bill, prefix=""):
     """Plain-language 'what happens next', from the last recognised event."""
     evs = (narr or {}).get("events", [])
@@ -1686,7 +1705,7 @@ def next_step(narr, bill, prefix=""):
             e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
             and re.search(r"ought to pass|adopted", e.get("action") or "", re.I)
             for e in evs if not e.get("cancelled")):
-        return "Adopted. A resolution of one chamber goes no further"
+        return ONE_CHAMBER_DONE[prefix == BILL_OF_INTENT]
     if t == "introduced":
         return f"Pending public hearing in {bill.get('house_committee') or 'committee'}"
     if t == "hearing":
@@ -1697,7 +1716,7 @@ def next_step(narr, bill, prefix=""):
         return "Pending a vote of the full chamber"
     if t == "floor":
         if prefix in SINGLE_CHAMBER:
-            return "Adopted. A resolution of one chamber goes no further"
+            return ONE_CHAMBER_DONE[prefix == BILL_OF_INTENT]
         return "Pending action in the other chamber"
     if t == "enrolled":
         if prefix == "CACR":
@@ -3440,7 +3459,7 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
 # (HCR, SCR) and a constitutional amendment (CACR) do cross, so they are not
 # in here. A special session numbers the same kinds with "SS" in front: SSHR 1
 # of 2008 is the House adopting its rules and has two stops, not four.
-ONE_CHAMBER = ("HR", "SR", "SSHR", "SSSR")
+ONE_CHAMBER = ("HR", "SR", "SSHR", "SSSR", BILL_OF_INTENT)
 # The chamber a measure starts in, by its number.
 OWN_CHAMBER = {"HB": "H", "HCR": "H", "HJR": "H", "HR": "H",
                "SB": "S", "SCR": "S", "SJR": "S", "SR": "S"}
@@ -4356,7 +4375,10 @@ def _j_words(st, bid):
     other = {"H": "Senate", "S": "House"}.get(body, "")
     long_, short = _j_vote_words(st.get("vote"))
     pre = bill_prefix(bid)
-    resolution = pre in SINGLE_CHAMBER or (pre in NO_GOVERNOR and pre != "CACR")
+    # A bill of intent is one chamber's and is no resolution: its docket's
+    # word is PASSED.
+    resolution = ((pre in SINGLE_CHAMBER and pre != BILL_OF_INTENT)
+                  or (pre in NO_GOVERNOR and pre != "CACR"))
     if act in ("passed", "adopted"):
         am = st.get("amended")
         text = ("Adopted" if resolution else "Passed") + (" with an amendment" if am else "")

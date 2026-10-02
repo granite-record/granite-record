@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.306
+# GRANITE_VERSION: 2026-09-04.307
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1425,6 +1425,97 @@ def _petition_withdrawn(N, B):
         assert not N.WITHDRAWN_ROW.match(row), row
     return "ok", ("PET 7 of 2012 reads Withdrawn from \"Petition Withdrawn By Petitioner\", "
                   "as PET 29 does from its own row")
+
+
+# Real rows: Docket_db_1991-1992.txt lines 5433-5438 (HBI 2) and 2963-2967
+# (HBI 3); Docket_db_1989-1990.txt 15381-15387 (HBI 2011).
+_DOCKET_BILL_OF_INTENT = {
+    ("HBI2", "1991-1992"): [
+        "1991|0721|01/03/1991 11:46:06 AM|HBI2|H|INTRODUCED AND REF TO MUN & CNTY GOVT;  HJ16,P152|01/03/1991 11:46:06 AM",
+        "1991|0721|02/07/1991 11:01:44 AM|HBI2|H|IN SEAT POCKET ON  FEB12  DUE ON  MAR14|02/07/1991 11:01:44 AM",
+        "1991|0721|02/13/1991 06:42:02 PM|HBI2|H|HEARING FEB27 11:30 RM211,LOB    FOR: MUN & CNTY GOVT|02/13/1991 06:42:02 PM",
+        "1991|0721|03/07/1991 11:12:03 AM|HBI2|H|MAJ REPORT OTP FOR MAR19  (VOTE 15-0)|03/07/1991 11:12:03 AM",
+        "1991|0721|03/19/1991 12:58:46 PM|HBI2|H|PASSED VV; HJ53A,P1135|03/19/1991 12:58:46 PM",
+        "1991|0721|09/26/1991 12:44:20 PM|HBI2|H|STUDY REPORT: LEGISLATION FOR 1992 SESSION  (VOTE 13-0;CC)|09/26/1991 12:44:20 PM"],
+    ("HBI3", "1991-1992"): [
+        "1991|0416|02/05/1991 01:38:37 PM|HBI3|H|INTRODUCED AND REF TO REG REV;  HJ23,P306|02/05/1991 01:38:37 PM",
+        "1991|0416|02/07/1991 11:05:25 AM|HBI3|H|IN SEAT POCKET ON  FEB12  DUE ON  MAR14|02/07/1991 11:05:25 AM",
+        "1991|0416|02/08/1991 10:43:33 AM|HBI3|H|HEARING MAR05 10:45 RM308,LOB    FOR: REG REV|02/08/1991 10:43:33 AM",
+        "1991|0416|03/14/1991 11:06:42 AM|HBI3|H|MAJ REPORT ITL FOR MAR19  (VOTE 17-1;CC)|03/14/1991 11:06:42 AM",
+        "1991|0416|03/19/1991 06:59:51 PM|HBI3|H|ITL REPORT ADOPTED; HJ53A,P1132|03/19/1991 06:59:51 PM"],
+    ("HBI2011", "1989-1990"): [
+        "1990|2404|01/03/1990 04:15:16 PM|HBI2011|H|INTRODUCED AND REF TO ENVIRONMENT & AGRICULTURE; HJ7,P246|01/03/1990 04:15:16 PM",
+        "1990|2404|01/03/1990 04:30:00 PM|HBI2011|H|IN SEAT POCKET ON 1/3/90      DUE ON 2/8/90|01/03/1990 04:30:00 PM",
+        "1990|2404|01/03/1990 05:00:00 PM|HBI2011|H|HEARING JAN18 11:00 RM303,LOB    FOR: ENV & AGRIC|01/03/1990 05:00:00 PM",
+        "1990|2404|01/23/1990 10:40:30 AM|HBI2011|H|CONTINUED HEARING JAN24 01:00 RM303,LOB    FOR: ENV&AGRIC|01/23/1990 10:40:30 AM",
+        "1990|2404|02/06/1990 09:18:03 AM|HBI2011|H|MAJ REPORT OTP FOR FEB13  (VOTE 13-2)|02/06/1990 09:18:03 AM",
+        "1990|2404|02/13/1990 02:06:38 PM|HBI2011|H|PASSED VV; HJ37,P1194 + 1222|02/13/1990 02:06:38 PM",
+        "1990|2404|09/19/1990 03:13:38 PM|HBI2011|H|INT STUDY REPORT ITL FOR 1991 SESSION  (VOTE 13-2)|09/19/1990 03:13:38 PM"],
+}
+
+
+@check("status", "a House bill of intent the House passed is finished there, and drawn against "
+                 "no Senate",
+       needs=("narrative", "build_site_v2"))
+def _bill_of_intent(N, B):
+    """Fourteen measures of 1989-1994 are House Bills of Intent (HBI): passing
+    one sends its subject to its committee to study and report, and none of
+    their dockets has a Senate row. Read as bills, the six the House passed
+    said "Passed one chamber", HBI 2011 of 1990 said "Committee report filed"
+    of the study's own report, and every one was drawn a four-stop rail
+    against a Senate, a governor and a law. They are one chamber's measures:
+    "Adopted by the House", on a rail of that chamber alone.
+
+    The line of the journey keeps the docket's word, PASSED, and nothing calls
+    a bill of intent a resolution.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_BILL_OF_INTENT.items()}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    def told(bill, term, st):
+        n = narr[(bill, term)]
+        d = B.bill_disposition({}, bill, st, n, [], term, "2025-2026")
+        intro, steps = B.journey(n, bill, term=term)
+        passed = {c for c in ("H", "S") if B.journey_state(steps, c) == "p"}
+        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in ("H", "S")))
+        rail = B.passage(n.get("stages"), d.kind, d.status, bill, passed, acted)
+        return d, steps, rail
+
+    d, steps, rail = told("HBI2", "1991-1992",
+                          {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED"})
+    is_("HBI2 of 1991", (d.kind, d.status, rail), ("adopted", "Adopted by the House", "Hpp"))
+    is_("HBI2 of 1991's line", [(s["act"], s["text"]) for s in steps],
+        [("passed", "Passed on a voice vote")])
+    is_("HBI2 of 1991, by the journey's test",
+        B.journey_disagrees(steps, d.kind, d.status, rail, "HBI2"), "")
+    # HBI 2011's field is the report of the study it ordered; the docket has
+    # the House passing it.
+    d, steps, rail = told("HBI2011", "1989-1990",
+                          {"gen_status": "HOUSE", "house_status": "REPORT FILED"})
+    is_("HBI2011 of 1990", (d.kind, d.status, rail), ("adopted", "Adopted by the House", "Hpp"))
+    box = B.next_step(narr[("HBI2011", "1989-1990")], {}, "HBI")
+    is_("HBI2011's status box", box,
+        "Passed by the House, which is as far as a House bill of intent goes")
+    # One the House killed stops in the House, on two stops.
+    d, steps, rail = told("HBI3", "1991-1992",
+                          {"gen_status": "HOUSE", "house_status": "INEXPEDIENT TO LEGISLATE"})
+    is_("HBI3 of 1991", (d.kind, d.status, rail), ("done", "Killed", "Hxx"))
+    # A House resolution is still one, and a House bill is still a bill.
+    is_("a resolution's status box",
+        B.next_step(_nar(_ev("H", "Introduced and Adopted", "floor", "MA", "Adopted")), {}, "HR"),
+        "Adopted. A resolution of one chamber goes no further")
+    is_("HB 2's passage by one chamber",
+        B.classify_stated({"house_status": "PASSED/ADOPTED"}, "HB", "H"),
+        ("active", "Passed one chamber"))
+    is_("HR 2's adoption", B.classify_stated({"house_status": "PASSED/ADOPTED"}, "HR", "H"),
+        ("adopted", "Adopted by the House"))
+    assert not bad, "; ".join(bad)
+    return "ok", ("a bill of intent the House passed reads Adopted by the House on a rail of "
+                  "the House alone, in the docket's own word, Passed")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
