@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.134
+# GRANITE_VERSION: 2026-09-05.135
 """
 Generate the faceted site from real General Court data.
 
@@ -6346,6 +6346,9 @@ BEFORE_CONCURRENCE = {
 # term ran out where the docket says why the bill did not get there.
 BEFORE_UNABLE = (BEFORE_CONFERENCE - {"Passed, awaiting the governor"}) | {
     "Died when the session ended"}
+# Any row about a committee of conference: one asked for, acceded to, named,
+# meeting, or reporting. "Concur" is not one.
+CONFERENCE_ROW = re.compile(r"\bconf(?:erence|eree)|\bc\s?of\s?c\b|\bcofc\b", re.I)
 
 
 def between_chambers(narr, status):
@@ -6373,6 +6376,21 @@ def between_chambers(narr, status):
             return "active", ("One chamber did not concur; a committee of "
                               "conference was asked for" if c[1]
                               else "One chamber did not concur")
+    # AND "DIED, SESSION ENDED" IS THE TERM RUNNING OUT, WHERE THE DOCKET SAYS
+    # WHAT STOPPED THE BILL: HB 1768 of 2026 passed the Senate amended and on
+    # 21 May the House refused the amendment and asked for no conference,
+    # "House Non-Concurs with Senate Amendment 2026-1745s (Rep. Harb): MA VV",
+    # its last row. Forty-one bills of that term with the same last row read
+    # "One chamber did not concur"; this one read "Died when the session
+    # ended", from the House's field. ONLY WHERE NO COMMITTEE OF CONFERENCE
+    # WAS EVER ASKED FOR OR FORMED -- no row of the docket names one. HB 751
+    # and HB 1709 of 2026 went to a conference whose report the Senate laid on
+    # the table, and no vote on a report is what `conf` being empty means for
+    # them too: a bill that reached a conference did not end at the refusal.
+    if (status == "Died when the session ended" and not conf
+            and not any(CONFERENCE_ROW.search(e.get("raw") or "") for e in evs)
+            and concurrence_outcome(evs) == ("non", False)):
+        return "active", "One chamber did not concur"
     return None
 
 

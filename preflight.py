@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.312
+# GRANITE_VERSION: 2026-09-04.313
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2003,6 +2003,68 @@ def _died_on_the_table_row(N, B):
     assert not bad, "; ".join(bad)
     return "ok", ("HB 112 and HCR 3 of 2015 died on the table by the House's own row, SB 14 of "
                   "2025 by Senate Rule 3-23; SB 476 of 2016, with no such row, is laid on it")
+
+
+# Real rows: Docket.txt lines 22638 and 23632 (HB 1768) and 23373, 23536-23537,
+# 23687, 23704, 23841, 23958, 24007 and 24231-24232 (HB 1709).
+_DOCKET_NONCONCUR_UNDER_DIED = {
+    "HB1768": [
+        "2026|2926|5/5/2026 10:33:54 AM|HB1768|S|Ought to Pass with Amendment # 2026-1745s, MA, VV; OT3rdg; 05/07/2026;  SJ 11|5/7/2026 9:56:44 AM",
+        "2026|2926|5/21/2026 1:53:54 PM|HB1768|H|House Non-Concurs with Senate Amendment 2026-1745s (Rep. Harb): MA VV 05/21/2026  HJ 14  P. 22|7/24/2026 4:07:33 PM"],
+    "HB1709": [
+        "2026|2669|5/14/2026 8:17:13 PM|HB1709|S|Ought to Pass with Amendments #2026-1939s and #2026-1978s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|5/14/2026 8:17:13 PM",
+        "2026|2669|5/19/2026 12:42:48 PM|HB1709|H|House Non-Concurs with Senate Amendment 2026-1978s and 2026-1939s and Requests CofC (Rep. Alexander Jr.): MA VV 05/14/2026  HJ 13  P. 150|7/24/2026 11:54:52 AM",
+        "2026|2669|5/19/2026 12:43:40 PM|HB1709|H|Speaker Appoints: Reps. Alexander Jr., Beaulier, Dumont, Reinfurt 05/14/2026  HJ 13  P. 150|7/24/2026 11:54:56 AM",
+        "2026|2669|5/20/2026 4:58:25 PM|HB1709|S|Sen. Gannon Accedes to House Request for Committee of Conference, MA, VV; (In recess 05/14/2026);  SJ 13|5/20/2026 4:58:25 PM",
+        "2026|2669|5/20/2026 5:04:52 PM|HB1709|S|President Appoints: Senators Gannon, Birdsell, Altschiller; (In Recess 05/14/2026);  SJ 13|5/20/2026 5:04:52 PM",
+        "2026|2669|5/26/2026 12:00:00 AM|HB1709|H|Conference Committee Meeting: 05/26/2026 02:45 pm GP 234|5/21/2026 4:16:10 PM",
+        "2026|2669|5/28/2026 11:38:17 AM|HB1709|S|Conferee Change; Senator Pearl Replaces Senator Altschiller;  SJ 14|5/28/2026 11:38:17 AM",
+        "2026|2669|5/28/2026 3:14:15 PM|HB1709|S|Conference Committee Report Filed, # 2026-2083c; 06/04/2026|5/28/2026 3:14:15 PM",
+        "2026|2669|6/4/2026 1:18:11 PM|HB1709|S|Sen. Pearl Moved Laid on Table, MA, VV; 06/04/2026;  SJ 14|6/4/2026 1:18:11 PM",
+        "2026|2669|6/4/2026 1:18:33 PM|HB1709|S|Pending Motion Committee of Conference Report # 2026-2083c; 06/04/2026;  SJ 14|6/4/2026 1:18:32 PM"],
+}
+
+
+@check("status", "a refusal to concur is not hidden by DIED, SESSION ENDED, unless a committee "
+                 "of conference was asked for or formed",
+       needs=("narrative", "build_site_v2"))
+def _nonconcurrence_under_session_ended(N, B):
+    """HB 1768 of 2026 passed the Senate amended, and on 21 May the House
+    refused the amendment and asked for no conference: "House Non-Concurs
+    with Senate Amendment 2026-1745s (Rep. Harb): MA VV", its last row.
+    Forty-one bills of the term with that last row read "One chamber did not
+    concur"; this one read "Died when the session ended", from the House's
+    field, because the labels a dated refusal to concur may replace left that
+    one out.
+
+    ONLY WHERE NO ROW OF THE DOCKET NAMES A COMMITTEE OF CONFERENCE. HB 1709
+    of 2026 went to one, whose report the Senate laid on the table: the
+    database's House code for it is DIED, SESSION ENDED too, and "no chamber
+    voted on a conference report" is as true of it as of HB 1768. It did not
+    end at the House's refusal.
+    """
+    narr = {b: _narrated(N, "2025-2026", b, rows)
+            for b, rows in _DOCKET_NONCONCUR_UNDER_DIED.items()}
+    d = B.bill_disposition(
+        {}, "HB1768", {"gen_status": "HOUSE", "house_status": "DIED, SESSION ENDED",
+                       "senate_status": "PASSED/ADOPTED WITH AMENDMENT"},
+        narr["HB1768"], [], "2025-2026", "2025-2026", term_over=True)
+    assert (d.kind, d.status, d.between) == ("done", "One chamber did not concur", True), (
+        d.kind, d.status, d.between)
+    assert B.between_chambers(narr["HB1768"], "Died when the session ended") == (
+        "active", "One chamber did not concur")
+    # HB 1709: the page's Senate field with the database's House code.
+    got = B.between_chambers(narr["HB1709"], "Died when the session ended")
+    assert got is None, f"HB1709 of 2026, which went to a conference, read {got}"
+    d = B.bill_disposition(
+        {}, "HB1709", {"gen_status": "SENATE", "house_status": "DIED, SESSION ENDED",
+                       "senate_status": "LAID ON TABLE"},
+        narr["HB1709"], [], "2025-2026", "2025-2026", term_over=True)
+    assert not d.status.startswith("One chamber did not concur"), d.status
+    # And nothing else under that label moves: a kill is a kill.
+    assert B.between_chambers(narr["HB1768"], "Killed") is None
+    return "ok", ("HB 1768 of 2026 reads One chamber did not concur over the House's DIED, "
+                  "SESSION ENDED; HB 1709, which reached a conference, is not read so")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
