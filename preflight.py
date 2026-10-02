@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.315
+# GRANITE_VERSION: 2026-09-04.316
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8353,7 +8353,7 @@ def _print_is_light():
              for n in dark if on_paper[n].strip().lower() != light.get(n, "").strip().lower()]
     assert not drift, "; ".join(drift[:4])
     assert "color-scheme:light" in m.group(1), "on paper the page still asks for a dark colour scheme"
-    hidden = re.search(r"([^{}]+)\{display:none !important\}", m.group(2))
+    hidden = re.search(r"([^{}]+)\{display:none !important\}", strip(m.group(2)))
     gone = {s.strip() for s in hidden.group(1).split(",")} if hidden else set()
     want = {"nav.top", ".searchrow", ".backto", ".pageacts", "details.report", ".player"}
     assert want <= gone, (
