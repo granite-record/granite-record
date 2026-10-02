@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -225,29 +225,37 @@ approved the night asking it, gently, as the fallback. On GitHub's night only:
                       what-changed report compares it with. The archive's
                       index stays the history of the website's files
   if it cannot be     a hold on file, a connection or a query that fails, a
-  used                view cut short, the night's own step failing, a New term
-                      run, no installed files: nothing is installed from it,
-                      and the night does what it did before there was a
-                      database to ask. The export is asked again every
-                      EMPTY_WAIT minutes, up to EMPTY_TRIES tries in all with
-                      the first counted, and a try that arrives whole is
-                      installed. The database is not asked again that night
-  if what it gave     a guard that stops, or files much smaller than the
-  looked wrong        copies installed (DB_LOOKED_WRONG): nothing is installed
-                      and the export is not asked again that night either. It
-                      is written from the same record, and a later try would
-                      go in on the export's own, coarser, checks
+  used                view cut short, the night's own step failing, no
+                      installed files: nothing is installed from it. The
+                      export is asked ONCE more, EMPTY_WAIT minutes later
+                      (TRIES_AFTER_DB, which says why it is no longer five
+                      times more), and a try that arrives whole is installed.
+                      The database is not asked again that night, for the
+                      study committees' views either (STUDY_NOT_AGAIN)
+  if what it gave     a guard that stops, or rebuilt files much smaller than
+  looked wrong        the copies installed (DB_LOOKED_WRONG): nothing is
+                      installed and the export is not asked again that night
+                      either. It is written from the same record, and a later
+                      try would go in on the export's own, coarser, checks
+  a New term run      never asks the database, and still asks the export up
+                      to EMPTY_TRIES times, EMPTY_WAIT minutes apart: a person
+                      started it, and a new term's files come from nowhere else
 
-When nothing is installed the night is not clean, and its page says in this
-file's own sentences what the export said, what the database did after which
-try, and whether the export was asked again.
+When nothing is installed the night is not clean. Its page says in this file's
+own sentences what the export said and, when every try came back empty, what
+the database did after which try and whether the export was asked again; and
+it lists what was asked for the day's files, in order, whichever way the last
+try ended.
 
 THAT HOST'S HOLD, ON A NIGHT THE EXPORT IS WHOLE. A connection to the SQL host
 that fails is held (probe_db.py), and while the hold stands the night does not
 ask it for the study committees' meetings either. That is a warning on the
 night's page, the installed meetings stay, and the day's files are built and
 published: another server's bad week does not hold the day's bills back. The
-night a connection is tried and fails is not clean, as it never was.
+night the views' own connection is tried and fails is not clean, as it never
+was. A connection that failed earlier the same night, when the database was
+turned to for the day's files, has left its hold by then: the views are not
+asked for, and that is the warning of a night whose export then arrived.
 
 THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026)
 
@@ -429,6 +437,9 @@ NEW_TERM_SHRINK = 1.0
 # What snapshot_gencourt's --into did, in the day's snapshot folder: its
 # INSTALL_RECORD, which preflight holds to this.
 INSTALL_RECORD = "install.json"
+# ... and its MIN_BYTES, likewise held: a file shorter than this is an empty
+# one (fetch_status, not_empty_file).
+EMPTY_BYTES = 40
 
 # The late-caption check has to cover the recordings as it does on the laptop,
 # where on 25 September it compared 2,850 of the 2,851 recordings with
@@ -478,18 +489,37 @@ SQL_HELD_ENV = "GRANITE_SQL_HELD"
 # connections in a row would have kept the next night's export, whole and
 # built, off the site, and four in a row the next six nights'.
 STUDY_HELD = "not taken: a hold on the General Court's database is on file"
+# ... and of one it did not ask for because the database had been asked for
+# the day's files earlier the same night and had not given them (2 October
+# 2026). Until the export could be asked again AFTER the database, a database
+# that failed ended the night's asking, and "is not asked twice" was true by
+# construction. With the new order a failed query could be followed by an
+# export that arrived, and take_views then asked the same host, minutes after
+# it had timed out, for two more views. A warning, as the hold's is: the
+# installed views stay, and the day's files are built and go out.
+STUDY_NOT_AGAIN = ("not taken: the General Court's database did not give the day's files "
+                   "earlier tonight, and it is not asked again the same night")
+STUDY_UNASKED = (STUDY_HELD, STUDY_NOT_AGAIN)
 # Why a fallback that was tried installed nothing. One of these, chosen by the
 # night's own code, is all the run's page says of it: the page is public, and
 # takes none of a server's own words. The detail is in the log and the verdict.
+# "query" said "and nothing is asked twice in one night" until 2 October 2026,
+# when the page of such a night went on to list the export asked again: it is
+# the database that is not asked again, and DB_ASKED holds the night to that.
 DB_WHY = {
     "held": "a hold on it is on file, so it was not asked",
     "connect": "its server could not be connected to",
-    "query": "a query of it failed, and nothing is asked twice in one night",
+    "query": "a query of it failed, so it was not asked again tonight",
     "short": "what came back from it was not whole",
     "guard": "what came back from it did not pass the night's checks against the installed files",
     "shrink": "the files rebuilt from it were much smaller than the copies installed",
     "error": "the night's own step for it failed",
 }
+# The reasons that mean the database WAS asked tonight and gave nothing the
+# night could use: it is asked for nothing more that night (STUDY_NOT_AGAIN).
+# Not "held": it was never asked, and the hold speaks for itself in
+# take_views, as a failed connection's does once it is recorded.
+DB_ASKED = ("connect", "query", "short", "error")
 
 QUIET = False             # --runner: child output to the log file only
 
@@ -790,6 +820,7 @@ def main():
                 asked, page_said, page_at = datetime.now(), "", 0
                 db_day = False          # tonight's files came from the database
                 db_asked = False        # the database is turned to once a night, at most
+                last = EMPTY_TRIES      # the last try an empty export gets tonight
                 if night:
                     # What was asked for the day's files, in the order it was
                     # asked, each with how it ended: the verdict's "tried".
@@ -801,7 +832,7 @@ def main():
                             rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."]
                                      + (["--allow-shrink"] if a.new_term else []),
                                      "the day's bulk files"
-                                     + (f", try {tries} of {EMPTY_TRIES}" if tries > 1 else ""))
+                                     + (f", try {tries} of {last}" if tries > 1 else ""))
                             got = fetch_status(rc, a.archive, asked)
                             said = data_page(a.archive, asked)
                             if said and not page_said:
@@ -832,11 +863,15 @@ def main():
                                         "coarser, checks. Nothing was installed.")
                                     night.v["tried"].append(EXPORT_NOT_AGAIN)
                                     break
-                            if tries == EMPTY_TRIES:
+                                if not a.new_term:
+                                    # It could not be used: TRIES_AFTER_DB more
+                                    # of the export, and not the old five.
+                                    last = min(EMPTY_TRIES, tries + TRIES_AFTER_DB)
+                            if tries >= last:
                                 break
                             say(f"\n  {got}: the General Court's files are sometimes half "
                                 f"written in the early morning. Asking again in {EMPTY_WAIT} "
-                                f"minutes (try {tries + 1} of {EMPTY_TRIES}).")
+                                f"minutes (try {tries + 1} of {last}).")
                             time.sleep(EMPTY_WAIT * 60)
                         if night:
                             night.v["fetch_tries"] = tries
@@ -846,7 +881,8 @@ def main():
                         if night and (rc == 0 or db_day) and not refusal.MARK.exists():
                             night.v["study_meetings"] = take_views(
                                 STUDY_NIGHTLY, "the study committees' meetings, from the database",
-                                shrink=NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK)
+                                shrink=NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK,
+                                not_again=db_asked_in_vain(night.v))
                             if a.new_term:
                                 night.v["new_term"]["study views"] = "; ".join(
                                     f"{k} {r}" for k, r in night.v["study_meetings"].items())
@@ -868,8 +904,10 @@ def main():
                     night.v["fetch"] = fetch_status(rc, a.archive, asked)
                     night.v["files_from"] = ("export" if rc == 0 else
                                              DB_SOURCE if db_day else "none")
-                    night.v["db_nights"] = (0 if rc == 0 else
-                                            night.v["db_nights"] + (1 if db_day else 0))
+                    # A database night is counted where its files went in
+                    # (from_database), so that a night stopped after that
+                    # still counts; here only the export starts it again.
+                    night.v["db_nights"] = 0 if rc == 0 else night.v["db_nights"]
                     if a.new_term and rc == 0:
                         night.v["new_term"]["files"] = shrink_accepted(a.archive, asked)
                     if page_said:
@@ -1297,7 +1335,14 @@ def study_missed(v):
     """Whether a study committees' view was asked for and not taken."""
     got = v.get("study_meetings")
     return isinstance(got, dict) and any(
-        r != STUDY_HELD and not str(r).startswith("installed") for r in got.values())
+        r not in STUDY_UNASKED and not str(r).startswith("installed") for r in got.values())
+
+
+def study_not_again(v):
+    """Whether the night left the study committees' views unasked because the
+    database had not given the day's files earlier that night (take_views)."""
+    got = v.get("study_meetings")
+    return isinstance(got, dict) and any(r == STUDY_NOT_AGAIN for r in got.values())
 
 
 def sql_hold_said():
@@ -1395,29 +1440,44 @@ def unpublished_new_term(prev, census):
 # EMPTY_TRIES times -- at most 84 requests over two and a half hours, each
 # try one complete pass, so the files installed are still all from one moment.
 # Since 2 October 2026 that wait is no longer the first answer to an empty
-# export: DB_AFTER_TRIES, below.
+# export, and a scheduled night makes one such wait at most: DB_AFTER_TRIES
+# and TRIES_AFTER_DB, below. Only the New term run still asks all six times.
 EMPTY_TRIES = 6
 EMPTY_WAIT = 30         # minutes
 
-# THE DATABASE FIRST, AND THE WAIT ONLY IF IT CANNOT BE USED (2 October 2026).
+# THE DATABASE FIRST, AND NO LONG WAIT AFTER IT EITHER (2 October 2026).
 # How many times the export is asked before an empty one sends the night to
 # the database (from_database): once. As first written, on 1 October, it was
 # EMPTY_TRIES: the database was asked only when the sixth try was empty, two
 # and a half hours in. But on 27 and 28 September and 1 October the export
 # came back empty on every try those nights made, and the person's reading
 # of them is that asking again "tends to not work even if you try half an
-# hour apart". On 2 October they decided, in their words: "if the backup
+# hour apart". On 2 October they decided, in their words: "I don't think
+# retrying the export being empty is worth doing 5 times", "if the backup
 # method works to fill in all the same information as the export, we should
 # use that much quicker", and the system is not to "unnecessarily wait for
 # 2.5 hours every time". So an export that is empty with nothing else wrong
 # goes to the database at once, under the same lock and on every condition
-# from_database() keeps, and the half hours are what is left for a night the
-# database cannot be used -- a hold on file, a connection or a query that
-# fails, a view cut short, a New term run, no installed files. That night
-# asks the export again as before, up to EMPTY_TRIES tries in all with the
-# first counted, installs a try that arrives whole, and does not ask the
-# database a second time. Putting EMPTY_TRIES here is the night of 1 October
+# from_database() keeps. Putting EMPTY_TRIES here is the night of 1 October
 # again, and preflight holds this to 1.
+#
+# TRIES_AFTER_DB is what is left for a night the database could not be used
+# -- a hold on file, a connection or a query that fails, a view cut short,
+# the night's own step failing, no installed files: how many MORE times the
+# export is asked, EMPTY_WAIT minutes apart. The first version of this order
+# kept all five, so every night that host failed or stood held (probe_db's
+# hold is 20 to 164 hours) was the night of 1 October unchanged: 150 minutes
+# and five more passes at the web server, for tries the person had just said
+# were not worth making. They did not say what an unusable database should
+# cost, so ONE is this file's reading and not their word, and a hedge rather
+# than a finding: a file caught half written may be whole half an hour on,
+# and a night with neither source loses half an hour finding out. 0 ends
+# such a night at once. Whatever it is, the database is not asked a second
+# time, and a try that arrives whole is installed.
+#
+# A New term run is the one night that still asks EMPTY_TRIES times: it never
+# asks the database, a person started it, and a new term's files come from
+# the export or from nowhere.
 #
 # THE EXPORT IS STILL ASKED FIRST, every night, whatever this says: 0 is 1.
 # The person also said that if the export stays this unreliable all year "we
@@ -1431,6 +1491,7 @@ EMPTY_WAIT = 30         # minutes
 # the database's own. A night that never asked the export would need an
 # answer to each. It is a person's decision, and a piece of work of its own.
 DB_AFTER_TRIES = 1
+TRIES_AFTER_DB = 1
 
 # WHEN THE DATABASE'S FILES LOOKED WRONG, THE EXPORT IS NOT ASKED AGAIN THAT
 # NIGHT (2 October 2026). These two of DB_WHY's reasons are the ones where the
@@ -1459,6 +1520,13 @@ def db_looked_wrong(v):
     (DB_LOOKED_WRONG), rather than not reached or not whole."""
     df = v.get("day_files") if isinstance(v.get("day_files"), dict) else {}
     return df.get("source") != DB_SOURCE and df.get("why_code") in DB_LOOKED_WRONG
+
+
+def db_asked_in_vain(v):
+    """Whether the database was asked for the day's files tonight and gave
+    nothing the night could use (DB_ASKED): it is asked for nothing more."""
+    df = v.get("day_files") if isinstance(v.get("day_files"), dict) else {}
+    return df.get("source") != DB_SOURCE and df.get("why_code") in DB_ASKED
 
 
 def on_tries(n):
@@ -1541,6 +1609,14 @@ def shrink_sizes(small):
     return out
 
 
+def not_empty_file(err):
+    """Whether a snapshot's "not a data file (N bytes)" is of a body too big
+    to be an empty file (EMPTY_BYTES): a page of some kind. One that gives no
+    size is not known to be empty either."""
+    m = re.search(r"not a data file \(([\d,]+) bytes\)", str(err))
+    return not m or int(m.group(1).replace(",", "")) >= EMPTY_BYTES
+
+
 def fetch_status(rc, archive, since=None):
     """The day's files as the verdict records them. A failed snapshot is told
     apart by its own manifest: the first scheduled night, 27 September 2026,
@@ -1558,6 +1634,18 @@ def fetch_status(rc, archive, since=None):
     errs = [x["error"] for x in (man.values() if isinstance(man, dict) else [])
             if isinstance(x, dict) and x.get("error")]
     if errs and all("not a data file" in e for e in errs):
+        # EMPTY IS A FILE WITH NOTHING IN IT, AND NOT A WEB PAGE (2 October
+        # 2026). The snapshot says "not a data file" of two things: a body
+        # under its MIN_BYTES, which is the 3-byte file of the failed nights,
+        # and a body of any size that opens as HTML. "empty" is what sends
+        # the night to the database and then on to the bill requests and the
+        # calendar list; a page where a file should be is not known to be
+        # that, and may be a refusal in words refusal.py does not know yet.
+        # So it is "did not complete": nothing more is asked, by any door.
+        pages = [e for e in errs if not_empty_file(e)]
+        if pages:
+            return (f"did not complete (exit {rc}): {len(pages)} of {len(man)} files came "
+                    "back as something that is neither data nor an empty file")
         return f"empty: {len(errs)} of {len(man)} files came back with no data in them"
     rec = load_json(day / INSTALL_RECORD)
     small = rec.get("shrunk") if isinstance(rec, dict) and not rec.get("installed") else None
@@ -1710,9 +1798,14 @@ def from_database(a, night, tries, since):
         block.update(asked=src.get("asked"), seconds=round(time.time() - t0),
                      rows={k: e.get("rows") for k, e in views.items() if not e.get("error")})
         if rc != 0:
+            # "query" only when a view says what failed. An exit with no
+            # view's error beside it -- the lock gone, GitHub's window, the
+            # script not starting -- was recorded as "a query of it failed",
+            # and since 2 October 2026 the run's page prints that line.
             errs = [str(e.get("error") or "") for e in views.values()]
             code = ("held" if rc == probe_db.SQL_HELD else
-                    "connect" if any(x.startswith("CONNECT_FAIL") for x in errs) else "query")
+                    "connect" if any(x.startswith("CONNECT_FAIL") for x in errs) else
+                    "query" if any(errs) else "error")
             return stop(code, "; ".join(x for x in errs if x)[:300] or f"exit {rc}")
         try:
             files, facts = DF.rebuild(DB_DAY, ".")
@@ -1731,7 +1824,23 @@ def from_database(a, night, tries, since):
         fetched = dict(files)
         carried = sorted(set(snapshot_gencourt.FILES) - set(DF.DAY_FILES))
         members = tonights_members(a.archive, since)
-        if members is not None:
+        # MEMBERS.TXT IS THE WEBSITE'S, AND IS JUDGED AS THE WEBSITE'S
+        # (2 October 2026). It went into the one install() with the seven
+        # rebuilt files, so a short Members.txt alone tripped the shrink
+        # rule, and the night's page said the files rebuilt from the
+        # database were much smaller -- none was -- and, with the new order,
+        # that the export was not asked again because of what the database
+        # gave. A short one is treated as one that did not arrive.
+        short = (snapshot_gencourt.shrunk({"Members.txt": members}, ".")
+                 if members is not None else [])
+        if short:
+            carried.append("Members.txt")
+            block["members"] = "the installed one: tonight's, from the website, was much smaller"
+            notes.append("Members.txt from the website tonight was much smaller than the "
+                         f"installed one ({short[0][1]:,} bytes against {short[0][2]:,}), so the "
+                         "installed one stays")
+            members = None
+        elif members is not None:
             fetched["Members.txt"] = members
             block["members"] = "tonight's, from the website"
         else:
@@ -1756,6 +1865,11 @@ def from_database(a, night, tries, since):
     # could not be kept is a warning, never a night that installed nothing.
     block.update(source=DB_SOURCE, carried=carried, warnings=notes,
                  nights=night.v["db_nights"] + 1)
+    # ... and the verdict names the source and counts the night from this
+    # moment (2 October 2026), not from the end of the fetch: a night stopped
+    # in a later step, with the seven files in and on their way back to the
+    # kit, left a verdict that named no source and had not counted it.
+    night.v["files_from"], night.v["db_nights"] = DB_SOURCE, block["nights"]
     say("\n  INSTALLED FROM THE DATABASE: " + done)
     tried.append("the database: all seven of the day's changing files installed")
     try:
@@ -1952,7 +2066,7 @@ def take_documents(v=None):
     return what
 
 
-def take_views(views, label, shrink=SWAP_SHRINK):
+def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
     """The study committees' views from the database, whole or not at all.
 
     fetch_archive_db.py writes straight over db/<view>.psv and exits 0 even
@@ -1962,13 +2076,20 @@ def take_views(views, label, shrink=SWAP_SHRINK):
     it replaces (any fall, on the New term run; never empty). The views'
     entries in db/_manifest.json follow them in; the
     calendar reads the meetings' date from there. {view: what happened}.
+
+    Not asked at all while a hold on the host stands (STUDY_HELD), or, with
+    not_again, on a night the database was asked for the day's files and did
+    not give them (STUDY_NOT_AGAIN).
     """
     import probe_db
     held = probe_db.hold_standing()
-    if held:
-        # No more queries of that host, from anything, while its hold stands.
-        say(f"  not asked: {probe_db.hold_sentence(held)}", echo=False)
-        out = {v: STUDY_HELD for v in views}
+    if held or not_again:
+        # No more queries of that host, from anything, while its hold stands;
+        # and none the same night it failed the day's files, hold or no hold.
+        say("  not asked: " + (probe_db.hold_sentence(held) if held else
+                               "the database did not give the day's files earlier tonight"),
+            echo=False)
+        out = {v: STUDY_HELD if held else STUDY_NOT_AGAIN for v in views}
         for v, what in out.items():
             say(f"  {v}: {what}")
         return out
@@ -2309,9 +2430,11 @@ class Night:
                            + ("." + db_tried(v).rstrip(".") if db_tried(v) else ""))
             else:
                 # A view left unasked for the SQL host's hold is a warning
-                # (warnings(), STUDY_HELD); one asked for and not taken is not.
+                # (warnings(), STUDY_HELD), as is one left unasked on a night
+                # the database had already failed the day's files
+                # (STUDY_NOT_AGAIN); one asked for and not taken is not.
                 bad = [f"{k}: {r}" for k, r in (v.get("study_meetings") or {}).items()
-                       if not r.startswith("installed") and r != STUDY_HELD]
+                       if not r.startswith("installed") and r not in STUDY_UNASKED]
                 if not v.get("study_meetings"):
                     bad = ["the study committees' meetings were not taken"]
                 why += bad
@@ -2349,6 +2472,10 @@ class Night:
         if study_held(self.v):
             # Short: the run's page cuts a note off at 300 characters.
             out.append("the study committees' meetings were not asked for: " + sql_hold_said())
+        elif study_not_again(self.v):
+            out.append("the study committees' meetings were not asked for: the General Court's "
+                       "database did not give the day's files earlier tonight, and it is not "
+                       "asked again the same night")
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
             out.append(f"next session's bill requests: {lsrs}")
@@ -2404,7 +2531,7 @@ class Night:
                     f"{'yes' if v.get('publishable') else 'no'}"]
                    + ([f"- **{v['warnings'][0]}**"] if from_db(v) and v["warnings"] else [])
                    + [f"- **error: {x}**" for x in alarms]
-                   + ([f"- the day's files arrived whole on try {tries} of {EMPTY_TRIES}"]
+                   + ([f"- the day's files arrived whole on try {tries}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + tried_lines(v)
                    + ([f"- the General Court's data page said{page_try(v)}: {v['data_page_said']}"]
