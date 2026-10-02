@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.300
+# GRANITE_VERSION: 2026-09-04.301
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -619,6 +619,18 @@ def _import_all():
     the scripts into folders, and a module left behind by a move shows up
     here as a failure, where it would otherwise show up as a longer list of
     skips that nobody reads.
+
+    AND EVERY SCRIPT THAT RUNS UNATTENDED, WHETHER A CHECK NEEDS IT OR NOT
+    (the review of the above, the same day). The checks' needs= is what the
+    checks import, not what the night runs: twenty-two scripts that
+    build_all.py, nightly.py, the laptop's evening job and the lane name
+    were in no check's needs= -- fetch_lsrs.py, check_site.py and
+    build_calendar.py among them -- so an import error in one, or a move
+    that left one behind, stayed green here and failed at four in the
+    morning. So the list is read off the runners as well (_scripts_run):
+    each script one of them names is imported, and one that build_all.py,
+    nightly.py, laptop_evening.py or the lane names and that is not here
+    fails by name.
     """
     ALSO = ("floor_markers", "apply_markers")
     mods = sorted({n for c in CHECKS for n in c["needs"]} | set(ALSO))
@@ -626,18 +638,55 @@ def _import_all():
     assert len(mods) >= 70, (
         f"only {len(mods)} modules are named in the checks' needs=; there were 76 when this "
         "was written, so the list is not being read")
-    bad = []
-    for m in mods:
+    runs, gone = _scripts_run()
+    assert len(runs) >= 55, (
+        f"only {len(runs)} scripts are named by {', '.join(_RUNNERS)}; there were 68 when "
+        "this was written, so the runners are not being read")
+    bad = [f"{n}: {src} names {n}.py and it is not here" for n, src in sorted(gone.items())]
+    for m in mods + sorted(set(runs) - set(mods)):
         if not Path(m + ".py").exists():
             bad.append(f"{m}: a check needs it and {m}.py is not here")
             continue
         try:
             __import__(m)
         except Exception as e:                                  # noqa: BLE001
-            bad.append(f"{m}: {type(e).__name__}: {str(e)[:90]}")
-    assert not bad, (f"{len(bad)} module(s) the checks need will not import, so every check "
-                     "that needs one would be skipped, not failed: " + "; ".join(bad))
-    return "ok", f"all {len(mods)} modules the checks need import"
+            bad.append(f"{m}: {type(e).__name__}: {str(e)[:90]}"
+                       + (f" ({runs[m]} runs it)" if m not in mods else ""))
+    assert not bad, (f"{len(bad)} module(s) the checks need or the night runs will not "
+                     "import -- a check that needs one would be skipped, not failed, and "
+                     "a step that runs one fails where nobody is watching: " + "; ".join(bad))
+    return "ok", (f"all {len(mods)} modules the checks need import, and the "
+                  f"{len(set(runs) - set(mods))} more that only the build, the night, the "
+                  "laptop's evening or the lane run")
+
+
+# What runs unattended, and so what _import_all reads for the scripts they
+# start: the build, the night, the laptop's evening job, the lane and its
+# queue, and the workflow. In the first four a script is a quoted "name.py",
+# and one named there and missing is a failure; the last two are text, where
+# a name may only be mentioned, so there only what is here is imported.
+_RUNNERS = ("build_all.py", "nightly.py", "laptop_evening.py", "watchers/gc_lane.py",
+            "watchers/gc_lane.queue", ".github/workflows/nightly.yml")
+
+
+def _scripts_run():
+    """({module: the runner that names it}, {module: runner} for one a runner
+    names that is not in this folder). preflight itself is left out: it is
+    the script doing the asking."""
+    here, gone = {}, {}
+    for src in _RUNNERS:
+        f = Path(src)
+        if not f.exists():
+            continue
+        text = f.read_text(encoding="utf-8", errors="replace")
+        code = src.endswith(".py")
+        pat = r"""["']([A-Za-z_]\w*)\.py["']""" if code else r"(?<![\w/.-])([A-Za-z_]\w*)\.py\b"
+        for n in sorted(set(re.findall(pat, text)) - {"preflight"}):
+            if Path(n + ".py").exists():
+                here.setdefault(n, src)
+            elif code:
+                gone.setdefault(n, src)
+    return here, gone
 
 
 # ============================================================ code: narrative ==
@@ -18189,9 +18238,11 @@ def _kit_entries_match(CL):
 #
 # THE PAGES. tests/calendar_index/ holds the form cut out of two pages the
 # General Court served on 6 September 2026: the Senate's index as it opens
-# (its calendars for 2026) and after its year was changed to 2025. They are
-# the only index pages this project ever saved. The House's page, and both
-# chambers' journal lists, were never saved, so here they are the same
+# (its calendars for 2026) and after its year was changed to 2025. A third
+# page was saved that day, probe_calendars_type.html, the answer to a change
+# of kind: it shows the same Senate calendars of 2026 as the first, so it is
+# no evidence of a journal list and is not kept here. The House's page, and
+# both chambers' journal lists, were never saved, so here they are the same
 # markup with the House's own values put in (_docs_page): the kind names
 # "Calendar" and "Journal", the lower-case folder, and file names the queue
 # recorded from that page on 13 September. The select names are the ones both
@@ -18280,6 +18331,30 @@ def _docs_fixture(CA):
     return pages, rows
 
 
+def _docs_turn(CA, pages):
+    """The fixture's pages as they would be once 2027's lists have opened:
+    the same lists, with 2027 at the head of each page's years, and each
+    chamber's calendars for 2027 with one document in them. No journal list
+    for 2027 is here: the page answers HTTP 500 for a year with no journals,
+    and the checks serve it that."""
+    years = ["2027"] + CA.shown(pages["S calendar 2026"])["years"]
+    turn = {}
+    for key, page in pages.items():
+        st = CA.shown(page)
+        turn[key] = _docs_page(CA, pages["S calendar 2026"],
+                               _DOCS_H if key[0] == "H" else _DOCS_S, st["kind"], years,
+                               key[-4:], st["docs"], st["link"])
+    for ch, kinds, kind, folder, doc in (
+            ("H", _DOCS_H, "Calendar", "calendars", ("HC 1.pdf", "No 1 December 4 2026")),
+            ("S", _DOCS_S, "SenateCalendar", "Calendars", ("SC 1.pdf", "No 1 December 3 2026"))):
+        turn[f"{ch} calendar 2027"] = _docs_page(
+            CA, pages["S calendar 2026"], kinds, kind, years, "2027", [doc],
+            f"{folder}\\2027\\{doc[0]}")
+    assert all(CA.shown(turn[k])["docs"] == CA.shown(pages[k])["docs"] for k in pages), \
+        "the fixture's pages for the turn of the year do not list what the saved ones do"
+    return turn
+
+
 def _docs_write_old(path, rows):
     """A queue file as the laptop's discovery left it: no label column."""
     cols = ["chamber", "kind", "year", "name", "url", "path", "state", "attempts", "error",
@@ -18317,13 +18392,19 @@ def _documents_listing(CA):
         documents, the selected one, and the link's folder and file;
       - an ordinary night is four requests, a GET and one postback a
         chamber, each postback carrying the page's own hidden state and one
-        change, LISTING_PAUSE apart; what is new is added in the page's
+        change, LISTING_PAUSE apart and as long before the first; what is
+        new is added in the page's
         order with the General Court's label, at the viewer address made of
         the page's own folder and the page's own name -- SC 29's is the one
         the laptop recorded; a name's entities are read; nothing on file
         moves, and a row on file gains its label;
       - at the turn of a year it is eight, whichever way the page answers a
-        change of kind, and never more;
+        change of kind, and never more; a new year's journal list that the
+        page answers with HTTP 500 is taken as none posted yet, and written
+        down as unanswered, only where it is the chamber's last list, none
+        is on file for it and the year's calendars were read -- and a 500
+        to any other list, a dropped connection or a refusal stops the read
+        as before;
       - a page whose link names another year, that shows a list nobody asked
         for, that marks nothing selected, or that has no link, stops the read
         with nothing written; so do a request that fails, a budget spent and
@@ -18331,7 +18412,11 @@ def _documents_listing(CA):
       - judge() refuses a list that came back short or empty, one not read,
         an older year only, a lost or moved row, and an address the page did
         not give; and lets through one document gone and a new year's empty
-        list;
+        list. Short is counted against what the page listed when it was last
+        installed, so a document gone on an earlier night is not counted
+        again, and the limit is pinned on both sides: two of twenty and
+        three of thirty pass, three of twenty and four of thirty do not, and
+        of four it is the second that stops it;
       - main(): --out writes the queue and the listing and installs nothing;
         without it the list is judged and installed, or left alone; with a
         refusal standing, or on a laptop that has stood down, --listing and
@@ -18352,7 +18437,7 @@ def _documents_listing(CA):
              CA.time, CA.today, sys.argv)
     saved_env = os.environ.get("GITHUB_ACTIONS")
     tmp = Path(tempfile.mkdtemp(prefix="gr-listing-"))
-    asked, slept = [], []
+    asked, slept, paused_at = [], [], []
     clock = {"jump": 0.0}
 
     def server(pages, fail=None, leaves_year=False, newest="2026"):
@@ -18382,12 +18467,12 @@ def _documents_listing(CA):
         def still(self):
             return self.ok
 
-    def read(pages, day=(2026, 10, 2), held=None, **kw):
-        del asked[:], slept[:]
+    def read(pages, day=(2026, 10, 2), held=None, on_file=None, **kw):
+        del asked[:], slept[:], paused_at[:]
         clock["jump"] = 0.0
         CA._get = server(pages, **kw)
         with contextlib.redirect_stdout(io.StringIO()):
-            return CA.listing(held or Held(), day=datetime.date(*day))
+            return CA.listing(held or Held(), day=datetime.date(*day), on_file=on_file)
 
     def stops(pages, **kw):
         try:
@@ -18397,7 +18482,7 @@ def _documents_listing(CA):
         return None, "it read every list"
 
     def main(*argv):
-        del asked[:], slept[:]
+        del asked[:], slept[:], paused_at[:]
         sys.argv = ["fetch_calendar_archive.py", *argv]
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
@@ -18412,9 +18497,11 @@ def _documents_listing(CA):
         refusal.STANDDOWN = tmp / "archive" / "runs-in-the-cloud.json"
         CA.ROOT, CA.QUEUE = tmp / "archive", tmp / "archive" / "queue.csv"
         os.environ.pop("GITHUB_ACTIONS", None)
+        # Each pause is written down with how many requests had been made
+        # when it was taken: `paused_at`.
         CA.time = types.SimpleNamespace(
-            sleep=slept.append, strftime=time.strftime,
-            time=lambda: time.time() + clock["jump"])
+            sleep=lambda s: (slept.append(s), paused_at.append(len(asked))),
+            strftime=time.strftime, time=lambda: time.time() + clock["jump"])
         CA.today = lambda: datetime.date(2026, 10, 2)
 
         # The saved pages, as served.
@@ -18433,9 +18520,14 @@ def _documents_listing(CA):
         assert n == 4 and asked == [
             ("H", "GET", "calendar", "2026", ""), ("H", "POST", "journal", "2026", "ddlCalJourn"),
             ("S", "GET", "calendar", "2026", ""), ("S", "POST", "journal", "2026", "ddlCalJourn")], asked
-        assert len(slept) == 3 and all(
+        assert len(slept) == 4 and all(
             0.85 * CA.LISTING_PAUSE <= s <= 1.15 * CA.LISTING_PAUSE for s in slept) and \
             CA.LISTING_PAUSE >= 4, f"the listing's requests were {slept} seconds apart"
+        # A pause before each request, the first as well: the night asks this
+        # address for the bill requests a moment before the listing starts.
+        assert paused_at == [0, 1, 2, 3], (
+            "the listing did not pause before each of its requests, the first among them: "
+            f"its pauses came after {paused_at} requests")
         assert [(li["chamber"], li["kind"], li["year"], li["directory"], len(li["documents"]))
                 for li in lists] == [
             ("H", "calendar", "2026", "calendars\\2026\\", 7),
@@ -18503,9 +18595,89 @@ def _documents_listing(CA):
             new, _ = CA.merged(rows, lists)
             assert CA.judge(rows, new, {"lists": lists}) == ""
 
-        # A page that has changed shape stops the read where it is.
+        # A YEAR WITH NO JOURNALS YET. The Senate's page answers HTTP 500, not
+        # an empty list, for a year it has no journals for (discover()'s own
+        # note of 1998-2002). When 2027's lists open, that is each chamber's
+        # last request, every night until a journal is posted.
         hc = _DOCS_HC
         years = st["years"]
+        turn = _docs_turn(CA, pages)
+        filed = {(r["chamber"], r["kind"], r["year"]) for r in rows}
+
+        def no(code=500):
+            return urllib.error.HTTPError("u", code, "Server Error", {}, None)
+        lists, n = read(turn, day=(2026, 12, 10), on_file=filed, newest="2027",
+                        fail={4: no(), 8: no()})
+        silent = [(li["chamber"], li["kind"], li["year"]) for li in lists if li.get("unanswered")]
+        assert n == 8 and len(lists) == 8 and silent == [
+            ("H", "journal", "2027"), ("S", "journal", "2027")], (n, silent)
+        assert all(li["unanswered"] == 500 and not li["documents"] and not li["directory"]
+                   for li in lists if li.get("unanswered")) and not refusal.MARK.exists()
+        rec = {"lists": lists}
+        new, added = CA.merged(rows, lists)
+        assert CA.judge(rows, new, rec) == "" and sorted(
+            (r["year"], r["name"]) for r in added)[-2:] == [("2027", "HC 1.pdf"),
+                                                          ("2027", "SC 1.pdf")], added
+        assert CA.unanswered(rec) == ["the House Journal list for 2027",
+                                      "the Senate Journal list for 2027"], CA.unanswered(rec)
+        # In February only the new year is read: two requests a chamber.
+        lists, n = read(turn, day=(2027, 2, 3), on_file=filed, newest="2027",
+                        fail={2: no(), 4: no()})
+        assert n == 4 and [bool(li.get("unanswered")) for li in lists] == [
+            False, True, False, True] and CA.judge(
+                rows, CA.merged(rows, lists)[0], {"lists": lists}) == "", (n, lists)
+        # And nothing else is taken for "none yet": not where nobody said
+        # what is on file; not with a journal of that year on file; not a
+        # 500 to a calendar list, or to the journals of the year before; not
+        # a dropped connection; not a refusal; and not where the year's
+        # calendar list was itself empty.
+        for what, kw, code_want, said in (
+                ("with nothing said of what is on file",
+                 dict(fail={4: no()}), 1, "the request for the House Journal list for 2027 failed"),
+                ("with a journal of that year on file",
+                 dict(fail={4: no()}, on_file=filed | {("H", "journal", "2027")}), 1,
+                 "the request for the House Journal list for 2027 failed"),
+                ("answered to a calendar list",
+                 dict(fail={2: no()}, on_file=filed), 1,
+                 "the request for the House Calendar list for 2026 failed"),
+                ("answered to the journals of the year before",
+                 dict(fail={3: no()}, on_file=filed), 1,
+                 "the request for the House Journal list for 2026 failed"),
+                ("a connection dropped",
+                 dict(fail={4: http.client.RemoteDisconnected("closed")}, on_file=filed), 1,
+                 "the request for the House Journal list for 2027 was not answered"),
+                ("a refusal", dict(fail={4: no(403)}, on_file=filed), 2,
+                 "the General Court refused a request")):
+            refusal.MARK.unlink(missing_ok=True)
+            got = stops(turn, day=(2026, 12, 10), newest="2027", **kw)
+            assert got == (code_want, said), (
+                f"a year's journal list not answered, {what}: {got}")
+        refusal.MARK.unlink(missing_ok=True)
+        bare = dict(turn, **{"H calendar 2027": _docs_page(
+            CA, pages["S calendar 2026"], _DOCS_H, "Calendar", ["2027"] + years, "2027", [], "")})
+        got = stops(bare, day=(2026, 12, 10), newest="2027", on_file=filed, fail={4: no()})
+        assert got[0] == 1 and len(asked) == 4, (
+            "a journal list not answered was taken for none yet, of a year whose calendar "
+            f"list had nothing in it either: {got}")
+        got = stops(pages, fail={1: no()}, on_file=set())
+        assert got == (1, "the request for the House index page failed"), got
+        # judge() holds the same line, on a record that says otherwise.
+        lists, _ = read(turn, day=(2026, 12, 10), on_file=filed, newest="2027",
+                        fail={4: no(), 8: no()})
+
+        def unanswered_as(ch, kind, year):
+            return [dict(li, documents=[], directory="", unanswered=500)
+                    if (li["chamber"], li["kind"], li["year"]) == (ch, kind, year) else li
+                    for li in lists]
+        for forged, about in (
+                (unanswered_as("S", "journal", "2026"), "the Senate Journal list for 2026"),
+                (unanswered_as("H", "calendar", "2027"), "the House Calendar list for 2027"),
+                ([li for li in lists if (li["chamber"], li["kind"], li["year"]) !=
+                  ("S", "calendar", "2027")], "the Senate Journal list for 2027")):
+            why = CA.judge(rows, CA.merged(rows, forged)[0], {"lists": forged})
+            assert why.startswith(about + " was not answered"), (about, why)
+
+        # A page that has changed shape stops the read where it is.
         bad = dict(pages)
         bad["H calendar 2026"] = _docs_page(CA, pages["S calendar 2026"], _DOCS_H, "Calendar",
                                             years, "2026", hc, "calendars\\2025\\HC 35.pdf")
@@ -18624,6 +18796,62 @@ def _documents_listing(CA):
         assert CA.judge(rows, held, rec) == "it adds a document as already fetched"
         assert CA.judge(rows, good + [good[0]], rec) == "it names a document twice"
 
+        # THE LIMIT, PINNED ON BOTH SIDES. Nothing held LIST_GONE_MOST to its
+        # value: the one short list above drops three of four, and 0.60 for
+        # 0.10 passed every check here.
+        one_row = next(r for r in rows if (r["chamber"], r["kind"], r["year"]) ==
+                       ("H", "journal", "2026"))
+        others = [r for r in rows if (r["chamber"], r["kind"], r["year"]) !=
+                  ("H", "journal", "2026")]
+        hj = CA.SOURCES[("H", "journal")][0] + CA.VIEWER
+
+        def journals(n):
+            """n House journals of 2026 on file, newest first: (names, the queue)."""
+            names = [f"HJ {i:02d} March {i}, 2026.pdf" for i in range(n, 0, -1)]
+            return names, others + [
+                dict(one_row, name=x, path=f"journals\\2026\\{x}",
+                     url=hj + urllib.parse.quote(f"journals\\2026\\{x}", safe="")) for x in names]
+
+        def tonight(names):
+            return with_list("H journal 2026", [(x, x[:-4]) for x in names], "journals")
+
+        def says(was, names, last=None, **kw):
+            li = tonight(names)
+            return CA.judge(was, CA.merged(was, li)[0], {"lists": li}, last, **kw)
+        for on_file, gone, passes in ((20, 2, True), (20, 3, False), (30, 3, True),
+                                      (30, 4, False), (4, 1, True), (4, 2, False)):
+            names, was = journals(on_file)
+            why = says(was, names[gone:])
+            assert why == ("" if passes else "the House Journal list for 2026 came back "
+                           f"without {gone} of the {on_file} documents on file"), (
+                f"{gone} of {on_file} documents gone from a list: {why or 'let through'}")
+        # COUNTED AGAINST THE LAST READ, NOT AGAINST THE FILE. A row never
+        # leaves the queue, so against the file every document the page had
+        # ever dropped counted again each night: with three gone on earlier
+        # nights, the same list as last night was refused for ever.
+        names, was = journals(20)
+        last = {"read": "t", "lists": tonight(names[3:])}
+        assert says(was, names[3:]) == \
+            "the House Journal list for 2026 came back without 3 of the 20 documents on file"
+        assert says(was, names[3:], last) == "" and \
+            CA.shortfall(was, {"lists": tonight(names[3:])}, last) == [], (
+                "a list the same as it was when last read is short of the documents that "
+                "had left it before: " + says(was, names[3:], last))
+        assert says(was, names[4:], last) == "", "one more gone, of seventeen, stopped the list"
+        why = says(was, names[6:], last)
+        assert why == ("the House Journal list for 2026 came back without 3 of the 17 "
+                       "documents it listed when it was last read"), why
+        assert [(k, len(g), of, since) for k, g, of, since in CA.shortfall(
+            was, {"lists": tonight(names[6:])}, last)] == [(("H", "journal", "2026"), 3, 17, True)]
+        # What the night passes once the same answer has come night after
+        # night lets a short list through, and never an empty one.
+        assert says(was, names[6:], last, shorter=True) == ""
+        assert says(was, [], last, shorter=True) == \
+            "the House Journal list for 2026 came back empty, with 20 documents on file"
+        # A record of the last read that is not one counts against the file.
+        for junk in (None, {}, {"stopped": "x"}, {"lists": "x"}, [1], {"lists": [{"year": 1}]}):
+            assert says(was, names[3:], junk).endswith("3 of the 20 documents on file"), junk
+
         # main(), for the night: --out writes both files and installs nothing.
         _docs_write_old(CA.QUEUE, rows)
         before = CA.QUEUE.read_bytes()
@@ -18647,6 +18875,17 @@ def _documents_listing(CA):
         refusal.LOCK.unlink()
         rc, said = main("--listing", "--chamber", "H")
         assert rc == 2 and not asked and "all four lists" in said, (rc, said[-200:])
+        # main() says what is on file: a new year's journal lists that the
+        # page does not answer for are written down as that, and stop nothing.
+        CA.today = lambda: datetime.date(2026, 12, 10)
+        CA._get = server(turn, fail={4: no(), 8: no()}, newest="2027")
+        rc, said = main("--listing", "--out", str(out))
+        listed = json.loads((out.parent / CA.LISTED_NAME).read_text(encoding="utf-8"))
+        assert rc == 0 and len(asked) == 8 and \
+            [li.get("unanswered") for li in listed["lists"]].count(500) == 2 and \
+            "no answer for the House Journal list for 2027" in said, (rc, said[-400:])
+        assert CA.judge(CA.read_rows(CA.QUEUE), CA.read_rows(out), listed) == ""
+        CA.today = lambda: datetime.date(2026, 10, 2)
 
         # By hand, where this machine keeps its own list: judged, then installed.
         CA._get = server({**pages, "H calendar 2026": _docs_page(
@@ -18718,10 +18957,12 @@ def _documents_listing(CA):
         else:
             os.environ["GITHUB_ACTIONS"] = saved_env
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("four requests a night and eight at the turn of a year, one change each and "
-                  f"{CA.LISTING_PAUSE:g}s apart; addresses from the page's own folder and names; "
-                  "a changed page, a refusal, a short or empty list and a moved row all leave "
-                  "the list as it was; a stood-down laptop never writes it")
+    return "ok", ("four requests a night and eight at the turn of a year, one change each, "
+                  f"{CA.LISTING_PAUSE:g}s apart and as long before the first; addresses from "
+                  "the page's own folder and names; a new year's journal list not answered is "
+                  "none yet, and nothing else is; a changed page, a refusal, a short or empty "
+                  "list and a moved row all leave the list as it was, short being counted "
+                  "against the last read; a stood-down laptop never writes it")
 
 
 @check("build", "the night takes the General Court's list of calendars and journals whole or not "
@@ -18738,7 +18979,8 @@ def _documents_night(NI, CA, CL):
     is the one the night took, and each request it makes is counted.
 
       - a night takes the list: four requests, each under the night's lock,
-        five seconds apart; House Calendars 33 to 35 and Senate Calendar 29
+        five seconds apart and as long before the first; House Calendars 33
+        to 35 and Senate Calendar 29
         are added; what the laptop's drain fetched is marked held; the
         listing is installed beside it; the night is clean, with no warning;
       - the same list again installs nothing new and warns of nothing;
@@ -18752,7 +18994,16 @@ def _documents_night(NI, CA, CL):
         not read as the General Court saying no; one it does refuse is
         recorded, stops the listing where it is, and is still only a warning
         that night -- the next night does not ask at all;
-      - a night that does not fetch, or defers its fetch, asks for no list.
+      - a night that does not fetch, or defers its fetch, asks for no list;
+        nor does one whose fetch of the bill requests, asked of the same
+        address a moment before, did not complete;
+      - a list that comes back short is counted, and the same answer on the
+        third night running is taken as the page's own: no row leaves the
+        list, the night after finds nothing short, a night that does not
+        ask leaves the count alone, and a different shortfall starts again;
+      - at the turn of a year the new year's journal lists, which the page
+        answers with HTTP 500, do not stop the list: eight requests, the
+        new calendars added, and the verdict says which lists had no answer.
 
     And the kit: archive/queue.csv is the night's, what the pages listed is
     the night's and optional, what the laptop's drain fetched is the
@@ -18775,6 +19026,7 @@ def _documents_night(NI, CA, CL):
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls = []
+    lsrs_exit = [0]         # what the faked fetch of the bill requests ends on
     seal = _Seal()
     # The listing, with its get() answering from pages.json and writing down
     # each request it was asked: which lock was held, and whose.
@@ -18785,14 +19037,15 @@ def _documents_night(NI, CA, CL):
         "import refusal\n"
         "import fetch_calendar_archive as CA\n"
         "cfg = json.load(open('pages.json', encoding='utf-8'))\n"
-        "asked, slept = [], []\n"
+        "asked, slept, paused = [], [], []\n"
         "def note():\n"
-        "    json.dump({'asked': asked, 'slept': slept}, open('asked.json', 'w'))\n"
+        "    json.dump({'asked': asked, 'slept': slept, 'paused': paused},\n"
+        "              open('asked.json', 'w'))\n"
         "def get(url, data=None, timeout=60):\n"
         "    ch = 'H' if '/house/' in url else 'S'\n"
         "    f = dict(urllib.parse.parse_qsl((data or b'').decode(), keep_blank_values=True))\n"
         "    kind = 'journal' if 'Journal' in f.get(CA.SEL_KIND, '') else 'calendar'\n"
-        "    year = f.get(CA.SEL_YEAR, '2026')\n"
+        "    year = f.get(CA.SEL_YEAR, cfg['newest'])\n"
         "    lock = refusal.LOCK.read_text().strip() if refusal.LOCK.exists() else ''\n"
         "    asked.append({'list': f'{ch} {kind} {year}', 'post': data is not None,\n"
         "                  'lock': lock, 'parent': str(os.getppid())})\n"
@@ -18803,25 +19056,26 @@ def _documents_night(NI, CA, CL):
         "    return cfg['pages'][f'{ch} {kind} {year}'].encode('utf-8')\n"
         "CA._get = get\n"
         "real = CA.time\n"
-        "CA.time = types.SimpleNamespace(sleep=lambda s: (slept.append(s), note()),\n"
-        "                                time=real.time, strftime=real.strftime)\n"
-        "CA.today = lambda: date(2026, 10, 2)\n"
+        "CA.time = types.SimpleNamespace(\n"
+        "    sleep=lambda s: (slept.append(s), paused.append(len(asked)), note()),\n"
+        "    time=real.time, strftime=real.strftime)\n"
+        "CA.today = lambda: date(*cfg['day'])\n"
         "sys.argv = ['fetch_calendar_archive.py'] + sys.argv[1:]\n"
         "if cfg['exit']:\n"
         "    sys.exit(cfg['exit'])\n"
         "sys.exit(CA.main())\n")
 
-    def serve(pages, fail=None, status=0):
+    def serve(pages, fail=None, status=0, day=(2026, 10, 2), newest="2026"):
         Path("pages.json").write_text(json.dumps(
             {"pages": pages, "fail": {str(k): v for k, v in (fail or {}).items()},
-             "exit": status}), encoding="utf-8")
+             "exit": status, "day": list(day), "newest": newest}), encoding="utf-8")
         Path("asked.json").unlink(missing_ok=True)
 
     def requests():
         try:
             return json.loads(Path("asked.json").read_text(encoding="utf-8"))
         except OSError:
-            return {"asked": [], "slept": []}
+            return {"asked": [], "slept": [], "paused": []}
 
     def fake(args, label, cwd=None):
         calls.append(list(args))
@@ -18839,9 +19093,11 @@ def _documents_night(NI, CA, CL):
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
-            Path("lsrs.json").write_text(json.dumps(
-                [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "t",
-                  "sponsor": "s", "withdrawn": False}]), encoding="utf-8")
+            rc = lsrs_exit[0]
+            if not rc:
+                Path("lsrs.json").write_text(json.dumps(
+                    [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "t",
+                      "sponsor": "s", "withdrawn": False}]), encoding="utf-8")
         elif name == "gc_changes.py":
             out = Path(args[args.index("--out") + 1])
             out.parent.mkdir(exist_ok=True)
@@ -18915,7 +19171,11 @@ def _documents_night(NI, CA, CL):
             [a["post"] for a in req["asked"]] == [False, True, False, True], req["asked"]
         assert all(a["lock"] == a["parent"] == str(os.getpid()) for a in req["asked"]), (
             "the listing did not run under the lock the night holds", req["asked"])
-        assert len(req["slept"]) == 3 and all(4 <= s <= 6 for s in req["slept"]), req["slept"]
+        assert len(req["slept"]) == 4 and all(4 <= s <= 6 for s in req["slept"]) and \
+            req["paused"] == [0, 1, 2, 3], (
+                "the listing did not pause before each request, the first among them -- the "
+                "night asks the same address for the bill requests a moment before it",
+                req["slept"], req["paused"])
         assert not refusal.LOCK.exists(), "the night's lock was left behind"
         order = [c[0] for c in calls]
         assert order.index("fetch_calendar_archive.py") > order.index("fetch_lsrs.py") > \
@@ -18961,7 +19221,9 @@ def _documents_night(NI, CA, CL):
         for what, served, fail, status, want, asked_n in (
                 ("short", short, None, 0,
                  "not taken: the House Calendar list for 2026 came back without 5 of the 7 "
-                 f"documents on file; the earlier {n_file} kept", 4),
+                 "documents it listed when it was last read (night 1 of the 3 running after "
+                 "which the same answer is taken as the page's own); "
+                 f"the earlier {n_file} kept", 4),
                 ("empty", empty, None, 0,
                  "not taken: the Senate Journal list for 2026 came back empty, with 2 documents "
                  f"on file; the earlier {n_file} kept", 4),
@@ -18972,8 +19234,8 @@ def _documents_night(NI, CA, CL):
                 ("usage", pages, None, 2,
                  f"not taken: the fetch did not complete (exit 2); the earlier {n_file} kept", 0),
                 ("failed", pages, {3: 500}, 0,
-                 "not taken: the listing stopped: a request failed; the earlier "
-                 f"{n_file} kept", 3)):
+                 "not taken: the listing stopped: the request for the Senate index page "
+                 f"failed; the earlier {n_file} kept", 3)):
             serve(served, fail, status)
             code, out = night("--runner", run_id=f"404-{what}")
             v = verdict()
@@ -18987,6 +19249,9 @@ def _documents_night(NI, CA, CL):
             assert len(requests()["asked"]) == asked_n and not refusal.MARK.exists(), (
                 what, requests()["asked"])
             assert not list(NI.SCRATCH.glob("*")) if NI.SCRATCH.exists() else True
+        assert NI.LIST_SAME_NIGHTS == 3 and verdict().get("documents_short", {}).get(
+            "nights") == 1, ("the night a list came back short is not carried in the verdict "
+                             "through the nights after it", verdict().get("documents_short"))
         # The warning leads the run's page on GitHub, and the night is clean.
         os.environ["GITHUB_ACTIONS"] = "true"
         try:
@@ -18996,7 +19261,8 @@ def _documents_night(NI, CA, CL):
         notes = [ln for ln in out.splitlines() if ln.startswith("::")]
         assert code == 0 and len(notes) == 1 and notes[0].startswith(
             "::warning title=The night was clean%2C with a warning::the General Court's list of "
-            "calendars and journals: not taken: the listing stopped: a request failed"), (code, notes)
+            "calendars and journals: not taken: the listing stopped: the request for the Senate "
+            "index page failed"), (code, notes)
 
         # The General Court says no: recorded, the listing stops there, and
         # tonight it is still a warning. Tomorrow nothing is asked.
@@ -19015,6 +19281,81 @@ def _documents_night(NI, CA, CL):
             "documents" not in v and not requests()["asked"], (
                 "with a refusal on file the night asked for the list all the same", v.get("fetch"))
         refusal.MARK.unlink()
+
+        # THE STEP BEFORE IT DID NOT FINISH. The bill requests are asked of
+        # the same address a moment before the list; that fetch ends on 1,
+        # with no refusal recorded, when a connection is dropped. The list is
+        # not asked for that night, and the night is clean, with a warning.
+        lsrs_exit[0] = 1
+        serve(pages)
+        code, _ = night("--runner", run_id="407")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["built"], (code, v.get("not_clean"))
+        assert not listed_ran() and not requests()["asked"], (
+            "the list of calendars and journals was asked for straight after a fetch from the "
+            "same address that did not complete", requests()["asked"])
+        assert v["documents"] == (
+            "not asked for: next session's bill requests were asked of the same address a "
+            "moment before and did not complete (exit 1), so nothing more is asked of it "
+            f"tonight; the earlier {n_file} kept"), v["documents"]
+        assert "the General Court's list of calendars and journals: " + v["documents"] in \
+            v["warnings"] and NI.DOCS.read_bytes() == good, v["warnings"]
+        lsrs_exit[0] = 0
+
+        # SHORT THE SAME WAY, NIGHT AFTER NIGHT. A different shortfall starts
+        # its own count; the same one is counted, through a night that does
+        # not ask; and on the third night running it is the page's own.
+        senate = CA.shown(pages["S calendar 2026"])["docs"]
+        other = dict(pages, **{"S calendar 2026": _docs_page(
+            CA, pages["S calendar 2026"], _DOCS_S, "SenateCalendar", years, "2026",
+            senate[:30], "Calendars\\2026\\SC 29.pdf")})
+        for served, run_id, nights in ((other, "408", 1), (short, "409", 1), (short, "410", 2)):
+            serve(served)
+            code, _ = night("--runner", run_id=run_id)
+            v = verdict()
+            assert code == 0 and v["clean"] and NI.DOCS.read_bytes() == good and \
+                NI.DOCS_LISTED.read_bytes() == good_listing, (run_id, v.get("not_clean"))
+            assert v["documents_short"]["nights"] == nights and \
+                f"(night {nights} of the 3 running" in v["documents"], (
+                    run_id, v["documents"], v["documents_short"])
+        code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="411")
+        assert verdict().get("documents_short", {}).get("nights") == 2, (
+            "a night that did not ask lost the count of a list that came back short",
+            verdict().get("documents_short"))
+        serve(short)
+        code, _ = night("--runner", run_id="412")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["documents"] == (
+            f"installed, {n_file} documents (was {n_file}): nothing new; a list that came back "
+            "short the same way 3 nights running is taken as the page's own"), v["documents"]
+        assert "documents_short" not in v and \
+            not any("calendars and journals" in w for w in v["warnings"]), v["warnings"]
+        now_listed = json.loads(NI.DOCS_LISTED.read_text(encoding="utf-8"))
+        assert [len(li["documents"]) for li in now_listed["lists"]
+                if (li["chamber"], li["kind"]) == ("H", "calendar")] == [2] and \
+            len(CA.read_rows(NI.DOCS)) == n_file, (
+                "the short list was not installed as the page gave it, or a row left the queue")
+        # The night after, that is simply the list: nothing short about it.
+        code, _ = night("--runner", run_id="413")
+        v = verdict()
+        assert code == 0 and v["documents"] == (
+            f"installed, {n_file} documents (was {n_file}): nothing new") and \
+            "documents_short" not in v, v["documents"]
+
+        # A NEW YEAR'S JOURNAL LISTS, NOT ANSWERED. Last here, because it
+        # puts 2027 on file. The page answers HTTP 500 for a year with no
+        # journals: the fourth request of each chamber, at a year's turn.
+        serve(_docs_turn(CA, pages), {4: 500, 8: 500}, day=(2026, 12, 10), newest="2027")
+        code, _ = night("--runner", run_id="414")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["documents"] == (
+            f"installed, {n_file + 2} documents (was {n_file}): 2 new: House Calendar 1, "
+            "Senate Calendar 1; the House Journal list for 2027 was not answered, with none "
+            "on file for it: taken as none posted yet; the Senate Journal list for 2027 was "
+            "not answered, with none on file for it: taken as none posted yet"), v["documents"]
+        assert not any("calendars and journals" in w for w in v["warnings"]) and \
+            len(requests()["asked"]) == 8 and not refusal.MARK.exists(), (
+                v["warnings"], requests()["asked"])
 
         # The kit: one writer for each file.
         owner = {p: e for e in kit["kit"] for p in e.get("paths", [])}
@@ -19038,9 +19379,12 @@ def _documents_night(NI, CA, CL):
             else:
                 os.environ[k] = val
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("a night takes the list in four requests under its own lock and marks what the "
-                  "laptop fetched; a short, empty, failed or refused list leaves the one on file "
-                  "and is a warning on a clean night; archive/queue.csv is the night's in the kit")
+    return "ok", ("a night takes the list in four requests under its own lock, pausing before "
+                  "each, and marks what the laptop fetched; a short, empty, failed or refused "
+                  "list leaves the one on file and is a warning on a clean night; it is not "
+                  "asked for after a fetch that did not finish; short the same way three "
+                  "nights running is taken; a new year's unanswered journal lists stop "
+                  "nothing; archive/queue.csv is the night's in the kit")
 
 
 # ---- the first pruning of the refactor -----------------------------------------
@@ -19168,8 +19512,24 @@ def _handoff_reads_this_run(H):
     commit, when the run was of the data checks alone, and when the tree
     moved while the checks ran. STATE.md's section says which happened, and
     preflight is started only when the record was refused.
+
+    AND FOUR WAYS IT WAS STILL READ BACK (the review, the same day), each
+    refused now: a run that ran no checks -- `--code --data` together, which
+    preflight itself now refuses to start, asked here of the real script; a
+    record made under another Python, or more than RUN_FRESH_HOURS ago; a
+    copy of the code in a folder the repository ignores, where git answers
+    for the repository around it; and a tree holding a file whose name git
+    writes in quotes, which was named in the digest and never read. The data
+    checks' line is given only while the data files are as that run read
+    them, because git ignores them and the tree's digest cannot see a build.
     """
     import types
+    from datetime import datetime, timedelta, timezone
+    r = _run([sys.executable, "preflight.py", "--code", "--data"], capture_output=True,
+             text=True, timeout=300)
+    assert r.returncode == 2 and "run nothing" in (r.stderr or ""), (
+        "preflight.py --code --data ran, and the two together run no check: it exited "
+        f"{r.returncode} and would be recorded as a run of the code checks")
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-handoff-"))
     saved = H.child
@@ -19205,7 +19565,7 @@ def _handoff_reads_this_run(H):
             return "skip", "git is not here to make a repository with"
         Path("preflight.py").write_text("print('a stub')\n", encoding="utf-8")
         Path("code.py").write_text("x = 1\n", encoding="utf-8")
-        Path(".gitignore").write_text("logs/\n", encoding="utf-8")
+        Path(".gitignore").write_text("logs/\ndata/\ncopy/\n", encoding="utf-8")
         assert git("add", "-A").returncode == 0 and \
             git("commit", "-q", "-m", "one").returncode == 0, "the fixture's commit failed"
         H.child = types.SimpleNamespace(run=run)
@@ -19262,13 +19622,98 @@ def _handoff_reads_this_run(H):
         said = section()
         assert not started and "1 passed, 1 failed, 1 skipped" in said and \
             "The same run's data checks" not in said, said
+
+        # A run that ran nothing, or no code check, is not a run of the code.
+        H.record_run("code", [], now, 1.0)
+        assert H.last_run() == (None, "the last preflight run ran no code checks"), H.last_run()
+        H.record_run("code", [x for x in results if x[0] == "data"], now, 1.0)
+        assert H.last_run()[0] is None, "a record holding only data checks was read as the code's"
+
+        # What it ran on: another Python, and how long ago.
+        def doctored(**change):
+            H.record_run("all", results, now, 1.0)
+            rec = json.loads(H.RUN.read_text(encoding="utf-8"))
+            rec.update(change)
+            H.RUN.write_text(json.dumps(rec), encoding="utf-8")
+            return H.last_run()
+
+        def ago(**kw):
+            return (datetime.now(timezone.utc) - timedelta(**kw)).isoformat(timespec="seconds")
+        assert doctored()[0], doctored()[1]
+        rec, why = doctored(python="3.0.0")
+        assert rec is None and why.startswith("the last preflight run was under python 3.0.0"), why
+        rec, why = doctored(finished=ago(hours=H.RUN_FRESH_HOURS, minutes=5))
+        assert rec is None and f"not within the last {H.RUN_FRESH_HOURS} hours" in why and \
+            H.RUN_FRESH_HOURS <= 24, ("a record older than a day was read as the run that "
+                                      "just happened", why)
+        assert doctored(finished=ago(hours=H.RUN_FRESH_HOURS - 1))[0], \
+            "a record an hour inside the limit was refused"
+        assert doctored(finished=ago(hours=-2))[0] is None and \
+            doctored(finished="yesterday")[0] is None and doctored(finished=None)[0] is None, \
+            "a record that does not say when it finished, or says tomorrow, was read"
+
+        # The data checks' line, only while the data is as that run read it.
+        H.record_run("all", results, now, 1.0)
+        assert "The same run's data checks: 1 passed, 1 failed, 0 skipped" in section()
+        Path("data").mkdir()
+        Path("data/bills.json").write_text("{}", encoding="utf-8")
+        assert H.last_run()[0], "an ignored data file changed the tree's digest"
+        said = section()
+        assert not started and "1 passed, 1 failed, 1 skipped" in said and \
+            "The same run's data checks" not in said and "are not reported here" in said, (
+                "the data checks of a run made before the data was rebuilt were reported "
+                "as the state of what is here", said)
+        H.record_run("all", results, now, 1.0, data="what the data was as the run began")
+        assert json.loads(H.RUN.read_text(encoding="utf-8"))["data"] is None and \
+            "are not reported here" in section(), "data that moved under the run was recorded"
+        H.record_run("all", results, now, 1.0, data=H.data_state())
+        assert "The same run's data checks: 1 passed" in section()
+
+        # A file whose name git writes in quotes is read, not only named.
+        odd = Path("caf\u00e9 notes.py")
+        odd.write_text("a = 1\n", encoding="utf-8")
+        first = H.tree_state()
+        odd.write_text("a = 2\n", encoding="utf-8")
+        second = H.tree_state()
+        assert first[1] and second[1] and first != second and first != now, (
+            "a second edit to a file whose name git writes in quotes was not seen", first, second)
+        odd.unlink()
+        # So is a file that was renamed: by the name it has now.
+        assert git("mv", "code.py", "moved.py").returncode == 0
+        Path("moved.py").write_text("x = 98\n", encoding="utf-8")
+        first = H.tree_state()
+        Path("moved.py").write_text("x = 99\n", encoding="utf-8")
+        second = H.tree_state()
+        assert first[1] and second[1] and first != second and first != now, (
+            "an edit to a renamed file was not seen", first, second)
+        Path("moved.py").write_text("x = 2\n", encoding="utf-8")
+        assert git("mv", "moved.py", "code.py").returncode == 0 and H.tree_state() == now, \
+            "the tree put back as it was does not read as it did"
+
+        # A copy of the code in a folder this repository ignores is not this
+        # repository's code: git answers for the folder around it.
+        Path("copy").mkdir()
+        Path("copy/preflight.py").write_text("print('a stub')\n", encoding="utf-8")
+        Path("copy/code.py").write_text("x = 1\n", encoding="utf-8")
+        os.chdir("copy")
+        try:
+            assert H.tree_state() == (None, None), (
+                "a copy of the code inside a folder the repository ignores was keyed on the "
+                "repository around it, which sees no edit to the copy", H.tree_state())
+            H.record_run("code", results, H.tree_state(), 1.0)
+            rec, why = H.last_run()
+            assert rec is None and "the top of its own repository" in why, why
+        finally:
+            os.chdir(tmp)
     finally:
         os.chdir(here)
         H.child = saved
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a record is read back on the same commit and tree, and refused after an "
                   "edit, a second edit, a new file, a commit, a data-only run and a tree that "
-                  "moved under the run; preflight is started only then")
+                  "moved under the run; preflight is started only then; and refused when it "
+                  "ran nothing, is a day old, was another Python's or a copy's; the data "
+                  "checks are reported only while the data is as they read it")
 
 
 @check("cloud", "seed-kit --only sends only the files it names, and every other copy stands",
@@ -40691,6 +41136,12 @@ def main():
     ap.add_argument("--data", action="store_true", help="only the data checks")
     ap.add_argument("--verbose", action="store_true")
     a = ap.parse_args()
+    # NOT BOTH. --code leaves the data checks out and --data runs only them,
+    # so together they ran no check at all, printed "0 passed", exited 0 and
+    # left a record of a run of the code checks for handoff.py to read.
+    if a.code and a.data:
+        ap.error("--code leaves the data checks out and --data runs only them: together "
+                 "they run nothing")
 
     sys.path.insert(0, ".")
     # NOTHING HERE REACHES THE BUCKET. Since 26 September refusal.note() sends
@@ -40703,10 +41154,12 @@ def main():
     # THE RUN IS RECORDED, for handoff.py, which used to run the code checks a
     # second time straight after this had. The record names the commit and
     # the state of the working tree as this run began (handoff.tree_state),
-    # so that handoff.py can refuse it once either has moved.
+    # so that handoff.py can refuse it once either has moved; and a digest of
+    # the data files as it began (handoff.data_state), which git does not see.
     import time as _time
     handoff = imp("handoff")
     began, tree = _time.time(), (handoff.tree_state() if handoff else (None, None))
+    data = handoff.data_state() if handoff else None
     print("=" * 74)
     print(f"preflight   {Path('.').resolve()}")
     print(f"python {sys.version.split()[0]}")
@@ -40753,7 +41206,7 @@ def main():
     ok = [r for r in results if r[2] == "ok"]
     if handoff:
         handoff.record_run("code" if a.code else "data" if a.data else "all", results,
-                           tree, _time.time() - began)
+                           tree, _time.time() - began, data=data)
 
     print("\n" + "=" * 74)
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped")

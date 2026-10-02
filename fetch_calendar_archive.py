@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.9
+# GRANITE_VERSION: 2026-09-08.10
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -77,7 +77,9 @@ nightly.take_documents() runs it under the night's lock:
   what it asks     each chamber's index page once, which opens on its
                    calendars for the newest year, and once more for that
                    year's journals: four requests, LISTING_PAUSE seconds
-                   apart. While two years' lists can both still gain a
+                   apart and as long before the first, because the night
+                   has asked this address for something else a moment
+                   before. While two years' lists can both still gain a
                    document -- the next year's has opened, or it is January
                    -- the year before as well: eight, and never more
                    (LISTING_MOST). No PDF is asked for
@@ -88,6 +90,15 @@ nightly.take_documents() runs it under the night's lock:
                    that shows a list nobody asked for, or whose link names
                    another folder, year or file than its list, has changed
                    shape: the read stops there, with nothing written
+  a year with no   the Senate's page answers HTTP 500, not an empty list,
+  journals yet     for a year it has no journals for (discover(), below).
+                   So when a new year's list opens, its journal list would
+                   stop the whole read every night until the first journal
+                   was posted. That one answer -- a 500 to the last list
+                   asked of a chamber, a year's journals, with none on file
+                   and that year's calendars just read -- is written down as
+                   a list nobody answered for ("unanswered": 500) and taken
+                   as none posted yet. Any other 500 stops the read
   what it writes   with --out FILE, the whole queue with what is new added
                    (a row marked wanted, in the page's own order), and
                    documents_listed.json beside it: each list as the page
@@ -95,6 +106,16 @@ nightly.take_documents() runs it under the night's lock:
                    The night installs both or neither (judge(), below). A
                    read that stops writes only why, in that second file,
                    for the night's warning to say
+  never sharply    a list missing more than LIST_GONE_MOST of what the page
+  shorter          listed when it was last installed is a page half served,
+                   and is not installed. Measured against that last read,
+                   not against everything on file: a row never leaves the
+                   queue, so counted against the file every document the
+                   page had ever dropped would count again each night, and
+                   the second one would have stopped the list for good. And
+                   a list that comes back short the same way night after
+                   night is the page's own: the night takes it on the third
+                   (nightly.LIST_SAME_NIGHTS)
                    Without --out, on a machine that keeps its own list, it
                    judges and installs them itself
   the label        the queue kept a document's file name and not the words
@@ -125,6 +146,7 @@ import re
 import refusal
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
@@ -151,12 +173,14 @@ LISTED_NAME = "documents_listed.json"
 
 # ---- the night's read of the two index pages --------------------------------
 #
-# Seconds between its requests, the night's pace for a web page (fetch_lsrs's
-# PAUSE). The most it may ask in one run: four lists a chamber at the turn of
-# a year. How long it may take in all, so it cannot hold the night's lock
-# into the morning. And how much of a list on file may be missing from
-# tonight's before tonight's is taken for a page half served -- the General
-# Court does not unpublish a calendar.
+# Seconds between its requests, and before the first, the night's pace for a
+# web page (fetch_lsrs's PAUSE). The most it may ask in one run: four lists a
+# chamber at the turn of a year. How long it may go on starting requests, so
+# it cannot hold the night's lock into the morning: none is started after
+# this, and one already started may take its own timeout more. And how much
+# of a list may be missing from tonight's before tonight's is taken for a
+# page half served -- the General Court does not unpublish a calendar -- with
+# the fewest that counts as missing at all.
 LISTING_PAUSE = 5.0
 LISTING_MOST = 8
 LISTING_BUDGET = 300
@@ -369,9 +393,10 @@ class Stop(Exception):
     """The listing cannot go on: the exit status, and why in this project's
     own words -- the night's page is public and takes none of a server's."""
 
-    def __init__(self, code, why):
+    def __init__(self, code, why, http=0):
         super().__init__(why)
-        self.code, self.why, self.requests = code, why, 0
+        # http: the status of the answer that stopped it, where one came.
+        self.code, self.why, self.requests, self.http = code, why, 0, http
 
 
 def today():
@@ -431,23 +456,37 @@ def years_wanted(listed, day):
     return out
 
 
-def read_index(chamber, ask, day):
+def read_index(chamber, ask, day, on_file=None):
     """One chamber's lists for the years wanted on `day`, as its index page
-    gives them: one request for each list and no more. ask(url, data) is the
-    caller's, so the pacing, the count and the reading of a refusal are in
-    one place.
+    gives them: one request for each list and no more. ask(url, data, what)
+    is the caller's, so the pacing, the count and the reading of a refusal
+    are in one place; `what` names the list asked for, for the reason given
+    when no answer comes.
 
     Whatever the page answers is taken for the list it SAYS it shows. The
     first answer opens on the calendars of the newest year; a change of year
     is asked alone and a change of kind alone, because the page has been seen
     to leave the year behind when both change at once (fetch_journals.py),
     and a list filed under the wrong year is an address that does not exist.
+
+    A YEAR WITH NO JOURNALS YET. The Senate's page answers HTTP 500, not an
+    empty list, for a year it has no journals for. At a year's turn that is
+    the new year's journal list, every night until the first journal is
+    posted, and a 500 that stopped the read would leave all four lists
+    unrefreshed for those weeks -- the weeks the new calendars appear in. So
+    one answer is taken for "none yet", and written down as what it was
+    ("unanswered": 500, no documents): a 500 to the LAST list asked of this
+    chamber, when that list is a year's journals, nothing is on file for it
+    (`on_file`, the lists the queue has rows for), and the same year's
+    calendars were read a moment before from the same page. The order below
+    makes the newest year's journals the last list asked. Any other 500, and
+    this one where the caller has not said what is on file, stops the read.
     """
     index = SOURCES[(chamber, "calendar")][0]
     ours = {SOURCES[(chamber, k)][1]: k for k in ("calendar", "journal")}
     theirs = {k: v for v, k in ours.items()}
     where = "House" if chamber == "H" else "Senate"
-    page = ask(index, None)
+    page = ask(index, None, f"the {where} index page")
     wanted, lists = None, []
     while True:
         st = shown(page)
@@ -494,38 +533,68 @@ def read_index(chamber, ask, day):
         same = sorted(y for k, y in wanted if k == kind)
         fields = _hidden(page)
         if same:
+            asking = (kind, same[-1])
             fields[SEL_KIND], fields[SEL_YEAR] = theirs[kind], same[-1]
             fields["__EVENTTARGET"] = SEL_YEAR
         else:
             other = "journal" if kind == "calendar" else "calendar"
+            asking = (other, year)
             fields[SEL_KIND], fields[SEL_YEAR] = theirs[other], year
             fields["__EVENTTARGET"] = SEL_KIND
         fields["__EVENTARGUMENT"] = ""
-        page = ask(index, urllib.parse.urlencode(fields).encode())
+        said = f"the {SAID[(chamber, asking[0])]} list for {asking[1]}"
+        try:
+            page = ask(index, urllib.parse.urlencode(fields).encode(), said)
+        except Stop as e:
+            # A year with no journals yet (the docstring): this answer only.
+            if not (e.http == 500 and asking[0] == "journal" and wanted == {asking}
+                    and on_file is not None and (chamber, *asking) not in on_file
+                    and any(li["kind"] == "calendar" and li["year"] == asking[1]
+                            and li["documents"] for li in lists)):
+                raise
+            lists.append({"chamber": chamber, "kind": asking[0], "year": asking[1],
+                          "directory": "", "read": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                          "documents": [], "unanswered": 500})
+            print(f"    {said}: no answer (HTTP 500), and nothing on file for it: "
+                  "taken as none posted yet", flush=True)
+            return lists
 
 
-def listing(held, day=None):
+def listing(held, day=None, on_file=None):
     """Tonight's lists from both index pages: (lists, requests made).
+
+    `on_file`: the (chamber, kind, year) lists the queue has rows for, which
+    read_index needs before it takes one unanswered journal list for a year
+    with none posted yet; None, and no such answer is taken.
 
     Raises Stop with the exit status the run should end on: 2 when the
     General Court refused (recorded, as every fetch records one), 1 for
     anything else, and whatever the lock says when it is lost."""
     asked, t0 = [], time.time()
 
-    def ask(url, data=None):
-        # Immediately before the request: a refusal another process met, or
-        # a lock lost, stops it here.
+    def ready():
         if refusal.MARK.exists():
             raise Stop(2, "a refusal is on file")
         if not held.still():
             raise Stop(3, "the lock this runs under is gone, or GitHub's night has begun")
+
+    def ask(url, data, what):
+        ready()
         if len(asked) >= LISTING_MOST:
             raise Stop(1, f"the lists were not all read in {LISTING_MOST} requests")
         if time.time() - t0 > LISTING_BUDGET:
             raise Stop(1, f"the lists were not all read in {LISTING_BUDGET} seconds")
-        if asked:
-            # Jittered, so a run does not arrive on a metronome.
-            time.sleep(LISTING_PAUSE * random.uniform(0.9, 1.1))
+        # A PAUSE BEFORE EVERY REQUEST, THE FIRST AS WELL. It used to wait
+        # only between its own, so the night's first request here left about
+        # a second after fetch_lsrs's last to the same address: the kind of
+        # join at which a chained run once asked twelve seconds after a
+        # refusal. This cannot know what asked before it, so it always
+        # waits. Jittered, so a run does not arrive on a metronome.
+        time.sleep(LISTING_PAUSE * random.uniform(0.9, 1.1))
+        # Immediately before the request, not before the pause that preceded
+        # it: a refusal another process met while this one waited, or a lock
+        # lost, stops it here.
+        ready()
         asked.append(url)
         try:
             body = _get(url, data).decode("utf-8", errors="replace")
@@ -537,8 +606,9 @@ def listing(held, day=None):
                 raise Stop(2, "the General Court refused a request")
             # One dropped connection is not pushed through, and not asked
             # again tonight: the list waits for tomorrow.
-            raise Stop(1, "a request was not answered" if kind == "dropped" else
-                          "a request failed")
+            raise Stop(1, f"the request for {what} "
+                          + ("was not answered" if kind == "dropped" else "failed"),
+                       http=e.code if isinstance(e, urllib.error.HTTPError) else 0)
         if refusal.classify(body=body[:4000]) == "refused":
             refusal.note("fetch_calendar_archive", "the firewall's block page, served as 200")
             raise Stop(2, "the General Court refused a request")
@@ -550,7 +620,7 @@ def listing(held, day=None):
         for chamber in ("H", "S"):
             print(f"  {'House' if chamber == 'H' else 'Senate'}: reading "
                   f"{SOURCES[(chamber, 'calendar')][0]}", flush=True)
-            lists += read_index(chamber, ask, day)
+            lists += read_index(chamber, ask, day, on_file)
     except Stop as e:
         e.requests = len(asked)
         raise
@@ -610,19 +680,82 @@ def merged(rows, lists):
     return out, added
 
 
-def judge(was, new, rec):
+def lists_of(rec):
+    """{(chamber, kind, year): [names]} for the lists of a listing record the
+    page answered for; {} for anything that is not such a record."""
+    out = {}
+    try:
+        for li in rec["lists"]:
+            if not li.get("unanswered"):
+                out[(li["chamber"], li["kind"], str(li["year"]))] = [
+                    d["name"] for d in li["documents"]]
+    except (KeyError, TypeError, AttributeError):
+        return {}
+    return out
+
+
+def unanswered(rec):
+    """The lists of a record the page gave no answer for, as the verdict names
+    them: ["the Senate Journal list for 2027"]."""
+    try:
+        return [f"the {SAID[(li['chamber'], li['kind'])]} list for {li['year']}"
+                for li in rec["lists"] if li.get("unanswered")]
+    except (KeyError, TypeError, AttributeError):
+        return []
+
+
+def shortfall(was, rec, last=None):
+    """The lists tonight's read is missing too much of: [(list, the names
+    gone, of how many, whether that is counted against an earlier read)].
+
+    AGAINST WHAT THE PAGE LISTED WHEN IT WAS LAST INSTALLED (`last`, the
+    listing record on file), where that record holds the list. As first
+    written it was counted against every row on file, and a row never leaves
+    the queue: each document the page had ever stopped listing counted again
+    every night, so with sixteen journals on file the second name to go
+    refused all four lists every night after, until somebody edited the
+    night's file by hand. Against the last read, a document let through one
+    night, within the limit, is not there to be counted the next.
+
+    Where no earlier read of a list is on record -- the first night -- it is
+    counted against what is on file, which is then what the page last
+    listed. An empty list is not this function's: judge() refuses one
+    outright."""
+    got, then = lists_of(rec), lists_of(last)
+    have = {}
+    for r in was:
+        have.setdefault((r.get("chamber"), r.get("kind"), r.get("year")), []).append(
+            r.get("name"))
+    out = []
+    for k in sorted(got):
+        names, on_file, since = set(got[k]), have.get(k, []), k in then
+        before = set(then[k]) if since else None
+        base = [n for n in on_file if n in before] if since else on_file
+        gone = [n for n in base if n not in names]
+        if names and len(gone) > max(LIST_GONE_FLOOR, LIST_GONE_MOST * len(base)):
+            out.append((k, gone, len(base), since))
+    return out
+
+
+def judge(was, new, rec, last=None, shorter=False):
     """Why tonight's list may not replace the one on file, or "" when it may.
 
     The night's rule for every fetch, in this file's terms: whole or not at
     all, and never sharply smaller than what it replaces.
 
       whole      all four lists were read -- both chambers, calendars and
-                 journals -- each for at least the newest year on file
+                 journals -- each for at least the newest year on file. A
+                 list the page gave no answer for counts only as read_index
+                 may take one: a year's journals, none on file, and that
+                 year's calendars read with documents in them
       not empty  a list with documents on file did not come back with none
-      not short  a list is missing no more than LIST_GONE_MOST of what is on
-                 file for it (and more than LIST_GONE_FLOOR): the General
-                 Court does not unpublish a calendar, so a shorter list is a
-                 page half served
+      not short  a list is missing no more than LIST_GONE_MOST of what the
+                 page listed for it when it was last installed (`last`; and
+                 more than LIST_GONE_FLOOR): the General Court does not
+                 unpublish a calendar, so a shorter list is a page half
+                 served (shortfall(), above). `shorter` lets one through:
+                 the night passes it once the same list has come back short
+                 the same way on enough nights running to be the page's own
       a merge    every document on file is still in the queue, at the
                  address and the path it had
       their own  what is new is named by a list read tonight, is marked
@@ -636,13 +769,15 @@ def judge(was, new, rec):
         return "the list came back empty"
     if not isinstance(lists, list) or not lists:
         return "nothing records which lists were read"
-    got = {}
+    got, silent = {}, []
     for li in lists:
         try:
             k = (li["chamber"], li["kind"], str(li["year"]))
             names = [d["name"] for d in li["documents"]]
             directory = str(li.get("directory") or "")
-        except (KeyError, TypeError):
+            if li.get("unanswered"):
+                silent.append(k)
+        except (KeyError, TypeError, AttributeError):
             return "the record of what was read is not whole"
         if k[:2] not in SOURCES or not k[2].isdigit():
             return "the record of what was read names a list this does not know"
@@ -661,15 +796,23 @@ def judge(was, new, rec):
             return f"the {SAID[pair]} list for {newest[pair]} was not read"
     if not any(names for names, _ in got.values()):
         return "every list came back empty"
+    for k in silent:
+        calendars = (k[0], "calendar", k[2])
+        if k[1] != "journal" or got[k][0] or have.get(k) or calendars in silent \
+                or not got.get(calendars, ([], ""))[0]:
+            return (f"the {SAID[k[:2]]} list for {k[2]} was not answered, and that is "
+                    "taken for none posted yet only of a year's journals with none on file")
+    short = {} if shorter else {k: (gone, of, since)
+                                for k, gone, of, since in shortfall(was, rec, last)}
     for k in sorted(got):
         names, on_file = set(got[k][0]), have.get(k, [])
         what = f"the {SAID[k[:2]]} list for {k[2]}"
-        gone = [n for n in on_file if n not in names]
         if on_file and not names:
             return f"{what} came back empty, with {len(on_file)} documents on file"
-        if len(gone) > max(LIST_GONE_FLOOR, LIST_GONE_MOST * len(on_file)):
-            return (f"{what} came back without {len(gone)} of the {len(on_file)} "
-                    "documents on file")
+        if k in short:
+            gone, of, since = short[k]
+            return (f"{what} came back without {len(gone)} of the {of} documents "
+                    + ("it listed when it was last read" if since else "on file"))
     now = {_key(r): r for r in new}
     if len(now) != len(new):
         return "it names a document twice"
@@ -713,7 +856,8 @@ def take_listing(a, rows):
     print("=" * 70)
     with refusal.hold("the calendar and journal listing") as held:
         try:
-            lists, n = listing(held)
+            lists, n = listing(held, on_file={(r["chamber"], r["kind"], r["year"])
+                                              for r in rows})
         except Stop as e:
             print(f"\nThe lists were not read: {e.why}. Nothing is written.")
             if a.out:
@@ -732,8 +876,13 @@ def take_listing(a, rows):
         out = Path(a.out)
         listed = out.with_name(LISTED_NAME)
     else:
-        # By hand, on a machine that keeps its own list: the night's rule.
-        why = judge(read_rows(QUEUE), new, rec)
+        # By hand, on a machine that keeps its own list: the night's rule,
+        # against the listing this machine installed last.
+        try:
+            last = json.loads(listed_file().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            last = None
+        why = judge(read_rows(QUEUE), new, rec, last)
         if why:
             print(f"\nNot installed: {why}. {QUEUE} is as it was.")
             return 1
@@ -744,6 +893,8 @@ def take_listing(a, rows):
     os.replace(tmp, listed)
     for r in added:
         print(f"    new: {r['chamber']} {r['kind']} {r['year']}  {r['label'] or r['name']}")
+    for what in unanswered(rec):
+        print(f"    no answer for {what}: taken as none posted yet")
     print(f"\n{n} requests, {len(lists)} lists, {news(rows, new)}; "
           f"{len(new):,} in the queue -> {out}")
     return 0
