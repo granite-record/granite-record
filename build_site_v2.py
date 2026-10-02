@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.132
+# GRANITE_VERSION: 2026-09-05.133
 """
 Generate the faceted site from real General Court data.
 
@@ -1649,6 +1649,19 @@ def classify(narr, rcs, prefix="", bid="", term=""):
     last = last_decision(narr, bid or prefix, rcs, term)
     if last and last["act"] == "failed":
         return "done", "Failed to pass"
+    # AND A TABLING THAT STOOD IS WHERE THE MEASURE IS. Only a status field
+    # saying LAID ON TABLE gave that label, and a bill tabled under a field
+    # that says something STATED does not list fell through: HB 1668, HB 1679
+    # and HB 1681 of 1998, three of the school-funding tax bills the House
+    # laid on the table on 24 September 1998 ("LAID ON THE TABLE, REP HAGER MA
+    # DIV(193-109)"), read "Committee report filed" from the field REPORT
+    # FILED; SB 476, SB 566 and SB 651 of 2026, tabled by the Senate under a
+    # blank field, read "In progress". After the tests above, which read a
+    # docket's own row for a death on the table, the term's end or a
+    # chamber's rule: SB 14 of 2025 was tabled and then killed by Senate Rule
+    # 3-23, and that row is its ending.
+    if last and last["act"] == "tabled":
+        return "active", "Laid on the table"
     # RETAINED IS WHERE A BILL WAS, NOT WHERE IT IS once anything came after.
     # Read as "any retention anywhere" it called 21 bills "Retained in
     # committee" that had since been reported, passed both chambers and gone

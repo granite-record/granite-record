@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.310
+# GRANITE_VERSION: 2026-09-04.311
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1850,6 +1850,86 @@ def _failed_passage_is_the_last_decision(N, B):
     return "ok", ("CACR 4 of 2009, CACR 11 of 2012, CACR 2 of 2004, CACR 9 of 2019 and CACR 8 of "
                   "2025 read Failed to pass; a later tabling or recommittal, a failed suspension "
                   "and the docket's own Session ended row each keep theirs")
+
+
+# Real rows: Docket_db_1997-1998.txt lines 23068-23072 (HB 1668); Docket.txt
+# 20836-20839 (SB 476), 16190-16191 (SB 651) and 10656-10657 with 11706 (SB
+# 14). HB 1681 of 1998 and CACR 11 of 2012 are in _DOCKET_FAILED_PASSAGE.
+_DOCKET_TABLED_LAST = {
+    ("HB1668", "1997-1998"): [
+        "1998|2913|09/24/1998 04:21:38 PM|HB1668|H|REP COOPER MOVED LAY ON THE TABLE, ML DIV(113-192); REF FOR STUDY|09/24/1998 04:21:38 PM",
+        "1998|2913|09/24/1998 04:45:37 PM|HB1668|H|ML RC(154-154); REP KURK MOVED ITL, ML RC(143-164); LAID ON THE|09/24/1998 04:45:37 PM",
+        "1998|2913|09/24/1998 05:06:43 PM|HB1668|H|TABLE, REP HAGER MA DIV(193-109); HJ78,P2517-2521|09/24/1998 05:06:43 PM",
+        "1998|2913|09/24/1998 05:10:00 PM|HB1668|H|REPS WHEELER & BURLING MOVED [ALL BILLS LOT] INDEF POSTPONE, ML|09/24/1998 05:10:00 PM",
+        "1998|2913|09/24/1998 05:11:00 PM|HB1668|H|FAILED NEC 2/3 DIV(121-112); HJ78,P2542|09/24/1998 05:11:00 PM"],
+    ("SB476", "2025-2026"): [
+        "2026|2035|3/26/2026 1:26:07 PM|SB476|S|Ought to Pass with Amendment #2026-1236s, RC 16Y-8N, MA; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 2:38:48 PM",
+        "2026|2035|3/26/2026 1:26:38 PM|SB476|S|The Chair rescinded OT3rdg, 03/26/2026;  SJ 7|3/26/2026 1:26:51 PM",
+        "2026|2035|3/26/2026 1:26:54 PM|SB476|S|Sen. McGough Moved Laid on Table, MA, VV; 03/26/2026;  SJ 7|3/26/2026 1:27:07 PM",
+        "2026|2035|3/26/2026 1:27:04 PM|SB476|S|Pending Motion OT3rdg; 03/26/2026;  SJ 7|3/26/2026 1:27:17 PM"],
+    ("SB651", "2025-2026"): [
+        "2026|2257|2/5/2026 3:05:31 PM|SB651|S|Sen. Abbas Moved Laid on Table, RC 15Y-9N, MA; 02/05/2026;  SJ 3|2/5/2026 3:05:31 PM",
+        "2026|2257|2/5/2026 3:05:44 PM|SB651|S|Pending Motion Inexpedient to Legislate; 02/05/2026;  SJ 3|2/5/2026 3:05:44 PM"],
+    ("SB14", "2025-2026"): [
+        "2025|0228|6/26/2025 3:49:06 PM|SB14|S|Sen. Gannon Moved Laid on Table, MA, VV; 06/26/2025;  SJ 17|6/26/2025 3:49:06 PM",
+        "2025|0228|6/26/2025 3:51:13 PM|SB14|S|Pending Motion Committee of Conference Report # 2025-2850c; 06/26/2025;  SJ 17|6/26/2025 3:51:13 PM",
+        "2025|0228|11/3/2025 1:14:24 PM|SB14|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:14:24 PM"],
+}
+
+
+@check("status", "a measure a chamber laid on the table and never took off it reads Laid on the "
+                 "table from the docket, where no field says so",
+       needs=("narrative", "build_site_v2"))
+def _tabled_is_the_last_decision(N, B):
+    """Only a status field saying LAID ON TABLE gave that label. HB 1668, HB
+    1679 and HB 1681 of 1998 -- three of the school-funding tax bills the
+    House laid on the table on 24 September 1998 -- carry REPORT FILED, and
+    read "Committee report filed"; SB 476, SB 566 and SB 651 of 2026, tabled
+    by the Senate under a blank field, read "In progress".
+
+    Where the last decision on the measure, as the journey reads the docket,
+    is a tabling that stood. It comes after the tests that read a docket's
+    own row for a death on the table, the term's end or a chamber's rule: SB
+    14 of 2025 was tabled and then ended by Senate Rule 3-23, and that row is
+    its ending. And a tabling a carried removal undid is not one: CACR 11 of
+    2012 was taken off the table, and its last decision is the vote it lost.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_TABLED_LAST.items()}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    filed = {"gen_status": "HOUSE", "house_status": "REPORT FILED", "senate_status": ""}
+    d = B.bill_disposition({}, "HB1668", filed, narr[("HB1668", "1997-1998")], [],
+                           "1997-1998", "2025-2026")
+    is_("HB1668 of 1998", (d.kind, d.status), ("done", "Laid on the table"))
+    n = _narrated(N, "1997-1998", "HB1681", _DOCKET_FAILED_PASSAGE[("HB1681", "1997-1998")])
+    is_("HB1681 of 1998",
+        B.bill_disposition({}, "HB1681", filed, n, [], "1997-1998", "2025-2026").status,
+        "Laid on the table")
+    for bill in ("SB476", "SB651"):
+        n = narr[(bill, "2025-2026")]
+        # Moving, while the session has days left; finished with the session.
+        d = B.bill_disposition({}, bill, {}, n, [], "2025-2026", "2025-2026")
+        is_(f"{bill} of 2026, in session", (d.kind, d.status), ("active", "Laid on the table"))
+        d = B.bill_disposition({}, bill, {}, n, [], "2025-2026", "2025-2026", term_over=True)
+        is_(f"{bill} of 2026", (d.kind, d.status), ("done", "Laid on the table"))
+    # A row that says how it ended is the answer, not the tabling before it.
+    d = B.bill_disposition({}, "SB14", {}, narr[("SB14", "2025-2026")], [], "2025-2026",
+                           "2025-2026", term_over=True)
+    if d.status == "Laid on the table":
+        bad.append("SB14 of 2025: Laid on the table, over the Rule 3-23 row that ended it")
+    # And a tabling undone is not one.
+    n = _narrated(N, "2011-2012", "CACR11", _DOCKET_FAILED_PASSAGE[("CACR11", "2011-2012")])
+    is_("CACR11 of 2012",
+        B.bill_disposition({}, "CACR11", {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS"},
+                           n, [], "2011-2012", "2025-2026").status, "Failed to pass")
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 1668 and HB 1681 of 1998 and SB 476 and SB 651 of 2026 read Laid on the "
+                  "table from their dockets; a later row that ends the bill, and a tabling "
+                  "undone, are not that")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
