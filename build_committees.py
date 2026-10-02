@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.35
+# GRANITE_VERSION: 2026-09-07.36
 """
 A page's worth of data for every committee.
 
@@ -250,6 +250,55 @@ def its_own_sitting(r):
     """
     return bool((r.get("committee") or "").strip() and r.get("date")
                 and (r.get("kind") or "").strip().lower() != "committee of conference")
+
+
+def a_sitting_on_it(page, date):
+    """Does the bill's own page draw a committee proceeding of it on this day?
+
+    A NOTICE IS NOT A SITTING ON THE BILL (1 October 2026). proceedings.csv
+    reads the docket's notices -- "Public Hearing: 1/12/2012 10:30 AM LOB
+    207", entered on 15 December -- and a notice is entered before the day.
+    HB 1284 of 2012 was withdrawn on 4 January, never introduced, and
+    Education's page said the committee met on January 12, 2012 for a public
+    hearing on it and on the 24th for an executive session; HB 273 of 2017,
+    which the House never introduced, stood among the bills Executive
+    Departments and Administration heard on 10 January 2017. The bill's own
+    page draws no proceeding for either: build_site_v2 leaves a sitting set
+    for after the bill's withdrawal, or for a bill that was never
+    introduced, out of its stations. This page already takes each
+    proceeding's time from those stations, so that the two agree; it takes
+    from them whether there was a proceeding to time, for the same reason.
+
+    `page` is the bill's record as its page carries it (site_read.by_bill),
+    or None where the bill has no page: with nothing to hold the row to, it
+    stays, as it did. The day is asked and not the kind, so a row the page
+    draws under another word for its kind is still a sitting."""
+    if page is None or "stations" not in page:
+        return True
+    return any(st.get("when") == date for st in page.get("stations") or [])
+
+
+# How many rows a_sitting_on_it may leave off before the build stops. FOUR OF
+# 95,422 on 1 October 2026: HB 1284 of 2012's two, the hearing of the 12th on
+# HB 1512 of 2012 (introduced, and withdrawn on the 4th) and HB 273 of 2017's.
+# A ceiling well above that lets a few more such bills through and stops the
+# build on a count of another kind.
+NOTICE_CEILING = 50
+
+
+def notice_guard(notices, ceiling=NOTICE_CEILING):
+    """What to stop the build with when more of proceedings.csv's rows are
+    left off the committees' days than `ceiling`, or "". A rule that reads
+    another page's stations leaves every sitting off every committee's page
+    the day those stations stop being written, and exits 0."""
+    if len(notices) <= ceiling:
+        return ""
+    return (f"{len(notices):,} rows of proceedings.csv are on no station of their "
+            f"bill's own page, past the ceiling of {ceiling} (NOTICE_CEILING): "
+            + ", ".join(notices[:6]) + ". These are meant to be the few notices "
+            "for a bill withdrawn or never introduced. If the bill pages have "
+            "stopped carrying their stations, every committee's sitting days go "
+            "with them; rebuild the site data and the bill pages first.")
 
 
 def years(span):
@@ -639,8 +688,16 @@ def main():
     day_said = collections.defaultdict(lambda: collections.defaultdict(
         collections.Counter))
     names_at = collections.defaultdict(lambda: collections.defaultdict(set))
+    # The docket's notices the bill's own page draws no proceeding for.
+    notices = []
     for r in P.load():
         if not its_own_sitting(r):
+            continue
+        meta = bill_meta.get((r.get("term"), r.get("bill"))) or {}
+        if not a_sitting_on_it(
+                _stations.get((str(meta.get("year") or ""), (r.get("bill") or "").upper())),
+                r.get("date")):
+            notices.append(f"{r.get('bill')} {r.get('kind')} {r.get('date')}")
             continue
         cname = (r.get("committee") or "").strip()
         code = code_of(cname, r.get("body"), r.get("term"))
@@ -650,7 +707,6 @@ def main():
         day_said[code][(r.get("term"), r.get("date"))][cname] += 1
         if r.get("term"):
             names_at[code][cname].add(r["term"])
-        meta = bill_meta.get((r.get("term"), r.get("bill"))) or {}
         st = station_of(meta.get("year", ""), r.get("bill"), r.get("date"),
                         r.get("kind"))
         days[code][(r.get("term"), r.get("date"))].append({
@@ -668,6 +724,11 @@ def main():
             "state": (st or {}).get("state") or "",
             "time": r.get("time") or "", "venue": r.get("venue") or "",
         })
+    # Before a page is written: past the ceiling these are not notices, they
+    # are the bill pages' stations gone, and every committee's days with them.
+    stop = notice_guard(notices)
+    if stop:
+        raise SystemExit(stop)
 
     # ---- bills referred, per term ---------------------------------------
     referred = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -1071,6 +1132,11 @@ def main():
     if empty:
         print(f"  {len(empty)} committee(s) have no sitting day on record: "
               + ", ".join(empty[:8]))
+    if notices:
+        print(f"  {len(notices)} docket notice(s) left off the committees' days, each "
+              "for a bill whose own page draws no proceeding of it that day (withdrawn "
+              "before it, or never introduced): " + ", ".join(notices[:8])
+              + (", ..." if len(notices) > 8 else ""))
     # SILENCE IS NOT SUCCESS: the pages are written, and the build stops here
     # if the names that reach none of them have grown past the ceiling.
     stop = unmatched_guard(unmatched)
