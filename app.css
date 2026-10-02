@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.190 */
+/* GRANITE_VERSION: 2026-09-07.191 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2027,8 +2027,11 @@ max-width:none;line-height:1.55}
    sat straight over the status chip -- "Referred for i..." with the rest
    behind the button. Reserving a row above the header instead of a column
    beside it holds however wide the label gets. */
+/* A link since 2 October 2026 (it was a button that went back in history,
+   wherever back was), and drawn as it was: no underline until the pointer is
+   on it. */
 .backto{display:inline-flex;align-items:center;min-height:36px;margin:0 0 var(--sp-5);
-font-size:var(--t-ui);color:var(--pine)}
+font-size:var(--t-ui);color:var(--pine);text-decoration:none}
 .backto:hover{text-decoration:underline}
 .grp{font-size:var(--t-ui);font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:var(--sp-7) 0 var(--sp-4);display:flex;align-items:baseline;gap:var(--sp-4)}

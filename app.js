@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.135
+// GRANITE_VERSION: 2026-09-07.136
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2511,7 +2511,13 @@ need("meta.json")
    mountFollow(window.GR_BILL?"bill":window.GR_MEMBER?"member":window.GR_COMMITTEE?"committee":"");
    if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
    if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
-   $("#q").focus();
+   // THE BILL SEARCH STARTS IN ITS BOX; A BILL'S OWN PAGE STARTS AT THE TOP.
+   // The box took focus on both, so on /bill/2025/hb2 the first Tab press
+   // went to the box's button: "Skip to this bill" and the nav were behind
+   // the starting point, reached only with Shift+Tab, and a screen reader
+   // began in an edit field instead of at the page (the audit of 2 October
+   // 2026, S7). On the search page the box is the page.
+   if(!window.GR_BILL)$("#q").focus();
    render();
    // A bare #HB1442 link from elsewhere opens that bill.
    // Arriving with a bill in the address -- a refresh, a shared link, or the
@@ -6536,8 +6542,14 @@ function render(more){
   // number beside a heading always matches the cards under it.
   const grpN={};
   if(sortBy==="status")for(const b of shown)grpN[b.status||""]=(grpN[b.status||""]||0)+1;
-  $("#results").innerHTML=(fb?`<button class="backto" data-back="1">\u2190 Back to
-    bill search</button>`:"")+((rows.length||fb)?shown.map((b,gi,arr)=>`
+  // A LINK, TO THE BILL SEARCH. It was a button that called history.back(),
+  // under a label that names a place: opened directly, a bill's page left
+  // the site; reached from a member's page, "Back to bill search" went back
+  // to the member (the audit of 2 October 2026, S14). The click handler goes
+  // back in history only where back IS the search (backIsSearch), so the
+  // list returns as it was left; everywhere else this is an ordinary link.
+  $("#results").innerHTML=(fb?`<a class="backto" href="${BASE}bills" data-back="1">\u2190 Back to
+    bill search</a>`:"")+((rows.length||fb)?shown.map((b,gi,arr)=>`
     ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
       ?`<h2 class="grp">${esc(b.status||"No status recorded")}
          <span>${grpN[b.status||""]}</span></h2>`:""}
@@ -6594,6 +6606,23 @@ function focusBill(id,href){
   }
   openBill(id);
   window.scrollTo(0,0);
+}
+
+// IS THE PAGE BEFORE THIS ONE THE BILL SEARCH? In the search itself a bill is
+// opened by pushing its address over the list (focusBill), so back is the
+// list by construction. On a bill's own page it is so only if the reader
+// came from this site's /bills, which the referrer says; a page opened from
+// a link elsewhere, a bookmark or a member's page has something else behind
+// it, or nothing, and "Back to bill search" must not go there.
+function backIsSearch(){
+  if(!window.GR_STANDALONE)return true;
+  // A bill opened in a new tab came from the search and has no page behind
+  // it in this tab: back would do nothing at all.
+  if(history.length<2)return false;
+  try{
+    const r=new URL(document.referrer);
+    return r.origin===location.origin&&/^\/bills(?:\.html)?\/?$/.test(r.pathname);
+  }catch(_){return false;}
 }
 
 function unfocus(y){
@@ -6802,7 +6831,14 @@ document.addEventListener("click",e=>{
   if(dt&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
     e.preventDefault();
     focusBill(dt.closest(".card").dataset.id,dt.getAttribute("href"));return;}
-  if(e.target.closest("[data-back]")){history.back();return;}
+  // "Back to bill search" is a link to the search. Where the page before
+  // this one in history is the search itself, a plain click goes back to it
+  // instead, so the list comes back as the reader left it -- same filters,
+  // same place. A modified or middle click is left to the link.
+  if(e.target.closest("[data-back]")){
+    if(e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&backIsSearch()){
+      e.preventDefault();history.back();}
+    return;}
   // The same thing the observer does, for a keyboard, a reader, or a
   // browser with no IntersectionObserver.
   if(e.target.closest("[data-more]")){SHOWN+=PAGE_SIZE;render(true);return;}

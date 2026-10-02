@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.313
+# GRANITE_VERSION: 2026-09-04.314
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20058,6 +20058,89 @@ s.render();
 out.kept = document.activeElement === kept && live["#q"][0].focused === 0;
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
+
+
+@check("frontend", "a bill's own page starts at the top and leaves by a link to the bill search")
+def _bill_page_start_and_exit():
+    """The audit of 2 October 2026, S7 and S14.
+
+    S7. app.js put focus in the bill search box on load, on the search page
+    and on every bill's own page: on /bill/2025/hb2 the first Tab press went
+    to the box's button, so "Skip to this bill" and the nav were behind the
+    starting point. The box takes focus only where there is no bill named.
+
+    S14. "Back to bill search" was a button that called history.back(). Opened
+    directly, a bill's page left the site; reached from a member's page, it
+    went back to the member. It is a link to /bills, and a plain click goes
+    back in history only where back is the search: in the search itself,
+    where the bill was opened over the list, or on a bill's own page when the
+    referrer is this site's /bills and there is a page behind it in the tab.
+    """
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    src = js.read_text(encoding="utf-8")
+    boxes = re.findall(r'^[ \t]*(.*\$\("#q"\)\.focus\(\);)[ \t]*$', src, re.M)
+    onload = [b for b in boxes if "e.detail" not in b and "preventDefault" not in b]
+    assert onload == ['if(!window.GR_BILL)$("#q").focus();'], (
+        f"the bill search box is focused as the page loads by {onload}: on a bill's own "
+        "page that puts the skip link and the nav behind the starting point")
+    guarded = re.findall(
+        r"if\(e\.button===0[^{]*backIsSearch\(\)\)\{\s*e\.preventDefault\(\);history\.back\(\);\}",
+        src)
+    assert len(guarded) == 1 and src.count("history.back();") == 1, (
+        "something in app.js calls history.back() without asking backIsSearch(): "
+        "back is wherever the reader came from, which a label naming a place cannot promise")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(src, encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, IDX, backIsSearch, setFocused:(x)=>{focused=x;}})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const out = {};
+s.IDX.length = 0;
+s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind: "active",
+  committees: [], topic: "", sponsor: "", term: "2026", year: "2026", hay: "hb1442"});
+s.setFocused("HB1442"); s.render();
+out.back = (/<(\w+) class="backto"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
+const at = (standalone, referrer, length) => { window.GR_STANDALONE = standalone;
+  document.referrer = referrer; history.length = length; return s.backIsSearch(); };
+location.origin = "https://x";
+out.is = {
+  inSearch: at(false, "", 1),
+  fromSearch: at(true, "https://x/bills?q=budget", 2),
+  fromSearchHtml: at(true, "https://x/bills.html", 3),
+  newTab: at(true, "https://x/bills", 1),
+  direct: at(true, "", 1),
+  fromMember: at(true, "https://x/legislator/jane-doe", 4),
+  fromElsewhere: at(true, "https://example.org/bills", 2),
+  fromABill: at(true, "https://x/bills/x", 2),
+};
+process.stdout.write("\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["back"] == '<a class="backto" href="/bills" data-back="1">', (
+        "\"Back to bill search\" is drawn as " + (got["back"] or "nothing")
+        + ": it must be a link to /bills, which is where its label says it goes")
+    want = {"inSearch": True, "fromSearch": True, "fromSearchHtml": True, "newTab": False,
+            "direct": False, "fromMember": False, "fromElsewhere": False, "fromABill": False}
+    assert got["is"] == want, (
+        "back is taken for the bill search where it is not, or not where it is: "
+        + "; ".join(f"{k}: {got['is'].get(k)}" for k, v in want.items() if got["is"].get(k) != v))
+    return "ok", ("the search box takes focus on load only where no bill is named; \"Back to "
+                  "bill search\" is a link to /bills, and goes back in history only where "
+                  "back is the search")
 
 
 @check("frontend", "focus survives every redraw: the control that had it has it again, through each of the three renderers")
