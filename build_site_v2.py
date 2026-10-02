@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.135
+# GRANITE_VERSION: 2026-09-05.136
 """
 Generate the faceted site from real General Court data.
 
@@ -4323,7 +4323,8 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", ""), since=0)
     # the table by the General Court's own status.
     if said is None and moved and act == "tabled":
         return {"act": "tabled", "vote": ("", None, None), "unanswered": True}
-    if said is None:
+    if said is None and not (act == "conference"
+                             and re.search(r"\bnot\s+accepted\b", seg[at:end], re.I)):
         return None
     out = {"vote": vote}
     # MORE YEAS THAN NAYS, AND IT FAILED: it needed more than a majority, and
@@ -4345,6 +4346,12 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", ""), since=0)
     if act == "conference":
         if re.search(r"\btable\b", part, re.I):
             return None
+        # A REPORT THE CHAMBER DID NOT ACCEPT, with no vote: "Conference
+        # Committee Report Not Accepted by House pursuant to House Rule 49(j)"
+        # (SB 305 of 2016). The line says that much and no more -- nobody
+        # voted it down.
+        if re.search(r"\bnot\s+accepted\b", part, re.I):
+            return {"act": "conf_rejected", "vote": ("", None, None), "unaccepted": True}
         # A motion NOT to adopt, carried, is the report rejected: "Sen.
         # Pignatelli Moved Non Adopt Conference Committee Report RC 17Y-7N,
         # Non Adopt" (SB 69 of 2001) read as the Senate adopting it 17-7.
@@ -4352,7 +4359,10 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", ""), since=0)
         # SEN HEATH MA VV" (HB 352 of 1991).
         if re.search(r"\bnon[-\s]?adopt|\bnot\s+(?:to\s+)?adopt(?!ed)|\bmov\w*\s+(?:to\s+)?reject"
                      r"|\brefus\w*\s+to\s+adopt", seg[:end], re.I):
-            if not said:
+            # Unless nobody moved it and the words are the outcome, after a
+            # count that lost: "Conference Committee Report RC 11Y-13N, Non
+            # Adopt" (SB 95 of 2001) is the report voted down, 11-13.
+            if not said and re.search(r"\bmov\w*|\bmotion\b|\brefus", seg[:end], re.I):
                 return None
             out["act"] = "conf_rejected"
             return out
@@ -4475,7 +4485,9 @@ def _j_words(st, bid):
                          + (" and asked for a committee of conference"
                             if st.get("conf") else ""), "refused amendment"),
         "conf_adopted": ("Adopted the conference report", "conference report"),
-        "conf_rejected": ("Rejected the conference report", "report rejected"),
+        "conf_rejected": (("Did not accept the conference report", "report not accepted")
+                          if st.get("unaccepted")
+                          else ("Rejected the conference report", "report rejected")),
         "conf_refused": ("Refused a committee of conference", "refused conference"),
         "override": ("Veto overridden", "overridden"),
         "sustained": ("Veto sustained", "sustained"),
@@ -5009,6 +5021,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                         break
                 if ahead:
                     st["_stated"] = _j_iso(*ahead[-1].groups())
+            # A report not accepted states the sitting it was done in recess
+            # of, "05/19/2016" on SB 305 of 2016, a week before the report was
+            # filed, and was entered on 3 June: undated, rather than either.
+            if st.get("unaccepted"):
+                st["date"] = ""
             # And no day outside the term at all: HB 201 of 2020's own row
             # reads "Adjournment 09/16/2021", entered on 9 September 2021,
             # and neither is a day of 2019-2020. Undated, rather than either.
@@ -5180,7 +5197,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
                   "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third",
-                  "_recess"):
+                  "_recess", "unaccepted"):
             st.pop(k, None)
     return intro, steps
 
@@ -6103,8 +6120,14 @@ CONF_REPORT = re.compile(r"conf(?:erence)?\.?\s*comm(?:ittee)?\.?\s*rep(?:ort|t)
 # "Failed", and the older dockets' "Fails", "lost" and "defeated": 1999's
 # HB 252 "Conf Comm Report Fails DIV(76-210)", 2006's HB 381 "Conf Comm Report
 # lost RC(154-175)".
+# And the Senate clerk of 2001's "Non Adopt" -- "Conference Committee Report
+# RC 11Y-13N, Non Adopt" is SB 95 of 2001, whose report the House had adopted
+# 196-159 that morning -- and the House's "Conference Committee Report Not
+# Accepted by House pursuant to House Rule 49(j)" (SB 305 of 2016), a report
+# filed and never taken up. SB 95 read "One chamber did not concur" and SB 305
+# "In a committee of conference", each over a last row that ended it.
 CONF_FAILED = re.compile(r"\bfail(?:ed|s)?\b|not adopted|\brejected\b|lacking|"
-                         r"\blost\b|\bdefeated\b", re.I)
+                         r"\blost\b|\bdefeated\b|\bnon[-\s]?adopt|\bnot\s+accepted\b", re.I)
 # A NEW committee of conference -- "New Conf Comm", "New Committee of
 # Conference", "new C of C" -- but not "New Conf Comm Report ... MA", which
 # is the new conference's report being adopted (SB 140 of 1999).
@@ -6355,7 +6378,14 @@ def between_chambers(narr, status):
     """A dated docket answer to what became of the two versions, or None."""
     evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
     conf = conference_outcome(evs)
-    if status in BEFORE_CONFERENCE and "failed" in conf.values():
+    # NOT WHERE THE REPORT A CHAMBER VOTED DOWN WAS THE CONFEREES' REPORT THAT
+    # THEY COULD NOT AGREE. SB 69 of 2001's conferees filed "Conf Comm Report
+    # (UNABLE TO AGREE)"; the House adopted that report, the Senate non-adopted
+    # it 17-7 and asked for a new conference, and the House refused to accede.
+    # No agreed version was rejected: the conferees could not agree, which the
+    # test below says.
+    unable = (conference_failure(evs) or ("",))[0] == "unable"
+    if status in BEFORE_CONFERENCE and "failed" in conf.values() and not unable:
         return "done", CONF_REJECTED
     # A report ADOPTED keeps its label only where the conferees agreed; a
     # conference the fields still call sitting (HB 1323 of 2026), a request

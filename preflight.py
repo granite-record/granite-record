@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.313
+# GRANITE_VERSION: 2026-09-04.314
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2065,6 +2065,112 @@ def _nonconcurrence_under_session_ended(N, B):
     assert B.between_chambers(narr["HB1768"], "Killed") is None
     return "ok", ("HB 1768 of 2026 reads One chamber did not concur over the House's DIED, "
                   "SESSION ENDED; HB 1709, which reached a conference, is not read so")
+
+
+# Real rows: Docket_db_2001-2002.txt lines 5156, 5160 and 5164-5166 (SB 95),
+# 6205, 6207 and 6210-6216 (SB 69) and 6377-6380 (SB 164);
+# Docket_2015-2016.txt 17491-17492, 17494 and 17501-17502 (SB 305).
+_DOCKET_REPORT_NOT_ADOPTED = {
+    ("SB95", "2001-2002"): [
+        "2001|0656|06/12/2001 09:04:30 AM|SB95|S|Sen. Roberge Non Concur With House Am {1485} Request Comm of Conf,  MA, VV; SJ 18, Pg.555|06/12/2001 09:04:30 AM",
+        "2001|0656|06/13/2001 10:29:50 AM|SB95|H|House Acceded to req for Conf Comm, MA;  HJ61, p1755|06/13/2001 10:29:50 AM",
+        "2001|0656|06/22/2001 04:39:10 PM|SB95|H|Conf Comm Report  (House Am + New Am{1817}) Filed;|06/22/2001 04:39:10 PM",
+        "2001|0656|06/26/2001 11:05:30 AM|SB95|H|Conf Comm Report Adopted RC(196-159);  HJ61, p1767-1773|06/26/2001 11:05:30 AM",
+        "2001|0656|06/26/2001 11:30:44 AM|SB95|S|Conference Committee Report  RC 11Y-13N, Non Adopt; SJ 19, Pg.665-671|06/26/2001 11:30:44 AM"],
+    ("SB69", "2001-2002"): [
+        "2001|0802|06/12/2001 09:07:32 AM|SB69|S|Sen. Gordon Non Concur with House Am {1306}, (New Title), Requests C of C, MA, VV; SJ 18, Pg.422|06/12/2001 09:07:32 AM",
+        "2001|0802|06/13/2001 03:04:56 PM|SB69|H|House Acceded to req for Conf Comm, Rep Buckley MA;  HJ61, p1754|06/13/2001 03:04:56 PM",
+        "2001|0802|06/22/2001 02:02:50 PM|SB69|H|Conf Comm Report (UNABLE TO AGREE) Filed;|06/22/2001 02:02:50 PM",
+        "2001|0802|06/26/2001 10:33:45 AM|SB69|H|Conf Comm Report Adopted;  HJ61, p1765|06/26/2001 10:33:45 AM",
+        "2001|0802|06/26/2001 11:16:15 AM|SB69|S|Sen. Pignatelli Moved Non Adopt Conference Committee Report  RC 17Y-7N, Non Adopt; SJ 19, Pg.664-665|06/26/2001 11:16:15 AM",
+        "2001|0802|06/26/2001 11:19:14 AM|SB69|S|Sen. Pignatelli Motion to  Request New Committee of Conference MA, VV; SJ 19, Pg.665|06/26/2001 11:19:14 AM",
+        "2001|0802|06/26/2001 11:20:26 AM|SB69|S|President Apointes; Senators Boyce, Pignatelli, Barnes; SJ 19, Pg.665|06/26/2001 11:20:26 AM",
+        "2001|0802|06/26/2001 03:25:33 PM|SB69|H|House Refused to Accede to req for New Conf Comm, Rep Mock MA VV;  HJ61, p1797|06/26/2001 03:25:33 PM",
+        "2001|0802|06/26/2001 04:24:06 PM|SB69|S|House Refused to Accede === KILLED ===; SJ 19, Pg.685|06/26/2001 04:24:06 PM"],
+    ("SB164", "2001-2002"): [
+        "2001|0824|06/22/2001 04:45:42 PM|SB164|H|Conf Comm Report  (No House Am, New Am{1827}) Filed;|06/22/2001 04:45:42 PM",
+        "2001|0824|06/26/2001 11:25:06 AM|SB164|H|Conf Comm Report Adopted RC(241-117);  HJ61, p1776-1784|06/26/2001 11:25:06 AM",
+        "2001|0824|06/26/2001 12:10:05 PM|SB164|S|Sen. McCarley Moved Non Adopt  RC 11Y-13N, MF; SJ 19, Pg.677-685|06/26/2001 12:10:05 PM",
+        "2001|0824|06/26/2001 12:19:10 PM|SB164|S|Conference Committee Report  RC 13Y-11N,  Adopted; SJ 19, Pg.677-685|06/26/2001 12:19:10 PM"],
+    ("SB305", "2015-2016"): [
+        "2016|2812|5/11/2016 12:00:00 AM|SB305|H|Ought to Pass with Amendment 1916h: MA VV 05/11/2016 HJ 38 P. 123|5/11/2016 12:00:00 AM",
+        "2016|2812|5/19/2016 12:00:00 AM|SB305|S|Sen. Prescott Moved Nonconcur with House Amendment # 1916h, NT, Requests C of C, MA VV; 05/19/2016 SJ 18|5/19/2016 12:00:00 AM",
+        "2016|2812|5/19/2016 12:00:00 AM|SB305|H|House Accedes to Senate Request for CofC (Rep. Hunt): MA VV 05/19/2016 HJ 39 P. 16|5/19/2016 12:00:00 AM",
+        "2016|2812|5/27/2016 12:00:00 AM|SB305|H|Conference Committee Report #2016-2102c Filed 05/26/2016; House Amendment + New Amendment|5/27/2016 12:00:00 AM",
+        "2016|2812|6/3/2016 12:00:00 AM|SB305|H|Conference Committee Report Not Accepted by House pursuant to House Rule 49(j) 05/19/2016|6/3/2016 12:00:00 AM"],
+}
+
+
+@check("status", "a conference report a chamber non-adopted, or did not accept, ends the bill "
+                 "as a rejected report does, and the conferees' own report of no agreement "
+                 "does not",
+       needs=("narrative", "build_site_v2"))
+def _conference_report_not_adopted(N, B):
+    """Two wordings of a conference report that did not get through were
+    read by nothing. The Senate clerk of 2001 wrote "Conference Committee
+    Report RC 11Y-13N, Non Adopt" on SB 95, whose report the House had
+    adopted 196-159 that morning: it read "One chamber did not concur", from
+    the Senate's field. The House's "Conference Committee Report Not Accepted
+    by House pursuant to House Rule 49(j)" is the last row of SB 305 of 2016,
+    a report filed and never taken up: it read "In a committee of
+    conference".
+
+    Both read "Died when the conference report was rejected". SB 305's line
+    says the House did not accept the report -- nobody voted it down -- and
+    carries no day: the row states the sitting it was done in recess of, a
+    week before the report was filed.
+
+    NOT SB 69 OF 2001. Its conferees filed "(UNABLE TO AGREE)"; the House
+    adopted that report, the Senate non-adopted it 17-7 and asked for a new
+    conference, and the House refused. No agreed version was voted down, and
+    it stays "Died: conferees could not agree". Nor SB 164, where the motion
+    to non-adopt FAILED 11-13 and the report was then adopted.
+    """
+    narr = {k: _narrated(N, k[1], k[0], rows)
+            for k, rows in _DOCKET_REPORT_NOT_ADOPTED.items()}
+    bad = []
+
+    def is_(what, got, want):
+        if got != want:
+            bad.append(f"{what}: {got!r}, not {want!r}")
+
+    def told(bill, term, st):
+        n = narr[(bill, term)]
+        d = B.bill_disposition({}, bill, st, n, [], term, "2025-2026")
+        _i, steps = B.journey(n, bill, term=term)
+        return d, steps
+
+    d, steps = told("SB95", "2001-2002", {"gen_status": "SENATE",
+                                          "house_status": "CONFERENCE REPORT ADOPTED",
+                                          "senate_status": "NONCONCURRED"})
+    is_("SB95 of 2001", (d.kind, d.status, d.between), ("done", B.CONF_REJECTED, True))
+    is_("SB95's last line", (steps[-1]["body"], steps[-1]["act"], steps[-1]["text"]),
+        ("S", "conf_rejected", "Rejected the conference report, 11\u201313"))
+    is_("SB95, by the journey's test",
+        B.journey_disagrees(steps, d.kind, d.status, "", "SB95"), "")
+    d, steps = told("SB305", "2015-2016", {"gen_status": "HOUSE", "house_status": "MISCELLANEOUS",
+                                           "senate_status": "CONFERENCE COMMITTEE"})
+    is_("SB305 of 2016", (d.kind, d.status), ("done", B.CONF_REJECTED))
+    is_("SB305's last line",
+        (steps[-1]["date"], steps[-1]["body"], steps[-1]["act"], steps[-1]["text"]),
+        ("", "H", "conf_rejected", "Did not accept the conference report"))
+    # The conferees' report of no agreement, voted down, is still no agreement.
+    d, steps = told("SB69", "2001-2002", {"gen_status": "HOUSE",
+                                          "house_status": "REFUSED TO ACCEDE TO REQUEST",
+                                          "senate_status": "NONCONCURRED REQUEST CONFERENCE"})
+    is_("SB69 of 2001", (d.kind, d.status), ("done", B.CONF_UNABLE))
+    is_("SB69's Senate line", [s["text"] for s in steps if s["act"] == "conf_rejected"],
+        ["Rejected the conference report, 17\u20137"])
+    # A motion to non-adopt that failed leaves the report to be adopted.
+    conf = B.conference_outcome(narr[("SB164", "2001-2002")]["events"])
+    is_("SB164's report", conf, {"H": "adopted", "S": "adopted"})
+    is_("SB164's lines", [s["act"] for s in B.journey(narr[("SB164", "2001-2002")], "SB164",
+                                                       term="2001-2002")[1]],
+        ["conf_adopted", "conf_adopted"])
+    assert not bad, "; ".join(bad)
+    return "ok", ("SB 95 of 2001 and SB 305 of 2016 died when the conference report was "
+                  "rejected; SB 69 of 2001's conferees could not agree, and SB 164's report was "
+                  "adopted")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
