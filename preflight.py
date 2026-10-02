@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.307
+# GRANITE_VERSION: 2026-09-04.308
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24,7 +24,10 @@ anything into the project: the marker checks build a throwaway tree under the
 system temp directory and delete it. Running this cannot change the site and
 cannot lose anything. The one file it leaves is its own record of the run,
 logs/preflight-last.json, which handoff.py reads in place of running the
-checks a second time; git ignores logs/ and no build reads it.
+checks a second time; git ignores logs/ and no build reads it. Outside the
+project it keeps one more, in the system temp directory: its parse of the
+officials directory (_officials_read), made again whenever the PDF, its
+parser or the PDF library changes.
 
 TWO HALVES
 
@@ -41373,6 +41376,59 @@ process.stdout.write(JSON.stringify(out));
                   + ("" if node else " (node absent: script not run)"))
 
 
+def _officials_read(P, pdf):
+    """(every office the directory lists, as (town, name, phone, e-mail,
+    position) in its own order; the rows restream() changed; whether an
+    earlier run's parse answered).
+
+    THE PARSE IS KEPT BETWEEN RUNS (2 October 2026). pdfplumber takes ten
+    seconds over the directory's 31 pages to give the answer it gave the run
+    before, and reading only the four rows' pages would have dropped what the
+    check holds the whole document to: exactly four rows re-read, and no half
+    address anywhere. So the answer is kept, in the system temp directory --
+    not in the project, where logs/ is sent to the bucket -- under a digest
+    of everything it depends on: the PDF's bytes, parse_officials.py's bytes
+    (its stamp is among them, and so is an edit that forgot the stamp), and
+    the versions of pdfplumber, of pdfminer underneath it and of Python.
+    Change any of them and the directory is read again. A kept answer that
+    will not load, or is not this shape, is not used.
+    """
+    import hashlib
+    import pdfplumber
+    try:
+        import pdfminer
+        miner = str(getattr(pdfminer, "__version__", ""))
+    except Exception:
+        miner = ""
+    h = hashlib.sha256()
+    for part in (pdf.read_bytes(), Path(P.__file__).read_bytes(),
+                 f"pdfplumber {pdfplumber.__version__}, pdfminer {miner}, "
+                 f"python {sys.version.split()[0]}".encode("utf-8")):
+        h.update(hashlib.sha256(part).digest())
+    key = h.hexdigest()
+    kept = Path(tempfile.gettempdir()) / "granite-record-preflight" / "officials.json"
+    try:
+        doc = json.loads(kept.read_text(encoding="utf-8"))
+        if doc["key"] == key and all(len(r) == 5 and all(isinstance(c, str) for c in r)
+                                     for r in doc["rows"]) \
+                and all(isinstance(s, str) for s in doc["restreamed"]):
+            return [tuple(r) for r in doc["rows"]], list(doc["restreamed"]), True
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    towns, _notes, _raw, restreamed = P.read(pdf)
+    rows = [(t, o["name"], o["phone"], o["email"], o["position"])
+            for t, r in towns.items() for o in r["officials"]]
+    try:
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        part = kept.with_name(f"{kept.name}.{os.getpid()}")
+        part.write_text(json.dumps({"key": key, "rows": rows, "restreamed": restreamed}),
+                        encoding="utf-8")
+        os.replace(part, kept)
+    except OSError:
+        pass                    # not kept: the next run reads the directory again
+    return rows, restreamed, False
+
+
 @check("files", "the officials directory reads as printed where a cell runs into the next")
 def _officials_restream():
     """Four rows of NHDOT's directory print text wider than its cell.
@@ -41395,8 +41451,9 @@ def _officials_restream():
     P = imp("parse_officials")
     if P is None:
         return "skip", "parse_officials.py does not import"
-    towns, _notes, _raw, restreamed = P.read(pdf)
-    rows = {(t, o["name"]): o for t, r in towns.items() for o in r["officials"]}
+    listed, restreamed, kept = _officials_read(P, pdf)
+    rows = {(t, name): {"phone": phone, "email": email, "position": pos}
+            for t, name, phone, email, pos in listed}
     want = {("East Kingston", "Grace Ruelle"): ("603-642-8406 ext 1", "gruelle@eastkingstonnh.gov",
                                                 "Town Administrator"),
             ("Sutton", "Julia Jones"): ("603-927-2400 ext. 4", "townadmin@sutton-nh.org",
@@ -41417,7 +41474,9 @@ def _officials_restream():
     if half:
         bad.append("half an address and half something else: " + ", ".join(half))
     assert not bad, "\n  ".join(bad)
-    return "ok", "four overflowing rows read as printed, and no half-address left"
+    return "ok", ("four overflowing rows read as printed, and no half-address left"
+                  + (" (the parse kept from an earlier run of this parser on this PDF)"
+                     if kept else ""))
 
 
 @check("data", "town_officials.json holds addresses or notes, never half of each")
