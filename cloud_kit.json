@@ -92,7 +92,24 @@
       "paths": ["meetings.json", "schedule_pages/_events.json", "bill_status.json", "member_party.json",
                 "archive_bills.json", "bill_text.json", "amendments.json", "committee_reports.json",
                 "senate_reports.json", "testimony_db.json", "testimony.json", "journals.json",
-                "calendars.json", "past_members.json", "archive/queue.csv"]
+                "calendars.json", "past_members.json"]
+    },
+    {
+      "what": "The General Court's list of its calendars and journals, a row a document with the viewer address its own page gives: the Calendar page's picker and the cards' document links are built from it. The night's since 1 October 2026: nightly.take_documents reads the two index pages (fetch_calendar_archive.py --listing) and adds what is new, whole or not at all. Until then it was the laptop's, last discovered on 13 September, and the laptop's seed-kit sent the copy the night started from.",
+      "owner": "night",
+      "paths": ["archive/queue.csv"]
+    },
+    {
+      "what": "What the General Court's two index pages listed the last time the night read them, in their own words, and when: written with the list above, by the same step. Optional: none exists before the first night that takes the list.",
+      "owner": "night",
+      "optional": true,
+      "paths": ["archive/documents_listed.json"]
+    },
+    {
+      "what": "What the laptop's drain has fetched of the documents on the night's list (fetch_calendar_archive.py): the rows whose state it changed, and no others. The list is the night's file, so the drain no longer writes it; the night's listing reads this and marks those documents held in the list the build reads. Optional: none exists until the drain fetches a document the night listed.",
+      "owner": "laptop",
+      "optional": true,
+      "paths": ["archive/queue_fetched.csv"]
     },
     {
       "what": "The saved bill pages.",

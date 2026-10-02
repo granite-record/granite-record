@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -227,6 +227,36 @@ ask it for the study committees' meetings either. That is a warning on the
 night's page, the installed meetings stay, and the day's files are built and
 published: another server's bad week does not hold the day's bills back. The
 night a connection is tried and fails is not clean, as it never was.
+
+THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026)
+
+The Calendar page links every House and Senate calendar and journal at the
+General Court's own viewer address, from archive/queue.csv -- a list the
+laptop last read on 13 September, so by 1 October it was three House calendars
+behind and nothing refreshed it. The person approved the night reading it. On
+GitHub's night only, with the day's files, under the same lock:
+
+  what                fetch_calendar_archive.py --listing asks each chamber's
+                      index page for its calendars and its journals of the
+                      newest year: four requests, a few seconds apart, and
+                      eight while two years' lists can both still grow (its
+                      docstring says when). No document is downloaded
+  whole or not        its answer goes to the scratch folder, and replaces the
+                      installed list only if every list was read, none came
+                      back empty or sharply shorter than what is on file for
+                      it, nothing on file is missing or moved, and each new
+                      address is the General Court's own (its judge()). With
+                      it goes archive/documents_listed.json: what each page
+                      listed, in its words, and when
+  one writer          archive/queue.csv is the night's file in the kit from
+                      this day. The laptop's drain still fetches the
+                      documents, and what it fetched reaches this list
+                      through its own file (archive/queue_fetched.csv)
+  a failure           is a warning on the night's page and never a failed
+                      night: the list installed stays, and a picker a few
+                      days behind is no reason to hold back the day's docket.
+                      A refusal met while asking is recorded as every
+                      refusal is, and the next night does not ask at all
 """
 
 import argparse
@@ -323,6 +353,15 @@ STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
 LSRS = Path("lsrs.json")
 LSR_GONE_MOST = 0.10
 LSR_GONE_FLOOR = 5
+
+# THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026): the
+# list the Calendar page's picker is built from, and what its pages listed
+# when they were last read. fetch_calendar_archive.QUEUE and its
+# listed_file(), which preflight holds these to. take_documents() says how
+# the night takes them; like the bill requests, a night that cannot is a
+# warning and never a stop.
+DOCS = Path("archive/queue.csv")
+DOCS_LISTED = Path("archive/documents_listed.json")
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026). YouTube refuses
 # GitHub's machine the captions, so the laptop's evening job reads them. A
@@ -743,6 +782,10 @@ def main():
                             # And next session's bill requests, from the site.
                             if not refusal.MARK.exists():
                                 night.v["lsrs"] = take_lsrs()
+                            # And the calendars and journals the General
+                            # Court lists, from its two index pages.
+                            if not refusal.MARK.exists():
+                                night.v["documents"] = take_documents()
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
@@ -1613,6 +1656,70 @@ def take_lsrs():
             + (f"; {len(gone)} newly withdrawn" if gone else ""))
 
 
+def take_documents():
+    """The General Court's list of its calendars and journals into
+    archive/queue.csv, whole or not at all, and a line saying what happened:
+    "installed, ..." or "not taken: ...".
+
+    fetch_calendar_archive.py --listing reads the two index pages -- four
+    requests, under the lock this night holds -- and writes the queue with
+    what is new added, and what each page listed, into the scratch folder.
+    Both replace the installed copies only if the fetch exited 0 and its own
+    judge() finds the list whole: every list read, none empty or sharply
+    shorter than what is on file for it, every document on file still there
+    at its own address, and each new address the General Court's own. The
+    fetch runs here, in the working folder, so that a refusal it meets is
+    recorded in the refusal record every other fetch reads.
+
+    Every sentence this returns is this project's own -- counts and the
+    lists' names -- because a warning is shown on the run's public page.
+    """
+    SCRATCH.mkdir(exist_ok=True)
+    new, listed = SCRATCH / DOCS.name, SCRATCH / DOCS_LISTED.name
+    for f in (new, listed):
+        f.unlink(missing_ok=True)
+    try:
+        import fetch_calendar_archive as CA
+        was = CA.read_rows(DOCS)
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  the list of calendars and journals not taken: {type(e).__name__}: {e}",
+            echo=False)
+        return "not taken: the night's own step for it failed; the list installed stays"
+    rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
+             "the calendars and journals the General Court lists")
+    why, got = "", []
+    if rc == 2:
+        why = ("the General Court refused a request: it is recorded, and every fetch "
+               "waits for a person")
+    elif rc != 0:
+        why = f"the fetch did not complete (exit {rc})"
+    else:
+        try:
+            got, rec = CA.read_rows(new), load_json(listed)
+            why = ("the fetch wrote no list" if not got or not isinstance(rec, dict)
+                   else CA.judge(was, got, rec))
+        except Exception as e:                                  # noqa: BLE001
+            say(f"  {type(e).__name__}: {e}", echo=False)
+            why = "what the fetch wrote could not be read"
+    if not why:
+        try:
+            DOCS.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(new, DOCS)
+            os.replace(listed, DOCS_LISTED)
+        except OSError as e:
+            say(f"  {type(e).__name__}: {e}", echo=False)
+            why = "the list could not be put in place"
+    for f in (new, listed):
+        f.unlink(missing_ok=True)
+    if why:
+        say(f"  the list of calendars and journals not taken: {why}")
+        return (f"not taken: {why}; "
+                + (f"the earlier {len(was):,} kept" if was else "none on file"))
+    what = f"installed, {len(got):,} documents (was {len(was):,}): {CA.news(was, got)}"
+    say(f"  the list of calendars and journals: {what}")
+    return what
+
+
 def take_views(views, label, shrink=SWAP_SHRINK):
     """The study committees' views from the database, whole or not at all.
 
@@ -1998,6 +2105,9 @@ class Night:
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
             out.append(f"next session's bill requests: {lsrs}")
+        docs = self.v.get("documents")
+        if docs and not str(docs).startswith("installed"):
+            out.append(f"the General Court's list of calendars and journals: {docs}")
         n = captions_waiting()
         if n:
             out.append(f"{n} recording{'s' if n != 1 else ''} finished more than "
