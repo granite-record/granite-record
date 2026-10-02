@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.41
+# GRANITE_VERSION: 2026-09-04.42
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -532,13 +532,47 @@ DOCKET_SOURCE = "General Court docket"
 #   (Hoelzel, Rock 2: Municipal and County Government)". It was read a first
 #   and second time and referred.
 #
+# AND FOUR THE BILL SEARCH'S OWN LIST CARRIES: HB 177, HB 273, HB 274 and
+# HB 277 of 2017. The resolution of 4 January 2017 reads "House Bills numbered
+# 76 through 176, 178 through 272, 275 through 276 and 278 through 286"
+# (journals/2017/HJ002.txt:1105), and the list beneath goes from HB 176 to
+# HB 178, from HB 272 to HB 275 and from HB 276 to HB 278. None of the 41
+# House Journals of 2017 and 2018 names any of the four, by number or in a
+# range. Their dockets (Docket_2017-2018.txt lines 7326, 9139-9141, 9164)
+# are the rows typed ahead of the day and nothing after them:
+#   HB 177  "To Be Introduced 01/04/2017 and referred to Election Law",
+#           entered 28 December 2016;
+#   HB 273  "Introduced 01/04/2017 and referred to Executive Departments and
+#           Administration", entered 30 December, and "Public Hearing:
+#           01/10/2017 01:30 PM LOB 306", entered 4 January;
+#   HB 274  "Introduced 01/04/2017 and referred to Labor, Industrial and
+#           Rehabilitative Services", entered 30 December;
+#   HB 277  "To Be Introduced 01/04/2017 and referred to Criminal Justice and
+#           Public Safety", entered 30 December
+# -- none citing a journal page, where HB 176, HB 178, HB 272 and HB 275 cite
+# "HJ 2 P. 19" and "HJ 2 P. 22". In PastLegislation each is LSR status 9,
+# alone among the numbered rows of 2017 to 2024 (an introduced bill's is 8),
+# and each has no committee of referral, alone among the House Bills of 2017;
+# its introduction date there, 4 January, is the date the docket row was
+# typed with. The search page gives each the House
+# status IN COMMITTEE, and they were published as introduced and "In
+# committee" -- HB 273 with a public hearing the committee "held". The
+# hearing is a notice: House Calendar 6 of 6 January prints it for 1.30 p.m.
+# on the 10th, and the committee filed a report of every other hearing it
+# noticed for that day and none of this one. Whether anybody met is on no
+# record here, and the page says that rather than either answer.
+#
 # A TABLE OF WHAT WAS READ, NOT A READING MADE EVERY NIGHT: a number a
 # resolution steps over is evidence only beside the rest of a bill's record
 # (journal_bills says why), and each of these was read beside its docket and
 # its database row. preflight reads the journals again wherever they are on
 # disk and fails if one of these, or any other measure add_past_bills adds,
-# is told against them. Only on a record add_past_bills makes; every other
-# record's introduction is its docket's, as it was.
+# is told against them. On a record add_past_bills makes, and on a record of
+# a term's own list that this table names (journal_introductions); every
+# other record's introduction is its docket's, as it was. NOT A RULE FOR A
+# TERM: the same resolutions step over HB 650 and HB 651 of 2017, which were
+# heard, reported and voted on (HB 650 is Chapter 192), and the reader here
+# misses the resolution that names HB 397 through 420.
 #
 # {(term, bill): {"introduced", the sitting's date, its journal, the House
 # Bills the resolution names in its own words}}.
@@ -546,6 +580,9 @@ _RES_2009 = {"date": "2009-01-07", "journal": "House Journal No. 2",
              "numbered": "31 through 86, 88 through 133 and 135 through 223"}
 _RES_2012 = {"date": "2012-01-04", "journal": "House Journal No. 1",
              "numbered": "1126 through 1283, 1285 through 1471 and 1473 through 1709"}
+_RES_2017 = {"date": "2017-01-04", "journal": "House Journal No. 2",
+             "numbered": "76 through 176, 178 through 272, 275 through 276 and 278 "
+                         "through 286"}
 INTRODUCTION_FROM_JOURNAL = {
     ("2007-2008", "HB633"): {
         "introduced": False, "date": "2007-01-04", "journal": "House Journal No. 3",
@@ -555,6 +592,10 @@ INTRODUCTION_FROM_JOURNAL = {
     ("2011-2012", "HB1284"): {"introduced": False, **_RES_2012},
     ("2011-2012", "HB1472"): {"introduced": False, **_RES_2012},
     ("2011-2012", "HB1512"): {"introduced": True, **_RES_2012},
+    ("2017-2018", "HB177"): {"introduced": False, **_RES_2017},
+    ("2017-2018", "HB273"): {"introduced": False, **_RES_2017},
+    ("2017-2018", "HB274"): {"introduced": False, **_RES_2017},
+    ("2017-2018", "HB277"): {"introduced": False, **_RES_2017},
 }
 
 
@@ -833,6 +874,40 @@ def add_past_bills(by_term, past, committees, refs, general, body, current="",
           + (f"; {len(bare)} of them never introduced, and given no committee "
              f"({', '.join(bare)})" if bare else ""))
     return dict(added)
+
+
+def journal_introductions(by_term, current="", introductions=None):
+    """[(term, bill)]: the House Journal's word, put on the records of a
+    term's own list that INTRODUCTION_FROM_JOURNAL names -- HB 177, HB 273,
+    HB 274 and HB 277 of 2017, which the bill search's list carries, so that
+    add_past_bills never sees them.
+
+    The record takes the reading as "introduction", for narrative.py and the
+    page's note, as one add_past_bills makes does. AND NO COMMITTEE WHERE THE
+    JOURNAL SAYS THE BILL WAS NOT INTRODUCED: nothing was referred, whatever
+    the row typed ahead of the day names, and with the committee on its
+    record HB 273 stood among the bills referred to Executive Departments
+    and Administration, on that committee's page and in the download. Never
+    on the current term, whose own files are its record, and never over a
+    reading a record already carries."""
+    table = INTRODUCTION_FROM_JOURNAL if introductions is None else introductions
+    done, bare = [], []
+    for (term, bid), fact in sorted(table.items()):
+        rec = (by_term.get(term) or {}).get(bid)
+        if rec is None or term == current or "introduction" in rec:
+            continue
+        rec["introduction"] = dict(fact)
+        done.append((term, bid))
+        if not fact.get("introduced"):
+            if rec.get("house_committee") or rec.get("senate_committee"):
+                bare.append(f"{bid} {term}")
+            rec["house_committee"] = rec["senate_committee"] = ""
+    if done:
+        print(f"  the House Journal's resolution of introduction on {len(done)} bill(s) "
+              f"of the terms' own lists ({', '.join(f'{b} {t}' for t, b in done)})"
+              + (f"; {len(bare)} of them never introduced, and given no committee "
+                 f"({', '.join(bare)})" if bare else ""))
+    return done
 
 
 def add_journal_titled(by_term, began, table=None, current=""):
@@ -2461,6 +2536,10 @@ def main():
         _general, _body = status_words(d)
         past_added = add_past_bills(by_term, past, committees, refs, _general, _body,
                                     _session_term, known, in_use)
+    # The House Journal's word on the bills of the terms' own lists that its
+    # resolutions decide: with the database's dump here or without it, because
+    # these records are the search page's and the journals are their evidence.
+    journal_introductions(by_term, _session_term)
     # And the one the docket holds with no title in any table, titled from
     # the bound House Journal (TITLED_FROM_JOURNAL).
     add_journal_titled(by_term, began, current=_session_term)

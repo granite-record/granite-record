@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.48
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -992,8 +992,9 @@ def load_lsrs(path):
 
 
 # WHAT THE HOUSE JOURNAL SAYS OF A BILL'S INTRODUCTION, where build_data's
-# record carries a reading (its INTRODUCTION_FROM_JOURNAL, on six of the
-# measures it adds from the General Court's database). The House introduces
+# record carries a reading (its INTRODUCTION_FROM_JOURNAL: six of the
+# measures it adds from the General Court's database, and four bills of 2017
+# the bill search's own list carries). The House introduces
 # its bills by a resolution that names them by number, and the docket's
 # introduction row is typed ahead of the day: HB 87 of 2009 carries
 # "Introduced 1/7/2009 and Referred to Municipal and County Government" and
@@ -1747,6 +1748,9 @@ def describe(ev, body, seen_intro=False):
         # docket enters, with what the journal says beside it, and never as
         # an introduction. "on" a day only where the row states one -- HB 633
         # of 2007's states none, and the day it was typed is not that day.
+        # And in the row's own tense: HB 177 and HB 277 of 2017 are each one
+        # row that still reads "To Be Introduced 01/04/2017 and referred to
+        # ...", which the docket never entered as done.
         j = ev.get("_journal") or {}
         to = (f" and referred to the {chamber} {ev['committee']} committee"
               if ev.get("committee") else "")
@@ -1756,17 +1760,30 @@ def describe(ev, body, seen_intro=False):
             day = ""
         left = ("; the House Journal" + (f" of {day}" if day else "")
                 + " leaves it out of the bills it introduces")
+        as_ = ("to be introduced" if TO_BE_INTRODUCED.match(ev.get("_raw") or "")
+               else "introduced")
         if re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", ev.get("_raw") or "") and ev.get("date"):
-            return f"The docket enters it as introduced on {fdate(ev['date'])}{to}{left}."
+            return f"The docket enters it as {as_} on {fdate(ev['date'])}{to}{left}."
         typed = (f", on a row entered {ev['_entered'].strftime(MONTH)}"
                  if ev.get("_entered") and ev["_entered"] != datetime.min else "")
-        return f"The docket enters it as introduced{to}{typed}{left}."
+        return f"The docket enters it as {as_}{to}{typed}{left}."
 
     if ev.get("_void") and t in ("hearing", "exec", "worksession"):
         # Scheduled for a day after the bill was withdrawn: a notice, not a
         # meeting. The past tense of every sentence below would say it sat.
         what = {"hearing": "A public hearing", "exec": "An executive session",
                 "worksession": "A work session"}[t]
+        if ev.get("_journal"):
+            # Or scheduled for a bill the House Journal leaves out of those it
+            # introduced (build()): HB 273 of 2017, "Public Hearing: 01/10/2017
+            # 01:30 PM LOB 306", entered on 4 January. The row is the docket's
+            # notice and nothing on disk says more -- the committee filed a
+            # report of every other hearing it noticed for that day and none
+            # of this one -- so the sentence says whose word it is, and that
+            # nothing here says whether the hearing was held.
+            return (f"The docket schedules {what[0].lower()}{what[1:]} for "
+                    f"{fdate(ev['date'])}, for a bill the House did not introduce; no "
+                    "record on this site says whether it was held.")
         return f"{what} had been scheduled for {fdate(ev['date'])}."
 
     if t == "withdrawn":
@@ -2256,6 +2273,26 @@ def day_order(ev):
     return (ev["when"].date(), ev.get("_row", 0))
 
 
+def notice_note(ev):
+    """What the bill's list of docket lines says beside a meeting row that
+    build() tells as a notice and not as a meeting.
+
+    The list is headed "every action the General Court recorded", and it left
+    these rows out as it leaves out a row the docket cancelled -- which the
+    docket did not do to them. HB 273 of 2017's note said "Its docket has two
+    rows" over a list of one. The row is shown, and this says why the history
+    does not tell it as a sitting: the journal's word (HB 273's "Public
+    Hearing: 01/10/2017 01:30 PM LOB 306"), the withdrawal that came first
+    (HB 1284 and HB 1512 of 2012), or, where neither names the day, that the
+    bill was never introduced."""
+    if ev.get("_journal"):
+        return ("A notice, for a bill the House did not introduce. No record on this "
+                "site says whether it was held.")
+    if ev.get("_void") == "withdrawn":
+        return "A notice. The bill was withdrawn before the day it names."
+    return "A notice, for a bill that was never introduced."
+
+
 def build(bill, rows, introduction=None):
     rows = sorted(rows, key=lambda r: r["created"])
     if CORRECTIONS:
@@ -2382,6 +2419,18 @@ def build(bill, rows, introduction=None):
     # and referred it. Typed entered_introduced, told as what the docket
     # enters with the journal beside it (describe), and the bill is one that
     # was never introduced.
+    #
+    # AND A MEETING THE DOCKET SETS FOR SUCH A BILL IS A NOTICE (1 October
+    # 2026). HB 273 of 2017 has two rows: "Introduced 01/04/2017 and referred
+    # to Executive Departments and Administration", typed on 30 December, and
+    # "Public Hearing: 01/10/2017 01:30 PM LOB 306", entered on 4 January --
+    # the day the House's resolution stepped over 273 and 274. Its history
+    # said "The committee held a public hearing on January 10, 2017" of a bill
+    # no committee was sent. Nothing on disk says a hearing was held, and
+    # nothing says one was not, so the row is told as what the docket
+    # schedules (describe), set beside the row it belongs to, and leaves the
+    # record's events as a notice for a day after a withdrawal does. A notice
+    # a withdrawal has already made one keeps the sentence it had.
     said = introduction if introduction is not None else (
         INTRODUCTIONS.get((P.term_of(str(session or "")), bill)) or {})
     journal_in = said.get("introduced") is True
@@ -2401,7 +2450,8 @@ def build(bill, rows, introduction=None):
         for e in evs:
             if not e["cancelled"] and e["_type"] in ("hearing", "exec", "worksession") \
                     and e["when"].date() > cut:
-                e["_void"] = True
+                # Truthy, and the reason, for the row's note (notice_note).
+                e["_void"] = "withdrawn"
                 # Beside the plan it belonged to, where the bill never was
                 # introduced; a bill that was keeps the notice on its day.
                 if not_introduced:
@@ -2411,17 +2461,38 @@ def build(bill, rows, introduction=None):
             if not e["cancelled"] and e["_type"] == "introduced":
                 e["_type"], not_introduced = "entered_introduced", True
                 e["_journal"] = said
+                # On the day the row was entered, as a "To Be Introduced" row
+                # a withdrawal overtook is: HB 177's was typed on 28 December
+                # 2016, and dated by the day it names it put an action of the
+                # House on 4 January 2017, on the bill's list of docket lines
+                # and as the last thing done to it, where the page says the
+                # House did nothing. The sentence still gives the day the row
+                # names, as the row's.
+                e["when"] = e["_entered"]
     # And a bill only ever proposed for a session: HB 3 of the 2006 special
     # session, whose one row is PROPOSED_ROW.
     if any(e["_type"] == "proposed" for e in evs) and not any(
             e["_type"] == "introduced" for e in evs):
         not_introduced = True
     if not_introduced:
+        # EVERY MEETING SET FOR A BILL THAT WAS NEVER INTRODUCED, whichever
+        # row says it was not and whatever day the meeting was set for: no
+        # committee had the bill. proceedings.notice_only leaves every such
+        # row off the bill's stations, and a history that told one as held
+        # would say what its own page does not draw. The one on disk is
+        # HB 273's (the withdrawal rule above has already made notices of HB
+        # 1284's two), and it carries the journal's word, for its sentence.
+        for e in evs:
+            if not e["cancelled"] and not e.get("_void") \
+                    and e["_type"] in ("hearing", "exec", "worksession"):
+                e["_void"], e["when"] = "not introduced", e["_entered"]
+                if journal_out:
+                    e["_journal"] = said
         for e in evs:
             if e["_type"] in ("to_be_introduced", "entered_introduced", "withdrawn",
                               "proposed") or e.get("_void"):
                 e["_pre"] = True
-    if gone:
+    if gone or journal_out:
         evs = [e for _i, e in sorted(enumerate(evs),
                                      key=lambda x: (x[1]["when"].date(), x[0]))]
 
@@ -2674,6 +2745,14 @@ def build(bill, rows, introduction=None):
                     # This bill's own row of a vote the docket also files
                     # under another bill (docket_corrections.json "misfiled").
                     **({"row_note": e["row_note"]} if e.get("row_note") else {}),
+                    # A meeting row told as a notice. "cancelled" above keeps
+                    # it out of everything that reads what happened; this says
+                    # the docket did not cancel it, so the bill's list of
+                    # docket lines still shows the row, with why it is not
+                    # told as a meeting beside it (notice_note).
+                    **({"notice": True,
+                        "row_note": e.get("row_note") or notice_note(e)}
+                       if e.get("_void") else {}),
                     # One line the clerk typed, read whole from rows the
                     # database cut it into, and how many floor actions those
                     # rows were read as one by one (docket_era_1999.

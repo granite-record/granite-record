@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.7
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -215,6 +215,60 @@ def floor_only(rows=None):
 def committee_only(rows=None):
     rows = load() if rows is None else rows
     return [r for r in rows if r["kind"] not in FLOOR_KINDS]
+
+
+def notice_only(row, narr):
+    """Is this committee row the docket's notice of a sitting and nothing more:
+    one set for a bill that was never introduced, or for a day after the bill
+    was withdrawn?
+
+    The table reads the docket's notices -- "Public Hearing: 1/12/2012 10:30 AM
+    LOB 207", entered on 15 December -- and a notice is entered before the
+    day. HB 1284 of 2012 was withdrawn on 4 January, never introduced, with a
+    hearing set for the 12th and an executive session for the 24th; HB 1512
+    was introduced and withdrawn that morning, with a hearing set for the
+    12th; HB 273 of 2017 is a bill the House's resolution of introduction
+    steps over, with a hearing set for 10 January and nothing on disk to say
+    whether anybody met. Four rows of the table on 2 October 2026. They stay
+    in it, because it holds what the docket scheduled, and the recordings are
+    matched against that.
+
+    `narr` is the bill's history as narrative.build tells it, which dates a
+    withdrawal ("withdrawn") and says where a bill was never introduced
+    ("not_introduced"); None, for a bill with no history, is no notice.
+
+    ONE RULE FOR EVERYTHING THAT SAYS A COMMITTEE SAT ON A BILL: the bill's
+    own stations (build_site_v2), its committee's days (build_committees),
+    the download (build_exports) and the Learn pages' count of hearings
+    (build_civics). It was written into the first alone, then into the first
+    two from the stations a page lacked, and through both the download went
+    on listing HB 273's hearing under a committee its own page says the bill
+    never reached. Never a floor row: a withdrawal the chamber voted is a
+    floor action itself, and a conference is not a committee's sitting.
+    """
+    if (row.get("kind") or "").strip().lower() in FLOOR_KINDS:
+        return False
+    narr = narr or {}
+    if narr.get("not_introduced"):
+        return True
+    gone = narr.get("withdrawn") or ""
+    return bool(gone) and (row.get("date") or "") > gone
+
+
+def sittings(rows, histories):
+    """(the rows a body sat for, the bare notices among them): `rows` parted
+    by notice_only, each row asked of its own bill's history. `histories` is
+    narratives.json as it is written, {term: {bill: history}}.
+
+    One place looks the history up, by the term and the bill the row itself
+    carries, so that a reader cannot key it another way: a lookup that misses
+    finds no notice and keeps every row, which is the failure that says
+    nothing."""
+    kept, notices = [], []
+    for r in rows:
+        narr = ((histories or {}).get(r.get("term")) or {}).get(r.get("bill"))
+        (notices if notice_only(r, narr) else kept).append(r)
+    return kept, notices
 
 
 def floor_videos(rows=None):
