@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.315
+# GRANITE_VERSION: 2026-09-04.316
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31653,13 +31653,26 @@ def _nightly_runner(NI):
         # The day's files came back empty -- 27 September's first scheduled
         # night -- and the verdict says so rather than "did not complete"; the
         # workflow's last word leads the run's page with one sentence written
-        # here, and prints none off GitHub.
+        # here, and prints none off GitHub. Since 2 October 2026 an empty
+        # export goes to the database before it is asked again, and this
+        # folder has no installed files for the database's to be compared
+        # with: so it is not asked, the verdict says so in its place in the
+        # order, and the night waits and asks again as it always did.
+        # _nightly_falls_back has the nights the database is asked.
         empty["rc"] = 1
         code, _ = night("--runner", run_id="111")
         empty["rc"] = 0
         v = verdict()
         assert code == 1 and v["fetch"] == "empty: 13 of 14 files came back with no data in them" \
             and v["fetch_tries"] == NI.EMPTY_TRIES and not v["built"], v
+        assert not any(c[0] == "fetch_day_db.py" for c in calls) and \
+            len(v["tried"]) == NI.EMPTY_TRIES + 1 and v["files_from"] == "none" and \
+            v["tried"][0] == "the export, try 1: " + v["fetch"] and \
+            v["tried"][1].startswith("the database: not asked, because there are no installed "
+                                     "files") and \
+            v["tried"][2] == "the export, try 2: " + v["fetch"], (
+                "the verdict does not say what was asked for the day's files, in order",
+                v.get("tried"))
         os.environ["GITHUB_ACTIONS"] = "true"
         try:
             code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="111")
@@ -31706,6 +31719,8 @@ def _nightly_runner(NI):
         tries = [c for c in calls if c[0] == "snapshot_gencourt.py"]
         assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == 3 \
             and len(tries) == 3 and v["built"], (code, v.get("fetch"), v.get("fetch_tries"), len(tries))
+        assert v["files_from"] == "export" and v["tried"][-1] == "the export, try 3: installed", \
+            v.get("tried")
         assert v.get("data_page_said", "").startswith("Error Generating Members File") and \
             v.get("data_page_try") == 1, (
                 "a night that arrived whole on its third try did not keep the page's first "
@@ -33858,8 +33873,9 @@ def _fetch_day_db(FD, DF, P, NI):
                   "it, a held host or a held lock stops it before it asks")
 
 
-@check("build", "a night the export comes back empty falls back on the database only when it "
-       "may, installs all seven files or none, and says so on its page and in its verdict",
+@check("build", "a night the export comes back empty goes to the database at once and only "
+       "when it may, asks the export again only if the database could not be used, installs all "
+       "seven files or none, and says what it asked in what order on its page and in its verdict",
        needs=("nightly", "dayfiles_from_db", "probe_db", "snapshot_gencourt"))
 def _nightly_falls_back(NI, DF, PD, SG):
     """nightly.py --runner on a night the General Court's export fails, driven
@@ -33869,17 +33885,28 @@ def _nightly_falls_back(NI, DF, PD, SG):
     fixture's views. dayfiles_from_db's reshaping and guards, and
     snapshot_gencourt's install, are the real ones.
 
-      - the export arriving whole, on the first try or the third, is
-        installed and the database is not asked: one source for the night
-      - empty on all six tries, the database is asked once, after the last
-        try: all seven changing files and tonight's Members.txt are installed,
+      - the export arriving whole on its first try is installed and the
+        database is not asked: one source for the night
+      - empty on its first try, the database is asked at once, with no wait,
+        and once (2 October 2026, nightly.DB_AFTER_TRIES: until then only
+        after six tries, half an hour apart): all seven changing files and
+        tonight's Members.txt are installed,
         the six lookups stay, the study views and the bill requests are taken
         and the build goes on; the what-changed report is asked for the
         database night; a copy is kept under nh-archive/from-db/<day>/
       - the verdict keeps "fetch" as the truth about the export and gains
         day_files, naming the database, the rows, what tonight's files were
         compared with and the differences; the night is clean and
-        publishable, a warning leads its page and its summary
+        publishable, a warning leads its page and its summary; files_from
+        names the source in a word, and tried lists what was asked for the
+        day's files, in order, with how each ended
+      - only when the database cannot be used -- a hold on file, a failed
+        connection, which is held, a failed query, a short view, a New term
+        run, no installed files -- is the export asked again, every
+        EMPTY_WAIT minutes up to EMPTY_TRIES tries in all; a try that
+        arrives whole is installed, and the database is not asked twice
+      - when what the database gave looked wrong -- a guard that stops, or
+        the shrink rule -- the export is not asked again that night
       - it does not start with a refusal on file, or one met during the tries,
         with a hold on the SQL host on file, on a New term run, when the
         export failed some other way, or with no installed files
@@ -33897,6 +33924,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
         the night a connection to it is tried and fails is not clean, and its
         page says that and not that it "stopped before it recorded what it
         did"
+      - the laptop's night asks the export once and never the database; and
+        DB_AFTER_TRIES is the order: held to 1, and put back to EMPTY_TRIES
+        it is the night of 1 October again
     """
     import contextlib
     import gzip
@@ -33913,10 +33943,12 @@ def _nightly_falls_back(NI, DF, PD, SG):
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
                 "GITHUB_SHA", PD.HELD_ENV)
     saved_env = {k: os.environ.get(k) for k in env_keys}
-    calls = []
+    calls, slept, locked = [], [], []
+    # The two sources of the day's files, and one wait between tries.
+    SNAP, DBASK, WAIT = "snapshot_gencourt.py", "fetch_day_db.py", NI.EMPTY_WAIT * 60
     # What the fakes do tonight.
     knob = {"export": "empty", "left": 0, "refuse_on": 0, "db_rc": 0, "views": None,
-            "entries": None, "members": None, "study": None}
+            "entries": None, "members": None, "study": None, "page": None}
     today = f"{datetime.now():%Y-%m-%d}"
     MEMBERS = _dbday_bytes(_DBDAY_EXPORT["Members.txt"] + ["Birch, Ben|ben.birch@example.gov||Member"])
 
@@ -33924,12 +33956,19 @@ def _nightly_falls_back(NI, DF, PD, SG):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         name = Path(args[0]).name
+        if name in (SNAP, DBASK):
+            # Whether the night's own lock is held as each source is asked.
+            locked.append(refusal.LOCK.exists() and refusal.LOCK.read_text(
+                encoding="utf-8").strip() == str(os.getpid()))
         if name == "snapshot_gencourt.py":
             tries = sum(1 for c in calls if c[0] == "snapshot_gencourt.py")
             root = Path(args[args.index("--dir") + 1])
             day = root / "snapshots" / today
             day.mkdir(parents=True, exist_ok=True)
-            (day / "page.json").write_text(json.dumps({"status": "ok", "said": ""}), encoding="utf-8")
+            (day / "page.json").write_text(json.dumps(
+                {"status": "error", "said": "Error Generating Members File : Execution Timeout "
+                 "Expired. The timeout period elapsed prior to completion of the operation."}
+                if knob["page"] == "error" else {"status": "ok", "said": ""}), encoding="utf-8")
             if knob["refuse_on"] == tries:
                 refusal.MARK.parent.mkdir(exist_ok=True)
                 refusal.MARK.write_text(json.dumps({"at": "t", "epoch": 0, "where": "snapshot"}),
@@ -33961,6 +34000,18 @@ def _nightly_falls_back(NI, DF, PD, SG):
         if name == "fetch_day_db.py":
             assert args[1:] == ["--fetch-only"], args
             _dbday_views(DF, NI.DB_DAY, knob["views"], entries=knob["entries"])
+            if knob["db_rc"] == 3:
+                # What probe_db's bridge does on GitHub's machine when the
+                # connection fails: the host is held (note_connect_fail).
+                on_github = os.environ.get("GITHUB_ACTIONS")
+                os.environ["GITHUB_ACTIONS"] = "true"
+                try:
+                    PD.note_connect_fail("CONNECT_FAIL no route (fixture)")
+                finally:
+                    if on_github is None:
+                        os.environ.pop("GITHUB_ACTIONS", None)
+                    else:
+                        os.environ["GITHUB_ACTIONS"] = on_github
             NI.say(f"  (0s, exit {knob['db_rc']})")
             return knob["db_rc"]
         if name == "build_all.py":
@@ -33987,6 +34038,8 @@ def _nightly_falls_back(NI, DF, PD, SG):
     def night(*argv, run_id="301"):
         NI.LOG = []
         del calls[:]
+        del slept[:]
+        del locked[:]
         os.environ["GITHUB_RUN_ID"] = run_id
         sys.argv = ["nightly.py", *argv]
         out = io.StringIO()
@@ -34003,12 +34056,16 @@ def _nightly_falls_back(NI, DF, PD, SG):
     def asked_db():
         return sum(1 for c in calls if c[0] == "fetch_day_db.py")
 
+    def order():
+        """The two sources of the day's files, in the order the night asked them."""
+        return [c[0] for c in calls if c[0] in (SNAP, DBASK)]
+
     def installed():
         return {n: Path(n).read_bytes() for n in _DBDAY_EXPORT}
 
     def reset(keep=False, **kw):
         knob.update(export="empty", left=0, refuse_on=0, db_rc=0, views=None, entries=None,
-                    members=None, study=None)
+                    members=None, study=None, page=None)
         knob.update(kw)
         if not keep:
             _dbday_install(".")
@@ -34016,7 +34073,10 @@ def _nightly_falls_back(NI, DF, PD, SG):
         PD.HELD.unlink(missing_ok=True)
 
     def failed_night(what, code_word, run_id, **kw):
-        """A night whose fallback is tried and installs nothing."""
+        """A night whose database is asked, straight after the export's first
+        try, and installs nothing; the export is empty on every try. It is
+        asked again, to EMPTY_TRIES tries with a wait before each, unless
+        what the database gave looked wrong: then it is not asked again."""
         reset(**kw)
         was = installed()
         code, _ = night("--runner", run_id=run_id)
@@ -34025,12 +34085,26 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert code == 1 and not v["built"] and df.get("source") == "none" and \
             df.get("why_code") == code_word, (what, code, df)
         assert installed() == was, f"{what}, and some of the installed files were replaced"
+        again = code_word not in NI.DB_LOOKED_WRONG
+        more = NI.EMPTY_TRIES - 1 if again else 0
+        assert order() == [SNAP, DBASK] + [SNAP] * more and slept == [WAIT] * more and \
+            v["fetch_tries"] == 1 + more and df.get("after_try") == 1 and \
+            v["files_from"] == "none", (
+                f"{what}: the night asked {order()} and waited {slept}", v.get("fetch_tries"))
+        assert v["tried"][:2] == [
+            "the export, try 1: empty: 13 of 14 files came back with no data in them",
+            f"the database: nothing installed, because {NI.DB_WHY[code_word]}"] and \
+            (v["tried"][-1] == NI.EXPORT_NOT_AGAIN) == (not again) and \
+            len(v["tried"]) == 2 + (more or 1), (what, v["tried"])
         assert v["fetch"].startswith("empty: 13 of 14") and any(
             w.startswith("the day's files: empty") and NI.DB_WHY[code_word] in w
             for w in v["not_clean"]), (what, v["not_clean"])
         why = NI.plain_why(v)
-        assert f" The General Court's database is the fallback, and {NI.DB_WHY[code_word]}." in why \
-            and why.endswith(" Nothing was published."), why
+        when = (" After the first empty try the night turned to" if again else
+                " The night then turned to")
+        assert f"{when} the General Court's database, and {NI.DB_WHY[code_word]}." in why \
+            and why.endswith(" Nothing was published.") and \
+            ("The export was not asked again tonight" in why) == (not again), why
         return v
     try:
         os.chdir(tmp)
@@ -34043,7 +34117,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
         (Path("work") / "abc123").mkdir(parents=True)
         (Path("work") / "abc123" / "segments.json").write_text("[]", encoding="utf-8")
         NI.run = fake
-        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.time = types.SimpleNamespace(sleep=slept.append, time=__import__("time").time)
         NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
         NI.tracked_changes = lambda: ([], [])
         NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
@@ -34056,28 +34130,45 @@ def _nightly_falls_back(NI, DF, PD, SG):
         code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="300")
         assert code == 0 and verdict()["db_nights"] == 0, verdict()
 
-        # The export arrives whole, on the first try or the third: it is the
-        # night's one source, and the database is not asked.
-        for run_id, kw, tries in (("301", {"export": "whole"}, 1), ("302", {"left": 2}, 3)):
-            reset(**kw)
-            code, _ = night("--runner", run_id=run_id)
-            v = verdict()
-            assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == tries and \
-                not asked_db() and "day_files" not in v and v["db_nights"] == 0, (
-                    "a night whose export arrived asked the database as well", v.get("day_files"))
+        # THE ORDER (2 October 2026): the export once; empty, the database at
+        # once; and the wait only when the database cannot be used. The
+        # letters (a) to (i) below mark the nine nights the order is held on.
+        assert NI.DB_AFTER_TRIES == 1 < NI.EMPTY_TRIES, (
+            f"nightly.DB_AFTER_TRIES is {NI.DB_AFTER_TRIES}: an empty export goes to the "
+            "database after its first try, and waits only if the database cannot be used")
 
-        # Empty on every try: the database, once, after the last one.
+        # (a) The export arrives whole on its first try: it is the night's
+        # one source, the database is not asked, and nothing waits.
+        reset(export="whole")
+        code, _ = night("--runner", run_id="301")
+        v = verdict()
+        assert code == 0 and v["fetch"] == "installed" and v["fetch_tries"] == 1 and \
+            order() == [SNAP] and not slept and "day_files" not in v and v["db_nights"] == 0 and \
+            v["files_from"] == "export" and v["tried"] == ["the export, try 1: installed"], (
+                "a night whose export arrived asked the database as well, or waited",
+                order(), slept, v.get("day_files"))
+
+        # (b) Empty on its first try: the database, at once and once. No
+        # wait, and the export is not asked a second time.
         reset()
         want = _dbday_expected()
         code, out = night("--runner", run_id="303")
         v = verdict()
         names = [c[0] for c in calls]
-        assert names.count("snapshot_gencourt.py") == NI.EMPTY_TRIES and asked_db() == 1 and \
-            names.index("fetch_day_db.py") == NI.EMPTY_TRIES + 1, names
+        assert order() == [SNAP, DBASK] and not slept and \
+            names.index(DBASK) == names.index(SNAP) + 1, (
+                "an empty export did not go straight to the database: the night asked "
+                f"{order()} and waited {slept}")
+        assert locked == [True, True], \
+            f"the database was not asked under the lock the export was asked under: {locked}"
         assert code == 0 and v["clean"] and v["built"] and v["publishable"], (code, v["not_clean"])
         assert v["fetch"] == "empty: 13 of 14 files came back with no data in them" and \
-            v["fetch_tries"] == NI.EMPTY_TRIES, v["fetch"]
+            v["fetch_tries"] == 1 and v["files_from"] == NI.DB_SOURCE and v["tried"] == [
+                "the export, try 1: empty: 13 of 14 files came back with no data in them",
+                "the database: all seven of the day's changing files installed"], (
+                    v["fetch"], v.get("files_from"), v.get("tried"))
         df = v["day_files"]
+        assert df["after_try"] == 1 and df["because"] == "the export came back empty", df
         assert df["source"] == NI.DB_SOURCE == "database" and df["compared_with"] == "2026-09-30" \
             and df["nights"] == v["db_nights"] == 1 and df["members"].startswith("tonight's") and \
             df["rows"]["Docket"] == len(_DBDAY_VIEWS["Docket"]) and \
@@ -34094,7 +34185,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
                 f"{name}, a lookup, was replaced on a database night"
         assert v["warnings"] and v["warnings"][0] == (
             "the day's files were built from the General Court's database, because its export "
-            f"came back empty on {NI.EMPTY_TRIES} tries"), v["warnings"]
+            "came back empty"), v["warnings"]
         assert all(r.startswith("installed") for r in v["study_meetings"].values()) and \
             v["lsrs"].startswith("installed") and v["changes_report"] == "written", v
         gc = next(c for c in calls if c[0] == "gc_changes.py")
@@ -34116,11 +34207,12 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert "INSTALLED FROM THE DATABASE" in log and "INSTALLED FROM THE DATABASE" in out
 
         # Its page: the warning leads, and the summary's first line under the
-        # heading says it.
+        # heading says it; then what was asked, in order; and the General
+        # Court's page's own error, from the one try, is still kept.
         summary = tmp / "summary.md"
         os.environ.update(GITHUB_ACTIONS="true", GITHUB_STEP_SUMMARY=str(summary))
         try:
-            reset(keep=True)            # last night's files: the database's
+            reset(keep=True, page="error")      # last night's files: the database's
             code, _ = night("--runner", run_id="304")
             first = summary.read_text(encoding="utf-8").splitlines()
             code2, out = night("--runner", "--close", "--outcome", "night=success", run_id="304")
@@ -34131,11 +34223,20 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert code == 0 and code2 == 0 and v["clean"] and v["db_nights"] == 2, (code, code2, v["db_nights"])
         assert first[0].endswith(": clean") and first[2].startswith(
             "- **the day's files were built from the General Court's database"), first[:4]
+        at = first.index("- what was asked for the day's files, in order:")
+        assert first[at + 1:at + 3] == [
+            "  1. the export, try 1: empty: 13 of 14 files came back with no data in them",
+            "  2. the database: all seven of the day's changing files installed"], first
+        assert v.get("data_page_said") == "Error Generating Members File : Execution Timeout " \
+            "Expired." and v.get("data_page_try") == 1 and \
+            "- the General Court's data page said: " + v["data_page_said"] in first, (
+                "the page's own error was lost on a night that went straight to the database",
+                v.get("data_page_said"), first)
         notes = [ln for ln in out.splitlines() if ln.startswith("::")]
         assert len(notes) == 1 and notes[0].startswith(
             "::warning title=The night was clean%2C with a warning::the day's files were built "
-            "from the General Court's database, because its export came back empty on "
-            f"{NI.EMPTY_TRIES} tries (night 2 in a row)"), notes
+            "from the General Court's database, because its export came back empty "
+            "(night 2 in a row)"), notes
         # The second database night's files are compared with the first's.
         assert v["day_files"]["compared_with"].endswith("(from the database)"), v["day_files"]
 
@@ -34246,59 +34347,126 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert NI.study_missed(v) and not NI.study_held(v) and not NI.study_missed(
             {"study_meetings": {"a": NI.STUDY_HELD, "b": "installed, 3 rows (was 3)"}})
 
-        # IT DOES NOT START: a refusal on file; one met during the tries; a
-        # hold on the SQL host; a New term run; another kind of failure; no
-        # installed files.
+        # IT DOES NOT START: (g) a refusal on file, when nothing is asked of
+        # the export or of the database; a refusal met on the first try, or
+        # on a later one; (c) a hold on the SQL host; (h) a New term run;
+        # another kind of failure; no installed files. Where the export was
+        # empty with nothing else wrong, the night then waits and asks the
+        # export again, as it did before there was a database to ask.
         reset()
         refusal.MARK.write_text(json.dumps({"at": "t", "epoch": 0, "where": "x"}), encoding="utf-8")
         code, _ = night("--runner", run_id="310")
-        assert code == 1 and not _dbday_calls_named(calls, "snapshot_gencourt.py") and not asked_db() and \
-            "day_files" not in verdict(), "the night asked the database with a refusal on file"
-        reset(refuse_on=2)
+        v = verdict()
+        assert code == 1 and not order() and not slept and "day_files" not in v and \
+            "tried" not in v and v["fetch"].startswith("deferred"), (
+                "the night asked the export or the database with a refusal on file", order())
+        reset(refuse_on=1)
         code, _ = night("--runner", run_id="311")
         v = verdict()
-        assert code == 1 and v["fetch"] == "refused" and not asked_db() and "day_files" not in v, (
-            "a refusal met during the tries, and the night went on to the database", v["fetch"])
+        assert code == 1 and v["fetch"] == "refused" and order() == [SNAP] and not slept and \
+            "day_files" not in v, ("an export that was refused, and the night went on to the "
+                                   "database", order())
+        hold = {"held": True, "kind": "connection", "nights": 1, "at": "2026-10-01T04:50:00",
+                "until_at": "later", "until": __import__("time").time() + 3600}
+        reset(refuse_on=2)
+        PD.HELD.write_text(json.dumps(hold), encoding="utf-8")
+        code, _ = night("--runner", run_id="311b")
+        v = verdict()
+        assert code == 1 and v["fetch"] == "refused" and order() == [SNAP, SNAP] and \
+            slept == [WAIT] and v["fetch_tries"] == 2, (
+                "a refusal met on a later try, and the night went on asking", order(), slept)
+        # (c) A hold on the SQL host: the database is not asked, and the
+        # export is, again, every EMPTY_WAIT minutes to EMPTY_TRIES tries.
         reset()
-        PD.HELD.write_text(json.dumps({"held": True, "kind": "connection", "nights": 1,
-                                       "at": "2026-10-01T04:50:00", "until_at": "later",
-                                       "until": __import__("time").time() + 3600}), encoding="utf-8")
+        PD.HELD.write_text(json.dumps(hold), encoding="utf-8")
         was = installed()
         code, _ = night("--runner", run_id="312")
         v = verdict()
         assert code == 1 and not asked_db() and v["day_files"]["why_code"] == "held" and \
             installed() == was, ("the night asked a held host", v.get("day_files"))
-        assert " The General Court's database is the fallback, and a hold on it is on file, so " \
-            "it was not asked." in NI.plain_why(v), NI.plain_why(v)
+        assert order() == [SNAP] * NI.EMPTY_TRIES and slept == [WAIT] * (NI.EMPTY_TRIES - 1) and \
+            v["fetch_tries"] == NI.EMPTY_TRIES and v["day_files"]["after_try"] == 1 and \
+            v["tried"][1] == "the database: nothing installed, because " + NI.DB_WHY["held"] and \
+            v["tried"][2].startswith("the export, try 2: empty") and \
+            len(v["tried"]) == NI.EMPTY_TRIES + 1, (
+                "with the database held, the export was not asked again to its last try",
+                order(), slept, v["tried"])
+        assert NI.plain_why(v) == (
+            "13 of the General Court's 14 daily files came back empty on each of "
+            f"{NI.EMPTY_TRIES} tries, {NI.EMPTY_WAIT} minutes apart, so nothing was installed or "
+            "built. After the first empty try the night turned to the General Court's database, "
+            "and a hold on it is on file, so it was not asked. Nothing was published."), \
+            NI.plain_why(v)
+        # (h) A New term run takes its files from the export or not at all.
         reset()
         code, _ = night("--runner", "--new-term", run_id="313")
-        assert code == 1 and not asked_db() and "day_files" not in verdict(), \
+        v = verdict()
+        assert code == 1 and not asked_db() and "day_files" not in v, \
             "a New term run fell back on the database"
+        assert order() == [SNAP] * NI.EMPTY_TRIES and slept == [WAIT] * (NI.EMPTY_TRIES - 1) and \
+            v["tried"][1].startswith("the database: not asked, because a New term run") and \
+            v["tried"][2].startswith("the export, try 2: empty") and \
+            all("--allow-shrink" in c for c in _dbday_calls_named(calls, SNAP)), (
+                order(), slept, v["tried"])
         reset(export="dropped")
         code, _ = night("--runner", run_id="314")
         v = verdict()
         assert code == 1 and v["fetch"].startswith("did not complete") and not asked_db() and \
-            "day_files" not in v, ("an export that failed another way fell back", v["fetch"])
+            "day_files" not in v and order() == [SNAP] and not slept, (
+                "an export that failed another way fell back, or was asked again", v["fetch"])
         reset()
         Path("LSRs.txt").unlink()
         code, _ = night("--runner", run_id="315")
-        assert code == 1 and not asked_db() and "day_files" not in verdict(), \
+        v = verdict()
+        assert code == 1 and not asked_db() and "day_files" not in v, \
             "a machine with no last good day fell back"
+        assert order() == [SNAP] * NI.EMPTY_TRIES and v["tried"][1].startswith(
+            "the database: not asked, because there are no installed files"), (order(), v["tried"])
 
-        # ALL OR NONE.
+        # ALL OR NONE. (d) A failed query, a failed connection, the host's
+        # hold met by the fetch itself, a short view: nothing is installed,
+        # and the export is asked again to its last try (failed_night).
         failed_night("a view's query failed", "query", "320", db_rc=1, entries={
             "Docket": {"error": "QUERY_FAIL Execution Timeout Expired (fixture)", "rows": None}})
-        failed_night("the connection failed", "connect", "321", db_rc=3, entries={
+        v = failed_night("the connection failed", "connect", "321", db_rc=3, entries={
             "Legislators": {"error": "CONNECT_FAIL no route (fixture)", "rows": None}})
+        held = PD.hold_standing()
+        assert held and held["kind"] == "connection" and held["nights"] == 1, (
+            "a connection to the database failed and the host was not held", held)
+        assert NI.plain_why(v) == (
+            "13 of the General Court's 14 daily files came back empty on each of "
+            f"{NI.EMPTY_TRIES} tries, {NI.EMPTY_WAIT} minutes apart, so nothing was installed or "
+            "built. After the first empty try the night turned to the General Court's database, "
+            "and its server could not be connected to. Nothing was published."), NI.plain_why(v)
         failed_night("the fetch was stopped by the host's hold", "held", "322", db_rc=PD.SQL_HELD)
         failed_night("a view wrote fewer rows than the server counted", "short", "323",
                      entries={"Sponsors": {"count": 9, "rows": 7}})
+        # (e) WHAT THE DATABASE GAVE LOOKED WRONG: a guard stopped, or the
+        # shrink rule did. Nothing is installed, and the export is NOT asked
+        # again that night (nightly.DB_LOOKED_WRONG says why): a later try
+        # that arrived whole would have gone in on the export's own checks.
         v = failed_night("a bill was gone from the database's docket", "guard", "324", views={
             "Docket": [r for r in _DBDAY_VIEWS["Docket"] if "SB416" not in r]})
         assert any("SB416" in s for s in v["day_files"]["stops"]) and \
             "SB416" not in NI.plain_why(v), (
                 "the guard's detail is not in the verdict, or reached the public page",
                 v["day_files"].get("stops"))
+        assert NI.plain_why(v) == (
+            "13 of the General Court's 14 daily files came back empty, so nothing was installed "
+            "or built. The night then turned to the General Court's database, and what came back "
+            "from it did not pass the night's checks against the installed files. The export was "
+            "not asked again tonight, so that what looked wrong by one route could not be "
+            "installed by the other. Nothing was published."), NI.plain_why(v)
+        assert set(NI.DB_LOOKED_WRONG) == {"guard", "shrink"} <= set(NI.DB_WHY), NI.DB_LOOKED_WRONG
+        # ... and with the export whole from its second try on: still not asked.
+        reset(left=1, views={"Docket": [r for r in _DBDAY_VIEWS["Docket"] if "SB416" not in r]})
+        was = installed()
+        code, _ = night("--runner", run_id="324b")
+        v = verdict()
+        assert code == 1 and order() == [SNAP, DBASK] and not slept and installed() == was and \
+            v["files_from"] == "none" and not v["built"], (
+                "the database's files looked wrong, and the export was asked again and "
+                "installed", order(), v.get("files_from"))
         # Much smaller than the copy installed: snapshot_gencourt's own rule.
         reset()
         Path("Members.txt").write_bytes(_dbday_bytes(_DBDAY_EXPORT["Members.txt"] * 40))
@@ -34309,6 +34477,8 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert code == 1 and v["day_files"]["why_code"] == "shrink" and installed() == was and \
             Path("Members.txt").read_bytes() == big, ("the shrink rule did not hold on a database "
                                                       "night", v["day_files"])
+        assert order() == [SNAP, DBASK] and not slept and \
+            v["tried"][-1] == NI.EXPORT_NOT_AGAIN, (order(), slept, v["tried"])
         # Tonight's Members.txt missing: the installed one stays, with a warning.
         reset(members=False)
         code, _ = night("--runner", run_id="326")
@@ -34318,12 +34488,101 @@ def _nightly_falls_back(NI, DF, PD, SG):
             "Members.txt" in v["day_files"]["carried"] and any(
                 "Members.txt did not arrive" in w for w in v["warnings"]) and \
             Path("Members.txt").read_bytes() == _dbday_bytes(_DBDAY_EXPORT["Members.txt"]), v["day_files"]
-        # None of it is the laptop's: without --runner the night never asks it.
+
+        # (f) THE DATABASE COULD NOT BE USED, AND THE EXPORT ARRIVED WHOLE ON
+        # ITS THIRD TRY. The export is installed, the night is clean and
+        # goes out, and its verdict and its page say what was asked, in
+        # order. The failed connection's hold stands, so the study
+        # committees' meetings are not asked for: two warnings, no failure.
+        reset(left=2, db_rc=3, entries={
+            "Legislators": {"error": "CONNECT_FAIL no route (fixture)", "rows": None}})
+        summary.unlink(missing_ok=True)
+        os.environ.update(GITHUB_ACTIONS="true", GITHUB_STEP_SUMMARY=str(summary))
+        try:
+            code, _ = night("--runner", run_id="330")
+            ran, waited, under = order(), list(slept), list(locked)
+            study = _dbday_calls_named(calls, "fetch_archive_db.py")
+            gc = next(c for c in calls if c[0] == "gc_changes.py")
+            page = summary.read_text(encoding="utf-8").splitlines()
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+            os.environ.pop("GITHUB_STEP_SUMMARY", None)
+        v = verdict()
+        assert ran == [SNAP, DBASK, SNAP, SNAP] and waited == [WAIT, WAIT] and all(under), (
+            "the database could not be used, and the export was not asked again every "
+            f"{NI.EMPTY_WAIT} minutes until it arrived: the night asked {ran} and waited {waited}")
+        assert code == 0 and v["clean"] and v["built"] and v["publishable"] and \
+            v["fetch"] == "installed" and v["fetch_tries"] == 3 and v["files_from"] == "export" and \
+            v["db_nights"] == 0 and v["day_files"]["source"] == "none" and \
+            v["day_files"]["why_code"] == "connect" and "--db-night" not in gc, (
+                code, v["not_clean"], v.get("files_from"), v.get("day_files"))
+        assert v["tried"] == [
+            "the export, try 1: empty: 13 of 14 files came back with no data in them",
+            "the database: nothing installed, because its server could not be connected to",
+            "the export, try 2: empty: 13 of 14 files came back with no data in them",
+            "the export, try 3: installed"], v["tried"]
+        assert v["warnings"][0] == (
+            "the day's files are the export's, which arrived whole on try 3: it came back empty "
+            "first, and the General Court's database, turned to then, installed nothing (its "
+            "server could not be connected to)") and not study and \
+            set(v["study_meetings"].values()) == {NI.STUDY_HELD}, (v["warnings"], study)
+        at = page.index("- what was asked for the day's files, in order:")
+        assert page[0].endswith(": clean") and \
+            f"- the day's files arrived whole on try 3 of {NI.EMPTY_TRIES}" in page and \
+            page[at + 1:at + 5] == [f"  {i}. {t}" for i, t in enumerate(v["tried"], 1)], page
+
+        # THE ORDER IS ONE SETTING, and not a number beside it. Put back to
+        # EMPTY_TRIES it is the night of 1 October again: six tries, half an
+        # hour apart, and the database only after the last. Held to 1 above.
+        after = NI.DB_AFTER_TRIES
+        NI.DB_AFTER_TRIES = NI.EMPTY_TRIES
+        try:
+            reset()
+            code, _ = night("--runner", run_id="331")
+        finally:
+            NI.DB_AFTER_TRIES = after
+        v = verdict()
+        assert code == 0 and order() == [SNAP] * NI.EMPTY_TRIES + [DBASK] and \
+            slept == [WAIT] * (NI.EMPTY_TRIES - 1) and \
+            v["day_files"]["after_try"] == NI.EMPTY_TRIES and v["warnings"][0] == (
+                "the day's files were built from the General Court's database, because its "
+                f"export came back empty on {NI.EMPTY_TRIES} tries"), (order(), slept, v["warnings"])
+
+        # (i) NONE OF IT IS THE LAPTOP'S. Without --runner the night asks the
+        # export once, does not wait, never asks the database, and writes no
+        # verdict.
+        reset()
+        was, last = installed(), NI.VERDICT.read_bytes()
+        code, _ = night(run_id="332")
+        assert order() == [SNAP] and not slept and installed() == was and \
+            NI.VERDICT.read_bytes() == last, (
+                "the laptop's night waited, asked the database, or wrote the runner's verdict",
+                code, order(), slept)
+        # And the source holds the order: inside the loop of tries, past the
+        # test that the export was empty on GitHub's night with no refusal,
+        # the database is asked once -- under `if night`, before the wait --
+        # and the wait is reached only when it installed nothing and what it
+        # gave did not look wrong.
         src = Path(NI.__file__).read_text(encoding="utf-8")
-        assert re.search(r"if night:\s+night\.v\[\"fetch_tries\"\] = tries\b.{0,600}?"
-                         r"if rc != 0 and tries == EMPTY_TRIES and got\.startswith\(\"empty\"\):\s+"
-                         r"db_day = from_database\(", src, re.S), \
-            "the fallback is no longer under `if night:`, after the last try, for an empty export only"
+        loop = re.search(r"\n( +)for tries in range\(1, EMPTY_TRIES \+ 1\):\n(.+?)\n\1if night:\s+"
+                         r"night\.v\[\"fetch_tries\"\] = tries\n", src, re.S)
+        assert loop and src.count("= from_database(") == 1 and \
+            loop.group(2).count("from_database(") == 1 and \
+            loop.group(2).count("time.sleep(") == 1, \
+            "the database is no longer asked inside the night's loop of tries, once"
+        assert re.search(
+            r"if \(not a\.runner or not got\.startswith\(\"empty\"\)\s+"
+            r"or refusal\.MARK\.exists\(\)\):\s+break\n"
+            r"(?:\s+#[^\n]*\n)*"
+            r"\s+if night and not db_asked and tries >= DB_AFTER_TRIES:\s+"
+            r"db_asked = True\s+night\.v\[\"fetch_tries\"\] = tries\s+"
+            r"db_day = from_database\(a, night, tries, asked\)\s+"
+            r"if db_day:\s+break\s+"
+            r"if db_looked_wrong\(night\.v\):.{0,900}?\n\s+break\n"
+            r"\s+if tries == EMPTY_TRIES:\s+break\n"
+            r".{0,500}?time\.sleep\(EMPTY_WAIT \* 60\)", loop.group(2), re.S), \
+            ("the order was changed: an empty export goes to the database at once, under "
+             "`if night`, before any wait, and the export is asked again only after it")
     finally:
         os.chdir(here)
         (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
@@ -34334,11 +34593,14 @@ def _nightly_falls_back(NI, DF, PD, SG):
             else:
                 os.environ[k] = val
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("an export that arrives is the night's one source; empty on six tries, the "
-                  "database is asked once and all seven files and Members.txt go in, the "
-                  "verdict names it and a warning leads the page; a refusal, a held host, a New "
-                  "term run, another failure or no installed files and it does not start; a "
-                  "failed view, a guard or the shrink rule and nothing is installed; seven "
+    return "ok", ("an export that arrives is the night's one source; empty on its first try, "
+                  "the database is asked at once, with no wait, and once, and all seven files "
+                  "and Members.txt go in, the verdict names it and a warning leads the page; a "
+                  "refusal, a held host, a New term run, another failure or no installed files "
+                  "and it does not start; a database that cannot be used and the export is asked "
+                  "again every half hour to six tries, and installed if it arrives; a guard or "
+                  "the shrink rule and nothing is installed and the export is not asked again; "
+                  "the laptop asks once and waits for nothing; seven "
                   "nights is an error and the build still goes out, and a night that never "
                   "started keeps the count; a held host on a night the export is whole is a "
                   "warning and the build goes out")
