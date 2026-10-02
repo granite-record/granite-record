@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.306
+# GRANITE_VERSION: 2026-09-04.307
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -640,6 +640,29 @@ def _clerk_list_untracked():
     return "ok", f"{NAME} is gitignored, untracked, and in no commit on any ref"
 
 
+# A SCRIPT IS PARSED ONCE A RUN (2 October 2026). Four checks each parsed
+# every script -- the one below, _child_encoding, _every_fetcher_checks_refusal
+# and, for this file, _children_sealed -- and this file is forty-four thousand
+# lines: three parses of it were the largest single cost of the code checks
+# that was not a child process. The tree is kept under the file's path, its
+# size and the time it was last written, so a file a check changes and reads
+# again is parsed again, and a file that will not parse raises for every
+# caller as it did for one.
+_PARSED = {}
+
+
+def _parsed(path):
+    """ast.parse of the script at `path`, from this run's earlier parse of
+    the same bytes if there was one. Read as _parse_all always read it: as
+    UTF-8, with a byte that is not UTF-8 replaced. SyntaxError is the caller's."""
+    p = Path(path)
+    st = p.stat()
+    key = (str(p.resolve()), st.st_size, st.st_mtime_ns)
+    if key not in _PARSED:
+        _PARSED[key] = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+    return _PARSED[key]
+
+
 @check("files", "every listed script parses")
 def _parse_all():
     vp = Path("versions.json")
@@ -653,7 +676,7 @@ def _parse_all():
         if not p.exists():
             continue
         try:
-            ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+            _parsed(p)
         except SyntaxError as e:
             bad.append(f"{n}:{e.lineno} {e.msg}")
     present = sum(1 for n in names if Path(n).exists())
@@ -9824,7 +9847,7 @@ def _child_encoding():
         if f.startswith("obsolete/") or not Path(f).exists():
             continue
         try:
-            tree = ast.parse(Path(f).read_text(encoding="utf-8", errors="replace"))
+            tree = _parsed(f)
         except SyntaxError:
             continue
         for node in ast.walk(tree):
@@ -27632,9 +27655,10 @@ def _every_fetcher_checks_refusal():
     NAMED = ("fetch_committee_details.py",)
     ADDRESSES = ("civics",)         # modules holding gc.nh.gov addresses scripts ask
 
-    def read(name, src):
-        """(asks the General Court, calls refusal.check with refusal imported)."""
-        tree = _ast.parse(src)
+    def read(name, src, tree=None):
+        """(asks the General Court, calls refusal.check with refusal imported).
+        `tree` is the script's parse where this run already has one."""
+        tree = tree or _ast.parse(src)
         imported = {a.name for n in _ast.walk(tree) if isinstance(n, _ast.Import)
                     for a in n.names} | {n.module for n in _ast.walk(tree)
                                          if isinstance(n, _ast.ImportFrom) and n.module}
@@ -27671,7 +27695,7 @@ def _every_fetcher_checks_refusal():
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
         try:
-            ask, checks = read(p.name, src)
+            ask, checks = read(p.name, src, _parsed(p))
         except SyntaxError as e:
             raise AssertionError(f"{p.name} will not parse, so whether it asks the General "
                                  f"Court cannot be read: {e}")
@@ -27881,7 +27905,7 @@ def _children_sealed():
                       '    assert x, "fetch_x.py now writes it"\n'
                       '    return "skip", "run build_all.py first"\n')
     assert bare(trial) == ["b", "d", "e"], f"the reader of spawns found {bare(trial)}"
-    found = bare(ast.parse(Path(__file__).read_text(encoding="utf-8")))
+    found = bare(_parsed(__file__))
     assert not found, ("these checks start a fetcher, the lane or the pipeline as a process "
                        "without the seal, so a regression would reach the network from "
                        "preflight: " + ", ".join(found) + ". Start it with _sealed_run or "
@@ -32753,7 +32777,7 @@ def _sql_hold(PD, NI, CL):
                           "def late(x):\n    child.popen(x)\n    hold_check('q')\n\n"
                           "def bare(x):\n    subprocess.run(x)\n")
         assert unheld(probe)[0] == ["late", "bare"], unheld(probe)
-        bad, starts = unheld(ast.parse(Path(PD.__file__).read_text(encoding="utf-8")))
+        bad, starts = unheld(_parsed(PD.__file__))
         assert {"run", "run_to_file", "_bridge"} <= set(starts) and not bad, (
             f"probe_db starts PowerShell without asking hold_check() first in {bad}")
 
@@ -34603,7 +34627,7 @@ def _night_window(R, PD):
                       "def late(x):\n    child.popen(x)\n    refusal.window_check('q')\n\n"
                       "def bare(x):\n    subprocess.run(x)\n")
     assert unguarded(probe)[0] == ["late", "bare"], unguarded(probe)
-    bad, starts = unguarded(ast.parse(Path(PD.__file__).read_text(encoding="utf-8")))
+    bad, starts = unguarded(_parsed(PD.__file__))
     assert {"run", "run_to_file", "_bridge"} <= set(starts), \
         f"probe_db's bridges were not found to read: {starts}"
     assert not bad, (f"probe_db starts PowerShell without asking refusal.window_check() first "
