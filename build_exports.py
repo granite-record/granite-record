@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.18
+# GRANITE_VERSION: 2026-09-10.19
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -363,8 +363,11 @@ def sponsors(out, data):
                  "2023, and the 2023-2024 bills whose printed line and record "
                  "disagree; or, on a bill of a term before 2023 that no other "
                  "source names a sponsor for, the General Court's sponsor "
-                 "record again, which gives a chamber and no district and "
-                 "marks the prime itself; or the House Journal, for the bills "
+                 "record again, which gives a chamber and no district, marks "
+                 "the prime itself on all but four resolutions (where the "
+                 "first name is taken as prime) and in 1999-2000 leaves "
+                 "co-sponsors off some bills that print them, so a list "
+                 "filled from it in that term may be short; or the House Journal, for the bills "
                  "none of the General Court's lists carry, where the first "
                  "name in its list of bills introduced "
                  "is taken as prime. member_id is empty where this site has not matched "

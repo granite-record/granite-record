@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.3
+# GRANITE_VERSION: 2026-09-30.4
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -985,6 +985,117 @@ def read_earlier(root=ROOT, earlier=None):
                 "introduced": e["cite"], "decided": d,
             }
     return dict(records), report, problems
+
+
+# ------------------------------------------ the resolutions of introduction --
+
+# THE HOUSE INTRODUCES ITS BILLS BY RESOLUTION, AND THE RESOLUTION NAMES THEM
+# BY NUMBER (1 October 2026). "Rep. Foster offered the following: Resolved,
+# that in accordance with the list in the possession of the Clerk, House Bills
+# numbered 31 through 86, 88 through 133 and 135 through 223, House Concurrent
+# Resolutions numbered 1 through 4 and Constitutional Amendment Concurrent
+# Resolutions numbered 1 through 4 shall be by this resolution read a first
+# and second time by the therein listed titles, sent for printing and referred
+# to the therein designated committees. Adopted." (journals/2009/HJ002.txt,
+# line 821). A number it names was introduced that day. A number it steps
+# over -- 87 and 134 there, 633 on 4 January 2007, 1284 and 1472 on 4 January
+# 2012 -- was not, whatever a docket row typed ahead of the day says: HB 87 and
+# HB 134 of 2009 each carry "Introduced 1/7/2009 and Referred to ...; HJ 8",
+# the row every bill of that day was given, and were published as introduced
+# and in committee. And HB 1512 of 2012, whose docket enters "Withdrawn" at
+# 8.49 that morning, is inside "1473 through 1709" and printed in full in the
+# list beneath: the docket cannot tell it from HB 1284, entered withdrawn at
+# 8.11, and the resolution does.
+#
+# READ FOR THE MEASURES SOMEBODY NAMES, NOT FOR A TERM. A number stepped over
+# is as often a number no bill ever had (every twenty-fifth of 2007), and not
+# every introduction is in this wording: HB 1467 of 2002 is stepped over by
+# the one resolution read here that comes near it, and is a law. So "no
+# resolution read here names it" is evidence about a bill only beside the
+# rest of its record. build_data keeps the few readings it publishes in a
+# table of what was read (INTRODUCTION_FROM_JOURNAL), and preflight holds that
+# table to this wherever the journals are on disk.
+INTRO_RESOLUTION = re.compile(
+    r"\bResolved\b,?\s+that\b(?P<body>.{0,1200}?)\bshall\s+be\s+by\s+this\s+"
+    r"resolution\s+read\s+a\s+first", re.I | re.S)
+INTRO_KINDS = (
+    ("HB", r"House\s+Bills?"),
+    ("HCR", r"House\s+Concurrent\s+Resolutions?"),
+    ("HJR", r"House\s+Joint\s+Resolutions?"),
+    ("HR", r"House\s+Resolutions?"),
+    # 2017's "House Constitutional Amendment Concurrent Resolutions" too: the
+    # words are found wherever they stand.
+    ("CACR", r"Constitutional\s+Amendment\s+Concurrent\s+Resolutions?"),
+)
+INTRO_NUMBERED = re.compile(
+    r"(?P<kind>" + "|".join(k for _c, k in INTRO_KINDS) + r")\s+numbered\s+"
+    r"(?P<list>\d+(?:\s*(?:,\s*and|,|and|through)\s*\d+)*)", re.I)
+INTRO_RANGE = re.compile(r"(\d+)(?:\s*through\s*(\d+))?", re.I)
+
+
+def introduction_resolutions(root=ROOT, years=()):
+    """[resolution] for the House Journals of `years`, in the order printed:
+    {"date", "journal", "file", "line", "numbered": {kind: [(first, last)]},
+    "words": {kind: the numbers as the resolution words them}}.
+
+    Only the House's own measures: a resolution reading in Senate bills is
+    another list. A sitting with no dateline is not dated and its resolutions
+    are left out, as sittings() leaves the sitting out."""
+    out = []
+    for year in years:
+        for f in sorted((Path(root) / str(year)).glob("*.txt")):
+            lines = read_lines(f)
+            text = "\n".join(lines)
+            sat = sittings(lines)
+            for m in INTRO_RESOLUTION.finditer(text):
+                at = text.count("\n", 0, m.start())
+                day = next(((s, d) for s, e, d in sat if s <= at < e), None)
+                if not day:
+                    continue
+                # One line of words: the PDF breaks "Concur-rent" across two.
+                body = re.sub(r"([a-z])-\s+([a-z])", r"\1\2", squash(m.group("body")))
+                numbered, words = {}, {}
+                for seg in INTRO_NUMBERED.finditer(body):
+                    kind = next(c for c, k in INTRO_KINDS
+                                if re.fullmatch(k, seg.group("kind"), re.I))
+                    numbered.setdefault(kind, []).extend(
+                        (int(a), int(b or a)) for a, b in INTRO_RANGE.findall(seg.group("list")))
+                    words[kind] = (words[kind] + ", " if kind in words else "") + seg.group("list")
+                if not numbered:
+                    continue
+                num = (JD.DAY_HEADER.match(lines[day[0]]).group("num") or "").strip()
+                out.append({"date": day[1],
+                            "journal": "House Journal" + (f" No. {num}" if num else ""),
+                            "file": f.as_posix(), "line": at + 1,
+                            "numbered": {k: sorted(v) for k, v in numbered.items()},
+                            "words": words})
+    return out
+
+
+def resolution_reading(resolutions, bid):
+    """What the resolutions say of one measure, or None where they say nothing.
+
+    {"introduced": True, ...} with the resolution that names its number;
+    {"introduced": False, ...} where none names it and one steps over it --
+    names numbers of its kind on both sides of it in one list, as "31 through
+    86, 88 through 133" steps over 87. A number past the end of every list is
+    not stepped over, and nothing is said of it."""
+    m = re.match(r"^([A-Z]+)(\d+)$", bid or "")
+    if not m:
+        return None
+    kind, n = m.group(1), int(m.group(2))
+
+    def cite(r, introduced):
+        return {"introduced": introduced, "date": r["date"], "journal": r["journal"],
+                "numbered": r["words"].get(kind, ""), "file": r["file"], "line": r["line"]}
+    for r in resolutions:
+        if any(a <= n <= b for a, b in r["numbered"].get(kind, ())):
+            return cite(r, True)
+    for r in resolutions:
+        rs = r["numbered"].get(kind, [])
+        if any(b < n < c for (_a, b), (c, _d) in zip(rs, rs[1:])):
+            return cite(r, False)
+    return None
 
 
 # ------------------------------------------------------------------ --check --

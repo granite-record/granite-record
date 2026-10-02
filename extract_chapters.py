@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.7
+# GRANITE_VERSION: 2026-09-11.8
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -322,7 +322,8 @@ def database_check(out, found, bills):
         return None
     cols = json.loads(PAST_MAN.read_text(encoding="utf-8"))["PastLegislation"]["columns"]
     iy, il, ic = cols.index("SessionYear"), cols.index("LSR"), cols.index("ChapterNo")
-    said = {}
+    ie = cols.index("EffectiveDate") if "EffectiveDate" in cols else None
+    said, took_effect = {}, {}
     with PAST.open(encoding="utf-8") as fh:
         for line in fh:
             f = line.rstrip("\r\n").split("|")
@@ -331,7 +332,13 @@ def database_check(out, found, bills):
             n = f[ic].strip()
             if n.isdigit() and int(n) and f[iy].strip().isdigit() and f[il].strip().isdigit():
                 said[(int(f[iy]), int(f[il]))] = int(n)
-    agree, differ, filled, clash = 0, [], [], {}
+                # "07/14/2009 00:00:00"; the database's 1900 is its blank.
+                e = (re.match(r"(\d{2})/(\d{2})/(\d{4})\b", f[ie].strip())
+                     if ie is not None else None)
+                if e and int(e.group(3)) > 1900:
+                    took_effect[(int(f[iy]), int(f[il]))] = (
+                        f"{e.group(3)}-{e.group(1)}-{e.group(2)}")
+    agree, differ, filled, clash, effective = 0, [], [], {}, {}
     for term, tb in bills.items():
         for bid, b in tb.items():
             y, l = str(b.get("lsr_year") or ""), str(b.get("lsr_num") or "")
@@ -347,6 +354,8 @@ def database_check(out, found, bills):
                 # Withheld because another bill claims the docket's number:
                 # settled below, once every bill's own number is known.
                 clash[(term, bid)] = db
+                if (int(y), int(l)) in took_effect:
+                    effective[(term, bid)] = took_effect[(int(y), int(l))]
             elif have == db:
                 agree += 1
             elif have:
@@ -360,11 +369,11 @@ def database_check(out, found, bills):
                 out[term][bid] = {"chapter": db, "source": "the General Court's database",
                                   "line": ""}
                 filled.append(f"{bid} of {term}: {db}")
-    settled, unsettled = settle_clashes(out, found, clash)
+    settled, unsettled = settle_clashes(out, found, clash, effective)
     return agree, differ, filled, settled, unsettled
 
 
-def settle_clashes(out, found, clash):
+def settle_clashes(out, found, clash, effective=None):
     """Fill a chapter withheld because the docket gave its number to two
     bills, from the database's number for each: (settled, unsettled), each a
     list of sentences.
@@ -386,7 +395,16 @@ def settle_clashes(out, found, clash):
     A filled record keeps the docket's line and the docket's number beside
     the database's ("docket"), and says where its number is from ("source")
     and what was settled ("settled"); narrative.py tells the history with the
-    same number (--chapters)."""
+    same number (--chapters).
+
+    AND WHERE THE DOCKET'S NUMBER WAS THE OTHER BILL'S, the record carries the
+    database's effective date too ("database_effective", from `effective`,
+    {(term, bill): ISO day}): a line that carries another bill's chapter can
+    carry its effective date with it. SB 28 of 2009's reads "Signed by the
+    Governor on 05/15/09; Effective 07/07/09; Chapter 0028", which is SB 109's
+    line with the signature's day changed; SB 28's enrolled text and the
+    database both say 14 July. build_site_v2 takes the database's day where
+    the line states one day and the database another, and nowhere else."""
     def year(term, bid, n):
         """The year of the laws the bill is a chapter of: the year its law
         line states, or the year that row was entered where that is earlier.
@@ -421,6 +439,8 @@ def settle_clashes(out, found, clash):
         stated = law_date(found[(term, bid)], rec["docket"])[0]             if (term, bid) in found else None
         out[term][bid] = {
             "chapter": db, "docket": rec["docket"], "line": rec.get("line", ""),
+            **({"database_effective": effective[(term, bid)]}
+               if db != rec["docket"] and (effective or {}).get((term, bid)) else {}),
             "source": "the General Court's database",
             "settled": (f"{rec['withheld']} on the docket; the General Court's "
                         f"database gives this bill chapter {db}"

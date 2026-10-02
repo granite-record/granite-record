@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.3
+# GRANITE_VERSION: 2026-09-26.4
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
@@ -67,7 +67,8 @@ rows can be held to the printed line (each term's 1,400 to 1,900 bills):
     prints: 156 of 1,586 bills differ, by 337 printed names the record does not have
     (HB 68 of 1999 prints seven sponsors and the record holds its prime alone). The
     prime is still the first printed on 1,581. So a filled list of that term names the
-    prime and may not name every co-sponsor; it is for the Clerk's list.
+    prime and may not name every co-sponsor; it is for the Clerk's list, and the page of
+    each filled bill of that term says so (SHORT_TERMS).
 A filled row says where it is from (source) and that its seat is the record's
 (seat_source), which is a chamber and no district: the record holds none, and the roster's
 is today's. Before 1999 a row has no party either -- no roll call of the term exists to
@@ -119,6 +120,18 @@ SOURCE = "General Court sponsor record"
 # Every other past term is FILLED: the record's list for a bill no other source names a
 # sponsor for, and for no other bill (see the module docstring).
 MERGED = ("2023-2024",)
+# THE TERM WHOSE RECORD IS SHORT OF CO-SPONSORS (the docstring's "AND ONE TERM IS SHORT").
+# On the bills that have a page, 156 of 1,586 print sponsors the record does not hold. On
+# the filled ones it is worse. The review of 1 October 2026 held the fills to the House
+# Journal's lists of bills introduced, the only print there is for a bill with no page,
+# and counted 15 of the 41 filled bills of 1999-2000 the journals list short of printed
+# co-sponsors, 11 of them of every Senate co-sponsor: HCR 34 of 2000 prints ten sponsors
+# where the record holds its prime alone (journals/2000/HJ008.txt, line 3874). In no
+# other term did it find a fill short by more than a name. The prime is right, and the
+# names given are sponsors; the list is not
+# known to be whole. build_site_v2 says so in a note on each filled bill of these terms,
+# and build_exports in the table's description.
+SHORT_TERMS = ("1999-2000",)
 SUFFIXES = TS.SUFFIXES
 
 
@@ -598,10 +611,29 @@ def filled(rows, people, term):
 
     seat_source says the seat is the record's own, which is a chamber and nothing more:
     build_site_v2 would otherwise label the row from today's roster, and a label states
-    the seat held when the record was made."""
-    out = records(rows, [], people, term)
+    the seat held when the record was made.
+
+    ONE NUMBER LISTED TWICE IS ONE SPONSOR. HB 3 of 2003 carries employee 209058, Sen.
+    Robert Clegg, on rows 3 and 8, both live, and the filled list named him twice. The
+    first in the list's own order is kept -- the prime's row, where one of them is prime.
+
+    AND A LIST THE RECORD MARKS NO PRIME ON takes its first name as prime, and says it was
+    taken (prime_inferred), as a list read off a bill's text does. HR 60, HR 63 and HR 65
+    of 1990 and SCR 7 of 1998 have no row marked: the index and the download named the
+    first sponsor as the bill's sponsor regardless, from rows that said nobody was."""
+    live = sorted((r for r in rows if not r["withdrawn"]),
+                  key=lambda r: (not r["prime"], r["sequence"]))
+    seen, once = set(), []
+    for r in live:
+        if r["employee"] and r["employee"] in seen:
+            continue
+        seen.add(r["employee"])
+        once.append(r)
+    out = records(once, [], people, term)
     for r in out:
         r["seat_source"] = SOURCE
+    if out and not any(r["prime"] for r in out):
+        out[0]["prime"], out[0]["prime_inferred"] = True, True
     return out
 
 

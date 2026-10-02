@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -964,20 +964,51 @@ def _lsr_num(s):
     return str(s or "").strip().lstrip("0")
 
 
+_BILLS_READ = {}
+
+
+def _bills_doc(path):
+    """data/bills.json as {term: {bill: record}}, or {} where it is not there
+    or is not keyed by term. Read once for a path: load_lsrs and
+    load_introductions both ask, and the file is 25 MB."""
+    key = str(path or "")
+    if key not in _BILLS_READ:
+        p = Path(path) if path else None
+        data = {}
+        if p and p.exists():
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError:
+                data = {}
+        _BILLS_READ[key] = data if is_term_keyed(data) else {}
+    return _BILLS_READ[key]
+
+
 def load_lsrs(path):
     """{term: {bill: (LSR year, LSR number)}} from data/bills.json, or {}."""
-    p = Path(path) if path else None
-    if not p or not p.exists():
-        return {}
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except ValueError:
-        return {}
-    if not is_term_keyed(data):
-        return {}
     return {t: {b: (str(r.get("lsr_year") or "").strip(), _lsr_num(r.get("lsr_num")))
                 for b, r in byb.items() if isinstance(r, dict)}
-            for t, byb in data.items()}
+            for t, byb in _bills_doc(path).items()}
+
+
+# WHAT THE HOUSE JOURNAL SAYS OF A BILL'S INTRODUCTION, where build_data's
+# record carries a reading (its INTRODUCTION_FROM_JOURNAL, on six of the
+# measures it adds from the General Court's database). The House introduces
+# its bills by a resolution that names them by number, and the docket's
+# introduction row is typed ahead of the day: HB 87 of 2009 carries
+# "Introduced 1/7/2009 and Referred to Municipal and County Government" and
+# the resolution of that day steps over 87. {(term, bill): {"introduced",
+# "date", "journal", "numbered"}}; empty unless --bills names a file whose
+# records carry "introduction", so a run without one tells every docket as
+# it did before. build() says what each answer changes.
+INTRODUCTIONS = {}
+
+
+def load_introductions(path):
+    """INTRODUCTIONS from data/bills.json, or {} where it is not there."""
+    return {(t, b): r["introduction"] for t, byb in _bills_doc(path).items()
+            for b, r in byb.items()
+            if isinstance(r, dict) and isinstance(r.get("introduction"), dict)}
 
 
 def own_rows(bills, lsrs):
@@ -1710,6 +1741,27 @@ def describe(ev, body, seen_intro=False):
         return (f"It was to be introduced on {fdate(ev['date'])} and referred to "
                 f"the {chamber} {ev['committee']} committee.")
 
+    if t == "entered_introduced":
+        # The docket's row says introduced and the House Journal's resolution
+        # of introduction steps over the number (build()): told as what the
+        # docket enters, with what the journal says beside it, and never as
+        # an introduction. "on" a day only where the row states one -- HB 633
+        # of 2007's states none, and the day it was typed is not that day.
+        j = ev.get("_journal") or {}
+        to = (f" and referred to the {chamber} {ev['committee']} committee"
+              if ev.get("committee") else "")
+        try:
+            day = datetime.strptime(j.get("date") or "", "%Y-%m-%d").strftime(MONTH)
+        except ValueError:
+            day = ""
+        left = ("; the House Journal" + (f" of {day}" if day else "")
+                + " leaves it out of the bills it introduces")
+        if re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", ev.get("_raw") or "") and ev.get("date"):
+            return f"The docket enters it as introduced on {fdate(ev['date'])}{to}{left}."
+        typed = (f", on a row entered {ev['_entered'].strftime(MONTH)}"
+                 if ev.get("_entered") and ev["_entered"] != datetime.min else "")
+        return f"The docket enters it as introduced{to}{typed}{left}."
+
     if ev.get("_void") and t in ("hearing", "exec", "worksession"):
         # Scheduled for a day after the bill was withdrawn: a notice, not a
         # meeting. The past tense of every sentence below would say it sat.
@@ -2204,7 +2256,7 @@ def day_order(ev):
     return (ev["when"].date(), ev.get("_row", 0))
 
 
-def build(bill, rows):
+def build(bill, rows, introduction=None):
     rows = sorted(rows, key=lambda r: r["created"])
     if CORRECTIONS:
         SIBLINGS.extend(_sibling_rows(bill, rows))
@@ -2305,26 +2357,60 @@ def build(bill, rows):
     # the order things were done: planned, scheduled, withdrawn.
     # The same day counts as before: the row says "To Be", the withdrawal is
     # entered that morning, and the docket alone cannot say the bill was
-    # introduced first. (The House Journal of 4 January 2012 can, and prints
-    # "HB 1284 - Withdrawn." in its list of bills introduced where it prints
-    # HB 1512's entry in full; both read "Withdrawn" here, which is all the
-    # docket says of either.)
+    # introduced first.
+    #
+    # THE HOUSE JOURNAL CAN, AND WHERE THE RECORD CARRIES ITS WORD THAT WORD
+    # DECIDES (`introduction`, or INTRODUCTIONS: the reading build_data puts
+    # on six of the measures it adds). On 4 January 2012 the House's
+    # resolution introduced "House Bills numbered 1126 through 1283, 1285
+    # through 1471 and 1473 through 1709": HB 1284, entered "Withdrawn" at
+    # 8.11 that morning, is stepped over and printed "HB 1284 - Withdrawn.";
+    # HB 1512, entered "Withdrawn" at 8.49, is inside the last range and is
+    # printed in full with its committee. The same-day rule told both as never
+    # introduced, and HB 1512 was read a first and second time and referred.
+    # So a bill the journal says was introduced keeps its introduction, on
+    # the day its row names, and is then withdrawn; a notice for a later day
+    # is still a notice. A row that says "Prior to Introduction" in its own
+    # words is not overruled by this: none is, on disk.
+    #
+    # AND AN "INTRODUCED" ROW THE JOURNAL DOES NOT BEAR OUT IS NOT AN
+    # INTRODUCTION. HB 87 and HB 134 of 2009 and HB 633 of 2007 each have one
+    # row -- "Introduced 1/7/2009 and Referred to Municipal and County
+    # Government; HJ 8, PG. 121" -- which is the row every bill of that day
+    # was given ahead of it, and the resolution of that day steps over each
+    # number. Told in the past tense it said the House had introduced the bill
+    # and referred it. Typed entered_introduced, told as what the docket
+    # enters with the journal beside it (describe), and the bill is one that
+    # was never introduced.
+    said = introduction if introduction is not None else (
+        INTRODUCTIONS.get((P.term_of(str(session or "")), bill)) or {})
+    journal_in = said.get("introduced") is True
+    journal_out = said.get("introduced") is False
     gone = [e for e in evs if e["_type"] == "withdrawn" and not e["cancelled"]]
     not_introduced = False
     if gone:
         cut = min(e["when"] for e in gone).date()
         stated = any(e.get("prior") for e in gone)
         for e in evs:
-            if e["cancelled"]:
-                continue
-            if e["_type"] == "introduced" and TO_BE_INTRODUCED.match(e["_raw"]) \
-                    and (stated or e["when"].date() >= cut):
+            if not e["cancelled"] and e["_type"] == "introduced" \
+                    and TO_BE_INTRODUCED.match(e["_raw"]) \
+                    and (stated or journal_out
+                         or (e["when"].date() >= cut and not journal_in)):
                 e["_type"], not_introduced = "to_be_introduced", True
                 e["when"] = e["_entered"]
-            elif e["_type"] in ("hearing", "exec", "worksession") \
+        for e in evs:
+            if not e["cancelled"] and e["_type"] in ("hearing", "exec", "worksession") \
                     and e["when"].date() > cut:
                 e["_void"] = True
-                e["when"] = e["_entered"]
+                # Beside the plan it belonged to, where the bill never was
+                # introduced; a bill that was keeps the notice on its day.
+                if not_introduced:
+                    e["when"] = e["_entered"]
+    if journal_out:
+        for e in evs:
+            if not e["cancelled"] and e["_type"] == "introduced":
+                e["_type"], not_introduced = "entered_introduced", True
+                e["_journal"] = said
     # And a bill only ever proposed for a session: HB 3 of the 2006 special
     # session, whose one row is PROPOSED_ROW.
     if any(e["_type"] == "proposed" for e in evs) and not any(
@@ -2332,8 +2418,8 @@ def build(bill, rows):
         not_introduced = True
     if not_introduced:
         for e in evs:
-            if e["_type"] in ("to_be_introduced", "withdrawn", "proposed") \
-                    or e.get("_void"):
+            if e["_type"] in ("to_be_introduced", "entered_introduced", "withdrawn",
+                              "proposed") or e.get("_void"):
                 e["_pre"] = True
     if gone:
         evs = [e for _i, e in sorted(enumerate(evs),
@@ -2739,7 +2825,7 @@ def main():
                          "(SETTLED_CHAPTERS); not read unless named")
     a = ap.parse_args()
 
-    global MEMBERS, TESTIMONY, CORRECTIONS, MISFILED, SETTLED_CHAPTERS
+    global MEMBERS, TESTIMONY, CORRECTIONS, MISFILED, SETTLED_CHAPTERS, INTRODUCTIONS
     MEMBERS = load_members(a.members)
     CORRECTIONS = load_corrections(a.corrections)
     MISFILED = load_corrections(a.corrections, "misfiled")
@@ -2750,6 +2836,7 @@ def main():
         TESTIMONY = {}
 
     lsrs = load_lsrs(a.bills)
+    INTRODUCTIONS = load_introductions(a.bills)
     bills = parse_docket(a.docket, want_bill=a.bill, lsrs=lsrs)
     if not bills:
         sys.exit(f"No docket rows found{' for ' + a.bill if a.bill else ''}.")

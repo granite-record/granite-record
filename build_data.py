@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.41
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -501,6 +501,62 @@ TITLED_FROM_JOURNAL = {
 }
 DOCKET_SOURCE = "General Court docket"
 
+# WHETHER THE HOUSE INTRODUCED IT, WHERE THE DOCKET IS WRONG OR CANNOT SAY
+# (1 October 2026). The House introduces its bills by a resolution that names
+# them by number, and the journal prints it (journal_bills.
+# introduction_resolutions). Six of the measures add_past_bills adds are
+# decided by one, and their dockets are not:
+#
+#   HB 87 and HB 134 of 2009 each have one docket row, "Introduced 1/7/2009
+#   and Referred to ...; HJ 8, PG. 121" -- the row every bill of that day was
+#   given ahead of it -- and the resolution of 7 January 2009 reads "House
+#   Bills numbered 31 through 86, 88 through 133 and 135 through 223"
+#   (journals/2009/HJ002.txt:821). The list beneath goes from HB 86 to HB 88
+#   and from HB 133 to HB 135, no resolution of 2009 or 2010 names either
+#   number, and the database has no introduction date and no House status for
+#   either. They were published as introduced and "In committee".
+#   HB 633 of 2007 the same: one row, "Introduced and ref to Health, Human
+#   Services and Elderly Affairs;", with no journal page where its neighbours
+#   cite one, and the resolution of 4 January 2007 reads "579 through 599, 601
+#   through 624, 626 through 632, 634 through 639" (journals/2007/HJ004.txt:
+#   1394). The database gives its LSR no bill number at all.
+#   HB 1284 and HB 1472 of 2012 are withdrawn on the docket, and the
+#   resolution of 4 January 2012 steps over both -- "1126 through 1283, 1285
+#   through 1471 and 1473 through 1709" (journals/2012/HJ001.txt:33) -- with
+#   "HB 1284 - Withdrawn." and "HB 1472 - Withdrawn." in the list beneath.
+#   HB 1512 OF 2012 IS THE OTHER WAY ABOUT. Its docket enters "Withdrawn" at
+#   8.49 on the morning of 4 January 2012, as HB 1284's does at 8.11, and
+#   read alone says it was never introduced. The same resolution names it --
+#   it is inside "1473 through 1709" -- and the list prints its entry in full:
+#   "HB 1512-FN, relative to the authority of conservation commissions.
+#   (Hoelzel, Rock 2: Municipal and County Government)". It was read a first
+#   and second time and referred.
+#
+# A TABLE OF WHAT WAS READ, NOT A READING MADE EVERY NIGHT: a number a
+# resolution steps over is evidence only beside the rest of a bill's record
+# (journal_bills says why), and each of these was read beside its docket and
+# its database row. preflight reads the journals again wherever they are on
+# disk and fails if one of these, or any other measure add_past_bills adds,
+# is told against them. Only on a record add_past_bills makes; every other
+# record's introduction is its docket's, as it was.
+#
+# {(term, bill): {"introduced", the sitting's date, its journal, the House
+# Bills the resolution names in its own words}}.
+_RES_2009 = {"date": "2009-01-07", "journal": "House Journal No. 2",
+             "numbered": "31 through 86, 88 through 133 and 135 through 223"}
+_RES_2012 = {"date": "2012-01-04", "journal": "House Journal No. 1",
+             "numbered": "1126 through 1283, 1285 through 1471 and 1473 through 1709"}
+INTRODUCTION_FROM_JOURNAL = {
+    ("2007-2008", "HB633"): {
+        "introduced": False, "date": "2007-01-04", "journal": "House Journal No. 3",
+        "numbered": "579 through 599, 601 through 624, 626 through 632, 634 through 639"},
+    ("2009-2010", "HB87"): {"introduced": False, **_RES_2009},
+    ("2009-2010", "HB134"): {"introduced": False, **_RES_2009},
+    ("2011-2012", "HB1284"): {"introduced": False, **_RES_2012},
+    ("2011-2012", "HB1472"): {"introduced": False, **_RES_2012},
+    ("2011-2012", "HB1512"): {"introduced": True, **_RES_2012},
+}
+
 
 def _bill_number(s):
     """"HB  0169" and "HB169" are both HB169; anything else is ""."""
@@ -590,8 +646,41 @@ def _docket_numbers(paths, wanted):
     return out
 
 
+def _never_introduced(term, bid, rec, dockets):
+    """Whether one of add_past_bills' measures was never introduced, as its
+    history will tell it: the House Journal's word where the record carries
+    one ("introduction"), and otherwise narrative.build's own reading of the
+    bill's rows in the term's docket (its not_introduced) -- "Withdrawn Prior
+    to Introduction", or withdrawn before the day its "To Be Introduced" row
+    names. ONE RULE, narrative's, asked here rather than written twice: the
+    committee this decides and the history beneath it are then one account.
+    False where the docket is not on this machine or will not read, which
+    leaves the record as it was -- and is said, because a committee kept for
+    want of a docket looks exactly like one a bill was referred to."""
+    said = rec.get("introduction")
+    if said is not None and not said.get("introduced"):
+        return True
+    path = (dockets or {}).get(term)
+    if not path or not Path(path).exists():
+        print(f"  {bid} of {term}: no docket of the term on this machine to say whether "
+              "it was ever introduced; its committee is left as the record gives it")
+        return False
+    try:
+        import narrative as N
+        num = str(rec.get("lsr_num") or "").lstrip("0")
+        rows = [r for rr in N.parse_docket(path, want_bill=bid).values() for r in rr]
+        own = [r for r in rows if r["lsr"].partition("-")[2].strip().lstrip("0") == num]
+        rows = own or rows
+        return bool(rows) and bool(
+            N.build(bid, rows, introduction=said or {}).get("not_introduced"))
+    except Exception as e:                          # noqa: BLE001
+        print(f"  {bid} of {term}: its docket in {path} would not read ({e}); its "
+              "committee is left as the record gives it")
+        return False
+
+
 def add_past_bills(by_term, past, committees, refs, general, body, current="",
-                   known=(), in_use=None, dockets=None):
+                   known=(), in_use=None, dockets=None, introductions=None):
     """{term: {bill: record}}: the measures the General Court's database holds
     and the term's records lack, added to `by_term`.
 
@@ -615,6 +704,16 @@ def add_past_bills(by_term, past, committees, refs, general, body, current="",
     SB 267 of 2007 and SB 499 of 2016, so nothing was referred, whatever
     code the row still carries. The statuses are the General Court's own
     words for the row's codes.
+
+    AND NONE FOR A BILL THAT WAS NEVER INTRODUCED, for the same reason: a
+    bill is referred when it is introduced. HB 1587 of 2010 carries "To Be
+    Introduced 1/6/2010 and Referred to Finance" and "Withdrawn Prior to
+    Introduction"; with Finance on its record it was listed among the bills
+    referred to Finance, on that committee's page and in the download. The
+    row's words stay in its history, which tells them as what was to be.
+    _never_introduced says which bills these are; the House Journal's word
+    on the six it decides (`introductions`, INTRODUCTION_FROM_JOURNAL) goes on
+    the record as "introduction", for narrative.py and the page's note.
 
     The record says where it comes from ("source"), and carries no hearing
     and no text address: the search page gave the archive's, and nothing gave
@@ -647,13 +746,15 @@ def add_past_bills(by_term, past, committees, refs, general, body, current="",
             key = (term, r["SessionYear"], (r.get("LSR") or "").lstrip("0"))
             if key[1:] not in lsr_on.get(term, ()):
                 loose[key] = r
-    if dockets is None and loose:
+    if dockets is None:
         try:
             import referrals
             dockets = referrals.term_dockets()
         except Exception:                           # no docket is not a failure
             dockets = {}
     named = _docket_numbers(dockets or {}, loose) if loose else {}
+    if introductions is None:
+        introductions = INTRODUCTION_FROM_JOURNAL
 
     for r in past:
         term = P.term_of(r.get("SessionYear"))
@@ -711,13 +812,26 @@ def add_past_bills(by_term, past, committees, refs, general, body, current="",
         if from_docket:
             # The number is the docket's, and the record says so.
             rec["number_source"] = DOCKET_SOURCE
+        if (term, bid) in introductions:
+            # What the House Journal's resolution of introduction says of it.
+            rec["introduction"] = dict(introductions[(term, bid)])
         by_term[term][bid] = rec
         added[term][bid] = rec
+    # Nothing was referred of a bill that was never introduced.
+    bare = []
+    for term, recs in sorted(added.items()):
+        for bid, rec in sorted(recs.items()):
+            if (rec["house_committee"] or rec["senate_committee"]) \
+                    and _never_introduced(term, bid, rec, dockets):
+                rec["house_committee"] = rec["senate_committee"] = ""
+                bare.append(f"{bid} {term}")
     n = sum(len(v) for v in added.values())
     print(f"  {PAST_LEGISLATION}: {n} measure(s) the terms' own lists lack added from "
           "the General Court's database"
           + (f" ({', '.join(f'{b} {t}' for t, bb in sorted(added.items()) for b in sorted(bb))})"
-             if n else ""))
+             if n else "")
+          + (f"; {len(bare)} of them never introduced, and given no committee "
+             f"({', '.join(bare)})" if bare else ""))
     return dict(added)
 
 
@@ -761,7 +875,76 @@ def add_journal_titled(by_term, began, table=None, current=""):
     return dict(added)
 
 
-def past_flags(by_term, past, current=""):
+# WHAT A BILL'S OWN SAVED PAGE CALLS IT. The pages fetch_legislation.py saved
+# head the text with the designation, twice:
+#     HB 25-FN-A - FINAL VERSION                (the version line)
+#     HOUSE BILL                                (the caption, over two lines:
+#     25-FN-A                                    legislation/1999/HB0025.html)
+# and the 1989-1998 pages write the caption on one, "HOUSE BILL NO. 25-FN-A".
+# past_flags holds the database's flags to these. Only a line that is the
+# designation and nothing else: the file's own first line, "0226-hb 0025",
+# and a bill named in a sentence are neither.
+PAGES = Path("legislation")
+_FLAGS = r"((?:\s?-\s?FN)?(?:\s?-\s?A)?(?:\s?-\s?(?:LOCAL|L))?)"
+# Compiled once and compared in Python: a pattern made for each bill's own
+# number was compiled 40,000 times a run.
+_VERSION_LINE = re.compile(
+    r"^([A-Z]{2,5}) ?(0*)(\d+)" + _FLAGS + r" ?[-\u2013\u2014] ?(?:AS |FINAL|VERSION|CHAPTERED)")
+_CAPTION_NUMBER = re.compile(r"^0*(\d+)" + _FLAGS + r"$")
+_CAPTION_ONE_LINE = re.compile(
+    r"^(?:HOUSE|SENATE|CONSTITUTIONAL)[A-Z ]*(?:BILL|RESOLUTION) ?(?:NO\.?)? ?0*(\d+)"
+    + _FLAGS + r"$")
+_CAPTION = re.compile(r"\b(?:BILL|RESOLUTION)\b")
+# Read this far into a page. The heading is in the first lines of the body,
+# after the style sheet, and of the 30,393 pages on disk on 1 October 2026 the
+# latest style sheet ends 31,983 characters in (legislation/2017/HB0615.html).
+_PAGE_HEAD = 60000
+
+
+def printed_designations(path, kind, num):
+    """{suffix}: every designation the page at `path` prints for the bill in
+    its heading -- "" for one printed bare -- or an empty set where it prints
+    none this reads, or the page is not there. "-L" is "-LOCAL"."""
+    import html as _html
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            raw = fh.read(_PAGE_HEAD)
+    except OSError:
+        return set()
+    raw = re.sub(r"(?is)<style.*?(?:</style>|$)", "", raw)
+    text = _html.unescape(re.sub(r"<[^>]+>", "\n", raw)).replace("\xa0", " ")
+    lines = [x for x in (re.sub(r"[ \t]+", " ", l).strip() for l in text.split("\n")) if x]
+    num = int(num)
+
+    def norm(suffix):
+        return re.sub(r"-L$", "-LOCAL", re.sub(r"\s", "", suffix))
+    seen = set()
+    for i, line in enumerate(lines[:60]):
+        u = line.upper()
+        # The version line. Not "HB 0025 - ...": a padded number is the
+        # file's own heading, which carries no flags whatever the bill has.
+        m = _VERSION_LINE.match(u)
+        if m and m.group(1) == kind and int(m.group(3)) == num and not m.group(2):
+            seen.add(norm(m.group(4)))
+            continue
+        # The caption's second line, under "HOUSE BILL".
+        m = _CAPTION_NUMBER.match(u)
+        if m and int(m.group(1)) == num and i and _CAPTION.search(lines[i - 1].upper()):
+            seen.add(norm(m.group(2)))
+            continue
+        # The caption on one line.
+        m = _CAPTION_ONE_LINE.match(u)
+        if m and int(m.group(1)) == num:
+            seen.add(norm(m.group(2)))
+    return seen
+
+
+# What the last run of past_flags would not write, for the log and for
+# preflight: [(term, bill, the database's suffix, the page's)].
+PAST_FLAGS_REFUSED = []
+
+
+def past_flags(by_term, past, current="", printed=None):
     """Put the fiscal-note, appropriation and local flags on an archived
     bill's designation, from the General Court's database. Returns a Counter
     of the suffixes written.
@@ -788,10 +971,40 @@ def past_flags(by_term, past, current=""):
     no suffix of its own, joined by its stored LSR -- and refused where the
     database files that LSR under another bill number, as past_sponsors
     refuses it. A record no flag is set on is left exactly as it was.
+
+    AND NOT AGAINST THE BILL'S OWN PAGE. Those rates leave about one bill in a
+    hundred where the two differ, and written from the database the site
+    called HB 25 of 1999 "HB 25-A" over a text headed "HB 25-FN-A - FINAL
+    VERSION", and HB 1419 of 2022 "HB 1419-FN" over "HB 1419-A - AS
+    INTRODUCED". A designation is what the bill prints. So where the saved
+    page prints the bill's designation and none of the forms it prints is the
+    database's, nothing is written: the designation stays the bare number it
+    was, which claims nothing, and the bill is counted and named in the log
+    (PAST_FLAGS_REFUSED) for a person to decide and for the Clerk's list. A
+    page that prints two forms -- the version line and the caption can differ
+    -- agrees where either does. A bill with no saved page, or one whose page
+    prints no designation this reads, takes the database's flags: there is
+    nothing to hold them to. `printed(term, bill, record)` gives the page's
+    forms; preflight's fixtures stand in for it, and the default reads
+    legislation/<year>/<KIND><number>.html.
     """
     done = Counter()
+    del PAST_FLAGS_REFUSED[:]
     if not past:
         return done
+
+    def on_page(term, bid, rec):
+        m = re.match(r"^([A-Z]+)(\d+)$", bid)
+        if not m:
+            return set()
+        year = str(rec.get("lsr_year") or "")[:4]
+        for name in (f"{m.group(1)}{int(m.group(2)):04d}", bid):
+            for ext in ("html", "htm"):
+                f = PAGES / year / f"{name}.{ext}"
+                if f.exists():
+                    return printed_designations(f, m.group(1), m.group(2))
+        return set()
+    printed = printed or on_page
     yes = lambda v: (v or "").strip().lower() in ("1", "true")
     said = {}
     for r in past:
@@ -820,6 +1033,10 @@ def past_flags(by_term, past, current=""):
             suffix = "".join(x for x, on in (("-FN", fn), ("-A", a), ("-LOCAL", local))
                              if on)
             if not suffix:
+                continue
+            forms = printed(term, bid, rec)
+            if forms and suffix not in forms:
+                PAST_FLAGS_REFUSED.append((term, bid, suffix, sorted(forms)))
                 continue
             rec["flags"] = {"a": a, "fn": fn, "local": local}
             rec["suffix"] = suffix
@@ -2261,6 +2478,18 @@ def main():
                   "fiscal-note, appropriation and local flags the General Court's "
                   "database carries ("
                   + ", ".join(f"{k} {v:,}" for k, v in _flagged.most_common()) + ")")
+        # What was held back, said: the bills whose own saved page prints
+        # another designation keep the bare number, for a person to decide.
+        if PAST_FLAGS_REFUSED:
+            print(f"  designations: {len(PAST_FLAGS_REFUSED):,} left bare, because the "
+                  "bill's own saved page prints another designation than the "
+                  "database's flags make (" + ", ".join(
+                      f"{b} {t}: database {s_}, page {'/'.join(x or 'none' for x in f_)}"
+                      for t, b, s_, f_ in PAST_FLAGS_REFUSED[:6])
+                  + (", ..." if len(PAST_FLAGS_REFUSED) > 6 else "") + ")")
+        elif _flagged and not PAGES.is_dir():
+            print(f"  designations: NO {PAGES}/ HERE, so no flag was held to the "
+                  "designation a bill's own page prints (133 differed on 1 October 2026)")
     # One name per committee, the one it had at the time: see
     # _official_committees. Said out loud, because a table that stopped
     # matching would otherwise just quietly put the extra spellings back.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.291
+# GRANITE_VERSION: 2026-09-04.292
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19765,14 +19765,27 @@ def _first_referral_on_disk(referrals, build_data):
     # committee had at the time (committee_names.official), which is a
     # spelling of the same committee and never a different one.
     import committee_names as CN
+    # A BILL THAT WAS NEVER INTRODUCED WAS NEVER REFERRED (1 October 2026). Its
+    # "To Be Introduced 1/6/2010 and Referred to Finance" row is a plan, which
+    # the referral reader takes for a referral and the bill's own history
+    # does not (narratives.json's not_introduced; build_data.add_past_bills
+    # leaves such a record no committee). Those must show none.
+    fn = Path("narratives.json")
+    narr = json.loads(fn.read_text(encoding="utf-8")) if fn.exists() else {}
     wrong, checked = [], 0
     for (t, b), bodies in refs.items():
         rec = (bills.get(t) or {}).get(b)
         if not rec or not rec.get("archived"):
             continue
+        never = bool(((narr.get(t) or {}).get(b) or {}).get("not_introduced"))
         for body, first in bodies.items():
             checked += 1
             shown = rec.get("house_committee" if body == "H" else "senate_committee") or ""
+            if never:
+                if shown:
+                    wrong.append(f"{t} {b} {body}: shows {shown!r}, and the bill was "
+                                 "never introduced")
+                continue
             said = {referrals._key(first), referrals._key(CN.official(first, body, t))}
             if not shown or (referrals._key(shown) not in said and not
                              build_data._same_committee(first, shown, known,
@@ -34877,9 +34890,10 @@ def _withdrawn_on_record():
 # out of a past term (build_data.add_past_bills and its kin), the sponsors,
 # chapters and designation flags its database fills, and the histories read
 # from its past docket view. Every row in a fixture below is a real one,
-# copied from db/past/PastLegislation.psv, PastSponsors.psv, the dockets and
-# the House Journals on disk; the data checks at the foot read the files
-# themselves.
+# copied from db/past/PastLegislation.psv, PastSponsors.psv, the dockets, the
+# saved bill pages and the House Journals on disk -- but for the few a
+# comment says were made for a guard no real row exercises; the data checks
+# at the foot read the files themselves.
 
 def _pl_row(**kw):
     """One PastLegislation row as build_data.past_legislation gives it: the
@@ -34990,9 +35004,24 @@ def _past_bills_into_data(BD):
     Court's "No Committee Assignment" (H29), and a retired code's name from
     committee_names.CODES (H45, Redress of Grievances) rather than the code.
 
+    AND NONE FOR A BILL THAT WAS NEVER INTRODUCED, because a bill is referred
+    when it is introduced. HB 1308 of 2010 is "To Be Introduced 1/6/2010 and
+    Referred to Legislative Administration" and then "Withdrawn Prior to
+    Introduction": with the committee on its record it was listed among that
+    committee's bills. Which bills these are is narrative.build's answer for
+    the bill's own docket rows, so with no docket on the machine the record
+    keeps the committee. HB 633 of 2007's one row says "Introduced", and the
+    House Journal's resolution of introduction steps over 633
+    (INTRODUCTION_FROM_JOURNAL): the record carries that reading and no
+    committee, and with the table empty it keeps both as the docket has them.
+
+    A row with no number is numbered by the docket only where the docket
+    files its LSR under exactly one number, that number is no other row's,
+    and the LSR is on no record.
+
     And the one the docket holds with no title anywhere: HR 69 of 1992, titled
     from the bound House Journal (TITLED_FROM_JOURNAL), only where the docket
-    carries it, and never over a record.
+    carries it, never over a record, and never into the current term.
     """
     import contextlib
     import io
@@ -35021,7 +35050,26 @@ def _past_bills_into_data(BD):
                                       "archived": True}},
                 "2025-2026": {"HB1": {"bill": "HB1", "lsr_year": "2025",
                                       "lsr_num": "0001"}}}
-    past = _PAST_ROWS + [
+    # MADE FOR THE GUARDS: no row on disk is one of these four. A request the
+    # docket files under two numbers; one it files under a number the database
+    # gives another row (SB267, below); one whose LSR a record already carries
+    # (the HB 1 of 2007 here is LSR 1); and a bill the HOUSE refused to
+    # introduce, for the House's side of the rule the two Senate bills hold.
+    # FIRST, so that a row let through would take a number before its owner.
+    guards = [
+        _pl_row(SessionYear="2007", LSR="900", LegislativeBody="H",
+                lsrtitle="a request the docket files under two numbers.",
+                GeneralStatusCode="02"),
+        _pl_row(SessionYear="2007", LSR="901", LegislativeBody="S",
+                lsrtitle="a request the docket files under SB267.",
+                GeneralStatusCode="03"),
+        _pl_row(SessionYear="2007", LSR="1", LegislativeBody="H",
+                lsrtitle="a request whose LSR a record carries.", GeneralStatusCode="02"),
+        _pl_row(SessionYear="2011", LSR="950", LegislativeBody="H", CondensedBillNo="HB950",
+                lsrtitle="a bill the House refused to introduce.",
+                HouseCommitteeReferralCode="H12", HouseStatusCode="24",
+                GeneralStatusCode="02")]
+    past = guards + _PAST_ROWS + [
         _pl_row(SessionYear="1987", LSR="1", LegislativeBody="H", CondensedBillNo="HB1",
                 lsrtitle="a bill of a term that is not here.", GeneralStatusCode="02"),
         _pl_row(SessionYear="2025", LSR="9999", LegislativeBody="H",
@@ -35033,36 +35081,74 @@ def _past_bills_into_data(BD):
     root = Path(tempfile.mkdtemp())
     try:
         # Docket_db_2007-2008.txt line 6193: the row that numbers LSR 0765.
+        # and, made for the guards, the rows that file the three requests.
         dk = root / "Docket_db_2007-2008.txt"
         dk.write_text(
             "2007|0765|01/31/2007 05:01:33 PM|HB633|H|Introduced and ref to Health, "
-            "Human Services and Elderly Affairs;|01/31/2007 05:01:33 PM\n", encoding="utf-8")
+            "Human Services and Elderly Affairs;|01/31/2007 05:01:33 PM\n"
+            "2007|0900|01/31/2007 05:02:00 PM|HB700|H|Introduced and ref to Finance;|"
+            "01/31/2007 05:02:00 PM\n"
+            "2007|0900|01/31/2007 05:03:00 PM|HB701|H|Introduced and ref to Finance;|"
+            "01/31/2007 05:03:00 PM\n"
+            "2007|0901|09/05/2007 10:30:00 AM|SB267|S|Introduced and Referred to "
+            "Finance|09/05/2007 10:30:00 AM\n"
+            "2007|0001|01/04/2007 10:00:00 AM|HB999|H|Introduced and ref to Finance;|"
+            "01/04/2007 10:00:00 AM\n", encoding="utf-8")
+        # Docket_db_2009-2010.txt lines 14258-14259: HB 1308's two rows.
+        dk10 = root / "Docket_db_2009-2010.txt"
+        dk10.write_text(
+            "2010|2113|12/10/2009 11:23:39 AM|HB1308|H|To Be Introduced 1/6/2010 and "
+            "Referred to Legislative Administration|12/10/2009 11:23:39 AM\n"
+            "2010|2113|01/06/2010 11:33:17 AM|HB1308|H|Withdrawn Prior to Introduction|"
+            "01/06/2010 11:33:17 AM\n", encoding="utf-8")
+        dockets = {"2007-2008": str(dk), "2009-2010": str(dk10)}
         by_term = terms()
         said = io.StringIO()
         with contextlib.redirect_stdout(said):
             added = BD.add_past_bills(by_term, past, committees, refs, general, body,
-                                      "2025-2026", dockets={"2007-2008": str(dk)})
-            # With no docket to number it, the unnumbered row stays out.
+                                      "2025-2026", dockets=dockets)
+            # With no docket to number it, the unnumbered row stays out; and
+            # with none to read, a bill keeps the committee its record names.
             bare = terms()
-            none = BD.add_past_bills(bare, past, committees, {}, general, body,
+            none = BD.add_past_bills(bare, past, committees, refs, general, body,
                                      "2025-2026", dockets={})
+            # With nothing read from the House Journal, the docket's word.
+            alone = terms()
+            BD.add_past_bills(alone, past, committees, refs, general, body, "2025-2026",
+                              dockets=dockets, introductions={})
     finally:
         shutil.rmtree(root, ignore_errors=True)
     got = {t: sorted(bb) for t, bb in added.items()}
     assert got == {"2007-2008": ["HB633", "SB267"], "2009-2010": ["HB1308"],
-                   "2011-2012": ["HR31", "PET29"], "2015-2016": ["SB499"],
+                   "2011-2012": ["HB950", "HR31", "PET29"], "2015-2016": ["SB499"],
                    "2017-2018": ["HR1"]}, f"added {got}"
     assert sorted(by_term) == sorted(terms()), f"a term was created: {sorted(by_term)}"
     assert by_term["2009-2010"]["SR1"] is sr1 and "source" not in sr1, (
         "a database row was put over a record the term already has")
     assert "HB633" not in none.get("2007-2008", {}), (
         "a row with no bill number was added with no docket row to number it")
+    # The three the docket cannot number.
+    assert not {"HB700", "HB701"} & set(by_term["2007-2008"]), (
+        "a request the docket files under two numbers was given one of them")
+    assert by_term["2007-2008"]["SB267"]["lsr"] == "2007-1345", (
+        "a row with no number took a number the database gives another row: SB267 is "
+        f"LSR {by_term['2007-2008']['SB267']['lsr']}")
+    assert "HB999" not in by_term["2007-2008"], (
+        "a row whose LSR a record already carries was added under the docket's number")
     r = by_term["2009-2010"]["HB1308"]
     assert (r["lsr"], r["lsr_year"], r["lsr_num"], r["chamber"], r["designation"],
             r["house_committee"], r["gen_status"], r["house_status"], r["source"],
             r["archived"]) == (
-        "2010-2113", "2010", "2113", "H", "HB 1308", "Legislative Administration",
-        "HOUSE", "", BD.PAST_SOURCE, True), r
+        "2010-2113", "2010", "2113", "H", "HB 1308", "",
+        "HOUSE", "", BD.PAST_SOURCE, True), (
+        f"HB 1308 of 2010, withdrawn prior to introduction, reads {r}")
+    assert none["2009-2010"]["HB1308"]["house_committee"] == "Legislative Administration", (
+        "with no docket on the machine to say it was never introduced, the committee "
+        "its record names was dropped")
+    assert by_term["2011-2012"]["HB950"]["house_committee"] == "" and (
+        by_term["2011-2012"]["HB950"]["house_status"] == "REFUSED INTRODUCTION"), (
+        "a bill the House refused to introduce carries a House committee: "
+        f"{by_term['2011-2012']['HB950']}")
     assert r["title"] == "relative to health screenings for members of the general court."
     for term, bid in (("2007-2008", "SB267"), ("2015-2016", "SB499")):
         s = by_term[term][bid]
@@ -35080,12 +35166,27 @@ def _past_bills_into_data(BD):
         "2017-0587", "0587", "PASSED/ADOPTED"), h
     b = by_term["2007-2008"]["HB633"]
     assert (b["lsr"], b["house_committee"], b.get("number_source")) == (
-        "2007-765", "Health, Human Services and Elderly Affairs", BD.DOCKET_SOURCE), b
+        "2007-765", "", BD.DOCKET_SOURCE), (
+        f"HB 633 of 2007, which the House Journal's resolution steps over, reads {b}")
+    assert b.get("introduction") == BD.INTRODUCTION_FROM_JOURNAL[("2007-2008", "HB633")] \
+        and b["introduction"]["introduced"] is False \
+        and b["introduction"] is not BD.INTRODUCTION_FROM_JOURNAL[("2007-2008", "HB633")], b
+    a = alone["2007-2008"]["HB633"]
+    assert a["house_committee"] == "Health, Human Services and Elderly Affairs" and (
+        "introduction" not in a), (
+        "with no reading of the House Journal, HB 633's one docket row -- "
+        f"\"Introduced and ref to ...\" -- did not stand: {a}")
+    assert all("introduction" not in by_term[t][x] for t, x in (
+        ("2009-2010", "HB1308"), ("2007-2008", "SB267"), ("2011-2012", "PET29"))), (
+        "a record the House Journal table does not name carries a reading of it")
     assert all("number_source" not in by_term[t][x] for t, x in (
         ("2009-2010", "HB1308"), ("2007-2008", "SB267"))), (
         "a record numbered by the database says its number is the docket's")
-    assert "7 measure(s)" in said.getvalue() and "HB633 2007-2008" in said.getvalue(), (
+    assert "8 measure(s)" in said.getvalue() and "HB633 2007-2008" in said.getvalue(), (
         f"what was added is not said: {said.getvalue()[-300:]}")
+    assert "2 of them never introduced" in said.getvalue() and (
+        "HB633 2007-2008, HB1308 2009-2010" in said.getvalue()), (
+        f"the bills given no committee are not said: {said.getvalue()[-300:]}")
 
     # HR 69 of 1992: the docket's, with the journal's title.
     with contextlib.redirect_stdout(io.StringIO()) as said:
@@ -35107,10 +35208,30 @@ def _past_bills_into_data(BD):
         "HR 69 was added with no docket row on the machine")
     assert kept["1991-1992"]["HR69"] is mine, "the journal's title went over a record"
     assert "not added" in said.getvalue(), "a titled measure left out went unsaid"
+    # Never into the current term, whatever a table names.
+    with contextlib.redirect_stdout(io.StringIO()):
+        now = {"2025-2026": {}}
+        took = BD.add_journal_titled(
+            now, {("2025-2026", "HR69"): "H"}, current="2025-2026",
+            table={("2025-2026", "HR69"): BD.TITLED_FROM_JOURNAL[("1991-1992", "HR69")]})
+    assert took == {} and not now["2025-2026"], (
+        "a measure titled from a journal was added to the current term")
+    # The steps in build_data.main, in the order their comments give: every
+    # term first, the database's measures, the journal-titled one, the House
+    # Journal's own, and the flags last so the records just added take theirs.
+    import inspect
+    src = inspect.getsource(BD.main)
+    at = [src.find(x) for x in ("add_past_bills(by_term", "add_journal_titled(by_term",
+                                "add_journal_bills(by_term", "past_flags(by_term")]
+    assert all(x >= 0 for x in at) and at == sorted(at), (
+        "build_data.main no longer adds the database's measures, the journal-titled "
+        f"one, the journal's own and then the flags, in that order: {at}")
     return "ok", ("7 real rows added, each in its term under its own number; a record, "
                   "a request, a placeholder, a missing term and the current term left "
-                  "alone; no committee for a bill refused introduction; HR 69 titled "
-                  "from the journal only where the docket holds it")
+                  "alone; a row with no number numbered only by one docket number "
+                  "nothing else has; no committee for a bill refused introduction or "
+                  "never introduced; HR 69 titled from the journal only where the "
+                  "docket holds it")
 
 
 @check("build", "an archived designation takes its flags from the database, and only "
@@ -35168,9 +35289,174 @@ def _past_flags(BD):
     assert dict(done) == {"-FN-LOCAL": 1, "-FN-A": 1}, dict(done)
     assert BD.past_flags({"2011-2012": {"HB1282": rec("HB1282", "2012", "2398")}}, None,
                          "2025-2026") == Counter(), "flags were written with no table"
+    # Each of the three things that leave a record alone, on a record that is
+    # the database's own row in every other respect: a suffix already there,
+    # flags already there, and a record that is not the archive's.
+    for why, kw in (("a suffix", {"suffix": "-FN", "designation": "HB 1282-FN"}),
+                    ("flags", {"flags": {"a": False, "fn": True, "local": False}}),
+                    ("no archived mark", {"archived": False})):
+        mine = rec("HB1282", "2012", "2398", **kw)
+        kept = dict(mine)
+        got = BD.past_flags({"2011-2012": {"HB1282": mine}}, _PAST_FLAG_ROWS, "2025-2026")
+        assert mine == kept and not got, (
+            f"a record with {why} of its own was given the database's flags: {mine}")
+
+    # AND NOT AGAINST THE BILL'S OWN PAGE. The heads of four saved pages, as
+    # saved: the version line and the caption of 1999's HB 25 both print
+    # -FN-A where the database has the appropriation flag alone; 2022's HB
+    # 1419 prints -A where it has the fiscal note alone; 1993's HB 275 prints
+    # the bare number where it has -LOCAL; 2012's HB 1282 prints what it has.
+    root = Path(tempfile.mkdtemp())
+    try:
+        for name, text in _SAVED_PAGE_HEADS.items():
+            (root / name).write_text(text, encoding="utf-8")
+        read = lambda name, kind, num: BD.printed_designations(root / name, kind, num)
+        assert read("HB0025.html", "HB", 25) == {"-FN-A"}, read("HB0025.html", "HB", 25)
+        assert read("HB1419.html", "HB", 1419) == {"-A"}, read("HB1419.html", "HB", 1419)
+        assert read("HB0275.html", "HB", 275) == {""}, read("HB0275.html", "HB", 275)
+        assert read("HB1282.html", "HB", "1282") == {"-FN-LOCAL"}, (
+            read("HB1282.html", "HB", "1282"))
+        # The version line alone says it, on a page cut before its caption.
+        (root / "cut.html").write_text(
+            _SAVED_PAGE_HEADS["HB1282.html"].split("<p align=\"center\"><font")[0],
+            encoding="utf-8")
+        assert read("cut.html", "HB", 1282) == {"-FN-LOCAL"}, read("cut.html", "HB", 1282)
+        # Another number's page, and no page: nothing printed for this one.
+        assert read("HB0025.html", "HB", 26) == set() and read("HB0025.html", "HB", 2) == set()
+        assert read("absent.html", "HB", 25) == set()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # db/past/PastLegislation.psv's rows for LSR 1999-1017, 2022-2827 and
+    # 1993-0194.
+    rows = _PAST_FLAG_ROWS + [
+        _pl_row(SessionYear="1999", LSR="1017", LegislativeBody="H", CondensedBillNo="HB25",
+                lsrtitle="making appropriations for capital improvements.",
+                AppropriationCode="True", GeneralStatusCode="07"),
+        _pl_row(SessionYear="2022", LSR="2827", LegislativeBody="H",
+                CondensedBillNo="HB1419",
+                lsrtitle="relative to establishing a New Hampshire civilian climate "
+                         "corps advisory commission.",
+                FiscalImpactCode="True", GeneralStatusCode="02"),
+        _pl_row(SessionYear="1993", LSR="194", LegislativeBody="H", CondensedBillNo="HB275",
+                lsrtitle="allowing towns to create special funds for highway "
+                         "expenditures.", LocalCode="True", GeneralStatusCode="07")]
+    pages = {("1999-2000", "HB25"): {"-FN-A"}, ("2021-2022", "HB1419"): {"-A"},
+             ("1993-1994", "HB275"): {""},
+             # Two forms on one page, one of them the database's: agrees.
+             ("2011-2012", "HB1282"): {"", "-FN-LOCAL"}}
+    held = {"1999-2000": {"HB25": rec("HB25", "1999", "1017")},
+            "2021-2022": {"HB1419": rec("HB1419", "2022", "2827")},
+            "1993-1994": {"HB275": rec("HB275", "1993", "194")},
+            "2011-2012": {"HB1282": rec("HB1282", "2012", "2398")},
+            # No saved page: nothing to hold the flags to, and they are written.
+            "2003-2004": {"HB2": rec("HB2", "2003", "1210")}}
+    asked = []
+
+    def printed(term, bid, record):
+        asked.append((term, bid))
+        return pages.get((term, bid), set())
+    done = BD.past_flags(held, rows, "2025-2026", printed=printed)
+    for term, bid, bare in (("1999-2000", "HB25", "HB 25"), ("2021-2022", "HB1419", "HB 1419"),
+                            ("1993-1994", "HB275", "HB 275")):
+        r = held[term][bid]
+        assert r["designation"] == bare and "flags" not in r and "suffix" not in r, (
+            f"{bid} of {term} was written {r['designation']!r} from the database over a "
+            f"page that prints {sorted(pages[(term, bid)])}")
+    assert sorted(BD.PAST_FLAGS_REFUSED) == [
+        ("1993-1994", "HB275", "-LOCAL", [""]), ("1999-2000", "HB25", "-A", ["-FN-A"]),
+        ("2021-2022", "HB1419", "-FN", ["-A"])], BD.PAST_FLAGS_REFUSED
+    assert held["2011-2012"]["HB1282"]["designation"] == "HB 1282-FN-LOCAL" and (
+        held["2003-2004"]["HB2"]["designation"] == "HB 2-FN-A") and dict(done) == {
+        "-FN-LOCAL": 1, "-FN-A": 1}, (held, dict(done))
+    assert len(asked) == 5, f"the page was asked of {asked}"
+    # The list is of the last run, not of every run before it.
+    BD.past_flags({"2003-2004": {"HB2": rec("HB2", "2003", "1210")}}, rows, "2025-2026",
+                  printed=printed)
+    assert BD.PAST_FLAGS_REFUSED == [], BD.PAST_FLAGS_REFUSED
     return "ok", ("HB 1282-FN-LOCAL and HB 2-FN-A from the database's three columns; a "
                   "bill with no flag set, one with a suffix, a journal record, another "
-                  "number's LSR and the current term untouched")
+                  "number's LSR and the current term untouched; and nothing written "
+                  "where the bill's own saved page prints another designation")
+
+
+# The heads of four saved bill pages, as fetch_legislation.py saved them --
+# legislation/1999/HB0025.html, legislation/2022/HB1419.html,
+# legislation/1993/HB0275.html and legislation/2012/HB1282.html -- cut after
+# the caption, and less the generator's META lines, most of 2022's style
+# sheet and 1999's five other amendment stamps.
+_SAVED_PAGE_HEADS = {
+    "HB0025.html": """<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; CHARSET=iso-8859-1">
+<TITLE> 0226-hb 0025 </TITLE>
+</HEAD>
+<BODY><A NAME="TopOfPage"> </A>
+
+<P ALIGN="CENTER"><B><FONT FACE="Century Schoolbook">CHAPTER 226</FONT></B></P>
+
+<P ALIGN="CENTER"><B><FONT FACE="Century Schoolbook">HB 25-FN-A - FINAL VERSION</FONT></B></P>
+
+<P><FONT FACE="Century Schoolbook">13may99.....0917h</FONT></P>
+
+<P ALIGN="CENTER"><FONT FACE="Century Schoolbook">1999 SESSION</FONT></P>
+
+<P><FONT FACE="Century Schoolbook">99-1017</FONT></P>
+
+<P><FONT FACE="Century Schoolbook">10/09</FONT></P>
+
+<P><FONT FACE="Century Schoolbook">HOUSE BILL</FONT><B><I><FONT FACE="Century Schoolbook" SIZE="+1">  25-FN-A</FONT></I></B></P>
+
+<P><FONT FACE="Century Schoolbook">AN ACT making appropriations for capital improvements.</FONT></P>
+""",
+    "HB1419.html": """<html><head><style type="text/css">
+.cs2E86D3A6{text-align:center;text-indent:0pt;margin:0pt 0pt 0pt 0pt}
+.cs5925EB86{color:#000000;font-family:'Times New Roman';font-size:12pt;font-weight:bold;}
+</style>
+	</head>
+	<body>
+		<p class="cs2E86D3A6"><span class="cs5925EB86">HB 1419-A - AS INTRODUCED</span></p><p class="cs2E86D3A6"><span class="cs5925EB86">&nbsp;</span></p><p class="cs2E86D3A6"><span class="csDD5E5F52">2022 SESSION</span></p><p class="cs95E872D0" style="tab-stops:left 396pt;"><span class="csDD5E5F52">	22-2827</span></p><p class="cs95E872D0" style="tab-stops:left 396pt;"><span class="csDD5E5F52">	07/10</span></p><p class="cs95E872D0" style="tab-stops:left 108pt;"><span class="csDD5E5F52">HOUSE BILL	</span><span class="csED7826F6">1419-A</span></p><p class="csE0B838BE"><span class="csDD5E5F52">AN ACT	</span><a name="bkTitleDraft0"><span class="csDD5E5F52">relative to establishing a New Hampshire civilian climate corps advisory commission.</span></a></p>
+""",
+    "HB0275.html": """<HTML>
+<HEAD>
+<TITLE> HB 0275 </TITLE>
+</HEAD>
+<BODY><A NAME="TopOfPage"> </A>
+
+<P><FONT FACE="Courier New">18feb93.....1161h</FONT></P>
+
+<H1 ALIGN=CENTER><A NAME="P19_64"></A>
+<U><FONT FACE="Courier New" SIZE="+0">HOUSE&#160;BILL&#160;-&#160;FINAL&#160;VERSION</FONT></U></H1>
+
+      <UL><UL><UL><P><FONT FACE="Courier New"><B><I>1993 SESSION</I></B> 0184B</FONT></P>
+
+        <UL><P><FONT FACE="Courier New">93-0194</FONT></P>
+
+        <P><FONT FACE="Courier New">08</FONT></P>
+
+</UL></UL></UL></UL><P><FONT FACE="Courier New">HOUSE BILL NO.<U> &#160;&#160;&#160;275&#160;&#160;&#160;</U></FONT></P>
+
+<P><FONT FACE="Courier New">INTRODUCED BY:  Rep. J. Chandler of Merr 1; Rep. Cowenhoven of Hills 14; </FONT></P>
+""",
+    "HB1282.html": """<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>HB 1282</title>
+</head>
+<body><a name="TopOfPage"> </a>
+
+<p align="center"><b><font face="Century Schoolbook">HB 1282-FN-LOCAL &#8211; AS INTRODUCED</font></b></p>
+
+<p align="center"><font face="Century Schoolbook">2012 SESSION</font></p>
+
+<p><font face="Century Schoolbook"><a name="P5_46"></a>12-2398</font></p>
+
+<p><font face="Century Schoolbook">06/10</font></p>
+
+<p><font face="Century Schoolbook">HOUSE BILL</font><b><i><font face="Century Schoolbook" size="+1">  1282-FN-LOCAL</font></i></b></p>
+
+<p><font face="Century Schoolbook"><a name="P10_81"></a>AN ACT relative to workforce housing and the definition of community.</font></p>
+""",
+}
 
 
 # Real rows: Docket_db_2009-2010.txt lines 12981-12982 (HB 1587);
@@ -35220,12 +35506,30 @@ _DOCKET_NOT_INTRODUCED = {
         "2007|1345|09/05/2007 10:47:00 AM|SB267|S|in the Early Session 2/3 Nec.; RC "
         "14Y-10N, MF; SJ 25, Pg. 1406-1407|09/05/2007 10:47:00 AM"],
 }
+# And the three whose introduction the House Journal decides, not the docket:
+# Docket_db_2009-2010.txt line 856 (HB 87), Docket_db_2007-2008.txt line 6193
+# (HB 633) and Docket_db_2011-2012.txt lines 18101-18103 (HB 1512).
+_DOCKET_JOURNAL_DECIDES = {
+    ("HB87", "2009-2010"): [
+        "2009|0108|01/07/2009 08:46:50 AM|HB87|H|Introduced 1/7/2009 and Referred to "
+        "Municipal and County Government; HJ 8, PG. 121|01/07/2009 08:46:50 AM"],
+    ("HB633", "2007-2008"): [
+        "2007|0765|01/31/2007 05:01:33 PM|HB633|H|Introduced and ref to Health, Human "
+        "Services and Elderly Affairs;|01/31/2007 05:01:33 PM"],
+    ("HB1512", "2011-2012"): [
+        "2012|2667|12/06/2011 08:51:36 AM|HB1512|H|To Be Introduced 1/4/2012 and "
+        "Referred to Municipal and County Government; HJ 7, PG. 358|"
+        "12/06/2011 08:51:36 AM",
+        "2012|2667|12/14/2011 10:55:44 AM|HB1512|H|Public Hearing: 1/12/2012 12:05 PM "
+        "LOB 301  ==Executive Session May Follow==|12/14/2011 10:55:44 AM",
+        "2012|2667|01/04/2012 08:49:16 AM|HB1512|H|Withdrawn|01/04/2012 08:49:16 AM"],
+}
 
 
 @check("status", "a bill withdrawn before it was introduced, refused introduction or only "
                  "proposed says so in the record's words, and is drawn no rail",
-       needs=("narrative", "build_site_v2"))
-def _never_introduced(N, B):
+       needs=("narrative", "build_site_v2", "build_data"))
+def _never_introduced(N, B, BD):
     """The bills the search page left out are mostly ones that stopped early,
     and the words the site had for them were wrong: "In committee" for a bill
     the Senate refused to introduce, "It was introduced on January 6, 2010"
@@ -35244,16 +35548,51 @@ def _never_introduced(N, B):
     hearing scheduled. And no rail is drawn for a bill that was never
     introduced, because the rail's first stop is Introduced; a bill withdrawn
     by a vote after its introduction keeps its rail.
+
+    AND WHERE THE HOUSE JOURNAL SAYS WHETHER THE BILL WAS INTRODUCED, THAT
+    DECIDES (build_data.INTRODUCTION_FROM_JOURNAL, the House's resolutions of
+    introduction). HB 87 of 2009 and HB 633 of 2007 each have one docket row
+    that says "Introduced", and the resolution of the day steps over the
+    number: they read "It was introduced ... and referred", "In committee",
+    with a rail; they are told as what the docket enters and the journal does
+    not bear out, read Not introduced, and are drawn none. HB 1512 of 2012 is
+    the other way about: its docket enters "Withdrawn" on the morning of the
+    day its "To Be Introduced" row names, which read alone is a bill never
+    introduced, and the resolution of that day names it: introduced, referred,
+    withdrawn, with a rail and its committee. HB 1284, which the same
+    resolution steps over, stays as its docket tells it.
+
+    A bill never introduced is not "carried over" for having a row typed the
+    December before, and its note says only what is true of its own page.
     """
-    saved = (N.CORRECTIONS, N.MISFILED, N.TERM)
-    narr = {}
+    saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
+    narr, alone = {}, {}
+    said = BD.INTRODUCTION_FROM_JOURNAL
     try:
-        N.CORRECTIONS, N.MISFILED = [], []
+        N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS = [], [], {}
         for (bill, term), lines in _DOCKET_NOT_INTRODUCED.items():
             N.TERM = term
             narr[bill] = N.build(bill, _docket_rows(lines))
+        for (bill, term), lines in _DOCKET_JOURNAL_DECIDES.items():
+            N.TERM = term
+            alone[bill] = N.build(bill, _docket_rows(lines))
+            narr[bill] = N.build(bill, _docket_rows(lines), introduction=said[(term, bill)])
+        # Stepped over by the resolution, and withdrawn on its own docket: the
+        # journal's word changes nothing in how HB 1284 is told.
+        N.TERM = "2011-2012"
+        with_journal = N.build("HB1284", _docket_rows(
+            _DOCKET_NOT_INTRODUCED[("HB1284", "2011-2012")]),
+            introduction=said[("2011-2012", "HB1284")])
+        # And the same reading through the door narrative.py's own run uses:
+        # the record's "introduction", loaded from data/bills.json.
+        N.INTRODUCTIONS = {("2009-2010", "HB87"): said[("2009-2010", "HB87")]}
+        N.TERM = "2009-2010"
+        by_table = N.build("HB87", _docket_rows(_DOCKET_JOURNAL_DECIDES[("HB87", "2009-2010")]))
     finally:
-        N.CORRECTIONS, N.MISFILED, N.TERM = saved
+        N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
+    assert with_journal["stages"] == narr["HB1284"]["stages"] and (
+        with_journal["events"] == narr["HB1284"]["events"]), with_journal["stages"]
+    assert by_table["stages"] == narr["HB87"]["stages"], by_table["stages"]
 
     def told(bill):
         return [(s["label"], s["hand"], s["text"]) for s in narr[bill]["stages"]]
@@ -35306,6 +35645,39 @@ def _never_introduced(N, B):
                        "Floor Amendment Withdrawn", "Withdrawn from Consent Calendar"):
         assert not N.WITHDRAWN_ROW.search(not_a_bill), not_a_bill
 
+    # What the House Journal decides. Read alone, the docket introduces HB 87
+    # and HB 633 and does not introduce HB 1512.
+    assert [(e["type"], bool(alone[b].get("not_introduced"))) for b in ("HB87", "HB633")
+            for e in alone[b]["events"]] == [("introduced", False)] * 2, alone
+    assert alone["HB1512"].get("not_introduced") is True and (
+        alone["HB1512"]["events"][0]["type"] == "to_be_introduced"), alone["HB1512"]
+    assert told("HB87") == [(
+        "Before introduction in the House", "H:filed",
+        "The docket enters it as introduced on January 7, 2009 and referred to the House "
+        "Municipal and County Government committee; the House Journal of January 7, 2009 "
+        "leaves it out of the bills it introduces.")], told("HB87")
+    assert kinds("HB87") == [("2009-01-07", "entered_introduced", False)], kinds("HB87")
+    assert narr["HB87"].get("not_introduced") is True and "withdrawn" not in narr["HB87"]
+    # HB 633's row states no day, and the day it was typed is not the day of
+    # anything: "on" a day only where the row gives one.
+    assert told("HB633") == [(
+        "Before introduction in the House", "H:filed",
+        "The docket enters it as introduced and referred to the House Health, Human "
+        "Services and Elderly Affairs committee, on a row entered January 31, 2007; the "
+        "House Journal of January 4, 2007 leaves it out of the bills it introduces.")], (
+        told("HB633"))
+    assert told("HB1512") == [(
+        "In House committee — Municipal and County Government", "H:committee",
+        "It was introduced on January 4, 2012 and referred to the House Municipal and "
+        "County Government committee. It was withdrawn on January 4, 2012. A public "
+        "hearing had been scheduled for January 12, 2012.")], told("HB1512")
+    assert kinds("HB1512") == [
+        ("2012-01-04", "introduced", False), ("2012-01-04", "withdrawn", False),
+        ("2012-01-12", "hearing", True)], kinds("HB1512")
+    assert "not_introduced" not in narr["HB1512"] and (
+        narr["HB1512"]["withdrawn"] == "2012-01-04"), narr["HB1512"]
+    assert not any(narr[b]["unrecognised"] for b in ("HB87", "HB633", "HB1512"))
+
     house = {"gen_status": "HOUSE", "house_status": "", "senate_status": ""}
     refused = {"gen_status": "SENATE", "house_status": "",
                "senate_status": "REFUSED INTRODUCTION"}
@@ -35321,6 +35693,15 @@ def _never_introduced(N, B):
         "done", "Withdrawn")
     assert status("HB3", "2005-2006") == ("done", "Proposed for the special session")
     assert status("SB267", "2007-2008", refused) == ("done", "Refused introduction")
+    assert status("HB87", "2009-2010") == ("done", "Not introduced")
+    assert status("HB633", "2007-2008") == ("done", "Not introduced")
+    assert status("HB1512", "2011-2012") == ("done", "Withdrawn")
+    # The docket alone: the status the three were published with, or ought
+    # not to have been.
+    alone_status = {b: B.bill_disposition({}, b, house, alone[b], [], t, "2025-2026").status
+                    for b, t in _DOCKET_JOURNAL_DECIDES}
+    assert alone_status == {"HB87": "In committee", "HB633": "In committee",
+                            "HB1512": "Withdrawn"}, alone_status
     # HB 2002 of 2002 passed the House before the Senate refused it.
     assert B.classify_stated({"gen_status": "HOUSE",
                               "house_status": "PASSED/ADOPTED WITH AMENDMENT",
@@ -35366,11 +35747,20 @@ def _never_introduced(N, B):
             "2005-2006": {"HB3": rec("HB3", "2006", "4002")},
             "2007-2008": {"SB267": rec("SB267", "2007", "1345", refused),
                           "HB633": rec("HB633", "2007", "765",
-                                       number_source="General Court docket")},
-            "2009-2010": {"HB1587": rec("HB1587", "2010", "2002")},
-            "2011-2012": {"HB1284": rec("HB1284", "2012", "2404"),
-                          "HB523": rec("HB523", "2011", "540"),
-                          "PET29": rec("PET29", "2012", "3043")},
+                                       number_source="General Court docket",
+                                       introduction=dict(said[("2007-2008", "HB633")]))},
+            "2009-2010": {"HB1587": rec("HB1587", "2010", "2002"),
+                          "HB87": rec("HB87", "2009", "108",
+                                      introduction=dict(said[("2009-2010", "HB87")]))},
+            "2011-2012": {"HB1284": rec("HB1284", "2012", "2404",
+                                        introduction=dict(said[("2011-2012", "HB1284")])),
+                          "HB523": rec("HB523", "2011", "540",
+                                       house_committee="Fish and Game and Marine "
+                                                       "Resources"),
+                          "PET29": rec("PET29", "2012", "3043"),
+                          "HB1512": rec("HB1512", "2012", "2667",
+                                        house_committee="Municipal and County Government",
+                                        introduction=dict(said[("2011-2012", "HB1512")]))},
             # So that the terms above are not the current one.
             "2025-2026": {"HB1": {"bill": "HB1", "lsr": "2025-0001", "lsr_year": "2025",
                                   "lsr_num": "0001", "title": "a bill", "chamber": "H"}}}
@@ -35384,9 +35774,19 @@ def _never_introduced(N, B):
         finally:
             os.chdir(here)
         row = {r["id"]: r for r in idx}
-        for bid in ("HB3", "SB267", "HB1587", "HB1284"):
+        for bid in ("HB3", "SB267", "HB1587", "HB1284", "HB87", "HB633"):
             assert row[bid]["passage"] == "", (
                 f"{bid}, never introduced, is drawn the rail {row[bid]['passage']!r}")
+            assert row[bid]["carried"] is False, (
+                f"{bid}, never introduced, is marked as carried over from the year its "
+                "\"To Be Introduced\" row was typed in")
+        assert row["HB1512"]["passage"] == row["PET29"]["passage"] and (
+            row["HB1512"]["status"], row["HB1512"]["committee"]) == (
+            "Withdrawn", "House Municipal and County Government"), (
+            "HB 1512 of 2012, which the House Journal lists among the bills introduced, "
+            f"reads {row['HB1512']}")
+        assert (row["HB87"]["status"], row["HB633"]["status"], row["HB87"]["kind"]) == (
+            "Not introduced", "Not introduced", "done"), (row["HB87"], row["HB633"])
         assert row["HB523"]["passage"] == "Hx--x" and row["PET29"]["passage"] == "Hx--x", (
             f"a bill withdrawn after it was introduced lost its rail: "
             f"{row['HB523']['passage']!r}, {row['PET29']['passage']!r}")
@@ -35402,12 +35802,43 @@ def _never_introduced(N, B):
         assert p["status_source"] == "derived from the docket", p["status_source"]
         assert len(p["notes"]) == 1 and "database of past sessions" in p["notes"][0] \
             and "bill search" in p["notes"][0], p["notes"]
+        # Only what is true of this page: its title is the database's, its
+        # status is read from its docket, and it has no committee.
+        assert "Its title here is from" in p["notes"][0] and (
+            "history and status from its docket" in p["notes"][0]) and (
+            "committee" not in p["notes"][0]), p["notes"]
         assert p["docket_url"] and "lsr=2002" in p["docket_url"], p["docket_url"]
         s = page("2007", "SB267")
         assert s["status_source"] == "General Court database", s["status_source"]
         assert s["next_step"] == "Senate: REFUSED INTRODUCTION", s["next_step"]
+        assert len(s["notes"]) == 2 and "Its title and status here are from" in s["notes"][0] \
+            and "and its history from its docket." in s["notes"][0], s["notes"]
+        # Its one docket row names SB 266, and the note says whose vote it was.
+        assert "SB 266" in s["notes"][1] and "SB 267-FN" in s["notes"][1] and (
+            "Senate Journal of September 5, 2007" in s["notes"][1]), s["notes"]
         n = page("2007", "HB633")["notes"]
-        assert len(n) == 1 and "no bill number" in n[0] and "docket" in n[0], n
+        assert len(n) == 2 and "no bill number" in n[0] and "docket" in n[0], n
+        assert "579 through 599, 601 through 624, 626 through 632, 634 through 639" in n[1] \
+            and "leaves this number out" in n[1] and "January 4, 2007" in n[1], n
+        j = page("2009", "HB87")
+        assert j["status_source"] == "House Journal" \
+            and not (j.get("journey") or {}).get("rail"), (
+            j["status_source"], j.get("journey"))
+        assert len(j["notes"]) == 2 and "Its title here is from" in j["notes"][0] and (
+            "status" not in j["notes"][0]) and (
+            "31 through 86, 88 through 133 and 135 through 223" in j["notes"][1]) and (
+            "told here as not introduced" in j["notes"][1]), j["notes"]
+        w = page("2012", "HB1512")
+        assert (w.get("journey") or {}).get("rail") and len(w["notes"]) == 2 and (
+            "which takes in this one" in w["notes"][1]) and (
+            "introduced and then withdrawn" in w["notes"][1]), (w.get("journey"), w["notes"])
+        x = page("2012", "HB1284")["notes"]
+        assert len(x) == 2 and "leaves this number out" in x[1] and (
+            "withdrawn without having been introduced" in x[1]), x
+        # A bill withdrawn by a vote keeps one note, and its committee.
+        assert len(page("2011", "HB523")["notes"]) == 1 and row["HB523"]["committee"] == (
+            "House Fish and Game and Marine Resources"), (page("2011", "HB523")["notes"],
+                                                           row["HB523"])
         h = page("2012", "HB1284")
         assert [e["text"] for e in h["events"]] == [
             "To Be Introduced 1/4/2012 and Referred to Education", "Withdrawn"], h["events"]
@@ -35418,7 +35849,9 @@ def _never_introduced(N, B):
     return "ok", ("Withdrawn prior to introduction, Withdrawn, Refused introduction and "
                   "Proposed for the special session, each from the record's own row or "
                   "code; what was entered ahead is told as planned; no rail where there "
-                  "was no introduction, and a note of where the record is from")
+                  "was no introduction, and a note of where the record is from; HB 87 "
+                  "and HB 633 Not introduced and HB 1512 introduced, by the House "
+                  "Journal's resolutions and against their dockets")
 
 
 # journals/2021/HJ003.txt: the entry (lines 6280-6282), the first lines of
@@ -35722,6 +36155,58 @@ def _past_sponsors_fill(text_sponsors, B):
         "a bill that already has a sponsor took the record's list")
     none = {}
     assert not PSP.merge(none, doc, {}, fill=False)["filled"] and "1993-1994" not in none
+    # A list to fill with that turned up under the merged term is not merged:
+    # that term's lists are the record's or the page's, by its own rule.
+    stray = {"2023-2024": {"HB999": {"fill": [{"name": "Somebody"}]}}}
+    into = {}
+    assert not PSP.merge(into, stray, {})["filled"] and not (into.get("2023-2024") or {}).get(
+        "HB999"), "a fill was merged into the merged term"
+
+    # ONE NUMBER LISTED TWICE IS ONE SPONSOR, AND A LIST WITH NO PRIME MARKED
+    # TAKES ITS FIRST. PastSponsors.psv's rows for LSR 2003-1217 (HB 3 of
+    # 2003: employee 209058, Sen. Robert Clegg, on rows 2 and 8, and the prime
+    # on row 3) and for LSR 1990-9065 (HR 65 of 1990: two rows, neither prime).
+    more = {"2003-2004": {"HB3": {"bill": "HB3", "lsr_year": "2003", "lsr_num": "1217"}},
+            "1989-1990": {"HR65": {"bill": "HR65", "lsr_year": "1990", "lsr_num": "9065"}},
+            "2025-2026": bills["2025-2026"]}
+    ps2 = [_ps_row(2003, 1217, n, emp, prime=(n == 3)) for n, emp in enumerate(
+        ("375941", "209058", "370346", "372821", "374470", "375649", "209040", "209058",
+         "209050", "209015"), 1)] + [_ps_row(1990, 9065, 1, "363283"),
+                                     _ps_row(1990, 9065, 2, "360628")]
+    pl2 = [{"SessionYear": "2003", "LSR": "1217", "CondensedBillNo": "HB3"},
+           {"SessionYear": "1990", "LSR": "9065", "CondensedBillNo": "HR65"}]
+    who = {"375941": ("Whalley, Michael", "H"), "209058": ("Clegg, Robert", "S"),
+           "370346": ("Chandler, Gene", "H"), "372821": ("Kurk, Neal", "H"),
+           "374470": ("Weyler, Kenneth", "H"), "375649": ("Wheeler, Robert", "H"),
+           "209040": ("Eaton, Thomas", "S"), "209050": ("Green, Richard", "S"),
+           "209015": ("D'Allesandro, Lou", "S"), "363283": ("Scamman, W. Douglas", "H"),
+           "360628": ("Chambers, Mary", "H")}
+    people2 = PSP.People([], {k: {"name": n, "chamber": c} for k, (n, c) in who.items()},
+                         [], [])
+    joined2, _tally = PSP.join(more, ps2, pl2)
+    doc2 = PSP.build(more, {}, people2, joined2, named={}, current="2025-2026",
+                     line_of=lambda *_a: None)
+    hb3 = doc2["2003-2004"]["HB3"]["fill"]
+    assert [r["employee"] for r in hb3] == [
+        "370346", "375941", "209058", "372821", "374470", "375649", "209040", "209050",
+        "209015"], f"HB 3 of 2003's filled list: {[r['employee'] for r in hb3]}"
+    assert [r["prime"] for r in hb3] == [True] + [False] * 8 and not any(
+        r["prime_inferred"] for r in hb3), hb3
+    hr65 = doc2["1989-1990"]["HR65"]["fill"]
+    assert [(r["employee"], r["prime"], r["prime_inferred"]) for r in hr65] == [
+        ("363283", True, True), ("360628", False, False)], (
+        "HR 65 of 1990, which the record marks no prime on, is filled as "
+        f"{[(r['employee'], r['prime'], r['prime_inferred']) for r in hr65]}")
+
+    # A FILLED LIST OF 1999-2000 SAYS IT MAY BE SHORT (past_sponsors.SHORT_TERMS),
+    # on the bill's page; no other term's does, and no list from another source.
+    filled_row = [{"name": "Eugene Gagnon", "seat_source": PSP.SOURCE}]
+    note = B.record_notes({}, None, "", filled_row, "1999-2000", "HCR34")
+    assert len(note) == 1 and "may not be complete" in note[0] and "1999" in note[0], note
+    assert B.record_notes({}, None, "", filled_row, "1993-1994", "HB104") == []
+    assert B.record_notes({}, None, "", [{"name": "Somebody", "source": T.SOURCE}],
+                          "1999-2000", "HB25") == []
+    assert "1999-2000" in PSP.SHORT_TERMS and not set(PSP.SHORT_TERMS) & set(PSP.MERGED)
 
     # On the page: linked to his own page, and nothing of today's seat.
     people_ = {"425": {"id": "425", "name": "Packard, Sherman", "chamber": "H",
@@ -35757,13 +36242,15 @@ def _past_sponsors_fill(text_sponsors, B):
     return "ok", ("1993 HB 104 filled from the record, McKinney prime, Packard linked and "
                   "drawn with no seat or party of today; HB 128 keeps its printed "
                   "sponsors; nothing merged over a list, the merged term or the "
-                  "current one")
+                  "current one; HB 3 of 2003 lists Sen. Clegg once, HR 65 of 1990 "
+                  "takes its first name as prime and says so, and a filled list of "
+                  "1999-2000 says it may be short")
 
 
 @check("status", "a chapter the docket gave to two bills is settled by the database "
                  "where it tells them apart, and the history says the same number",
-       needs=("extract_chapters", "narrative"))
-def _chapters_settled(EC, N):
+       needs=("extract_chapters", "narrative", "build_site_v2"))
+def _chapters_settled(EC, N, B):
     """extract_chapters.settle_clashes, on the docket's own rows. HB 1278 and
     HB 1330 of 1992 both read "CHAP.0233"; both were withheld. The General
     Court's database has 232 and 233, and each one's final version is headed
@@ -35781,6 +36268,14 @@ def _chapters_settled(EC, N):
 
     And narrative.confirmed_chapter tells the history with the number the
     page prints: "making it Chapter 232", not the docket's 233.
+
+    A LINE THAT CARRIES ANOTHER BILL'S CHAPTER CAN CARRY ITS EFFECTIVE DATE.
+    SB 28 of 2009's reads "Signed by the Governor on 05/15/09; Effective
+    07/07/09; Chapter 0028", which is SB 109's line with the signature's day
+    changed: SB 28 is chapter 31, in effect 14 July by its enrolled text and
+    by the database. A settled record whose docket number was the other
+    bill's carries the database's day (database_effective), and the rail
+    takes it only where the line states one day and the database another.
     """
     bills = {
         "1991-1992": {"HB1278": {"lsr_year": "1992", "lsr_num": "2552"},
@@ -35821,10 +36316,41 @@ def _chapters_settled(EC, N):
     # db/past/PastLegislation.psv's ChapterNo for the four past bills.
     said = {("1991-1992", "HB1278"): 232, ("1991-1992", "HB1330"): 233,
             ("2015-2016", "SB244"): 127, ("2015-2016", "SB524"): 127}
-    settled, unsettled = EC.settle_clashes(out, found, dict(said))
+    # And its EffectiveDate for each, as database_check hands it on.
+    took_effect = {("1991-1992", "HB1278"): "1993-01-01", ("1991-1992", "HB1330"): "1993-01-01",
+                   ("2015-2016", "SB524"): "2016-05-20"}
+    settled, unsettled = EC.settle_clashes(out, found, dict(said), took_effect)
     assert len(settled) == 4 and not unsettled, (settled, unsettled)
     a, b = out["1991-1992"]["HB1278"], out["1991-1992"]["HB1330"]
     assert (a["chapter"], a["docket"], b["chapter"], b["docket"]) == (232, 233, 233, 233), (a, b)
+    # The database's day only beside a docket number that was the other
+    # bill's: HB 1330's and SB 524's lines are their own.
+    assert a.get("database_effective") == "1993-01-01" and not any(
+        "database_effective" in out[t][x] for t, x in (
+            ("1991-1992", "HB1330"), ("2015-2016", "SB244"), ("2015-2016", "SB524"))), (
+        a, b, out["2015-2016"])
+    # A NUMBER ANOTHER BILL HOLDS BY THE DOCKET IS NOT GIVEN TWICE. Made for the
+    # guard -- no bill of 1992 is this one: were a third bill chapter 232 on
+    # its own docket line, the database's 232 for HB 1278 would settle nothing.
+    rows.append(("d", "1992", "2600", "HB1400", "05/13/1992 03:00:00 PM",
+                 "SIGNED BY GOVERNOR 05/13/92  EFF: 01/01/93 CHAP.0232"))
+    bills["1991-1992"]["HB1400"] = {"lsr_year": "1992", "lsr_num": "2600"}
+    try:
+        EC.rows = lambda: iter(rows)
+        found3, _skipped = EC.read(bills)
+    finally:
+        EC.rows = saved
+        rows.pop()
+        del bills["1991-1992"]["HB1400"]
+    out3, _held = EC.settle(found3)
+    assert out3["1991-1992"]["HB1400"]["chapter"] == 232, out3["1991-1992"]["HB1400"]
+    took, left = EC.settle_clashes(out3, found3, {("1991-1992", "HB1278"): 232,
+                                                  ("1991-1992", "HB1330"): 233})
+    assert out3["1991-1992"]["HB1278"]["chapter"] is None and any(
+        "HB1278" in x and "HB1400" in x for x in left), (
+        "HB 1278 was given a chapter another bill of the year holds by the docket: "
+        f"{took}, {left}")
+    assert out3["1991-1992"]["HB1330"]["chapter"] == 233, out3["1991-1992"]["HB1330"]
     assert a["source"] == "the General Court's database" and "withheld" not in a and (
         a["line"].endswith("CHAP.0233")) and "HB1330" in a["settled"], a
     c, d = out["2015-2016"]["SB244"], out["2015-2016"]["SB524"]
@@ -35866,10 +36392,42 @@ def _chapters_settled(EC, N):
         plain, fixed)
     assert "Chapter 233" in other, f"HB 1330, which is chapter 233, reads {other!r}"
     assert N.load_settled_chapters("no-such-file.json") == {}
+
+    # The rail. Docket_db_2009-2010.txt line 7481: SB 28's law line, which is
+    # SB 109's (line 1915) but for the day of the signature.
+    line = "Signed by the Governor on 05/15/09; Effective 07/07/09; Chapter 0028"
+    narr28 = {"events": [{"date": "2009-05-19", "type": "governor", "body": "S",
+                          "cancelled": False, "raw": line}]}
+
+    def law(narr, bid, chapter, law_line, term, **kw):
+        _intro, steps = B.journey(narr, bid, (), chapter, law_line, term, **kw)
+        return [s["text"] for s in steps if s["act"] == "law"]
+    assert law(narr28, "SB28", 31, line, "2009-2010") == [
+        "Chapter 31, in effect 7 Jul 2009"], law(narr28, "SB28", 31, line, "2009-2010")
+    assert law(narr28, "SB28", 31, line, "2009-2010", db_effective="2009-07-14") == [
+        "Chapter 31, in effect 14 Jul 2009"], (
+        "SB 28 of 2009 is not drawn in effect on the database's day: "
+        f"{law(narr28, 'SB28', 31, line, '2009-2010', db_effective='2009-07-14')}")
+    # The same day from both: nothing changes. And a line that states no day
+    # (HB 1417 of 2006's is "Chapter 0263", Docket_db_2005-2006.txt) is given
+    # none: the database's is one date where the law may have several. (The
+    # event's own day below is made up; only the line is read.)
+    assert law(narr28, "SB28", 31, line, "2009-2010", db_effective="2009-07-07") == [
+        "Chapter 31, in effect 7 Jul 2009"]
+    bare = {"events": [{"date": "2006-06-01", "type": "governor", "body": "H",
+                        "cancelled": False, "raw": "Chapter 0263"}]}
+    assert law(bare, "HB1417", 262, "Chapter 0263", "2005-2006",
+               db_effective="2007-01-01") == ["Chapter 262"], (
+        "a law whose docket line states no effective date was given the database's")
+    # extract_chapters.database_check hands the clashes to settle_clashes.
+    import inspect
+    assert "settle_clashes(out, found, clash, effective)" in inspect.getsource(
+        EC.database_check), "database_check no longer settles the clashes it finds"
     return "ok", ("HB 1278 of 1992 is chapter 232 and HB 1330 233, by the database and "
                   "each one's own text; SB 244 of 2015 and SB 524 of 2016 are each 127, "
                   "of two years' laws; the history says 232; a number the database "
-                  "gives both claimants, and the current term's, stay withheld")
+                  "gives both claimants, one another bill holds, and the current "
+                  "term's, stay withheld; SB 28 of 2009 in effect on the database's day")
 
 
 # db/past/PastDocket.psv lines 288723 (SB 499 of 2016), 470541 and 470544-470546
@@ -35962,6 +36520,24 @@ def _past_docket_histories(N, NA, CL):
             "a row filed under another bill's number was given to the bill whose LSR "
             "it carries")
         assert N.past_docket_rows(root / "absent.psv", docket("2016"), lsrs) == {}
+        # TWO MEASURES UNDER ONE NUMBER, AND NO LSR TO TELL THEM APART. Made
+        # for the guard -- the view holds no such pair: a record that names no
+        # LSR takes its rows by its number, and takes none where the view
+        # files two LSRs under it.
+        q = root / "two" / "PastDocket.psv"
+        q.parent.mkdir()
+        q.write_text(
+            "2021|700|HB  0460|01/10/2021 13:39:00|HB460|H|Introduced 01/06/2021 and "
+            "referred to Finance|7002021|01/01/3050 00:00:00|1808000|1\n"
+            "2021|701|HB  0460|02/24/2021 19:59:00|HB460|H|Inexpedient to Legislate: MA "
+            "VV 02/24/2021|7012021|01/01/3050 00:00:00|7198000|2\n", encoding="utf-8")
+        shutil.copy(root / "_manifest.json", q.parent / "_manifest.json")
+        two = {"2021-2022": {"HB460": ("2021", ""), "HB1": ("2021", "30")}}
+        assert N.past_docket_rows(q, docket("2021", "HB1"), two) == {}, (
+            "a record with no LSR was given the rows of two LSRs filed under its number")
+        one = {"2021-2022": {"HB460": ("2021", "700"), "HB1": ("2021", "30")}}
+        assert [r["lsr"] for r in N.past_docket_rows(q, docket("2021", "HB1"), one).get(
+            "HB460", [])] == ["2021-700"]
     finally:
         shutil.rmtree(root, ignore_errors=True)
     src = Path(NA.__file__).read_text(encoding="utf-8")
@@ -36117,6 +36693,10 @@ def _left_out_on_site():
         ("2011-2012", "HB523"): "Withdrawn", ("2011-2012", "HB547"): "Withdrawn",
         ("2011-2012", "HB1284"): "Withdrawn", ("2011-2012", "HB1472"): "Withdrawn",
         ("2011-2012", "HB1512"): "Withdrawn", ("2011-2012", "PET29"): "Withdrawn",
+        # One docket row each that says "Introduced", and a House Journal
+        # whose resolution of introduction steps over the number.
+        ("2009-2010", "HB87"): "Not introduced", ("2009-2010", "HB134"): "Not introduced",
+        ("2007-2008", "HB633"): "Not introduced",
         ("2007-2008", "SB267"): "Refused introduction",
         ("2015-2016", "SB499"): "Refused introduction",
         ("2005-2006", "HB3"): "Proposed for the special session",
@@ -36129,13 +36709,27 @@ def _left_out_on_site():
     bad = [f"{b} of {t}: {idx[(t, b)].get('status')!r}, not {s!r}"
            for (t, b), s in want.items() if idx[(t, b)].get("status") != s]
     assert not bad, "; ".join(bad)
-    railed = [f"{b} of {t} ({idx[(t, b)]['passage']})" for (t, b), s in want.items()
-              if (s in ("Withdrawn prior to introduction", "Refused introduction",
-                        "Proposed for the special session")
-                  or (t, b) in (("2011-2012", "HB1284"), ("2011-2012", "HB1472"),
-                                ("2011-2012", "HB1512")))
-              and idx[(t, b)].get("passage")]
+    never = [(t, b) for (t, b), s in want.items()
+             if s in ("Withdrawn prior to introduction", "Refused introduction",
+                      "Proposed for the special session", "Not introduced")
+             or (t, b) in (("2011-2012", "HB1284"), ("2011-2012", "HB1472"))]
+    railed = [f"{b} of {t} ({idx[(t, b)]['passage']})" for t, b in never
+              if idx[(t, b)].get("passage")]
     assert not railed, f"a bill that was never introduced is drawn a rail: {railed}"
+    assert len(never) == 12, never
+    # Nothing was referred of a bill that was never introduced, and it was
+    # not carried over from the December its row was typed in.
+    filed = [f"{b} of {t} ({idx[(t, b)].get('committee')!r}, carried "
+             f"{idx[(t, b)].get('carried')})" for t, b in never
+             if idx[(t, b)].get("committee") or idx[(t, b)].get("carried")]
+    assert not filed, f"a bill that was never introduced is filed under a committee: {filed}"
+    # HB 1512 of 2012 the other way: the House Journal of 4 January 2012
+    # lists it among the bills introduced and referred.
+    hb1512 = idx[("2011-2012", "HB1512")]
+    assert hb1512.get("passage") and "Municipal and County Government" in (
+        hb1512.get("committee") or ""), (
+        "HB 1512 of 2012 was introduced and referred, by the House Journal, and reads "
+        f"rail {hb1512.get('passage')!r}, committee {hb1512.get('committee')!r}")
     assert all(idx[k].get("kind") != "active" for k in every), (
         "a measure of a closed term is still moving")
 
@@ -36158,6 +36752,25 @@ def _left_out_on_site():
         late = [s.get("when") for s in h.get("stations") or [] if (s.get("when") or "") > "2012-01-04"]
         assert not late, (f"HB 1284 of 2012, withdrawn on 4 January, is drawn sittings "
                           f"on {late}")
+    j = page(2009, "HB87")
+    if j is not None and Path("narratives.json").exists():
+        assert "The docket enters it as introduced on January 7, 2009" in (
+            j.get("narrative") or "") and "It was introduced" not in j["narrative"], (
+            f"HB 87 of 2009 is told as {j.get('narrative')!r}")
+        assert j.get("status_source") == "House Journal" and any(
+            "31 through 86, 88 through 133 and 135 through 223" in n
+            for n in j.get("notes") or []), (j.get("status_source"), j.get("notes"))
+    w = page(2012, "HB1512")
+    if w is not None and Path("narratives.json").exists():
+        assert (w.get("narrative") or "").startswith(
+            "It was introduced on January 4, 2012 and referred to the House Municipal "
+            "and County Government committee. It was withdrawn on January 4, 2012."), (
+            f"HB 1512 of 2012 is told as {w.get('narrative')!r}")
+    s = page(2007, "SB267")
+    if s is not None and (s.get("events") or []):
+        assert any("SB 267-FN" in n and "SB 266" in n for n in s.get("notes") or []), (
+            "SB 267 of 2007's one docket row names SB 266, and its page does not say "
+            f"whose vote it was: {s.get('notes')}")
     said = ""
     if Path("db/past/PastDocket.psv").exists() and Path("narratives.json").exists():
         narr = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
@@ -36206,8 +36819,19 @@ def _past_sponsors_filled_data():
                 bad.append(f"{bid} of {term} is filled, in a term that is never filled")
             if (named.get(term) or {}).get(bid) or (given.get(term) or {}).get(bid):
                 bad.append(f"{bid} of {term} is filled and another source names its sponsors")
-            if sum(1 for r in fill if r.get("prime")) > 1:
-                bad.append(f"{bid} of {term} has two primes")
+            if sum(1 for r in fill if r.get("prime")) != 1:
+                bad.append(f"{bid} of {term} has "
+                           f"{sum(1 for r in fill if r.get('prime'))} primes")
+            # The record marks the prime; where it marks none the first name
+            # is taken and says so, and on no other bill.
+            marked = any(s.get("prime") for s in e.get("sponsors") or ())
+            if any(r.get("prime_inferred") for r in fill) == marked:
+                bad.append(f"{bid} of {term}: the record "
+                           f"{'marks' if marked else 'does not mark'} a prime and the "
+                           "filled list says otherwise")
+            emps = [r.get("employee") for r in fill if r.get("employee")]
+            if len(emps) != len(set(emps)):
+                bad.append(f"{bid} of {term} lists one employee number twice")
             for r in fill:
                 rows += 1
                 linked[term] += bool(r.get("member_id"))
@@ -36265,6 +36889,25 @@ def _chapters_settled_data():
              for b, r in bb.items() if "also claims" in (r.get("withheld") or "")]
     assert not still, f"still withheld for a clash in a past term: {still}"
     said = "16 chapters settled, none withheld for a clash in a past term"
+    # The database's effective date beside each docket number that was the
+    # other bill's, and beside no other: seven of the sixteen.
+    dated = sorted(k for k in want if "database_effective" in ch[k[0]][k[1]])
+    other = sorted(k for k in want if ch[k[0]][k[1]].get("docket") != ch[k[0]][k[1]]["chapter"])
+    assert dated == other and len(dated) == 7, (
+        f"database_effective is on {dated}; the docket's number was another bill's on "
+        f"{other}")
+    sb28 = ch["2009-2010"]["SB28"]
+    assert sb28.get("database_effective") == "2009-07-14", (
+        f"SB 28 of 2009's effective date by the database: {sb28}")
+    import site_read
+    page = site_read.one("site", 2009, "SB28")
+    if page is not None:
+        law = [s.get("text") for s in (page.get("journey") or {}).get("steps") or []
+               if s.get("act") == "law"]
+        assert law == ["Chapter 31, in effect 14 Jul 2009"], (
+            "SB 28 of 2009's enrolled text says \"Effective Date: July 14, 2009\", and its "
+            f"page says {law}")
+        said += "; SB 28 of 2009 in effect 14 July 2009, not the 7 July of SB 109's line"
     np_ = Path("narratives.json")
     if np_.exists():
         narr = json.loads(np_.read_text(encoding="utf-8"))
@@ -36329,6 +36972,35 @@ def _past_flags_data(BD, J):
     assert flagged, ("the past table is here and no archived designation carries a flag: "
                      "build_data.past_flags did not run")
     out = f"{flagged:,} archived designations carry the database's flags"
+    # AND NONE AGAINST THE BILL'S OWN SAVED PAGE, wherever the pages are here.
+    # Two by name -- 1999's HB 25 prints -FN-A where the database has -A, and
+    # 2022's HB 1419 -A where it has -FN, so each keeps the bare number -- and
+    # every twentieth flagged bill, read again off its page.
+    if BD.PAGES.is_dir():
+        def page_of(bid, r):
+            m = re.match(r"^([A-Z]+)(\d+)$", bid)
+            f = BD.PAGES / str(r.get("lsr_year")) / f"{m.group(1)}{int(m.group(2)):04d}.html"
+            return BD.printed_designations(f, m.group(1), m.group(2)) if f.exists() else set()
+        for term, bid, bare in (("1999-2000", "HB25", "HB 25"),
+                                ("2021-2022", "HB1419", "HB 1419")):
+            r = (bills.get(term) or {}).get(bid) or {}
+            if r and page_of(bid, r):
+                assert r.get("designation") == bare and not r.get("flags"), (
+                    f"{bid} of {term} is designated {r.get('designation')!r} from the "
+                    f"database, and its own page prints {sorted(page_of(bid, r))}")
+        every = sorted((t, b) for t, bb in bills.items() if t != current
+                       for b, r in bb.items() if r.get("flags"))
+        against, read = [], 0
+        for t, b in every[::20]:
+            forms = page_of(b, bills[t][b])
+            read += bool(forms)
+            if forms and bills[t][b]["suffix"] not in forms:
+                against.append(f"{b} of {t}: {bills[t][b]['designation']!r}, page "
+                               f"{sorted(forms)}")
+        assert not against, (f"{len(against)} flagged designations are not what the "
+                             f"bill's own page prints, e.g. {against[:5]}")
+        out += (f", none of {read:,} read again against its own saved page, and HB 25 "
+                "of 1999 and HB 1419 of 2022 left bare")
     lp, cols = Path("db/Legislation.psv"), Path("db/_columns.json")
     if not (lp.exists() and cols.exists() and J.years()):
         return "ok", out + "; the current term's view or journals are not here to measure with"
@@ -36415,6 +37087,271 @@ def _hr69_title_in_journal(BD):
         f"{said[0][:200]!r}")
     return "ok", (f"the scan prints HR 69 with the record's title {len(said)} time(s), "
                   "and with its report, Ought to Pass")
+
+
+# The House's resolutions of introduction, as the journals print them:
+# journals/2009/HJ002.txt lines 7-11 and 818-826, journals/2012/HJ001.txt lines
+# 10-12 and 31-39, journals/2017/HJ002.txt lines 10-12 and 1103-1108 (whose PDF
+# breaks "Concur-rent" across two lines), journals/2007/HJ004.txt lines 7-9
+# and 1392-1398, and journals/2010/HJ002.txt lines 7-9, 14-21 and 7623-7628 (a
+# late bill or two by number, and a resolution reading in a Senate bill).
+_INTRO_RESOLUTIONS = {
+    "2009/HJ002.txt": """\
+         HOUSE JOURNAL No. 2
+
+                     Wednesday, January 7, 2009
+
+The House assembled at 10:00 a.m. and was called to order by the Speaker.
+
+                                                      RESOLUTION
+
+Rep. Foster offered the following: Resolved, that in accordance with the list in the possession
+of the Clerk, House Bills numbered 31 through 86, 88 through 133 and 135 through 223,
+House Concurrent Resolutions numbered 1 through 4 and Constitutional Amendment
+Concurrent Resolutions numbered 1 through 4 shall be by this resolution read a first and
+second time by the therein listed titles, sent for printing and referred to the therein
+designated committees.
+Adopted.
+""",
+    "2012/HJ001.txt": """\
+          HOUSE JOURNAL No. 1
+
+                                Wednesday, January 4, 2012
+
+                                                      RESOLUTION
+Rep. Bettencourt offered the following: RESOLVED, that in accordance with the list in the
+possession of the Clerk, House Bills numbered 1126 through 1283, 1285 through 1471 and
+1473 through 1709, House Concurrent Resolutions numbered 30 through 43, House Joint
+Resolutions numbered 20 through 22, House Resolutions numbered 20 through 27 and
+Constitutional Amendment Concurrent Resolutions numbered 20 through 32 shall be by this
+resolution read a first and second time by the therein listed titles, sent for printing and
+referred to the therein designated committees.
+Adopted.
+""",
+    "2017/HJ002.txt": """\
+              HOUSE JOURNAL No. 2
+
+                               Wednesday, January 4, 2017
+
+Rep. Hinch offered the following: RESOLVED, that in accordance with the list in the possession of the Clerk,
+House Bills numbered 76 through 176, 178 through 272, 275 through 276 and 278 through 286, House Concur-
+rent Resolutions numbered 1 through 4, House Resolution numbered 7 and House Constitutional Amendment
+Concurrent Resolutions numbered 1 through 7 shall be by this resolution read a first and second time by the
+therein listed titles, sent for printing and referred to the therein designated committees.
+Motion adopted.
+""",
+    "2007/HJ004.txt": """\
+  HOUSE JOURNAL No. 3 (cont.)
+
+                                 Thursday, January 4, 2007
+
+                                                      RESOLUTION
+
+Rep. Espiefs offered the following: RESOLVED, that in accordance with the list in the
+possession of the Clerk, House Bills numbered 579 through 599, 601 through 624, 626
+through 632, 634 through 639 and House Joint Resolution number 1 shall be by this
+resolution read a first and second time by the therein listed titles, sent for printing and
+referred to the therein designated committees.
+Adopted.
+""",
+    "2010/HJ002.txt": """\
+    HOUSE JOURNAL No. 1 (cont.)
+
+                           Wednesday, January 6, 2010
+
+                                                      RESOLUTION
+
+Rep. Wallner offered the following: RESOLVED, that late drafting having been approved by
+the Rules Committee, House Bills numbered 1689 and 1690 shall be by this resolution read a
+first and second time by the therein listed titles, sent for printing and referred to the therein
+designated committees.
+Adopted.
+
+                                                      RESOLUTION
+
+Rep. Wallner offered the following: RESOLVED, that in accordance with the list in the
+possession of the Clerk, Senate Bill numbered 300 shall be by this resolution read a first and
+second time by the therein listed title.
+Adopted.
+""",
+}
+
+
+@check("status", "the House's resolutions of introduction are read by number, and the "
+                 "introductions build_data publishes from them are what they say",
+       needs=("journal_bills", "build_data"))
+def _journal_resolutions(J, BD):
+    """journal_bills.introduction_resolutions and resolution_reading, on the
+    resolutions as printed. The House introduces its bills by a resolution
+    that names them by number: a number it names was introduced that day; a
+    number it steps over, with numbers of its kind named on both sides, was
+    not; a number past the end of every list is not spoken of.
+
+    Four of the 25 measures the search page left out were published against
+    that: HB 87 and HB 134 of 2009 and HB 633 of 2007 as introduced and "In
+    committee" on the strength of one docket row each, where the resolution
+    of the day steps over all three; and HB 1512 of 2012 as never introduced,
+    where the resolution of 4 January 2012 names it and steps over HB 1284
+    and HB 1472.
+
+    build_data.INTRODUCTION_FROM_JOURNAL is the table of those readings, kept
+    as a table because a number stepped over is evidence only beside the rest
+    of a bill's record. Held here to the resolutions themselves: the answer,
+    the day, the journal and the resolution's own words for the numbers.
+    """
+    root = Path(tempfile.mkdtemp())
+    try:
+        for name, text in _INTRO_RESOLUTIONS.items():
+            (root / name).parent.mkdir(exist_ok=True)
+            (root / name).write_text(text, encoding="utf-8")
+        got = {y: J.introduction_resolutions(root, (y,)) for y in (2007, 2009, 2010, 2012, 2017)}
+        absent = J.introduction_resolutions(root, (1993,))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert absent == [], "a year with no journals on the machine gave resolutions"
+    assert [len(got[y]) for y in (2007, 2009, 2010, 2012, 2017)] == [1, 1, 1, 1, 1], (
+        {y: len(v) for y, v in got.items()})
+    r = got[2009][0]
+    assert (r["date"], r["journal"], r["line"]) == ("2009-01-07", "House Journal No. 2", 9), r
+    assert r["numbered"] == {"HB": [(31, 86), (88, 133), (135, 223)], "HCR": [(1, 4)],
+                             "CACR": [(1, 4)]}, r["numbered"]
+    # "Concur-" and "rent" on two lines; "House Resolution numbered 7"; and
+    # 2017's "House Constitutional Amendment Concurrent Resolutions".
+    assert got[2017][0]["numbered"] == {
+        "HB": [(76, 176), (178, 272), (275, 276), (278, 286)], "HCR": [(1, 4)],
+        "HR": [(7, 7)], "CACR": [(1, 7)]}, got[2017][0]["numbered"]
+    assert got[2012][0]["numbered"]["HR"] == [(20, 27)] and (
+        got[2012][0]["numbered"]["HJR"] == [(20, 22)]), got[2012][0]["numbered"]
+    # A late pair by number; and the Senate's bill is not the House's list.
+    assert got[2010][0]["numbered"] == {"HB": [(1689, 1689), (1690, 1690)]}, got[2010]
+
+    def says(year, bid):
+        x = J.resolution_reading(got[year], bid)
+        return None if x is None else x["introduced"]
+    assert [says(2009, b) for b in ("HB86", "HB87", "HB88", "HB134", "HB223", "HB224",
+                                    "HB30", "HCR2", "HCR5", "CACR4", "HR1", "SB1")] == [
+        True, False, True, False, True, None, None, True, None, True, None, None], (
+        "the resolution of 7 January 2009 is read as "
+        + str([says(2009, b) for b in ("HB86", "HB87", "HB88", "HB134", "HB223", "HB224")]))
+    assert [says(2012, b) for b in ("HB1284", "HB1472", "HB1512", "HB1283", "HB1710")] == [
+        False, False, True, True, None]
+    assert [says(2017, b) for b in ("HB177", "HB273", "HB274", "HB277", "HB276", "HR7")] == [
+        False, False, False, False, True, True]
+    assert [says(2007, b) for b in ("HB633", "HB632", "HB634", "HB600")] == [
+        False, True, True, False]
+    assert [says(2010, b) for b in ("HB1689", "HB1690", "HB1308", "SB300")] == [
+        True, True, None, None]
+    assert J.resolution_reading(got[2009], "not a bill") is None
+
+    # The table, against the resolutions it was read from.
+    year_of = {"2007-2008": 2007, "2009-2010": 2009, "2011-2012": 2012}
+    assert sorted(BD.INTRODUCTION_FROM_JOURNAL) == [
+        ("2007-2008", "HB633"), ("2009-2010", "HB134"), ("2009-2010", "HB87"),
+        ("2011-2012", "HB1284"), ("2011-2012", "HB1472"), ("2011-2012", "HB1512")], (
+        sorted(BD.INTRODUCTION_FROM_JOURNAL))
+    for (term, bid), fact in BD.INTRODUCTION_FROM_JOURNAL.items():
+        x = J.resolution_reading(got[year_of[term]], bid)
+        assert x is not None and {k: x[k] for k in ("introduced", "date", "journal",
+                                                    "numbered")} == fact, (
+            f"{bid} of {term}: the table says {fact} and the resolution reads {x}")
+    return "ok", ("31 through 86, 88 through 133 and 135 through 223 names HB 88 and steps "
+                  "over HB 87 and HB 134; 2012's names HB 1512 and steps over HB 1284 and "
+                  "HB 1472; a number past the end is not spoken of; the six readings "
+                  "build_data publishes are the resolutions' own")
+
+
+@check("data", "no measure the database fills is told against the House Journal's "
+               "resolution of introduction, or listed under a committee it never reached",
+       needs=("journal_bills", "build_data"))
+def _introductions_against_journal(J, BD):
+    """What no check held the 25 to, and how four of them were published wrong:
+    the House Journals on this disk. For every House measure whose record is
+    the database's (build_data.PAST_SOURCE), the resolutions of its year are
+    read (journal_bills.introduction_resolutions), and:
+
+      - a number a resolution steps over, and none of the term names, is a
+        bill the site does not call introduced: no rail, a record that says
+        the journal was read, and no committee;
+      - a number a resolution names is a bill the site does not call never
+        introduced: it has its rail.
+
+    And build_data's table says of each bill what the journals on disk say.
+    A year whose journals are not here is not asked about, and that is said.
+
+    AND NO BILL THAT WAS NEVER INTRODUCED IS FILED UNDER A COMMITTEE, journals
+    or none: not in its record, so not on that committee's page or in the
+    download. Nor is it marked as carried over from the year before.
+    """
+    bp, ip = Path("data/bills.json"), Path("site/index.json")
+    if not (bp.exists() and ip.exists()):
+        return "skip", "no data/bills.json or site/index.json here"
+    bills = json.loads(bp.read_text(encoding="utf-8"))
+    idx = {(r.get("term"), r.get("id")): r for r in json.loads(ip.read_text(encoding="utf-8"))}
+    never = {"Not introduced", "Withdrawn prior to introduction", "Refused introduction",
+             "Proposed for the special session"}
+    ours = [(t, b, r) for t, bb in bills.items() for b, r in bb.items()
+            if r.get("source") == BD.PAST_SOURCE]
+    if not ours:
+        return "skip", "no record here is the database's (no db/past/PastLegislation.psv)"
+    narr = (json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+            if Path("narratives.json").exists() else {})
+    bad, held, unread, cache = [], 0, set(), {}
+    for term, bid, rec in ours:
+        row = idx.get((term, bid))
+        if row is None:
+            bad.append(f"{bid} of {term} is not in the site's index")
+            continue
+        told_never = row.get("status") in never or bool(
+            ((narr.get(term) or {}).get(bid) or {}).get("not_introduced"))
+        if told_never and (rec.get("house_committee") or rec.get("senate_committee")
+                           or row.get("committee") or row.get("carried")):
+            bad.append(f"{bid} of {term}, never introduced, carries the committee "
+                       f"{rec.get('house_committee') or rec.get('senate_committee')!r} "
+                       f"or is marked carried over ({row.get('carried')})")
+        if told_never and row.get("passage"):
+            bad.append(f"{bid} of {term}, never introduced, is drawn the rail "
+                       f"{row['passage']!r}")
+        if not re.match(r"^(?:HB|HCR|HJR|HR|CACR)\d+$", bid) or rec.get("chamber") != "H":
+            continue
+        years = tuple(int(y) for y in term.split("-"))
+        if not (J.ROOT / str(rec.get("lsr_year"))).is_dir():
+            unread.add(str(rec.get("lsr_year")))
+            continue
+        if years not in cache:
+            cache[years] = J.introduction_resolutions(J.ROOT, years)
+        # A House bill's number is its year's: 1 to 999 in the first year of
+        # a term and from 1001 in the second, so a bill is held to the
+        # resolutions of the year it was filed for.
+        said = J.resolution_reading(
+            [x for x in cache[years] if x["date"][:4] == str(rec.get("lsr_year"))], bid)
+        fact = BD.INTRODUCTION_FROM_JOURNAL.get((term, bid))
+        if said is None:
+            if fact is not None:
+                bad.append(f"{bid} of {term}: build_data says the journal was read "
+                           f"({fact}) and no resolution on disk speaks of it")
+            continue
+        held += 1
+        if not said["introduced"] and J.resolution_reading(cache[years], bid)["introduced"]:
+            continue                 # named by a resolution of the term's other year
+        if said["introduced"] and told_never:
+            bad.append(f"{bid} of {term} is told as never introduced, and the resolution "
+                       f"of {said['date']} names it ({said['numbered']})")
+        if not said["introduced"] and not told_never:
+            bad.append(f"{bid} of {term} is told as introduced "
+                       f"({row.get('status')!r}, rail {row.get('passage')!r}), and the "
+                       f"resolution of {said['date']} steps over it ({said['numbered']})")
+        if fact is not None and {k: said[k] for k in fact} != fact:
+            bad.append(f"{bid} of {term}: build_data's table says {fact}, the journal "
+                       f"{ {k: said[k] for k in fact} }")
+        if fact is None and not said["introduced"]:
+            bad.append(f"{bid} of {term} is stepped over by the resolution of "
+                       f"{said['date']} and build_data.INTRODUCTION_FROM_JOURNAL does "
+                       "not name it: read its journal and its docket, and add it")
+    assert not bad, f"{len(bad)} of the database's measures: " + "; ".join(bad[:6])
+    return "ok", (f"{len(ours)} measures from the database; {held} House measures held to "
+                  "the resolution that names or steps over them, none told against it; "
+                  "none never introduced carries a committee, a rail or a carried mark"
+                  + (f"; no journals here for {', '.join(sorted(unread))}" if unread else ""))
 
 
 # ------------------------------------------------ the end of what the database fills --
