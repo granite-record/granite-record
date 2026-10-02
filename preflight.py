@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.297
+# GRANITE_VERSION: 2026-09-04.298
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16714,9 +16714,11 @@ def _calendar_documents():
       - TWO DOCUMENTS THAT SHARE ONE LOCAL FILE are both in the picker, each
         at its own address, and neither takes the date that file prints.
       - LABELS AND ORDER. A name is shown as the General Court wrote it; one
-        that states no date gains the date its own text prints, a calendar's
-        masthead or a Senate journal's sitting; newest first, an undated new
-        number above the dated one before it.
+        that states no date gains the date its own text prints: a calendar's
+        masthead, where it carries the document's own number and not a
+        stray date above it, or a Senate journal's sitting -- one sitting's,
+        never the first of a year's bound together. Newest first, an undated
+        new number above the dated one before it.
       - ONCE, UNDER ITS OWN DATE'S YEAR: a December document filed under the
         next year is under its own, and one listed in two years is there
         once, at the address of its own year's list.
@@ -16791,6 +16793,13 @@ def _calendar_documents():
             ("S", "journal", "2026", "SJ 14 June 4, 2026.pdf",
              SN + "Journals%5C2026%5CSJ%2014%20June%204%2C%202026.pdf",
              r"journals_senate\2026\SJ 14 June 4, 2026.pdf", "held", "0", "", ""),
+            ("S", "journal", "2018", "SPJ 2018 - Verbatim.pdf",
+             SN + "Journals%5C2018%5CSPJ%202018%20-%20Verbatim.pdf",
+             r"journals_senate\2018\SPJ 2018 - Verbatim.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2010", "43.pdf", SN + "Calendars%5C2010%5C43.pdf",
+             r"calendars_senate\2010\SC043.pdf", "held", "0", "", ""),
+            ("S", "calendar", "2008", "44.pdf", SN + "Calendars%5C2008%5C44.pdf",
+             r"calendars_senate\2008\SC044.pdf", "held", "0", "", ""),
         ]
         q = root / "queue.csv"
         with q.open("w", encoding="utf-8", newline="") as fh:
@@ -16799,9 +16808,12 @@ def _calendar_documents():
                         "attempts", "error", "bytes", "fetched"])
             for r in rows:
                 w.writerow(list(r[:9]) + ["1", r[9]])
-        # The text beside three of the PDFs, as extract_calendar_text leaves
-        # it: a House masthead, a Senate one, a Senate journal's sitting, and
-        # the one file two listed documents share.
+        # The text beside seven of the PDFs, as extract_calendar_text leaves
+        # it: a House masthead, a Senate one, the one file two listed
+        # documents share, a Senate journal's sitting, a year's sittings
+        # bound as one journal, a Senate calendar that opens with a stray
+        # date above its masthead (as 82 of 2010's do), and one whose
+        # masthead carries another issue's number (2008's "44" prints No. 1).
         for rel, text in (
                 ("calendars/2026/HC032.txt",
                  "HOUSE RECORD\nVol. 48      Concord, N.H.      Friday, September 4, 2026"
@@ -16814,7 +16826,17 @@ def _calendar_documents():
                  "                                        No. 24\nSENATE CALENDAR\n"),
                 ("journals_senate/2026/SJ 15.txt",
                  "SENATE JOURNAL 15\n\nThe Senate met at 10:00 a.m.          August 19, 2026\n"
-                 "The Chaplain offered the prayer.\n")):
+                 "The Chaplain offered the prayer.\n"),
+                ("journals_senate/2018/SPJ 2018 - Verbatim.txt",
+                 "The Senate met at 10:00 a.m.          January 3, 2018\nThe prayer.\n\n"
+                 "The Senate met at 10:00 a.m.          January 18, 2018\nThe prayer.\n"),
+                ("calendars_senate/2010/SC043.txt",
+                 "April 29, 2010\n"
+                 "                                        November 23, 2010\n"
+                 "                                        No. 43\nSENATE CALENDAR\n"),
+                ("calendars_senate/2008/SC044.txt",
+                 "                                        December 4, 2008\n"
+                 "                                        No. 1\nSENATE CALENDAR\n")):
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             (root / rel).write_text(text, encoding="utf-8")
         today = _dt.date(2026, 10, 1)
@@ -16831,8 +16853,10 @@ def _calendar_documents():
             "hj": {"2026": ["HJ 16 August 19, 2026"],
                    "2011": ["Daily Journal No 25 11-30-11 Final"]},
             "sc": {"2026": [f"SC 29 {dash} 3 September 2026", "No 28 August 20 2026"],
+                   "2010": [f"43 {dash} 23 November 2010"], "2008": ["44"],
                    "2007": ["SC 24", "SC 24 (2)"]},
-            "sj": {"2026": [f"SJ 15 {dash} 19 August 2026", "SJ 14 June 4, 2026"]},
+            "sj": {"2026": [f"SJ 15 {dash} 19 August 2026", "SJ 14 June 4, 2026"],
+                   "2018": ["SPJ 2018 - Verbatim"]},
         }
         assert got == want, f"the picker's sets, years, labels and order read as {got}"
         assert [list(v) for v in got.values()] == [list(v) for v in want.values()], (

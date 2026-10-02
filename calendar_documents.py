@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.1
+# GRANITE_VERSION: 2026-10-01.2
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -40,11 +40,12 @@ WHAT A LABEL SAYS. The General Court's own name for the document -- its file
 name, which is what its dropdown shows -- with nothing rewritten: "No 01
 January 04 1012" stays as the House filed it. Where a name states no date
 ("HC 32", "SC 29", "SJ 15") the date the document itself prints is added
-after a dash, read by the project's own readers of those documents
-(calendar_meetings.pub_date for a calendar's masthead, journal_days.
-senate_openings for a Senate journal's sitting) from the text beside the PDF,
-where that text is on disk. Where it is not, the name stands alone: a date
-nobody read is not offered.
+after a dash, read from the text beside the PDF where that text is on disk:
+a calendar's masthead, taken only where it carries the document's own
+number, and a Senate journal's sitting (journal_days.senate_openings), taken
+only where the journal holds one day's. Anywhere else the name stands alone:
+a date nobody could check is not offered. printed_date holds the measure of
+both readings against the names that do state a date.
 
 EACH DOCUMENT ONCE, UNDER ITS OWN DATE'S YEAR. The General Court files
 December's documents under the next year, and lists some twice -- twenty of
@@ -199,17 +200,67 @@ def number_of(name):
     return (int(m.group(1)), (m.group(2) or "").upper()) if m else (0, "")
 
 
+# THE SENATE CALENDAR'S MASTHEAD: the date alone on a line and the issue's
+# number on the next line that is not blank,
+#
+#                                                          January8,2026
+#                                                          No.1
+#
+# The number is what makes it the masthead. A date alone on a line is not
+# enough: Senate Calendar 43 of 2010 opens with a stray "April 29, 2010" above
+# its own date, and so do the 81 calendars before it.
+_S_MAST = re.compile(r"(?im)^[ \t]*(" + "|".join(MONTHS) + r")[ \t]*(\d{1,2})[ \t]*,[ \t]*(\d{4})"
+                     r"[ \t]*\r?\n(?:[ \t]*\r?\n)*[ \t]*No\.?[ \t]*(\d{1,3})(?!\d)")
+_MAST_REACH = {"H": 6000, "S": 4000}    # calendar_meetings.pub_date's own
+
+
+def masthead(text, chamber, number):
+    """The date on a calendar's masthead, as a date, where that masthead
+    carries the issue number `number` -- the document's own, from its name --
+    and None where no such masthead is read.
+
+    MEASURED ON THE CALENDARS WHOSE NAMES DO STATE A DATE (1 October 2026),
+    which are the only ones a reading can be held against. The Senate: 931 of
+    946 agree with the name, 10 differ and 5 give nothing; without the number,
+    calendar_meetings.pub_date's first date alone on a line agreed for 837
+    and differed for 106. The House, whose masthead is one line ("Concord,
+    N.H.  Friday, February 27, 2009  No. 15"): 1,502 of 1,579 agree, 54
+    differ -- nearly all by days, the name and the masthead being a day or a
+    week apart in the General Court's own hands -- and 23 give nothing.
+    """
+    if not number:
+        return None
+    if chamber == "S":
+        found = ((m.group(1), m.group(2), m.group(3), m.group(4))
+                 for m in _S_MAST.finditer(text[:_MAST_REACH["S"]]))
+    else:
+        import calendar_meetings
+        rx = re.compile(calendar_meetings.PUBDATE.pattern + r"\s*No\.?\s*(\d{1,3})(?!\d)", re.I)
+        found = ((m.group(1), m.group(2), m.group(3), m.group(4))
+                 for m in rx.finditer(text[:_MAST_REACH["H"]]))
+    for month, day, year, issue in found:
+        if int(issue) == number and month.capitalize() in MONTHS:
+            return _date(int(year), MONTHS.index(month.capitalize()) + 1, int(day))
+    return None
+
+
 def printed_date(r, root=Path(".")):
     """The date a document prints on itself, ISO, or "".
 
-    Read from the text beside the PDF by the readers this project already
-    trusts with those documents: a calendar's masthead, a Senate journal's
-    first sitting. A House journal is not read: all but three state their
-    date in their name, and those are two floor amendments filed among the
-    journals and one name with a misprinted year. The date must fall in the
-    year the General Court listed the document under or the one before, which
-    is where December's are; anything else is a misreading and answers
-    nothing.
+    Read from the text beside the PDF, and only where the reading can be told
+    from a misreading. A CALENDAR'S MASTHEAD MUST CARRY THE DOCUMENT'S OWN
+    NUMBER (masthead), so a name with no number in it is given no date. ONE
+    SITTING'S JOURNAL HAS ONE DATE, and only such a Senate journal is given
+    one, by journal_days.senate_openings: "SPJ 2018 - Verbatim" is the
+    Senate's whole year in one file, twenty sittings, and the first of them is
+    not the document's date. Against the Senate journals whose names state a
+    date that reading agrees for 370, differs for 2 -- both files that two
+    listed documents share -- and gives nothing for 14. A House journal is not
+    read: all but three state their date in their name, and those are two
+    floor amendments filed among the journals and one name with a misprinted
+    year. The date must fall in the year the General Court listed the document
+    under or the one before, which is where December's are; anything else is
+    a misreading and answers nothing.
     """
     path = Path(root) / (r.get("path") or "").replace("\\", "/")
     try:
@@ -219,13 +270,11 @@ def printed_date(r, root=Path(".")):
     got = None
     try:
         if r.get("kind") == "calendar":
-            import calendar_meetings
-            p = calendar_meetings.pub_date(text, r.get("chamber") or "H")
-            got = _date(*p) if p else None
+            got = masthead(text, r.get("chamber") or "H", number_of(r.get("name"))[0])
         elif r.get("chamber") == "S":
             import journal_days
-            sat = journal_days.senate_openings(text)
-            got = datetime.date.fromisoformat(sat[0][0]) if sat else None
+            sat = {day for day, _opening in journal_days.senate_openings(text)}
+            got = datetime.date.fromisoformat(sat.pop()) if len(sat) == 1 else None
     except Exception:   # a date is an addition; the name stands without it
         return ""
     try:
