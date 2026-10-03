@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.328
+# GRANITE_VERSION: 2026-09-04.329
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1018,6 +1018,310 @@ def _movers(narrative):
         narrative.MEMBERS = keep
         shutil.rmtree(tmp.parent, ignore_errors=True)
     return "ok", "expanded 2, left the shared surname alone, no roster is a no-op"
+
+
+# A SECOND COMMITTEE'S WORK UNDER ITS OWN HEADING (3 October 2026). Real
+# rows, copied from the dockets on disk: Docket.txt lines 1662, 1992, 3594,
+# 3788 and 5193 (SB 286 of 2025) and 6942, 7406, 7407 and 7563 (HB 517);
+# Docket_db_2009-2010.txt 8216-8220 (SB 106); Docket_db_1993-1994.txt 2080,
+# 2082, 2084, 2091, 2092 and 2094 (HB 613) and 871-876 (HB 126);
+# Docket_db_1989-1990.txt 99 and 101-105 (SB 58), 2027-2032 (HB 115) and 8-10
+# (CACR 1); Docket_db_2001-2002.txt 12817-12821 (HB 1119); Docket_2017-2018.txt
+# 87-91 (CACR 2); Docket_db_1991-1992.txt 6587, 6589, 6590, 6592-6596 (HB 363)
+# and 15906, 15908 and 15910 (HB 1218); Docket_db_1995-1996.txt 9934 and
+# 9944-9949 (HB 357); Docket_db_1997-1998.txt 9681 and 9693-9696 (HB 256);
+# Docket_2023-2024.txt 1094-1097 and 1099 (HB 1076) and 5113-5117 and 5119
+# (HB 1380); Docket_db_2005-2006.txt 13126-13127 (HB 1163);
+# Docket_db_2007-2008.txt 16340 and 16344 (HB 1405); Docket_db_1993-1994.txt
+# 21308-21310 and 21312-21313 (SB 732).
+_DOCKET_SENT_ON = {
+    ("SB286", "2025-2026"): [
+        "2025|1080|1/24/2025 10:37:36 AM|SB286|S|  Introduced 01/09/2025 and Referred to Executive Departments and Administration;  SJ 3|1/24/2025 10:37:36 AM",
+        "2025|1080|1/29/2025 4:41:41 PM|SB286|S| Hearing: 02/05/2025, Room 103, SH, 01:15 pm;  SC 8|1/29/2025 4:41:41 PM",
+        "2025|1080|2/20/2025 11:48:39 AM|SB286|S|Committee Report: Ought to Pass, 03/06/2025; Vote 4-0; CC;  SC 11|2/20/2025 11:48:39 AM",
+        "2025|1080|3/6/2025 6:40:27 PM|SB286|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/06/2025;  SJ 6|3/6/2025 6:40:27 PM",
+        "2025|1080|3/12/2025 8:47:46 AM|SB286|S|Committee Report: Ought to Pass, 03/20/2025, Vote 6-0;  SC 13|3/12/2025 8:47:46 AM"],
+    ("SB106", "2009-2010"): [
+        "2009|0936|02/04/2009 09:03:49 AM|SB106|S|Introduced and Referred to Judiciary|02/04/2009 09:03:49 AM",
+        "2009|0936|02/05/2009 01:53:50 PM|SB106|S|Hearing; January 10, 2009, Room 103, State House, 2:45 p.m.; SC10|02/05/2009 01:53:50 PM",
+        "2009|0936|02/11/2009 10:24:10 AM|SB106|S|Committee Report; Ought to Pass [2/18/09]; SC11|02/11/2009 10:24:10 AM",
+        "2009|0936|02/18/2009 03:58:05 PM|SB106|S|Ought to Pass, MA, VV; Refer to Finance [Rule 26]; SJ 5,Pg.58|02/18/2009 03:58:05 PM",
+        "2009|0936|03/05/2009 01:50:03 PM|SB106|S|Committee Report; Ought to Pass [03/11/09]; SC14|03/05/2009 01:50:03 PM"],
+    ("HB613", "1993-1994"): [
+        "1993|0227|01/07/1993 03:40:28 PM|HB613|H|INTRODUCED AND REF TO HEALTH HS&EA; HJ14,P242|01/07/1993 03:40:28 PM",
+        "1993|0227|01/25/1993 12:31:12 PM|HB613|H|HEARING FEB02 09:30 RM205,LOB    FOR: HEALTH|01/25/1993 12:31:12 PM",
+        "1993|0227|03/03/1993 06:13:55 PM|HB613|H|MAJ REPORT OTP/AM FOR MAR10  (VOTE 14-0;CC)|03/03/1993 06:13:55 PM",
+        "1993|0227|03/16/1993 06:10:56 PM|HB613|H|COMM AM, AA VV; PASSED WITH AM AND REF TO APPROP VV; HJ40,P985|03/16/1993 06:10:56 PM",
+        "1993|0227|03/17/1993 06:21:23 PM|HB613|H|HEARING MAR23 01:00 RM100,ST HOUSE   FOR: APPROP|03/17/1993 06:21:23 PM",
+        "1993|0227|04/12/1993 02:47:49 PM|HB613|H|MAJ APPROP REPORT OTP FOR APR15  (VOTE 19-3)|04/12/1993 02:47:49 PM"],
+    ("SB58", "1989-1990"): [
+        "1989|0017|03/02/1989 12:19:36 PM|SB58|H|INTRODUCED AND REF TO PUBLIC WORKS     HJ 39 ,P898|03/02/1989 12:19:36 PM",
+        "1989|0017|03/08/1989 08:31:57 AM|SB58|H|HEARING  03/16/89        10:30 RM201,LOB FOR: PUBLIC WORKS|03/08/1989 08:31:57 AM",
+        "1989|0017|04/04/1989 04:20:49 PM|SB58|H|MAJ REPORT OTP    FOR: 4/13   VOTE (18-0 cc)|04/04/1989 04:20:49 PM",
+        "1989|0017|04/13/1989 01:35:16 PM|SB58|H|PASSED/ADOPTED; REF TO APPROP; HJ&0, P2102|04/13/1989 01:35:16 PM",
+        "1989|0017|04/13/1989 01:35:17 PM|SB58|H|HEARING  4/20/89         10:00 RM100,SH  FOR: APPROPRIATIONS|04/13/1989 01:35:17 PM",
+        "1989|0017|05/05/1989 11:33:40 AM|SB58|H|MAJ REPORT OTP/AM FOR: 5/9    VOTE (22-0 cc)|05/05/1989 11:33:40 AM"],
+    ("HB1119", "2001-2002"): [
+        "2002|2008|03/06/2002 01:03:29 PM|HB1119|S|Introduced and Ref. to Environment [02/20/02]; SJ 6, Pg.175|03/06/2002 01:03:29 PM",
+        "2002|2008|03/19/2002 03:32:59 PM|HB1119|S|Hearing; March 27, 2002, Room 104, LOB, 9:45 a.m.; SC17|03/19/2002 03:32:59 PM",
+        "2002|2008|04/08/2002 12:39:08 PM|HB1119|S|Committee Report; Ought to Pass [04/10/02]; SC23|04/08/2002 12:39:08 PM",
+        "2002|2008|04/10/2002 02:50:58 PM|HB1119|S|Ought to Pass, MA, VV; Refer to Finance [Rule 24]; SJ 9, Pg.259|04/10/2002 02:50:58 PM",
+        "2002|2008|04/15/2002 12:21:06 PM|HB1119|S|Committee Report; Ought to Pass [04/16/02]; SC25A|04/15/2002 12:21:06 PM"],
+    ("HB517", "2025-2026"): [
+        "2025|0694|3/28/2025 2:04:48 PM|HB517|S|  Introduced 03/27/2025 and Referred to Judiciary;  SJ 10|3/28/2025 2:04:48 PM",
+        "2025|0694|4/3/2025 12:44:39 PM|HB517|S|HB517 is vacated from Judiciary and referred to Finance; (In recess 03/27/2025);  SJ 10|4/3/2025 12:44:54 PM",
+        "2025|0694|4/3/2025 3:49:34 PM|HB517|S| Hearing: 04/08/2025, Room 103, SH, 01:15 pm;  SC 17|4/3/2025 3:49:34 PM",
+        "2025|0694|4/9/2025 2:33:43 PM|HB517|S|Committee Report: Ought to Pass, 04/17/2025; Vote 6-1; CC;  SC 17|4/9/2025 2:33:43 PM"],
+    ("CACR2", "2017-2018"): [
+        "2017|0095|12/21/2016 12:00:00 AM|CACR2|H|Introduced 01/04/2017 and referred to Health, Human Services and Elderly Affairs HJ 2 P. 23|12/21/2016 12:00:00 AM",
+        "2017|0095|1/9/2017 12:00:00 AM|CACR2|H|Vacated to Children and Family Law Without Objection 01/04/2017 HJ 2 P. 15|1/9/2017 12:00:00 AM",
+        "2017|0095|2/8/2017 12:00:00 AM|CACR2|H|Public Hearing: 02/21/2017 01:00 PM LOB 206|2/8/2017 12:00:00 AM",
+        "2017|0095|2/22/2017 12:00:00 AM|CACR2|H|Executive Session: 02/28/2017 10:00 AM LOB 206|2/22/2017 12:00:00 AM",
+        "2017|0095|3/1/2017 12:00:00 AM|CACR2|H|Committee Report: Inexpedient to Legislate for 03/08/2017 (Vote 12-0; CC) HC 14 P. 4|3/1/2017 12:00:00 AM"],
+    ("HB363", "1991-1992"): [
+        "1991|0859|01/03/1991 02:37:19 PM|HB363|H|INTRODUCED AND REF TO JUDICIARY;  HJ16,P148|01/03/1991 02:37:19 PM",
+        "1991|0859|02/06/1991 12:38:12 PM|HB363|H|HEARING FEB12 10:30 RM208,LOB    FOR: JUDICIARY|02/06/1991 12:38:12 PM",
+        "1991|0859|03/13/1991 11:43:39 AM|HB363|H|MAJ REPORT OTP/AM FOR MAR19  (VOTTE 18-0;CC)|03/13/1991 11:43:39 AM",
+        "1991|0859|03/19/1991 04:34:45 PM|HB363|H|PASSED WITH AM AND REF TO APPROP; HJ53A,P1111|03/19/1991 04:34:45 PM",
+        "1991|0859|03/19/1991 09:04:22 PM|HB363|H|HEARING MAR25 10:30 RM103,SH    FOR: APPROPRIATIONS|03/19/1991 09:04:22 PM",
+        "1991|0859|03/28/1991 03:01:22 PM|HB363|H|MAJ REPORT ITL FOR APR02  (VOTE 20-1)|03/28/1991 03:01:22 PM",
+        "1991|0859|04/02/1991 03:38:40 PM|HB363|H|RECOMMITTED TO APPROPRIATIONS, REP HAGER MA VV; HJ60,P1373|04/02/1991 03:38:40 PM",
+        "1991|0859|04/04/1991 11:05:44 AM|HB363|H|APPROP REPORT OTP FOR APR09  (VOTE 13-7)|04/04/1991 11:05:44 AM"],
+    ("HB357", "1995-1996"): [
+        "1996|0592|03/02/1995 03:06:17 PM|HB357|H|RE-REFERRED TO HEALTH HS&EA; HJ31,P753|03/02/1995 03:06:17 PM",
+        "1996|0592|01/04/1996 01:06:00 PM|HB357|H|COMM AM, AA DIV(225-101); PASSED WITH AM AND REF TO ED&A|01/04/1996 01:06:00 PM",
+        "1996|0592|01/04/1996 01:07:54 PM|HB357|H|DIV(234-95); HJ5,P190-203|01/04/1996 01:07:54 PM",
+        "1996|0592|01/10/1996 12:30:54 PM|HB357|H|HEARING JAN16 02:00 RM207,LOB    FOR: ED&A|01/10/1996 12:30:54 PM",
+        "1996|0592|01/18/1996 05:37:38 PM|HB357|H|MAJ REPORT  REF FOR STUDY  FOR JAN25  (VOTE 16-1)|01/18/1996 05:37:38 PM",
+        "1996|0592|01/25/1996 12:03:23 PM|HB357|H|REFERRED TO EXEC DEPTS & ADMIN FOR INTERIM STUDY VV; HJ14,P463|01/25/1996 12:03:23 PM",
+        "1996|0592|06/05/1996 01:36:43 PM|HB357|H|INT STUDY SUBCOM WORK SESS JUN11 10:00 RM207,LOB    FOR: ED&A|06/05/1996 01:36:43 PM"],
+    ("HB256", "1997-1998"): [
+        "1998|0018|01/09/1997 09:52:53 AM|HB256|H|INTRODUCED AND REF TO EXEC DEPTS & ADMIN; HJ12,P178|01/09/1997 09:52:53 AM",
+        "1998|0018|01/07/1998 03:18:19 PM|HB256|H|PASSED WITH AM AND REF TO FINANCE/CONSENT CAL RC(248-8);|01/07/1998 03:18:19 PM",
+        "1998|0018|01/07/1998 03:18:20 PM|HB256|H|HJ3,P155-156|01/07/1998 03:18:20 PM",
+        "1998|0018|01/07/1998 03:18:42 PM|HB256|H|HEARING JAN08 10:30 RMS210-211,LOB    FOR: FINANCE|01/07/1998 03:18:42 PM",
+        "1998|0018|01/20/1998 11:25:52 AM|HB256|H|FIN MAJ REPORT  OTP  FOR JAN29  (VOTE 19-0;CC)|01/20/1998 11:25:52 AM"],
+    ("HB1076", "2023-2024"): [
+        "2024|2340|4/2/2024 12:00:00 AM|HB1076|S|Introduced 03/21/2024 and Referred to Commerce; SJ 8|4/2/2024 12:00:00 AM",
+        "2024|2340|4/9/2024 12:00:00 AM|HB1076|S|Hearing: 04/16/2024, Room 100, SH, 10:00 am; SC 15|4/9/2024 12:00:00 AM",
+        "2024|2340|5/7/2024 12:00:00 AM|HB1076|S|Committee Report: Ought to Pass, 05/16/2024, Vote 4-0; SC 19|5/7/2024 12:00:00 AM",
+        "2024|2340|5/15/2024 12:00:00 AM|HB1076|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 05/15/2024; SJ 12|5/15/2024 12:00:00 AM",
+        "2024|2340|5/21/2024 12:00:00 AM|HB1076|S|Committee Report: Ought to Pass, 05/22/2024, Vote 7-0; SC 20A|5/21/2024 12:00:00 AM"],
+    ("HB1380", "2023-2024"): [
+        "2024|2339|4/2/2024 12:00:00 AM|HB1380|S|Introduced 03/21/2024 and Referred to Commerce; SJ 8|4/2/2024 12:00:00 AM",
+        "2024|2339|4/17/2024 12:00:00 AM|HB1380|S|Hearing: 04/30/2024, Room 100, SH, 10:10 am; SC 16|4/17/2024 12:00:00 AM",
+        "2024|2339|5/8/2024 12:00:00 AM|HB1380|S|Committee Report: Ought to Pass with Amendment #2024-1826s , 05/16/2024, Vote 4-0; SC 19|5/8/2024 12:00:00 AM",
+        "2024|2339|5/15/2024 12:00:00 AM|HB1380|S|Ought to Pass with Amendment 2024-1826s, MA, VV; Refer to Finance Rule 4-5; 05/15/2024; SJ 12|5/15/2024 12:00:00 AM",
+        "2024|2339|5/15/2024 12:00:00 AM|HB1380|S|Committee Amendment #2024-1826s , AA, VV; 05/15/2024; SJ 12|5/15/2024 12:00:00 AM",
+        "2024|2339|5/21/2024 12:00:00 AM|HB1380|S|Committee Report: Ought to Pass, 05/22/2024, Vote 6-1; SC 20A|5/21/2024 12:00:00 AM"],
+    ("HB126", "1993-1994"): [
+        "1993|0097|02/18/1993 10:44:12 AM|HB126|S|INTRODUCED AND REF TO TRANSPORTATION; SJ7,P118|02/18/1993 10:44:12 AM",
+        "1993|0097|02/24/1993 02:47:24 PM|HB126|S|HEARING MAR03 09:15 RM101,LOB    FOR: TRANSPORTATION|02/24/1993 02:47:24 PM",
+        "1993|0097|03/10/1993 06:48:02 PM|HB126|S|COMM REPORT  OTP   MAR11|03/10/1993 06:48:02 PM",
+        "1993|0097|03/11/1993 08:14:36 PM|HB126|S|PASSED AND REF TO FIN DIV; SJ9,P204|03/11/1993 08:14:36 PM",
+        "1993|0097|03/31/1993 04:59:10 PM|HB126|S|HEARING APR06 09:30 RM212,LOB    FOR: CAP BUDGET|03/31/1993 04:59:10 PM",
+        "1993|0097|05/18/1993 11:00:34 AM|HB126|S|COMM REPORT  OTP  MAY19|05/18/1993 11:00:34 AM"],
+    ("HB115", "1989-1990"): [
+        "1989|0223|02/16/1989 09:22:34 AM|HB115|S|INTRODUCED AND REF TO TRANSPORTATION   SJ 8  ,P 154|02/16/1989 09:22:34 AM",
+        "1989|0223|02/24/1989 03:42:35 PM|HB115|S|HEARING 3/7 /89          10:00 RM 104    FOR:TRANSPORTATION|02/24/1989 03:42:35 PM",
+        "1989|0223|03/07/1989 01:42:49 PM|HB115|S|COMMITTEE REPORT OTP|03/07/1989 01:42:49 PM",
+        "1989|0223|03/16/1989 12:49:42 PM|HB115|S|REFERRED TO FINANCE/APPROP|03/16/1989 12:49:42 PM",
+        "1989|0223|03/16/1989 02:36:38 PM|HB115|S|PASSED/ADOPTED|03/16/1989 02:36:38 PM",
+        "1989|0223|05/03/1989 02:28:11 PM|HB115|S|COMMITTEE REPORT: OTP|05/03/1989 02:28:11 PM"],
+    ("HB1163", "2005-2006"): [
+        "2006|2148|01/04/2006 09:30:00 AM|HB1163|H|Introduced and refered to Science, Technology and Energy   HJ 7, pg 335|01/04/2006 09:30:00 AM",
+        "2006|2148|01/04/2006 01:13:10 PM|HB1163|H|Public Hearing     Jan 10  1:00  RM304/LOB|01/04/2006 01:13:10 PM"],
+    ("HB1218", "1991-1992"): [
+        "1992|2303|01/08/1992 03:21:42 PM|HB1218|H|INTRODUCED AND REF TO APPROP;  HJ 9,P261|01/08/1992 03:21:42 PM",
+        "1992|2303|01/09/1992 02:16:58 PM|HB1218|H|VACATED TO RES, REC & DEV, REP HAGER MA VV; HJ10,P336|01/09/1992 02:16:58 PM",
+        "1992|2303|01/09/1992 02:19:25 PM|HB1218|H|HEARING JAN29 10:30 RM301,LOB    FOR: RES, REC & DEV|01/09/1992 02:19:25 PM"],
+    ("CACR1", "1989-1990"): [
+        "1989|0002|01/04/1989 12:16:55 PM|CACR1|S|INTRODUCED AND REF TO EXEC DEPTS       SJ 2  ,P 18|01/04/1989 12:16:55 PM",
+        "1989|0002|01/04/1989 01:18:24 PM|CACR1|S|HEARING 1/25/89          10:30 RM 101LOB FOR:EXEC DEPTS|01/04/1989 01:18:24 PM",
+        "1989|0002|02/06/1989 08:36:27 AM|CACR1|S|COMMITTEE REPORT OTP|02/06/1989 08:36:27 AM"],
+    ("SB732", "1993-1994"): [
+        "1994|2776|01/05/1994 11:31:20 AM|SB732|S|INTRODUCED AND REF TO JUDICIARY; SJ1,P21|01/05/1994 11:31:20 AM",
+        "1994|2776|01/05/1994 11:31:52 AM|SB732|S|HEARING JAN31 12:30 RM103,LOB    FOR: JUDICIARY|01/05/1994 11:31:52 AM",
+        "1994|2776|02/02/1994 09:35:31 AM|SB732|S|COMM REPORT  OTP/AM  FEB03|02/02/1994 09:35:31 AM",
+        "1994|2776|02/03/1994 10:36:59 AM|SB732|S|COMM AM, AA VV; PASSED WITH AM AND REF TO FIN DIV VV; SJ3,P64|02/03/1994 10:36:59 AM",
+        "1994|2776|03/21/1994 09:54:23 AM|SB732|S|FIN EXEC COMM REPORT  REF FOR STUDY  MAR22|03/21/1994 09:54:23 AM"],
+    ("HB1405", "2007-2008"): [
+        "2008|2008|05/21/2008 04:07:53 PM|HB1405|H|House Non-Concurs and Requests Committee of Conference (Rep Kaen): MA VV; HJ 43, PG.2109|05/21/2008 04:07:53 PM",
+        "2008|2008|05/23/2008 04:05:27 PM|HB1405|H|Committee of Conference Hearing: 05/29/2008 11:30 AM LOB 304|05/23/2008 04:05:27 PM"],
+}
+
+# What each history's headings must be, in order, and words its stages must
+# and must not say. "Fi", "Finance/Consent Cal", "ed to", "Res" and the 1989
+# Senate's "Executive Departments and Administration" are what the history
+# said before.
+_SENT_ON_HEADS = {
+    ("SB286", "2025-2026"): (["In Senate committee — Executive Departments and Administration",
+                              "On the Senate floor", "In Senate committee — Finance"],
+                             ["sent it on to the Finance committee under the chamber's rules"],
+                             ["the Fi committee"]),
+    ("SB106", "2009-2010"): (["In Senate committee — Judiciary", "On the Senate floor",
+                              "In Senate committee — Finance"],
+                             ["sent it on to the Finance committee"], ["the Fi committee"]),
+    ("HB613", "1993-1994"): (["In House committee — Health, Human Services and Elderly Affairs",
+                              "On the House floor", "In House committee — Appropriations"],
+                             ["sent it on to the Appropriations committee"], []),
+    ("SB58", "1989-1990"): (["In House committee — Public Works", "On the House floor",
+                             "In House committee — Appropriations"],
+                            ["voted to pass it, then sent it on to the Appropriations committee"], []),
+    ("HB1119", "2001-2002"): (["In Senate committee — Environment", "On the Senate floor",
+                               "In Senate committee — Finance"],
+                              ["on a voice vote, then sent it on to the Finance committee"], []),
+    ("HB517", "2025-2026"): (["In Senate committee — Judiciary", "In Senate committee — Finance"],
+                             [], []),
+    ("CACR2", "2017-2018"): (["In House committee — Health, Human Services and Elderly Affairs",
+                              "In House committee — Children and Family Law"], [], []),
+    ("HB363", "1991-1992"): (["In House committee — Judiciary", "On the House floor",
+                              "In House committee — Appropriations", "On the House floor",
+                              "In House committee — Appropriations"], [], []),
+    ("HB357", "1995-1996"): (["In House committee — Health, Human Services and Elderly Affairs",
+                              "On the House floor",
+                              "In House committee — Executive Departments and Administration",
+                              "On the House floor",
+                              "In House committee — Executive Departments and Administration"],
+                             [], []),
+    ("HB256", "1997-1998"): (["In House committee — Executive Departments and Administration",
+                              "On the House floor", "In House committee — Finance"],
+                             ["on a roll call 248–8, then sent it on to the Finance committee"],
+                             ["Consent Cal committee"]),
+    # Commerce's report, dated the 16th and entered on the 7th, before the
+    # Senate sent the bill on to Finance on the 15th, is Commerce's.
+    ("HB1076", "2023-2024"): (["In Senate committee — Commerce", "On the Senate floor",
+                               "In Senate committee — Commerce", "In Senate committee — Finance"],
+                              [], []),
+    # And so is the amendment that report carried, adopted on the 15th.
+    ("HB1380", "2023-2024"): (["In Senate committee — Commerce", "On the Senate floor",
+                               "In Senate committee — Commerce", "In Senate committee — Finance"],
+                              ["The committee's amendment (2024-1826s) was adopted"], []),
+    # "PASSED AND REF TO FIN DIV": no name the record lets this give, until
+    # the hearing's row says Capital Budget. The sentence keeps the clerk's
+    # "Fin" until the person names the 1993 Senate's finance divisions.
+    ("HB126", "1993-1994"): (["In Senate committee — Transportation", "On the Senate floor",
+                              "In Senate committee — Capital Budget"], [], []),
+    # "REFERRED TO FINANCE/APPROP" is the 1989 Senate's Finance; the reader
+    # wrote it "Appropriations", a committee that Senate did not have.
+    ("HB115", "1989-1990"): (["In Senate committee — Transportation", "In Senate committee — Finance",
+                              "On the Senate floor", "In Senate committee — Finance"],
+                             ["referred to the Finance committee"], ["Appropriations"]),
+    ("HB1163", "2005-2006"): (["In House committee — Science, Technology and Energy"],
+                              ["referred to the House Science, Technology and Energy committee"],
+                              ["ed to Science"]),
+    ("HB1218", "1991-1992"): (["In House committee — Appropriations",
+                               "In House committee — Resources, Recreation and Development"],
+                              ["sent the bill to the Resources, Recreation and Development committee "
+                               "instead"], ["the Res committee"]),
+    ("CACR1", "1989-1990"): (["In Senate committee — Executive Departments"],
+                             ["referred to the Senate Executive Departments committee"],
+                             ["Administration"]),
+    # "PASSED WITH AM AND REF TO FIN DIV", and then "FIN EXEC COMM REPORT": the
+    # row names the 1993 Senate's Finance Executive Committee.
+    ("SB732", "1993-1994"): (["In Senate committee — Judiciary", "On the Senate floor",
+                              "In Senate committee — Finance Executive Committee"], [], []),
+    # "Committee of Conference Hearing: 05/29/2008 ..." is the conferees'.
+    ("HB1405", "2007-2008"): (["On the House floor", "Committee of conference"], [], []),
+}
+
+
+@check("narrative", "a stage is headed with the committee that has the bill, named as it was "
+                    "then", needs=("narrative",))
+def _committee_holds_the_bill(N):
+    """A chamber that sends a bill on to a second committee says so on the
+    row of the vote that does it -- "Ought to Pass: MA, VV; Refer to Finance
+    Rule 4-5" -- or on a row of its own, and the history's heading went on
+    naming the first: Finance's 6-0 report on SB 286 of 2025 was told under
+    "In Senate committee -- Executive Departments and Administration", and so
+    were 5,242 sentences of 2,680 histories. The same rows sent the bill on
+    to "the Fi committee", the reader stopping after two letters, on 966.
+    Every history below, read from its real rows, is headed with the
+    committee that has the bill at each point, by the name it had in that
+    chamber and term."""
+    bad = []
+    for key, lines in _DOCKET_SENT_ON.items():
+        heads, said, unsaid = _SENT_ON_HEADS[key]
+        n = _narrated(N, key[1], key[0], lines)
+        got = [s["label"] for s in n["stages"]]
+        text = " ".join(s["text"] for s in n["stages"]) + " " + " ".join(got)
+        if got != heads:
+            bad.append(f"{key[0]} of {key[1]}: headed {got}")
+        bad += [f"{key[0]} of {key[1]} does not say {w!r}" for w in said if w not in text]
+        bad += [f"{key[0]} of {key[1]} says {w!r}" for w in unsaid if w in text]
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_SENT_ON)} histories from real rows, each stage headed with the "
+                  "committee that had the bill, as it was named then")
+
+
+# Real rows: Docket.txt 7406 (HB 517 of 2025) and 19102 (SB 635 of 2026);
+# Docket_2019-2020.txt 18691 (SB 487), 17387 (SB 287), 93 (CACR 20) and 19735
+# (SB 618); Docket_db_1991-1992.txt 6595 (HB 363); Docket_db_1995-1996.txt 9948
+# (HB 357) and 2000 (HB 126); Docket_db_1989-1990.txt 103 (SB 58);
+# Docket_2017-2018.txt 14819 (SB 133), 9325 (HB 294) and 11691 (HB 485);
+# Docket_2015-2016.txt 10184 (HB 1272); Docket_db_2007-2008.txt 231 (HB 829).
+# (type, chamber, term, row, motion, where it sends the bill or None)
+_SENDS_TO = [
+    ("other", "S", "2025-2026", "HB517 is vacated from Judiciary and referred to Finance; "
+     "(In recess 03/27/2025)", "", ("vacated", "Finance")),
+    ("floor", "S", "2019-2020", "Inadvertently referred to Election Law and Municipal Affairs and "
+     "will be referred to Judiciary, MA, VV; 01/08/2020", "MA", ("vacated", "Judiciary")),
+    ("floor", "S", "2019-2020", "Sen. Watters Moved to refer SB 287 back to Energy and Natural "
+     "Resources, MA, VV; 01/08/2020", "MA", ("referred", "Energy and Natural Resources")),
+    ("floor", "H", "1991-1992", "RECOMMITTED TO APPROPRIATIONS, REP HAGER MA VV", "MA",
+     ("recommitted", "Appropriations")),
+    ("floor", "H", "1995-1996", "REFERRED TO EXEC DEPTS & ADMIN FOR INTERIM STUDY VV", "MA",
+     ("study", "Executive Departments and Administration")),
+    ("floor", "H", "1989-1990", "PASSED/ADOPTED; REF TO APPROP; HJ&0, P2102", "MA",
+     ("referred", "Appropriations")),
+    ("floor", "H", "2017-2018", "Rules Suspension to refer to Finance (Reps. Hinch, Shurtleff): MA VV "
+     "by necessary two-thirds vote 03/09/2017", "MA", ("referred", "Finance")),
+    # A motion pending, waived, rescinded, declined, lost, or put with no
+    # outcome on its row; a vacated referral that sends the bill to no
+    # committee; a vacated referral to the table.
+    ("other", "S", "2025-2026", "Pending Motion Refer to Finance Rule 4-5; 03/05/2026", "", None),
+    ("other", "S", "2017-2018", "Sen. Daniels Waived Referral to Finance; 03/30/2017", "", None),
+    ("other", "S", "2015-2016", "The Chair rescinded Refer to Finance Rule 4-5; 03/10/2016", "", None),
+    ("other", "H", "1995-1996", "REF TO FINANCE DECLINED, ORDERED TO 3RD READING", "", None),
+    ("floor", "H", "2017-2018", "Rules Suspension to refer to Finance (Rep. Hinch): MF DV 191-152 "
+     "lacking necessary two-thirds vote 03/08/2017", "MF", None),
+    ("other", "S", "2019-2020", "Sen. D'Allesandro moved to Refer to Finance Rule 4-5; 03/05/2020",
+     "", None),
+    ("floor", "H", "2007-2008", "Rep. Almy: Vacate Referral to Ways & Means, MA VV", "MA", None),
+    ("floor", "S", "2019-2020", "Vacated from Committee and Laid on Table, MA, VV; 06/16/2020", "MA",
+     None),
+]
+
+
+@check("narrative", "a row sends a bill on only where it says so and it carried",
+       needs=("narrative",))
+def _sends_to(N):
+    """narrative.sends_to reads where a row sends the bill -- a referral after
+    a passage, a vacated referral, a recommittal, an interim study -- and the
+    heading follows it. A pending motion, a waived or rescinded referral, one
+    declined, one that lost, or a motion whose row gives no outcome sends the
+    bill nowhere, and neither does a vacated referral that names no
+    committee. And the floor's own reader takes the whole of the name: "Refer
+    to Finance Rule 4-5" is Finance, in the current term's pattern and the
+    2007 one's, where it read "Fi"."""
+    bad = []
+    for typ, body, term, raw, motion, want in _SENDS_TO:
+        got = N.sends_to({"_type": typ, "body": body, "_raw": N.clean(raw), "motion": motion}, term)
+        got = got[:2] if got else None
+        if got != want:
+            bad.append(f"{raw[:60]!r}: {got}, not {want}")
+    modern = N.classify("Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/06/2025;  SJ 6")
+    if (modern.get("refer"), modern.get("date")) != ("Finance", "03/06/2025"):
+        bad.append(f"the current term's floor row reads refer {modern.get('refer')!r}, "
+                   f"date {modern.get('date')!r}")
+    import docket_vocab
+    old = docket_vocab.classify("Ought to Pass, MA, VV; Refer to Finance [Rule 26]; SJ 5,Pg.58",
+                                None, "2009")
+    if (old or {}).get("refer") != "Finance":
+        bad.append(f"the 2007 era's floor row reads refer {(old or {}).get('refer')!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_SENDS_TO)} real rows: where each sends the bill, or that it sends it "
+                  "nowhere; the floor's readers take \"Finance\" whole")
 
 
 # =============================================================== code: status ==
@@ -4780,6 +5084,115 @@ def _consent_and_no_sitting_on_disk():
 
 
 _WRITTEN_DAY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+
+
+# THE COMMITTEE THAT HAS THE BILL, ON EVERY HISTORY (3 October 2026). What
+# the data check below reads a history's own words for: a committee heading
+# and the four sentences that name a committee.
+_HEADED = re.compile(r"^In (House|Senate) committee — (?P<c>.+)$")
+_NAMED_IN = (
+    (re.compile(r"referred to the (?P<ch>House|Senate) (?P<c>.+?)"
+                r"(?: committee\b|(?<=Committee)\.)"), True),
+    (re.compile(r"sent the bill to the (?P<c>.+?) committee instead"), False),
+    (re.compile(r"the bill was referred to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
+    (re.compile(r"sent it on to the (?P<c>.+?) committee under the chamber's rules"), False),
+)
+_COMMITTEE_WORK = {"hearing", "exec", "worksession", "report", "retained", "interim_report"}
+# A piece of a word, or of a clause, that a reader once printed as a name:
+# "ed to Science" (refered), "Finance/Consent Cal", "Finance Committee
+# committee".
+_NOT_A_NAME = re.compile(r"^(?:ed|ral|r+ing|red)\s+to\s|/\s*cons|\bcommittee$", re.I)
+
+
+def _plain_words(s):
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", (s or "").lower().replace("&", " and ")).split())
+
+
+@check("data", "every committee stage is headed with the committee that has the bill, and every "
+               "committee is named as it was then", needs=("narrative", "committee_names"))
+def _committee_stages_named(N, CN):
+    """Two things, of every history in narratives.json, read from its own
+    rows.
+
+    WHERE A ROW SENDS THE BILL ON, A STAGE IS HEADED WITH THAT COMMITTEE.
+    For every row narrative.sends_to reads as sending the bill to a committee
+    committee_names can place, which that chamber's committee then works on
+    -- a hearing, a session, a report -- before any other row moves it, some
+    committee stage of that chamber is headed with that committee. Before 3
+    October 2026 this failed on 3,056 referrals: Finance's 6-0 report on SB
+    286 of 2025 under "In Senate committee -- Executive Departments and
+    Administration", and two thousand like it.
+
+    A COMMITTEE IS NAMED AS IT WAS. Every committee a heading or a sentence
+    names is one committee_names places in that chamber and term, or the
+    clerk's own words, whole, on one of the bill's own rows -- never a piece
+    of a longer word ("the Fi committee", 966 histories), of a verb ("ed to
+    Science"), or of a calendar ("Finance/Consent Cal"). Before, 1,491 names
+    were neither. What is kept as the clerk wrote it is counted and said: the
+    1993 Senate's "Fin", whose divisions the person has yet to name, is most
+    of it."""
+    fn = Path("narratives.json")
+    if not fn.exists():
+        return "skip", "no narratives.json here"
+    narr = json.loads(fn.read_text(encoding="utf-8"))
+    names = kept = referrals = 0
+    wrong, unheaded = [], []
+
+    def sends(e, term):
+        return N.sends_to({"_type": e.get("type"), "body": e.get("body"),
+                           "_raw": e.get("raw") or "", "motion": e.get("motion")}, term)
+
+    for term, byb in narr.items():
+        for bill, n in byb.items():
+            evs = [e for e in n.get("events", []) if not e.get("cancelled")]
+            rows = " | ".join(_plain_words(e.get("raw")) for e in evs)
+            heads = {"H": set(), "S": set()}
+            for s in n.get("stages", []):
+                m = _HEADED.match(s.get("label") or "")
+                found = []
+                if m:
+                    ch = "H" if m.group(1) == "House" else "S"
+                    heads[ch].add(m.group("c"))
+                    found.append((m.group("c"), ch))
+                for rx, chamber_said in _NAMED_IN:
+                    for x in rx.finditer(s.get("text") or ""):
+                        found.append((x.group("c"), ("H" if x.group("ch") == "House" else "S")
+                                      if chamber_said else (s.get("hand") or "H")[:1]))
+                for c, ch in found:
+                    names += 1
+                    if CN.known(c, ch, term) or re.match(r"^(?:a\s+)?Joint\b", c):
+                        continue
+                    w = _plain_words(c)
+                    if _NOT_A_NAME.search(c) or not w or not re.search(
+                            r"(?:^|[ |])" + re.escape(w) + r"(?=$|[ |])", rows):
+                        wrong.append(f"{bill} of {term}: {c!r}")
+                    else:
+                        kept += 1
+            for i, e in enumerate(evs):
+                got = sends(e, term)
+                if not got or not got[2]:
+                    continue
+                later = [x for x in evs[i + 1:] if x.get("body") == e.get("body")]
+                upto = next((j for j, x in enumerate(later)
+                             if x.get("type") in ("introduced", "vacated", "rereferred")
+                             or sends(x, term)), len(later))
+                if not any(x.get("type") in _COMMITTEE_WORK for x in later[:upto]):
+                    continue
+                referrals += 1
+                if got[1] not in heads.get(e.get("body"), ()):
+                    unheaded.append(f"{bill} of {term} ({e.get('body')}, {e.get('date')}): "
+                                    f"to {got[1]}, headed {sorted(heads.get(e.get('body'), ()))}")
+    problems = []
+    if unheaded:
+        problems.append(f"{len(unheaded)} referrals the committee then worked on have no stage "
+                        "headed with that committee: " + "; ".join(unheaded[:6]))
+    if wrong:
+        problems.append(f"{len(wrong)} committee names are neither a committee of that chamber "
+                        "and term nor the clerk's own words: " + "; ".join(wrong[:10]))
+    assert not problems, "\n".join(problems)
+    return "ok", (f"{referrals:,} referrals each have their committee's heading; {names:,} "
+                  f"committee names, {kept:,} kept as the clerk wrote them where nothing "
+                  "places them")
 
 
 @check("data", "no sitting lists a bill on its consent calendar on a day its chamber's docket "

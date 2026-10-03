@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.58
+# GRANITE_VERSION: 2026-09-04.59
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -19,6 +19,7 @@ missing one.
 
 import argparse
 import build_date
+import committee_names as CN
 import json
 import proceedings as P
 import re
@@ -1293,7 +1294,13 @@ PATTERNS = [
         # A bill can be sent straight on to Finance under House Rule 4-5 in the
         # same motion that passes it. That clause sits between the vote and the
         # date and was stopping the whole line from parsing.
-        r"(?:Refer(?:red)?\s+to\s+(?P<refer>[A-Z][A-Za-z ]+?)"
+        # THE NAME RUNS TO THE RULE, the bracket or the separator after it
+        # (3 October 2026). "[A-Z][A-Za-z ]+?" with nothing after it required
+        # stopped at two letters wherever the clause skipped below could take
+        # the rest: "Refer to Finance Rule 4-5; 03/06/2025" (HB 71 of 2025)
+        # read "Fi", and 966 histories said "sent it on to the Fi committee".
+        r"(?:Refer(?:red)?\s+to\s+(?P<refer>[A-Z][A-Za-z ]*?[A-Za-z])"
+        r"(?=\s*(?:\[|\(|Rule\b|[,;]|\d|$))"
         r"(?:\s+Rule\s*[\d\-]+)?[,;\s]*)?"
         # WHAT THE CHAMBER SAID ABOUT ITS OWN VOTE, between the tally and the
         # date: "Lacking Necessary Two-Thirds Vote", "by necessary two-thirds
@@ -2347,7 +2354,7 @@ def describe(ev, body, seen_intro=False):
         # The row's own words: it was to be, and build() found it withdrawn
         # on or before that day.
         return (f"It was to be introduced on {fdate(ev['date'])} and referred to "
-                f"the {chamber} {ev['committee']} committee.")
+                f"the {chamber} {_committee(ev, body)}.")
 
     if t == "entered_introduced":
         # The docket's row says introduced and the House Journal's resolution
@@ -2359,7 +2366,7 @@ def describe(ev, body, seen_intro=False):
         # row that still reads "To Be Introduced 01/04/2017 and referred to
         # ...", which the docket never entered as done.
         j = ev.get("_journal") or {}
-        to = (f" and referred to the {chamber} {ev['committee']} committee"
+        to = (f" and referred to the {chamber} {_committee(ev, body)}"
               if ev.get("committee") else "")
         try:
             day = datetime.strptime(j.get("date") or "", "%Y-%m-%d").strftime(MONTH)
@@ -2422,7 +2429,7 @@ def describe(ev, body, seen_intro=False):
         to = (ev["committee"] if re.match(r"a\s+Joint\s+Committee\b", ev.get("committee") or "")
               else f"the {ev['committee']}"
               if re.match(r"Joint\s+(?:Legislative\s+)?Committee\s+on\b", ev.get("committee") or "")
-              else f"the {chamber} {ev['committee']} committee")
+              else f"the {chamber} {_committee(ev, body)}")
         if seen_intro:
             # Crossover: the second chamber records receipt as an introduction.
             return (f"It crossed to the {chamber} on {fdate(ev['date'])} and was "
@@ -2431,7 +2438,7 @@ def describe(ev, body, seen_intro=False):
 
     if t == "vacated":
         return (f"The {chamber} withdrew that referral and sent the bill to the "
-                f"{ev['committee']} committee instead.")
+                f"{_committee(ev, body)} instead.")
 
     if t == "hearing" and ahead(ev.get("date")):
         return (f"A public hearing is scheduled for {fdate(ev['date'])}"
@@ -2544,7 +2551,7 @@ def describe(ev, body, seen_intro=False):
         if OT_RDG.search(ev.get("_raw", "")):
             base += " and ordered it to a third reading"
         if ev.get("refer"):
-            base += (f", then sent it on to the {ev['refer'].strip()} committee "
+            base += (f", then sent it on to the {_committee(ev, body, 'refer')} "
                      "under the chamber's rules")
         return _stop(base + mover)
 
@@ -2728,8 +2735,8 @@ def describe(ev, body, seen_intro=False):
         # Naming the committee it probably meant would be inventing a fact
         # the docket declines to state, so the sentence simply stops saying
         # which.
-        c = (ev.get("committee") or "").strip()
-        where = f" to the {c} committee" if c else " back to committee"
+        c = _named(ev, body)
+        where = f" to the {_committee(ev, body)}" if c else " back to committee"
         return f"On {fdate(ev['date'])} the bill was referred{where}."
 
     if t == "governor":
@@ -2993,6 +3000,254 @@ TAKEN_FROM_COMMITTEE = re.compile(r"^\s*Withdraw\s+from\s+(?:the\s+)?(?:Joint\s+
                                   re.I)
 
 
+# --------------------------------------------------- the committee that has it
+#
+# A COMMITTEE IS NAMED AS IT WAS, IN THAT CHAMBER AND TERM (3 October 2026).
+# The sentences printed the name a row's reader produced, and 3,587 of them,
+# in 3,323 histories, named no committee that chamber had that term: "the Fi
+# committee" for Finance on 966 (a cut, mended where it is made, above and in
+# docket_era_2007), the clerk's "Wildlife" and "St Inst", the reader's
+# "Executive Departments and Administration" for the Senate's Executive
+# Departments of 1989-1992, "Commerce" for the House's commerce committee of
+# 1989-1996, "Finance Committee committee". committee_names.official is the
+# one table of what each committee was called when; a name it cannot place is
+# printed as the row gives it, as before.
+#
+# Where the reader's name cannot be placed, the clerk's own words are tried
+# (docket_vocab keeps them, "_as_written"), and then each half of a name the
+# clerk joined with a slash, where exactly one half is a committee of that
+# chamber and term: "REFERRED TO FINANCE/APPROP" and "APPROPRIATION/FINANCE"
+# are the 1989 Senate's Finance, which the reader had written "Appropriations"
+# -- a committee the Senate did not have until 1993.
+def committee_placed(name, body, term, written=""):
+    """The committee's name in that chamber and term, or "" where neither
+    `name` nor the clerk's `written` words are one that committee_names.
+    OFFICIAL lists for them."""
+    if body not in ("H", "S") or not term:
+        return ""
+
+    def placed(s):
+        s = re.sub(r"\s+", " ", s or "").strip()
+        s = re.sub(r"^(?:the\s+)?Committee\s+on\s+(?=[A-Z])", "", s, flags=re.I)
+        return CN.known(CN.official(s, body, term), body, term) or "" if s else ""
+
+    for s in (name, written):
+        got = placed(s)
+        if got:
+            return got
+    for s in (written, name):
+        halves = {placed(x) for x in re.split(r"\s*/\s*", s or "") if x.strip()}
+        halves.discard("")
+        if "/" in (s or "") and len(halves) == 1:
+            return halves.pop()
+    return ""
+
+
+def committee_said(name, body, term, written=""):
+    """`name` as a heading or a sentence prints it: the committee's own name
+    in that chamber and term, or the name as given where nothing places it."""
+    n = re.sub(r"\s+", " ", name or "").strip()
+    return committee_placed(n, body, term, written) or n
+
+
+def _named(ev, body, key="committee"):
+    """The committee an event names, as describe() prints it."""
+    return committee_said(ev.get(key), body, ev.get("_term"),
+                          (ev.get("_as_written") or {}).get(key, ""))
+
+
+def _committee(ev, body, key="committee"):
+    """"Finance committee", and "Finance Executive Committee" where the
+    committee's own name says it (the Senate's of 1993-1994): never "...
+    Committee committee"."""
+    n = _named(ev, body, key)
+    return n if n.lower().endswith("committee") else f"{n} committee"
+
+
+# A HISTORY'S STAGE IS HEADED WITH THE COMMITTEE THAT HAS THE BILL. The
+# heading carried the last committee a row named -- an introduction, a vacated
+# referral, a re-referral -- and nothing else moved it. But a chamber sends a
+# bill on to a second committee more often than that, and says so on the row
+# of the vote that does it:
+#
+#   "Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/06/2025"   SB 286, 2025
+#   "Ought to Pass, MA, VV; Refer to Finance [Rule 26]"              SB 106, 2009
+#   "COMM AM, AA VV; PASSED WITH AM AND REF TO APPROP VV"            HB 613, 1993
+#   "PASSED/ADOPTED; REF TO APPROP"                                  SB 58, 1989
+#   "HB517 is vacated from Judiciary and referred to Finance"       HB 517, 2025
+#   "Vacated to Children and Family Law Without Objection"           CACR 2, 2017
+#   "RECOMMITTED TO APPROPRIATIONS, REP HAGER MA VV"                 HB 363, 1991
+#   "REFERRED TO EXEC DEPTS & ADMIN FOR INTERIM STUDY VV"            HB 357, 1996
+#
+# Finance's 6-0 report on SB 286 was told under "In Senate committee --
+# Executive Departments and Administration", and so were 5,242 sentences of
+# 2,680 histories: a second committee's hearing, work, executive session and
+# report told as the first's. sends_to() reads where a row sends the bill, and
+# build() begins a new stage there, headed with that committee and chamber.
+# It changes no event's type and no event's committee: the heading, and the
+# referral a passage's sentence tells, and nothing else.
+#
+# A REFERRAL IS READ ONLY WHERE IT CARRIED, and only to a committee
+# committee_names can place: "Pending Motion Refer to Finance Rule 4-5", "Sen.
+# Daniels Waived Referral to Finance", "The Chair rescinded Refer to Finance",
+# "REF TO FINANCE DECLINED", a clause that lost, a motion whose outcome the row
+# does not give. The floor's own reader's `refer` is the exception: it is the
+# rule referral after a passage, and where its name cannot be placed -- the
+# 1993-1994 Senate's "FIN DIV", whose divisions the person has yet to name --
+# the heading stops naming the first committee and names none, until a row
+# that names its committee says which.
+_SEND_VERB = r"(?P<again>RE-?)?REF(?:E?R+ED|ER|\.)?"
+_SEND_BILL = r"(?:(?:HB|SB|HCR|SCR|HJR|SJR|HR|SR|CACR|HA|PET)\s*\d+(?:-[A-Z]+)*\s+)?"
+_SEND_TO = r"TO\s+(?:THE\s+COMMITTEE\s+ON\s+)?"
+_SEND_NAME = r"(?P<c>[A-Z][A-Za-z&+,'/. \-]*?)"
+_SEND_END = (r"(?=\s*(?:[;(\[{<:]|$|,\s*(?:REPS?|SENS?|SENATOR)\b|,?\s*\d|,?\s*[HS]J\s*\d"
+             r"|,?\s*\b(?:VV|RC|DV|MA|ML|MF|AA|RULE|UNDER|PER)\b|,?\s*\bDIV(?:ISION)?\b\.?\s*[(\d]"
+             r"|\s+FOR\s+(?:INT|STUDY)|\s+WITHOUT\s+OBJ|\s+BY\s+(?:THE\s+)?NEC|\s+IN\s+[A-Z]"
+             r"|\s+AND\s+TO\b|\s+DECLINED\b))")
+SENDS = [
+    # "Inadvertently referred to Election Law and Municipal Affairs and will be
+    # referred to Judiciary, MA, VV" (SB 487 and SB 536 of 2020): the second
+    # is where it went.
+    ("vacated", re.compile(r"\bWILL\s+BE\s+REFERRED\s+" + _SEND_TO + _SEND_NAME + _SEND_END, re.I)),
+    # "vacated from Judiciary and referred to Finance", "Vacated to Children and
+    # Family Law Without Objection", "VACATE TO MUN & CTY GOVT", "Moved to
+    # Vacate HB 225-FN from Finance to Energy and Natural Resources" (2017)
+    ("vacated", re.compile(
+        r"\bVACAT\w*\s+" + _SEND_BILL + r"(?:FROM\s+[A-Z][^;]*?\s+)?(?:(?:AND|&)\s+)?"
+        r"(?:(?:RE-?)?REF(?:E?R+ED|ER|\.)?\s+)?" + _SEND_TO + _SEND_NAME + _SEND_END, re.I)),
+    ("recommitted", re.compile(
+        r"\bRECOMM?IT\w*\s+" + _SEND_BILL + r"(?:BACK\s+)?" + _SEND_TO + _SEND_NAME + _SEND_END, re.I)),
+    # "REFERRED TO CRIM JUST & PSFTY FOR INTERIM STUDY", "REFERRED FOR MUN &
+    # CNTY GOVT FOR INTERIM STUDY", "ref to Executive Dept and Admin. for
+    # Interim Study"
+    ("study", re.compile(
+        r"\b" + _SEND_VERB + r"\s+(?:TO|FOR)\s+\(?" + _SEND_NAME
+        + r"\)?\s+(?:FOR\s+)?(?:INT(?:ERIM)?\.?\s+)?STUDY\b", re.I)),
+    # "PASSED W/AM & REFERRED TO APPROP", "Refer to Finance [Rule 24]",
+    # "Moved to refer SB 287 back to Energy and Natural Resources" (2020),
+    # "Rerefer to the Committee on Health and Human Services"
+    ("referred", re.compile(
+        r"\b" + _SEND_VERB + r"\s+" + _SEND_BILL + r"(?:BACK\s+)?" + _SEND_TO + _SEND_NAME
+        + _SEND_END, re.I)),
+]
+_SEND_SKIP = re.compile(r"\bPending\s+Motion\b|\bNot\s+Voted\s+On\b|\brescind|\bwaive", re.I)
+_SEND_LOST = re.compile(r"\b(?:ML|MF|AL|AF)\b|\bfail|\blost\b|\bdeclin", re.I)
+_SEND_MOVED = re.compile(r"\bmove[ds]?\b|\bmotion\b", re.I)
+_SEND_CARRIED = re.compile(r"\b(?:MA|AA)\b|\badopted\b|\bwithout\s+objection\b", re.I)
+_SEND_NOT_A_NAME = re.compile(
+    r"^(?:the\s+)?(?:(?:full|same|standing)\s+)?(?:comm(?:ittee)?s?|int(?:erim)?\.?(?:\s+study)?"
+    r"|study|table|(?:third|3rd)\s+reading|cons(?:ent)?\b.*|calendar|sub-?comm\w*"
+    r"|committee\s+of\s+conf\w*|conf\w*\s+comm\w*|joint\s+comms?)$", re.I)
+# "FINANCE/CONSENT CAL" (1997-1998): the consent calendar the House adopted
+# the bill on, not part of the committee's name (docket_era_1989.fix).
+CONSENT_TAIL = re.compile(r"\s*/\s*CONS(?:ENT)?\.?\s*CAL\w*\.?\s*$", re.I)
+
+
+def _sent_name(raw):
+    n = CONSENT_TAIL.sub("", (raw or "").strip(" ,.-/"))
+    n = re.sub(r"^(?:the\s+)?committee\s+(?:on\s+)?(?=[A-Z])", "", n, flags=re.I).strip(" ,.-/")
+    return "" if not n or _SEND_NOT_A_NAME.match(n) else n
+
+
+PASSAGE = re.compile(r"^\s*(?:ought\s+to\s+pass|pass|adopt)", re.I)
+
+
+def sends_to(ev, term):
+    """Where this row sends the bill, as (how, the committee, placed) -- how is
+    "rule" for the floor reader's own `refer`, else the form read off the row
+    ("referred", "rereferred", "vacated", "recommitted", "study"), and placed
+    whether committee_names could name it -- or None where it sends it nowhere
+    or the row does not say that it carried."""
+    t, body = ev.get("_type"), ev.get("body")
+    if body not in ("H", "S") or t not in ("floor", "amendment", "other"):
+        return None
+    raw = ev.get("_raw") or ""
+    if _SEND_SKIP.search(raw):
+        return None
+    motion = (ev.get("motion") or "").upper()
+    if t == "floor" and motion in ("ML", "MF"):
+        return None
+    if t == "floor" and ev.get("refer"):
+        n = _sent_name(ev["refer"])
+        placed = committee_placed(n, body, term,
+                                  _sent_name((ev.get("_as_written") or {}).get("refer")))
+        return ("rule", placed or n, bool(placed)) if n else None
+    forms = SENDS[:1] if re.search(r"\binadvertent", raw, re.I) else SENDS
+    for how, rx in forms:
+        for m in rx.finditer(raw):
+            name = _sent_name(m.group("c"))
+            if not name:
+                continue
+            a = raw.rfind(";", 0, m.start()) + 1
+            z = raw.find(";", m.end())
+            clause = raw[a:z if z >= 0 else len(raw)]
+            if _SEND_LOST.search(clause):
+                continue
+            if _SEND_MOVED.search(clause) and not _SEND_CARRIED.search(raw):
+                continue
+            placed = committee_placed(name, body, term)
+            if placed:
+                if how == "referred" and "again" in rx.groupindex and m.group("again"):
+                    how = "rereferred"
+                return how, placed, True
+    return None
+
+
+# A ROW THAT NAMES ITS OWN COMMITTEE. The 1989-1998 clerk ended a meeting's
+# row with the committee that sat -- "HEARING 3/28/89 10:00 RM100,SH FOR:
+# APPROPRIATIONS" -- and the finance committees' reports open with their name,
+# "FIN MAJ REPORT OTP FOR JAN29 (VOTE 19-0;CC)", "Fin Maj Report OTP/AM". A row
+# that names a committee of that chamber and term other than the one holding
+# the bill is headed with the one it names, and only that row: another
+# committee's meeting on a bill does not move it (HB 65 of 1991 sat with the
+# Senate's Finance through two "INFORMATIONAL MEETING ... FOR: BANKS"). A
+# joint meeting names no one committee (ROW_JOINT). Where the holder is a
+# committee the record does not
+# let this name -- the 1993-1994 Senate's "FIN DIV" -- the first row that names
+# one says which, and holds from there: "HEARING APR06 ... FOR: CAP BUDGET".
+ROW_FOR = re.compile(r"\bFOR\s*:\s*(?P<c>[A-Z][A-Za-z&+,'/. \-]*?)\s*$", re.I)
+ROW_MONEY = re.compile(
+    r"^(?:(?:RE-?REF\w*|INT(?:ERIM)?\.?\s+STUDY|RESCHED\w*|CONTINUED)\s+)?"
+    # "FIN EXEC COMM REPORT REF FOR STUDY MAR22" (SB 732 of 1994): the 1993
+    # Senate's Finance Executive Committee, a name committee_names places.
+    r"(?:(?:MAJ|MIN)\w*\.?\s+)?(?P<c>FIN(?:ANCE)?(?:\s+EXEC\w*)?|APPROP\w*|W\s*&\s*M|WAYS\s*(?:&|AND)\s*MEANS"
+    r"|CAP(?:ITAL)?\s+BUDGET)\b\.?(?:\s+DIV\w*\.?\s+[IV]+)?\s+(?:(?:MAJ|MIN)\w*\.?\s+)?"
+    r"(?:COMM\w*\.?\s+)?(?:REPORT|REPT|REP|RPT|RPRT|PUBLIC\s+HEARING|HEARING|WORK|WK|EXEC|SUBCOM\w*"
+    r"|FULL)\b", re.I)
+# Not a joint meeting: "JOINT HEARING 3/22/89 7:00 REP HALL FOR: APP & WAYS &
+# MEANS" (HB 777 of 1989) is Appropriations and Ways and Means together.
+ROW_JOINT = re.compile(r"^\W*(?:JOINT|JT\.?)\s", re.I)
+ROW_MEETINGS = ("hearing", "exec", "worksession")
+ROW_NAMERS = ROW_MEETINGS + ("report", "retained", "interim_report")
+# "Committee of Conference Hearing: 05/29/2008 11:30 AM LOB 304" (HB 1405 of
+# 2008) is the conferees' meeting, read as a hearing because it says one.
+CONFERENCE_ROW = re.compile(
+    r"^\W*(?:Committee\s+of\s+Conference|Conf(?:erence)?\.?\s+Comm(?:ittee)?\.?)\s+"
+    r"(?:Public\s+)?(?:Hearing|Meeting|Work|Exec)", re.I)
+
+
+def row_names(ev, body, term):
+    """The committee a committee row names as its own, where it names one
+    committee_names can place; else ""."""
+    t = ev.get("_type")
+    if t not in ROW_NAMERS:
+        return ""
+    raw = ev.get("_raw") or ""
+    if ROW_JOINT.match(raw):
+        return ""
+    m = ROW_MONEY.match(raw) or (ROW_FOR.search(raw) if t in ROW_MEETINGS else None)
+    return committee_placed(m.group("c"), body, term) if m else ""
+
+
+def _entered_before(ev, stamp):
+    """Was this row entered before `stamp`? Only where both carry a stamp:
+    the dockets of 2017 on stamp every row at midnight, so a row of the same
+    day is never before."""
+    e = ev.get("_entered")
+    return (isinstance(e, datetime) and isinstance(stamp, datetime)
+            and datetime.min not in (e, stamp) and e < stamp)
+
+
 def build(bill, rows, introduction=None):
     rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
     if CORRECTIONS:
@@ -3003,6 +3258,7 @@ def build(bill, rows, introduction=None):
     # the shape classify() does. A 2017-2026 row never reaches it, and the
     # import is optional so a checkout without those modules builds as before.
     session = next((r.get("session") for r in rows if r.get("session")), None)
+    term = P.term_of(str(session or ""))
     vocab = None
     if _VOCAB is not None and _VOCAB.era_for(session) is not None:
         vocab = _VOCAB
@@ -3025,6 +3281,8 @@ def build(bill, rows, introduction=None):
                       "date": r["created"].strftime("%m/%d/%Y")}
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
+        # And a committee's name is the one it had in this term (committee_said).
+        ev["_term"] = term
         if ev.get("chapter"):
             ev["chapter"] = confirmed_chapter(
                 P.term_of(str(r.get("session") or session or "")), bill, ev["chapter"])
@@ -3257,10 +3515,36 @@ def build(bill, rows, introduction=None):
             held[ev["body"]] = c
         ev["committee_now"] = held.get(ev["body"], "")
 
+    # A PASSAGE THAT SENDS THE BILL ON SAYS SO, wherever its row's reader left
+    # the referral off: "Ought to Pass, MA, VV; Refer to Finance [Rule 24]"
+    # (HB 1119 of 2002, read by the 1999 reader's House pattern, which has no
+    # `refer`), "PASSED/ADOPTED; REF TO APPROP" and "PASSED W/AM & REFERRED TO
+    # APPROP" (SB 58 and HB 100 of 1989, whose reader wanted " AND REF TO").
+    # Told as the referral the floor's reader reads is told (describe), and
+    # only where the row carried a passage: a re-referral, a vacated
+    # referral, a recommittal or a study changes the heading (sends_to) and
+    # is not this.
+    for ev in evs:
+        if ev["cancelled"] or ev["_type"] != "floor" or ev.get("refer"):
+            continue
+        sent = sends_to(ev, term)
+        if sent and sent[0] == "referred" and PASSAGE.match(split_mover(ev.get("action"))[0]):
+            ev["refer"] = sent[1]
+
     sentences, notes, unknown = [], [], []
     # A note is said once per bill, however many rows repeat the action.
     used_notes = set()
     last_cmte = {}
+    # {chamber: (the moment the row that sent the bill on was entered, the
+    # committee that had it before)}, for a row entered ahead of that one.
+    moved = {}
+    # {chamber: [(the amendments a committee's report carried, when it was
+    # entered)]}, for the amendment the floor then votes on.
+    carried_by = {}
+    for e in evs:
+        if e["_type"] == "report" and not e["cancelled"] and e.get("amend"):
+            carried_by.setdefault(e["body"], []).append(
+                (amend_keys(e["amend"]), e["_entered"]))
     stages = []   # [{"label": ..., "text": ...}] in the order they happened
     recorded_votes = 0
     unrecorded_votes = 0
@@ -3360,14 +3644,49 @@ def build(bill, rows, introduction=None):
             # row happens to carry split one committee's work into "In Senate
             # committee - Commerce" followed by a second, unnamed "In Senate
             # committee". The committee holding a bill does not change between
-            # its referral and its hearing, and when it does there is a
-            # re-referral row that updates this.
-            if cmte and key[1] == "committee":
-                last_cmte[key[0]] = cmte
+            # its referral and its hearing, and when it does there is a row
+            # that says so: a re-referral, which names it, or a row that sends
+            # the bill on, which sends_to reads (below, after the row's own
+            # stage). A committee is named as it was then (committee_said), so
+            # one committee the clerk wrote two ways is one stage.
+            if key[1] == "committee" and ev["_type"] in ROW_MEETINGS \
+                    and CONFERENCE_ROW.match(ev["_raw"]):
+                key = ("C", "conference")
             elif key[1] == "committee":
-                cmte = last_cmte.get(key[0], "")
-            if cmte and key[1] == "committee":
-                key = key + (cmte,)
+                b = key[0]
+                if cmte:
+                    cmte = last_cmte[b] = committee_said(
+                        cmte, b, term, (ev.get("_as_written") or {}).get("committee", ""))
+                    moved.pop(b, None)
+                else:
+                    cmte = last_cmte.get(b, "")
+                    # A ROW ENTERED BEFORE THE ROW THAT SENT THE BILL ON is the
+                    # committee's it was sent from, wherever its own date files
+                    # it after: Commerce's report on HB 1076 of 2024, dated 16
+                    # May and entered on the 7th, beside the Senate's referral
+                    # to Finance of the 15th.
+                    if b in moved and _entered_before(ev, moved[b][0]):
+                        cmte = moved[b][1]
+                    # AND A COMMITTEE'S AMENDMENT IS THE COMMITTEE'S WHOSE
+                    # REPORT CARRIED IT, wherever the floor votes on it: the
+                    # report naming Commerce's 2024-1826s on HB 1380 of 2024
+                    # was entered on 8 May, and the amendment was adopted on
+                    # the 15th, in the vote that passed the bill and sent it
+                    # on to Finance.
+                    if ev["_type"] == "amendment" and b in moved:
+                        mine = amend_keys(ev.get("num"))
+                        if any(_entered_before({"_entered": at}, moved[b][0])
+                               and any(same_amendment(k, x) for k in keys for x in mine)
+                               for keys, at in carried_by.get(b, ())):
+                            cmte = moved[b][1]
+                    named = row_names(ev, b, term)
+                    if named and named != cmte:
+                        if not committee_placed(last_cmte.get(b), b, term):
+                            last_cmte[b] = named
+                            moved.pop(b, None)
+                        cmte = named
+                if cmte:
+                    key = key + (cmte,)
             if stages and stages[-1]["key"] == key:
                 stages[-1]["sentences"].append(s)
             else:
@@ -3470,6 +3789,16 @@ def build(bill, rows, introduction=None):
         hits = [k for k in NUANCE if k in raw]
         if hits:
             _note(NUANCE[max(hits, key=len)])
+
+        # WHERE THIS ROW SENDS THE BILL, from the next row of that chamber's
+        # committee on (sends_to). The floor's own `refer` to a name nothing
+        # can place leaves the heading naming no committee rather than the one
+        # the bill has left.
+        sent = sends_to(ev, term)
+        if sent and (sent[2] or sent[0] == "rule"):
+            b = ev["body"]
+            moved[b] = (ev["_entered"], last_cmte.get(b, ""))
+            last_cmte[b] = sent[1] if sent[2] else ""
 
     # Not a note on the summary. This is about the votes, and the Votes tab
     # is where somebody goes to look for them.
