@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.13
+# GRANITE_VERSION: 2026-09-19.14
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -1821,7 +1821,22 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
         taken.add(rollcall_key(cands[0]))
     loose = [x for x in loose if rollcall_key(x[2]) not in taken]
 
+    # BEFORE THE VOTING SYSTEM, THE DOCKET IS THE RECORD. A roll call the
+    # docket states before rollcalls.json begins -- "COMM AM, AL RC(6-17);
+    # LAID ON THE TABLE, SEN W. KING MA RC(16-7)" -- is drawn from the docket
+    # alone, with the docket's count and the outcome its own words give, on a
+    # sitting the floor rows already make; a row whose date is no sitting is
+    # left, since nothing here can say a mistyped date from a sitting.
     left_docket = []
+    for item, body, dates in _docket_only(data, placed, day_of, base):
+        when = next((d for d in dates if d and (body, d) in have), None)
+        if when is None:
+            left_docket.append((item, body, dates[-1],
+                                "a docket row of the years before the roll-call "
+                                "file, dated on no sitting the floor rows make"))
+            continue
+        grouped[(body, when)].append(item)
+        day_of[id(item)] = (body, when)
 
     # The motions made above, onto their sittings.
     for body, dates, item, r, e in fresh:
@@ -1881,6 +1896,76 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
     for v in others.values():
         v.sort(key=lambda i: rollcall_key(i.rc)[2])
     return others, left, left_docket
+
+
+def _docket_only(data, placed, day_of, base):
+    """[(Item, body, [dates to try])] -- a motion of its own for every roll
+    call a docket row states before the roll-call file begins in its chamber
+    that no floor motion tells, with the docket's count and the outcome the
+    clause's own words give (rollcall_outcomes.outcome); and, in place, the
+    count for a floor motion of those years whose line states its roll call
+    in a form the reader did not take."""
+    import rollcall_outcomes as RO
+    out = []
+    last = max(ROLLCALLS_FROM.values(), default="9999")[:4]
+    for term, bills in sorted(data.items()):
+        if term[:4] > last:
+            continue
+        for bill, rec in sorted(bills.items()):
+            events = rec.get("events") or []
+            for body in ("H", "S"):
+                cut = ROLLCALLS_FROM.get(body, "9999")
+                for o in _tallies(events, body):
+                    if o["kind"] != "RC" or not o["date"] or o["date"] >= cut:
+                        continue
+                    e = o["e"]
+                    it = placed.get(id(e))
+                    if it is not None and id(it) in day_of and _owns(it, o):
+                        if not it.counted:
+                            # the line's own "RC" beside its count says how
+                            # it was taken: "PASSED AND REF TO FIN DIV
+                            # RC(19-4)" (SB 769 of 1994) is a roll call
+                            it.yeas, it.nays = o["y"], o["nn"]
+                            it.kind = "RC"
+                        continue
+                    raw = e.get("raw") or ""
+                    carried, _clause, _how = RO.outcome(
+                        [{"text": raw}], {"row": 0, "start": o["start"], "end": o["end"],
+                                          "y": o["y"], "n": o["nn"], "text": raw})
+                    action, mover, plain = _question(o, None)
+                    new = Item(bill, term, {"action": action, "mover": mover,
+                                            "vote_kind": "RC", "cite": e.get("cite") or "",
+                                            "cite_page": e.get("cite_page")}, 0)
+                    new.raw = raw.strip()
+                    new.yeas, new.nays = o["y"], o["nn"]
+                    new.carried = carried
+                    new.plain = plain
+                    new.added = "row"
+                    if action.startswith("Override"):
+                        new.veto = True
+                    b0 = base.get((term, bill), 0)
+                    if it is not None and id(it) in day_of:
+                        new.page = it.page
+                        new.seq = it.seq + (0.001 * (o["k"] + 1)
+                                            if o["start"] > _told_at(it, o["row"])
+                                            else -0.5 + 0.001 * (o["k"] + 1))
+                        out.append((new, body, [day_of[id(it)][1]]))
+                    else:
+                        new.seq = b0 + o["n"] + 0.001 * (o["k"] + 1)
+                        out.append((new, body, [o["own"], o["date"]]))
+    return out
+
+
+def _same_question(r, it):
+    """Could roll call `r` be the motion `it`? Not a veto question against
+    one that is not, nor a suspension of the rules against one that is not;
+    and where both name a kind of question, the same kind."""
+    q, a = r.get("question") or r.get("question_raw") or "", it.action or ""
+    if bool(VETO_Q.search(q)) != bool(VETO_Q.search(a)) or \
+            bool(SUSPEND_Q.search(q)) != bool(SUSPEND_Q.search(a)):
+        return False
+    kq, ka = question_kind(q), question_kind(a)
+    return kq is None or ka is None or kq == ka
 
 
 def _second_look(r, term, bill, body, events, grouped, day_of, placed, tied_items,
