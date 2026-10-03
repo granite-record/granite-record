@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.58 -->
+<!-- GRANITE_VERSION: 2026-09-05.59 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -48,7 +48,8 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 </head>
 <body>
 <a class="skip" href="/bills.html#results">Skip to the bills</a>
-<nav class="top"><div class="in">
+<!-- Every landmark has a name: this nav, the search row and the filters. -->
+<nav class="top" aria-label="Sections"><div class="in">
 <a class="brand" href="index.html">Granite Record</a>
 <div class="navdrop" id="navdrop"><div class="navtabs"><a href="bills.html" aria-current="page">Bills</a>
 <a href="legislators.html">Legislators</a>
@@ -60,7 +61,7 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 <!-- /THEMER:BTN --></div>
 <button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>
 </div></nav>
-<div class="searchrow"><div class="in">
+<div class="searchrow" role="search" aria-label="Search bills"><div class="in">
 <div class="qline">
   <label for="year" style="position:absolute;left:-9999px">Legislative term</label>
   <select id="year" title="Two-year term"></select>
@@ -96,7 +97,7 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
  aria-expanded="false" aria-controls="facets" hidden><span>Filter by topic,
  sponsor or committee</span><span class="badge" hidden></span><span
  class="chev">&#9656;</span></button>
-<aside class="facets" id="facets"></aside>
+<aside class="facets" id="facets" aria-label="Filters"></aside>
 <main id="main"><h1 class="sr">New Hampshire bills</h1>
 <p class="count" id="summary"></p><div id="results"></div></main></div>
 

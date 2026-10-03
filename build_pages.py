@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.129
+# GRANITE_VERSION: 2026-09-04.139
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1205,7 +1205,7 @@ def shell(title, current, body, wide=False, script="", desc="",
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body class="pg">
-<a class="skip" href="#main">Skip to the content</a>\n<nav class="top"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
+<a class="skip" href="#main">Skip to the content</a>\n<nav class="top" aria-label="Sections"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
 <footer><div class="in">
@@ -1465,9 +1465,9 @@ date, the committee and the room, and nothing to play.</p>
 [[placed_pct]] &#8212; the page opens the recording at the moment the bill
 was taken up. On the other [[recording_only]] it links the recording and says
 plainly that the moment has not been established, rather than guessing one. A
-further [[consent]] passed on a consent calendar: adopted in a block, never
-read out and never debated, so there is no moment in the recording to
-find.</p>
+further [[consent]] were decided on a consent calendar: the committee's report
+adopted in a block, never read out and never debated, so there is no moment in
+the recording to find.</p>
 <p>Where the moment is claimed, it usually comes from someone saying so. Most
 of these are the chair or the clerk opening the item, matched against the
 recording's captions; some are a roll call's own clock time from the General
@@ -1764,6 +1764,52 @@ SEATING_JS = """
       var c=seatHit(e.target); if(!c)return;
       e.preventDefault(); pick(c===picked?null:c);
     });
+    /* ONE STOP FOR THE TAB KEY, AND THE ARROW KEYS WITHIN IT. Every seat was
+       its own Tab stop: 382 of them between the chart's controls and the
+       list under it, from the 6th Tab press to the 387th (the audit of
+       2 October 2026, M22). seating.py writes every seat out of the Tab
+       order now; this makes one of them the stop -- the first, until a seat
+       is chosen or reached -- and the arrow keys walk the seats in the order
+       of their numbers, Home and End to the first and the last. Focus on a
+       seat names its member under the chart, as the pointer over it does. */
+    var seats=[].slice.call(svg.querySelectorAll("[data-slug]"))
+      .filter(function(c){return c.getAttribute("data-slug");});
+    var stopAt=function(c){
+      seats.forEach(function(s){s.setAttribute("tabindex",s===c?"0":"-1");});
+    };
+    if(seats.length)stopAt(seats[0]);
+    svg.addEventListener("keydown",function(e){
+      var c=seatHit(e.target), i=seats.indexOf(c), j=-1;
+      if(i<0)return;
+      if(e.key==="ArrowRight"||e.key==="ArrowDown")j=Math.min(seats.length-1,i+1);
+      else if(e.key==="ArrowLeft"||e.key==="ArrowUp")j=Math.max(0,i-1);
+      else if(e.key==="Home")j=0;
+      else if(e.key==="End")j=seats.length-1;
+      else return;
+      e.preventDefault();
+      stopAt(seats[j]); seats[j].focus(); centre(seats[j]);
+    });
+    /* HEARD ON THE BOX ROUND THE CHART, NOT ON THE CHART. Chrome takes an
+       <svg> that listens for focus to be something the Tab key stops on, so
+       with these two on the svg the chart itself became a stop between Fit
+       and the seat: a ring round all 400 seats, drawn where the box clips
+       it, and no key that did anything there. And leaving a seat emptied the
+       note under the chart -- which holds the link to the member's page, the
+       next thing Tab reaches -- while focus was on its way to it, so that
+       press landed on nothing and the link could not be reached from a seat
+       at all (the review of 2 October 2026). The note is left as it is while
+       focus goes into it, and put back when focus leaves it: for the list
+       under the chart it says again whatever is chosen, and for a seat the
+       seat's own focus names its member a moment later. */
+    var host=wrap||svg.parentNode;
+    host.addEventListener("focusin",function(e){
+      var c=seatHit(e.target); if(c){stopAt(c);say(c);}
+    });
+    host.addEventListener("focusout",function(e){
+      if(note&&e.relatedTarget&&note.contains(e.relatedTarget))return;
+      say();
+    });
+    if(note)note.addEventListener("focusout",function(){say();});
     // Hovering names who is in a seat without choosing it, so a mouse can
     // read the floor quickly; leaving restores whatever was chosen.
     svg.addEventListener("mouseover",function(e){
@@ -1837,14 +1883,23 @@ SEATING_JS = """
 # that make it up (SYN and the query groups, the bill order, what a bill
 # number is) between BILLMATCH:BEGIN and BILLMATCH:END; this copies them,
 # unchanged and in order, into site/billmatch.js, inside a function so that
-# none of their names can collide with a page's own, and hands back the five
+# none of their names can collide with a page's own, and hands back the ones
 # the header uses -- looseness since 25 September, so that the header and
 # /search put a bill that has the word itself above one that only has a
-# longer word it begins, as /bills does. find.js loads it only when somebody
-# types, and only on a page that does not already run app.js.
+# longer word it begins, as /bills does; and since 1 October indexAdd (the
+# header hands it sidx/<term>.json, what each bill's analysis and text are
+# about), readShort (a two-letter word read as the start of one where a
+# search lists nothing), whyListed (the line that says why a bill is listed),
+# and spelling and wordsAdd (a misspelt word offered as the word it sounds
+# like, once sidx/words.json says it is no word of any bill), and since
+# 2 October knownWord (so the header offers no member's name for a word the
+# bills use: "zebra" was offered "debra"). find.js loads
+# it only when somebody types, and only on a page that does not already run
+# app.js.
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
-                     "looseness")
+                     "looseness", "indexAdd", "readShort", "whyListed",
+                     "spelling", "wordsAdd", "knownWord", "matchScore")
 
 
 def bill_matcher_js(app_js):
@@ -1890,7 +1945,7 @@ def bill_matcher_js(app_js):
 # Concord" led to a page with no towns in it. This page reads the same
 # find.json with the cap off and groups what it finds.
 #
-# It reuses find.js wholesale -- findRows, findMatch, findSuggest, _fmark,
+# It reuses find.js wholesale -- findRows, findMatch, findOffers, _fmark,
 # _froot, _fwhole, FKIND, and for the bills findBills, findBillsLoad,
 # findBillsLoadAll, findBillsAll and findBillRow -- because a second matcher
 # would be a second thing to keep in
@@ -1936,8 +1991,10 @@ const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
 // then shows, and the first five are listed. Before they are counted, or if
 // they cannot be, the card offers the bill search without a number.
 //
-// Its description used to say the bill search reads "the words in its text".
-// It does not: it reads a bill's number, title, sponsor and committee.
+// Its description used to say the bill search reads "the words in its text"
+// when it read a bill's number, title, sponsor and committee. Since 1 October
+// it does read the topic, the analysis and the text (build_search_index.py),
+// and a row found that way says so.
 const WHAT="The bill search has every term since 1989, with filters for "
   +"committee, sponsor and what became of it.";
 const WHAT_ALL="In the bill search, with filters for committee, sponsor and "
@@ -1960,15 +2017,15 @@ const bills=(q,B,C,counting)=>{
   const none=every?`None in any of the ${B.terms.length} terms.`
     :counted?`None in the ${esc(B.term)} term.`:"";
   const now=every&&C&&C.state==="ready"&&C.n&&C.n<B.n
-    ?`<a class="fbills" href="/bills?q=${encodeURIComponent(q)}">
+    ?`<a class="fbills" href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
         the ${esc(C.term)} term</span></span>
       <span class="fwhat">The term the bill search opens on.</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=counted&&B.n
-    ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every)).join("")
+    ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every,B.why.get(b))).join("")
     :counted
-    ?`<a href="/bills?q=${encodeURIComponent(q)}">
+    ?`<a href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">Search every bill for
         &ldquo;${esc(q)}&rdquo;</span></span>
       <span class="fwhat">${none} ${counting?what:WHAT}</span></a>`
@@ -1981,7 +2038,7 @@ const bills=(q,B,C,counting)=>{
 // this site's own pages.
 const AFTER=new Set(["Former senators","Former representatives",
   "Former members","Pages on this site"]);
-let waiting=false,waitingAll=false;
+let waiting=false,waitingAll=false,waitingWords=false;
 
 function draw(q){
   const s=(q||"").trim();
@@ -2048,16 +2105,21 @@ function draw(q){
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
   if(!placed)html+=bills(s,B,C,counting);
-  // Only when something close exists, and only when no bill matched either:
-  // its guesses are names, and "voting" was offered "zoning" over 141 bills.
-  // findSuggest measures against every distinct word in the index and returns
-  // nothing rather than reaching: there is no Firearms subject in the General
-  // Court's own list, so a search for "firarms" offers nothing and says
-  // nothing. Not while the earlier terms are still being counted either.
+  // Only when something close exists, and only when no bill matched either
+  // ("voting" was offered "zoning" over 141 bills). find.js's findOffers
+  // gives a name close to what was typed and the word of the bills that a
+  // misspelt one sounds like ("medicade", "firarms"), and nothing rather
+  // than reaching: a word any bill has used is never offered as another.
+  // Not while the earlier terms are still being counted either.
   if(!rows.length&&!nB&&!(B&&B.state==="loading")&&!counting){
-    const did=findSuggest(s);
-    if(did)html=`<p class="note">Did you mean
-      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`+html;
+    const offer=findOffers(s,!!(B&&B.every));
+    if(offer.wait&&!waitingWords){
+      waitingWords=true;
+      offer.wait.then(()=>draw(box.value));
+    }
+    const did=offer.words.map(d=>
+      `<a href="/search?q=${_fenc(d)}">${esc(d)}</a>`);
+    if(did.length)html=`<p class="note">Did you mean ${did.join(" or ")}?</p>`+html;
   }
   out.innerHTML=html;
 }
@@ -2077,7 +2139,7 @@ findRows().then(()=>{
     tm=setTimeout(()=>{
       const v=box.value.trim();
       draw(v);
-      const u=v?`/search?q=${encodeURIComponent(v)}`:"/search";
+      const u=v?`/search?q=${_fenc(v)}`:"/search";
       history.replaceState(null,"",u);
     },120);
   });
@@ -2179,6 +2241,20 @@ function render(){
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
+  /* WHAT THE LIST NOW HOLDS, SAID. It is redrawn at every letter and nothing
+     told a screen reader that it had changed (the audit of 2 October 2026,
+     S4). One line the eye does not see, role="status": how many towns and
+     members match what was typed, or that nothing does. Silent while the box
+     is empty, when the list is every town and is not an answer to anything. */
+  const say=document.getElementById("lsay");
+  if(say){
+    const said=[towns.length?towns.length+(towns.length===1?" town":" towns"):"",
+                mem.length?mem.length+(mem.length===1?" member":" members"):""]
+      .filter(Boolean);
+    const text=!n?"":!said.length?"Nothing matches that."
+      :said.join(" and ")+(towns.length+mem.length===1?" matches":" match");
+    if(say.textContent!==text)say.textContent=text;
+  }
   /* The chips into view, and no further than the row they belong to. */
   const wb=out.querySelector(".wards");
   if(wb){
@@ -2469,12 +2545,12 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // there are two renderers for it and the footer has already shown what
   // happens when only one of them is changed.
   document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
-    <table><tbody>${(H.recent||[]).slice(0,5).map(r=>
-      `<tr><td style="width:80px">${fd(r.date)}</td>
-       <td><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
+    <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
+      `<li><span class="actd">${fd(r.date)}</span>
+       <span class="actb"><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
        <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
-       <span style="font-size:12px">${esc(r.what)}</span></td></tr>`).join("")}
-    </tbody></table>
+       <span style="font-size:12px">${esc(r.what)}</span></span></li>`).join("")}
+    </ul>
     <p class="actmore"><a class="morebtn" href="/bills?sort=recent">See all
     recent activity &rarr;</a></p>`;
 
@@ -2506,20 +2582,41 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // Both chambers. They sit on different days, so showing one hides the other.
   const ls=(H.latest_sessions&&H.latest_sessions.length)
     ? H.latest_sessions : (H.latest_session?[H.latest_session]:[]);
-  document.getElementById("session").innerHTML=ls.length
+  // THE DATE LEADS TO THE DAY, where the sitting has a page. data-days is
+  // written when the site is built and names the sittings of these dates
+  // that build_session_pages.py writes ("H/2026-08-19"); a date not on it
+  // stays text. Nothing on this page led to a sitting's page before (the
+  // audit of 2 October 2026, B3).
+  const sess=document.getElementById("session");
+  const built=(sess.dataset.days||"").split(" ");
+  const dayLink=v=>{
+    const key=(v.chamber==="Senate"?"S":"H")+"/"+v.date;
+    return built.includes(key)?`<a href="/session/${esc(key)}">${fd(v.date)}</a>`:fd(v.date);
+  };
+  sess.innerHTML=ls.length
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
       `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
-        <span class="statemeta">${fd(v.date)}</span></p>
+        <span class="statemeta">${dayLink(v)}</span></p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
+          data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
           aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
           <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
     :"";
 });
 document.addEventListener("click",e=>{
   const st=e.target.closest("[data-embed]");
-  if(st)st.outerHTML=`<iframe allow="autoplay" allowfullscreen
+  if(!st)return;
+  // The button is replaced by the player, so the player takes the focus the
+  // button had; left on nothing, the next Tab press started from the top of
+  // the page (the audit of 2 October 2026, S1). app.js does the same.
+  const box=st.parentNode, had=document.activeElement===st;
+  // Titled for the chamber and the day, so the two players on this page are
+  // not both "Floor session" to a screen reader (M18).
+  st.outerHTML=`<iframe allow="autoplay" allowfullscreen
     src="https://www.youtube-nocookie.com/embed/${st.dataset.embed}?autoplay=1"
-    title="Floor session"></iframe>`;
+    title="${esc(st.dataset.title||"Floor session")}"></iframe>`;
+  const frame=had&&box&&box.querySelector("iframe");
+  if(frame)frame.focus({preventScroll:true});
 });
 // ONE ADDRESS, AND NO EMPTY QUESTION. Search with nothing typed sent the
 // reader to /bills?q= -- the same page the header's Bills tab reaches at
@@ -2527,7 +2624,9 @@ document.addEventListener("click",e=>{
 // is what the host serves and what the header lands on.
 function goBills(v){
   v=(v||"").trim();
-  location.href="/bills"+(v?"?q="+encodeURIComponent(v):"");
+  // Half an emoji is not an address (find.js, _fwell).
+  location.href="/bills"+(v?"?q="+encodeURIComponent(
+    v.replace(/[\\uD800-\\uDFFF]/gu,"\\uFFFD")):"");
 }
 document.getElementById("hq").addEventListener("keydown",e=>{
   if(e.key==="Enter")goBills(e.target.value);
@@ -2536,6 +2635,21 @@ document.getElementById("hgo").addEventListener("click",()=>{
   goBills(document.getElementById("hq").value);
 });
 </script>"""
+
+
+def sitting_days():
+    """{(body, date)}: the sittings build_session_pages.py writes a page for.
+
+    Asked of that step's own rule and not read off the disk: it runs after
+    this one, so on a machine that starts empty there is no page to find yet.
+    Empty where narratives.json is not here, which is where that step writes
+    nothing either.
+    """
+    import session_days
+    if not Path(session_days.NARRATIVES).exists():
+        return set()
+    import build_session_pages
+    return set(build_session_pages.sittings()[0])
 
 
 def committees_with_roster(out):
@@ -3066,6 +3180,7 @@ it, or a name, county, party or committee to find a member.</p>
   <input id="lq" type="search" autocomplete="off"
     placeholder="Your town, or a legislator&rsquo;s name" disabled>
   <p class="count" id="lcount">Loading&hellip;</p>
+  <p class="sr" id="lsay" role="status"></p>
   <div class="lmatch" id="lmatch"></div>
 </div>
 <!-- The roster's #out lives inside the By county pane, and there must be only
@@ -3100,14 +3215,29 @@ it, or a name, county, party or committee to find a member.</p>
         print("  committees: no site/committees.json to count, so the home "
               "page's Committees card names no number")
 
+    # WHICH OF THE DAYS "MOST RECENT FLOOR SESSIONS" NAMES HAVE A PAGE. The
+    # block is drawn by the script from home.json, a chamber and a date each,
+    # and the date leads to that sitting's page where one is built: asked of
+    # the step that builds them (sitting_days), and handed to the script on
+    # the block itself.
+    sits = sitting_days()
+    latest_days = [f"{b}/{v.get('date')}" for v in (H.get("latest_sessions") or [])
+                   for b in ("S" if v.get("chamber") == "Senate" else "H",)
+                   if (b, v.get("date")) in sits]
+
     static_recent = ""
     if H.get("recent"):
-        static_recent = ("<h2>Latest activity</h2><table><tbody>" + "".join(
-            f'<tr><td>{fd(r.get("date"))}</td><td>'
+        # A LIST, NOT A TABLE. It was a two-column table with no header cell
+        # in it, which a screen reader announces as a table of five rows and
+        # two columns and then reads as a grid with nothing to say what a
+        # column is (the audit of 2 October 2026, M7). It is five things in a
+        # row: the day, and what happened. HOME_JS draws the same markup.
+        static_recent = ('<h2>Latest activity</h2><ul class="actlist">' + "".join(
+            f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
             f'<a href="bills.html#{esc(r.get("bill"))}">{esc(r.get("n"))}</a> '
             f'{esc(r.get("title"))}<br><span style="font-size:12px">'
-            f'{esc(r.get("what"))}</span></td></tr>'
-            for r in H["recent"][:RECENT_SHOWN]) + "</tbody></table>"
+            f'{esc(r.get("what"))}</span></span></li>'
+            for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
                          + RECENT_MORE)
 
     # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
@@ -3177,7 +3307,7 @@ today.</p>
     <button type="submit">Find</button>
   </form>
 </div>
-<div id="session"></div>
+<div id="session" data-days="{esc(" ".join(latest_days))}"></div>
 </section>
 </div>
 <div id="composition"></div>
@@ -3233,7 +3363,10 @@ under, and every bill since 1989.</p>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
 the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
 the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
-    search_page = shell("Search | Granite Record", "", search_body,
+    # WIDE, as the roster is: a list of results is a list, and in the 820px
+    # column of the prose pages it ended near the middle of a 1440px window
+    # with the rest of the row empty (the review of 2 October 2026).
+    search_page = shell("Search | Granite Record", "", search_body, wide=True,
                         desc="Search Granite Record for a legislator, a "
                              "committee, a town, a subject or a bill.",
                         script=SEARCH_JS)

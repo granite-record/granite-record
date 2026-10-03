@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.3
+# GRANITE_VERSION: 2026-09-14.4
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -27,6 +27,8 @@ import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
+
+import narrative
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 
@@ -245,7 +247,15 @@ def body(site=Path("site"), root=Path(".")):
     for bid, rec in narr.items():
         row = rows_by.get(bid) or {}
         ev = rec.get("events") or []
-        off = {e.get("body") for e in ev if e.get("type") == "consent_off"}
+        # A REMOVAL IS A REMOVAL HOWEVER THE ROW IS TYPED. This read the rows
+        # typed consent_off and no others, and counted as kept on the calendar
+        # 59 reports of 2025-2026 whose chamber took them off in a row typed
+        # "other" -- every one of the House's "Removed from Consent (Reps.
+        # ...)" of the term, HB 691 of 2025 among them, decided on a roll
+        # call of 190-156. The histories' reader is the one list of wordings.
+        off = {e.get("body") for e in ev if not e.get("cancelled")
+               and (e.get("type") == "consent_off"
+                    or narrative.removed_from_consent(e.get("raw")))}
         for e in ev:
             if e.get("type") != "report" or (e.get("raw") or "").lower().startswith("minority"):
                 continue

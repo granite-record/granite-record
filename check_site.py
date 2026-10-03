@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.12
 """
 Check the site is fit to publish before uploading it.
 
@@ -51,6 +51,101 @@ MAY_BE_EMPTY = {"former.json"}
 REQUIRED = ["index.html", "bills.html", "legislators.html", "learn.html",
             "about.html", "calendar.html", "style.css", "index.json",
             "meta.json", "legislators.json", "home.json"]
+
+# Cloudflare Pages refuses a deployment holding a file over 25 MiB. Nothing
+# measured a file against that until 2 October, when index.json stood at
+# 22.6 MiB and the only guard was build_exports' own, for its own CSVs.
+# Warned from nine tenths of it: a file grows a bill at a time, and the
+# number to act on is the one before a deploy is refused.
+FILE_CAP = 25 * 1024 * 1024
+FILE_NEAR = 0.9
+
+TERM_NAME = re.compile(r"\d{4}-\d{4}")
+
+
+def near_the_cap(sizes, errors, warnings):
+    """Each file of [(bytes, name)] against FILE_CAP: an error for one over
+    it, a warning for one within a tenth of it."""
+    for n, name in sorted(sizes, reverse=True):
+        if n < FILE_NEAR * FILE_CAP:
+            break
+        said = (f"{name} is {n / 1048576:.1f} MiB against Cloudflare Pages' "
+                f"{FILE_CAP // 1048576} MiB for one file")
+        if n > FILE_CAP:
+            errors.append(said + " - the deployment would be refused")
+        else:
+            warnings.append(said)
+
+
+def search_index(site, errors, warnings):
+    """site/sidx, the bills' own words (build_search_index.py), against the
+    indexes it was built from.
+
+    A site without it still searches -- titles only -- and nothing on it says
+    what is missing, so nothing else here would notice: on 2 October a build
+    that had lost the texts of eighteen terms wrote eighteen empty files, and
+    the only check that read them was one the nightly does not run. A term
+    before the newest with text for fewer than half its bills is refused; the
+    newest with none, or with more than 200 bills and text for fewer than half
+    (a bill_text.json cut to 111 of 2,243 said nothing, the review of
+    2 October 2026), is a warning, because in the first days of a session the
+    bills are numbered before their text is fetched. A build told that no
+    text was expected (--allow-no-text, which preflight's fixture is) says so
+    in its manifest, and is warned of and not refused.
+    """
+    idx = site / "idx"
+    terms = sorted(f.stem for f in idx.glob("*.json")) if idx.exists() else []
+    if not terms:
+        return
+    sidx = site / "sidx"
+    try:
+        man = json.loads((sidx / "manifest.json").read_text(encoding="utf-8"))
+        on = man["terms"]
+    except (OSError, ValueError, KeyError, TypeError):
+        errors.append("the search index is not in the site: no readable "
+                      "sidx/manifest.json beside the bill indexes in idx/. "
+                      "The search would read titles only and say nothing of "
+                      "it - run build_search_index.py")
+        return
+    allowed = bool(man.get("no_text_expected"))
+    real = [t for t in terms if TERM_NAME.fullmatch(t)]
+    newest = max(real) if real else None
+    bad, thin = [], []
+    for t in terms:
+        tally = on.get(t) if isinstance(on, dict) else None
+        f = sidx / f"{t}.json"
+        if not isinstance(tally, dict) or not f.exists():
+            bad.append(f"{t} has no search index")
+            continue
+        if f.stat().st_size != tally.get("bytes"):
+            bad.append(f"sidx/{t}.json is not the file the manifest describes")
+            continue
+        bills, text = tally.get("bills") or 0, tally.get("with_text") or 0
+        if t not in real or not bills:
+            continue
+        if t != newest and text < 0.5 * bills:
+            thin.append(f"{t} has text for {text:,} of its {bills:,} bills")
+        elif t == newest and not text:
+            warnings.append(f"the search index has no text for {t}, the "
+                            f"newest term: its {bills:,} bills are found by "
+                            "title and topic only")
+        elif t == newest and bills > 200 and text < 0.5 * bills:
+            warnings.append(f"the search index has text for {text:,} of the "
+                            f"{bills:,} bills of {t}, the newest term: the "
+                            "rest are found by title and topic only")
+    if not (sidx / "words.json").exists():
+        bad.append("sidx/words.json, every word the bills use, is not there: "
+                   "a misspelt search would be offered nothing")
+    print(f"\nsearch index: {len(terms)} terms, "
+          f"{sum((on.get(t) or {}).get('with_text') or 0 for t in terms):,} "
+          "bills with their text read"
+          + (" (built with --allow-no-text)" if allowed else ""))
+    for b in bad:
+        errors.append("search index: " + b)
+    if thin:
+        said = ("search index: " + "; ".join(thin) + " - their texts were not "
+                "read, and those bills would be found by title and topic only")
+        (warnings if allowed else errors).append(said)
 
 
 def served(target):
@@ -179,6 +274,9 @@ def main():
             "its own -- a mark in brand/ and python3 build_brand.py, or files "
             "of those names in assets/ -- and then builds again")
 
+    # ---- the search index ---------------------------------------------------
+    search_index(site, errors, warnings)
+
     # ---- per-bill pages and feeds -------------------------------------------
     nbill = len(list((site / "bill").rglob("*.html"))) if (site / "bill").exists() else 0
     nfeed = len(list((site / "feed").rglob("*.xml"))) if (site / "feed").exists() else 0
@@ -257,9 +355,17 @@ def main():
         warnings.append("no build.json - the site cannot show how fresh it is")
 
     # ---- size ---------------------------------------------------------------
-    total = sum(f.stat().st_size for f in site.rglob("*") if f.is_file())
-    nfiles = sum(1 for f in site.rglob("*") if f.is_file())
+    sizes = [(f.stat().st_size, f.relative_to(site).as_posix())
+             for f in site.rglob("*") if f.is_file()]
+    total = sum(n for n, _f in sizes)
+    nfiles = len(sizes)
     print(f"\nsize: {total/1e6:.1f} MB across {nfiles:,} files")
+    # One file against the host's cap on a file (FILE_CAP, above).
+    if sizes:
+        big, name = max(sizes)
+        print(f"  largest file: {name}, {big / 1048576:.1f} MiB of the "
+              f"{FILE_CAP // 1048576} a file may be")
+    near_the_cap(sizes, errors, warnings)
     # Cloudflare Pages allows 20,000 files on the free plan and 100,000 on
     # Pro, which this project moved to on 8 September. Warned at 90% rather
     # than at the cap: the number to act on is the one before a deploy is

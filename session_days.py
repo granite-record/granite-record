@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.17
+# GRANITE_VERSION: 2026-09-19.18
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -60,6 +60,7 @@ from datetime import date as _date
 from pathlib import Path
 
 import build_date
+import narrative
 
 NARRATIVES = "narratives.json"
 
@@ -224,8 +225,28 @@ REPORT_ADOPTED = re.compile(
 # "HB 60 was Removed from the Consent Calendar". narratives.json types only
 # some of these consent_off: 346 House and 12 Senate rows of this kind arrive
 # as "other", and nine 1989 floor rows carry the removal inside the action.
-CONSENT_OFF = re.compile(r"removed\s+from\s+(?:the\s+)?(?:consent|cons\b|cons\.|CC\b)",
-                         re.I)
+#
+# THE HISTORIES' OWN READER, not a second one. This page had a pattern of its
+# own, "removed from" and then the calendar, and it did not read the Senate's
+# "Sen. D'Allesandro Moved to Remove SB 58 from the Consent Calendar" (2011 to
+# 2024) or the House's "REMOVED FROM CON CAL" of 1992, which the history's
+# note beside the same bill did: on 2 October 2026 the sitting pages listed
+# 93 bills under "On the consent calendar ... without debate" at the sitting
+# where their chamber had taken them off it.
+# narrative.removed_from_consent is the one list of the wordings, so a
+# wording read for the note is read here too. What it leaves out on purpose
+# -- a special order about the bills removed, a conference report's
+# calendar, the Senate's Laid on the Table Consent List -- changes no
+# sitting: those special orders are floor rows a member moved, and use the
+# report up themselves.
+def came_off(raw):
+    """Does this docket row take its own bill off a consent calendar?"""
+    return narrative.removed_from_consent(raw)
+
+
+# The day a removal row writes, where it writes one: "Removed from Consent
+# (Rep. Hoell) 01/26/2017 HJ 4 P. 2" (CACR 5 of 2017), entered on 2 February.
+WRITTEN_DAY = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b")
 
 # A SUSPENSION OF THE RULES IS NOT THE BILL'S DISPOSITION. "Reps Hess &
 # Nordgren Susp Rules for late ref to Finance" came before six consent bills
@@ -297,7 +318,7 @@ def _reported_after(events, n, e, item):
     return False
 
 
-def _one_counted_vote(items):
+def _one_counted_vote(items, calendars=frozenset()):
     """A consent calendar is ONE motion, so a counted vote on it is one tally
     shared by every bill on it.
 
@@ -306,13 +327,47 @@ def _one_counted_vote(items):
     House divided on its calendar of 25 March 2014, 282 to 9. A roll call or
     division that belongs to one bill alone was a vote on that bill, taken
     after it came off the calendar, and is not a consent item.
+
+    UNLESS THE ROLL-CALL FILE SAYS IT WAS THE CALENDAR. `calendars` is the
+    {(yeas, nays)} of the roll calls the file words as the day's consent
+    calendar (_calendar_rollcalls). The Senate took two bills off its
+    calendar of 18 February 2021 ("Sen. Sherman Moved to Remove SB 120 from
+    the Consent Calendar", and SB 38), which left SB 103 on it alone, and
+    adopted it 24 to 0, the file's #55 "Consent Calendar": a lone bill with
+    the calendar's count was the calendar, and was drawn as a vote of its own
+    beside #55 among the votes on no bill -- one roll call twice, and an
+    opening of 26 for the file's 25.
     """
     counted = collections.Counter((i.kind, i.yeas, i.nays) for i in items
                                   if i.consent and i.kind in ("RC", "DV"))
     for i in items:
         if i.consent and i.kind in ("RC", "DV") and \
-                counted[(i.kind, i.yeas, i.nays)] < 2:
+                counted[(i.kind, i.yeas, i.nays)] < 2 and \
+                not (i.kind == "RC" and (i.yeas, i.nays) in calendars):
             i.consent = False
+
+
+# A roll call the file words as the consent calendar itself: "Consent
+# Calendar", "Adoption of the Consent Calendar" (the Senate, 2021). Not the
+# House's "Rules Suspension, Adopt CC", which was a suspension.
+CALENDAR_Q = re.compile(r"^\s*(?:adoption\s+of\s+the\s+)?consent\s+calendar\s*$", re.I)
+
+
+def _calendar_rollcalls(rolls):
+    """{(body, date): {(yeas, nays)}} of the roll calls on a consent calendar,
+    by the ballots' count and by the count the summary stated, since the
+    docket line may carry either."""
+    out = collections.defaultdict(set)
+    for bills in (rolls.values() if isinstance(rolls, dict) else []):
+        for rows in bills.values():
+            for r in rows:
+                if not CALENDAR_Q.search(r.get("question") or ""):
+                    continue
+                for y, n in {(r.get("yeas"), r.get("nays")),
+                             (r.get("yeas_stated"), r.get("nays_stated"))}:
+                    if y is not None and n is not None:
+                        out[(r.get("body"), r.get("date"))].add((y, n))
+    return out
 
 
 VETO_TALLY = re.compile(r"\bRC\s*\(?\s*(?P<y>\d+)\s*Y?\s*-\s*"
@@ -636,9 +691,43 @@ def floor_items(bill, term, events):
     disposes of the bill the way a report does. A row saying the bill was
     removed from the consent calendar clears the report; a suspension of the
     rules taken the same day leaves it in place.
+
+    AND NOTHING THE CHAMBER DID TO THE BILL AT ITS NEXT SITTING ON IT AFTER IT
+    TOOK THE BILL OFF IS A CONSENT ITEM, wherever the removal row stands. The
+    clerk enters some of them after the bill's own disposition: "SB 74-FN was
+    Removed from the Consent Calendar; 03/20/2025" was entered at 1:00 PM,
+    twenty minutes after Senator Pearl's floor amendment to it, and the
+    Senate's sitting of 20 March 2025 listed SB 74 among the bills it
+    "disposed of together, in one motion and without debate"; "Sen. Sherman
+    Moved to Remove HB 703-FN from the Consent Calendar; 05/15/2019" was
+    entered on 4 June. The day is the one the row writes, or its own where it
+    writes none, and the sitting is the chamber's first on the bill from then
+    -- unless a report of that chamber came between, which is a new report on
+    a new calendar: HB 442 of 1989 came off in April, went back to its
+    committee, and passed on the consent calendar of 4 January 1990 on the
+    report the committee made in November.
     """
     out = []
     events = events or []
+    sat, reported = collections.defaultdict(set), collections.defaultdict(set)
+    for x in events:
+        ch, d = (x.get("body") or "").strip().upper(), (x.get("date") or "")[:10]
+        if x.get("type") in ("floor", "veto_override") and not x.get("cancelled"):
+            sat[ch].add(d)
+        elif x.get("type") == "report" or REPORT_ROW.search(x.get("raw") or ""):
+            reported[ch].add(d)
+    off_on = set()
+    for x in events:
+        if x.get("cancelled") or not (x.get("type") == "consent_off"
+                                      or came_off(x.get("raw"))):
+            continue
+        ch = (x.get("body") or "").strip().upper()
+        m = WRITTEN_DAY.search(x.get("raw") or "")
+        d = _mdy(m.group(0)) if m else None
+        since = d.isoformat() if d else (x.get("date") or "")[:10]
+        nxt = min((s for s in sat[ch] if s >= since), default=None)
+        if nxt and not any(since < r <= nxt for r in reported[ch]):
+            off_on.add((ch, nxt))
     pending, suspended_on = None, None
     for n, e in enumerate(events):
         kind = e.get("type")
@@ -648,22 +737,22 @@ def floor_items(bill, term, events):
                                 and ON_CONSENT.search(raw)):
             pending = e if ON_CONSENT.search(raw) else None
             suspended_on = None
-        elif kind == "consent_off" or (not floor and CONSENT_OFF.search(raw)):
+        elif kind == "consent_off" or (not floor and came_off(raw)):
             pending = None
         if not floor or e.get("cancelled"):
             continue
         it = Item(bill, term, e, 0)
         out.append((e, it))
         day = (e.get("date") or "")[:10]
-        if (suspended_on and day != suspended_on) or CONSENT_OFF.search(raw):
+        if (suspended_on and day != suspended_on) or came_off(raw):
             pending = None
         if not it.veto and SUSPENDS.search(it.action or raw):
             suspended_on = suspended_on or day
             continue
         report, pending = pending, None
-        it.consent = (
+        it.consent = ((e.get("body") or "").strip().upper(), day) not in off_on and (
             on_consent_calendar(report, e, it)
-            or (not it.veto and not it.mover and not CONSENT_OFF.search(raw)
+            or (not it.veto and not it.mover and not came_off(raw)
                 and bool(SAID_IN_ROW.search(raw)))
             or (report is None and _reported_after(events, n, e, it)))
     return out
@@ -2826,8 +2915,9 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
                 if got and len(got) == 1:
                     it.need = next(iter(got))
 
-    for items in grouped.values():
-        _one_counted_vote(items)
+    calendars = _calendar_rollcalls(rolls)
+    for key, items in grouped.items():
+        _one_counted_vote(items, calendars.get(key, frozenset()))
         for it in items:
             _conference_named(it)
     # Every roll call on record, onto its sitting (_roll_calls).

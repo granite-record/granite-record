@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.27
+# GRANITE_VERSION: 2026-09-08.28
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -690,7 +690,10 @@ def footer_nav(i, topics):
     # PREVIOUS ON THE LEFT, NEXT ON THE RIGHT, in the order a reader reads.
     # The markup is in the order it is drawn, so the keyboard meets them the
     # same way round.
-    bits = ['<nav class="tnav">']
+    # Named, as the pagers of a week and of a sitting are ("Other weeks",
+    # "Other sittings"): an article carries three navs, and this was the one
+    # of them with no label (the audit of 2 October 2026, M6).
+    bits = ['<nav class="tnav" aria-label="Other topics">']
     if i:
         prev = topics[i - 1]
         bits.append(f'<a class="prev" href="learn/{E(prev["slug"])}.html">'

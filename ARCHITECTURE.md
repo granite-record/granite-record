@@ -256,6 +256,166 @@ live on every page.
 
 Those four commands are the check on a change of this kind.
 
+## The bill search, and what it reads
+
+One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it
+there; `build_pages.py` cuts the marked lines into `site/billmatch.js`, which
+`find.js` loads for the header's search box and for `/search`. So the three
+count the same bills, and a change to the marked lines changes all three.
+
+It reads, for each bill, in the order it lists them:
+
+1. **the title**, the prime sponsor's name and the committees' names, from
+   `site/idx/<term>.json` -- the word itself before a longer word it begins;
+2. **the topic** the bill is filed under, for a single typed word that is the
+   topic's name, and only where the topic names one subject. In a search of
+   several words a topic stands for one of them only when it is that word
+   and nothing else and the title has the rest;
+3. **the drafters' analysis and the bill's text**, from
+   `site/sidx/<term>.json`, which `build_search_index.py` writes: for each
+   word, the bills it is central to and how central, 1 to 9; and, for each
+   bill, which pairs of those words stand next to each other. The page
+   fetches that file only when somebody searches, per term;
+4. **a table of public words** (`CONCEPTS`), for what a reader types that no
+   bill says -- "lgbtq", "weed", "bathroom bill" -- each standing for wording
+   the bills do use. A phrase of the table is looked for in all of the
+   above; a single word of it in titles and analyses, and in the body of a
+   text only under an entry's `with` rule.
+
+Twelve things in it are easy to undo by accident.
+
+*A single word the table supplies is not read in the body of a text.* A
+phrase ("risk protection order") is specific and a single word is not: read
+in texts, "gun control" listed a speed enforcement fund for its radar guns
+and "illegal immigrants" five bills on alien insurers. The word the reader
+typed is still read there.
+
+*A search that lists nothing is offered a word, never read as one.*
+`site/sidx/words.json`, which the same build writes, is every word of five
+letters or more that any bill of any term uses, with the names of members and
+towns. A typed word that lists nothing and is in that file is a real word no
+bill of the term is about, and nothing is offered for it; one that is not in
+it is offered as the word of the bills it sounds like ("medicade", Medicaid),
+as a "Did you mean" that the reader chooses. The file is fetched only when a
+search has listed nothing. For one day the page read such a word again by
+itself, with no such file: it showed 98 investment bills for "incest" under
+"no bill says incest", which three bills do. The record's own slips are left
+out of the file -- a word one bill uses that is a common word with a letter
+dropped, added or swapped inside it ("goverment") -- so that a reader who
+makes the same slip is offered the word; never a changed letter, which is
+what "incest" and "invest" differ by. A dropped or added letter needs the
+common word to be a hundred bills'; two letters swapped need ten ("flouride",
+beside the 42 bills that say fluoride), because a swap is almost never
+another word and a dropped letter often is (carving, caring).
+
+A search of several words that lists nothing says which of them list bills
+on their own, and, for three words or more, which searches with one word left
+out do; each is a button, and none is drawn in the search's place. In the
+header's panel the offered word is a button too, and its click stops at the
+panel: left to reach the document it shut the panel, and on a page `app.js`
+draws it listed bills over the page.
+
+*The word typed, in another form, is still the word typed.* What the table
+supplies is listed after everything that has the reader's own word, which is
+right for wording that names another thing ("landlord", for "eviction") and
+wrong for a term that is the word itself: its letters written out ("dwi" and
+"driving while intoxicated", "dmv" and the division of motor vehicles), which
+counts as the word in a title; or the word with another ending ("eviction"
+and "evict"), which counts as a longer word in a title does. Only among the
+terms of the entry the word is an ask of.
+
+*In a text, a longer word is read from six letters.* A word that is the
+whole search also finds a longer word it begins. In a title that holds from
+any length, lower down, as the person ruled ("bail" and the bailiffs). In an
+analysis or a text it holds from six letters: below that the longer word is
+mostly another word (fee and feet, plan and plant, "bail" and a bill on
+cloud-stored files that says "bailment"), and from six it is mostly the same
+one (municipal, municipality). The card says which word it was listed for.
+
+*A search is read to its twelfth word, and a bill is asked once.* Every word
+typed is a part every bill is asked for, so a pasted paragraph is read to
+`MAXWORDS` words that carry a subject and the page says so; what a part
+found in a bill is kept on the part (`recall`) for the list, the filters'
+counts, the order and the cards; the box draws when the typing pauses; and
+what a search that lists nothing is offered is counted after the page has
+said so, one search at a time. Before that, 200 pasted words stopped the
+page for 17 seconds and every letter on All terms for half a second.
+`preflight` counts the searches one drawing runs and how often a bill is
+asked, rather than timing a machine.
+
+*What "about" means is decided at build time.* A word a text uses once is
+nearly always a passing mention, so the build keeps a word for a bill when the
+analysis has it, or the text uses it twice and leans on it. The exception is
+kept at weight 0 and counts only under a table entry's `with` rule (a second
+thing the bill must also say): four vetoed bills say "lavatory" once, beside
+"biological sex", and that is all that marks them as what the public calls the
+bathroom bills.
+
+*Two words found apart are not a bill.* In a search of several words, a
+plain word found only in a bill's analysis or text counts only where it
+stands beside another word of the search there -- next to it, either way
+round, with only words that carry no subject between ("custody of
+children"); and words joined by "and" or "or" share what stands beside them
+("meals and rooms tax" is the meals tax). Before that each word could be
+found in a different place, and
+"medical debt" listed the consolidation of the health and education
+facilities authority, "small claims" a tariff credit for small businesses and
+"eminent domain" the right to hunt and fish. The index keeps each pair as
+five letters of a hash, under `"b"`, because spelt out they were more than
+the rest of the file; the docstring of `build_search_index.py` has the
+numbers. Not asked of the table's own wording, of a word beside a sponsor's
+name, nor where every other part of the search is the table's and the title
+has it ("public records request", for a bill titled for the right-to-know
+law). The same rule covers the other guesses: a longer word in the title, a
+committee's name and a sponsor's name with an ending each count beside words
+the title has, and never two of them together.
+
+*A repeat is not a second mention.* "The text uses it twice" is counted in
+sentences that say different things: a constitutional amendment printed as
+the amendment and again as the ballot question, or one sentence amended into
+two sections, is one mention, and so is a word used twice in one sentence. A
+section's heading counts each time, because it names the statute being
+amended. `distinct()` in `build_search_index.py` is the rule.
+
+*The same letters are one word however they are spaced.* A title is also
+read with its hyphens taken out and with each two neighbouring words run
+together, and two plain words typed together are also read as one: "ezpass",
+"ez pass" and "e-zpass" find "E-Z Pass", and "reassessment" finds
+"re-assessment".
+
+*A bill is listed for its own words.* A table term finds a bill because the
+bill's title, analysis or text has it; a card listed that way says which
+("text says: lavatory"). The table never lists a bill for what it is said to
+do.
+
+*Two programs read the same words.* `stem()`, `wordKeys()`, `altRx()` and
+`pairCode()` in `app.js` have twins in `build_search_index.py`, and the build
+reads the tables' phrases and the words a search skips out of `app.js` with a
+regular expression. `preflight` runs both over the same words, pairs and
+texts and fails when they differ; without that check a word is filed under
+one key, looked up under another, and nothing fails.
+
+*A typed word is not a property of an object.* The tables a typed word is
+looked up in are made with no prototype, and a list out of a fetched file is
+checked to be a list. "constructor" is a word, and on a plain object it was
+a function: the search stopped with a TypeError and drew nothing.
+
+*The build stops before it writes.* `build_search_index.py` makes every
+file in memory and replaces nothing in `site/sidx` unless the texts were
+there: a term before the newest with text for fewer than half its bills, the
+newest with none where it had some, or a vocabulary under 25,000 words stops
+the run with `site/sidx` as it was. `check_site.py`, which the nightly runs,
+reads `sidx/manifest.json` against `idx/` and refuses a site whose search
+index is missing or has an earlier term without text.
+
+`tests/search_cases.json` holds real searches against real bills, with
+`tests/search_index.json` cut from the real index for them;
+`python3 build_search_index.py --fixture tests/search_cases.json` refreshes
+both from the record. Its `across` list is searches held to bills of other
+terms, which only the built site can answer. `matchScore()` is the one place
+a bill's score is added up, for `/bills`, the header, `/search` and those
+cases.
+
 ## Sitting days, built 19 September
 
 A page for every day the House sat, at `/session/H/<date>`, and for every day
@@ -363,6 +523,94 @@ and only about half of the committee-less rows in `proceedings.csv` are floor
 debate; the rest are hearings, work sessions and committees of
 conference whose committee the docket did not record. Fixed in
 `build_calendar.floor_name`.
+
+**How a sitting day is reached, since 2 October.** Until then a past sitting
+had a link only from the sitting next to it: 62 of 1,563 had one from
+anything else. Three things lead to one now, and each asks the same question
+first, which is whether the page was built.
+
+- *The date of a vote.* A roll call on a bill and a row of a member's votes
+  name the day and the chamber, and `app.js` draws the date as a link
+  (`sittingLink`). It asks `site/session/days.json`, the list of the pages
+  `build_session_pages.py` wrote, written by that step a chamber at a time
+  with the other chamber's list kept. A date not on the list stays text.
+- *The directory.* `/directory/sessions-house` and `/directory/sessions-senate`
+  list every day by year (`build_indexes.sessions_pages`).
+- *The line up.* Each sitting leads to its chamber's list, and to its week on
+  the Calendar where the calendar has that week.
+
+The home page, the lists and that line are written **before** the pages and
+the weeks they link, so on a machine that starts empty none of them can read
+the disk. `build_session_pages.sittings()` is the one rule for which days get
+a page, and `build_calendar.week_keys()` is the calendar's own reading of
+which weeks do; the earlier steps ask those.
+
+## Keeping the keyboard's place
+
+A navigation and accessibility audit on 2 October measured the built site in
+a browser with real key presses. What it changed in how the code works:
+
+**A redraw gives focus back.** `app.js` draws by replacing markup, and the
+control that had focus is replaced with it. `render()`, `renderPage()` and
+`renderFacets()` each take the key of the focused control before they draw
+(`focusKey`: its id; or its tag and data attributes, inside its card; or its
+tag and classes; and its place among what that matches) and focus the control
+with that key after (`refocus`), but only if the redraw took focus away. A
+new control inside those three needs nothing, provided it has an id or a data
+attribute that says what it is. "Show more" is deliberately given no key: its
+own handlers put focus on the first card, or the first vote, it brought,
+because the redraw replaces the whole list and the browser's own starting
+point is then the top of it.
+
+**The address, and what going back means.** `app.js` writes the address in
+four places (`tabAddress`, `focusBill`, `unfocus`, `addressSearch`) and each
+calls `addressed()`, which keeps two things true: the skip link names the
+document as it is addressed now, and `STOOD` holds the address without its
+fragment. `popstate` needs the second. A link to a place on the page, which
+the skip link is, fires `popstate` with no state, and so does going back from
+a bill to the list; where only the fragment moved, or the address is still a
+bill's own (`BILL_PATH`), nothing is redrawn. A bill's own page never leaves
+for `/bills` because of one. "Back to bill search" goes back in history only
+where this entry is the one `focusBill` pushed over the list (its state says
+so) or, on a bill's own page, where the referrer is this site's `/bills`;
+where the address itself opened the bill in the search (`/bills#2025/HB2`) it
+draws the list in place. A search run from a bill's own page goes to
+`/bills?q=`, with `term=` where the picker beside the box names a term that
+is not the newest.
+
+**The header's menu and search** (`find.js`) put focus inside when they open
+and close when focus goes somewhere else in the page; focus that goes nowhere
+(the window losing it) closes nothing. The search panel has one
+`role="status"` line, written by `findSay` from the markup `findDraw` has just
+drawn.
+
+**A ring is drawn inside a control that fills a clipping box** (a card's
+header, Play, a filter group's head), and **a text box's edge is `--edge`**.
+`preflight` holds both, and holds `--ink-2` on the Calendar's week band to
+4.5:1, computed from the tokens.
+
+**On a phone a control is 44px**, in one block placed after the rules it has
+to outrank; a person's chip is its link to the edges. The line above a Learn
+article's heading and a sitting's is the exception: there is no 44px between
+the row of "Cite this page" and the heading, so the link stays the size of
+its words and what can be pressed is laid over it (`::after`), 35px. **On
+paper the page is the light theme**: one `@media print` block writes the
+light palette again under the dark palette's two selectors, and `preflight`
+fails if the two stop matching. What that block leaves off is a control and
+never the record: a recording's box prints, with Play set as the line of text
+that carries its time. And a ground that carries white marks is asked for
+(`print-color-adjust:exact`): `preflight` reads every rule that sets type in
+white and fails if one is neither left off the sheet nor on that list.
+
+**A box that scrolls sideways** is marked `data-scrollstop` and `app.js`
+(`scrollStops`) makes it a Tab stop only while its content is wider than it
+is. **The seat map** listens for focus on the box round the chart, not on the
+`<svg>`: Chrome makes an `<svg>` that listens for focus a Tab stop.
+
+**The header's tab strip** is centred on the bar from 1100px, the width from
+which it clears the wordmark; below that it sits between its neighbours. The
+brand's side padding changes at the same width, and `preflight` holds the two
+numbers together.
 
 ## What is structurally wrong
 
