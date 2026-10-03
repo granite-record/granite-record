@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.16
+# GRANITE_VERSION: 2026-09-19.17
 """
 A page for every day the House sat.
 
@@ -216,12 +216,13 @@ ROLLCALL_ONLY = ('<p class="swho">The docket has no line for this vote: the '
 
 
 def _question_html(it, moved, esc):
-    """"On the motion: ...", or, for a roll call the file records with no
-    question at all, says so rather than leaving the heading empty."""
+    """"On the motion: ...", or, for a roll call the record states with no
+    words for its question -- an empty question in the roll-call file, a
+    1989-1998 docket row cut from its line -- says so rather than leaving the
+    heading empty."""
     if (it.action or "").strip():
         return f'<p class="smq">On the motion: <b>{esc(it.action)}</b>{moved}</p>'
-    return (f'<p class="smq">On a question the roll-call file does not name'
-            f'{moved}</p>')
+    return f'<p class="smq">On a question the record does not name{moved}</p>'
 
 
 def _ballots_here(it):

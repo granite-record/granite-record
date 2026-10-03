@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.14
+# GRANITE_VERSION: 2026-09-19.15
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -1063,7 +1063,19 @@ def _tallies(events, body):
             own = _stated(d or first, entered)
             row.append({"e": e, "n": n, "k": k, "kind": kind, "y": y, "nn": nn,
                         "start": m.start(), "end": m.end(),
-                        "date": entered, "own": own})
+                        "date": entered, "own": own, "lead": ""})
+        # A row the database cut from the line before it starts mid-question:
+        # "SUSTAINED RC(221-117)" after "... MA DIV(211-125); GOVERNOR'S VETO"
+        # (HB 332, 29 June 1995). The question's words are the last clause
+        # of the row before, where that clause decides nothing itself.
+        before = events[n - 1] if n else None
+        if row and before is not None and \
+                (before.get("body") or "").strip().upper() == body and \
+                (before.get("date") or "")[:10] == entered:
+            tail = (before.get("raw") or "").rsplit(";", 1)[-1].strip(" ,;")
+            if tail and not TALLY.search(tail) and not VOICE.search(tail) and \
+                    not RESULT_CODE.search(tail):
+                row[0]["lead"] = tail
         for o in row:
             o["row"] = row
         out += row
@@ -1207,8 +1219,10 @@ def _segment(o):
     # LaFlamme moved OTP; Rep Owen moved LOT, ML RC(142-193)" -- and not
     # inside one: "Floor Amendment #2026-0297s Sections 14; 15; and the
     # effective date; RC 24Y-0N".
+    # Not before a bare result: "Adopt Section I Floor Amendment {2421h}; AA RC
+    # 193-140" (SB 1 of the 2006 special session) is one question.
     for m in re.finditer(r";\s*(?=[A-Z(])(?!and\b)", raw[:o["start"]]):
-        if m.start() >= lo and raw[m.end():o["start"]].strip(" ,;:"):
+        if m.start() >= lo and LEAD_EDGE.sub("", raw[m.end():o["start"]]).strip(" ,;:"):
             lo = m.end()
     o["clause"] = raw[lo:o["start"]]
     seg = DATE_FIRST.sub("", raw[lo:o["start"]])
@@ -1302,6 +1316,10 @@ def _amendment(seg, e, r):
         if re.match(r"^(?:remainder|rest|remaining|balance)\b", extra, re.I):
             extra = "the remainder"
         extra = MOVER_PAREN.sub("", extra).strip(" ,;:")
+        # "Section I Floor Amendment {2421h}": the part, not the amendment again
+        extra = re.split(r"\s+(?:Fl(?:oo)?r?\.?\s*Am|Comm(?:ittee)?\.?\s*Am|Amend|Am\b|\{)",
+                         extra, maxsplit=1, flags=re.I)[0].strip(" ,;:")
+        extra = re.sub(r"\s+of(?:\s+(?:the|prop\w*))?\s*$", "", extra, flags=re.I)
     action = f"Adopt {kind}" + (f" {no}" if no else "") + (f", {extra}" if extra else "")
     if several:
         action += f" ({several})"
@@ -1383,6 +1401,12 @@ def _question(o, r):
     body = (e.get("body") or "H").strip().upper()
     raw = e.get("raw") or ""
     seg = _segment(o)
+    # Only where there is no roll-call file to word the question: from 1999
+    # it does, and a row before can be another question's (SB 118 of 2001's
+    # nonconcurrence follows a conference report's row).
+    if not seg and o.get("lead") and r is None:
+        seg = re.sub(r"\s+", " ", o["lead"]).strip(" ,;:-")
+        o["clause"] = o["lead"] + " " + o["clause"]
     whole = raw if len(o["row"]) == 1 else o["clause"]
     if e.get("type") == "veto_override" or VETO_Q.search(seg) or (
             not seg and VETO_Q.search(whole)) or (
@@ -1443,8 +1467,11 @@ def _question(o, r):
         mover, several = _person(m.group("t"), m.group("who"), body)
         words = words[m.end():]
     # "MOVED LOT", with no name; "DIV ?", a member asking that the question
-    # be divided, before the part voted on.
-    if re.match(r"^\s*div(?:ision)?\s*\?", words, re.I):
+    # be divided, before the part voted on -- or, alone, the motion to divide
+    # it: "SEN HEATH MOVED TO DIV ?, ML RC(6-17)" (HB 1000, 8 January 1992).
+    if re.fullmatch(r"\s*div(?:ision)?\s*\??\s*", words, re.I):
+        words = "Divide the question"
+    elif re.match(r"^\s*div(?:ision)?\s*\?", words, re.I):
         # who asked for the division did not move the part voted on
         mover = several = ""
     words = re.sub(r"^\s*(?:moved?\s+(?:to\s+)?|div(?:ision)?\s*\?[\s,;]*)", "", words,
@@ -2282,8 +2309,13 @@ CONFERENCE_ROW = re.compile(
 
 
 def _conference_named(it):
-    if it.veto or not CONFERENCE_ROW.match(it.raw or "") or \
-            CONFERENCE_Q.search(it.action or ""):
+    # Only where the motion the reader made of the row is its "Ought to
+    # Pass", or no motion at all: "Conference Comm Report, ML RC(133-171);
+    # Rep Norelli Susp Rules for new Conf Comm, MA 2/3VV" (HB 2004 of 25 May
+    # 2004) is told by its second clause, the suspension, which stands.
+    a = it.action or ""
+    if it.veto or not CONFERENCE_ROW.match(it.raw or "") or CONFERENCE_Q.search(a) \
+            or SUSPEND_Q.search(a) or question_kind(a) not in (None, "otp"):
         return
     num = re.search(r"[{#(]\s*((?:\d{4}-)?\d{4}c?)\b", it.raw)
     it.action = "Adopt the Conference Committee Report" + (f" {num.group(1)}" if num else "")
