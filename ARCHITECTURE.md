@@ -294,6 +294,28 @@ the bill. So a speaker is never listed under a bill, only under a motion, and
 sustained, an override needing two thirds. Inferring the winner from the tally
 gets every override and every constitutional amendment backwards.
 
+**Every roll call on record is drawn, and counted once (2 October 2026).**
+The pages were first made of the docket rows typed as floor motions and
+nothing else, and a roll call on an amendment, a committee of conference
+report, a motion worded without "MA", a veto row spelled "Overriden", or a
+second question on one 1999-2006 line was on no page: 1,552 of the House's
+5,577 roll calls and 1,431 of the Senate's 3,988, with the opening's count
+wrong on 697 pages. `session_days._roll_calls` now takes `rollcalls.json`
+as the list. Each roll call is paired with its docket tally the way
+`rollcall_outcomes` pairs it for its outcome, and drawn on the floor motion
+that is that vote (the ballots' count, the record's outcome), on a motion of
+its own worded and dated from the row or clause that states it, under its bill
+worded as the roll-call file words it where no docket row does, or among the
+day's "Votes on no bill" -- rules, rulings of the chair, printing a debate --
+which the page builds from the roll-call file alone. A roll call the file
+dates on a day the chamber did not sit (the House's of 24 and 25 February 2021
+are all dated the 26th) goes on the sitting the docket and the journal put
+it on. Before 1999 the docket is the only record, and its roll calls are drawn
+from its own words. The opening counts votes, not motions: one motion entered
+on 35 bills' dockets is one roll call, and so is a consent calendar. What no
+sitting draws is a named list with its reason (a quorum call, a date no sitting
+holds), and `preflight` holds every roll call and every page's count to that.
+
 **What the Senate's pages leave out, and why.** Who spoke. Across all 491
 Senate journal files "spoke in favor" occurs four times and "spoke against"
 twice, and every one is ordinary English inside a speech rather than a marker
