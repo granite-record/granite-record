@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.331
+# GRANITE_VERSION: 2026-09-04.332
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20646,6 +20646,11 @@ def _session_division_held(SD):
             # CACR 4's tabling 153-29, where the journal prints 153-229
             "CACR4": [floor("2023-03-23", "Lay CACR4 on Table: MF DV 153-29 03/23/2023",
                             "Lay CACR4 on Table", "DV", "153", "29", "MF")]},
+        "2005-2006": {
+            # HB 1398's 174-91, on a day whose journal on disk names it only
+            # among the consent calendar's removals
+            "HB1398": [floor("2006-02-15", "Inexpedient to Legislate, MA, DIV 174-91",
+                             "Inexpedient to Legislate", "DV", "174", "91")]},
         "2013-2014": {
             # the consent calendar of 25 March 2014: 282-9, and 289-9 on two
             # bills, a count the journal does not print
@@ -20659,7 +20664,8 @@ def _session_division_held(SD):
         ("H", "2026-03-05"): {"div": [(154, 167)], "bills": ["HB1134"],
                               "under": {"HB1134": [(154, 167)]}},
         ("H", "2023-03-23"): {"div": [(153, 229)], "bills": ["CACR4"],
-                              "under": {"CACR4": [(153, 229)]}},
+                              "under": {"CACR4": [(153, 229)]}, "decided": ["CACR4"]},
+        ("H", "2006-02-15"): {"div": [], "bills": ["HB1398"], "under": {}, "decided": []},
         ("H", "2014-03-25"): {"div": [(282, 9)], "bills": ["HB1001", "HB1002", "HB1286",
                                                             "HB1348"], "under": {}}}
     days = _sitting_fixture(SD, narr, {}, journals=journals)
@@ -20673,6 +20679,10 @@ def _session_division_held(SD):
     c, = days[("H", "2023-03-23")].items
     assert (c.yeas, c.kind, c.carried) == (None, "", False), (
         f"CACR 4's 153-29, which the journal prints nowhere, is drawn: {(c.yeas, c.nays)}")
+    h, = days[("H", "2006-02-15")].items
+    assert (h.yeas, h.nays, h.kind) == (174, 91, "DV"), (
+        "HB 1398's division is taken off on a day whose journal names it only in a list: "
+        f"{(h.yeas, h.nays, h.kind)}")
     # A two-thirds the clerk writes after the word: HB 296's "MF DIV 161-91,
     # Lacking Necessary 2/3" (5 April 2007) failed with more yeas, and is
     # drawn so, with its threshold, not as a count its outcome contradicts.

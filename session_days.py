@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.20
+# GRANITE_VERSION: 2026-09-19.21
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -1883,7 +1883,9 @@ def _journal_day(body, date):
             # {bill: [(yeas, nays)]}, the counts printed after its heading
             **({"under": {b: collections.Counter(tuple(t) for t in ts)
                           for b, ts in g["under"].items()}}
-               if g.get("under") is not None else {})}
+               if g.get("under") is not None else {}),
+            # [bill], those whose own stretch prints a decision
+            **({"decided": set(g["decided"])} if g.get("decided") is not None else {})}
     import journal_days as J
     found = None
     for y in dict.fromkeys((date[:4], str(int(date[:4]) + 1)
@@ -1933,6 +1935,22 @@ def _journal_day(body, date):
                             if b:
                                 under[b.split("-")[0]][
                                     (int(m.group("yeas")), int(m.group("nays")))] += 1
+                        # The bills whose own stretch prints a decision -- a
+                        # count, or a question carried or lost by voice: a
+                        # bill named only in a list (HB 1398 of 15 February
+                        # 2006, among the consent calendar's removals, whose
+                        # debate is in a continuation not on disk) is not one.
+                        joined = re.sub(r"(?<!\n)\n(?!\n)", " ", block)
+                        points = sorted(
+                            [m.start() for m in JOURNAL_DIVISION.finditer(block)]
+                            + [m.start() for m in J.TALLY.finditer(block)]
+                            + [m.start("s") for m in J.DECIDED.finditer(joined)
+                               if not J.NOT_DECIDED.search(m.group("s"))])
+                        decided = g.setdefault("decided", set())
+                        for k, (at, mb) in enumerate(marks):
+                            nxt = marks[k + 1][0] if k + 1 < len(marks) else len(block)
+                            if mb and any(at <= p < nxt for p in points):
+                                decided.add(mb.split("-")[0])
                     g["bills"] |= {a + b for a, b in JOURNAL_BILL.findall(block)}
             _SAT[key] = got
         g = _SAT[key].get(date)
@@ -1945,6 +1963,8 @@ def _journal_day(body, date):
             found["bills"] |= g["bills"]
             for b, c in (g.get("under") or {}).items():
                 found.setdefault("under", {}).setdefault(b, collections.Counter()).update(c)
+            if g.get("decided") is not None:
+                found.setdefault("decided", set()).update(g["decided"])
     return found
 
 
@@ -2987,12 +3007,17 @@ def _divisions_printed(body, j, items, gone):
                                              if o is not it):
                     it.yeas, it.nays = own[0]
                     continue
-            # NOR A COUNT THE JOURNAL PRINTS NOWHERE, for a bill it names
-            # that day. "153 yeas, 29 nays" on CACR 4's motion to table of
-            # 23 March 2023, where the journal prints 153-229; 191-158 on HB
-            # 1442's special order of 5 March 2026, where it says "Motion was
-            # adopted." The motion and its outcome stay; the count goes.
-            if not off and named and not any(printed.get(t) for t in it.tallies):
+            # NOR A COUNT THE JOURNAL PRINTS NOWHERE, for a bill whose own
+            # stretch of the day's journal prints a decision. "153 yeas, 29
+            # nays" on CACR 4's motion to table of 23 March 2023, where the
+            # journal prints 153-229; 191-158 on HB 1442's special order of 5
+            # March 2026, where it says "Motion was adopted." The motion and
+            # its outcome stay; the count goes. Not where the journal on disk
+            # names the bill only in a list: its debate can be in a part of
+            # the sitting no file here holds.
+            told = j.get("decided")
+            if not off and named and not any(printed.get(t) for t in it.tallies) and \
+                    (told is None or it.bill.upper() in told):
                 off = True
         if not off:
             continue
