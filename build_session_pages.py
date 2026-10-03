@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.20
+# GRANITE_VERSION: 2026-09-19.21
 """
 A page for every day the House sat.
 
@@ -344,9 +344,14 @@ MOTION_KINDS = [
     ("concur", r"\bconcur"), ("recommit", r"\bre-?\s*commit|\bre-?\s*refer"),
     ("table", r"\btable\b"), ("itl", r"inexpedient|\bITL\b"),
     ("study", r"interim\s+study"), ("otp", r"ought\s+to\s+pass|\bOTP"),
+    # Acceding to a request for a committee of conference, or refusing to, is
+    # that motion, not the committee's report: "House Refuses to Accede to
+    # Senate Request for C of C (Rep Bates)" (SB 193, 8 June 2011) read as a
+    # conference motion and Rep. Bates's own "moved that the House refuse to
+    # accede" as another, and his speech, tied by the count, went unnamed.
+    ("accede", r"\baccede"),
     ("conference", r"committee\s+of\s+conference|\bC\s*of\s*C\b|conf\s+comm"),
     ("postpone", r"indefinitely\s+postpone"), ("vacate", r"\bvacate"),
-    ("accede", r"\baccede"),
 ]
 
 
@@ -444,15 +449,62 @@ def several_on_line(item):
 
 
 def journal_count(a):
-    """The count the journal ties a speech to: the division that decided its
-    question (journal_days' `decided`), none where a voice vote decided it,
-    and otherwise the roll call printed after it; None where there is none."""
+    """The count the journal ties a speech to: the division or later roll
+    call that decided its question (journal_days' `decided`), none where a
+    voice vote decided it or another question was put first (`untied`), and
+    otherwise the roll call printed after it; None where there is none."""
     d = a.get("decided") or {}
     if d.get("count"):
         return tuple(d["count"])
-    if d.get("words"):
+    if d.get("words") or d.get("untied"):
         return None
     return tuple(a["tally"]) if a.get("tally") else None
+
+
+def untied(a):
+    """Did the journal put another question between this speech and the
+    next decision (journal_days' walk)? Then no motion claims it."""
+    return bool((a.get("decided") or {}).get("untied"))
+
+
+def clerk_counts(attrs, items):
+    """The attributions, each tied by a roll call the journal prints one vote
+    off the ballots tied instead by that roll call's own count.
+
+    THE JOURNAL'S HEADER IS THE CLERK'S COUNT, AND IT CAN BE ONE OFF. SB 197's
+    report of 6 June 2007 is roll call 140 of the year, 227-122 on the
+    ballots; House Journal 18 prints "YEAS 227 NAYS 121" over it, and the
+    four members who spoke before it -- Reps. Hunt, Martin, DeStefano and
+    McLeod -- were tied to a count no motion of the day is known by and named
+    nowhere. Only a roll call the journal itself prints after the speech
+    (`tally`, or a later roll call journal_days' walk read to), and only
+    where exactly one motion of the bill that day, a roll call, is known by a
+    count within one vote a side of it: before the roll-call file the
+    docket's count is the one the clerk's is compared with (HB 1520's
+    adoption of 18 June 1998, 145-133 in the docket and 145-134 in the
+    journal)."""
+    mine = collections.defaultdict(list)
+    for it in items:
+        mine[base_bill(it.bill)].append(it)
+    out = []
+    for a in attrs:
+        d = a.get("decided") or {}
+        t = journal_count(a)
+        its = mine.get(base_bill(a.get("bill")), [])
+        if t is None or (d and not d.get("roll_call")) or \
+                any(t in _known(it) for it in its):
+            out.append(a)
+            continue
+        near = [(it, x) for it in its for x in sorted(_known(it)) if _near(t, x, 1)]
+        if len({id(it) for it, _x in near}) == 1 and near[0][0].kind == "RC":
+            x = tuple(near[0][1])
+            a = dict(a, decided=dict(d, count=x)) if d else dict(a, tally=x)
+        out.append(a)
+    return out
+
+
+def _near(a, b, by):
+    return abs(a[0] - b[0]) <= by and abs(a[1] - b[1]) <= by
 
 
 def _known(item):
@@ -470,6 +522,10 @@ AMENDMENT = re.compile(r"\bamendment\b", re.I)
 NOT_AMENDMENT = re.compile(r"\breport\b|ought\s+to\s+pass|\bOTP\b|concur", re.I)
 
 
+VOICE_LOST = re.compile(r"\b(?:failed|lost|defeated)\b", re.I)
+VOICE_CARRIED = re.compile(r"\b(?:adopted|prevailed|carried|passed)\b", re.I)
+
+
 def on_amendment(words):
     return bool(AMENDMENT.search(words or "")) and not NOT_AMENDMENT.search(words or "")
 
@@ -479,7 +535,16 @@ def claims(a, item, sole=False, ambiguous=frozenset()):
     when; the page's "also spoke" list asks the same question of every
     motion (unplaced). `ambiguous` is the counts more than one of the bill's
     motions that day is known by (ambiguous_tallies)."""
-    if made_after(a, item):
+    # A SPEECH ANOTHER QUESTION CAME BETWEEN IS NO MOTION'S. The journal put a
+    # motion, an amendment or an appeal after it and decided that first; the
+    # speech fell through to the next roll call and named Rep. Rowe on HB
+    # 1670's floor amendment of 15 February 2012, whose committee amendment he
+    # had spoken for. journal_days reads what comes between (walk).
+    if untied(a):
+        return False
+    # A motion moved after the speech, where the speech is tied to the roll
+    # call after it: journal_days' walk reads it where it decides first.
+    if not a.get("decided") and made_after(a, item):
         return False
     # Any count the motion is known by: where the page draws the ballots'
     # count the journal prints the clerk's, and the speech is tied by that.
@@ -497,10 +562,19 @@ def claims(a, item, sole=False, ambiguous=frozenset()):
         return False
     # Nor is a question decided by voice: a motion that was counted did not
     # decide it, and one on an amendment is the amendment's.
-    words = (a.get("decided") or {}).get("words")
-    if words and (item.counted or (on_amendment(words)
+    d = a.get("decided") or {}
+    words = d.get("words")
+    if words and (item.counted or ((on_amendment(words) or d.get("amendment"))
                                    and not on_amendment(item.action))):
         return False
+    # Nor one the voice vote decided the other way: "Rep. Daniels spoke
+    # against the Majority report. The report failed." (HB 1417, 5 March
+    # 1998) was on the report, not on the Ought to Pass with Amendment he then
+    # moved and the House adopted, the one motion the record holds that day.
+    if words and item.carried is not None:
+        lost = bool(VOICE_LOST.search(words))
+        if lost == bool(item.carried) and (lost or VOICE_CARRIED.search(words)):
+            return False
     if sole and not _same_motion(a.get("inline_motion"), item.action):
         return False
     if sole and several_on_line(item):
@@ -870,6 +944,8 @@ def render(day, narrative, titles, years, members, esc):
     removed = journal_days.taken_off(
         narrative, {i.bill for i in day.items if i.consent or came_off_in_line(i)})
     seq_items, cons = day.split(removed)
+    attrs = clerk_counts(attrs, [it for it in seq_items if not it.entered
+                                 and getattr(it, "added", "") != "rollcall"])
 
     H.append(opening_html(narrative, body, members, esc))
     H.append(absences_html(narrative, body, members, esc))

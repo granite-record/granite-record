@@ -539,6 +539,43 @@ not the line's final disposition (HB 386's "OTP/AM ML RC(45-241); ITL REPORT
 ADOPTED" of 3 January 1996); and a Senate amendment row's roll call on third
 reading or re-referral, and a motion to divide, are drawn as those questions.
 
+**And to what comes between a speech and its decision (3 October 2026).** A
+third review read every name the second pass put on a motion. A speech whose
+question was decided after another motion was moved fell through to the next
+roll call in the bill: Rep. Rowe spoke for HB 1670's committee amendment on 15
+February 2012, a Call of the House was moved, the amendment carried 177-99 on
+a division, and the page named him on the floor amendment lost 96-179 next.
+`journal_days` now walks forward from each speech (`walk`): a Call of the House
+is read through; the previous question, or a motion to limit debate or print
+remarks, is read through with the decision printed straight after it where
+that is plainly its own; a motion to table, postpone, make a special order,
+recommit, refer or divide is read past where the journal shows it failing,
+withdrawn or ruled out of order (HR 20's report of 23 March 2000, debated, a
+tabling lost, then 162-179 on the report); and anything else put first -- a
+motion, an amendment offered, an appeal of the chair -- ties the speech to
+nothing (`untied`), and its speaker is named as having spoken during the
+bill. A bare "Adopted." straight after an amendment is offered is the
+amendment's, not the report's, and a voice verdict the other way from the
+motion ("The report failed." before an adopted Ought to Pass with Amendment)
+is another question's. A conference report's own heading
+("COMMITTEE OF CONFERENCE REPORT ON SB 449") opens its bill's stretch, and a
+resolution offered from the floor ends the bill before it. A speaker's name is
+one member's: "moved ..., spoke in favor" is read, and a name no longer runs
+back over a committee statement's right-aligned signature. The clerk's count a
+roll call is printed under can be one vote off its ballots or the docket's
+count, and still ties the speeches before it (`build_session_pages.clerk_counts`).
+A division whose docket count the journal prints within three under the bill's
+own heading is drawn with the journal's count rather than with none; one the
+journal prints nowhere, for a bill it names that day, loses its count; a
+docket-only count that contradicts its own outcome (a tabling "adopted" 154 to
+167) is drawn with neither; and a consent calendar's count is the one the
+journal prints. A carried override is said to have overridden the veto in that
+chamber, never to have made the bill law. `preflight`'s data check
+`_every_speaker_where_the_journal_decides` holds every counted motion on a House
+page to the journal by a walk written apart from `journal_days`', in both
+directions: each name on a motion spoke on its question, and each speech the
+journal decides with its count is named.
+
 **What the Senate's pages leave out, and why.** Who spoke. Across all 491
 Senate journal files "spoke in favor" occurs four times and "spoke against"
 twice, and every one is ordinary English inside a speech rather than a marker

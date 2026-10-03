@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.330
+# GRANITE_VERSION: 2026-09-04.331
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18389,6 +18389,465 @@ def _session_speech_decided(JD, SD, BSP):
                   "prints, and claimed only by the motion of its own count")
 
 
+# Cut from House Journals 8 of 2012, 12 of 2005, 14 of 2006, 2 of 2024, 12 of
+# 2002, 18 of 2007, 5 of 1998, 2 and 17 of 2000, each as it stands in the file;
+# the text of an amendment is cut to its first line.
+_JOURNAL_WALK = """HB 1670, apportioning executive council districts. MAJORITY: OUGHT TO PASS WITH
+AMENDMENT. MINORITY: INEXPEDIENT TO LEGISLATE.
+Rep. Rowe spoke in favor.
+Rep. Vaillancourt spoke against.
+
+                                               CALL OF THE HOUSE
+
+Rep. Bettencourt moved a Call of the House.
+With 271 members having answered the Call, a quorum was declared present and Chamber
+doors were secured.
+
+The question now being adoption of the majority committee amendment.
+On a division vote, 177 members having voted in the affirmative and 99 in the negative, the
+majority committee amendment was adopted.
+\fThe question now being adoption of the majority committee report of Ought to Pass with
+Amendment.
+Rep. Vaillancourt offered floor amendment (0725h).
+
+                                             Floor Amendment (0725h)
+Amend the bill by replacing section 1 with the following:
+Rep. Vaillancourt spoke in favor.
+Rep. Hess spoke against.
+Rep. Jasper requested a roll call; sufficiently seconded.
+
+                                                YEAS 96 NAYS 179
+
+HB 2-FN-A, relative to state fees, funds, revenue and expenditures. OUGHT TO PASS
+WITH AMENDMENT
+Rep. Wendelboe spoke in favor and yielded to questions.
+Rep. Ryan spoke against.
+Rep. Hagan spoke in favor.
+Rep. John Flanders moved the previous question.
+Adopted.
+Floor amendment (1206h) failed.
+
+The question being adoption of the committee report.
+On a division vote, 155 members having voted in the affirmative and 197 in the negative, the
+committee report failed.
+The question now being adoption of the committee report.
+Reps. Robert Wheeler and Weyler spoke in favor and yielded to questions.
+Reps. Mirski and Soltani spoke in favor.
+
+Rep. Vaillancourt offered floor amendment (1211h).
+
+                                             Floor Amendment (1211h)
+Reps. Jasper and Soltani spoke against.
+Reps. Vaillancourt and Kennedy spoke in favor.
+Rep. Biundo requested a roll call; sufficiently seconded.
+The question being adoption of floor amendment (1211h).
+
+                                                YEAS 90 NAYS 276
+
+SB 24, relative to disposition upon death of patient accounts in nursing homes. OUGHT TO
+PASS
+Reps. Soltani and Rowe spoke in favor.
+Rep. Sorg and Espiefs spoke against.
+Rep. Boyce moved the previous question.
+Adopted.
+and floor amendment (1950h) failed.
+\fRep. Rowe challenged the Chair's ruling on the voice vote on floor amendment (1950h).
+Rep. Vaillancourt spoke against.
+Reps. Rowe and Soltani spoke in favor.
+Rep. Dokmo requested a roll call; sufficiently seconded.
+The question being should the ruling of the Chair be upheld.
+
+                                                YEAS 274 NAYS 17
+
+HB 264-FN, relative to amendments and corrections to birth records. WITHOUT RECOMMENDATION
+Statement in support of Ought to Pass: Currently, RSA 5-C:87, V allows transgender individuals to change
+                                                                             Rep. Gerri Cannon
+Statement in support of Inexpedient to Legislate: Birth certificates serve as documents of the facts of the
+to Legislate.
+
+                                                                             Rep. Leah Cushman
+
+Rep. Cannon moved Ought to Pass and spoke in favor.
+Rep. Cushman spoke against.
+On a division vote, with 186 members having voted in the affirmative, and 190 in the negative, the motion
+of Ought to Pass failed.
+
+HB 1268-FN, establishing a net operating loss deduction in computing the business profits tax.
+(Amendments printed in SJ 04/11/02 and 04/18/02)
+
+Rep. Alukonis moved that the House concur, spoke in favor and yielded to questions.
+
+Rep. Konys spoke in favor.
+
+Adopted.
+
+SB 197, relative to continuation of group health insurance in the event of divorce or legal
+separation. MAJORITY: OUGHT TO PASS WITH AMENDMENT. MINORITY:
+INEXPEDIENT TO LEGISLATE.
+Majority amendment adopted.
+
+The question now being adoption of the majority committee report of Ought to Pass with
+Amendment.
+Reps. Hunt and Martin spoke against.
+\fReps. DeStefano and McLeod spoke in favor.
+Rep. Wallner requested a roll call; sufficiently seconded.
+
+                                               YEAS 227 NAYS 121
+
+HB 1563, prohibiting physicians from prescribing or administering cannabis-
+type drugs. MAJORITY: OUGHT TO PASS WITH AMENDMENT. MINORITY: OUGHT TO PASS
+WITH AMENDMENT.
+Rep. Emerton spoke against the Majority amendment.
+
+The amendment failed.
+
+Rep. Emerton offered a floor amendment.
+
+Floor Amendment (0929h)
+
+Amend the title of the bill by replacing it with the following:
+Rep. Emerton spoke in favor and yielded to questions.
+
+Rep. Boyce spoke in favor.
+
+Adopted.
+
+Report adopted and ordered to third reading.
+
+SB 228-FN, relative to spousal benefits upon the death of certain retired group II members of the
+New Hampshire retirement system. MAJORITY: OUGHT TO PASS WITH AMENDMENT.
+MINORITY: INEXPEDIENT TO LEGISLATE.
+Reps. Dyer and O'Neil spoke against.
+
+The amendment failed.
+
+Rep. Dyer offered a floor amendment.
+
+                                                   Floor Amendment (3072h)
+
+Amend the bill by replacing all after the enacting clause with the following:
+Rep. Dyer spoke in favor.
+\fAdopted.
+
+Rep. Dyer spoke in favor of the report and yielded to questions.
+
+Report adopted and referred to Finance.
+
+                                       committee of conference report on scr 6
+Committee of Conference Report on SCR 6, a resolution urging the President and Congress to
+address the challenge of high prescription medication prices.
+Recommendation:
+Rep. Quandt spoke against.
+
+Rep. Fields spoke in favor.
+
+Adopted.
+"""
+
+
+# Cut from House Journals 10 of 2006, 16 of 2016, 4 and 11 of 2007, 28 of
+# 2014 and 14 of 2012, as they stand in the file, a bill's heading cut to its
+# first line.
+_JOURNAL_WALK_MORE = """HB 1692-FN, establishing the New Hampshire sexual predators act. MAJORITY:
+Reps. Batula and Wendelboe spoke in favor.
+Reps. Knowles, Dowling and Soltani spoke against.
+
+Rep. John Flanders moved the previous question.
+\fMotion adopted.
+Rep. Batula requested a roll call; sufficiently seconded.
+The question being adoption of floor amendment (1487h).
+
+                                                YEAS 86 NAYS 254
+
+HB 1696-FN, requesting a modification of the New Hampshire health protection program. MAJORITY:
+The question now being adoption of the majority committee report of Ought to Pass with Amendment.
+Reps. Edelblut and Dan McGuire spoke against.
+Reps. Lachance and Kotowski spoke in favor and yielded to questions.
+Rep. Fromuth spoke against and yielded to questions.
+
+                                                 MOTION TO LAY ON THE TABLE
+Rep. Spillane moved that HB 1696-FN, requesting a modification of the New Hampshire health protection
+program, be laid on the table.
+Rep. Umberger requested a roll call; sufficiently seconded.
+Rep. Spillane withdrew his motion.
+
+The question now being adoption of the majority committee report of Ought to Pass with Amendment.
+
+                                                     (Speaker Jasper in the Chair)
+
+Rep. Joanne Ward spoke against.
+Rep. Umberger spoke in favor and yielded to questions.
+
+                                                    MOTION TO PRINT REMARKS
+
+Rep. William O'Brien moved that the Parliamentary Inquiry made by Rep. Hoell and the answer by Speaker
+Jasper be printed in the Permanent Journal.
+Without objection, the Speaker so ordered.
+The question now being adoption of the majority committee report of Ought to Pass with Amendment.
+Rep. Comeau spoke against.
+Rep. Stephen Schmidt spoke in favor.
+Rep. Timothy Smith requested a roll call; sufficiently seconded.
+
+                                             YEAS 207 - NAYS 136
+
+HB 87, relative to the exceptions to compulsory school attendance. OUGHT TO PASS.
+Rep. Sorg spoke against.
+Rep. Dunn spoke in favor and yielded to questions.
+
+Committee report adopted.
+Ordered to third reading.
+
+                                                      RESOLUTION
+Reps. Wallner and Whalley offered the following: RESOLVED, that the House adopt
+amendments to House Rules 30 and 64.
+Reps. Wallner and Whalley spoke in favor.
+\fAdopted.
+
+HB 1570-FN, establishing a paint stewardship program.
+The question now being adoption of floor amendment (1053h).
+Rep. O'Connor spoke against and yielded to questions.
+
+                                             MOTION TO SUSPEND HOUSE RULES
+Rep. Vaillancourt moved that House Rules be so far suspended as to allow HB 1570-FN, establishing a paint
+stewardship program, to be referred to the Committee on Ways and Means past the deadline.
+Rep. Vaillancourt spoke in favor and yielded to questions.
+
+Rep. Dumaine moved the previous question.
+Rep. Gary Richardson requested a roll call; sufficiently seconded.
+
+                                                   YEAS 188 NAYS 112
+
+HB 235, relative to the recognition of out-of-state marriages. MAJORITY: OUGHT TO
+The question being adoption of the majority committee report of Ought to Pass with
+Amendment.
+Reps. Garcia and Sorg spoke against.
+Reps. Rowe and Lasky yielded to questions.
+Reps. Pierce and Shurtleff spoke in favor.
+Rep. DeChane moved the previous question.
+On a division vote, 179 members having voted in the affirmative and 131 in the negative, the
+motion to limit debate was adopted.
+\f                                                         PROTEST
+Under Article 24, Part 2 of the constitution, I protest these kinds of tactics which shut off
+debate especially when some controversy seems to have been engendered.
+
+                                                                          Rep. Vaillancourt
+
+The question now being adoption of the majority committee report of Ought to Pass with
+Amendment.
+Rep. Dumaine requested a roll call; sufficiently seconded.
+
+                                               YEAS 169 NAYS 171
+
+HB 437-FN, relative to the definition of marriage. OUGHT TO PASS WITH
+Rep. Simmons moved Inexpedient to Legislate.
+
+Rep. Vaillancourt spoke in favor.
+
+                                      MOTION TO LAY ON THE TABLE
+Rep. LaCasse moved that the motion of Inexpedient to Legislate on HB 437-FN, relative to
+definition of marriage, be laid on the table.
+The Speaker ruled the motion out of order because the House was already in the voting mode
+on the motion of Inexpedient to Legislate.
+
+The question now being adoption of the motion of Inexpedient to Legislate.
+Rep. Bates requested a roll call; sufficiently seconded.
+
+                                               YEAS 211 NAYS 116
+"""
+
+
+@check("session", "a speech is tied to the decision of its own question, read past a "
+       "Call of the House, the previous question and a failed motion to set it aside",
+       needs=("journal_days", "session_days", "build_session_pages"))
+def _session_speech_walk(JD, SD, BSP):
+    """The third review of 3 October 2026 read every speaker the second pass
+    put on a motion against the journal. A speech whose question was decided
+    after another motion was moved fell through to the next roll call in the
+    bill: Rep. Rowe spoke for HB 1670's committee amendment on 15 February
+    2012, a Call of the House was moved, the amendment carried 177-99 on a
+    division, and the roll call on Rep. Vaillancourt's floor amendment that
+    followed, 96-179, named him; on HB 2 of 20 April 2005 and SB 24 of 26
+    April 2006 the previous question and an appeal of the chair's ruling did
+    the same. journal_days now reads what comes between (its walk): a Call of
+    the House, and the previous question with its own decision, are read
+    through; a motion to set the question aside is read past where it fails;
+    anything else -- a motion, an amendment offered, an appeal -- ties the
+    speech to nothing, and its speaker is named as having spoken during the
+    bill.
+
+    And four smaller readings, each from a name lost or garbled: a speaker's
+    name that ran back over the committee statement's right-aligned signature
+    ("Leah Cushman Rep. Cannon", HB 264 of 4 January 2024); "moved that the
+    House concur, spoke in favor" (HB 1268, 25 April 2002), read by neither
+    pattern; a bare "Adopted." deciding the amendment just offered, not the
+    report (HB 1563, 5 March 1998); and a conference report's own heading,
+    which opens its bill's stretch (SCR 6, 31 May 2000). The clerk's count a
+    roll call is printed under can be one vote off its ballots, and the
+    speeches before it still the roll call's (SB 197, 6 June 2007)."""
+    attrs = JD.attributions(JD.clean(_JOURNAL_WALK, lines=True))
+    by = {}
+    for a in attrs:
+        for n in a["names"]:
+            by.setdefault((a["bill"], n, a["side"]), []).append(a)
+
+    def one(bill, name, side):
+        got = by.get((bill, name, side)) or []
+        assert len(got) == 1, f"{name} ({side}) on {bill}: {got}"
+        return got[0]
+
+    def item(bill, action, kind, y=None, n=None, motion="MA", term="2011-2012"):
+        return SD.Item(bill, term, {"type": "floor", "body": "H", "action": action,
+                                    "motion": motion, "vote_kind": kind, "yeas": y, "nays": n,
+                                    "raw": action}, 0)
+    # HB 1670: a Call of the House is read through, to the division.
+    assert one("HB1670", "Rowe", "for")["decided"] == {"count": (177, 99)} and \
+        one("HB1670", "Vaillancourt", "against")["decided"] == {"count": (177, 99)}, (
+        f"Rep. Rowe's speech on HB 1670's committee amendment is not closed by its "
+        f"division: {one('HB1670', 'Rowe', 'for')}")
+    fa = item("HB1670", "Adopt Floor Amendment 2012-0725h", "RC", "96", "179", "MF")
+    report = item("HB1670", "Ought to Pass with Amendment #0518h", "RC", "180", "95")
+    assert BSP.speakers_for(attrs, "HB1670", fa)[0] == {"for": ["Vaillancourt"],
+                                                         "against": ["Hess"]} and \
+        BSP.unplaced(attrs, "HB1670", [fa, report]) == [], (
+        "HB 1670's floor amendment names a speaker of its committee amendment: "
+        f"{BSP.speakers_for(attrs, 'HB1670', fa)[0]}")
+    # HB 2 of 2005: the previous question and its "Adopted." are read
+    # through to the amendment's failure; an amendment offered after a
+    # speech ties it to nothing.
+    for n, side in (("Wendelboe", "for"), ("Ryan", "against"), ("Hagan", "for")):
+        assert one("HB2-FN-A", n, side)["decided"] == {"words": "Floor amendment (1206h) failed."}, (
+            f"Rep. {n}'s speech on floor amendment 1206h is not closed by its failure: "
+            f"{one('HB2-FN-A', n, side)}")
+    for n in ("Robert Wheeler", "Weyler", "Mirski"):
+        assert one("HB2-FN-A", n, "for")["decided"] == {"untied": True}, (
+            f"Rep. {n} spoke on HB 2's report before floor amendment 1211h was offered, "
+            f"and is tied to {one('HB2-FN-A', n, 'for')}")
+    fa = item("HB2", "Adopt Floor Amendment 1211", "RC", "90", "276", "MF", "2005-2006")
+    rep = item("HB2", "Ought to Pass with Amendment", "", motion="MF", term="2005-2006")
+    assert BSP.speakers_for(attrs, "HB2", fa)[0] == {"for": ["Vaillancourt", "Kennedy"],
+                                                     "against": ["Jasper", "Soltani"]} and \
+        BSP.unplaced(attrs, "HB2", [fa, rep]) == ["Hagan", "Mirski", "Robert Wheeler", "Ryan",
+                                                   "Soltani", "Wendelboe", "Weyler"], (
+        f"HB 2's floor amendment 1211h: {BSP.speakers_for(attrs, 'HB2', fa)[0]}; "
+        f"also spoke {BSP.unplaced(attrs, 'HB2', [fa, rep])}")
+    # SB 24 of 2006: an appeal of the chair's ruling is a question of its own.
+    ruling = item("SB24", "Sustain Ruling of Chair: Result", "RC", "274", "17", term="2005-2006")
+    otp = item("SB24", "Ought to Pass", "VV", term="2005-2006")
+    assert one("SB24", "Sorg", "against")["decided"] == {"untied": True} and \
+        BSP.speakers_for(attrs, "SB24", ruling)[0] == {"for": ["Rowe", "Soltani"],
+                                                       "against": ["Vaillancourt"]} and \
+        BSP.unplaced(attrs, "SB24", [ruling, otp]) == ["Espiefs", "Rowe", "Soltani", "Sorg"], (
+        "the speeches on SB 24's floor amendment 1950h are named on the ruling of the chair: "
+        f"{BSP.speakers_for(attrs, 'SB24', ruling)[0]}")
+    # HB 264 of 2024: no name runs back over a signature; HB 1268 of 2002:
+    # the comma form is read.
+    names = [n for a in attrs for n in a["names"]]
+    assert {n for a in attrs if a["bill"] == "HB264-FN" for n in a["names"]} == \
+        {"Cannon", "Cushman"} and not [n for n in names if "Rep" in n or n.endswith(" and")], (
+        f"a speaker's name holds another member's: {[n for n in names if 'Rep' in n]}")
+    alu = one("HB1268-FN", "Alukonis", "for")
+    assert alu["inline_motion"] == "that the House concur" and \
+        alu["decided"] == {"words": "Adopted."}, f"Rep. Alukonis's motion is not read: {alu}"
+    assert JD._names("Abramson and Comtois and") == ["Abramson", "Comtois"] and \
+        JD._names("W. Douglas Scamman, Jr") == ["W. Douglas Scamman"], (
+        "a dangling 'and', or a 'Jr', is read as a name")
+    # SB 197 of 2007: the journal's 227-121 over roll call 140, 227-122.
+    rc = item("SB197", "Ought to Pass with Amendment #1911h", "RC", "227", "122",
+              term="2007-2008")
+    rc.rc = {"year": "2007", "body": "H", "number": 140, "yeas": 227, "nays": 122}
+    want = {"for": ["DeStefano", "McLeod"], "against": ["Hunt", "Martin"]}
+    assert BSP.speakers_for(attrs, "SB197", rc)[0] == {"for": [], "against": []} and \
+        BSP.speakers_for(BSP.clerk_counts(attrs, [rc]), "SB197", rc)[0] == want, (
+        "the speeches before SB 197's roll call, which the journal prints one vote off its "
+        f"ballots, are not its: {BSP.speakers_for(BSP.clerk_counts(attrs, [rc]), 'SB197', rc)[0]}")
+    # HB 1563 of 1998 and SB 228 of 2000: a bare "Adopted." after an
+    # amendment is offered is the amendment's; a failed amendment is not
+    # the report's.
+    assert one("HB1563", "Emerton", "for")["decided"] == {"words": "Adopted.", "amendment": True}
+    rep = item("HB1563", "Ought to Pass with Amendment", "VV", term="1997-1998")
+    assert BSP.speakers_for(attrs, "HB1563", rep, sole=True)[0] == {"for": [], "against": []} \
+        and BSP.unplaced(attrs, "HB1563", [rep]) == ["Boyce", "Emerton"], (
+        "the speeches on HB 1563's floor amendment are named on the report: "
+        f"{BSP.speakers_for(attrs, 'HB1563', rep, sole=True)[0]}")
+    rep = item("SB228", "Ought to Pass with Amendment", "VV", term="1999-2000")
+    assert BSP.speakers_for(attrs, "SB228", rep, sole=True)[0] == {"for": ["Dyer"],
+                                                                    "against": []} and \
+        BSP.unplaced(attrs, "SB228", [rep]) == ["Dyer", "O'Neil"], (
+        "SB 228's report names a speaker of its amendments: "
+        f"{BSP.speakers_for(attrs, 'SB228', rep, sole=True)[0]}")
+    # SCR 6 of 2000: the conference report's heading opens its stretch, and
+    # a bare "Adopted." decides it.
+    q = one("SCR6", "Quandt", "against")
+    assert q["decided"] == {"words": "Adopted."}, f"SCR 6's conference report: {q}"
+    # And read through read_year, as the build reads it: a bill heading after
+    # a running head starts its bill (HB 422 of 13 February 2025).
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "2025").mkdir()
+        (root / "2025" / "HJ 05 February 13, 2025.txt").write_text(
+            "HOUSE JOURNAL NO. 5\n\nThursday, February 13, 2025\n\n"
+            + _JOURNAL_DECIDED.split("HB 94-FN")[0], encoding="utf-8")
+        got = JD.read_year("2025", root).get("2025-02-13") or {}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    don = [a["bill"] for a in got.get("attributions", []) if "Donnelly" in a["names"]]
+    assert don == ["HB422-FN"], f"read_year puts Rep. Donnelly on {don}"
+    more = JD.attributions(JD.clean(_JOURNAL_WALK_MORE, lines=True))
+    dec = {(a["bill"], n): a["decided"] for a in more for n in a["names"]}
+    # HB 1692 of 2006: the previous question's "Motion adopted." after a page
+    # break is its own, and the roll call after it the amendment's.
+    assert dec[("HB1692-FN", "Batula")] is None and dec[("HB1692-FN", "Soltani")] is None, (
+        f"the speeches on HB 1692's floor amendment are not its roll call's: {dec}")
+    # HB 1696 of 2016: a tabling withdrawn, and remarks ordered printed, leave
+    # the report the question; the roll call after them is the report's.
+    for n in ("Edelblut", "Lachance", "Fromuth", "Joanne Ward", "Umberger", "Comeau"):
+        assert dec[("HB1696-FN", n)] is None, (
+            f"Rep. {n}'s speech on HB 1696's report is not tied to its roll call: "
+            f"{dec[('HB1696-FN', n)]}")
+    # HB 87 of 2007: the resolution offered after it is no part of the bill.
+    assert {a["bill"] for a in more if "Wallner" in a["names"]} == {None} and \
+        dec[("HB87", "Dunn")] == {"words": "Committee report adopted."}, (
+        "the speeches on a resolution offered from the floor are read as HB 87's")
+    # HB 1570 of 2014: what decides a previous question the journal does not
+    # say, so the roll call after it ties no speech made before it.
+    assert dec[("HB1570-FN", "Vaillancourt")] == {"untied": True}, (
+        f"a speech before an unlabelled roll call after the previous question is "
+        f"tied: {dec[('HB1570-FN', 'Vaillancourt')]}")
+    # HB 1417 of 5 March 1998: "Rep. Daniels spoke against the Majority
+    # report. The report failed." is no speech on the Ought to Pass with
+    # Amendment the House then adopted, its one motion that day.
+    rep = item("HB1417", "Ought to Pass with Amendment", "VV", term="1997-1998")
+    against = [{"bill": "HB1417", "side": "against", "names": ["Daniels"], "tally": None,
+                "inline_motion": None, "moved_since": [], "decided": {"words": "The report failed."}}]
+    assert BSP.speakers_for(against, "HB1417", rep, sole=True)[0] == {"for": [], "against": []}, (
+        "a speech the journal closes with a verdict the other way is put on the one motion")
+    # HB 235 of 2007: the previous question's division says after its count
+    # that it was the motion to limit debate; HB 437 of 2012: a tabling the
+    # chair ruled out of order was never put.
+    assert dec[("HB235", "Pierce")] is None and dec[("HB437-FN", "Vaillancourt")] is None, (
+        f"a speech is untied by a motion decided or ruled out of order before its own "
+        f"roll call: {dec[('HB235', 'Pierce')]}, {dec[('HB437-FN', 'Vaillancourt')]}")
+    # And the readings of the journal's own words these rest on.
+    assert [(int(m.group("yeas")), int(m.group("nays"))) for m in JD.DIVISION.finditer(
+        "On a division vote, 185 members having voted in the affirmative, 107 in the negative, "
+        "the majority report was adopted. On a division vote,273 members having voted in the "
+        "affirmative and 65 in the negative. On a division vote, 268 members having spoken in the "
+        "affirmative and 42 in the negative")] == [(185, 107), (273, 65), (268, 42)] and \
+        [m.groups() for m in SD.JOURNAL_DIVISION.finditer(
+            "division vote, 185 members having voted in the affirmative, 107 in the negative")] \
+        == [("185", "107")], "a division the journal prints in a rarer wording is not read"
+    assert JD.NOT_DECIDED.search("Osgood, Philip Sr    Converse, Larry    Donovan, Thomas and "
+                                 "the committee report was adopted.") and \
+        JD.NOT_DECIDED.search("Jillette, Arthur Jr and the motion failed.") and \
+        not JD.NOT_DECIDED.search("Adopted and the bill ordered to third reading.") and \
+        not JD.NOT_DECIDED.search("Majority committee report adopted and ordered to third "
+                                  "reading."), "a roll call's names are read as a decision"
+    return "ok", ("a Call of the House and the previous question are read through, a "
+                  "question put after a speech unties it, a name is one member's, a bare "
+                  "verdict after an amendment is offered is the amendment's, a conference "
+                  "report opens its bill, and the clerk's count one off still ties")
+
+
 @check("session", "a speech is placed on a bill's motion only where the journal puts it there",
        needs=("journal_days", "session_days", "build_session_pages"))
 def _session_speech_on_its_motion(JD, SD, BSP):
@@ -19964,6 +20423,18 @@ def _session_clause_names_question(SD, BSP):
                                            "vote_kind": "VV", "yeas": "16", "nays": "8",
                                            "raw": "Ought to Pass: Div. 16Y-8N, MA, VV; OT3rdg"},
                    0).kind == "DV", "a division the line counts is drawn as a voice vote"
+    # The Senate's "DIV" and "DIV.", read as a division and taken out of the
+    # words (SB 284, 20 March 2025; SB 468, 26 March 2026).
+    for action, raw, want in (
+            ("Ought to Pass: DIV 15Y-8N", "Ought to Pass: DIV 15Y-8N, MA; OT3rdg; 03/20/2025",
+             ("DV", 15, 8, "Ought to Pass")),
+            ("Refer to Interim Study, DIV. 6Y-18N",
+             "Refer to Interim Study, DIV. 6Y-18N, MF; 03/26/2026",
+             ("DV", 6, 18, "Refer to Interim Study"))):
+        it = SD.Item("SB284", "2025-2026", {"type": "floor", "body": "S", "action": action,
+                                            "motion": "MA", "vote_kind": "", "raw": raw}, 0)
+        got = (it.kind, it.yeas, it.nays, it.action)
+        assert got == want, f"the Senate's division is not read from {raw!r}: {got}"
 
     def floor(date, body, raw, **e):
         return dict({"type": "floor", "date": date, "body": body, "raw": raw}, **e)
@@ -20015,6 +20486,50 @@ def _session_clause_names_question(SD, BSP):
     assert ("Divide the question", "RC", 20, 338, False) in h375 and \
         sum(1 for a, *_ in h375 if "Amendment" in a) == 1, (
         f"HB 375's motion to divide is drawn as the amendment: {h375}")
+
+    # The third review's: the motion to divide worded as the part divided
+    # (HB 544, 8 January 2014); the Senate's re-referral after an amendment
+    # adopted by voice (HB 625, 3 November 1999); the 1989-1998 clerk's
+    # "FAILS 3/5" in the clause that holds the count (CACR 20, 11 February
+    # 1992); and an override carried in one chamber is not a law.
+    narr2 = {"2013-2014": {"HB544": [
+                {"type": "amendment", "date": "2014-01-08", "body": "H", "motion": "",
+                 "vote_kind": "DV", "amend_kind": "Floor Amendment",
+                 "raw": "Floor Amendment #2014-0025h, Divide Sections 1-8 (Rep. Jasper) MF RC 160-183"},
+                {"type": "amendment", "date": "2014-01-08", "body": "H", "motion": "",
+                 "vote_kind": "", "amend_kind": "Floor Amendment",
+                 "raw": "Floor Amendment #2014-0025h (New Title) MA RC 186-155"}]},
+            "1999-2000": {"HB625": [
+                {"type": "amendment", "date": "1999-11-03", "body": "S", "motion": "AA",
+                 "vote_kind": "VV", "amend_kind": "Floor Amendment", "mover": "Sen Johnson",
+                 "raw": "Sen Johnson Floor Amendment, {2227}, AA, VV, Sen Below Moved Rerefer, "
+                        "RC 8Y-14N, MF"}]},
+            "1991-1992": {"CACR20": [floor(
+                "1992-02-11", "H", "COMM AM, AA DIV(173-141); 3RD READING FAILS 3/5 RC(197-126)",
+                action="Adopt Committee Amendment", motion="AA", vote_kind="")]}}
+    rolls2 = {"2013-2014": {"HB544": [
+                _rc("2014", "H", 4, "2014-01-08", "HB544", "Divide Sect 1-8", 160, 183, False),
+                _rc("2014", "H", 6, "2014-01-08", "HB544", "Adopt #14-0025h", 186, 155, True)]},
+             "1999-2000": {"HB625": [_rc("1999", "S", 113, "1999-11-03", "HB625",
+                                         "Re-Refer Disnard/Francouer", 8, 14, False)]}}
+    days2 = _sitting_fixture(SD, narr2, rolls2)
+    h544 = [(a, m, k, y, n, c) for a, m, k, y, n, c in _motions(days2[("H", "2014-01-08")], "HB544")]
+    assert ("Divide the question", "Rep. Jasper", "RC", 160, 183, False) in h544 and \
+        sum(1 for a, *_ in h544 if a.startswith("Adopt")) == 1, (
+        f"HB 544's motion to divide is drawn as sections of the amendment: {h544}")
+    h625 = _motions(days2[("S", "1999-11-03")], "HB625")
+    assert any((m, y, n, c) == ("Sen. Below", 8, 14, False) for a, m, k, y, n, c in h625) and \
+        not any(a.startswith("Adopt") and y for a, m, k, y, n, c in h625), (
+        f"HB 625's re-referral is drawn as its floor amendment: {h625}")
+    third = [i for i in days2[("H", "1992-02-11")].items if (i.yeas, i.nays) == (197, 126)]
+    assert third and third[0].fifths and third[0].threshold_unknown, (
+        "CACR 20's third reading, which failed for want of three fifths, is drawn at a majority")
+    once = SD.Item("SB434", "2025-2026", {"type": "veto_override", "body": "S",
+                                          "raw": "Veto Overridden 08/19/2026: RC 16Y-8N by "
+                                                 "Required Two-Thirds Vote"}, 0)
+    assert once.carried and "in this chamber" in once.outcome_words and \
+        "became law" not in once.outcome_words, (
+        f"one chamber's override is said to make the bill law: {once.outcome_words}")
 
     # And on the page: a vote no roll call on record is tied to has no
     # ballots anywhere, and a bill taken off the consent calendar is said to
@@ -20096,8 +20611,10 @@ def _session_division_held(SD):
     assert [i.bill for i in mar11.items] == ["HB1814"], (
         f"HB 1814's motion is drawn under HB 1114, which the journal never names: "
         f"{[i.bill for i in mar11.items]}")
-    assert [(i.yeas, i.kind) for i in days[("H", "2025-03-06")].items] == [(None, "")], (
-        "HB 578's docket count, which the journal contradicts, is drawn")
+    assert [(i.yeas, i.nays, i.kind) for i in days[("H", "2025-03-06")].items] == \
+        [(338, 25, "DV")], (
+        "HB 578's division is not drawn with the count the journal prints under its "
+        f"heading: {[(i.yeas, i.nays, i.kind) for i in days[('H', '2025-03-06')].items]}")
     apr30 = days[("H", "2014-04-30")]
     assert apr30.counts() == {"division": 1} and \
         {(i.yeas, i.nays, i.shared) for i in apr30.items} == {(184, 155, 2)}, (
@@ -20110,9 +20627,86 @@ def _session_division_held(SD):
     assert feb20.counts().get("roll call") == 2, (
         f"two third readings of one count, with no journal to say otherwise, are one: "
         f"{feb20.counts()}")
+
+    # The third review's cases, each cut from the record it was found in.
+    narr = {
+        "2025-2026": {
+            # HB 446's report, entered with HB 557's count; the journal prints
+            # 204-166 after HB 446's heading (HJ 11 March 27, 2025.txt:733)
+            "HB446": [floor("2025-03-27", "Ought to Pass with Amendment 2025-0042h: MA DV 202-166 "
+                            "03/27/2025", "Ought to Pass with Amendment 2025-0042h", "DV", "202",
+                            "166")],
+            "HB557": [floor("2025-03-27", "Ought to Pass: MA DV 202-166 03/27/2025",
+                            "Ought to Pass", "DV", "202", "166")],
+            # HB 1134's tabling "adopted" 154-167, which the journal says
+            # failed (HJ 06 March 5, 2026.txt:9413)
+            "HB1134": [floor("2026-03-05", "Lay HB1134 on Table (Rep. Wood): MA DV 154-167 "
+                             "03/05/2026", "Lay HB1134 on Table", "DV", "154", "167")]},
+        "2023-2024": {
+            # CACR 4's tabling 153-29, where the journal prints 153-229
+            "CACR4": [floor("2023-03-23", "Lay CACR4 on Table: MF DV 153-29 03/23/2023",
+                            "Lay CACR4 on Table", "DV", "153", "29", "MF")]},
+        "2013-2014": {
+            # the consent calendar of 25 March 2014: 282-9, and 289-9 on two
+            # bills, a count the journal does not print
+            b: [floor("2014-03-25", f"Ought to Pass: MA Div {c} (Consent Calendar)",
+                      "Ought to Pass", "DV", c.split("-")[0], c.split("-")[1])]
+            for b, c in (("HB1001", "282-9"), ("HB1002", "282-9"), ("HB1286", "289-9"),
+                         ("HB1348", "289-9"))}}
+    journals = {
+        ("H", "2025-03-27"): {"div": [(204, 166), (202, 166)], "bills": ["HB446", "HB557"],
+                              "under": {"HB446": [(204, 166)], "HB557": [(202, 166)]}},
+        ("H", "2026-03-05"): {"div": [(154, 167)], "bills": ["HB1134"],
+                              "under": {"HB1134": [(154, 167)]}},
+        ("H", "2023-03-23"): {"div": [(153, 229)], "bills": ["CACR4"],
+                              "under": {"CACR4": [(153, 229)]}},
+        ("H", "2014-03-25"): {"div": [(282, 9)], "bills": ["HB1001", "HB1002", "HB1286",
+                                                            "HB1348"], "under": {}}}
+    days = _sitting_fixture(SD, narr, {}, journals=journals)
+    got = {i.bill: (i.yeas, i.nays, i.kind) for i in days[("H", "2025-03-27")].items}
+    assert got == {"HB446": (204, 166, "DV"), "HB557": (202, 166, "DV")}, (
+        f"HB 446's division is not drawn with the count the journal prints for it: {got}")
+    t, = days[("H", "2026-03-05")].items
+    assert (t.yeas, t.kind, t.carried, t.outcome_words) == (None, "", None, ""), (
+        "HB 1134's tabling is drawn adopted on a count of fewer yeas than nays: "
+        f"{(t.yeas, t.nays, t.carried, t.outcome_words)}")
+    c, = days[("H", "2023-03-23")].items
+    assert (c.yeas, c.kind, c.carried) == (None, "", False), (
+        f"CACR 4's 153-29, which the journal prints nowhere, is drawn: {(c.yeas, c.nays)}")
+    # A two-thirds the clerk writes after the word: HB 296's "MF DIV 161-91,
+    # Lacking Necessary 2/3" (5 April 2007) failed with more yeas, and is
+    # drawn so, with its threshold, not as a count its outcome contradicts.
+    h296 = SD.Item("HB296", "2007-2008", {"type": "floor", "body": "H", "action": "Ought to Pass",
+                                          "motion": "MF", "vote_kind": "DV", "yeas": "161",
+                                          "nays": "91", "raw": "Ought to Pass: MF DIV 161-91, "
+                                          "Lacking Necessary 2/3; HJ 35, pg.1252"}, 0)
+    assert h296.need == 168 and not SD._against_its_count(h296), (
+        f"HB 296's two thirds is not read: need {h296.need}")
+    # The removals a consent calendar prints with a period in the title, and
+    # not a committee's report that says "removed by" (16 March 2023).
+    import journal_days as JD
+    seg = ("HB 1446, providing that an individual's use of therapeutic cannabis shall not "
+           "disqualify the individual from the purchase, ownership, or possession of a firearm. "
+           "Removed by Reps. H. Howard, Wheeler, Butler. HB 123, enabling municipalities to tax "
+           "standing wood and timber on land used for carbon sequestration., removed by Reps. "
+           "Kuttab, Popovici-Muller. HB 286, relative to the removal of political advertising. "
+           "OUGHT TO PASS. Rep. Katherine Prudhomme-O'Brien for Election Law. This is a bipartisan "
+           "bill that allows members of a campaign or local political committee to retrieve "
+           "campaign items removed by the state, city, or town.")
+    assert [g.group("bill") for g in JD.REMOVED.finditer(seg)] == ["HB 1446", "HB 123"], (
+        f"the consent calendar's removals are read as {[g.group('bill') for g in JD.REMOVED.finditer(seg)]}")
+    cal = days[("H", "2014-03-25")]
+    assert cal.counts() == {"division": 1} and \
+        {i.bill: i.yeas for i in cal.items} == {"HB1001": 282, "HB1002": 282,
+                                                 "HB1286": None, "HB1348": None}, (
+        f"the consent calendar of 25 March 2014 is adopted twice: {cal.counts()}, "
+        f"{[(i.bill, i.yeas, i.consent) for i in cal.items]}")
     return "ok", ("a copied division comes off, or goes with a bill the journal never names; "
-                  "a count the journal contradicts comes off; one division on 35 bills "
-                  "counts once, and two of one count stay two")
+                  "a count the journal prints within three under the bill's heading is drawn "
+                  "as the journal prints it, and one it prints nowhere comes off; a count "
+                  "and an outcome that contradict are neither drawn; a consent calendar's "
+                  "count is the journal's; one division on 35 bills counts once, and two of "
+                  "one count stay two")
 
 
 @check("session", "a roll call on an amendment, a conference report, a member's "
@@ -47913,7 +48507,7 @@ def _every_rollcall_on_its_sitting():
     # The pages: the opening's count is the roll calls the page draws.
     import build_date
     today = build_date.today().isoformat()
-    bad, pages, missing, sides = [], 0, [], []
+    bad, pages, missing, sides, chips = [], 0, [], [], []
     count = re.compile(r"(\d+) roll calls?\b")
     tallied = re.compile(r'<p class="stally">A roll call: ')
     for (body, date), day in sorted(days.items()):
@@ -47954,7 +48548,22 @@ def _every_rollcall_on_its_sitting():
             if set(names["for"]) & set(names["against"]) or any(
                     len(v) != len(set(v)) for v in names.values()):
                 sides.append(f"{body} {date}: {names}")
+        # A CHIP IS ONE MEMBER, and a name holds no verb and no second title:
+        # "Rep. Leah Cushman Rep. Cannon" (HB 264, 4 January 2024) was the
+        # right-aligned signature of the statement Rep. Cushman signed run on
+        # into the next speaker, on the side she argued against; forty-five
+        # such chips stood on House pages, and "Rep. Comtois and" one more.
+        for lst in re.findall(r'<p class="sspoke[^"]*"><span class="slab">[^<]*</span>(.*?)</p>',
+                              h, re.S):
+            lst = re.sub(r'<span class="snote">.*?</span>', "", lst, flags=re.S)
+            for n in re.sub(r"<[^>]+>", "", lst).split(","):
+                n = n.strip()
+                if re.search(r"\b(?:Reps?|Sens?)\b\.?.+\b(?:Reps?|Sens?)\b|\s(?:and|&)$|"
+                             r"\b(?:spoke|moved)\b", n):
+                    chips.append(f"{body} {date}: {n!r}")
     assert not missing, (f"{len(missing)} sittings with no page: " + ", ".join(missing[:6]))
+    assert not chips, (f"{len(chips)} speaker chip(s) naming more than one member or a "
+                       "verb: " + "; ".join(chips[:4]))
     assert not sides, (f"{len(sides)} motion(s) naming a member on both sides or twice: "
                        + "; ".join(sides[:3]))
     assert not bad, (f"{len(bad)} sitting page(s) whose count of roll calls is not "
@@ -47967,6 +48576,252 @@ def _every_rollcall_on_its_sitting():
                   + f"); each drawn once, and {pages:,} pages state the count they draw, "
                   f"the House's held to its journal on every day it is on disk but "
                   f"{len(HOUSE_COUNT_NOT_THE_JOURNALS)} named")
+
+
+@check("data", "every speaker a House sitting page names on a counted motion spoke on the question "
+       "the journal decides with that count, and every speech it decides so is named")
+def _every_speaker_where_the_journal_decides():
+    """The third review of 3 October 2026 read every name the second pass put
+    on a motion against the journal, with a reader of its own, and found what
+    no check here could: a speech that fell through to a later roll call
+    (Rep. Rowe on HB 1670's floor amendment of 15 February 2012, whose
+    committee amendment he spoke for), forty-five chips naming two members,
+    and two dozen correct names taken off -- the comma form of "moved ...,
+    spoke in favor", a roll call the journal prints one vote off its
+    ballots, and divisions whose docket count was a typo. The data check
+    that held speakers asked only that nobody be on both sides of a motion.
+
+    This reads the BUILT pages and the journal text, by a walk written apart
+    from journal_days': the first decision the journal prints after a speech
+    is its question's, read past a Call of the House, the previous question
+    or a motion to print and their own decisions, and past a motion to set
+    the question aside that the journal shows failing. Then, for every
+    motion drawn with a count the journal prints once in the bill's stretch,
+    every member named on it has a speech of that side decided there (or,
+    for the bill's one motion of the day, a speech the journal decides
+    nothing after), and every speech decided there is named on it or under
+    "also spoke". A motion drawn from another day's row ("Printed in the
+    journal with this sitting"), or whose count another motion of the bill
+    shares, is not held."""
+    root, jroot = Path("site/session"), Path("journals")
+    if not (root / "H").exists() or not jroot.exists():
+        return "skip", "no site/session/H or journals/ here"
+    bad, held = _speakers_against_journal(root, jroot)
+    assert held, "no counted motion of a House sitting page was held to the journal"
+    assert not bad, (f"{len(bad)} speaker(s) the journal does not place where the page does: "
+                     + "; ".join(bad[:4]))
+    return "ok", (f"{held:,} counted motions held to the journal: every speaker named on one "
+                  "spoke on its question, and every speech decided by its count is named")
+
+
+def _speakers_against_journal(root, jroot):
+    """([what the journal contradicts], motions held) for the House pages
+    under root/H against the journal files under jroot
+    (_every_speaker_where_the_journal_decides)."""
+    import bisect
+    import html as _html
+    import journal_days as J
+    art = re.compile(r'<article class="sitem">(.*?)</article>', re.S)
+    bill_rx = re.compile(r'class="sbill"[^>]*>([^<]+)<')
+    tal = re.compile(r'class="stally">A (roll call|division): <b>(\d+)</b> yeas, <b>(\d+)</b> nays')
+    spk = re.compile(r'<p class="sspoke(?: sother)?"><span class="slab">([^<]+)</span>(.*?)</p>',
+                     re.S)
+
+    def names_of(h):
+        h = re.sub(r'<span class="snote">.*?</span>', "", h, flags=re.S)
+        return [_html.unescape(n).strip(" ,").replace("Rep. ", "").split()[-1]
+                for n in re.sub(r"<[^>]+>", "\x00", h).split("\x00") if n.strip(" ,")]
+
+    def base(b):
+        return (b or "").split("-")[0].upper()
+
+    def motions(h):
+        out = []
+        for a in art.finditer(h):
+            a = a.group(1)
+            m = bill_rx.search(a)
+            bill = re.sub(r"\s+", "", _html.unescape(m.group(1))).upper() if m else ""
+            also = {n for s in spk.finditer(a) if s.group(1).startswith("Also")
+                    for n in names_of(s.group(2))}
+            for mo in a.split('<div class="smotion">')[1:]:
+                t = tal.search(mo)
+                sides = {("for" if " for " in s.group(1) else "against"): names_of(s.group(2))
+                         for s in spk.finditer(mo) if not s.group(1).startswith("Also")}
+                out.append({"bill": bill, "rc": bool(t) and t.group(1) == "roll call",
+                            "count": (int(t.group(2)), int(t.group(3))) if t else None,
+                            "sides": sides, "also": also,
+                            "skip": any(w in mo for w in (
+                                "Printed in the journal with this sitting", "Done in the recess",
+                                "The docket has no line for this vote"))})
+        return out
+
+    years = {}
+
+    def blocks(date):
+        if date[:4] not in years:
+            got = {}
+            for f in sorted((jroot / date[:4]).glob("*.txt")):
+                raw = f.read_text(encoding="utf-8", errors="replace")
+                for iso, b in J.day_blocks(J.clean(raw, lines=True)):
+                    got.setdefault(iso, []).append(b)
+            years[date[:4]] = got
+        return years[date[:4]].get(date, [])
+
+    def read(block):
+        text = re.sub(r"(?<!\n)\n(?!\n)", " ", block)
+        marks = J.bill_marks(block)
+        ev = [("tally", m.start(), (int(m.group("yeas")), int(m.group("nays"))), m.end())
+              for m in J.TALLY.finditer(block)]
+        ev += [("division", m.start(), (int(m.group("yeas")), int(m.group("nays"))), m.end())
+               for m in J.DIVISION.finditer(block)]
+        ev += [("voice", m.start("s"), re.sub(r"\s+", " ", m.group("s")), m.end("s"))
+               for m in J.DECIDED.finditer(text) if not J.NOT_DECIDED.search(m.group("s"))]
+        for m in J.MOTION_EVENT.finditer(text):
+            w = J.MOVED_SINCE.match(block, m.start()) if m.group(0).lower() == "moved" else None
+            ev.append(("move", m.start(), re.sub(r"\s+", " ", w.group(0) if w else m.group(0)),
+                       w.end() if w else m.end()))
+        ev.sort(key=lambda e: e[1])
+        side = lambda m: "for" if "favor" in m.group("side").lower() else "against"
+        sp = [(m.start(), J.SPOKE_END.search(text, m.start()).end(), side(m),
+               J._names(m.group("names"))) for m in J.SPOKE.finditer(text)]
+        sp += [(m.start(), J.SPOKE_END.search(text, m.start()).end(), side(m),
+                J._names(m.group("name"))) for m in J.MOVED_SPOKE.finditer(text)]
+
+        def bill_at(pos):
+            cur = None
+            for at, b in marks:
+                if at > pos:
+                    break
+                cur = b
+            return base(cur)
+
+        def end_of(pos):
+            return next((at for at, _b in marks if at > pos), len(block))
+        return text, ev, sp, bill_at, end_of
+
+    plain_verdict = re.compile(r"^(?:(?:the\s+)?motion\s+(?:was\s+)?)?(?:adopted|failed|carried|"
+                               r"lost)\b[^.]{0,20}\.?$", re.I)
+
+    def lands(text, ev, starts, start, stop):
+        """The decision of the question pending at `start`, "END" where the
+        journal decides nothing after it in the bill, or None where another
+        question was put first."""
+        pend, put = None, 0
+        for e in ev[bisect.bisect_left(starts, start):]:
+            k, at, v, end = e
+            if at >= stop:
+                break
+            if pend and re.search(r"\bruled\b[^.]{0,80}\bout\s+of\s+order", text[put:at], re.I):
+                pend = None
+            if k == "move":
+                if re.match(r"moved\s+(?:a|the)\s+call\s+of\s+the\s+house", v, re.I):
+                    continue
+                if pend and re.match(r"withdrew\s+\w+\s+motion", v, re.I):
+                    pend = None
+                    continue
+                if pend:
+                    return None
+                put = end
+                if re.match(r"moved\s+(?:the\s+)?previous\s+question|moved\s+to\s+limit\s+debate",
+                            v, re.I):
+                    pend = "pq"
+                elif re.match(r"moved\s+that\s+.{0,300}?\bbe\s+printed", v, re.I | re.S):
+                    pend = "print"
+                elif v.lower().startswith("moved") and re.search(
+                        r"on\s+the\s+table|\btable[ds]?\b|postpon|special\s+order|re-?\s*commit|"
+                        r"re-?\s*refer|referred|interim\s+study|divided", v, re.I) and not re.search(
+                        r"reconsider|concur|from\s+the\s+table|vacate|suspend|recess|adjourn", v,
+                        re.I):
+                    pend = "aside"
+                else:
+                    return None
+                continue
+            plain = k == "voice" and plain_verdict.match(v)
+            if pend == "pq":
+                said = text[at:end + 300].split(".")[0] if k == "division" else str(v)
+                if plain or re.search(r"previous\s+question|limit\w*\s+debate|debate\s+(?:now\s+)?be"
+                                      r"\s+limited", text[put:at] + " " + said, re.I):
+                    pend = None
+                    continue
+                return None
+            if pend == "print":
+                pend = None
+                if re.search(r"question\s+(?:now\s+)?being", text[put:at], re.I):
+                    return e
+                if plain:
+                    continue
+                return None
+            if pend == "aside":
+                if k == "voice":
+                    lost = re.search(r"failed|lost|defeated", v, re.I)
+                elif k == "division":
+                    said = text[end:end + 200].split(".")[0]
+                    lost = re.search(r"failed|lost|defeated", said, re.I) or (
+                        not re.search(r"adopted|prevailed|carried", said, re.I) and v[0] < v[1])
+                else:
+                    lost = v[0] < v[1]
+                if not lost:
+                    return None
+                pend = None
+                continue
+            return e
+        return "END" if pend is None else None
+
+    def near(a, b):
+        return abs(a[0] - b[0]) <= 1 and abs(a[1] - b[1]) <= 1
+
+    bad, held = [], 0
+    for p in sorted((root / "H").glob("*.html")):
+        date = p.stem
+        bl = blocks(date)
+        if not bl:
+            continue
+        mots = motions(p.read_text(encoding="utf-8"))
+        an = [read(b) for b in bl]
+        landed = []
+        for i, (text, ev, sp, bill_at, end_of) in enumerate(an):
+            starts = [e[1] for e in ev]
+            landed += [(i, s, bill_at(s[0]), lands(text, ev, starts, s[1], end_of(s[0])))
+                       for s in sp]
+        shared = Counter((base(m["bill"]), m["count"]) for m in mots if m["count"])
+        per_bill = Counter(base(m["bill"]) for m in mots)
+        for mo in mots:
+            b, c = base(mo["bill"]), mo["count"]
+            if not b or not c or mo["skip"] or shared[(b, c)] > 1:
+                continue
+            # the clerk's count one off the ballots, where no other motion of
+            # the bill is drawn with it
+            exact = {m["count"] for m in mots if base(m["bill"]) == b}
+            prints = [(i, e) for i, (_t, ev, _s, bill_at, _e) in enumerate(an) for e in ev
+                      if e[0] in ("tally", "division") and bill_at(e[1]) == b
+                      and (e[2] == c or (e[0] == "tally" and mo["rc"] and near(e[2], c)
+                                         and e[2] not in exact))]
+            if len(prints) != 1:
+                continue
+            held += 1
+            i, P = prints[0]
+            landing = [s for j, s, sb, at in landed if j == i and sb == b and at == P]
+            ended = [s for _j, s, sb, at in landed if sb == b and at == "END"] \
+                if per_bill[b] == 1 else []
+            for side, names in mo["sides"].items():
+                for n in names:
+                    if not any(s[2] == side and any(x.split()[-1] == n for x in s[3])
+                               for s in landing + ended):
+                        bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {n} ({side}) is named, "
+                                   "and the journal decides no speech of theirs there")
+            # Named on it, or under "also spoke" where the journal has the
+            # member speaking on both sides of it, which the page never says.
+            named = {(side, n) for side, ns in mo["sides"].items() for n in ns}
+            both = ({x.split()[-1] for s in landing if s[2] == "for" for x in s[3]}
+                    & {x.split()[-1] for s in landing if s[2] == "against" for x in s[3]})
+            for s in landing:
+                for x in s[3]:
+                    sur = x.split()[-1]
+                    if (s[2], sur) not in named and not (sur in both and sur in mo["also"]):
+                        bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {x} ({s[2]}) spoke on it "
+                                   "and is " + ("named only as having spoken during the bill"
+                                                if sur in mo["also"] else "named nowhere on it"))
+    return bad, held
 
 
 @check("data", "every docket date a person corrected still matches its row")

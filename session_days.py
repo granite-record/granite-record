@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.19
+# GRANITE_VERSION: 2026-09-19.20
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -100,9 +100,14 @@ def _consequence(action, carried):
     a = (action or "").strip().lower()
     if not a or carried is None:
         return None
+    # ONE CHAMBER'S OVERRIDE DOES NOT MAKE A LAW. Both must vote it by two
+    # thirds, and an override carried in one chamber was said to have made
+    # the bill law on 29 bills the other chamber then sustained: the Senate
+    # overrode SB 434 16-8 on 19 August 2026, the House sustained it 165-140,
+    # and the Senate's page said it became law without the Governor. A
+    # sustained veto in either chamber is the end of the bill.
     if a.startswith("override the governor"):
-        return ("the veto was overridden and the bill became law without the "
-                "Governor" if carried else
+        return ("the veto was overridden in this chamber" if carried else
                 "the veto was sustained, so the bill did not become law")
     if a.startswith(KILLS):
         return "the bill was killed" if carried else "the bill stayed alive"
@@ -128,15 +133,18 @@ def _consequence(action, carried):
 # THE SENATE WRITES ITS VOTE INSIDE THE MOTION. "Ought to Pass RC 19Y-5N,
 # 3/5 nec., MA; OT3rdg" is one Senate action: the kind, the tally and the
 # threshold are all in the prose, and the vote_kind, yeas and nays fields are
-# empty. 1,445 Senate actions are like this and no House action is.
-INLINE_VOTE = re.compile(r"\b(?P<kind>RC|DV|VV)\s*(?P<y>\d+)\s*Y\s*-\s*"
+# empty. 1,445 Senate actions are like this and no House action is. And
+# "DIV" is a division as "DV" is: "Ought to Pass: DIV 15Y-8N, MA; OT3rdg"
+# (SB 284, 20 March 2025) was drawn with its count taken out of its words
+# (INLINE_COUNT) and none read, so the division was on no part of the page.
+INLINE_VOTE = re.compile(r"\b(?P<kind>RC|DV|DIV\.?|VV)\s*(?P<y>\d+)\s*Y\s*-\s*"
                          r"(?P<n>\d+)\s*N", re.I)
 # The same count where the reader left it in the motion's words: "Ought to
 # Pass with Amendment #2025-0144s, RC 15Y-8N". The page draws the count
 # under the motion, and the ballots' where they differ from the docket's, so
 # the words carry none: 1,477 Senate motions of 2007-2026 said one count in
 # their words and drew another beneath them wherever the two disagreed.
-INLINE_COUNT = re.compile(r",?\s*\b(?:RC|DV|VV|Div(?:ision)?)\s*\d+\s*Y\s*-\s*"
+INLINE_COUNT = re.compile(r",?\s*\b(?:RC|DV|VV|Div(?:ision)?\.?)\s*\d+\s*Y\s*-\s*"
                           r"\d+\s*N\b", re.I)
 # A division's count after a comma, which the docket reader leaves in the
 # line: "Third Reading MA Div, 184-155", entered on 35 Senate bills of
@@ -151,6 +159,41 @@ DIV_COUNT = re.compile(r"\b(?:DV|Div(?:ision)?)\b,?\s*(?P<y>\d+)\s*-\s*(?P<n>\d+
 # "Lacking Necessary Two-Thirds Vote" -- and was drawn at a majority.
 THRESHOLD = re.compile(r"\b(?P<a>\d)\s*/\s*(?P<b>\d)\s*nec", re.I)
 THRESHOLD_WORDS = re.compile(r"\b(?:two|three)[\s-]*(?P<f>thirds|fifths)\b", re.I)
+# And the 1989-1998 clerk's, in the clause that holds the count: "3RD READING
+# FAILS 3/5 RC(197-126)" (CACR 20, 11 February 1992), "OTP/AM FAILS 3/5
+# RC(193-163)" (CACR 45, 10 September 1998). Read only from that clause
+# (_docket_only): a line's other clauses are other questions.
+THRESHOLD_FAILS = re.compile(r"\b(?:FAIL(?:S|ED)?|LACKING|BY)\s+(?P<a>\d)\s*/\s*(?P<b>\d)\b",
+                             re.I)
+# And the fraction after the word: "Ought to Pass: MF DIV 161-91, Lacking
+# Necessary 2/3" (HB 296, 5 April 2007), drawn at a majority.
+THRESHOLD_AFTER = re.compile(r"\bnec(?:essary)?\.?\s+(?P<a>\d)\s*/\s*(?P<b>\d)\b", re.I)
+
+
+def _fraction(src, more=False):
+    """(a, b) where the words say a motion needed a / b of a vote, else None;
+    with `more`, the 1989-1998 clerk's "FAILS 3/5" too."""
+    th = (THRESHOLD.search(src or "") or THRESHOLD_AFTER.search(src or "")
+          or (THRESHOLD_FAILS.search(src or "") if more else None))
+    if th:
+        a, b = int(th.group("a")), int(th.group("b"))
+        return (a, b) if 0 < a < b else None
+    tw = THRESHOLD_WORDS.search(src or "")
+    if tw:
+        return (2, 3) if tw.group("f").lower() == "thirds" else (3, 5)
+    return None
+
+
+def _needs(it, frac):
+    """Set the motion's supermajority from a fraction (_fraction)."""
+    if frac == (3, 5):
+        it.fifths = True
+    elif frac:
+        tot = (it.yeas or 0) + (it.nays or 0)
+        if tot:
+            # Of those voting, rounded up: two thirds of 23 is 15.33, and it
+            # takes 16.
+            it.need = -(-tot * frac[0] // frac[1])
 
 # TWO THIRDS AND THREE FIFTHS ARE OF DIFFERENT THINGS. Two thirds is of those
 # voting, which the tally beside it gives. Three fifths -- passing a
@@ -379,10 +422,10 @@ VETO_TALLY = re.compile(r"\bRC\s*\(?\s*(?P<y>\d+)\s*Y?\s*-\s*"
                         r"(?P<n>\d+)\s*N?\s*\)?", re.I)
 # THE RESULT, NEVER THE QUESTION. "OVERRIDE GOV VETO, ML RC(17-299)" (HB 149,
 # 25 June 1997) names the motion, and read for "overrid" the page said the
-# veto was overridden and the bill became law without the Governor; nine
-# failed overrides of 1997-1998 read so. A failure word decides first -- the
-# veto sustained, the motion lost (ML), FAILED or FAILS 2/3 -- and only then
-# the veto overridden, the motion adopted (MA), or the bill became law.
+# veto was overridden; nine failed overrides of 1997-1998 read so. A failure
+# word decides first -- the veto sustained, the motion lost (ML), FAILED or
+# FAILS 2/3 -- and only then the veto overridden, the motion adopted (MA), or
+# the bill became law.
 OVERRIDDEN = re.compile(r"\boverridden\b|\bMA\b|\bbecame\s+law\b", re.I)
 SUSTAINED = re.compile(r"\bsustain|\bML\b|\bfail", re.I)
 
@@ -487,7 +530,8 @@ class Item:
         if not self.kind or (self.yeas is None and self.kind != "VV"):
             m = INLINE_VOTE.search(src)
             if m:
-                self.kind = self.kind or m.group("kind").upper()
+                self.kind = self.kind or {"DIV": "DV", "DIV.": "DV"}.get(
+                    m.group("kind").upper(), m.group("kind").upper())
                 if self.yeas is None:
                     self.yeas, self.nays = int(m.group("y")), int(m.group("n"))
         if self.kind == "DV" and self.yeas is None:
@@ -500,24 +544,7 @@ class Item:
         if self.kind == "VV" and self.yeas is not None and \
                 re.search(r"\bDiv(?:ision)?\.?\s*\d+\s*Y", src, re.I):
             self.kind = "DV"
-        frac = None
-        th = THRESHOLD.search(src)
-        if th:
-            a, b = int(th.group("a")), int(th.group("b"))
-            if 0 < a < b:
-                frac = (a, b)
-        else:
-            tw = THRESHOLD_WORDS.search(src)
-            if tw:
-                frac = (2, 3) if tw.group("f").lower() == "thirds" else (3, 5)
-        if frac == (3, 5):
-            self.fifths = True
-        elif frac:
-            tot = (self.yeas or 0) + (self.nays or 0)
-            if tot:
-                # Of those voting, rounded up: two thirds of 23 is 15.33,
-                # and it takes 16.
-                self.need = -(-tot * frac[0] // frac[1])
+        _needs(self, _fraction(src))
         words = INLINE_COUNT.sub("", self.action)
         if words != self.action:
             self.action = words.strip(" ,;:") or self.action
@@ -1673,6 +1700,17 @@ def _question(o, r):
         lead = MOVER_LEAD.match(seg)
         mover = _person(lead.group("t"), lead.group("who"), body)[0] if lead else ""
         return "Divide the question", mover, False
+    # And the same motion worded as the part divided, beside the amendment it
+    # would divide: "Floor Amendment #2014-0025h, Divide Sections 1-8 (Rep.
+    # Jasper) MF RC 160-183" (HB 544, 8 January 2014), the file's "Divide Sect
+    # 1-8", was drawn as sections 1-8 of the amendment failing, on the page
+    # that draws the whole amendment adopted 186-155 next.
+    if not divide and DIVIDE_PART.search(seg) and AMEND_Q.search(seg):
+        pm = MOVER_PAREN.search(seg)
+        lead = MOVER_LEAD.match(seg)
+        mover = (_person(pm.group("t"), pm.group("who"), body)[0] if pm else
+                 _person(lead.group("t"), lead.group("who"), body)[0] if lead else "")
+        return "Divide the question", mover, False
     third = THIRD_IN_LINE.search(seg) or re.search(r"\b(?:3rd|third)\s+reading\b", seg, re.I)
     if divide:
         am = None
@@ -1812,9 +1850,13 @@ def _journal(body, date):
 # "division vote, 121 members having voted in the affirmative and 200 in the
 # negative" (2006).
 SENATE_TALLY = re.compile(r"\bYeas:?\s*(?P<yeas>\d+)\s*[-–,]\s*Nays:?\s*(?P<nays>\d+)", re.I)
+# journal_days.DIVISION's pattern, and its three rarer wordings: "185 members
+# having voted in the affirmative, 107 in the negative" (2001), "On a division
+# vote,273 members" (2003), "268 members having spoken in the affirmative"
+# (1998).
 JOURNAL_DIVISION = re.compile(
-    r"division\s+vote,?\s+(?:with\s+)?(?P<yeas>\d+)\s+members?\s+(?:having\s+)?"
-    r"vot\w*\s+in\s+the\s+affirmative,?\s+and\s+(?P<nays>\d+)", re.I)
+    r"division\s+vote,?\s*(?:with\s+)?(?P<yeas>\d+)\s+members?\s+(?:having\s+)?"
+    r"(?:vot|spok)\w*\s+in\s+the\s+affirmative,?\s+(?:and\s+)?(?P<nays>\d+)", re.I)
 JOURNAL_BILL = re.compile(r"\b(HB|SB|HR|SR|HCR|SCR|HJR|SJR|CACR)\s*(\d+)\b")
 SENATE_DIVISION = re.compile(r"division\s+(?:vote\s+)?was\s+requested|Division,\s*$", re.I)
 SENATE_NAMED = re.compile(r"Senators\s+voted\s+(?:Yes|No)", re.I)
@@ -1998,6 +2040,7 @@ def question_kind(text):
 
 THIRD_IN_LINE = re.compile(r"\b(?:O[Tt]\s*3rd\w*|Ordered\s+to\s+3rd\s+Reading)\b")
 MOTION_TO_DIVIDE = re.compile(r"\bmotion\s+to\s+divide\b|\bmoved?\s+to\s+div(?:ide)?\b", re.I)
+DIVIDE_PART = re.compile(r"\bdivide\s+sec(?:t(?:ion)?)?s?\b\.?\s*\d", re.I)
 # The journal pages a 1989-2006 line cites in its own words: "HJ78,P2521-2523",
 # "SJ6 P82-83".
 CITED_PAGES = re.compile(r"\b[HS]J\s*\d+\w*\s*,?\s*P(?:G)?\.?\s*\d+(?:\s*-\s*\d+)?", re.I)
@@ -2421,6 +2464,7 @@ def _docket_only(data, placed, day_of, base):
                     new.raw = raw.strip()
                     new.yeas, new.nays = o["y"], o["nn"]
                     new.carried = carried
+                    _needs(new, _fraction(o.get("clause") or "", more=True))
                     new.plain = plain
                     new.added = "row"
                     if action.startswith("Override"):
@@ -2831,8 +2875,33 @@ def _journal_checked(grouped):
                     gone.add(id(it))
                 _uncount(it)
         _divisions_printed(body, j, items, gone)
+        # A CONSENT CALENDAR IS ONE VOTE, AND THE JOURNAL PRINTS ITS COUNT.
+        # The docket enters the House's calendar of 25 March 2014 as "Div
+        # 282-9" on its bills and "289-9" on HB 1286 and HB 1348, and the
+        # note said the calendar was adopted twice; the journal prints 282-9.
+        # Where the journal prints one consent count of the day, a consent
+        # count it prints nowhere comes off its bill, which stays on the list.
+        if body == "H":
+            cons = [it for it in items if it.consent and it.counted and it.rc is None]
+            printed = j["div"] + j["rc"]
+            if any(printed.get(t) for it in cons for t in it.tallies):
+                for it in cons:
+                    if not any(printed.get(t) for t in it.tallies):
+                        _uncount(it)
         if gone:
             items[:] = [i for i in items if id(i) not in gone]
+    # A COUNT AND AN OUTCOME THAT CANNOT BOTH BE TRUE ARE NEITHER DRAWN, from
+    # 1999, where the docket alone states the vote. "Lay on Table: MA DV
+    # 154-167" (HB 1134, 5 March 2026) is a motion carried with fewer yeas
+    # than nays, and the journal says it failed; the ring drawn from it, which
+    # marks one side the winner, said so too. The motion stays, with neither.
+    for (body, day), items in grouped.items():
+        if day < ROLLCALLS_BEGIN.get(body, "9999"):
+            continue
+        for it in items:
+            if _against_its_count(it):
+                _uncount(it)
+                it.carried = None
 
 
 def _divisions_printed(body, j, items, gone):
@@ -2901,6 +2970,30 @@ def _divisions_printed(body, j, items, gone):
                 t in under.get(o.bill.upper(), ()) for o in items
                 if o.bill != it.bill and o.counted for t in it.tallies & o.tallies)
             off = near or copied
+            # THE JOURNAL'S OWN COUNT, WHERE IT PRINTS ONE UNDER THE BILL. A
+            # count taken off as a typo or a copy took the division with it:
+            # HB 446's report of 27 March 2025 is entered 202-166, HB 557's,
+            # and House Journal 11 prints 204-166 after HB 446's own heading;
+            # the page said "The motion was adopted" with no count, the
+            # opening one division short, and Reps. Kluger and Litchfield, who
+            # spoke before the 204-166, were named nowhere. Where exactly one
+            # division the journal prints after the bill's heading is within
+            # three of the docket's count, and no other motion of the day is
+            # drawn with it, the division is drawn with the journal's count.
+            if off and named:
+                own = [x for x in mine if x in j["div"] and not j["rc"].get(x)
+                       and any(_near(t, x, 3) for t in it.tallies)]
+                if len(own) == 1 and not any(own[0] in o.tallies for o in items
+                                             if o is not it):
+                    it.yeas, it.nays = own[0]
+                    continue
+            # NOR A COUNT THE JOURNAL PRINTS NOWHERE, for a bill it names
+            # that day. "153 yeas, 29 nays" on CACR 4's motion to table of
+            # 23 March 2023, where the journal prints 153-229; 191-158 on HB
+            # 1442's special order of 5 March 2026, where it says "Motion was
+            # adopted." The motion and its outcome stay; the count goes.
+            if not off and named and not any(printed.get(t) for t in it.tallies):
+                off = True
         if not off:
             continue
         if not named:
@@ -2942,6 +3035,28 @@ def _contradicts(it):
     amendment = question_kind(it.action) == "amendment" and \
         not NOT_AMENDING.search(it.action or "")
     return it.yeas > it.nays and (amendment or not (it.need or it.fifths or it.veto))
+
+
+# The questions a majority decides: never a suspension, a special order, a
+# veto, three fifths, or a constitutional amendment's passage.
+MAJORITY_KINDS = ("table", "untable", "reconsider", "concur", "nonconcur", "amendment",
+                  "study", "itl", "otp", "postpone")
+
+
+def _against_its_count(it):
+    """Does a count only the docket states contradict the motion's outcome:
+    carried with no more yeas than nays, or, on a question a majority
+    decides, lost with more?"""
+    if not it.counted or it.carried is None or it.rc is not None:
+        return False
+    if it.carried:
+        return it.yeas <= it.nays
+    if (it.need or it.fifths or it.veto or it.bill.upper().startswith("CACR")
+            or SUSPEND_Q.search(it.action or "") or THIRD_Q.match(it.action or "")
+            or re.search(r"(?<![\d/])\d\s*/\s*\d(?![\d/])|\bnec(?:essary)?\b|thirds|fifths",
+                         it.raw or "", re.I)):
+        return False
+    return it.yeas > it.nays and question_kind(it.action) in MAJORITY_KINDS
 
 
 def _uncount(it):
