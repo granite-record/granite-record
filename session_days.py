@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.12
+# GRANITE_VERSION: 2026-09-19.13
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -2143,6 +2143,8 @@ def load(path=NARRATIVES, rollcalls=None, sat=None):
 
     for items in grouped.values():
         _one_counted_vote(items)
+        for it in items:
+            _conference_named(it)
     # Every roll call on record, onto its sitting (_roll_calls).
     others, left, left_docket = _roll_calls(data, rolls, grouped, placed, base,
                                             sat or _sat)
@@ -2179,6 +2181,29 @@ def load(path=NARRATIVES, rollcalls=None, sat=None):
                 for i in its:
                     i.shared = len(its)
     return days
+
+
+# A COMMITTEE OF CONFERENCE REPORT TOLD AS "OUGHT TO PASS". The 1999-2006
+# reader takes the bare "Adopted" of "Conference Committee Report{2254}, RC
+# 18Y-6N, Adopted" for the question, and its words for "Adopted" are "Ought
+# to Pass": 89 Senate motions of those years read "On the motion: Ought to
+# Pass ... it carried in this chamber" of a vote on a conference report, HB 1
+# and HB 2 of 2003 and 2005 among them, and one read "On the motion: Cohen".
+# The bill's own history says the same and is the docket reader's to put
+# right; the sitting page names the question the row names.
+CONFERENCE_ROW = re.compile(
+    r"^\s*(?:New\s+)?(?:Conf(?:erence)?\.?\s*Comm(?:ittee)?\.?\s*Rep(?:ort)?\b|"
+    r"Committee\s+of\s+Conference\s+Report)", re.I)
+
+
+def _conference_named(it):
+    if it.veto or not CONFERENCE_ROW.match(it.raw or "") or \
+            CONFERENCE_Q.search(it.action or ""):
+        return
+    num = re.search(r"[{#(]\s*((?:\d{4}-)?\d{4}c?)\b", it.raw)
+    it.action = "Adopt the Conference Committee Report" + (f" {num.group(1)}" if num else "")
+    it.mover = ""
+    it.plain = True
 
 
 class Sittings(dict):
