@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.146
+# GRANITE_VERSION: 2026-09-05.147
 """
 Generate the faceted site from real General Court data.
 
@@ -5657,8 +5657,10 @@ def _j_merge(into, st):
     # RECONSIDER, MA VV; SEN RUBENS FL AM<1930> (NEW TITLE), AA VV; PASSED
     # WITH AM VV" (HB 1226 of 1998). Where no later passage names the
     # amendment -- SB 336 of 2002, passed 22-1 and then amended 13-10 on a
-    # row of its own -- the count stays the passage's, as it was.
-    if st.get("_own_am") and not into.get("_own_am"):
+    # row of its own -- the count stays the passage's, as it was. Nor where
+    # the later passage states no vote at all ("PASSED WITH AM", no VV): it
+    # has no count of its own to give, and the earlier one stands.
+    if st.get("_own_am") and not into.get("_own_am") and st["vote"][0]:
         into["vote"], into["_own_am"] = st["vote"], True
         into.pop("intro_adopt", None)
         return

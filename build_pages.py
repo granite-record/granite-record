@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.129
+# GRANITE_VERSION: 2026-09-04.130
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1465,9 +1465,9 @@ date, the committee and the room, and nothing to play.</p>
 [[placed_pct]] &#8212; the page opens the recording at the moment the bill
 was taken up. On the other [[recording_only]] it links the recording and says
 plainly that the moment has not been established, rather than guessing one. A
-further [[consent]] passed on a consent calendar: adopted in a block, never
-read out and never debated, so there is no moment in the recording to
-find.</p>
+further [[consent]] were decided on a consent calendar: the committee's report
+adopted in a block, never read out and never debated, so there is no moment in
+the recording to find.</p>
 <p>Where the moment is claimed, it usually comes from someone saying so. Most
 of these are the chair or the clerk opening the item, matched against the
 recording's captions; some are a roll call's own clock time from the General

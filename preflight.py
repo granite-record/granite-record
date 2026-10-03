@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.326
+# GRANITE_VERSION: 2026-09-04.327
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3824,6 +3824,11 @@ _DOCKET_CONSENT_OFF = {
         "2025|0549|3/24/2025 11:03:30 AM|HB273|S|  Introduced 03/20/2025 and Referred to Children and Family Law;  SJ 9|3/24/2025 11:03:30 AM",
         "2025|0549|5/13/2025 8:45:46 AM|HB273|S|Committee Report: Ought to Pass with Amendment # 2025-2048s, 05/15/2025; Vote 3-0; CC;  SC 21A|5/13/2025 8:45:46 AM",
         "2025|0549|5/15/2025 3:26:02 PM|HB273|S|Ought to Pass with Amendment #2025-2048s, MA, VV; OT3rdg; 05/15/2025;  SJ 13|5/15/2025 3:26:02 PM",
+        "2025|0549|6/3/2025 9:48:22 AM|HB273|H|House Non-Concurs with Senate Amendment 2025-2048s and Requests CofC (Rep. Osborne): MA VV 05/22/2025  HJ 15  P. 53|7/14/2025 11:37:31 AM",
+        "2025|0549|6/11/2025 9:11:09 AM|HB273|S|Sen. Abbas Accedes to House Request for Committee of Conference, MA, VV; (In recess 06/05/2025);  SJ 16|6/11/2025 9:11:09 AM",
+        "2025|0549|6/16/2025 12:00:00 AM|HB273|H|Conference Committee Meeting: 06/16/2025 02:00 pm LOB 206-208|6/11/2025 1:38:20 PM",
+        "2025|0549|6/19/2025 12:13:12 PM|HB273|S|Conference Committee Report Filed, # 2025-2780c; 06/26/2025|6/19/2025 12:13:12 PM",
+        "2025|0549|6/26/2025 2:28:02 PM|HB273|H|Conference Committee Report 2025-2780c: Adopted, RC 201-165 06/26/2025  HJ 18  P. 23|10/21/2025 11:21:17 AM",
         "2025|0549|6/24/2025 1:28:08 PM|HB273|H|Removed from Consent (Reps. Berch, Scherr, C. Harvey, D. Fox, N. Germana, O'Rorke, Horrigan, Turer, Meuse, Manos) 06/24/2025  HJ 18  P. 17|10/21/2025 10:52:31 AM"],
         "In Senate committee", ("House",)),
     # THE BILL NAMED BETWEEN THE VERB AND THE CALENDAR, the Senate's from 2011
@@ -3860,6 +3865,38 @@ _DOCKET_CONSENT_OFF = {
         "1992|0664|01/30/1992 03:17:13 PM|HB476|H|REP JACOBSON SUBST OTP, ML RC(96-240); ITL REPORT ADOPTED VV;|01/30/1992 03:17:13 PM",
         "1992|0664|01/30/1992 03:18:10 PM|HB476|H|HJ23,P643-646|01/30/1992 03:18:10 PM"],
         "In House committee", ("House",)),
+    # UNDER ITS OWN CHAMBER'S STAGE. The Senate's removal of HB 592, entered
+    # after the bill's enrolment, sat under "With the governor". Docket.txt
+    # lines 5629-6198, the Senate's rows.
+    ("2025-2026", "HB592"): ([
+        "2025|0795|3/14/2025 12:52:12 PM|HB592|S|  Introduced 03/13/2025 and Referred to Judiciary;  SJ 7|3/14/2025 12:52:12 PM",
+        "2025|0795|3/14/2025 2:01:09 PM|HB592|S| Hearing: 03/18/2025, Room 100, SH, 02:00 pm;  SC 14|3/14/2025 2:01:09 PM",
+        "2025|0795|3/18/2025 4:14:57 PM|HB592|S|Committee Report: Ought to Pass, 03/20/2025; Vote 5-0; CC; SC 14|3/18/2025 4:14:57 PM",
+        "2025|0795|3/20/2025 10:30:04 AM|HB592|S|Ought to Pass: RC 23Y-0N, MA; OT3rdg; 03/20/2025;  SJ 8|3/20/2025 12:45:25 PM",
+        "2025|0795|3/20/2025 11:54:53 AM|HB592|S|Enrolled Adopted, VV, 03/20/2025  SJ 8|4/1/2025 3:10:28 PM",
+        "2025|0795|3/20/2025 12:43:38 PM|HB592|S|HB 592-FN was Removed from the Consent Calendar; 03/20/2025;  SJ 8|3/20/2025 12:43:42 PM",
+        "2025|0795|3/20/2025 12:45:21 PM|HB592|S|Special Order to the Beginning of the Regular Calendar, Without Objection; 03/20/2025;  SJ 8|3/20/2025 12:45:25 PM"],
+        "In Senate committee", ("Senate",)),
+    # Taken off, and put back: HB 264 of 1993 was killed with the calendar
+    # of 16 March. Docket_db_1993-1994.txt lines 5-10.
+    ("1993-1994", "HB264"): ([
+        "1993|0002|03/04/1993 02:01:46 PM|HB264|H|MAJ REPORT ITL FOR MAR10  (VOTE 12-0;CC)|03/04/1993 02:01:46 PM",
+        "1993|0002|03/10/1993 08:50:00 AM|HB264|H|REMOVED FROM CONS CAL, REQ REP MCGOVERN; HJ36,P858|03/10/1993 08:50:00 AM",
+        "1993|0002|03/10/1993 08:53:14 AM|HB264|H|SPECIAL ORDER TO MAR11; HJ36,P885|03/10/1993 08:53:14 AM",
+        "1993|0002|03/11/1993 01:20:30 PM|HB264|H|SPECIAL ORDER TO MAR16; HJ37,P905|03/11/1993 01:20:30 PM",
+        "1993|0002|03/16/1993 03:57:52 PM|HB264|H|RETURNED TO CONSENT CALENDAR, REP MCGOVERN; HJ40,P958|03/16/1993 03:57:52 PM",
+        "1993|0002|03/16/1993 06:44:50 PM|HB264|H|ITL REPORT ADOPTED; HJ40,P977|03/16/1993 06:44:50 PM"],
+        "In House committee", ("House",)),
+    # A placing CALENDAR_RE does not read, "for Mar 24 CC (vote 18-0)", and
+    # a removal it does: the rule is said beside the removal, ahead of it.
+    # Docket_db_2009-2010.txt lines 411-419.
+    ("2009-2010", "HB522"): ([
+        "2009|0050|01/08/2009 10:52:43 AM|HB522|H|Introduced and Referred to Local and Regulated Revenues; HJ 12, PG.231|01/08/2009 10:52:43 AM",
+        "2009|0050|03/18/2009 12:27:11 PM|HB522|H|Committee Report: Inexpedient to Legislate for Mar 24 CC (vote 18-0); HC 22, PG.661|03/18/2009 12:27:11 PM",
+        "2009|0050|03/24/2009 10:27:20 AM|HB522|H|Removed from Consent Calendar (Rep Vaillancourt); HJ 25, PG.827|03/24/2009 10:27:20 AM",
+        "2009|0050|03/24/2009 10:31:02 PM|HB522|H|Special Ordered to Mar 25 Without Objection; HJ 25, PG.914|03/24/2009 10:31:02 PM",
+        "2009|0050|03/26/2009 06:11:16 PM|HB522|H|Inexpedient to Legislate: MA VV; HJ 29, PG.1191|03/26/2009 06:11:16 PM"],
+        "In House committee", ("House",)),
     # Another calendar: the House's of conference reports, which HB 1123's
     # passed the House from; and the Senate's list of bills to lay on the
     # table together, on a measure no committee reported.
@@ -3890,8 +3927,8 @@ _DOCKET_HBI5 = [
 
 @check("narrative", "a stamp of 1939 is read by the rows beside it, one measure under both years "
                     "of its term is one docket, a joint committee is named whole, the consent "
-                    "calendar's note states the rule, and a removal is said in every form a "
-                    "docket writes it",
+                    "calendar's notes are the agreed texts, and a removal is said in every form "
+                    "a docket writes it, under its own chamber, after the rule",
        needs=("narrative", "build_site_v2"))
 def _rows_read_on_the_second_pass(N, B):
     """Four readings a second pass over the status sweep found (2 October 2026).
@@ -4020,13 +4057,40 @@ def _rows_read_on_the_second_pass(N, B):
     # (HB 1142 of 2014, rejected the committee's interim study 102-207). So
     # it is one text, said beside every placing, and the removal is said
     # beside it, in the words the row supports and no more.
+    #
+    # THE WORDS ARE PINNED, NOT SCREENED. This check was a list of phrases the
+    # notes must not say, and a reworded claim about this bill passed it:
+    # " This bill's report was adopted with the rest of the calendar in one
+    # vote, ..." as CC_THEN went through --code with nothing failed. And
+    # each text it screened had a claim of its own wrong: the first sentence
+    # "unanimous or nearly so" in 47 histories that give the report as 3-2
+    # or 2-1; the removal note "to be taken up on its own" beside 67 bills of
+    # 1993 put back on the calendar and killed with it; the history's own
+    # sentence for a removal "Ten members may petition for this" on 1,722
+    # stages. So the texts are the agreed ones, a change to them is a change
+    # to this check, and the phrases are asked of the history as well.
     rule = N.CALENDAR["CC"][1]
     off = {c: N.CONSENT_OFF_NOTE.format(chamber=c) for c in ("House", "Senate")}
-    if not rule.endswith(N.CC_THEN) or "unless a bill is taken off" not in N.CC_THEN:
+    back = {c: N.CONSENT_BACK_NOTE.format(chamber=c) for c in ("House", "Senate")}
+    agreed = {
+        "rule": ("A committee decides whether its report goes on the consent calendar, and "
+                 "can send it there even when its members divided on the recommendation "
+                 "itself. The chamber adopts all the reports on its consent calendar in "
+                 "one vote, without floor debate, unless a bill is taken off it first."),
+        "off": "The {chamber} took this bill off its consent calendar.",
+        "back": "The {chamber} later put this bill back on its consent calendar."}
+    for name, now in (("rule", rule), ("off", N.CONSENT_OFF_NOTE),
+                      ("back", N.CONSENT_BACK_NOTE)):
+        if now != agreed[name]:
+            bad.append(f"the consent calendar's {name} note is {now!r}, not the agreed "
+                       f"{agreed[name]!r}")
+    if not rule.endswith(N.CC_THEN):
         bad.append(f"the consent calendar's note no longer ends with the rule: {rule!r}")
-    for text in (rule, *off.values()):
-        for said in ("then adopts", "passes without", "Ten members", "petition",
-                     "which is what happened", "debated and voted on separately"):
+    banned = ("then adopts", "passes without", "Ten members", "petition", "nearly so",
+              "which is what happened", "debated and voted on separately",
+              "passing in a block", "taken up on its own")
+    for text in (rule, *off.values(), *back.values()):
+        for said in banned:
             if said in text:
                 bad.append(f"the consent notes say {said!r} again: {text!r}")
     hb68 = narr[("2021-2022", "HB68")]
@@ -4048,19 +4112,42 @@ def _rows_read_on_the_second_pass(N, B):
     # passes read more forms each time and missed some -- the Senate's "Moved
     # to Remove HB 1313 from the Consent Calendar" and the House's "REMOVED
     # FROM CON CAL" of 1992 the last of them.
+    #
+    # And each removal under a stage of its own chamber, or of the committee
+    # of conference whose report the House took off its calendar (HB 273 of
+    # 2025): the Senate's removal of HB 592 of 2025, entered after the
+    # enrolment, sat under "With the governor". After the rule, never before
+    # it (HB 522 of 2009, whose placing CALENDAR_RE does not read). And the
+    # return to the calendar told where the row records it (HB 264 of 1993).
     for key, (rows, under, by) in _DOCKET_CONSENT_OFF.items():
         n = _narrated(N, key[0], key[1], rows)
         told = [(s["label"], x) for s in n["stages"] for x in s.get("notes", [])]
-        placing = [(lab, x) for lab, x in told if "goes on the consent calendar" in x]
+        placing = [(lab, x) for lab, x in told if x == rule]
         said = tuple(c for c in ("House", "Senate") if any(x == off[c] for _l, x in told))
         if under is None:
             ok = not placing
         else:
-            ok = (len(placing) == 1 and placing[0][0].startswith(under)
-                  and placing[0][1] == rule)
+            ok = len(placing) == 1 and placing[0][0].startswith(under)
         if not ok or said != tuple(by):
             bad.append(f"{key[1]} of {key[0]}: its consent notes are {told}, wanted the rule "
                        f"under {under!r} and the removal said of {list(by) or 'no chamber'}")
+        for i, (lab, x) in enumerate(told):
+            c = next((c for c in ("House", "Senate") if x in (off[c], back[c])), None)
+            if not c:
+                continue
+            if not lab.startswith((f"In {c} committee", f"On the {c} floor",
+                                   "Committee of conference")):
+                bad.append(f"{key[1]} of {key[0]}: {x!r} is under {lab!r}")
+            if not any(y == rule for _l, y in told[:i]):
+                bad.append(f"{key[1]} of {key[0]}: {x!r} comes before the rule, or without it")
+        if (key[1] == "HB264") != any(x == back["House"] for _l, x in told):
+            bad.append(f"{key[1]} of {key[0]}: the return to the consent calendar is "
+                       f"{'not ' if key[1] == 'HB264' else ''}told: {told}")
+        text = " ".join(s.get("text") or "" for s in n["stages"])
+        for said_ in banned:
+            if said_ in text:
+                bad.append(f"{key[1]} of {key[0]}'s history says {said_!r} of the consent "
+                           "calendar again")
     for raw, want in (("Removed from CC (Rep. Vaillancourt)", True),
                       ("REMOV FR CC, REQ KEANS", True),
                       ("REMOVED FROM CONS CAL, REQ REP R FOSTER", True),
@@ -4092,12 +4179,34 @@ def _rows_read_on_the_second_pass(N, B):
                       ("Committee Report: Ought to Pass (Vote 17-0; CC)", False)):
         if N.removed_from_consent(raw) != want:
             bad.append(f"{raw!r} is {'not ' if want else ''}read as a removal from consent")
+    # THE DATA CHECKS READ A REMOVAL IN THEIR OWN WORDS, AND MUST GO ON DOING
+    # SO. The one before _consent_and_no_sitting_on_disk asked the reader's
+    # own pattern and passed while 149 notes stood beside removals neither
+    # read, and nothing here stopped it going back: with the reader's call in
+    # place of its loose search, --code still passed. So neither data check
+    # may call the reader, and their loose search must find a removal the
+    # reader does not -- rows MADE FOR THE GUARD, in words no docket on disk
+    # uses, so that the day the reader's list falls behind a new wording the
+    # data checks are the ones that say so.
+    import inspect
+    for fn in (_consent_rows, _consent_and_no_sitting_on_disk, _sitting_consent_on_disk):
+        src = inspect.getsource(fn)
+        for name in ("removed_from_consent", "REMOVED_FROM_CONSENT", "came_off"):
+            if name in src:
+                bad.append(f"{fn.__name__} reads a removal with the reader's {name}, not its own "
+                           "loose search")
+    for raw in ("Removal from Consent Calendar requested by Rep. Smith",
+                "REMOVED FROM THE CONS. CALENDAR, REQ REP JONES"):
+        if N.removed_from_consent(raw) or not _CONSENT_REMOVAL_LOOSE.search(raw) \
+                or _CONSENT_REMOVAL_NOT.search(raw):
+            bad.append(f"the data checks' loose search and the reader agree on {raw!r}, so the "
+                       "checks cannot catch a wording the reader misses")
     assert not bad, "; ".join(bad)
     return "ok", ("SCR 1 of 1999's row stamped 1939 is of 2 December 1998 and says so; HBI 5 of "
                   "1993 is eight rows, introduced once; HB 1643 of 2008 went to a joint "
-                  "committee with Finance; the consent calendar's rule is said beside every "
-                  f"placing, and a removal in {len(_DOCKET_CONSENT_OFF)} bills' real rows is said "
-                  "of its own chamber or of none")
+                  "committee with Finance; the consent calendar's notes are the agreed texts, "
+                  f"and a removal in {len(_DOCKET_CONSENT_OFF)} bills' real rows is said of its "
+                  "own chamber or of none, under that chamber's stage and after the rule")
 
 
 # Real rows: Docket_2021-2022.txt lines 15548-15551 (SB 240);
@@ -4535,11 +4644,23 @@ _CONSENT_REMOVAL_LOOSE = re.compile(
     r"remov\w*.{0,40}?(?:consent|\bcons?\.?\s*cal|\bCC\b)", re.I)
 _CONSENT_REMOVAL_NOT = re.compile(
     r"special\s+order|\bconf\w*\.?\s+comm\w*\.?\s+consent|consent\s+list", re.I)
+# And of a bill put back on the calendar it came off, as loosely.
+_CONSENT_RETURN_LOOSE = re.compile(
+    r"return\w*.{0,40}?(?:consent|\bcons?\.?\s*cal|\bCC\b)", re.I)
 
 
-@check("data", "every history states the consent calendar's rule beside a placing, says a "
-               "removal of each chamber whose docket records one and of no other, and no page "
-               "puts SB 106 of 2009's Senate hearing on a day")
+def _consent_rows(n, loose):
+    """{chamber} whose rows of this history the loose search finds."""
+    return {e.get("body") for e in n.get("events", []) if not e.get("cancelled")
+            and ((loose is _CONSENT_REMOVAL_LOOSE and e.get("type") == "consent_off")
+                 or (loose.search(e.get("raw") or "")
+                     and not _CONSENT_REMOVAL_NOT.search(e.get("raw") or "")))}
+
+
+@check("data", "every consent note on every history is an agreed text; a removal, or a return "
+               "to the calendar, is said of each chamber whose docket records one and of no "
+               "other, under that chamber's stage and after the rule; and no page puts SB 106 "
+               "of 2009's Senate hearing on a day")
 def _consent_and_no_sitting_on_disk():
     """The two readings above, asked of what is built.
 
@@ -4551,7 +4672,21 @@ def _consent_and_no_sitting_on_disk():
     chamber whose rows record none. The check beside the rule tested one form
     on one bill, and 36 measures kept the old sentence beside the chamber
     that removed them; its successor asked the reader's own pattern, and 149
-    more passed it.
+    more passed it. The removal is said under a stage of its own chamber,
+    or of the committee of conference whose report the House took off its
+    calendar -- nine sat under the other chamber or the governor, and the
+    check counted them as said -- and after the rule.
+
+    WHAT IT DOES NOT ASK. That every placing is explained: 2,027 histories
+    carry a report row marked CC in a shape CALENDAR_RE does not read ("VOTE
+    (18-0;CC)", HB 76 of 1989; "{Vote: 14-1; CC}", HB 411 of 2007; "for Mar
+    24 CC (vote 18-0)", HB 123 of 2009 -- 827 of them that term), and say
+    nothing of the consent calendar at all, which is a gap and not a claim
+    (2 October 2026). Nor a removal
+    that names no calendar, which "remov" near "consent" cannot find: the
+    House's floor rows of 1989 write some as the member alone, "REP SPEAR
+    REMOV; REP TOWNSEND SUB ITL;" (HB 12), on 33 bills, and neither this nor
+    the reader reads them.
 
     SB 106 OF 2009'S HEARING. One hearing carried three days on one page --
     5 February in the history, 10 January on the stations and in the
@@ -4567,40 +4702,62 @@ def _consent_and_no_sitting_on_disk():
         return "skip", "no narratives.json here"
     narr = json.loads(fn.read_text(encoding="utf-8"))
     rule = N.CALENDAR["CC"][1]
-    off = {N.CONSENT_OFF_NOTE.format(chamber=w): c for c, w in (("H", "House"), ("S", "Senate"))}
-    placed = removals = 0
-    wrong, unsaid, unread = [], [], []
+    words = (("H", "House"), ("S", "Senate"))
+    off = {N.CONSENT_OFF_NOTE.format(chamber=w): c for c, w in words}
+    back = {N.CONSENT_BACK_NOTE.format(chamber=w): c for c, w in words}
+    placed = removals = returns = 0
+    wrong, unsaid, unread, astray, early, retold = [], [], [], [], [], []
     for term, byb in narr.items():
         for bill, n in byb.items():
-            rows = {e.get("body") for e in n.get("events", []) if not e.get("cancelled")
-                    and (e.get("type") == "consent_off"
-                         or (_CONSENT_REMOVAL_LOOSE.search(e.get("raw") or "")
-                             and not _CONSENT_REMOVAL_NOT.search(e.get("raw") or "")))}
-            said = set()
+            name = f"{bill} of {term}"
+            for kind, notes, loose in (("off", off, _CONSENT_REMOVAL_LOOSE),
+                                       ("back", back, _CONSENT_RETURN_LOOSE)):
+                rows = _consent_rows(n, loose)
+                said = {notes[x] for s in n.get("stages", []) for x in s.get("notes", [])
+                        if x in notes}
+                if kind == "off":
+                    removals += len(said)
+                else:
+                    returns += len(said)
+                unsaid += [f"{name} ({c}, {kind})" for c in sorted(rows - said)]
+                unread += [f"{name} ({c}, {kind})" for c in sorted(said - rows)]
+            ruled = False
             for s in n.get("stages", []):
                 for note in s.get("notes", []):
-                    if note in off:
-                        said.add(off[note])
-                    elif "consent calendar" in note.lower() and note != rule:
-                        wrong.append(f"{bill} of {term}: {note[:90]!r}")
+                    c = off.get(note) or back.get(note)
+                    if c:
+                        if (s.get("hand") or "")[:1] not in (c, "C"):
+                            astray.append(f"{name}: {note[:20]!r} under {s.get('label')!r}")
+                        if not ruled:
+                            early.append(name)
                     elif note == rule:
                         placed += 1
-            removals += len(said)
-            for c in sorted(rows - said):
-                unsaid.append(f"{bill} of {term} ({c})")
-            for c in sorted(said - rows):
-                unread.append(f"{bill} of {term} ({c})")
+                        ruled = True
+                    elif "consent calendar" in note.lower():
+                        wrong.append(f"{name}: {note[:90]!r}")
+                if any(x in (s.get("text") or "") for x in
+                       ("Ten members may petition", "debated and voted on separately")):
+                    retold.append(name)
     problems = []
     if wrong:
-        problems.append(f"{len(wrong)} consent notes are neither the rule nor a removal: "
+        problems.append(f"{len(wrong)} consent notes are none of the agreed texts: "
                         + "; ".join(wrong[:6]))
     if unsaid:
         problems.append(f"{len(unsaid)} chambers whose docket records the bill taken off the "
-                        "consent calendar say nothing of it -- a wording narrative."
-                        "REMOVED_FROM_CONSENT does not read: " + ", ".join(unsaid[:10]))
+                        "consent calendar, or put back on it, say nothing of it -- a wording "
+                        "the history's reader does not read: " + ", ".join(unsaid[:10]))
     if unread:
-        problems.append(f"{len(unread)} removals are said of a chamber whose rows this check "
-                        "finds none in: " + ", ".join(unread[:10]))
+        problems.append(f"{len(unread)} removals or returns are said of a chamber whose rows "
+                        "this check finds none in: " + ", ".join(unread[:10]))
+    if astray:
+        problems.append(f"{len(astray)} removals or returns are said under another chamber's "
+                        "stage: " + "; ".join(astray[:6]))
+    if early:
+        problems.append(f"{len(early)} histories say a removal before, or without, the "
+                        "consent calendar's rule: " + ", ".join(early[:10]))
+    if retold:
+        problems.append(f"{len(retold)} histories tell a removal as debated separately, or by "
+                        "ten members' petition: " + ", ".join(retold[:10]))
     assert not problems, "\n".join(problems)
     sb106 = (narr.get("2009-2010") or {}).get("SB106") or {}
     if sb106:
@@ -4608,8 +4765,9 @@ def _consent_and_no_sitting_on_disk():
         assert "held a public hearing." in text and sb106.get("no_sitting") == ["2009-01-10"], (
             f"SB 106 of 2009's first stage is told: {text!r}; no_sitting "
             f"{sb106.get('no_sitting')!r}")
-    said = (f"{placed:,} notes state the consent calendar's rule and {removals:,} say a chamber "
-            "took the bill off it, each beside a removal the check found for itself")
+    said = (f"{placed:,} notes state the consent calendar's rule, {removals:,} say a chamber "
+            f"took the bill off it and {returns:,} that it put the bill back, each beside a row "
+            "the check found for itself and under that chamber")
     page, table = Path("site/bill/2009/sb106.html"), Path("site/data/proceedings.csv")
     if not (page.exists() and table.exists()):
         return "ok", said + "; no built site here to read SB 106's page in"
@@ -4619,6 +4777,61 @@ def _consent_and_no_sitting_on_disk():
             if line.startswith("2009-2010,SB106,S,")]
     assert not rows, f"the download still lists a Senate sitting on SB 106 of 2009: {rows}"
     return "ok", said + "; SB 106 of 2009's Senate hearing is on no day, on its page and in the download"
+
+
+_WRITTEN_DAY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+
+
+@check("data", "no sitting lists a bill on its consent calendar on a day its chamber's docket "
+               "records it taken off")
+def _sitting_consent_on_disk():
+    """The sitting pages, asked the question the histories are.
+
+    A sitting page lists under "On the consent calendar" the bills it says
+    the chamber "disposed of together, in one motion and without debate".
+    On 2 October 2026 it listed 86 on the very day the docket records the
+    bill taken off that calendar: session_days read a removal with a pattern
+    of its own that the Senate's "Sen. D'Allesandro Moved to Remove SB 58
+    from the Consent Calendar" (2011 to 2024) and the House's "REMOVED FROM
+    CON CAL" of 1992 defeated, and read the rows in order, so that "SB 74-FN
+    was Removed from the Consent Calendar; 03/20/2025", entered after the
+    Senate passed it amended, came too late. A removal is found here by the
+    loose search above, not by either reader, on the day the row is of and
+    the day it writes.
+    """
+    SD = imp("session_days")
+    if SD is None:
+        return "skip", "session_days will not import"
+    fn = Path("narratives.json")
+    if not fn.exists():
+        return "skip", "no narratives.json here"
+    narr = json.loads(fn.read_text(encoding="utf-8"))
+    off = set()
+    for term, byb in narr.items():
+        for bill, n in byb.items():
+            for e in n.get("events", []):
+                raw = e.get("raw") or ""
+                if e.get("cancelled") or not (
+                        e.get("type") == "consent_off"
+                        or (_CONSENT_REMOVAL_LOOSE.search(raw)
+                            and not _CONSENT_REMOVAL_NOT.search(raw))):
+                    continue
+                days = {(e.get("date") or "")[:10]} | {
+                    f"{y}-{int(m):02d}-{int(d):02d}" for m, d, y in _WRITTEN_DAY.findall(raw)}
+                off |= {(e.get("body"), day, term, bill) for day in days}
+    del narr
+    sittings = SD.load(fn)
+    listed = []
+    for body, day, term, bill in sorted(off):
+        sitting = sittings.get((body, day))
+        if sitting and any(i.consent and i.term == term and i.bill == bill
+                           for i in sitting.items):
+            listed.append(f"{bill} of {term} ({body} {day})")
+    assert not listed, (
+        f"{len(listed)} sittings list a bill on the consent calendar the docket records it "
+        "taken off that day: " + ", ".join(listed[:10]))
+    return "ok", (f"{len(off):,} removal days read, and no sitting of them lists its bill on "
+                  "the consent calendar")
 
 
 @check("status", "conferees who could not agree end the bill, and nothing says their report was adopted",
@@ -14610,6 +14823,40 @@ def _session_consent_only_the_calendar(SD):
                     "Pass, 04/22/2021; Vote 5-0; CC"),
                  floor("2021-04-22", "S", "Ought to Pass : RC 16Y-8N, MA; OT3rdg; "
                        "04/22/2021", "Ought to Pass", kind="")],
+        # The Senate's wording of 2011 to 2024, the bill between the verb and
+        # the calendar (SB 58 of 2013, Docket_db_2013-2014.txt)...
+        "SB58": [ev("2013-02-07", "S", "report", "Committee Report: Ought to Pass, "
+                    "2/14/13; Vote 5-0; CC; SC8"),
+                 ev("2013-02-14", "S", "other", "Sen. D’Allesandro Moved to Remove "
+                    "SB 58 from the Consent Calendar"),
+                 floor("2013-02-14", "S", "Ought to Pass: MA, VV; OT3rdg",
+                       "Ought to Pass")],
+        # ...a removal entered after the bill's own disposition (SB 74 of
+        # 2025, Docket.txt 6196-6202)...
+        "SB74": [ev("2025-03-20", "S", "report", "Committee Report: Ought to Pass, "
+                    "03/20/2025; Vote 6-0; CC"),
+                 floor("2025-03-20", "S", "Ought to Pass with Amendment #2025-0975s, MA, "
+                       "VV; OT3rdg; 03/20/2025", "Ought to Pass with Amendment #2025-0975s"),
+                 ev("2025-03-20", "S", "other", "SB 74-FN was Removed from the Consent "
+                    "Calendar; 03/20/2025")],
+        # ...and one entered weeks later, dated in its words (HB 703 of 2019,
+        # entered 4 June) -- but never a removal of an earlier report, after
+        # which the committee reported again: HB 442 of 1989 came off in
+        # April and passed on the calendar of 4 January 1990.
+        "HB703": [ev("2019-05-15", "S", "report", "Committee Report: Rereferred to "
+                     "Committee, 05/15/2019; Vote 5-0; CC"),
+                  floor("2019-05-15", "S", "Rereferred to Committee, MA, VV; 05/15/2019",
+                        "Rereferred to Committee"),
+                  ev("2019-06-04", "S", "other", "Sen. Sherman Moved to Remove HB 703-FN "
+                     "from the Consent Calendar; 05/15/2019")],
+        "HB442": [ev("1989-04-05", "H", "report", "MAJ REPORT RE-REF TO RES, REC & DEV FOR: "
+                     "4/11 VOTE(18-0;CC)"),
+                  ev("1989-04-11", "H", "rereferred", "REMOVED FROM CC, REP DICKINSON; "
+                     "RE-REF TO RR&D VV; HJ69, P2081"),
+                  ev("1989-11-08", "H", "report", "RE-REF MAJ REPORT OTP/AM FOR JAN04,1990 "
+                     "(VOTE 16-0;CC)"),
+                  floor("1990-01-04", "H", "PASSED WITH AM AND REF TO APPROP; HJ8,P266-269",
+                        "Ought to Pass with Amendment", kind="")],
     }
     root = Path(tempfile.mkdtemp())
     try:
@@ -14649,10 +14896,23 @@ def _session_consent_only_the_calendar(SD):
         assert got == {"SB11": [True], "SB12": [True], "SB13": [False]}, (
             "a calendar taken by one roll call keeps the bills that share its "
             f"tally and drops a bill with a tally of its own; got {got}")
+        assert consent("S", "2013-02-14", "SB58") == [False], (
+            "the Senate's 'Moved to Remove SB 58 from the Consent Calendar' is "
+            "not read, and the bill is listed on the calendar it came off")
+        assert consent("S", "2025-03-20", "SB74") == [False], (
+            "a removal entered after the bill's disposition left it listed on "
+            "the calendar it came off")
+        assert consent("S", "2019-05-15", "HB703") == [False], (
+            "a removal entered weeks later, for the day it writes, left the bill "
+            "listed on that day's calendar")
+        assert consent("H", "1990-01-04", "HB442") == [True], (
+            "a removal of an earlier report took the bill off a calendar its "
+            "committee's next report put it on")
         return "ok", ("the calendar's item only, in its own chamber: no veto "
-                      "day reconsideration, other chamber, removed bill, named "
-                      "mover or lone tally; same-day suspensions, a late Senate "
-                      "report row and Ought Not to Pass kept")
+                      "day reconsideration, other chamber, removed bill (in "
+                      "the Senate's words, or entered after), named mover or "
+                      "lone tally; same-day suspensions, a late Senate report "
+                      "row, Ought Not to Pass and a later report's calendar kept")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

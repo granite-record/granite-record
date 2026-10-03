@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.57
+# GRANITE_VERSION: 2026-09-04.58
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -136,10 +136,23 @@ CALENDAR = {
     # killing the bill or studying it -- HA 1 of 2018, "Committee Report:
     # Ought Not to Pass for 03/06/2018 (Vote 17-0; CC)", under a status of
     # Killed.
+    #
+    # AND THE FIRST SENTENCE SAYS WHO PUTS A REPORT THERE, NOT BY WHAT VOTE.
+    # It read "when the committee vote was unanimous or nearly so, and any
+    # members who dissented did not object to placing it there", in 47
+    # histories that give the report as carried 3-2, 2-1 or 4-2 (HB 138 of
+    # 2025, "Ought to Pass, 05/08/2025; Vote 3-2; CC", adopted with the
+    # Senate's calendar of 8 May). The placement is the committee's own
+    # decision, apart from its vote on the recommendation -- unanimous under
+    # the House's rules of 1995 and 1997 (Rule 51, legislation/1995/HR0001.html)
+    # and in both chambers now, as the civics page says -- but the rules of
+    # every year and both chambers are not on this disk, so the note says
+    # only what the record shows of every one of them: the committee decides,
+    # and a divided recommendation can still go there.
     "CC": ("the consent calendar",
-           "A bill goes on the consent calendar when the committee vote was "
-           "unanimous or nearly so, and any members who dissented did not "
-           "object to placing it there." + CC_THEN),
+           "A committee decides whether its report goes on the consent "
+           "calendar, and can send it there even when its members divided on "
+           "the recommendation itself." + CC_THEN),
     "RC": ("the regular calendar", None),
 }
 
@@ -174,6 +187,16 @@ CALENDAR = {
 # 2 October 2026 (anything removed beside "consent", "cons cal", "con cal"
 # or "CC"), and the data check asks the same question in its own words.
 #
+# NOT EVERY REMOVAL NAMES THE CALENDAR. The House's floor rows of 1989 write
+# some as the member alone -- "REP SPEAR REMOV; REP TOWNSEND SUB ITL;" (HB 12
+# of 1989, reported "VOTE (12-2;CC)"), "REP O'BRIEN REMOVED; ITL REPORT
+# ADOPTED VV" (HB 312), on 33 bills -- and neither this nor the check reads
+# them, because "removed" alone could be anything. Those histories say
+# nothing of a removal, which is a gap and not a claim, and 32 of them say
+# nothing of the consent calendar at all, their placings being written
+# "VOTE (12-2;CC)", which CALENDAR_RE does not read; the one that states the
+# rule (HB 171 of 1989) states it as a rule.
+#
 # Not a row about OTHER bills: "Special Order to after the Bills removed from
 # the Consent Calendar, Without Objection, MA" (HB 275 of 2022) orders this
 # bill behind them. Not another calendar: "REMOVED FROM CONF COMM CONSENT
@@ -204,11 +227,27 @@ def removed_from_consent(raw):
 # is written at all. Ten members has been the House's rule since January 2023;
 # before that one member's request was enough, as the civics page says, and
 # the rule is not this note's to state for every year and chamber. Nor is what
-# came after: HB 68 of 2021 was taken off and never voted on, and sixty-one
+# came after: HB 68 of 2021 was taken off and never voted on, and sixty-seven
 # bills of 1993 were put back on the consent calendar after they came off
-# ("RETURNED TO CONSENT CALENDAR, REP MCGOVERN", HB 264). So it says that the
-# chamber took the bill off, and what a bill is taken off for.
-CONSENT_OFF_NOTE = "The {chamber} took this bill off its consent calendar, to be taken up on its own."
+# ("RETURNED TO CONSENT CALENDAR, REP MCGOVERN", HB 264).
+#
+# AND NOT WHAT A BILL IS TAKEN OFF FOR. It said ", to be taken up on its own"
+# for one evening, beside those sixty-seven, which were not: HB 264's
+# history read, with the rule beside it, as a bill the calendar did not
+# decide, and the calendar killed it on 16 March. So it says that the chamber
+# took the bill off, and nothing else; where the chamber put it back,
+# CONSENT_BACK_NOTE says that too.
+CONSENT_OFF_NOTE = "The {chamber} took this bill off its consent calendar."
+
+# Said where the docket records the bill put back on the calendar it came off.
+# One wording on disk, the House's of 16 March 1993 and nowhere else:
+# "RETURNED TO CONSENT CALENDAR, REP MCGOVERN; HJ40,P958" (HB 264), 67 rows,
+# each on a bill a row read above took off the House's calendar of 10 March.
+# HB 264's next row is "ITL REPORT ADOPTED", with the calendar. What followed
+# is the history's to tell, not this note's: HB 625 was then laid on the
+# table on a member's motion.
+RETURNED_TO_CONSENT = re.compile(r"\bRETURNED\s+TO\s+(?:THE\s+)?CONSENT\s+CAL", re.I)
+CONSENT_BACK_NOTE = "The {chamber} later put this bill back on its consent calendar."
 
 RECOMMENDATION = {
     "ought to pass with amendment": "pass it with changes",
@@ -2637,11 +2676,18 @@ def describe(ev, body, seen_intro=False):
         return (f"The bill was enrolled{when} \u2014 the final check of the text "
                 "before it goes to the governor.")
 
+    # WHAT THE ROW RECORDS, as CONSENT_OFF_NOTE says it. This read "..., so
+    # it was debated and voted on separately rather than passing in a block.
+    # Ten members may petition for this." on 1,722 stages of 1,682 histories
+    # after the note beside it had stopped saying either: the House needed
+    # one member's request until January 2023 and the Senate never needed
+    # ten, and the 67 bills of 1993 put back on the calendar
+    # (RETURNED_TO_CONSENT) went through with it -- HB 264 of 1993 was told
+    # as debated separately beside "ITL REPORT ADOPTED" with the calendar of
+    # 16 March.
     if t == "consent_off":
         when = f" on {fdate(ev['date'])}" if ev.get("date") else ""
-        return ("The bill was pulled off the consent calendar" + when +
-                ", so it was debated and voted on separately rather than "
-                "passing in a block. Ten members may petition for this.")
+        return "The bill was taken off the consent calendar" + when + "."
 
     if t == "conference_meeting":
         if ev.get("_no_day"):
@@ -3344,11 +3390,12 @@ def build(bill, rows, introduction=None):
         # under the sentence that needed it. There may be no stage yet -- a
         # cancelled or unrecognised row produces no sentence -- in which case
         # there is nothing for the note to explain and it is dropped.
-        def _note(text):
-            if not stages or not text:
+        def _note(text, stage=None):
+            stage = stage if stage is not None else (stages[-1] if stages else None)
+            if stage is None or not text:
                 return
-            if text not in stages[-1]["notes"] and text not in used_notes:
-                stages[-1]["notes"].append(text)
+            if text not in stage["notes"] and text not in used_notes:
+                stage["notes"].append(text)
                 used_notes.add(text)
 
         cm = CALENDAR_RE.search(ev["_raw"])
@@ -3375,9 +3422,41 @@ def build(bill, rows, introduction=None):
         # (consent_off, with its own sentence) or the row is shown as the
         # clerk wrote it -- "Sen. Perkins Kwoka Moved to Remove SB 47 from the
         # Consent Calendar" (SB 47 of 2023) is told by nothing, and the page
-        # said nothing of the removal. The chamber the row is of.
-        if ev["_type"] == "consent_off" or removed_from_consent(ev["_raw"]):
-            _note(CONSENT_OFF_NOTE.format(chamber=CHAMBER.get(ev["body"], "chamber")))
+        # said nothing of the removal. The chamber the row is of. And the
+        # return of one to the calendar it came off (RETURNED_TO_CONSENT).
+        #
+        # UNDER THAT CHAMBER'S OWN STAGE. A consent_off row is staged with its
+        # chamber's committee and the note followed it there, but a row typed
+        # "other" makes no stage, and the note went under whichever was last:
+        # the Senate's removal of HB 592 of 2025 under "With the governor",
+        # because it was entered after the enrolment; the House's of HB 116
+        # of 2022 under "On the Senate floor", entered in March for 5 January;
+        # the Senate's of SCR 2 of 2015 under the House committee the
+        # resolution had just crossed to -- nine histories. It goes under the
+        # latest stage of the row's chamber, or of a committee of conference,
+        # whose report the House has taken off its calendar since 2018
+        # ("Removed from Consent (Rep. Roberts) 05/23/2018" beside "Conference
+        # Committee Report 2009c: Adopted, RC 173-155", HB 1254 of 2018).
+        #
+        # AND AFTER THE RULE. A removal says the bill was on a consent
+        # calendar whether or not its placing is read: 221 histories said
+        # "took this bill off its consent calendar" and nowhere what the
+        # calendar is, their placings written "for Mar 24 CC (vote 18-0)"
+        # (HB 522 of 2009) or "{Vote: 14-3; CC}" (HB 177 of 2007), which
+        # CALENDAR_RE does not read, or not marked at all; and SB 84 of
+        # 2025's Senate removal was said six months before the House's
+        # placing, under which the rule then stood. The rule is said beside
+        # the first removal where no placing has said it yet, in the same
+        # one text.
+        off = ev["_type"] == "consent_off" or removed_from_consent(ev["_raw"])
+        if (off or RETURNED_TO_CONSENT.search(ev["_raw"])) and stages:
+            mine = next((st for st in reversed(stages)
+                         if st["key"][0] in (ev["body"], "C")), stages[-1])
+            if not cc_explained:
+                _note(CALENDAR["CC"][1], mine)
+                cc_explained = True
+            _note((CONSENT_OFF_NOTE if off else CONSENT_BACK_NOTE).format(
+                chamber=CHAMBER.get(ev["body"], "chamber")), mine)
 
         # THE LONGEST KEY, ONCE. NUANCE held "retain" and "retained in
         # committee", and "Retained in Committee" contains both, so every
