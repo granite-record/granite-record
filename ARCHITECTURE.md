@@ -507,6 +507,38 @@ motions of one count or to both sides of one; a name is said once.
 own count on every day it is on disk (nineteen days named, each for its reason)
 and the speaker lists of every built page.
 
+**And to what the journal prints after each speech (3 October 2026).** A
+second review read 1,127 speakers on 35 House pages against their journals and
+found 76 on a motion the journal contradicts: on another bill, on a censure or
+a reprimand, on a rules suspension, or on an amendment's failure set down as a
+speech on the report. A speech is now read where it stands -- it was found
+again by its first forty characters, which is the first sentence that begins
+the same way -- in a text whose running heads leave the line break they sat in,
+since a bill heading that opened a page was glued to the line before and its
+speeches read as the previous bill's (`journal_days.clean(lines=True)`, used
+for the speeches only). A speech is closed by what the journal prints first
+after it: a roll call, a division, or a question carried or lost by voice
+("Floor amendment (0786h) failed."), unless a motion was moved in between,
+which is then that motion's (`decided`). A motion claims a speech only where
+that is its own decision: the one motion a bill had that day no longer takes a
+speech the journal ties to another count, and a speech tied to a vote none of
+the bill's motions is -- a reprimand, a censure, an amendment's division the
+page does not draw -- is named nowhere, which is less than the journal says and
+nothing it contradicts. The same review found the docket's division counts
+copied and mistyped as its roll calls are. A division the docket alone states
+loses its count where the House Journal prints a count within three of it after
+the bill's own heading and not the count itself, or prints the count fewer
+times than the docket states it, after the heading of another bill whose row
+states it; a motion with no heading of its own (a reconsideration, a tabling)
+is printed under whichever came before, so a division is never taken off for
+that alone. One division entered on many bills counts once where the journal
+prints it fewer times than it is entered. And a vote is drawn as the question
+its own clause names: a veto override's result is read from its result words,
+never from "override"; a count before 1999 belongs to the clause that holds it,
+not the line's final disposition (HB 386's "OTP/AM ML RC(45-241); ITL REPORT
+ADOPTED" of 3 January 1996); and a Senate amendment row's roll call on third
+reading or re-referral, and a motion to divide, are drawn as those questions.
+
 **What the Senate's pages leave out, and why.** Who spoke. Across all 491
 Senate journal files "spoke in favor" occurs four times and "spoke against"
 twice, and every one is ordinary English inside a speech rather than a marker

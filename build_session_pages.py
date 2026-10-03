@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.19
+# GRANITE_VERSION: 2026-09-19.20
 """
 A page for every day the House sat.
 
@@ -245,11 +245,13 @@ def _question_html(it, moved, esc):
 def _ballots_here(it):
     """Are this roll call's ballots on the bill's own page? Not where the
     roll-call file holds the vote under another bill or under none -- one
-    motion on several bills -- though they are for a motion drawn from the
-    docket alone, as they always were said to be."""
+    motion on several bills -- and not for a motion drawn from the docket
+    alone: no roll call on record is tied to it, so there are no ballots to
+    be anywhere. The page said there were 1,402 times, every roll call of
+    1989-1998 among them; HB 1's own page of 1997 holds no vote of 10 June."""
     rc = getattr(it, "rc", None)
     if rc is None:
-        return True
+        return False
     return bool(rc.get("bill")) and session_days._bill_of(rc["bill"]) == it.bill.upper()
 
 
@@ -365,9 +367,13 @@ def _same_motion(moved, action):
 # something else: to postpone to a day certain and to make a special order.
 # Only for asking whether a motion was made after a speech (made_after): the
 # comparisons above keep the list they were measured with.
+# And to divide the question: "Rep. Vaillancourt moved that Section 2 be
+# divided" after eight members had spoken on HB 375's amendment (3 May
+# 2001), and the roll call that followed, 20-338, was on dividing it.
 MOTION_KINDS_SINCE = MOTION_KINDS + [
     ("postpone to a day", r"\bpostpone\b"),
     ("special order", r"\bspec(?:ial)?\.?\s+order"),
+    ("divide", r"\bdivid(?:e|ed|ing)\b|\bdiv\s*\?"),
 ]
 
 
@@ -437,6 +443,37 @@ def several_on_line(item):
     return (getattr(item, "joined", 0) or 0) > 1
 
 
+def journal_count(a):
+    """The count the journal ties a speech to: the division that decided its
+    question (journal_days' `decided`), none where a voice vote decided it,
+    and otherwise the roll call printed after it; None where there is none."""
+    d = a.get("decided") or {}
+    if d.get("count"):
+        return tuple(d["count"])
+    if d.get("words"):
+        return None
+    return tuple(a["tally"]) if a.get("tally") else None
+
+
+def _known(item):
+    """Every count the motion is known by (session_days.Item.tallies)."""
+    want = getattr(item, "tallies", None)
+    if want is None:
+        want = {(item.yeas, item.nays)} if item.counted else set()
+    return want
+
+
+# A question decided by voice on an amendment is the amendment's: "Floor
+# amendment (0786h) failed." The report it amended -- "Ought to Pass with
+# Amendment", which names one -- and a concurrence are not.
+AMENDMENT = re.compile(r"\bamendment\b", re.I)
+NOT_AMENDMENT = re.compile(r"\breport\b|ought\s+to\s+pass|\bOTP\b|concur", re.I)
+
+
+def on_amendment(words):
+    return bool(AMENDMENT.search(words or "")) and not NOT_AMENDMENT.search(words or "")
+
+
 def claims(a, item, sole=False, ambiguous=frozenset()):
     """Does this motion claim one attribution of its bill? speakers_for says
     when; the page's "also spoke" list asks the same question of every
@@ -446,11 +483,24 @@ def claims(a, item, sole=False, ambiguous=frozenset()):
         return False
     # Any count the motion is known by: where the page draws the ballots'
     # count the journal prints the clerk's, and the speech is tied by that.
-    want = getattr(item, "tallies", None)
-    if want is None:
-        want = {(item.yeas, item.nays)} if item.counted else set()
-    t = a.get("tally")
-    tied = bool(want) and bool(t) and tuple(t) in want and tuple(t) not in ambiguous
+    want = _known(item)
+    t = journal_count(a)
+    tied = bool(want) and t is not None and t in want and t not in ambiguous
+    # THE JOURNAL'S COUNT IS NOT OVERRULED BY THERE BEING ONE MOTION. A speech
+    # the journal ties to another count was on another question, and the one
+    # motion the record holds for the bill that day did not take it: on
+    # 21 May 2026 Reps. Corcoran, Simpson and McFarlane spoke before the roll
+    # call of 288-54 on a report censuring Rep. Corcoran, which the journal
+    # prints after HB 1194 under no bill heading of its own, and the page had
+    # them speaking on HB 1194's nonconcurrence, decided by voice.
+    if t is not None and not tied:
+        return False
+    # Nor is a question decided by voice: a motion that was counted did not
+    # decide it, and one on an amendment is the amendment's.
+    words = (a.get("decided") or {}).get("words")
+    if words and (item.counted or (on_amendment(words)
+                                   and not on_amendment(item.action))):
+        return False
     if sole and not _same_motion(a.get("inline_motion"), item.action):
         return False
     if sole and several_on_line(item):
@@ -459,7 +509,7 @@ def claims(a, item, sole=False, ambiguous=frozenset()):
     return bool(sole or tied)
 
 
-def unplaced(attrs, bill, items, ambiguous=frozenset()):
+def unplaced(attrs, bill, items, ambiguous=frozenset(), known=None):
     """The names of the bill's speakers no motion of the day claims, sorted.
 
     BY THE SPEECH, NOT BY THE MOTION. This was every speech each motion did
@@ -469,11 +519,28 @@ def unplaced(attrs, bill, items, ambiguous=frozenset()):
     "the record does not say which of the day's motions", 633 bill-days of
     1997-2026 did the same, and telling a line's questions one by one made it
     677. A member who spoke twice, once on a motion the record ties and once
-    not, is still named in both places, which is what happened."""
+    not, is still named in both places, which is what happened.
+
+    NOT A SPEECH THE JOURNAL TIES TO A VOTE NONE OF THE BILL'S MOTIONS IS.
+    Its question is one the page does not draw under the bill, and the
+    journal can print such a question inside a bill's stretch without being
+    the bill's: Reps. Steven Smith and Paige Beauchemin spoke on the motion to
+    reprimand her, carried on a division of 264-89 after the recess that
+    followed HB 1584's roll call on 12 February 2026 and under no bill heading
+    of its own, and were the page's "also spoke" for HB 1584. Such a speech is
+    named nowhere, which is less than the journal says
+    and nothing it contradicts. `known` is every count the bill's motions that
+    day are known by, the vote of a recess and of the roll-call file among
+    them; by default, `items`'."""
     sole = len(items) == 1
+    if known is None:
+        known = set().union(*(_known(it) for it in items)) if items else set()
     out = set()
     for a in attrs:
         if base_bill(a.get("bill")) != base_bill(bill):
+            continue
+        t = journal_count(a)
+        if t is not None and t not in known:
             continue
         if not any(claims(a, it, sole, ambiguous) for it in items):
             out.update(n for n in a["names"] if n)
@@ -736,8 +803,14 @@ def consent_html(cons, removed, titles, years, esc, calendar=()):
     sequence they bury the 46 bills it actually argued about.
 
     Any member may pull a bill off the list, and the journal names the bill
-    and the members who did. A bill that came off was debated like any other
-    and is not here; it is in the sequence below.
+    and the members who did. A bill that came off is not here.
+
+    THE NOTE SAYS IT CAME OFF AND NO MORE. It said such bills were "debated
+    separately", which the record does not say and often contradicts: HB 189,
+    389, 527, 549 and 679 came off on 13 March 2013 and were "Special Ordered
+    to Next Session Without Objection" that day, and HB 1288 and HB 1223, off
+    on 11 March 2026, were taken up the next day. The bill histories had
+    already stopped saying it.
     """
     if not cons:
         return ""
@@ -756,7 +829,7 @@ def consent_html(cons, removed, titles, years, esc, calendar=()):
         pretty = ", ".join(re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
                            for b in sorted(removed, key=BO.bill_key))
         note += (f" {pretty} {'was' if len(removed) == 1 else 'were'} taken off "
-                 "the list at a member's request and debated separately.")
+                 "the calendar.")
     H = ['<section class="sday"><h2>On the consent calendar</h2>'
          f'<p class="note">{esc(note)}</p>']
     for label in sorted(groups):
@@ -816,7 +889,9 @@ def render(day, narrative, titles, years, members, esc):
                  "so they are listed by bill.</p>")
     groups = speech_groups(seq_items)
     shared_out = collections.defaultdict(list)
+    known = collections.defaultdict(set)
     for it in seq_items:
+        known[groups[id(it)]] |= _known(it)
         if not it.entered and getattr(it, "added", "") != "rollcall":
             shared_out[groups[id(it)]].append(it)
     unsure = {g: ambiguous_tallies(its) for g, its in shared_out.items()}
@@ -886,7 +961,7 @@ def render(day, narrative, titles, years, members, esc):
                          f'<p class="stally">A {kindw}: '
                          f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
                 if (getattr(it, "shared", 0) or 0) > 1:
-                    H.append(f'<p class="swho">One roll call on {it.shared} bills: the '
+                    H.append(f'<p class="swho">One {kindw} on {it.shared} bills: the '
                              "same vote is drawn under each of them, and counted "
                              "once.</p>")
                 elif it.kind == "RC" and href and _ballots_here(it):
@@ -911,7 +986,7 @@ def render(day, narrative, titles, years, members, esc):
         if own and grp not in told:
             told.add(grp)
             names = unplaced(attrs, bill, shared_out[grp],
-                             unsure.get(grp, frozenset()))
+                             unsure.get(grp, frozenset()), known=known[grp])
             if names:
                 H.append('<p class="sspoke sother"><span class="slab">Also '
                          "spoke during this bill</span>"

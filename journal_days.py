@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.8
+# GRANITE_VERSION: 2026-09-19.9
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -71,10 +71,22 @@ FURNITURE = re.compile(
 HYPHEN_WRAP = re.compile(r"([A-Za-z])-\n([a-z])")
 
 
-def clean(text):
-    """The file, with the press furniture out and wrapped words rejoined."""
+def clean(text, lines=False):
+    """The file, with the press furniture out and wrapped words rejoined.
+
+    With `lines`, A RUNNING HEAD BETWEEN TWO LINES LEAVES THE LINE BREAK IT
+    SAT IN. Taken out with the breaks around it, it glues a page's first line
+    to the last line of the page before, and a bill heading that opens a page
+    stops being at the start of a line: "and the majority committee report
+    was adopted. HB 422-FN, increasing penalties ..." (13 February 2025). Its
+    speeches were read as the bill before's, and HB 334's page had Rep.
+    Donnelly speaking for a motion she spoke on under HB 422. The speeches
+    are read with the lines kept (read_year); the debates, the leave list and
+    the consent calendar, which were measured without them, are not yet.
+    """
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = FURNITURE.sub(" ", text)
+    text = FURNITURE.sub((lambda m: "\n" if re.search(r"[\n\f]", m.group(0)) else " ")
+                         if lines else " ", text)
     text = HYPHEN_WRAP.sub(r"\1\2", text)
     return text
 
@@ -165,10 +177,18 @@ TALLY = re.compile(r"YEAS\s+(?P<yeas>\d+)\s*-?\s*NAYS\s+(?P<nays>\d+)", re.I)
 # The names group is bounded and forbids a verb inside it, because a lazy
 # .{1,200}? swallows whole sentences and emits people who never spoke.
 _NAME = r"[A-Z][A-Za-z.'’-]+(?:\s+[A-Z][A-Za-z.'’-]+){0,3}"
+# A SPEAKER'S NAME HOLDS NO VERB AND NO TITLE. Matched without regard to case,
+# a "name" of four words was "Mirski moved Recommit and" -- the sentence that
+# MOVED_SPOKE reads -- and, where a roll call's columns share the line,
+# "Prudhomme-O'Brien spoke against. Hunt" (2016); and "Rep. Sweeney Rep.
+# spoke in favor" (8 January 2026) named a Rep. "Sweeney Rep". 44 such
+# fragments stood on the pages beside the member they repeat.
+_SWORD = r"(?!(?:spoke|moved|Reps?)\b)[A-Z][A-Za-z.'’-]+"
+_SNAME = _SWORD + r"(?:\s+" + _SWORD + r"){0,3}"
 SPOKE = re.compile(
-    r"\bReps?\.\s+(?P<names>" + _NAME + r"(?:\s*,\s*" + _NAME + r")*"
-    r"(?:\s*,?\s+and\s+" + _NAME + r")?)"
-    r"\s+spoke\s+(?P<side>in\s+favor|against)\b",
+    r"\bReps?\.\s+(?P<names>" + _SNAME + r"(?:\s*,\s*" + _SNAME + r")*"
+    r"(?:\s*,?\s+and\s+" + _SNAME + r")?)"
+    r"(?:\s+Reps?\.)?\s+spoke\s+(?P<side>in\s+favor|against)\b",
     re.I)
 
 # "Rep. Sanborn moved Ought to Pass and spoke in favor." -- 27% of modern
@@ -202,6 +222,32 @@ MOVED_SPOKE = re.compile(
 MOVED_SINCE = re.compile(
     r"\bmoved\b\s*(?P<what>(?:[^.]|\.(?![ \t]*(?:\n|$))){0,700})", re.I)
 SPOKE_END = re.compile(r"\bspoke\s+(?:in\s+favor|against)\b", re.I)
+
+# WHAT DECIDED THE QUESTION A SPEECH WAS ON, where the journal prints it
+# before the roll call that follows the speech. A roll call is not the only
+# way a question closes: "The question being adoption of floor amendment
+# (0786h). Rep. Read spoke in favor. Floor amendment (0786h) failed." and only
+# then the roll call on the report, 184-183 (HB 94, 6 March 2025), which
+# Rep. Read's speech was read as preceding; and a division -- "On a division
+# vote, with 160 members having voted in the affirmative, and 191 in the
+# negative, the amendment failed" (SB 624, 14 May 2026) -- names no one and
+# was not read at all. The division's count is session_days.JOURNAL_DIVISION's
+# pattern; a question decided by voice is a sentence that names what was put
+# (an amendment, a report, a motion) and says it carried or lost.
+DIVISION = re.compile(
+    r"division\s+vote,?\s+(?:with\s+)?(?P<yeas>\d+)\s+members?\s+(?:having\s+)?"
+    r"vot\w*\s+in\s+the\s+affirmative,?\s+and\s+(?P<nays>\d+)", re.I)
+# The verdict can stand alone, as it does through 2012: "Rep. Quandt spoke
+# against. Rep. Fields spoke in favor. Adopted." (SCR 6, 31 May 2000).
+DECIDED = re.compile(
+    r"(?:^|(?<=[.;]\s)|(?<=\n))[ \t]*(?P<s>"
+    r"(?:Adopted|Failed|Carried|Prevailed|Lost)\b[^.;]{0,80}\."
+    r"|(?=[A-Z])[^.;]{0,120}?"
+    r"\b(?i:amendment|report|motion|reconsideration|ought\s+to\s+pass|sections?|"
+    r"remainder)\b[^.;]{0,60}?\b(?i:adopted|failed|prevailed|carried|defeated|lost)\b"
+    r"[^.]{0,160}\.)")
+NOT_DECIDED = re.compile(
+    r"\b(?:moved|requested|question|spoke|yielded|division|YEAS|NAYS)\b", re.I)
 
 
 # The debate the chamber voted to keep. The heading's bill number is NOT
@@ -251,7 +297,13 @@ def _names(s):
     """
     s = re.sub(r"\s+", " ", s or "").strip()
     parts = re.split(r"\s*,\s*(?:and\s+)?|\s+and\s+", s)
-    return [p.strip(" .") for p in parts if p.strip(" .")]
+    out = []
+    for p in (p.strip(" .") for p in parts):
+        # "Rep. W. Douglas Scamman, Jr spoke against" (9 April 2009) is one
+        # member, and the comma made a second called "Jr".
+        if p and not (out and re.fullmatch(r"(?:Jr|Sr|II|III|IV)", p)):
+            out.append(p)
+    return out
 
 
 # A RECONSIDERATION OF ANOTHER BILL ENDS THE BILL BEFORE IT. "Having voted with
@@ -299,7 +351,10 @@ def attributions(block):
     `tally_after` is the (yeas, nays) of the NEXT vote header in the same bill
     block, which is what ties a speech to one motion rather than to the bill in
     general. Where there is none -- a voice vote, or a speech with no vote
-    after it -- it is None and the caller must not guess.
+    after it -- it is None and the caller must not guess. `decided` is what
+    the journal prints as deciding the speech's question before that roll
+    call -- a division, or a question carried or lost by voice -- and then
+    it, and not the roll call, is the speech's (build_session_pages.claims).
     """
     out = []
     marks = bill_marks(block)
@@ -340,40 +395,81 @@ def attributions(block):
                 return where if at else (y, n)
         return None
 
+    # EACH SPEECH WHERE IT IS. The sentences are matched on the block with its
+    # single line breaks made spaces, which leaves every character where it
+    # was, so a match's own position is the speech's. They were found again in
+    # the block by their first forty characters, which is the FIRST sentence
+    # that begins the same way: Rep. Verville's second "spoke in favor" of
+    # 5 June 2025 was read at his first, and took that motion's 217-164.
+    text = re.sub(r"(?<!\n)\n(?!\n)", " ", block)
+    divisions = [(m.start(), (int(m.group("yeas")), int(m.group("nays"))))
+                 for m in DIVISION.finditer(block)]
+    voices = [(m.start("s"), re.sub(r"\s+", " ", m.group("s")).strip())
+              for m in DECIDED.finditer(text) if not NOT_DECIDED.search(m.group("s"))]
+    moves = [m.start() for m in re.finditer(r"\bmoved\b", text, re.I)]
+
+    def first_decision(pos):
+        """(where, {"count": (yeas, nays)} or {"words": ...}, start): the
+        first division or question decided by voice (DECIDED) the journal
+        prints after the speech at pos and before the roll call after it, or
+        the end of the bill; None where there is none. `start` is where the
+        speech's own sentence ends."""
+        said = SPOKE_END.search(text, pos)
+        start = said.end() if said else pos
+        stop = tally_after(pos, at=True) or next_bill_at(pos)
+        first = None
+        for where, count in divisions:
+            if start <= where < stop:
+                first = (where, {"count": count})
+                break
+        for where, words in voices:
+            if start <= where < stop:
+                if first is None or where < first[0]:
+                    first = (where, {"words": words})
+                break
+        return first + (start,) if first else None
+
+    def decided(pos):
+        """What decided the speech's question, where the journal prints it
+        before the roll call after it (first_decision); None where it prints
+        none, or a motion was moved after the speech and before it, which is
+        then that motion's decision (moved_since)."""
+        first = first_decision(pos)
+        if first is None or any(first[2] <= mv < first[0] for mv in moves):
+            return None
+        return first[1]
+
     def moved_since(pos):
         """What was moved between the speech at pos and the vote after it
-        (MOVED_SINCE), each motion in the journal's words; [] with no vote."""
+        (MOVED_SINCE), each motion in the journal's words; where no roll call
+        follows, to the first question decided after it, or the end of the
+        bill. "The question being adoption of the majority committee report
+        of Inexpedient to Legislate. Rep. Ladd spoke in favor." and then a
+        motion to table SB 294, adopted by voice (22 May 2025): the tabling,
+        the one motion the record holds for the bill that day, had Rep. Ladd
+        speaking for it."""
         vote = tally_after(pos, at=True)
         if vote is None:
-            return []
+            first = first_decision(pos)
+            vote = first[0] if first else next_bill_at(pos)
         said = SPOKE_END.search(block, pos, vote)
         return [re.sub(r"\s+", " ", m.group("what")).strip()
                 for m in MOVED_SINCE.finditer(block, said.end() if said else pos, vote)]
 
-    text = joined(block)
-    # Re-find on the joined text, and map positions back by searching the
-    # original for the same sentence -- cheaper and safer than maintaining an
-    # offset table through two substitutions.
+    def speech(m, names, inline):
+        pos = m.start()
+        d = decided(pos)
+        return {"bill": bill_at(pos), "side": "for" if "favor" in
+                m.group("side").lower() else "against",
+                "names": names, "tally": tally_after(pos),
+                "inline_motion": inline,
+                "moved_since": [] if d else moved_since(pos), "decided": d}
+
     for m in SPOKE.finditer(text):
-        frag = m.group(0)[:40]
-        at = block.find(frag.split()[0])
-        pos = block.find(frag) if frag in block else at
-        if pos < 0:
-            pos = 0
-        out.append({"bill": bill_at(pos), "side": "for" if "favor" in
-                    m.group("side").lower() else "against",
-                    "names": _names(m.group("names")),
-                    "tally": tally_after(pos), "inline_motion": None,
-                    "moved_since": moved_since(pos)})
+        out.append(speech(m, _names(m.group("names")), None))
     for m in MOVED_SPOKE.finditer(text):
-        frag = m.group(0)[:40]
-        pos = block.find(frag) if frag in block else 0
-        out.append({"bill": bill_at(pos), "side": "for" if "favor" in
-                    m.group("side").lower() else "against",
-                    "names": [m.group("name").strip()],
-                    "tally": tally_after(pos),
-                    "inline_motion": re.sub(r"\s+", " ", m.group("motion")).strip(),
-                    "moved_since": moved_since(pos)})
+        out.append(speech(m, [m.group("name").strip()],
+                          re.sub(r"\s+", " ", m.group("motion")).strip()))
     return out
 
 
@@ -631,17 +727,22 @@ def read_year(year, root=HOUSE):
     if d.exists():
         for f in sorted(d.glob("*.txt")):
             try:
-                text = clean(f.read_text(encoding="utf-8", errors="replace"))
+                raw = f.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            for iso, block in day_blocks(text):
+            text = clean(raw)
+            # The speeches from the file with its lines kept (clean): the
+            # same sittings in the same order, or the block read for the rest.
+            lined = day_blocks(clean(raw, lines=True))
+            for i, (iso, block) in enumerate(day_blocks(text)):
                 got = out.setdefault(iso, {"date": iso, "attributions": [],
                                            "debates": [],
                                            "unanimous_consent": [],
                                            "opening": {}, "absences": [],
                                            "consent": {}, "files": []})
                 got["files"].append(f.name)
-                got["attributions"] += attributions(block)
+                got["attributions"] += attributions(
+                    lined[i][1] if i < len(lined) and lined[i][0] == iso else block)
                 got["debates"] += debates(block)
                 got["unanimous_consent"] += unanimous_consent(block)
                 got["absences"] += absences(block)
