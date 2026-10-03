@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.5
+# GRANITE_VERSION: 2026-09-11.6
 """
 The 1989-1998 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -176,7 +176,7 @@ P("introduced", "introduced",
   r"\s+AND\s+(?:RE-?)?REF(?:ERRED)?\.?\s+TO\s+(?P<committee>[A-Z][^;(]*?)\s*(?:[;(]|\s{2,}|\s+[HS]J\s*\d|$)")
 # The committee runs to the mover, the vote or the end, and a comma inside
 # it is its own: "VACATED TO RES, REC & DEV, REP HAGER MA VV" (HB 1218 of
-# 1991) sent the bill "to the Res committee" while a comma ended the name,
+# 1992) sent the bill "to the Res committee" while a comma ended the name,
 # "VACATED TO SCI, TECH & ENERGY" to "the Sci committee" -- ten histories.
 P("vacated", "vacated",
   r"(?:^|;\s*)VACATED\s+(?:FROM\s+[A-Z][^;]*?\s+AND\s+)?(?:RE-?)?(?:REF(?:ERRED)?\s+)?TO\s+"
