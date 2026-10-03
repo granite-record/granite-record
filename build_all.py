@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.47
+# GRANITE_VERSION: 2026-09-05.49
 """
 Run the whole pipeline in the right order.
 
@@ -681,6 +681,24 @@ def plan(a):
              note="what the next session will be about, months before a bill "
                   "of it exists: title and prime sponsor and nothing else, "
                   "which is all an LSR has"),
+
+        # AFTER THE BILL REQUESTS, which write the last of site/idx's files:
+        # this writes one search index for every index it finds there, and a
+        # term added to site/idx after it ran would have none. It reads the
+        # bills' text, which the kit carries, so GitHub's build may not skip
+        # it: a site published without these files still searches, by title,
+        # and nothing on it would say what was missing.
+        Step("what each bill's own analysis and text are about, for the search",
+             ["build_search_index.py", "--idx", "site/idx", "--out", "site/sidx"],
+             needs=["site/idx", "bill_text.json", "archive_text.json", "app.js"],
+             produces=["site/sidx/manifest.json"], kit_required=True,
+             note="one file per term, fetched only when somebody searches: "
+                  "the words each bill's analysis and text are about, so a "
+                  "search finds a bill whose title does not say what it is; "
+                  "and words.json, every word the bills use, which is what "
+                  "lets a misspelt search be offered its word. "
+                  "archive_text.json is the terms before this one: the step "
+                  "stops, and writes nothing, if a term's texts are gone"),
 
         Step("home, legislators, towns, explainer, about",
              ["build_pages.py", "--out", "site"],

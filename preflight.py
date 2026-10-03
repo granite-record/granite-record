@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.325
+# GRANITE_VERSION: 2026-09-04.327
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8733,15 +8733,34 @@ def _find_bills_fixture():
             "topics": ["Education", "Other", "Zoning"],
             "committees": sorted({b["committee"] for b in term}),
             "sponsors": [], "votedays": [], "years": [2025, 2026]}
+    # WHAT THE BILLS' OWN TEXT ADDS (sidx/<term>.json, build_search_index.py).
+    # No title here says "aquifer": HB 29's text is about one, and so is the
+    # earlier term's HB 388. A page that counts bills without fetching these
+    # counts neither -- and until 1 October's second review no check noticed,
+    # because this fixture served no search index at all.
+    ids = [b["id"] for b in term]
+    old_ids = [b["id"] for b in older]
+    sidx = {"v": 1, "term": "2025-2026", "n": len(ids), "ids": ids,
+            "w": {"aquifer": [ids.index("HB29") * 20 + 7]}, "p": {}}
+    old_sidx = {"v": 1, "term": "2023-2024", "n": len(old_ids), "ids": old_ids,
+                "w": {"aquifer": [old_ids.index("HB388") * 20 + 7]}, "p": {}}
+    # Every word the bills use (sidx/words.json). "pistil" is a word and no
+    # bill here is about one; "pistal" is not a word, and sounds like the
+    # "pistol" of HB 102's title.
+    words = sorted({w for b in term + older + [other]
+                    for w in re.findall(r"[a-z]{5,}", b["title"].lower())}
+                   | {"pistil", "aquifer"})
     return {"/meta.json": meta, "/idx/2025-2026.json": term + [other],
-            "/idx/2023-2024.json": older, "/find.json": find}
+            "/idx/2023-2024.json": older, "/find.json": find,
+            "/sidx/2025-2026.json": sidx, "/sidx/2023-2024.json": old_sidx,
+            "/sidx/words.json": {"v": 1, "n": len(words), "words": " ".join(words)}}
 
 
 _FIND_BILLS_QUERIES = [
     "firearms", "guns", "property tax", "school funding", "right to know?",
     "voting", "minimum wage", "nelson", "commerce", "housing", "education",
     "concord", "abbas", "insurance coverage", "HB 0101", "HB101, SB5",
-    "hills 29", "xyzzy", "bail", "bailey", "SB 5"]
+    "hills 29", "xyzzy", "bail", "bailey", "SB 5", "aquifer"]
 
 # Both sides answer fetch from the fixture, by path.
 _FIND_BILLS_FETCH = r"""
@@ -8757,7 +8776,7 @@ globalThis.fetch = async (u) => {
   // ("failold"): what /search says while it counts, and when it cannot.
   if (MODE === "slowold" && p === "/idx/2023-2024.json") return new Promise(() => {});
   if ((FAIL_IDX && p.startsWith("/idx/")) || !(p in FIX)
-      || (MODE === "failold" && p === "/idx/2023-2024.json"))
+      || (MODE === "failold" && (p === "/idx/2023-2024.json" || p === "/sidx/words.json")))
     return {ok: false, status: 404, statusText: "Not Found",
             json: async () => { throw new Error("404"); }};
   return {ok: true, status: 200,
@@ -8784,6 +8803,13 @@ catch (e) { console.log("LOAD " + e.message); process.exit(1); }
   if (box.disabled !== false) {
     console.log("app.js never finished loading the fixture"); process.exit(1); }
   const out = {term: scope.getTerm(), loaded: scope.getIDX().length, q: {}};
+  // The bills' own text is fetched on the first search in words and the list
+  // drawn again when it arrives: wait for that once, so that every count
+  // below is the one a reader ends up looking at.
+  // In ticks: the stub's setTimeout runs what it is given at once.
+  const settle = () => ticks(30);
+  box.value = "firearms"; box.fire("input"); await settle();
+  out.asked = ASKED.slice();
   for (const s of Q) {
     box.value = s; box.fire("input");
     const count = document.querySelector("#count").textContent;
@@ -8798,6 +8824,12 @@ catch (e) { console.log("LOAD " + e.message); process.exit(1); }
     out.q[s] = {count, n: m ? +m[1].replace(/,/g, "") : null, ids: ids.slice(0, 5),
                 dated: dated.slice(0, 5)};
   }
+  // A word no bill has used, and a word one has: what the empty list says
+  // once the words every bill uses have arrived.
+  const empty = async (s) => { box.value = s; box.fire("input"); await settle();
+    return document.querySelector("#results").innerHTML; };
+  out.offer = {typo: await empty("pistal"), word: await empty("pistil")};
+  out.askedLast = ASKED.slice();
   console.log(JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
 """
@@ -8824,6 +8856,11 @@ document.head.appendChild = (s) => {
 };
 let ready = null;
 document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+// The panel mounts itself where there is no search button yet. The stub
+// hands back an element for any id, so the first question is answered no.
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
 let F;
 try { script("./find.js");
       F = vm.runInThisContext("({FIND, FBILLS, FALL, findDraw, findBills, findBillsLoad," +
@@ -8848,6 +8885,18 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
     res.q[s] = B && B.state === "ready" ? {n: B.n, ids: B.top.map(b => b.id)} : B;
     res.panel[s] = draw(s);
   }
+  // A misspelt word: nothing is counted under another word, and the word
+  // it sounds like is offered once the words every bill uses have arrived.
+  draw("pistal"); await ticks(10);
+  res.offer = {typo: draw("pistal"), word: draw("pistil")};
+  // The offered word is chosen: the panel's own listener, handed a click on
+  // the button. It must stop the click there and draw that word's answer.
+  draw("pistal");
+  let stopped = 0;
+  const chose = byId("findpanel")._on.click || [];
+  chose.forEach(f => f({target: {closest: (sel) => sel === ".fdym" ? {dataset: {find: "pistol"}} : null},
+                        stopPropagation() { stopped++; }, preventDefault() {}}));
+  res.chosen = {listeners: chose.length, stopped, html: panel.innerHTML};
   // The header panel never asks for another term's bills: they are /search's.
   res.askedPanel = ASKED.slice();
   if (MODE !== "fail") {
@@ -8858,7 +8907,7 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
     const lead = document.getElementById("reslead");
     const out = document.getElementById("resout");
     res.search = {};
-    for (const s of ["firearms", "abbas", "voting", "xyzzy", "bail", "bailey", "SB 5"]) {
+    for (const s of ["firearms", "abbas", "voting", "xyzzy", "bail", "bailey", "SB 5", "pistal"]) {
       if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(20); }
       res.search[s] = {lead: lead.textContent, html: out.innerHTML};
     }
@@ -8873,6 +8922,156 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
   console.log(JSON.stringify(res));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
 """
+
+
+# The harness of _header_keyboard: find.js in node against dom_stub.js, with a
+# class list that keeps what it is given (the menu's open state is a class)
+# and the three elements the search mounts caught as it makes them.
+_HEADER_KEYS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+// A class list that keeps what it is given: the menu's open state is a class.
+const classes = () => { const s = new Set(); return {add: c => s.add(c), remove: c => s.delete(c),
+  contains: c => s.has(c), toggle: (c, on) => { (on === undefined ? !s.has(c) : on) ? s.add(c) : s.delete(c); return s.has(c); }}; };
+const nav = document.querySelector("nav.top"); nav.classList = classes();
+const menuBtn = document.getElementById("navmenu"), drop = document.getElementById("navdrop");
+const link = {focused: 0, focus() { this.focused++; }};
+drop.querySelector = sel => link;
+drop.contains = x => x === link; menuBtn.contains = x => x === menuBtn;
+// The search panel mounts itself where there is no search button yet, and
+// makes its button, scrim and panel in that order.
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = id => id === "findbtn" && !asked++ ? null : byId(id);
+const made = [], create = document.createElement.bind(document);
+document.createElement = t => { const e = create(t); made.push(e); return e; };
+let F;
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+      F = vm.runInThisContext("({findSay, findDraw})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const out = {};
+const [findBtn, scrim, panel] = made;
+const fire = (el, type, ev) => (el._on[type] || []).forEach(f => f(Object.assign(
+  {target: el, relatedTarget: null, preventDefault() {}, stopPropagation() {}}, ev || {})));
+
+// The menu: opening it puts focus on its first link; focus that goes to
+// anything but the panel or its button closes it.
+fire(menuBtn, "click");
+out.menu = {open: nav.classList.contains("open"), focused: link.focused};
+fire(nav, "focusout", {relatedTarget: link});
+out.menu.within = nav.classList.contains("open");
+fire(nav, "focusout", {relatedTarget: null});
+out.menu.nowhere = nav.classList.contains("open");
+fire(nav, "focusout", {relatedTarget: {}});
+out.menu.left = nav.classList.contains("open");
+
+// The panel: the same, and its markup carries the status line and the names.
+const inside = {};
+panel.contains = x => x === inside; findBtn.contains = x => x === findBtn;
+out.panel = {role: null, label: null, html: panel.innerHTML};
+fire(findBtn, "click");
+out.panel.open = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: inside});
+out.panel.within = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: findBtn});
+out.panel.onButton = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: null});
+out.panel.nowhere = panel.hidden === false;
+fire(panel, "focusout", {relatedTarget: {}});
+out.panel.left = panel.hidden === false;
+out.panel.scrim = scrim.hidden;
+
+// What the list holds, said.
+const say = byId("findsay");
+const said = html => { F.findSay(html); return say.textContent; };
+const door = '<a class="fall" href="/search?q=x"><span>See all search results for x</span></a>';
+out.say = {
+  seven: said('<a href="/a">a</a>'.repeat(3) + '<a class="fbills" href="/bills?q=x">All 12 bills</a>'
+              + '<a href="/bill/2026/hb1">b</a>'.repeat(3) + door),
+  one: said('<a href="/a">a</a>' + door),
+  none: said(door + '<p class="fnote">No matching results.</p>'),
+  counting: said(door),
+  number: said('<a class="fall" href="/bills?q=HB%202"><span>HB 2</span></a>' + door),
+  empty: said(""),
+};
+F.findDraw("");
+out.say.cleared = say.textContent;
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's menu and search by keyboard: focus goes in, leaving closes, and the list says what it holds")
+def _header_keyboard():
+    """The audit of 2 October 2026, S2, S3 and S4, all in find.js.
+
+    S2. At phone width (and for a desktop reader at 400%) Enter on "Sections"
+    opened the menu and left focus on the button; the panel comes before the
+    button in the document, so the next Tab press went on into the page with
+    the menu still open, and the sections were three Shift+Tab presses back.
+    S3. With the search panel open, Tab past the last answer went on into the
+    page with the panel still open -- on a phone, under the scrim, where the
+    focused link could not be seen. S4. The answers appear as the reader
+    types, and nothing said so to a screen reader.
+
+    Held, by running find.js: opening the menu focuses its first link; focus
+    that goes to something outside the menu and its button closes it, and
+    focus that goes nowhere (the window losing it) or stays within does not;
+    the same for the search panel, with its own button counted as within; the
+    panel is a named search landmark whose box names the list it fills; and
+    the one role="status" line says how many results the list holds, counts
+    the door to every result as no result, says "No matching results." when
+    the list does, and is silent while the bills are still being counted and
+    when the box is empty.
+    """
+    js, stub = Path("find.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "find.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "find.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_HEADER_KEYS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "find.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m = got["menu"]
+    assert m["open"] and m["focused"] == 1, (
+        f"opening the sections menu leaves focus on its button ({m}): the next "
+        "Tab press goes on into the page, past the menu")
+    assert m["within"] and m["nowhere"] and not m["left"], (
+        f"the sections menu and focus leaving it: {m}. It closes when focus goes "
+        "somewhere else in the page, and only then")
+    p = got["panel"]
+    assert p["open"] and p["within"] and p["onButton"] and p["nowhere"], (
+        f"the search panel closed on focus that had not left it: {p}")
+    assert not p["left"] and p["scrim"], (
+        "the search panel stays open, or its scrim up, when focus has gone on "
+        "into the page: on a phone the focused link is then under the scrim")
+    assert 'role="status"' in p["html"] and 'id="findsay"' in p["html"] \
+        and 'aria-controls="findout"' in p["html"], (
+        "the search panel's markup lost its status line, or its box no longer "
+        "names the list it fills")
+    src = js.read_text(encoding="utf-8")
+    assert 'panel.setAttribute("role","search")' in src and \
+        'panel.setAttribute("aria-label",' in src, (
+        "the search panel is not a named search landmark")
+    want = {"seven": "7 results", "one": "1 result", "none": "No matching results.",
+            "counting": "", "number": "1 result", "empty": "", "cleared": ""}
+    assert got["say"] == want, (
+        "the search panel's status line says "
+        + "; ".join(f"{k}: {got['say'].get(k)!r}, not {v!r}"
+                    for k, v in want.items() if got["say"].get(k) != v))
+    draw = src[src.index("function findDraw("):src.index("function findSay(")]
+    assert draw.count("findSay(") == 2, (
+        "findDraw does not say what it drew on both of its ways out (the empty "
+        "box, and a list)")
+    return "ok", ("opening the menu focuses its first link, focus gone elsewhere closes the "
+                  "menu and the search panel, and the panel's status line counts what the "
+                  "list holds")
 
 
 @check("frontend", "the header search finds the bills /bills finds, and "
@@ -9000,9 +9199,9 @@ def _find_bills(BP):
         if first(h) != f"/bills?q={q.replace(' ', '%20')}":
             bad.append(f"{q!r} leads with {first(h)!r}, not the bills "
                        f"(Return opens the first row)")
-        if not re.search(rf"{n[q]:,} bills? that mentions? &ldquo;"
+        if not re.search(rf"{n[q]:,} bills? found for &ldquo;"
                          rf"{re.escape(q)}&rdquo;", h):
-            bad.append(f"{q!r} does not say how many bills mention it")
+            bad.append(f"{q!r} does not say how many bills were found for it")
         if "No matching results" in h or "Did you mean" in h:
             bad.append(f"{q!r} says nothing matched, or guesses, over "
                        f"{n[q]} bills")
@@ -9039,10 +9238,88 @@ def _find_bills(BP):
                    "or says nothing matched")
     xf = X["panel"]["firearms"]
     if X["state"] != "failed" or first(xf) != "/bills?q=firearms" \
-            or "that mention" in xf or "No matching" in xf:
+            or "found for" in xf or "No matching" in xf:
         bad.append("with the term's index unreachable the panel does not "
                    "fall back to an uncounted link to the bill search")
     assert not bad, "the header search panel: " + "; ".join(bad[:3])
+
+    # THE BILLS' OWN TEXT REACHES EVERY PAGE THAT COUNTS BILLS (1 October).
+    # /bills, the header and /search each fetch sidx/<term>.json for
+    # themselves, and until the second review nothing here would have failed
+    # had any of them stopped: the fixture served no search index, so both
+    # sides agreed by reading titles. "aquifer" is in no title. One bill of
+    # the term has it in its text, and the count is 1 only where the index
+    # was fetched and handed to the matcher.
+    assert n["aquifer"] == 1 and A["q"]["aquifer"]["ids"] == ["HB29"], (
+        f"/bills lists {A['q']['aquifer']} for 'aquifer', which one bill's "
+        "text is about and no title says: /bills is not fetching the term's "
+        "search index (sidx), or not handing it to the matcher")
+    assert P["q"]["aquifer"] == {"n": 1, "ids": ["HB29"]}, (
+        f"the header lists {P['q']['aquifer']} for 'aquifer': the header is "
+        "not fetching the term's search index (sidx) before it counts")
+    assert "/sidx/2025-2026.json" in A["asked"] and \
+        "/sidx/2025-2026.json" in P["asked"], (
+        "the term's search index was not asked for by /bills "
+        f"({A['asked']}) or by the header ({P['asked']})")
+    assert not [a for a in P["askedIdle"] if "sidx/" in a], (
+        f"the panel fetched {P['askedIdle']} before a word was typed")
+    assert "/sidx/2023-2024.json" not in P["askedPanel"], (
+        "the header panel fetched an earlier term's search index: only "
+        "/search reads every term")
+
+    # A SEARCH THAT LISTS NOTHING IS OFFERED A WORD, NOT READ AS ONE. For a day
+    # the bills row counted another word's bills by itself ("All 2,052 bills
+    # found for houde ... showing house", above the former member) and said
+    # "no bill says" a word three bills say. Now: nothing is counted under
+    # another word; a word no bill has used is offered the word it sounds
+    # like; a word a bill has used is offered nothing; the words file is not
+    # fetched until a search has listed nothing; and without it nothing is
+    # offered at all.
+    assert "/sidx/words.json" not in P["asked"] and \
+        "/sidx/words.json" not in A["asked"], (
+        "sidx/words.json was fetched before any search had listed nothing: "
+        f"the header asked for {P['asked']}, /bills for {A['asked']}")
+    offers = [("the header", P["offer"], 'data-find="pistol"'),
+              ("/bills", A["offer"], 'data-q="pistol"')]
+    for where, o, mark in offers:
+        assert "Did you mean" in o["typo"] and mark in o["typo"], (
+            f"{where} does not offer 'pistol' for 'pistal', a word no bill "
+            f"has used: {o['typo'][-200:]!r}")
+        assert "found for" not in o["typo"] and "showing" not in o["typo"], (
+            f"{where} counts or shows another word's bills for 'pistal' "
+            "without being asked")
+        assert "Did you mean" not in o["word"], (
+            f"{where} offers another word for 'pistil', which is a word the "
+            f"bills use (sidx/words.json): {o['word'][-200:]!r}")
+    assert "No matching results." in P["offer"]["word"] and \
+        "No bills match" in A["offer"]["word"], (
+        "a real word no bill is about is not told that nothing matches")
+    assert "/sidx/words.json" in P["askedPanel"] and \
+        "/sidx/words.json" in A["askedLast"], (
+        "the offers above were made without sidx/words.json")
+    assert "Did you mean" not in FO["offer"]["typo"], (
+        "with sidx/words.json unreachable the header still offers a word: "
+        "nothing says the word typed is not a real one")
+    # CHOOSING THE OFFERED WORD KEEPS THE PANEL AND THE PAGE (2 October).
+    # The click went on to two listeners on the document. One no longer
+    # found the button inside the panel, because drawing the answer had
+    # taken it out, and shut the panel. The other is app.js's, which reads
+    # data-q anywhere as "search the bill list for this": on the Calendar, a
+    # Learn article, a session day and a town page it drew 44 bills over the
+    # page. So the click stops at the panel, and the button is not one
+    # app.js knows.
+    ch = P["chosen"]
+    assert ch["listeners"] >= 1 and ch["stopped"] == ch["listeners"], (
+        f"the panel's click on an offered word is heard by {ch['listeners']} "
+        f"listeners and stopped by {ch['stopped']}: it goes on to the "
+        "document, which shuts the panel and, on a page app.js draws, lists "
+        "bills over it")
+    assert "/bills?q=pistol" in ch["html"] and "Did you mean" not in ch["html"], (
+        "choosing the offered word does not draw that word's answer in the "
+        f"panel: {ch['html'][-200:]!r}")
+    assert "data-q=" not in P["offer"]["typo"], (
+        "the header's offer is a button with data-q, which app.js reads on "
+        "any page as a search to run in the bill list")
 
     # The panel is this term's; the other term's index is /search's alone.
     assert "/idx/2023-2024.json" not in P["askedPanel"], (
@@ -9068,6 +9345,13 @@ def _find_bills(BP):
     assert not off, ("/search and /bills on All terms disagree about the bills: "
                      + "; ".join(off[:4]))
     na = {q: AA["q"][q]["n"] for q in _FIND_BILLS_QUERIES}
+    assert na["aquifer"] == 2 and P["all"]["q"]["aquifer"]["n"] == 2, (
+        f"'aquifer' is what two bills' texts are about, one in each term, and "
+        f"/bills on All terms lists {na['aquifer']}, /search "
+        f"{P['all']['q']['aquifer']}: every term's search index is not fetched")
+    assert 'href="/search?q=pistol"' in P["search"]["pistal"]["html"] \
+        and "Did you mean" in P["search"]["pistal"]["html"], (
+        "/search does not offer 'pistol' for 'pistal', a word no bill has used")
     assert na["firearms"] > n["firearms"] and na["bail"] > n["bail"] \
         and AA["q"]["SB 5"]["dated"][:2] == ["SB5/2025", "SB5/2023"], (
         f"the fixture's earlier term no longer adds to the count: {na}, "
@@ -9079,7 +9363,7 @@ def _find_bills(BP):
                            f"match") and "matches that" not in lead, (
         f"/search?q=firearms opens with {lead!r}")
     assert html.find("<h2>Bills") == html.find("<h2>") >= 0 and \
-        f"All {na['firearms']} bills that mention &ldquo;firearms&rdquo;" \
+        f"All {na['firearms']} bills found for &ldquo;firearms&rdquo;" \
         in html and 'href="/bills?q=firearms&amp;term=all"' in html, (
         "/search?q=firearms does not lead with every term's bills, counted, "
         "and a link to them on All terms")
@@ -9491,6 +9775,1419 @@ def _best_match_words(BP):
                   "and Sugar Hill before Hillsborough")
 
 
+# REAL SEARCHES, REAL BILLS (1 October 2026). The frontend check further down
+# holds how a search is READ, against one-line bills invented for the purpose:
+# "bail" is not Rep. Bailey, "alien" is not "alienation". None of it ran a
+# real search against real titles and named the bills that must come back --
+# so "lgbtq" returned nothing and "trans" returned 162 bills about transfers
+# and transportation, and every check here passed.
+#
+# tests/search_cases.json is that: searches a member of the public types,
+# each with bills of 2025-2026 it must list and bills it must not, every bill
+# carried with its title, sponsor and committees as the index has them. This
+# script runs them through the matcher build_pages cuts out of app.js (the
+# header's and /search's copy, which the checks above hold to /bills' own),
+# over the fixture's bills under --code and over the real index where the site
+# is built. It also reads the table itself: no word in two entries, no word of
+# the table read as the start of a longer one, no term with a hyphen in it.
+_SEARCH_CASES_JS = r"""
+// node go.js <billmatch.js> <search_cases.json> <search index: a file, or a folder of them> [idx.json ...]
+// The page's matcher, as build_pages cuts it for the header search, over real
+// titles and what real bills' own analyses and texts are about. With no index
+// named, the bills in the cases file are the fixture and the search index is
+// tests/search_index.json, cut from the real one for exactly those bills;
+// with indexes named, the cases run over the first of them (the cases' own
+// term) and the table and the pairs over all of them, each with its
+// site/sidx file.
+const fs = require("fs"), path = require("path");
+const [, , matcherFile, casesFile, textAt, ...idxFiles] = process.argv;
+const out = { fails: [], stale: [] };
+const done = () => { console.log(JSON.stringify(out)); };
+// A check that dies says only "Node.js v24": say what it could not do.
+process.on("uncaughtException", e => { out.fails.push("the check could not run: " + (e && e.message)); done(); process.exit(0); });
+const window = {};
+new Function("window", fs.readFileSync(matcherFile, "utf8"))(window);
+const A = window.GR_BILLMATCH;
+const C = JSON.parse(fs.readFileSync(casesFile, "utf8"));
+const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", "readShort", "spelling", "wordsAdd", "whyListed", "matchScore", "CONCEPTS", "SYN", "altRx", "wordKeys", "stem"];
+const lacking = need.filter(f => !A || A[f] == null);
+if (lacking.length) { out.fails.push("the matcher cut from app.js does not define " + lacking.join(", ")
+  + ": it is the search as it was before it read the bills' own words"); done(); process.exit(0); }
+// The three haystacks exactly as app.js's ensureTerm() and find.js's _fprep() build them.
+const norm = s => String(s || "").toLowerCase().replace(/-/g, " ");
+const prep = b => { b.hayT = norm([b.id, b.n, b.title].join(" ")); b.hayS = norm(b.sponsor);
+  b.hayC = norm((b.committees || [b.committee || ""]).join(" | ")); return b; };
+const real = idxFiles.length > 0;
+const byTerm = real ? idxFiles.map(f => JSON.parse(fs.readFileSync(f, "utf8")).map(prep))
+  : [Object.entries(C.bills).map(([id, b]) => prep({ id, term: C.term, ...b }))];
+const own = real ? (byTerm.find(r => r.length && r[0].term === C.term) || []) : byTerm[0];
+const all = byTerm.flat(), whole = real && byTerm.length >= 15;
+// What each bill's analysis and text are about: the page fetches these.
+const SIDX = {};
+let read = 0;
+if (real) for (const r of byTerm) { const t = r.length && r[0].term, f = path.join(textAt, t + ".json");
+  if (t && fs.existsSync(f)) { SIDX[t] = JSON.parse(fs.readFileSync(f, "utf8")); if (A.indexAdd(t, SIDX[t])) read++; } }
+else { SIDX[C.term] = JSON.parse(fs.readFileSync(textAt, "utf8")); if (A.indexAdd(C.term, SIDX[C.term])) read++; }
+if (!read) out.fails.push("no search index could be handed to the matcher: every case would run on titles alone");
+// The words every bill uses (sidx/words.json), which is what tells a misspelt
+// word from a real one. Over the real index it is the built file. Over the
+// fixture it is the fixture's own bills' words and the cases' list of real
+// words that were once read as other words.
+let KNOWN = null;
+if (real) { const f = path.join(textAt, "words.json"); if (fs.existsSync(f)) KNOWN = JSON.parse(fs.readFileSync(f, "utf8")); }
+else { const ws = new Set(C.known || []);
+  for (const b of all) for (const w of (b.hayT + " " + b.hayS + " " + b.hayC).match(/[a-z]{5,}/g) || []) ws.add(w);
+  KNOWN = { v: 1, n: ws.size, words: [...ws].join(" ") }; }
+if (!KNOWN || !A.wordsAdd(KNOWN)) out.fails.push("sidx/words.json, the words every bill uses, is not there or was refused: a misspelt search is offered nothing");
+else for (const w of C.known || []) if (!(" " + KNOWN.words + " ").includes(" " + w + " "))
+  out.fails.push(`${JSON.stringify(w)} is a word bills use and is not in sidx/words.json: it would be offered as another word`);
+// What /bills?q= lists, in best-match order: find.js's findBills. The newer
+// term first among equals, as both of those break a tie across terms.
+function search(rows, q) {
+  const gs = A.readShort(A.queryGroups(q), rows), hit = [];
+  for (const b of rows) {
+    const sc = A.matchScore(b, gs);
+    if (!sc) continue;
+    hit.push([A.looseness(b, gs), -sc, A.billKey(b), b, A.whyListed(b, gs), gs.length]);
+  }
+  const newer = (x, y) => { const a = String(x[3].term || ""), b = String(y[3].term || ""); return a < b ? 1 : a > b ? -1 : 0; };
+  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || newer(x, y) || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
+  return hit;
+}
+const fails = out.fails, stale = out.stale, said = q => JSON.stringify(q);
+const have = new Map(own.map(b => [b.id, b]));
+let found = 0, kept = 0, byText = 0, offered = 0, nothing = 0;
+for (const c of C.cases) {
+  let hits = search(own, c.q);
+  // `nothing`: a real word no bill of the term is about. It lists nothing and
+  // is offered as no other word. `offer`: a misspelling. It lists nothing as
+  // typed -- nothing is read again by itself -- and the page offers that
+  // word, whose list the case's bills are then held to.
+  if (c.nothing || c.offer) {
+    if (hits.length) fails.push(`${said(c.q)} lists ${hits.length} bills as typed (${hits[0][3].id}): it is read as another word by itself`);
+    const sp = A.spelling(A.readShort(A.queryGroups(c.q), own), own);
+    if (c.nothing) { nothing++; if (sp) fails.push(`${said(c.q)} is offered as ${said(sp.q || "a word not yet known")}: it is a word the bills use`); continue; }
+    if (!sp || sp.q !== c.offer) { fails.push(`${said(c.q)} is not offered as ${said(c.offer)}: ${sp ? said(sp.q || "the words are not known") : "nothing is offered"}`); continue; }
+    offered++;
+    hits = search(own, sp.q);
+  }
+  const got = hits.map(h => h[3].id), at = new Map(got.map((id, i) => [id, i]));
+  const first = c.first || [], must = [...first, ...(c.must || [])], never = c.never || [];
+  for (const id of [...must, ...never]) {
+    const b = have.get(id);
+    if (!b) fails.push(`${said(c.q)} names ${id}, which is not a bill of ${C.term}`);
+    else if (real && C.bills[id] && b.title !== C.bills[id].title && !stale.includes(id)) stale.push(id);
+  }
+  const lost = must.filter(id => !at.has(id)), wrong = never.filter(id => at.has(id));
+  found += must.length - lost.length; kept += never.length - wrong.length;
+  // How many of them only the bill's own analysis or text could have found.
+  byText += hits.filter(h => must.includes(h[3].id) && /\b(analysis|text)\b/.test(h[4])).length;
+  if (lost.length) fails.push(`${said(c.q)} does not list ${lost.join(", ")} (${(C.bills[lost[0]] || {}).title || ""})`);
+  if (wrong.length) fails.push(`${said(c.q)} lists ${wrong.join(", ")} (${(C.bills[wrong[0]] || {}).title || ""})`);
+  if (!got.length && !c.empty_ok) fails.push(`${said(c.q)} returns nothing`);
+  // The reader's own word before a bill the table found.
+  const late = first.filter(id => at.has(id) && (c.must || []).some(m => at.has(m) && at.get(m) < at.get(id)));
+  if (late.length) fails.push(`${said(c.q)} lists ${late.join(", ")}, which has the word itself, below a bill the table found`);
+  if (real && c.at_most && got.length > c.at_most) fails.push(`${said(c.q)} lists ${got.length} bills, more than ${c.at_most}: a flood`);
+  // The bill titled in the reader's own words leads: among the first five.
+  for (const id of c.top || []) {
+    if (!have.has(id)) fails.push(`${said(c.q)} names ${id}, which is not a bill of ${C.term}`);
+    else if (!at.has(id) || (real && at.get(id) >= 5)) fails.push(`${said(c.q)} lists ${id} ${at.has(id) ? "at " + (at.get(id) + 1) : "nowhere"}, not among the first five`);
+  }
+  // A bill listed for a word its title does not have says which of its own words put it there.
+  const mute = hits.filter(h => h[5] === 1 && h[0] >= 1.2 && h[0] < 2 && !h[4]);
+  if (mute.length) fails.push(`${said(c.q)} lists ${mute[0][3].id} through the table and does not say which of the bill's words found it`);
+}
+// Searches over every term's bills, each bill named with the year it was
+// filed: a title only an earlier term has ("E-Z Pass"), and a wrong bill only
+// the whole record listed. Asked where most of the terms' indexes are here.
+let across = 0;
+if (whole) for (const c of C.across || []) {
+  const got = new Set(search(all, c.q).map(h => h[3].id + "/" + h[3].year));
+  across++;
+  const lost = (c.must || []).filter(([id, y]) => !got.has(id + "/" + y)), wrong = (c.never || []).filter(([id, y]) => got.has(id + "/" + y));
+  if (lost.length) fails.push(`across the terms ${said(c.q)} does not list ${lost.map(x => x.join(" of ")).join(", ")}`);
+  if (wrong.length) fails.push(`across the terms ${said(c.q)} lists ${wrong.map(x => x.join(" of ")).join(", ")}`);
+  if (!got.size && (c.must || []).length) fails.push(`across the terms ${said(c.q)} returns nothing`);
+}
+// Two sides' words for one subject return one list.
+for (const group of C.same) {
+  const lists = group.map(q => search(all, q).map(h => h[3].id + "/" + h[3].term).sort().join(" "));
+  if (!lists[0]) fails.push(`${said(group[0])} returns nothing, so the pair proves nothing`);
+  group.forEach((q, i) => { if (lists[i] !== lists[0]) fails.push(`${said(q)} and ${said(group[0])} return different bills: the table has taken a side`); });
+}
+// The table itself.
+const T = A.CONCEPTS, seen = new Map(), phrases = new Map();
+let asks = 0, terms = 0;
+const inText = t => Object.values(SIDX).some(X => t.includes(" ") ? !!(X.p || {})[t]
+  : [...A.wordKeys(t)].some(k => !!(X.w || {})[k]));
+const SYNWORDS = new Set(A.SYN.flat());
+T.forEach((c, i) => {
+  // An agency's short name ("dmv") has no terms and one `named`: wording that
+  // counts in a title or an analysis.
+  if (!Array.isArray(c.ask) || !Array.isArray(c.terms) || !c.ask.length || !(c.terms.length || (c.named || []).length)) {
+    fails.push(`entry ${i} has no ask or no term`); return; }
+  if (c.like != null && !SYNWORDS.has(c.like)) fails.push(`entry ${i} (${said(c.ask[0])}) is read like ${said(c.like)}, which is no word of SYN`);
+  if (c.once && !c.with) fails.push(`entry ${i} (${said(c.ask[0])}) counts a single mention without a second list the bill must also say`);
+  for (const a of c.ask) {
+    asks++;
+    if (seen.has(a)) fails.push(`${said(a)} is an ask of two entries (${seen.get(a)} and ${i})`);
+    seen.set(a, i);
+    // A phrase is the table's whatever its endings ("transgender athlete"
+    // is "transgender athletes"), so two entries may not differ only by one.
+    if (a.includes(" ")) { const k = a.split(" ").map(A.stem).join(" ");
+      if (phrases.has(k) && phrases.get(k) !== i) fails.push(`${said(a)} is an ask of entry ${i} and, but for an ending, of entry ${phrases.get(k)}`);
+      phrases.set(k, i); }
+    const gs = A.queryGroups(a);
+    if (gs.length !== 1) fails.push(`the ask ${said(a)} is read as ${gs.length} parts, not one`);
+    else if (!a.includes(" ") && !c.also && !gs[0].exact) fails.push(`the table's word ${said(a)} is still read as the start of a longer word`);
+  }
+  for (const t of [...c.terms, ...(c.named || []), ...(c.with || [])]) {
+    terms++;
+    if (/-/.test(t)) fails.push(`the term ${said(t)} has a hyphen, and a title is searched with hyphens as spaces`);
+    // Silence is not success: a term no bill has ever used looks fine and finds
+    // nothing. Asked only where most of the terms' indexes are here to be read.
+    if (whole && !all.some(b => A.altRx(t).test(b.hayT)) && !inText(t))
+      fails.push(`the term ${said(t)} (entry ${i}, ${said(c.ask[0])}) is in no title, analysis or text of any term`);
+  }
+});
+// The two SYN groups switched on as phrases are still read as phrases: a group
+// renamed in SYN would otherwise go back, silently, to searching "enforcement".
+for (const p of ["mental health", "law enforcement"]) {
+  const gs = A.queryGroups(p);
+  if (gs.length !== 1 || gs[0].word !== p || gs[0].alts.length < 2) fails.push(`${said(p)} is no longer read as one phrase with its group`);
+}
+// And every SYN entry of two words that no title of any term has ever used:
+// read as its two words it can only be found apart, which is nothing
+// ("forever chemical" listed no bill in any term, 2 October). It is the
+// table's, or it is read as a phrase with its group.
+let apart = 0;
+if (whole) for (const g of A.SYN) for (const p of g) {
+  if (!p.includes(" ") || all.some(b => A.altRx(p).test(b.hayT))) continue;
+  apart++;
+  const gs = A.queryGroups(p);
+  if (gs.length !== 1 || gs[0].word !== p) fails.push(`SYN's ${said(p)} is in no title of any term and is read as ${gs.length} words: typed, it can only be found apart. Add it to SYNPHRASES`);
+  else if (!search(all, p).length) fails.push(`SYN's ${said(p)}, typed, lists nothing in any term, and the group it is in lists ${all.filter(b => g.some(t => A.altRx(t).test(b.hayT))).length} by title`);
+}
+// A word somebody types is not a property of an object: these two stopped
+// the search with a TypeError (2 October).
+for (const w of ["constructor", "__proto__", "constructor permits", "tostring valueof"]) {
+  try { search(own, w); A.spelling(A.readShort(A.queryGroups(w), own), own); }
+  catch (e) { fails.push(`the search ${said(w)} stops with ${e && e.message}`); }
+}
+Object.assign(out, { cases: C.cases.length, found, kept, byText, offered, nothing, pairs: C.same.length, across, apart,
+  entries: T.length, asks, terms, bills: own.length, every: all.length, files: byTerm.length, whole, read });
+done();
+"""
+
+
+def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
+    """tests/search_cases.json through the cut matcher: what the script found."""
+    app = Path("app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    # The header's copy hands back the functions it calls. The table and the
+    # pattern a term is matched with are read from the same script, by the
+    # same line.
+    hook = "return {queryGroups,"
+    assert matcher.count(hook) == 1, (
+        "billmatch.js no longer ends by returning queryGroups first, and this "
+        "check reads the table through that line")
+    # typeof, so that a matcher from before the table (or before the search
+    # index) is reported as that and not as a ReferenceError.
+    extra = ",".join(f'{n}:typeof {n}==="undefined"?null:{n}'
+                     for n in ("CONCEPTS", "SYN", "altRx", "wordKeys", "stem"))
+    matcher = matcher.replace(hook, "return {" + extra + ",queryGroups,")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_CASES_JS, encoding="utf-8")
+        r = _run(["node", "go.js", "billmatch.js",
+                  str(Path("tests/search_cases.json").resolve()),
+                  str(Path(text_at).resolve()),
+                  *[str(Path(f).resolve()) for f in idx_files]],
+                 cwd=root, capture_output=True, text=True, timeout=300)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        return json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _search_cases_said(fails):
+    return ("; ".join(f[:170] for f in fails[:4])
+            + (f" -- and {len(fails) - 4} more" if len(fails) > 4 else ""))
+
+
+@check("frontend", "a search in the public's words lists the real bills it must and "
+                   "none it must not, and two sides' words for a subject list the "
+                   "same bills", needs=("build_pages",))
+def _search_cases(BP):
+    """The person, 1 October: "typing lgbtq or trans doesn't show the several
+    bathroom ban bills put forward this past session, or the hormone therapy
+    ban".
+
+    The bill search read a title, a sponsor's name and a committee's name, in
+    the record's vocabulary. No title of the term says lgbtq, transgender,
+    bathroom or hormone therapy: they say "classification of individuals based
+    on biological sex" and "hormone treatments and puberty blockers". So
+    "lgbtq" found nothing, and "trans", read as the start of a word, found 54
+    titles with transfer, transparency or transportation and 108 bills heard
+    by a Transportation committee. Of 393 bills a reader would expect across
+    65 everyday searches, 110 were found.
+
+    app.js's CONCEPTS is a table of the words people type and the wording
+    titles use, and this holds it to real bills. Every bill in
+    tests/search_cases.json is a real one of 2025-2026 with its title copied
+    from the index; the searches are run as the header search and /search run
+    them. Four things, each of which the page got wrong before:
+
+    - a bill a search must list is listed, and one that is plainly about
+      something else is not: "trans" lists HB 148 and not the transfer of
+      state-owned real property; "ai" lists the artificial intelligence bills
+      and not school building aid; "adu" not "adults";
+    - a bill that has the reader's OWN word comes before one the table found:
+      "weed" still lists the aquatic weeds bill, first; "undocumented" the two
+      titles that say so;
+    - two sides' words for one subject return one list -- "gun control" and
+      "gun rights", "pro life" and "pro choice", "illegal immigrants" and
+      "undocumented immigrants". If a pair ever differs the table has taken a
+      side, which is the one thing a finding aid must not do;
+    - the table is well formed: no word in two entries, none read as the
+      start of a longer word, no term carrying a hyphen that a title, searched
+      with its hyphens as spaces, could never match ("gender-affirming" sat
+      in SYN for weeks and matched nothing).
+
+    Since the same day the search also reads what each bill's own analysis
+    and text are about (build_search_index.py), because a table covers only
+    what somebody thought of. tests/search_index.json is that index for the
+    bills in the cases file, cut from the real one, and the cases hold what
+    it adds and what it must not:
+
+    - a bill whose title does not say what it is about is found by its own
+      words: the four vetoed bills that say "lavatory" once, in the text;
+      HB 232, which names abortion only in its analysis; the two amendments
+      titled "the adoption of tax laws", for "income tax";
+    - a bill is never listed under a subject its own text does not mention.
+      SB 520, "relative to breast surgeries for minors", was listed under
+      "lgbtq" and "sex change" by its title; its text is about breast
+      reduction for pain. HB 712, with the same words in its title, says
+      "transgender" and "gender reassignment" in its text, and is listed;
+    - a passing mention is not a subject: "bathroom" does not list the rent
+      registry that counts bathrooms;
+    - a bill found through the table says which of its own words found it.
+
+    AND FROM THE SECOND REVIEW (2 October), thirty searches nobody had
+    tuned, of which thirteen put a wrong bill in the first ten and twelve
+    listed nothing or left the obvious bill out. Every case until then was a
+    table ask or a single word; none held a search of two ordinary words to
+    bills it must never list. Now:
+
+    - two words found apart are not a bill: "medical debt", "eminent domain"
+      and "college students voting" list nothing, "small claims" not the
+      tariff credit for small businesses, "data centers" not the Electronic
+      Registration Information Center;
+    - a repeat is not a second mention: "social media" does not list the
+      bills that say where a notice is posted, in one sentence printed twice;
+    - the word people use finds the bills that use another: "voting
+      machines", "telehealth", "expungement", "cops", "dmv", "forever
+      chemicals";
+    - a name is found as it is said: "senator carson", "tim lang";
+    - the record's own slips are offered their word: "goverment", "libary";
+    - and a word that is a property of an object ("constructor") is a word.
+
+    AND FROM THE THIRD (2 October), forty searches written blind, of which
+    nine failed, five in ways the second pass had introduced:
+
+    - a longer word in a text is read only for a word of six letters:
+      "bail" does not list a bill on cloud-stored files for "bailment";
+    - the letters typed, written out, are the word: "dwi" opens on the bills
+      titled "driving while intoxicated" and not on an insurance bill whose
+      analysis mentions a DWI conviction; and a term that is the word with
+      another ending is the word: "eviction" lists "notice to evict" above
+      the bills on rent payments;
+    - a phrase is not answered with a bare word: "solar panels" does not
+      list solar radiation modification;
+    - two letters swapped are a slip of a word ten bills use: "flouride" is
+      offered fluoride;
+    - and the words the record never uses for bills it has: "dcyf", "ufo",
+      "ozempic", "e-bike", and "license plates" for the statutes' number
+      plates.
+    Two it found are NOT held here, because the rule that would fix them was
+    measured and cost seven bills these cases must list: SB 404 under
+    "minimum wage" and SB 217 under "social media" (build_search_index.py,
+    A PHRASE ONLY THE TEXT HAS).
+
+    The cases are machine-judged, by reading; they are a seed and not the
+    person's reference. A title is never typed into the file; it is copied
+    from the index.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not (Path("app.js").exists() and Path("tests/search_cases.json").exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    # Not a skip: with the cases here and their index gone, the searches that
+    # only a bill's own text answers would stop being checked, quietly.
+    assert Path("tests/search_index.json").exists(), (
+        "tests/search_cases.json is here and tests/search_index.json is not: "
+        "the cases cannot be run. python3 build_search_index.py --fixture "
+        "tests/search_cases.json writes it")
+    got = _search_cases_node(BP)
+    assert not got["fails"], "search: " + _search_cases_said(got["fails"])
+    # A check that passes by asking nothing proves nothing.
+    assert got["cases"] >= 130 and got["found"] >= 450 and got["kept"] >= 120 \
+        and got["pairs"] >= 15 and got["entries"] >= 60 and got["byText"] >= 25 \
+        and got["offered"] >= 9 and got["nothing"] >= 12, (
+        f"the cases no longer exercise the search: {got['cases']} searches, "
+        f"{got['found']} bills they must list ({got['byText']} of them found "
+        f"by the bill's own analysis or text), {got['kept']} they must not, "
+        f"{got['offered']} misspellings offered as their word, {got['nothing']} "
+        f"real words offered as none, {got['pairs']} pairs, {got['entries']} "
+        "entries in the table")
+    return "ok", (f"{got['cases']} real searches over {got['bills']} real bills of "
+                  f"2025-2026: {got['found']} listed that must be, "
+                  f"{got['byText']} of them by the bill's own analysis or text; "
+                  f"{got['kept']} not listed that must not be; "
+                  f"{got['offered']} misspellings offered as their word and "
+                  f"{got['nothing']} real words as none; {got['pairs']} "
+                  f"groups of sides' words return one list each; a table of "
+                  f"{got['entries']} entries, {got['asks']} words and "
+                  f"{got['terms']} terms, none read as the start of a longer word")
+
+
+@check("data", "the same searches over the real index: none floods, and every term "
+               "of the table is in some bill's title, analysis or text",
+       needs=("build_pages",))
+def _search_cases_real(BP):
+    """The fixture cannot show a flood: it holds only the bills the cases name.
+
+    "trans" returned 162 bills and "absentee ballot" 142, every election bill
+    of the term. Over the real index each case carries a ceiling, and a
+    search that lists more than it fails here. The pairs of sides' words are
+    held to one list across every term on disk, not one.
+
+    And silence is not success. A term of the table that no title uses looks
+    exactly like one that works: it lists nothing, and nothing fails. Every
+    term is looked for in every term's titles, and one found in none is
+    named. That is asked only when most of the terms' indexes are here, since
+    a term may be in a 1999 title and no later one.
+
+    A bill named by a case whose title has since changed is reported, not
+    failed: amendments retitle bills, and a stale case should be seen.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    cases = Path("tests/search_cases.json")
+    if not (Path("app.js").exists() and cases.exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    term = json.loads(cases.read_text(encoding="utf-8"))["term"]
+    own = Path("site/idx") / f"{term}.json"
+    if not own.exists():
+        return "skip", f"site/idx/{term}.json is not built"
+    if not (Path("site/sidx") / f"{term}.json").exists():
+        return "skip", (f"site/sidx/{term}.json is not built "
+                        "(build_search_index.py writes it)")
+    others = sorted(f for f in own.parent.glob("*.json")
+                    if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
+    got = _search_cases_node(BP, [own, *others], "site/sidx")
+    assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
+    assert not got["whole"] or (got["across"] >= 11 and got["apart"] >= 4), (
+        f"over every term, {got['across']} searches were held to bills of "
+        f"other terms and {got['apart']} SYN entries no title uses were "
+        "read: the checks of the whole record are no longer asking")
+    return "ok", (f"{got['cases']} searches over the {got['bills']:,} bills of {term} "
+                  f"and the pairs over {got['every']:,} bills of {got['files']} terms, "
+                  f"{got['read']} of them with their text read; {got['across']} "
+                  f"searches held to bills of other terms"
+                  + (f"; all {got['terms']} terms of the table are in a title, "
+                     "an analysis or a text"
+                     if got["whole"] else
+                     f"; the table's terms not checked, with {got['files']} "
+                     "indexes here")
+                  + (f"; retitled since its case was written: "
+                     f"{', '.join(got['stale'][:8])}" if got["stale"] else ""))
+
+# THE SEARCH INDEX (1 October 2026). build_search_index.py reduces every
+# bill's analysis and text to the words it is about; app.js asks the file it
+# writes. Two programs in two languages read the same words, so what they
+# share is held here: how a plural is read, which keys a word is looked up
+# under, which phrases the tables can ask for, and how a phrase is found.
+_SEARCH_INDEX_JS = r"""
+// node go.js <billmatch.js> <words.json>  -- app.js's side of what
+// build_search_index.py must agree with.
+const fs = require("fs");
+const window = {};
+new Function("window", fs.readFileSync(process.argv[2], "utf8"))(window);
+const A = window.GR_BILLMATCH, IN = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const norm = s => String(s).toLowerCase().replace(/-/g, " ").replace(/,/g, " ").split(/\s+/).filter(Boolean).join(" ");
+const said = new Set(), typed = new Set();
+for (const g of A.SYN) for (const t of g) typed.add(norm(t));
+for (const c of A.CONCEPTS) {
+  for (const t of [...c.terms, ...(c.named || []), ...(c.with || [])]) said.add(norm(t));
+  for (const a of c.ask) typed.add(norm(a));
+}
+const out = {
+  wordsTaken: A.wordsAdd(IN.wordsFile),
+  codes: IN.pairs.map(p => A.pairCode(p[0], p[1])),
+  stop: A.STOP.map(norm).sort(),
+  stem: IN.words.map(w => A.stem(w)),
+  keys: IN.words.slice(0, 400).map(w => [...A.wordKeys(w)].sort()),
+  phrases: [...new Set([...said, ...typed])].filter(t => t.includes(" ")).sort(),
+  words: [...said].filter(t => t && !t.includes(" ")).sort(),
+  wording: [...said].filter(t => t.includes(" ")).sort(),
+  counts: {},
+};
+// A phrase, found in real text as app.js finds one in a title.
+for (const p of IN.phrases) {
+  const rx = new RegExp(A.altRx(p).source, "g");
+  const n = IN.texts.reduce((t, s) => t + (s.match(rx) || []).length, 0);
+  if (n) out.counts[p] = n;
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the search index is built the way the page reads it, and "
+                   "says of real bills what their own text says",
+       needs=("build_pages", "build_search_index"))
+def _search_index_builds(BP, SI):
+    """The person, 1 October: "smart enough to find what a user is likely
+    looking for if they don't know the bill number, so that may also include
+    the bill text itself or the topic".
+
+    build_search_index.py writes, per term, what each bill's analysis and
+    text are about; app.js reads it. Each half was written against the other
+    and nothing stopped them drifting: a plural filed under one key and
+    looked up under another finds nothing, and nothing fails.
+
+    tests/search_texts.json is the General Court's own text of eight bills
+    of 2025-2026. An index is built from them here and held to what those
+    texts say:
+
+    - HB 1442 and SB 38 say "lavatory" once, in the text, and it is kept at
+      weight 0: found beside "biological sex", never on its own;
+    - HB 712's text says "gender reassignment" (round the brackets that mark
+      removed matter) and is filed under it; SB 520, with the same words in
+      its title, has no word about gender, and is filed under none;
+    - HB 232 names abortion in its analysis, and its title does not;
+    - CACR 10's analysis is read as one, though it opens "Be it Resolved"
+      where a bill opens "Be it Enacted";
+    - HB 550's fiscal note is not read: "fiscal" is no word of the bill;
+    - HB 1450 mentions a bathroom once and is not about one.
+
+    And the two programs agree: on the singular of every word in the
+    fixture's index, on the keys a word is looked up under, on the phrases
+    and words the tables name, and on how many times each phrase occurs in
+    those eight texts.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    texts_f = Path("tests/search_texts.json")
+    if not (Path("app.js").exists() and Path("tests/search_cases.json").exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    # Not a skip, for the reason given in the check above.
+    lost = [f for f in ("tests/search_texts.json", "tests/search_index.json")
+            if not Path(f).exists()]
+    assert not lost, (
+        f"tests/search_cases.json is here and {', '.join(lost)} is not: "
+        "python3 build_search_index.py --fixture tests/search_cases.json "
+        "writes them")
+    app = Path("app.js").read_text(encoding="utf-8")
+    fx = json.loads(texts_f.read_text(encoding="utf-8"))
+    term, bills = fx["term"], fx["bills"]
+    table = SI.table_terms(app)
+    rows = [{"id": b, "title": r["title"], "term": term} for b, r in bills.items()]
+    data, tally = SI.build_term(term, rows, bills, table)
+    assert tally["with_text"] == len(bills) >= 8, (
+        f"tests/search_texts.json holds {len(bills)} bills and "
+        f"{tally['with_text']} had a text to read")
+    got = SI.unpack(data)
+
+    def has(part, key, bill):
+        return [(a, w) for b, a, w in got[part].get(key, []) if b == bill]
+
+    wrong = []
+    for bill in ("HB1442", "SB38"):
+        if has("w", "lavatory", bill) != [(False, 0)]:
+            wrong.append(f"{bill}'s one 'lavatory', in its text, is filed as "
+                         f"{has('w', 'lavatory', bill)}, not as a single "
+                         "mention (weight 0, not in the analysis)")
+    if not any(w > 0 for _a, w in has("p", "gender reassignment", "HB712")):
+        wrong.append("HB712 is not filed under 'gender reassignment', which "
+                     "its text says round the brackets of removed matter")
+    gendered = sorted(k for part in ("w", "p") for k in got[part]
+                      if re.search(r"gender|transgender|sex\b", k)
+                      and has(part, k, "SB520"))
+    if gendered:
+        wrong.append(f"SB520 is filed under {gendered}: its text never "
+                     "mentions gender")
+    if not any(a and w >= 5 for a, w in has("w", "abortion", "HB232")):
+        wrong.append("HB232's analysis names abortion and the index does not "
+                     f"say so: {has('w', 'abortion', 'HB232')}")
+    if not any(a for a, _w in has("p", "tax on personal income", "CACR10")):
+        wrong.append("CACR10's analysis ('any tax on personal income') is not "
+                     "read as an analysis: the resolving clause is not known")
+    # The fiscal note. This asked whether HB 550 was filed under "fiscal",
+    # "methodology" or "lba", and could not fail: none of the three would be
+    # filed for it with the note read either. These are words the note
+    # leans on and the bill does not -- "FY" 29 times -- and the same build
+    # with the note's heading taken off, so that it is read as text, must
+    # file the bill under one of them, or this is asking nothing again.
+    note_words = ("fy", "indeterminable", "efa", "million")
+    filed = [w for w in note_words if has("w", w, "HB550")]
+    if filed:
+        wrong.append(f"HB550 is filed under {filed}: its fiscal note was read")
+    unmarked = dict(bills)
+    unmarked["HB550"] = dict(bills["HB550"],
+                             text=SI.FISCAL_NOTE.sub("", bills["HB550"]["text"]))
+    with_note = SI.unpack(SI.build_term(term, rows, unmarked, table)[0])
+    assert any(b == "HB550" for w in note_words
+               for b, _a, _w in with_note["w"].get(w, [])), (
+        "HB550 with its fiscal note read as text is filed under none of "
+        f"{note_words}: the check that the note is not read can no longer fail")
+    if any(w > 0 for _a, w in has("w", "bathroom", "HB1450")):
+        wrong.append("HB1450 mentions a bathroom once and is filed as about one")
+    assert not wrong, "the search index, on eight real texts: " + "; ".join(wrong[:3])
+    # only() cuts a file down and must not change what it says of a bill.
+    part = SI.unpack(SI.only(data, {"HB712", "HB232"}))
+    for p in ("w", "p"):
+        for k, posts in got[p].items():
+            keep = [x for x in posts if x[0] in ("HB712", "HB232")]
+            assert part[p].get(k, []) == keep, (
+                f"only() changed what the index says of {k!r}")
+    assert part["b"] == {b: got["b"][b] for b in ("HB712", "HB232")}, (
+        "only() changed the pairs the index holds for a bill")
+
+    # WORDS THAT STAND TOGETHER (2 October). A search of two ordinary words
+    # listed any bill with each of them somewhere. The index holds, per bill,
+    # the pairs of words that stand next to each other in its analysis or
+    # twice in its text; the page counts a word found outside a title only
+    # beside another word of the search.
+    def pair(bill, a, b):
+        return SI.pair_code(a, b) in got["b"].get(bill, set())
+    assert isinstance(data["b"], list) and len(data["b"]) == len(data["ids"]) \
+        and all(isinstance(x, str) and len(x) % 5 == 0 for x in data["b"]), (
+        "the pairs are not one string of five-letter codes for each bill of ids")
+    wrong = []
+    if not (pair("HB232", "abortion", "service") and pair("HB232", "health", "care")):
+        wrong.append("HB232's analysis says 'abortion services' and 'health "
+                     "care institutions' and the index holds neither pair")
+    if pair("HB232", "service", "abortion") or pair("HB232", "abortion", "care"):
+        wrong.append("HB232 is filed under a pair its analysis does not have "
+                     "in that order, or with a word between")
+    if not pair("HB712", "limit", "breast"):
+        wrong.append("HB712's analysis 'limits breast surgeries' is not a "
+                     "pair: a word of the title beside one of the analysis")
+    assert not wrong, "the pairs, on eight real texts: " + "; ".join(wrong)
+
+    # A REPEAT IS NOT A SECOND MENTION. A constitutional amendment printed
+    # as the amendment and again as the ballot question; one sentence in two
+    # sections; a word twice in one sentence. A heading counts each time.
+    def count(text, word):
+        keys, sent, _clause, _at, heads = SI.read(SI.norm(text))
+        return SI.distinct([i for i, k in enumerate(keys) if k == word],
+                           keys, sent, heads)
+    twice = ("Nothing herein shall be construed to modify any provision of law "
+             "relating to eminent domain, trespass, or property rights.\n")
+    said = {
+        "the same sentence printed twice": (count(
+            "I. " + twice + "The ballot shall ask whether the voter approves.\n"
+            "II. " + twice, "eminent"), 1),
+        "one sentence, changed by a word, in two sections": (count(
+            "Such notice shall be by public notice on the main website or any "
+            "social media accounts utilized by the municipality.\nThe town "
+            "shall hold a hearing.\nSuch notice shall be by public notice on "
+            "the main website and any social media accounts utilized by the "
+            "municipality.", "media"), 1),
+        "a word twice in one sentence": (count(
+            "Kits for covid 19 (covid 19 tests or test kits) may be sold.",
+            "covid"), 1),
+        "a word in two sentences that say different things": (count(
+            "The landlord shall return the deposit within 30 days.\nNo "
+            "landlord shall charge an application fee to a prospective "
+            "tenant.", "landlord"), 2),
+        "a heading two sections share": (count(
+            "1 New Paragraph; Protection of Persons from Domestic Violence; "
+            "Temporary Relief. Amend RSA 173-B:4 by inserting the following:\n"
+            "III. The clerk shall transmit any orders.\n"
+            "2 New Paragraph; Protection of Persons from Domestic Violence; "
+            "Relief. Amend RSA 173-B:5 by inserting the following:\n"
+            "XI. The clerk shall transmit any orders.", "violence"), 2),
+    }
+    off = [f"{k}: counted {a}, not {b}" for k, (a, b) in said.items() if a != b]
+    assert not off, "a repeat is counted as a second mention, or the reverse: " \
+        + "; ".join(off)
+
+    # THE RECORD'S OWN SLIPS are not words (sidx/words.json): one bill says
+    # "goverment", and a reader who typed it was offered nothing. Never a
+    # changed letter, which is how "incest" was read as "invest".
+    from collections import Counter
+    seen = Counter({"government": 3500, "goverment": 1, "hospital": 1400,
+                    "hopsital": 1, "harassment": 140, "harrassment": 1,
+                    "invest": 300, "incest": 1, "plants": 500, "planted": 1,
+                    "lender": 150, "blender": 1, "allen": 1, "alien": 400,
+                    "recieve": 4, "receive": 5000})
+    slipped = SI.slips(seen, {"allen"})
+    assert slipped == {"goverment": "government", "hopsital": "hospital",
+                       "harrassment": "harassment"}, (
+        "slips() no longer takes exactly a letter dropped, added or swapped "
+        "inside a word one bill uses: it found " + str(slipped))
+
+    # EVERY WORD THE BILLS USE (sidx/words.json). The page offers a misspelt
+    # word as the word it sounds like only when this file says no bill has
+    # used it; for a day there was no such file, and "incest", "white" and a
+    # former senator's surname were each read as another word. It holds a
+    # word a bill says once, since the question is whether any bill has said
+    # it; only words of five letters or more, since the page offers nothing
+    # for a shorter one; and the names of members and towns.
+    known = set()
+    for b in bills.values():
+        known |= SI.known_words(b["title"]) | SI.known_words(b["text"])
+    for w in ("lavatory", "biological", "reassignment", "abortion", "fiscal"):
+        assert w in known, (
+            f"{w!r} is in the eight texts and not among the words read from "
+            "them for sidx/words.json")
+    odd = sorted(w for w in known if len(w) < 5 or not re.fullmatch(r"[a-z]+", w))
+    assert not odd, f"words.json would carry {odd[:5]}: not words as the page reads one"
+    names, _said = SI.name_words(["careers.json", "places.json"])
+    if Path("careers.json").exists() and Path("places.json").exists():
+        lost = [w for w in ("concord", "londonderry", "allen", "moore") if w not in names]
+        assert not lost, (
+            f"{lost} are names of towns or members in careers.json and "
+            "places.json and were not read from them: a name is not a "
+            "misspelling")
+    words_file = SI.words_file(known | names)
+    assert words_file["v"] == 1 and words_file["n"] == len(known | names) \
+        == len(words_file["words"].split(" ")), "words_file() miscounts its words"
+
+    # The same words, read by the page.
+    fixture = json.loads(Path("tests/search_index.json").read_text(encoding="utf-8"))
+    words = sorted(set(fixture["w"]) | {w + e for w in list(fixture["w"])[:300]
+                                       for e in ("s", "es", "ies")}
+                   | {"news", "arms", "dues", "glass", "bus", "taxes", "cars",
+                      "trans", "pfas", "classes", "ai"})
+    norm_texts = [SI.norm(t) for b in bills.values() for t in SI.split(b["text"])]
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of app.js: {e}")
+    hook = "return {queryGroups,"
+    assert matcher.count(hook) == 1, "billmatch.js no longer returns queryGroups first"
+    matcher = matcher.replace(hook, "return {SYN,CONCEPTS,STOP,pairCode,altRx,wordKeys,stem,queryGroups,")
+    # Pairs of words to code both ways: real ones, and ones with a digit and
+    # an apostrophe's remains in them.
+    pairs = [[a, b] for a, b in zip(words, words[1:])][:300] + [
+        ["data", "center"], ["child", "custody"], ["91", "a"], ["rsa", "540"],
+        ["driver", "license"], ["e", "z"]]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_INDEX_JS, encoding="utf-8")
+        (root / "words.json").write_text(json.dumps(
+            {"words": words, "phrases": table[0], "texts": norm_texts,
+             "wordsFile": words_file, "pairs": pairs}),
+            encoding="utf-8")
+        r = _run(["node", "go.js", "billmatch.js", "words.json"], cwd=root,
+                 capture_output=True, text=True, timeout=120)
+        said = (r.stdout + r.stderr).strip()
+        assert r.returncode == 0 and said, (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        js = json.loads(said.splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert js["wordsTaken"] is True, (
+        "the page refuses the words file the build writes (sidx/words.json): "
+        "a misspelt search would be offered nothing")
+    differ = [(w, SI.stem(w), s) for w, s in zip(words, js["stem"]) if SI.stem(w) != s]
+    assert not differ, (
+        f"build_search_index.stem and app.js's stem() read {len(differ)} words "
+        f"differently, so the index files a word where the page does not look: "
+        f"{differ[:3]}")
+    keys = [(w, sorted(SI.word_keys(w)), k) for w, k in zip(words[:400], js["keys"])
+            if sorted(SI.word_keys(w)) != k]
+    assert not keys, (f"word_keys and app.js's wordKeys() differ on {len(keys)} "
+                      f"words: {keys[:2]}")
+    codes = [(p, SI.pair_code(*p), c) for p, c in zip(pairs, js["codes"])
+             if SI.pair_code(*p) != c]
+    assert not codes and len(js["codes"]) == len(pairs) >= 200, (
+        f"pair_code and app.js's pairCode() differ on {len(codes)} of "
+        f"{len(pairs)} pairs, so the page asks for a pair under a code the "
+        f"build never wrote: {codes[:2]}")
+    assert len({SI.pair_code(*p) for p in pairs}) == len({tuple(p) for p in pairs}), (
+        "two of a few hundred pairs share a code: thirty bits are not being used")
+    assert js["stop"] == sorted(table[3]) and len(table[3]) >= 30, (
+        "the words a search is read without (STOP), read out of app.js by "
+        "build_search_index and by app.js itself, differ: two words stand "
+        "together across them in the index and not on the page, or the other "
+        f"way round. Only the build has {sorted(set(table[3]) - set(js['stop']))[:3]}, "
+        f"only the page has {sorted(set(js['stop']) - set(table[3]))[:3]}")
+    for name, mine in (("phrases", table[0]), ("words", table[1]),
+                       ("wording", table[2])):
+        only_py = sorted(set(mine) - set(js[name]))[:3]
+        only_js = sorted(set(js[name]) - set(mine))[:3]
+        assert not only_py and not only_js, (
+            f"the tables' {name}, read out of app.js by build_search_index and "
+            f"by app.js itself, differ: only the build has {only_py}, only the "
+            f"page has {only_js}")
+    counts = {}
+    for p in table[0]:
+        rx = SI.phrase_rx(p)
+        n = sum(len(rx.findall(t)) for t in norm_texts)
+        if n:
+            counts[p] = n
+    off = sorted(p for p in set(counts) | set(js["counts"])
+                 if counts.get(p) != js["counts"].get(p))
+    assert not off, (
+        f"a phrase is found differently by the build and by the page in the "
+        f"same text: {[(p, counts.get(p), js['counts'].get(p)) for p in off[:3]]}")
+    assert len(counts) >= 15, (
+        f"only {len(counts)} of the tables' phrases occur in the eight texts: "
+        "the comparison proves little")
+    return "ok", (f"an index built from {len(bills)} real texts says what they "
+                  f"say, and not what a fiscal note says; it holds the pairs "
+                  f"of words that stand together in them, coded alike by the "
+                  f"build and the page; a repeat is not a second mention; "
+                  f"{len(known):,} words "
+                  f"of theirs and {len(names):,} of members' and towns' names "
+                  f"make a words file the page takes; the build and the page "
+                  f"agree on {len(words):,} words' "
+                  f"singulars, on {len(table[0])} phrases and {len(table[1])} "
+                  f"words the tables name, and on {len(counts)} phrases found "
+                  "in those texts")
+
+
+# A PASTED PARAGRAPH, AND ONE DRAWING OF THE LIST (2 October 2026). Nothing
+# among the checks measured how much work a search is, which is how a page
+# that stopped for 17 seconds on 200 pasted words passed 419 of them. This
+# loads app.js as bills.html does, over the bills the search cases name, and
+# counts: how many searches one drawing runs, and how many times it asks a
+# bill what a part of the search found in it.
+_SEARCH_WORK_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const C = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const rows = Object.entries(C.bills).map(([id, b]) => ({ id, term: C.term, year: 2025, ...b }));
+const words = new Set();
+for (const b of rows) for (const w of (b.title + " " + b.sponsor).toLowerCase().match(/[a-z]{5,}/g) || []) words.add(w);
+const FIX = { "/meta.json": { terms: [C.term], topics: [], committees: [], sponsors: [], votedays: [], years: [2025, 2026] },
+  ["/idx/" + C.term + ".json"]: rows, ["/sidx/" + C.term + ".json"]: JSON.parse(fs.readFileSync("./sidx.json", "utf8")),
+  "/sidx/words.json": { v: 1, n: words.size, words: [...words].sort().join(" ") } };
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in FIX)) return { ok: false, status: 404, json: async () => { throw new Error("404"); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+let moved = null;
+history.replaceState = (s, t, u) => { moved = u; };
+const box = document.querySelector("#q"); box.disabled = true;
+let scope;
+try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8")
+  + ";({getIDX: () => IDX, addressSearch: typeof addressSearch === 'undefined' ? null : addressSearch,"
+  + " most: typeof MAXWORDS === 'undefined' ? null : MAXWORDS})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+// Counted where the page itself calls them: a function app.js declares is
+// the global one, so a wrapper put in its place is what the page then calls.
+const calls = { queryGroups: 0, fitAlone: 0 };
+for (const name of Object.keys(calls)) { const real = globalThis[name];
+  globalThis[name] = function () { calls[name]++; return real.apply(this, arguments); }; }
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = { bills: scope.getIDX().length, most: scope.most, draws: {} };
+  const type = async (s) => { box.value = s; box.fire("input"); await ticks(30); };
+  await type("firearms");           // the term's text arrives on the first search
+  const draw = async (name, s) => {
+    await type("");
+    const groups = globalThis.queryGroups(s);
+    calls.queryGroups = calls.fitAlone = 0;
+    const t = process.hrtime.bigint();
+    box.value = s; box.fire("input");
+    const ms = Number(process.hrtime.bigint() - t) / 1e6;
+    out.draws[name] = { ms: Math.round(ms), groups: groups.length, cut: groups.cut || 0,
+      searches: calls.queryGroups, fits: calls.fitAlone,
+      count: document.querySelector("#count").textContent,
+      hint: document.querySelector("#synhint").textContent,
+      says: document.querySelector("#results").innerHTML.replace(/<article[\s\S]*$/, "")
+        .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 600) };
+  };
+  const para = "relative to the regulation of certain municipal water systems and establishing a commission to study the effects of groundwater withdrawal on private wells in towns bordering public forest lands and requiring annual reports to the general court by department heads on the cost of compliance with federal standards for treatment plants";
+  const ws = para.split(" ");
+  const two = Array.from({ length: 200 }, (_, i) => ws[i % ws.length] + (i >= ws.length ? String.fromCharCode(97 + (i % 26)) : "")).join(" ");
+  await draw("one word", "abortion");
+  await draw("three words", "college students voting");
+  await draw("200 words", two);
+  await draw("tax, 5000 times", "tax ".repeat(5000));
+  await draw("20,000 letters", "a".repeat(20000));
+  await draw("a title", "permitting classification of individuals based on biological sex under certain limited circumstances.");
+  // An offered search, taken, is the one the address names.
+  out.address = {};
+  if (scope.addressSearch) {
+    location.search = "?q=vacine%20exemption&term=all"; moved = null;
+    scope.addressSearch("vaccine exemption");
+    out.address.named = moved;
+    location.search = ""; moved = null; scope.addressSearch("vaccine exemption");
+    out.address.unnamed = moved;
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# What one drawing may cost, on the cases' few hundred bills. The page before
+# 2 October took 5.6 seconds over them for 200 pasted words and ran 361
+# searches doing it; it takes 25 ms and runs 13.
+SEARCH_DRAW_MS = 1500
+SEARCH_DRAW_SEARCHES = 40
+
+
+@check("frontend", "a pasted paragraph is read to its twelfth word, and one "
+                   "drawing of the list asks each bill once")
+def _search_work():
+    """The second review's performance lens, 2 October: 200 words pasted into
+    the search box stopped /bills for 17 seconds in the current term and 220
+    on All terms, and every letter typed on All terms held the page for half
+    a second on a desktop and five on a phone. Every check passed, because
+    none measured how much work a search is.
+
+    Three causes, each held here by counting what the page does, so that the
+    check does not turn on how fast this machine is:
+
+    - a search was read to its last word, and every word is a part every
+      bill is asked for: it is read to its twelfth now (queryGroups,
+      MAXWORDS), the page says so, and a pasted title still finds its bill;
+    - a search that listed nothing ran one more whole search for every word
+      typed, and another for every word left out: 361 for 200 words. One
+      drawing may run SEARCH_DRAW_SEARCHES;
+    - one drawing asked every bill the same question six times -- the list,
+      four filters' counts and the order. It asks once: fitAlone() is called
+      at most twice a bill for a one-word search.
+
+    The time is held too, loosely: SEARCH_DRAW_MS for any of them, where the
+    old page took 5.6 seconds for the paste and the new one 25 ms.
+
+    And an offered search, taken, is the one the address names: a reader who
+    arrived at /bills?q=vacine%20exemption and took "vaccine exemption" was
+    left at an address that still said "No bills match" on reload.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = ("app.js", "dom_stub.js", "tests/search_cases.json", "tests/search_index.json")
+    if not all(Path(f).exists() for f in need):
+        return "skip", "app.js, dom_stub.js or the search cases are not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        for name, src in (("stub.js", "dom_stub.js"), ("app.js", "app.js"),
+                          ("cases.json", "tests/search_cases.json"),
+                          ("sidx.json", "tests/search_index.json")):
+            (root / name).write_text(Path(src).read_text(encoding="utf-8"),
+                                     encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_WORK_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
+                 timeout=180)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    n, d = got["bills"], got["draws"]
+    assert n >= 300, f"only {n} bills were loaded: the counts below prove little"
+    assert got["most"] and got["most"] <= 15, (
+        f"app.js reads a search to its word {got['most']!r}: there is no "
+        "limit on how many parts a pasted paragraph becomes")
+    paste = d["200 words"]
+    assert paste["groups"] <= got["most"] and paste["cut"] >= 100, (
+        f"200 pasted words are read as {paste['groups']} parts with "
+        f"{paste['cut']} left unread: every one is a part every bill is asked for")
+    assert "first twelve words" in paste["says"].lower(), (
+        "a search cut short does not say so where nothing is listed: "
+        f"{paste['says'][:160]!r}")
+    assert "first twelve words" in d["tax, 5000 times"]["hint"].lower(), (
+        "a search cut short does not say so under the box where bills are "
+        f"listed: {d['tax, 5000 times']['hint'][:160]!r}")
+    for name, x in d.items():
+        assert x["searches"] <= SEARCH_DRAW_SEARCHES, (
+            f"drawing {name!r} ran {x['searches']} searches over every bill "
+            f"(at most {SEARCH_DRAW_SEARCHES}): the offers for a search that "
+            "lists nothing are counted without limit again")
+        assert x["ms"] <= SEARCH_DRAW_MS, (
+            f"drawing {name!r} took {x['ms']:,} ms over {n} bills, more than "
+            f"{SEARCH_DRAW_MS:,}: on the 2,243 of a term that is a page that "
+            "has stopped answering")
+    one = d["one word"]
+    assert n <= one["fits"] <= 2 * n, (
+        f"one drawing of a one-word search asked a bill what it found "
+        f"{one['fits']:,} times for {n} bills: each bill is to be asked once, "
+        "and its answer kept (app.js, recall)")
+    three = d["three words"]
+    assert "Without one word" in three["says"] and "On their own" in three["says"], (
+        "a search of three words that lists nothing no longer offers its "
+        f"parts: {three['says'][:200]!r}")
+    assert d["a title"]["count"].split(" ")[0] not in ("", "0"), (
+        "a bill's whole title, pasted, does not find the bill: "
+        f"{d['a title']['count']!r}")
+    a = got["address"]
+    assert a.get("named") and "q=vaccine+exemption" in a["named"] \
+        and "term=all" in a["named"] and a.get("unnamed") is None, (
+        "an offered search, taken, does not rewrite an address that named "
+        f"the misspelt one, or rewrites one that named none: {a}")
+    return "ok", (f"over {n} bills: 200 pasted words are read as "
+                  f"{paste['groups']} and drawn in {paste['ms']} ms with "
+                  f"{paste['searches']} searches run; a one-word search asks "
+                  f"each bill once ({one['fits']} for {n}); a pasted title "
+                  "finds its bill; an offered search rewrites the address "
+                  "that named the misspelling")
+
+
+# The header's box (find.js) on its own: the three things the third review
+# found in it, 2 October.
+_FIND_DETAILS_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch, findSuggest, _fenc: typeof _fenc === 'undefined' ? null : _fenc})");
+F.FIND.rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = { match: {}, suggest: {}, draw: {} };
+for (const q of ["dwi", "wich", "bald", "sand", "field", "edwin", "win"]) out.match[q] = F.findMatch(q, 50).map(r => r[1]);
+for (const q of ["ebike", "comittee", "litchfeild", "sandwhich", "baldwni"]) out.suggest[q] = F.findSuggest(q);
+const panel = document.getElementById("findout");
+for (const [name, q] of [["half an emoji", "\ud83d tax"], ["the other half", "tax \ude00"], ["a whole one", "😀 tax"]]) {
+  try { F.findDraw(q); out.draw[name] = { html: panel.innerHTML }; }
+  catch (e) { out.draw[name] = { threw: String(e && e.message) }; }
+}
+out.enc = F._fenc ? [F._fenc("\ud83d tax"), F._fenc("😀")] : null;
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's box reads a short word as the start of a "
+                   "word, offers no name two letters off a short one, and "
+                   "does not stop on half an emoji", needs=("build_pages",))
+def _find_details(BP):
+    """Three things the third review found in the header's search, 2 October.
+
+    "dwi" listed, under the bills, the town of Sandwich and six members
+    named Baldwin, Edwin, Hardwick and Goodwin: what was typed was looked
+    for anywhere in a row. Under five letters it must now begin a word of
+    the row; from five it may stand anywhere, as "field" is Litchfield.
+
+    "ebike" was offered "Did you mean mike?": two letters apart, in a word
+    of five. Two are allowed from seven letters ("comittee") and one below.
+
+    And a search holding half an emoji -- a surrogate with no partner, which
+    is what the box holds for a moment on some keyboards -- threw "URI
+    malformed" from encodeURIComponent and the panel was not drawn for that
+    keystroke; /search did the same. Every address a typed search goes into
+    is written through find.js's _fenc, here, on /search and on the home
+    page.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not (Path("find.js").exists() and Path("dom_stub.js").exists()):
+        return "skip", "find.js or dom_stub.js not in this directory"
+    rows = [
+        ["town", "Sandwich", "Carroll County", "town/sandwich", "Carroll"],
+        ["town", "Litchfield", "Hillsborough County", "town/litchfield", "Hillsborough"],
+        ["legislator", "Rep. Heather Baldwin (D - Graf 4)", "House", "legislator/heather-baldwin", "Grafton"],
+        ["former", "Former Rep. Edwin Smith", "House · Ches 11 · 2015–2018", "legislator/edwin-smith", "Cheshire", 2018],
+        ["former", "Former Rep. Richard Dwinell", "House · Merr 12 · 1999–2002", "legislator/richard-dwinell", "Merrimack", 2002],
+        ["former", "Former Rep. Mike Smith", "House · Rock 1 · 2001–2002", "legislator/mike-smith", "Rockingham", 2002],
+        ["committee", "House Finance", "House committee", "committee/H01", ""],
+        ["page", "Committees", "Every committee", "committees", ""],
+    ]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(Path("find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_DETAILS_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m = got["match"]
+    assert m["dwi"] == ["Former Rep. Richard Dwinell"], (
+        f"'dwi' finds {m['dwi']}: a word of three letters is found in the "
+        "middle of Sandwich and Baldwin again, not only at the start of Dwinell")
+    assert not m["wich"] and not m["win"] and m["bald"] == ["Rep. Heather Baldwin (D - Graf 4)"] \
+        and m["sand"] == ["Sandwich"], (
+        f"a short word is not read as the start of a word: {m}")
+    assert m["field"] == ["Litchfield"] and m["edwin"] == ["Former Rep. Edwin Smith"], (
+        f"a word of five letters no longer finds the name it is inside of: {m}")
+    s = got["suggest"]
+    assert s["ebike"] == "" and s["comittee"] == "committees" and s["litchfeild"] == "litchfield", (
+        f"the names offered for a misspelt word are {s}: none for 'ebike' "
+        "(it was 'mike'), 'committees' for 'comittee', 'litchfield' for "
+        "'litchfeild'")
+    for name, x in got["draw"].items():
+        assert "threw" not in x, (
+            f"the header's box stops on {name}: {x.get('threw')}")
+        assert "/search?q=" in x["html"], f"the panel drew nothing for {name}"
+    assert got["enc"] == ["%EF%BF%BD%20tax", "%F0%9F%98%80"], (
+        f"find.js's _fenc writes {got['enc']}: a stray half is the "
+        "replacement character, and a whole emoji is itself")
+    js = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S).group(1)
+    assert "encodeURIComponent(" not in js, (
+        "/search's script puts what was typed into an address with "
+        "encodeURIComponent, which throws on half an emoji: use find.js's _fenc")
+    home = getattr(BP, "HOME_JS", "")
+    assert "goBills" not in home or "uD800" in home, (
+        "the home page's search box puts what was typed into an address "
+        "without reading a stray surrogate as the replacement character")
+    return "ok", ("'dwi' finds Dwinell and not Sandwich or Baldwin; 'field' "
+                  "still finds Litchfield; 'ebike' is offered nothing and "
+                  "'comittee' committees; half an emoji is drawn, and goes "
+                  "into an address as the replacement character")
+
+
+@check("build", "the search index builder stops, and writes nothing, when a "
+               "term's texts are gone; and check_site refuses a site without "
+               "its search index or with a file over the host's cap",
+       needs=("build_search_index", "check_site"))
+def _search_index_main(SI, CS):
+    """The second review, 2 October: build_search_index.py did not fail when
+    some terms' texts were missing. With archive_text.json gone it wrote
+    empty indexes for eighteen of nineteen terms and a words.json short by
+    14,600 words, and exited 0; the only check that would have noticed an
+    empty term was one the nightly does not run; and the checks that ran
+    its functions on the fixture never ran its main().
+
+    So main() is run here, as build_all runs it, on two terms made of the
+    eight real texts tests/search_texts.json holds:
+
+    - whole, it writes both terms' files, words.json and the manifest;
+    - with the earlier term's texts withheld it exits non-zero and --out is
+      byte for byte what it was (NOTHING IS WRITTEN BY A RUN THAT FAILS);
+    - with no text at all, the same; and with the newest term's texts gone
+      where the manifest on disk says it had them;
+    - with the newest term's texts not there and no such record, it says so
+      and goes on: in the first days of a session the bills are numbered
+      before their text is fetched;
+    - with the vocabulary under its floor (the real WORDS_FEWEST, which
+      eight bills cannot reach), the same;
+    - with --terms it writes that term's file, leaves words.json as it was
+      and keeps the other term's entry in the manifest.
+
+    And check_site, which the nightly does run, reads what was written:
+    it passes the whole index, refuses a site with bill indexes and no
+    search index, refuses one whose earlier term has no text, and takes a
+    build made with --allow-no-text (preflight's fixture site) as said.
+    A file within a tenth of Cloudflare Pages' 25 MiB is warned of and one
+    over it refused: index.json stood at 22.6 MiB with nothing measuring it.
+    """
+    import contextlib
+    import hashlib
+    import io
+    texts_at, cases_at = Path("tests/search_texts.json"), Path("tests/search_cases.json")
+    if not (texts_at.exists() and cases_at.exists() and Path("app.js").exists()):
+        return "skip", "tests/search_texts.json, the cases or app.js not here"
+    held = json.loads(texts_at.read_text(encoding="utf-8"))
+    bills = json.loads(cases_at.read_text(encoding="utf-8"))["bills"]
+    new, old = held["term"], "2023-2024"
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "idx").mkdir()
+        for term in (new, old):
+            (root / "idx" / f"{term}.json").write_text(json.dumps([
+                {"id": bid, "term": term, "title": rec["title"],
+                 "sponsor": (bills.get(bid) or {}).get("sponsor", ""),
+                 "committees": (bills.get(bid) or {}).get("committees", []),
+                 "topic": (bills.get(bid) or {}).get("topic", "")}
+                for bid, rec in held["bills"].items()]), encoding="utf-8")
+        both = {bid: {"text": rec["text"]} for bid, rec in held["bills"].items()}
+        (root / "bill_text.json").write_text(json.dumps({new: both}), encoding="utf-8")
+        (root / "archive_text.json").write_text(json.dumps({old: both}), encoding="utf-8")
+        (root / "no_archive.json").write_text("{}", encoding="utf-8")
+        out = root / "sidx"
+
+        def build(*args, fewest=50, to=None):
+            # main() itself, in a process of its own, with the floor on the
+            # vocabulary lowered to what eight bills can reach.
+            code = ("import sys, build_search_index as SI\n"
+                    f"SI.WORDS_FEWEST = {fewest}\n"
+                    "sys.argv = ['build_search_index.py'] + sys.argv[1:]\n"
+                    "SI.main()\n")
+            return _run([sys.executable, "-c", code, "--idx", str(root / "idx"),
+                         "--out", str(to or out), "--app", str(here / "app.js"),
+                         "--names", *args],
+                        cwd=here, capture_output=True, text=True, timeout=300)
+
+        def state():
+            return {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
+                    for f in sorted(out.glob("*"))} if out.exists() else {}
+
+        text = ["--bill-text", str(root / "bill_text.json")]
+        arch = ["--archive-text", str(root / "archive_text.json")]
+        gone = ["--archive-text", str(root / "no_archive.json")]
+        r = build(*text, *arch)
+        assert r.returncode == 0, (
+            "build_search_index.py fails on two terms with their texts: "
+            + (r.stderr or r.stdout)[-300:])
+        whole = state()
+        assert set(whole) == {f"{new}.json", f"{old}.json", "words.json", "manifest.json"}, (
+            f"a whole run wrote {sorted(whole)}")
+        man = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert all(man["terms"][t]["with_text"] == len(both) for t in (new, old)) \
+            and not man.get("no_text_expected"), f"the manifest says {man['terms']}"
+        said = []
+        for what, args, kw in (
+                ("the earlier term's texts are gone", [*text, *gone], {}),
+                ("no text can be read at all",
+                 ["--bill-text", str(root / "no_archive.json"), *gone], {}),
+                ("the newest term's texts are gone where it had them",
+                 ["--bill-text", str(root / "no_archive.json"), *arch], {}),
+                ("the vocabulary is under its floor", [*text, *arch],
+                 {"fewest": SI.WORDS_FEWEST})):
+            r = build(*args, **kw)
+            assert r.returncode != 0, (
+                f"build_search_index.py exits 0 when {what}: a build that "
+                "lost its texts would publish a search that reads titles only")
+            assert "NOTHING WAS WRITTEN" in (r.stderr + r.stdout), (
+                f"when {what} the run does not say that nothing was written: "
+                + (r.stderr or r.stdout)[-200:])
+            assert state() == whole, (
+                f"when {what} the run fails and has already replaced "
+                f"{sorted(k for k, v in state().items() if whole.get(k) != v)} "
+                "in --out")
+            said.append(what)
+        # The newest term with no text and no record of having had any: the
+        # first days of a session, said out loud and allowed.
+        r = build("--bill-text", str(root / "no_archive.json"), *arch,
+                  to=root / "fresh")
+        assert r.returncode == 0 and "NO TEXT for this term" in r.stdout, (
+            "a newest term with bills and no text yet stops the build, or is "
+            "not said out loud: in January that would stop the night: "
+            + (r.stderr or r.stdout)[-200:])
+        assert SI.WORDS_FEWEST >= 20_000, (
+            f"WORDS_FEWEST is {SI.WORDS_FEWEST:,}: the titles and names alone "
+            "come to 11,900 words and a record that has lost eighteen terms' "
+            "texts to 18,900, so a floor under those lets both through")
+        # --terms: that term's file, and nothing of the rest.
+        (root / "bill_text.json").write_text(json.dumps(
+            {new: dict(list(both.items())[:5])}), encoding="utf-8")
+        r = build(*text, *arch, "--terms", new)
+        assert r.returncode == 0, "--terms fails: " + (r.stderr or r.stdout)[-300:]
+        after = state()
+        man2 = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert after[f"{new}.json"] != whole[f"{new}.json"] \
+            and after[f"{old}.json"] == whole[f"{old}.json"] \
+            and after["words.json"] == whole["words.json"], (
+            "--terms did not write only the term it was given: changed "
+            f"{sorted(k for k in after if after[k] != whole.get(k))}")
+        assert man2["terms"][old] == man["terms"][old] \
+            and man2["terms"][new]["with_text"] == 5, (
+            "--terms lost the other term's entry in the manifest, or kept "
+            f"its own stale: {man2['terms']}")
+        # check_site, on what a site would hold.
+        site = root / "site"
+        (site / "sidx").mkdir(parents=True)
+        shutil.copytree(root / "idx", site / "idx")
+
+        def verdict():
+            errors, warnings = [], []
+            with contextlib.redirect_stdout(io.StringIO()):
+                CS.search_index(site, errors, warnings)
+            return errors, warnings
+
+        errors, _w = verdict()
+        assert errors and "search index is not in the site" in errors[0], (
+            f"check_site passes a site with bill indexes and no search index: {errors}")
+        build(*text, *arch)
+        for f in out.glob("*"):
+            shutil.copy(f, site / "sidx" / f.name)
+        errors, warnings = verdict()
+        assert not errors and not warnings, (
+            f"check_site refuses a whole search index: {errors} {warnings}")
+        m3 = json.loads((site / "sidx" / "manifest.json").read_text(encoding="utf-8"))
+        m3["terms"][old]["with_text"] = 0
+        (site / "sidx" / "manifest.json").write_text(json.dumps(m3), encoding="utf-8")
+        errors, _w = verdict()
+        assert any(old in e and "text" in e for e in errors), (
+            f"check_site passes a search index with no text for {old}: {errors}")
+        m3["no_text_expected"] = True
+        (site / "sidx" / "manifest.json").write_text(json.dumps(m3), encoding="utf-8")
+        errors, warnings = verdict()
+        assert not errors and any(old in w for w in warnings), (
+            "a build told that no text was expected is refused, or says "
+            f"nothing: {errors} {warnings}")
+        (site / "sidx" / "words.json").unlink()
+        errors, _w = verdict()
+        assert any("words.json" in e for e in errors), (
+            f"check_site passes a search index without words.json: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    errors, warnings = [], []
+    cap = CS.FILE_CAP
+    CS.near_the_cap([(cap + 1, "data/big.csv"), (int(cap * 0.905), "index.json"),
+                     (int(cap * 0.5), "ok.json")], errors, warnings)
+    assert len(errors) == 1 and "data/big.csv" in errors[0] \
+        and len(warnings) == 1 and "index.json" in warnings[0], (
+        f"a file over Cloudflare Pages' cap is not refused, or one within a "
+        f"tenth of it not warned of: {errors} {warnings}")
+    return "ok", ("main() on two terms of eight real texts: whole, it writes "
+                  "both and the words; it stops with nothing written when "
+                  + ", when ".join(said) + "; --terms writes its own term "
+                  "only; check_site refuses a site with no search index, or "
+                  "an earlier term without text, or a file over 25 MiB")
+
+
+# What a term's search index may weigh. The page fetches it when somebody
+# searches; /search fetches every term's. Measured on 1 October: 197,000 to
+# 303,000 bytes a term, 4.4 MB for all twenty. A file past this has stopped
+# choosing what a bill is about.
+#
+# That is its words and phrases. Since 2 October the file also holds, for each
+# bill, the pairs of those words that stand together, and they are held to a
+# size of their own: 102,000 to 186,000 bytes a term that day, with the whole
+# file 285,000 to 461,000 and all twenty 6.5 MB. Pairs past this would mean
+# the build had stopped choosing which pairs the page could ask for.
+SEARCH_INDEX_MOST = 450_000
+SEARCH_PAIRS_MOST = 250_000
+SEARCH_INDEX_MOST_ALL = 9_000_000
+
+
+@check("data", "every term has a search index, for its own bills, within its size")
+def _search_index_built():
+    """Silence is not success. A term whose index was never written, or was
+    written empty, searches by title exactly as it did before, and nothing on
+    the page looks broken: the bills its text would have found are simply
+    not there.
+
+    For every term the bill search offers -- meta.json's, and the bill
+    requests -- site/sidx/<term>.json exists, names only bills of that
+    term's own index and every one of them, and is not empty unless the term
+    has no text at all (the requests, which are a title and a sponsor). And
+    it is within its size: the build keeps what a bill is ABOUT, and a file
+    of a megabyte would mean it had started keeping what a bill mentions.
+
+    Since 2 October it also holds the pairs of words that stand together in
+    each bill, one string of codes a bill ("b"). A file without them is an
+    older build's: a search of several words would then find no word outside
+    a title, and nothing on the page would say why. And words.json leaves
+    out the record's own slips, so that a reader who types "goverment", as
+    one bill does, is offered the word.
+    """
+    site = Path("site")
+    if not (site / "idx").is_dir() or not (site / "meta.json").exists():
+        return "skip", "site/idx is not built"
+    sidx = site / "sidx"
+    assert sidx.is_dir(), (
+        "site/idx is built and site/sidx is not: the search reads titles and "
+        "topics and none of the bills' own text. build_search_index.py "
+        "writes it; build_all runs it after the site data.")
+    meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+    terms = list(meta.get("terms") or [])
+    if (meta.get("requests") or {}).get("term"):
+        terms.append(meta["requests"]["term"])
+    bad, total, entries, empty = [], 0, 0, []
+    for t in terms:
+        f, ix = sidx / f"{t}.json", site / "idx" / f"{t}.json"
+        if not ix.exists():
+            continue
+        if not f.exists():
+            bad.append(f"{t}: no search index")
+            continue
+        size = f.stat().st_size
+        total += size
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError as e:
+            bad.append(f"{t}: unreadable ({e})")
+            continue
+        ids = [r.get("id") for r in json.loads(ix.read_text(encoding="utf-8"))
+               if isinstance(r, dict) and (not r.get("term") or r["term"] == t)]
+        if d.get("v") != 1 or d.get("term") != t:
+            bad.append(f"{t}: says it is version {d.get('v')!r} of {d.get('term')!r}")
+        elif d.get("ids") != ids:
+            bad.append(f"{t}: names {len(d.get('ids') or [])} bills, and the "
+                       f"term's index has {len(ids)} -- built from another index")
+        n = sum(len(v) for v in (d.get("w") or {}).values())
+        entries += n
+        if not n:
+            empty.append(t)
+        # The pairs: without them a search of several words finds no word
+        # outside a title, and nothing on the page says why.
+        # A term with no text at all (the bill requests) has no words and
+        # an empty list of pairs.
+        b = d.get("b")
+        if not isinstance(b, list) or (n and len(b) != len(d.get("ids") or [])):
+            bad.append(f"{t}: holds no pairs of words for its bills (\"b\"): "
+                       "built by an older build_search_index.py")
+        elif n and not any(b):
+            bad.append(f"{t}: has words and not one pair of them")
+        pairs = len(json.dumps(d.get("b") or [], ensure_ascii=False,
+                               separators=(",", ":")).encode("utf-8"))
+        if size - pairs > SEARCH_INDEX_MOST:
+            bad.append(f"{t}: {size - pairs:,} bytes of words and phrases, "
+                       f"more than {SEARCH_INDEX_MOST:,}")
+        if pairs > SEARCH_PAIRS_MOST:
+            bad.append(f"{t}: {pairs:,} bytes of pairs, more than "
+                       f"{SEARCH_PAIRS_MOST:,}")
+    # EVERY WORD THE BILLS USE. Without sidx/words.json a misspelt search is
+    # offered nothing, and nothing on the page says so; with a thin one, real
+    # words would be offered as other words. The cases file lists real words
+    # that were read as other words for a day (tests/search_cases.json,
+    # "known"): each must be in it.
+    wf = sidx / "words.json"
+    if not wf.exists():
+        bad.append("words.json is not there: a misspelt search is offered "
+                   "nothing (a run of build_search_index.py over every term "
+                   "writes it; one with --terms does not)")
+    else:
+        try:
+            w = json.loads(wf.read_text(encoding="utf-8"))
+        except ValueError as e:
+            w = {}
+            bad.append(f"words.json: unreadable ({e})")
+        ws = set(str(w.get("words") or "").split(" ")) - {""}
+        if w.get("v") != 1 or w.get("n") != len(ws):
+            bad.append(f"words.json: version {w.get('v')!r}, and says "
+                       f"{w.get('n')!r} words where it holds {len(ws):,}")
+        elif len(ws) < 10_000:
+            bad.append(f"words.json holds {len(ws):,} words: one term's texts "
+                       "alone use fifteen thousand")
+        cases = Path("tests/search_cases.json")
+        if ws and cases.exists():
+            want = json.loads(cases.read_text(encoding="utf-8")).get("known") or []
+            lost = [x for x in want if x not in ws]
+            if lost:
+                bad.append(f"words.json lacks {lost[:6]}: words bills use, "
+                           "which the search would offer as other words")
+        # The record's own slips are not words: one bill says each of these,
+        # and a reader who typed one was offered nothing (2 October).
+        kept = [s for s, v in (("goverment", "government"), ("libary", "library"),
+                               ("hopsital", "hospital")) if s in ws and v in ws]
+        if kept:
+            bad.append(f"words.json holds {kept}: slips one bill makes, which "
+                       "a reader who makes the same one is then offered "
+                       "nothing for")
+    assert not bad, "the search index: " + "; ".join(bad[:4])
+    real = [t for t in empty if re.fullmatch(r"\d{4}-\d{4}", t)]
+    assert not real, (
+        f"the search index of {', '.join(real)} is empty: no bill text was "
+        "read for it, and its bills are found by title and topic only. "
+        "bill_text.json and archive_text.json are what the build reads.")
+    assert total <= SEARCH_INDEX_MOST_ALL, (
+        f"the search indexes come to {total:,} bytes, more than "
+        f"{SEARCH_INDEX_MOST_ALL:,}: /search fetches them all")
+    return "ok", (f"{len(terms)} terms, {entries:,} entries, {total:,} bytes in "
+                  f"all and none over {SEARCH_INDEX_MOST:,}"
+                  + (f"; no text for {', '.join(empty)}, as expected" if empty else ""))
+
+
 @check("frontend", "the assets are revalidated, and no page names a version")
 def _asset_headers():
     """What replaced "a page asks for the script it was built against".
@@ -9783,6 +11480,370 @@ def _palette():
                 "show this; only the number can.")
     assert not bad, "; ".join(bad[:4])
     return "ok", f"{n} pairs across both schemes, all above their threshold"
+
+
+def _css_hex(v):
+    h = v.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _css_ratio(a, b):
+    """WCAG contrast of two (r, g, b) colours."""
+    def lum(c):
+        ch = [v / 255 for v in c]
+        ch = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in ch]
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+    x, y = sorted((lum(a), lum(b)), reverse=True)
+    return (x + 0.05) / (y + 0.05)
+
+
+@check("frontend", "a focus ring is not cut off by the box around its control, a text box's edge is "
+                   "the control edge, and small grey text carries no opacity")
+def _rings_edges_opacity():
+    """Three findings of the audit of 2 October 2026 that are one kind of
+    thing: a rule that looks right in the stylesheet and measures wrong on the
+    page.
+
+    S5. The site's focus ring is 2px, 2px outside the control. A bill card's
+    header fills its card and the card clips, Play fills .player and .player
+    clips, a filter group's head fills the filter rail: no ring on a card's
+    header in the list or on Play, one line of it elsewhere. Each is drawn
+    inside its control now. Play's is in the still's own ink, because the
+    still is near-black in both themes and the light theme's pine on it is
+    2:1; that pair is measured here. Play's rule must sit in the shared
+    region, or the home page, which takes style.css, has none.
+
+    S10. Six text boxes were edged in --rule-2, a card's hairline: 1.68:1
+    against the page in light, 2.52:1 in dark, where WCAG 1.4.11 asks 3:1.
+    Every rule that draws a text box's border uses --edge, which _palette
+    already holds at 3:1 on the page and on a card in both themes.
+
+    S11. Two pieces of small --ink-2 text had an opacity on top: the days of
+    the months either side in the Calendar's grid (3.17:1 on the selected
+    week's band) and the bracketed motion on a member's Votes tab (4.14:1).
+    Neither rule carries an opacity now, and --ink-2 on the band -- pine mixed
+    16% into the page -- is computed here for both themes and held to 4.5:1.
+    """
+    css = Path("app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    bare = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+
+    def rules(selector):
+        """Every declaration block whose selector list names `selector`."""
+        return [body for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", bare)
+                if selector in [s.strip() for s in sel.split(",")]]
+
+    bad = []
+    # S5
+    for sel in (".chead:focus-visible", ".fhead:focus-visible", ".pstub:focus-visible"):
+        got = rules(sel)
+        off = [m for b in got for m in re.findall(r"outline-offset:\s*(-?\d+)px", b)]
+        if not off or int(off[-1]) >= 0:
+            bad.append(f"{sel} is not drawn inside its control (outline-offset "
+                       f"{off[-1] + 'px' if off else 'unset'}): the box around it clips the ring")
+    a, b = text.index("/* SHARED:START"), text.index("/* SHARED:END")
+    if ".pstub:focus-visible{" not in text[a:b]:
+        bad.append(".pstub:focus-visible is outside the shared region, so style.css "
+                   "and the home page's Play have no ring")
+    stub = rules(".pstub:focus-visible")
+    if not any("var(--film-stub-ink)" in x for x in stub):
+        bad.append("Play's ring is not in the still's own ink")
+    film = dict(re.findall(r"--(film-stub(?:-ink)?):\s*(#[0-9A-Fa-f]{3,6})", text))
+    if len(film) == 2:
+        r = _css_ratio(_css_hex(film["film-stub-ink"]), _css_hex(film["film-stub"]))
+        if r < 3:
+            bad.append(f"Play's ring, --film-stub-ink on --film-stub, is {r:.2f}:1; a focus "
+                       "indicator needs 3:1")
+    else:
+        bad.append("--film-stub or --film-stub-ink is no longer a hex colour this can measure")
+    # S10
+    boxes = [(sel, body) for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", bare)
+             if re.search(r"(^|[\s,>])(?:#q|input(?:\[type=(?:search|text)\])?)\s*(,|$)",
+                          sel.strip()) and re.search(r"\bborder:\s*1px solid", body)]
+    if len(boxes) < 3:
+        bad.append(f"only {len(boxes)} rules were found drawing a text box's border; the "
+                   "bill search's, the pages' and the Calendar's are three")
+    for sel, body in boxes:
+        m = re.search(r"\bborder:\s*1px solid\s*([^;}]+)", body)
+        if m.group(1).strip() != "var(--edge)":
+            bad.append(f"{' '.join(sel.split())[:60]} edges a text box in "
+                       f"{m.group(1).strip()}, not --edge")
+    # S11
+    for sel in (".cmout .cmn", ".votes .vq .dim"):
+        if any(re.search(r"\bopacity:\s*(0?\.\d+)", b) for b in rules(sel)):
+            bad.append(f"{sel} carries an opacity: small --ink-2 text under one "
+                       "measured 3.17:1 and 4.14:1")
+    band = re.search(r"\.cmrow\.cmsel td\{background:color-mix\(in srgb,var\(--pine\) "
+                     r"(\d+)%,var\(--paper\)\)\}", bare)
+    if not band:
+        bad.append("the selected week's band is no longer pine mixed into the page; "
+                   "measure --ink-2 on what it is now")
+    else:
+        k = int(band.group(1)) / 100
+        light = text[text.index(":root{"):text.index("/* DARK:OS")]
+        dark = text[text.index("/* DARK:CHOSEN"):text.index("/* PALETTE END")]
+        for scheme, block in (("light", light), ("dark", dark)):
+            tok = dict(re.findall(r"--(ink-2|pine|paper):\s*(#[0-9A-Fa-f]{3,6})", block))
+            if len(tok) != 3:
+                bad.append(f"--ink-2, --pine or --paper is not a hex colour in {scheme}")
+                continue
+            pine, paper = _css_hex(tok["pine"]), _css_hex(tok["paper"])
+            mixed = tuple(p * k + q * (1 - k) for p, q in zip(pine, paper))
+            r = _css_ratio(_css_hex(tok["ink-2"]), mixed)
+            if r < 4.5:
+                bad.append(f"--ink-2 on the selected week's band is {r:.2f}:1 in {scheme}; "
+                           "a day's number is text and needs 4.5")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"three rings drawn inside their controls, Play's in the still's ink; "
+                  f"{len(boxes)} text boxes edged in --edge; no opacity on the two small "
+                  "greys, and --ink-2 on the week's band above 4.5:1 in both themes")
+
+
+@check("frontend", "on paper the page is the light theme, whichever theme is on; the controls are not "
+                   "printed, a recording's times are, and no white words lose their ground")
+def _print_is_light():
+    """The audit of 2 October 2026, M24. app.css had no print rules, and with
+    the dark theme on a page printed in the dark theme's light ink on white
+    paper: body text 2.2:1 against the sheet and a heading 1.2:1. The header,
+    the bill search row, "Back to bill search", "Cite this page", the report
+    box and Play all printed.
+
+    One @media print block undoes the dark palette by writing the light
+    palette's values again under the dark palette's two selectors. They are
+    the light block's numbers written a second time, so this holds them to
+    it: every colour the dark palette redefines is given back, at the light
+    value, and nothing else. And the block must be in the shared region, or
+    the pages that take style.css print as they did.
+
+    WHAT IS LEFT OFF IS THE CONTROL, NOT THE RECORD (the review of 2 October).
+    The block hid .player whole, and that box holds each sitting's times:
+    Play's own words, the line of moments under it, "approximate", the
+    motions. On paper a bill's Hearings tab named no time at all. The frame
+    of a playing recording is left off; Play prints as the line of text it
+    is.
+
+    AND WHITE WORDS KEEP THEIR GROUND. A browser prints no background unless
+    asked, so type set in --on-pine, or in --surface on a filled stop of the
+    passage rail, was white on white: a stop a bill had passed printed as an
+    empty ring. Every rule in app.css that sets type in --on-pine, --surface
+    or white is either under something the block leaves off, or under
+    something it asks the ground for (print-color-adjust:exact). Read from
+    the rules, so the next white label on a filled ground cannot be missed.
+    """
+    css = Path("app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    a, b = text.index("/* SHARED:START"), text.index("/* SHARED:END")
+    m = re.search(r"@media print\{\s*:root\[data-theme=\"dark\"\],"
+                  r":root:not\(\[data-theme=\"light\"\]\)\{(.*?)\}(.*?)\n\}\n", text, re.S)
+    assert m, ("app.css has no @media print block that undoes the dark palette under "
+               "both of its selectors (the reader's choice, and the system's)")
+    assert a < m.start() < b, (
+        "the print block is outside the shared region, so the home page, the roster "
+        "and About, which take style.css, print in whatever theme is on")
+    strip = lambda s: re.sub(r"/\*.*?\*/", "", s, flags=re.S)
+    head = text[:text.index("/* PALETTE END")]
+    light = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)",
+                            strip(head[head.index(":root{"):head.index("/* DARK:OS")])))
+    dark = re.findall(r"(--[\w-]+)\s*:", strip(head[head.index("/* DARK:CHOSEN"):]))
+    on_paper = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)", m.group(1)))
+    missing = [n for n in dark if n not in on_paper]
+    assert not missing, (
+        "on paper the dark theme keeps its own " + ", ".join(missing[:5])
+        + ": every colour the dark palette redefines must be given back")
+    spare = sorted(set(on_paper) - set(dark))
+    assert not spare, "the print block sets " + ", ".join(spare) + ", which the dark palette does not"
+    drift = [f"{n} is {on_paper[n].strip()} on paper and {light[n].strip()} in the light palette"
+             for n in dark if on_paper[n].strip().lower() != light.get(n, "").strip().lower()]
+    assert not drift, "; ".join(drift[:4])
+    assert "color-scheme:light" in m.group(1), "on paper the page still asks for a dark colour scheme"
+    rest = strip(m.group(2))
+    hidden = re.search(r"([^{}]+)\{display:none !important\}", rest)
+    gone = {s.strip() for s in hidden.group(1).split(",")} if hidden else set()
+    want = {"nav.top", ".searchrow", ".backto", ".pageacts", "details.report", ".player iframe"}
+    assert want <= gone, (
+        "printed, though it is a control and does nothing on paper: "
+        + ", ".join(sorted(want - gone)))
+    assert not ({".player", ".pbar", ".tolnote", ".jump", ".pstub"} & gone), (
+        "a recording's box is left off the sheet, and it holds the times: where in the "
+        "recording the bill was taken up, the vote, and whether a time is approximate")
+    stub = re.search(r"(?:^|\})\s*\.pstub\{([^}]*)\}", rest)
+    assert stub and "display:block" in stub.group(1) and "aspect-ratio:auto" in stub.group(1) \
+        and "color:var(--ink)" in stub.group(1) and "background:none" in stub.group(1), (
+            "on paper Play is not set as a line of text: it carries the time the recording "
+            "is played from, in the still's light ink on a ground that does not print")
+    exact = re.search(r"([^{}]+)\{\s*-webkit-print-color-adjust:exact;print-color-adjust:exact\}", rest)
+    kept = {s.strip() for s in exact.group(1).split(",")} if exact else set()
+    under = lambda sel, group: any(sel == g or sel.startswith(g + " ") or sel.startswith(g + ":")
+                                   or sel.startswith(g + ".") for g in group)
+    white, lost = 0, []
+    for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", strip(text)):
+        if not re.search(r"(?<![-\w])color:\s*(?:var\(--(?:on-pine|surface|paper)\)|#fff(?:fff)?\b|white\b)",
+                         rule.group(2), re.I):
+            continue
+        for sel in rule.group(1).split(","):
+            sel = sel.strip().replace(":where(body.pg) ", "")
+            white += 1
+            if not (under(sel, gone) or under(sel, kept)):
+                lost.append(sel)
+    assert white >= 10 and not lost, (
+        "set in white, or in the colour of the page, on a ground that does not print, and "
+        "neither left off the sheet nor given its ground on paper: " + ", ".join(sorted(set(lost))[:6]))
+    # One is not type: the Calendar's ticked kind of meeting is a white tick,
+    # drawn as a border, on the kind's own colour.
+    assert re.search(r"\.cbx::after\{[^}]*border:solid var\(--surface\)", strip(text)) \
+        and ".calcat input:checked + .cbx" in kept, (
+            "a ticked kind of meeting prints as an empty box: its tick is the colour of the "
+            "page on a ground that is not asked for on paper")
+    return "ok", (f"{len(dark)} colours given back at their light values under both dark "
+                  f"selectors, in the shared region; {len(gone)} controls left off the sheet, "
+                  f"a recording's box not among them; {white} rules that set white type each "
+                  f"left off or printed on their ground ({len(kept)} grounds asked for)")
+
+
+@check("frontend", "the small things of the audit of 2 October stay fixed: targets, the wordmark, "
+                   "pointers, the address of a search, Escape, a player's name, commas and the seat map",
+       needs=("build_session_pages", "seating", "build_pages"))
+def _audit_minor(BSP, seating, BP):
+    """Nine minor findings of the navigation and accessibility audit of
+    2 October 2026, each small enough to return unnoticed.
+
+    M1   a person's chip is its link to the edges, and on a phone a control
+         whose own rule sets its size is 44px all the same.
+    M3   the wordmark is the size of its words: it grew to push the header's
+         controls right, and was a 974px link whose ring went round the tabs.
+    M10  a pointing hand and a hover only on a ring or a legend row that can
+         be pressed: a division's and a sitting day's only show a count.
+    M13  opening a long analysis leaves the keyboard at the start of the text.
+    M16  a search run with Return is in the address, and an emptied box takes
+         it out again; an address that named none is still left alone.
+    M17  Escape shuts the phone's filter panel.
+    M18  a player's frame is named for the sitting it shows.
+    M20  a name and the comma after it are one item of a speaker line.
+    M22  the seat map is a group with one Tab stop and arrow keys within it.
+    """
+    css = Path("app.css").read_text(encoding="utf-8")
+    bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    js = Path("app.js").read_text(encoding="utf-8")
+    bad = []
+
+    # M1
+    chip = re.search(r"\.mchip\{[^}]*padding:([^;}]+)", bare)
+    link = re.search(r"\.mchip > a\{padding:([^;}]+);\s*margin:([^;}]+)\}", bare)
+    if not (chip and link and link.group(1).split() == chip.group(1).split()):
+        bad.append("a chip's link does not take the chip's padding as its own, so only "
+                   "the line of the name can be pressed")
+    elif re.findall(r"calc\(-1 \* (var\(--sp-\d+\))\)", link.group(2)) != chip.group(1).split():
+        bad.append("a chip's link does not give its padding back as margin, so the chip grows")
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:720px\)\{(.*?)\n\}\n",
+                      css, re.S)
+    if not phone:
+        bad.append("the block that makes a phone's controls 44px is gone")
+    else:
+        for sel in (".cmbtn", ".calviews button", ".calfold", ".calcat", "#sort",
+                    ".bfilt select", ".docket summary", ".detail", ".offhow a"):
+            if not re.search(r"(^|[,\s}])" + re.escape(sel) + r"\s*[,{][^}]*44px", phone.group(1)):
+                bad.append(f"{sel} is not held to 44px on a phone")
+            base = [m.start() for m in re.finditer(r"(^|\n)" + re.escape(sel) + r"\{", css)]
+            if base and max(base) > phone.start(1):
+                bad.append(f"{sel}'s own rule comes after the phone block and outranks it")
+
+    # M3
+    if re.search(r"nav\.top \.brand\{[^}]*flex:\s*1\b", bare):
+        bad.append("the wordmark grows to fill the header again: the link is the width of "
+                   "the bar and its focus ring goes round the tabs")
+
+    # M10
+    if re.search(r"(^|\})\.lrow\{[^}]*cursor:pointer", bare) or \
+            re.search(r"\.donut circle\{[^}]*cursor:pointer", bare):
+        bad.append("every legend row or ring segment takes a pointing hand, pressable or not")
+    if "button.lrow{cursor:pointer}" not in bare or ".donut circle[data-seg]{cursor:pointer}" not in bare:
+        bad.append("a roll call's legend rows and segments, which can be pressed, lost their pointer")
+
+    # M13, M17: read, because both are a key press in a browser.
+    an = js[js.find('const an=e.target.closest(".anmore");'):][:1600]
+    if "text.focus({preventScroll:true})" not in an or "scrollIntoView" not in an:
+        bad.append("\"Show more\" on an analysis leaves focus on a button the text has "
+                   "carried off the screen")
+    esc_ = js[js.find('if(e.key==="Escape"&&e.target.closest'):][:400]
+    if 'closest("#facets,#ftoggle")' not in esc_ or 'classList.remove("fopen")' not in esc_ \
+            or "ftb.focus()" not in esc_:
+        bad.append("Escape no longer shuts the phone's filter panel and returns to its button")
+
+    # M16, M18: run.
+    got = _app_js("""(() => {
+      const wrote = []; history.replaceState = (s, t, u) => wrote.push(u);
+      location.pathname = "/bills"; location.hash = "";
+      const at = (search, q, always) => { location.search = search; wrote.length = 0;
+        scope.addressSearch(q, always); return wrote.length ? wrote[0] : null; };
+      return {run: at("", "HB 2", true), same: at("?q=HB+2", "HB 2", true),
+              typed: at("", "HB 2"), kept: at("?q=budget&sort=recent", "housing"),
+              emptied: at("?q=budget&sort=recent", "", true), emptiedOnly: at("?q=budget", ""),
+              hearing: scope.renderHearings({id: "HB1", n: "HB 1"}, {stations: [
+                {video_id: "abc", state: "whole_video", what: "public hearing",
+                 committee: "Finance", body: "H", when: "2025-03-12"}]}),
+              title: scope.recTitle("House Finance", "2026-05-05"),
+              undated: scope.recTitle("House Finance", "")};
+    })()""", names=("addressSearch", "renderHearings", "recTitle"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    want = {"run": "/bills?q=HB+2", "same": None, "typed": None,
+            "kept": "/bills?q=housing&sort=recent", "emptied": "/bills?sort=recent",
+            "emptiedOnly": "/bills"}
+    off = [f"{k}: {got.get(k)!r}, not {v!r}" for k, v in want.items() if got.get(k) != v]
+    if off:
+        bad.append("the address of a search: " + "; ".join(off))
+    if 'data-title="Recording of HB 1 - House Finance Public Hearing, Mar 12, 2025"' \
+            not in got["hearing"]:
+        bad.append("Play on a bill's sitting does not carry the name its player takes")
+    if got["title"] != "Recording of House Finance, May 5, 2026" or \
+            got["undated"] != "Recording of House Finance":
+        bad.append(f"a player is named {got['title']!r} and, undated, {got['undated']!r}")
+    for src, what in ((js, "app.js"), (BP.HOME_JS, "the home page")):
+        if 'title="Hearing recording"' in src or 'title="Floor session"' in src:
+            bad.append(f"{what} still gives every player one title")
+        if "dataset.title" not in src:
+            bad.append(f"{what}'s player does not take its title from the button it replaces")
+
+    # M20
+    class _M:
+        def slug(self, body, name):
+            return "x" if name == "Hunt" else ""
+    row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
+    if row != ('<span class="swho1"><a href="legislator/x.html">Rep. Hunt</a>,</span> '
+               '<span class="swho1"><span>Rep. Roy</span>,</span> '
+               '<span class="swho1"><span>Rep. Muns</span></span>'):
+        bad.append("a speaker line's names are not each one item with its comma: " + row[:160])
+    page = Path("build_session_pages.py").read_text(encoding="utf-8")
+    if re.search(r'", "\.join\(member_html', page):
+        bad.append("build_session_pages.py joins members with a bare comma again, which a "
+                   "flex row draws as an item of its own with a gap before it")
+
+    # M22
+    who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
+           for s in seating.all_seats() + [seating.SPEAKER_SEAT]}
+    drawn = seating.svg(who)
+    if 'class="seatmap" role="group" aria-label="' not in drawn:
+        bad.append("the seat map is not a labelled group: role=\"img\" promises a screen "
+                   "reader no children, and it holds 382 buttons")
+    if 'tabindex="0"' in drawn or drawn.count('tabindex="-1" role="button"') != len(who):
+        bad.append("a seat is written into the Tab order: 382 stops between the chart's "
+                   "controls and the list under it")
+    sj = BP.SEATING_JS
+    if "stopAt(seats[0])" not in sj or 'e.key==="ArrowRight"' not in sj \
+            or 'setAttribute("tabindex",s===c?"0":"-1")' not in sj:
+        bad.append("the seat map's script no longer keeps one Tab stop and walks the "
+                   "seats with the arrow keys")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", ("a chip is its link; nine phone controls at 44px; the wordmark does not grow; "
+                  "pointers only on what can be pressed; a search run is in the address; a "
+                  "player is named for its sitting; a name carries its comma; the seat map is "
+                  "one Tab stop")
 
 
 def _built_stylesheets():
@@ -10622,6 +12683,8 @@ ic_SOURCES = {
     "site/legislators.json": "build_site_v2.py, which does not declare it",
     "site/towns.json": "build_town_pages.py, which does not declare it",
     "site/idx": "build_indexes.py, which does not declare it",
+    "bill_text.json": "fetch_bill_text.py, the current term's bills as the "
+                      "General Court prints them; the kit carries it",
     "work": "fetch_captions.py -- a directory of caption folders",
     "calendars": "fetch_calendar_archive.py -- a directory of PDFs",
     "journals": "fetch_calendar_archive.py, the House Journals' PDFs, and "
@@ -11085,7 +13148,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, searchHint, indexAdd, whyListed, looseness, readShort, spelling, wordsAdd, pairCode, matchScore, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -11647,6 +13710,171 @@ if (scope.groupWeight(bill("hb2 relative to parental alienation"), imm) > 0
 var ev = scope.queryGroups("electric vehicles")[0];
 if (scope.groupWeight(bill("hb4 relative to hunting from a vehicle", "", "science, technology and energy"), ev) > 0) {
   console.log("SEARCH: a synonym matched a committee's name"); process.exit(1); }
+// The third pass (1 October): a word the table of public words owns is read
+// whole, a short word takes a plural and no other ending, an apostrophe typed
+// on a phone is an apostrophe, and the line under the box says what the
+// titles were searched for without repeating the word typed.
+var tr = scope.queryGroups("trans");
+if (tr.length !== 1 || !tr[0].exact || tr[0].alts.indexOf("gender identity") < 0
+    || scope.groupWeight(bill("hb5 relative to the transfer of state owned real property", "", "house transportation"), tr[0]) > 0
+    || scope.groupWeight(bill("hb6 relative to gender identity information on drivers' licenses"), tr[0]) !== 3) {
+  console.log("SEARCH: 'trans' is read as the start of transfer or transportation, or misses gender identity"); process.exit(1); }
+var aiq = scope.queryGroups("ai")[0];
+if (scope.groupWeight(bill("hb7 making school building aid program funds nonlapsing"), aiq) > 0
+    || scope.groupWeight(bill("hb8 relative to the use of artificial intelligence by state agencies"), aiq) !== 3) {
+  console.log("SEARCH: 'ai' matched 'aid', or missed artificial intelligence"); process.exit(1); }
+var carq = scope.queryGroups("cars")[0];
+if (scope.groupWeight(bill("hb9 relative to rental car coverage"), carq) !== 3
+    || scope.groupWeight(bill("hb10 relative to health care and identification cards"), carq) > 0) {
+  console.log("SEARCH: 'cars' missed 'car', or matched 'care' or 'card'"); process.exit(1); }
+var curly = scope.queryGroups("driver’s license"), straight = scope.queryGroups("driver's license");
+if (JSON.stringify(curly) !== JSON.stringify(straight)
+    || !curly.every(function (g) { return scope.groupWeight(bill("hb11 relative to driver’s license suspension"), g) > 0
+                                          && scope.groupWeight(bill("hb12 relative to driver's license suspension"), g) > 0; })) {
+  console.log("SEARCH: a curly apostrophe is not read as a straight one, in the search or in a title"); process.exit(1); }
+if (scope.queryGroups("legalize")[0].alts.indexOf("legaliz") < 0
+    || scope.queryGroups("probate")[0].alts.indexOf("probat") >= 0
+    || scope.queryGroups("appropriate")[0].alts.indexOf("appropriat") >= 0) {
+  console.log("SEARCH: 'legalize' does not reach legalizing, or 'probate' reaches probation, or 'appropriate' appropriations"); process.exit(1); }
+var hint = scope.searchHint(scope.queryGroups("lgbtq"),
+  [bill("hb6 relative to gender identity information on drivers' licenses"), bill("hb13 relative to state recognition of biological sex")]);
+if (/lgbtq/.test(hint) || hint.indexOf("also listing bills that say: ") !== 0
+    || hint.indexOf("gender identity") < 0 || hint.indexOf("biological sex") < 0 || /puberty/.test(hint)) {
+  console.log("SEARCH: the line under the box does not say which of the bills' words 'lgbtq' found them by, and only those: " + hint); process.exit(1); }
+var hg = scope.searchHint(scope.queryGroups("guns"), [bill("hb14 relative to extreme risk protection orders")]);
+if (hg.indexOf("also matching: firearm, weapon") !== 0 || hg.indexOf("; then bills that say: ") < 0
+    || hg.indexOf("risk protection order") < hg.indexOf("; then ")) {
+  console.log("SEARCH: the line under the box does not put a word's own group before the table's terms: " + hg); process.exit(1); }
+if (scope.searchHint(scope.queryGroups("xyzzy"), []) !== "") {
+  console.log("SEARCH: the line under the box says something about a word nothing stands for"); process.exit(1); }
+// The fourth pass (1 October, from the review of the third): a word for an
+// attitude is not a subject, a plural reaches the table only as the table
+// spells it, a plus sign and a bracket are marks.
+var one = function (q) { var g = scope.queryGroups(q); return g.length === 1 ? g[0] : {}; };
+if (one("hormone therapy ban").word !== "hormone therapy" || one("anti trans").word !== "trans"
+    || one("lgbtq+ rights").word !== "lgbtq rights" || one("287(g)").word !== "287g") {
+  console.log("SEARCH: 'ban', 'anti', a plus sign or a bracket is still read as a word a bill must have"); process.exit(1); }
+if (one("weeds").exact || one("pots").exact || !one("weed").exact) {
+  console.log("SEARCH: the plural of a word the table owns is read as the table's word: 'weeds' is the plant"); process.exit(1); }
+if (scope.groupWeight(bill("hb15 defining biostimulants and vitamin hormone products"), one("hormones")) !== 3) {
+  console.log("SEARCH: 'hormones' no longer finds a title that says 'hormone'"); process.exit(1); }
+// THE BILLS' OWN WORDS: the topic, the analysis and the text, and why.
+var tb = function (id, t, topic) { var b = bill(t); b.id = id; b.term = "T"; b.topic = topic || ""; return b; };
+if (!scope.indexAdd("T", {v: 1, ids: ["HB1", "HB2", "HB3", "HB4"],
+      w: {lavatory: [0, 20], rent: [27], abortion: [78]}, p: {"biological sex": [5]}})
+    || scope.indexAdd("T", {v: 2, ids: []}) || scope.indexAdd("T", null)) {
+  console.log("SEARCH: a search index of this version is refused, or one of another is taken"); process.exit(1); }
+var h1 = tb("HB1", "hb1 permitting classification of individuals under certain circumstances");
+var h2 = tb("HB2", "hb2 relative to a registry of the monthly rent charged", "Housing");
+var h3 = tb("HB3", "hb3 relative to the rights of conscience of medical professionals", "Welfare/Medicare/Medicaid");
+var h4 = tb("HB4", "hb4 relative to the rights of conscience of medical professionals");
+var bath = one("bathroom"), abo = one("abortion");
+if (!scope.groupWeight(h1, bath) || scope.groupWeight(h2, bath)
+    || scope.whyListed(h1, [bath]) !== "text says: lavatory and biological sex") {
+  console.log("SEARCH: 'bathroom' does not list the bill whose text says lavatory and biological sex, or lists the one that says lavatory alone, or does not say why: "
+              + scope.whyListed(h1, [bath])); process.exit(1); }
+if (scope.groupWeight(h1, one("lavatory")) <= 0 || scope.groupWeight(tb("HB2", "hb2 x"), scope.queryGroups("rent")[0]) !== 2.5
+    || scope.whyListed(tb("HB2", "hb2 x"), scope.queryGroups("rent")) !== "in the bill's text") {
+  console.log("SEARCH: a word a bill's text is about does not find the bill, or does not say it is the text"); process.exit(1); }
+if (scope.groupWeight(h4, abo) !== 2.5 || scope.whyListed(h4, [abo]) !== "in the bill's analysis"
+    || scope.groupWeight(tb("HB9", "hb9 x"), abo)) {
+  console.log("SEARCH: a word in a bill's analysis does not find it, or finds a bill of another id"); process.exit(1); }
+var housing = scope.queryGroups("housing"), medicaid = scope.queryGroups("medicaid");
+if (scope.whyListed(h2, housing) !== "topic: Housing" || scope.groupWeight(h3, medicaid[0])
+    || scope.groupWeight(h2, scope.queryGroups("affordable housing")[0])) {
+  console.log("SEARCH: a typed word that is the topic's name does not list the topic's bills, or a topic naming three subjects lists for one, or a phrase is answered by a topic"); process.exit(1); }
+if (scope.looseness(tb("HBX", "hb20 relative to housing"), housing) >= scope.looseness(h2, housing)
+    || scope.looseness(h2, housing) >= scope.looseness(tb("HB2", "hb2 x"), scope.queryGroups("rent"))) {
+  console.log("SEARCH: the order is not the word in the title, then the topic, then the text"); process.exit(1); }
+// WHERE A WORD THIS FILE SUPPLIED MAY BE FOUND, and what two weak findings
+// make together (the second review, 1 October). Posting = place in ids * 20,
+// + 10 in the analysis, + the weight.
+// The pairs (WORDS THAT STAND TOGETHER, 2 October): HB13's analysis says
+// "car insurance" in those words; HB18's says "insurance" and, further on,
+// "car"; HB19's text says "custody of children", which is custody beside
+// child once the words that carry no subject are out.
+if (!scope.indexAdd("V", {v: 1, ids: ["HB10", "HB11", "HB12", "HB13", "HB18", "HB19"],
+      w: {gun: [7], insurance: [57, 37, 37], custody: [107]}, p: {"risk protection order": [26]},
+      b: ["", "", "", scope.pairCode("car", "insurance"), "", scope.pairCode("custody", "child")]})) {
+  console.log("SEARCH: a second term's search index is refused"); process.exit(1); }
+var vb = function (id, t, topic, s) { var b = bill(t, s); b.id = id; b.term = "V"; b.topic = topic || ""; return b; };
+var all = function (b, gs) { return gs.every(function (g) { return scope.groupWeight(b, g) > 0; }); };
+var gc = one("gun control");
+if (scope.groupWeight(vb("HB10", "hb10 establishing the speed enforcement and awareness fund"), gc)
+    || !scope.groupWeight(vb("HB11", "hb11 relative to orders of protection"), gc)
+    || scope.whyListed(vb("HB11", "hb11 relative to orders of protection"), [gc]) !== "text says: risk protection order"
+    || scope.groupWeight(vb("HB10", "hb10 x"), scope.queryGroups("gun")[0]) !== 2.5) {
+  console.log("SEARCH: a single word the table supplied ('gun', for 'gun control') lists a bill whose text alone has it (radar guns), or a phrase of the table no longer does, or the reader's own word is no longer read in the text"); process.exit(1); }
+var ci = scope.queryGroups("car insurance");
+if (all(vb("HB12", "hb12 relative to health care provider networks"), ci)
+    || !all(vb("HB13", "hb13 relative to rental car coverage"), ci)
+    || all(vb("HB14", "hb14 relative to health care billing", "Insurance"), ci)) {
+  console.log("SEARCH: 'car insurance' lists a bill with 'care' in its title and 'insurance' only in its analysis or its topic, or no longer lists one with 'car' in its title whose analysis says 'car insurance'"); process.exit(1); }
+// Two words found apart are not a bill (2 October): "small claims" listed a
+// tariff credit for small businesses whose text says "approved claims".
+var cc = scope.queryGroups("child custody");
+if (all(vb("HB18", "hb18 relative to car registration fees"), ci)
+    || !all(vb("HB19", "hb19 relative to parenting plans for a child"), cc)
+    || !all(vb("HB19", "hb19 relative to children"), scope.queryGroups("children custody"))
+    || all(vb("HB19", "hb19 relative to labor"), scope.queryGroups("labor custody"))) {
+  console.log("SEARCH: in a search of several words, a word found only in a bill's analysis or text is counted where it does not stand beside another word of the search ('car' in the title, 'insurance' elsewhere in the analysis), or is not counted where it does ('custody of children')"); process.exit(1); }
+// A stale file, from before the pairs: the search lists less, never more.
+scope.indexAdd("W", {v: 1, ids: ["HB13"], w: {insurance: [17]}, p: {}});
+var stale = bill("hb13 relative to rental car coverage"); stale.id = "HB13"; stale.term = "W";
+if (all(stale, ci)) {
+  console.log("SEARCH: with a search index that has no pairs, a word in the analysis is still counted beside a word of the title"); process.exit(1); }
+var pt = scope.queryGroups("property taxes");
+if (!all(vb("HB15", "hb15 requiring the assessment of real property", "Taxes - Local"), pt)
+    || scope.whyListed(vb("HB15", "hb15 requiring the assessment of real property", "Taxes - Local"), pt) !== "topic: Taxes - Local"
+    || all(vb("HB16", "hb16 relative to rights in private roads", "Civil Actions"), scope.queryGroups("civil rights"))
+    || all(vb("HB17", "hb17 relative to notice of death affidavits", "Property - Real and Personal"), pt)) {
+  console.log("SEARCH: in a search of several words a topic must be that word and nothing else, with the other words in the title: 'property taxes' and the topic Taxes, not 'civil rights' and Civil Actions"); process.exit(1); }
+if (scope.groupWeight(bill("hb18 relative to election officers", "lucy weed"), one("weeds"))
+    || scope.groupWeight(bill("hb19 relative to the sale of knives"), one("knife")) !== 3
+    || scope.groupWeight(bill("hb20 relative to the welfare of a child"), one("children")) !== 3) {
+  console.log("SEARCH: 'weeds' is read as a sponsor named Weed, or 'knife' does not find 'knives', or 'children' 'child'"); process.exit(1); }
+var ta = scope.queryGroups("transgender athlete ban"), tas = scope.queryGroups("transgender athletes");
+if (ta.length !== 1 || ta[0].word !== "transgender athlete" || !ta[0].with
+    || JSON.stringify(ta[0].alts.slice(2)) !== JSON.stringify(tas[0].alts.slice(1))) {
+  console.log("SEARCH: 'transgender athlete' is not read as the table's 'transgender athletes'"); process.exit(1); }
+// A SEARCH THAT LISTS NOTHING. Nothing is read again by itself (the second
+// review): a misspelt word is OFFERED as the word it sounds like, and only
+// once the words every bill uses say that it is not one.
+var rs = [h1, h2, tb("HB5", "hb5 relative to medicaid eligibility"), tb("HB6", "hb6 relative to medicare supplements"),
+          tb("HB7", "hb7 relative to special education complaints"),
+          tb("HB8", "hb8 enabling the treasurer to invest with certain funds"),
+          tb("HB9", "hb9 relative to pistol permits")];
+var listed = function (q, rows) { var g = scope.readShort(scope.queryGroups(q), rows);
+  return rows.filter(function (b) { return all(b, g); }).length; };
+if (listed("medicade", rs) || listed("incest", rs) || listed("wiith", rs) || !listed("medicaid", rs)) {
+  console.log("SEARCH: a word no bill here has is read as another word by itself, and its bills listed"); process.exit(1); }
+var sp0 = scope.spelling(scope.queryGroups("medicade"), rs);
+if (!sp0 || !sp0.need || sp0.q || scope.spelling(scope.queryGroups("medicaid"), rs)) {
+  console.log("SEARCH: a word is offered before the words every bill uses are known, or one is offered for a search that finds bills"); process.exit(1); }
+if (scope.wordsAdd({v: 2, words: "incest"}) || scope.wordsAdd({v: 1, words: ""}) || scope.wordsAdd(null)
+    || !scope.wordsAdd({v: 1, n: 3, words: "incest pistillate special"})) {
+  console.log("SEARCH: a words file of another version or with nothing in it is taken, or a good one refused"); process.exit(1); }
+var md = scope.spelling(scope.queryGroups("medicade"), rs);
+if (!md || md.q !== "medicaid" || md.n !== 1 || md.read.length !== 1 || md.read[0].join(">") !== "medicade>medicaid") {
+  console.log("SEARCH: 'medicade' is not offered as Medicaid, the word it sounds like and not the one it is a letter from: " + JSON.stringify(md)); process.exit(1); }
+if (scope.spelling(scope.queryGroups("incest"), rs)) {
+  console.log("SEARCH: 'incest', a word the bills use, is offered as another word ('invest')"); process.exit(1); }
+if (scope.spelling(scope.queryGroups("wiith"), rs)) {
+  console.log("SEARCH: a word is offered as one the search skips ('with')"); process.exit(1); }
+var pl = scope.spelling(scope.queryGroups("pistal"), rs);
+if (!pl || pl.q !== "pistol" || scope.spelling(scope.queryGroups("pistil"), rs)) {
+  console.log("SEARCH: 'pistal' is not offered as 'pistol', or 'pistil', the start of a word the bills use, is"); process.exit(1); }
+if (scope.spelling(scope.queryGroups("haiti"), rs.concat([tb("HB21", "hb21 relative to hate crimes")]))) {
+  console.log("SEARCH: a short word two letters from another is offered as it ('haiti' as 'hate')"); process.exit(1); }
+// Two letters, as the start of a word: only in a term where the search as
+// typed lists nothing, and decided term by term, so that searching more
+// terms never lists fewer of one term's bills.
+var u1 = bill("hb1 relative to special number plates", "ed smith"), u2 = bill("hb2 relative to special education aid");
+u1.id = "HB1"; u1.term = "U"; u2.id = "HB2"; u2.term = "U";
+var both = rs.concat([u1, u2]), se = scope.readShort(scope.queryGroups("special ed"), both);
+if (!all(rs[4], se) || !all(u1, se) || all(u2, se) || all(rs[4], scope.queryGroups("special ed"))
+    || listed("special ed", both) < listed("special ed", rs)) {
+  console.log("SEARCH: 'special ed' does not read 'ed' as the start of a word in the term where it lists nothing, or does where it lists something, or lists fewer bills over two terms than over one"); process.exit(1); }
 console.log("ok");
 """, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True,
@@ -13367,7 +15595,8 @@ def _proceedings_term_shrink():
         shutil.rmtree(root, ignore_errors=True)
 
 
-CHAIN_NEEDS = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
+CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
+               "build_bill_pages.py",
                "build_session_pages.py", "session_days.py", "journal_days.py",
                "build_legislator_pages.py", "build_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
@@ -13495,6 +15724,15 @@ def _built_site(here, root, brand=True, env=None):
     steps = [
         ("build_site_v2.py", ["--data", "data", "--out", "site",
                               "--segments", "work"], "site/index.json"),
+        # IN BUILD_ALL'S ORDER, after the site data whose indexes it reads
+        # (2 October). The fixture carries no bill text, which the builder is
+        # told and says in its manifest (--allow-no-text); check_site then
+        # warns of the term without text and refuses nothing. Without this
+        # step check_site refuses the fixture's site as it would a real one:
+        # bill indexes and no search index beside them. Until then no check
+        # ran this script's main() at all.
+        ("build_search_index.py", ["--idx", "site/idx", "--out", "site/sidx",
+                                   "--allow-no-text"], "site/sidx/manifest.json"),
         ("build_pages.py", ["--out", "site"], "site/legislators.html"),
         ("build_bill_pages.py", ["--site", "site", "--base", base],
          "site/sitemap.xml"),
@@ -13508,9 +15746,14 @@ def _built_site(here, root, brand=True, env=None):
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
         # Before the calendar, whose floor cards link to these, and after the
-        # legislator pages it resolves speaker names against.
+        # legislator pages it resolves speaker names against. BOTH CHAMBERS,
+        # the Senate first, as build_all runs them (2 October 2026): the
+        # directory lists every day each chamber sat, so a fixture that built
+        # the House's pages alone listed a Senate day with no page behind it.
+        ("build_session_pages.py", ["--site", "site", "--base", base, "--body", "S"],
+         "site/session/S"),
         ("build_session_pages.py", ["--site", "site", "--base", base],
-         "site/session"),
+         "site/session/H"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -13841,6 +16084,104 @@ def _chain():
         home = (root / "site" / "index.html").read_text(encoding="utf-8", errors="replace")
         assert '<h1 class="lockup"><span>Granite Record</span></h1>' in home, (
             "the home page's heading is not the lockup with its name kept as text")
+        # EVERY SITTING DAY CAN BE REACHED, AND NOTHING LEADS TO ONE THAT IS
+        # NOT THERE (the audit of 2 October 2026, B3). Of 1,563 sitting pages
+        # 62 had a link from anything but the sitting beside them. What must
+        # hold of the built site: each chamber's list in the directory links
+        # every page that chamber has and no other; the directory names both
+        # lists; session/days.json, which app.js asks before it links a
+        # vote's date, is the pages on disk; each page leads up to its
+        # chamber's list, and to its week only where the calendar wrote that
+        # week; and the home page hands its script only days that have a page.
+        sess = root / "site" / "session"
+        on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")) for b in ("H", "S")}
+        assert all(on_disk.values()), f"the chain built no sitting pages for a chamber: {on_disk}"
+        listed = json.loads((sess / "days.json").read_text(encoding="utf-8"))
+        assert listed == on_disk, (
+            f"session/days.json lists {listed} and the pages on disk are {on_disk}: "
+            "app.js links a vote's date to the days this file names")
+        hub = (root / "site" / "directory.html").read_text(encoding="utf-8")
+        weeks = {p.stem for p in (root / "site" / "calendar").glob("*-W*.html")}
+        n_up = 0
+        for b, name, lst in (("H", "House", "sessions-house"), ("S", "Senate", "sessions-senate")):
+            page = (root / "site" / "directory" / f"{lst}.html").read_text(encoding="utf-8")
+            got = sorted(re.findall(rf'href="session/{b}/(\d{{4}}-\d\d-\d\d)"', page))
+            assert got == on_disk[b], (
+                f"/directory/{lst} links {got} and the {name}'s pages are {on_disk[b]}")
+            assert f'href="directory/{lst}">Every {name} session day</a>' in hub, (
+                f"the directory does not link the list of {name} session days")
+            for d in on_disk[b]:
+                day = (sess / b / f"{d}.html").read_text(encoding="utf-8")
+                up = re.findall(r'<div class="wkpage sesspage"><p class="crumb">(.*?)</p><h1>',
+                                day, re.S)
+                assert len(up) == 1 and f'href="directory/{lst}#y{d[:4]}"' in up[0], (
+                    f"session/{b}/{d} does not lead up to the list of {name} "
+                    "session days, at its year, in a line above its heading")
+                assert f'id="y{d[:4]}"' in page, (
+                    f"/directory/{lst} has no heading for {d[:4]}, which "
+                    f"session/{b}/{d} leads to")
+                y, w, _ = _date.fromisoformat(d).isocalendar()
+                wk = f"{y}-W{w:02d}"
+                assert (f'href="calendar/{wk}"' in up[0]) == (wk in weeks), (
+                    f"session/{b}/{d} {'does not link' if wk in weeks else 'links'} "
+                    f"its week on the Calendar, {wk}, which the calendar "
+                    f"{'wrote' if wk in weeks else 'did not write'}")
+                n_up += wk in weeks
+                # Previous on the left and next on the right, as before.
+                navs = re.findall(r'<nav class="wknav[^"]*" aria-label="Other sittings">(.*?)</nav>',
+                                  day, re.S)
+                order = re.findall(r'class="(wkprev|wknext)"', navs[0]) if navs else None
+                assert len(navs) == 2 and order == sorted(order, reverse=True), (
+                    f"session/{b}/{d}: its nav reads {order}")
+        handed = re.search(r'<div id="session" data-days="([^"]*)">', homepage)
+        assert handed, "the home page's floor sessions block carries no data-days"
+        for key in handed.group(1).split():
+            b, d = key.split("/")
+            assert d in on_disk.get(b, []), (
+                f"the home page links the sitting {key}, which has no page")
+        assert handed.group(1), (
+            "the home page links none of the days its floor sessions block names, "
+            "though the fixture's newest recorded sitting has a page")
+        # EVERY LANDMARK HAS A NAME, AND EVERY TABLE A HEADER CELL (the audit
+        # of 2 October 2026, M6 and M7). A Learn article carries three navs
+        # and a week of the Calendar four, and the one on every page had no
+        # label; the bill search row was outside every landmark; the home
+        # page's activity and the Learn pages' two-column tables had no header
+        # cell at all, so a screen reader was given a grid with nothing to say
+        # what a column is, or no table. Over every page the chain built.
+        unnamed, headless, n_nav, n_tab = [], [], 0, 0
+        for f in sorted((root / "site").rglob("*.html")):
+            page = INLINE_BODY.sub(r"\1", f.read_text(encoding="utf-8", errors="replace"))
+            rel = f.relative_to(root / "site").as_posix()
+            for tag in re.findall(r"<nav\b[^>]*>", page):
+                n_nav += 1
+                if "aria-label=" not in tag and "aria-labelledby=" not in tag:
+                    unnamed.append(f"{rel}: {tag[:60]}")
+            for tab in re.findall(r"<table\b.*?</table>", page, re.S):
+                # The Calendar's month is a grid its script fills, days and
+                # headings both; what is in the markup is its empty frame.
+                if re.match(r'<table\b[^>]*\brole="grid"', tab):
+                    continue
+                n_tab += 1
+                if not re.search(r"<th\b", tab):
+                    headless.append(f"{rel}: {' '.join(tab.split())[:70]}")
+                # A table that is all data, as the exports page's coverage
+                # is: every row of its body opens with the cell that heads it.
+                if 'class="cov"' in tab:
+                    body = tab[tab.index("<tbody"):]
+                    trs = re.findall(r"<tr>\s*<(t[hd])\b([^>]*)>", body)
+                    if not trs or any(t != "th" or 'scope="row"' not in a for t, a in trs):
+                        headless.append(f"{rel}: a term of the coverage table does not head its row")
+            if 'class="searchrow"' in page:
+                assert re.search(r'<div class="searchrow" role="search" aria-label="[^"]+">', page), (
+                    f"{rel}: the bill search row is not a named search landmark")
+            if 'id="facets"' in page:
+                assert re.search(r'<aside class="facets" id="facets" aria-label="[^"]+">', page), (
+                    f"{rel}: the filters are an aside with no name")
+        assert n_nav and not unnamed, (
+            f"{len(unnamed)} navs with no name: " + "; ".join(unnamed[:4]))
+        assert n_tab and not headless, (
+            f"{len(headless)} tables with no header cell: " + "; ".join(headless[:4]))
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
@@ -14265,6 +16606,123 @@ def _links_resolve():
                       "with the files placed, the lockup and the mark are drawn")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("session", "a vote's date leads to that chamber's sitting where the sitting has a page, and nowhere else",
+       needs=("build_session_pages",))
+def _sitting_links(BSP):
+    """The audit of 2 October 2026, B3: a past sitting could be reached only
+    from the sitting next to it. A roll call on a bill and a row of a member's
+    votes name the day and the chamber and did not link it.
+
+    app.js links the date now, and only to a page that was built: it asks
+    session/days.json, which build_session_pages.py writes from the pages it
+    wrote. Held here, in node against dom_stub.js: before the list lands a
+    date is text and the list is asked for once; a day on the list is a link
+    to session/<body>/<date>; a day that is not on it, or the other chamber's,
+    stays text; and a member's row reads its chamber out of the vote's key
+    and its day out of the m/d/yyyy the roll call file carries.
+
+    And the builder's half, without a build: the days a page is written for
+    are the days up to today and no later; the list of them is written a
+    chamber at a time and the other chamber's is kept (a writer run on a
+    subset destroys the rest); a page leads up to its chamber's list, and to
+    its week only where it is handed that week.
+    """
+    built, later = BSP.sittings({("H", "2026-05-21"): 1, ("S", "2026-05-14"): 1,
+                                 ("H", "2026-12-31"): 1}, today="2026-10-02")
+    assert built == [("H", "2026-05-21"), ("S", "2026-05-14")] and \
+        later == [("H", "2026-12-31")], (
+        f"sittings() builds {built} and holds back {later}: a sitting after "
+        "the build is not a day to publish")
+    up = BSP.up_links("H", "2026-05-21", {"2026-W21"})
+    assert len(up) == 2 and 'href="directory/sessions-house#y2026"' in up[0] and \
+        'href="calendar/2026-W21"' in up[1], up
+    up = BSP.up_links("S", "2003-01-30", {"2026-W21"})
+    assert len(up) == 1 and 'href="directory/sessions-senate#y2003"' in up[0], (
+        "a sitting whose week the calendar does not hold links a week: " + " ".join(up))
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "session").mkdir()
+        BSP.write_days_index(root, "S", ["2026-05-14"])
+        BSP.write_days_index(root, "H", ["2026-05-21", "2025-01-08"])
+        BSP.write_days_index(root, "S", ["2026-05-14", "2026-06-04"])
+        got = json.loads((root / "session" / "days.json").read_text(encoding="utf-8"))
+        assert got == {"H": ["2025-01-08", "2026-05-21"],
+                       "S": ["2026-05-14", "2026-06-04"]}, (
+            f"session/days.json, written a chamber at a time, holds {got}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const asked = [];
+globalThis.fetch = async u => { asked.push(String(u)); return {ok: true, status: 200,
+  json: async () => String(u).endsWith("session/days.json")
+    ? {H: ["2026-05-21"], S: ["2026-05-14"]} : [], text: async () => "[]"}; };
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({sittingLink, voteIso, voteChamber, renderVotes, voteRow})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+(async () => {
+  const out = {};
+  const before = asked.filter(u => u.endsWith("session/days.json")).length;
+  out.early = s.sittingLink("H", "2026-05-21", "May 21, 2026");
+  s.sittingLink("H", "2026-05-21", "x"); s.sittingLink("S", "2026-05-14", "x");
+  out.asked = asked.filter(u => u.endsWith("session/days.json")).length - before;
+  for (let i = 0; i < 20; i++) await null;
+  out.link = s.sittingLink("H", "2026-05-21", "May 21, 2026");
+  out.other = s.sittingLink("S", "2026-05-21", "May 21, 2026");
+  out.absent = s.sittingLink("H", "2026-05-22", "May 22, 2026");
+  out.none = s.sittingLink("", "", "no date");
+  out.iso = [s.voteIso({d: "8/19/2026"}), s.voteIso({d: "12/3/2025"}), s.voteIso({d: ""}),
+             s.voteIso({d: "2026-08-19"})];
+  out.ch = [s.voteChamber({k: "2026-H-302"}), s.voteChamber({k: "2026-S-7"}), s.voteChamber({})];
+  out.rc = s.renderVotes({id: "HB1"}, {rollcalls: [{question: "Ought to Pass",
+    date: "2026-05-21", body: "H", vote_kind: "VV", passed: true}]});
+  out.row = s.voteRow({x: {d: "5/14/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-7",
+    y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  out.rowOff = s.voteRow({x: {d: "5/15/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-8",
+    y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  process.stdout.write("\\n@@" + JSON.stringify(out));
+})();
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["early"] == "May 21, 2026", (
+        "before the list of sittings has landed a date is drawn as a link: " + got["early"])
+    assert got["asked"] == 1, (
+        f"session/days.json was asked for {got['asked']} times by three dates, not once")
+    assert got["link"] == '<a href="session/H/2026-05-21.html">May 21, 2026</a>', (
+        "a day the House sat, with a page, is drawn as: " + got["link"])
+    for k in ("other", "absent", "none"):
+        assert "<a" not in got[k], (
+            f"a date with no sitting page behind it is a link ({k}): {got[k]}")
+    assert got["iso"] == ["2026-08-19", "2025-12-03", "", ""] and got["ch"] == ["H", "S", ""], (
+        f"a member's vote reads as day {got['iso']} and chamber {got['ch']}")
+    assert '<a href="session/H/2026-05-21.html">May 21, 2026</a>' in got["rc"], (
+        "a roll call on a bill does not link its day to the sitting")
+    assert '<a href="session/S/2026-05-14.html">5/14/2026</a>' in got["row"], (
+        "a row of a member's votes does not link its day to the sitting")
+    assert "session/" not in got["rowOff"] and "5/15/2026" in got["rowOff"], (
+        "a row of a member's votes links a day with no sitting page")
+    return "ok", ("a date is a link to session/<body>/<date> where days.json lists the "
+                  "day, text otherwise, and the list is asked once; pages are built up to "
+                  "today, the list is merged a chamber at a time, and a page leads up to "
+                  "its list and to its week only where the calendar has it")
 
 
 @check("session", "a sitting page links each bill to its own term's bill",
@@ -18903,9 +21361,17 @@ def _directory_pages():
                               {"id": "SB2", "n": "SB 2", "year": 2026, "term": "2025-2026",
                                "title": "a second bill", "status": "Killed"}],
                 "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
-                               "title": "an old bill", "status": ""}]}
+                               "title": "an old bill", "status": ""}],
+                # The term of requests, as build_lsrs.py writes it: rows
+                # marked `lsr`, which no builder writes a page for.
+                "2027-requests": [{"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027,
+                                   "term": "2027-requests", "title": "a request",
+                                   "status": "Filed as a request", "lsr": True}]}
         for term, r in rows.items():
             (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps(
+            {"requests": {"term": "2027-requests", "label": "2027 Bill Requests",
+                          "n": 1, "withdrawn": 0}}), encoding="utf-8")
         (site / "legislators.json").write_text(json.dumps([
             {"id": "1", "name": "Doe, Jane", "chamber": "H", "party": "Democratic",
              "county": "Hillsborough", "district": "12", "slug": "jane-doe-hills-12",
@@ -18931,8 +21397,27 @@ def _directory_pages():
             assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
         hub = (site / "directory.html").read_text(encoding="utf-8")
         assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
+        # A REQUEST HAS NO PAGE, AND ITS LIST LINKS NONE. All 241 links on
+        # /directory/bills-2027-requests answered 404 (the audit of 2 October
+        # 2026): the list wrote bill/2027/lsr20270001 for every row, and
+        # build_bill_pages.py builds no page for a request. The number is
+        # text, the list is named as the bill search's term picker names it,
+        # and the requests are not counted among the terms of bills.
+        reqs = (site / "directory" / "bills-2027-requests.html").read_text(encoding="utf-8")
+        assert "LSR 2027-0001" in reqs and "bill/2027" not in reqs, (
+            "the list of requests links a page for a request, and no builder writes one")
+        assert "<title>2027 Bill Requests | Granite Record</title>" in reqs \
+            and "<h1>2027 Bill Requests</h1>" in reqs, (
+            "the list of requests is not titled as the term picker names it "
+            "(meta.json's requests.label)")
+        assert 'href="bills?term=2027-requests"' in reqs, (
+            "the list of requests does not lead to the one page that holds them")
+        assert ">2027 Bill Requests</a>" in hub and ">2027-requests<" not in hub, (
+            "the directory names the requests by their raw key")
+        assert "all 2 terms from 1989" in hub, (
+            "the directory counts the requests as a term of bills")
         sm = (site / "sitemap.xml").read_text(encoding="utf-8")
-        assert sm.count("<loc>") == 5, sm
+        assert sm.count("<loc>") == 6, sm
         # THE ROUTE IS TWO HOPS NOW, AND THE POINT IS THE ROUTE. The footer
         # linked the directory directly until 18 September, when the owner
         # moved that link to the Data page -- in a grey band it was one of
@@ -21591,13 +24076,738 @@ def _tab_keyboard():
     open_page = js[js.find("function openPage("):][:800]
     assert "PAGE_TAB=0" in open_page.replace(" ", ""), "openPage does not reset PAGE_TAB"
     assert 'class="vpick" role="tablist"' not in js, "the version picker is a tablist with no tabs"
+    # That focus survives a redraw is run now, not read: _focus_survives,
+    # below, puts focus on a control and draws through each renderer.
     assert "const repaint=" in js, "app.js has no repaint()"
-    rep = js[js.find("const repaint="):][:700]
-    assert "document.activeElement" in rep and ".focus(" in rep, \
-        "an async redraw (the bill text arriving) drops focus to <body>"
     assert 'id="ptab_${i}" aria-controls="ppane"' in js and 'aria-labelledby="ptab_${PAGE_TAB}"' in js, \
         "member and committee tabs are not tied to their panel"
-    return "ok", "focus survives a redraw, the tab resets per page, the picker is a group"
+    return "ok", "an arrow key focuses after the redraw, the tab resets per page, the picker is a group"
+
+
+# The harness of _focus_survives, run in node beside page.js (app.js) and
+# stub.js (dom_stub.js). A raw string: the selectors it compares carry
+# backslashes.
+_FOCUS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.CSS = {escape: s => String(s).replace(/["\\|#.:\[\]]/g, "\\$&")};
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({focusKey, refocus, render, renderPage, renderFacets, IDX, setPage:(p)=>{PAGE=p;}, setMeta:(m)=>{META=m;}})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+// A control, as focusKey reads one: its tag, id, data attributes, classes,
+// the card it is in, and whether it is inside what a redraw replaces.
+const body = document.body;
+const live = {};                       // selector -> the controls it matches now
+document.querySelectorAll = sel => live[sel] || [];
+function ctl(tag, o) {
+  o = o || {};
+  return {tagName: tag.toUpperCase(), id: o.id || "", dataset: o.data || {},
+    classList: o.classes || [], focused: 0, isConnected: true,
+    getAttribute: k => (o.attrs || {})[k] ?? null,
+    closest: q => q === "#results,#facets" ? (o.outside ? null : {})
+      : q === ".card[data-id]" ? (o.card ? {dataset: {id: o.card}} : null) : null,
+    focus() { this.focused++; document.activeElement = this; }};
+}
+const out = {keys: {}};
+const kinds = {
+  tab: ctl("button", {id: "tab_HB2_1", data: {t: "1"}, classes: ["tab"], card: "HB2"}),
+  facet: ctl("input", {data: {f: "topic"}, attrs: {value: "Education"}}),
+  head: ctl("button", {classes: ["chead"], card: "HB2"}),
+  legend: ctl("button", {data: {seg: "HB2|0|R-Yea"}, classes: ["lrow"], card: "HB2"}),
+  term: ctl("select", {data: {pf: "term"}}),
+  group: ctl("button", {data: {g: "committee"}, classes: ["fhead"]}),
+  more: ctl("button", {data: {more: "1"}, classes: ["link"]}),
+  search: ctl("input", {id: "q", outside: true}),
+};
+for (const [k, e] of Object.entries(kinds)) { const key = s.focusKey(e); out.keys[k] = key && key.sel; }
+out.none = [s.focusKey(null), s.focusKey(body)];
+
+// Each renderer, with focus on a control it is about to replace. The slot the
+// renderer writes is a stand-in whose innerHTML, when set, does what a
+// browser does: the old control is gone, focus is on <body>, and a copy of
+// the control is in its place.
+function through(name, draw, slot, old) {
+  const key = s.focusKey(old);
+  const fresh = ctl("x");
+  live[key.sel] = [old];
+  document.activeElement = old;
+  const real = document.querySelector(slot), find = document.querySelector;
+  const box = Object.create(real, {innerHTML: {get() { return real.innerHTML; },
+    set(v) { real.innerHTML = v; if (document.activeElement === old) document.activeElement = body;
+             live[key.sel] = [fresh]; }}});
+  document.querySelector = q => q === slot ? box : find.call(document, q);
+  try { draw(); out[name] = {refocused: fresh.focused, active: document.activeElement === fresh}; }
+  catch (e) { out[name] = "THREW " + e.message; }
+  delete live[key.sel];
+  document.querySelector = find;
+}
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.IDX.length = 0;
+s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind: "active",
+  committees: ["House Finance"], topic: "Insurance", sponsor: "Nelson, Jodi", term: "2026",
+  year: "2026", hay: "hb1442"});
+through("render", () => s.render(), "#results", kinds.head);
+through("renderFacets", () => s.renderFacets(), "#facets", kinds.facet);
+through("render, of a filter", () => s.render(), "#facets", kinds.group);
+s.setPage({kind: "committee", data: {code: "H34", name: "Finance", chamber: "H", bills: [],
+  sessions: [], members: []}, terms: ["2025-2026"], term: "2025-2026", status: ""});
+through("renderPage", () => s.renderPage(), "#results", kinds.term);
+// Focus the redraw did not take is left where it is.
+s.setPage(null);
+const kept = kinds.search; document.activeElement = kept;
+live["#q"] = [ctl("x")];
+s.render();
+out.kept = document.activeElement === kept && live["#q"][0].focused === 0;
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+# What the two harnesses below share, run in node beside page.js (app.js) and
+# stub.js (dom_stub.js). The stub drops what the window and the document are
+# asked to listen for, and its history writes nothing down; here both are
+# kept, so a check can press a key, click, and go back, and read what the
+# page then did to the address. A raw string: it carries a regular expression.
+_HEARD_PRELUDE = r"""
+require("./stub.js");
+const fs = require("fs");
+const heard = {window: {}, document: {}};
+globalThis.addEventListener = (t, f) => (heard.window[t] = heard.window[t] || []).push(f);
+document.addEventListener = (t, f) => (heard.document[t] = heard.document[t] || []).push(f);
+globalThis.CSS = {escape: s => String(s).replace(/["\\|#.:\[\]]/g, "\\$&")};
+// The address as the page writes it: what was pushed, replaced or gone back
+// from, and location following each as a browser's does.
+const wrote = [];
+const go = u => { const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(u);
+  location.pathname = m[1]; location.search = m[2] || ""; location.hash = m[3] || ""; };
+history.pushState = (st, t, u) => { wrote.push("push " + u); history.state = st; go(u); };
+history.replaceState = (st, t, u) => { wrote.push("replace " + u); history.state = st; go(u); };
+history.back = () => { wrote.push("back"); };
+location.origin = "https://x";
+let s;
+function load(names) {
+  try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({" + names + "})"); }
+  catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+}
+// Stand the page at an address, as if it had loaded there or written it.
+// location.href is a mark: anything else in it afterwards is where the page
+// sent the reader.
+function place(path, state, standalone) {
+  go(path); history.state = state; window.GR_STANDALONE = standalone;
+  s.addressed(); wrote.length = 0; location.href = "HERE";
+}
+const pop = state => { history.state = state; heard.window.popstate.forEach(f => f({state})); };
+// A click on something `hit` answers for: hit(selector) is what
+// e.target.closest(selector) finds.
+function click(hit, ev) {
+  const e = Object.assign({button: 0, detail: 1, prevented: 0,
+    preventDefault() { this.prevented++; },
+    target: {closest: q => hit(q) || null, dataset: {}, id: ""}}, ev || {});
+  heard.document.click.forEach(f => f(e));
+  return e;
+}
+const seen = () => ({href: location.href, wrote: wrote.slice(), focused: s.getFocused()});
+"""
+
+
+@check("frontend", "a bill's own page starts at the top, stays on the bill at its skip link, and leaves "
+                   "by a link to the bill search with the words of a search run from it")
+def _bill_page_start_and_exit():
+    """The audit of 2 October 2026, S7 and S14, and what the review of their
+    fixes found.
+
+    S7. app.js put focus in the bill search box on load, on the search page
+    and on every bill's own page: on /bill/2025/hb2 the first Tab press went
+    to the box's button, so "Skip to this bill" and the nav were behind the
+    starting point. The box takes focus only where there is no bill named.
+
+    AND THE SKIP LINK STAYS ON THE BILL. That made "Skip to this bill" the
+    first Tab stop on 33,717 pages, and pressing it left for the bill search:
+    a link to a place on the page fires popstate with no state, which the
+    handler took for "back to the list", and on a bill's own page going back
+    to the list is leaving the page. The handler does nothing where only the
+    fragment moved, or where the address is still a bill's own.
+
+    S14. "Back to bill search" was a button that called history.back(). Opened
+    directly, a bill's page left the site; reached from a member's page, it
+    went back to the member. It is a link to /bills, and a plain click goes
+    back in history only where back is the search: in the search itself,
+    where the bill was opened over the list, or on a bill's own page when the
+    referrer is this site's /bills and there is a page behind it in the tab.
+
+    AND WHERE THE ADDRESS OPENED THE BILL, IT DRAWS THE LIST. /bills#2025/HB2
+    -- the home page's Latest activity and the calendar link to it -- pushed
+    nothing, so in the search back was the home page, or nothing in a new tab.
+    There the click shows the list in place.
+
+    AND A SEARCH RUN FROM A BILL'S OWN PAGE TAKES ITS WORDS. It left for
+    /bills with an empty box and wrote the search onto the bill's own entry
+    in history. It goes to /bills?q=, with the term where the picker beside
+    the box names one that is not the newest; and Return on the list writes
+    the search into the list's address, which is run here, not read.
+    """
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    src = js.read_text(encoding="utf-8")
+    boxes = re.findall(r'^[ \t]*(.*\$\("#q"\)\.focus\(\);)[ \t]*$', src, re.M)
+    onload = [b for b in boxes if "e.detail" not in b and "preventDefault" not in b]
+    assert onload == ['if(!window.GR_BILL)$("#q").focus();'], (
+        f"the bill search box is focused as the page loads by {onload}: on a bill's own "
+        "page that puts the skip link and the nav behind the starting point")
+    assert src.count("history.back();") == 1 and \
+        "if(backIsSearch()){e.preventDefault();history.back();}" in src, (
+            "something in app.js calls history.back() without asking backIsSearch(): "
+            "back is wherever the reader came from, which a label naming a place cannot promise")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(src, encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_HEARD_PRELUDE + r"""
+load("render, IDX, backIsSearch, addressed, focusBill, setFocused:(x)=>{focused=x;},"
+  + " getFocused:()=>focused, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
+const out = {};
+s.setMeta({terms: ["2025-2026", "2003-2004"], committee_codes: {}, topics: []});
+s.IDX.length = 0;
+s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind: "active",
+  committees: [], topic: "", sponsor: "", term: "2025-2026", year: "2026", hay: "hb1442"});
+s.setTerm("2025-2026");
+s.setFocused("HB1442"); s.render();
+out.back = (/<(\w+) class="backto"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
+const at = (standalone, referrer, length, state) => { window.GR_STANDALONE = standalone;
+  document.referrer = referrer; history.length = length; history.state = state || null;
+  return s.backIsSearch(); };
+out.is = {
+  inSearch: at(false, "", 1, {focus: "HB1442"}),
+  inSearchByItsAddress: at(false, "https://x/", 2, null),
+  inSearchAtAPlaceOnIt: at(false, "", 3, null),
+  fromSearch: at(true, "https://x/bills?q=budget", 2),
+  fromSearchHtml: at(true, "https://x/bills.html", 3),
+  newTab: at(true, "https://x/bills", 1),
+  direct: at(true, "", 1),
+  fromMember: at(true, "https://x/legislator/jane-doe", 4),
+  fromElsewhere: at(true, "https://example.org/bills", 2),
+  fromABill: at(true, "https://x/bills/x", 2),
+};
+
+// THE SKIP LINK, AND BACK AND FORWARD. Each is what the browser does to the
+// address, then the popstate it fires.
+out.pop = {};
+// A bill's own page; "Skip to this bill" moves the fragment and nothing else.
+place("/bill/2026/hb1442", null, true); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipOwn = seen();
+// The same on a tab's address, and back from it to an entry of another tab.
+place("/bill/2026/hb1442/votes", null, true); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipOwnTab = seen();
+place("/bill/2026/hb1442/text", null, true); s.setFocused("HB1442");
+go("/bill/2026/hb1442/votes"); pop(null); out.pop.backOwnTab = seen();
+// The search, a bill its address opened: the skip link there.
+place("/bills#2026/HB1442", null, false); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipByAddress = seen();
+// The search, a bill opened over the list: the skip link, then back to the
+// entry that opened the bill, then back to the list.
+place("/bill/2026/hb1442", {focus: "HB1442"}, false); s.setFocused("HB1442");
+location.hash = "#results"; pop(null); out.pop.skipOverList = seen();
+location.hash = ""; pop({focus: "HB1442"}); out.pop.backToItsEntry = seen();
+go("/bills"); pop(null); out.pop.backToList = seen();
+// And opened for real, by the card's arrow: the skip link has to name the
+// address the bill was given, or pressing it is a journey to another page;
+// and name the list's again once the bill is left.
+const skip = document.querySelector("a.skip");
+skip.setAttribute = (k, v) => { if (k === "href") skip.href = v; };
+place("/bills", null, false); s.setFocused(null);
+s.focusBill("HB1442");
+out.opened = {wrote: wrote.slice(), skip: skip.href};
+location.hash = "#results"; pop(null);
+out.opened.atSkip = s.getFocused();
+go("/bills"); pop(null);
+out.opened.left = {skip: skip.href, focused: s.getFocused()};
+
+// "BACK TO BILL SEARCH", clicked.
+const back = q => q === "[data-back]" ? {} : null;
+const pressed = (path, state, standalone, referrer, ev) => {
+  place(path, state, standalone); document.referrer = referrer || ""; history.length = 2;
+  s.setFocused("HB1442");
+  const e = click(back, ev);
+  return Object.assign(seen(), {prevented: e.prevented});
+};
+out.click = {
+  byAddress: pressed("/bills#2026/HB1442", null, false, "https://x/"),
+  overList: pressed("/bill/2026/hb1442", {focus: "HB1442"}, false),
+  ownFromMember: pressed("/bill/2026/hb1442", null, true, "https://x/legislator/jane-doe"),
+  ownFromSearch: pressed("/bill/2026/hb1442", null, true, "https://x/bills?q=budget"),
+  newTabOfIt: pressed("/bills#2026/HB1442", null, false, "", {ctrlKey: true}),
+  // Over the list, but at a place on the bill: the entry is the fragment's.
+  overListAtAPlace: pressed("/bill/2026/hb1442#results", null, false),
+};
+out.click.overListAtAPlace.skip = skip.href;
+
+// A SEARCH, RUN WITH RETURN in the box.
+const box = document.querySelector("#q");
+const run = (words, path, state, standalone, open, term) => {
+  place(path, state, standalone); s.setFocused(open); s.setTerm(term || "2025-2026");
+  box.value = words; box.fire("keydown", {key: "Enter"});
+  return seen();
+};
+out.search = {
+  own: run("housing aid", "/bill/2026/hb1442", null, true, "HB1442"),
+  ownOlderTerm: run("housing", "/bill/2003/hb1", null, true, "HB1", "2003-2004"),
+  ownNoWords: run("", "/bill/2026/hb1442", null, true, "HB1442"),
+  overList: run("housing", "/bill/2026/hb1442", {focus: "HB1442"}, false, "HB1442"),
+  list: run("HB 2", "/bills", null, false, null),
+};
+process.stdout.write("\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["back"] == '<a class="backto" href="/bills" data-back="1">', (
+        "\"Back to bill search\" is drawn as " + (got["back"] or "nothing")
+        + ": it must be a link to /bills, which is where its label says it goes")
+    want = {"inSearch": True, "inSearchByItsAddress": False, "inSearchAtAPlaceOnIt": False,
+            "fromSearch": True, "fromSearchHtml": True, "newTab": False,
+            "direct": False, "fromMember": False, "fromElsewhere": False, "fromABill": False}
+    assert got["is"] == want, (
+        "back is taken for the bill search where it is not, or not where it is: "
+        + "; ".join(f"{k}: {got['is'].get(k)}" for k, v in want.items() if got["is"].get(k) != v))
+
+    def off(group, want):
+        return [f"{k}: {got[group].get(k)}, not {v}" for k, v in want.items()
+                if got[group].get(k) != v]
+
+    stay = {"href": "HERE", "wrote": [], "focused": "HB1442"}
+    bad = off("pop", {"skipOwn": stay, "skipOwnTab": stay, "backOwnTab": stay,
+                      "skipByAddress": stay, "skipOverList": stay, "backToItsEntry": stay,
+                      "backToList": {"href": "HERE", "wrote": ["push /bills"], "focused": None}})
+    assert not bad, (
+        "a link to a place on the page, or back from one, leaves the bill or draws the "
+        "list over it (the skip link is the first Tab stop on every bill's page): "
+        + "; ".join(bad[:3]))
+    opened = {"wrote": ["push /bill/2026/hb1442"], "skip": "/bill/2026/hb1442#results",
+              "atSkip": "HB1442", "left": {"skip": "/bills#results", "focused": None}}
+    assert got["opened"] == opened, (
+        "a bill opened over the list, and left again: the skip link must name the address "
+        f"the page is at each time, and pressing it must leave the bill open: {got['opened']}")
+    bad = off("click", {
+        "byAddress": {"href": "HERE", "wrote": ["push /bills"], "focused": None, "prevented": 1},
+        "overList": {"href": "HERE", "wrote": ["back"], "focused": "HB1442", "prevented": 1},
+        "ownFromMember": {"href": "HERE", "wrote": [], "focused": "HB1442", "prevented": 0},
+        "ownFromSearch": {"href": "HERE", "wrote": ["back"], "focused": "HB1442", "prevented": 1},
+        "newTabOfIt": {"href": "HERE", "wrote": [], "focused": "HB1442", "prevented": 0},
+        "overListAtAPlace": {"href": "HERE", "wrote": ["push /bills"], "focused": None,
+                             "prevented": 1, "skip": "/bills#results"}})
+    assert not bad, (
+        "\"Back to bill search\", clicked, does not go to the search: where the address "
+        "opened the bill it must draw the list, where the list is behind it go back, and "
+        "anywhere else be the link it is: " + "; ".join(bad[:3]))
+    bad = off("search", {
+        "own": {"href": "/bills?q=housing%20aid", "wrote": [], "focused": "HB1442"},
+        "ownOlderTerm": {"href": "/bills?term=2003-2004&q=housing", "wrote": [], "focused": "HB1"},
+        "ownNoWords": {"href": "/bills", "wrote": [], "focused": "HB1442"},
+        "overList": {"href": "HERE", "wrote": ["push /bills", "replace /bills?q=housing"],
+                     "focused": None},
+        "list": {"href": "HERE", "wrote": ["replace /bills?q=HB+2"], "focused": None}})
+    assert not bad, (
+        "a search run with Return loses its words or writes them onto the wrong address: "
+        + "; ".join(bad[:3]))
+    return "ok", ("the search box takes focus on load only where no bill is named; the skip "
+                  "link and back from it leave the bill as it is, in 6 cases; \"Back to bill "
+                  "search\" goes back only where back is the search and draws the list where "
+                  "the address opened the bill; a search run from a bill's page keeps its "
+                  "words and its term")
+
+
+@check("frontend", "focus survives every redraw: the control that had it has it again, through each of the three renderers")
+def _focus_survives():
+    """The audit of 2 October 2026, S1. A redraw replaces the element that has
+    focus, and focus fell to <body>: after a facet's checkbox, a card's
+    header, a filter group's head, a legend row, the Term and Status selects
+    of a member's or a committee's page, and any tab opened with Enter, Space
+    or a click, the next Tab press started from the top of the record.
+    repaint() restored four kinds of control and only on the redraws that
+    went through it.
+
+    render(), renderPage() and renderFacets() each take the key of the control
+    that has focus (focusKey) before they draw and give focus back to the
+    control with that key (refocus) after. This runs them, in node: a control
+    of each kind is given a key that names it and nothing else; each renderer,
+    with focus on a control it then replaces, leaves focus on the copy; "Show
+    more" is given no key, because what a reader wants after it is the rows it
+    brought, where its own handler puts focus (_review_of_audit_fixes); and
+    focus on something the redraw does not replace -- the search box while
+    the list narrows -- is not moved.
+    """
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_FOCUS_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    want = {"tab": "#tab_HB2_1",
+            "facet": 'input[data-f="topic"][value="Education"]',
+            "head": '.card[data-id="HB2"] button.chead',
+            "legend": '.card[data-id="HB2"] button[data-seg="HB2\\|0\\|R-Yea"]',
+            "term": 'select[data-pf="term"]',
+            "group": 'button[data-g="committee"]',
+            "more": None, "search": None}
+    assert got["keys"] == want, (
+        "a control is not keyed by what names it: "
+        + "; ".join(f"{k}: {got['keys'].get(k)!r}, not {v!r}"
+                    for k, v in want.items() if got["keys"].get(k) != v))
+    assert got["none"] == [None, None], "nothing focused, or <body>, is given a key"
+    lost = [k for k in ("render", "renderFacets", "render, of a filter", "renderPage")
+            if got.get(k) != {"refocused": 1, "active": True}]
+    assert not lost, (
+        "a redraw leaves focus on <body>: " + "; ".join(f"{k} -> {got.get(k)}" for k in lost))
+    assert got["kept"], (
+        "a redraw moved focus that it had not taken: the search box loses the "
+        "keyboard while the list narrows under it")
+    return "ok", ("a tab, a facet's checkbox, a card's header, a legend row, a select and a "
+                  "filter's head are each keyed and refocused through render(), renderPage() "
+                  "and renderFacets(); Show more is given no key, and focus a redraw "
+                  "did not take is not moved")
+
+
+@check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "
+                   "Play and a long analysis, the seat map's one stop, a box that scrolls, the "
+                   "line above a sitting, the header below 1100px and the rules a look had added",
+       needs=("build_pages",))
+def _review_of_audit_fixes(BP):
+    """Two reviews of the audit's fixes, 2 October 2026, and the gaps they
+    found in the checks: eleven of the fixes could be taken out, one at a
+    time, with every check still passing. What each of these holds was read
+    out of a browser first; what can be run here is run, and a fix is never
+    passed for carrying the right words.
+
+    Show more. The list's and a member's votes' redraw everything, so focus
+    fell to <body> and the next Tab press went to the top of the page. The
+    handlers put it on the first card, or the first vote, they brought.
+
+    Play, and a long analysis. Each is a click that moves focus: to the
+    player that replaces Play where Play had it, on a bill and on the home
+    page; to the start of the text "Show more" opened. Clicked here.
+
+    The seat map. Its focus listeners sat on the <svg>, which made the chart
+    itself a Tab stop, and leaving a seat emptied the note under the chart
+    while focus was on its way to the link in it. Run: nothing on the svg
+    listens for focus, the note keeps its link while focus goes into it, and
+    the arrow keys still walk the seats.
+
+    A box that scrolls sideways is a Tab stop while it scrolls: the exports
+    page marks its coverage table's box and app.js gives it the stop only
+    where the table is wider than the box.
+
+    And read, because they are a stylesheet's: the line above a sitting's
+    heading has the space above it that keeps it out from under "Cite this
+    page"; that line's link, on a phone, is the size of its words with what
+    can be pressed laid over it, not padding that runs into the heading; the
+    tab strip is taken out of the header's flow only from the width where it
+    clears the wordmark, and the brand's padding changes at that same width;
+    a phone's footer links are 44px; the menu's rows draw their ring inside
+    the panel that clips them; the home page's activity is a list with no
+    bullets; and the roster says what its finder found.
+    """
+    css = Path("app.css").read_text(encoding="utf-8")
+    bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+
+    # ---- read: the stylesheet ------------------------------------------
+    m = re.search(r"\.sesspage \.crumb\{[^}]*margin:([^;}]+)", bare)
+    if not m or m.group(1).split()[0] in ("0", "0px"):
+        bad.append("the line above a sitting's heading has no space above it, so its "
+                   "letters lie under the row of \"Cite this page\"")
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:720px\)\{(.*?)\n\}\n",
+                      css, re.S)
+    crumb = re.sub(r"/\*.*?\*/", "", phone.group(1), flags=re.S) if phone else ""
+    link = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a\{([^}]*)\}", crumb)
+    over = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a::after\{([^}]*)\}", crumb)
+    if not (link and over):
+        bad.append("on a phone the line above a heading is no bigger a target than its words")
+    else:
+        if "padding" in link.group(1) or "position:relative" not in link.group(1):
+            bad.append("the link above a heading is padded out on a phone: its box and its "
+                       "focus ring run into the heading under it")
+        box = dict(re.findall(r"(top|bottom|left|right):(-?\d+)", over.group(1)))
+        if "position:absolute" not in over.group(1) or int(box.get("bottom", 0)) > -14 \
+                or int(box.get("top", 0)) < -2:
+            bad.append("what can be pressed on the line above a heading must reach 14px below "
+                       "its words and no higher than the row above it, which is drawn over it: "
+                       + over.group(1))
+    out_of_flow = re.search(r"@media \(min-width:(\d+)px\)\{\s*nav\.top \.in\{position:relative\}\s*"
+                            r"\.navtabs\{position:absolute", bare)
+    padded = re.search(r"@media \(max-width:([\d.]+)px\)\{nav\.top \.brand\{padding-left:0;padding-right:0\}\}",
+                       bare)
+    if not (out_of_flow and padded):
+        bad.append("the header's two width rules are not where this check reads them")
+    else:
+        at = int(out_of_flow.group(1))
+        if abs(float(padded.group(1)) - (at - 0.02)) > 1e-9:
+            bad.append(f"the tab strip leaves the header's flow at {at}px and the brand's "
+                       f"padding changes at {padded.group(1)}px: the two are one width")
+        if at < 1100:
+            bad.append(f"the tab strip is centred on the bar from {at}px: with five tabs and the "
+                       "drawing beside the name it lies under the brand below 1034px, and at "
+                       "980 it wraps")
+    if not re.search(r"@media \(max-width:720px\)\{[^@]*?\.flinks a\{[^}]*min-height:44px", bare, re.S):
+        bad.append("a phone's footer links are not held to 44px")
+    if ".navdrop .navtabs a:focus-visible,.navdrop .themer:focus-visible{outline-offset:-2px}" not in bare:
+        bad.append("the menu's rows draw their focus ring outside the panel, which clips it")
+    if not re.search(r":where\(body\.pg\) \.actlist\{list-style:none;margin:0;padding:0", bare):
+        bad.append("the home page's activity list has its bullets and indent again below 1180px")
+
+    # ---- read: the pages' own markup -----------------------------------
+    pages = Path("build_pages.py").read_text(encoding="utf-8")
+    if '<p class="sr" id="lsay" role="status"></p>' not in pages \
+            or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
+            or "say.textContent=text" not in BP.LEGFIND_JS:
+        bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
+                   "and the script that writes the count into it")
+    exports = Path("build_exports.py").read_text(encoding="utf-8")
+    cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
+    if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
+            or "aria-label=" not in cov.group(1) or "tabindex" in cov.group(1):
+        bad.append("the exports page's coverage box must be a named region marked "
+                   "data-scrollstop, with no tabindex of its own: app.js gives it the stop "
+                   "only where it scrolls")
+    if not re.search(r"cov_rows = .{0,80}?<tr><th scope=\"row\">", exports, re.S) \
+            or exports.count('<th scope="col">') < 6:
+        bad.append("the coverage table's terms are not row headers, or its columns not "
+                   "column headers")
+
+    # ---- run: app.js ---------------------------------------------------
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
+        home = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest\('
+                         r'"\[data-embed\]"\);.*?\n\}\);', BP.HOME_JS, re.S)
+        assert home, "the home page's script has no handler that turns Play into the player"
+        (root / "home.js").write_text(home.group(0), encoding="utf-8")
+        (root / "go.js").write_text(_HEARD_PRELUDE + _REVIEW_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    if got["more"] != {"card": 100, "others": 0}:
+        bad.append(f"\"show 100 more\" on the list leaves focus on {got['more']}, not on the "
+                   "header of the first card it brought, the 101st")
+    if got["observer"] != {"card": None, "others": 0}:
+        bad.append("the list growing as it is scrolled moves the keyboard, which nobody asked "
+                   f"for: {got['observer']}")
+    if got["vmore"] != {"row": 200, "tabIndex": -1, "others": 0}:
+        bad.append(f"\"Show 200 more\" on a member's votes leaves focus on {got['vmore']}, "
+                   "not on the first vote it brought")
+    if got["analysis"] != {"opened": 1, "tabIndex": -1, "shut": 1, "intoView": 1}:
+        bad.append("\"Show more\" on an analysis must put focus at the start of the text it "
+                   f"opened, and \"Show less\" bring its button back into view: {got['analysis']}")
+    if got["play"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
+        bad.append(f"the player that replaces Play on a bill takes focus only where Play had "
+                   f"it, and is named for its sitting: {got['play']}")
+    if got["homePlay"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
+        bad.append(f"the home page's player takes focus only where Play had it: {got['homePlay']}")
+    if got["stops"] != {"wide": "0", "fits": None, "after": [None, "0"], "resize": True}:
+        bad.append("a box marked data-scrollstop is a Tab stop exactly while its content is "
+                   f"wider than it is: {got['stops']}")
+    seat = got["seat"]
+    if seat.get("svgHears"):
+        bad.append("the seat map's <svg> listens for " + ", ".join(seat["svgHears"])
+                   + ": Chrome makes an svg that does a Tab stop, round all 400 seats")
+    if not (seat.get("named") and seat.get("keptGoingIn") and seat.get("clearedOnLeaving")
+            and seat.get("namedGoingBack")):
+        bad.append("focus on a seat names its member under the chart, and that link has to "
+                   f"be there when Tab reaches it and gone when focus has left both: {seat}")
+    if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
+        bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
+                  "on a member's votes; Play and a long analysis move focus when clicked; the "
+                  "seat map's svg hears no focus and its note keeps its link; a marked box is a "
+                  "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
+                  "rules of the stylesheet and the pages stand")
+
+
+def _seat_script(BP):
+    """The seat map's own function out of build_pages.SEATING_JS: from its
+    opening to the block that follows it, which is the tabs'."""
+    sj = BP.SEATING_JS
+    a = sj.index('(function(){\n  var list=document.getElementById("seatlist");')
+    b = sj.index("})();", a) + len("})();")
+    return sj[a:b]
+
+
+# The harness of _review_of_audit_fixes, after _HEARD_PRELUDE. A raw string.
+_REVIEW_HARNESS = r"""
+load("render, renderPage, IDX, addressed, scrollStops, VOTES_SHOWN, getFocused:()=>focused,"
+  + " setPage:(p)=>{PAGE=p;}, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
+const out = {};
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.setTerm("2025-2026");
+s.IDX.length = 0;
+for (let i = 0; i < 250; i++) s.IDX.push({id: "HB" + (i + 1), n: "HB " + (i + 1), title: "a bill",
+  status: "Passed", kind: "active", committees: [], topic: "", sponsor: "", term: "2025-2026",
+  year: "2025", hay: "hb" + (i + 1), hayT: "hb" + (i + 1), hayS: "", hayC: ""});
+place("/bills", null, false);
+const results = document.querySelector("#results");
+// What focus() was called on, by kind and place in its list.
+let took = [];
+const thing = (kind, i) => ({kind, i, tabIndex: 0, focus() { took.push(this); },
+  querySelector(q) { return q === ".chead" ? this.head : null; }});
+const cards = Array.from({length: 250}, (_, i) => {
+  const c = thing("card", i); c.head = thing("head", i); return c; });
+const rows = Array.from({length: 450}, (_, i) => thing("row", i));
+results.querySelectorAll = q => q === ".card" ? cards : q === "table.vfull tbody tr" ? rows : [];
+const only = q => sel => sel === q ? {dataset: {}} : null;
+
+// SHOW MORE, on the list: the button, and then the observer, which is a
+// render(true) nobody pressed anything for.
+s.render(); took = [];
+click(only("[data-more]"));
+out.more = {card: (took.find(t => t.kind === "head") || {}).i ?? null,
+            others: took.filter(t => t.kind !== "head").length};
+took = []; s.render(true);
+out.observer = {card: (took.find(t => t.kind === "head") || {}).i ?? null, others: took.length};
+
+// ...AND ON A MEMBER'S VOTES. The handler asks only that a page is open.
+s.setPage({kind: "committee", data: {code: "H34", name: "Finance", chamber: "H", bills: [],
+  sessions: [], members: []}, terms: ["2025-2026"], term: "2025-2026", status: ""});
+took = [];
+click(only("[data-vmore]"));
+const row = took.find(t => t.kind === "row");
+out.vmore = {row: row ? row.i : null, tabIndex: row ? row.tabIndex : null,
+             others: took.filter(t => t.kind !== "row").length};
+s.setPage(null);
+
+// A LONG ANALYSIS, opened and shut.
+const text = {focused: 0, tabIndex: 0, focus() { this.focused++; }};
+const an = {dataset: {an: "HB1#0"}, intoView: 0, scrollIntoView() { this.intoView++; },
+  closest: q => q === ".anbox" ? {querySelector: q2 => q2 === ".antext" ? text : null} : null};
+click(q => q === ".anmore" ? an : null);
+out.analysis = {opened: text.focused, tabIndex: text.tabIndex};
+click(q => q === ".anmore" ? an : null);
+out.analysis.shut = text.focused; out.analysis.intoView = an.intoView;
+
+// PLAY, on a bill: with focus on it, and pressed through a time under it.
+const frame = document.getElementById("yt_p1");
+let framed = 0; frame.focus = () => { framed++; };
+const play = () => ({dataset: {embed: "vid|10|p1", title: "Recording of HB 1 - House Finance"}});
+let st = play(); document.activeElement = st;
+click(q => q === "[data-embed]" ? st : null);
+out.play = {hadFocus: framed, title: /title="Recording of HB 1 - House Finance"/.test(st.outerHTML || "")};
+st = play(); document.activeElement = document.body; framed = 0;
+click(q => q === "[data-embed]" ? st : null);
+out.play.elsewhere = framed;
+
+// A BOX THAT SCROLLS SIDEWAYS.
+const box = (sw, cw) => ({scrollWidth: sw, clientWidth: cw, a: {tabindex: "x"},
+  setAttribute(k, v) { this.a[k] = v; }, removeAttribute(k) { delete this.a[k]; }});
+const wide = box(420, 336), fits = box(900, 900);
+const all = document.querySelectorAll;
+document.querySelectorAll = q => q === "[data-scrollstop]" ? [wide, fits] : [];
+const before = (heard.window.resize || []).length;
+s.scrollStops();
+out.stops = {wide: wide.a.tabindex ?? null, fits: fits.a.tabindex ?? null};
+wide.clientWidth = 900; fits.clientWidth = 336;
+(heard.window.resize || []).slice(before).forEach(f => f());
+out.stops.after = [wide.a.tabindex ?? null, fits.a.tabindex ?? null];
+out.stops.resize = (heard.window.resize || []).length === before + 1;
+document.querySelectorAll = all;
+
+// PLAY, on the home page: its own handler, alone.
+(() => {
+  const mine = [];
+  const esc = x => String(x);
+  const doc = {activeElement: null, addEventListener: (t, f) => mine.push(f)};
+  new Function("document", "esc", fs.readFileSync("./home.js", "utf8"))(doc, esc);
+  const run = had => { let n = 0;
+    const frame = {focus() { n++; }};
+    const st = {dataset: {embed: "vid", title: "Recording of the House floor session"},
+      parentNode: {querySelector: q => q === "iframe" ? frame : null}};
+    doc.activeElement = had ? st : {};
+    mine.forEach(f => f({target: {closest: q => q === "[data-embed]" ? st : null}}));
+    return {n, title: /title="Recording of the House floor session"/.test(st.outerHTML || "")}; };
+  const a = run(true), b = run(false);
+  out.homePlay = {hadFocus: a.n, elsewhere: b.n, title: a.title};
+})();
+
+// THE SEAT MAP, in a page of four seats.
+(() => {
+  const node = (tag, attrs) => { const n = {tag, attrs: Object.assign({}, attrs), on: {}, kids: [],
+    hidden: false, style: {}, dataset: {}, focused: 0, clientWidth: 1000, scrollLeft: 0, scrollTop: 0,
+    classList: {toggle() {}, add() {}, remove() {}},
+    addEventListener(t, f) { (this.on[t] = this.on[t] || []).push(f); },
+    fire(t, e) { (this.on[t] || []).forEach(f => f(Object.assign({target: this, preventDefault() {}}, e))); },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    appendChild(c) { this.kids.push(c); return c; },
+    contains(x) { return this.kids.includes(x); },
+    closest(q) { return q === "[data-slug]" && "data-slug" in this.attrs ? this : null; },
+    querySelectorAll() { return []; }, querySelector() { return null; },
+    getBoundingClientRect() { return {left: 0, top: 0, width: 10, height: 10}; },
+    setPointerCapture() {}, focus() { this.focused++; }};
+    Object.defineProperty(n, "textContent", {get() { return this._t || ""; },
+      set(v) { this._t = String(v); this.kids = []; }});
+    return n; };
+  const seats = [1, 2, 3, 4].map(i => node("circle", {"data-slug": "m" + i, "data-seat": "100" + i,
+    "data-name": "Rep. " + i, tabindex: "-1"}));
+  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div");
+  svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
+  svg.parentNode = wrap;
+  const doc = {createElement: t => node(t), createTextNode: t => ({text: t}),
+    getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
+    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap})[q] || null};
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
+  const stops = () => seats.map((c, i) => c.attrs.tabindex === "0" ? i : -1).filter(i => i >= 0);
+  const hears = n => ["focus", "blur", "focusin", "focusout"].filter(t => (n.on[t] || []).length);
+  const seat = {svgHears: hears(svg), first: stops()};
+  // Tab reaches the one stop: the note names its member, as a link.
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+  const named = note.kids[0];
+  seat.named = !!(named && named.tag === "a" && /m1/.test(named.href || ""));
+  // Tab again: focus leaves the seat for that link.
+  [svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: named}));
+  seat.keptGoingIn = note.kids[0] === named;
+  // Shift+Tab from the link back to the seat: the seat's focus names it again.
+  note.fire("focusout", {target: named, relatedTarget: seats[0]});
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+  seat.namedGoingBack = !!(note.kids[0] && note.kids[0].tag === "a");
+  // And on from the link to the list under the chart, whose rows carry a
+  // member's slug as a seat does: the note is put back as it was.
+  note.fire("focusout", {target: note.kids[0], relatedTarget: node("a", {"data-slug": "m9"})});
+  seat.clearedOnLeaving = note.kids.length === 0;
+  // The arrow keys, from the seat that has focus.
+  const key = (k, from) => svg.fire("keydown", {key: k, target: seats[from]});
+  key("ArrowRight", 0);
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[1]}));
+  seat.arrow = {focused: seats.findIndex(c => c.focused), stops: stops()};
+  seats.forEach(c => { c.focused = 0; });
+  key("End", 1);
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[3]}));
+  seat.end = {focused: seats.findIndex(c => c.focused), stops: stops()};
+  out.seat = seat;
+})();
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")
@@ -46498,6 +49708,53 @@ def _formfeed_heading():
                   "does not")
 
 
+@check("frontend", "every class the header search draws is styled on the pages "
+                   "that load style.css", needs=("build_pages",))
+def _find_classes_shared(BP):
+    """The check below reads the pages as they are built. find.js draws its
+    panel when somebody opens it, so a class it writes is in no page's HTML,
+    and the check below cannot see it.
+
+    That is how the line that says why a bill is listed ("Listed for --
+    text says: lavatory") was unstyled on the home page, /search, the roster,
+    About and 404 for a day: `.findout .fwhy` sat beside the bill card's
+    `.cwhy`, below SHARED:END, where style.css does not read. On those pages
+    it was set at body size in full ink, larger and louder than the title
+    above it, and every check passed (1 October).
+
+    So this reads the scripts instead. Every class find.js or /search's own
+    script writes into a `class="..."`, if app.css styles it anywhere, must be
+    styled in what style.css takes -- the palette, the shared region, the
+    page region. A class nothing styles is left alone: it is a hook, not a
+    component.
+    """
+    need = [Path(f) for f in ("find.js", "app.css")]
+    if not all(f.exists() for f in need):
+        return "skip", "find.js or app.css not in this directory"
+    css = Path("app.css").read_text(encoding="utf-8")
+    sheet = BP.stylesheet(False)
+    drawn = set()
+    for src in (Path("find.js").read_text(encoding="utf-8"), BP.SEARCH_JS):
+        for m in re.finditer(r'class(?:Name)?\s*=\s*\\?"([^"$\\]+)\\?"', src):
+            drawn.update(c for c in m.group(1).split() if re.fullmatch(r"[a-z][\w-]*", c))
+    assert {"fdym", "fwhy", "fname", "fbills"} <= drawn, (
+        "find.js's classes are no longer read out of it: found only "
+        f"{sorted(drawn)[:8]}")
+
+    def styled(text, cls):
+        return re.search(r"\." + re.escape(cls) + r"(?![\w-])", text) is not None
+
+    lost = sorted(c for c in drawn if styled(css, c) and not styled(sheet, c))
+    assert not lost, (
+        f"find.js draws {lost} on every page, and app.css styles "
+        f"{'it' if len(lost) == 1 else 'them'} only outside the regions "
+        "style.css takes: on the home page, /search, the roster, About and "
+        "404 the browser's own defaults apply. Move the rule into the shared "
+        "region (SHARED:START to SHARED:END)")
+    return "ok", (f"{len(drawn)} classes drawn by find.js and /search's script; "
+                  f"each one app.css styles is styled in style.css too")
+
+
 @check("frontend", "no component is stranded in the region style.css skips")
 def _nothing_stranded():
     """A class styled where half the site cannot see it.
@@ -47958,6 +51215,13 @@ def _town_tabs(B, BP):
     history entry, or Back walks through the tabs instead of leaving the page.
     The script runs in node against dom_stub.js, with the page's own tabs.
 
+    AND THE ADDRESS IT WRITES IS THE TOWN'S OWN. The page carries
+    <base href="/">, and the script wrote a bare "#officials", which a browser
+    resolves against the base: choosing a tab on /town/acworth put /#officials
+    in the address bar, and a reload, a bookmark or a copied link opened the
+    home page (the audit of 2 October 2026; all 320 pages). So what is
+    written must start with the page's own path, query included.
+
     The strip scrolls inside itself and the panels' grid tracks are
     minmax(0, 1fr), so no number of tabs and no long address can make a
     360px page scroll sideways; that is read off app.css.
@@ -48068,6 +51332,7 @@ history.replaceState = (a, b, u) => wrote.push(u);
 history.pushState = () => { pushed++; };
 const on = {}; globalThis.addEventListener = (t, f) => (on[t] = on[t] || []).push(f);
 location.hash = process.argv[2];
+location.pathname = "/town/lyme"; location.search = "?from=test";
 const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
 const out = {};
 %s
@@ -48076,7 +51341,13 @@ tabEls[1].fire("click"); out.click = shown();
 document.activeElement = tabEls[1]; bar.fire("keydown", {key: "ArrowRight"});
 out.arrow = shown();
 location.hash = "#representatives"; (on.hashchange || []).forEach(f => f());
-out.back = shown(); out.wrote = wrote; out.pushed = pushed;
+out.back = shown(); out.wrote = wrote.slice(); out.pushed = pushed;
+// Home and End, as the bill's and the member's tabs answer them, and the
+// page's own scroll held off (the review of 2 October 2026).
+const keyed = k => { let held = false;
+  bar.fire("keydown", {key: k, preventDefault(){ held = true; }});
+  return [shown()[0], tabEls.indexOf(document.activeElement), held]; };
+document.activeElement = tabEls[0]; out.end = keyed("End"); out.home = keyed("Home");
 process.stdout.write(JSON.stringify(out));
 """ % (tabs, script)
         stub = Path("dom_stub.js").read_text(encoding="utf-8")
@@ -48096,13 +51367,25 @@ process.stdout.write(JSON.stringify(out));
                     or got["back"] != ["representatives"]:
                 bad.append(f"click, arrow and address showed {got['click']}, "
                            f"{got['arrow']} and {got['back']}")
-            if got["wrote"] != ["#officials", "#vote"] or got["pushed"]:
+            if got["end"] != ["vote", 2, True] or got["home"] != ["representatives", 0, True]:
+                bad.append(f"End and Home gave {got['end']} and {got['home']} "
+                           "([tab shown, tab focused, page scroll held off]): "
+                           "a tab list answers both, and End scrolled the page "
+                           "to its foot")
+            if got["wrote"] != ["/town/lyme?from=test#officials",
+                                "/town/lyme?from=test#vote"] or got["pushed"]:
                 bad.append(f"switching wrote {got['wrote']} and pushed "
-                           f"{got['pushed']} history entries")
+                           f"{got['pushed']} history entries: the address must "
+                           "be the town's own path, its query and the tab, "
+                           'because a bare #tab resolves against <base href="/"> '
+                           "and names the home page")
+    if '<base href="/">' not in lyme:
+        bad.append('the town page no longer carries <base href="/">: read '
+                   "TABS_JS again, the address it writes was built around it")
     assert not bad, "\n  ".join(bad)
     return "ok", ("tabs wired as the roster's, none empty, none for a place with "
                   "no town government; #vote opens its tab and a click writes "
-                  "the address without a history entry"
+                  "the town's own address and the tab, without a history entry"
                   + ("" if node else " (node absent: script not run)"))
 
 

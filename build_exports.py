@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.23
+# GRANITE_VERSION: 2026-09-10.24
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -547,7 +547,7 @@ def data_page(site, out, tables, base, cov=()):
     </section>'''
 
     cov_rows = "".join(
-        f'''<tr><td>{E(c["term"])}</td><td class="n">{c["bills"]:,}</td>
+        f'''<tr><th scope="row">{E(c["term"])}</th><td class="n">{c["bills"]:,}</td>
         <td>{_pct(c["sponsor"], c["bills"])}</td>
         <td>{_pct(c["committee"], c["bills"])}</td>
         <td>{_pct(c["topic"], c["bills"])}</td>
@@ -630,9 +630,16 @@ def data_page(site, out, tables, base, cov=()):
       page is not the bill as introduced. Or the record gives it and this
       site does not read it from there yet, as with some committee referrals
       the docket records.</p>
-    <div class="covwrap"><table class="cov">
-      <thead><tr><th>Term</th><th>Bills</th><th>Sponsor</th><th>Committee</th>
-        <th>Topic</th><th>Passage</th></tr></thead>
+    <!-- The box scrolls sideways on a phone (the table is 420px in 336), so
+         there it can be reached and panned with a keyboard: app.js makes a
+         box so marked a Tab stop while its content is wider than it is, and
+         only then (scrollStops). Each heading says it heads a column and
+         each term that it heads its row. -->
+    <div class="covwrap" data-scrollstop="1" role="region"
+      aria-label="How much of each column is filled, by term"><table class="cov">
+      <thead><tr><th scope="col">Term</th><th scope="col">Bills</th>
+        <th scope="col">Sponsor</th><th scope="col">Committee</th>
+        <th scope="col">Topic</th><th scope="col">Passage</th></tr></thead>
       <tbody>{cov_rows}</tbody></table></div>
 
     <h2>The tables</h2>

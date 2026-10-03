@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-04.2
+// GRANITE_VERSION: 2026-09-04.3
 // A DOM stub just deep enough to load bills.html's script and call render().
 const made = {};
 function el(tag = "div") {
@@ -16,7 +16,7 @@ function el(tag = "div") {
     fire(t, ev){ (this._on[t] || []).forEach(f => f(Object.assign(
       {target: this, preventDefault(){}, stopPropagation(){}}, ev || {}))); },
     removeEventListener(){}, focus(){}, blur(){},
-    click(){}, append(){}, appendChild(){}, remove(){},
+    click(){}, append(){}, appendChild(){}, insertBefore(){}, remove(){},
     closest(){ return null; }, contains(){ return false; },
     querySelector(){ return el(); }, querySelectorAll(){ return []; },
     getBoundingClientRect(){ return {top:0,left:0,width:0,height:0}; },
@@ -24,6 +24,11 @@ function el(tag = "div") {
   };
   Object.defineProperty(e, "innerHTML", {
     get(){ return e._html || ""; }, set(v){ e._html = String(v); },
+  });
+  // Something to be a child of: find.js mounts its panel beside the header.
+  // Made when asked for, since every parent would otherwise need its own.
+  Object.defineProperty(e, "parentNode", {
+    get(){ return e._parent || (e._parent = el()); },
   });
   return e;
 }
