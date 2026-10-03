@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.15
+# GRANITE_VERSION: 2026-09-19.16
 """
 A page for every day the House sat.
 
@@ -210,6 +210,63 @@ def vote_payload(item):
             "kind": item.kind}
 
 
+ROLLCALL_ONLY = ('<p class="swho">The docket has no line for this vote: the '
+                 "question is as the General Court&rsquo;s roll-call file words "
+                 "it.</p>")
+
+
+def _question_html(it, moved, esc):
+    """"On the motion: ...", or, for a roll call the file records with no
+    question at all, says so rather than leaving the heading empty."""
+    if (it.action or "").strip():
+        return f'<p class="smq">On the motion: <b>{esc(it.action)}</b>{moved}</p>'
+    return (f'<p class="smq">On a question the roll-call file does not name'
+            f'{moved}</p>')
+
+
+def _ballots_here(it):
+    """Are this roll call's ballots on the bill's own page? Not where the
+    roll-call file holds the vote under another bill or under none -- one
+    motion on several bills -- though they are for a motion drawn from the
+    docket alone, as they always were said to be."""
+    rc = getattr(it, "rc", None)
+    if rc is None:
+        return True
+    return bool(rc.get("bill")) and session_days._bill_of(rc["bill"]) == it.bill.upper()
+
+
+def others_html(others, body, members, esc, payloads):
+    """The day's roll calls on no bill -- the chamber's own rules, a ruling
+    of the chair, printing a debate, adjourning -- in the roll-call file's
+    order, worded as that file words them. The page says no more of them
+    than the file does: no debate, no speaker, nothing done to a bill."""
+    if not others:
+        return ""
+    H = ['<section class="sday"><h2>Votes on no bill</h2>'
+         '<p class="note">Roll calls the '
+         f"{CHAMBER[body]} took that day on questions that were on no bill, such "
+         "as its own rules, a ruling of the chair or printing a debate. The "
+         "question is as the General Court&rsquo;s roll-call file words it.</p>"]
+    for it in others:
+        moved = (f' <span class="smover">moved by '
+                 f'{member_html(body, it.mover.replace("Rep. ", "").replace("Sen. ", ""), members, esc)}'
+                 "</span>" if it.mover else "")
+        H.append('<article class="sitem"><div class="smotion">')
+        H.append(_question_html(it, moved, esc))
+        p = vote_payload(it)
+        if p:
+            i = len(payloads)
+            payloads.append(p)
+            H.append(f'<div class="svote" data-vote="{i}">'
+                     f'<p class="stally">A {esc(it.kind_words or "vote")}: '
+                     f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
+        if it.outcome_words:
+            H.append(f'<p class="soutcome">{esc(it.outcome_words)}</p>')
+        H.append("</div></article>")
+    H.append("</section>")
+    return "".join(H)
+
+
 def runs(items):
     """Consecutive actions on the same bill, grouped.
 
@@ -231,6 +288,31 @@ def runs(items):
         else:
             out.append((it.bill, [it]))
     return out
+
+
+def speech_groups(items):
+    """{id(item): group} -- the stretches of the day a bill's speeches are
+    shared out over, which are its runs (above) as the docket's floor rows
+    make them.
+
+    A roll call drawn from another row or the roll-call file
+    (session_days._roll_calls) can fall between two of another bill's
+    motions that were consecutive: HB 1633's tabling and its removal from the
+    table on 13 June 2024 were one run, and a roll call of the day between
+    their journal pages made them two, each its bill's one motion, each
+    claiming the speech that neither the journal nor the count ties to
+    either. Such a motion does not part the bill it falls between."""
+    rs = runs(items)
+    group = list(range(len(rs)))
+    for i in range(len(rs)):
+        j = i + 1
+        while j < len(rs) and all(getattr(x, "added", "") for x in rs[j][1]) and \
+                (rs[j][0], rs[j][1][0].term) != (rs[i][0], rs[i][1][0].term):
+            j += 1
+        if j > i + 1 and j < len(rs) and \
+                (rs[j][0], rs[j][1][0].term) == (rs[i][0], rs[i][1][0].term):
+            group[j] = group[i]
+    return {id(it): group[n] for n, (_b, its) in enumerate(rs) for it in its}
 
 
 # The kinds of motion a speaker's own "moved ..." and the record's action are
@@ -343,8 +425,13 @@ def claims(a, item, sole=False):
     motion (unplaced)."""
     if made_after(a, item):
         return False
-    want = (item.yeas, item.nays) if item.counted else None
-    tied = bool(want) and a.get("tally") == want
+    # Any count the motion is known by: where the page draws the ballots'
+    # count the journal prints the clerk's, and the speech is tied by that.
+    want = getattr(item, "tallies", None)
+    if want is None:
+        want = {(item.yeas, item.nays)} if item.counted else set()
+    t = a.get("tally")
+    tied = bool(want) and bool(t) and tuple(t) in want
     if sole and not _same_motion(a.get("inline_motion"), item.action):
         return False
     if sole and several_on_line(item):
@@ -575,7 +662,25 @@ def came_off_in_line(item):
     return bool(CAME_OFF_IN_LINE.search(getattr(item, "raw", "") or ""))
 
 
-def consent_html(cons, removed, titles, years, esc):
+def calendar_vote(cons):
+    """[(kind words, yeas, nays, carried)] -- the counted votes a consent
+    calendar was taken on, each once.
+
+    The calendar is one motion, and where the chamber counted it -- the
+    Senate by roll call through 2021, 23 to 1 on 22 April 2021; the House
+    on a division, 282 to 9, on 25 March 2014 -- that one vote is every
+    consent bill's tally (session_days._one_counted_vote). It is said once,
+    on the list, and counted once in the opening."""
+    out = []
+    for i in cons:
+        if i.kind in ("RC", "DV") and i.counted:
+            k = (i.kind_words, i.yeas, i.nays, i.carried)
+            if k not in out:
+                out.append(k)
+    return out
+
+
+def consent_html(cons, removed, titles, years, esc, calendar=()):
     """The bills the chamber disposed of together, grouped by what happened.
 
     A consent calendar is one motion covering dozens of bills that nobody
@@ -595,6 +700,11 @@ def consent_html(cons, removed, titles, years, esc):
     n = len({(i.term, i.bill) for i in cons})
     note = (f'{n} bill{"" if n == 1 else "s"} the chamber disposed of '
             "together, in one motion and without debate.")
+    for kind, yeas, nays, carried in calendar:
+        how = ("was adopted" if carried else "failed" if carried is False
+               else "was taken")
+        note += (f" The calendar {how} on a {kind}, {yeas} "
+                 f"yea{'' if yeas == 1 else 's'} to {nays} nay{'' if nays == 1 else 's'}.")
     if removed:
         pretty = ", ".join(re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
                            for b in sorted(removed, key=BO.bill_key))
@@ -643,17 +753,26 @@ def render(day, narrative, titles, years, members, esc):
 
     H.append(opening_html(narrative, body, members, esc))
     H.append(absences_html(narrative, body, members, esc))
-    H.append(consent_html(cons, removed, titles, years, esc))
+    H.append(consent_html(cons, removed, titles, years, esc,
+                          calendar=calendar_vote(cons)))
 
     drawn = set()
-    if day.ordered:
+    # A sitting whose every vote was on no bill -- the House's organisation
+    # days, which adopted its rules by roll call -- has no motions to list.
+    if day.ordered and seq_items:
         H.append('<section class="sday"><h2>The day in order</h2>')
-    else:
+    elif seq_items:
         H.append('<section class="sday"><h2>What the '
                  f'{CHAMBER[body]} did that day</h2>'
                  '<p class="note">The record does not say what order these '
                  "came in: the journal page is cited on only a few of them, "
                  "so they are listed by bill.</p>")
+    groups = speech_groups(seq_items)
+    shared_out = collections.defaultdict(list)
+    for it in seq_items:
+        if not it.entered and getattr(it, "added", "") != "rollcall":
+            shared_out[groups[id(it)]].append(it)
+    told = set()
     for bill, items in runs(seq_items):
         term = items[0].term
         href = bill_href(term, bill, years)
@@ -667,7 +786,8 @@ def render(day, narrative, titles, years, members, esc):
         # this, SB 389's accession on 15 May 2014 took five speeches made on
         # its floor amendments, and SB 148's on 5 June 2013 pushed Reps.
         # O'Brien and Tucker off the roll call they spoke on.
-        own = [it for it in items if not it.entered]
+        own = [it for it in items if not it.entered
+               and getattr(it, "added", "") != "rollcall"]
         H.append('<article class="sitem">')
         H.append("<h3>" + bill_link(term, bill, num, years, esc, "sbill")
                  + (f'<span class="sbt">{esc(ti)}</span>' if ti else "") + "</h3>")
@@ -678,7 +798,7 @@ def render(day, narrative, titles, years, members, esc):
                      f'{member_html(body, it.mover.replace("Rep. ", "")
                                    .replace("Sen. ", ""), members, esc)}</span>'
                      if it.mover else "")
-            H.append(f'<p class="smq">On the motion: <b>{esc(it.action)}</b>{moved}</p>')
+            H.append(_question_html(it, moved, esc))
             # BUSINESS DONE IN RECESS is on the sitting the journal prints it
             # with (session_days.recess_sitting), and the bill's own history
             # keeps the day the docket entered it. Said here, so the two
@@ -692,8 +812,14 @@ def render(day, narrative, titles, years, members, esc):
                          "and entered in the docket on "
                          f"{esc(words(it.entered))}, the date the bill&rsquo;s "
                          "own history gives it.</p>")
+            elif getattr(it, "added", "") == "rollcall":
+                # NO DEBATE AND NO SPEAKER FOR A VOTE THE DOCKET DOES NOT
+                # STATE: the roll-call file records the question and the
+                # ballots, and that is all the page says of it.
+                H.append(ROLLCALL_ONLY)
             else:
-                mine, _rest = speakers_for(attrs, bill, it, sole=(len(own) == 1))
+                mine, _rest = speakers_for(attrs, bill, it,
+                                           sole=(len(shared_out[groups[id(it)]]) == 1))
                 for side, label in (("for", "Spoke for the motion"),
                                     ("against", "Spoke against the motion")):
                     who = mine[side]
@@ -710,7 +836,11 @@ def render(day, narrative, titles, years, members, esc):
                 H.append(f'<div class="svote" data-vote="{i}">'
                          f'<p class="stally">A {kindw}: '
                          f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
-                if it.kind == "RC" and href:
+                if (getattr(it, "shared", 0) or 0) > 1:
+                    H.append(f'<p class="swho">One roll call on {it.shared} bills: the '
+                             "same vote is drawn under each of them, and counted "
+                             "once.</p>")
+                elif it.kind == "RC" and href and _ballots_here(it):
                     H.append('<p class="swho">Who voted which way is on '
                              f'<a href="{esc(href)}">'
                              f"{esc(num)}'s own page</a>.</p>")
@@ -728,8 +858,10 @@ def render(day, narrative, titles, years, members, esc):
         # "spoke in favor" means the opposite of its plain reading 22% of the
         # time, and it is the motion that disambiguates it. Naming them without
         # a side is true; guessing the motion would not be.
-        if own:
-            names = unplaced(attrs, bill, own)
+        grp = groups[id(items[0])]
+        if own and grp not in told:
+            told.add(grp)
+            names = unplaced(attrs, bill, shared_out[grp])
             if names:
                 H.append('<p class="sspoke sother"><span class="slab">Also '
                          "spoke during this bill</span>"
@@ -749,7 +881,9 @@ def render(day, narrative, titles, years, members, esc):
             drawn.add(id(d))
             H.append(_debate_html(d, body, members, esc))
         H.append("</article>")
-    H.append("</section>")
+    if seq_items:
+        H.append("</section>")
+    H.append(others_html(getattr(day, "others", ()), body, members, esc, payloads))
 
     # Debates whose bill is not among the day's actions -- a motion to print
     # can name a bill the House took no recorded vote on that day -- or is
@@ -1012,8 +1146,11 @@ def prune(out_dir, keep, allowed=False):
 def _lead(day, narrative, date, body="H"):
     n = len(day.items)
     b = len(day.bills)
+    # Each vote once, the day's votes on no bill among them (session_days
+    # Day.votes): the count of roll calls the page draws.
     k = day.counts()
-    bits = [f"{n} action{'' if n == 1 else 's'} on {b} bill{'' if b == 1 else 's'}"]
+    bits = [f"{n} action{'' if n == 1 else 's'} on {b} bill{'' if b == 1 else 's'}"] \
+        if n else []
     if k:
         bits.append(", ".join(f"{v} {name}{'' if v == 1 else 's'}"
                               for name, v in sorted(k.items())))
