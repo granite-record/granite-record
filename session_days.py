@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.16
+# GRANITE_VERSION: 2026-09-19.17
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -114,6 +114,10 @@ def _consequence(action, carried):
     if a.startswith(DEFERS):
         return ("it was set aside rather than decided" if carried
                 else "it was not set aside")
+    # "Adoption of the suspension of the rules" (HB 2004, 25 May 2004) is a
+    # suspension, and what one does is let something else be taken up.
+    if re.search(r"\bsuspen", a):
+        return None
     if a.startswith(PASSES):
         return ("it carried in this chamber" if carried
                 else "it did not carry in this chamber")
@@ -126,6 +130,13 @@ def _consequence(action, carried):
 # empty. 1,445 Senate actions are like this and no House action is.
 INLINE_VOTE = re.compile(r"\b(?P<kind>RC|DV|VV)\s*(?P<y>\d+)\s*Y\s*-\s*"
                          r"(?P<n>\d+)\s*N", re.I)
+# The same count where the reader left it in the motion's words: "Ought to
+# Pass with Amendment #2025-0144s, RC 15Y-8N". The page draws the count
+# under the motion, and the ballots' where they differ from the docket's, so
+# the words carry none: 1,477 Senate motions of 2007-2026 said one count in
+# their words and drew another beneath them wherever the two disagreed.
+INLINE_COUNT = re.compile(r",?\s*\b(?:RC|DV|VV|Div(?:ision)?)\s*\d+\s*Y\s*-\s*"
+                          r"\d+\s*N\b", re.I)
 
 # "3/5 nec." and "2/3 nec." -- the motion needed a supermajority. Drawn as a
 # simple majority the threshold mark on the ring sits in the wrong place and
@@ -335,12 +346,15 @@ class Item:
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
                  "consent", "fifths", "entered", "recess", "joined",
-                 "rc", "said", "added", "plain", "shared")
+                 "rc", "said", "added", "plain", "shared", "stated_kind")
 
     def __init__(self, bill, term, e, seq):
         # The roll call on record this motion is (rollcalls.json's row), or
         # None; tie() sets it, and with it the ballots' count and outcome.
         self.rc = None
+        # The kind of vote the docket line stated, where tie() drew it as a
+        # roll call: a "DV" the House Journal confirms is kept (_divisions).
+        self.stated_kind = ""
         # The count the docket line states, where the page draws the
         # ballots' instead: speeches are tied to a motion by the journal's
         # count, which is the docket's more often than the ballots'.
@@ -428,6 +442,9 @@ class Item:
                 # Of those voting, rounded up: two thirds of 23 is 15.33,
                 # and it takes 16.
                 self.need = -(-tot * frac[0] // frac[1])
+        words = INLINE_COUNT.sub("", self.action)
+        if words != self.action:
+            self.action = words.strip(" ,;:") or self.action
 
     @property
     def threshold_needed(self):
@@ -509,7 +526,12 @@ class Day:
         # items rather than asserted, and only when they agree: a day whose
         # rows cite two different journals is telling us something and should
         # not be flattened into one of them.
-        cites = {i.cite for i in own if i.cite}
+        # Not from a row placed here from the day the docket enters it: HB
+        # 517's report, entered on 26 March 2025 at "HJ 10", is printed in
+        # House Journal 11 with the sitting of the 27th, which lost its
+        # journal to the second number.
+        cites = {i.cite for i in own if i.cite and not i.entered} or \
+            {i.cite for i in own if i.cite}
         self.journal = cites.pop() if len(cites) == 1 else ""
 
     @property
@@ -562,7 +584,12 @@ class Day:
                 k = ("rc",) + rollcall_key(i.rc)
             elif i.consent and i.counted:
                 k = ("consent", i.yeas, i.nays)
-            elif (kind == "RC" and i.counted and on_file
+            # Before the roll-call file, only a motion that can be one on
+            # several bills: "REP COOPER MOVED TO LAY REMAINDER OF CAL ON
+            # TABLE, ML RC(133-163)" is entered on eight bills of 24 September
+            # 1998 and was counted eight times.
+            elif (kind == "RC" and i.counted
+                  and (on_file or question_kind(i.action) not in UNSHARED)
                   and len(bills[(_motion_key(i.action), i.yeas, i.nays)]) > 1):
                 k = ("motion", _motion_key(i.action), i.yeas, i.nays)
             else:
@@ -905,8 +932,11 @@ def _rule_only_weekend(date, items):
 # and the Senate's bare "19Y-5N" with no kind in front. A committee's
 # "(Vote 11-5; RC)" names the Regular Calendar after its count, never a roll
 # call before it, and is not read.
+#   ... and the kind glued to its threshold: "COMM REPT: OTP/AM, FAILS
+#   3/5RC(192-153)" (CACR 44, 24 September 1998), "MA 2/3DIV(296-27)".
 TALLY = re.compile(
-    r"(?:\b(?P<kind>RC|Rc|Roll\s+Call|DIV|Div|DV|Division(?:\s+Vote)?)(?:\b|(?=\d))"
+    r"(?:(?:\b|(?<=\d/\d))(?P<kind>RC|Rc|Roll\s+Call|DIV|Div|DV|Division(?:\s+Vote)?)"
+    r"(?:\b|(?=\d))"
     r"\s*[-:,(]?\s*\(?\s*[Yy]?(?P<y>\d{1,3})\s*-?\s*[Yy]?\s*[-–]\s*[Nn]?"
     r"(?P<n>\d{1,3})\s*-?\s*[NnFf]?\b\s*\)?"
     r"|(?<![\w/{#-])(?P<y2>\d{1,2})\s*[Yy]\s*-\s*(?P<n2>\d{1,2})\s*[Nn]\b)")
@@ -1035,6 +1065,11 @@ def _bill_of(key):
     return re.sub(r"\s+", "", re.sub(r"\s*\(\d{4}\)\s*$", "", key or "")).upper()
 
 
+# A key of rollcalls.json that names a measure, as _bill_of gives it; the
+# others ("_procedural") name none.
+BILL_KEY = re.compile(r"^(?:HB|SB|HR|SR|HCR|SCR|HJR|SJR|CACR|HA|SSSB|SSHB)\d+[A-Z]?$")
+
+
 def _tallies(events, body):
     """[occurrence] -- every counted tally on one bill's rows of one chamber,
     with where it sits on its row and the date the row itself states after
@@ -1043,7 +1078,7 @@ def _tallies(events, body):
     out = []
     for n, e in enumerate(events or ()):
         if ((e.get("body") or "").strip().upper() != body or e.get("cancelled")
-                or e.get("type") in NOT_THE_FLOOR):
+                or (e.get("type") in NOT_THE_FLOOR and not _floor_report(e))):
             continue
         raw = e.get("raw") or ""
         ms = list(TALLY.finditer(raw))
@@ -1080,6 +1115,18 @@ def _tallies(events, body):
             o["row"] = row
         out += row
     return out
+
+
+def _floor_report(e):
+    """A row typed as a committee's report that is the floor's vote on it:
+    "COMM REPT: ITL ML VV; REPS KURK & BURLING FL AM<2454>, AA RC(192-156);
+    ..." is CACR 44's whole day on 24 September 1998, five roll calls the
+    reader typed "report" by its first words, and none was drawn. Only where
+    the row states the chamber's result (MA, ML, AA ...), which no
+    committee's own vote does: "Majority Committee Report: Inexpedient to
+    Legislate for April 29 RC (9-8)" (SB 100 of 2009) is the committee's
+    roll call."""
+    return e.get("type") == "report" and bool(RESULT_CODE.search(e.get("raw") or ""))
 
 
 def _stated(m, entered):
@@ -1186,7 +1233,29 @@ def _owns(it, o):
         # question's (HB 661 of 1999: "Ought to Pass, RC 4Y-16N, MF, Sen.
         # Fernald Moved Laid on Table, MF, VV").
         return False
-    return len(row) == 1
+    if len(row) == 1:
+        return True
+    # A LINE OF SEVERAL COUNTS AND A MOTION READ WITH NONE: "Limit Debate ML
+    # RC(160-205); Veto Sustained -failed nec 2/3- RC(245-128)" (HB 1, 30 June
+    # 2003) is the reader's "Limit Debate", with no count. It is the one
+    # clause that names its question. Owning none, it stayed on the page
+    # beside its own clause drawn as a motion of its own, and the one vote
+    # was drawn, and counted, twice: HB 1 then, HB 520 on 15 January 2004
+    # ("ITL Report, ML RC(166-168); ... LOT, ML RC(142-193)"), HB 611's "Sec
+    # 1" on 30 March 2005.
+    mine = [p for p in row if _names_question(it, p)]
+    return len(mine) == 1 and mine[0] is o
+
+
+def _names_question(it, o):
+    """Does the clause of tally `o` name the question the motion `it` is
+    read as: the same words, or the same kind of question?"""
+    seg = _segment(o)
+    a, s = _motion_key(it.action), _motion_key(seg)
+    if a and s and (s.startswith(a) or a.startswith(s)):
+        return True
+    k = question_kind(it.action)
+    return bool(k) and k == question_kind(seg)
 
 
 def _told_at(it, row):
@@ -1428,6 +1497,13 @@ def _question(o, r):
         if NOT_ADOPT.search(src):
             return f"Not adopt the Conference Committee Report{no}", "", True
         return f"Adopt the Conference Committee Report{no}", "", True
+    # Who divided the question, and the part then voted on: "Sen. Hollingworth
+    # Divide the Question: Section 1-16,21-33,36-80,82; RC 24Y-0N" (HB 170, 12
+    # June 2001) is the vote on those sections of Floor Amendment 1675, and
+    # the page called it "Divide the Question".
+    dq = re.match(r"^.*?\bDivide\s+the\s+Question\s*:\s*(?P<part>.+)$", seg, re.I)
+    if dq and SECTIONS.match(dq.group("part")) and AMEND_Q.search(asked):
+        seg = dq.group("part")
     # Sections of an amendment the roll-call file names and the line does
     # not: "Sections 3 and 6, RC 16Y-6N, AA" is Floor Amendment 1215s's.
     if SECTIONS.match(seg) and AMEND_Q.search(asked) and not NOT_AMENDING.search(asked):
@@ -1527,6 +1603,7 @@ def _question(o, r):
 
 
 _SAT = {}
+_JOURNALS = None
 
 
 def _sat(body, date):
@@ -1540,18 +1617,53 @@ def _sat(body, date):
 
 
 def _journal(body, date):
-    """{(yeas, nays)} the House Journal prints in the sitting of this date --
-    empty for the Senate, whose openings alone are read -- or None where
-    the journal on disk opens no sitting on it."""
+    """{(yeas, nays)} the chamber's journal prints as roll calls in the
+    sitting of this date, or None where the journal on disk opens no
+    sitting on it."""
+    j = _journal_day(body, date)
+    return None if j is None else set(j["rc"])
+
+
+# How each chamber's journal prints a vote. A roll call is "YEAS 182 - NAYS
+# 172" in the House (journal_days.TALLY) and "Yeas: 16 - Nays: 8" in the
+# Senate; a House division names no one: "On a division vote, with 193
+# members having voted in the affirmative, and 177 in the negative" (2025),
+# "division vote, 121 members having voted in the affirmative and 200 in the
+# negative" (2006).
+SENATE_TALLY = re.compile(r"\bYeas:?\s*(?P<yeas>\d+)\s*[-–,]\s*Nays:?\s*(?P<nays>\d+)", re.I)
+JOURNAL_DIVISION = re.compile(
+    r"division\s+vote,?\s+(?:with\s+)?(?P<yeas>\d+)\s+members?\s+(?:having\s+)?"
+    r"vot\w*\s+in\s+the\s+affirmative,?\s+and\s+(?P<nays>\d+)", re.I)
+JOURNAL_BILL = re.compile(r"\b(HB|SB|HR|SR|HCR|SCR|HJR|SJR|CACR)\s*(\d+)\b")
+SENATE_DIVISION = re.compile(r"division\s+(?:vote\s+)?was\s+requested|Division,\s*$", re.I)
+SENATE_NAMED = re.compile(r"Senators\s+voted\s+(?:Yes|No)", re.I)
+
+
+def _journal_day(body, date):
+    """{"rc": Counter of (yeas, nays), "div": Counter, "bills": {"HB1559"}}
+    -- the roll calls and divisions the chamber's journal prints in the
+    sitting of this date and the measures it names, or None where the
+    journal on disk opens no sitting on it. The Senate journal is on disk
+    from 2003 and the House's from 1997. A House sitting printed only in a
+    "(Cont.)" block is not read (journal_days.day_blocks), nor a Senate one
+    no "The Senate met" line opens: the record then says nothing here."""
     if not date or not re.match(r"\d{4}-\d\d-\d\d$", date):
         return None
+    if _JOURNALS is not None:
+        # a check's own cut of the journals (load(journals=...)), never the
+        # disk's: {(body, date): {"rc": [(y, n)], "div": [...], "bills": [...]}}
+        g = _JOURNALS.get((body, date))
+        return None if g is None else {
+            "rc": collections.Counter(tuple(t) for t in g.get("rc", ())),
+            "div": collections.Counter(tuple(t) for t in g.get("div", ())),
+            "bills": set(g.get("bills", ()))}
     import journal_days as J
     found = None
     for y in dict.fromkeys((date[:4], str(int(date[:4]) + 1)
                             if date[5:7] == "12" else date[:4])):
         key = (body, y)
         if key not in _SAT:
-            got = collections.defaultdict(set)
+            got = {}
             root = J.HOUSE if body == "H" else J.SENATE
             for f in sorted((Path(root) / y).glob("*.txt")):
                 if "erbatim" in f.name:
@@ -1561,17 +1673,45 @@ def _journal(body, date):
                 except OSError:
                     continue
                 text = text.replace("\r\n", "\n").replace("\r", "\n")
-                if body == "H":
-                    for d, block in J.day_blocks(text):
-                        got[d] |= {(int(m.group("yeas")), int(m.group("nays")))
-                                   for m in J.TALLY.finditer(block)}
-                else:
-                    for d, _ in J.senate_openings(text):
-                        got[d] |= set()
-            _SAT[key] = dict(got)
-        if date in _SAT[key]:
-            found = (found or set()) | _SAT[key][date]
+                blocks = J.day_blocks(text) if body == "H" else J.senate_sittings(text)
+                rx = J.TALLY if body == "H" else SENATE_TALLY
+                for d, block in blocks:
+                    g = got.setdefault(d, {"rc": collections.Counter(),
+                                           "div": collections.Counter(), "bills": set()})
+                    for m in rx.finditer(block):
+                        t = (int(m.group("yeas")), int(m.group("nays")))
+                        # The Senate prints a division the way it prints a
+                        # roll call, but after "A division vote was
+                        # requested." and with no names voting Yes or No.
+                        lead = block[max(0, m.start() - 300):m.start()]
+                        division = (body == "S" and SENATE_DIVISION.search(lead)
+                                    and not SENATE_NAMED.search(lead))
+                        g["div" if division else "rc"][t] += 1
+                    if body == "H":
+                        g["div"].update((int(m.group("yeas")), int(m.group("nays")))
+                                        for m in JOURNAL_DIVISION.finditer(block))
+                    g["bills"] |= {a + b for a, b in JOURNAL_BILL.findall(block)}
+            _SAT[key] = got
+        g = _SAT[key].get(date)
+        if g is not None:
+            if found is None:
+                found = {"rc": collections.Counter(), "div": collections.Counter(),
+                         "bills": set()}
+            found["rc"].update(g["rc"])
+            found["div"].update(g["div"])
+            found["bills"] |= g["bills"]
     return found
+
+
+def _prints(body, date, tallies, tol=1):
+    """Does the journal's sitting of this date print one of these counts as
+    a roll call, give or take `tol` a side? None where the journal on disk
+    opens no sitting on the date."""
+    j = _journal_day(body, date)
+    if j is None:
+        return None
+    return any(abs(y - a) <= tol and abs(n - b) <= tol
+               for y, n in tallies for a, b in j["rc"])
 
 
 def tie(it, r):
@@ -1596,6 +1736,7 @@ def tie(it, r):
             it.need = r.get("threshold_needed") or it.need
     if not corrected:
         it.yeas, it.nays = ballots
+    it.stated_kind = it.stated_kind or it.kind
     it.kind = "RC"
     if passed is not None:
         it.carried = bool(passed)
@@ -1637,6 +1778,12 @@ QUESTION_KINDS = [
     ("itl", r"inexpedient|\bITL\b"), ("postpone", r"postpone"),
     ("otp", r"ought\s+to\s+pass|\bOTP"),
 ]
+
+
+# The kinds of question that are a bill's own disposition, never one motion
+# entered on several bills' dockets.
+UNSHARED = ("otp", "itl", "amendment", "conference", "concur", "nonconcur", "veto",
+            "study")
 
 
 def question_kind(text):
@@ -1685,13 +1832,15 @@ def _third_apart(it, o, r):
     return third
 
 
-def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
+def _roll_calls(data, rolls, grouped, placed, base, sat=_sat, held=None):
     """Put every roll call in rollcalls.json on its sitting (above).
 
     `grouped` is {(body, date): [Item]} as the floor rows make it, and is
     added to; `placed` is {id(event): Item} for those rows; `base` the
     first sequence number of each (term, bill), so a motion made here sorts
-    among its bill's own in the docket's order. Returns ({(body, date):
+    among its bill's own in the docket's order; `held` {term: {bill}} the
+    bills of each term the General Court lists, or None where that list is
+    not to hand. Returns ({(body, date):
     [Item]} the votes of each sitting that were on no bill, [(roll call,
     reason)] the roll calls no sitting draws, [(Item, body, date, reason)]
     the roll calls only the docket states that no sitting draws)."""
@@ -1723,12 +1872,23 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
         if bill and bill in (data.get(term) or {}):
             by_bill[(term, bill, r.get("body"))].append(r)
         else:
-            loose.append((term, "", r))
+            # A bill the docket holds no rows for is still the bill the
+            # roll-call file names: HB 476's reconsideration of 6 February
+            # 2025, 15-340, on a bill withdrawn that day, was drawn among
+            # the "votes on no bill". But not a bill the General Court's
+            # list of the term does not hold (data/bills.json, `held`): the
+            # Senate's 13-11 suspension of 27 June 2002 is filed under an SB
+            # 457 of which there is none, and the record cannot say which
+            # bill it was, so it is drawn plainly, as a vote of the day.
+            named = BILL_KEY.match(bill) and (held is None or bill in held.get(term, ()))
+            loose.append((term, bill if named else "", r))
 
+    claimed = set()              # (id(event), offset) of each docket tally paired
     for (term, bill, body), rs in sorted(by_bill.items()):
         events = data[term][bill].get("events") or []
         occ = _tallies(events, body)
         got = _pair(rs, occ)
+        claimed |= {(id(o["e"]), o["start"]) for o in got.values()}
         b0 = base.get((term, bill), 0)
         unpaired = []
         for r in sorted(rs, key=lambda x: (x["date"], x["number"])):
@@ -1746,6 +1906,13 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
                     place(body, third, [day_of[id(it)][1]], r)
                     tied_items.add(id(third))
                     continue
+                if not it.counted and len(o["row"]) > 1:
+                    # owned by its clause's words (_owns): told as that
+                    # clause tells it, "Sec 1" as Committee Amendment 0917's
+                    action, mover, plain = _question(o, r)
+                    if action:
+                        it.action, it.plain = action, plain
+                        it.mover = mover or it.mover
                 tie(it, r)
                 tied_items.add(id(it))
                 on[rollcall_key(r)] = day_of[id(it)][1]
@@ -1798,22 +1965,31 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
         if key[1] < ROLLCALLS_FROM.get(key[0], "9999"):
             continue
         for it in items:
+            if it.rc is None and not it.counted and it.kind in ("RC", ""):
+                _count_on_line(it)
             if it.rc is not None or it.kind not in ("RC", "") or not it.counted:
                 continue
             # A roll call another bill's motion already is, only where the
             # motion is one entered on several bills -- a special order, a
             # suspension, a tabling -- and never a bill's own disposition:
             # SB 198's and SB 330's committee amendments, 13-11 each on 14
-            # February 2002, are two votes.
-            shareable = question_kind(it.action) not in (
-                "otp", "itl", "amendment", "conference", "concur", "nonconcur",
-                "veto", "study")
+            # February 2002, are two votes. AND ONLY WHERE THE JOURNAL NAMES
+            # THIS BILL THAT DAY, where the journal is on disk: the docket
+            # enters HB 1708's special order of 12 March 2026, 156-195, on HB
+            # 1559 too, which the day's journal never names, and the page
+            # said "One roll call on 2 bills".
+            shareable = question_kind(it.action) not in UNSHARED
+            if shareable:
+                jd = _journal_day(key[0], key[1])
+                shareable = jd is None or it.bill.upper() in jd["bills"]
             cands = [r for r in rc_by_day.get(key, ())
                      if (it.yeas, it.nays) in _tally_set(r)
                      and _bill_of(r.get("bill") or "") != it.bill.upper()
                      and (rollcall_key(r) in unplaced
                           or (shareable and told.get(rollcall_key(r))
                               == _motion_key(it.action)))]
+            if len(cands) > 1:
+                cands = _by_words(cands, it)
             if len(cands) != 1:
                 continue
             r = cands[0]
@@ -1857,6 +2033,44 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
         taken.add(rollcall_key(cands[0]))
     loose = [x for x in loose if rollcall_key(x[2]) not in taken]
 
+    # A ROLL CALL FILED UNDER ANOTHER BILL, OR UNDER NONE, THAT A DOCKET ROW
+    # STATES. The Senate's 16-8 adoption of SB 287's conference report on 26
+    # June 2025 is filed under HB 287, a bill the House had killed in
+    # February; drawn under the file's bill with "the docket has no line for
+    # this vote", the page put a conference report on a dead bill and left
+    # SB 287's own row -- "Conference Committee Report # 2025-2797c; RC
+    # 16Y-8N, Adopted" -- undrawn, and the Senate Journal prints SB 287. A
+    # roll call no tally of its own bill's rows was paired with is the one
+    # tally that day, on any bill's rows, that nothing else draws, with its
+    # count and its kind of question.
+    spare = _spare_tallies(data, placed, day_of, claimed)
+    used, still = set(), []
+    for term, bill, r in loose:
+        cands = [x for x in spare.get((r.get("body"), r.get("date")), ())
+                 if id(x[2]) not in used and (x[2]["y"], x[2]["nn"]) in _tally_set(r)
+                 and _row_fits(r, x[2])]
+        if len(cands) != 1 or QUORUM.search(r.get("question") or ""):
+            still.append((term, bill, r))
+            continue
+        t2, b2, o = cands[0]
+        used.add(id(o))
+        e = o["e"]
+        it = placed.get(id(e))
+        action, mover, plain = _question(o, r)
+        if it is not None and id(it) in day_of:
+            new = _made(b2, t2, action, mover, r, e, it.page)
+            at = _told_at(it, o["row"])
+            new.seq = it.seq + (0.001 * (o["k"] + 1) if o["start"] > at
+                                else -0.5 + 0.001 * (o["k"] + 1))
+            dates = [day_of[id(it)][1]]
+        else:
+            new = _made(b2, t2, action, mover, r, e, _int(e.get("cite_page")))
+            new.seq = base.get((t2, b2), 0) + o["n"] + 0.001 * (o["k"] + 1)
+            dates = [o["own"], o["date"], r["date"]]
+        new.plain = plain
+        place(r.get("body"), new, dates, r, e)
+    loose = still
+
     # BEFORE THE VOTING SYSTEM, THE DOCKET IS THE RECORD. A roll call the
     # docket states before rollcalls.json begins -- "COMM AM, AL RC(6-17);
     # LAID ON THE TABLE, SEN W. KING MA RC(16-7)" -- is drawn from the docket
@@ -1883,9 +2097,17 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
             continue
         if (body, when) not in grouped:
             have.add((body, when))
+        entered = (e.get("date") or "")[:10] if e else ""
+        if entered and when != entered and not item.entered and \
+                not _prints(body, entered, _tally_set(r)) and \
+                _prints(body, when, _tally_set(r), 0):
+            # put where the journal prints it (_when): the page says the
+            # day the docket enters it
+            item.entered = entered
         grouped[(body, when)].append(item)
         day_of[id(item)] = (body, when)
         on[rollcall_key(r)] = when
+    _journal_dated(grouped, have, day_of, on)
     _fill_pages(grouped)
 
     # What no docket row states: under its bill where it has one, else among
@@ -1921,6 +2143,8 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
         grouped[(body, when)].append(it)
         have.add((body, when))
         on[rollcall_key(r)] = when
+
+    _journal_checked(grouped)
 
     # How many bills' motions one roll call is drawn under, each day.
     for key, items in grouped.items():
@@ -1992,6 +2216,104 @@ def _docket_only(data, placed, day_of, base):
     return out
 
 
+def _spare_tallies(data, placed, day_of, claimed):
+    """{(body, date): [(term, bill, occurrence)]} -- the roll-call counts the
+    docket's rows state from the roll-call file's first day on that no
+    roll call on record was paired with (`claimed`) and no drawn floor
+    motion tells: a vote whose row the reader typed as something other than
+    a floor motion, on a bill the file holds no roll call for."""
+    out = collections.defaultdict(list)
+    first = min(ROLLCALLS_FROM.values(), default="9999")
+    for term, bills in data.items():
+        if term[5:9] < first[:4]:
+            continue
+        for bill, rec in bills.items():
+            events = rec.get("events") or []
+            for body in ("H", "S"):
+                cut = ROLLCALLS_FROM.get(body, "9999")
+                for o in _tallies(events, body):
+                    if o["kind"] == "DV" or (o["date"] or "") < cut:
+                        continue
+                    if (id(o["e"]), o["start"]) in claimed:
+                        continue
+                    it = placed.get(id(o["e"]))
+                    if it is not None and id(it) in day_of and (
+                            (o["y"], o["nn"]) in it.tallies
+                            or (not it.counted and _owns(it, o))):
+                        continue
+                    for d in dict.fromkeys((o["date"], o["own"])):
+                        if d:
+                            out[(body, d)].append((term, bill, o))
+    return out
+
+
+def _row_fits(r, o):
+    """Could roll call `r` be the question docket tally `o` decides? Not a
+    veto against one that is not, nor a suspension of the rules; and where
+    both name a kind of question, the same kind."""
+    q = r.get("question") or r.get("question_raw") or ""
+    seg = _segment(o) or o["e"].get("raw") or ""
+    if bool(VETO_Q.search(q)) != bool(VETO_Q.search(seg)) or \
+            bool(SUSPEND_Q.search(q)) != bool(SUSPEND_Q.search(seg)):
+        return False
+    kq, ks = question_kind(q), question_kind(seg)
+    return kq is None or ks is None or kq == ks
+
+
+def _count_on_line(it):
+    """The one roll call a floor motion's own line states, in a form the
+    reader did not take: "Suspension of Rules, Introduced after deadlines &
+    consideration at present time and immediate third reading, MA, RC
+    (292-48)" (HR 25, 24 May 2006) was read with no count, so the one-motion
+    pass below could not find it, and the roll call on record was drawn a
+    second time among the day's votes on no bill. Only a line of one count;
+    a line of several is told clause by clause (_owns)."""
+    if it.kind == "VV" or it.veto:
+        return
+    ms = list(TALLY.finditer(it.raw or ""))
+    if len(ms) != 1 or not (ms[0].group("kind") or "").upper().startswith(("RC", "ROLL")):
+        return
+    m = ms[0]
+    it.yeas, it.nays = int(m.group("y")), int(m.group("n"))
+    it.kind = "RC"
+
+
+# A member named in a question: "Sen. Larsen", "Rep. P LaFlamme".
+NAMED = re.compile(r"\b(?:Rep|Sen|Senator|Representative)s?\.?\s+(?:[A-Z]\.?\s+)?"
+                   r"(?P<n>[A-Z][\w'’-]{2,})")
+
+
+def _by_words(cands, it):
+    """Of several roll calls on record whose count fits a docket motion, the
+    one whose question names what the motion's line names -- the consent
+    calendar, the motion's own bill, the member who moved it -- or none.
+
+    The Senate's remote sittings of 2021 took every question by roll call,
+    and nearly every one 24-0, so a count decides nothing: the consent
+    calendar of 18 February 2021 was said on the consent list and drawn
+    again as "Consent Calendar" among the votes on no bill, and HB 296's
+    and HB 615's special order of 29 April as "Special Order HB 296-FN and
+    HB 615-FN". On 7 June 2007 two rules suspensions of 17-7 are filed as
+    "(Rule Suspension Sen. Larsen)" and "(Rule Suspension Sen. Gatsas)",
+    and the docket enters them on CACR 19 and CACR 20, moved by each."""
+    raw = f"{it.raw or ''} {it.mover or ''}"
+    num = re.match(r"^([A-Z]+)(\d+)", (it.bill or "").upper())
+    names = {m.group("n") for m in NAMED.finditer(raw)}
+    tests = []
+    if it.consent:
+        tests.append(lambda q: bool(re.search(r"\bconsent\b", q, re.I)))
+    if num:
+        tests.append(lambda q: bool(re.search(
+            rf"\b{num.group(1)}\s*{num.group(2)}\b", q, re.I)))
+    if names:
+        tests.append(lambda q: bool(names & {m.group("n") for m in NAMED.finditer(q)}))
+    for test in tests:
+        hit = [r for r in cands if test(r.get("question") or r.get("question_raw") or "")]
+        if len(hit) == 1:
+            return hit
+    return []
+
+
 def _same_question(r, it):
     """Could roll call `r` be the motion `it`? Not a veto question against
     one that is not, nor a suspension of the rules against one that is not;
@@ -2051,31 +2373,81 @@ def _second_look(r, term, bill, body, events, grouped, day_of, placed, tied_item
                 place(body, new, [r["date"]], r, e)
                 return True
     kind = question_kind(r.get("question"))
-    if kind is None:
+    if kind is not None:
+        it = _one_of_kind(r, kind, grouped.get((body, r["date"]), []), term, bill,
+                          tied_items, 3)
+        if it is not None:
+            tie(it, r)
+            tied_items.add(id(it))
+            on[rollcall_key(r)] = r["date"]
+            return True
+    # A DAY OR TWO APART. The roll-call file dates HB 1599's kill of 2006,
+    # 211-74, on 16 February; the docket enters it on the 15th as "ITL, MA,
+    # RC (211-79)", and each was drawn on its own day's page, one vote on
+    # two pages. SB 319's reconsideration of 2014, 94-169, is on the file's
+    # 15 May and the docket's 16th ("Reconsideration (Rep Shurtleff) MF
+    # 94-169"). The bill's own motion within NEAR_DAYS is the roll call's
+    # where it is the only one that can be: its count on the line, or the
+    # one motion of its kind of question with the record's outcome and a
+    # count within five. Drawn where the motion is, and _journal_dated
+    # then puts it where the journal prints it.
+    near = []
+    for n, e in enumerate(events):
+        if ((e.get("body") or "").strip().upper() != body or e.get("cancelled")
+                or e.get("type") in NOT_THE_FLOOR):
+            continue
+        if not 0 < _apart((e.get("date") or "")[:10], r["date"]) <= NEAR_DAYS:
+            continue
+        it = placed.get(id(e))
+        if it is None or id(it) not in day_of or id(it) in tied_items or \
+                it.kind == "VV" or it.rc is not None:
+            continue
+        raw = e.get("raw") or ""
+        if any((int(m.group("y")), int(m.group("n"))) in want
+               and not DATE_IN.match(raw, max(0, m.start() - 3))
+               for m in BARE.finditer(raw)):
+            near.append(it)
+    if len(near) != 1 and kind is not None:
+        days = [i for key, items in grouped.items() if key[0] == body
+                and 0 < _apart(key[1], r["date"]) <= NEAR_DAYS for i in items]
+        it = _one_of_kind(r, kind, days, term, bill, tied_items, 5)
+        # not a voice vote on another day: that is another decision
+        near = [it] if it is not None and it.kind != "VV" else []
+    if len(near) != 1:
         return False
-    day = grouped.get((body, r["date"]), [])
-    cands = [i for i in day if i.bill == bill and i.term == term and i.rc is None
+    it = near[0]
+    tie(it, r)
+    tied_items.add(id(it))
+    on[rollcall_key(r)] = day_of[id(it)][1]
+    return True
+
+
+NEAR_DAYS = 3
+
+
+def _one_of_kind(r, kind, items, term, bill, tied_items, within):
+    """The one motion of the bill among `items` of the roll call's kind of
+    question that can be it -- no count of its own, or one within `within`
+    of the ballots -- or None."""
+    cands = [i for i in items if i.bill == bill and i.term == term and i.rc is None
              and id(i) not in tied_items and question_kind(i.action) == kind]
     if len(cands) != 1:
-        return False
+        return None
     it = cands[0]
     if it.counted:
         if it.kind not in ("RC", "") or max(abs(it.yeas - r["yeas"]),
-                                           abs(it.nays - r["nays"])) > 3:
-            return False
+                                           abs(it.nays - r["nays"])) > within:
+            return None
     elif it.kind not in ("VV", ""):
-        return False
+        return None
     # Never a motion the docket says came out the other way: the roll-call
     # file files the Senate's 14-10 kill of HB 617 (26 May 2005) under HB 611,
     # whose own motion to kill failed by voice that day; the 14-10 is HB 617's
     # docket roll call's (the one-motion pass in _roll_calls finds it there).
     if it.carried is not None and r.get("passed") is not None and \
             it.carried != bool(r["passed"]):
-        return False
-    tie(it, r)
-    tied_items.add(id(it))
-    on[rollcall_key(r)] = r["date"]
-    return True
+        return None
+    return it
 
 
 def _when(body, dates, r, have, sat):
@@ -2083,8 +2455,25 @@ def _when(body, dates, r, have, sat):
     row's own stated date, the docket's date and the roll-call file's that
     is a sitting of the chamber's; else the roll-call file's date where the
     docket gives the same day (a day of conference reports and nothing
-    else, 24 June 2009), or where the journal opens a sitting on it."""
+    else, 24 June 2009), or where the journal opens a sitting on it.
+
+    UNLESS THE JOURNAL PRINTS THE VOTE ON ONE OF THOSE DAYS AND NOT THE
+    OTHER. HB 2's amendment 1163h, 169-177, is entered in the docket on 5
+    April 2017 and printed in House Journal 13 of Thursday 6 April, the day
+    the roll-call file gives it; drawn on the 5th, the 6th's page said "1
+    voice vote" of a day that took a roll call. The journal is the
+    chamber's own account of its sitting, and where it prints the count on
+    exactly one of the days in question, the vote is drawn there."""
     dates = [d for d in dates if d]
+    if r is not None:
+        want = _tally_set(r)
+        cand = list(dict.fromkeys(dates + [r.get("date")]))
+        printed = [d for d in cand if d and _prints(body, d, want, 0)]
+        first = next((d for d in dates if (body, d) in have), None)
+        if (len(printed) == 1 and printed[0] != first
+                and not (first and _prints(body, first, want))
+                and ((body, printed[0]) in have or sat(body, printed[0]))):
+            return printed[0]
     for d in dates:
         if (body, d) in have:
             return d
@@ -2095,6 +2484,165 @@ def _when(body, dates, r, have, sat):
         if d and sat(body, d):
             return d
     return None
+
+
+def _journal_dated(grouped, have, day_of, on):
+    """A docket floor motion that is a roll call on record goes on the
+    sitting whose journal prints the vote, where the docket enters it on a
+    day whose journal does not.
+
+    The roll-call file and House Journal 21 put all fifteen of SB 319's,
+    SB 389's and SB 336's roll calls on Thursday 15 May 2014; the docket
+    enters ten of them on the 16th and one on Monday the 19th, days the
+    journal holds no sitting on, and the pages for those days said the
+    House took nine roll calls and one. Only onto a sitting the record
+    already holds, and the page says the day the docket enters it, as it
+    does for business done in recess."""
+    moves = []
+    for (body, day), items in grouped.items():
+        for it in items:
+            r = it.rc
+            if (r is None or it.consent or it.entered or it.added
+                    or not r.get("date") or r["date"] == day):
+                continue
+            there = r["date"]
+            if (body, there) not in have:
+                continue
+            want = it.tallies | _tally_set(r)
+            if _prints(body, there, want, 0) and not _prints(body, day, want):
+                moves.append((body, day, there, it))
+    for body, day, there, it in moves:
+        grouped[(body, day)].remove(it)
+        it.entered = day
+        grouped[(body, there)].append(it)
+        day_of[id(it)] = (body, there)
+        on[rollcall_key(it.rc)] = there
+    for key in {(b, d) for b, d, _t, _i in moves}:
+        if not grouped[key]:
+            del grouped[key]
+            have.discard(key)
+
+
+def _journal_checked(grouped):
+    """Where the chamber's journal is on disk, it is held to what the page
+    counts as a roll call:
+
+      - A DIVISION IS A DIVISION. Where the docket says division, or no roll
+        call on record is the vote, and the House Journal prints that count
+        only as a division -- "On a division vote, with 193 members having
+        voted in the affirmative, and 177 in the negative" (HB 299, 20
+        February 2025, "MA DV 193-177" in the docket) -- the page draws a
+        division, though the roll-call file holds ballots for it.
+      - A COUNT COPIED FROM ANOTHER ROW IS NOT ANOTHER ROLL CALL. HB 461's
+        report of 22 January 2014 is entered "MA RC 289-48", HB 597's roll
+        call on record that day; the journal prints 289-48 once, of HB 597,
+        and HB 461's report "adopted and referred to the Committee on
+        Finance" with no roll call. Where the page would count more votes of
+        one count than the journal prints of it, and one of them is the
+        roll call on record, a count only the docket states is taken off its
+        motion: the motion and its outcome stay, the copied count does not.
+        The Senate's "Enrolled RC 24Y-0N" of 2021 ("Adopted in recess", the
+        journal says) and the docket's second 19-4 on SB 21 of 23 March 2017
+        are the same.
+
+    And without the journal: A RECESS TAKES NO ROLL CALL (unmarked_recess,
+    above). The Senate's docket enters each enrolled bills report of its
+    remote sittings of 2021 as "Enrolled RC 24Y-0N, MA, (In recess of
+    04/08/2021)"; the roll-call file holds no such vote, and the Senate
+    Journal says of each "Senator Avard moved adoption of the Report of
+    Committee on Enrolled Bills. Adopted in recess." A count the docket
+    states on business it marks as done in recess, which no roll call on
+    record is, is not drawn."""
+    for (body, day), items in grouped.items():
+        for it in items:
+            if it.kind == "RC" and it.counted and it.rc is None and \
+                    RECESS_OF.search(it.raw or ""):
+                _uncount(it)
+        j = _journal_day(body, day)
+        if j is None:
+            continue
+        for it in items:
+            if it.kind != "RC" or not it.counted or it.consent:
+                continue
+            if it.rc is not None and not _says_division(it):
+                continue
+            counts = it.tallies
+            if any(t in j["div"] for t in counts) and \
+                    not any(t in j["rc"] for t in counts):
+                it.kind = "DV"
+        votes = {}
+        for it in items:
+            if it.kind != "RC" or not it.counted:
+                continue
+            k = (("rc",) + rollcall_key(it.rc) if it.rc is not None else
+                 ("consent",) if it.consent else
+                 ("motion", _motion_key(it.action), it.yeas, it.nays))
+            votes.setdefault(k, []).append(it)
+        rows = {(i.term, i.bill, i.raw) for k, its in votes.items() if k[0] == "rc"
+                for i in its}
+        gone = set()
+        for k in [k for k in votes if k[0] == "motion"]:
+            t = k[2:]
+            # every vote the page draws within a vote of this count, and how
+            # many the journal prints: the clerk's 207-141 is the 206-141 on
+            # record (21 March 2007)
+            # One off only where the journal prints no vote of this very
+            # count: in a chamber of 24, 13-10 and 14-10 are two votes.
+            by = 0 if j["rc"].get(t) else 1
+            near = [v for v, its in votes.items()
+                    if any(_near(t, x, by) for i in its for x in i.tallies)]
+            printed = sum(c for x, c in j["rc"].items() if _near(t, x, by))
+            if not printed or len(near) <= printed or \
+                    not any(v[0] == "rc" for v in near):
+                continue
+            for it in votes.pop(k):
+                if (it.term, it.bill, it.raw) in rows:
+                    # the very row the roll call is drawn on, entered
+                    # twice: HB 194's report of 4 January 2024
+                    gone.add(id(it))
+                elif JOURNAL_BILL.fullmatch(_spaced(it.bill)) and \
+                        it.bill.upper() not in j["bills"]:
+                    # a row copied onto a bill the day's journal never
+                    # names: HB 1559's "Special Order to next order of
+                    # business (Rep. Vallone): MF RC 156-195" of 12 March
+                    # 2026 is HB 1708's motion, moved by Rep. Malone
+                    gone.add(id(it))
+                _uncount(it)
+        if gone:
+            items[:] = [i for i in items if id(i) not in gone]
+
+
+def _says_division(it):
+    """Did the docket say this motion was decided on a division? Its kind
+    before tie() made it a roll call, or its line where the reader read no
+    kind: "Reconsider 18-311 (Rep. H. Howard): MF DV 031126" (HB 1565 of
+    2026)."""
+    if it.stated_kind:
+        return it.stated_kind == "DV"
+    raw = it.raw or ""
+    return bool(re.search(r"\b(?:DV|DIV|Division)\b", raw)) and \
+        not re.search(r"\bRC\b|\bRoll\s+Call\b", raw, re.I)
+
+
+def _spaced(bill):
+    """"HB1559" as a journal prints it, "HB 1559"."""
+    return re.sub(r"^([A-Z]+)(\d)", r"\1 \2", (bill or "").upper())
+
+
+def _near(a, b, by=1):
+    return abs(a[0] - b[0]) <= by and abs(a[1] - b[1]) <= by
+
+
+def _uncount(it):
+    """Take a count the docket alone states off its motion: the motion and
+    its outcome stay, drawn as the docket words them."""
+    it.yeas = it.nays = None
+    it.kind = ""
+    it.need = None
+    it.fifths = False
+    words = INLINE_COUNT.sub("", it.action or "")
+    if words != it.action:
+        it.action = words.strip(" ,;:") or it.action
 
 
 def _neighbours(every, on):
@@ -2153,8 +2701,14 @@ def _anchor(it, day, b0, r):
     after the motion of the day whose roll call came just before it, which is
     the House's own order by number and clock, and in its bill's place
     otherwise."""
-    before = [i for i in day if i.rc is not None and rollcall_key(i.rc)[0] ==
-              rollcall_key(r)[0] and rollcall_key(i.rc)[2] < rollcall_key(r)[2]]
+    # Only by a roll call whose motion has a journal page: a day the record
+    # gives no order to is listed by bill, and a roll call placed by its
+    # number put HB 287 between HB 115 and HB 2 on the Senate's page of 26
+    # June 2025 and HB 1370's report between HB 1292's two motions on 13
+    # June 2024.
+    before = [i for i in day if i.rc is not None and i.page is not None
+              and rollcall_key(i.rc)[0] == rollcall_key(r)[0]
+              and rollcall_key(i.rc)[2] < rollcall_key(r)[2]]
     mine = [i for i in day if i.bill == it.bill and i.term == it.term]
     if before:
         a = max(before, key=lambda i: rollcall_key(i.rc)[2])
@@ -2186,13 +2740,16 @@ def _fill_pages(grouped):
                 it.page = mine[-1].page
 
 
-def load(path=NARRATIVES, rollcalls=None, sat=None):
+def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
     """Every sitting day, as {(body, date): Day}.
 
     The roll calls are the rollcalls.json beside the narratives.json read,
     unless `rollcalls` names a file or gives them already read: a record cut
     for a check is held to its own roll calls, never to the site's. `sat`
-    says whether the journal opens a sitting on a date (_sat by default).
+    says whether the journal opens a sitting on a date (_sat by default), and
+    `journals` gives the journals' votes in place of the disk's, for a check
+    that must not read them: {(body, date): {"rc": [(yeas, nays)], "div":
+    [...], "bills": ["HB1559"]}} (_journal_day).
 
     Ordered within a day by the journal page the action is printed on, which
     is the clerk's own ordering and the only one available -- the events carry
@@ -2274,8 +2831,13 @@ def load(path=NARRATIVES, rollcalls=None, sat=None):
         for it in items:
             _conference_named(it)
     # Every roll call on record, onto its sitting (_roll_calls).
-    others, left, left_docket = _roll_calls(data, rolls, grouped, placed, base,
-                                            sat or _sat)
+    global _JOURNALS
+    was, _JOURNALS = _JOURNALS, journals
+    try:
+        others, left, left_docket = _roll_calls(data, rolls, grouped, placed, base,
+                                                sat or _sat, _held_bills(p.parent))
+    finally:
+        _JOURNALS = was
     for (body, date), items in grouped.items():
         for it in items:
             # A motion with a roll call of its own is not a consent item,
@@ -2337,6 +2899,18 @@ def _conference_named(it):
     it.action = "Adopt the Conference Committee Report" + (f" {num.group(1)}" if num else "")
     it.mover = ""
     it.plain = True
+
+
+def _held_bills(root):
+    """{term: {bill}} -- every bill of each term in data/bills.json beside
+    the narratives read, or None where it is not there (a check's own cut of
+    the record): a bill the roll-call file names is then taken as named."""
+    f = Path(root) / "data" / "bills.json"
+    try:
+        got = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return {t: set(b) for t, b in got.items() if isinstance(b, dict)} if isinstance(got, dict) else None
 
 
 class Sittings(dict):

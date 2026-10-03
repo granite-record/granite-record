@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.17
+# GRANITE_VERSION: 2026-09-19.18
 """
 A page for every day the House sat.
 
@@ -292,28 +292,28 @@ def runs(items):
 
 
 def speech_groups(items):
-    """{id(item): group} -- the stretches of the day a bill's speeches are
-    shared out over, which are its runs (above) as the docket's floor rows
-    make them.
+    """{id(item): group} -- what a bill's speeches are shared out over:
+    every motion the bill had that day, however many runs (above) they fall
+    in. The journal gives a speech to a bill and a day, never to a run.
 
-    A roll call drawn from another row or the roll-call file
-    (session_days._roll_calls) can fall between two of another bill's
-    motions that were consecutive: HB 1633's tabling and its removal from the
-    table on 13 June 2024 were one run, and a roll call of the day between
-    their journal pages made them two, each its bill's one motion, each
-    claiming the speech that neither the journal nor the count ties to
-    either. Such a motion does not part the bill it falls between."""
-    rs = runs(items)
-    group = list(range(len(rs)))
-    for i in range(len(rs)):
-        j = i + 1
-        while j < len(rs) and all(getattr(x, "added", "") for x in rs[j][1]) and \
-                (rs[j][0], rs[j][1][0].term) != (rs[i][0], rs[i][1][0].term):
-            j += 1
-        if j > i + 1 and j < len(rs) and \
-                (rs[j][0], rs[j][1][0].term) == (rs[i][0], rs[i][1][0].term):
-            group[j] = group[i]
-    return {id(it): group[n] for n, (_b, its) in enumerate(rs) for it in its}
+    Shared out run by run, a bill that two runs split had two "one motion"
+    days, and each claimed every speech: HB 1633's tabling and its removal
+    from the table on 13 June 2024 fell either side of another bill's roll
+    call, and SB 101's amendment 1451h of 23 April 2026 sat on page 37 with
+    SB 586 between it and the bill's other motions, so it took every speech
+    the bill had and named Rep. Peternel on both sides of it."""
+    return {id(it): (it.term, it.bill) for it in items}
+
+
+def ambiguous_tallies(items):
+    """The counts more than one of these motions is known by. A speech the
+    journal ties to such a count is tied to neither: HB 1's reconsideration
+    and its final adoption of 26 June 2025 were both 185-180, and each was
+    given the other's speakers."""
+    seen = collections.Counter(t for it in items
+                               for t in (getattr(it, "tallies", None) or
+                                         ({(it.yeas, it.nays)} if it.counted else set())))
+    return frozenset(t for t, n in seen.items() if n > 1)
 
 
 # The kinds of motion a speaker's own "moved ..." and the record's action are
@@ -420,10 +420,11 @@ def several_on_line(item):
     return (getattr(item, "joined", 0) or 0) > 1
 
 
-def claims(a, item, sole=False):
+def claims(a, item, sole=False, ambiguous=frozenset()):
     """Does this motion claim one attribution of its bill? speakers_for says
     when; the page's "also spoke" list asks the same question of every
-    motion (unplaced)."""
+    motion (unplaced). `ambiguous` is the counts more than one of the bill's
+    motions that day is known by (ambiguous_tallies)."""
     if made_after(a, item):
         return False
     # Any count the motion is known by: where the page draws the ballots'
@@ -432,7 +433,7 @@ def claims(a, item, sole=False):
     if want is None:
         want = {(item.yeas, item.nays)} if item.counted else set()
     t = a.get("tally")
-    tied = bool(want) and bool(t) and tuple(t) in want
+    tied = bool(want) and bool(t) and tuple(t) in want and tuple(t) not in ambiguous
     if sole and not _same_motion(a.get("inline_motion"), item.action):
         return False
     if sole and several_on_line(item):
@@ -441,8 +442,8 @@ def claims(a, item, sole=False):
     return bool(sole or tied)
 
 
-def unplaced(attrs, bill, items):
-    """The names of the bill's speakers no motion of the run claims, sorted.
+def unplaced(attrs, bill, items, ambiguous=frozenset()):
+    """The names of the bill's speakers no motion of the day claims, sorted.
 
     BY THE SPEECH, NOT BY THE MOTION. This was every speech each motion did
     not claim, motion by motion, so a speech one motion claimed was listed
@@ -457,12 +458,19 @@ def unplaced(attrs, bill, items):
     for a in attrs:
         if base_bill(a.get("bill")) != base_bill(bill):
             continue
-        if not any(claims(a, it, sole) for it in items):
+        if not any(claims(a, it, sole, ambiguous) for it in items):
             out.update(n for n in a["names"] if n)
+    for it in items:
+        mine = {"for": [], "against": []}
+        for a in attrs:
+            if base_bill(a.get("bill")) == base_bill(bill) and \
+                    claims(a, it, sole, ambiguous):
+                mine[a["side"]] += a["names"]
+        out |= two_sided(mine)
     return sorted(out)
 
 
-def speakers_for(attrs, bill, item, sole=False):
+def speakers_for(attrs, bill, item, sole=False, ambiguous=frozenset()):
     """The attributions belonging to this motion, split by side.
 
     An attribution is claimed by a motion only when the journal put a vote
@@ -503,8 +511,29 @@ def speakers_for(attrs, bill, item, sole=False):
         # motion of the day or its count is the vote's (made_after).
         # All of it is decided in claims(), which the page's "also spoke"
         # list asks of every motion too.
-        (mine if claims(a, item, sole) else rest)[side] += a["names"]
+        # A member who spoke twice on the motion is named once: HB 317's
+        # report of 4 June 2026 read "Spoke for the motion Rep. Berry, Rep.
+        # Berry, Rep. Berry, Rep. Berry".
+        to = (mine if claims(a, item, sole, ambiguous) else rest)[side]
+        for n in a["names"]:
+            if n not in to:
+                to.append(n)
+    # NEVER ON BOTH SIDES OF ONE MOTION. A member the journal has speaking in
+    # favor and against on the one day a bill had one motion spoke on two
+    # questions -- an amendment and the report -- and which side of this
+    # motion they took the record does not say: 153 motions of 1997-2026
+    # named someone on both sides, Rep. Daniels on HB 666's Inexpedient to
+    # Legislate of 5 March 1997 among them. Such a member spoke during the
+    # bill (unplaced), and no more.
+    both = two_sided(mine)
+    for side in ("for", "against"):
+        rest[side] += [n for n in mine[side] if n in both and n not in rest[side]]
+        mine[side] = [n for n in mine[side] if n not in both]
     return mine, rest
+
+
+def two_sided(mine):
+    return set(mine["for"]) & set(mine["against"])
 
 
 def bill_href(term, bid, years):
@@ -773,6 +802,7 @@ def render(day, narrative, titles, years, members, esc):
     for it in seq_items:
         if not it.entered and getattr(it, "added", "") != "rollcall":
             shared_out[groups[id(it)]].append(it)
+    unsure = {g: ambiguous_tallies(its) for g, its in shared_out.items()}
     told = set()
     for bill, items in runs(seq_items):
         term = items[0].term
@@ -819,8 +849,10 @@ def render(day, narrative, titles, years, members, esc):
                 # ballots, and that is all the page says of it.
                 H.append(ROLLCALL_ONLY)
             else:
+                grp = groups[id(it)]
                 mine, _rest = speakers_for(attrs, bill, it,
-                                           sole=(len(shared_out[groups[id(it)]]) == 1))
+                                           sole=(len(shared_out[grp]) == 1),
+                                           ambiguous=unsure.get(grp, frozenset()))
                 for side, label in (("for", "Spoke for the motion"),
                                     ("against", "Spoke against the motion")):
                     who = mine[side]
@@ -862,7 +894,8 @@ def render(day, narrative, titles, years, members, esc):
         grp = groups[id(items[0])]
         if own and grp not in told:
             told.add(grp)
-            names = unplaced(attrs, bill, shared_out[grp])
+            names = unplaced(attrs, bill, shared_out[grp],
+                             unsure.get(grp, frozenset()))
             if names:
                 H.append('<p class="sspoke sother"><span class="slab">Also '
                          "spoke during this bill</span>"
@@ -987,6 +1020,15 @@ def main():
     # SILENCE IS NOT SUCCESS: no days is a Calendar linking at nothing, and a
     # build that said so by printing a zero.
     assert mine, f"no {CHAMBER.get(body, body)} sitting days in narratives.json"
+    # A ROLL CALL ON NO PAGE IS SAID, with why: the night a roll call arrives
+    # before the docket's rows for its sitting shows here, not only in the
+    # data check that holds each to a named reason.
+    left = [(r, why) for r, why in days.left if r.get("body") == body]
+    if left:
+        why = collections.Counter(w.split(",")[0] for _r, w in left)
+        print(f"  {len(left)} {CHAMBER[body]} roll call(s) on record drawn on no "
+              "sitting page, the latest of " + max(r["date"] for r, _w in left)
+              + ": " + "; ".join(f"{n} {w}" for w, n in sorted(why.items())))
 
     titles, years = load_titles(site)
     members = Members(site)

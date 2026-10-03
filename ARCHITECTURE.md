@@ -316,6 +316,37 @@ on 35 bills' dockets is one roll call, and so is a consent calendar. What no
 sitting draws is a named list with its reason (a quorum call, a date no sitting
 holds), and `preflight` holds every roll call and every page's count to that.
 
+**And held to the journal the build did not make.** A review of that change
+found one vote drawn twice on ten pages, a vote on two pages, a division drawn
+as a roll call and speeches moved onto motions they were not made on -- all
+invisible to a check that compared the pages with the model that made them.
+So the chamber's journal on disk is read for what it prints (`_journal_day`:
+the House's YEAS-NAYS and divisions from 1997, the Senate's "Yeas: n - Nays: n"
+from 2003, and the measures each sitting names), and it decides four things.
+Where the docket and the roll-call file date a vote on different days, it is
+drawn on the one whose journal prints its count (SB 319's roll calls of 15 May
+2014 were on a 16 May page of a day the House did not sit; three such pages are
+gone). Where the docket says division and the journal prints a division, it
+stays one, whatever the roll-call file holds (HB 299, 20 February 2025). Where
+a page would count more votes of one count than the journal prints, a count only
+the docket states beside a roll call on record is a copy and is taken off its
+motion (HB 461's "MA RC 289-48" of 22 January 2014 is HB 597's), and a copied
+row on a bill the day's journal never names is not drawn (HB 1559's special
+order of 12 March 2026 is HB 1708's). And business the docket marks as done in
+recess carries no roll call: a recess takes none. Without the journal the
+record still finds each vote's motion: an uncounted motion owns the clause of
+its line that names it, a count the reader missed is read off the motion's own
+line, several roll calls of one count are told apart by what their questions
+name (the consent calendar, the bill, the member), a roll call filed under the
+wrong bill goes to the one docket row that states it (SB 287's conference report
+of 26 June 2025, filed under HB 287), and the file's own bill is drawn even where
+the docket holds no row for it (HB 476). A speech goes to a motion only by the
+journal's count, never by being the one motion of a run, and never to two
+motions of one count or to both sides of one; a name is said once.
+`preflight` now holds every page to each roll call once, the House journal's
+own count on every day it is on disk (nineteen days named, each for its reason)
+and the speaker lists of every built page.
+
 **What the Senate's pages leave out, and why.** Who spoke. Across all 491
 Senate journal files "spoke in favor" occurs four times and "spoke against"
 twice, and every one is ordinary English inside a speech rather than a marker

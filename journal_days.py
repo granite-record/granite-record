@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.7
+# GRANITE_VERSION: 2026-09-19.8
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -758,13 +758,28 @@ def _iso(m):
 def senate_openings(text):
     """[(iso_date, opening)] -- each sitting's opening in one Senate file."""
     out = []
+    for iso, s, end in _senate_spans(text):
+        b = S_BUSINESS.search(text, s, end)
+        out.append((iso, text[s:b.start() if b else end]))
+    return out
+
+
+def senate_sittings(text):
+    """[(iso_date, block)] -- each sitting in one Senate file, whole: from
+    the line that opens it to the line that opens the next, dated as
+    senate_openings dates it. A sitting the Senate reconvened later the same
+    day is a block of its own with the same date."""
+    return [(iso, text[s:end]) for iso, s, end in _senate_spans(text)]
+
+
+def _senate_spans(text):
+    """[(iso_date, start, end)] -- where each dated sitting runs: its
+    opening begins at `start`, after the line that opens it."""
+    out = []
     starts = list(S_START.finditer(text))
     commences = {_iso(c) for c in S_COMMENCES.finditer(text)}
     for i, s in enumerate(starts):
         end = starts[i + 1].start() if i + 1 < len(starts) else len(text)
-        b = S_BUSINESS.search(text, s.end(), end)
-        if b:
-            end = b.start()
         m = S_DATE.search(s.group(0))
         headed = False
         if not m:
@@ -779,7 +794,7 @@ def senate_openings(text):
         if (headed and run and " met" in s.group(0) and _iso(run) != iso
                 and _iso(run) in commences):
             iso = _iso(run)
-        out.append((iso, text[s.end():end]))
+        out.append((iso, s.end(), end))
     return out
 
 
