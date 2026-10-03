@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.194 */
+/* GRANITE_VERSION: 2026-09-07.195 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1174,6 +1174,12 @@ line-height:1.1}
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
+/* WHERE THE SKIP LINK LANDS takes the focus (find.js), so that the next Tab
+   starts there and a screen reader says so. A ring round the whole content
+   would say nothing a reader can use, so none is drawn on the container
+   itself; the first thing inside it that takes the focus draws its own. */
+:is(#results,#main)[tabindex="-1"]:focus{outline:none}
+
 /* SHARED:END ------------------------------------------------------------ */
 
 /* MARK:START ---------------------------------------------------------------
@@ -1277,6 +1283,14 @@ color:var(--ink-2);cursor:pointer}
 #qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
 .qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) var(--sp-1) 0;display:flex;gap:var(--sp-6);flex-wrap:wrap;max-width:840px}
+/* THE COUNT IS EMPTY UNTIL A SEARCH NARROWS THE LIST, and an empty item in
+   this row still took the row's gap: at 360px the Sort select stood 10px to
+   the right of the search box above it (the review of 2 October 2026). Out
+   of the row while empty, and not display:none -- it is the live region that
+   says the list has changed, and a region that is not there when the
+   sentence arrives is not read out. */
+.qhint #count:empty{position:absolute;width:1px;height:1px;overflow:hidden;
+clip-path:inset(50%)}
 .link{color:var(--pine);font-size:var(--t-ui)}
 .shell{max-width:1180px;margin:0 auto;padding:var(--sp-7) var(--sp-8) var(--sp-12);display:grid;
 grid-template-columns:250px 1fr;gap:var(--sp-9);align-items:start}
@@ -2584,6 +2598,14 @@ border-radius:var(--r-out);background:var(--surface)}
 .cinfo dt{flex:0 0 118px;color:var(--ink-2);font-size:var(--t-sm);letter-spacing:.04em;
 text-transform:uppercase;font-weight:600;padding-top:var(--sp-1)}
 .cinfo dd{margin:0;color:var(--ink)}
+/* The officers' chips: the label beside the chip where the row has room for
+   both, above it where it has not -- a name wrapped in a chip squeezed beside
+   its label reads as two people, which is what .mchip's nowrap is for. */
+.cofficers > div{align-items:center;flex-wrap:wrap;row-gap:var(--sp-1)}
+.cofficers .mchip{margin:0}
+/* And a column wide enough for a label and a chip side by side, or one
+   column: at 768px the Chair's chip ran into "Committee aide" beside it. */
+.cinfo:has(.cofficers .mchip){grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
 .croster{margin:var(--sp-6) 0 0}
 .croster h2,.cpurpose h2{font-size:var(--t-sm);letter-spacing:.05em;font-weight:600;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
@@ -2646,6 +2668,10 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
    a committee roster in it. A selector that reached them would be the same
    over-reach as compacting the bill page's play stubs. */
 .cpurpose .src,.cday .src,.cday .note{max-width:none}
+/* A sitting's page is the same case: its cards run the full width and the
+   journal line under the heading and the notes in each section stopped at
+   560px beside them (the review of 2 October 2026). */
+.sesspage > .src,.sesspage .sday > .note{max-width:none}
 main:has(.croster) .pane > .src,
 main:has(.croster) .cal .note,
 main:has(.croster) .cal p,
@@ -2702,6 +2728,26 @@ color:var(--ink-2);margin:0 0 var(--sp-3)}
 background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in);
 padding:var(--sp-2) var(--sp-5);text-decoration:none}
 .cmail .btn:hover{background:var(--pine-soft)}
+/* THE REPORT BOX IS A FORM, AND READS AS ONE. It had no rule at all: "Send"
+   was a word with no edge or ground, the select the browser's 19px control,
+   light in the dark theme, and the text box 150 by 60 (the review of
+   2 October 2026). The controls take the boxes every other form here has --
+   --edge round them, the page's paper inside -- Send is drawn as .cmail's
+   button is, and on a phone each is a 44px target. */
+.reportform{font-size:var(--t-ui)}
+.reportform select,.reportform textarea{display:block;margin-top:var(--sp-2);
+font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--edge);
+border-radius:var(--r-in);padding:var(--sp-2) var(--sp-4);max-width:100%;box-sizing:border-box}
+.reportform select{min-height:36px}
+.reportform textarea{width:100%;min-height:6.5em;line-height:1.5;resize:vertical}
+.reportform button[type=submit]{font:inherit;color:var(--pine);background:var(--surface);
+border:1px solid var(--edge);border-radius:var(--r-in);padding:var(--sp-2) var(--sp-6);
+min-height:36px;cursor:pointer}
+.reportform button[type=submit]:hover{background:var(--pine-soft)}
+.reportform :is(select,textarea,button):focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+@media (max-width:720px){
+  .reportform select,.reportform button[type=submit]{min-height:44px}
+}
 .cd-title{display:block;color:var(--ink-2);font-size:var(--t-ui);line-height:1.45;
 margin-top:var(--sp-1)}
 
@@ -3427,6 +3473,14 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
    status too, and 39 characters held on one line push the row off a 360px
    screen. */
 .dirstatus{font-size:var(--t-sm);color:var(--ink-2);margin-left:var(--sp-3)}
+/* A HEADING OUTRANKS WHAT IT HEADS. Each list's headings -- a year of
+   sittings, a kind of bill, a chamber, a county -- were .clist's 14px small
+   capitals over rows of 16px links (the review of 2 October 2026). A step
+   above the rows, in --ink, the capitals kept; the count beside it stays the
+   quieter figure. */
+.dirlist h2{font-size:var(--t-read);color:var(--ink)}
+.dirlist h2 .dircount{font-size:var(--t-sm);font-weight:400;letter-spacing:0;
+color:var(--ink-2);margin-left:var(--sp-3)}
 
 /* On a committee day, a start that was inferred rather than quoted. Same word
    the bill page uses, for the same reason. */

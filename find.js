@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.15
+// GRANITE_VERSION: 2026-09-16.16
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -379,6 +379,7 @@ function _fbillApi(){
      &&typeof spelling==="function"&&typeof wordsAdd==="function")
     return {queryGroups,groupWeight,billNumbers,billKey,looseness,indexAdd,
             readShort,whyListed,spelling,wordsAdd,
+            knownWord:typeof knownWord==="function"?knownWord:null,
             matchScore:typeof matchScore==="function"?matchScore:null};
   return window.GR_BILLMATCH||null;
 }
@@ -548,12 +549,18 @@ function findBillSpelling(q,allTerms){
 // The name is offered beside the bills' word only where it is as close to
 // what was typed: "vacine" was offered "vaccine or marine", and "morgage"
 // "mortgage or morgan" (2 October).
+// AND NEVER FOR A WORD THE BILLS USE. A word some bill has used is no
+// misspelling, which is the rule /bills and /search keep: the panel offered
+// "debra" for "zebra" (HB 594 of 1999, on zebra mussels) and "marston" for
+// "marathon" (the review of 2 October 2026). Asked once sidx/words.json is
+// in; until then the name is offered as before.
 function findOffers(q,allTerms){
   const words=[],sp=findBillSpelling(q,allTerms);
   const wait=sp&&sp.state==="loading"?FWORDS.loading:null;
   if(sp&&sp.q)words.push(sp.q);
-  const did=findSuggest(q),s=(q||"").trim().toLowerCase();
-  if(did&&!words.includes(did)
+  const did=findSuggest(q),s=(q||"").trim().toLowerCase(),A=FBILLS.api;
+  const known=FWORDS.state==="ready"&&A&&A.knownWord&&A.knownWord(s);
+  if(did&&!known&&!words.includes(did)
      &&(!words.length||_fdist(s,did,2)<=_fdist(s,words[0],2)))words.push(did);
   return {words,wait};
 }
@@ -888,3 +895,21 @@ function menuMount(){
 
 findMount();
 menuMount();
+
+// THE SKIP LINK TAKES THE KEYBOARD WITH IT. Its target -- #results on a record
+// page, #main on the home page, About and the search page -- is a plain
+// container, and a link to one moves where the next Tab starts but leaves the
+// focus itself on <body>: no ring anywhere after Skip, on every page (the
+// review of 2 October 2026). Here because this is the one script every page
+// runs. The target is made focusable only when the link is used -- a
+// container that can take focus takes it from every click inside it -- and
+// focused whether or not the browser's own move to the fragment did. Its ring
+// is suppressed in app.css, deliberately: it would be drawn round the page.
+document.addEventListener("click",function(e){
+  var s=e.target&&e.target.closest&&e.target.closest("a.skip");
+  var id=s&&(s.getAttribute("href")||"").split("#")[1];
+  var r=id&&document.getElementById(id);
+  if(!r)return;
+  if(!r.hasAttribute("tabindex"))r.setAttribute("tabindex","-1");
+  setTimeout(function(){if(document.activeElement!==r)r.focus({preventScroll:true});},0);
+},true);

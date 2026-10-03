@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.138
+// GRANITE_VERSION: 2026-09-07.139
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2270,10 +2270,14 @@ function tabAddress(slug){
 // likely to use it is the one it navigates away from -- and because the
 // opening tab is read out of the path, landing back at the canonical address
 // throws the tab away rather than merely redrawing it.
+// AND ITS SEARCH. Written with the path alone, the link on /bills?q=bathroom
+// named /bills -- another document -- and following it loaded the list
+// again without the search, the keyboard back in the box (2 October 2026).
 function skipHere(){
   const s=document.querySelector("a.skip");
-  if(s)s.setAttribute("href",location.pathname+"#results");
+  if(s)s.setAttribute("href",location.pathname+location.search+"#results");
 }
+// The skip link takes the keyboard with it: find.js, which every page runs.
 const slugOf=(map,v)=>Object.keys(map).find(k=>map[k]===v)||"";
 // WHERE THE ADDRESS STOOD, WITHOUT ITS FRAGMENT, when this script last wrote
 // it or was last told it had moved. A link to a place on the page -- the skip
@@ -5399,6 +5403,19 @@ function showSelectedTab(scope){
     strip.scrollTo({left:Math.max(0,want),behavior:"auto"});
   });
 }
+// THE TAB THE KEYBOARD IS ON IS IN VIEW. Tabbing along a strip that scrolls
+// sideways left the focused tab off its edge: at 360px "Documents (6)" on
+// HB 2 of 2025 stood at 322 to 413 in a strip ending at 331, its ring out of
+// sight (the review of 2 October 2026). The strip is scrolled the least that
+// shows the whole tab and its ring, 8px clear of either edge.
+document.addEventListener("focusin",e=>{
+  const t=e.target&&e.target.closest&&e.target.closest(".tabs .tab");
+  const strip=t&&t.parentElement;
+  if(!strip||strip.scrollWidth<=strip.clientWidth+2)return;
+  const a=t.getBoundingClientRect(),b=strip.getBoundingClientRect(),pad=8;
+  if(a.left<b.left+pad)strip.scrollLeft-=b.left+pad-a.left;
+  else if(a.right>b.right-pad)strip.scrollLeft+=a.right-(b.right-pad);
+});
 
 // One strip per member or committee page, so the ids are fixed: ptab_<i> for a
 // tab and ppane for the panel it controls, which pagePane() writes.
@@ -5892,9 +5909,15 @@ function renderCommitteeHead(c){
       own records file under this committee.</p>`:""}
     ${sameCode(c)}
     <div class="cinfo">
-      ${dl("cofficers",officers.map(o=>[o.role,
-        o.slug?`<a href="legislator/${esc(o.slug)}.html">${esc(o.label||o.name)}</a>`
-              :esc(o.name)]))}
+      ${/* ONE CHIP FOR A PERSON: the Chair, Vice Chair and Clerk were
+           underlined links over a roster that draws the same three as party
+           chips (the review of 2 October 2026). Their roster entry where it
+           is there, with the role left to the row's own label; an officer
+           the roster lacks is a chip with no party. */
+        dl("cofficers",officers.map(o=>{
+          const m=o.slug&&members.find(x=>x.slug===o.slug);
+          return [o.role,mchip(m?{...m,role:"Member",prime:false}
+            :{name:o.name,label:o.label||o.name,slug:o.slug||""})];}))}
       ${dl("cstaff",staff.map(([k,v])=>[k,esc(v)]))}
     </div>
     ${members.length?`<div class="croster">
@@ -7113,6 +7136,12 @@ function submitSearch(){
    Search button, draw at once (submitSearch). */
 let QDRAW=0;
 const QWAIT=120;
+// ACROSS EVERY TERM, LONGER. A drawing there reads 33,717 bills, and on a
+// phone it held the page for one to three seconds; at 120 ms a letter typed
+// at an ordinary pace started a fresh one every time, and "college tuition"
+// took 13 seconds to type (the review of 2 October 2026). 400 ms is under the
+// gap a reader leaves when they stop to look.
+const QWAIT_ALL=400;
 $("#q").addEventListener("input",e=>{
   // No live narrowing on a record page: there is no list under it to narrow,
   // and render() would replace the record with one.
@@ -7120,7 +7149,8 @@ $("#q").addEventListener("input",e=>{
   query=e.target.value;
   clearTimeout(QDRAW);
   // An address that names a search names the one on screen (addressSearch).
-  QDRAW=setTimeout(()=>{addressSearch(query);render();},QWAIT);
+  QDRAW=setTimeout(()=>{addressSearch(query);render();},
+                   term===ALL_TERMS?QWAIT_ALL:QWAIT);
 });
 
 $("#q").addEventListener("keydown",e=>{

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.19
+# GRANITE_VERSION: 2026-09-09.20
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1158,6 +1158,10 @@ def tabbed(label, panels):
 # bar, and a reload, a bookmark or a link copied from there opened the home
 # page (the audit of 2 October 2026, on all 320 pages). The trap is written
 # down in six other places in the build; this call had been missed.
+#
+# HOME AND END, as the bill's and the member's tabs have them: a tab list
+# answers both, and here End scrolled the page to its foot with the keyboard
+# left on a tab out of sight (the review of 2 October 2026).
 TABS_JS = """<script>
 (function(){
   var bar=document.querySelector(".twntabs");
@@ -1188,6 +1192,8 @@ TABS_JS = """<script>
     var j;
     if(e.key==="ArrowRight")j=(i+1)%tabs.length;
     else if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;
+    else if(e.key==="Home")j=0;
+    else if(e.key==="End")j=tabs.length-1;
     else return;
     e.preventDefault();
     tabs[j].focus(); show(tabs[j].dataset.pane,true);

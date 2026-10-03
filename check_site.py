@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Check the site is fit to publish before uploading it.
 
@@ -86,7 +86,9 @@ def search_index(site, errors, warnings):
     that had lost the texts of eighteen terms wrote eighteen empty files, and
     the only check that read them was one the nightly does not run. A term
     before the newest with text for fewer than half its bills is refused; the
-    newest with none is a warning, because in the first days of a session the
+    newest with none, or with more than 200 bills and text for fewer than half
+    (a bill_text.json cut to 111 of 2,243 said nothing, the review of
+    2 October 2026), is a warning, because in the first days of a session the
     bills are numbered before their text is fetched. A build told that no
     text was expected (--allow-no-text, which preflight's fixture is) says so
     in its manifest, and is warned of and not refused.
@@ -127,6 +129,10 @@ def search_index(site, errors, warnings):
             warnings.append(f"the search index has no text for {t}, the "
                             f"newest term: its {bills:,} bills are found by "
                             "title and topic only")
+        elif t == newest and bills > 200 and text < 0.5 * bills:
+            warnings.append(f"the search index has text for {text:,} of the "
+                            f"{bills:,} bills of {t}, the newest term: the "
+                            "rest are found by title and topic only")
     if not (sidx / "words.json").exists():
         bad.append("sidx/words.json, every word the bills use, is not there: "
                    "a misspelt search would be offered nothing")

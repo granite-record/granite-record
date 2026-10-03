@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.326
+# GRANITE_VERSION: 2026-09-04.327
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51341,7 +51341,13 @@ tabEls[1].fire("click"); out.click = shown();
 document.activeElement = tabEls[1]; bar.fire("keydown", {key: "ArrowRight"});
 out.arrow = shown();
 location.hash = "#representatives"; (on.hashchange || []).forEach(f => f());
-out.back = shown(); out.wrote = wrote; out.pushed = pushed;
+out.back = shown(); out.wrote = wrote.slice(); out.pushed = pushed;
+// Home and End, as the bill's and the member's tabs answer them, and the
+// page's own scroll held off (the review of 2 October 2026).
+const keyed = k => { let held = false;
+  bar.fire("keydown", {key: k, preventDefault(){ held = true; }});
+  return [shown()[0], tabEls.indexOf(document.activeElement), held]; };
+document.activeElement = tabEls[0]; out.end = keyed("End"); out.home = keyed("Home");
 process.stdout.write(JSON.stringify(out));
 """ % (tabs, script)
         stub = Path("dom_stub.js").read_text(encoding="utf-8")
@@ -51361,6 +51367,11 @@ process.stdout.write(JSON.stringify(out));
                     or got["back"] != ["representatives"]:
                 bad.append(f"click, arrow and address showed {got['click']}, "
                            f"{got['arrow']} and {got['back']}")
+            if got["end"] != ["vote", 2, True] or got["home"] != ["representatives", 0, True]:
+                bad.append(f"End and Home gave {got['end']} and {got['home']} "
+                           "([tab shown, tab focused, page scroll held off]): "
+                           "a tab list answers both, and End scrolled the page "
+                           "to its foot")
             if got["wrote"] != ["/town/lyme?from=test#officials",
                                 "/town/lyme?from=test#vote"] or got["pushed"]:
                 bad.append(f"switching wrote {got['wrote']} and pushed "

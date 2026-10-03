@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.4
+# GRANITE_VERSION: 2026-10-01.5
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -922,6 +922,15 @@ WORDS_FEWEST = 25_000
 # has lost its texts: every one of them has 93% or more (2 October), and
 # nothing adds to an archived term.
 TEXT_SHARE = 0.5
+# THE NEWEST TERM, ONCE IT IS UNDER WAY, IS SAID ALOUD BELOW TEXT_SHARE. Only
+# none at all was said, so a bill_text.json cut to 111 of the 2,243 bills of
+# 2025-2026 built an index with no word about it, and the nightly, whose
+# machine starts with no earlier manifest to compare with, could not have
+# seen it either (the review of 2 October 2026). Said rather than refused: in
+# the first days of a session the bills are numbered before their texts are
+# fetched, and a build that stopped then would stop the night. Under this
+# many bills a term is taken to be in those days.
+NEWEST_UNDER_WAY = 200
 TERM_NAME = re.compile(r"\d{4}-\d{4}")
 
 
@@ -1128,6 +1137,11 @@ def main():
             lost.append(f"{f.stem} has text for none of its {t['bills']:,} "
                         f"bills, and had it for {before[f.stem]:,} when this "
                         "was last run here")
+        elif t["bills"] > NEWEST_UNDER_WAY and t["with_text"] < TEXT_SHARE * t["bills"]:
+            print(f"  WARNING: {f.stem}, the newest term, has text for "
+                  f"{t['with_text']:,} of its {t['bills']:,} bills; the rest "
+                  "are found by title and topic only. bill_text.json is what "
+                  "it reads")
     # EVERY WORD THE BILLS USE, for the page to tell a misspelt word from a
     # real one (app.js, A SEARCH THAT LISTS NOTHING). It is every term's, so
     # it is written only by a run over every term: one made from a subset

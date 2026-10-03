@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.137
+# GRANITE_VERSION: 2026-09-04.138
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1891,13 +1891,15 @@ SEATING_JS = """
 # about), readShort (a two-letter word read as the start of one where a
 # search lists nothing), whyListed (the line that says why a bill is listed),
 # and spelling and wordsAdd (a misspelt word offered as the word it sounds
-# like, once sidx/words.json says it is no word of any bill). find.js loads
+# like, once sidx/words.json says it is no word of any bill), and since
+# 2 October knownWord (so the header offers no member's name for a word the
+# bills use: "zebra" was offered "debra"). find.js loads
 # it only when somebody types, and only on a page that does not already run
 # app.js.
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
                      "looseness", "indexAdd", "readShort", "whyListed",
-                     "spelling", "wordsAdd", "matchScore")
+                     "spelling", "wordsAdd", "knownWord", "matchScore")
 
 
 def bill_matcher_js(app_js):
@@ -3361,7 +3363,10 @@ under, and every bill since 1989.</p>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
 the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
 the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
-    search_page = shell("Search | Granite Record", "", search_body,
+    # WIDE, as the roster is: a list of results is a list, and in the 820px
+    # column of the prose pages it ended near the middle of a 1440px window
+    # with the rest of the row empty (the review of 2 October 2026).
+    search_page = shell("Search | Granite Record", "", search_body, wide=True,
                         desc="Search Granite Record for a legislator, a "
                              "committee, a town, a subject or a bill.",
                         script=SEARCH_JS)
