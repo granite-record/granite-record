@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.332
+# GRANITE_VERSION: 2026-09-04.333
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18839,9 +18839,16 @@ def _session_speech_walk(JD, SD, BSP):
     assert JD.NOT_DECIDED.search("Osgood, Philip Sr    Converse, Larry    Donovan, Thomas and "
                                  "the committee report was adopted.") and \
         JD.NOT_DECIDED.search("Jillette, Arthur Jr and the motion failed.") and \
+        JD.SUBSIDIARY.search("moved that HR 26, expressing regret ..., be special ordered to the "
+                             "next session day in its Regular Calendar order.") and \
+        BSP._motion_kind("House Refuses to Accede to Senate Request for C of C (Rep Bates)") == \
+        BSP._motion_kind("that the House refuse to accede") == "accede" and \
         not JD.NOT_DECIDED.search("Adopted and the bill ordered to third reading.") and \
         not JD.NOT_DECIDED.search("Majority committee report adopted and ordered to third "
-                                  "reading."), "a roll call's names are read as a decision"
+                                  "reading."), (
+        "a roll call's names are read as a decision, \"special ordered\" as no motion to set "
+        "aside (HR 26, 13 February 2008), or a refusal to accede as a conference motion (SB 193, "
+        "8 June 2011)")
     return "ok", ("a Call of the House and the previous question are read through, a "
                   "question put after a speech unties it, a name is one member's, a bare "
                   "verdict after an amendment is offered is the amendment's, a conference "
