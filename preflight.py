@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.326
+# GRANITE_VERSION: 2026-09-04.327
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -17127,6 +17127,40 @@ def _session_conference_report_named(SD):
     assert got == [("Adopt the Conference Committee Report", "", "VV", None, None, True)], got
     return "ok", ("SB 164's report of 2001 and HB 291's of 1999 are named as committee of "
                   "conference reports, and the motion not to adopt one keeps its words")
+
+
+@check("session", "a roll call is drawn on another motion only where the record makes "
+       "it that motion", needs=("session_days",))
+def _session_rollcall_not_on_the_wrong_motion(SD):
+    """The roll-call file files the Senate's 14-10 kill of HB 617 of 26 May
+    2005 under HB 611 (the Senate Journal prints it under HB 617, as the
+    docket does). Drawn on HB 611's motion to kill, which the docket says
+    failed by voice, it said HB 611 was killed. And SB 330's committee
+    amendment, a division of 13-11 on 14 February 2002, is not SB 198's roll
+    call of the same count and words. Rows and roll calls as the record holds
+    them (Docket_db_2005-2006.txt, Docket_db_2001-2002.txt)."""
+    narr = {
+        "2005-2006": {
+            "HB611": [{"type": "floor", "date": "2005-05-26", "body": "S", "raw": "Inexpedient to Legislate, MF, VV", "action": "Inexpedient to Legislate", "motion": "MF", "vote_kind": "VV", "cite": "SJ 19"}],
+            "HB617": [{"type": "floor", "date": "2005-05-26", "body": "S", "raw": "Inexpedient to Legislate, RC 14Y-10N, MA", "action": "Inexpedient to Legislate", "motion": "MA", "vote_kind": "RC", "yeas": "14", "nays": "10", "cite": "SJ 19"}]},
+        "2001-2002": {
+            "SB198": [{"type": "floor", "date": "2002-02-14", "body": "S", "raw": "Ought to Pass with Amendment {2228},(New Title) RC 13y - 11n, AA", "action": "Ought to Pass with Amendment", "motion": "MA", "vote_kind": "RC", "yeas": "13", "nays": "11", "cite": "SJ 5"}],
+            "SB330": [{"type": "floor", "date": "2002-02-14", "body": "S", "raw": "Ought to Pass with Amendment {2588},(New Title), Division 13y - 11n, AA", "action": "Ought to Pass with Amendment", "motion": "MA", "yeas": "13", "nays": "11", "cite": "SJ 5"}]}}
+    rolls = {
+        "2005-2006": {"HB611": [_rc("2005", "S", 62, "2005-05-26", "HB611", "Inexpedient to Legislate", 14, 10, True)]},
+        "2001-2002": {"SB198": [_rc("2002", "S", 40, "2002-02-14", "SB198", "Adoption of the committee amendment (2228s) Sen. Pignatelli/Sen Barnes", 13, 11, True)]}}
+    days = _sitting_fixture(SD, narr, rolls)
+    may = {i.bill: i for i in days[("S", "2005-05-26")].items}
+    assert (may["HB611"].kind, may["HB611"].carried, may["HB611"].rc) == ("VV", False, None), (
+        f"HB 611's failed motion to kill is drawn as {may['HB611'].kind} {may['HB611'].yeas}-"
+        f"{may['HB611'].nays} carried={may['HB611'].carried}")
+    assert may["HB617"].rc is not None and (may["HB617"].yeas, may["HB617"].carried) == (14, True)
+    feb = {i.bill: i for i in days[("S", "2002-02-14")].items}
+    assert feb["SB330"].rc is None and not feb["SB330"].shared and \
+        days[("S", "2002-02-14")].counts().get("roll call") == 1, (
+        feb["SB330"].rc, feb["SB330"].shared, days[("S", "2002-02-14")].counts())
+    return "ok", ("the 14-10 of 26 May 2005 is HB 617's, not HB 611's failed voice vote, and "
+                  "SB 330's division is not SB 198's roll call")
 
 
 @check("session", "a roll call drawn between two of a bill's motions does not part "

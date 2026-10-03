@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.15
+# GRANITE_VERSION: 2026-09-19.16
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -1800,11 +1800,20 @@ def _roll_calls(data, rolls, grouped, placed, base, sat=_sat):
         for it in items:
             if it.rc is not None or it.kind not in ("RC", "") or not it.counted:
                 continue
+            # A roll call another bill's motion already is, only where the
+            # motion is one entered on several bills -- a special order, a
+            # suspension, a tabling -- and never a bill's own disposition:
+            # SB 198's and SB 330's committee amendments, 13-11 each on 14
+            # February 2002, are two votes.
+            shareable = question_kind(it.action) not in (
+                "otp", "itl", "amendment", "conference", "concur", "nonconcur",
+                "veto", "study")
             cands = [r for r in rc_by_day.get(key, ())
                      if (it.yeas, it.nays) in _tally_set(r)
                      and _bill_of(r.get("bill") or "") != it.bill.upper()
                      and (rollcall_key(r) in unplaced
-                          or told.get(rollcall_key(r)) == _motion_key(it.action))]
+                          or (shareable and told.get(rollcall_key(r))
+                              == _motion_key(it.action)))]
             if len(cands) != 1:
                 continue
             r = cands[0]
@@ -2055,6 +2064,13 @@ def _second_look(r, term, bill, body, events, grouped, day_of, placed, tied_item
                                            abs(it.nays - r["nays"])) > 3:
             return False
     elif it.kind not in ("VV", ""):
+        return False
+    # Never a motion the docket says came out the other way: the roll-call
+    # file files the Senate's 14-10 kill of HB 617 (26 May 2005) under HB 611,
+    # whose own motion to kill failed by voice that day; the 14-10 is HB 617's
+    # docket roll call's (the one-motion pass in _roll_calls finds it there).
+    if it.carried is not None and r.get("passed") is not None and \
+            it.carried != bool(r["passed"]):
         return False
     tie(it, r)
     tied_items.add(id(it))
