@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.139
+// GRANITE_VERSION: 2026-09-07.140
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3819,9 +3819,15 @@ function renderHearings(b,d){
       // calendar. There is no moment to point at, and saying "this bill was
       // taken up that day" over a link to nine hours of other business would
       // be worse than saying nothing.
-      inner=`<p class="note">Passed on the consent calendar — adopted with the
-        rest of the block, without being debated or voted on separately, so
-        there is no moment in the recording to point to.
+      //
+      // "DECIDED", NOT "PASSED" (3 October 2026): what the consent calendar
+      // adopts is the committee's report, whatever it recommends, and 605 of
+      // the 2,067 stations drawn this way carried a report to kill the bill
+      // or study it.
+      inner=`<p class="note">Decided on the consent calendar — the committee's
+        report was adopted with the rest of the block, without being debated
+        or voted on separately, so there is no moment in the recording to
+        point to.
         <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
            target="_blank" rel="noopener">The session is here</a> if you want
         the day as a whole.</p>`;
