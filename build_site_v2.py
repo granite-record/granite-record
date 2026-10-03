@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.145
+# GRANITE_VERSION: 2026-09-05.146
 """
 Generate the faceted site from real General Court data.
 
@@ -5188,6 +5188,10 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 got = {**got, "act": act,
                        "amended": act == "passed" and bool(re.search(r"amend", rec, re.I))}
             st = {"date": date, "body": body, **got, "_untold": _j_untold(e, seg, evs)}
+            # Whether its own clause names the amendment, before the day's
+            # amendment rows mark every passage of that day (_j_merge).
+            if got["act"] in J_PASSING:
+                st["_own_am"] = bool(got.get("amended"))
             # THE DAY THE CLAUSE STATES, where the row was dated by its entry:
             # "Adopted and read a 3rd time MA VV 01/05/22", entered on 10
             # January (HB 1650 of 2022) -- four days after the governor
@@ -5346,8 +5350,9 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
              or any(t["act"] in ("passed", "referred", "concurred", "nonconcurred")
                     for t in steps[:i])]
     # A REPORT VOTED DOWN AND A NEW CONFERENCE AGREED TO IS NOT WHERE THE BILL
-    # STOPPED. HB 723 of 1997: the Senate, which had passed the bill 19-5,
-    # voted down its conferees' "unable to agree" report 10-13 and asked for a
+    # STOPPED. HB 723 of 1997: the Senate, which had passed the bill (amended,
+    # on a voice vote, after voting Ought to Pass 19-5), voted down its
+    # conferees' "unable to agree" report 10-13 and asked for a
     # new committee of conference 13-10, and the House acceded the same day
     # ("HOUSE ACCEDED TO REQ FOR NEW CONF COMM"). The new conference never
     # reported (CONFERENCE_NOT_REPORTED), and the rail marked the Senate as
@@ -5435,7 +5440,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
                   "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third",
-                  "_recess", "unaccepted"):
+                  "_recess", "unaccepted", "_own_am"):
             st.pop(k, None)
         if st.pop("_untold", False) and untold is not None:
             untold.add(id(st))
@@ -5635,6 +5640,27 @@ def _j_merge(into, st):
     # A reconsideration of the third reading is of the passage it is.
     into["reconsidered"] = into.get("reconsidered") or st.get("reconsidered")
     if st.get("intro_adopt"):
+        return
+    # NOR THE COUNT OF A MOTION TAKEN BEFORE THE AMENDMENT, where the passage
+    # that names the amendment states a vote of its own. "OTP MA RC(19-5); SEN
+    # F KING FL AM<1494>, WITHDRAWN; SEN SQUIRES FL AM<1504>, AA VV; SEN
+    # RUBENS MOVED LOT, ML VV; PASSED WITH AM VV" (HB 723 of 1997) is the
+    # Senate voting Ought to Pass 19-5, adopting a floor amendment, and
+    # passing the bill so amended on a voice vote, and the rail read "Passed
+    # with an amendment, 19–5": the count of the bill before it was amended,
+    # beside the words of the bill after. The rail had no rule for a count
+    # taken on an earlier motion of the day; this is the one case of it a
+    # passage's own words decide. Measured over every history on 2 October
+    # 2026 it moves eight Senate and House stops of 1990-1998, each of this
+    # shape, two of them a passage counted, reconsidered, and made again
+    # amended on a voice vote: "PASSED RC(21-3)", then "SEN DANAIS MOVED TO
+    # RECONSIDER, MA VV; SEN RUBENS FL AM<1930> (NEW TITLE), AA VV; PASSED
+    # WITH AM VV" (HB 1226 of 1998). Where no later passage names the
+    # amendment -- SB 336 of 2002, passed 22-1 and then amended 13-10 on a
+    # row of its own -- the count stays the passage's, as it was.
+    if st.get("_own_am") and not into.get("_own_am"):
+        into["vote"], into["_own_am"] = st["vote"], True
+        into.pop("intro_adopt", None)
         return
     if into.pop("intro_adopt", False) or st["vote"][1] is not None or not into["vote"][0]:
         into["vote"] = st["vote"]
