@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.334
+# GRANITE_VERSION: 2026-09-04.335
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39045,6 +39045,26 @@ def _no_leak_by_number(BD, BSV, BA, TF):
     return "ok", ("testimony.json read by nothing and carried by no kit; the Legislation fill by "
                   "term; bill_titles.json by term or not at all; a finished term's sign-ins from "
                   "its freeze")
+
+
+@check("data", "status.txt's session_over is a day of the term the session's files describe",
+       needs=("proceedings", "build_site_v2"))
+def _session_over_current(P, BSV):
+    """status/status.txt is the person's, and its session_over line says to
+    delete it in December, when the next term brings its own session days.
+    The build already reads it only for its own term (session_over_in), so a
+    line left in ends no 2027 bill; this is the reminder, the CACR 13
+    paragraph's kind, that once the session's files are the next term's the
+    line, the headline, the phase and the note are last term's words."""
+    day = BSV.session_over("status/status.txt")
+    if not day:
+        return "skip", "no session_over line in status/status.txt"
+    sess = P.session_term(".")
+    assert not sess or P.term_of(day) >= sess, (
+        f"status/status.txt says session_over: {day}, a day of {P.term_of(day)}, and the session's "
+        f"files are {sess}'s: delete the line, and bring the phase, headline and note up to date "
+        "(the file is yours; the build already reads the line for its own term only)")
+    return "ok", f"session_over {day} is a day of {P.term_of(day)}, the session's term"
 
 
 @check("data", "bill_titles.json, where it is here, is keyed on the term",

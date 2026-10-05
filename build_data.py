@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2785,7 +2785,13 @@ def main():
     finished = {} if frozen else finished_builds(d, out)
     for _t, (_fb, _fs) in finished.items():
         _was = len(by_term.get(_t) or {})
-        by_term[_t] = _fb
+        # MARKED ARCHIVED, AS EVERY FINISHED TERM IS (the person's decision of
+        # 5 October 2026): the page then says what the term's record holds in
+        # the coverage note the older terms carry, in place of the current
+        # term's session_over note, and the term keeps its full per-bill
+        # pages and every field it was built with. Nothing else of the
+        # record changes.
+        by_term[_t] = {b: {**r, "archived": True} for b, r in _fb.items()}
         print(f"  {_t}: {len(_fb):,} bills from its frozen inputs"
               + (f", in place of {_was:,} the session's files still gave it" if _was else ""))
     if finished:
