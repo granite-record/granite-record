@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.337
+# GRANITE_VERSION: 2026-09-04.338
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1513,6 +1513,7 @@ def _committee_holds_the_bill(N):
 # (HB 357) and 2000 (HB 126); Docket_db_1989-1990.txt 103 (SB 58);
 # Docket_2017-2018.txt 14819 (SB 133), 9325 (HB 294) and 11691 (HB 485);
 # Docket_2015-2016.txt 10184 (HB 1272); Docket_db_2007-2008.txt 231 (HB 829);
+# Docket_db_2005-2006.txt 16671 (SB 295);
 # Docket_db_1999-2000.txt 70 (HB 236); Docket_db_2005-2006.txt 17779 (SB 262);
 # Docket_db_2007-2008.txt 24027 (SB 324); Docket_db_1993-1994.txt 10004-10007
 # (SB 165, joined as the reader joins them), 10138 (HB 442) and 9566 (HR 1);
@@ -1559,6 +1560,8 @@ _SENDS_TO = [
     ("other", "S", "2019-2020", "Sen. D'Allesandro moved to Refer to Finance Rule 4-5; 03/05/2020",
      "", None),
     ("floor", "H", "2007-2008", "Rep. Almy: Vacate Referral to Ways & Means, MA VV", "MA", None),
+    ("floor", "H", "2005-2006", "Vacated ref to Executive Dept & Administration,   MA,  VV   HJ 23, pg 1357",
+     "MA", None),
     ("floor", "S", "2019-2020", "Vacated from Committee and Laid on Table, MA, VV; 06/16/2020", "MA",
      None),
     # A joint meeting's notice, and amendments sent to a committee: not the
@@ -1772,7 +1775,109 @@ _DOCKET_REFERRAL_UNMADE = {
         "2002|2040|02/14/2002 03:16:56 PM|HB1231|H|Fin Div II  Subcom Work & Exec Sess   Feb 19   10:00   RM212,LOB   <Rep Weyler>|02/14/2002 03:16:56 PM",
         "2002|2040|02/20/2002 04:22:16 PM|HB1231|H|Fin Maj Report   OTP/AM   for   Mar 6   (vote 20-0;Reg)|02/20/2002 04:22:16 PM",
         "2002|2040|02/20/2002 04:22:39 PM|HB1231|H|Prop Fin Comm Am{2752};  HC17, p658|02/20/2002 04:22:39 PM"],
+    # And what the release check's review found (5 October 2026): Docket_db_
+    # 2013-2014.txt 2549-2556 (SB 166, the House's); Docket_db_2005-2006.txt
+    # 16371 and 16373-16378 (HB 1679), 16670-16675 (SB 295, the House's) and
+    # 17549, 17553 and 17555-17560 (SB 339, the Senate's); Docket.txt
+    # 167, 11921-11922, 13486, 13625, 13949, 14320 and 16084 (HB 186 of 2026);
+    # Docket_db_2001-2002.txt 16648, 16650-16652 and 16654-16657 (HB 1100).
+    ("SB166", "2013-2014"): [
+        "2013|0416|04/03/2013 11:54:09 AM|SB166|H|Introduced and Referred to Health, Human Services and Elderly Affairs; HJ35, PG.1191  <Jud>|04/03/2013 11:54:09 AM",
+        "2013|0416|04/09/2013 04:05:48 PM|SB166|H|Public Hearing: 4/17/2013 3:00 PM LOB 205|04/09/2013 04:05:48 PM",
+        "2013|0416|04/11/2013 08:34:07 AM|SB166|H|Executive Session: 4/23/2013 10:00 AM LOB 205|04/11/2013 08:34:07 AM",
+        "2013|0416|04/23/2013 03:36:07 PM|SB166|H|Committee Report: Ought to Pass for May 8 (Vote 18-1; CC); HC36, PG.1196|04/23/2013 03:36:07 PM",
+        "2013|0416|05/08/2013 10:41:12 AM|SB166|H|Ought to Pass: MA VV; HJ41, PG.1389|05/08/2013 10:41:12 AM",
+        "2013|0416|05/08/2013 10:41:22 AM|SB166|H|Referred to Judiciary; HJ41, PG.1389|05/08/2013 10:41:22 AM",
+        "2013|0416|05/08/2013 03:05:07 PM|SB166|H|Committee Refused Referral; HJ41, PG.1421|05/08/2013 03:05:07 PM",
+        "2013|0416|05/08/2013 04:15:23 PM|SB166|H|Enrolled; HJ41, PG.1424|05/08/2013 04:15:23 PM"],
+    ("HB1679", "2005-2006"): [
+        "2006|2516|01/04/2006 08:30:11 AM|HB1679|H|Introduced and ref to Municipal and County Government  HJ 7, pg 352|01/04/2006 08:30:11 AM",
+        "2006|2516|01/10/2006 11:11:39 AM|HB1679|H|Public Hearing    Jan 25  10:00   RM301/LOB|01/10/2006 11:11:39 AM",
+        "2006|2516|02/09/2006 11:10:24 AM|HB1679|H|Comm Rprt:  OTP/AM {0853h}  for Feb 15 (vote 13-0; CC)  HC 15, pg 783|02/09/2006 11:10:24 AM",
+        "2006|2516|02/15/2006 01:26:12 PM|HB1679|H|Passed with AM {0853h},  MA,  VV    HJ 19, pg 1095-1096|02/15/2006 01:26:12 PM",
+        "2006|2516|02/15/2006 03:12:12 PM|HB1679|H|ref to Ways & Means     HJ 19, pg 1096|02/15/2006 03:12:12 PM",
+        "2006|2516|02/15/2006 04:08:14 PM|HB1679|H|Referral to Ways and Means withdrawn   HJ 19a, pg 1176|02/15/2006 04:08:14 PM",
+        "2006|2516|02/16/2006 09:11:40 AM|HB1679|S|Introduced and Referred to Finance; SJ 5, Pg. 113|02/16/2006 09:11:40 AM"],
+    ("SB295", "2005-2006"): [
+        "2006|2559|02/16/2006 11:36:51 AM|SB295|H|Introduced and ref Executive Dept and Administration   HJ 20, pg 1257|02/16/2006 11:36:51 AM",
+        "2006|2559|03/07/2006 09:14:31 AM|SB295|H|Vacated ref to Executive Dept & Administration,   MA,  VV   HJ 23, pg 1357|03/07/2006 09:14:31 AM",
+        "2006|2559|03/07/2006 09:19:44 AM|SB295|H|ref to Commerce      HJ 23, pg 1357|03/07/2006 09:19:44 AM",
+        "2006|2559|03/08/2006 09:26:20 AM|SB295|H|Public Hearing    March 15   2:00   RM302/LOB|03/08/2006 09:26:20 AM",
+        "2006|2559|04/05/2006 04:23:43 PM|SB295|H|Comm Rprt:   OTP   April 12 (vote 15-0; CC)    HC 30, pg 1728|04/05/2006 04:23:43 PM",
+        "2006|2559|04/12/2006 10:42:50 AM|SB295|H|Passed,  MA, VV   HJ 33,  pg 1784|04/12/2006 10:42:50 AM"],
+    ("HB186", "2025-2026"): [
+        "2026|0168|1/6/2025 9:02:06 AM|HB186|H|  Introduced 01/08/2025 and referred to Commerce and Consumer Affairs  HJ 2  P. 9|1/21/2025 2:37:19 PM",
+        "2026|0168|11/10/2025 3:04:02 PM|HB186|H|Majority Committee Report: Ought to Pass  10/28/2025 (Vote 10-7; RC)  HC 51  P. 19|12/19/2025 2:05:23 PM",
+        "2026|0168|11/10/2025 3:04:15 PM|HB186|H|Minority Committee Report: Inexpedient to Legislate|11/10/2025 3:04:15 PM",
+        "2026|0168|1/7/2026 11:52:16 AM|HB186|H|Referred to Finance 01/07/2026  HJ 1  P. 83|3/27/2026 3:24:05 PM",
+        "2026|0168|1/7/2026 11:52:13 AM|HB186|H|Ought to Pass: MA DV 208-135 01/07/2026  HJ 1  P. 83|3/27/2026 3:23:59 PM",
+        "2026|0168|1/8/2026 2:16:17 PM|HB186|H|Referral Waived by Committee Chair per House Rule 47(f) 01/08/2026  HJ 2  P. 57|3/30/2026 2:53:01 PM",
+        "2026|0168|1/15/2026 1:44:04 PM|HB186|S|  Introduced 01/07/2026 and Referred to Judiciary;  SJ 2|1/15/2026 1:44:04 PM",
+        "2026|0168|2/5/2026 9:22:58 AM|HB186|S|  Hearing: 02/10/2026, Room 100, SH, 02:10 pm;  SC 5A|2/10/2026 9:48:57 AM"],
+    ("SB339", "2005-2006"): [
+        "2006|2668|01/04/2006 12:18:07 PM|SB339|S|Introduced and Referred to Executive Departments and Administration; SJ 1, Pg.12|01/04/2006 12:18:07 PM",
+        "2006|2668|01/20/2006 03:14:40 PM|SB339|S|Hearing; === RESCHEDULED === March 15, 2006, Room 102, LOB, 1:20 p.m.|01/20/2006 03:14:40 PM",
+        "2006|2668|02/08/2006 09:32:10 AM|SB339|S|Hearing; === RESCHEDULED === February 22, 2006, Room 102, LOB, 2:30 p.m.; SC6|02/08/2006 09:32:10 AM",
+        "2006|2668|02/27/2006 11:39:09 AM|SB339|S|Committee Report; Ought to Pass [03/09/06]; SC9|02/27/2006 11:39:09 AM",
+        "2006|2668|03/09/2006 02:42:33 PM|SB339|S|Ought to Pass, MA, VV; Refer To Finance [Rule 26]; SJ 7, Pg.164|03/09/2006 02:42:33 PM",
+        "2006|2668|03/16/2006 09:11:40 AM|SB339|S|Committee Report; Ought to Pass with Amendment{1409} [03/22/06]; SC11, Pg.17|03/16/2006 09:11:40 AM",
+        "2006|2668|03/22/2006 04:50:04 PM|SB339|S|Committee Amendment{1409}, AA, VV; SJ 9, Pg.261-362|03/22/2006 04:50:04 PM",
+        "2006|2668|03/22/2006 04:51:34 PM|SB339|S|Ought to Pass with Amendment{1409}, MA, VV; OT3rdg; SJ 9, Pg.262|03/22/2006 04:51:34 PM"],
+    ("HB1100", "2001-2002"): [
+        "2002|2410|01/10/2002 03:27:07 PM|HB1100|H|Introduced and ref to Judiciary;  HJ10, p394|01/10/2002 03:27:07 PM",
+        "2002|2410|01/24/2002 11:02:24 AM|HB1100|H|Reps Scanlan and Burling Susp Rules for 2nd Comm deadlines, MA 2/3VV;  HJ11, p453|01/24/2002 11:02:24 AM",
+        "2002|2410|01/24/2002 12:13:45 PM|HB1100|H|Hearing   Feb 5   10:00   RM208,LOB|01/24/2002 12:13:45 PM",
+        "2002|2410|02/12/2002 03:40:53 PM|HB1100|H|Maj Report   OTP/AM   for   Feb 21   (vote 12-6;Reg)|02/12/2002 03:40:53 PM",
+        "2002|2410|02/12/2002 03:42:07 PM|HB1100|H|Prop Maj Am{2598};  HC15, p609-610|02/12/2002 03:42:07 PM",
+        "2002|2410|02/21/2002 11:59:36 AM|HB1100|H|Reps Scanlan and Burling Susp Rules for deadlines, MA 2/3VV;  HJ21, p826|02/21/2002 11:59:36 AM",
+        "2002|2410|02/21/2002 03:09:34 PM|HB1100|H|Comm Am, AA VV;  Passed with Am and ref to Finance RC(192-143);  HJ21, p869-873|02/21/2002 03:09:34 PM",
+        "2002|2410|02/27/2002 03:45:20 PM|HB1100|H|Fin Div III  Subcom Work & Exec Sess   Mar 5   11:00   RMs210-211,LOB  <Rep Emerton>|02/27/2002 03:45:20 PM"],
 }
+
+
+def _altered(key, old, new):
+    """`key`'s real rows with the one row that carries `old` carrying `new`:
+    for a rule the rows on disk never test, the nearest real history."""
+    rows = _DOCKET_REFERRAL_UNMADE[key]
+    assert sum(old in r for r in rows) == 1, (key, old)
+    return [r.replace(old, new) for r in rows]
+
+
+# Each rule the review found no history held (5 October 2026), on the real
+# rows nearest to it with one row changed, since nothing on disk tests it.
+_DOCKET_REFERRAL_UNMADE.update({
+    # A suspension that lost makes no referral: HB 650's, lost as Rep.
+    # Burling's motion "TO SUSP RULES TO REF TO FINANCE, ML RC(174-181)" was
+    # on HB 211 of 1997.
+    ("HB650", "1995-1996", "lost"): _altered(
+        ("HB650", "1995-1996"), "REF TO 2ND COMM, MA 2/3VV;", "REF TO 2ND COMM, ML RC(174-181);"),
+    # Nor one of the other chamber's: SB 173's suspension entered as the
+    # Senate's.
+    ("SB173", "1995-1996", "the Senate's"): _altered(
+        ("SB173", "1995-1996"), "|SB173|H|REPS C BROWN & D SYTEK SUSP RULES FOR REF",
+        "|SB173|S|REPS C BROWN & D SYTEK SUSP RULES FOR REF"),
+    # Nor one more than a week before the passage: HB 1633's, eight days
+    # before it.
+    ("HB1633", "1995-1996", "eight days"): _altered(
+        ("HB1633", "1995-1996"), "03/05/1996 03:08:49 PM|HB1633|H|REPS A TORR",
+        "02/27/1996 03:08:49 PM|HB1633|H|REPS A TORR"),
+    # A waiver naming another committee than the referral before it waives
+    # nothing of it: HB 1478's, as by the chair of Ways and Means.
+    ("HB1478", "2013-2014", "another chair"): _altered(
+        ("HB1478", "2013-2014"), "declined by Chair of Judiciary", "declined by Chair of Ways and Means"),
+    ("HB1679", "2005-2006", "another committee"): _altered(
+        ("HB1679", "2005-2006"), "Referral to Ways and Means withdrawn", "Referral to Finance withdrawn"),
+    # A waiver reaches no referral back across the chamber's introduction:
+    # HB 1138's, with a referral to Finance entered before it was introduced.
+    ("HB1138", "2023-2024", "before the introduction"): [
+        "2024|2791|11/27/2023 12:00:00 AM|HB1138|H|Referred to Finance 11/27/2023|11/27/2023 12:00:00 AM"]
+        + _DOCKET_REFERRAL_UNMADE[("HB1138", "2023-2024")],
+    # And the committee that sat on a bill and whose chair then waived the
+    # referral has it no longer: HB 194's, with a meeting of the House's after
+    # the waiver.
+    ("HB194", "2023-2024", "a meeting after"): _DOCKET_REFERRAL_UNMADE[("HB194", "2023-2024")] + [
+        "2024|0270|2/29/2024 12:00:00 AM|HB194|H|Executive Session: 03/05/2024 10:00 am LOB 212|2/29/2024 12:00:00 AM"],
+})
 
 # (headings in order, words the history says, words it does not)
 _REFERRAL_UNMADE_HEADS = {
@@ -1844,6 +1949,75 @@ _REFERRAL_UNMADE_HEADS = {
     ("HB1231", "2001-2002"): (["In House committee — Education", "On the House floor",
                                "In House committee — Finance"],
                               ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+    # "Committee Refused Referral" that afternoon: the House Journal prints
+    # "REFERRAL DECLINED" over SB 166, and Judiciary heads nothing.
+    ("SB166", "2013-2014"): (["In House committee — Health, Human Services and Elderly Affairs",
+                              "On the House floor", "With the governor"],
+                             ["On May 8, 2013 the bill was referred to the Judiciary committee, and the "
+                              "referral was refused."], ["In House committee — Judiciary"]),
+    # "Referral to Ways and Means withdrawn" within the hour, and the Senate
+    # had the bill the next morning.
+    ("HB1679", "2005-2006"): (["In House committee — Municipal and County Government", "On the House floor",
+                               "In Senate committee — Finance"],
+                              ["On February 15, 2006 the bill was referred to the Ways and Means committee, "
+                               "and the referral was withdrawn."], ["In House committee — Ways and Means"]),
+    # "Vacated ref to Executive Dept & Administration": the referral vacated,
+    # not a committee the bill went to "instead".
+    ("SB295", "2005-2006"): (["In House committee — Executive Departments and Administration",
+                              "In House committee — Commerce", "On the House floor"],
+                             ["referred to the House Executive Departments and Administration committee. "
+                              "The House withdrew that referral."], ["instead"]),
+    # The Senate's introduction, dated the day before the waiver, is told
+    # before it: the House chair's waiver is told on the House floor, not
+    # under the Senate's committee (below).
+    ("HB186", "2025-2026"): (["In House committee — Commerce and Consumer Affairs", "On the House floor",
+                              "In Senate committee — Judiciary"],
+                             ["On January 7, 2026 the bill was referred to the Finance committee, whose "
+                              "chair waived the referral under House Rule 47(f)."], []),
+    # A notice entered before the passage that sent the bill on, for a day
+    # after it, is not given back to the first committee's stage before the
+    # passage: only its report or its amendment is. Whether EDA's hearing of
+    # 15 March sat -- a later row moved it to 22 February -- is the record's
+    # question, not this check's; the headings are not held here.
+    ("SB339", "2005-2006"): (None, ["then sent it on to the Finance committee"], []),
+    # A suspension "for 2nd Comm deadlines" four weeks before the passage, for
+    # the committee's reporting deadline by the House Journal (HJ 6 of 2002):
+    # outside the week, and the referral is under the chamber's rules.
+    ("HB1100", "2001-2002"): (["In House committee — Judiciary", "On the House floor",
+                               "In House committee — Judiciary", "On the House floor",
+                               "In House committee — Finance"],
+                              ["then sent it on to the Finance committee under the chamber's rules."], []),
+    # The rules no row on disk tests (_altered, above): each keeps what the
+    # rows without the rule would lose.
+    ("HB650", "1995-1996", "lost"): (None, ["then sent it on to the Finance committee under the chamber's "
+                                            "rules."], []),
+    ("SB173", "1995-1996", "the Senate's"): (None, ["then sent it on to the Finance committee under the "
+                                                    "chamber's rules."], []),
+    ("HB1633", "1995-1996", "eight days"): (None, ["then sent it on to the Finance committee under the "
+                                                  "chamber's rules."], []),
+    ("HB1478", "2013-2014", "another chair"): (["In House committee — Children and Family Law",
+                                                "On the House floor", "In House committee — Judiciary"],
+                                               [], ["the referral"]),
+    ("HB1679", "2005-2006", "another committee"): (["In House committee — Municipal and County Government",
+                                                    "On the House floor", "In House committee — Ways and Means",
+                                                    "In Senate committee — Finance"], [], ["the referral"]),
+    ("HB1138", "2023-2024", "before the introduction"): (None, [], ["the referral"]),
+    ("HB194", "2023-2024", "a meeting after"): (["In House committee — Resources, Recreation and "
+                                                 "Development", "In House committee — Finance",
+                                                 "On the House floor", "In House committee — Finance",
+                                                 "In House committee"], [], []),
+}
+
+# Where a sentence is told: (the stage's place, words, whether that stage
+# tells them). The waiver goes in the last stage of its own chamber, not the
+# last stage of all (HB 186 of 2026: the Senate's committee had already
+# begun). EDA's notice of 15 March on SB 339 of 2006, entered before the
+# passage for a day after it, stays out of EDA's stage before the passage.
+_REFERRAL_UNMADE_PLACED = {
+    ("HB186", "2025-2026"): [(1, "whose chair waived the referral", True),
+                             (2, "waived", False)],
+    ("HB1574", "2025-2026"): [(1, "whose chair waived the referral", True)],
+    ("SB339", "2005-2006"): [(0, "March 15", False)],
 }
 
 # Every wording on disk of a referral its chair waived or declined, and of a
@@ -1861,10 +2035,17 @@ _WAIVED_SAID = [
     ("Declination of Referral Under House Rule 46(f) (Rep Wallner); HJ 16, PG.321", True),
     ("Referral declined by Chair of Judiciary per House Rule 46 (f)", True),
     ("REF TO FINANCE DECLINED, ORDERED TO 3RD READING; HJ18,P360 + 361", True),
+    ("Committee Refused Referral; HJ41, PG.1421", True),
+    ("Referral to Ways and Means withdrawn   HJ 19a, pg 1176", True),
     # The Senate's waiver before a passage, and a rescission: the undoing
     # build() already reads (REFERRAL_UNDONE).
     ("Sen. Daniels Waived Referral to Finance; 03/30/2017; SJ 12", False),
     ("The Chair Rescinded Refer to Finance Rule 4-5", False),
+    # A bill taken out of committee, and a chamber refusing a conference:
+    # no referral undone (Docket_2015-2016.txt 2256; Docket_db_2001-2002.txt
+    # 18963).
+    ("Per House Rule 50, Withdrawn from Committee", False),
+    ("House Refused to Accede to req for Conf Comm, Rep McKinney MA VV;  HJ38, p1444", False),
 ]
 _SUSPENDED_FOR_REFERRAL = [
     ("REPS A TORR & BUCKLEY SUSP RULES FOR REF TO 2ND COMM, MA 2/3VV;", True),
@@ -1900,25 +2081,42 @@ def _referral_unmade(N):
     on 31 histories.
 
     A REFERRAL MADE BY SUSPENDING THE RULES, on whichever row the suspension
-    stands, is not "under the chamber's rules": 48 histories of 1995-2006."""
+    stands, is not "under the chamber's rules": 48 histories of 1995-2006.
+
+    And what the review of that change found: "Committee Refused Referral"
+    (SB 166 of 2013) and "Referral to Ways and Means withdrawn" (HB 1679 of
+    2006), which it did not read; "Vacated ref to Executive Dept &
+    Administration" (SB 295 of 2006), told as a committee the bill was sent
+    to "instead"; and six rules no history held -- where the waiver is told, a
+    notice given back to the first committee, a suspension that lost, one of
+    the other chamber, one more than a week before, a waiver naming another
+    committee, one past the introduction, and the committee that sat on a bill
+    before its chair waived it."""
     bad = []
     for key, lines in _DOCKET_REFERRAL_UNMADE.items():
         heads, said, unsaid = _REFERRAL_UNMADE_HEADS[key]
         n = _narrated(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}" + (f" ({key[2]})" if len(key) > 2 else "")
         got = [s["label"] for s in n["stages"]]
         text = " ".join(s["text"] for s in n["stages"]) + " " + " ".join(got)
-        if got != heads:
-            bad.append(f"{key[0]} of {key[1]}: headed {got}")
-        bad += [f"{key[0]} of {key[1]} does not say {w!r}" for w in said if w not in text]
-        bad += [f"{key[0]} of {key[1]} says {w!r}" for w in unsaid if w in text]
+        if heads is not None and got != heads:
+            bad.append(f"{name}: headed {got}")
+        bad += [f"{name} does not say {w!r}" for w in said if w not in text]
+        bad += [f"{name} says {w!r}" for w in unsaid if w in text]
+        for at, w, want in _REFERRAL_UNMADE_PLACED.get(key, ()):
+            told = n["stages"][at]["text"] if at < len(n["stages"]) else ""
+            if (w in told) != want:
+                bad.append(f"{name}: stage {at} ({got[at] if at < len(got) else 'none'}) "
+                           f"{'does not say' if want else 'says'} {w!r}")
     bad += [f"{raw[:50]!r} is {'not ' if want else ''}read as a waived referral"
             for raw, want in _WAIVED_SAID if bool(N.REFERRAL_WAIVED.search(raw)) != want]
     bad += [f"{raw[:50]!r} is {'not ' if want else ''}read as a referral by suspending the rules"
             for raw, want in _SUSPENDED_FOR_REFERRAL
             if bool(N.REFERRAL_SUSPENSION.search(raw)) != want]
     assert not bad, "\n".join(bad)
-    return "ok", (f"{len(_DOCKET_REFERRAL_UNMADE)} histories from real rows, and "
-                  f"{len(_WAIVED_SAID) + len(_SUSPENDED_FOR_REFERRAL)} wordings")
+    real = sum(len(k) == 2 for k in _DOCKET_REFERRAL_UNMADE)
+    return "ok", (f"{real} histories from real rows, {len(_DOCKET_REFERRAL_UNMADE) - real} with one row "
+                  f"changed, and {len(_WAIVED_SAID) + len(_SUSPENDED_FOR_REFERRAL)} wordings")
 
 
 # =============================================================== code: status ==
@@ -5876,14 +6074,38 @@ def _committee_stages_named(N, CN):
 # below finds for itself, with none of narrative's readers: a referral its
 # chair waived or declined, the row that referred the bill, a rules
 # suspension that made a referral, and the sentences that tell each.
+# Any row with a word that gives something up near a word for a referral, in
+# either order: not narrative's wordings (REFERRAL_WAIVED), which missed
+# "Committee Refused Referral" (SB 166 of 2013) and "Referral to Ways and
+# Means withdrawn" (HB 1679 of 2006) while this search copied them. Not a
+# chamber refusing a conference, a reconsideration that lists what it
+# rescinds, nor a motion its mover withdrew ("MOVED TO RE-REF, THEN WITHDREW
+# MOTION", HB 424 of 1991).
 _WAIVER_LOOSE = re.compile(
-    r"\breferral\b[^;]{0,30}?\b(?:waived|declined)\b|\bdeclination\s+of\s+referral\b"
-    r"|\bwaived\s+second\s+committee\s+referral\b|\bREF\s+TO\s+[A-Z][^;]{0,40}?\s+DECLINED\b", re.I)
+    r"(?:waiv|declin|refus|withdr|rescind)\w*[^;]{0,40}?\bref(?:er(?:ral|red|ence)?|\.)?(?![a-z])"
+    r"|\bref(?:er(?:ral|red|ence)?|\.)?(?![a-z])[^;]{0,40}?(?:waiv|declin|refus|withdr|rescind)", re.I)
+_WAIVER_NOT = re.compile(r"\baccede|\bconf(?:erence)?\b|\breconsider|\bthen\s+withdr|\bwithdr\w*\s+"
+                         r"(?:the\s+|his\s+|her\s+)?motion", re.I)
 _REFERRED_LOOSE = re.compile(
-    r"^\W*Refer(?:red)?\s+to\s+(?:the\s+Committee\s+on\s+)?(?P<c>[A-Z][A-Za-z,&'. \-]*?)\s*"
-    r"(?:\d{1,2}/|;|$|\bHJ\b)|\bPASSED\b[^;]*?\bREF\s+TO\s+(?P<p>[A-Z][A-Za-z,&'. \-]*?)\s*(?:\bVV\b|;|$)",
+    r"^\W*(?:Refer(?:red)?|ref\.?)\s+to\s+(?:the\s+Committee\s+on\s+)?(?P<c>[A-Z][A-Za-z,&'. \-]*?)\s*"
+    r"(?:\d{1,2}/|;|$|\bHJ\b)|\bPASSED\b[^;]*?\bREF\s+TO\s+(?P<p>[A-Z][A-Za-z,&'. \-]*?)\s*(?:\bVV\b|;|$)"
+    r"|^\W*Ought\s+to\s+Pass\b[^;]*;\s*Refer\s+to\s+(?P<s>[A-Z][A-Za-z,&'. \-]*?)\s+Rule\b",
     re.I)
-_WAIVER_TOLD = re.compile(r"\b(?:waived|declined) the referral\b|\bthe referral was (?:waived|declined)\b")
+_WAIVER_TOLD = re.compile(r"\b(?:waived|declined|refused) the referral\b"
+                          r"|\bthe referral was (?:waived|declined|refused|withdrawn)\b"
+                          r"|\bwithdrew that referral\b")
+# A loose match whose referral this search cannot find: each one read by a
+# person, and the bill named here. A new one fails the check until it is.
+_WAIVER_UNPAIRED = {
+    # "Referral Waived by Committee Chair per House Rule 47(f)" with no
+    # "Referred to" row on the docket at all.
+    ("HB1138", "2023-2024"), ("SB134", "2025-2026"),
+    # "Sen. Daniels Waived Referral to Finance" before the vote, or with it,
+    # and no passage of the day refers the bill: the referral Senate Rule 4-5
+    # would have made was never made, and the history tells no referral.
+    ("SB133", "2017-2018"), ("SB135", "2017-2018"), ("SB191", "2017-2018"), ("SB525", "2017-2018"),
+    ("SB314", "2019-2020"), ("SB223", "2025-2026"), ("HB1199", "2025-2026"),
+}
 _SUSPENDED_LOOSE = re.compile(
     r"(?:\bsusp\w*\.?\s+(?:of\s+)?(?:the\s+|all\s+)?(?:house\s+|senate\s+)?rules?\b|\brules?\s+susp\w*)"
     r"(?:(?!\bnot\s+in\b|\bno\s+referral\b)[^;])*?(?:\bref|\b(?:2nd|second)\s+comm)", re.I)
@@ -5893,7 +6115,7 @@ _REPORT_SAID = re.compile(r"^(?:The committee recommended|The majority|The minor
                           r"amendment|The committee reported|The committee made no recommendation)")
 _MOVED_AFTER = re.compile(r"Recommit|send it back|sent the bill to|referred the bill|Rerefer|Vacat", re.I)
 _SENTENCE = re.compile(r"(?<=[.”])\s+(?=(?:On |The |A |It |In ))")
-_WAIVERS_AT_LEAST = 140
+_WAIVERS_AT_LEAST = 155
 _SENT_ON_AT_LEAST = 2500
 
 
@@ -5913,22 +6135,30 @@ def _referrals_unmade_on_disk(CN):
     """Three things, of every history in narratives.json, read from its own
     rows by a search of this check's own.
 
-    A REFERRAL ITS CHAIR WAIVED. For every row of a chamber that waives or
-    declines a referral ("Referral Waived by Committee Chair per House Rule
-    47(f)", "Referral declined by Chair of Ways and Means", "REF TO FINANCE
-    DECLINED"), the row that made the referral -- "Referred to Finance", or a
-    passage's "PASSED AND REF TO FINANCE" -- is found before it with no
-    meeting or report of that chamber's committee between, or after it the
-    same day. Where it is, no stage of that chamber is headed with that
-    committee and tells nothing but the referral, no passage of that day
-    "sent it on" to it, and a House history says the referral was waived or
-    declined. Before 5 October 2026, 147 histories failed: 143 a stage headed
-    with the committee that declined, three a passage that "sent it on".
+    A REFERRAL ITS CHAIR WAIVED. For every row of a chamber with a word that
+    gives something up near a word for a referral ("Referral Waived by
+    Committee Chair per House Rule 47(f)", "REF TO FINANCE DECLINED",
+    "Committee Refused Referral", "Referral to Ways and Means withdrawn",
+    "Sen. Daniels Waived Referral to Finance"), the row that made the
+    referral -- "Referred to Finance", "ref to Ways & Means", a passage's
+    "PASSED AND REF TO FINANCE" or "Refer to Finance Rule 4-5" -- is found
+    before it with no meeting or report of that chamber's committee between,
+    or after it the same day. Where it is, no stage of that chamber is headed
+    with that committee and tells nothing but the referral, no passage of
+    that day "sent it on" to it, a history that says the referral was made
+    says what undid it, and says so in a stage of that chamber. Where it is
+    not found, a person has read the bill and named it (_WAIVER_UNPAIRED).
+    Before 5 October 2026, 147 histories failed: 143 a stage headed with the
+    committee that declined, three a passage that "sent it on"; and SB 166 of
+    2013 and HB 1679 of 2006 failed after it, which a search copying
+    narrative's wordings could not find.
 
     A FIRST COMMITTEE'S REPORT AFTER THE PASSAGE. No stage of a chamber's
     committee that tells only its report or its amendment comes straight after
     a floor stage that sent the bill on to another committee, headed with the
     committee the bill was sent from. 31 histories, HB 658 of 2025 among them.
+    And the committee's stage before that passage tells no day after it: a
+    notice entered before the passage for a later day is not given back to it.
 
     A REFERRAL MADE BY SUSPENDING THE RULES. No passage "sent it on ... under
     the chamber's rules" where a row of that chamber suspends the rules for a
@@ -5941,11 +6171,14 @@ def _referrals_unmade_on_disk(CN):
     if not fn.exists():
         return "skip", "no narratives.json here"
     narr = json.loads(fn.read_text(encoding="utf-8"))
-    waivers = paired = sent_on = 0
-    headed, sent, untold, back, under = [], [], [], [], []
+    waivers = paired = again = sent_on = 0
+    headed, sent, untold, alone, misplaced, back, early, under = [], [], [], [], [], [], [], []
 
     def placed(name, ch, term):
         return CN.known(CN.official(name, ch, term), ch, term) or ""
+
+    def loose(raw):
+        return bool(_WAIVER_LOOSE.search(raw or "")) and not _WAIVER_NOT.search(raw or "")
 
     for term, byb in narr.items():
         for bill, n in byb.items():
@@ -5954,7 +6187,7 @@ def _referrals_unmade_on_disk(CN):
             text = " ".join(s.get("text") or "" for s in stages)
             # 1 -- a referral its chair waived
             for i, w in enumerate(evs):
-                if w.get("type") != "other" or not _WAIVER_LOOSE.search(w.get("raw") or ""):
+                if not loose(w.get("raw")):
                     continue
                 waivers += 1
                 ch = w.get("body")
@@ -5963,7 +6196,7 @@ def _referrals_unmade_on_disk(CN):
                     if e.get("body") != ch:
                         continue
                     raw = e.get("raw") or ""
-                    if e.get("type") == "introduced" or _WAIVER_LOOSE.search(raw):
+                    if e.get("type") == "introduced" or loose(raw):
                         break
                     if _REFERRED_LOOSE.search(raw):
                         made = e
@@ -5981,25 +6214,48 @@ def _referrals_unmade_on_disk(CN):
                             made, busy = e, False
                             break
                 if made is None:
+                    if (bill, term) not in _WAIVER_UNPAIRED:
+                        alone.append(f"{bill} of {term}: {(w.get('raw') or '')[:60]!r}")
                     continue
                 paired += 1
-                if not _WAIVER_TOLD.search(text):
-                    untold.append(f"{bill} of {term}")
-                if busy:
-                    continue
                 m = _REFERRED_LOOSE.search(made.get("raw") or "")
-                c = placed(m.group("c") or m.group("p"), ch, term)
-                if not c:
-                    continue
+                c = placed(m.group("c") or m.group("p") or m.group("s"), ch, term)
                 chamber = "House" if ch == "H" else "Senate"
+                day = _when_said(made.get("date") or "")
+                # And a referral the chamber made again after the undoing is
+                # the one the history tells: "The Chair rescinded Refer to
+                # Finance Rule 4-5", a reconsideration, and the passage again
+                # with "Refer to Finance Rule 4-5", that day (HB 1272 of 2016).
+                if made in evs[:i] and any(
+                        e.get("body") == ch and (x := _REFERRED_LOOSE.search(e.get("raw") or ""))
+                        and placed(x.group("c") or x.group("p") or x.group("s"), ch, term) == c
+                        for e in evs[i + 1:]):
+                    again += 1
+                    continue
+                # Told in that chamber's stage: the House chair's waiver not
+                # under the Senate's committee that had begun (HB 186 of 2026).
+                if _WAIVER_TOLD.search(text) and not any(
+                        _WAIVER_TOLD.search(s.get("text") or "") and (s.get("hand") or "").startswith(ch + ":")
+                        for s in stages):
+                    misplaced.append(f"{bill} of {term}")
+                # Told without what undid it: the referral said to have been
+                # made that day, and no waiver, refusal or withdrawal said.
+                if c and day and not _WAIVER_TOLD.search(text) and re.search(
+                        rf"On {re.escape(day)} the bill was referred to the {re.escape(c)} committee"
+                        rf"|On {re.escape(day)} the {chamber} voted [^.]*then sent it on to the "
+                        rf"{re.escape(c)} committee|The {chamber} referred the bill to the "
+                        rf"{re.escape(c)} committee", text):
+                    untold.append(f"{bill} of {term}")
+                if busy or not c:
+                    continue
                 for s in stages:
                     if s.get("label") != f"In {chamber} committee — {c}":
                         continue
                     told = [x for x in _SENTENCE.split(s.get("text") or "") if x]
-                    if told and all(re.match(r"On .+ the bill was referred to the ", x) for x in told):
+                    if told and all(re.match(r"On .+ the bill was referred to the |The (?:House|Senate) "
+                                             r"referred the bill to the ", x) for x in told):
                         headed.append(f"{bill} of {term}: {s.get('label')}")
-                day = _when_said(made.get("date") or "")
-                if m.group("p") and day and re.search(
+                if (m.group("p") or m.group("s")) and day and re.search(
                         rf"On {re.escape(day)} the {chamber} voted [^.]*then sent it on to the "
                         rf"{re.escape(c)} committee", text):
                     sent.append(f"{bill} of {term}: {day}")
@@ -6015,9 +6271,21 @@ def _referrals_unmade_on_disk(CN):
                 if not m:
                     continue
                 sent_on += 1
+                chamber = "House" if hand.startswith("H") else "Senate"
+                # Nothing dated after the passage is told in the first
+                # committee's stage before it: only its report or its amendment
+                # is given back there, not a notice of a meeting entered before
+                # the passage for a day after it (SB 339 of 2006's of 15 March).
+                said = re.search(rf"On (?P<d>[A-Z][a-z]+ \d{{1,2}}, \d{{4}}) the {chamber} voted [^.]*$",
+                                 t[:m.start()])
+                if said and i and stages[i - 1].get("hand") == f"{hand[0]}:committee":
+                    passed = _said_date(said.group("d"))
+                    later = [d for d in re.findall(r"[A-Z][a-z]+ \d{1,2}, \d{4}", stages[i - 1].get("text") or "")
+                             if passed and (_said_date(d) or passed) > passed]
+                    if later:
+                        early.append(f"{bill} of {term}: {stages[i - 1].get('label')}, {later[0]}")
                 if _MOVED_AFTER.search(t[m.end():]) or i + 1 >= len(stages):
                     continue
-                chamber = "House" if hand.startswith("H") else "Senate"
                 nxt = stages[i + 1]
                 prior = next((x.get("label") for x in reversed(stages[:i])
                               if (x.get("label") or "").startswith(f"In {chamber} committee")), "")
@@ -6058,11 +6326,20 @@ def _referrals_unmade_on_disk(CN):
         problems.append(f"{len(sent)} passages say the bill was sent on to a committee that declined "
                         "it: " + "; ".join(sent[:6]))
     if untold:
-        problems.append(f"{len(untold)} histories do not say a referral was waived or declined: "
+        problems.append(f"{len(untold)} histories say a referral was made and not what undid it: "
                         + ", ".join(untold[:10]))
+    if alone:
+        problems.append(f"{len(alone)} rows undo a referral this search cannot find; read each, and "
+                        "either tell it or name the bill in _WAIVER_UNPAIRED: " + "; ".join(alone[:6]))
+    if misplaced:
+        problems.append(f"{len(misplaced)} histories tell a waiver in none of its chamber's stages: "
+                        + ", ".join(misplaced[:10]))
     if back:
         problems.append(f"{len(back)} first committees' reports or amendments are told after the "
                         "passage that sent the bill on: " + "; ".join(back[:6]))
+    if early:
+        problems.append(f"{len(early)} first committees' stages before the passage that sent the bill "
+                        "on tell a day after it: " + "; ".join(early[:6]))
     if under:
         problems.append(f"{len(under)} referrals made by suspending the rules are said to be under "
                         "them: " + "; ".join(under[:6]))
@@ -6071,14 +6348,24 @@ def _referrals_unmade_on_disk(CN):
                         f"against at least {_WAIVERS_AT_LEAST:,} and {_SENT_ON_AT_LEAST:,}: a search "
                         "has stopped finding them")
     assert not problems, "\n".join(problems)
-    return "ok", (f"{waivers:,} waived or declined referrals, {paired:,} with the row that made them, "
-                  f"none heading a stage; {sent_on:,} passages that sent a bill on, no first "
+    return "ok", (f"{waivers:,} rows undoing a referral, {paired:,} with the row that made it ({again:,} "
+                  f"made again after), none heading a stage or told without what undid it; "
+                  f"{sent_on:,} passages that sent a bill on, no first "
                   "committee's report after one, and none under rules suspended to make it")
 
 
 def _date_gap(a, b):
     from datetime import date as _d
     return (_d(*map(int, b.split("-"))) - _d(*map(int, a.split("-")))).days
+
+
+def _said_date(s):
+    """"March 15, 2006" as a date, or None."""
+    from datetime import datetime as _dt
+    try:
+        return _dt.strptime(s, "%B %d, %Y").date()
+    except ValueError:
+        return None
 
 
 @check("data", "no sitting lists a bill on its consent calendar on a day its chamber's docket "

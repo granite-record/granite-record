@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.61
+# GRANITE_VERSION: 2026-09-04.62
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2437,6 +2437,13 @@ def describe(ev, body, seen_intro=False):
         return f"It was introduced on {fdate(ev['date'])} and referred to {to}."
 
     if t == "vacated":
+        # "Vacated ref to Executive Dept & Administration, MA, VV" (SB 295 of
+        # 2006) names the referral it vacates, not where the bill went: it
+        # went "ref to Commerce" on a row of its own, which says so. The
+        # reader's committee is the one the bill left, and the sentence said
+        # the House sent the bill to it "instead".
+        if VACATES_REFERRAL.search(ev.get("_raw") or ""):
+            return f"The {chamber} withdrew that referral."
         return (f"The {chamber} withdrew that referral and sent the bill to the "
                 f"{_committee(ev, body)} instead.")
 
@@ -3159,7 +3166,12 @@ SENDS = [
 # "REFERRED TO (JOINT COMMS) INTERIM STUDY VV" (HB 442 of 1994): two
 # committees together, and no one of them. The heading names neither.
 _SEND_JOINT = re.compile(r"^\(?\s*(?:a\s+)?(?:joint|jt)\b", re.I)
-_SEND_SKIP = re.compile(r"\bPending\s+Motion\b|\bNot\s+Voted\s+On\b|\brescind|\bwaive", re.I)
+# And a row that vacates a referral, "Vacated ref to Executive Dept &
+# Administration, MA, VV" (SB 295 of 2006, the bill then "ref to Commerce" on
+# a row of its own), sends it to no committee: not to the one it names.
+VACATES_REFERRAL = re.compile(r"\bVACAT\w*\s+REF(?:ERENCE|ERRAL)?\b\.?\s*TO\b", re.I)
+_SEND_SKIP = re.compile(r"\bPending\s+Motion\b|\bNot\s+Voted\s+On\b|\brescind|\bwaive|"
+                        + VACATES_REFERRAL.pattern, re.I)
 # What a clause refers that is not the bill: "REMAINING AMS REF TO RULES" (HR 1
 # of 1993).
 _SEND_NOT_THE_BILL = re.compile(r"\b(?:AMS|AMENDMENTS?)\s+$", re.I)
@@ -3198,10 +3210,15 @@ REFERRAL_UNDONE = re.compile(
 # 407 of 2015), "Declination of Referral Under House Rule 46(f) (Rep
 # Wallner)", "Referral declined by Chair of Ways and Means per House Rule 46
 # (f)", and the 1995 clerk's "REF TO FINANCE DECLINED, ORDERED TO 3RD
-# READING" (HB 126 of 1995), a week after the passage that made it.
+# READING" (HB 126 of 1995), a week after the passage that made it. And two
+# the release check's review found by a looser search: "Committee Refused
+# Referral; HJ41, PG.1421" (SB 166 of 2013, where the journal prints
+# "REFERRAL DECLINED"), and a referral undone the afternoon it was made,
+# "Referral to Ways and Means withdrawn  HJ 19a, pg 1176" (HB 1679 of 2006).
 REFERRAL_WAIVED = re.compile(
     r"\bReferral\s+(?:Waived|Declined)\b|\bDeclination\s+of\s+Referral\b"
-    r"|\bWaived\s+Second\s+Committee\s+Referral\b"
+    r"|\bWaived\s+Second\s+Committee\s+Referral\b|\bRefused\s+Referral\b"
+    r"|\bReferral\s+to\s+(?P<w>[A-Z][A-Za-z&,'. ]*?)\s+withdrawn\b"
     r"|\bREF(?:ERRAL)?\s+TO\s+(?P<c>[A-Z][A-Za-z&,'. ]*?)\s+DECLINED\b", re.I)
 WAIVED_BY_CHAIR = re.compile(r"\bChair(?:man)?\s+of\s+(?P<c>[A-Z][A-Za-z&,'. ]*?)\s+per\b", re.I)
 HOUSE_RULE_CITED = re.compile(r"\bHouse\s+Rule\s*(?P<n>\d+)\s*\(\s*(?P<p>[a-z])\s*\)", re.I)
@@ -3224,7 +3241,8 @@ def waiver_said(w, referral=None):
     `referral`, the sentence that told the referral, without its full stop,
     the waiver is told as the end of it; without, on its own."""
     raw = w.get("_raw") or ""
-    verb = "waived" if re.search(r"waiv", raw, re.I) else "declined"
+    verb = ("waived" if re.search(r"waiv", raw, re.I) else "refused" if re.search(r"refus", raw, re.I)
+            else "withdrawn" if re.search(r"withdr", raw, re.I) else "declined")
     rule = HOUSE_RULE_CITED.search(raw)
     rule = f" under House Rule {rule.group('n')}({rule.group('p').lower()})" if rule else ""
     if re.search(r"\bSpeaker\b", raw, re.I):
@@ -3731,7 +3749,7 @@ def build(bill, rows, introduction=None):
             continue
         b = w["body"]
         by = WAIVED_BY_CHAIR.search(w["_raw"])
-        said = m.group("c") or (by.group("c") if by else "")
+        said = m.group("c") or m.group("w") or (by.group("c") if by else "")
         named = committee_placed(said, b, term) if said else ""
 
         def made(e):
