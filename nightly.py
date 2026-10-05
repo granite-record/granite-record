@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -2189,6 +2189,10 @@ def from_database(a, night, tries, since):
             return stop("short", str(e))
         # The ceilings are a night's, and the installed files may be older.
         facts["nights"] = nights_since(a.archive, was["Docket.txt"], night.day)
+        # Tonight's Members.txt, from the website: a changed roster is taken
+        # when it names the database's (dayfiles_from_db.roster_named, the
+        # person's decision of 5 October 2026). Never written to the verdict.
+        facts["members"] = tonights_members(a.archive, since)
         result = DF.judge(files, was, facts)
         block.update(years=facts["years"], files=facts["rows"],
                      differences=result["differences"], held=result.get("held"),

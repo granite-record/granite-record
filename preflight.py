@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.335
+# GRANITE_VERSION: 2026-09-04.336
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39045,6 +39045,39 @@ def _no_leak_by_number(BD, BSV, BA, TF):
     return "ok", ("testimony.json read by nothing and carried by no kit; the Legislation fill by "
                   "term; bill_titles.json by term or not at all; a finished term's sign-ins from "
                   "its freeze")
+
+
+@check("build", "a database night takes a changed roster when tonight's Members.txt names it, "
+       "and stops on one it does not", needs=("dayfiles_from_db",))
+def _db_roster_named(DF):
+    """Organization Day seats a new House, and from that day the database's
+    roster is past every ceiling of the database night's guards: every such
+    night would stop until an export installed it. The person decided on
+    5 October 2026 that the night may take it when tonight's Members.txt --
+    the website's, which arrives when the export does not -- names the same
+    people. A third of the roster new: stopped on with the old Members.txt,
+    taken with the new, and the joined and the left are named either way."""
+    def leg(i, last, mail):
+        return f"{i}|{last}|Pat||H|{1000 + i}|06|{i % 9 + 1}|R||1 Main St|Concord|NH|03301|{mail}"
+    old = [leg(i, f"Old{i}", f"old{i}@gc.nh.gov") for i in range(30)]
+    new = [leg(900 + i, f"New{i}", f"new{i}@gc.nh.gov") if i % 3 == 0 else old[i]
+           for i in range(30)]
+    head = "LastName\tFirstName\tWorkEmail\telectedStatus"
+
+    def members(rows):
+        return (head + "\n" + "\n".join(
+            f"{f[1]}\t{f[2]}\t{f[14]}\tIncumbent" for f in (r.split("|") for r in rows))).encode()
+    assert DF._hold_roster(old, new)[0], "a third of the House new was not stopped on"
+    stops, held, told = DF._hold_roster(old, new, True)
+    assert not stops and held["joined"] == 10 and held["left"] == 10 and \
+        any("not on the database's roster" in k for k in told), (stops, held, told)
+    ok, why = DF.roster_named(new, members(new))
+    assert ok, why
+    ok, why = DF.roster_named(new, members(old))
+    assert not ok and "does not name 10" in why, why
+    assert not DF.roster_named(new, None)[0]
+    return "ok", ("a third of the roster new stops a database night unless tonight's Members.txt "
+                  "names it, and then its joined and left are named")
 
 
 @check("data", "status.txt's session_over is a day of the term the session's files describe",
