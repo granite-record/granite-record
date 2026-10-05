@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.24
+# GRANITE_VERSION: 2026-09-10.25
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -119,9 +119,13 @@ def coverage(out):
 def bills(out, site):
     idx = load(site / "index.json", [])
     # chapter goes last so a reader who counted columns before it existed
-    # still finds each one where it was.
+    # still finds each one where it was -- and chip after it, for the same
+    # reason. chip is a column of its own rather than a new meaning for
+    # status: status keeps how the bill stands or ended ("Killed", "Vetoed,
+    # override failed"), and chip is the word its card shows
+    # (build_site_v2.chip_word, 5 October 2026).
     cols = ["term", "year", "bill", "title", "sponsor", "committee", "topic",
-            "status", "outcome", "passage", "roll_calls", "chapter"]
+            "status", "outcome", "passage", "roll_calls", "chapter", "chip"]
     rows = ([b.get("term", ""), b.get("year", ""), b.get("id", ""),
              b.get("title", ""), b.get("sponsor", ""),
              "; ".join(b.get("committees") or ([b["committee"]]
@@ -129,7 +133,8 @@ def bills(out, site):
              b.get("topic", ""), b.get("status", ""), b.get("kind", ""),
              # Five characters: where it started and each stop it reached.
              # Documented on the data page rather than left as a code.
-             b.get("passage", ""), b.get("nrc", 0), b.get("chapter", "")]
+             b.get("passage", ""), b.get("nrc", 0), b.get("chapter", ""),
+             b.get("chip", "")]
             # By term, then by number as the site lists bills. As text,
             # HB1003 was row 38 of 2025-2026 and HB103 row 67.
             for b in sorted(idx, key=lambda b: (str(b.get("term")),
@@ -579,6 +584,25 @@ def data_page(site, out, tables, base, cov=()):
       the pair <code>bill</code>&nbsp;+&nbsp;<code>term</code> is what joins
       them. Getting this wrong silently merges two centuries of different
       bills, which is a mistake this project has made and fixed.</p>
+    <p class="src"><b>The <code>status</code>, <code>outcome</code> and
+      <code>chip</code> columns</b> in bills.csv say where a bill stands in
+      three ways. <code>status</code> is how it stands or how it ended, in
+      full: <i>Killed</i>, <i>Died on the table</i>, <i>Vetoed, override
+      failed</i>, <i>In committee</i>. <code>outcome</code> is the kind of
+      that status: <code>active</code> for a bill still moving,
+      <code>law</code>, <code>done</code>, <code>veto</code>,
+      <code>study</code> for interim study, and <code>adopted</code> for a
+      resolution adopted or a constitutional amendment both chambers passed.
+      <code>chip</code> is the word the bill&#39;s card and the bill
+      search&#39;s Status filter show: Became Law, Died, Interim Study,
+      Tabled, Vetoed or Withdrawn. Tabled is a bill on the table while its
+      session still has days to sit, and Vetoed a veto whose override vote
+      is still to come; once the session has ended either is Died, and a
+      veto overridden is Became Law. A bill still moving has its stage there
+      instead, and an adopted resolution, a constitutional amendment&#39;s
+      ballot and a bill only proposed for a special session have their own
+      words. <code>chip</code> is the last column, so every column before it
+      is where it was before it was added.</p>
     <p class="src"><b>The <code>passage</code> column</b> in bills.csv is
       where the bill started, <code>H</code> or <code>S</code>, then one
       character per stop in the order it travelled: the chamber it started
