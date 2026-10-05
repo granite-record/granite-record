@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.60
+# GRANITE_VERSION: 2026-09-04.61
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -259,7 +259,9 @@ def main():
     # order, and it used to be whatever order index.json happened to hold:
     # data/bills.json's, which is 2025-2026, 2023-2024 and then 1989-1990
     # upward -- the order build_data met the dockets in, which nothing chose.
-    # Stated here, the sitemap is the same however the rows are read.
+    # Stated here, the order of the TERMS is the same however the rows are
+    # read. Within a term it is not stated: a term's bills come in its
+    # idx/<term>.json's order, which the loader keeps, and the sort is stable.
     idx = sorted(idx, key=lambda b: str(b.get("term") or ""), reverse=True)
     out = site / "bill"
     out.mkdir(parents=True, exist_ok=True)

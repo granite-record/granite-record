@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.335
+# GRANITE_VERSION: 2026-09-04.336
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -12228,14 +12228,24 @@ def _check_live_reads_what_it_checks():
     asks for /meta.json and the term meta.json names newest, and never for
     /index.json; a site serving what was built passes the gate; and one whose
     newest index is past the limit fails it, said as not checked rather than
-    as a deploy that did not land.
+    as a deploy that did not land, with an exit of its own that the nightly
+    says as not checked and does not look again on.
+
+    And a bill index it read and found wrong fails the gate as a deploy that
+    did not land. Until the review of 5 October each of these passed it as
+    "dashboard settings": the newest index empty, not JSON, or the home page
+    in its place; meta.json naming no term, or the home page in its place;
+    and meta.json naming other terms than the build's.
     """
     import contextlib
     import io
     import check_live as CL_
+    import nightly as NI
     root = Path(tempfile.mkdtemp(prefix="gr-live-"))
     page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
     (root / "bills.html").write_bytes(page)
+    (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026", "2023-2024"]}),
+                                    encoding="utf-8")
     served = {
         "/": (200, "text/html", b"<!doctype html><html>home</html>"),
         "/bills": (200, "text/html", page),
@@ -12266,30 +12276,90 @@ def _check_live_reads_what_it_checks():
             CL_.get, sys.argv = saved
         return code, out.getvalue()
 
+    good = dict(served)
+
+    def serve():
+        # What was built, served again, before one answer is changed.
+        served.clear()
+        served.update(good)
+        asked.clear()
+
     try:
         code, out = gate()
         assert code == 0, f"check_live --gate fails a site serving what was built:\n{out[-600:]}"
         assert "/index.json" not in asked, f"check_live still asks for /index.json: {asked}"
         assert "/meta.json" in asked and "/idx/2025-2026.json" in asked, (
             f"check_live does not ask for meta.json and the newest term's index: {asked}")
+        home = good["/"]
+        wrong = []
+        for why, path, answer in (
+                ("the newest index is empty", "/idx/2025-2026.json",
+                 (200, "application/json", b"[]")),
+                ("the newest index is not JSON", "/idx/2025-2026.json",
+                 (200, "application/json", b"[{")),
+                ("the newest index is the home page", "/idx/2025-2026.json", home),
+                ("meta.json names no term", "/meta.json",
+                 (200, "application/json", b'{"terms": []}')),
+                ("meta.json is the home page", "/meta.json", home),
+                ("meta.json names an older newest term than the build", "/meta.json",
+                 (200, "application/json", json.dumps({"terms": ["2023-2024"]}).encode()))):
+            serve()
+            served[path] = answer
+            # The older term's own index is served whole, so it is the
+            # comparison with the build that fails the gate and not a 404.
+            served["/idx/2023-2024.json"] = (200, "application/json", b'[{"id":"HB2"}]')
+            code, out = gate()
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+            if answer is home:
+                assert "being served as a web page" in out, (
+                    f"when {why}, the page in its place is not said:\n{out[-400:]}")
+            if why == "meta.json names no term":
+                assert "names no term" in out and not any(p.startswith("/idx/") for p in asked), (
+                    f"a meta.json naming no term was not said, or an index was guessed at: {asked}")
+            wrong.append(why)
+        serve()
         served["/idx/2025-2026.json"] = (200, "application/json", b"[" + b" " * 12_000_000 + b"]")
-        asked.clear()
         code, out = gate()
-        assert code != 0 and "not checked" in out and "NOT CHECKED" in out, (
+        assert code == CL_.NOT_CHECKED and "not checked" in out and "NOT CHECKED" in out, (
             "a term index larger than check_live reads passed its gate, or was not said "
-            f"as unchecked ({code}):\n{out[-600:]}")
+            f"as unchecked with its own exit ({code}):\n{out[-600:]}")
         assert "DID NOT LAND" not in out, (
             "a file too large to read is reported as a deploy that did not land")
-        served["/meta.json"] = (200, "application/json", b'{"terms": []}')
-        asked.clear()
-        code, out = gate()
-        assert "names no term" in out and not any(p.startswith("/idx/") for p in asked), (
-            f"a meta.json naming no term was not said, or an index was guessed at: {asked}")
+
+        # The nightly, given that exit: said as not checked, and not looked at
+        # again; given a deploy that did not land, it looks every time and
+        # says so.
+        def upload(live_code):
+            looks, saved_ = [], (NI.child.run, NI.time.sleep, NI.run, NI.LOG[:])
+            NI.child.run = lambda *a_, **k_: subprocess.CompletedProcess(a_, 0, "", "")
+            NI.time.sleep = lambda s: None
+            NI.run = lambda args, label, cwd=None: looks.append(label) or live_code
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    landed = NI.upload_and_check(argparse.Namespace(project="p"), root,
+                                                 "main", "http://site.invalid")
+                said = "\n".join(NI.LOG[len(saved_[3]):])
+            finally:
+                NI.child.run, NI.time.sleep, NI.run = saved_[:3]
+                NI.LOG[:] = saved_[3]
+            return landed, looks, said
+        landed, looks, said = upload(CL_.NOT_CHECKED)
+        assert not landed and len(looks) == 1 and "NOT CHECKED" in said \
+            and "NOT SERVING" not in said, (
+                f"the nightly, told the live check could not read a file, looked {len(looks)} "
+                f"time(s) and said: {said[-300:]}")
+        landed, looks, said = upload(1)
+        assert not landed and len(looks) == len(NI.LIVE_WAITS) and "NOT SERVING" in said, (
+            f"the nightly, told the deploy did not land, looked {len(looks)} time(s) "
+            f"and said: {said[-300:]}")
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("asks for meta.json and the newest term's index, never index.json; "
-                  "passes a site serving what was built; an index past 12 MB is "
-                  "said as not checked and fails the gate")
+                  "passes a site serving what was built; fails it as not landed when "
+                  + ", when ".join(wrong) + "; an index past 12 MB is said as not "
+                  "checked, with its own exit, which the nightly says and does not "
+                  "look at again")
 
 
 @check("build", "the bill index is read one way: no site, a broken one and a whole one kept apart")
@@ -12477,7 +12547,9 @@ def _index_json_retired():
     And the copy a laptop keeps: site/ is never emptied, so the last
     index.json would stay and publish would go on deploying a frozen list of
     every bill. build_site_v2 deletes one it finds, and check_site refuses one,
-    and refuses an index that does not hold together.
+    and refuses an index that does not hold together. The same laptop keeps a
+    term's file a later build no longer writes, which the loader refuses, so
+    build_site_v2 deletes that too.
     """
     import contextlib
     import io
@@ -12518,12 +12590,22 @@ def _index_json_retired():
         _site_fixture(root)
         (root / "site").mkdir(exist_ok=True)
         (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        # And a term an earlier build wrote and this one has no bills for:
+        # the loader refuses a term file meta.json does not name, so left
+        # there it would stop every step after the site data, check_site and
+        # the census, and building again would not clear it.
+        (root / "site" / "idx").mkdir(exist_ok=True)
+        stale = root / "site" / "idx" / "1987-1988.json"
+        stale.write_text('[{"term": "1987-1988", "id": "HB1"}]', encoding="utf-8")
         r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
                   "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
         assert not (root / "site" / "index.json").exists(), (
             "build_site_v2 left the index.json an earlier build wrote, which would deploy")
+        assert not stale.exists(), (
+            "build_site_v2 left a term file an earlier build wrote and it did not, which "
+            "the bill index refuses")
         errors = refused(root / "site")
         assert not errors, f"check_site refuses the bill index a build just wrote: {errors}"
         (root / "site" / "index.json").write_text("[]", encoding="utf-8")
@@ -12540,7 +12622,8 @@ def _index_json_retired():
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"the fixture's {len(rows):,} bills reach bills.csv, the manifest, the Learn "
                   "page and the census with no index.json; a leftover is deleted by the "
-                  "build and refused by check_site, as is a term's missing file")
+                  "build and refused by check_site, as is a term's missing file; a term "
+                  "file the build did not write is deleted by it")
 
 
 # What a term's search index may weigh. The page fetches it when somebody

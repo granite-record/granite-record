@@ -432,7 +432,14 @@ term first. A builder that cannot go on without every bill asks
 what to run: four of the old readers read a missing file as no bills and went
 on. The nightly's census counts it, its fingerprint hashes the files
 `meta.json` names, and `check_site` refuses a site whose index does not hold
-together.
+together. `build_site_v2.py` deletes a term's file it did not write this time,
+which an earlier build on the laptop's never-emptied `site/` could leave and
+the reader would refuse. Once a deploy is up, `check_live.py --gate` reads the
+served `meta.json` and the newest term's file: a `meta.json` naming no term or
+other terms than the build's, or a term file empty, not JSON or a web page in
+its place, fails it as a deploy that did not land; a file too large for it to
+read fails it as not checked, with an exit of its own (`NOT_CHECKED`) that the
+nightly reports as such rather than as a deploy that did not land.
 
 `/index.json`, the same rows joined into one file, was retired on 5 October
 2026. No page read it; six build steps did, and it had reached 23.7 MB --
@@ -447,9 +454,10 @@ refuses one.
 
 The order a builder writes in is its own to state, not the order the rows
 arrive in. The sitemap lists the newest term's bills first, and a committee's
-file its terms newest first, sorted where they are written. Until 5 October
-both followed `index.json`'s order, which was `data/bills.json`'s: 2025-2026,
-2023-2024, then 1989-1990 upward.
+file its terms newest first, sorted where they are written; within a term the
+sitemap keeps the order of the term's file, which the reader keeps. Until 5
+October both followed `index.json`'s order, which was `data/bills.json`'s:
+2025-2026, 2023-2024, then 1989-1990 upward.
 
 The governor's veto messages are read before the site data, which puts each
 on its bill's page, so the report of the vetoed bills with no message is a

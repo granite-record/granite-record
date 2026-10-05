@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -344,6 +344,7 @@ from pathlib import Path
 import child
 import refusal
 import site_read as SR
+from check_live import NOT_CHECKED as LIVE_NOT_CHECKED
 
 LOG = []
 
@@ -478,6 +479,12 @@ LATE_CAPTION_UNCHECKED = 10
 # the laptop's publish said THE DEPLOY DID NOT LAND for a deploy that had,
 # because it looked eight seconds after the upload.
 LIVE_WAITS = (10, 30, 60, 120)
+# What a deploy is called when the live check could not read a file to its end
+# (check_live's NOT_CHECKED). Not "not serving what was built": nothing said it
+# was not, and nothing said it was.
+LIVE_UNREAD = ("DEPLOYED, BUT NOT CHECKED: the live check could not read a file "
+               "to its end (it names the file above), so whether the site is "
+               "serving what was built is not known.")
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -1180,8 +1187,12 @@ def deploy(a):
         say("\nSTOPPED: the deploy failed four times. The previous version is still live.")
         return False
     time.sleep(8)
-    if run(["check_live.py", "--gate", "--base", a.base, "--site", a.site],
-           "what the live site is now serving") != 0:
+    rc = run(["check_live.py", "--gate", "--base", a.base, "--site", a.site],
+             "what the live site is now serving")
+    if rc == LIVE_NOT_CHECKED:
+        say(f"\n{LIVE_UNREAD}")
+        return False
+    if rc != 0:
         say("\nDEPLOYED, BUT THE LIVE SITE IS NOT SERVING WHAT WAS BUILT.\n"
             "A previous version can be restored from the Deployments tab in Cloudflare.")
         return False
@@ -2866,7 +2877,9 @@ def runner_deploy(a):
 
 
 def upload_and_check(a, site, target, base):
-    """wrangler to `target`, four attempts, then the live check, retried."""
+    """wrangler to `target`, four attempts, then the live check, retried --
+    except where it could not read a file to its end, which looking again
+    would not change."""
     out = ""
     for attempt in range(1, 5):
         # The pinned wrangler, with the branch named: PREVIEW_BRANCH is a
@@ -2886,10 +2899,15 @@ def upload_and_check(a, site, target, base):
         return False
     for i, wait in enumerate(LIVE_WAITS, 1):
         time.sleep(wait)
-        if run(["check_live.py", "--gate", "--base", base, "--site", str(site)],
-               f"what {base} is serving (look {i} of {len(LIVE_WAITS)})") == 0:
+        rc = run(["check_live.py", "--gate", "--base", base, "--site", str(site)],
+                 f"what {base} is serving (look {i} of {len(LIVE_WAITS)})")
+        if rc == 0:
             say(f"\nLive at {base}")
             return True
+        if rc == LIVE_NOT_CHECKED:
+            # Looking again would read the same file and stop at the same byte.
+            say(f"\n{LIVE_UNREAD}")
+            return False
     say(f"\nDEPLOYED, BUT {base} IS NOT SERVING WHAT WAS BUILT, after "
         f"{sum(LIVE_WAITS)} seconds of looking. A previous version can be restored "
         "from the Deployments tab in Cloudflare.")

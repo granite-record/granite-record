@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.150
+# GRANITE_VERSION: 2026-09-05.151
 """
 Generate the faceted site from real General Court data.
 
@@ -34,6 +34,7 @@ import fiscal
 import proceedings as P
 import report_check as RC
 import senate_hearing_reports as SHR
+import site_read
 import csv
 import json
 import member_links as ML
@@ -9411,6 +9412,18 @@ def main():
     for term_, rows_ in by_term.items():
         (idx_dir / f"{term_}.json").write_text(
             json.dumps(rows_, separators=(",", ":")), encoding="utf-8")
+    # AND NO TERM'S FILE THIS BUILD DID NOT WRITE. site/ is never emptied, so a
+    # term an earlier build wrote and this one does not would stay in idx/,
+    # and site_read.bill_index refuses a term file meta.json does not name --
+    # every step after this one, check_site and the census would stop on it,
+    # and building again would not clear it. The bill requests' file
+    # (2027-requests) is not a term's and is build_lsrs.py's. A term that
+    # really went missing is the census's to see, by its count.
+    for stale_ in sorted(idx_dir.glob("*.json")):
+        if site_read.TERM_FILE.fullmatch(stale_.stem) and stale_.stem not in by_term:
+            print(f"  idx/{stale_.name}: a term this build has no bills for, "
+                  "left by an earlier one -- removed")
+            stale_.unlink()
     newest_ = max(by_term) if by_term else ""
     print(f"  idx/: {len(by_term)} terms, newest {newest_} "
           f"({len(by_term.get(newest_, [])):,} bills, "
