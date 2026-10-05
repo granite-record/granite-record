@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.9
+# GRANITE_VERSION: 2026-10-01.10
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -2196,14 +2196,17 @@ def judge(files, installed, facts=None):
                         f"arrived from the database's {view} view: entered while it was "
                         "being read, and in tonight's files")
 
-    # The session has not turned -- or, if it has, the night says so.
+    # The session has not turned -- or, if it has, the night says so: in the
+    # nightly's own words for a new term (5 October 2026), since that is what
+    # a newer year in the views most often is, and the box is the answer.
     newer = (facts or {}).get("newer_years") or {}
     if newer:
         years = sorted({y for d in newer.values() for y in d})
         warnings.append("the database holds session year "
                         + ", ".join(years) + ", newer than the installed files': tonight's "
-                        "files keep the installed files' years, and a new term is a person's "
-                        "decision")
+                        "files keep the installed files' years. A new term, or a new session "
+                        "year? Only a run by hand with New term ticked takes one, from the "
+                        "export, once the term being left is frozen")
     return {"stops": [str(s) for s in stops], "warnings": warnings, "differences": diff,
             "held": held, "told": {what: _name(named) for what, named in told.items()},
             "wider": sum(1 for s in stops if isinstance(s, _Wider))}

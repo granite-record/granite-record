@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.331
+# GRANITE_VERSION: 2026-09-04.332
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16572,6 +16572,8 @@ CLOCK_OF_THEIR_OWN = {
     "fetch_legislation.py": "the day a page was asked for, on the gone-list",
     "parse_town_sites.py": "the day a town's site was read, in its own run by hand",
     "town_boards.py": "the day a town's boards were read, in its own run by hand",
+    "freeze_term.py": "the day a term's freeze was made, in the freeze's own manifest; the "
+                      "build imports it only to read what is frozen",
 }
 
 
@@ -39028,8 +39030,8 @@ def _freeze_on_disk(FT, P):
 # show a new term. The "New term" box lets them through for one run, and an
 # ordinary night that meets smaller files says on its run's page to tick it.
 
-NEW_TERM_SENTENCE = ("The General Court's files are much smaller: a new term? Run the nightly "
-                     "by hand with New term ticked.")
+NEW_TERM_SENTENCE = ("The General Court's files are much smaller: a new term, or a new session "
+                     "year? Run the nightly by hand with New term ticked.")
 
 
 @check("build", "a New term night lets the smaller files, the census and the feed prune through "
@@ -39180,7 +39182,9 @@ def _nightly_new_term(NI, SG, BA):
         SG.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
         n = len(SG.targets())
         big = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 200
-        new = b"2027|0001|12/2/2026 10:44:26 AM|HB1|H|Introduced\n" * 3
+        # Smaller, and of the same term: the turn itself is seen by its years
+        # and has a check of its own (_term_turn_guard).
+        new = b"2026|0001|6/2/2026 10:44:26 AM|HB1|H|Introduced\n" * 3
 
         def snap(allow, answers, arch):
             root = tmp / f"root-{arch}"
@@ -39208,7 +39212,8 @@ def _nightly_new_term(NI, SG, BA):
 
         rc, docket, rec = snap(False, [new] * n, "arch-a")
         assert rc == 1 and docket == big, "the snapshot installed a Docket a hundredth the size"
-        assert rec == {"installed": False, "allow_shrink": False, "shrunk": [
+        assert rec == {"installed": False, "allow_shrink": False, "allow_turn": False,
+                       "released": [], "turned": None, "refused": "shrink", "shrunk": [
             {"name": "Docket.txt", "bytes": len(new), "installed_bytes": len(big)}]}, rec
         said = NI.fetch_status(1, str(tmp / "arch-a"))
         assert said.startswith("smaller: 1 of the files much smaller") and "Docket.txt" in said, said
@@ -39423,6 +39428,92 @@ def _nightly_new_term(NI, SG, BA):
                   "landed deploy does; the page gives each file's size; the ceiling holds")
 
 
+@check("build", "a new term is seen by its years whatever the files' size, taken only by the New "
+       "term run and only once the term it leaves is frozen, and a file that turns later goes "
+       "in over its frozen copy", needs=("nightly", "snapshot_gencourt", "freeze_term"))
+def _term_turn_guard(NI, SG, FT):
+    """private/NEW_TERM_DESIGN.md, variant D: a docket holding 2025, 2026 and
+    2027 together grew, nothing shrank, and a scheduled night of fa01eb6
+    would have published the new term unasked. snapshot_gencourt.judge reads
+    the session year in each file (YEAR_COLUMN, the same as freeze_term's)
+    and refuses files naming a newer term than the installed ones; the New
+    term run's --allow-turn takes them only when freeze_term.ready says the
+    term being left is frozen; and once the switch is installed, a file whose
+    installed copy is that term's frozen one may go in however much smaller
+    -- which before the switch it may not. The nightly says "turned" and the
+    run's page names the box, and a New term run stops before any request
+    when the installed docket holds both years of its term unfrozen."""
+    import hashlib
+    assert SG.YEAR_COLUMN == FT.YEAR_COLUMN, "snapshot_gencourt and freeze_term read years apart"
+    assert sorted(FT.SESSION_FILES) == sorted(name for _, name in SG.targets()), \
+        "freeze_term does not freeze the files the snapshot installs"
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-turn-"))
+    T = "2025-2026"
+    old = b"".join(b"%d|%04d|1/5/%d 10:00:00 AM|HB%d|H|Introduced|x\r\n" % (y, i, y, i)
+                   for y in (2025, 2026) for i in range(1, 40))
+    grown = old + b"2027|7001|12/2/2026 10:00:00 AM|HR1|H|Introduced and Adopted|x\r\n"
+    try:
+        os.chdir(tmp)
+        Path("Docket.txt").write_bytes(old)
+        Path("LSRs.txt").write_bytes(b"2026|0001|t|H\r\n" * 200)
+        v = SG.judge({"Docket.txt": grown}, ".")
+        assert not v["installed"] and v["turned"] == {"from": T, "to": "2027-2028",
+                                                     "files": ["Docket.txt"]} \
+            and v["refused"] == "turn" and not v["shrunk"], v
+        v = SG.judge({"Docket.txt": grown}, ".", allow_shrink=True, allow_turn=True)
+        assert not v["installed"] and v["refused"] == "freeze", \
+            ("a New term run took a new term over one nobody froze", v)
+        ready = FT.ready
+        FT.ready = lambda root=".", term=None: (True, "frozen")
+        try:
+            v = SG.judge({"Docket.txt": grown}, ".", allow_shrink=True, allow_turn=True)
+        finally:
+            FT.ready = ready
+        assert v["installed"] and v["lines"][0].startswith("ACCEPTED, a new term"), v
+        # The record and the page.
+        day = Path("arch") / "snapshots" / f"{__import__('datetime').datetime.now():%Y-%m-%d}"
+        day.mkdir(parents=True)
+        (day / "manifest.json").write_text("{}", encoding="utf-8")
+        (day / NI.INSTALL_RECORD).write_text(json.dumps(
+            {"installed": False, "turned": {"from": T, "to": "2027-2028", "files": ["Docket.txt"]},
+             "refused": "turn", "shrunk": []}), encoding="utf-8")
+        said = NI.fetch_status(1, "arch")
+        assert said.startswith("turned: Docket.txt name 2027-2028"), said
+        assert NI.plain_why({"fetch": said}).startswith(NI.NEW_TERM_TURN), NI.plain_why({"fetch": said})
+        # A file that turns after the switch, over its frozen copy.
+        (Path("frozen") / T / "day").mkdir(parents=True)
+        lsrs = Path("LSRs.txt").read_bytes()
+        (Path("frozen") / T / "day" / "LSRs.txt").write_bytes(lsrs)
+        (Path("frozen") / T / "manifest.json").write_text(json.dumps(
+            {"files": {"LSRs.txt": {"sha256": hashlib.sha256(lsrs).hexdigest()}}}), encoding="utf-8")
+        small = b"2027|0001|t|H\r\n"
+        v = SG.judge({"LSRs.txt": b"2026|0001|t|H\r\n"}, ".")
+        assert not v["installed"] and v["refused"] == "shrink" and not v["released"], \
+            ("before the switch a file was let in over the session's own frozen copy", v)
+        Path("Docket.txt").write_bytes(b"2027|7001|12/2/2026 10:00:00 AM|HR1|H|Introduced|x\r\n")
+        v = SG.judge({"LSRs.txt": small}, ".")
+        assert v["installed"] and v["released"] == [{"name": "LSRs.txt", "term": T}], v
+        Path("LSRs.txt").write_bytes(lsrs + b"2026|0002|t|H\r\n")
+        v = SG.judge({"LSRs.txt": small}, ".")
+        assert not v["installed"] and not v["released"], \
+            ("a file was let in over an installed copy that is not the frozen one", v)
+        # The New term run's own precondition.
+        Path("Docket.txt").write_bytes(old)
+        ok, why = NI.new_term_ready(".")
+        assert not ok and "not frozen whole" in why, why
+        Path("Docket.txt").write_bytes(old.split(b"2026|")[0])
+        ok, why = NI.new_term_ready(".")
+        assert ok and "new session year" in why, why
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a docket that grew into 2027 is refused as a new term, taken with --allow-turn "
+                  "only once the term is frozen; LSRs.txt turning later goes in over its frozen "
+                  "copy after the switch and not before; the page says a new term; a New term run "
+                  "stops on an unfrozen two-year docket and not on a one-year one")
+
+
 @check("build", "what a New term run accepted reaches a later night only once its build is "
        "published: rejected, left waiting or blocked, the next night still refuses the smaller "
        "files and says why", needs=("nightly", "snapshot_gencourt", "cloud", "build_all"))
@@ -39501,9 +39592,11 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-newterm-kit-"))
     bucket = tmp / "bucket"
+    import freeze_term
     saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
              NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK,
-             NI.upload_and_check, NI.current_branch)
+             NI.upload_and_check, NI.current_branch, freeze_term.ready)
+    freeze_term.ready = lambda root=".", term=None: (True, "frozen, for this check")
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
@@ -39552,12 +39645,16 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
                                            encoding="utf-8")
             allow = "--allow-shrink" in args
             fetched = {"Docket.txt": data}
-            small = SG.shrunk(fetched, ".")
-            ok, _ = SG.install(fetched, ".", allow)
+            # The snapshot's own judge(), turn and all, and the record its
+            # run() writes. The term it leaves counts as frozen here: the
+            # freeze has checks of its own (_freeze_term, _term_turn_guard).
+            verdict = SG.judge(fetched, ".", allow, "--allow-turn" in args)
+            ok, _ = SG.install(fetched, ".", verdict=verdict)
             (day / NI.INSTALL_RECORD).write_text(json.dumps(
-                {"installed": ok, "allow_shrink": allow,
+                {"installed": ok, "allow_shrink": allow, "turned": verdict["turned"],
+                 "released": verdict["released"],
                  "shrunk": [{"name": n, "bytes": now, "installed_bytes": was}
-                            for n, now, was in small]}), encoding="utf-8")
+                            for n, now, was in verdict["shrunk"]]}), encoding="utf-8")
             rc = 0 if ok else 1
         elif name == "build_all.py":
             # A bill a docket line, and one output the build carries forward.
@@ -39727,13 +39824,15 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         assert nxt.took == OLD, (
             "the next night took down the docket a New term run installed, though that run "
             "was never published")
-        assert nxt.code == 1 and nxt.v["fetch"].startswith("smaller") and not nxt.v["built"] \
-            and not any("--allow-shrink" in c for c in nxt.calls) and \
+        # Refused as a new term, by its years, since 5 October 2026: before
+        # that, by its size ("smaller").
+        assert nxt.code == 1 and nxt.v["fetch"].startswith("turned") and not nxt.v["built"] \
+            and not any("--allow-shrink" in c or "--allow-turn" in c for c in nxt.calls) and \
             not any(Path(c[0]).name == "build_all.py" for c in nxt.calls), (
                 "the night after an unpublished New term run carried the switch through: "
                 f"fetch {nxt.v.get('fetch')!r}, built {nxt.v.get('built')}")
         why = page_note(nxt.page)
-        assert why.startswith(NEW_TERM_SENTENCE) and NI.NEW_TERM_HOW in why and \
+        assert why.startswith(NI.NEW_TERM_TURN) and NI.NEW_TERM_HOW in why and \
             f"The New term run of {today} was not published" in why, why
         assert later_nights_get() == before
 
@@ -39793,7 +39892,7 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         os.chdir(here)
         (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
          NI.time, sys.argv, refusal.MARK, refusal.LOCK, NI.upload_and_check,
-         NI.current_branch) = saved
+         NI.current_branch, freeze_term.ready) = saved
         for k, val in saved_env.items():
             if val is None:
                 os.environ.pop(k, None)
@@ -42966,7 +43065,13 @@ def _nightly_falls_back(NI, DF, PD, SG):
         # (h) A New term run takes its files from the export or not at all,
         # and is the one night that still asks it EMPTY_TRIES times.
         reset()
-        code, _ = night("--runner", "--new-term", run_id="313")
+        # The fixture's term counts as frozen: the freeze before a New term
+        # run has a check of its own (_term_turn_guard).
+        _ready, NI.new_term_ready = NI.new_term_ready, lambda root=".": (True, "frozen, for this check")
+        try:
+            code, _ = night("--runner", "--new-term", run_id="313")
+        finally:
+            NI.new_term_ready = _ready
         v = verdict()
         assert code == 1 and not asked_db() and "day_files" not in v, \
             "a New term run fell back on the database"
@@ -48778,7 +48883,10 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
     try:
         SH.parse_all = lambda f: ({"2025-2026": {"SB9": ["frozen"]},
                                    "2027-2028": {"SB1": ["frozen 2027"]}}, {})
-        out, said = SH.with_frozen({"2027-2028": {"SB1": ["current"]}}, [Path("db/term/2025-2026/x")])
+        # After the turn: the session's files are 2027-2028's (5 October 2026,
+        # the finished term from its freeze whole; _finished_term_rule).
+        out, said = SH.with_frozen({"2027-2028": {"SB1": ["current"]}}, [Path("db/term/2025-2026/x")],
+                                   session="2027-2028")
     finally:
         SH.parse_all = saved
     assert out == {"2027-2028": {"SB1": ["current"]}, "2025-2026": {"SB9": ["frozen"]}}, out

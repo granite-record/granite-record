@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -53,6 +53,30 @@ passes it only on the run a person starts by hand with "New term" ticked
 --into did -- whether it installed, and which files were much smaller -- so
 the night's verdict can tell a refused shrink from a file that never arrived,
 and say on the run's page which box to tick.
+
+A NEW TERM IS SEEN BY ITS YEARS, NOT BY ITS SIZE (5 October 2026). On a copy,
+a docket holding 2025, 2026 and 2027 together grew, no file shrank, and a
+scheduled night would have installed the new term with nobody's approval: the
+size rule only ever saw a turn that happened to make a file smaller. So
+install() reads the session year in each file that has one (YEAR_COLUMN) and
+refuses any night whose files name a term newer than the newest the installed
+files name, whatever their size; snapshots/<day>/install.json records it as
+"turned". --allow-turn lets it through, and the nightly passes it only on the
+New term run, which the person approves -- and only when the term being left
+is frozen as installed (freeze_term.ready), so that installing the new one
+loses nothing of it. The person decided on 5 October that the switch is the
+first night the files show the new term, even if Organization Day brings only
+resolutions.
+
+AND A FILE THAT TURNS LATER GOES IN WITHOUT A SECOND APPROVAL. The files do
+not all turn on one night: LSRs.txt holds one session year and may turn on
+1 January, and the roll calls at the new term's first vote. Each is much
+smaller than the old term's copy it replaces. Once the switch is installed,
+a file whose installed copy is a finished term's frozen one, byte for byte
+(frozen/<term>/day/), may be replaced however much smaller tonight's is: what
+it held is kept where the build reads that term from (the person's decision
+of 5 October). Before the switch the frozen term is still the installed one,
+and nothing is let through this way.
 """
 
 import argparse
@@ -106,6 +130,80 @@ INSTALL_RECORD = "install.json"
 # What may precede a data file's first character: a byte-order mark, which
 # the General Court's files carry, and whitespace.
 LEADING = "".join(map(chr, (0xFEFF, 32, 13, 10, 9)))
+
+# WHICH COLUMN SAYS WHAT SESSION A ROW IS OF (5 October 2026): the year itself,
+# first in each, and the fourth field of LsrsOnly.txt ("26-2001|944|1190|2026|
+# Sponsor|SB416|..."). The other files name no year. freeze_term.YEAR_COLUMN is
+# the same, and preflight holds the two together.
+YEAR_COLUMN = {"Docket.txt": 0, "LSRs.txt": 0, "LsrSponsors.txt": 0,
+               "LsrsOnly.txt": 3, "RollCallSummary.txt": 0,
+               "RollCallHistory.txt": 0}
+# Where a finished term's day files are frozen (freeze_term.py), relative to
+# the folder they are installed in.
+FROZEN = "frozen"
+
+
+def years_in(data, name):
+    """The session years one file's rows name, by its YEAR_COLUMN: a set,
+    empty for a file that names none."""
+    col = YEAR_COLUMN.get(name)
+    if col is None or not data:
+        return set()
+    out = set()
+    for line in data.decode("utf-8-sig", "replace").splitlines():
+        f = line.lstrip("﻿").split("|")
+        if len(f) > col:
+            y = f[col].strip()
+            if len(y) == 4 and y.isdigit():
+                out.add(y)
+    return out
+
+
+def term_of(year):
+    """'2027' -> '2027-2028': a term begins in the odd year."""
+    y = int(year)
+    start = y if y % 2 else y - 1
+    return f"{start}-{start + 1}"
+
+
+def newest_term(files):
+    """(term, {name: its newest year}) of the newest session year any of
+    these files names, {name: bytes}; ("", {}) when none names one."""
+    newest = {}
+    for name, data in files.items():
+        ys = years_in(data, name)
+        if ys:
+            newest[name] = max(ys)
+    return (term_of(max(newest.values())) if newest else ""), newest
+
+
+def installed_term(into):
+    """The newest term the files installed in `into` name, and by file."""
+    into = Path(into)
+    return newest_term({n: (into / n).read_bytes() for n in YEAR_COLUMN
+                        if (into / n).exists()})
+
+
+def frozen_copy(into, name, data, newest):
+    """The finished term whose frozen copy of `name` is `data` byte for byte,
+    or "": a term older than `newest`, the newest term installed, so never
+    the session's own term before the switch."""
+    root = Path(into) / FROZEN
+    if not root.is_dir() or not newest:
+        return ""
+    digest = hashlib.sha256(data).hexdigest()
+    for d in sorted(root.iterdir()):
+        if not d.is_dir() or d.name >= newest:
+            continue
+        try:
+            rec = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        e = (rec.get("files") or {}).get(name) if isinstance(rec, dict) else None
+        if isinstance(e, dict) and e.get("sha256") == digest \
+                and (d / "day" / name).exists():
+            return d.name
+    return ""
 
 
 def targets():
@@ -207,21 +305,80 @@ def shrunk(fetched, into):
     return out
 
 
-def install(fetched, into, allow_shrink=False):
+def judge(fetched, into, allow_shrink=False, allow_turn=False):
+    """What install() would do with tonight's files, and why: {"installed",
+    "shrunk", "released", "turned", "lines"}. Writes nothing.
+
+    shrunk     every file much smaller than its installed copy, as shrunk() gives
+    released   those of them whose installed copy is a finished term's frozen
+               one (frozen_copy): kept for that term, so not a reason to stop
+    turned     {"from", "to", "files"} when tonight's files name a term newer
+               than the newest the installed ones name, else None
+    """
+    into = Path(into)
+    small = shrunk(fetched, into)
+    was, _ = installed_term(into)
+    now, by_file = newest_term({n: d for n, d in fetched.items() if n in YEAR_COLUMN})
+    released = []
+    for name, _now, _before in small:
+        t = frozen_copy(into, name, (into / name).read_bytes(), was)
+        if t:
+            released.append({"name": name, "term": t})
+    held = [x for x in small if x[0] not in {r["name"] for r in released}]
+    turned = ({"from": was, "to": now,
+               "files": sorted(n for n, y in by_file.items() if term_of(y) == now)}
+              if was and now and now > was else None)
+    said = [f"{name} is {n:,} bytes against {before:,} installed "
+            f"({(n - before) / before:+.0%})" for name, n, before in held]
+    out = {"installed": False, "shrunk": small, "released": released,
+           "turned": turned, "refused": "", "lines": []}
+    if turned and not allow_turn:
+        out["refused"] = "turn"
+        out["lines"] = [f"NOT INSTALLED, any of it: a new term. {', '.join(turned['files'])} "
+                        f"name {turned['to']}, and the newest term the installed files name is "
+                        f"{turned['from']}.",
+                        "A new term is a person's decision: the New term run (--allow-turn), "
+                        "once the term being left is frozen (freeze_term.py)."]
+        return out
+    if turned:
+        import freeze_term
+        ok, why = freeze_term.ready(into)
+        if not ok:
+            out["refused"] = "freeze"
+            out["lines"] = [f"NOT INSTALLED, any of it: a new term, {turned['to']}, and {why}"]
+            return out
+    if held and not allow_shrink:
+        out["refused"] = "shrink"
+        out["lines"] = ["NOT INSTALLED, any of it: " + "; ".join(said),
+                        "A fall that size is a truncated file far more often than a "
+                        "record getting shorter. --allow-shrink if it is real."]
+        return out
+    out["installed"] = True
+    out["lines"] = ((["ACCEPTED, a new term, with --allow-turn: "
+                      f"{turned['from']} to {turned['to']} ({', '.join(turned['files'])})"]
+                     if turned else [])
+                    + (["ACCEPTED, much smaller, with --allow-shrink (a new term): "
+                        + "; ".join(said)] if held else [])
+                    + [f"ACCEPTED, much smaller, because the copy it replaces is "
+                       f"{r['term']}'s frozen {r['name']}, byte for byte: what it held is "
+                       "kept for that term" for r in released])
+    return out
+
+
+def install(fetched, into, allow_shrink=False, allow_turn=False, verdict=None):
     """Copy tonight's files where the build reads them: all, or none. (ok, lines)
 
     A file much smaller than the copy it replaces stops all of them, unless
-    allow_shrink -- a new term's night -- and then the log still names each one.
+    allow_shrink -- a new term's night -- and then the log still names each
+    one; and so do files that name a newer term than the installed ones,
+    unless allow_turn (judge() says each). `verdict`, if given, is judge()'s
+    answer already worked out for these files.
     """
     into = Path(into)
-    small = [f"{name} is {now:,} bytes against {before:,} installed "
-             f"({(now - before) / before:+.0%})" for name, now, before in shrunk(fetched, into)]
-    if small and not allow_shrink:
-        return False, ["NOT INSTALLED, any of it: " + "; ".join(small),
-                       "A fall that size is a truncated file far more often than a "
-                       "record getting shorter. --allow-shrink if it is real."]
-    lines = (["ACCEPTED, much smaller, with --allow-shrink (a new term): " + "; ".join(small)]
-             if small else [])
+    v = verdict or judge(fetched, into, allow_shrink, allow_turn)
+    lines = list(v["lines"])
+    if not v["installed"]:
+        return False, lines
     for name, data in fetched.items():
         write_atomically(into / name, data)
         lines.append(f"  installed {name} -> {into / name}")
@@ -236,6 +393,9 @@ def main():
     ap.add_argument("--allow-shrink", action="store_true",
                     help="install files much smaller than the copies they replace: a new "
                          "term's night, and only that one")
+    ap.add_argument("--allow-turn", action="store_true",
+                    help="install files that name a newer term than the installed ones: "
+                         "the New term run's, once the term being left is frozen")
     ap.add_argument("--delay", type=float, default=4.0,
                     help="seconds between files (default 4), jittered")
     ap.add_argument("--plan", action="store_true", help="list the requests; make none")
@@ -372,12 +532,16 @@ def run(a, held):
     complete = not stopped and not failed and len(fetched) == len(work)
     if a.into:
         if complete:
-            small = shrunk(fetched, a.into)
-            ok, lines = install(fetched, a.into, a.allow_shrink)
+            v = judge(fetched, a.into, a.allow_shrink, getattr(a, "allow_turn", False))
+            ok, lines = install(fetched, a.into, verdict=v)
             write_atomically(record, json.dumps(
                 {"installed": ok, "allow_shrink": bool(a.allow_shrink),
+                 "allow_turn": bool(getattr(a, "allow_turn", False)),
                  "shrunk": [{"name": n, "bytes": now, "installed_bytes": before}
-                            for n, now, before in small]}, indent=2).encode("utf-8"))
+                            for n, now, before in v["shrunk"]],
+                 "released": v["released"], "turned": v["turned"],
+                 **({"refused": v["refused"]} if v["refused"] else {})},
+                indent=2).encode("utf-8"))
             print("\n".join(lines))
             if not ok:
                 return 1
