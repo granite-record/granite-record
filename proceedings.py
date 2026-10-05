@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.9
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -115,6 +115,31 @@ TERM_RE = re.compile(r"^\d{4}-\d{4}$")
 def term_keyed(data):
     """Is this a {term: {...}} file rather than one keyed on bill number?"""
     return bool(data) and all(TERM_RE.match(k) for k in data)
+
+
+# THE TERM THE SESSION'S OWN FILES DESCRIBE (5 October 2026). The newest term
+# a derived file holds is not it: at the turn data/bills.json keeps 2025-2026
+# while the day files already name 2027. The General Court's Docket.txt and
+# LSRs.txt say which session year each row is of, in their first field, and
+# the newest of them is the session's. Read off the files every time it is
+# asked, so a reader never carries one night's answer into the next.
+SESSION_FILES = ("Docket.txt", "LSRs.txt")
+
+
+def session_term(folder="."):
+    """The term of the newest session year in column 0 of Docket.txt and
+    LSRs.txt in `folder`; "" when neither is there or names a year."""
+    newest = ""
+    for name in SESSION_FILES:
+        p = Path(folder) / name
+        if not p.exists():
+            continue
+        with p.open(encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                y = line.lstrip("﻿").split("|", 1)[0].strip()
+                if len(y) == 4 and y.isdigit() and y > newest:
+                    newest = y
+    return term_of(newest) if newest else ""
 
 
 def per_term(data, term, current=""):

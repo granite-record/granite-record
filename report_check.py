@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.3
+# GRANITE_VERSION: 2026-09-26.4
 """
 A House committee report printed under another bill, caught against the
 report the committee filed.
@@ -278,15 +278,44 @@ def billtext_id(rec):
     return ident
 
 
-def filed_reports(bills, past=PAST, current=CURRENT):
+# A FINISHED TERM'S FILED REPORTS OUTLIVE THE CURRENT VIEW (5 October 2026).
+# CandH_Reports is the database's current term, and the first dump after the
+# General Court turns it over to 2027-2028 holds no 2025-2026 report. The view
+# is frozen before it turns (freeze_term.py --views), and senate_hearing_reports
+# and build_bill_versions already read the freeze; this read only the current
+# view, so every 2025-2026 House report would have lost its filed copy. A
+# frozen term that is no longer the session's is read from its freeze alone,
+# and a row of it the current view still holds is counted and left out: the
+# one rule for a finished term's rows in new files, never merged. While the
+# term is still the session's, its freeze waits and the current view is read.
+FROZEN = Path("db") / "term"
+
+
+def frozen_candh(session=None):
+    """{term: its frozen CandH_Reports.psv} for each frozen term older than the
+    term the session's files describe."""
+    session = P.session_term() if session is None else session
+    if not FROZEN.is_dir() or not session:
+        return {}
+    return {d.name: d / "CandH_Reports.psv" for d in sorted(FROZEN.iterdir())
+            if d.is_dir() and P.TERM_RE.match(d.name) and d.name < session
+            and (d / "CandH_Reports.psv").exists()}
+
+
+def filed_reports(bills, past=PAST, current=CURRENT, frozen=None):
     """{(term, bill): [filed report]} from both dumps, joined by billText id.
 
     Each filed report names its own bill, and a year comes with it; where the
     bill's record holds a billText id, that id must be the report's too, or the
     report is not used. A report whose bill number and billText id disagree is
     one this cannot place, and placing it wrongly is the fault being fixed.
+
+    `frozen` is {term: CandH_Reports.psv} of the finished terms (frozen_candh,
+    by default): each is read for its own term only, and the current view's
+    rows of it are counted and left out.
     """
     out, census = defaultdict(list), Counter()
+    frozen = frozen_candh() if frozen is None else frozen
 
     def add(year, ident, parsed, released, source):
         if not parsed:
@@ -317,9 +346,9 @@ def filed_reports(bills, past=PAST, current=CURRENT):
                 add(lid[-4:], lid[:-4],
                     parse_filed(text_of(r.get("htmlText")), PAST_SIDES[r["committeeType"]]),
                     r.get("releaseDAte") or "", f"PastCommitteeReports {r.get('id')}")
-    if Path(current).exists():
+    def candh(path, only=None, skip=()):
         csv.field_size_limit(1 << 30)
-        with open(current, encoding="utf-8", newline="") as fh:
+        with open(path, encoding="utf-8", newline="") as fh:
             for row in csv.reader(fh, delimiter="|", quoting=csv.QUOTE_NONE):
                 if len(row) != len(CANDH_COLUMNS):
                     continue
@@ -330,10 +359,21 @@ def filed_reports(bills, past=PAST, current=CURRENT):
                 d = re.match(r"(\d{2})/(\d{2})/(\d{4})", r["ReleaseDate"])
                 if not d:
                     continue
+                term = P.term_of(d.group(3))
+                if (only and term != only) or term in skip:
+                    if term in skip:
+                        census[f"reports of {term} in the current view, left out: the "
+                               "term is read from its freeze"] += 1
+                    continue
                 add(d.group(3), r["LegislationID"].strip(),
                     parse_filed(text_of(r["HTMLText"])),
                     f"{d.group(3)}-{d.group(1)}-{d.group(2)}",
                     f"CandH_Reports {r['LegislationID'].strip()}")
+
+    if Path(current).exists():
+        candh(current, skip=set(frozen))
+    for term, path in sorted(frozen.items()):
+        candh(path, only=term)
     return out, census
 
 

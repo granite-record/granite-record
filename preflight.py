@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.328
+# GRANITE_VERSION: 2026-09-04.329
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38752,6 +38752,152 @@ def _nightly_weekly(NI):
     return "ok", ("rosters, members who have left, study committees and committee pages each "
                   "whole or not at all; a shrunken list and a short view kept out; a refusal "
                   "recorded and honoured; the report names what changed")
+
+
+# ---- a finished term's inputs, frozen --------------------------------------------
+#
+# private/NEW_TERM_DESIGN.md (5 October 2026): at the turn the General Court's
+# files stop holding 2025-2026, and the build of fa01eb6 wrote no 2025-2026 at
+# all from a fake first 2027 batch. freeze_term.py keeps the term's inputs --
+# the day files as installed and the database's views of the term -- and the
+# build makes the term from them every night after the turn.
+
+@check("build", "a term's freeze is whole or not written: both years or none, nothing past the "
+       "term, never a worse freeze over a better one, and a New term run is told whether the "
+       "term it leaves is frozen as installed", needs=("freeze_term", "proceedings"))
+def _freeze_term(FT, P):
+    """freeze_term.py on a fixture term, through its own functions: --views
+    refuses a dump without both years, a dump that has turned past the term,
+    a view cut short and a dump holding fewer of the term's rows than the
+    freeze it would replace, and leaves the freeze on disk each time;
+    --session refuses files that hold another term's rows or have lost rows,
+    and writes the day files, the archived docket and manifest beside them and
+    the roll-call copies; ready() says fresh, and stale once a row of the term
+    is installed that the freeze lacks -- and not stale when only the docket's
+    seventh column, which a database night rewrites, has moved."""
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-freeze-"))
+    T = "2025-2026"
+
+    def day(rows):
+        return ("﻿" + "".join(r + "\r\n" for r in rows)).encode("utf-8")
+
+    def views(years=("2025", "2026"), n=4, text_rows=3):
+        db = Path("db")
+        db.mkdir(exist_ok=True)
+        cols = {"Legislation": ["legislationnbr", "documenttypecode", "sessionyear", "lsr"],
+                "LegislationText": ["LegislationID", "SessionID", "Text"],
+                "CandH_Reports": ["LegislationID", "ReleaseDate", "HTMLText"]}
+        (db / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+        leg = [f"{i}|B|{y}|{i:04d}" for y in years for i in range(n)]
+        (db / "Legislation.psv").write_text("".join(x + "\r\n" for x in leg), encoding="utf-8")
+        (db / "LegislationText.psv").write_text(
+            "".join(f"{i}|6|text\r\n" for i in range(text_rows)), encoding="utf-8")
+        (db / "CandH_Reports.psv").write_text(
+            "".join(f"{i}|01/0{i + 1}/2026 10:00:00|x\r\n" for i in range(3)), encoding="utf-8")
+        (db / "_manifest.json").write_text(json.dumps(
+            {v: {"rows": r, "fetched": "2026-09-08T20:45:00"} for v, r in
+             (("Legislation", len(leg)), ("LegislationText", text_rows), ("CandH_Reports", 3))}),
+            encoding="utf-8")
+
+    def installed(extra_docket=(), lsrs_only=40):
+        files = {n: day([f"{n}|x"]) for n in FT.SESSION_FILES}
+        files["Docket.txt"] = day([f"2025|0001|1/5/2025 10:00:00 AM|HB1|H|Introduced|1/5/2025",
+                                   f"2026|0002|1/6/2026 10:00:00 AM|HB1001|H|Introduced|1/6/2026"]
+                                  + list(extra_docket))
+        files["LSRs.txt"] = day(["2026|0002|title|H"])
+        files["LsrSponsors.txt"] = day(["2026|0002|1|35|1"])
+        files["LsrsOnly.txt"] = day([f"26-0002|{i}|2|2026|Sponsor|HB1001|H|t" for i in range(lsrs_only)])
+        files["RollCallSummary.txt"] = day(["2026|H|1|1/7/2026 10:15:33 AM||321|2|34|38|||Q|||"])
+        files["RollCallHistory.txt"] = day(["2026|H|1|332247|960||Yea|"])
+        files["legislators.txt"] = day([f"{i}|L|F||H|1|1|1|R||||NH||m@x" for i in range(10)])
+        for n, b in files.items():
+            Path(n).write_bytes(b)
+        Path("verification_manifest.csv").write_text("bill,sched_date\nHB1,2025-01-05\n",
+                                                     encoding="utf-8")
+
+    def refused(fn, *args):
+        try:
+            fn(*args)
+        except FT.Refused as e:
+            return str(e)
+        return ""
+
+    try:
+        os.chdir(tmp)
+        views()
+        installed()
+        assert P.session_term(".") == T, P.session_term(".")
+        said = FT.freeze_views(T, Path("db"))
+        man = json.loads((FT.VIEWS_DIR / T / FT.MANIFEST).read_text(encoding="utf-8"))
+        assert man["files"]["Legislation.psv"]["years"] == {"2025": 4, "2026": 4} and \
+            not list(FT.VIEWS_DIR.glob("*.part")), (said, man)
+        before = (FT.VIEWS_DIR / T / FT.MANIFEST).read_bytes()
+        for setup, why in (((("2026",),), "both of"), ((("2025", "2026", "2027"),), "turned past"),
+                           ((("2025", "2026"), 3), "fewer of the term's rows")):
+            views(*setup)
+            msg = refused(FT.freeze_views, T, Path("db"))
+            assert why in msg and (FT.VIEWS_DIR / T / FT.MANIFEST).read_bytes() == before, (setup, msg)
+        views()
+        (Path("db") / "_manifest.json").write_text(json.dumps(
+            {"Legislation": {"rows": 99, "fetched": "2026-09-08T20:45:00"}}), encoding="utf-8")
+        assert "cut short" in refused(FT.freeze_views, T, Path("db")), "a short view was frozen"
+        views()
+        # fetch_archive_db swaps a view in only when every term it drops is frozen.
+        import fetch_archive_db as FA
+        cols = json.loads((Path("db") / "_columns.json").read_text(encoding="utf-8"))["Legislation"]
+        Path("db/turned.psv").write_text("1|B|2027|0001\r\n", encoding="utf-8")
+        assert FA.terms_lost("Legislation", Path("db/Legislation.psv"), Path("db/turned.psv"),
+                             cols, cols) == [T] and FA.frozen_holds("Legislation", T) and \
+            not FA.frozen_holds("Legislation", "2023-2024"), "fetch_archive_db's term guard"
+
+        FT.freeze_session(T)
+        for p in (f"Docket_{T}.txt", f"verification_manifest_{T}.csv",
+                  "rollcalls/RollCallSummary_2026.txt", "rollcalls/RollCallHistory_2026.txt",
+                  f"frozen/{T}/day/Members.txt", f"frozen/{T}/manifest.json"):
+            assert Path(p).exists(), f"--session did not write {p}"
+        assert FT.intact(".", T) == [] and FT.ready()[0], FT.ready()
+        stamp = (FT.FROZEN / T / FT.MANIFEST).read_bytes()
+        installed(extra_docket=["2027|0001|12/2/2026 10:00:00 AM|HR1|H|Introduced|12/2/2026"])
+        msg = refused(FT.freeze_session, T)
+        assert "2027" in msg, f"--session froze files holding a 2027 row: {msg!r}"
+        installed(lsrs_only=10)
+        msg = refused(FT.freeze_session, T)
+        assert "LsrsOnly.txt" in msg and (FT.FROZEN / T / FT.MANIFEST).read_bytes() == stamp, msg
+        installed(extra_docket=["2026|0003|2/2/2026 10:00:00 AM|HB1002|H|Introduced|2/2/2026"])
+        ok, why = FT.ready()
+        assert not ok and "Docket.txt: 1 row(s)" in why, why
+        installed()
+        b = Path("Docket.txt").read_bytes().replace(b"|1/6/2026\r\n", b"|1/6/2026 10:00:00 AM\r\n")
+        Path("Docket.txt").write_bytes(b)
+        assert FT.ready()[0], ("a docket whose seventh column alone moved read as stale: "
+                               + FT.ready()[1])
+        code, lines = FT.check(".")
+        assert code == 1 and any("STALE" in ln for ln in lines), lines
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("--views refuses one year, a turned dump, a short view and a smaller one, and "
+                  "keeps the freeze; --session writes the day files, the docket, the manifest and "
+                  "the roll-call copies, and refuses another term's rows and lost ones; ready() "
+                  "reads the record by its rows, so a database night's seventh column is not stale")
+
+
+@check("data", "every term frozen here is whole, and the session's own, if frozen, is the files "
+       "installed or says it is stale", needs=("freeze_term", "proceedings"))
+def _freeze_on_disk(FT, P):
+    """freeze_term.py --check on this disk: what the nightly's kit carries and
+    the New term run is held to. A freeze that is not whole fails; one the
+    installed files have moved past since it was made is reported, because
+    that is the ordinary state before the switch, and ready() is what stops a
+    New term run on it."""
+    if not FT.frozen_terms(".") and not FT.VIEWS_DIR.is_dir():
+        return "skip", "nothing frozen here (freeze_term.py has not run)"
+    code, lines = FT.check(".")
+    broken = [ln.strip() for ln in lines if ln.strip().startswith(("the day files:", "the views:"))
+              and not ln.strip().endswith("whole")]
+    assert not broken, "; ".join(broken)
+    return "ok", " / ".join(ln.strip() for ln in lines)
 
 
 # ---- the one night a term turns over --------------------------------------------
