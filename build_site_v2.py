@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.149
+# GRANITE_VERSION: 2026-09-05.150
 """
 Generate the faceted site from real General Court data.
 
@@ -5911,6 +5911,38 @@ def journey_rail(intro, steps, rail, bid, status=""):
 RAIL_SAY = {"p": "Passed", "h": "Is here now", "x": "Stopped here",
             "-": "Never reached"}
 
+# ONE RAIL, ALWAYS DETAILED (the person, 5 October 2026). A card in a list
+# drew the bare rail -- four glyphs from `passage` -- and the same card opened
+# drew the dated one, so the rail changed shape under the reader's eye as the
+# card opened. The list card draws the dated rail now, before anything is
+# fetched, so its stops travel in the term's index row: each one the stop's
+# letter and its mark, its day and its words, ["Hp", "2025-02-13", "voice
+# vote"], with blanks at the end left off -- ["S-"] for a Senate it never
+# reached. The words a reader hears (`say`) stay in the record, which the
+# card reads them from once it has it; what is drawn is the same either way.
+#
+# idx/<term>.json only. index.json already stands past the nine tenths of
+# Cloudflare's 25 MiB for one file at which check_site warns (FILE_CAP), the
+# rails would take it over, and app.js never loads it.
+RAIL_CODE = {"Introduced": "I", "House": "H", "Senate": "S", "Governor": "G",
+             "Law": "L", "Voters": "V"}
+
+
+def without_rail(row):
+    """An index row as everything but idx/<term>.json writes it."""
+    return {k: v for k, v in row.items() if k != "rail"}
+
+
+def index_rail(jrail):
+    """journey_rail's stops as the index row carries them."""
+    out = []
+    for s in jrail:
+        cell = [RAIL_CODE[s["stop"]] + s["mark"], s.get("date") or "", s.get("short") or ""]
+        while len(cell) > 1 and not cell[-1]:
+            cell.pop()
+        out.append(cell)
+    return out
+
 # The decisions that end a bill in the chamber that makes them.
 J_ENDING = {"killed", "died", "postponed", "study", "failed", "sustained",
             "conf_rejected", "conf_refused"}
@@ -6802,17 +6834,125 @@ def election_day(year):
     return d
 
 
-def cacr_to_the_voters(narr, term, current, text="", today=None):
+# THE VOTERS' ANSWER WHERE THE DOCKET RECORDS NONE (the person, 5 October
+# 2026). The docket stops at the second chamber's vote for the eight CACRs
+# sent to the voters since 2006, and they read "went to the voters" with no
+# answer. ballot_results.json holds the statewide vote on each of the
+# eighteen, read off the source its rows name: a person's file, which no
+# build_ or fetch_ script writes (preflight's HANDMADE).
+#
+# THE OUTCOME IS WORKED OUT HERE, NOT READ. An amendment needs two thirds of
+# the votes cast on it (Part II, Article 100), and a majority is not that:
+# CACR 6 of 2024, the judicial retirement age, won 452,307 to 237,221 --
+# 65.6% -- and was not ratified. In whole numbers, so that exactly two
+# thirds is two thirds.
+BALLOTS = "ballot_results.json"
+RATIFIED = "Passed both chambers, ratified by the voters"
+NOT_RATIFIED = "Passed both chambers, not ratified by the voters"
+ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def ratified(yes, no):
+    """Whether the voters ratified an amendment: two thirds of the votes
+    cast on it."""
+    return yes + no > 0 and 3 * yes >= 2 * (yes + no)
+
+
+def load_ballots(path, bills):
+    """{(term, bill): row} out of ballot_results.json, or {} where it is
+    not here.
+
+    Refused where a row names a bill the record does not hold, or one that
+    is not a CACR, or one twice; where its day is not a day; or where its
+    figures are not two whole numbers, or two nulls for an election still to
+    come. A row that matches nothing attaches nothing, and the build would
+    exit zero having done it (check_notes)."""
+    p = Path(path)
+    if not p.exists():
+        print(f"  the voters' votes: {path} is not here, so no CACR shows one")
+        return {}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    rows = data.get("rows") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        raise SystemExit(f"{path} has no list of rows")
+    out, bad = {}, []
+    for r in rows:
+        key = (r.get("term"), r.get("bill"))
+        y, n = r.get("yes"), r.get("no")
+        if key[1] not in (bills.get(key[0]) or {}):
+            bad.append(f"{key[0]} {key[1]} is not in the record")
+        elif not str(key[1]).startswith("CACR"):
+            bad.append(f"{key[0]} {key[1]} is not a CACR")
+        elif key in out:
+            bad.append(f"{key[0]} {key[1]} is named twice")
+        elif not (ISO_DAY.match(r.get("election") or "") and ISO_DAY.match(r.get("read") or "")):
+            bad.append(f"{key[0]} {key[1]}'s election or read is not a day")
+        elif not (y is None and n is None) and not (
+                all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in (y, n))
+                and y + n > 0):
+            bad.append(f"{key[0]} {key[1]}'s yes and no are not two counts")
+        elif not str(r.get("source") or "").startswith("https://") or not r.get("label"):
+            bad.append(f"{key[0]} {key[1]} names no source or no label")
+        else:
+            out[key] = r
+    if bad:
+        raise SystemExit(f"{path}: " + "; ".join(bad))
+    done = sum(1 for r in out.values() if r.get("yes") is not None)
+    print(f"  the voters' votes: {done} {'amendment' if done == 1 else 'amendments'} "
+          f"decided at the polls, {len(out) - done} still to go to them ({path})")
+    return out
+
+
+def ballot_step(row):
+    """The voters' line of a CACR's journey, from its ballot row: the day of
+    the election and its outcome, in the words a docket referendum line
+    gets."""
+    yes = ratified(row["yes"], row["no"])
+    act = "ratified" if yes else "not_ratified"
+    return {"date": row["election"], "body": "V", "act": act, "mark": J_MARK[act],
+            "text": ("Ratified" if yes else "Not ratified") + f", {row['yes']:,}–{row['no']:,}",
+            "short": "ratified" if yes else "not ratified"}
+
+
+def ballot_card(row, narr):
+    """What a CACR's Votes tab draws for the voters: the election, how the
+    source lists it, the two counts and the outcome, or only the day where
+    the election is still to come. Where the docket prints a referendum
+    tally of its own and it is not the source's -- CACR 7 of 1992 reads
+    "204,475" against the source's 204,457, and CACR 22 of 1998 "159,439"
+    against 169,439 -- the docket's pair goes with it, so the card can say
+    so rather than show one figure and print the other a tab away."""
+    card = {"date": row["election"], "label": row["label"],
+            "source": row["source"], "read": row["read"]}
+    if row.get("yes") is None:
+        return {**card, "pending": True}
+    card.update(yes=row["yes"], no=row["no"], ratified=ratified(row["yes"], row["no"]))
+    for e in reversed([e for e in (narr or {}).get("events", []) if not e.get("cancelled")]):
+        raw = e.get("raw") or ""
+        m = REFERENDUM.search(raw)
+        if not m:
+            continue
+        t = J_REF_TALLY.search(raw, m.end() - 1)
+        if t:
+            said = [int(t.group(1).replace(",", "")), int(t.group(2).replace(",", ""))]
+            if said != [row["yes"], row["no"]]:
+                card["docket"] = said
+        break
+    return card
+
+
+def cacr_to_the_voters(narr, term, current, text="", today=None, ballot=None):
     """What a CACR both chambers passed now says, in the tense the record
-    allows: the voters' answer where the docket records it; past tense for a
-    closed term; for the current term, the election its own text names, in
-    the future tense until that day."""
+    allows: the voters' answer where the docket records it, or where
+    ballot_results.json does (`ballot`, its row); past tense for a closed
+    term; for the current term, the election its own text names, in the
+    future tense until that day."""
     for e in reversed([e for e in (narr or {}).get("events", []) if not e.get("cancelled")]):
         m = REFERENDUM.search(e.get("raw") or "")
         if m:
-            return ("Passed both chambers, ratified by the voters"
-                    if m.group("how").lower() == "adopted"
-                    else "Passed both chambers, not ratified by the voters")
+            return (RATIFIED if m.group("how").lower() == "adopted" else NOT_RATIFIED)
+    if ballot and ballot.get("yes") is not None:
+        return RATIFIED if ratified(ballot["yes"], ballot["no"]) else NOT_RATIFIED
     m = ELECTION_IN_TEXT.search(text or "")
     if term != current:
         return "Passed both chambers, went to the voters"
@@ -7147,7 +7287,7 @@ def ended_with_the_term(status, st, narr, bid, term):
 
 def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                      override_failed="", term_over=False, text="", today=None,
-                     db_st=None):
+                     db_st=None, ballot=None):
     """What became of this bill, and where that answer came from.
 
     The two counters the build reports at the end leave as data rather than
@@ -7174,6 +7314,9 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     db_st is the status page's record with its blanks filled from the
     database (fill_status_from_db), or None. It is asked only where nothing
     else answers.
+
+    ballot is a CACR's row of ballot_results.json, or None: the voters'
+    answer where the docket records none (cacr_to_the_voters).
     """
     stated = stale = 0
     source = ""
@@ -7375,7 +7518,7 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
             kind, status = said
             told, stated, source = said, 1, PAST_SOURCE
     if status == TO_THE_VOTERS:
-        status = cacr_to_the_voters(narr, term, current, text, today)
+        status = cacr_to_the_voters(narr, term, current, text, today, ballot)
     # A MEASURE OF A FINISHED TERM CANNOT STILL BE MOVING (ended_with_the_term).
     # The word is this site's reading and no field's, so no field is named as
     # having stated it.
@@ -8309,7 +8452,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
-                links=None, hearing_reports=None):
+                links=None, hearing_reports=None, ballots=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -8444,6 +8587,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                            if not (st.get(k) or "").strip() and b.get(k)}}
         dl = (chapters or {}).get(term, {}).get(bid) or {}
         db_st = fill_status_from_db(st, b, bid, term, current)
+        # A CACR's row of ballot_results.json: the statewide vote on it.
+        ballot = (ballots or {}).get((term, bid))
         disp = bill_disposition(
             b, bid, st, narr, rcs, term, current,
             term_over=bool(session_over) and term == current,
@@ -8455,7 +8600,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # A CACR's own text names the election it goes to, which is
             # what decides whether it "goes" or "went" to the voters.
             text=((P.per_term(bill_texts, term, current).get(bid) or {}).get("text", "")
-                  if bill_prefix(bid) == "CACR" else ""))
+                  if bill_prefix(bid) == "CACR" else ""),
+            # And the voters' answer, where the docket records none.
+            ballot=ballot)
         kind, status = disp.kind, disp.status
         told, settled, prefix = disp.told, disp.settled, disp.prefix
         n_stated += disp.stated
@@ -8535,6 +8682,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term,
                                 db_effective=dl.get("database_effective", ""),
                                 untold=untold)
+        # THE VOTERS' LINE, where the docket has none to read it from: the
+        # election and its outcome, from the CACR's ballot row. The rail's
+        # Voters stop is dated from it like every other stop.
+        if (ballot and ballot.get("yes") is not None
+                and not any(s_["body"] == "V" for s_ in jsteps)):
+            jsteps.append(ballot_step(ballot))
         if carried:
             carried = carried_over(dates, intro)
         # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
@@ -8582,6 +8735,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             row["carried"] = bool(row["carried"]) and carried_over(dates, intro)
         index.append(row)
         jrail = journey_rail(intro, jsteps, row["passage"], bid, status)
+        # The same stops on the list card, from the start (index_rail).
+        if jrail:
+            row["rail"] = index_rail(jrail)
         why = journey_disagrees(jsteps, kind, status, row["passage"], bid)
         j_tally[(term, "empty" if not jsteps else "disagree" if why else "agree")] += 1
         if why and term == current:
@@ -8812,10 +8968,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "chapter": chapter,
             # HOW IT GOT HERE: each chamber's floor decisions, the governor,
             # the chapter and a CACR's referendum, dated, one line each; and
-            # the stops of the rail on the bill's own view, dated from them.
-            # The list card's rail stays the index's four characters.
+            # the stops of the rail, dated from them -- the rail the list
+            # card draws too, from the index row's copy (index_rail).
             **({"journey": {"steps": jsteps, "rail": jrail}}
                if jsteps or jrail else {}),
+            # THE VOTERS' VOTE on a CACR they were sent, for its Votes tab:
+            # the election, the two counts and the outcome, or the day of an
+            # election still to come (ballot_card).
+            **({"ballot": ballot_card(ballot, narr)} if ballot else {}),
             # Named for what it is rather than for the format the
             # scrape guessed at: the General Court's own text of
             # this bill, in the form its status page links to.
@@ -9481,8 +9641,12 @@ def main():
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
-                                   max(bills) if bills else ""))
-    (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
+                                   max(bills) if bills else ""),
+                               ballots=load_ballots(BALLOTS, bills))
+    # Without the list card's dated rail, which only idx/<term>.json carries
+    # (index_rail): index.json is near Cloudflare's cap for one file.
+    (out / "index.json").write_text(json.dumps([without_rail(r) for r in index]),
+                                    encoding="utf-8")
 
     # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search
     # has always filtered to a single term -- there is a term picker and
@@ -9571,8 +9735,8 @@ def main():
 
     # "Most contested" beats "most viewed": it is a fact about the record rather
     # than about traffic, and needs no analytics on a static site.
-    contested = sorted([b for b in index if b["nrc"] > 1],
-                       key=lambda b: -b["nrc"])[:8]
+    contested = [without_rail(b) for b in sorted([b for b in index if b["nrc"] > 1],
+                                                 key=lambda b: -b["nrc"])[:8]]
     closest = []
     for b in index:
         for r in rollcalls.get(b["term"], {}).get(b["id"], []):

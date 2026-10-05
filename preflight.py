@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.335
+# GRANITE_VERSION: 2026-09-04.336
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45,6 +45,7 @@ import argparse
 import ast
 import csv
 import json
+import math
 import os
 import re
 import shutil
@@ -240,7 +241,7 @@ def imp(name):
 # reading it once. A check that reads a fixture's site, or one page, still
 # asks site_read itself.
 _RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
-                 "journey")
+                 "journey", "ballot")
 _RECORD_KEPT = _RECORD_WHOLE + (
     "rollcalls",        # kept as whether the page has any
     "reports")          # kept as each report's cite_url and source
@@ -1182,6 +1183,151 @@ def _ev(body, raw, type_="other", motion=None, action=None, date="2026-01-01"):
 
 def _nar(*evs, hands=()):
     return {"events": list(evs), "stages": [{"hand": h} for h in hands]}
+
+
+# THE VOTERS' VOTE ON A CONSTITUTIONAL AMENDMENT, as ballot_results.json
+# holds it: CACR 6 of 2024 (the judicial retirement age), CACR 30 of 2006
+# (eminent domain) and CACR 7 of 1992 (the military reserve), with the
+# figures the source gives and the rows their dockets have.
+def _voters_row(term, bill, election, yes, no, label="Question 1"):
+    return {"term": term, "bill": bill, "election": election, "label": label,
+            "yes": yes, "no": no, "read": "2026-10-05",
+            "source": "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures"}
+
+
+@check("status", "a CACR's voters ratify it only with two thirds of the votes cast",
+       needs=("build_site_v2",))
+def _ballot_two_thirds(build_site_v2):
+    """An amendment needs two thirds of the votes cast on it (Part II,
+    Article 100), and a majority is not that: CACR 6 of 2024 won 452,307 to
+    237,221 -- 65.6% -- and was not ratified. The eight CACRs sent to the
+    voters since 2006 read "went to the voters" because their dockets stop at
+    the second chamber; ballot_results.json gives them the answer (5 October
+    2026).
+
+    Fails on an outcome read off a majority; on exactly two thirds read as
+    short; on a ballot row overriding a referendum line of the docket's own;
+    on an election still to come given an answer; on the voters' line, the
+    rail's Voters stop or the list card's copy of it saying anything but the
+    election's day and its outcome; on a docket tally that disagrees with
+    the source going unsaid; and on a ballot file naming a bill the record
+    does not hold, or one that is not a CACR, being read without a word."""
+    B = build_site_v2
+    bad = []
+
+    def want(label, got, what):
+        if got != label:
+            bad.append(f"{what}: wanted {label!r}, got {got!r}")
+
+    for y, n, ok, what in ((452307, 237221, False, "CACR 6 of 2024, 65.6%"),
+                           (329157, 194291, False, "CACR 21 of 2022, 62.9%"),
+                           (294164, 308094, False, "CACR 26 of 2012, a majority against"),
+                           (316005, 52893, True, "CACR 30 of 2006, 85.7%"),
+                           (199229, 26336, True, "CACR 23 of 1990, 88.3%"),
+                           (2, 1, True, "exactly two thirds"),
+                           (200000, 100001, False, "a vote short of two thirds"),
+                           (0, 0, False, "no votes")):
+        want(ok, B.ratified(y, n), what)
+
+    st = {"gen_status": "PASSED", "house_status": "PASSED/ADOPTED",
+          "senate_status": "PASSED/ADOPTED", "body": "H"}
+    n6 = _nar(_ev("H", "Ought to Pass : MA RC 321-27 By Necessary Three-Fifths Vote 02/23/2023",
+                  "floor", "MA", "Ought to Pass", "2023-02-23"),
+              _ev("S", "Ought to Pass, RC 22Y-1N, MA, by Necessary 3/5; OT3rdg; 03/30/2023 SJ 12",
+                  date="2023-03-30"),
+              hands=("H:committee", "H:floor", "S:committee", "S:floor"))
+    row6 = _voters_row("2023-2024", "CACR6", "2024-11-05", 452307, 237221,
+                       "Increase Mandatory Judicial Retirement Age Amendment")
+    d = B.bill_disposition({}, "CACR6", st, n6, [], "2023-2024", "2025-2026")
+    want("Passed both chambers, went to the voters", d.status, "CACR6 2024 with no ballot row")
+    d = B.bill_disposition({}, "CACR6", st, n6, [], "2023-2024", "2025-2026", ballot=row6)
+    want(B.NOT_RATIFIED, d.status, "CACR6 2024, 65.6% yes")
+    want("adopted", d.kind, "CACR6 2024's kind")
+    row30 = _voters_row("2005-2006", "CACR30", "2006-11-07", 316005, 52893)
+    d = B.bill_disposition({}, "CACR30", st, n6, [], "2005-2006", "2025-2026", ballot=row30)
+    want(B.RATIFIED, d.status, "CACR30 2006, 85.7% yes")
+    # The docket's own referendum line is the docket's answer, and a ballot
+    # row does not overrule it (where the two disagree, the data check says so).
+    n7 = _nar(*n6["events"], _ev("H", "AMENDMENT FAILED REFERENDUM(249,759-204,475); 1993 RED "
+                                 "BOOK,P442", date="1992-11-03"), hands=())
+    row7 = _voters_row("1991-1992", "CACR7", "1992-11-03", 249759, 204457, "Question 4")
+    d = B.bill_disposition({}, "CACR7", st, n7, [], "1991-1992", "2025-2026",
+                           ballot=_voters_row("1991-1992", "CACR7", "1992-11-03", 9, 1))
+    want(B.NOT_RATIFIED, d.status, "CACR7 1992: the docket's referendum line against a row")
+    # An election still to come stays to come: CACR 13 of 2026.
+    pending = _voters_row("2025-2026", "CACR13", "2026-11-03", None, None)
+    text = ("submitted to the qualified voters of the state at the state general "
+            "election to be held in November, 2026.")
+    d = B.bill_disposition({}, "CACR13", st, n6, [], "2025-2026", "2025-2026", term_over=True,
+                           text=text, today=B._date(2026, 10, 5), ballot=pending)
+    want("Passed both chambers, goes to the voters in November 2026", d.status,
+         "CACR13 2026, before its election")
+    want({"date": "2026-11-03", "label": "Question 1", "pending": True,
+          "source": pending["source"], "read": "2026-10-05"},
+         B.ballot_card(pending, n6), "CACR13 2026's card")
+
+    # The voters' line, the rail's last stop and the list card's copy of it.
+    step = B.ballot_step(row6)
+    want(("2024-11-05", "V", "not_ratified", "x", "Not ratified, 452,307–237,221",
+          "not ratified"),
+         tuple(step[k] for k in ("date", "body", "act", "mark", "text", "short")),
+         "CACR6 2024's voters' line")
+    intro, steps = B.journey(n6, "CACR6", [], "", "", "2023-2024")
+    steps.append(step)
+    passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+    acted = list(dict.fromkeys(s_["body"] for s_ in steps if s_["body"] in "HS"))
+    rail = B.passage(n6["stages"], "adopted", B.NOT_RATIFIED, "CACR6", passed, acted)
+    want("", B.journey_disagrees(steps, "adopted", B.NOT_RATIFIED, rail, "CACR6"),
+         "CACR6 2024's journey against its status")
+    jrail = B.journey_rail(intro, steps, rail, "CACR6", B.NOT_RATIFIED)
+    want({"stop": "Voters", "mark": "x", "date": "2024-11-05", "short": "not ratified",
+          "say": "Not ratified, 452,307–237,221"}, jrail[-1] if jrail else None,
+         "CACR6 2024's Voters stop")
+    want(["Vx", "2024-11-05", "not ratified"], (B.index_rail(jrail) or [None])[-1],
+         "CACR6 2024's Voters stop on the list card")
+
+    # The card: the counts, the outcome, and the docket's own pair where it is
+    # not the source's -- CACR 7 of 1992's 204,475 against 204,457.
+    card = B.ballot_card(row7, n7)
+    want((249759, 204457, False, [249759, 204475]),
+         (card.get("yes"), card.get("no"), card.get("ratified"), card.get("docket")),
+         "CACR7 1992's card")
+    n23 = _nar(_ev("H", "AMENDMENT ADOPTED BY 2/3 REF(199,229-26,336); 1991 RED BOOK,P294",
+                   date="1990-11-06"))
+    card = B.ballot_card(_voters_row("1989-1990", "CACR23", "1990-11-06", 199229, 26336), n23)
+    want((True, None), (card.get("ratified"), card.get("docket")), "CACR23 1990's card")
+
+    # The file: read where it is sound, refused where it is not.
+    bills = {"2023-2024": {"CACR6": {}, "HB1": {}}, "2025-2026": {"CACR13": {}}}
+    root = Path(tempfile.mkdtemp())
+    try:
+        f = root / "ballot_results.json"
+        f.write_text(json.dumps({"rows": [row6, pending]}), encoding="utf-8")
+        import io
+        import contextlib
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = B.load_ballots(f, bills)
+        want({("2023-2024", "CACR6"), ("2025-2026", "CACR13")}, set(got), "the rows read")
+        for rows, what in (([{**row6, "bill": "CACR7"}], "a bill the record does not hold"),
+                           ([{**row6, "bill": "HB1"}], "a bill that is not a CACR"),
+                           ([row6, row6], "a bill named twice"),
+                           ([{**row6, "no": None}], "a yes with no no"),
+                           ([{**row6, "yes": "452,307"}], "a count written as words"),
+                           ([{**row6, "election": "November 5, 2024"}], "a day not a day")):
+            f.write_text(json.dumps({"rows": rows}), encoding="utf-8")
+            try:
+                B.load_ballots(f, bills)
+                bad.append(f"ballot_results.json with {what} was read without a word")
+            except SystemExit:
+                pass
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not bad, "; ".join(bad)
+    return "ok", ("two thirds of the votes cast, not a majority: 65.6% is not ratified and "
+                  "exactly two thirds is; the docket's own referendum line stands; an "
+                  "election to come stays to come; the voters' line, the Voters stop and "
+                  "the list card's copy carry the day and the outcome; a docket tally that "
+                  "is not the source's is kept to be said; a file naming no CACR is refused")
 
 
 @check("status", "what the two chambers did with each other's version is read from the docket",
@@ -13474,7 +13620,7 @@ def _record_untouched():
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
                 "officials.json", "member_corrections.json",
                 "place_corrections.json", "launch_register.json",
-                "docket_corrections.json"]
+                "docket_corrections.json", "ballot_results.json"]
     bad, names = [], []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):
@@ -14929,7 +15075,8 @@ def _journey_bills(B):
             s.pop("short", None)
         row = {"id": bid, "n": re.sub(r"(\d)", r" \1", bid, count=1), "title": "a bill",
                "year": 2025, "term": "2025-2026", "kind": kind, "status": status,
-               "passage": rail, "committees": [], "sponsor": ""}
+               "passage": rail, "committees": [], "sponsor": "",
+               "rail": B.index_rail(jrail)}
         # The status page's per-chamber fields, which the records still
         # carry: the page must not draw them. Without them here, a page that
         # drew the House Status and Senate Status rows again passed.
@@ -15444,17 +15591,151 @@ def _amendment_offered_first(build_site_v2):
     return "ok", "an offered amendment takes the outcome, and the day, of the row that decided it"
 
 
+@check("frontend", "the voters' card on a CACR draws its counts whole and its mark at two thirds")
+def _ballot_card_drawn():
+    """The Votes tab of a CACR the voters were sent ends with their vote (5
+    October 2026): "The voters", the election's day, Yes and No in full with
+    their separators, each one's share, the ring with its mark at two thirds
+    of the votes cast, a line saying this was the statewide public vote and
+    what an amendment needs, and the outcome in words.
+
+    Drawn in node from records shaped as build_site_v2.ballot_card writes
+    them. Fails on a count drawn without its separators or split across
+    lines (app.css keeps .ballot's counts whole), on the counts put in the
+    ring's 92px hole, on the mark at a majority, on an outcome that is not
+    the record's, on the docket's own differing tally going unsaid, on an
+    election to come drawn as a result, and on the voters' vote left out of
+    the tab's count or put ahead of the chambers'."""
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
+    assert re.search(r"\.ballot \.lrow \.c\{[^}]*white-space:nowrap", css), (
+        "app.css does not keep a voters' count on one line (.ballot .lrow .c)")
+    src = "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures"
+    recs = {
+        "lost": {"date": "2024-11-05", "label": "Increase Mandatory Judicial Retirement Age Amendment",
+                 "yes": 452307, "no": 237221, "ratified": False, "source": src, "read": "2026-10-05"},
+        "won": {"date": "2006-11-07", "label": "Question 1", "yes": 316005, "no": 52893,
+                "ratified": True, "source": src, "read": "2026-10-05"},
+        "docket": {"date": "1992-11-03", "label": "Question 4", "yes": 249759, "no": 204457,
+                   "ratified": False, "docket": [249759, 204475], "source": src,
+                   "read": "2026-10-05"},
+        "pending": {"date": "2026-11-03", "label": "Eliminate Office of Register of Probate Amendment",
+                    "pending": True, "source": src, "read": "2026-10-05"},
+    }
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "recs.json").write_text(json.dumps(recs), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async u => ({ok: true, status: 200, json: async () => ({H: [], S: []}),
+  text: async () => "{}"});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderVotes, renderDetail, votesDrawn})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const recs = JSON.parse(fs.readFileSync("./recs.json", "utf8"));
+const rc = {question: "Ought to Pass", date: "2023-03-30", body: "S", vote_kind: "VV", passed: true};
+const out = {};
+for (const [k, v] of Object.entries(recs)) {
+  out[k] = s.renderVotes({id: "CACR6"}, {rollcalls: [rc], ballot: v});
+  out[k + "N"] = s.votesDrawn({rollcalls: [rc], ballot: v});
+}
+out.tabs = s.renderDetail({id: "CACR6", n: "CACR 6", term: "2023-2024"},
+                          {rollcalls: [rc], ballot: recs.lost});
+out.none = s.renderVotes({id: "HB1"}, {rollcalls: [rc]});
+process.stdout.write("\\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw the voters' card under node: "
+            + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    def voters(html):
+        i = html.find('<section class="rc ballot">')
+        return html[i:] if i >= 0 else ""
+
+    def flat(html):
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+    lost, won = voters(got["lost"]), voters(got["won"])
+    assert lost and won, "a CACR's Votes tab draws no card for the voters"
+    assert got["lost"].find('<section class="rc">') < got["lost"].find('class="rc ballot"'), (
+        "the voters' card is drawn ahead of the chambers' votes")
+    assert "class=\"rc ballot\"" not in got["none"], "a bill with no ballot row drew a voters' card"
+    for html, word, cls, pct, other, how in (
+            (lost, "Not ratified", "fail", "65.6%", "34.4%", "short of"),
+            (won, "Ratified", "pass", "85.7%", "14.3%", "more than")):
+        text = flat(html)
+        assert '<h2 class="rcq">The voters</h2>' in html, f"the voters' card is headed {text[:60]!a}"
+        assert f'<span class="rcres {cls}">{word}</span>' in html, (
+            f"the voters' card does not say {word!r}: {text[:120]!a}")
+        assert f"{word}: {pct} voted yes, {how} the two thirds it needed." in text, (
+            f"the outcome is not said in words: {text[:200]!a}")
+        assert "statewide public vote" in text and "two thirds of the votes cast" in text, (
+            f"the voters' card does not say what the vote was or what it needed: {text[:300]!a}")
+        assert "State general election" in text and "Ballotpedia" in text, (
+            f"the voters' card names no election or no source: {text[:300]!a}")
+        # The share in the ring; the counts in the legend, never in the ring.
+        ring = html[html.find("<svg"):html.find("</svg>")]
+        assert f">{pct}</text>" in ring and not re.search(r">[\d,]{6,}", ring), (
+            f"the ring's middle holds {flat(ring)!a}, not the yes share alone")
+        legend = html[html.find('<div class="legend">'):]
+        assert '<span class="c">' in legend and f"· {pct}</span>" in legend \
+            and f"· {other}</span>" in legend, f"the legend reads {flat(legend)[:120]!a}"
+        # The mark: two thirds of the way round from the gap, not half.
+        m = re.search(r'<polygon points="([\d.]+),([\d.]+)', ring)
+        assert m, "the voters' ring has no mark"
+        a = (180 + 16 + 328 * 2 / 3) * math.pi / 180
+        tip = (86 + 74 * math.sin(a), 86 - 74 * math.cos(a))
+        assert abs(float(m.group(1)) - tip[0]) < 0.2 and abs(float(m.group(2)) - tip[1]) < 0.2, (
+            f"the voters' mark is at {m.group(1)},{m.group(2)}, not two thirds round "
+            f"({tip[0]:.1f},{tip[1]:.1f})")
+        assert "Two thirds of the votes cast needed" in ring, "the mark does not say what it marks"
+    for count in ("452,307", "237,221"):
+        assert f">{count} · " in lost, f"{count} is not drawn whole in the legend"
+    assert "316,005" in won and "52,893" in won, "the 2006 counts are not drawn in full"
+    assert "Increase Mandatory Judicial Retirement Age Amendment" in lost, (
+        "the voters' card does not say how the source lists the measure")
+    dock = flat(voters(got["docket"]))
+    assert "docket records this vote as 249,759 to 204,475" in dock, (
+        f"the docket's own differing tally goes unsaid: {dock[:300]!a}")
+    assert "docket records" not in flat(lost), "a tally the docket does not print is said to be its"
+    pend = voters(got["pending"])
+    assert "The vote is on 3 November 2026." in flat(pend) and "<svg" not in pend \
+        and "rcres" not in pend and "atified" not in pend, (
+            f"an election still to come is drawn as {flat(pend)[:200]!a}")
+    assert (got["lostN"], got["wonN"], got["pendingN"]) == (2, 2, 1), (
+        f"the Votes tab counts {got['lostN']}, {got['wonN']}, {got['pendingN']}")
+    assert re.search(r">Votes\s*\(2\)\s*</button>", got["tabs"]), (
+            "the Votes tab of a CACR with one chamber vote and the voters' does not say 2")
+    return "ok", ("452,307 and 237,221 whole in the legend, 65.6% in the ring, the mark two "
+                  "thirds round, Not ratified in words; 85.7% Ratified; the docket's 204,475 "
+                  "said; 3 November 2026 to come; after the chambers', and counted")
+
+
 @check("frontend", "a bill's own rail is dated from its journey, and How it got here lists it",
        needs=("build_site_v2",))
 def _journey_drawn(build_site_v2):
     """Option A and C of 24 September, drawn in node the way the page draws them.
 
-    The rail on a bill's own view (and an opened card) gains Introduced and,
-    under each stop, a day and a word or two; the rail on a closed list card
-    stays as it was. On the record's House Status and Senate Status rows give
-    way to How it got here, one line per decision, the same lines the rail is
-    dated from. A signed bill, a bill killed in the second chamber and a CACR,
-    whose route ends at the voters rather than the governor."""
+    The rail on a bill's own view gains Introduced and, under each stop, a day
+    and a word or two -- and since 5 October 2026 ("One rail, always
+    detailed") so does the rail on a card in a list, from the index row's
+    stops before anything is fetched, and the same rail once the card is
+    opened: opening a card changes nothing about its rail. A row with no stops
+    keeps the bare rail. On the record's House Status and Senate Status rows
+    give way to How it got here, one line per decision, the same lines the
+    rail is dated from. A signed bill, a bill killed in the second chamber and
+    a CACR, whose route ends at the voters rather than the governor."""
     js, stub = Path("app.js"), Path("dom_stub.js")
     if not (js.exists() and stub.exists() and shutil.which("node")):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -15468,7 +15749,7 @@ def _journey_drawn(build_site_v2):
 require("./stub.js");
 const fs = require("fs");
 const scope = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({cardHtml, renderDetail, journeyList, detail, dkey, IDX, jOpen,"
+  + "; ({cardHtml, renderDetail, journeyList, detail, dkey, IDX, jOpen, openCards,"
   + " setFocused:(x)=>{focused=x;}})");
 const out = {};
 for (const [row, d] of JSON.parse(fs.readFileSync("./bills.json", "utf8"))) {
@@ -15478,8 +15759,12 @@ for (const [row, d] of JSON.parse(fs.readFileSync("./bills.json", "utf8"))) {
   const page = scope.cardHtml(row, true);
   const summary = scope.renderDetail(row, d);
   scope.setFocused(null);
+  scope.openCards.add(row.id);
+  const opened = scope.cardHtml(row, false);
+  scope.openCards.delete(row.id);
   delete scope.detail[scope.dkey(row.id)];
-  out[row.id] = {page, summary, card: scope.cardHtml(row, false)};
+  out[row.id] = {page, summary, opened, card: scope.cardHtml(row, false),
+                 bare: scope.cardHtml(Object.assign({}, row, {rail: undefined}), false)};
 }
 const many = {journey: {steps: Array.from({length: 9}, (_, i) =>
   ({date: "2025-03-0" + (i + 1), body: i % 2 ? "S" : "H", act: "passed", mark: "p",
@@ -15546,10 +15831,28 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         # column left the words about 66px (24 September).
         assert '<tr class="wide"><td colspan="2"><ul class="jl">' in g["summary"], (
             f"{bid}'s How it got here is drawn in the value column, not across the panel")
-        # The list card's rail is the one it always was: no Introduced, no
+        # ONE RAIL (5 October 2026): the list card, closed and with nothing
+        # fetched, draws the rail the bill's own view draws, from the index
+        # row's stops; opened, the same again. The words a reader hears may be
+        # fuller once the record is here; what is drawn may not differ.
+        assert rail_of(g["card"])[1] == rail_text, (
+            f"{bid}'s list card draws {rail_of(g['card'])[1]!a}, not its own view's rail")
+        assert rail_of(g["opened"])[1] == rail_text, (
+            f"{bid}'s card, opened, draws {rail_of(g['opened'])[1]!a}")
+        assert "Introduced" in rail_of(g["card"])[0], (
+            f"{bid}'s list card says {rail_of(g['card'])[0]!a} to a reader who hears it")
+        # A row with no stops to date keeps the bare rail: no Introduced, no
         # dates, the index's four marks.
-        assert 'class="rail"' in g["card"] and "<small>" not in g["card"] \
-            and "Introduced" not in g["card"], f"{bid}'s list card drew the dated rail"
+        assert 'class="rail"' in g["bare"] and "<small>" not in g["bare"] \
+            and "Introduced" not in g["bare"], f"{bid}'s stopless row drew a dated rail"
+    # The same rail closed as open, so the same width: and its labels on one
+    # line from the top, which centring each stop's words in the tallest
+    # stop's height did not give (app.css, .rail.dated .stop).
+    css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
+    assert re.search(r"(?:^|[,}\s])\.rail\.dated\{max-width:560px", css), (
+        "app.css does not give the dated rail one width on every card (.rail.dated)")
+    assert re.search(r"\.rail\.dated \.stop\{[^}]*justify-content:flex-start", css), (
+        "app.css centres each stop's words in the tallest stop, so the labels are ragged")
     assert "Governor" not in rail_of(got["CACR13"]["page"])[1], (
         "a CACR's rail draws a governor, who never sees a constitutional amendment")
     assert 'class="stop s-h"><b></b><i>Voters' in got["CACR13"]["page"], (
@@ -15567,9 +15870,10 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         [f"Line {i}" for i in range(9)] and "data-jmore" not in opened \
         and " hidden" not in opened, (
             f"opened, the nine decisions are not all there in order: {opened[:200]!a}")
-    return "ok", ("HB 57, HB 68 and CACR 13: dated rails on their own view, the bare rail on "
-                  "the list, How it got here in place of the status rows, six lines until "
-                  "the rest are opened in place")
+    return "ok", ("HB 57, HB 68 and CACR 13: one dated rail on their own view and on the "
+                  "list card, closed and opened, the bare rail only for a row without stops, "
+                  "How it got here in place of the status rows, six lines until the rest "
+                  "are opened in place")
 
 
 @check("frontend", "no const is read before the line that declares it")
@@ -50307,6 +50611,112 @@ def _journey_agrees(build_site_v2):
     return "ok", (f"{n['agree']:,} bills agree; {len(old)} of the older terms do not, "
                   f"each a gap, a misfiled row or a status word in the docket itself; "
                   f"{n['empty']:,} have no floor decision on record")
+
+
+@check("data", "the list card's rail is the bill's own rail, stop for stop",
+       needs=("build_site_v2",))
+def _rail_on_the_card(build_site_v2):
+    """One rail, always detailed (the person, 5 October 2026): a card in a
+    list draws the dated rail from its index row's stops before the record is
+    fetched, and the record's own once it is. The two are written by one
+    line of build_bills from one journey_rail, and this is the test that
+    what idx/<term>.json carries is what the bill's page carries -- every
+    stop, its mark, its day and its words -- on every bill of every term.
+    A row with no stops is a record with none; a record with stops and a row
+    without would draw the bare rail on the card and the dated one opened,
+    which is the shape-change the decision removed."""
+    idx = Path("site/idx")
+    if not (idx.is_dir() and Path("site/bill").is_dir()):
+        return "skip", "no built idx/ and bill pages"
+    code = {v: k for k, v in build_site_v2.RAIL_CODE.items()}
+    rows = {}
+    for f in idx.glob("*.json"):
+        if not re.match(r"\d{4}-\d{4}$", f.stem):
+            continue
+        for r in json.loads(f.read_text(encoding="utf-8")):
+            rows[(r.get("term"), r.get("id"))] = r
+    n, bad = 0, []
+    for _y, bid, rec in _site_records():
+        row = rows.get((rec.get("term") or "", bid))
+        if not row:
+            continue
+        own = [(s_.get("stop"), s_.get("mark"), s_.get("date") or "", s_.get("short") or "")
+               for s_ in ((rec.get("journey") or {}).get("rail") or [])]
+        card = [(code.get(c[0][:1], "?"), c[0][1:], (c + ["", ""])[1], (c + ["", ""])[2])
+                for c in (row.get("rail") or [])]
+        n += 1
+        if own != card:
+            bad.append(f"{rec.get('term')} {bid}: the card {card[:2]!a}..., the page {own[:2]!a}...")
+    if not n:
+        return "skip", "no bill page matched an index row"
+    assert not bad, f"{len(bad)} bills draw one rail on the card and another opened: " + (
+        "; ".join(bad[:3]))
+    with_stops = sum(1 for r in rows.values() if r.get("rail"))
+    return "ok", (f"{n:,} bills: the card's rail is the page's, stop for stop; "
+                  f"{with_stops:,} index rows carry stops, the rest have no rail to draw")
+
+
+@check("data", "every CACR with a ballot row shows the voters' vote, and its outcome by two thirds",
+       needs=("build_site_v2",))
+def _ballots_shown(build_site_v2):
+    """Each row of ballot_results.json (5 October 2026) is a CACR whose page
+    must show the voters' card, whose status must say what two thirds of the
+    votes cast decided, and whose rail must end at the Voters stop with the
+    election's day and that outcome. An election still to come shows its day
+    and no outcome. Where the docket records a referendum of its own, its
+    answer and the two-thirds answer from the source's figures must be the
+    same answer -- and the card says so wherever the docket's figures are
+    not the source's. No page shows a voters' card the file does not have."""
+    B = build_site_v2
+    f = Path(B.BALLOTS)
+    idx = Path("site/idx")
+    if not (f.exists() and idx.is_dir() and Path("site/bill").is_dir()):
+        return "skip", "no ballot_results.json, or no built idx/ and bill pages"
+    want = {(r["term"], r["bill"]): r for r in json.loads(f.read_text(encoding="utf-8"))["rows"]}
+    rows = {}
+    for t in {t for t, _b in want}:
+        p = idx / f"{t}.json"
+        if p.exists():
+            rows.update({(t, r.get("id")): r for r in json.loads(p.read_text(encoding="utf-8"))})
+    recs = {(rec.get("term") or "", bid): rec for _y, bid, rec in _site_records()}
+    bad, decided, docket_differs = [], 0, []
+    for key, r in sorted(want.items()):
+        rec, row = recs.get(key), rows.get(key)
+        name = f"{key[0]} {key[1]}"
+        if not rec or not row:
+            bad.append(f"{name} has no page or no index row")
+            continue
+        card = rec.get("ballot") or {}
+        if card.get("date") != r["election"]:
+            bad.append(f"{name}'s page shows no voters' card for {r['election']}: {card!a}")
+            continue
+        status = row.get("status") or ""
+        stop = ((rec.get("journey") or {}).get("rail") or [{}])[-1]
+        if r.get("yes") is None:
+            if not card.get("pending") or "ratified" in status or stop.get("stop") != "Voters" \
+                    or stop.get("mark") in ("p", "x"):
+                bad.append(f"{name}'s election is to come and reads {status!a}, {stop!a}")
+            continue
+        decided += 1
+        ok = B.ratified(r["yes"], r["no"])
+        if (card.get("yes"), card.get("no"), card.get("ratified")) != (r["yes"], r["no"], ok):
+            bad.append(f"{name}'s card reads {card!a}")
+        if status != (B.RATIFIED if ok else B.NOT_RATIFIED):
+            bad.append(f"{name} reads {status!a} where two thirds of the votes cast "
+                       f"({r['yes']:,} to {r['no']:,}) {'ratified' if ok else 'did not ratify'} it")
+        if (stop.get("stop"), stop.get("mark"), stop.get("date")) != (
+                "Voters", "p" if ok else "x", r["election"]):
+            bad.append(f"{name}'s rail ends {stop!a}")
+        if card.get("docket"):
+            docket_differs.append(f"{name} ({card['docket'][0]:,} to {card['docket'][1]:,})")
+    extra = [f"{k[0]} {k[1]}" for k, rec in recs.items() if rec.get("ballot") and k not in want]
+    if extra:
+        bad.append("a voters' card on pages the file names no row for: " + ", ".join(extra[:5]))
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"{decided} CACRs show the voters' vote and the outcome two thirds gives, "
+                  f"{len(want) - decided} an election to come; the docket prints other "
+                  f"figures for {len(docket_differs)}, and the card says so: "
+                  + (", ".join(docket_differs) or "none"))
 
 
 # Where the rail and the label disagree because the RAIL is wrong. None: CACR

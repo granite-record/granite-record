@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.26
+# GRANITE_VERSION: 2026-09-10.27
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -618,6 +618,24 @@ def data_page(site, out, tables, base, cov=()):
       resolution goes to both chambers and has five. The column is empty
       where the docket does not record enough of the bill&#39;s journey to
       draw it, or records one its outcome contradicts.</p>
+    <p class="src"><b>The <code>rail</code> field</b> of a row of
+      <code>/idx/&lt;term&gt;.json</code> is the rail the bill&#39;s card
+      draws: one entry a stop, in the order the bill travelled, each the
+      stop&#39;s letter &mdash; <code>I</code> introduced, <code>H</code>,
+      <code>S</code>, <code>G</code> the Governor, <code>L</code> the statute
+      book, <code>V</code> the voters &mdash; with its mark as in
+      <code>passage</code>, then the day and a word or two where there are
+      any. It is in neither bills.csv nor <code>/index.json</code>.</p>
+    <p class="src"><b>A constitutional amendment&#39;s ballot.</b> What the
+      voters made of an amendment both chambers sent them is the
+      docket&#39;s word where it records one, and otherwise
+      <code>ballot_results.json</code>&#39;s, a file in the repository that a
+      person copies by hand: the statewide Yes and No votes on each, from
+      Ballotpedia&#39;s list of New Hampshire ballot measures, with the day
+      they were read. An amendment needs two thirds of the votes cast on it,
+      so the <code>status</code> says ratified or not ratified by that
+      measure and not by a majority, and a bill&#39;s own page shows the two
+      counts beside it.</p>
     <p class="src"><b>The <code>chapter</code> column</b> is the chapter of
       that year's session laws the bill became: the bill&#39;s status page
       where the General Court gives one, and otherwise the docket&#39;s law
@@ -709,7 +727,7 @@ def data_page(site, out, tables, base, cov=()):
       <dd>{_rf}The roll-call history as the General Court published it, and
         the handful of files a person made by hand &mdash; the timings taken
         with a stopwatch, the corrections, the offices filled in from official
-        sources.</dd>
+        sources, the voters&#39; counts on the constitutional amendments.</dd>
       <dt>What it does not</dt>
       <dd>The rest of the record &mdash; the dockets, the database dump, the saved
         bill pages, the calendars and the journals &mdash; which is the

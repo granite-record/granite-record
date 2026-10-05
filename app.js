@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.142
+// GRANITE_VERSION: 2026-09-07.143
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3611,7 +3611,81 @@ function renderVotes(b,d){
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
-    :`<p class="note">No roll call votes on this bill.</p>`);
+    :`<p class="note">No roll call votes on this bill.</p>`)+ballotCard(d);
+}
+
+// THE VOTERS' VOTE ON A CONSTITUTIONAL AMENDMENT (the person, 5 October 2026:
+// "an additional vote on those CACRs for the public vote with the 2/3
+// indicator"). After the chambers' votes, the statewide one at the general
+// election, from d.ballot (build_site_v2.ballot_card, out of the hand-made
+// ballot_results.json), and the day of it where it is still to come.
+//
+// THE SAME RING AS EVERY OTHER COUNTED VOTE, with the mark at two thirds of
+// the votes cast -- not at a majority, which is the whole point of it: CACR 6
+// of 2024 won 65.6% and was not ratified, and a majority mark would call that
+// a win. Whether it was ratified is the build's answer (ratified()), drawn
+// here, not worked out again.
+//
+// THE COUNTS ARE NOT IN THE RING. They run to six figures with their
+// separators -- "452,307" -- and the hole in the ring is 92px across: a roll
+// call's "309 | 9" fits there and "452,307 | 237,221" does not. The yes share
+// goes there instead, and the counts in full go in the legend beside it,
+// which drops under the ring on a phone and does not wrap a number.
+const thou=n=>Number(n||0).toLocaleString("en-US");
+const share=(n,of)=>`${(of?100*n/of:0).toFixed(1)}%`;
+function ballotRing(y,n,won){
+  const tot=(y+n)||1;
+  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap;
+  const seg=(len,fill,sideWon)=>`<circle r="${R}" cx="86" cy="86" fill="none" stroke="${fill}"
+    stroke-width="28" opacity="${sideWon?1:.75}"
+    stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-gap/2}"></circle>`;
+  // Two thirds of the way round from the gap: where the yes side had to reach.
+  const a=(180+GAP/2+(360-GAP)*2/3)*Math.PI/180;
+  const said=`The voters: ${thou(y)} yes to ${thou(n)} no, ${share(y,tot)} yes, `
+    +`needing two thirds; ${won?"ratified":"not ratified"}`;
+  const check=`<span class="won" title="this side prevailed">\u2713</span>`;
+  return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
+    role="img" aria-label="${esc(said)}">
+    <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
+    <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
+    ${marker(a,R,"Two thirds of the votes cast","")}${yn(GAP,R,won)}
+    <text x="86" y="89" text-anchor="middle" font-size="18" font-weight="${won?700:400}"
+      fill="var(--ink)" font-variant-numeric="tabular-nums">${share(y,tot)}</text>
+    <text x="86" y="106" text-anchor="middle" font-size="12" fill="var(--ink-2)">yes</text></svg>
+    <div class="legend">
+      <div class="lrow"><span class="sw" style="background:var(--yes)"></span>
+        <span>Yes${won?check:""}</span><span class="c">${thou(y)} · ${share(y,tot)}</span></div>
+      <div class="lrow"><span class="sw" style="background:var(--no)"></span>
+        <span>No${won?"":check}</span><span class="c">${thou(n)} · ${share(n,tot)}</span></div>
+    </div></div>`;
+}
+// The votes the tab draws: the chambers' and, on a CACR, the voters'.
+const votesDrawn=d=>(d.rollcalls||[]).length+(d.ballot&&!d.ballot.pending?1:0);
+function ballotCard(d){
+  const v=d.ballot;
+  if(!v)return "";
+  const head=res=>`<div class="rchead"><h2 class="rcq">The voters</h2>
+      <span class="rcd">${esc(fdate(v.date))} · State general election</span>${res}</div>`;
+  const src=`<p class="src">Source: <a href="${esc(v.source)}" target="_blank"
+      rel="noopener">Ballotpedia, List of New Hampshire ballot measures</a>, read
+      ${esc(railDay(v.read,true,true))}, which lists it as &ldquo;${esc(v.label)}&rdquo;.</p>`;
+  if(v.pending)return `<section class="rc ballot">${head("")}
+    <p class="bout">The vote is on ${esc(railDay(v.date,true,true))}.</p>
+    <p class="note">This is the statewide public vote, at the general election. An
+      amendment to the constitution needs two thirds of the votes cast on it.</p>
+    ${src}</section>`;
+  const y=v.yes,n=v.no,tot=y+n,won=!!v.ratified;
+  const word=won?"Ratified":"Not ratified";
+  const how=3*y===2*tot?"exactly":won?"more than":"short of";
+  return `<section class="rc ballot">${head(`<span class="rcres ${won?"pass":"fail"}">${word}</span>`)}
+    <p class="bout">${word}: ${share(y,tot)} voted yes, ${how} the two thirds it needed.</p>
+    <p class="note">This was the statewide public vote, at the general election. An
+      amendment to the constitution needs two thirds of the votes cast on it: the
+      mark on the ring.</p>
+    ${ballotRing(y,n,won)}
+    ${v.docket?`<p class="note">The General Court&#39;s docket records this vote as
+      ${thou(v.docket[0])} to ${thou(v.docket[1])}.</p>`:""}
+    ${src}</section>`;
 }
 
 // What a player's frame is titled: "Recording of HB 2 - House Finance Public
@@ -4817,7 +4891,8 @@ function renderDetail(b,d){
         // 2,011 of the current term's 2,234 bills -- mostly bills whose only
         // votes were voice votes, which showed "Votes" with nothing beside
         // it and 3 sections beneath.
-        (d.rollcalls||[]).length?` (${d.rollcalls.length})`:""}</button>
+        // And the voters' vote on an amendment they were sent, once cast.
+        votesDrawn(d)?` (${votesDrawn(d)})`:""}</button>
     <!-- HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
          time and the room -- and a recording where one exists. Recordings
          begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
@@ -5249,18 +5324,28 @@ function rail(b){
     ).join("")}</span>`;
 }
 
-// THE RAIL ON A BILL'S OWN VIEW, DATED -- the bill's own page and a card
-// opened in the list (the person chose it on 24 September). Under each stop
-// the day and one or two words of what happened there: "Senate / 22 May /
-// 16–8, amended". The list card keeps the bare rail above, which is a glyph
-// to scan past; this one is read.
+// THE RAIL, DATED -- on the bill's own page (the person chose it on 24
+// September) and, since 5 October 2026, on every card in a list from the
+// start: "One rail, always detailed". Under each stop the day and one or two
+// words of what happened there: "Senate / 22 May / 16–8, amended". The list
+// card drew the bare rail above until then, and opening a card swapped one
+// for the other, so the rail changed shape as the card opened; now opening it
+// changes nothing about the rail. The bare one is left for a row that carries
+// no stops (idxRow's stand-in for a bill the index does not hold).
 //
 // Its stops follow the bill's route and come from the record's journey
 // (build_site_v2.journey_rail): Introduced first; a resolution of one chamber
 // has that chamber; a concurrent resolution two chambers and no governor; a
 // CACR goes to the Voters, ringed while it waits for them. The marks are the
-// index's passage, the same the list card draws, and the words are the same
-// lines "How it got here" lists -- one account in three places.
+// index's passage, and the words are the same lines "How it got here" lists --
+// one account in three places.
+//
+// A CARD IN A LIST HAS NO RECORD YET, so the index row carries the stops
+// (b.rail, build_site_v2.index_rail): ["Sp","2025-05-22","16–8, amended"],
+// the stop's letter and its mark, its day, its words. Once the record is here
+// its own rail is drawn, which is the same stops by construction (preflight
+// holds the two equal on every bill) and adds what each stop says in full,
+// for the sentence a reader hears.
 //
 // A stop not reached has no date. The year is on the first date and wherever
 // it changes, so "8 Jan 2025 ... 13 Feb ... 7 Jan 2026" reads without a key.
@@ -5272,8 +5357,15 @@ function railDay(iso,year,long){
   if(!m)return "";
   return `${+m[3]} ${(long?RAILMONTH:RAILMON)[+m[2]-1]}${year?` ${m[1]}`:""}`;
 }
+const RAILSTOP={I:"Introduced",H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
+function railStops(b,d){
+  const own=((d||{}).journey||{}).rail||[];
+  if(own.length)return own;
+  return (b.rail||[]).map(([sm,date,short])=>({stop:RAILSTOP[sm[0]]||sm[0],
+    mark:sm.slice(1),date:date||"",short:short||"",say:""}));
+}
 function datedRail(b,d){
-  const st=((d||{}).journey||{}).rail||[];
+  const st=railStops(b,d);
   if(!st.length)return rail(b);
   let was="";
   const cells=st.map(s=>{
@@ -5290,7 +5382,10 @@ function datedRail(b,d){
   // 11 Jan 2026" -- and a tally read "16 to 8" rather than a dash.
   const said=st.map(s=>{
     const when=s.date?railDay(s.date,true,true):"";
-    const what=(s.say||"").replace(/(\d)–(\d)/g,"$1 to $2")
+    // From the index, before the record is here, the mark's word and the
+    // stop's own: "House: passed, voice vote, 13 February 2025".
+    const what=(s.say||[RAILSAY[s.mark],s.short].filter(Boolean).join(", "))
+      .replace(/(\d)–(\d)/g,"$1 to $2")
       .replace(/\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
         (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
     return s.stop==="Introduced"
@@ -5315,7 +5410,7 @@ function cardHtml(b,focus){
         <span class="cstat ${chipCls(b)}">${esc(chipOf(b))}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
-        ${(open||focus)&&detail[dkey(b.id)]?datedRail(b,detail[dkey(b.id)]):rail(b)}
+        ${datedRail(b,detail[dkey(b.id)])}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
         open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
