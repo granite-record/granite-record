@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -276,8 +276,60 @@ def get(url, timeout=120):
         return r.read()
 
 
-def read_one(url):
-    """(data, None) or (None, (kind, why)). One request; no retry of its own."""
+# THE ROLL CALLS MAY HOLD NOTHING YET (5 October 2026). Between a new term's
+# first files and its first vote the two roll-call files may be empty: 2025's
+# first roll call was on 8 January, and Organization Day is in early December.
+# A body that is a byte-order mark and nothing else was "not a data file", so
+# the New term run -- which never asks the database -- would have asked the
+# export six times over two and a half hours and installed nothing, and every
+# scheduled night after the switch would have gone to the database. So for
+# these two files ONLY, such a body is taken as a file with no roll call in it
+# -- but only where nothing else says it is a failure (empty_is_data): every
+# other file must have arrived whole, which tells it from the 20 September
+# pattern, when two OTHER files came back three bytes long; and there must be
+# a reason to expect no roll call: tonight's files name a new term, or the
+# copies installed are empty too, or they are a finished term's frozen ones.
+# Before any turn, with the installed files holding the session's votes, two
+# empty roll-call files are a failure as they always were, and the database
+# is asked. Taken, an empty file is still much smaller than a full one it
+# would replace, and goes in only as the shrink rule allows: on the New term
+# run, or over a finished term's frozen copy.
+MAY_BE_EMPTY = ("RollCallSummary.txt", "RollCallHistory.txt")
+
+
+def is_empty(data):
+    """A body with nothing in it but a byte-order mark and whitespace."""
+    return data is not None and len(data) < MIN_BYTES and \
+        not data.decode("utf-8", "replace").strip(LEADING)
+
+
+def empty_is_data(names, fetched, failed, into):
+    """(taken, why): whether the MAY_BE_EMPTY files in `names`, which came back
+    empty, are files with no roll call in them yet rather than a failure.
+    `fetched` is every other file that arrived, `failed` how many did not."""
+    if failed:
+        return False, "another file did not arrive whole tonight"
+    if into is None:
+        return True, "every other file arrived whole"
+    into = Path(into)
+    was, _ = installed_term(into)
+    now, _ = newest_term({n: d for n, d in fetched.items() if n in YEAR_COLUMN})
+    if was and now and now > was:
+        return True, f"tonight's files name a new term, {now}, which has not voted yet"
+    copies = {n: (into / n).read_bytes() if (into / n).exists() else None for n in names}
+    if all(d is not None and is_empty(d) for d in copies.values()):
+        return True, "the copies installed are empty too: no roll call yet this term"
+    held = [frozen_copy(into, n, d, was) for n, d in copies.items() if d is not None]
+    if held and all(held) and len(held) == len(names):
+        return True, f"the copies they replace are {held[0]}'s, frozen"
+    return False, ("no new term is in sight and the installed copies hold this term's "
+                   "roll calls")
+
+
+def read_one(url, name=None):
+    """(data, None) or (None, (kind, why)). One request; no retry of its own.
+    An empty body of a MAY_BE_EMPTY file comes back as data, for run() to
+    judge with the others (empty_is_data)."""
     try:
         data = get(url)
     except Exception as e:                                  # noqa: BLE001
@@ -285,6 +337,8 @@ def read_one(url):
     head = data[:4000].decode("utf-8", "replace")
     if refusal.classify(body=head) == "refused":
         return None, ("refused", "the firewall's block page, served as 200")
+    if name in MAY_BE_EMPTY and is_empty(data):
+        return data, None
     stripped = head.lstrip(LEADING).lower()
     if len(data) < MIN_BYTES or stripped.startswith(("<!doctype", "<html", "<?xml")):
         return None, ("failed", f"not a data file ({len(data):,} bytes)")
@@ -438,6 +492,33 @@ def run(a, held):
     work = targets()
     i = 0
     retried = set()
+    empties, empty_taken = {}, []       # MAY_BE_EMPTY files that came back empty
+
+    def keep(name, data, new, same):
+        """Store one file's answer in the archive, and count it: (new, same)."""
+        digest = hashlib.sha256(data).hexdigest()
+        blob = store / f"{digest}.gz"
+        if not blob.exists():
+            tmp = blob.with_name(blob.name + ".part")
+            with gzip.open(tmp, "wb") as fh:
+                fh.write(data)
+            os.replace(tmp, blob)
+            new += 1
+            tag = "NEW "
+        else:
+            same += 1
+            tag = "same"
+        write_atomically(snap / (name + ".sha256"), digest.encode("utf-8"))
+        manifest[name] = {"sha256": digest, "bytes": len(data)}
+        prev = index.get(name, {}).get("last_sha256")
+        changed = " (changed)" if prev and prev != digest else ""
+        print(f"  {tag}  {name:24} {len(data):>10,} bytes{changed}", flush=True)
+        index.setdefault(name, {})["last_sha256"] = digest
+        index[name].setdefault("history", [])
+        if not index[name]["history"] or index[name]["history"][-1][1] != digest:
+            index[name]["history"].append([today, digest])
+        fetched[name] = data
+        return new, same
 
     # The page first: opening it is what rebuilds the files.
     if refusal.MARK.exists():
@@ -472,7 +553,14 @@ def run(a, held):
             stopped = "lock"
             print("  the run holding archive/.lock is gone. Stopping.")
             break
-        data, err = read_one(url)
+        data, err = read_one(url, name)
+        if not err and name in MAY_BE_EMPTY and is_empty(data):
+            # Judged once every file is in (empty_is_data, below).
+            empties[name] = data
+            print(f"  ----  {name:24} {len(data):>10,} bytes: empty, judged with the rest",
+                  flush=True)
+            i += 1
+            continue
         if err:
             kind, why = err
             print(f"  FAIL  {name}: {kind}: {why[:100]}", flush=True)
@@ -498,29 +586,22 @@ def run(a, held):
             i += 1
             continue
 
-        digest = hashlib.sha256(data).hexdigest()
-        blob = store / f"{digest}.gz"
-        if not blob.exists():
-            tmp = blob.with_name(blob.name + ".part")
-            with gzip.open(tmp, "wb") as fh:
-                fh.write(data)
-            os.replace(tmp, blob)
-            new += 1
-            tag = "NEW "
-        else:
-            same += 1
-            tag = "same"
-        write_atomically(snap / (name + ".sha256"), digest.encode("utf-8"))
-        manifest[name] = {"sha256": digest, "bytes": len(data)}
-        prev = index.get(name, {}).get("last_sha256")
-        changed = " (changed)" if prev and prev != digest else ""
-        print(f"  {tag}  {name:24} {len(data):>10,} bytes{changed}", flush=True)
-        index.setdefault(name, {})["last_sha256"] = digest
-        index[name].setdefault("history", [])
-        if not index[name]["history"] or index[name]["history"][-1][1] != digest:
-            index[name]["history"].append([today, digest])
-        fetched[name] = data
+        new, same = keep(name, data, new, same)
         i += 1
+
+    if empties and not stopped:
+        took, why = empty_is_data(list(empties), fetched, failed, a.into)
+        print(f"  the roll-call files came back empty, and {why}: "
+              + ("taken as files with no roll call in them yet" if took else
+                 "a failure, as any empty file is"), flush=True)
+        for name, data in empties.items():
+            if took:
+                new, same = keep(name, data, new, same)
+            else:
+                failed += 1
+                manifest[name] = {"error": f"failed: not a data file ({len(data):,} bytes)"}
+        if took:
+            empty_taken = {"files": sorted(empties), "why": why}
 
     write_atomically(snap / "manifest.json", json.dumps(manifest, indent=2).encode("utf-8"))
     write_atomically(index_path, json.dumps(index, indent=2).encode("utf-8"))
@@ -540,7 +621,8 @@ def run(a, held):
                  "shrunk": [{"name": n, "bytes": now, "installed_bytes": before}
                             for n, now, before in v["shrunk"]],
                  "released": v["released"], "turned": v["turned"],
-                 **({"refused": v["refused"]} if v["refused"] else {})},
+                 **({"refused": v["refused"]} if v["refused"] else {}),
+                 **({"empty": empty_taken} if empty_taken else {})},
                 indent=2).encode("utf-8"))
             print("\n".join(lines))
             if not ok:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -136,7 +136,10 @@ scheduled night never carries it. For that one run:
 
   the day's files     snapshot_gencourt.py --allow-shrink: tonight's files
                       are installed though they are much smaller, and the
-                      log names each one. An empty file is still refused
+                      log names each one. An empty file is still refused,
+                      but for the two roll-call files when every other file
+                      arrived whole and names the new term: none has voted
+                      yet (snapshot_gencourt.MAY_BE_EMPTY, 5 October 2026)
   the study views     taken however much smaller, though never empty
   the feeds           build_all.py --allow-prune, for build_feeds.py. On
                       GitHub's machine site/ starts empty and nothing is
@@ -995,6 +998,11 @@ def main():
                         night.v["new_term"]["files"] = shrink_accepted(a.archive, asked)
                     if rc == 0 and released_tonight(a.archive, asked):
                         night.v["released"] = released_tonight(a.archive, asked)
+                    _rec = load_json(snapshot_day(a.archive, asked) / INSTALL_RECORD)
+                    if rc == 0 and isinstance(_rec, dict) and isinstance(_rec.get("empty"), dict):
+                        # The roll-call files, empty and taken as no roll
+                        # call yet (snapshot_gencourt.empty_is_data).
+                        night.v["empty_rollcalls"] = _rec["empty"]
                     if page_said:
                         night.v["data_page_said"] = page_said
                         night.v["data_page_try"] = page_at
@@ -2791,6 +2799,10 @@ class Night:
                        f"{int(self.v.get('fetch_tries') or 1)}: it came back empty first, and "
                        "the General Court's database, turned to then, installed nothing ("
                        + DB_WHY[self.v["day_files"]["why_code"]] + ")")
+        empty = self.v.get("empty_rollcalls")
+        if isinstance(empty, dict) and empty.get("files"):
+            out.append(f"{' and '.join(empty['files'])} came back empty and were taken as files "
+                       f"with no roll call in them yet: {str(empty.get('why') or '')[:150]}")
         for name, term in (self.v.get("released") or []):
             # A file that turned after the switch, taken because the copy it
             # replaced is a finished term's frozen one (snapshot_gencourt).

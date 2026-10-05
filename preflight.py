@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.332
+# GRANITE_VERSION: 2026-09-04.333
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39512,6 +39512,110 @@ def _term_turn_guard(NI, SG, FT):
                   "only once the term is frozen; LSRs.txt turning later goes in over its frozen "
                   "copy after the switch and not before; the page says a new term; a New term run "
                   "stops on an unfrozen two-year docket and not on a one-year one")
+
+
+@check("build", "the roll-call files may be empty for the weeks before a new term's first vote, "
+       "and are still a failure beside another empty file or before any turn",
+       needs=("nightly", "snapshot_gencourt", "freeze_term"))
+def _rollcalls_may_be_empty(NI, SG, FT):
+    """2025's first roll call was on 8 January, Organization Day in early
+    December: the two roll-call files may be a byte-order mark and nothing
+    else for weeks. Driven through the snapshot's own run() on faked answers:
+    before any turn two empty roll-call files are a failure ("empty", and the
+    database is the night's next step); beside another empty file -- the 20
+    September pattern -- they are too; with the rest whole and naming the new
+    term they are taken, refused as the new term on a scheduled night and
+    installed by the New term run; after the switch they go in over the
+    finished term's frozen copies; and over copies already empty they are
+    not even smaller."""
+    import argparse
+    import contextlib
+    import hashlib
+    import io
+    import types
+    from datetime import datetime
+    import refusal
+    T, BOM = "2025-2026", b"\xef\xbb\xbf"
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-emptyrc-"))
+    saved = (SG.get, SG.time, refusal.MARK, refusal.LOCK, FT.ready)
+    today = f"{datetime.now():%Y-%m-%d}"
+    old = {n: b"2026|0001|1/5/2026 10:00:00 AM|HB1|H|x|y\r\n" * 60 for _, n in SG.targets()}
+    old["Docket.txt"] = (b"2025|0001|1/5/2025 10:00:00 AM|HB1|H|x|y\r\n" * 60
+                         + b"2026|0002|1/5/2026 10:00:00 AM|HB2|H|x|y\r\n" * 60)
+    new_docket = b"2027|7001|12/2/2026 10:00:00 AM|HR1|H|Introduced and Adopted|y\r\n" * 3
+
+    def snap(root, served, arch, allow=False):
+        def get(url, timeout=120):
+            if url == SG.PAGE:
+                return b"<html><body><h1>DYNAMIC DATA FILES</h1></body></html>"
+            return served[url.rsplit("/", 1)[-1]]
+        SG.get = get
+        a = argparse.Namespace(dir=str(tmp / arch), into=str(root), allow_shrink=allow,
+                               allow_turn=allow, delay=0.0, plan=False)
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = SG.run(a, types.SimpleNamespace(still=lambda: True))
+        day = tmp / arch / "snapshots" / today
+        rec = day / SG.INSTALL_RECORD
+        return rc, json.loads((day / "manifest.json").read_text(encoding="utf-8")), (
+            json.loads(rec.read_text(encoding="utf-8")) if rec.exists() else None)
+
+    def root_with(files, name):
+        root = tmp / name
+        root.mkdir()
+        for n, b in files.items():
+            (root / n).write_bytes(b)
+        return root
+
+    try:
+        os.chdir(tmp)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        SG.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        empty_rc = {n: BOM for n in SG.MAY_BE_EMPTY}
+        # Before any turn: a failure, and the night's next step is the database.
+        root = root_with(old, "a")
+        rc, man, rec = snap(root, {**old, **empty_rc}, "arch-a")
+        assert rc == 1 and rec is None and all("not a data file (3 bytes)" in man[n]["error"]
+                                               for n in SG.MAY_BE_EMPTY), (rc, man)
+        assert NI.fetch_status(1, str(tmp / "arch-a")).startswith("empty: 2 of 14"), \
+            NI.fetch_status(1, str(tmp / "arch-a"))
+        # Beside another empty file, at a new term: still a failure.
+        rc, man, rec = snap(root, {**old, **empty_rc, "Docket.txt": new_docket,
+                                   "LSRs.txt": BOM}, "arch-b")
+        assert rc == 1 and rec is None and "error" in man["RollCallSummary.txt"], man
+        # The rest whole and naming the new term: taken, refused as the turn
+        # on a scheduled night, and installed by the New term run.
+        served = {**old, **empty_rc, "Docket.txt": new_docket}
+        rc, man, rec = snap(root, served, "arch-c")
+        assert rc == 1 and rec and rec["turned"]["to"] == "2027-2028" and \
+            rec["empty"]["files"] == sorted(SG.MAY_BE_EMPTY) and \
+            (root / "RollCallSummary.txt").read_bytes() == old["RollCallSummary.txt"], rec
+        FT.ready = lambda root=".", term=None: (True, "frozen")
+        rc, man, rec = snap(root, served, "arch-d", allow=True)
+        assert rc == 0 and rec["installed"] and (root / "RollCallSummary.txt").read_bytes() == BOM, rec
+        # Over copies already empty: taken, and not smaller.
+        rc, man, rec = snap(root, served, "arch-e")
+        assert rc == 0 and rec["installed"] and not rec["shrunk"], rec
+        # After a switch that kept 2026's roll calls: in over the frozen copies.
+        root = root_with({**old, "Docket.txt": new_docket}, "f")
+        (root / "frozen" / T / "day").mkdir(parents=True)
+        files = {}
+        for n in SG.MAY_BE_EMPTY:
+            (root / "frozen" / T / "day" / n).write_bytes(old[n])
+            files[n] = {"sha256": hashlib.sha256(old[n]).hexdigest()}
+        (root / "frozen" / T / "manifest.json").write_text(json.dumps({"files": files}),
+                                                         encoding="utf-8")
+        rc, man, rec = snap(root, {**old, **empty_rc, "Docket.txt": new_docket}, "arch-f")
+        assert rc == 0 and rec["installed"] and \
+            {r["name"] for r in rec["released"]} == set(SG.MAY_BE_EMPTY) and \
+            "frozen" in rec["empty"]["why"], rec
+    finally:
+        os.chdir(here)
+        SG.get, SG.time, refusal.MARK, refusal.LOCK, FT.ready = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("empty roll calls before any turn, or beside another empty file, are a failure; "
+                  "at a new term they are taken, refused on a scheduled night and installed by the "
+                  "New term run; after the switch they go in over the frozen copies")
 
 
 @check("build", "what a New term run accepted reaches a later night only once its build is "
