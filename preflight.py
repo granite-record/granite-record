@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.329
+# GRANITE_VERSION: 2026-09-04.331
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1033,7 +1033,18 @@ def _movers(narrative):
 # Docket_2023-2024.txt 1094-1097 and 1099 (HB 1076) and 5113-5117 and 5119
 # (HB 1380); Docket_db_2005-2006.txt 13126-13127 (HB 1163);
 # Docket_db_2007-2008.txt 16340 and 16344 (HB 1405); Docket_db_1993-1994.txt
-# 21308-21310 and 21312-21313 (SB 732).
+# 21308-21310 and 21312-21313 (SB 732). And the second review's (3 October
+# 2026): Docket_db_1997-1998.txt 16946-16949 (HCR 25) and 9405-9419 (HB 25);
+# Docket_db_1995-1996.txt 8188-8197 (SB 173); Docket_db_2007-2008.txt
+# 27014-27027 (HB 1643) and 24023-24030 (SB 324); Docket_db_1993-1994.txt
+# 10132-10144 (HB 442), 9998-10011 (SB 165) and 12864-12865 (HB 1260);
+# Docket_db_1999-2000.txt 67-72 (HB 236, the Senate's rows);
+# Docket_db_2005-2006.txt 17771-17782 (SB 262, the House's);
+# Docket_db_2013-2014.txt 10684-10695 (SB 91); Docket_db_2003-2004.txt
+# 10348-10356 (HB 618); Docket_db_1989-1990.txt 9799-9804 (HB 777) and
+# 11362, 11364, 11365 and 11368-11371 (HB 355); Docket_db_1991-1992.txt
+# 10142-10148 (HB 297) and 9949-9952 (HR 10); Docket_db_1995-1996.txt 369
+# and 371-377 (HB 551).
 _DOCKET_SENT_ON = {
     ("SB286", "2025-2026"): [
         "2025|1080|1/24/2025 10:37:36 AM|SB286|S|  Introduced 01/09/2025 and Referred to Executive Departments and Administration;  SJ 3|1/24/2025 10:37:36 AM",
@@ -1148,6 +1159,174 @@ _DOCKET_SENT_ON = {
     ("HB1405", "2007-2008"): [
         "2008|2008|05/21/2008 04:07:53 PM|HB1405|H|House Non-Concurs and Requests Committee of Conference (Rep Kaen): MA VV; HJ 43, PG.2109|05/21/2008 04:07:53 PM",
         "2008|2008|05/23/2008 04:05:27 PM|HB1405|H|Committee of Conference Hearing: 05/29/2008 11:30 AM LOB 304|05/23/2008 04:05:27 PM"],
+    ("HCR25", "1997-1998"): [
+        "1998|2392|02/19/1998 02:47:11 PM|HCR25|S|INTRODUCED AND REF TO INTERNAL AFFS; SJ4,P105|02/19/1998 02:47:11 PM",
+        "1998|2392|03/06/1998 10:55:31 AM|HCR25|S|HEARING MAR12  3:00 RM103,LOB   FOR: INTERNAL AFFS|03/06/1998 10:55:31 AM",
+        "1998|2392|03/17/1998 08:50:49 AM|HCR25|S|CONTINUED HEARING MAR19  3:00 RM103,LOB    FOR: INSUR|03/17/1998 08:50:49 AM",
+        "1998|2392|04/13/1998 03:12:23 PM|HCR25|S|COMM REPORT  OTP  APR16  (VOTE 5-0)|04/13/1998 03:12:23 PM"],
+    ("SB173", "1995-1996"): [
+        "1995|0901|03/15/1995 03:45:25 PM|SB173|S|SEN COLANTUONO SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND|03/15/1995 03:45:25 PM",
+        "1995|0901|03/15/1995 08:23:55 PM|SB173|S|REF TO EDUCATION; SJ9,P159|03/15/1995 08:23:55 PM",
+        "1995|0901|03/15/1995 08:24:12 PM|SB173|S|HEARING MAR27 09:00 RMS202-204,LOB    FOR: EDUCATION|03/15/1995 08:24:12 PM",
+        "1995|0901|04/12/1995 04:28:39 PM|SB173|S|COMM REPORT  OTP/AM  APR13|04/12/1995 04:28:39 PM",
+        "1995|0901|04/12/1995 04:33:13 PM|SB173|S|PROP COMM AM<2151>(NEW TITLE); SC29,P4-5|04/12/1995 04:33:13 PM",
+        "1995|0901|04/13/1995 09:40:00 AM|SB173|S|LAID ON THE TABLE, SEN BLAISDELL MA VV; SJ13,P219|04/13/1995 09:40:00 AM",
+        "1995|0901|04/13/1995 09:41:00 AM|SB173|S|TAKEN FROM THE TABLE, SEN CURRIER MA VV; COMM AM<2151>, AL|04/13/1995 09:41:00 AM",
+        "1995|0901|04/13/1995 09:44:00 AM|SB173|S|DIV(4-16); REF TO FINANCE; FIN COMM AM<2202>(NEW TITLE), AA VV;|04/13/1995 09:44:00 AM",
+        "1995|0901|04/13/1995 09:47:44 AM|SB173|S|SEN LARSEN FL AM<2204>(NEW TITLE), AL RC(7-15); PASSED WITH AM|04/13/1995 09:47:44 AM",
+        "1995|0901|04/13/1995 09:48:04 AM|SB173|S|VV; SJ13,P229-232 + 234       (SEE PERM JRNL ALSO)|04/13/1995 09:48:04 AM"],
+    ("HB1643", "2007-2008"): [
+        "2008|2905|01/30/2008 03:12:47 PM|HB1643|H|Rules Comm Approved: Introduced 1/30/08 & Ref to a Jt Comm of Exec Depts & Admin & Fin; HJ14, PG.726|01/30/2008 03:12:47 PM",
+        "2008|2905|01/30/2008 04:11:24 PM|HB1643|H|Public Hearing: 2/8/2008  10:00 AM LOB 210-211|01/30/2008 04:11:24 PM",
+        "2008|2905|01/30/2008 04:26:46 PM|HB1643|H|==CANCELLED==TIME CHANGE==Executive Session: 2/12/08 10:00 AM LOB 210-211 (Orig 9:00 AM)|01/30/2008 04:26:46 PM",
+        "2008|2905|02/08/2008 02:41:54 PM|HB1643|H|Subcommittee Work Session: 2/12/2008 3:00 PM LOB 306|02/08/2008 02:41:54 PM",
+        "2008|2905|02/13/2008 10:18:08 AM|HB1643|H|Suspend House Rules for Reporting Deadline Extended to 3/13/2008:|02/13/2008 10:18:08 AM",
+        "2008|2905|02/13/2008 10:19:54 AM|HB1643|H|MA DIV 219-7 by Required Two-Thirds; HJ 20, PG.1051|02/13/2008 10:19:54 AM",
+        "2008|2905|02/15/2008 10:07:35 AM|HB1643|H|Subcommittee Work Session: 2/19/2008 2:00 PM LOB 306|02/15/2008 10:07:35 AM",
+        "2008|2905|02/20/2008 04:15:38 PM|HB1643|H|==CANCELLED==Subcommittee Work Session: 3/6/2008 1:00 PM LOB 306|02/20/2008 04:15:38 PM",
+        "2008|2905|02/20/2008 04:16:41 PM|HB1643|H|Subcommittee Work Session: 3/7/2008 10:00 AM LOB 306|02/20/2008 04:16:41 PM",
+        "2008|2905|02/20/2008 04:17:47 PM|HB1643|H|==ROOM & TIME CHANGE==Executive Session: 3/13/2008 10:00 AM LOB 210-211 (Orig 1:00 PM, LOB 306)|02/20/2008 04:17:47 PM",
+        "2008|2905|03/13/2008 12:48:55 PM|HB1643|H|Committee Report: Ought to Pass with Amendment #0888h for Mar 18 Reg (vote 25-15); HC 21, PG.1093|03/13/2008 12:48:55 PM",
+        "2008|2905|03/13/2008 12:49:26 PM|HB1643|H|Proposed Committee Amendment #0888h; HC 21, PG.1138|03/13/2008 12:49:26 PM",
+        "2008|2905|03/18/2008 04:14:23 PM|HB1643|H|Amendment #0888h Adopted, VV; HJ 26, PG.1433-1434|03/18/2008 04:14:23 PM",
+        "2008|2905|03/18/2008 04:14:41 PM|HB1643|H|Ought to Pass with Amendment #0888h: MA VV; HJ 26, PG.1433-1434|03/18/2008 04:14:41 PM"],
+    ("HB442", "1993-1994"): [
+        "1994|0242|01/05/1994 03:09:16 PM|HB442|H|COMM AM<3943>, AA VV; COMM FL AM<4488>, AA VV; REP M CLARK FL AM|01/05/1994 03:09:16 PM",
+        "1994|0242|01/05/1994 03:09:57 PM|HB442|H|<4529>, AL DIV(122-231); PASSED WITH AM AND REF TO APPROP VV;|01/05/1994 03:09:57 PM",
+        "1994|0242|01/05/1994 03:10:09 PM|HB442|H|HJ 7,P231-248|01/05/1994 03:10:09 PM",
+        "1994|0242|01/07/1994 03:17:26 PM|HB442|H|//CANCELLED//HEARING JAN18 02:00 RM100,ST HOUSE    FOR: APPROP|01/07/1994 03:17:26 PM",
+        "1994|0242|01/19/1994 02:27:16 PM|HB442|H|RESCHEDULED HEARING JAN25 02:30 RM100,ST HOUSE   FOR: APPROP|01/19/1994 02:27:16 PM",
+        "1994|0242|02/03/1994 02:37:45 PM|HB442|H|MAJ APPROP REPORT REF FOR STUDY(APPROP&COMM) FOR FEB08(VOTE 17-0)|02/03/1994 02:37:45 PM",
+        "1994|0242|02/08/1994 04:10:32 PM|HB442|H|REFERRED TO (JOINT COMMS) INTERIM STUDY VV; HJ19,P561|02/08/1994 04:10:32 PM",
+        "1994|0242|02/09/1994 03:39:27 PM|HB442|H|JOINT COMMS: COMMERCE & APPROP|02/09/1994 03:39:27 PM",
+        "1994|0242|10/05/1994 03:17:03 PM|HB442|H|INTERIM STUDY SUBCOM WK SESSION  OCT12  1:00 RM207,LOB  :COMMERCE|10/05/1994 03:17:03 PM",
+        "1994|0242|10/13/1994 04:11:36 PM|HB442|H|COMMERCE & APPROP JT MTG WK SESSION OCT19  11:00  RM103,SH|10/13/1994 04:11:36 PM",
+        "1994|0242|10/20/1994 08:33:24 AM|HB442|H|INT STDY FULL COMM EXEC SESSION RM 100,SH 10:00 NOV 1  FOR APPROP|10/20/1994 08:33:24 AM",
+        "1994|0242|10/25/1994 01:51:29 PM|HB442|H|REPORT FILED|10/25/1994 01:51:29 PM",
+        "1994|0242|10/25/1994 01:52:54 PM|HB442|H|INT STUDY REPORT:  REC FOR 1995 LEGISLATION (VOTE: 14-0)|10/25/1994 01:52:54 PM"],
+    ("SB165", "1993-1994"): [
+        "1994|0225|01/07/1993 04:34:55 PM|SB165|S|INTRODUCED AND REF TO EXEC DEPTS+ADMIN; SJ2,P31|01/07/1993 04:34:55 PM",
+        "1994|0225|01/28/1993 04:35:51 PM|SB165|S|HEARING FEB04 10:30 RM104,LOB    FOR: EXEC DEPTS+ADMIN|01/28/1993 04:35:51 PM",
+        "1994|0225|02/16/1993 09:47:37 AM|SB165|S|COMM REPORT  OTP/AM   FEB17|02/16/1993 09:47:37 AM",
+        "1994|0225|02/16/1993 10:07:08 AM|SB165|S|PROP COMM AM<1526>; SC13,P25-26|02/16/1993 10:07:08 AM",
+        "1994|0225|02/17/1993 03:38:29 PM|SB165|S|SEN CURRIER MOVED RE-REF, ML DIV(12-12); COMM AM, AA VV;|02/17/1993 03:38:29 PM",
+        "1994|0225|02/17/1993 03:38:46 PM|SB165|S|LAID ON THE TABLE, SEN BLAISDELL MA VV; SJ6,P88-89|02/17/1993 03:38:46 PM",
+        "1994|0225|02/18/1993 04:01:20 PM|SB165|S|TAKEN FROM THE TABLE, SEN ROBERGE MA DIV(15-7); RE-REFERRED TO|02/18/1993 04:01:20 PM",
+        "1994|0225|02/18/1993 04:01:43 PM|SB165|S|EXEC DEPTS+ADMIN, SEN LAMIRANDE MA VV; SEN BOURQUE SUSP RULES|02/18/1993 04:01:43 PM",
+        "1994|0225|02/18/1993 04:02:00 PM|SB165|S|TO RE-REF TO WILDLIFE&REC, MA 2/3VV; RE-REFERRED TO WILDLIFE &|02/18/1993 04:02:00 PM",
+        "1994|0225|02/18/1993 04:03:00 PM|SB165|S|REC, MA VV; SJ7,P132|02/18/1993 04:03:00 PM",
+        "1994|0225|12/07/1993 11:08:21 AM|SB165|S|RE-REF HEARING DEC16 2:45  RM209,LOB|12/07/1993 11:08:21 AM",
+        "1994|0225|02/02/1994 09:52:38 AM|SB165|S|COMM REPORT  OTP/AM  FEB03|02/02/1994 09:52:38 AM",
+        "1994|0225|02/02/1994 09:53:17 AM|SB165|S|PROP COMM AM<4268>; SC7,P31-33|02/02/1994 09:53:17 AM",
+        "1994|0225|02/03/1994 11:33:16 AM|SB165|S|COMM AM, AA VV; PASSED WITH AM VV; SJ3,P70-71 + 77|02/03/1994 11:33:16 AM"],
+    ("HB236", "1999-2000"): [
+        "1999|0016|03/23/1999 02:18:31 PM|HB236|S|Introduction and referring to Judiciary, SJ 8, P 111|03/23/1999 02:18:31 PM",
+        "1999|0016|04/28/1999 11:49:15 AM|HB236|S|Hearing, 5/5/99, Room 102, LOB, 11:30 a.m.|04/28/1999 11:49:15 AM",
+        "1999|0016|05/12/1999 10:26:26 AM|HB236|S|Committee Report, Ought to Pass, 5/13/99|05/12/1999 10:26:26 AM",
+        "1999|0016|05/13/1999 01:13:28 PM|HB236|S|Ought to Pass, MA, VV, Rule 24 (Refer to Finance); SJ 18, P 467|05/13/1999 01:13:28 PM",
+        "1999|0016|06/16/1999 09:23:41 AM|HB236|S|Committee Report, Ought to Pass, 6/17/99|06/16/1999 09:23:41 AM",
+        "1999|0016|06/17/1999 01:03:09 PM|HB236|S|Ought to Pass, MA, VV, OT3rdg, MA, VV; SJ 23, P 600|06/17/1999 01:03:09 PM"],
+    ("SB262", "2005-2006"): [
+        "2006|2700|03/22/2006 11:43:13 AM|SB262|H|Introduced and ref to Criminal Justice and Public Safety    HJ 29, pg 1724|03/22/2006 11:43:13 AM",
+        "2006|2700|03/23/2006 11:43:39 AM|SB262|H|Public Hearing    March 28   11:00   RM204/LOB|03/23/2006 11:43:39 AM",
+        "2006|2700|03/28/2006 02:44:44 PM|SB262|H|Subcommittee Work Session    March 29  11:30   RM204/LOB|03/28/2006 02:44:44 PM",
+        "2006|2700|04/04/2006 12:35:48 PM|SB262|H|Subcommittee Work Session    April 5   1:00 or after Session  RM204/LOB|04/04/2006 12:35:48 PM",
+        "2006|2700|04/06/2006 08:02:18 AM|SB262|H|Subcommittee Work Session    April  10    10:00  RM204/LOB|04/06/2006 08:02:18 AM",
+        "2006|2700|04/13/2006 08:29:06 AM|SB262|H|Comm Rprt:   OTP/AM {1705h}    April 19  (vote 16-2; CC)  HC 32, pg 1760|04/13/2006 08:29:06 AM",
+        "2006|2700|04/19/2006 10:13:49 AM|SB262|H|Suspension of Rules, deadline to act on bills for 2nd committee to April 19,  MA, VV nec. 2/3|04/19/2006 10:13:49 AM",
+        "2006|2700|04/19/2006 10:41:25 AM|SB262|H|Passed with AM {1705h},  MA, VV    HJ 35, pg 1879-1881|04/19/2006 10:41:25 AM",
+        "2006|2700|04/19/2006 10:41:46 AM|SB262|H|ref Finance    HJ 35, pg 1881|04/19/2006 10:41:46 AM",
+        "2006|2700|04/19/2006 03:20:05 PM|SB262|H|Division I Work Session    April 25  9:45  RM 212/LOB|04/19/2006 03:20:05 PM",
+        "2006|2700|04/27/2006 01:22:14 PM|SB262|H|Comm Rprt:   OTP    May 4  (vote 19-0; Reg. Cal)     HC 36, pg 1912|04/27/2006 01:22:14 PM",
+        "2006|2700|05/04/2006 11:16:58 AM|SB262|H|Passed,    MA, VV  HJ 41, pg 2048|05/04/2006 11:16:58 AM"],
+    ("SB324", "2007-2008"): [
+        "2008|2687|01/02/2008 04:14:07 PM|SB324|S|Introduced and Referred to Health and Human Services; SJ 1, Pg.32|01/02/2008 04:14:07 PM",
+        "2008|2687|01/10/2008 01:47:38 PM|SB324|S|Hearing; January 22, 2008, Room 100, State House, 10:15 a.m.; SC2|01/10/2008 01:47:38 PM",
+        "2008|2687|01/24/2008 09:59:10 AM|SB324|S|Committee Report; Ought to Pass with Amendment{0165} [01/31/08]; SC4, Pg.4-5|01/24/2008 09:59:10 AM",
+        "2008|2687|01/31/2008 08:12:39 AM|SB324|S|Committee Amendment{0165}, AA, VV; SJ 4, Pg.89-91|01/31/2008 08:12:39 AM",
+        "2008|2687|01/31/2008 11:38:03 AM|SB324|S|Ought to Pass with Amendment{0165}, MA, VV; Refer Finance [Rule 26]; SJ 4, Pg.91|01/31/2008 11:38:03 AM",
+        "2008|2687|02/06/2008 04:07:26 PM|SB324|S|Committee Report; Ought to Pass [02/14/08]; SC6|02/06/2008 04:07:26 PM",
+        "2008|2687|02/14/2008 02:03:11 PM|SB324|S|Ought to Pass, MA, VV; OT3rdg; SJ 6, Pg.131|02/14/2008 02:03:11 PM",
+        "2008|2687|02/14/2008 03:37:25 PM|SB324|S|Passed by Third Reading Resolution; SJ 6, Pg.138|02/14/2008 03:37:25 PM"],
+    ("SB91", "2013-2014"): [
+        "2014|0878|01/03/2013 11:05:13 AM|SB91|S|Introduced and Referred to Commerce; SJ 4|01/03/2013 11:05:13 AM",
+        "2014|0878|02/07/2013 10:40:38 AM|SB91|S|Hearing: 3/5/13, Room 101, LOB, 1:00 p.m.; SC8|02/07/2013 10:40:38 AM",
+        "2014|0878|03/07/2013 05:07:56 PM|SB91|S|Committee Report: Ought to Pass, 3/14/13; Vote 5-0; SC11|03/07/2013 05:07:56 PM",
+        "2014|0878|03/14/2013 10:15:16 AM|SB91|S|Sen. Sanborn Moved to Remove SB 91 from the Consent Calendar; SJ 7|03/14/2013 10:15:16 AM",
+        "2014|0878|03/14/2013 10:18:07 AM|SB91|S|Special Order to 3/21/13, Without Objection, 2/3 necessary, MA, VV; SJ 7|03/14/2013 10:18:07 AM",
+        "2014|0878|03/14/2013 12:50:04 PM|SB91|S|Committee Report: Ought to Pass, 3/21/13; SC12|03/14/2013 12:50:04 PM",
+        "2014|0878|03/21/2013 10:43:21 AM|SB91|S|Sen. Bradley moved to Rerefer to Committee, MA, VV;|03/21/2013 10:43:21 AM",
+        "2014|0878|01/22/2014 04:16:06 PM|SB91|S|Committee Report: Ought to Pass with Amendment #2014-0121s, 1/30/14; SC4|01/22/2014 04:16:06 PM",
+        "2014|0878|01/30/2014 11:58:44 AM|SB91|S|Committee Amendment 0121s, AA, VV; SJ 2,|01/30/2014 11:58:44 AM",
+        "2014|0878|01/30/2014 12:14:13 PM|SB91|S|Ought to Pass with Amendment 0121s, MA, VV; Refer to Finance Rule 4-5|01/30/2014 12:14:13 PM",
+        "2014|0878|01/30/2014 12:21:59 PM|SB91|S|The Chair Rescinded Refer to Finance Rule 4-5|01/30/2014 12:21:59 PM",
+        "2014|0878|01/30/2014 12:22:06 PM|SB91|S|Ought to Pass with Amendment 0121s, MA, VV; OT3rg|01/30/2014 12:22:06 PM"],
+    ("HB25", "1997-1998"): [
+        "1997|1125|03/20/1997 02:24:38 PM|HB25|H|MAJ REPORT  OTP/AM  FOR MAR26  (VOTE 21-0)|03/20/1997 02:24:38 PM",
+        "1997|1125|03/21/1997 11:58:56 AM|HB25|H|PROP COMM AM<0811>(NEW TITLE); HC39,P1122-1130|03/21/1997 11:58:56 AM",
+        "1997|1125|03/26/1997 02:57:51 PM|HB25|H|COMM AM, AA VV; PASSED WITH AM AND REF TO FINANCE VV; HJ45,P1373-|03/26/1997 02:57:51 PM",
+        "1997|1125|03/26/1997 03:01:07 PM|HB25|H|-1381|03/26/1997 03:01:07 PM",
+        "1997|1125|03/26/1997 03:47:51 PM|HB25|H|HEARING MAR27 09:00 RMS210-211,LOB    FOR: FINANCE|03/26/1997 03:47:51 PM",
+        "1997|1125|03/26/1997 03:53:17 PM|HB25|H|DIVII SUBCOM WORK SESSION MAR27 02:30 RM209,LOB    FOR: FINANCE|03/26/1997 03:53:17 PM",
+        "1997|1125|04/03/1997 01:22:27 PM|HB25|H|FIN MAJ REPORT  OTP/AM  FOR APR10  (VOTE 22-0)|04/03/1997 01:22:27 PM",
+        "1997|1125|04/03/1997 01:22:59 PM|HB25|H|PROP FIN COMM AM<0996>(NEW TITLE); HC46,P1392-1400|04/03/1997 01:22:59 PM",
+        "1997|1125|04/09/1997 04:42:13 PM|HB25|H|REP CUSHING PROP FL AM<1041>; HC48,P1471|04/09/1997 04:42:13 PM",
+        "1997|1125|04/10/1997 12:23:59 PM|HB25|H|COMM AM, AA VV; PASSED WITH AM VV; HJ50,P1518-1525 + 1565|04/10/1997 12:23:59 PM",
+        "1997|1125|04/10/1997 12:30:00 PM|HB25|S|INTRODUCED AND REF TO CAPITAL BUDGET; SJ12,P242|04/10/1997 12:30:00 PM",
+        "1997|1125|04/24/1997 05:34:33 PM|HB25|S|HEARING APR30 02:45 RM103,ST HOUSE    FOR: CAP BUD|04/24/1997 05:34:33 PM",
+        "1997|1125|04/24/1997 05:35:05 PM|HB25|S|HEARING MAY07 09:00 RM103,ST HOUSE    FOR: CAP BUD|04/24/1997 05:35:05 PM",
+        "1997|1125|04/24/1997 05:40:00 PM|HB25|S|EXEC SESS MAY08 04:00 RM103,ST HOUSE    FOR: CAP BUD|04/24/1997 05:40:00 PM",
+        "1997|1125|05/01/1997 04:35:26 PM|HB25|H|EXEC SESS MAY14  2:30  &  MAY15  1:00  RM103, ST HOUSE|05/01/1997 04:35:26 PM"],
+    ("HB1260", "1993-1994"): [
+        "1994|2021|04/14/1994 12:49:11 PM|HB1260|S|INTRODUCED AND REF TO FIN EXEC; SJ11,P273|04/14/1994 12:49:11 PM",
+        "1994|2021|04/21/1994 01:56:11 PM|HB1260|S|HEARING APR28 01:00 RM210,LOB    FOR: FIN EXEC|04/21/1994 01:56:11 PM"],
+    ("HB618", "2003-2004"): [
+        "2004|0167|01/29/2004 02:57:03 PM|HB618|S|Introduced and Referred to Ways & Means; SJ 3, Pg.55|01/29/2004 02:57:03 PM",
+        "2004|0167|02/12/2004 03:42:19 PM|HB618|S|Hearing; === RECESSED === February 18, 2004, Room 103, SH, 3:30 p.m.; SC7|02/12/2004 03:42:19 PM",
+        "2004|0167|03/03/2004 01:41:50 PM|HB618|S|Hearing; === RECONVENE === March 10, 2004, Room 103, SH, 3:45 p.m.; SC10|03/03/2004 01:41:50 PM",
+        "2004|0167|03/12/2004 08:50:24 AM|HB618|S|Committee Report; Ought to Pass with Amendment{0745},(New Title), [03/17/04]; SC11, Pg.21-23|03/12/2004 08:50:24 AM",
+        "2004|0167|03/17/2004 08:17:45 AM|HB618|S|Committee Amendment{0745},(New Title), AA, VV; SJ 9, Pg.218-220|03/17/2004 08:17:45 AM",
+        "2004|0167|03/17/2004 04:02:33 PM|HB618|S|Sen. Gatsas Floor Amendment{0859},(2nd New Title), AA, VV; SJ 9, Pg.220-221|03/17/2004 04:02:33 PM",
+        "2004|0167|03/17/2004 04:05:56 PM|HB618|S|Ought to Pass as Am{0745},(New Title),{0859},(2nd New Title), MA, VV; SJ 9, Pg.221|03/17/2004 04:05:56 PM",
+        "2004|0167|03/17/2004 04:56:49 PM|HB618|S|Refer To Finance Rule 26; SJ 9, Pg.221|03/17/2004 04:56:49 PM",
+        "2004|0167|04/28/2004 11:14:30 AM|HB618|S|Committee Report; Ought to Pass with Amendment{1419}, [05/06/04]; SC18, Pg.10|04/28/2004 11:14:30 AM"],
+    ("HB777", "1989-1990"): [
+        "1989|1234|03/16/1989 08:27:13 AM|HB777|H|INTRODUCED AND REF TO  APPROPRIATIONS   HJ47, P1260|03/16/1989 08:27:13 AM",
+        "1989|1234|03/17/1989 08:36:46 AM|HB777|H|JOINT HEARING 3/22/89     7:00 REP HALL  FOR: APP & WAYS & MEANS|03/17/1989 08:36:46 AM",
+        "1989|1234|03/17/1989 08:36:56 AM|HB777|H|JOINT HEARING 3/23/89     7:00 REP HALL  FOR: APP & WAYS & MEANS|03/17/1989 08:36:56 AM",
+        "1989|1234|03/17/1989 08:37:06 AM|HB777|H|JOINT HEARING 3/24/89     9:00a.m. REP HALL : APP & WAYS & MEANS|03/17/1989 08:37:06 AM",
+        "1989|1234|04/13/1989 10:54:36 AM|HB777|H|REP KIDDER MOVED SUSP RULES, MA VV; ITL REPORT ADOPTED VV;|04/13/1989 10:54:36 AM",
+        "1989|1234|04/13/1989 01:03:28 PM|HB777|H|HJ70, P2129|04/13/1989 01:03:28 PM"],
+    ("HB297", "1991-1992"): [
+        "1992|0113|01/03/1991 04:40:35 PM|HB297|H|INTRODUCED AND REF TO REG REV;  HJ13,P108|01/03/1991 04:40:35 PM",
+        "1992|0113|01/29/1991 11:32:27 AM|HB297|H|IN SEAT POCKET ON  JAN29  DUE ON  FEB28|01/29/1991 11:32:27 AM",
+        "1992|0113|01/30/1991 01:04:25 PM|HB297|H|HEARING FEB13 10:00 RM308,LOB    FOR: REG REV|01/30/1991 01:04:25 PM",
+        "1992|0113|02/28/1991 03:20:23 PM|HB297|H|MAJ REPORT RE-REF FOR MAR07  (VOTE 16-3)|02/28/1991 03:20:23 PM",
+        "1992|0113|03/07/1991 09:15:52 PM|HB297|H|REP N. FORD SUBST ITL, ML RC(118-218); RE-REFERRED TO REG|03/07/1991 09:15:52 PM",
+        "1992|0113|03/07/1991 09:16:05 PM|HB297|H|REV VV; HJ42,P803-806|03/07/1991 09:16:05 PM",
+        "1992|0113|10/17/1991 12:57:41 PM|HB297|H|RE-REF EXEC SESS OCT31 10:00 RM305,LOB    FOR: REG REV|10/17/1991 12:57:41 PM"],
+    ("HB355", "1989-1990"): [
+        "1990|1117|01/24/1989 09:43:24 AM|HB355|H|INTRODUCED AND REF TO COMMERCE         HJ 17 ,P 208|01/24/1989 09:43:24 AM",
+        "1990|1117|02/09/1989 08:58:37 AM|HB355|H|HEARING  02/14/89        10:00 RM207,LOB FOR: COMMERCE|02/09/1989 08:58:37 AM",
+        "1990|1117|03/08/1989 10:50:00 AM|HB355|H|MAJ REP OTP/AM FOR:3/16/89 VOTE (9-3); PROP COMM AM, HC41, P1031|03/08/1989 10:50:00 AM",
+        "1990|1117|04/25/1989 09:10:04 AM|HB355|H|REMOVED FROM TABLE, REP KURK MA DIV(180-114); REP FRASER|04/25/1989 09:10:04 AM",
+        "1990|1117|04/25/1989 09:25:55 AM|HB355|H|SUBST RE-REFER TO COMMERCE, MA VV; HJ75, P2270|04/25/1989 09:25:55 AM",
+        "1990|1117|10/11/1989 03:21:08 PM|HB355|H|SUBCOMMWRK SESS OCT19 10:00 RM207,LOB FOR:COMMERCE|10/11/1989 03:21:08 PM",
+        "1990|1117|11/07/1989 01:20:16 PM|HB355|H|RE-REF MAJ REPORT OTP FOR JAN04,1990  (VOTE 11-0;CC)|11/07/1989 01:20:16 PM"],
+    ("HB551", "1995-1996"): [
+        "1995|0039|01/05/1995 01:31:07 PM|HB551|H|INTRODUCED AND REF TO JUDICIARY & F L; HJ11,P160|01/05/1995 01:31:07 PM",
+        "1995|0039|01/19/1995 03:04:56 PM|HB551|H|HEARING JAN31 11:00 RM208,LOB    FOR: JUDICIARY|01/19/1995 03:04:56 PM",
+        "1995|0039|02/16/1995 03:42:11 PM|HB551|H|MAJ REPORT OTP FOR MAR02  (VOTE 11-2)|02/16/1995 03:42:11 PM",
+        "1995|0039|03/02/1995 06:51:44 PM|HB551|H|SPEC ORDER TO MAR09 10:00, REPS A TORR & TROMBLY MA VV; HJ31,P786|03/02/1995 06:51:44 PM",
+        "1995|0039|03/09/1995 11:18:55 AM|HB551|H|REPS A TORR & BUCKLEY SUSP RULES FOR REF TO 2ND COMM, MA 2/3VV;|03/09/1995 11:18:55 AM",
+        "1995|0039|03/09/1995 11:20:12 AM|HB551|H|PASSED AND REF TO FINANCE VV; HJ35,P943|03/09/1995 11:20:12 AM",
+        "1995|0039|03/09/1995 01:12:45 PM|HB551|H|FIN HEARING MAR17 01:00 RM100,ST HOUSE|03/09/1995 01:12:45 PM",
+        "1995|0039|03/23/1995 02:52:10 PM|HB551|H|FIN MAJ REPORT OTP/AM FOR MAR30  (VOTE 12-10)|03/23/1995 02:52:10 PM"],
+    ("HR10", "1991-1992"): [
+        "1991|9110|12/05/1990 03:30:43 PM|HR10|H|PETITION READ AND REFERRED TO SUBCOMM ON ELECTIONS, LEG ADMIN;|12/05/1990 03:30:43 PM",
+        "1991|9110|12/05/1990 03:31:05 PM|HR10|H|HJ2,P13|12/05/1990 03:31:05 PM",
+        "1991|9110|03/07/1991 11:57:07 AM|HR10|H|MAJ REPORT DENY PETITION FOR MAR13  (VOTE 12-0)|03/07/1991 11:57:07 AM",
+        "1991|9110|03/13/1991 05:32:49 PM|HR10|H|COMM REPORT ADOPTED VV; HJ51,P1078|03/13/1991 05:32:49 PM"],
 }
 
 # What each history's headings must be, in order, and words its stages must
@@ -1172,7 +1351,8 @@ _SENT_ON_HEADS = {
                                "In Senate committee — Finance"],
                               ["on a voice vote, then sent it on to the Finance committee"], []),
     ("HB517", "2025-2026"): (["In Senate committee — Judiciary", "In Senate committee — Finance"],
-                             [], []),
+                             ["The Senate withdrew that referral and sent the bill to the Finance "
+                              "committee instead."], []),
     ("CACR2", "2017-2018"): (["In House committee — Health, Human Services and Elderly Affairs",
                               "In House committee — Children and Family Law"], [], []),
     ("HB363", "1991-1992"): (["In House committee — Judiciary", "On the House floor",
@@ -1183,7 +1363,8 @@ _SENT_ON_HEADS = {
                               "In House committee — Executive Departments and Administration",
                               "On the House floor",
                               "In House committee — Executive Departments and Administration"],
-                             [], []),
+                             ["then sent it on to the Executive Departments and Administration "
+                              "committee."], ["Administration committee under the chamber's rules"]),
     ("HB256", "1997-1998"): (["In House committee — Executive Departments and Administration",
                               "On the House floor", "In House committee — Finance"],
                              ["on a roll call 248–8, then sent it on to the Finance committee"],
@@ -1223,6 +1404,73 @@ _SENT_ON_HEADS = {
                               "In Senate committee — Finance Executive Committee"], [], []),
     # "Committee of Conference Hearing: 05/29/2008 ..." is the conferees'.
     ("HB1405", "2007-2008"): (["On the House floor", "Committee of conference"], [], []),
+    # A row that names another committee than the one that has the bill: the
+    # record cannot say whose the work is, and from there the chamber is named
+    # alone. The 19th's "CONTINUED HEARING ... FOR: INSUR" was Internal
+    # Affairs' hearing of the 12th, continued.
+    ("HCR25", "1997-1998"): (["In Senate committee — Internal Affairs", "In Senate committee"],
+                             [], ["Insurance"]),
+    # "REF TO FINANCE" before "PASSED WITH AM" on its row: Finance's amendment
+    # adopted, then the bill passed. Not a passage, then a referral.
+    ("SB173", "1995-1996"): (["In Senate committee — Education", "On the Senate floor"], [],
+                             ["sent it on to the Finance committee"]),
+    # A joint committee is no one of its members.
+    ("HB1643", "2007-2008"): (["In House committee — a Joint Committee of Executive Departments and "
+                               "Administration and Finance", "On the House floor",
+                               "In House committee — a Joint Committee of Executive Departments and "
+                               "Administration and Finance", "On the House floor"], [], []),
+    ("HB442", "1993-1994"): (["In House committee", "On the House floor",
+                              "In House committee — Appropriations", "On the House floor",
+                              "In House committee"], [], []),
+    # Re-referred twice on one row: where it says last.
+    ("SB165", "1993-1994"): (["In Senate committee — Executive Departments and Administration",
+                              "On the Senate floor", "In Senate committee — Wildlife and Recreation",
+                              "On the Senate floor"], [], []),
+    # "Rule 24 (Refer to Finance)", "ref Finance", "Refer Finance [Rule 26]".
+    ("HB236", "1999-2000"): (["In Senate committee — Judiciary", "On the Senate floor",
+                              "In Senate committee — Finance", "On the Senate floor"],
+                             ["then sent it on to the Finance committee under the chamber's rules"], []),
+    ("SB262", "2005-2006"): (["In House committee — Criminal Justice and Public Safety",
+                              "On the House floor", "In House committee — Finance", "On the House floor"],
+                             ["The House referred the bill to the Finance committee."], []),
+    ("SB324", "2007-2008"): (["In Senate committee — Health and Human Services", "On the Senate floor",
+                              "In Senate committee — Finance", "On the Senate floor"], [], []),
+    # "The Chair Rescinded Refer to Finance Rule 4-5", seven minutes on.
+    ("SB91", "2013-2014"): (["In Senate committee — Commerce", "On the Senate floor"] * 3, [],
+                            ["sent it on to the Finance committee"]),
+    # The House's Finance is not carried past the crossing to a House row
+    # entered three weeks after it, in the Senate's room.
+    ("HB25", "1997-1998"): (["In House committee", "On the House floor", "In House committee — Finance",
+                             "On the House floor", "In Senate committee — Capital Budget",
+                             "In House committee"], [], []),
+    # Never "Finance Executive Committee committee".
+    ("HB1260", "1993-1994"): (["In Senate committee — Finance Executive Committee"],
+                              ["referred to the Senate Finance Executive Committee."],
+                              ["Committee committee"]),
+    # "Refer To Finance Rule 26" is Finance, not "Finance Rule 26".
+    ("HB618", "2003-2004"): (["In Senate committee — Ways and Means", "On the Senate floor",
+                              "In Senate committee — Finance"],
+                             ["the bill was referred to the Finance committee"], ["Rule 26"]),
+    # "JOINT HEARING ... FOR: APP & WAYS & MEANS" is no one committee's.
+    ("HB777", "1989-1990"): (["In House committee — Appropriations", "On the House floor"], [], []),
+    # "RE-REFERRED TO REG" and, thirteen seconds later, "REV VV".
+    ("HB297", "1991-1992"): (["In House committee — Regulated Revenues"],
+                             ["the bill was referred to the Regulated Revenues committee"],
+                             ["Reg committee"]),
+    # Sent back to the committee that had it: the row's own sentence says so,
+    # and no second sentence tells it as another referral.
+    ("HB355", "1989-1990"): (["In House committee — Commerce, Small Business and Consumer Affairs",
+                              "On the House floor",
+                              "In House committee — Commerce, Small Business and Consumer Affairs"],
+                             ["voted to send it back to committee"], ["referred the bill to the"]),
+    # Sent on to Finance by suspending the rules, not under them.
+    ("HB551", "1995-1996"): (["In House committee — Judiciary and Family Law", "On the House floor",
+                              "In House committee — Finance"],
+                             ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+    # A referral where no committee had the bill moves no heading, and is not
+    # told: told, it was the one stage of a petition's history, and drew it a
+    # rail.
+    ("HR10", "1991-1992"): ([], [], ["referred the bill to the"]),
 }
 
 
@@ -1259,7 +1507,11 @@ def _committee_holds_the_bill(N):
 # (SB 618); Docket_db_1991-1992.txt 6595 (HB 363); Docket_db_1995-1996.txt 9948
 # (HB 357) and 2000 (HB 126); Docket_db_1989-1990.txt 103 (SB 58);
 # Docket_2017-2018.txt 14819 (SB 133), 9325 (HB 294) and 11691 (HB 485);
-# Docket_2015-2016.txt 10184 (HB 1272); Docket_db_2007-2008.txt 231 (HB 829).
+# Docket_2015-2016.txt 10184 (HB 1272); Docket_db_2007-2008.txt 231 (HB 829);
+# Docket_db_1999-2000.txt 70 (HB 236); Docket_db_2005-2006.txt 17779 (SB 262);
+# Docket_db_2007-2008.txt 24027 (SB 324); Docket_db_1993-1994.txt 10004-10007
+# (SB 165, joined as the reader joins them), 10138 (HB 442) and 9566 (HR 1);
+# Docket_db_1989-1990.txt 10350 (HB 190).
 # (type, chamber, term, row, motion, where it sends the bill or None)
 _SENDS_TO = [
     ("other", "S", "2025-2026", "HB517 is vacated from Judiciary and referred to Finance; "
@@ -1276,6 +1528,20 @@ _SENDS_TO = [
      ("referred", "Appropriations")),
     ("floor", "H", "2017-2018", "Rules Suspension to refer to Finance (Reps. Hinch, Shurtleff): MA VV "
      "by necessary two-thirds vote 03/09/2017", "MA", ("referred", "Finance")),
+    # The name in brackets; "ref" and "Refer" with no "to".
+    ("floor", "S", "1999-2000", "Ought to Pass, MA, VV, Rule 24 (Refer to Finance); SJ 18, P 467", "MA",
+     ("referred", "Finance")),
+    ("other", "H", "2005-2006", "ref Finance    HJ 35, pg 1881", "", ("referred", "Finance")),
+    ("floor", "S", "2007-2008", "Ought to Pass with Amendment{0165}, MA, VV; Refer Finance [Rule 26]; "
+     "SJ 4, Pg.91", "MA", ("referred", "Finance")),
+    # Re-referred twice on one row: where it says last.
+    ("floor", "S", "1993-1994", "TAKEN FROM THE TABLE, SEN ROBERGE MA DIV(15-7); RE-REFERRED TO EXEC "
+     "DEPTS+ADMIN, SEN LAMIRANDE MA VV; SEN BOURQUE SUSP RULES TO RE-REF TO WILDLIFE&REC, MA 2/3VV; "
+     "RE-REFERRED TO WILDLIFE & REC, MA VV; SJ7,P132", "MA",
+     ("rereferred", "Wildlife and Recreation")),
+    # Joint committees, which name no one committee.
+    ("floor", "H", "1993-1994", "REFERRED TO (JOINT COMMS) INTERIM STUDY VV; HJ19,P561", "",
+     ("joint", "")),
     # A motion pending, waived, rescinded, declined, lost, or put with no
     # outcome on its row; a vacated referral that sends the bill to no
     # committee; a vacated referral to the table.
@@ -1290,6 +1556,11 @@ _SENDS_TO = [
     ("floor", "H", "2007-2008", "Rep. Almy: Vacate Referral to Ways & Means, MA VV", "MA", None),
     ("floor", "S", "2019-2020", "Vacated from Committee and Laid on Table, MA, VV; 06/16/2020", "MA",
      None),
+    # A joint meeting's notice, and amendments sent to a committee: not the
+    # bill sent anywhere.
+    ("other", "H", "1989-1990", "RE-REF JOINT WORK SESSION WITH LABOR COMM OCT31 10:00 RM206-208", "",
+     None),
+    ("other", "H", "1993-1994", "REMAINING AMS REF TO RULES;", "", None),
 ]
 
 
@@ -1319,6 +1590,19 @@ def _sends_to(N):
                                 None, "2009")
     if (old or {}).get("refer") != "Finance":
         bad.append(f"the 2007 era's floor row reads refer {(old or {}).get('refer')!r}")
+    # "PASSED WITH AM AND REF TO FINANCE/CONSENT CAL RC(248-8);" (HB 256 of
+    # 1998, Docket_db_1997-1998.txt 9693): the House adopted its consent
+    # calendar on that roll call, and the calendar is no part of the name.
+    from datetime import datetime
+    cal = docket_vocab.classify("PASSED WITH AM AND REF TO FINANCE/CONSENT CAL RC(248-8);",
+                                datetime(1998, 1, 7, 15, 18, 19), "1998")
+    if (cal or {}).get("refer") != "Finance":
+        bad.append(f"the 1989 era's consent-calendar row reads refer {(cal or {}).get('refer')!r}")
+    # Words that are no committee's, though committee_names places "COMM" on
+    # the House's commerce committee of 1989-1998.
+    bad += [f"{w!r} is read as a committee" for w in ("COMM", "INTERIM STUDY", "TABLE",
+                                                       "JOINT COMMS", "CONSENT CAL")
+            if N._sent_name(w)]
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_SENDS_TO)} real rows: where each sends the bill, or that it sends it "
                   "nowhere; the floor's readers take \"Finance\" whole")
@@ -5088,30 +5372,68 @@ _WRITTEN_DAY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 
 # THE COMMITTEE THAT HAS THE BILL, ON EVERY HISTORY (3 October 2026). What
 # the data check below reads a history's own words for: a committee heading
-# and the four sentences that name a committee.
-_HEADED = re.compile(r"^In (House|Senate) committee — (?P<c>.+)$")
+# and the five sentences that name a committee.
+_HEADED = re.compile(r"^In (House|Senate) committee(?: — (?P<c>.+))?$")
 _NAMED_IN = (
     (re.compile(r"referred to the (?P<ch>House|Senate) (?P<c>.+?)"
                 r"(?: committee\b|(?<=Committee)\.)"), True),
     (re.compile(r"sent the bill to the (?P<c>.+?) committee instead"), False),
     (re.compile(r"the bill was referred to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
-    (re.compile(r"sent it on to the (?P<c>.+?) committee under the chamber's rules"), False),
+    (re.compile(r"referred the bill to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
+    (re.compile(r"sent it on to the (?P<c>.+?) committee(?: under the chamber's rules)?[.,]"), False),
 )
 _COMMITTEE_WORK = {"hearing", "exec", "worksession", "report", "retained", "interim_report"}
 # A piece of a word, or of a clause, that a reader once printed as a name:
 # "ed to Science" (refered), "Finance/Consent Cal", "Finance Committee
 # committee".
 _NOT_A_NAME = re.compile(r"^(?:ed|ral|r+ing|red)\s+to\s|/\s*cons|\bcommittee$", re.I)
+# A REFERRAL TO A FINANCE COMMITTEE, FOUND WITHOUT narrative.sends_to: the
+# plainest words the clerks used, so that a wording sends_to does not read is
+# still found here. Read off the row's last naming of one, and not where its
+# clause says the referral was pending, waived, rescinded, declined, lost,
+# only moved, made by suspending the rules, or yet to come.
+_MONEY_REFERRAL = re.compile(
+    r"\b(?:RE-?)?REF(?:ER(?:RED)?|ERRED|ERED|\.)?\s+(?:TO\s+)?(?:THE\s+COMMITTEE\s+ON\s+)?"
+    r"(?P<c>FIN(?:ANCE)?(?:\s+DIV\w*)?|APPROP\w*|WAYS\s*(?:&|AND)\s*MEANS|CAP(?:ITAL)?\s+BUDGET)\b",
+    re.I)
+_REFERRAL_NOT_MADE = re.compile(
+    r"pending|waive|rescind|declin|\bfail|\blost\b|\b(?:ML|MF|AL|AF)\b|not\s+voted|to\s+be\s+introduced"
+    r"|\bsusp\w*\.?\s+(?:of\s+)?(?:the\s+)?(?:\w+\s+)?rules?\b|\bmoved?\b(?!.*\b(?:MA|AA|adopted)\b)",
+    re.I)
+_MONEY_HEADING = re.compile(r"^(?:Finance|Fin|Appropriations|Ways and Means|Capital Budget)\b")
+# The 1993-1994 Senate's "FIN DIV", which names no committee the record lets
+# a heading give, and the clerk's bare "FIN".
+_MONEY_UNNAMED = re.compile(r"^FIN(?:ANCE)?\s+DIV|^FIN$", re.I)
+# What each count must at least reach. Silence is not success: a reader that
+# finds nothing finds nothing wrong.
+_REFERRALS_AT_LEAST = 4000
+_MONEY_REFERRALS_AT_LEAST = 3000
 
 
 def _plain_words(s):
     return " ".join(re.sub(r"[^a-z0-9]+", " ", (s or "").lower().replace("&", " and ")).split())
 
 
+def _cut_by_the_database(CN, name, ch, term, evs):
+    """Is `name` the start of a committee's name that a row ends on and the
+    next row of that chamber finishes -- "RE-REFERRED TO REG", then "REV VV"?"""
+    w = _plain_words(name)
+    for i, e in enumerate(evs):
+        r = _plain_words(e.get("raw"))
+        if not (r == w or r.endswith(" " + w)):
+            continue
+        nxt = next((x for x in evs[i + 1:] if x.get("body") == e.get("body")), None)
+        words = re.findall(r"[A-Za-z&]+", ((nxt or {}).get("raw") or "").split(";")[0])[:3]
+        if any(CN.known(CN.official(f"{name} {' '.join(words[:k])}", ch, term), ch, term)
+               for k in range(1, len(words) + 1)):
+            return True
+    return False
+
+
 @check("data", "every committee stage is headed with the committee that has the bill, and every "
                "committee is named as it was then", needs=("narrative", "committee_names"))
 def _committee_stages_named(N, CN):
-    """Two things, of every history in narratives.json, read from its own
+    """Three things, of every history in narratives.json, read from its own
     rows.
 
     WHERE A ROW SENDS THE BILL ON, A STAGE IS HEADED WITH THAT COMMITTEE.
@@ -5123,24 +5445,41 @@ def _committee_stages_named(N, CN):
     286 of 2025 under "In Senate committee -- Executive Departments and
     Administration", and two thousand like it.
 
+    AND THE SAME OF A REFERRAL TO A FINANCE COMMITTEE FOUND WITHOUT IT. The
+    first asks sends_to which rows send a bill on, so it cannot see a row
+    sends_to does not read: "Rule 24 (Refer to Finance)" (22 histories of
+    1999-2000), "ref Finance" (eight of 2006), "Refer Finance [Rule 26]" (SB
+    324 of 2008) were each Finance's report under the first committee, and it
+    passed. A plain reading of the clerks' words finds those, and each must
+    have a heading of that chamber naming a finance committee -- or, for the
+    1993 Senate's "FIN DIV", naming none. Both counts have a floor, so a
+    reader that finds nothing is not a reader that found nothing wrong.
+
     A COMMITTEE IS NAMED AS IT WAS. Every committee a heading or a sentence
     names is one committee_names places in that chamber and term, or the
     clerk's own words, whole, on one of the bill's own rows -- never a piece
     of a longer word ("the Fi committee", 966 histories), of a verb ("ed to
-    Science"), or of a calendar ("Finance/Consent Cal"). Before, 1,491 names
-    were neither. What is kept as the clerk wrote it is counted and said: the
-    1993 Senate's "Fin", whose divisions the person has yet to name, is most
-    of it."""
+    Science"), of a calendar ("Finance/Consent Cal"), or of a name the
+    database cut at a row's end and the next row finishes ("RE-REFERRED TO
+    REG" and "REV VV", HB 297 of 1992). Before, 1,491 names were neither. What
+    is kept as the clerk wrote it is counted and said: the 1993 Senate's
+    "Fin", whose divisions the person has yet to name, is most of it."""
     fn = Path("narratives.json")
     if not fn.exists():
         return "skip", "no narratives.json here"
     narr = json.loads(fn.read_text(encoding="utf-8"))
-    names = kept = referrals = 0
-    wrong, unheaded = [], []
+    names = kept = referrals = money = 0
+    wrong, unheaded, unheaded_money = [], [], []
 
     def sends(e, term):
         return N.sends_to({"_type": e.get("type"), "body": e.get("body"),
                            "_raw": e.get("raw") or "", "motion": e.get("motion")}, term)
+
+    def worked_on(e, later, moved):
+        upto = next((j for j, x in enumerate(later)
+                     if x.get("type") in ("introduced", "vacated", "rereferred") or moved(x)),
+                    len(later))
+        return any(x.get("type") in _COMMITTEE_WORK for x in later[:upto])
 
     for term, byb in narr.items():
         for bill, n in byb.items():
@@ -5152,8 +5491,9 @@ def _committee_stages_named(N, CN):
                 found = []
                 if m:
                     ch = "H" if m.group(1) == "House" else "S"
-                    heads[ch].add(m.group("c"))
-                    found.append((m.group("c"), ch))
+                    heads[ch].add(m.group("c") or "")
+                    if m.group("c"):
+                        found.append((m.group("c"), ch))
                 for rx, chamber_said in _NAMED_IN:
                     for x in rx.finditer(s.get("text") or ""):
                         found.append((x.group("c"), ("H" if x.group("ch") == "House" else "S")
@@ -5163,36 +5503,60 @@ def _committee_stages_named(N, CN):
                     if CN.known(c, ch, term) or re.match(r"^(?:a\s+)?Joint\b", c):
                         continue
                     w = _plain_words(c)
-                    if _NOT_A_NAME.search(c) or not w or not re.search(
-                            r"(?:^|[ |])" + re.escape(w) + r"(?=$|[ |])", rows):
+                    if (_NOT_A_NAME.search(c) or not w
+                            or not re.search(r"(?:^|[ |])" + re.escape(w) + r"(?=$|[ |])", rows)
+                            or _cut_by_the_database(CN, c, ch, term, evs)):
                         wrong.append(f"{bill} of {term}: {c!r}")
                     else:
                         kept += 1
             for i, e in enumerate(evs):
-                got = sends(e, term)
-                if not got or not got[2]:
-                    continue
                 later = [x for x in evs[i + 1:] if x.get("body") == e.get("body")]
-                upto = next((j for j, x in enumerate(later)
-                             if x.get("type") in ("introduced", "vacated", "rereferred")
-                             or sends(x, term)), len(later))
-                if not any(x.get("type") in _COMMITTEE_WORK for x in later[:upto]):
+                got = sends(e, term)
+                if got and got[2] and worked_on(e, later, lambda x: sends(x, term)):
+                    referrals += 1
+                    if got[1] not in heads.get(e.get("body"), ()):
+                        unheaded.append(f"{bill} of {term} ({e.get('body')}, {e.get('date')}): "
+                                        f"to {got[1]}, headed {sorted(heads.get(e.get('body'), ()))}")
+                raw = e.get("raw") or ""
+                ms = list(_MONEY_REFERRAL.finditer(raw))
+                if (e.get("type") not in ("floor", "amendment", "other")
+                        or e.get("body") not in heads or not ms):
                     continue
-                referrals += 1
-                if got[1] not in heads.get(e.get("body"), ()):
-                    unheaded.append(f"{bill} of {term} ({e.get('body')}, {e.get('date')}): "
-                                    f"to {got[1]}, headed {sorted(heads.get(e.get('body'), ()))}")
+                last = ms[-1]
+                a = raw.rfind(";", 0, last.start()) + 1
+                z = raw.find(";", last.end())
+                if _REFERRAL_NOT_MADE.search(raw[a:z if z >= 0 else len(raw)]):
+                    continue
+                if any(re.search(r"rescind|waive", x.get("raw") or "", re.I)
+                       and x.get("date") == e.get("date") for x in later):
+                    continue
+                if not worked_on(e, later, lambda x: _MONEY_REFERRAL.search(x.get("raw") or "")):
+                    continue
+                money += 1
+                mine = heads[e.get("body")]
+                if not (any(_MONEY_HEADING.match(h) for h in mine)
+                        or ("" in mine and _MONEY_UNNAMED.match(last.group("c")))):
+                    unheaded_money.append(f"{bill} of {term} ({e.get('body')}, {e.get('date')}): "
+                                          f"{raw[:70]!r}, headed {sorted(mine)}")
     problems = []
     if unheaded:
         problems.append(f"{len(unheaded)} referrals the committee then worked on have no stage "
                         "headed with that committee: " + "; ".join(unheaded[:6]))
+    if unheaded_money:
+        problems.append(f"{len(unheaded_money)} referrals to a finance committee, found without "
+                        "sends_to, have no stage of that chamber headed with one: "
+                        + "; ".join(unheaded_money[:6]))
+    if referrals < _REFERRALS_AT_LEAST or money < _MONEY_REFERRALS_AT_LEAST:
+        problems.append(f"{referrals:,} referrals read by sends_to and {money:,} to a finance "
+                        f"committee found without it, against at least {_REFERRALS_AT_LEAST:,} "
+                        f"and {_MONEY_REFERRALS_AT_LEAST:,}: a reader has stopped finding them")
     if wrong:
         problems.append(f"{len(wrong)} committee names are neither a committee of that chamber "
                         "and term nor the clerk's own words: " + "; ".join(wrong[:10]))
     assert not problems, "\n".join(problems)
-    return "ok", (f"{referrals:,} referrals each have their committee's heading; {names:,} "
-                  f"committee names, {kept:,} kept as the clerk wrote them where nothing "
-                  "places them")
+    return "ok", (f"{referrals:,} referrals each have their committee's heading, and {money:,} to a "
+                  f"finance committee found without sends_to; {names:,} committee names, {kept:,} "
+                  "kept as the clerk wrote them where nothing places them")
 
 
 @check("data", "no sitting lists a bill on its consent calendar on a day its chamber's docket "
