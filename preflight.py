@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.333
+# GRANITE_VERSION: 2026-09-04.334
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13016,8 +13016,11 @@ def _plan(build_all):
         "narratives are built before the roster they now need"
     assert at("adopt boundaries") < at("site data"), \
         "markers are applied after the site is built, so nothing would use them"
-    assert any("testimony" in n for n in steps), "no testimony step"
     scripts = [s.args[0] for s in build_all.plan(A())]
+    # The sign-in counts are the database's alone since 5 October 2026: the
+    # scraped page's step and its flat testimony.json are retired.
+    assert "fetch_testimony_db.py" in scripts and "fetch_testimony.py" not in scripts, \
+        "the sign-in counts' step is not the database's alone"
     missing = [x for x in scripts if not Path(x).exists()]
     assert not missing, "steps reference scripts that are not here: " + \
                         ", ".join(missing)
@@ -38189,19 +38192,30 @@ def _nightly_reports_loud(NI):
 # running it too is the stand-down. Everything here is driven in a throwaway
 # folder with every step faked: no network, no fetch, no deploy.
 
-def _runner_site(n_bills):
-    """A built site as small as the census can count."""
+def _runner_site(n_bills, legislators=40, feeds=5, terms=None):
+    """A built site as small as the census can count. `terms` is {term: bills}
+    for the census by term (site/idx/<term>.json)."""
     site = Path("site")
     site.mkdir(exist_ok=True)
     (site / "index.json").write_text(json.dumps([{"b": i} for i in range(n_bills)]),
                                      encoding="utf-8")
-    (site / "legislators.json").write_text(json.dumps([{"l": i} for i in range(40)]),
+    (site / "legislators.json").write_text(json.dumps([{"l": i} for i in range(legislators)]),
                                            encoding="utf-8")
     (site / "meta.json").write_text(json.dumps({"bills": n_bills}), encoding="utf-8")
-    for d, ext, n in (("bill", "html", 10), ("feed", "xml", 5)):
+    for d, ext, n in (("bill", "html", 10), ("feed", "xml", feeds)):
         (site / d).mkdir(exist_ok=True)
+        for old in (site / d).glob(f"*.{ext}"):
+            old.unlink()
         for i in range(n):
             (site / d / f"{i}.{ext}").write_text("x", encoding="utf-8")
+    if terms is not None:
+        idx = site / "idx"
+        idx.mkdir(exist_ok=True)
+        for old in idx.glob("*.json"):
+            old.unlink()
+        for t, n in terms.items():
+            (idx / f"{t}.json").write_text(json.dumps([{"id": i} for i in range(n)]),
+                                           encoding="utf-8")
 
 
 def _runner_fake_views(args, cwd, rows=None):
@@ -39005,6 +39019,50 @@ def _finished_term_rule(BA, SHR, NA, BPR, P, FTD, NAR, BBV, EC, BD):
                   "build_bill_versions, extract_chapters and build_proceedings keep it")
 
 
+@check("build", "no fact of 2025-2026 reaches a 2027 bill by its number: the sign-ins are the "
+       "database's by term, the Legislation fill keeps to the bill's own term, and titles are "
+       "read by term", needs=("build_data", "build_site_v2", "build_all", "testimony_from_db"))
+def _no_leak_by_number(BD, BSV, BA, TF):
+    """The three leaks of 2025-2026 onto 2027 bills the design found
+    (private/NEW_TERM_DESIGN.md, 5 October 2026), each a file or a join keyed
+    on the bill number alone: testimony.json, 565 bills read by number for
+    the current term (retired, at the person's word, once every count the
+    site showed was shown to be testimony_db.json's); the db/Legislation.psv
+    fill, which joined on number and LSR and ignored the session year (0 to 5
+    bills share both between consecutive terms); and bill_titles.json, read
+    by number when it is there. And the sign-ins stay retrievable: a finished
+    term's are rebuilt from its freeze."""
+    src = Path(BSV.__file__).read_text(encoding="utf-8")
+    assert not re.search(r'load\(\s*"testimony\.json"', src), "build_site_v2 reads testimony.json"
+    kit = Path("cloud_kit.json").read_text(encoding="utf-8")
+    assert '"testimony.json"' not in kit, "the kit still carries testimony.json"
+    bd = Path(BD.__file__).read_text(encoding="utf-8")
+    assert "P.term_of(f[2].strip()) != P.term_of(str(rec.get(\"lsr_year\") or \"\"))" in bd, \
+        "the Legislation fill no longer keeps to the bill's own term"
+    assert "if P.term_keyed(_titles):" in bd, "bill_titles.json is read by number again"
+    assert hasattr(TF, "frozen_terms") and "only" in Path(TF.__file__).read_text(encoding="utf-8"), \
+        "testimony_from_db no longer rebuilds a finished term from its freeze"
+    return "ok", ("testimony.json read by nothing and carried by no kit; the Legislation fill by "
+                  "term; bill_titles.json by term or not at all; a finished term's sign-ins from "
+                  "its freeze")
+
+
+@check("data", "bill_titles.json, where it is here, is keyed on the term",
+       needs=("proceedings",))
+def _bill_titles_by_term(P):
+    """build_data reads bill_titles.json only by term since 5 October 2026,
+    and passes over a flat one; this says so out loud, because a flat file
+    put back by fetch_bill_titles.py would otherwise be quietly ignored."""
+    p = Path("bill_titles.json")
+    if not p.exists():
+        return "skip", "no bill_titles.json here (none since the term-keyed files)"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    assert P.term_keyed(data), ("bill_titles.json is keyed on the bill number alone: a title of "
+                                "one term would reach a bill of another. It must be "
+                                "{term: {bill: title}}")
+    return "ok", f"keyed on {len(data)} term(s)"
+
+
 @check("data", "every term frozen here is whole, and the session's own, if frozen, is the files "
        "installed or says it is stale", needs=("freeze_term", "proceedings"))
 def _freeze_on_disk(FT, P):
@@ -39122,7 +39180,7 @@ def _nightly_new_term(NI, SG, BA):
                 {"installed": ok, "allow_shrink": allow, "shrunk": small}), encoding="utf-8")
             rc = 0 if ok else 1
         elif name == "build_all.py":
-            _runner_site(how["bills"])
+            _runner_site(how["bills"], how.get("legs", 40), how.get("feeds", 5), how.get("terms"))
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd, how["rows"])
         elif name == "fetch_lsrs.py":
@@ -39317,29 +39375,53 @@ def _nightly_new_term(NI, SG, BA):
             assert all(x in sentence for x in (NI.NEW_TERM_BOX, f'"{NI.FETCH_BOX}" ticked',
                                                f"{NI.DRY_BOX} unticked")), sentence
 
-        # THE NEW TERM RUN: the smaller files in, half the bills, a study view
-        # at a tenth of its rows -- all let through, the prune allowed.
-        # Publishable, behind the approval -- and NO baseline written: the
-        # counts ride in the verdict until the build is published.
-        how["bills"], how["rows"] = 50, {"StatStudDetails": 3}
+        # A NEW TERM RUN LETS ONLY THE FEEDS AND THE SITTING LEGISLATORS FALL
+        # (5 October 2026): half the bills gone, or a finished term shrunk, is
+        # stopped on that run too -- a turn that lost the old term fell 6%
+        # and went to the approver as counts.
+        how["bills"] = 50
+        code, _ = night("--runner", "--new-term", run_id="203b")
+        v = verdict()
+        assert code == 1 and not v["publishable"] and v["gates"] == \
+            "blocked: bills fell from 100 to 50", ("a New term run let the bills fall", v.get("gates"))
+        how["bills"], how["terms"] = 100, {"2023-2024": 40, "2025-2026": 30, "2027-2028": 30}
+        code, _ = night("--runner", "--no-fetch", run_id="203c")
+        assert code == 0 and baseline()["census"]["terms"]["2025-2026"] == 30, baseline()["census"]
+        how["terms"] = {"2023-2024": 40, "2025-2026": 3, "2027-2028": 57}
+        code, _ = night("--runner", "--new-term", run_id="203d")
+        v = verdict()
+        assert code == 1 and not v["publishable"] and "2025-2026 fell from 30 to 3" in v["gates"], \
+            ("a finished term that lost its bills went through a New term run", v.get("gates"))
+        code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="203d",
+                          github=True)
+        assert "a finished term has fewer bills" in page_note(out), page_note(out)
+        how["terms"] = {"2023-2024": 40, "2025-2026": 30, "2027-2028": 57}
+
+        # THE NEW TERM RUN: the smaller files in, the feeds and the sitting
+        # members fewer, a study view at a tenth of its rows -- all let
+        # through, the prune allowed. Publishable, behind the approval -- and
+        # NO baseline written: the counts ride in the verdict until the build
+        # is published.
+        how["feeds"], how["legs"], how["rows"] = 2, 30, {"StatStudDetails": 3}
         code, _ = night("--runner", "--new-term", run_id="204")
         v = verdict()
         assert code == 0 and v["clean"] and v["publishable"], (code, v.get("not_clean"))
-        assert of("snapshot_gencourt.py") and all("--allow-shrink" in c
+        assert of("snapshot_gencourt.py") and all("--allow-shrink" in c and "--allow-turn" in c
                                                   for c in of("snapshot_gencourt.py")), calls
         assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune"]], \
             of("build_all.py")
+        let = "legislators fell from 40 to 30; feeds fell from 5 to 2"
         assert v["fetch"] == "installed" and v["asked"]["new_term"] is True and \
             v["new_term"]["files"].startswith("accepted 1 much smaller") and \
             "Docket.txt 900 bytes against 90,000 (-99%)" in v["new_term"]["files"] and \
-            v["new_term"]["gates"] == "let through: bills fell from 100 to 50" and \
+            v["new_term"]["gates"] == "let through: " + let and \
             "StatStudDetails installed, 3 rows (was 30)" in v["new_term"]["study views"] and \
             v["new_term"]["kept"].startswith("nothing yet"), v.get("new_term")
-        assert v["gates"] == "let through for a new term: bills fell from 100 to 50", v["gates"]
+        assert v["gates"] == "let through for a new term: " + let, v["gates"]
         assert v["study_meetings"]["StatStudDetails"].startswith("installed, 3 rows"), \
             v["study_meetings"]
-        assert baseline()["census"]["bills"] == 100 and "new_term" not in baseline() and \
-            v["census"]["bills"] == 50, (
+        assert baseline()["census"]["feeds"] == 5 and "new_term" not in baseline() and \
+            v["census"]["feeds"] == 2, (
                 "a New term run moved the baseline the night it ran, before its build was "
                 "published: the next scheduled night would pass its gates against it")
 
@@ -39348,15 +39430,15 @@ def _nightly_new_term(NI, SG, BA):
         NI.current_branch = lambda: "main"
         NI.upload_and_check = lambda a, site, target, base: False
         code, _ = night("--runner", "--deploy-to", "production", run_id="204")
-        assert code == 1 and baseline()["census"]["bills"] == 100, \
+        assert code == 1 and baseline()["census"]["feeds"] == 5, \
             "a New term deploy that did not land moved the baseline"
         NI.upload_and_check = lambda a, site, target, base: True
         code, _ = night("--runner", "--deploy-to", "preview", run_id="204")
-        assert code == 0 and baseline()["census"]["bills"] == 100, \
+        assert code == 0 and baseline()["census"]["feeds"] == 5, \
             "a New term run's PREVIEW moved the baseline"
         code, _ = night("--runner", "--deploy-to", "production", run_id="204")
         b = baseline()
-        assert code == 0 and b["census"]["bills"] == 50 and b.get("new_term") is True and \
+        assert code == 0 and b["census"]["feeds"] == 2 and b.get("new_term") is True and \
             b["run_id"] == "204" and b["fingerprint"] == v["fingerprint"] and b.get("published"), (
                 "a published New term run's counts did not become the baseline", code, b)
 
@@ -39371,8 +39453,8 @@ def _nightly_new_term(NI, SG, BA):
         how["smaller"], how["bills"] = False, 25
         code, _ = night("--runner", "--no-fetch", run_id="206")
         v = verdict()
-        assert code == 1 and v["gates"] == "blocked: bills fell from 50 to 25" and \
-            "new_term" not in v and baseline()["census"]["bills"] == 50, \
+        assert code == 1 and v["gates"] == "blocked: bills fell from 100 to 25" and \
+            "new_term" not in v and baseline()["census"]["bills"] == 100, \
             "the New term allowance was passed to a later run, at the census gates"
         assert of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], \
             "the New term allowance was passed to a later run, at the feed prune"
@@ -39382,7 +39464,7 @@ def _nightly_new_term(NI, SG, BA):
         assert why.startswith("The site was built, but it counts far less") and \
             NEW_TERM_SENTENCE in why and NI.NEW_TERM_HOW in why, (
                 "a night the census gates stopped does not say it may be a new term: " + why)
-        how["bills"], how["rows"] = 50, {"StatStudDetails": 1}
+        how["bills"], how["rows"] = 100, {"StatStudDetails": 1}
         code, _ = night("--runner", run_id="207")
         v = verdict()
         assert code == 1 and v["study_meetings"]["StatStudDetails"].startswith(
@@ -39410,7 +39492,7 @@ def _nightly_new_term(NI, SG, BA):
         code, _ = night("--runner", "--new-term", run_id="208")
         v = verdict()
         assert code == 1 and not v["publishable"] and "ceiling" in v["gates"] and \
-            baseline()["census"]["bills"] == 50, v.get("gates")
+            baseline()["census"]["feeds"] == 2, v.get("gates")
     finally:
         os.chdir(here)
         (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
@@ -39761,9 +39843,11 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
                             for n, now, was in verdict["shrunk"]]}), encoding="utf-8")
             rc = 0 if ok else 1
         elif name == "build_all.py":
-            # A bill a docket line, and one output the build carries forward.
+            # A feed for every ten docket lines, and one output the build
+            # carries forward. Feeds, and not bills, since 5 October 2026: a
+            # New term run lets the feeds fall and not the bills (NEW_TERM_MAY_FALL).
             n = Path("Docket.txt").read_bytes().count(b"\n")
-            _runner_site(n)
+            _runner_site(100, feeds=max(1, n // 10))
             Path("narratives.json").write_text(json.dumps({"bills": n}), encoding="utf-8")
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
@@ -39831,7 +39915,7 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         return types.SimpleNamespace(
             code=code, v=json.loads(NI.VERDICT.read_text(encoding="utf-8")), page=page,
             took=took, calls=asked,
-            census=json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"]["bills"]
+            census=json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"]["feeds"]
             if NI.CENSUS.exists() else None)
 
     def publish(name, run_id, lands=True):
@@ -39857,7 +39941,7 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
                 {r: e["sha256"] for r, e in man["files"].items()
                  if not r.startswith("nh-archive/")},
                 json.loads((bucket / "state" / "census.json").read_text(
-                    encoding="utf-8"))["census"]["bills"])
+                    encoding="utf-8"))["census"]["feeds"])
 
     def page_note(out):
         notes = [ln for ln in out.splitlines() if ln.startswith("::error title=Why the night failed::")]
@@ -39888,9 +39972,9 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         assert code == 0, out[-300:]
         gc["docket"] = OLD
         first = the_night("first", "300", "--dry-run")
-        assert first.code == 0 and first.v["fetch"] == "installed" and first.census == 100, first.v
+        assert first.code == 0 and first.v["fetch"] == "installed" and first.census == 10, first.v
         before = later_nights_get()
-        assert before[0] == OLD and before[3] == 100, before[3]
+        assert before[0] == OLD and before[3] == 10, before[3]
 
         # THE TERM TURNS OVER: the General Court serves a docket half the size.
         gc["docket"] = NEW
@@ -39913,7 +39997,7 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         waiting = the_night("waiting", "302", "--new-term")
         assert waiting.code == 0 and waiting.took == OLD and waiting.v["publishable"] and \
             waiting.v["new_term"]["files"].startswith("accepted 1 much smaller") and \
-            waiting.v["census"]["bills"] == 50 and waiting.census == 100, waiting.v
+            waiting.v["census"]["feeds"] == 5 and waiting.census == 10, waiting.v
         assert later_nights_get() == before, (
             "a New term run changed what the next night takes down before its build was "
             "published: the kit's files, its manifest or the census")
@@ -39955,11 +40039,11 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         assert publish("published", "304") == 0
         docket, carried, table, bills = later_nights_get()
         census = json.loads((bucket / "state" / "census.json").read_text(encoding="utf-8"))
-        assert docket == NEW and json.loads(carried) == {"bills": 50} and bills == 50 and \
+        assert docket == NEW and json.loads(carried) == {"bills": 50} and bills == 5 and \
             table["Docket.txt"] == hashlib.sha256(NEW).hexdigest() and \
             census.get("new_term") is True and census["run_id"] == "304", (
                 "a published New term run's files and counts did not reach the kit and the "
-                f"census: {bills} bills, run {census.get('run_id')}")
+                f"census: {bills} feeds, run {census.get('run_id')}")
         assert any(f.read_bytes() == OLD for f in bucket.glob("replaced/*/kit/Docket.txt*")), \
             "kit-release replaced the kit's docket without keeping the old one"
         code, out = cloud("kit-release", "--run", "304")

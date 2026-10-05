@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -53,6 +53,9 @@ THE GATES, before any deploy
     bill_pages     5% fewer static pages
     feeds          5% fewer feed files -- without this, a failed build_feeds
                    unpublishes every feed and no other count moves
+    terms          1% fewer bills in any term but the newest, by its own list
+                   (site/idx/<term>.json), on every run, the New term run
+                   included (5 October 2026, terms_fell)
 
 WHAT IT WRITES FOR THE MORNING
 
@@ -144,8 +147,11 @@ scheduled night never carries it. For that one run:
   the feeds           build_all.py --allow-prune, for build_feeds.py. On
                       GitHub's machine site/ starts empty and nothing is
                       stale, so there the census is what sees feeds fall
-  the census gates   a fall is reported and does not stop the night. The
-                      file ceiling still stops it
+  the census gates   a fall of the feeds or of the sitting legislators is
+                      reported and does not stop the night (NEW_TERM_MAY_FALL,
+                      since 5 October 2026: until then any fall). Any other
+                      gate's fall, a finished term that lost bills and the
+                      file ceiling still stop it
   the weekly          the committee rosters, the committee list and the
                       study committees' views taken however much smaller,
                       never empty; the members who have left are a merge and
@@ -693,7 +699,53 @@ def census(site):
                           + sum(1 for _ in (site / "bills").glob("*.json"))),
             "bill_pages": sum(1 for _ in (site / "bill").rglob("*.html")),
             "feeds": sum(1 for _ in (site / "feed").rglob("*.xml")),
-            "files": sum(1 for p in site.rglob("*") if p.is_file())}
+            "files": sum(1 for p in site.rglob("*") if p.is_file()),
+            "terms": term_counts(site)}
+
+
+# THE CENSUS BY TERM (5 October 2026). The bills gate counts the whole index,
+# and a turn that lost 2025-2026 and gained 2027's first batch fell 6% --
+# which a New term run let through as a fall it expects. So every term is
+# counted from its own list, site/idx/<term>.json, and on EVERY run, the New
+# term run included, a term other than the newest that has lost more than
+# TERM_FALL_MOST of its bills stops the night. A little, not nothing: a
+# correction that merges a duplicate or withholds a record takes one or two
+# away. A baseline with no counts by term is no baseline for this gate.
+TERM_FALL_MOST = 0.01
+# What a New term run may let fall, of the gates above: the feeds, because the
+# last term's moving bills stop being current (215 of 703 on 3 October 2026);
+# and the sitting legislators, because Organization Day seats a new House and
+# a seat left empty on the day is no failure. Nothing else.
+NEW_TERM_MAY_FALL = ("feeds", "legislators")
+
+
+def term_counts(site):
+    """{term: bills} from each term's list, site/idx/<term>.json."""
+    out = {}
+    for p in sorted((site / "idx").glob("*.json")) if (site / "idx").is_dir() else []:
+        if re.fullmatch(r"\d{4}-\d{4}", p.stem):
+            try:
+                out[p.stem] = len(json.loads(p.read_text(encoding="utf-8")))
+            except Exception:
+                out[p.stem] = 0
+    return out
+
+
+def terms_fell(before, after):
+    """["2025-2026 fell from 2,243 to 19", ...]: each term but the newest the
+    build holds that lost more than TERM_FALL_MOST of its bills, or all."""
+    was, now = before.get("terms"), after.get("terms")
+    if not isinstance(was, dict) or not was or not isinstance(now, dict):
+        return []
+    newest = max(now) if now else ""
+    out = []
+    for t, n in sorted(was.items()):
+        if t == newest or not isinstance(n, int) or not n:
+            continue
+        m = now.get(t, 0)
+        if m < n * (1 - TERM_FALL_MOST):
+            out.append(f"{t} fell from {n:,} to {m:,}")
+    return out
 
 
 FINGERPRINTED = ("index.json", "meta.json", "home.json", "legislators.json")
@@ -720,21 +772,37 @@ def tree_clean():
     return (r.returncode == 0 and not dirty), ("; ".join(dirty[:6]) or f"git exit {r.returncode}")
 
 
-def gated(before, after, force):
-    """(blocked, lines) for the census gates and the file ceiling."""
+def gated(before, after, force, new_term=False):
+    """(stop, blocked, lines) for the census gates, the terms and the file
+    ceiling. `force` (the laptop's --force) lets every gate's fall through
+    but the ceiling's; `new_term` only NEW_TERM_MAY_FALL's."""
     lines = [f"  {'':<14}{'before':>10}{'after':>10}   change"]
-    blocked = []
+    blocked, held = [], []
     for key, tol in GATES:
         b, n = before[key], after[key]
         if b and n < b * (1 - tol):
             blocked.append(f"{key} fell from {b:,} to {n:,}")
+            if new_term and key not in NEW_TERM_MAY_FALL:
+                held.append(blocked[-1])
         pct = f"{(n - b) / b * 100:+.1f}%" if b else "n/a"
         lines.append(f"  {key:<14}{b:>10,}{n:>10,}   {pct}")
+    fell = terms_fell(before, after)
+    blocked += fell
+    if not isinstance(before.get("terms"), dict) or not before.get("terms"):
+        lines.append(f"  {'terms':<14}{'-':>10}{len(after.get('terms') or {}):>10}   "
+                     "no counts by term to compare with")
+    else:
+        lines.append(f"  {'terms':<14}{len(before['terms']):>10}{len(after.get('terms') or {}):>10}   "
+                     + ("; ".join(fell) if fell else "no term but the newest fell"))
     ceiling = after["files"] >= FILE_CEILING
     lines.append(f"  {'files':<14}{before['files']:>10,}{after['files']:>10,}   "
                  f"ceiling {FILE_CEILING:,}")
     hard = [f"{after['files']:,} files is past the {FILE_CEILING:,} ceiling"] if ceiling else []
-    return (hard + ([] if force else blocked)), blocked, lines
+    if force:
+        return hard, blocked, lines
+    if new_term:
+        return hard + held + fell, blocked, lines
+    return hard + blocked, blocked, lines
 
 
 def main():
@@ -1069,7 +1137,7 @@ def main():
                 if after["files"] >= FILE_CEILING:
                     stop = [f"{after['files']:,} files is past the {FILE_CEILING:,} ceiling"]
             else:
-                stop, blocked, lines = gated(before, after, a.force or a.new_term)
+                stop, blocked, lines = gated(before, after, a.force, a.new_term)
             say("\n--- gates ---")
             for ln in lines:
                 say(ln)
@@ -1417,6 +1485,14 @@ def plain_why(v, weekly=False):
         # The state and the kit come down before the night; the rest after it.
         why = (f"The night could not start: {step}." if first in ("state-down", "kit-down")
                else f"The night ran, but {step}.")
+    elif str(v.get("gates") or "").startswith("blocked:") and \
+            re.search(r"\d{4}-\d{4} fell from", v["gates"]):
+        # A term other than the newest has lost bills (terms_fell): never a
+        # new term's doing, so no box answers it.
+        why = ("The site was built, but a finished term has fewer bills than the last good "
+               "night's build had, and no run may publish that, New term or not: "
+               + "; ".join(re.findall(r"\d{4}-\d{4} fell from [\d,]+ to [\d,]+", v["gates"]))
+               + ". The term's frozen inputs and its build are the place to look.")
     elif str(v.get("gates") or "").startswith("blocked:") and "fell from" in v["gates"]:
         # The census gates: a build that counts far less than the last good
         # night's. Wrong on the one night a term turns over, as the shrink

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.45
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1815,11 +1815,22 @@ def main():
                     docket_titles.setdefault(f[4].strip().upper(), f[12].strip())
     # Titles recovered from the legacy docket pages for bills the current
     # session's files no longer describe.
+    #
+    # ONLY BY TERM (5 October 2026). The file was read by bill number alone,
+    # as fetch_bill_titles.py once wrote it: absent today, but a flat copy put
+    # back would give every 2027 stub the 2025 title of its number. A file
+    # keyed on the term gives the session's term its own slice; a flat one is
+    # not read at all, and preflight refuses one.
     fetched_titles = {}
     tp = Path("bill_titles.json")
     if tp.exists():
-        fetched_titles = json.loads(tp.read_text(encoding="utf-8"))
-        print(f"recovered titles on file: {len(fetched_titles):,}")
+        _titles = json.loads(tp.read_text(encoding="utf-8"))
+        if P.term_keyed(_titles):
+            fetched_titles = _titles.get(sess) or {}
+            print(f"recovered titles on file for {sess}: {len(fetched_titles):,}")
+        else:
+            print(f"  {tp} is keyed on the bill number alone, so it is not read: a title of "
+                  "one term would reach a bill of another. It must be {term: {bill: title}}.")
 
     added = 0
     for b, (yr, lsr) in docket_bills.items():
@@ -1847,6 +1858,14 @@ def main():
     # 1,387 each, as do the LSRs. So it fills the same fields from the same
     # record, only where a bill has none, and only for the bill whose LSR it
     # names.
+    #
+    # AND ONLY OF THE BILL'S OWN TERM (5 October 2026). The join was on the
+    # number and the LSR and ignored the row's session year (column 2), and
+    # between consecutive terms 0 to 5 bills share both -- 2023-2024 and
+    # 2025-2026 share HB 1066 (LSR 2314) and SB 83 (LSR 994). After the turn
+    # the view may still hold the last term while the docket's stubs are the
+    # new one's, and a 2027 stub with no committee or subject would have taken
+    # 2025's. It changes nothing today: the view and the bills are one term.
     lp = (d / "db" / "term" / frozen if frozen else d / "db") / "Legislation.psv"
     if lp.exists():
         leg_filled = Counter()
@@ -1858,6 +1877,9 @@ def main():
                 rec = bills.get(f[14].strip().upper())
                 if not rec or str(rec.get("lsr_num") or "").lstrip("0") != \
                         f[3].strip().lstrip("0"):
+                    continue
+                if P.term_of(f[2].strip()) != P.term_of(str(rec.get("lsr_year") or "")):
+                    leg_filled["another term's row, not taken"] += 1
                     continue
                 hc, sc, subj = f[18].strip(), f[26].strip(), f[12].strip()
                 if hc and not rec.get("house_committee"):

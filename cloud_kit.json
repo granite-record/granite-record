@@ -103,7 +103,7 @@
       "owner": "laptop",
       "paths": ["meetings.json", "schedule_pages/_events.json", "bill_status.json", "member_party.json",
                 "archive_bills.json", "bill_text.json", "amendments.json", "committee_reports.json",
-                "senate_reports.json", "testimony_db.json", "testimony.json", "journals.json",
+                "senate_reports.json", "testimony_db.json", "journals.json",
                 "calendars.json", "past_members.json"]
     },
     {

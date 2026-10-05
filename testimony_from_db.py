@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.1
+# GRANITE_VERSION: 2026-09-11.2
 """
 Sign-in counts for an archived term's hearings, from the database dump on disk.
 
@@ -64,10 +64,11 @@ T_DATE, T_LID, T_STANCE, T_FIELDS = 3, 5, 7, 14
 L_BILL, L_YEAR, L_LID = 14, 2, 47
 
 
-def current_ids():
-    """{legislationID: (bill, sessionyear)} for the term Legislation holds."""
+def current_ids(path=None):
+    """{legislationID: (bill, sessionyear)} for the term Legislation holds --
+    or the copy of it at `path`."""
     out = {}
-    for line in LEGISLATION.open(encoding="utf-8", errors="replace"):
+    for line in Path(path or LEGISLATION).open(encoding="utf-8", errors="replace"):
         p = line.rstrip("\n").split("|")
         if len(p) > L_LID and p[L_YEAR].strip().isdigit():
             out[p[L_LID].strip().lstrip("0")] = (p[L_BILL].strip().upper(),
@@ -92,47 +93,54 @@ def archived_ids():
             for y, ids in seen.items()}
 
 
+# A FINISHED TERM FROM ITS FREEZE (5 October 2026). After the turn the
+# current Legislation holds 2027-2028 and none of 2025-2026's ids, so the
+# term's sign-ins would join to nothing. freeze_term.py keeps the term's
+# Legislation under db/term/<term>/ and the sign-ins themselves under
+# db/term/<term>/extra/, and a frozen term older than the current one is
+# rebuilt from them: its rows in the current dump are counted and left out,
+# never merged, where its own frozen sign-ins are here. This is what keeps
+# the counts retrievable once testimony.json is retired.
+FROZEN = Path("db") / "term"
+
+
+def frozen_terms(current):
+    """{term: (its frozen Legislation.psv, its frozen sign-ins or None)} for each
+    frozen term older than `current`."""
+    if not FROZEN.is_dir() or not current:
+        return {}
+    out = {}
+    for d in sorted(FROZEN.iterdir()):
+        if d.is_dir() and P.TERM_RE.match(d.name) and d.name < current \
+                and (d / "Legislation.psv").exists():
+            t = d / "extra" / "houseRemoteTestify.psv"
+            out[d.name] = (d / "Legislation.psv", t if t.exists() else None)
+    return out
+
+
 def build():
     cur, arch = current_ids(), archived_ids()
+    current = P.term_of(str(max((sy for _b, sy in cur.values()), default=0))) if cur else ""
+    frozen = {t: (current_ids(leg), tf) for t, (leg, tf) in frozen_terms(current).items()}
+    own = {t for t, (_ids, tf) in frozen.items() if tf}
     by_term = collections.defaultdict(dict)
     unjoined = collections.Counter()
-    for line in TESTIFY.open(encoding="utf-8", errors="replace"):
-        p = line.rstrip("\n").split("|")
-        if len(p) != T_FIELDS:
-            unjoined["a line not 14 fields wide"] += 1
-            continue
-        when, lid, stance = p[T_DATE].strip(), p[T_LID].strip().lstrip("0"), \
-            p[T_STANCE].strip().lower()
-        m = re.match(r"^(\d{2})/(\d{2})/(\d{4})", when)
-        if not m:
-            unjoined["no date"] += 1
-            continue
-        year = int(m.group(3))
-        date = f"{m.group(3)}-{m.group(1)}-{m.group(2)}"
-        # The current term first, within its own biennium -- the rule
-        # fetch_testimony_db's SQL applies, for the reason it gives.
-        bill = None
-        hit = cur.get(lid)
-        if hit:
-            b, sy = hit
-            start = sy - (1 - sy % 2)
-            if start <= year <= start + 1:
-                bill = b
-        if bill is None:
-            bill = (arch.get(year) or {}).get(lid)
-        if bill is None:
-            unjoined[str(year)] += 1
-            continue
-        term = P.term_of(str(year))
-        rec = by_term[term].setdefault(bill, {
-            "total": 0, "support": 0, "oppose": 0, "neutral": 0,
-            "hearings": {}})
-        h = rec["hearings"].setdefault(date, {
-            "date": date, "total": 0, "support": 0, "oppose": 0, "neutral": 0})
-        for r in (rec, h):
-            r["total"] += 1
-            if stance in STANCES:
-                r[stance] += 1
+    sources = [(TESTIFY, None)] + [(tf, t) for t, (_ids, tf) in frozen.items() if tf]
+    for path, only in sources:
+        for line in path.open(encoding="utf-8", errors="replace"):
+            got = _sign_in(line, cur, arch, frozen, only, own, unjoined)
+            if not got:
+                continue
+            term, bill, date, stance = got
+            rec = by_term[term].setdefault(bill, {
+                "total": 0, "support": 0, "oppose": 0, "neutral": 0,
+                "hearings": {}})
+            h = rec["hearings"].setdefault(date, {
+                "date": date, "total": 0, "support": 0, "oppose": 0, "neutral": 0})
+            for r in (rec, h):
+                r["total"] += 1
+                if stance in STANCES:
+                    r[stance] += 1
     out = {}
     for term, bills in by_term.items():
         out[term] = {}
@@ -141,6 +149,48 @@ def build():
                                      key=lambda h: h["date"])
             out[term][bill] = rec
     return out, unjoined
+
+
+def _sign_in(line, cur, arch, frozen, only, own, unjoined):
+    """(term, bill, date, stance) of one sign-in line, or None. `only` is the
+    term a frozen file is read for; `own` the frozen terms that have one."""
+    p = line.rstrip("\n").split("|")
+    if len(p) != T_FIELDS:
+        unjoined["a line not 14 fields wide"] += 1
+        return None
+    when, lid, stance = p[T_DATE].strip(), p[T_LID].strip().lstrip("0"), \
+        p[T_STANCE].strip().lower()
+    m = re.match(r"^(\d{2})/(\d{2})/(\d{4})", when)
+    if not m:
+        unjoined["no date"] += 1
+        return None
+    year = int(m.group(3))
+    date = f"{m.group(3)}-{m.group(1)}-{m.group(2)}"
+    term = P.term_of(str(year))
+    if only and term != only:
+        return None
+    if not only and term in own:
+        unjoined[f"{term}, read from its freeze"] += 1
+        return None
+    # The current term first, within its own biennium -- the rule
+    # fetch_testimony_db's SQL applies, for the reason it gives.
+    bill = None
+    hit = cur.get(lid)
+    if hit:
+        b, sy = hit
+        start = sy - (1 - sy % 2)
+        if start <= year <= start + 1:
+            bill = b
+    if bill is None and term in frozen:
+        hit = frozen[term][0].get(lid)
+        if hit and P.term_of(str(hit[1])) == term:
+            bill = hit[0]
+    if bill is None:
+        bill = (arch.get(year) or {}).get(lid)
+    if bill is None:
+        unjoined[str(year)] += 1
+        return None
+    return term, bill, date, stance
 
 
 def main():

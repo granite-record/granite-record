@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.50
+# GRANITE_VERSION: 2026-09-05.51
 """
 Run the whole pipeline in the right order.
 
@@ -510,6 +510,11 @@ def plan(a):
              network=True, optional=True,
              note="calendars are cached; discovery only needs running once a session"),
 
+        # THE ONLY SOURCE OF SIGN-IN COUNTS since 5 October 2026: the scraped
+        # page's step (fetch_testimony.py, testimony.json, a request per bill
+        # to gc.nh.gov) is retired, at the person's word, once it was shown
+        # that every count the site showed came from this one -- and
+        # testimony_from_db.py rebuilds it from the dump, frozen terms too.
         Step("how many signed in for and against, per hearing",
              ["fetch_testimony_db.py"],
              produces=["testimony_db.json"],
@@ -554,13 +559,6 @@ def plan(a):
         Step("match docket proceedings to recordings",
              ["build_manifest.py", "--videos"] + manifest_videos(),
              needs=["Docket.txt"], optional=True),
-
-        Step("testimony sign-in counts",
-             ["fetch_testimony.py"],
-             produces=["testimony.json"], network=True, optional=True,
-             note="was never in this list, so the counts on the site only "
-                  "refreshed when it was remembered by hand. Slow -- one "
-                  "request per bill with a delay -- and skipped by --local"),
 
         Step("floor debate index",
              ["build_floor_index.py", "--videos"] + (vids or ["videos_house.csv"])

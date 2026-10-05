@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.147
+# GRANITE_VERSION: 2026-09-05.148
 """
 Generate the faceted site from real General Court data.
 
@@ -9240,7 +9240,18 @@ def main():
     for _k, _u in calendar_keys_from_queue().items():
         sources.setdefault(_k, _u)
     # Sign-in counts, attached to the hearing they were filed for.
-    testimony = load("testimony.json", {})
+    #
+    # testimony.json IS RETIRED (5 October 2026), with fetch_testimony's step,
+    # at the person's word and on their condition that the counts stay
+    # retrievable another way. They do: the scraped file's 565 bills were all
+    # in testimony_db.json, so the page never showed one of its counts
+    # (hearing_testimony takes it only for a bill the database has nothing
+    # for), and testimony_from_db.py rebuilds the database's 2,019 bills of
+    # 2025-2026 from the dump, every count and every hearing equal. Kept, the
+    # flat file was a leak waiting for the turn: read by number for the
+    # current term, 102 of its bills have numbers 2027's first-year bills
+    # will reuse, and each would have shown 2025-2026's sign-ins.
+    testimony = {}
     # Counts per bill AND per hearing, from the General Court's database:
     # 2,019 bills against the scraped page's 565. Keyed on the term, because
     # legislationID is reused across terms -- joining without that put 67,119
@@ -9250,8 +9261,6 @@ def main():
         nb = sum(len(v) for v in testimony_db.values())
         ns = sum(r["total"] for v in testimony_db.values() for r in v.values())
         print(f"testimony sign-ins: {ns:,} across {nb:,} bills, per hearing")
-    if testimony:
-        print(f"testimony counts for {len(testimony):,} bills")
     if sources:
         print(f"source links available for {len(sources)} journals and calendars")
     # One table for every proceeding on the site: committee hearings, executive
