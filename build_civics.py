@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.28
+# GRANITE_VERSION: 2026-09-08.29
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -36,6 +36,7 @@ import civics
 import learn_numbers
 import proceedings as P
 import shell as S
+import site_read as SR
 
 
 def E(s):
@@ -314,7 +315,10 @@ def record_figures(site, root=Path(".")):
     typed number had been counted by: every one reproduced the typed figure
     wherever that was still right.
     """
-    idx = _load(Path(site) / "index.json", [])
+    # Every bill's row, from the term files the pages read (site_read). It
+    # stops where there is none: from a missing file this read [] and filled
+    # every figure with a count of nothing.
+    idx = SR.bill_index_or_stop(site, "build_civics.py")
     term = max((r.get("term") or "" for r in idx), default="")
     cur = [r for r in idx if r.get("term") == term]
     status = Counter(r.get("status") for r in cur)

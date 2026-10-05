@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.148
+# GRANITE_VERSION: 2026-09-05.149
 """
 Generate the faceted site from real General Court data.
 
@@ -9396,6 +9396,14 @@ def main():
     for row in index:
         if row.get("term"):
             by_term[row["term"]].append(row)
+    # EVERY ROW IN A TERM'S FILE. The build reads the bill index from these
+    # files (site_read.bill_index), so a row with no term would be in none:
+    # no page, no feed, no line in the downloads, and nothing to say so. No
+    # row has lacked one; this stops the build if one ever does.
+    termless = [row.get("id") for row in index if not row.get("term")]
+    if termless:
+        raise SystemExit(f"{len(termless):,} bill row(s) name no term, so no term's "
+                         f"file would hold them: {', '.join(map(str, termless[:5]))}")
     for term_, rows_ in by_term.items():
         (idx_dir / f"{term_}.json").write_text(
             json.dumps(rows_, separators=(",", ":")), encoding="utf-8")

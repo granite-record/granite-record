@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.40
+# GRANITE_VERSION: 2026-09-07.41
 """
 A page's worth of data for every committee.
 
@@ -20,7 +20,8 @@ WHERE EACH PART COMES FROM
                                which file gives which field)
   who sits on it               data/committee_members.json
                                                         fetch_committee_members_db.py
-  bills referred               site/index.json          the search index
+  bills referred               site/idx/<term>.json     the bill index
+                               (site_read.bill_index)
   what happened on a day       proceedings.csv          one row per
                                                         (bill, date, kind, recording)
   what the committee decided   committee_reports.json, senate_reports.json
@@ -318,7 +319,7 @@ def untaken_guard(filed):
     if not bad:
         return ""
     return (f"{len(bad)} row(s) of proceedings.csv are filed under a committee's day "
-            "for a bill site/index.json says was never introduced: "
+            "for a bill the bill index (site/idx) says was never introduced: "
             + ", ".join(bad[:6]) + ". No committee sat on such a bill. Its history "
             "in narratives.json does not say what the index says, so the two are "
             "of different builds or the history is missing: run narrative.py "
@@ -530,10 +531,10 @@ def main():
     a = ap.parse_args()
     site, data = Path(a.site), Path(a.data)
 
-    idx = load(site / "index.json", [])
-    if not idx:
-        raise SystemExit(f"{site}/index.json is not there. Run build_site_v2 "
-                         "first -- the bills a committee heard come from it.")
+    # Every bill's row, from the term files the pages read; it stops, saying
+    # why, where there is no site or the files do not hold together -- the
+    # bills a committee heard come from it.
+    idx = SR.bill_index_or_stop(site, "build_committees.py")
     # committees.json with committee_details.json joined in. Two files since
     # 26 September, because GitHub's weekly job swaps committees.json in whole
     # from the listing pages, which carry no clerk and no purpose: read alone,

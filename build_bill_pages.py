@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.59
+# GRANITE_VERSION: 2026-09-04.60
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -49,6 +49,7 @@ from pathlib import Path
 
 import build_date
 import shell as S
+import site_read as SR
 import structured as LD
 
 E = html.escape
@@ -251,7 +252,8 @@ def main():
     ap.add_argument("--base", default="https://graniterecord.org")
     a = ap.parse_args()
     site = Path(a.site)
-    idx = json.loads((site / "index.json").read_text(encoding="utf-8"))
+    # Every bill's row, from the term files the pages read (site_read).
+    idx = SR.bill_index_or_stop(site, "build_bill_pages.py")
     # THE NEWEST TERM FIRST, AS meta.json NAMES THE TERMS, and each term's
     # bills in the order the index gives them. The sitemap is written in this
     # order, and it used to be whatever order index.json happened to hold:

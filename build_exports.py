@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.24
+# GRANITE_VERSION: 2026-09-10.25
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -35,6 +35,7 @@ from pathlib import Path
 import bill_order as BO
 import build_date
 import past_sponsors as PSP
+import site_read as SR
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
 # the bill pages say it: one constant, so the three cannot drift apart.
@@ -117,7 +118,10 @@ def coverage(out):
 
 
 def bills(out, site):
-    idx = load(site / "index.json", [])
+    # Every bill's row, from the term files the pages read (site_read). It
+    # stops where there is none: this read [] from a missing file and would
+    # have written a bills.csv of no bills.
+    idx = SR.bill_index_or_stop(site, "build_exports.py")
     # chapter goes last so a reader who counted columns before it existed
     # still finds each one where it was.
     cols = ["term", "year", "bill", "title", "sponsor", "committee", "topic",
@@ -258,13 +262,13 @@ def proceedings_table(out, site, table=None, histories=None):
     from disk unless a caller hands them in.
     """
     import proceedings as P
-    import site_read as SR
     cols = ["term", "bill", "body", "kind", "date", "time", "committee",
             "venue", "video_id", "video_title", "start_seconds",
             "end_seconds", "how_placed", "end_how", "scheduled_seconds"]
-    idx = load(Path(site) / "index.json", [])
+    # The year folder each bill's page is under. No site is no folders, and
+    # then no station either; main() has already stopped in bills() for it.
     folder = {(b.get("term"), b.get("id")): str(b.get("year") or "")
-              for b in (idx if isinstance(idx, list) else [])}
+              for b in (SR.bill_index(site) or [])}
     stations = SR.by_bill(site, SR.video_years(), fields=("stations",))
 
     def published(r):
@@ -725,6 +729,32 @@ def data_page(site, out, tables, base, cov=()):
     print(f"  {'data.html':<28} the same tables, described")
 
 
+def bill_indexes(site, origin):
+    """The bill index the site publishes, one JSON file per term, for the
+    manifest: each term, its address, its bills and its bytes, newest term
+    first -- the order meta.json names them in, and site_read reads them in.
+
+    THE MANIFEST NAMES THEM because it is where a program starts (the data
+    page says so, and the host lets another site read it), and the files are
+    the site's own JSON rather than a table here: every bill's row, as the
+    bills page and the search read it. One request finds every term's file
+    and how big it is."""
+    rows = SR.bill_index_or_stop(site, "build_exports.py")
+    counts = {}
+    for r in rows:
+        counts[r["term"]] = counts.get(r["term"], 0) + 1
+    return {
+        "what": "Every bill's row as the site's own bill list and search read "
+                "it -- title, sponsor, committees, topic, status, passage -- "
+                "as JSON, one file per term, newest term first. Together they "
+                "are every bill of every term; bills.csv is the same bills as "
+                "one table.",
+        "terms": [{"term": t, "url": f"{origin}/idx/{t}.json", "bills": n,
+                   "bytes": (Path(site) / "idx" / f"{t}.json").stat().st_size}
+                  for t, n in counts.items()],
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -773,6 +803,7 @@ def main():
         "tables": [{k: v for k, v in t.items() if k != "over_cap"}
                    for t in tables],
     }
+    manifest["bill_indexes"] = bill_indexes(site, manifest["site"])
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)
