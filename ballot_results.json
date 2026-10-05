@@ -1,5 +1,5 @@
 {
-  "_whose": "This file belongs to the person who runs Granite Record, like bill_notes.json and docket_corrections.json. Claude drafted the rows below on 5 October 2026 from the saved copy of the source page (private/ballotpedia_nh_ballot_measures_2026-10-05.txt), for that person's review. Read them; the file is yours.",
+  "_whose": "This file belongs to the person who runs Granite Record, like bill_notes.json and docket_corrections.json. Claude drafted the rows below on 5 October 2026 from a copy of the source page saved that day, for that person's review. Read them; the file is yours.",
 
   "_what": "The statewide vote on each constitutional amendment both chambers sent to the voters, one row per CACR: the general election it went to, how the source lists it, and the Yes and No votes cast on it. Copied by hand from the source each row names. No generator writes this file, and preflight fails if any build_* or fetch_* script opens it for writing (HANDMADE).",
 
