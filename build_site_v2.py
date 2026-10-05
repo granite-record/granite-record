@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.148
+# GRANITE_VERSION: 2026-09-05.149
 """
 Generate the faceted site from real General Court data.
 
@@ -750,21 +750,35 @@ NEVER_INTRODUCED = {"Refused introduction", WITHDRAWN_PRIOR, PROPOSED_ONLY, NOT_
 # with no session_over in status/status.txt). A bill left on the table when
 # the session ended died there; a veto never put to a vote stood. A bill
 # still moving keeps its stage, and a resolution adopted, a constitutional
-# amendment's ballot and a bill only proposed for a special session keep
-# their own words: none of them is among the six, and which word they take
-# is the person's to say.
+# amendment's ballot, a bill only proposed for a special session, one the
+# House did not introduce and one awaiting the governor keep their own words
+# (CHIP_KEEPS): none of them is among the six, and which word they take is
+# the person's to say.
 BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN = (
     "Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn")
 CHIP_WORDS = (BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN)
-# The database marks a request that was never introduced as withdrawn.
-WITHDRAWN_ENDINGS = frozenset({"Withdrawn", WITHDRAWN_PRIOR, NOT_INTRODUCED})
+# A withdrawal the record states: the chamber's, and one before introduction.
+WITHDRAWN_ENDINGS = frozenset({"Withdrawn", WITHDRAWN_PRIOR})
 # A veto whose override vote is still to come, in bill_disposition's words:
-# the docket's "vetoed" with no vote after it, VETOED BY GOVERNOR, and VETO
-# OVERRIDE. "Vetoed, override failed" is not one.
+# the docket's "vetoed" with no vote after it, VETOED BY GOVERNOR, VETO
+# OVERRIDE, and a veto one chamber has overridden and the other has not yet
+# voted on. "Vetoed, override failed" is not one.
 VETO_PENDING = frozenset({"Vetoed", "Vetoed, awaiting an override vote",
                           "Vetoed, override vote pending"})
-# A finished bill whose chip keeps its own word, until the person gives it one.
-CHIP_KEEPS = frozenset({PROPOSED_ONLY})
+AWAITING_GOVERNOR = "Passed, awaiting the governor"
+# A bill whose chip keeps its own word, until the person gives it one.
+#
+# NOT INTRODUCED IS NOT WITHDRAWN. Nothing on disk says what became of the
+# seven (NOT_INTRODUCED above): HB 87 and HB 134 of 2009 carry
+# PastLegislation's CurrentLSRStatus 8, an introduced bill's code, and the
+# five others 9, a code nothing on disk defines, on 2,491 rows, 2,484 of them
+# with no bill number. Their histories say only that the House Journal left
+# them out, and "Withdrawn" would say what no record does.
+#
+# NOR IS A BILL AWAITING THE GOVERNOR DEAD. Both chambers passed it and the
+# docket has not recorded what the governor did, which can come after the
+# last session day: the session being over does not make it "Died".
+CHIP_KEEPS = frozenset({PROPOSED_ONLY, NOT_INTRODUCED, AWAITING_GOVERNOR})
 
 
 def chip_word(kind, status, live):
@@ -778,11 +792,9 @@ def chip_word(kind, status, live):
         return INTERIM_STUDY
     if kind == "veto":
         return VETOED if live and status in VETO_PENDING else DIED
-    if kind == "active":
-        if not live:
-            return DIED
+    if kind == "active" and live:
         return TABLED if status == "Laid on the table" else status
-    if kind == "done":
+    if kind in ("active", "done"):
         return status if status in CHIP_KEEPS else DIED
     return status
 
@@ -1532,6 +1544,23 @@ def closing_stage(label, narr, decided=False, steps=None, inferred=False,
     return {"label": "How it ended", "text": text}
 
 
+def veto_votes(evs):
+    """Each chamber's last word on a veto, {body: "law" or "veto"}: "law"
+    where it overrode, "veto" where it sustained. veto_outcome reads the
+    answer from it, and bill_disposition whether only one chamber has voted."""
+    said = {}
+    for e in evs:
+        raw = (e.get("raw") or "").lower()
+        word = (e.get("outcome") or "").lower()
+        body = (e.get("body") or "").upper() or "?"
+        if "veto sustained" in raw or word == "sustained":
+            said[body] = "veto"
+        elif ("veto overridden" in raw or "veto overriden" in raw
+              or "=veto override=" in raw or word == "overridden"):
+            said[body] = "law"
+    return said
+
+
 def veto_outcome(evs):
     """What became of a veto, read per chamber and in order, or None.
 
@@ -1543,16 +1572,7 @@ def veto_outcome(evs):
     Chapter 271. So the answer is each chamber's LAST word, and a sustain by
     either of them wins.
     """
-    said = {}
-    for e in evs:
-        raw = (e.get("raw") or "").lower()
-        word = (e.get("outcome") or "").lower()
-        body = (e.get("body") or "").upper() or "?"
-        if "veto sustained" in raw or word == "sustained":
-            said[body] = "veto"
-        elif ("veto overridden" in raw or "veto overriden" in raw
-              or "=veto override=" in raw or word == "overridden"):
-            said[body] = "law"
+    said = veto_votes(evs)
     if not said:
         return None
     if "veto" in said.values():
@@ -7186,6 +7206,20 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
         settled = docket_outcome({"events": [{"raw": law_line}]})
     if not settled and override_failed:
         settled = ("veto", "Vetoed, override failed")
+    # A VETO ONE CHAMBER HAS OVERRIDDEN IS STILL A VETO. An override needs
+    # two-thirds in both, and veto_outcome answers "Veto overridden, became
+    # law" on the first chamber's vote. The House overrode HB 1102 of 2026 at
+    # 11.23 on 19 August and the Senate at 3.24; the Senate overrode SB 91 of
+    # 2011 on 7 September and the House on 12 October. A build between the
+    # two would have called each law. With one chamber's
+    # override, no other chamber's vote and no chapter line, the vote is
+    # pending, and once the session is over the veto stood (below). A chapter
+    # line is the law: SB 153 of 2000 and HB 724 of 2003 word their second
+    # override "= VETO OVERRIDE=" and "Veto Override", and each has one.
+    if (settled == ("law", "Veto overridden, became law") and not law_line
+            and set(veto_votes([e for e in (narr or {}).get("events", [])
+                                if not e.get("cancelled")])) in ({"H"}, {"S"})):
+        settled = ("veto", "Vetoed, override vote pending")
     # A BILL THE GENERAL COURT'S FILES DO NOT CARRY, whose record is the House
     # Journal's (build_data.add_journal_bills): introduced, and withdrawn. No
     # docket, no status page and nothing else says otherwise, because nothing
@@ -7357,8 +7391,10 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     # expands VETOED BY GOVERNOR; in a closed term nothing is awaited, and
     # the veto stood -- whether or not a vote was ever taken, which the
     # record does not always say (HB 1407 of 1992 has no override line at
-    # all). So a closed term says what the field says.
-    if (kind == "veto" and term != current
+    # all). So a closed term says what the field says, and so does the
+    # current one once its session is over: "awaiting an override vote"
+    # beside a chip saying Died was each contradicting the other.
+    if (kind == "veto" and (term != current or term_over)
             and status in ("Vetoed, awaiting an override vote",
                            "Vetoed, override vote pending")):
         status = "Vetoed"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.25
+# GRANITE_VERSION: 2026-09-10.26
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -598,11 +598,15 @@ def data_page(site, out, tables, base, cov=()):
       Tabled, Vetoed or Withdrawn. Tabled is a bill on the table while its
       session still has days to sit, and Vetoed a veto whose override vote
       is still to come; once the session has ended either is Died, and a
-      veto overridden is Became Law. A bill still moving has its stage there
-      instead, and an adopted resolution, a constitutional amendment&#39;s
-      ballot and a bill only proposed for a special session have their own
-      words. <code>chip</code> is the last column, so every column before it
-      is where it was before it was added.</p>
+      veto both chambers overrode is Became Law. A bill still moving has its
+      stage there instead, and an adopted resolution, a constitutional
+      amendment&#39;s ballot, a bill only proposed for a special session, one
+      the House did not introduce and one awaiting the governor have their
+      own words. Each row of <code>/idx/&lt;term&gt;.json</code>,
+      <code>/index.json</code> and a committee&#39;s file carries the same
+      word as <code>chip</code>, beside its <code>status</code>.
+      <code>chip</code> is the last column, so every column before it is
+      where it was before it was added.</p>
     <p class="src"><b>The <code>passage</code> column</b> in bills.csv is
       where the bill started, <code>H</code> or <code>S</code>, then one
       character per stop in the order it travelled: the chamber it started

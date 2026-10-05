@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.334
+# GRANITE_VERSION: 2026-09-04.335
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2127,9 +2127,16 @@ def _tabled_is_the_last_decision(N, B):
 # bill_disposition gives; a stage is "done" in a term that has ended.
 _CHIP_STAGES = ("In committee", "In progress", "Committee report filed",
                 "Retained in committee", "Re-referred to committee", "Passed one chamber",
-                "Passed, awaiting the governor", "One chamber did not concur",
+                "One chamber did not concur",
                 "One chamber did not concur; a committee of conference was asked for",
                 "In a committee of conference", "Conference committee report adopted")
+# Not one of the six, in session or after it: each keeps its word until the
+# person gives it one. A bill the House did not introduce is not "Withdrawn"
+# -- no record says it was (HB 87 and HB 134 of 2009 carry an introduced
+# bill's database code) -- and one awaiting the governor is not "Died": the
+# governor can act after the last session day.
+_CHIP_OWN = ("Proposed for the special session", "Not introduced",
+             "Passed, awaiting the governor")
 _CHIP_FINISHED = {
     "law": {s: "Became Law" for s in ("Signed into law", "Became law unsigned",
                                       "Veto overridden, became law")},
@@ -2142,19 +2149,70 @@ _CHIP_FINISHED = {
         "Indefinitely postponed", "Refused introduction",
         "Died when the conference report was rejected", "Died: conferees could not agree",
         "Laid on the table", *_CHIP_STAGES)},
-             # The database marks a request never introduced as withdrawn.
-             **{s: "Withdrawn" for s in ("Withdrawn", "Withdrawn prior to introduction",
-                                         "Not introduced")},
-             # Not one of the six: it keeps its word until the person gives it one.
-             "Proposed for the special session": "Proposed for the special session"},
+             **{s: "Withdrawn" for s in ("Withdrawn", "Withdrawn prior to introduction")},
+             **{s: s for s in _CHIP_OWN}},
 }
 # While the session has days left: on the table is Tabled, a veto whose
 # override vote is to come is Vetoed, and a stage is its own word.
 _CHIP_LIVE = {
-    "active": {**{s: s for s in _CHIP_STAGES}, "Laid on the table": "Tabled"},
+    "active": {**{s: s for s in _CHIP_STAGES}, "Laid on the table": "Tabled",
+               "Passed, awaiting the governor": "Passed, awaiting the governor"},
     "veto": {"Vetoed": "Vetoed", "Vetoed, awaiting an override vote": "Vetoed",
              "Vetoed, override vote pending": "Vetoed", "Vetoed, override failed": "Died"},
 }
+# Real rows: Docket.txt lines 25064, 25128, 25153 and 25229 (HB 1102 of
+# 2026): the veto, the House's override at 11.23 on 19 August, the Senate's
+# at 3.24, and the chapter.
+_DOCKET_OVERRIDES = {
+    ("HB1102", "2025-2026"): [
+        "2026|2492|7/16/2026 1:44:58 PM|HB1102|H|Vetoed by Governor Ayotte 07/10/2026|7/16/2026 1:44:58 PM",
+        "2026|2492|8/19/2026 11:23:40 AM|HB1102|H|Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote  HJ 16  P. 21|9/4/2026 10:05:34 AM",
+        "2026|2492|8/19/2026 3:24:12 PM|HB1102|S|Notwithstanding the Governor's Veto, Shall HB 1102 Become Law: RC 24Y-0N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 3:24:12 PM",
+        "2026|2492|8/20/2026 4:26:09 PM|HB1102|H|Enacted in accordance with Article 44 PartII of the N.H. Constitution without the signature of the governor. Chapter 338;eff.  I. Sec 2 eff 1/1/27  II. Sec 3 eff 1/1/27   III. Rem eff 1/1/28|8/20/2026 4:26:09 PM"],
+}
+
+
+def _chip_live_wiring(B):
+    """What build_bills hands chip_word as `live` and bill_disposition as
+    `term_over`, evaluated rather than read: the three expressions out of
+    build_bills' own source -- `own`, the `live` of its bill_index_row call
+    and the `term_over` of its bill_disposition call -- run for a bill of the
+    current term and of a closed one, with and without session_over. `live`
+    must be the current term with no session_over, and `term_over` the
+    current term with one: a `live` that forgot session_over drew a veto
+    nobody will vote on as Vetoed. Returns what is wrong, as strings."""
+    tree = ast.parse(Path(B.__file__).read_text(encoding="utf-8"))
+    fn = next((n for n in ast.walk(tree)
+               if isinstance(n, ast.FunctionDef) and n.name == "build_bills"), None)
+    if fn is None:
+        return ["build_site_v2 has no build_bills"]
+    expr = {}
+    for n in ast.walk(fn):
+        if (isinstance(n, ast.Assign) and len(n.targets) == 1
+                and isinstance(n.targets[0], ast.Name) and n.targets[0].id == "own"):
+            expr.setdefault("own", n.value)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name):
+            for kw in n.keywords:
+                if (n.func.id, kw.arg) in (("bill_index_row", "live"),
+                                           ("bill_disposition", "term_over")):
+                    expr.setdefault(kw.arg, kw.value)
+    missing = sorted({"own", "live", "term_over"} - set(expr))
+    if missing:
+        return [f"build_bills sets no {', '.join(missing)}"]
+    run = lambda k, env: eval(compile(ast.Expression(expr[k]), "build_bills", "eval"),
+                              {"__builtins__": {"bool": bool}}, env)
+    bad = []
+    for term in ("2025-2026", "2023-2024"):
+        for over in ("", "2026-08-19"):
+            env = {"term": term, "current": "2025-2026", "session_over": over}
+            env["own"] = run("own", env)
+            live, ended = bool(run("live", env)), bool(run("term_over", env))
+            want = (term == "2025-2026" and not over, term == "2025-2026" and bool(over))
+            if (live, ended) != want:
+                bad.append(f"build_bills gives a bill of {term}"
+                           f"{' with session_over' if over else ''} live={live}, "
+                           f"term_over={ended}, not live={want[0]}, term_over={want[1]}")
+    return bad
 
 
 @check("status", "a bill's chip is one of six words for every ending -- Tabled only while the "
@@ -2168,9 +2226,12 @@ def _chip_words(N, B):
     chosen, and the index's `chip` is what every list, filter and download
     reads. Held here: every ending maps to exactly one word, from the table
     above; every ending the status can carry is in the table; Tabled and
-    Vetoed need a live session; and real dockets reach the right word through
+    Vetoed need a live session, and build_bills passes `live` as one
+    (_chip_live_wiring); and real dockets reach the right word through
     bill_disposition -- SB 476 of 2026, tabled by the Senate, is Tabled in
-    session and Died once the session is over."""
+    session and Died once the session is over, and HB 1102 of 2026, which the
+    House overrode in the morning and the Senate in the afternoon, is Vetoed
+    between the two and Became Law after."""
     bad = []
     six = set(B.CHIP_WORDS)
     assert tuple(B.CHIP_WORDS) == ("Became Law", "Died", "Interim Study", "Tabled", "Vetoed",
@@ -2187,6 +2248,12 @@ def _chip_words(N, B):
         got = B.chip_word("active", status, True)
         if got != want:
             bad.append(f"active {status!r} in session: {got!r}, not {want!r}")
+        # And once the session is over, should a stage reach chip_word still
+        # "active" rather than made "done" by bill_disposition.
+        want = status if status in _CHIP_OWN else "Died"
+        got = B.chip_word("active", status, False)
+        if got != want:
+            bad.append(f"active {status!r}, session over: {got!r}, not {want!r}")
     # EXACTLY ONE WORD PER ENDING, once the session is over, whatever its kind.
     words = {}
     for kind, table in _CHIP_FINISHED.items():
@@ -2237,6 +2304,9 @@ def _chip_words(N, B):
         return d.status, B.chip_word(d.kind, d.status, term == "2025-2026" and not over)
     narr = {k: _narrated(N, k[1], k[0], rows) for k, rows in _DOCKET_TABLED_LAST.items()}
     n476 = narr[("SB476", "2025-2026")]
+    rows = _DOCKET_OVERRIDES[("HB1102", "2025-2026")]
+    half = _narrated(N, "2025-2026", "HB1102", rows[:2])
+    both = _narrated(N, "2025-2026", "HB1102", rows[:3])
     for what, got, want in (
             ("SB476 of 2026, in session", chip("SB476", {}, n476, "2025-2026"),
              ("Laid on the table", "Tabled")),
@@ -2248,9 +2318,26 @@ def _chip_words(N, B):
             ("a veto awaiting its vote, in session",
              chip("HB9", {"gen_status": "VETOED BY GOVERNOR"}, None, "2025-2026"),
              ("Vetoed, awaiting an override vote", "Vetoed")),
+            # The status says the veto stood, as the chip does: not "awaiting
+            # an override vote" beside Died.
             ("a veto awaiting its vote, session over",
              chip("HB9", {"gen_status": "VETOED BY GOVERNOR"}, None, "2025-2026", True),
-             ("Vetoed, awaiting an override vote", "Died")),
+             ("Vetoed", "Died")),
+            # ONE CHAMBER'S OVERRIDE IS NOT LAW: HB 1102 of 2026 between the
+            # House's vote and the Senate's, and the veto stood had the
+            # session ended there.
+            ("HB1102 of 2026, the House's override only, in session",
+             chip("HB1102", {}, half, "2025-2026"),
+             ("Vetoed, override vote pending", "Vetoed")),
+            ("HB1102 of 2026, the House's override only, session over",
+             chip("HB1102", {}, half, "2025-2026", True), ("Vetoed", "Died")),
+            ("HB1102 of 2026, both chambers' overrides", chip("HB1102", {}, both, "2025-2026"),
+             ("Veto overridden, became law", "Became Law")),
+            ("HB1102 of 2026, one override and its chapter line",
+             (lambda d: (d.status, B.chip_word(d.kind, d.status, True)))(B.bill_disposition(
+                 {}, "HB1102", {}, half, [], "2025-2026", "2025-2026",
+                 law_line=_DOCKET_OVERRIDES[("HB1102", "2025-2026")][-1].split("|")[5])),
+             ("Veto overridden, became law", "Became Law")),
             ("a veto of a closed term", chip("HB9", {"gen_status": "VETOED BY GOVERNOR"},
                                               None, "2023-2024"), ("Vetoed", "Died")),
             ("a veto sustained", chip("HB9", {"gen_status": "VETOED BY GOVERNOR",
@@ -2261,10 +2348,12 @@ def _chip_words(N, B):
              ("Veto overridden, became law", "Became Law"))):
         if got != want:
             bad.append(f"{what}: {got!r}, not {want!r}")
+    bad += _chip_live_wiring(B)
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(finished)} endings each read one of the six words or keep their own; "
-                  "Tabled and Vetoed only in a session with days left; SB 476 of 2026 Tabled "
-                  "in session and Died after, a veto Vetoed until its session ends")
+                  "Tabled and Vetoed only in a session with days left, as build_bills passes "
+                  "it; SB 476 of 2026 Tabled in session and Died after, a veto Vetoed until "
+                  "its session ends, and HB 1102 of 2026 Vetoed until both chambers overrode")
 
 
 # Real rows: Docket_2015-2016.txt lines 714-716 (HB 112), 5731-5733 (HCR 3)
@@ -26914,7 +27003,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "a bill's card, the Status filter, the status grouping and a record page's "
-                   "Status select say the chip's word, never how the bill ended")
+                   "Bill status select say the chip's word, never how the bill ended")
 def _chip_drawn():
     """The chip is the six words of 5 October 2026 and a still-moving bill's
     stage (build_site_v2.chip_word); the status -- "Killed", "Vetoed,
@@ -26923,8 +27012,8 @@ def _chip_drawn():
     so a veto that stood is Died in Died's colour; the Status filter offers
     the words, the six first; ticking Died lists the killed bill and the
     veto that stood; Sort by status heads each group with its word; and a
-    member's or a committee's Status select offers the words and filters by
-    them."""
+    member's or a committee's select, labelled "Bill status", offers the words
+    and filters by them."""
     js, stub = Path("app.js"), Path("dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
@@ -26972,6 +27061,13 @@ def _chip_drawn():
     shown = re.findall(r'class="card[^"]*" data-id="([^"]*)"', got["paneDied"])
     if sorted(shown) != ["HB1", "HB2"]:
         bad.append(f"a record page's Status select, on Died, shows {shown}")
+    # "BILL STATUS", NOT "STATUS": on a legislator's page the select sits under
+    # the member's own name and facts, and "Status: Died" there reads as the
+    # member's.
+    label = re.search(r'<label>([^<]*?)\s*<select data-pf="status"', got["pane"])
+    if not label or label.group(1).strip() != "Bill status":
+        bad.append(f"a record page's select is labelled {label and label.group(1).strip()!r}, "
+                   "not 'Bill status'")
     assert not bad, "; ".join(bad)
     return "ok", ("each card says its word in its word's colour, the filter and a record "
                   "page's select offer the six first, and Died lists the killed bill and the "
@@ -33606,8 +33702,8 @@ def _committee_filter_one_name(committee_names):
                   f"{len(facet)} terms, one per committee")
 
 
-@check("data", "every bill's chip on the built site is the word chip_word gives its status, and "
-               "no chip shows how a bill ended",
+@check("data", "every bill's chip on the built site is the word chip_word gives its status, "
+               "wherever it is written, and no chip shows how a bill ended",
        needs=("build_site_v2",))
 def _site_chips(B):
     """The data half of _chip_words. Each term's index (site/idx/<term>.json,
@@ -33619,7 +33715,8 @@ def _site_chips(B):
     bill's stage, an adopted resolution's or a CACR's word, or a word the
     person has not yet given one of the six -- never "Killed", "Died on the
     table", "Vetoed, override failed" or any other ending, which stay in the
-    status. bills.csv's chip column says the same."""
+    status. bills.csv's chip column, a committee's rows and the directory's
+    lists say the same."""
     idx = Path("site/idx")
     files = sorted(p for p in idx.glob("*.json")) if idx.exists() else []
     if not files:
@@ -33660,12 +33757,49 @@ def _site_chips(B):
         if off:
             bad.append(f"bills.csv's chip column disagrees with the index on {len(off):,}: "
                        + "; ".join(off[:3]))
+    # AND THE TWO OTHER PLACES THE WORD IS WRITTEN, each from its own copy of
+    # the row: a committee's bills (site/committee/<code>.json), which its page
+    # draws cards and its select from, and the directory's lists
+    # (site/directory/bills-<term>.html), which print the word beside each
+    # bill. Either could print the status while the index said the chip.
+    import html as _html
+    said = {(r.get("term"), r.get("id")): r["chip"] for r in rows}
+    n_cmte = n_dir = 0
+    off = []
+    for f in sorted(Path("site/committee").glob("*.json")):
+        for term, items in (json.loads(f.read_text(encoding="utf-8")).get("bills") or {}).items():
+            for r in items:
+                key = (r.get("term") or term, r.get("id"))
+                if key in said:
+                    n_cmte += 1
+                    if r.get("chip") != said[key]:
+                        off.append(f"committee {f.stem} {key[0]} {key[1]}: "
+                                   f"{r.get('chip')!r}, not {said[key]!r}")
+    li = re.compile(r'<li><a href="[^"]*?bill/\d{4}/([a-z0-9]+)[^"]*">[^<]*</a>[^<]*'
+                    r'(?:<span class="dirstatus">([^<]*)</span>)?</li>')
+    for term in terms:
+        page = Path(f"site/directory/bills-{term}.html")
+        if not page.exists():
+            continue
+        for bid, word in li.findall(page.read_text(encoding="utf-8")):
+            key = (term, bid.upper())
+            if key in said:
+                n_dir += 1
+                if _html.unescape(word) != said[key]:
+                    off.append(f"directory {term} {key[1]}: {word!r}, not {said[key]!r}")
+    if off:
+        bad.append(f"{len(off):,} committee or directory rows say another word than the "
+                   "index's chip: " + "; ".join(off[:3]))
+    elif Path("site/directory").exists() and not n_dir:
+        bad.append("no bill read off the directory's lists: their markup has changed under "
+                   "this check")
     assert not bad, f"{len(bad):,} chips: " + "; ".join(bad[:5])
     return "ok", (f"{len(rows):,} bills across {len(terms)} terms: "
                   + ", ".join(f"{w} {n[w]:,}" for w in B.CHIP_WORDS)
                   + f"; {sum(per.values()):,} keep a word that is not one of the six "
                   + f"({', '.join(f'{k} {v:,}' for k, v in per.most_common(3))}"
                   + (", ..." if len(per) > 3 else "") + ")"
+                  + f"; {n_cmte:,} committee rows and {n_dir:,} directory entries agree"
                   + (f"; the session of {current} ended {over}" if over else ""))
 
 

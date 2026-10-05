@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.141
+// GRANITE_VERSION: 2026-09-07.142
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5396,12 +5396,14 @@ function idxRow(b){
 }
 
 // The bills of one tab, as cards, with the outcome filter above them: the
-// chip's words, as the bill search's Status filter offers them.
+// chip's words, as the bill search's Status filter offers them. "Bill
+// status", not "Status": on a legislator's page a bare "Status: Died" sits
+// under the member's own name and facts, and the word is a bill's.
 function billPane(rows,note){
   rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
   const statuses=[...new Set(rows.map(chipOf).filter(Boolean))].sort(chipCmp);
   const shown=rows.filter(b=>!PAGE.status||chipOf(b)===PAGE.status);
-  return `<div class="bfilt"><label>Status
+  return `<div class="bfilt"><label>Bill status
       <select data-pf="status"><option value="">Any</option>
       ${statuses.map(x=>`<option value="${esc(x)}"${x===PAGE.status?" selected":""}>${
         esc(x)}</option>`).join("")}</select></label></div>
