@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.330
+# GRANITE_VERSION: 2026-09-04.331
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11678,6 +11678,94 @@ def _census_and_fingerprint_of_the_bill_index():
                   "fingerprint; production's, read the same way, agrees")
 
 
+@check("build", "no index.json: a build writes none and deletes one left over, every "
+       "bill still reaches the downloads, the Learn pages and the census, and "
+       "check_site refuses a leftover")
+def _index_json_retired():
+    """index.json, every bill's row in one file, was retired on 5 October
+    2026: no page read it, six build steps did, and it stood at 23.7 MB of
+    the 25 MiB a file may be. The term files the pages read are the record
+    now (site_read.bill_index).
+
+    A RETIREMENT IS PROVED BY WHAT STILL WORKS, NOT BY A SEARCH FOR THE NAME.
+    Four of its readers read a missing file as no bills and went on -- the
+    downloads, the Learn pages' figures, their page of numbers and handoff --
+    so a reader missed by the change would not fail; it would publish a
+    bills.csv of nothing and a Learn page counting nothing, and exit 0. And a
+    search for "index.json" matches the nh-archive's and the livestreams'
+    files of that name, which are other files. So: the fixture built whole
+    has no index.json, and its bills are all in bills.csv, in the manifest's
+    list of term files, in the Learn page's count and in the nightly's census.
+
+    And the copy a laptop keeps: site/ is never emptied, so the last
+    index.json would stay and publish would go on deploying a frozen list of
+    every bill. build_site_v2 deletes one it finds, and check_site refuses one,
+    and refuses an index that does not hold together.
+    """
+    import contextlib
+    import io
+    import check_site as CS
+    import nightly as NI
+    import site_read as SR_
+
+    def refused(where):
+        errors = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.bill_index(where, errors)
+        return errors
+
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    assert not (site / "index.json").exists(), "the fixture's build wrote an index.json"
+    rows = SR_.bill_index(site)
+    assert rows, "the fixture built no bill index"
+    terms = Counter(r["term"] for r in rows)
+    with (site / "data" / "bills.csv").open(encoding="utf-8", newline="") as fh:
+        in_csv = Counter(r["term"] for r in csv.DictReader(fh))
+    assert in_csv == terms, f"bills.csv holds {dict(in_csv)}; the bill index {dict(terms)}"
+    man = json.loads((site / "data" / "manifest.json").read_text(encoding="utf-8"))
+    listed = {t["term"]: t["bills"] for t in (man.get("bill_indexes") or {}).get("terms", [])}
+    assert listed == dict(terms), (
+        f"data/manifest.json lists the term files as {listed}; the index holds {dict(terms)}")
+    assert all(t["url"].endswith(f"/idx/{t['term']}.json")
+               for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
+    page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
+    assert f"Across the {len(rows):,} bills on this site" in page, (
+        f"the Learn page does not count the index's {len(rows):,} bills")
+    assert NI.census(site)["bills"] == len(rows), (
+        f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")
+
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-noindex-"))
+    try:
+        _site_fixture(root)
+        (root / "site").mkdir(exist_ok=True)
+        (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
+                  "--out", "site", "--segments", "work"],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        assert not (root / "site" / "index.json").exists(), (
+            "build_site_v2 left the index.json an earlier build wrote, which would deploy")
+        errors = refused(root / "site")
+        assert not errors, f"check_site refuses the bill index a build just wrote: {errors}"
+        (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        errors = refused(root / "site")
+        assert any("index.json" in e for e in errors), (
+            f"check_site passes a leftover index.json: {errors}")
+        (root / "site" / "index.json").unlink()
+        newest = json.loads((root / "site" / "meta.json").read_text(encoding="utf-8"))["terms"][0]
+        (root / "site" / "idx" / f"{newest}.json").unlink()
+        errors = refused(root / "site")
+        assert any(newest in e for e in errors), (
+            f"check_site passes a bill index missing {newest}'s file: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"the fixture's {len(rows):,} bills reach bills.csv, the manifest, the Learn "
+                  "page and the census with no index.json; a leftover is deleted by the "
+                  "build and refused by check_site, as is a term's missing file")
+
+
 # What a term's search index may weigh. The page fetches it when somebody
 # searches; /search fetches every term's. Measured on 1 October: 197,000 to
 # 303,000 bytes a term, 4.4 MB for all twenty. A file past this has stopped
@@ -16366,8 +16454,10 @@ def _built_site(here, root, brand=True, env=None):
          "Danville": floterial_town(8)}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
+        # meta.json and the term files it names are the bill index; the
+        # one-file index.json is retired (_index_json_retired).
         ("build_site_v2.py", ["--data", "data", "--out", "site",
-                              "--segments", "work"], "site/index.json"),
+                              "--segments", "work"], "site/meta.json"),
         # IN BUILD_ALL'S ORDER, after the site data whose indexes it reads
         # (2 October). The fixture carries no bill text, which the builder is
         # told and says in its manifest (--allow-no-text); check_site then
@@ -31673,7 +31763,7 @@ def _first_referral_on_disk(referrals, build_data):
 
     Wherever a chamber's docket names a first referral, data/bills.json must
     show that committee, or the search page's spelling of the same one
-    (build_data._same_committee). And every row of site/index.json whose
+    (build_data._same_committee). And every row of the bill index whose
     bill has a committee in the chamber it began in must name that one as
     THE committee. On the build of 23 September, 778 bill-chambers showed a
     later referral, 4,087 left out the originating chamber's committee and
@@ -31758,7 +31848,7 @@ def _committee_filter_one_name(committee_names):
     """The built record against the alias table.
 
     Every bill-chamber committee in data/bills.json, and every value of the
-    bills page's Committee filter in site/index.json, must be what
+    bills page's Committee filter in the bill index, must be what
     committee_names.official writes for it -- which is what build_data
     wrote, so this fails when a build ran on older code or a new spelling
     arrived that the table resolves and the data does not yet show. On the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.149
+# GRANITE_VERSION: 2026-09-05.150
 """
 Generate the faceted site from real General Court data.
 
@@ -6246,7 +6246,7 @@ def bill_committees(b, bid):
 
     `committees` is every committee the bill has, each with its chamber, House
     first; the card lists them in that order. `committee` is THE committee of
-    the bill -- what index.json, idx/<term>.json and the committee list in the
+    the bill -- what idx/<term>.json and the committee list in the
     site's meta carry -- and it is the one in the chamber the bill began in.
     It was committees[0], which made it the House's for every Senate bill that
     crossed over: SB 1 of 2023, referred to the Senate's Judiciary, was filed
@@ -9373,12 +9373,15 @@ def main():
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
                                    max(bills) if bills else ""))
-    # COMPACT, as the term files below are (5 October 2026): the same JSON
-    # value without the spaces after each comma and colon, 21.9 MB where it
-    # was 23.7 -- which was 90.5% of the 25 MiB Cloudflare Pages takes in one
-    # file, so check_site's warning fired on every build.
-    (out / "index.json").write_text(json.dumps(index, separators=(",", ":")),
-                                    encoding="utf-8")
+    # NO index.json (retired 5 October 2026). It was every row below in one
+    # file, read by six build steps and by no page: 23.7 MB on 2 October,
+    # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's
+    # worth bigger with every field added to a row. The build reads the term
+    # files instead, through site_read.bill_index. The copy an earlier build
+    # left is deleted: site/ is never emptied, so it would stay and publish
+    # would go on deploying a frozen list of every bill. check_site refuses
+    # one as well.
+    (out / "index.json").unlink(missing_ok=True)
 
     # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search
     # has always filtered to a single term -- there is a term picker and
@@ -9386,10 +9389,11 @@ def main():
     # at one. With the archive in, index.json is 15.7 MB (1.6 gzipped) and
     # every first visit pays for it before a word can be typed.
     #
-    # index.json stays whole because six build steps read it and expect every
-    # bill. These are what the browser fetches: the newest term is 0.14 MB
-    # gzipped and an archived one about 0.08, fetched only if somebody picks
-    # it.
+    # These are what the browser fetches: the newest term is 0.14 MB gzipped
+    # and an archived one about 0.08, fetched only if somebody picks it. And
+    # they are the record: the build reads them too (site_read.bill_index),
+    # meta.json naming the terms, and data/manifest.json lists them for
+    # programs.
     idx_dir = out / "idx"
     idx_dir.mkdir(exist_ok=True)
     by_term = defaultdict(list)
@@ -9413,9 +9417,11 @@ def main():
           f"{(idx_dir / f'{newest_}.json').stat().st_size / 1024:,.0f} KB) "
           "-- what a visitor actually loads")
 
-    size = (out / "index.json").stat().st_size / 1024
-    print(f"index.json: {size:.0f} KB for {len(index):,} bills "
-          f"(roughly {size/4:.0f} KB gzipped, which is what a static host sends)")
+    size = sum((idx_dir / f"{t_}.json").stat().st_size for t_ in by_term) / 1024
+    biggest = max((((idx_dir / f"{t_}.json").stat().st_size, t_) for t_ in by_term),
+                  default=(0, ""))
+    print(f"idx/: {size:,.0f} KB for {len(index):,} bills; the largest, "
+          f"{biggest[1]}, is {biggest[0] / 1024:,.0f} KB")
 
     # (term, bill) -> the year its page is under, so a vote can link to the
     # right one of two bills sharing a number.
@@ -9602,8 +9608,8 @@ def main():
              if newest_ else 0)
     print(f"\nsite data: {total/1e6:.1f} MB total, {front:,.0f} KB loaded "
           f"up front (idx/{newest_}.json)")
-    print(f"  index.json is {size:,.0f} KB and is read by the build "
-          "rather than by a browser")
+    print(f"  idx/ is {size:,.0f} KB in all, one file a term, and the build "
+          "reads the same files")
     print(f"-> {out}/")
     print("\nNext: the HTML shell reads idx/<term>.json and meta.json for search and")
     print("facets, then fetches bills/<year>/<id>.json when a card is expanded.")

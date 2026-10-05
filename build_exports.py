@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.25
+# GRANITE_VERSION: 2026-09-10.26
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -10,8 +10,9 @@ WHY
 Everything this site knows is already published as JSON, and JSON is a fine
 answer for a program and a poor one for a person with a spreadsheet and a
 question. Somebody building a scorecard, checking a claim about a member's
-votes, or teaching a class should not have to learn how index.json is shaped
-or which of nineteen per-term files to fetch first. A CSV opens in anything.
+votes, or teaching a class should not have to learn how the bill index is
+shaped or which of nineteen per-term files to fetch first. A CSV opens in
+anything.
 
 WHAT IT REFUSES TO DO
 
@@ -654,12 +655,15 @@ def data_page(site, out, tables, base, cov=()):
       every table with its rows, byte size and column names, so a script can
       discover what is here in one request instead of guessing from
       filenames. The site&#39;s own JSON is served from this origin too and is
-      open to cross-origin requests:
-      <a href="index.json">index.json</a> (every bill),
-      <a href="legislators.json">legislators.json</a>,
-      <a href="rollcalls_index.json">rollcalls_index.json</a>, and
-      <code>idx/&lt;term&gt;.json</code>, which is index.json split by
-      biennium for anybody who wants one term rather than all nineteen.</p>
+      open to cross-origin requests: <code>idx/&lt;term&gt;.json</code>, each
+      term&#39;s bills as the bill list and the search read them, which the
+      manifest lists with their addresses and sizes;
+      <a href="legislators.json">legislators.json</a>; and
+      <a href="rollcalls_index.json">rollcalls_index.json</a>. Every
+      term&#39;s file together is every bill. One file of all of them,
+      index.json, was retired on 5 October 2026, when it had grown to nine
+      tenths of the largest file this site&#39;s host will serve; the same
+      bills are bills.csv above, in one table.</p>
 
     {feeds(site)}
 

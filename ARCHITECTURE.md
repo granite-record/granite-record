@@ -416,6 +416,47 @@ terms, which only the built site can answer. `matchScore()` is the one place
 a bill's score is added up, for `/bills`, the header, `/search` and those
 cases.
 
+## The bill index, one file per term
+
+Every bill's row -- title, sponsor, committees, topic, status, passage -- is
+published one term to a file, `site/idx/<term>.json`, and `site/meta.json`
+names the terms, newest first. Those are what the bills page, the header's
+search, `/search` and every record page fetch. The build reads the same files
+through one reader, `site_read.bill_index(site)`, which answers in three ways:
+`None` where no site is built (there is no `meta.json`: GitHub's machine starts
+with `site/` empty); `site_read.Broken` where the files do not hold together (a
+term named with no file, an empty or unreadable one, a row in another term's
+file, a term file `meta.json` does not name); and otherwise every row, newest
+term first. A builder that cannot go on without every bill asks
+`bill_index_or_stop`, which turns both of the first two into a stop that says
+what to run: four of the old readers read a missing file as no bills and went
+on. The nightly's census counts it, its fingerprint hashes the files
+`meta.json` names, and `check_site` refuses a site whose index does not hold
+together.
+
+`/index.json`, the same rows joined into one file, was retired on 5 October
+2026. No page read it; six build steps did, and it had reached 23.7 MB --
+90.5% of the 25 MiB Cloudflare Pages takes in one file -- growing about a
+megabyte with every field added to a row. Each term's file is 1.0 to 1.3 MB,
+so the limit no longer depends on how many terms there are. For programs,
+`data/manifest.json` lists the term files with their addresses, bills and
+sizes, and `data/bills.csv` is every bill in one table. `build_site_v2.py`
+deletes a leftover `site/index.json`, because `site/` is never emptied and
+`publish` would otherwise go on deploying a frozen copy, and `check_site`
+refuses one.
+
+The order a builder writes in is its own to state, not the order the rows
+arrive in. The sitemap lists the newest term's bills first, and a committee's
+file its terms newest first, sorted where they are written. Until 5 October
+both followed `index.json`'s order, which was `data/bills.json`'s: 2025-2026,
+2023-2024, then 1989-1990 upward.
+
+The governor's veto messages are read before the site data, which puts each
+on its bill's page, so the report of the vetoed bills with no message is a
+step of its own after it (`extract_vetoes.py --gaps`): at the end of the
+writing run it read the previous build's index, and on GitHub's machine
+nothing at all.
+
 ## Sitting days, built 19 September
 
 A page for every day the House sat, at `/session/H/<date>`, and for every day

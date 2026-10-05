@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.50
+# GRANITE_VERSION: 2026-09-05.51
 """
 Run the whole pipeline in the right order.
 
@@ -664,7 +664,7 @@ def plan(a):
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],
              needs=["data/bills.json"],
-             produces=["site/index.json", "site/meta.json", "site/idx"]),
+             produces=["site/meta.json", "site/idx"]),
 
         # AFTER THE SITE DATA, because what it reads is the site's own word for
         # which bills were vetoed. It was the end of the step that writes the
