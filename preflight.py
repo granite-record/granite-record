@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.328
+# GRANITE_VERSION: 2026-09-04.329
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11397,6 +11397,83 @@ def _search_index_main(SI, CS):
                   + ", when ".join(said) + "; --terms writes its own term "
                   "only; check_site refuses a site with no search index, or "
                   "an earlier term without text, or a file over 25 MiB")
+
+
+@check("build", "check_live reads meta.json and the newest term's index, and a "
+       "file too large to read is a problem, not a pass")
+def _check_live_reads_what_it_checks():
+    """check_live.py is what the nightly runs once a deploy is up (--gate).
+    It asked for /index.json, every bill of every term in one file, and reads
+    at most 12 MB of JSON: the file was 23.7 MB, so from 25 September to 2
+    October it printed "larger than this reads; not checked" and recorded no
+    problem -- a gate that passed a file it never read.
+
+    Driven here against a served site held in memory, with no network: it
+    asks for /meta.json and the term meta.json names newest, and never for
+    /index.json; a site serving what was built passes the gate; and one whose
+    newest index is past the limit fails it, said as not checked rather than
+    as a deploy that did not land.
+    """
+    import contextlib
+    import io
+    import check_live as CL_
+    root = Path(tempfile.mkdtemp(prefix="gr-live-"))
+    page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+    (root / "bills.html").write_bytes(page)
+    served = {
+        "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+        "/bills": (200, "text/html", page),
+        "/style.css": (200, "text/css", b"body{}"),
+        "/meta.json": (200, "application/json",
+                       json.dumps({"terms": ["2025-2026", "2023-2024"]}).encode()),
+        "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+        "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+        "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+    }
+    asked = []
+
+    def fake_get(url, limit=400_000):
+        path = url[len("http://site.invalid"):]
+        asked.append(path)
+        st, ct, body = served.get(path, (404, "text/html", b"not found"))
+        return st, ct, body[:limit], None
+
+    def gate():
+        saved = (CL_.get, sys.argv)
+        CL_.get = fake_get
+        sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid",
+                    "--site", str(root)]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = CL_.main()
+        finally:
+            CL_.get, sys.argv = saved
+        return code, out.getvalue()
+
+    try:
+        code, out = gate()
+        assert code == 0, f"check_live --gate fails a site serving what was built:\n{out[-600:]}"
+        assert "/index.json" not in asked, f"check_live still asks for /index.json: {asked}"
+        assert "/meta.json" in asked and "/idx/2025-2026.json" in asked, (
+            f"check_live does not ask for meta.json and the newest term's index: {asked}")
+        served["/idx/2025-2026.json"] = (200, "application/json", b"[" + b" " * 12_000_000 + b"]")
+        asked.clear()
+        code, out = gate()
+        assert code != 0 and "not checked" in out and "NOT CHECKED" in out, (
+            "a term index larger than check_live reads passed its gate, or was not said "
+            f"as unchecked ({code}):\n{out[-600:]}")
+        assert "DID NOT LAND" not in out, (
+            "a file too large to read is reported as a deploy that did not land")
+        served["/meta.json"] = (200, "application/json", b'{"terms": []}')
+        asked.clear()
+        code, out = gate()
+        assert "names no term" in out and not any(p.startswith("/idx/") for p in asked), (
+            f"a meta.json naming no term was not said, or an index was guessed at: {asked}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("asks for meta.json and the newest term's index, never index.json; "
+                  "passes a site serving what was built; an index past 12 MB is "
+                  "said as not checked and fails the gate")
 
 
 # What a term's search index may weigh. The page fetches it when somebody

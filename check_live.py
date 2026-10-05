@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 What is the live site actually serving?
 
@@ -34,18 +34,30 @@ WHAT IT CHECKS
   /bills                served, HTML, and carries the GRANITE_VERSION that
                         site/bills.html carries
   /style.css            served as CSS and not as HTML
-  /index.json           served as JSON, and parses, and has bills in it
+  /meta.json            served as JSON, and parses, and names the terms
+  /idx/<newest>.json    the newest term's bills, which every visitor's list and
+                        search load first: served as JSON, parses, has bills
   /legislators          served, and is a different page from /
   /feed/all.xml         served as XML
 
 The last one matters more than it looks: if / and /bills return the same bytes,
 every path is falling through to the home page, which is the failure that
 removes the formatting too.
+
+A FILE TOO LARGE TO READ IS A PROBLEM, NOT A PASS (5 October 2026). This asked
+for /index.json, every bill of every term in one file, and reads at most 12 MB
+of a JSON file. The file was 23.7 MB, so on every night that deployed from 25
+September to 2 October this printed "larger than this reads; not checked" and
+recorded nothing -- a check that passed by not looking. It asks for meta.json
+and the newest term's index now, which are what a visitor's first page loads
+and a fraction of that limit; and a file that will not fit counts as a
+problem, so the gate cannot pass a file it did not read.
 """
 
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -55,6 +67,9 @@ from pathlib import Path
 UA = {"User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache",
       "Pragma": "no-cache"}
 
+# A term as meta.json names one, and as its file in /idx/ is called.
+TERM = re.compile(r"\d{4}-\d{4}")
+
 
 TIMES = []
 
@@ -62,7 +77,7 @@ TIMES = []
 def get(url, limit=400_000):
     """Read up to limit bytes, and say whether that was all of them.
 
-    index.json is over 400 KB, so the first version of this cut it in half and
+    index.json was over 400 KB, so the first version of this cut it in half and
     then reported that it would not parse -- a checker written to reduce
     confusion, inventing some. A body that stops exactly on the limit is a
     truncation, and the only honest thing to say about it is that it was not
@@ -134,6 +149,18 @@ def stamp(b):
     if i < 0:
         return ""
     return b[i + 16: i + 34].decode("ascii", "replace").strip(" -->\r\n\t")
+
+
+def newest_term(body):
+    """The newest term a served meta.json names ("2025-2026"), or "" where it
+    names none or is not JSON. Its terms are written newest first; the
+    largest is taken rather than the first, so the order is not relied on."""
+    try:
+        terms = json.loads(body.decode("utf-8")).get("terms") or []
+    except (ValueError, AttributeError, UnicodeDecodeError):
+        return ""
+    real = [t for t in terms if isinstance(t, str) and TERM.fullmatch(t)]
+    return max(real) if real else ""
 
 
 def _flat(s):
@@ -281,8 +308,8 @@ def main():
         return 0 if steady else 1
 
     print(f"asking {base} what it is serving\n")
-    print(f"  {'path':<16}{'status':<8}{'type':<26}what came back")
-    print("  " + "-" * 74)
+    print(f"  {'path':<22}{'status':<8}{'type':<26}what came back")
+    print("  " + "-" * 80)
 
     seen, problems = {}, []
 
@@ -292,7 +319,7 @@ def main():
         st, ct, body, err = get(base + path, limit)
         seen[path] = (st, ct, body)
         if err:
-            print(f"  {path:<16}{'-':<8}{'-':<26}{type(err).__name__}: {err}")
+            print(f"  {path:<22}{'-':<8}{'-':<26}{type(err).__name__}: {err}")
             problems.append(f"{path} could not be fetched")
             return
         short = (ct.split(";")[0] or "?")[:24]
@@ -303,7 +330,12 @@ def main():
             problems.append(f"{path} is being served as a web page")
         elif want_type == "json":
             if len(body) >= limit:
+                # Said, and counted: a file this did not read to its end is
+                # one it cannot vouch for (the docstring has the nights it
+                # passed /index.json this way).
                 desc += " -- larger than this reads; not checked"
+                problems.append(f"{path} is {limit:,} bytes or more, larger "
+                                "than this reads, so it was not checked")
             else:
                 try:
                     v = json.loads(body.decode("utf-8"))
@@ -318,12 +350,21 @@ def main():
             problems.append(f"{path} is not XML")
         if st != 200:
             problems.append(f"{path} returned HTTP {st}")
-        print(f"  {path:<16}{st or '-':<8}{short:<26}{desc}{note}")
+        print(f"  {path:<22}{st or '-':<8}{short:<26}{desc}{note}")
 
     row("/", "html")
     row("/bills", "html")
     row("/style.css", "css")
-    row("/index.json", "json")
+    # meta.json, and the term index it names first: what the bills list, the
+    # header's search and every record page fetch before anything else. The
+    # term is the one the served meta.json names, so this asks for the file a
+    # visitor is being sent to rather than the one the local build expects.
+    row("/meta.json", "json")
+    newest = newest_term(seen.get("/meta.json", (None, "", b""))[2])
+    if newest:
+        row(f"/idx/{newest}.json", "json")
+    elif not any(p.startswith("/meta.json ") for p in problems):
+        problems.append("/meta.json names no term, so no bill index was checked")
     row("/legislators", "html")
     row("/feed/all.xml", "xml")
 
@@ -446,7 +487,16 @@ def main():
                      or ("returned HTTP" in x) or ("same page" in x)
                      or ("served as a web page" in x)
                      for x in problems)
+    # AND A FILE IT COULD NOT READ TO ITS END. That is not a deploy that
+    # failed to land, and it is not one this can say landed either: the gate
+    # passed /index.json for a week by not reading it. Said as what it is.
+    unread = [x for x in problems if "larger than this reads" in x]
     if a.gate:
+        if landed and unread:
+            print()
+            print("  NOT CHECKED: " + "; ".join(unread) + ". Whether the "
+                  "deploy landed whole is not known.")
+            return 1
         if landed:
             print()
             print("  The deploy landed. The problems above are dashboard "

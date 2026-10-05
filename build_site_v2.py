@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.147
+# GRANITE_VERSION: 2026-09-05.148
 """
 Generate the faceted site from real General Court data.
 
@@ -9373,7 +9373,12 @@ def main():
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
                                    max(bills) if bills else ""))
-    (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
+    # COMPACT, as the term files below are (5 October 2026): the same JSON
+    # value without the spaces after each comma and colon, 21.9 MB where it
+    # was 23.7 -- which was 90.5% of the 25 MiB Cloudflare Pages takes in one
+    # file, so check_site's warning fired on every build.
+    (out / "index.json").write_text(json.dumps(index, separators=(",", ":")),
+                                    encoding="utf-8")
 
     # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search
     # has always filtered to a single term -- there is a term picker and
