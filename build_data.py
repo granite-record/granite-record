@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.47
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2219,6 +2219,30 @@ def main():
     if _new:
         print(f"voters named only by the solver, from those same pages: {_new:,}")
 
+    # A FINISHED TERM'S MEMBERS, FROM ITS FROZEN ROSTER (5 October 2026).
+    # Organization Day seats a new House, and a third of the members who
+    # served in 2025-2026 then hold no seat. Nothing above knows those who
+    # left at an election until the laptop's fetchers name them, so on the
+    # rehearsal of the turn 477 bills' roll calls tallied their ballots under
+    # no party and 1,392 bills drew their sponsors without one. The roster
+    # frozen with the term (freeze_term.py) is the term's own record of them:
+    # their name, party, county and district as they sat. It fills only where
+    # nothing above names a member, and the corrections below still come last.
+    _frozen_gave = 0
+    for _t in gone_terms:
+        _counties = {r[0]: r[1] for r in rows(d / "frozen" / _t / "day" / "Counties.txt", 3)}
+        for r in rows(d / "frozen" / _t / "day" / "legislators.txt", 15):
+            if r[0] in legs or r[0] in former:
+                continue
+            former[r[0]] = {"name": f"{r[1]}, {r[2]}".strip(", "),
+                            "party": (r[8] or "").upper(),
+                            "county": _counties.get(r[6].zfill(2), ""),
+                            "district": r[7]}
+            _frozen_gave += 1
+    if _frozen_gave:
+        print(f"members of {', '.join(gone_terms)} who hold no seat now, named from that "
+              f"term's frozen roster: {_frozen_gave:,}")
+
     # ------------------------------------------ what a person has corrected ---
     #
     # LAST, OVER EVERY GENERATED SOURCE, AND OVER NOTHING ELSE. By this line
@@ -2572,11 +2596,15 @@ def main():
               "term being built from its freeze: "
               + ", ".join(f"{k} {v:,}" for k, v in sorted(left_out.items())))
     # ------------------------------------------------------------ write ---
-    # A frozen term's run writes its own term's bills and sponsors and
-    # nothing else (below): the roster and the ballots are the session's.
+    # A frozen term's run writes its own term's bills and sponsors (below),
+    # and its roster as it was frozen, which narrate_archive tells the term's
+    # histories with -- a motion by "Rep. N. Germana" is given the full name
+    # of a member who sat then, not left to initials because the House turned
+    # over (the rehearsal of 5 October 2026). The ballots and the towns are
+    # the session's.
+    (out / "legislators.json").write_text(
+        json.dumps(sorted(legs.values(), key=lambda m: m["name"]), indent=2), encoding="utf-8")
     if not frozen:
-        (out / "legislators.json").write_text(
-            json.dumps(sorted(legs.values(), key=lambda m: m["name"]), indent=2), encoding="utf-8")
         (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
         (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
     # {term: {bill: record}}. A bill number is unique within a term and not

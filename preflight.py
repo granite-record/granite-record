@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.336
+# GRANITE_VERSION: 2026-09-04.337
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39045,6 +39045,33 @@ def _no_leak_by_number(BD, BSV, BA, TF):
     return "ok", ("testimony.json read by nothing and carried by no kit; the Legislation fill by "
                   "term; bill_titles.json by term or not at all; a finished term's sign-ins from "
                   "its freeze")
+
+
+@check("build", "a docket with no proceeding yet makes a manifest of its columns and no row",
+       needs=("build_manifest",))
+def _manifest_with_no_proceeding(BM):
+    """A new term's first docket is Organization Day's resolutions and the
+    first bills' introductions, and no hearing. build_manifest took its
+    columns from its first row and stopped on an IndexError there, leaving
+    the last term's manifest in place (the rehearsal of 5 October 2026)."""
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-manifest-"))
+    try:
+        (tmp / "v.csv").write_text("video_id,title,title_parsed,parsed_committee,parsed_date,"
+                                   "date_from,has_start_time,start_eastern,actual_start_utc,"
+                                   "actual_end_utc,duration_iso,published_at\n", encoding="utf-8")
+        (tmp / "Docket.txt").write_text(
+            "2027|0001|12/2/2026 10:44:26 AM|HR1|H|Introduced and Adopted, VV; 12/02/2026 HJ 1|"
+            "12/2/2026 10:44:26 AM\n", encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_manifest.py"), "--videos", "v.csv",
+                  "--docket", "Docket.txt", "--out", "vm.csv"], cwd=tmp, capture_output=True,
+                 text=True, timeout=120, env=dict(os.environ, PYTHONPATH=str(here)))
+        assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
+        head = (tmp / "vm.csv").read_text(encoding="utf-8").splitlines()
+        assert head == [",".join(BM.MANIFEST_COLUMNS)], head
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "a resolutions-only docket writes the manifest's columns and no row"
 
 
 @check("build", "a database night takes a changed roster when tonight's Members.txt names it, "

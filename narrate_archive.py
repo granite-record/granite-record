@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.6
+# GRANITE_VERSION: 2026-09-11.7
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -113,9 +113,15 @@ def main():
         extra += ["--chapters", str(CHAPTERS)]
     past = [0, 0, []]
     for term, path in found.items():
+        # A FROZEN TERM IS TOLD WITH ITS OWN ROSTER (5 October 2026): the one
+        # build_data --frozen-terms wrote beside the term's build, so a motion
+        # by a member who has since left still reads with their full name, as
+        # it did while the term was the session's.
+        frozen_roster = Path(a.bills).parent / "frozen" / term / "legislators.json"
+        members = str(frozen_roster) if frozen_roster.exists() else a.members
         r = subprocess.run(
             [sys.executable, "narrative.py", "--docket", path, "--all",
-             "--out", a.out, "--members", a.members, "--bills", a.bills] + extra,
+             "--out", a.out, "--members", members, "--bills", a.bills] + extra,
             capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()[-1:]
