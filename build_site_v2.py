@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.148
+# GRANITE_VERSION: 2026-09-05.149
 """
 Generate the faceted site from real General Court data.
 
@@ -6132,7 +6132,7 @@ def vote_member(m, body, legs, unnamed):
 
 
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
-                      leg_by_sort, leg_by_name, sponsored, seats=None):
+                      leg_by_sort, leg_by_name, sponsored, seats=None, left=None):
     """Who put their name to this bill, and their own bill list, both.
 
     It mutates `sponsored`, which is the caller's accumulator of what
@@ -6140,6 +6140,11 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
     `unnamed`. That is why it is passed explicitly rather than closed
     over: a function that changes something belonging to its caller
     should say so in its signature.
+
+    `left` is ({sort name: [member]}, {name key: [member]}) of the members
+    who hold no seat now, passed only for a finished term frozen at its end
+    (build_bills says which); None everywhere else, which is every term
+    before the first turn.
 
     `prime` stays in the loop. It is one line and it reads better
     beside the payload that uses it than as an extra return value.
@@ -6160,6 +6165,25 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                     t == term and (not ch or c == ch)
                     for t, c in seats.get(str(_m.get("id")), ())):
                 _m = None
+            # A FINISHED TERM'S MEMBERS WHO HOLD NO SEAT NOW (5 October 2026).
+            # While 2025-2026 was the session's, this name fell back on the
+            # roster, which was that term's. After the turn the roster is the
+            # next House, and on the rehearsal of the turn 900 sponsor names
+            # on 491 of the term's bills -- a third of the House, gone at the
+            # election -- lost their link and read their seat as the record
+            # pads it ("Belk 07"), though each of them has a page under
+            # `former`. So for a term frozen and finished (`left`), a name
+            # the sitting roster does not answer is looked for among those
+            # members too, under the same rule: only one who sat in that
+            # chamber that term.
+            if not _m and left:
+                for _f in (*left[0].get(sort_name(_s.get("name") or ""), ()),
+                           *left[1].get(name_key(_s.get("name") or "") or ("", ""), ())):
+                    if seats is None or any(
+                            t == term and (not ch or c == ch)
+                            for t, c in seats.get(str(_f.get("id")), ())):
+                        _m = _f
+                        break
         _m = _m or {}
         # The roster first, then whatever the sponsor record carries in
         # its own right. build_data fills the county and district in for a
@@ -8210,7 +8234,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
-                links=None, hearing_reports=None):
+                links=None, hearing_reports=None, finished=()):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -8259,6 +8283,17 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
             _people.setdefault(str(_old), legs.get(_sit) or {})
+    # And, for a finished term frozen at its end, the members who left by
+    # name: bill_sponsor_list says why. Every one of a name, in order, since
+    # only the one who sat that term is taken.
+    _left = None
+    if finished:
+        _left = (defaultdict(list), defaultdict(list))
+        for _m in (former or {}).values():
+            _left[0][sort_name(_m.get("name") or "")].append(_m)
+            _k = name_key(_m.get("name") or "")
+            if _k:
+                _left[1][_k].append(_m)
     # The Senate's hearing reports: who testified, resolved to members where
     # a line names one. Counted as they are attached, so the build says how
     # many found their hearing and names the ones that did not.
@@ -8373,7 +8408,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # member belongs in a sponsor list, not in a roster.
         sp_list = bill_sponsor_list(bid, b, year, term, current,
                                     sponsors, _people, leg_by_sort,
-                                    leg_by_name, sponsored, seats)
+                                    leg_by_name, sponsored, seats,
+                                    left=_left if term in finished else None)
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -9358,6 +9394,17 @@ def main():
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "
               "unchanged")
+    # The terms frozen at their end and finished, by the rule build_data
+    # builds them by (freeze_term.py): older than the session's. Their
+    # sponsors are looked for by name among `former` too. None before the
+    # first turn, so nothing here moves until the files show a new term.
+    import freeze_term
+    _frozen = freeze_term.frozen_terms()
+    _sess = P.session_term() if _frozen else ""
+    finished = tuple(t for t in _frozen if _sess and t < _sess)
+    if finished:
+        print(f"  finished and frozen: {', '.join(finished)}; their sponsors are "
+              "looked for among the members who hold no seat now as well")
     # BEFORE seats_held, and over both populations. A sponsor matched on their
     # name alone is only that member if this says they held a seat in that
     # chamber that term -- so a former member absent from it would be matched
@@ -9377,6 +9424,7 @@ def main():
                                chapters=chapters, seats=seats,
                                former=former, links=links,
                                hearing_reports=hearing_reports,
+                               finished=finished,
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,

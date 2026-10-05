@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.337
+# GRANITE_VERSION: 2026-09-04.338
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -49294,6 +49294,66 @@ def _sponsor_filing(build_site_v2, member_links):
         "the bill page links " + str([s["slug"] for s in sp]))
     return "ok", ("a record with no id or an employee number filed once under the member its page links; "
                   "a same-named member who did not sit that term neither linked nor credited")
+
+
+@check("naming", "after the turn a finished term's sponsors who left at the election keep their link",
+       needs=("build_site_v2", "member_links"))
+def _finished_term_sponsors(build_site_v2, member_links):
+    """The rehearsal of the turn, 5 October 2026: once the roster was the next
+    House, 900 sponsor names on 491 of 2025-2026's bills -- the members who left
+    at the election -- lost their link and read their seat as the record pads
+    it ("Belk 07"), because a bill status page's sponsor carries a web member id
+    and was found by name on the sitting roster alone. Each has a page under
+    `former`. For a term frozen and finished, bill_sponsor_list now looks for
+    the name there too (`left`), under the rule a name is that member only
+    where they sat that term; for every other term `left` is None and nothing
+    moves.
+    """
+    from collections import defaultdict
+    B, ML = build_site_v2, member_links
+    legs = {"990100": {"id": "990100", "name": "Smith, Ann", "chamber": "H", "party_code": "D",
+                       "district": "5", "county": "Rockingham", "county_abbr": "Rock"}}
+    # Two former members of one name: the first sat in 2001-2002 only.
+    former = {"990500": {"id": "990500", "name": "Terry, Paul", "chamber": "H", "party_code": "D",
+                         "district": "3", "county": "Hillsborough", "county_abbr": "Hills",
+                         "former": True},
+              "990866": {"id": "990866", "name": "Terry, Paul", "chamber": "H", "party_code": "R",
+                         "district": "7", "county": "Belknap", "county_abbr": "Belk",
+                         "former": True}}
+    votes = {"990100": [{"year": "2025", "body": "H"}], "990500": [{"year": "2001", "body": "H"}],
+             "990866": [{"year": "2026", "body": "H"}]}
+    seats = ML.seats_held([*legs.values(), *former.values()], votes, {}, "2027-2028")
+    by_sort = {B.sort_name(m["name"]): m for m in legs.values()}
+    by_name = {B.name_key(m["name"]): m for m in legs.values()}
+    left = (defaultdict(list), defaultdict(list))
+    for m in former.values():
+        left[0][B.sort_name(m["name"])].append(m)
+        left[1][B.name_key(m["name"])].append(m)
+    sponsors = {"2025-2026": {"HB10": [
+        {"member_id": "409053", "name": "Paul Terry", "chamber": "H", "prime": True,
+         "county": "Belk", "district": "07"},
+        {"member_id": "409000", "name": "Ann Smith", "chamber": "H", "prime": False}]}}
+    people = {**legs, **former}
+
+    def run(with_left):
+        sponsored = defaultdict(list)
+        sp = B.bill_sponsor_list("HB10", {"designation": "HB 10", "title": "a bill"}, "2025",
+                                 "2025-2026", "2027-2028", sponsors, people, by_sort, by_name,
+                                 sponsored, seats, left=left if with_left else None)
+        return sp, sponsored
+
+    sp, sponsored = run(True)
+    terry = sp[0]
+    assert terry["slug"] == B.own_slug(former["990866"]) and terry["district_label"] == "Belk 7", (
+        f"the finished term's Paul Terry reads {terry['district_label']!r}, linked to {terry['slug']!r}: "
+        "wanted the one who sat in 2025-2026, at Belk 7")
+    assert sponsored.get("990866") and "990500" not in sponsored, (
+        "HB 10 filed under " + ", ".join(sponsored))
+    assert sp[1]["slug"] == B.own_slug(legs["990100"]), "the member re-elected lost her link"
+    sp, _ = run(False)
+    assert not sp[0]["slug"], "with no finished term the name was looked for among former members"
+    return "ok", ("a finished term's sponsor named by a web id is found among the members who left, the "
+                  "one who sat that term, and reads their seat as before; with no finished term, as it was")
 
 
 @check("naming", "a bill text's sponsor line is read as each era prints it, and a surname is a member only where one fits",
