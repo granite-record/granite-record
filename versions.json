@@ -98,7 +98,7 @@
     "fiscal.py": "2026-09-08.1",
     "fix_meridiem_manifests.py": "2026-09-18.1",
     "floor_markers.py": "2026-09-04.5",
-    "freeze_term.py": "2026-10-05.1",
+    "freeze_term.py": "2026-10-05.2",
     "functions/api/report.js": "2026-09-12.6",
     "gc_changes.py": "2026-09-12.7",
     "ground_truth.py": "2026-09-05.1",

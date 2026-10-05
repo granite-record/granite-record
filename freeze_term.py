@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.1
+# GRANITE_VERSION: 2026-10-05.2
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -522,9 +522,9 @@ def freeze_session(term, root=Path(".")):
     said.append(f"verification_manifest_{term}.csv: the night's manifest, "
                 f"{rec['manifest']['rows']:,} rows, its hand-marked times with it")
     for name, (copy, y) in copies.items():
-        if copy.exists() and copy.read_bytes() == data[name]:
+        if copy.exists() and _lines(copy.read_bytes()) == _lines(data[name]):
             said.append(f"{copy.relative_to(root).as_posix()}: already the installed "
-                        f"{name}, byte for byte")
+                        f"{name}, line for line")
             continue
         write_bytes(copy, data[name])
         said.append(f"{copy.relative_to(root).as_posix()}: WRITTEN from the installed {name}. "
@@ -582,11 +582,21 @@ def intact(root, term):
             bad.append(f"{p.name or key} is not here")
         elif sha256_of(p) != (rec.get(key) or {}).get("sha256"):
             bad.append(f"{p.name} is not the copy frozen with the term")
+    # The roll-call copies travel in git, which may hand them back with other
+    # line endings than the installed file had (core.autocrlf on GitHub's
+    # machine): compared by their lines, not their bytes.
     for name, c in (rec.get("rollcalls") or {}).items():
         p = root / c.get("path", "")
-        if not p.exists() or sha256_of(p) != c.get("sha256"):
+        frozen_copy = root / FROZEN / term / DAY / name
+        if not p.exists() or not frozen_copy.exists() or \
+                _lines(p.read_bytes()) != _lines(frozen_copy.read_bytes()):
             bad.append(f"{c.get('path')} is not the frozen {name}")
     return bad
+
+
+def _lines(data):
+    """A text file's lines, whatever its line endings and byte-order mark."""
+    return [ln.rstrip() for ln in data.decode("utf-8-sig", "replace").splitlines() if ln.strip()]
 
 
 def views_intact(root, term):
