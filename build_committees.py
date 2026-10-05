@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.39
+# GRANITE_VERSION: 2026-09-07.40
 """
 A page's worth of data for every committee.
 
@@ -451,9 +451,14 @@ def feed_link(code, name):
 def bills_in_order(by_term):
     """A committee's referred bills, per term, by number as bills.html lists
     them. Sorted on the id's text this put HB1003 before HB101 on the page:
-    the Bills tab shows this file's order and has no sort control."""
-    return {t: sorted(v, key=lambda b: BO.bill_key(b["id"]))
-            for t, v in by_term.items()}
+    the Bills tab shows this file's order and has no sort control.
+
+    The terms newest first, as meta.json names them. They were in whatever
+    order index.json held its rows -- 2025-2026, 2023-2024 and then 1989-1990
+    upward, the order build_data met the dockets in -- which the page never
+    showed (recordTerms sorts them) and the file should not depend on."""
+    return {t: sorted(by_term[t], key=lambda b: BO.bill_key(b["id"]))
+            for t in sorted(by_term, key=lambda t: str(t or ""), reverse=True)}
 
 
 # THE CEILING ON COMMITTEE NAMES THAT REACH NO PAGE. A hearing whose

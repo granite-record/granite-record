@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.58
+# GRANITE_VERSION: 2026-09-04.59
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -252,6 +252,13 @@ def main():
     a = ap.parse_args()
     site = Path(a.site)
     idx = json.loads((site / "index.json").read_text(encoding="utf-8"))
+    # THE NEWEST TERM FIRST, AS meta.json NAMES THE TERMS, and each term's
+    # bills in the order the index gives them. The sitemap is written in this
+    # order, and it used to be whatever order index.json happened to hold:
+    # data/bills.json's, which is 2025-2026, 2023-2024 and then 1989-1990
+    # upward -- the order build_data met the dockets in, which nothing chose.
+    # Stated here, the sitemap is the same however the rows are read.
+    idx = sorted(idx, key=lambda b: str(b.get("term") or ""), reverse=True)
     out = site / "bill"
     out.mkdir(parents=True, exist_ok=True)
     generated = build_date.today().isoformat()
