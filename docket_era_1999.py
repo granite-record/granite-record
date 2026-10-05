@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.7
+# GRANITE_VERSION: 2026-09-11.8
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -213,7 +213,12 @@ _CMTE_END = (r"(?=\s*(?:[;<\[]|,?\s*\((?:See|also)|,?\s*(?:HJ|SJ|HC|SC)\s*\d|,\s
 INTRO = re.compile(
     r"^(?:\[?(?P<date>\d{1,2}/\d{1,2}/\d{2,4})\]?\s+)?"
     r"Introduc(?:ed|e|tion)\s*(?:\((?:in recess(?:\s+of)?|Approved by Rules Comm\w*)\)\s*)?(?:and|&)\s+"
-    r"(?:ref(?:erred|erring|er)?\.?)\s*(?:to\b|:)?\s*"
+    # The verb however the clerk spelt it: "Refered" (HB 722 of 1999, HB
+    # 1163 of 2006), "Referrred" (SB 389 of 2006), "referrring" (HB 363 of
+    # 1999), "referral" (HB 581 of 1999). Read as "ref" and no more, each
+    # left the rest of its word in front of the committee -- "the House ed to
+    # Science, Technology and Energy committee" -- on six histories.
+    r"(?:ref(?:e?r+(?:ed|ing|al)|er)?\.?)\s*(?:to\b|:)?\s*"
     r"(?P<committee>[A-Z][^;<\[]*?)" + _CMTE_END, re.I)
 VACATED = re.compile(
     r"^Vacated\s+(?:from\s+[A-Z][^;]*?\s+)?(?:and\s+)?(?:Re-?)?(?:Ref(?:erred)?\.?\s+)?to\s+"
@@ -221,7 +226,9 @@ VACATED = re.compile(
 REREF_H = re.compile(
     r"^(?:ref|Re-?Referred|Referred|Refer)\.?\s+to\s+(?P<committee>(?!.*Interim\s+Study)[A-Z][^;(\[]*?)"
     # committee names carry commas ("Res, Rec & Dev"): stop at a mover, a vote or the end
-    r"(?:\s+committee)?(?=\s*(?:[;(\[]|,\s*(?:Reps?|Sen)\b|,?\s*(?:VV|RC|DIV|DV|MA)\b|,?\s*$))", re.I)
+    # -- or the rule it was sent under: "Refer To Finance Rule 26" (HB 618 of
+    # 2003) sent the bill to "the Finance Rule 26 committee".
+    r"(?:\s+committee)?(?=\s*(?:[;(\[]|Rule\b|,\s*(?:Reps?|Sen)\b|,?\s*(?:VV|RC|DIV|DV|MA)\b|,?\s*$))", re.I)
 
 # --- meetings -----------------------------------------------------------------
 HEARING = re.compile(

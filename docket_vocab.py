@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.12
+# GRANITE_VERSION: 2026-09-11.13
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -239,15 +239,27 @@ def _committee_name(raw):
         return raw
 
 
-def _expand_committees(d):
+def _expand_committees(d, written=None):
+    # AND THE NAME AS THE CLERK WROTE IT, kept beside the expansion
+    # (3 October 2026): narrative.committee_said reads it where the expansion
+    # names no committee that chamber had that term. "REFERRED TO
+    # FINANCE/APPROP", the 1989 Senate's, expands to "Appropriations" -- the
+    # House's committee; the Senate's was Finance -- and the clerk's own
+    # words name it.
+    said = dict(written or {})
     for k in ("committee", "refer"):
         if d.get(k):
+            said.setdefault(k, d[k])
             d[k] = _committee_name(d[k])
+    if said:
+        d["_as_written"] = said
     return d
 
 
 def _event(pid, typ, m, fixed, clean, mod, created, session=None, desc=None):
     d = dict(m.groupdict())
+    # Before the era's fix(), which expands the 1989 era's names itself.
+    written = {k: d[k] for k in ("committee", "refer") if d.get(k)}
     for k, v in (fixed or {}).items():
         if not d.get(k):
             d[k] = v
@@ -266,7 +278,7 @@ def _event(pid, typ, m, fixed, clean, mod, created, session=None, desc=None):
             fix(d, created)
     if typ == "report":
         d.update(narrative.report_fields(d.pop("rest", "") or ""))
-    return _expand_committees(_ensure_date(d, created, session, desc))
+    return _expand_committees(_ensure_date(d, created, session, desc), written)
 
 
 def classify(desc, created=None, session=None):
