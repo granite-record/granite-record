@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.60
+# GRANITE_VERSION: 2026-09-04.62
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2437,6 +2437,13 @@ def describe(ev, body, seen_intro=False):
         return f"It was introduced on {fdate(ev['date'])} and referred to {to}."
 
     if t == "vacated":
+        # "Vacated ref to Executive Dept & Administration, MA, VV" (SB 295 of
+        # 2006) names the referral it vacates, not where the bill went: it
+        # went "ref to Commerce" on a row of its own, which says so. The
+        # reader's committee is the one the bill left, and the sentence said
+        # the House sent the bill to it "instead".
+        if VACATES_REFERRAL.search(ev.get("_raw") or ""):
+            return f"The {chamber} withdrew that referral."
         return (f"The {chamber} withdrew that referral and sent the bill to the "
                 f"{_committee(ev, body)} instead.")
 
@@ -2555,12 +2562,15 @@ def describe(ev, body, seen_intro=False):
             # rule the row cites, or a finance committee, which the rules
             # send a bill with money in it to. Not "PASSED AND REF TO ED&A"
             # (HB 357 of 1996), and not a referral made by suspending them,
-            # "Susp Rules to ref to 2nd Comm" (HB 550 of 2002).
+            # "Susp Rules to ref to 2nd Comm" (HB 550 of 2002), whether on the
+            # passage's own row or on one of its own (build():
+            # _rules_suspended, REFERRAL_SUSPENSION).
             to = _committee(ev, body, "refer")
             raw = ev.get("_raw") or ""
             rules = (" under the chamber's rules"
                      if (MONEY_COMMITTEE.match(to) or RULE_CITED.search(raw))
-                     and not RULES_SUSPENDED.search(raw) else "")
+                     and not RULES_SUSPENDED.search(raw)
+                     and not ev.get("_rules_suspended") else "")
             base += f", then sent it on to the {to}{rules}"
         return _stop(base + mover)
 
@@ -3156,7 +3166,12 @@ SENDS = [
 # "REFERRED TO (JOINT COMMS) INTERIM STUDY VV" (HB 442 of 1994): two
 # committees together, and no one of them. The heading names neither.
 _SEND_JOINT = re.compile(r"^\(?\s*(?:a\s+)?(?:joint|jt)\b", re.I)
-_SEND_SKIP = re.compile(r"\bPending\s+Motion\b|\bNot\s+Voted\s+On\b|\brescind|\bwaive", re.I)
+# And a row that vacates a referral, "Vacated ref to Executive Dept &
+# Administration, MA, VV" (SB 295 of 2006, the bill then "ref to Commerce" on
+# a row of its own), sends it to no committee: not to the one it names.
+VACATES_REFERRAL = re.compile(r"\bVACAT\w*\s+REF(?:ERENCE|ERRAL)?\b\.?\s*TO\b", re.I)
+_SEND_SKIP = re.compile(r"\bPending\s+Motion\b|\bNot\s+Voted\s+On\b|\brescind|\bwaive|"
+                        + VACATES_REFERRAL.pattern, re.I)
 # What a clause refers that is not the bill: "REMAINING AMS REF TO RULES" (HR 1
 # of 1993).
 _SEND_NOT_THE_BILL = re.compile(r"\b(?:AMS|AMENDMENTS?)\s+$", re.I)
@@ -3187,6 +3202,64 @@ RULES_SUSPENDED = re.compile(SUSPENDS_RULES.pattern + r"[^;]*?\bREF", re.I)
 # Referral to Finance", "Rescind Order to the Committee on Finance".
 REFERRAL_UNDONE = re.compile(
     r"\b(?:rescind(?:ed)?|waived?)\s+(?:the\s+)?(?:refer(?:ral)?\b|order\s+to\s+the\s+committee)", re.I)
+# A REFERRAL THE COMMITTEE'S CHAIR WAIVED, under House Rule 47(f) (46(f)
+# until 2019), every wording of it on disk: "Referral Waived by Committee
+# Chair per House Rule 47(f)" (HB 1574 of 2026; the House Journal prints it
+# "REFERRAL DECLINED ... declined the referral"), "Second Committee Referral
+# Waived by Committee Chair", "Speaker Waived Second Committee Referral" (HB
+# 407 of 2015), "Declination of Referral Under House Rule 46(f) (Rep
+# Wallner)", "Referral declined by Chair of Ways and Means per House Rule 46
+# (f)", and the 1995 clerk's "REF TO FINANCE DECLINED, ORDERED TO 3RD
+# READING" (HB 126 of 1995), a week after the passage that made it. And two
+# the release check's review found by a looser search: "Committee Refused
+# Referral; HJ41, PG.1421" (SB 166 of 2013, where the journal prints
+# "REFERRAL DECLINED"), and a referral undone the afternoon it was made,
+# "Referral to Ways and Means withdrawn  HJ 19a, pg 1176" (HB 1679 of 2006).
+REFERRAL_WAIVED = re.compile(
+    r"\bReferral\s+(?:Waived|Declined)\b|\bDeclination\s+of\s+Referral\b"
+    r"|\bWaived\s+Second\s+Committee\s+Referral\b|\bRefused\s+Referral\b"
+    r"|\bReferral\s+to\s+(?P<w>[A-Z][A-Za-z&,'. ]*?)\s+withdrawn\b"
+    r"|\bREF(?:ERRAL)?\s+TO\s+(?P<c>[A-Z][A-Za-z&,'. ]*?)\s+DECLINED\b", re.I)
+WAIVED_BY_CHAIR = re.compile(r"\bChair(?:man)?\s+of\s+(?P<c>[A-Z][A-Za-z&,'. ]*?)\s+per\b", re.I)
+HOUSE_RULE_CITED = re.compile(r"\bHouse\s+Rule\s*(?P<n>\d+)\s*\(\s*(?P<p>[a-z])\s*\)", re.I)
+# A REFERRAL MADE BY SUSPENDING THE RULES, on a row of its own: "REPS A TORR &
+# BUCKLEY SUSP RULES FOR REF TO 2ND COMM, MA 2/3VV" (HB 650 of 1995), "Reps
+# Hess & Nordgren Susp Rules for late ref to Finance" (HB 785 of 2003), and
+# the 2002 House's "Susp Rules on deadline for 2nd Comm", which its journal
+# prints as rules "so far suspended as to permit referral to a second
+# committee beyond the deadline" (HJ 6 and HJ 8 of 2002). Not "Deadline on
+# Action for Bills Not in 2nd Comm", nor a suspension for an introduction
+# with "no referral to comm.", nor a motion that lost.
+REFERRAL_SUSPENSION = re.compile(
+    r"(?:" + SUSPENDS_RULES.pattern + r"|\bRULES?\s+SUSP\w*\.?)"
+    r"(?:(?!\bnot\s+in\b|\bno\s+referral\b)[^;])*?(?:\bREF|\b(?:2ND|SECOND)\s+COMM)", re.I)
+
+
+def waiver_said(w, referral=None):
+    """The sentence for `w`, a row REFERRAL_WAIVED reads: who gave the
+    referral up, in the row's own verb and under the rule it cites. With
+    `referral`, the sentence that told the referral, without its full stop,
+    the waiver is told as the end of it; without, on its own."""
+    raw = w.get("_raw") or ""
+    verb = ("waived" if re.search(r"waiv", raw, re.I) else "refused" if re.search(r"refus", raw, re.I)
+            else "withdrawn" if re.search(r"withdr", raw, re.I) else "declined")
+    rule = HOUSE_RULE_CITED.search(raw)
+    rule = f" under House Rule {rule.group('n')}({rule.group('p').lower()})" if rule else ""
+    if re.search(r"\bSpeaker\b", raw, re.I):
+        who = "the Speaker"
+    elif re.search(r"\bChair", raw, re.I):
+        who = "chair"
+    else:
+        who = ""
+    if referral:
+        tail = (f", whose chair {verb} the referral" if who == "chair"
+                else f", and {who} {verb} the referral" if who
+                else f", and the referral was {verb}")
+        return f"{referral}{tail}{rule}."
+    said = ("The committee's chair" if who == "chair" else who[:1].upper() + who[1:]
+            if who else "")
+    return (f"{said} {verb} the referral{rule}." if said
+            else f"The referral was {verb}{rule}.")
 
 
 def sends_to(ev, term):
@@ -3641,12 +3714,135 @@ def build(bill, rows, introduction=None):
                     ev["_as_written"] = {**said, key: whole}
                     break
 
+    # A REFERRAL THE COMMITTEE'S CHAIR WAIVED IS TOLD AS ONE (5 October 2026).
+    # "Referred to Finance" and, that afternoon, "Referral Waived by Committee
+    # Chair per House Rule 47(f)" (HB 1574 of 2026): the history said "the bill
+    # was referred to the Finance committee" under a heading of its own, and the
+    # Senate's committee came next, on 143 histories, and three of 1995 said
+    # the House "sent it on to the Finance committee" a week before "REF TO
+    # FINANCE DECLINED", because no row the undoing above reads says it so. The
+    # chair declined the referral -- the House Journal prints "REFERRAL
+    # DECLINED" over that bill and nine others -- and the bill never went.
+    #
+    # So a row REFERRAL_WAIVED reads, which no pattern tells, waives the
+    # referral it follows: the last row of that chamber that referred the bill
+    # to a committee, with no introduction and no other waiver between; or,
+    # where the chamber's committee met or reported between the two, or there
+    # is none, a referral of that chamber entered after it that day, as "Referral
+    # Waived by Committee Chair" and then "Referred to Finance" on HB 368 of
+    # 2017 and SB 482 of 2026. Where the waiver names the committee ("Referral
+    # declined by Chair of Ways and Means"), only a referral to that one.
+    #
+    # Where nothing of the committee's lies between, the referral is told with
+    # its waiver, in one sentence, where the waiver stands -- "On February 19,
+    # 2026 the bill was referred to the Finance committee, whose chair waived
+    # the referral under House Rule 47(f)." -- and heads no stage: the row
+    # that made it is not told on its own, and a passage's sends it on to no
+    # one (`refer`, _unsent). Where the committee had sat on it first (HB 194
+    # of 2024: a Division I work session, then the waiver six weeks later), the
+    # referral and the work are told as they were, and the waiver after them.
+    # A waiver no referral can be found for is told as before, by nothing:
+    # HB 1138 of 2024 has no "Referred to" row at all.
+    for i, w in enumerate(evs):
+        m = REFERRAL_WAIVED.search(w["_raw"] or "")
+        if w["cancelled"] or w["_type"] != "other" or not m:
+            continue
+        b = w["body"]
+        by = WAIVED_BY_CHAIR.search(w["_raw"])
+        said = m.group("c") or m.group("w") or (by.group("c") if by else "")
+        named = committee_placed(said, b, term) if said else ""
+
+        def made(e):
+            """The committee row `e` refers the bill to, as a sentence
+            names it, or None."""
+            if e.get("_waived_by") or e.get("_unsent"):
+                return None
+            if e["_type"] == "rereferred" and (e.get("committee") or "").strip():
+                return _named(e, b)
+            if e["_type"] == "floor" and e.get("refer"):
+                return _named(e, b, "refer")
+            sent = sends_to(e, term)
+            if sent and sent[2] and sent[0] in ("referred", "rereferred", "rule"):
+                return sent[1]
+            return None
+
+        back, busy = None, False
+        for e in reversed(evs[:i]):
+            if e["cancelled"] or e["body"] != b:
+                continue
+            if e["_type"] == "introduced" or REFERRAL_WAIVED.search(e["_raw"] or ""):
+                break
+            to = made(e)
+            if to:
+                back = (e, to)
+                break
+            if e["_type"] in ROW_NAMERS:
+                busy = True
+        ahead_ = None
+        if back is None or busy:
+            for e in evs[i + 1:]:
+                if e["cancelled"] or e["body"] != b:
+                    continue
+                if e["when"].date() != w["when"].date() or e["_type"] in ROW_NAMERS \
+                        or e["_type"] == "introduced":
+                    break
+                to = made(e)
+                if to:
+                    ahead_ = (e, to)
+                    break
+        pick, busy = ((back, False) if back and not busy else (ahead_, False) if ahead_
+                      else (back, True))
+        if pick is None or (named and named != pick[1]):
+            continue
+        r, to = pick
+        if busy:
+            w["_waives"] = ("after", r, to)
+            continue
+        r["_waived_by"] = w
+        if r["_type"] == "rereferred":
+            w["_waives"] = ("made", r, to)
+            continue
+        # A passage's referral, or one read off a row (sends_to): the passage
+        # is told without it, and the waiver tells it.
+        to = to if to.lower().endswith("committee") else f"{to} committee"
+        w["_waives"] = ("sent", r, f"The {CHAMBER.get(b, 'House')} referred the bill to the {to}")
+        r["refer"] = ""
+        r["_unsent"] = True
+
+    # "UNDER THE CHAMBER'S RULES" IS NOT SAID OF A REFERRAL MADE BY SUSPENDING
+    # THEM, on whichever row the suspension stands. describe() reads the
+    # passage's own row; the 1995 House voted "SUSP RULES FOR REF TO 2ND COMM"
+    # once, on page 943 of the day's journal, and passed each bill and sent it
+    # to Finance on its own row pages later (HB 650 of 1995), and the 2002
+    # House's suspension "on deadline for 2nd Comm" was a row of its own too.
+    # A suspension of that chamber on the day of the passage, or before it
+    # with no other passage that sent the bill on between them: HB 1633 of
+    # 1996 had its suspension on 5 March and was "MOVED TO MAR06 CALENDAR",
+    # passed and sent to Finance the next day. Within a week.
+    for i, s_ in enumerate(evs):
+        m = REFERRAL_SUSPENSION.search(s_["_raw"] or "")
+        if s_["cancelled"] or not m:
+            continue
+        a = (s_["_raw"] or "").rfind(";", 0, m.start()) + 1
+        z = (s_["_raw"] or "").find(";", m.end())
+        if _SEND_LOST.search(s_["_raw"][a:z if z >= 0 else len(s_["_raw"])]):
+            continue
+        day = s_["when"].date()
+        sent_on = [(j, e) for j, e in enumerate(evs)
+                   if e is not s_ and not e["cancelled"] and e["body"] == s_["body"]
+                   and e["_type"] == "floor" and e.get("refer")]
+        that_day = [e for _j, e in sent_on if e["when"].date() == day]
+        later = [e for j, e in sent_on if j > i][:1]
+        for e in that_day or [e for e in later if 0 < (e["when"].date() - day).days <= 7]:
+            e["_rules_suspended"] = True
+
     sentences, notes, unknown = [], [], []
     # A note is said once per bill, however many rows repeat the action.
     used_notes = set()
     last_cmte = {}
     # {chamber: (the moment the row that sent the bill on was entered, the
-    # committee that had it before)}, for a row entered ahead of that one.
+    # committee that had it before, the stage that committee's work is told
+    # in)}, for a row entered ahead of that one.
     moved = {}
     # {chamber: when the other chamber's introduction of the bill was entered}
     crossed = {}
@@ -3726,6 +3922,14 @@ def build(bill, rows, introduction=None):
         if ev["cancelled"]:
             continue
         s = describe(ev, ev["body"], seen_intro)
+        # A referral its committee's chair waived is told by the waiver
+        # (REFERRAL_WAIVED, above), and heads no stage.
+        if ev.get("_waived_by") and ev["_type"] == "rereferred":
+            s = None
+        # The stage this row's sentence goes into, for its notes (_note); and
+        # whether the row is given back to the committee a row sent the bill
+        # on from (moved, below).
+        here, back = None, False
         if ev["_type"] == "introduced":
             # THE COMMITTEE A ROW SENT THE BILL ON TO IS NOT CARRIED PAST ITS
             # CROSSING. A row of that chamber's committee entered after the
@@ -3799,6 +4003,7 @@ def build(bill, rows, introduction=None):
                     # to Finance of the 15th.
                     if b in moved and _entered_before(ev, moved[b][0]):
                         cmte = moved[b][1]
+                        back = True
                     # AND A COMMITTEE'S AMENDMENT IS THE COMMITTEE'S WHOSE
                     # REPORT CARRIED IT, wherever the floor votes on it: the
                     # report naming Commerce's 2024-1826s on HB 1380 of 2024
@@ -3811,6 +4016,7 @@ def build(bill, rows, introduction=None):
                                and any(same_amendment(k, x) for k in keys for x in mine)
                                for keys, at in carried_by.get(b, ())):
                             cmte = moved[b][1]
+                            back = True
                     # A ROW THAT NAMES ANOTHER COMMITTEE THAN THE ONE HOLDING
                     # THE BILL is a record that cannot say whose the work is,
                     # and from there the chamber is named alone, until a row
@@ -3834,16 +4040,64 @@ def build(bill, rows, introduction=None):
                             last_cmte[b] = cmte = ""
                 if cmte:
                     key = key + (cmte,)
-            if stages and stages[-1]["key"] == key:
-                stages[-1]["sentences"].append(s)
+            # AND ITS REPORT OR ITS AMENDMENT IS TOLD IN ITS OWN STAGE, before
+            # the passage that sent the bill on (5 October 2026). "Committee
+            # Amendment # 2025-1642s, AA, VV; 05/01/2025" was entered two hours
+            # after "Ought to Pass with Amendment #2025-1642s, MA, VV; Refer to
+            # Finance Rule 4-5" on HB 658 of 2025, and the Senate Journal of
+            # that day prints the amendment in Ways and Means' report; HHS's
+            # report on HB 1568 of 2024 is dated 16 May, the calendar's day,
+            # and was entered on the 6th, a week before the referral of the
+            # 15th. Told where they fell by date, each opened a stage headed
+            # with the first committee straight after the sentence that sent
+            # the bill to Finance, on 31 histories. Only a report, or an
+            # amendment, that the rules above give back to that committee by
+            # what it is: a meeting entered before the referral for a day after
+            # it is told where its date puts it (SB 339 of 2006's hearing of 15
+            # March), since nothing in the row says it was not the second
+            # committee's to hold. A report is told before the vote on the
+            # committee's amendment the stage already tells (HB 1202 of 2024),
+            # as the committee reported it before the floor took it up.
+            home = moved.get(key[0], ())[2:3]
+            if (back and home and home[0] is not None and home[0]["key"] == key
+                    and ev["_type"] in ("report", "amendment")):
+                here = home[0]
+                told = here["sentences"]
+                at = next((k for k, x in enumerate(told)
+                           if x.startswith("The committee's amendment (")),
+                          len(told)) if ev["_type"] == "report" else len(told)
+                told.insert(at, s)
+            elif stages and stages[-1]["key"] == key:
+                here = stages[-1]
+                here["sentences"].append(s)
             else:
                 base = STAGE_LABEL.get(key[:2], "")
                 if len(key) > 2 and base:
                     base = f"{base} \u2014 {key[2]}"
-                stages.append({"key": key, "label": base, "sentences": [s],
-                               "notes": []})
+                here = {"key": key, "label": base, "sentences": [s], "notes": []}
+                stages.append(here)
         elif ev["_type"] == "other":
             unknown.append(ev["_raw"])
+
+        # THE WAIVER OF A REFERRAL, where its chamber last stood (above).
+        waives = ev.get("_waives")
+        if waives and not s:
+            b = ev["body"]
+            if waives[0] == "made":
+                said = waiver_said(ev, (describe(waives[1], b) or "").rstrip(" ."))
+            elif waives[0] == "sent":
+                said = waiver_said(ev, waives[2])
+            else:
+                said = waiver_said(ev)
+                if last_cmte.get(b) == waives[2]:
+                    last_cmte[b] = ""
+            here = next((st for st in reversed(stages) if st["key"][0] == b), None)
+            if here is None:
+                here = {"key": (b, "floor"), "label": STAGE_LABEL[(b, "floor")],
+                        "sentences": [], "notes": []}
+                stages.append(here)
+            here["sentences"].append(said)
+            sentences.append(said)
 
         if ev["_type"] == "floor":
             vk = (ev.get("vote") or "").upper()
@@ -3857,7 +4111,8 @@ def build(bill, rows, introduction=None):
         # cancelled or unrecognised row produces no sentence -- in which case
         # there is nothing for the note to explain and it is dropped.
         def _note(text, stage=None):
-            stage = stage if stage is not None else (stages[-1] if stages else None)
+            stage = (stage if stage is not None else here if here is not None
+                     else (stages[-1] if stages else None))
             if stage is None or not text:
                 return
             if text not in stage["notes"] and text not in used_notes:
@@ -3946,7 +4201,11 @@ def build(bill, rows, introduction=None):
             b = ev["body"]
             crossed.pop(b, None)
             had = last_cmte.get(b, "")
-            moved[b] = (ev["_entered"], had)
+            # And the stage that committee's work was told in, for its report
+            # or amendment entered after this row (above).
+            moved[b] = (ev["_entered"], had,
+                        next((st for st in reversed(stages)
+                              if st["key"] == (b, "committee", had)), None) if had else None)
             last_cmte[b] = sent[1] if sent[2] else ""
             # AND SAYS SO, where nothing else on the row does: "HB517 is
             # vacated from Judiciary and referred to Finance" (HB 517 of 2025)
