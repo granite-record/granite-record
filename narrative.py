@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.58
+# GRANITE_VERSION: 2026-09-04.59
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3744,6 +3744,23 @@ def main():
         TERM = P.term_of(rows[0].get("session", ""))
         results[TERM][b] = build(b, rows)
     results = dict(results)
+    # THE SESSION'S DOCKET SPEAKS FOR THE SESSION'S TERM ONLY (5 October
+    # 2026). Below, every term this run builds replaces that term's histories
+    # whole, which is right for a docket that holds the term. A turned
+    # Docket.txt can still carry ten rows of the term before, and those ten
+    # bills would have replaced its 2,233 histories -- rescued only because
+    # narrate_archive.py happens to run later from that term's own docket,
+    # which preflight now holds build_all to. So rows of any other term in the
+    # session's docket are counted and left out, never merged.
+    if Path(a.docket).name == "Docket.txt":
+        session = P.session_term(Path(a.docket).parent)
+        other = {t: len(b) for t, b in results.items() if session and t != session}
+        for t in other:
+            results.pop(t)
+        if other:
+            print("  left out: " + ", ".join(f"{n:,} bill(s) of {t}" for t, n in sorted(other.items()))
+                  + f" -- the session's docket is {session}'s, and another term's histories "
+                  "come from that term's own docket (narrate_archive.py)")
     report_corrections(results)
     n_sign = sum(1 for byb in results.values() for r in byb.values()
                  if "online testimony at" in (r["narrative"] or ""))

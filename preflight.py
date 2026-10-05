@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.330
+# GRANITE_VERSION: 2026-09-04.331
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38925,6 +38925,82 @@ def _frozen_term_built_first(BA, BD):
     return "ok", ("the frozen terms are built after the journals and before the first pass, "
                   "which stops on a frozen term not built and leaves a term frozen early to the "
                   "session's files")
+
+
+@check("build", "a finished term's rows in new files are counted and left out, never merged, "
+       "and the session's own term is never read twice", needs=(
+           "build_all", "senate_hearing_reports", "narrate_archive", "build_proceedings",
+           "proceedings", "fetch_testimony_db", "narrative", "build_bill_versions",
+           "extract_chapters", "build_data"))
+def _finished_term_rule(BA, SHR, NA, BPR, P, FTD, NAR, BBV, EC, BD):
+    """The one rule of 5 October 2026, in every place that replaced or skipped
+    a whole term on meeting one of its rows: build_data (its readers drop a
+    finished term's rows and stop on an older term nobody froze),
+    senate_hearing_reports.with_frozen (a finished term from its freeze
+    whole), fetch_testimony_db (a finished term in the file is not replaced),
+    narrative (the session's docket speaks for the session's term only),
+    build_bill_versions (a finished term's bill-years from its freeze); and
+    the session's own term's frozen copies wait while it is the session's,
+    in narrate_archive, extract_chapters and build_proceedings. narrative.py
+    replacing every term its docket touches was rescued only by
+    narrate_archive running after it: build_all is held to that order."""
+    import contextlib
+    import io
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+    steps = [s.args for s in BA.plan(A())]
+    i = next(i for i, a in enumerate(steps) if a[0] == "narrative.py" and "Docket.txt" in a)
+    j = next(i for i, a in enumerate(steps) if a[0] == "narrate_archive.py")
+    assert i < j, "narrate_archive.py no longer runs after the session's narrative step"
+    for mod, words in ((BD, ("gone_years", "left_out", "a turn nobody froze")),
+                       (FTD, ("t < session and t in merged",)),
+                       (NAR, ('Path(a.docket).name == "Docket.txt"', "left out: ")),
+                       (BBV, ("still the session's term", "left out")),
+                       (EC, ('f"Docket_{session}.txt"',)),
+                       (NA, ("waits: ",)), (BPR, ("waits: ", "frozen manifest holds it"))):
+        src = Path(mod.__file__).read_text(encoding="utf-8")
+        missing = [w for w in words if w not in src]
+        assert not missing, f"{Path(mod.__file__).name} no longer keeps the rule: {missing}"
+    T = "2025-2026"
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-finished-"))
+    saved = SHR.parse_all
+    try:
+        os.chdir(tmp)
+        src = Path("db") / "term" / T / "CandH_Reports.psv"
+        src.parent.mkdir(parents=True)
+        src.write_text("", encoding="utf-8")
+        frozen = {T: {f"SB{i}": [{"heard": "2026-02-01"}] for i in range(1246)}}
+        SHR.parse_all = lambda f: (frozen, {})
+        with contextlib.redirect_stdout(io.StringIO()):
+            out, said = SHR.with_frozen({T: {"SB1": [{"heard": "2026-02-01"}]}}, [src],
+                                        session="2027-2028")
+        assert len(out[T]) == 1246, "one report left in a dump after the turn replaced the term"
+        out, said = SHR.with_frozen({T: {"SB1": [{"heard": "2026-02-01"}]}}, [src], session=T)
+        assert len(out[T]) == 1 and not said, "a frozen term was read while still the session's"
+        Path("Docket.txt").write_text("2026|0001|1/2/2026 10:00:00 AM|HB1|H|x|x\n", encoding="utf-8")
+        Path(f"Docket_{T}.txt").write_text("2026|0001|1/2/2026 10:00:00 AM|HB1|H|x|x\n",
+                                           encoding="utf-8")
+        Path("Docket_2023-2024.txt").write_text("2024|0001|1/2/2024|HB1|H|x|x\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = NA.dockets()
+        assert list(got) == ["2023-2024"], f"narrate_archive read the session's frozen docket: {got}"
+        Path("Docket.txt").write_text("2027|0001|12/2/2026 10:00:00 AM|HR1|H|x|x\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = NA.dockets()
+        assert list(got) == ["2023-2024", T], f"after the turn the frozen docket was not read: {got}"
+    finally:
+        SHR.parse_all = saved
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("narrate_archive after the session's narrative; a finished term's Senate reports "
+                  "from its freeze whole; the session's frozen docket waits, and is read after the "
+                  "turn; and the rule's words where build_data, fetch_testimony_db, narrative, "
+                  "build_bill_versions, extract_chapters and build_proceedings keep it")
 
 
 @check("data", "every term frozen here is whole, and the session's own, if frozen, is the files "

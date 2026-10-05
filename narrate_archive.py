@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.5
+# GRANITE_VERSION: 2026-09-11.6
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -63,12 +63,23 @@ CHAPTERS = Path("chapters.json")
 
 
 def dockets():
-    """{term: path}, the fetched docket preferred over the database's."""
+    """{term: path}, the fetched docket preferred over the database's.
+
+    NOT THE SESSION'S OWN TERM (5 October 2026). freeze_term.py writes
+    Docket_<term>.txt for the current term before the files turn, and until
+    they do the term is narrated from Docket.txt, by build_all's own step,
+    which runs before this one: narrating its frozen copy here would put the
+    older docket's histories over the newer ones. Once the session's files
+    are the next term's, the copy is the term's docket like any other."""
+    import proceedings as P
+    session = P.session_term()
     out = {}
     for p in sorted(glob.glob("Docket_db_*.txt")) + sorted(glob.glob("Docket_[0-9]*.txt")):
         m = TERM.match(Path(p).name)
-        if m:
+        if m and m.group(1) != session:
             out[m.group(1)] = p
+        elif m:
+            print(f"  {p} waits: {session} is still the session's term, narrated from Docket.txt")
     return dict(sorted(out.items()))
 
 

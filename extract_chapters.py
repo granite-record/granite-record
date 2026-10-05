@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.8
+# GRANITE_VERSION: 2026-09-11.9
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -168,8 +168,11 @@ def rows():
                     yield (DB.name, r[0], r[1], r[4].replace(" ", ""), r[3],
                            r[6])
     # Docket_db_*.txt are db/Docket.psv reshaped, so they are not read twice.
+    # Nor is the session's own term's frozen copy (freeze_term.py), while
+    # Docket.txt is still that term's: it is read from there (5 October 2026).
+    session = P.session_term()
     for p in sorted(glob.glob("Docket_[0-9]*.txt")) + ["Docket.txt"]:
-        if not Path(p).exists():
+        if not Path(p).exists() or Path(p).name == f"Docket_{session}.txt":
             continue
         with open(p, encoding="utf-8", errors="replace") as fh:
             for line in fh:

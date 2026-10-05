@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.3
+# GRANITE_VERSION: 2026-09-06.4
 """
 How many people signed in for and against a bill, per hearing.
 
@@ -200,6 +200,20 @@ def main():
         except ValueError:
             merged = {}
     kept = [t for t in merged if t not in out]
+    # A FINISHED TERM IS NOT REPLACED BY WHAT IS LEFT OF IT (5 October 2026).
+    # Legislation holds the current term, so after the turn this query joins
+    # almost none of 2025-2026's sign-ins -- and a term it joins a handful of
+    # would replace the file's 2,019 bills with that handful. A term older
+    # than the one the session's files describe, already in the file, keeps
+    # what the file holds; what this run found of it is counted and left out.
+    # testimony_from_db.py rebuilds a finished term from its frozen dump.
+    session = P.session_term()
+    for t in sorted(out):
+        if session and t < session and t in merged:
+            print(f"  {t}: {len(out[t]):,} bills' sign-ins this run found are left out; the "
+                  f"term is finished and the file's {len(merged[t]):,} stay")
+            del out[t]
+            kept.append(t)
     merged.update(out)
     op.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     print(f"  -> {a.out}  ("

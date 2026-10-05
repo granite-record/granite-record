@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.43
+# GRANITE_VERSION: 2026-09-04.44
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -86,7 +86,7 @@ def rows(path, expect=None):
     return out
 
 
-def rows_all(d, base, expect=None, archive=None):
+def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
     """base.txt plus every rollcalls/base_<year>.txt beside it -- or beside
     `archive`, where the session's own files are a frozen term's and the past
     years' are where they always were.
@@ -115,8 +115,18 @@ def rows_all(d, base, expect=None, archive=None):
     then take all of 2026 from those few.
     """
     out = rows(d / f"{base}.txt", expect)
-    seen = {tuple(r[:3]) for r in out}
     extra = Path(archive or d) / "rollcalls"
+    # A finished term's year whose own file is here comes from that file and
+    # not from the session's (5 October 2026): rows of a finished term in
+    # new files are counted and left out, never merged. Until the turn the
+    # session's year is no finished one, and the download is read first.
+    kept = {y for y in (finished or ()) if (extra / f"{base}_{y}.txt").exists()}
+    if kept:
+        n = len(out)
+        out = [r for r in out if r[0] not in kept]
+        if left is not None and n > len(out):
+            left[f"{base}.txt"] += n - len(out)
+    seen = {tuple(r[:3]) for r in out}
     if extra.is_dir():
         for f in sorted(extra.glob(f"{base}_*.txt")):
             got = rows(f, expect)
@@ -307,7 +317,7 @@ JOURNAL_BILLS = "journal_bills.json"
 JOURNAL_SOURCE = "House Journal"
 
 
-def add_journal_bills(by_term, path=JOURNAL_BILLS):
+def add_journal_bills(by_term, path=JOURNAL_BILLS, skip=()):
     """{term: {bill: record}}: the House's withdrawn bills, from journal_bills.py,
     added to `by_term` -- and only where the General Court's own files have
     nothing for them.
@@ -347,6 +357,10 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS):
         return {}
     added, kept, skipped = defaultdict(dict), [], []
     for term, byb in sorted(data.items()):
+        if term in skip:
+            # A finished term frozen and built whole, its withdrawn bills
+            # with it (finished_builds).
+            continue
         if term not in by_term:
             skipped += [f"{b} {term} (no such term here)" for b in byb]
             continue
@@ -1472,6 +1486,38 @@ def main():
             sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
                      f"not {frozen}'s")
         print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
+    # ROWS OF A FINISHED TERM IN THE SESSION'S FILES ARE COUNTED AND LEFT OUT,
+    # NEVER MERGED (5 October 2026). The General Court's files do not all turn
+    # on one night, and a turned file can still carry the old term's last rows:
+    # on a copy, ten 2026 docket rows left in a 2027 Docket.txt made
+    # 2025-2026 "already built from session files", so the archive was
+    # skipped for the whole term and it shrank to 19 bills; their sponsors
+    # were filed under 2027-2028; and a docket holding 2025, 2026 and 2027
+    # together keyed the new term's stubs by number onto 2025's. A term frozen
+    # and older than the session's is built from its freeze alone
+    # (finished_builds), so its rows here are dropped as they are read, each
+    # file's count said. One rule for every place that would otherwise replace
+    # or skip a whole term on meeting one such row: senate_hearing_reports,
+    # fetch_testimony_db, narrative, build_proceedings and build_bill_versions
+    # keep it too. And an older term's rows beside the session's with NO
+    # freeze stop the run: that is a turn nobody froze, and building on would
+    # lose the term or mix the two.
+    import freeze_term
+    sess = P.session_term(sd)
+    gone_terms = [] if frozen else [t for t in freeze_term.frozen_terms(d) if sess and t < sess]
+    gone_years = {y for t in gone_terms for y in freeze_term.term_years(t)}
+    left_out = Counter()
+    for _name, _col in freeze_term.YEAR_COLUMN.items():
+        if not (sd / _name).exists():
+            continue
+        _older = sorted({r[_col] for r in rows(sd / _name) if len(r) > _col
+                         and re.fullmatch(r"\d{4}", r[_col]) and sess
+                         and P.term_of(r[_col]) < sess and r[_col] not in gone_years})
+        if _older:
+            sys.exit(f"THE SESSION'S FILES HOLD {', '.join(_older)} BESIDE {sess} ({_name}), "
+                     f"and {P.term_of(_older[0])} is not frozen: a turn nobody froze. "
+                     "freeze_term.py --session on the last files of that term, before the switch; "
+                     "building on would lose the term or mix the two.")
 
     # ---------------------------------------------------------- counties ---
     counties = {}
@@ -1710,6 +1756,9 @@ def main():
     for r in rows(sd / "LSRs.txt"):
         if len(r) < 33:
             continue
+        if r[0] in gone_years:
+            left_out["LSRs.txt"] += 1
+            continue
         bill = r[10].upper()
         if not bill:
             continue
@@ -1750,6 +1799,9 @@ def main():
             for line in fh:
                 f = line.split("|")
                 if len(f) > 5 and f[3].strip():
+                    if f[0].strip() in gone_years:
+                        left_out["Docket.txt"] += 1
+                        continue
                     b = f[3].strip().upper()
                     docket_bills.setdefault(b, (f[0].strip(), f[1].strip()))
     # Roll call rows carry a title, which is better than nothing for a stub.
@@ -1758,7 +1810,8 @@ def main():
         with open(rp, encoding="utf-8-sig", errors="replace") as fh:
             for line in fh:
                 f = line.split("|")
-                if len(f) > 12 and f[4].strip() and f[12].strip():
+                if len(f) > 12 and f[4].strip() and f[12].strip() \
+                        and f[0].strip() not in gone_years:
                     docket_titles.setdefault(f[4].strip().upper(), f[12].strip())
     # Titles recovered from the legacy docket pages for bills the current
     # session's files no longer describe.
@@ -1859,6 +1912,8 @@ def main():
     sponsors = defaultdict(list)
     lo = sd / "LsrsOnly.txt"
     lo_rows = [r for r in rows(lo, 8)] if lo.exists() else []
+    left_out["LsrsOnly.txt"] += sum(1 for r in lo_rows if r[3] in gone_years)
+    lo_rows = [r for r in lo_rows if r[3] not in gone_years]
     if lo_rows:
         seen = set()
         for r in lo_rows:
@@ -1915,6 +1970,9 @@ def main():
     # no sponsors at all. So fall back to LsrSponsors.txt per bill rather than
     # picking one file for everything.
     for r in rows(sd / "LsrSponsors.txt", 5):
+        if r[0] in gone_years:
+            left_out["LsrSponsors.txt"] += 1
+            continue
         bill = by_lsr.get((r[0], r[1].zfill(4)))
         if not bill:
             missing_lsr += 1
@@ -2340,7 +2398,7 @@ def main():
     # already true before past years were readable, which is why adding them
     # needed nothing here beyond the extra files.
     summary = {}
-    for r in rows_all(sd, "RollCallSummary", archive=d):
+    for r in rows_all(sd, "RollCallSummary", archive=d, finished=gone_years, left=left_out):
         if len(r) < 13:
             continue
         summary[(r[0], r[1], r[2])] = {
@@ -2361,7 +2419,7 @@ def main():
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes, no_person = set(), 0, Counter()
     ballot_fixed = Counter()
-    for r in rows_all(sd, "RollCallHistory", 8, archive=d):
+    for r in rows_all(sd, "RollCallHistory", 8, archive=d, finished=gone_years, left=left_out):
         key = (r[0], r[1], r[2])
         hist_bodies[r[1]] += 1
         vnums.add(int(r[2]) if r[2].isdigit() else -1)
@@ -2487,6 +2545,10 @@ def main():
         report.append(f"votes per member: median {n[len(n)//2]}, "
                       f"min {n[0]}, max {n[-1]}, members covered {len(per_member)}")
 
+    if left_out:
+        print(f"  rows of {', '.join(gone_terms)} left out of the session's files, the "
+              "term being built from its freeze: "
+              + ", ".join(f"{k} {v:,}" for k, v in sorted(left_out.items())))
     # ------------------------------------------------------------ write ---
     # A frozen term's run writes its own term's bills and sponsors and
     # nothing else (below): the roster and the ballots are the session's.
@@ -2659,7 +2721,7 @@ def main():
     # in by_term and before the committee names are settled below, so that
     # one of these can never stand in for a term nor over a bill the General
     # Court's files carry. add_journal_bills says why each.
-    journal_added = add_journal_bills(by_term, d / JOURNAL_BILLS)
+    journal_added = add_journal_bills(by_term, d / JOURNAL_BILLS, skip=gone_terms)
     # The flags on the archive's designations, last of the records' own
     # fields, so the ones just added take theirs too.
     if past:
@@ -2736,7 +2798,7 @@ def main():
     # sponsor found nothing before 2025.
     if bsp.exists() and P.term_keyed(raw):
         for _t, _byb in raw.items():
-            if _t == current_term:
+            if _t == current_term or _t in gone_terms:
                 continue
             _rows = {bid: status_sponsors(v) for bid, v in _byb.items()
                      if v.get("sponsors")}

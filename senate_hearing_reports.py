@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.2
+# GRANITE_VERSION: 2026-09-24.3
 """
 The Senate committees' own hearing reports, read out of the database dump
 already on this disk.
@@ -889,12 +889,34 @@ def frozen_sources():
     return sorted(FROZEN.glob("*/CandH_Reports.psv")) if FROZEN.is_dir() else []
 
 
-def with_frozen(out, sources):
+def with_frozen(out, sources, session=None):
     """`out` with every term the frozen dumps hold and it does not: (out,
-    [(source, {term: bills})])."""
+    [(source, {term: bills})]).
+
+    A FINISHED TERM COMES FROM ITS FREEZE, WHOLE (5 October 2026). As first
+    written a frozen term was taken only where the current dump held none of
+    it, so a single 2025-2026 report left in a dump made after the turn would
+    have kept that one and discarded the frozen term's 1,246 bills. A term
+    frozen in db/term/<term>/ and older than the term the session's files
+    describe (`session`, proceedings.session_term() by default) is read from
+    its freeze alone, and what the current dump still holds of it is counted
+    and left out, never merged. A frozen term that is still the session's
+    waits: the current dump is its source until the files turn."""
+    session = P.session_term() if session is None else session
     said = []
     for f in sources:
+        mine = f.parent.name
+        if P.TERM_RE.match(mine) and session and mine >= session:
+            continue                    # still the session's: the dump is its source
         more, _ = parse_all(f)
+        if P.TERM_RE.match(mine) and session and mine < session and mine in more:
+            stale = out.get(mine) or {}
+            out[mine] = more[mine]
+            said.append((f, {mine: len(more[mine])}))
+            if stale:
+                print(f"  {mine}: {sum(len(v) for v in stale.values()):,} report(s) on "
+                      f"{len(stale):,} bill(s) in the current dump left out: the term is read "
+                      f"from {f}")
         kept = {t: v for t, v in sorted(more.items()) if t not in out}
         out.update(kept)
         if kept:
@@ -1022,7 +1044,7 @@ def main():
     out, frozen = with_frozen(out, frozen_sources())
     for f, terms in frozen:
         print(f"  {f}: " + ", ".join(f"{t} ({n:,} bills)" for t, n in terms.items())
-              + ", which the current dump no longer holds")
+              + ", from the term's freeze")
     if a.show:
         want = a.show.replace(" ", "").upper()
         for term, byb in sorted(out.items()):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.9
+# GRANITE_VERSION: 2026-09-05.10
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -472,9 +472,32 @@ def main():
     a = ap.parse_args()
 
     files = manifest_paths(a.manifest)
+    # THE SESSION'S TERM IS ITS OWN MANIFEST'S, AND A FINISHED TERM ITS
+    # FROZEN ONE'S (5 October 2026). freeze_term.py writes
+    # verification_manifest_<term>.csv for the current term before the files
+    # turn; until they do, verification_manifest.csv is that term's, and
+    # reading both would put every row in twice. After the turn the frozen one
+    # is the term's, and rows of it in verification_manifest.csv -- a 2026
+    # row left in a 2027 docket -- are counted and left out, never merged.
+    session = P.session_term()
+    frozen = {p.name for p in Path("frozen").iterdir()
+              if p.is_dir() and (p / "manifest.json").exists()} if Path("frozen").is_dir() else set()
+    waits = [f for f in files if session and term_in_name(f) == session]
+    for f in waits:
+        print(f"  {f.name} waits: {session} is still the session's term, read from "
+              "verification_manifest.csv")
+    files = [f for f in files if f not in waits]
+    finished = {term_in_name(f) for f in files if term_in_name(f) in frozen
+                and session and term_in_name(f) < session}
     cm, per_file, by_filename = [], [], 0
     for f in files:
         got = from_manifest(f)
+        if not term_in_name(f) and finished:
+            n = len(got)
+            got = [r for r in got if r["term"] not in finished]
+            if n > len(got):
+                print(f"  {f.name}: {n - len(got):,} row(s) of {', '.join(sorted(finished))} "
+                      "left out -- that term's frozen manifest holds it")
         # A row with no sched_date still belongs to the term the file is
         # named for, and that name is the only place it is written down.
         named = term_in_name(f)
