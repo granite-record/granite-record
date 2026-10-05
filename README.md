@@ -226,7 +226,7 @@ addresses:
 
 | | |
 |---|---|
-| `/index.json` | every bill, every term — title, sponsor, committee, topic, status, passage |
+| `/index.json` | every bill, every term — title, sponsor, committee, topic, status, the chip's word (`chip`: Became Law, Died, Interim Study, Tabled, Vetoed, Withdrawn, or a word of its own), passage |
 | `/idx/<term>.json` | one term's bills; this is what the search page loads |
 | `/sidx/<term>.json` | what each of that term's bills is about, from its analysis and text: for each word, the bills it is central to and how central, and for each bill the pairs of those words that stand next to each other, each pair as five letters of a hash. The search fetches it when somebody searches. `/sidx/manifest.json` says what each file holds and weighs, and `/sidx/words.json` is every word of five letters or more that any bill of any term uses, with the names of members and towns and without the record's own slips ("goverment", in one bill): what tells a misspelt search from a real word no bill is about |
 | `/legislators.json` | the roster — who holds a seat now, with districts, towns and committees |

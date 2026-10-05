@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.140
+// GRANITE_VERSION: 2026-09-07.142
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -35,10 +35,25 @@ const byParty=(a,b)=>partyRank(a)-partyRank(b)||String(a).localeCompare(String(b
 const yeaFirst=(a,b)=>a===b?0:(a==="Yea"?-1:1);
 const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
             study:"s-study",adopted:"s-adopted"};
-// "Became law" is wrong for a resolution: an adopted House Resolution is
-// finished and successful and is not law. It needed its own word.
-const KINDL={active:"In progress",law:"Became law",done:"Killed",
-             veto:"Vetoed",study:"Interim study",adopted:"Adopted"};
+// THE CHIP: six words for where a bill stands, and a still-moving bill's
+// stage (the person, 5 October 2026). build_site_v2.chip_word chooses the
+// word and the index carries it as `chip`; this only draws it. The status --
+// "Killed", "Vetoed, override failed" -- stays on the bill's own view, in On
+// the record, the history and the rail. The colour is the word's, so every
+// Died is one colour whether the bill was killed or its veto stood; a word
+// that is not one of the six -- a stage, an adopted resolution -- takes its
+// kind's. "Became law" is wrong for a resolution, which is adopted and is
+// not law: its chip is its own word, "Adopted by the House".
+const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",
+  "Tabled":"s-active","Vetoed":"s-veto","Withdrawn":"s-done"};
+const CHIPORDER=Object.keys(CHIPCLASS);
+// A request's row has no chip, and its status is its word.
+const chipOf=b=>(b&&(b.chip||b.status))||"";
+const chipCls=b=>CHIPCLASS[chipOf(b)]||KIND[b.kind]||"";
+// The six first, in their order, then the rest as words.
+const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
+  return (x<0?CHIPORDER.length:x)-(y<0?CHIPORDER.length:y)
+    ||String(a).localeCompare(String(b));};
 // WHAT THE BALLOT CODE SAYS, AND NOTHING IT DOES NOT. Each line is attributed
 // to the record ("Recorded as ...") because the roll call carries the code and
 // no reason. On 42% of the House member-days with an Excused ballot,
@@ -2170,7 +2185,9 @@ const billCmp=(a,b)=>{const x=billKey({id:String(a||"")}),y=billKey({id:String(b
 // committees, so a facet value is a list. Sorting the list alphabetically also
 // groups it: every House committee, then every Senate one.
 function facetVals(b,k){
-  if(k==="kind")return [b.kind];
+  // The Status filter is the chip's word. Not chipOf: a request has no chip,
+  // and its "Filed as a request" is not a status to filter by.
+  if(k==="chip")return [b.chip];
   if(k==="committee")return b.committees||(b.committee?[b.committee]:[]);
   return [b[k]];
 }
@@ -2195,8 +2212,10 @@ function sortRows(rows){
     // After that the outcomes group together and run alphabetically inside
     // each group. That is a filing order, not a ranking: a bill dying is an
     // outcome, not a failure, and nothing here puts one outcome above another.
+    // A group is a chip's word, and inside it the bills run by their status,
+    // so the Died are listed killed with killed and tabled with tabled.
     status:(a,b)=>((a.kind==="active"?0:1)-(b.kind==="active"?0:1))
-                  || (a.kind||"").localeCompare(b.kind||"")
+                  || chipCmp(chipOf(a),chipOf(b))
                   || (a.status||"").localeCompare(b.status||"")
                   || billKey(a)[1]-billKey(b)[1],
   }[sortBy]||(()=>0);
@@ -2214,7 +2233,7 @@ function sortRows(rows){
   }
   return rows.slice().sort(by);
 }
-const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),kind:new Set(),
+const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),chip:new Set(),
            voteday:new Set()};
 // On a phone the filter column stacks ABOVE the results, and an open
 // Committee group is 340 pixels of it -- so the first bill sat past a
@@ -2634,7 +2653,7 @@ function matches(b,ignore){
   if(ids)return ids.includes(b.id.toUpperCase())&&inTermOf(b);
 
   if(!inTermOf(b))return false;
-  for(const k of["committee","topic","sponsor","kind"])
+  for(const k of["committee","topic","sponsor","chip"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
   const q=query.trim(); if(!q)return true;
@@ -2642,7 +2661,11 @@ function matches(b,ignore){
   return groupsFor(q).every(g=>groupWeight(b,g)>0);
 }
 
-function fgroup(key,label,vals,counts,searchable){
+// `paint`, where given, draws each value as a chip of that class: the Status
+// filter's words look as they do on the cards. The chip wraps here: "Passed
+// both chambers, goes to the voters in November 2026" ran out of the 250px
+// column on one line and was cut off at "the vote".
+function fgroup(key,label,vals,counts,searchable,paint){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
@@ -2658,7 +2681,8 @@ function fgroup(key,label,vals,counts,searchable){
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
-      <span>${key==="kind"?`<span class="cstat ${KIND[v]}" style="padding:1px 8px">${KINDL[v]}</span>`:esc(v)}</span>
+      <span>${paint?`<span class="cstat ${paint(v)}" style="padding:1px 8px;white-space:normal;display:inline-block">${
+        esc(v)}</span>`:esc(v)}</span>
       <span class="c">${counts[v]||0}</span></label>`).join("");
   }
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
@@ -2679,7 +2703,14 @@ function renderFacets(){
   // the biennium, and splitting one term into its two filing years was a
   // second control for a distinction the card prints on its own. (The
   // <select id="year"> is the TERM picker, despite its id, and stays.)
-  h+=fgroup("kind","Status",["active","law","done","veto"].filter(k=>present("kind").includes(k)),cnt("kind","kind"));
+  // THE CHIP'S WORDS (chip_word), the six first and then the stages of the
+  // bills still moving and the words that are not one of the six. It offered
+  // four kinds -- In progress, Became law, Killed, Vetoed -- and no way to
+  // ask for a bill sent to interim study or an adopted resolution.
+  const chipKind={};
+  inYear.forEach(b=>{if(b.chip&&!(b.chip in chipKind))chipKind[b.chip]=b.kind;});
+  h+=fgroup("chip","Status",present("chip").sort(chipCmp),cnt("chip","chip"),false,
+    v=>CHIPCLASS[v]||KIND[chipKind[v]]||"");
   const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
   const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
   if(allDays.length)h+=fgroup("voteday","Floor vote day",allDays,days);
@@ -3431,7 +3462,8 @@ function factsTable(b,d){
 //    the page said nothing, so "Referred for interim study" stood as the last
 //    word for months after the committee had answered.
 //  - a term that has run out of session days finishes every bill still
-//    pending. The chip keeps the record's own word ("Laid on the table");
+//    pending. The status keeps the record's own word ("Laid on the table",
+//    where the chip says Died);
 //    this says why nothing follows it. status/status.txt sets the date.
 function endNote(d){
   const s=d.study_report,out=[];
@@ -5280,7 +5312,7 @@ function cardHtml(b,focus){
         <div class="crow"><span class="cnum">${esc(b.n)} (${esc(String(y))})</span>
         <span class="cyear">${b.carried
           ?` <span class="chip" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
-        <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
+        <span class="cstat ${chipCls(b)}">${esc(chipOf(b))}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
         ${(open||focus)&&detail[dkey(b.id)]?datedRail(b,detail[dkey(b.id)]):rail(b)}
@@ -5360,15 +5392,18 @@ function idxRow(b){
   return IDX.find(x=>x.id===id&&(!t||x.term===t))
       || (b.year?IDX.find(x=>x.id===id&&String(x.year)===String(b.year)):null)
       || {id,n:b.n||id,title:b.title||"",year:b.year||"",term:t,
-          status:b.status||"",kind:b.kind||"",sponsor:"",committees:[]};
+          status:b.status||"",kind:b.kind||"",chip:b.chip||"",sponsor:"",committees:[]};
 }
 
-// The bills of one tab, as cards, with the outcome filter above them.
+// The bills of one tab, as cards, with the outcome filter above them: the
+// chip's words, as the bill search's Status filter offers them. "Bill
+// status", not "Status": on a legislator's page a bare "Status: Died" sits
+// under the member's own name and facts, and the word is a bill's.
 function billPane(rows,note){
   rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
-  const statuses=[...new Set(rows.map(b=>b.status).filter(Boolean))].sort();
-  const shown=rows.filter(b=>!PAGE.status||b.status===PAGE.status);
-  return `<div class="bfilt"><label>Status
+  const statuses=[...new Set(rows.map(chipOf).filter(Boolean))].sort(chipCmp);
+  const shown=rows.filter(b=>!PAGE.status||chipOf(b)===PAGE.status);
+  return `<div class="bfilt"><label>Bill status
       <select data-pf="status"><option value="">Any</option>
       ${statuses.map(x=>`<option value="${esc(x)}"${x===PAGE.status?" selected":""}>${
         esc(x)}</option>`).join("")}</select></label></div>
@@ -6630,7 +6665,7 @@ function render(more){
   // Counted over what is on screen, not over the whole result set, so the
   // number beside a heading always matches the cards under it.
   const grpN={};
-  if(sortBy==="status")for(const b of shown)grpN[b.status||""]=(grpN[b.status||""]||0)+1;
+  if(sortBy==="status")for(const b of shown)grpN[chipOf(b)]=(grpN[chipOf(b)]||0)+1;
   // A LINK, TO THE BILL SEARCH. It was a button that called history.back(),
   // under a label that names a place: opened directly, a bill's page left
   // the site; reached from a member's page, "Back to bill search" went back
@@ -6639,9 +6674,9 @@ function render(more){
   // list returns as it was left; everywhere else this is an ordinary link.
   $("#results").innerHTML=(fb?`<a class="backto" href="${BASE}bills" data-back="1">\u2190 Back to
     bill search</a>`:"")+((rows.length||fb)?shown.map((b,gi,arr)=>`
-    ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
-      ?`<h2 class="grp">${esc(b.status||"No status recorded")}
-         <span>${grpN[b.status||""]}</span></h2>`:""}
+    ${!fb&&sortBy==="status"&&(gi===0||chipOf(arr[gi-1])!==chipOf(b))
+      ?`<h2 class="grp">${esc(chipOf(b)||"No status recorded")}
+         <span>${grpN[chipOf(b)]}</span></h2>`:""}
     ${b.lsr?lsrCardHtml(b):cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
       shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
       class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")

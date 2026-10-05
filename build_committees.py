@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.39
+# GRANITE_VERSION: 2026-09-07.40
 """
 A page's worth of data for every committee.
 
@@ -781,6 +781,9 @@ def main():
                     "id": b.get("id"), "n": b.get("n"), "year": b.get("year"),
                     "title": b.get("title", ""), "status": b.get("status", ""),
                     "kind": b.get("kind", ""), "term": b.get("term"),
+                    # The word the bill's card shows (build_site_v2.chip_word),
+                    # for a card drawn from this row rather than the index's.
+                    "chip": b.get("chip", ""),
                 })
 
     out = site / "committee"
