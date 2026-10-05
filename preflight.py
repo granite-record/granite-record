@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.329
+# GRANITE_VERSION: 2026-09-04.330
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38881,6 +38881,50 @@ def _freeze_term(FT, P):
                   "keeps the freeze; --session writes the day files, the docket, the manifest and "
                   "the roll-call copies, and refuses another term's rows and lost ones; ready() "
                   "reads the record by its rows, so a database night's seventh column is not stale")
+
+
+@check("build", "a finished term is built from its frozen inputs before the session's pass, "
+       "and that pass will not run without it", needs=("build_all", "build_data"))
+def _frozen_term_built_first(BA, BD):
+    """build_all builds each frozen term older than the session's
+    (build_data.py --frozen-terms) before the first pass, which takes it whole
+    and stops -- not shrinks -- when it is missing or was built from another
+    freeze: the term leaving the site with nothing failing is what this
+    replaced."""
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+    names = [(s.name, s.args) for s in BA.plan(A())]
+    i = next(i for i, (_, a) in enumerate(names) if a[0] == "build_data.py" and "--frozen-terms" in a)
+    j = next(i for i, (_, a) in enumerate(names) if a[0] == "build_data.py" and "--frozen-terms" not in a)
+    k = next(i for i, (_, a) in enumerate(names) if a[0] == "journal_bills.py")
+    assert k < i < j, f"the frozen terms' step is not between the journals and the first pass: {names}"
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-frozenbuilt-"))
+    try:
+        os.chdir(tmp)
+        Path("Docket.txt").write_text("2027|0001|12/2/2026 10:00:00 AM|HR1|H|Introduced|x\n",
+                                      encoding="utf-8")
+        (Path("frozen") / "2025-2026").mkdir(parents=True)
+        (Path("frozen") / "2025-2026" / "manifest.json").write_text("{}", encoding="utf-8")
+        try:
+            BD.finished_builds(Path("."), Path("data"))
+            stopped = ""
+        except SystemExit as e:
+            stopped = str(e)
+        assert "HAS NOT BEEN BUILT" in stopped, "a frozen term never built was passed over"
+        Path("Docket.txt").write_text("2026|0001|1/2/2026 10:00:00 AM|HB1|H|Introduced|x\n",
+                                      encoding="utf-8")
+        assert BD.finished_builds(Path("."), Path("data")) == {}, \
+            "a term frozen while still the session's was taken from its freeze"
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the frozen terms are built after the journals and before the first pass, "
+                  "which stops on a frozen term not built and leaves a term frozen early to the "
+                  "session's files")
 
 
 @check("data", "every term frozen here is whole, and the session's own, if frozen, is the files "

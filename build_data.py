@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.43
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -86,8 +86,10 @@ def rows(path, expect=None):
     return out
 
 
-def rows_all(d, base, expect=None):
-    """base.txt plus every rollcalls/base_<year>.txt beside it.
+def rows_all(d, base, expect=None, archive=None):
+    """base.txt plus every rollcalls/base_<year>.txt beside it -- or beside
+    `archive`, where the session's own files are a frozen term's and the past
+    years' are where they always were.
 
     The General Court publishes one bulk file per CURRENT session, so the
     download alone holds no roll call older than this year. fetch_rollcalls_db
@@ -114,7 +116,7 @@ def rows_all(d, base, expect=None):
     """
     out = rows(d / f"{base}.txt", expect)
     seen = {tuple(r[:3]) for r in out}
-    extra = d / "rollcalls"
+    extra = Path(archive or d) / "rollcalls"
     if extra.is_dir():
         for f in sorted(extra.glob(f"{base}_*.txt")):
             got = rows(f, expect)
@@ -1355,25 +1357,132 @@ def status_for_session(raw, bills):
     return out, missing
 
 
+def build_frozen_terms(d, out):
+    """--frozen-terms: each frozen term older than the session's, built from
+    its own inputs into <out>/frozen/<term>/, one run of this script apiece.
+    0 when there is nothing to build or every term built.
+
+    A FINISHED TERM IS BUILT FROM WHAT IT WAS, EVERY NIGHT (5 October 2026).
+    Once the General Court's files turn to 2027-2028 they hold no 2025-2026,
+    and this script, reading them, would write none: on a copy it wrote
+    eighteen archived terms and 78 bills of 2027 and exited 0. freeze_term.py
+    keeps the term's day files as installed (frozen/<term>/day/) and the
+    database's view of it (db/term/<term>/), and this builds the term from
+    them as the session files once built it -- the same code, the same
+    reading of member_corrections.json, bill_status.json and the rest -- so
+    the published slice is what it was the day before the turn, and a
+    correction made after it still reaches the term. The person chose that
+    over freezing the built output on 5 October 2026. Until the session's
+    files move on, a term frozen early waits and is not built here: the
+    session files are still its source."""
+    import subprocess
+    import freeze_term
+    sess = P.session_term(d)
+    frozen = freeze_term.frozen_terms(d)
+    terms = [t for t in frozen if sess and t < sess]
+    if not terms:
+        print("no finished term is frozen here"
+              + (f": {', '.join(frozen)} frozen, and the session's files are still "
+                 f"{sess}'s, which build it" if frozen else "")
+              + " -- nothing to build")
+        return 0
+    for t in terms:
+        bad = freeze_term.intact(d, t) + freeze_term.views_intact(d, t)
+        if bad:
+            print(f"THE FROZEN TERM {t} IS NOT WHOLE, and is not built: " + "; ".join(bad))
+            return 1
+        r = subprocess.run([sys.executable, __file__, "--dir", str(d), "--out",
+                            str(Path(out) / "frozen" / t), "--frozen", t],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        said = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+        for ln in said[-4:]:
+            print(f"  {t}: {ln}")
+        if r.returncode:
+            print(f"THE FROZEN TERM {t} DID NOT BUILD (exit {r.returncode}): "
+                  + ((r.stderr or "").strip().splitlines() or ["no error text"])[-1])
+            return r.returncode
+    return 0
+
+
+def frozen_record(d, term):
+    """What a frozen term's build is built from: the sha256 of its two
+    manifests, which change whenever freeze_term writes either."""
+    import hashlib
+    out = {}
+    for key, p in (("day_files", Path(d) / "frozen" / term / "manifest.json"),
+                   ("views", Path(d) / "db" / "term" / term / "manifest.json")):
+        out[key] = hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
+    return out
+
+
+def finished_builds(d, out):
+    """{term: (bills, sponsors)} of every frozen term older than the session's,
+    from <out>/frozen/<term>/ as build_frozen_terms left it. A term frozen and
+    not built -- or built from another freeze than the one on disk -- stops
+    the run: without it that term would leave the site with nothing failing,
+    which is what this was written against."""
+    import freeze_term
+    sess = P.session_term(d)
+    got = {}
+    for t in freeze_term.frozen_terms(d):
+        if not sess or t >= sess:
+            continue
+        base = Path(out) / "frozen" / t
+        try:
+            rec = json.loads((base / "frozen.json").read_text(encoding="utf-8"))
+            bills = json.loads((base / "bills.json").read_text(encoding="utf-8"))[t]
+            sponsors = json.loads((base / "sponsors.json").read_text(encoding="utf-8")).get(t) or {}
+        except (OSError, ValueError, KeyError):
+            rec, bills, sponsors = None, None, None
+        if not isinstance(rec, dict) or rec.get("built_from") != frozen_record(d, t) or not bills:
+            sys.exit(f"THE FROZEN TERM {t} HAS NOT BEEN BUILT from the freeze on disk ({base}). "
+                     "Run build_data.py --frozen-terms first -- build_all.py does, in the step "
+                     f"before this one. Without it {t} would leave the site.")
+        got[t] = (bills, sponsors)
+    return got
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".")
     ap.add_argument("--out", default="data")
+    ap.add_argument("--frozen", metavar="TERM", default="",
+                    help="build TERM alone from its frozen inputs (frozen/TERM/day/ and "
+                         "db/term/TERM/), writing only its bills and sponsors to --out")
+    ap.add_argument("--frozen-terms", action="store_true",
+                    help="build every frozen term older than the session's, each into "
+                         "<out>/frozen/<term>/, and nothing else")
     a = ap.parse_args()
     d, out = Path(a.dir), Path(a.out)
+    if a.frozen_terms:
+        return build_frozen_terms(d, out)
     out.mkdir(parents=True, exist_ok=True)
     report = []
+    # WHERE THE SESSION'S OWN FILES ARE. The fourteen the night installs are
+    # read from here, and for a frozen term from its freeze; everything else
+    # -- the database's past views, the roll calls of past years, the
+    # journals' withdrawn bills, the status pages, the corrections a person
+    # made -- from --dir and the working folder as ever.
+    frozen = a.frozen
+    sd = d / "frozen" / frozen / "day" if frozen else d
+    if frozen:
+        if not P.TERM_RE.match(frozen) or not (sd / "Docket.txt").exists():
+            sys.exit(f"no frozen day files for {frozen!r} at {sd}")
+        if P.session_term(sd) != frozen:
+            sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
+                     f"not {frozen}'s")
+        print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
 
     # ---------------------------------------------------------- counties ---
     counties = {}
-    for r in rows(d / "Counties.txt", 3):
+    for r in rows(sd / "Counties.txt", 3):
         counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
     print(f"counties: {len(counties)}")
 
     # ------------------------------------------------------- legislators ---
     legs = {}
     bad_party = Counter()
-    for r in rows(d / "legislators.txt", 15):
+    for r in rows(sd / "legislators.txt", 15):
         pcode = (r[8] or "").upper()
         if r[8] and r[8] != pcode:
             bad_party[r[8]] += 1          # the file contains a lowercase 'r'
@@ -1436,7 +1545,7 @@ def main():
     # id, so it cannot be joined on the key everything else uses -- but both it
     # and legislators.txt carry the work email, which is unique. Falling back to
     # a name match catches the few where an address differs.
-    mp = d / "Members.txt"
+    mp = sd / "Members.txt"
     if mp.exists():
         by_email = {m["email"].lower(): m for m in legs.values() if m.get("email")}
         by_name = {f"{m['last']}|{m['first']}".lower(): m for m in legs.values()}
@@ -1513,7 +1622,7 @@ def main():
         print(f"districts: {len(towns)} towns from districts.json "
               f"({nflot} floterial town-district pairs)")
 
-    for r in ([] if dj else rows(d / "HouseDistricts.txt", 4)):
+    for r in ([] if dj else rows(sd / "HouseDistricts.txt", 4)):
         cc, dist, ward, town = r[0].zfill(2), r[1].lstrip("0") or "0", r[2], r[3]
         key = f"{cc}-{dist}"
         seats[key].append({"town": town, "ward": ward})
@@ -1591,14 +1700,14 @@ def main():
 
     # --------------------------------------------------------- subjects ---
     subjects = {r[1]: {"id": r[0], "code": r[1], "name": r[2]}
-                for r in rows(d / "SubjectCodes.txt", 3)}
+                for r in rows(sd / "SubjectCodes.txt", 3)}
     committees = {r[0]: {"code": r[0], "name": r[1], "abbr": r[2]}
-                  for r in rows(d / "Committees.txt", 3)}
+                  for r in rows(sd / "Committees.txt", 3)}
     print(f"subjects: {len(subjects)}   committees: {len(committees)}")
 
     # ------------------------------------------------------------ bills ---
     bills, by_lsr = {}, {}
-    for r in rows(d / "LSRs.txt"):
+    for r in rows(sd / "LSRs.txt"):
         if len(r) < 33:
             continue
         bill = r[10].upper()
@@ -1635,7 +1744,7 @@ def main():
     # searchable and has a history page even without a subject or committee.
     from_lsrs = len(bills)
     docket_bills, docket_titles = {}, {}
-    dp = d / "Docket.txt"
+    dp = sd / "Docket.txt"
     if dp.exists():
         with open(dp, encoding="utf-8-sig", errors="replace") as fh:
             for line in fh:
@@ -1644,7 +1753,7 @@ def main():
                     b = f[3].strip().upper()
                     docket_bills.setdefault(b, (f[0].strip(), f[1].strip()))
     # Roll call rows carry a title, which is better than nothing for a stub.
-    rp = d / "RollCallSummary.txt"
+    rp = sd / "RollCallSummary.txt"
     if rp.exists():
         with open(rp, encoding="utf-8-sig", errors="replace") as fh:
             for line in fh:
@@ -1685,7 +1794,7 @@ def main():
     # 1,387 each, as do the LSRs. So it fills the same fields from the same
     # record, only where a bill has none, and only for the bill whose LSR it
     # names.
-    lp = d / "db" / "Legislation.psv"
+    lp = (d / "db" / "term" / frozen if frozen else d / "db") / "Legislation.psv"
     if lp.exists():
         leg_filled = Counter()
         with open(lp, encoding="utf-8", errors="replace") as fh:
@@ -1748,7 +1857,7 @@ def main():
     # omits entirely.
     #   26-2001|944|1190|2026|Sponsor|SB416|H|relative to the pooling of tips.
     sponsors = defaultdict(list)
-    lo = d / "LsrsOnly.txt"
+    lo = sd / "LsrsOnly.txt"
     lo_rows = [r for r in rows(lo, 8)] if lo.exists() else []
     if lo_rows:
         seen = set()
@@ -1805,7 +1914,7 @@ def main():
     # LsrsOnly.txt does not cover every bill -- HB197 and HB104 came back with
     # no sponsors at all. So fall back to LsrSponsors.txt per bill rather than
     # picking one file for everything.
-    for r in rows(d / "LsrSponsors.txt", 5):
+    for r in rows(sd / "LsrSponsors.txt", 5):
         bill = by_lsr.get((r[0], r[1].zfill(4)))
         if not bill:
             missing_lsr += 1
@@ -2231,7 +2340,7 @@ def main():
     # already true before past years were readable, which is why adding them
     # needed nothing here beyond the extra files.
     summary = {}
-    for r in rows_all(d, "RollCallSummary"):
+    for r in rows_all(sd, "RollCallSummary", archive=d):
         if len(r) < 13:
             continue
         summary[(r[0], r[1], r[2])] = {
@@ -2252,7 +2361,7 @@ def main():
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes, no_person = set(), 0, Counter()
     ballot_fixed = Counter()
-    for r in rows_all(d, "RollCallHistory", 8):
+    for r in rows_all(sd, "RollCallHistory", 8, archive=d):
         key = (r[0], r[1], r[2])
         hist_bodies[r[1]] += 1
         vnums.add(int(r[2]) if r[2].isdigit() else -1)
@@ -2379,10 +2488,13 @@ def main():
                       f"min {n[0]}, max {n[-1]}, members covered {len(per_member)}")
 
     # ------------------------------------------------------------ write ---
-    (out / "legislators.json").write_text(
-        json.dumps(sorted(legs.values(), key=lambda m: m["name"]), indent=2), encoding="utf-8")
-    (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
-    (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
+    # A frozen term's run writes its own term's bills and sponsors and
+    # nothing else (below): the roster and the ballots are the session's.
+    if not frozen:
+        (out / "legislators.json").write_text(
+            json.dumps(sorted(legs.values(), key=lambda m: m["name"]), indent=2), encoding="utf-8")
+        (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
+        (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
     # {term: {bill: record}}. A bill number is unique within a term and not
     # across terms, and this is the file every other per-bill lookup is driven
     # from -- the loop in build_site_v2.build_bills iterates it. Keyed on the
@@ -2580,10 +2692,25 @@ def main():
     # The newest term the pipeline holds, which is the one the current
     # session's own files describe.
     current_term = max(by_term) if by_term else ""
-    (out / "bills.json").write_text(
-        json.dumps(dict(by_term), indent=2), encoding="utf-8")
-    for t in sorted(by_term):
-        print(f"  bills.json {t}: {len(by_term[t]):,}")
+    # THE FINISHED TERMS, FROM THEIR OWN BUILDS (5 October 2026): each frozen
+    # term older than the session's, as build_frozen_terms built it from its
+    # freeze a step before this run, whole, in place of anything the
+    # session's files still say of it. Last, so that nothing above -- the
+    # archive, the past views, the journals, the committee names -- touches
+    # a term that was built entire, as the session once built it.
+    finished = {} if frozen else finished_builds(d, out)
+    for _t, (_fb, _fs) in finished.items():
+        _was = len(by_term.get(_t) or {})
+        by_term[_t] = _fb
+        print(f"  {_t}: {len(_fb):,} bills from its frozen inputs"
+              + (f", in place of {_was:,} the session's files still gave it" if _was else ""))
+    if finished:
+        # The session's term first, then the finished ones newest first, then
+        # the archive as it was: the order the file had while the session's
+        # term was the newest.
+        _order = ([current_term] + sorted(finished, reverse=True)
+                  + [t for t in by_term if t != current_term and t not in finished])
+        by_term = defaultdict(dict, {t: by_term[t] for t in _order if t in by_term})
     # {term: {bill: [sponsor]}}, for the reason bills.json is: HB100 of 2023
     # and HB100 of 2025 have different sponsors, and a flat file gives the
     # second to the first without saying so.
@@ -2638,6 +2765,32 @@ def main():
                     _jr += sum(1 for r in _rows if r.get("member_id"))
         print(f"  sponsors.json: {_jn} bill(s) took their sponsors from "
               f"the House Journal, {_jr} of {_jt} names placed on a member")
+    # A finished term's sponsors are its own build's, every list as it was.
+    for _t, (_fb, _fs) in finished.items():
+        sp_by_term[_t] = _fs
+    if finished:
+        sp_by_term = {t: sp_by_term[t] for t in
+                      [current_term] + sorted(finished, reverse=True)
+                      + [t for t in sp_by_term if t != current_term and t not in finished]
+                      if t in sp_by_term}
+    if frozen:
+        # THE FROZEN TERM'S RUN WRITES ITS TERM AND NOTHING ELSE, with what it
+        # was built from, which the session's run checks before it takes it.
+        (out / "bills.json").write_text(
+            json.dumps({frozen: by_term.get(frozen) or {}}, indent=2), encoding="utf-8")
+        (out / "sponsors.json").write_text(
+            json.dumps({frozen: sp_by_term.get(frozen) or {}}, indent=2), encoding="utf-8")
+        (out / "frozen.json").write_text(json.dumps(
+            {"term": frozen, "built_from": frozen_record(d, frozen),
+             "bills": len(by_term.get(frozen) or {}),
+             "sponsors": len(sp_by_term.get(frozen) or {})}, indent=1), encoding="utf-8")
+        print(f"\n{frozen} built from its frozen inputs: {len(by_term.get(frozen) or {}):,} "
+              f"bills, {len(sp_by_term.get(frozen) or {}):,} with sponsors -> {out}/")
+        return 0
+    (out / "bills.json").write_text(
+        json.dumps(dict(by_term), indent=2), encoding="utf-8")
+    for t in sorted(by_term):
+        print(f"  bills.json {t}: {len(by_term[t]):,}")
     (out / "sponsors.json").write_text(
         json.dumps(sp_by_term, indent=2), encoding="utf-8")
     for t in sorted(sp_by_term):
@@ -2669,4 +2822,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

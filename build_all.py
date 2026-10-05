@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.49
+# GRANITE_VERSION: 2026-09-05.50
 """
 Run the whole pipeline in the right order.
 
@@ -303,6 +303,20 @@ def plan(a):
              kit_required=True,
              note="the House Journal's introduction lists and its withdrawals, "
                   "2025 on, for bills the session files do not carry"),
+
+        # A FINISHED TERM, FROM ITS FROZEN INPUTS (5 October 2026). Once the
+        # General Court's files turn to the next term they hold none of the
+        # last, so each frozen term older than the session's is built from
+        # its own day files and database views (freeze_term.py) into
+        # data/frozen/<term>/, and the pass below takes it from there whole.
+        # BEFORE it, because it refuses to run without a finished term's
+        # build; after the journals, which this reads too. Until the files
+        # turn it builds nothing and says so: a term frozen early waits.
+        Step("a finished term, rebuilt from its frozen inputs",
+             ["build_data.py", "--dir", ".", "--out", "data", "--frozen-terms"],
+             needs=["Docket.txt"],
+             note="about a minute a term, and nothing until the session's files have "
+                  "moved past a frozen term"),
 
         Step("build data (first pass)",
              ["build_data.py", "--dir", ".", "--out", "data"],
