@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.26
+# GRANITE_VERSION: 2026-09-10.27
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -10,8 +10,9 @@ WHY
 Everything this site knows is already published as JSON, and JSON is a fine
 answer for a program and a poor one for a person with a spreadsheet and a
 question. Somebody building a scorecard, checking a claim about a member's
-votes, or teaching a class should not have to learn how index.json is shaped
-or which of nineteen per-term files to fetch first. A CSV opens in anything.
+votes, or teaching a class should not have to learn how the bill index is
+shaped or which of nineteen per-term files to fetch first. A CSV opens in
+anything.
 
 WHAT IT REFUSES TO DO
 
@@ -35,6 +36,7 @@ from pathlib import Path
 import bill_order as BO
 import build_date
 import past_sponsors as PSP
+import site_read as SR
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
 # the bill pages say it: one constant, so the three cannot drift apart.
@@ -117,7 +119,10 @@ def coverage(out):
 
 
 def bills(out, site):
-    idx = load(site / "index.json", [])
+    # Every bill's row, from the term files the pages read (site_read). It
+    # stops where there is none: this read [] from a missing file and would
+    # have written a bills.csv of no bills.
+    idx = SR.bill_index_or_stop(site, "build_exports.py")
     # chapter goes last so a reader who counted columns before it existed
     # still finds each one where it was -- and chip after it, for the same
     # reason. chip is a column of its own rather than a new meaning for
@@ -263,13 +268,13 @@ def proceedings_table(out, site, table=None, histories=None):
     from disk unless a caller hands them in.
     """
     import proceedings as P
-    import site_read as SR
     cols = ["term", "bill", "body", "kind", "date", "time", "committee",
             "venue", "video_id", "video_title", "start_seconds",
             "end_seconds", "how_placed", "end_how", "scheduled_seconds"]
-    idx = load(Path(site) / "index.json", [])
+    # The year folder each bill's page is under. No site is no folders, and
+    # then no station either; main() has already stopped in bills() for it.
     folder = {(b.get("term"), b.get("id")): str(b.get("year") or "")
-              for b in (idx if isinstance(idx, list) else [])}
+              for b in (SR.bill_index(site) or [])}
     stations = SR.by_bill(site, SR.video_years(), fields=("stations",))
 
     def published(r):
@@ -678,12 +683,15 @@ def data_page(site, out, tables, base, cov=()):
       every table with its rows, byte size and column names, so a script can
       discover what is here in one request instead of guessing from
       filenames. The site&#39;s own JSON is served from this origin too and is
-      open to cross-origin requests:
-      <a href="index.json">index.json</a> (every bill),
-      <a href="legislators.json">legislators.json</a>,
-      <a href="rollcalls_index.json">rollcalls_index.json</a>, and
-      <code>idx/&lt;term&gt;.json</code>, which is index.json split by
-      biennium for anybody who wants one term rather than all nineteen.</p>
+      open to cross-origin requests: <code>idx/&lt;term&gt;.json</code>, each
+      term&#39;s bills as the bill list and the search read them, which the
+      manifest lists with their addresses and sizes;
+      <a href="legislators.json">legislators.json</a>; and
+      <a href="rollcalls_index.json">rollcalls_index.json</a>. Every
+      term&#39;s file together is every bill. One file of all of them,
+      index.json, was retired on 5 October 2026, when it had grown to nine
+      tenths of the largest file this site&#39;s host will serve; the same
+      bills are bills.csv above, in one table.</p>
 
     {feeds(site)}
 
@@ -753,6 +761,32 @@ def data_page(site, out, tables, base, cov=()):
     print(f"  {'data.html':<28} the same tables, described")
 
 
+def bill_indexes(site, origin):
+    """The bill index the site publishes, one JSON file per term, for the
+    manifest: each term, its address, its bills and its bytes, newest term
+    first -- the order meta.json names them in, and site_read reads them in.
+
+    THE MANIFEST NAMES THEM because it is where a program starts (the data
+    page says so, and the host lets another site read it), and the files are
+    the site's own JSON rather than a table here: every bill's row, as the
+    bills page and the search read it. One request finds every term's file
+    and how big it is."""
+    rows = SR.bill_index_or_stop(site, "build_exports.py")
+    counts = {}
+    for r in rows:
+        counts[r["term"]] = counts.get(r["term"], 0) + 1
+    return {
+        "what": "Every bill's row as the site's own bill list and search read "
+                "it -- title, sponsor, committees, topic, status, passage -- "
+                "as JSON, one file per term, newest term first. Together they "
+                "are every bill of every term; bills.csv is the same bills as "
+                "one table.",
+        "terms": [{"term": t, "url": f"{origin}/idx/{t}.json", "bills": n,
+                   "bytes": (Path(site) / "idx" / f"{t}.json").stat().st_size}
+                  for t, n in counts.items()],
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -801,6 +835,7 @@ def main():
         "tables": [{k: v for k, v in t.items() if k != "over_cap"}
                    for t in tables],
     }
+    manifest["bill_indexes"] = bill_indexes(site, manifest["site"])
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)

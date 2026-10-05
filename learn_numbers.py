@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.4
+# GRANITE_VERSION: 2026-09-14.5
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -29,6 +29,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import narrative
+import site_read as SR
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 
@@ -130,7 +131,9 @@ def overturned(narr):
 
 
 def body(site=Path("site"), root=Path(".")):
-    idx = _load(Path(site) / "index.json", [])
+    # Every bill's row, from the term files the pages read (site_read); it
+    # stops where there is none rather than count nothing.
+    idx = SR.bill_index_or_stop(site, "learn_numbers.py")
     narr_all = _load(Path(root) / "narratives.json", {})
     rollcalls = _load(Path(root) / "rollcalls.json", {})
     YEAR.update({(r.get("term"), r.get("id")): str(r.get("year") or "") for r in idx})

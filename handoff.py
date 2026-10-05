@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.11
 """
 Write STATE.md from what is actually on disk.
 
@@ -52,6 +52,7 @@ import re
 import subprocess
 import sys
 import child
+import site_read
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -388,12 +389,20 @@ def section_site(out):
              if site.is_dir() else 0)
     dirs = (sum(1 for x in site.rglob("*") if x.is_dir())
             if site.is_dir() else 0)
-    idx = jload("site/index.json", [])
+    # The bill index as the pages read it, one file per term
+    # (site_read.bill_index): none where no site is built, and said where it
+    # does not hold together rather than counted as no bills.
+    try:
+        idx = site_read.bill_index(site)
+    except site_read.Broken as e:
+        idx = f"the bill index will not read: {e}"
     out.append(f"- {n(files)} files in `site/` across {n(dirs)} folders "
                f"({files * 100 // 100000}% of the 100,000 Cloudflare Pages "
                "allows on the Pro plan)")
     if isinstance(idx, list):
         out.append(f"- {n(len(idx))} bills in the index")
+    elif idx:
+        out.append(f"- {idx}")
     when = b.get("finished") or b.get("when") or ""
     if when:
         out.append(f"- last built {when}")

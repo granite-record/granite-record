@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.14
 """
 What is the live site actually serving?
 
@@ -34,18 +34,41 @@ WHAT IT CHECKS
   /bills                served, HTML, and carries the GRANITE_VERSION that
                         site/bills.html carries
   /style.css            served as CSS and not as HTML
-  /index.json           served as JSON, and parses, and has bills in it
+  /meta.json            served as JSON, and parses, and names the terms --
+                        the same terms as the site/meta.json that was built
+  /idx/<newest>.json    the newest term's bills, which every visitor's list and
+                        search load first: served as JSON, parses, has bills
   /legislators          served, and is a different page from /
   /feed/all.xml         served as XML
 
 The last one matters more than it looks: if / and /bills return the same bytes,
 every path is falling through to the home page, which is the failure that
 removes the formatting too.
+
+A FILE TOO LARGE TO READ IS A PROBLEM, NOT A PASS (5 October 2026). This asked
+for /index.json, every bill of every term in one file, and reads at most 12 MB
+of a JSON file. The file was 23.7 MB, so on every night that deployed from 25
+September to 2 October this printed "larger than this reads; not checked" and
+recorded nothing -- a check that passed by not looking. It asks for meta.json
+and the newest term's index now, which are what a visitor's first page loads
+and a fraction of that limit; and a file that will not fit counts as a
+problem, so the gate cannot pass a file it did not read.
+
+AND A BILL INDEX READ AND FOUND WRONG FAILS IT TOO (5 October 2026). The
+gate passed a served meta.json that named no term, a term index that was
+empty, not JSON or a web page wearing its name, and a meta.json naming other
+terms than the build's, each with "the problems above are dashboard
+settings". None is: check_site refuses a build whose index is any of those,
+so a served one is not what was built. They fail the gate as a deploy that
+did not land (exit 1). A file too large to read fails it as NOT CHECKED, exit
+NOT_CHECKED, so the nightly can say that rather than call it a deploy that
+did not land.
 """
 
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -55,6 +78,14 @@ from pathlib import Path
 UA = {"User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache",
       "Pragma": "no-cache"}
 
+# A term as meta.json names one, and as its file in /idx/ is called.
+TERM = re.compile(r"\d{4}-\d{4}")
+
+# --gate's exit when a file it must read was too large to read to its end:
+# whether the deploy landed is not known. 1 is a deploy that did not land, and
+# 2 is argparse's own for a bad command line. nightly.py reads this.
+NOT_CHECKED = 3
+
 
 TIMES = []
 
@@ -62,7 +93,7 @@ TIMES = []
 def get(url, limit=400_000):
     """Read up to limit bytes, and say whether that was all of them.
 
-    index.json is over 400 KB, so the first version of this cut it in half and
+    index.json was over 400 KB, so the first version of this cut it in half and
     then reported that it would not parse -- a checker written to reduce
     confusion, inventing some. A body that stops exactly on the limit is a
     truncation, and the only honest thing to say about it is that it was not
@@ -134,6 +165,40 @@ def stamp(b):
     if i < 0:
         return ""
     return b[i + 16: i + 34].decode("ascii", "replace").strip(" -->\r\n\t")
+
+
+def terms_named(body):
+    """The terms a meta.json's bytes name, as a sorted list; [] where it names
+    none or is not JSON."""
+    try:
+        terms = json.loads(body.decode("utf-8")).get("terms") or []
+    except (ValueError, AttributeError, UnicodeDecodeError):
+        return []
+    return sorted({t for t in terms if isinstance(t, str) and TERM.fullmatch(t)})
+
+
+def newest_term(body):
+    """The newest term a served meta.json names ("2025-2026"), or "" where it
+    names none or is not JSON. Its terms are written newest first; the
+    largest is taken rather than the first, so the order is not relied on."""
+    real = terms_named(body)
+    return real[-1] if real else ""
+
+
+def terms_differ(served, built):
+    """What a served meta.json's terms lack and add against the build's, said
+    in words; "" where they are the same terms."""
+    gone = [t for t in built if t not in served]
+    extra = [t for t in served if t not in built]
+    bits = []
+    if gone:
+        bits.append(f"it does not name {', '.join(gone[-3:])}"
+                    + (f" and {len(gone) - 3} more" if len(gone) > 3 else ""))
+    if extra:
+        bits.append(f"it names {', '.join(extra[-3:])}"
+                    + (f" and {len(extra) - 3} more" if len(extra) > 3 else "")
+                    + ", which the build does not")
+    return "; ".join(bits)
 
 
 def _flat(s):
@@ -244,7 +309,9 @@ def one_bill(base, site, bid, year, tries=3):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gate", action="store_true",
-                    help="exit non-zero only if the deploy did not land")
+                    help="exit 1 only if the deploy did not land, and "
+                         f"{NOT_CHECKED} if a file it must read was too large "
+                         "to read; dashboard settings are said and pass")
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--site", default="site")
     ap.add_argument("--bill", help="one bill, e.g. HB396")
@@ -281,8 +348,8 @@ def main():
         return 0 if steady else 1
 
     print(f"asking {base} what it is serving\n")
-    print(f"  {'path':<16}{'status':<8}{'type':<26}what came back")
-    print("  " + "-" * 74)
+    print(f"  {'path':<22}{'status':<8}{'type':<26}what came back")
+    print("  " + "-" * 80)
 
     seen, problems = {}, []
 
@@ -292,7 +359,7 @@ def main():
         st, ct, body, err = get(base + path, limit)
         seen[path] = (st, ct, body)
         if err:
-            print(f"  {path:<16}{'-':<8}{'-':<26}{type(err).__name__}: {err}")
+            print(f"  {path:<22}{'-':<8}{'-':<26}{type(err).__name__}: {err}")
             problems.append(f"{path} could not be fetched")
             return
         short = (ct.split(";")[0] or "?")[:24]
@@ -301,9 +368,20 @@ def main():
         if want_type == "css" and (looks_html or "html" in ct):
             desc += " -- HTML, not CSS"
             problems.append(f"{path} is being served as a web page")
+        elif want_type == "json" and looks_html:
+            # A JSON file answered with a page: the file is not in the deploy
+            # and a catch-all served the home page in its place, as it would
+            # for the stylesheet.
+            desc += " -- HTML, not JSON"
+            problems.append(f"{path} is being served as a web page")
         elif want_type == "json":
             if len(body) >= limit:
+                # Said, and counted: a file this did not read to its end is
+                # one it cannot vouch for (the docstring has the nights it
+                # passed /index.json this way).
                 desc += " -- larger than this reads; not checked"
+                problems.append(f"{path} is {limit:,} bytes or more, larger "
+                                "than this reads, so it was not checked")
             else:
                 try:
                     v = json.loads(body.decode("utf-8"))
@@ -318,12 +396,30 @@ def main():
             problems.append(f"{path} is not XML")
         if st != 200:
             problems.append(f"{path} returned HTTP {st}")
-        print(f"  {path:<16}{st or '-':<8}{short:<26}{desc}{note}")
+        print(f"  {path:<22}{st or '-':<8}{short:<26}{desc}{note}")
 
     row("/", "html")
     row("/bills", "html")
     row("/style.css", "css")
-    row("/index.json", "json")
+    # meta.json, and the term index it names first: what the bills list, the
+    # header's search and every record page fetch before anything else. The
+    # term is the one the served meta.json names, so this asks for the file a
+    # visitor is being sent to rather than the one the local build expects.
+    row("/meta.json", "json")
+    served_meta = seen.get("/meta.json", (None, "", b""))[2]
+    newest = newest_term(served_meta)
+    if newest:
+        row(f"/idx/{newest}.json", "json")
+    elif not any(p.startswith("/meta.json ") for p in problems):
+        problems.append("/meta.json names no term, so no bill index was checked")
+    # The terms the build named. A served meta.json naming others -- an older
+    # newest term, one missing -- would send every visitor to a list that is
+    # not the one built, and the term index asked for above would be its.
+    built_meta = site / "meta.json"
+    if newest and built_meta.is_file():
+        differ = terms_differ(terms_named(served_meta), terms_named(built_meta.read_bytes()))
+        if differ:
+            problems.append(f"/meta.json is not the file in {site}/: {differ}")
     row("/legislators", "html")
     row("/feed/all.xml", "xml")
 
@@ -442,11 +538,29 @@ def main():
     # standing dashboard setting rather than something this run did. Failing
     # every publish on it would make the guard noise, and a guard that always
     # fires is a guard nobody reads.
-    landed = not any(("not the file" in x) or ("could not be fetched" in x)
-                     or ("returned HTTP" in x) or ("same page" in x)
-                     or ("served as a web page" in x)
-                     for x in problems)
+    #
+    # The bill index read and found wrong is the first kind. check_site
+    # refuses a build whose meta.json names no term or whose term file is
+    # empty or will not read, so a served one like that is not the one built,
+    # whatever else came back right.
+    unread = [x for x in problems if "larger than this reads" in x]
+    index_wrong = [x for x in problems if x.startswith(("/meta.json ", "/idx/"))
+                   and x not in unread]
+    landed = not index_wrong and not any(
+        ("not the file" in x) or ("could not be fetched" in x)
+        or ("returned HTTP" in x) or ("same page" in x)
+        or ("served as a web page" in x)
+        for x in problems)
+    # AND A FILE IT COULD NOT READ TO ITS END. That is not a deploy that
+    # failed to land, and it is not one this can say landed either: the gate
+    # passed /index.json for a week by not reading it. Said as what it is,
+    # with an exit of its own (NOT_CHECKED) so the nightly can say it too.
     if a.gate:
+        if landed and unread:
+            print()
+            print("  NOT CHECKED: " + "; ".join(unread) + ". Whether the "
+                  "deploy landed whole is not known.")
+            return NOT_CHECKED
         if landed:
             print()
             print("  The deploy landed. The problems above are dashboard "

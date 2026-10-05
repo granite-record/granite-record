@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.149
+# GRANITE_VERSION: 2026-09-05.152
 """
 Generate the faceted site from real General Court data.
 
@@ -34,6 +34,7 @@ import fiscal
 import proceedings as P
 import report_check as RC
 import senate_hearing_reports as SHR
+import site_read
 import csv
 import json
 import member_links as ML
@@ -6324,7 +6325,7 @@ def bill_committees(b, bid):
 
     `committees` is every committee the bill has, each with its chamber, House
     first; the card lists them in that order. `committee` is THE committee of
-    the bill -- what index.json, idx/<term>.json and the committee list in the
+    the bill -- what idx/<term>.json and the committee list in the
     site's meta carry -- and it is the one in the chamber the bill began in.
     It was committees[0], which made it the House's for every Senate bill that
     crossed over: SB 1 of 2023, referred to the Senate's Judiciary, was filed
@@ -9482,7 +9483,15 @@ def main():
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
                                    max(bills) if bills else ""))
-    (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
+    # NO index.json (retired 5 October 2026). It was every row below in one
+    # file, read by six build steps and by no page: 23.7 MB on 2 October,
+    # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's
+    # worth bigger with every field added to a row. The build reads the term
+    # files instead, through site_read.bill_index. The copy an earlier build
+    # left is deleted: site/ is never emptied, so it would stay and publish
+    # would go on deploying a frozen list of every bill. check_site refuses
+    # one as well.
+    (out / "index.json").unlink(missing_ok=True)
 
     # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search
     # has always filtered to a single term -- there is a term picker and
@@ -9490,28 +9499,51 @@ def main():
     # at one. With the archive in, index.json is 15.7 MB (1.6 gzipped) and
     # every first visit pays for it before a word can be typed.
     #
-    # index.json stays whole because six build steps read it and expect every
-    # bill. These are what the browser fetches: the newest term is 0.14 MB
-    # gzipped and an archived one about 0.08, fetched only if somebody picks
-    # it.
+    # These are what the browser fetches: the newest term is 0.14 MB gzipped
+    # and an archived one about 0.08, fetched only if somebody picks it. And
+    # they are the record: the build reads them too (site_read.bill_index),
+    # meta.json naming the terms, and data/manifest.json lists them for
+    # programs.
     idx_dir = out / "idx"
     idx_dir.mkdir(exist_ok=True)
     by_term = defaultdict(list)
     for row in index:
         if row.get("term"):
             by_term[row["term"]].append(row)
+    # EVERY ROW IN A TERM'S FILE. The build reads the bill index from these
+    # files (site_read.bill_index), so a row with no term would be in none:
+    # no page, no feed, no line in the downloads, and nothing to say so. No
+    # row has lacked one; this stops the build if one ever does.
+    termless = [row.get("id") for row in index if not row.get("term")]
+    if termless:
+        raise SystemExit(f"{len(termless):,} bill row(s) name no term, so no term's "
+                         f"file would hold them: {', '.join(map(str, termless[:5]))}")
     for term_, rows_ in by_term.items():
         (idx_dir / f"{term_}.json").write_text(
             json.dumps(rows_, separators=(",", ":")), encoding="utf-8")
+    # AND NO TERM'S FILE THIS BUILD DID NOT WRITE. site/ is never emptied, so a
+    # term an earlier build wrote and this one does not would stay in idx/,
+    # and site_read.bill_index refuses a term file meta.json does not name --
+    # every step after this one, check_site and the census would stop on it,
+    # and building again would not clear it. The bill requests' file
+    # (2027-requests) is not a term's and is build_lsrs.py's. A term that
+    # really went missing is the census's to see, by its count.
+    for stale_ in sorted(idx_dir.glob("*.json")):
+        if site_read.TERM_FILE.fullmatch(stale_.stem) and stale_.stem not in by_term:
+            print(f"  idx/{stale_.name}: a term this build has no bills for, "
+                  "left by an earlier one -- removed")
+            stale_.unlink()
     newest_ = max(by_term) if by_term else ""
     print(f"  idx/: {len(by_term)} terms, newest {newest_} "
           f"({len(by_term.get(newest_, [])):,} bills, "
           f"{(idx_dir / f'{newest_}.json').stat().st_size / 1024:,.0f} KB) "
           "-- what a visitor actually loads")
 
-    size = (out / "index.json").stat().st_size / 1024
-    print(f"index.json: {size:.0f} KB for {len(index):,} bills "
-          f"(roughly {size/4:.0f} KB gzipped, which is what a static host sends)")
+    size = sum((idx_dir / f"{t_}.json").stat().st_size for t_ in by_term) / 1024
+    biggest = max((((idx_dir / f"{t_}.json").stat().st_size, t_) for t_ in by_term),
+                  default=(0, ""))
+    print(f"idx/: {size:,.0f} KB for {len(index):,} bills; the largest, "
+          f"{biggest[1]}, is {biggest[0] / 1024:,.0f} KB")
 
     # (term, bill) -> the year its page is under, so a vote can link to the
     # right one of two bills sharing a number.
@@ -9698,8 +9730,8 @@ def main():
              if newest_ else 0)
     print(f"\nsite data: {total/1e6:.1f} MB total, {front:,.0f} KB loaded "
           f"up front (idx/{newest_}.json)")
-    print(f"  index.json is {size:,.0f} KB and is read by the build "
-          "rather than by a browser")
+    print(f"  idx/ is {size:,.0f} KB in all, one file a term, and the build "
+          "reads the same files")
     print(f"-> {out}/")
     print("\nNext: the HTML shell reads idx/<term>.json and meta.json for search and")
     print("facets, then fetches bills/<year>/<id>.json when a card is expanded.")

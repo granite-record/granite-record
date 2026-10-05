@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.139
+# GRANITE_VERSION: 2026-09-04.140
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -259,9 +259,9 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 #
 # Deliberately NOT applied to the whole site. A wildcard on every path would
 # also cover /_headers, /_redirects and anything added later without anybody
-# thinking about it; these four are the tables /data documents.
-/index.json
-  Access-Control-Allow-Origin: *
+# thinking about it; these three are the tables /data documents. (A fourth,
+# /index.json, every bill in one file, was retired on 5 October 2026: the
+# files under /idx/ are the same rows a term at a time.)
 /idx/*
   Access-Control-Allow-Origin: *
 /legislators.json

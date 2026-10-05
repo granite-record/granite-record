@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.336
+# GRANITE_VERSION: 2026-09-04.337
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -223,6 +223,45 @@ def imp(name):
         return __import__(name)
     except Exception:
         return None
+
+# ---- the bill index, as a fixture writes it and a check reads it --------------
+#
+# THE TERM FILES, NOT index.json (5 October 2026). Every reader of the built
+# site's bill rows goes through site_read.bill_index, which reads
+# site/idx/<term>.json as site/meta.json names them, and a fixture writes them
+# the way build_site_v2 does, here, in one place.
+
+def _bill_index_write(site, rows):
+    """A fixture's bill rows written as build_site_v2 writes them: one
+    idx/<term>.json per term, compact, and meta.json naming the terms newest
+    first, merged into a meta.json the fixture already has. A term file left
+    from an earlier write is removed, so that site_read.bill_index does not
+    find a term meta.json does not name. Returns site."""
+    site = Path(site)
+    idx = site / "idx"
+    idx.mkdir(parents=True, exist_ok=True)
+    for f in idx.glob("*.json"):
+        if re.fullmatch(r"\d{4}-\d{4}", f.stem):
+            f.unlink()
+    by = {}
+    for r in rows:
+        by.setdefault(r["term"], []).append(r)
+    for t, part in by.items():
+        (idx / f"{t}.json").write_text(json.dumps(part, separators=(",", ":")),
+                                       encoding="utf-8")
+    mp = site / "meta.json"
+    meta = json.loads(mp.read_text(encoding="utf-8")) if mp.exists() else {}
+    meta["terms"] = sorted(by, reverse=True)
+    mp.write_text(json.dumps(meta), encoding="utf-8")
+    return site
+
+
+def _site_bills(site="site"):
+    """Every bill row of a built site through site_read.bill_index, or None
+    where none is built. A broken one raises site_read.Broken, which fails the
+    check that asked with the loader's own words."""
+    import site_read
+    return site_read.bill_index(site)
 
 
 # ---- the built bill pages, read once a run ------------------------------------
@@ -12414,6 +12453,417 @@ def _search_index_main(SI, CS):
                   "an earlier term without text, or a file over 25 MiB")
 
 
+@check("build", "check_live reads meta.json and the newest term's index, and a "
+       "file too large to read is a problem, not a pass")
+def _check_live_reads_what_it_checks():
+    """check_live.py is what the nightly runs once a deploy is up (--gate).
+    It asked for /index.json, every bill of every term in one file, and reads
+    at most 12 MB of JSON: the file was 23.7 MB, so from 25 September to 2
+    October it printed "larger than this reads; not checked" and recorded no
+    problem -- a gate that passed a file it never read.
+
+    Driven here against a served site held in memory, with no network: it
+    asks for /meta.json and the term meta.json names newest, and never for
+    /index.json; a site serving what was built passes the gate; and one whose
+    newest index is past the limit fails it, said as not checked rather than
+    as a deploy that did not land, with an exit of its own that the nightly
+    says as not checked and does not look again on.
+
+    And a bill index it read and found wrong fails the gate as a deploy that
+    did not land. Until the review of 5 October each of these passed it as
+    "dashboard settings": the newest index empty, not JSON, or the home page
+    in its place; meta.json naming no term, or the home page in its place;
+    and meta.json naming other terms than the build's.
+    """
+    import contextlib
+    import io
+    import check_live as CL_
+    import nightly as NI
+    root = Path(tempfile.mkdtemp(prefix="gr-live-"))
+    page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+    (root / "bills.html").write_bytes(page)
+    (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026", "2023-2024"]}),
+                                    encoding="utf-8")
+    served = {
+        "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+        "/bills": (200, "text/html", page),
+        "/style.css": (200, "text/css", b"body{}"),
+        "/meta.json": (200, "application/json",
+                       json.dumps({"terms": ["2025-2026", "2023-2024"]}).encode()),
+        "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+        "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+        "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+    }
+    asked = []
+
+    def fake_get(url, limit=400_000):
+        path = url[len("http://site.invalid"):]
+        asked.append(path)
+        st, ct, body = served.get(path, (404, "text/html", b"not found"))
+        return st, ct, body[:limit], None
+
+    def gate():
+        saved = (CL_.get, sys.argv)
+        CL_.get = fake_get
+        sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid",
+                    "--site", str(root)]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = CL_.main()
+        finally:
+            CL_.get, sys.argv = saved
+        return code, out.getvalue()
+
+    good = dict(served)
+
+    def serve():
+        # What was built, served again, before one answer is changed.
+        served.clear()
+        served.update(good)
+        asked.clear()
+
+    try:
+        code, out = gate()
+        assert code == 0, f"check_live --gate fails a site serving what was built:\n{out[-600:]}"
+        assert "/index.json" not in asked, f"check_live still asks for /index.json: {asked}"
+        assert "/meta.json" in asked and "/idx/2025-2026.json" in asked, (
+            f"check_live does not ask for meta.json and the newest term's index: {asked}")
+        home = good["/"]
+        wrong = []
+        for why, path, answer in (
+                ("the newest index is empty", "/idx/2025-2026.json",
+                 (200, "application/json", b"[]")),
+                ("the newest index is not JSON", "/idx/2025-2026.json",
+                 (200, "application/json", b"[{")),
+                ("the newest index is the home page", "/idx/2025-2026.json", home),
+                ("meta.json names no term", "/meta.json",
+                 (200, "application/json", b'{"terms": []}')),
+                ("meta.json is the home page", "/meta.json", home),
+                ("meta.json names an older newest term than the build", "/meta.json",
+                 (200, "application/json", json.dumps({"terms": ["2023-2024"]}).encode()))):
+            serve()
+            served[path] = answer
+            # The older term's own index is served whole, so it is the
+            # comparison with the build that fails the gate and not a 404.
+            served["/idx/2023-2024.json"] = (200, "application/json", b'[{"id":"HB2"}]')
+            code, out = gate()
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+            if answer is home:
+                assert "being served as a web page" in out, (
+                    f"when {why}, the page in its place is not said:\n{out[-400:]}")
+            if why == "meta.json names no term":
+                assert "names no term" in out and not any(p.startswith("/idx/") for p in asked), (
+                    f"a meta.json naming no term was not said, or an index was guessed at: {asked}")
+            wrong.append(why)
+        serve()
+        served["/idx/2025-2026.json"] = (200, "application/json", b"[" + b" " * 12_000_000 + b"]")
+        code, out = gate()
+        assert code == CL_.NOT_CHECKED and "not checked" in out and "NOT CHECKED" in out, (
+            "a term index larger than check_live reads passed its gate, or was not said "
+            f"as unchecked with its own exit ({code}):\n{out[-600:]}")
+        assert "DID NOT LAND" not in out, (
+            "a file too large to read is reported as a deploy that did not land")
+
+        # The nightly, given that exit: said as not checked, and not looked at
+        # again; given a deploy that did not land, it looks every time and
+        # says so.
+        def upload(live_code):
+            looks, saved_ = [], (NI.child.run, NI.time.sleep, NI.run, NI.LOG[:])
+            NI.child.run = lambda *a_, **k_: subprocess.CompletedProcess(a_, 0, "", "")
+            NI.time.sleep = lambda s: None
+            NI.run = lambda args, label, cwd=None: looks.append(label) or live_code
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    landed = NI.upload_and_check(argparse.Namespace(project="p"), root,
+                                                 "main", "http://site.invalid")
+                said = "\n".join(NI.LOG[len(saved_[3]):])
+            finally:
+                NI.child.run, NI.time.sleep, NI.run = saved_[:3]
+                NI.LOG[:] = saved_[3]
+            return landed, looks, said
+        landed, looks, said = upload(CL_.NOT_CHECKED)
+        assert not landed and len(looks) == 1 and "NOT CHECKED" in said \
+            and "NOT SERVING" not in said, (
+                f"the nightly, told the live check could not read a file, looked {len(looks)} "
+                f"time(s) and said: {said[-300:]}")
+        landed, looks, said = upload(1)
+        assert not landed and len(looks) == len(NI.LIVE_WAITS) and "NOT SERVING" in said, (
+            f"the nightly, told the deploy did not land, looked {len(looks)} time(s) "
+            f"and said: {said[-300:]}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("asks for meta.json and the newest term's index, never index.json; "
+                  "passes a site serving what was built; fails it as not landed when "
+                  + ", when ".join(wrong) + "; an index past 12 MB is said as not "
+                  "checked, with its own exit, which the nightly says and does not "
+                  "look at again")
+
+
+@check("build", "the bill index is read one way: no site, a broken one and a whole one kept apart")
+def _bill_index_three_answers():
+    """site_read.bill_index is the build's one reader of every bill's row,
+    from site/idx/<term>.json as site/meta.json names them. It replaced
+    readers of site/index.json, the same rows in one file that no page
+    fetched and that stood at 23.7 MB of the 25 MiB a file may be.
+
+    Three answers, because the callers need them apart: no meta.json is no
+    site built yet (None) -- GitHub's machine starts with an empty site/,
+    and handoff and the census say so rather than stop; a broken index
+    raises, naming the file; a whole one is every row, newest term first,
+    each term's rows in its file's order, and not the bill requests.
+    Broken is each of: meta.json unreadable, or naming no term; a term
+    named with no file, or an empty or unreadable one; a row in another
+    term's file; a term file meta.json does not name, or term files and no
+    meta.json at all.
+    """
+    import site_read as SR_
+    root = Path(tempfile.mkdtemp(prefix="gr-billindex-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        assert SR_.bill_index(site) is None, "a site with no meta.json is not 'none built'"
+        rows = [{"term": "2023-2024", "id": "HB2"}, {"term": "2025-2026", "id": "HB9"},
+                {"term": "2025-2026", "id": "HB1"}, {"term": "1989-1990", "id": "HB5"}]
+        _bill_index_write(site, rows)
+        (site / "idx" / "2027-requests.json").write_text('[{"id": "LSR1"}]', encoding="utf-8")
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        meta["requests"] = {"term": "2027-requests", "n": 1}
+        (site / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        got = [(r["term"], r["id"]) for r in SR_.bill_index(site)]
+        assert got == [("2025-2026", "HB9"), ("2025-2026", "HB1"), ("2023-2024", "HB2"),
+                       ("1989-1990", "HB5")], f"the whole index reads {got}"
+        assert SR_.bill_index_files(meta) == [
+            "idx/2025-2026.json", "idx/2023-2024.json", "idx/1989-1990.json",
+            "idx/2027-requests.json"], SR_.bill_index_files(meta)
+
+        def broken(why, change, undo):
+            change()
+            try:
+                SR_.bill_index(site)
+            except SR_.Broken as e:
+                said = str(e)
+            else:
+                said = None
+            finally:
+                undo()
+            assert said, f"{why}: the index was read as whole"
+            return said
+
+        mp = site / "meta.json"
+        good_meta = mp.read_text(encoding="utf-8")
+        f23 = site / "idx" / "2023-2024.json"
+        good23 = f23.read_text(encoding="utf-8")
+        said = [
+            broken("meta.json unreadable", lambda: mp.write_text("{", encoding="utf-8"),
+                   lambda: mp.write_text(good_meta, encoding="utf-8")),
+            broken("no terms", lambda: mp.write_text('{"terms": []}', encoding="utf-8"),
+                   lambda: mp.write_text(good_meta, encoding="utf-8")),
+            broken("a term's file missing", lambda: f23.unlink(),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a term's file empty", lambda: f23.write_text("[]", encoding="utf-8"),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a term's file unreadable", lambda: f23.write_text("[{", encoding="utf-8"),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a row of another term",
+                   lambda: f23.write_text('[{"term": "2021-2022", "id": "HB2"}]',
+                                          encoding="utf-8"),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a term meta.json does not name",
+                   lambda: (site / "idx" / "2001-2002.json").write_text(
+                       '[{"term": "2001-2002", "id": "HB3"}]', encoding="utf-8"),
+                   lambda: (site / "idx" / "2001-2002.json").unlink()),
+            broken("term files and no meta.json", lambda: mp.unlink(),
+                   lambda: mp.write_text(good_meta, encoding="utf-8")),
+        ]
+        assert "2023-2024" in said[2] and "2001-2002" in said[6] and "2021-2022" in said[5], (
+            "a broken index does not name the file and the term: " + " | ".join(said))
+        assert len(SR_.bill_index(site)) == 4, "the index did not read whole again"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("no meta.json is no site; eight ways of being broken each raise "
+                  "and name the file; whole is every row newest term first, "
+                  "without the bill requests")
+
+
+@check("build", "the nightly counts and fingerprints the bill index the pages read, "
+       "and the served one the same way")
+def _census_and_fingerprint_of_the_bill_index():
+    """nightly.py counted the bills in site/index.json and hashed its bytes
+    into the fingerprint that says whether tonight's site differs from
+    production's. index.json was the same rows as the term files in one file,
+    which no page read; it is retired, and the census counts the term files
+    through site_read.bill_index, and the fingerprint hashes meta.json and
+    every file it names -- each term's, and the bill requests', which
+    index.json never held.
+
+    So: the census counts every term's bills, and none for no site or a broken
+    index (the gate then names the fall); changing one archived term's file,
+    or the requests file, changes the fingerprint; and live_fingerprint, over
+    the same tree served by a fake urlopen with no network, asks for
+    meta.json first, then what it names, never index.json, and agrees.
+    """
+    import io
+    import urllib.error
+    import urllib.request
+    import nightly as NI
+    root = Path(tempfile.mkdtemp(prefix="gr-fingerprint-"))
+    try:
+        site = root / "site"
+        rows = ([{"term": "2025-2026", "id": f"HB{i}"} for i in range(1, 4)]
+                + [{"term": "1989-1990", "id": "HB7"}])
+        _bill_index_write(site, rows)
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        meta["requests"] = {"term": "2027-requests", "n": 1}
+        (site / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text('[{"id": "LSR1"}]', encoding="utf-8")
+        (site / "home.json").write_text('{"generated": "2026-10-05"}', encoding="utf-8")
+        (site / "legislators.json").write_text('[{"id": "1"}]', encoding="utf-8")
+        assert NI.census(site)["bills"] == 4, f"the census counts {NI.census(site)['bills']} of 4"
+        fp = NI.fingerprint(site)
+
+        asked = []
+
+        def served(req, timeout=None):
+            path = req.full_url.split("site.invalid/", 1)[1]
+            asked.append(path)
+            f = site / path
+            if not f.is_file():
+                raise urllib.error.HTTPError(req.full_url, 404, "not found", {}, None)
+            return io.BytesIO(f.read_bytes())
+
+        saved = urllib.request.urlopen
+        urllib.request.urlopen = served
+        try:
+            live = NI.live_fingerprint("http://site.invalid")
+        finally:
+            urllib.request.urlopen = saved
+        assert live == fp, f"production serving this very tree fingerprints {live}, here {fp}"
+        assert asked == ["meta.json", "idx/2025-2026.json", "idx/1989-1990.json",
+                         "idx/2027-requests.json", "home.json", "legislators.json"], (
+            f"live_fingerprint asked for {asked}")
+
+        old = site / "idx" / "1989-1990.json"
+        old.write_text(json.dumps([{"term": "1989-1990", "id": "HB7", "title": "changed"}]),
+                       encoding="utf-8")
+        assert NI.fingerprint(site) != fp, "a change to an archived term's bills is not a change"
+        fp2 = NI.fingerprint(site)
+        (site / "idx" / "2027-requests.json").write_text('[{"id": "LSR2"}]', encoding="utf-8")
+        assert NI.fingerprint(site) != fp2, "a change to the bill requests is not a change"
+
+        old.unlink()
+        assert NI.census(site)["bills"] == 0, "a broken index is counted"
+        shutil.rmtree(site)
+        site.mkdir()
+        assert NI.census(site)["bills"] == 0, "no site is counted as bills"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the census counts every term's bills and none for a broken index or "
+                  "none; an archived term or the requests changing changes the "
+                  "fingerprint; production's, read the same way, agrees")
+
+
+@check("build", "no index.json: a build writes none and deletes one left over, every "
+       "bill still reaches the downloads, the Learn pages and the census, and "
+       "check_site refuses a leftover")
+def _index_json_retired():
+    """index.json, every bill's row in one file, was retired on 5 October
+    2026: no page read it, six build steps did, and it stood at 23.7 MB of
+    the 25 MiB a file may be. The term files the pages read are the record
+    now (site_read.bill_index).
+
+    A RETIREMENT IS PROVED BY WHAT STILL WORKS, NOT BY A SEARCH FOR THE NAME.
+    Four of its readers read a missing file as no bills and went on -- the
+    downloads, the Learn pages' figures, their page of numbers and handoff --
+    so a reader missed by the change would not fail; it would publish a
+    bills.csv of nothing and a Learn page counting nothing, and exit 0. And a
+    search for "index.json" matches the nh-archive's and the livestreams'
+    files of that name, which are other files. So: the fixture built whole
+    has no index.json, and its bills are all in bills.csv, in the manifest's
+    list of term files, in the Learn page's count and in the nightly's census.
+
+    And the copy a laptop keeps: site/ is never emptied, so the last
+    index.json would stay and publish would go on deploying a frozen list of
+    every bill. build_site_v2 deletes one it finds, and check_site refuses one,
+    and refuses an index that does not hold together. The same laptop keeps a
+    term's file a later build no longer writes, which the loader refuses, so
+    build_site_v2 deletes that too.
+    """
+    import contextlib
+    import io
+    import check_site as CS
+    import nightly as NI
+    import site_read as SR_
+
+    def refused(where):
+        errors = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.bill_index(where, errors)
+        return errors
+
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    assert not (site / "index.json").exists(), "the fixture's build wrote an index.json"
+    rows = SR_.bill_index(site)
+    assert rows, "the fixture built no bill index"
+    terms = Counter(r["term"] for r in rows)
+    with (site / "data" / "bills.csv").open(encoding="utf-8", newline="") as fh:
+        in_csv = Counter(r["term"] for r in csv.DictReader(fh))
+    assert in_csv == terms, f"bills.csv holds {dict(in_csv)}; the bill index {dict(terms)}"
+    man = json.loads((site / "data" / "manifest.json").read_text(encoding="utf-8"))
+    listed = {t["term"]: t["bills"] for t in (man.get("bill_indexes") or {}).get("terms", [])}
+    assert listed == dict(terms), (
+        f"data/manifest.json lists the term files as {listed}; the index holds {dict(terms)}")
+    assert all(t["url"].endswith(f"/idx/{t['term']}.json")
+               for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
+    page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
+    assert f"Across the {len(rows):,} bills on this site" in page, (
+        f"the Learn page does not count the index's {len(rows):,} bills")
+    assert NI.census(site)["bills"] == len(rows), (
+        f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")
+
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-noindex-"))
+    try:
+        _site_fixture(root)
+        (root / "site").mkdir(exist_ok=True)
+        (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        # And a term an earlier build wrote and this one has no bills for:
+        # the loader refuses a term file meta.json does not name, so left
+        # there it would stop every step after the site data, check_site and
+        # the census, and building again would not clear it.
+        (root / "site" / "idx").mkdir(exist_ok=True)
+        stale = root / "site" / "idx" / "1987-1988.json"
+        stale.write_text('[{"term": "1987-1988", "id": "HB1"}]', encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
+                  "--out", "site", "--segments", "work"],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        assert not (root / "site" / "index.json").exists(), (
+            "build_site_v2 left the index.json an earlier build wrote, which would deploy")
+        assert not stale.exists(), (
+            "build_site_v2 left a term file an earlier build wrote and it did not, which "
+            "the bill index refuses")
+        errors = refused(root / "site")
+        assert not errors, f"check_site refuses the bill index a build just wrote: {errors}"
+        (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        errors = refused(root / "site")
+        assert any("index.json" in e for e in errors), (
+            f"check_site passes a leftover index.json: {errors}")
+        (root / "site" / "index.json").unlink()
+        newest = json.loads((root / "site" / "meta.json").read_text(encoding="utf-8"))["terms"][0]
+        (root / "site" / "idx" / f"{newest}.json").unlink()
+        errors = refused(root / "site")
+        assert any(newest in e for e in errors), (
+            f"check_site passes a bill index missing {newest}'s file: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"the fixture's {len(rows):,} bills reach bills.csv, the manifest, the Learn "
+                  "page and the census with no index.json; a leftover is deleted by the "
+                  "build and refused by check_site, as is a term's missing file; a term "
+                  "file the build did not write is deleted by it")
+
+
 # What a term's search index may weigh. The page fetches it when somebody
 # searches; /search fetches every term's. Measured on 1 October: 197,000 to
 # 303,000 bytes a term, 4.4 MB for all twenty. A file past this has stopped
@@ -13708,7 +14158,7 @@ def _learn_rules(civics, learn_numbers, build_civics):
     saved_cache = dict(notice_cache)
     with _tf.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        (tmp / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+        _bill_index_write(tmp, idx)
         (tmp / "rollcalls.json").write_text(json.dumps(rcs), encoding="utf-8")
         build_civics.P.load = lambda *a, **k: [dict(p) for p in procs]
         # A stop is a finding of this check, never the end of the whole run:
@@ -13731,7 +14181,7 @@ def _learn_rules(civics, learn_numbers, build_civics):
             # A veto of the term still sitting, and a bill of it not heard
             # yet: five of its six bills filmed, under the nine in ten.
             idx.append(row("2025-2026", "HB6", status="Vetoed"))
-            (tmp / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+            _bill_index_write(tmp, idx)
             fig_waiting = figures(tmp, tmp)
             # The newest finished term's recordings lost from the table.
             build_civics.P.load = lambda *a, **k: [
@@ -17102,8 +17552,10 @@ def _built_site(here, root, brand=True, env=None):
          "Danville": floterial_town(8)}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
+        # meta.json and the term files it names are the bill index; the
+        # one-file index.json is retired (_index_json_retired).
         ("build_site_v2.py", ["--data", "data", "--out", "site",
-                              "--segments", "work"], "site/index.json"),
+                              "--segments", "work"], "site/meta.json"),
         # IN BUILD_ALL'S ORDER, after the site data whose indexes it reads
         # (2 October). The fixture carries no bill text, which the builder is
         # told and says in its manifest (--allow-no-text); check_site then
@@ -17378,7 +17830,7 @@ def _chain():
             f"the built home page's Coming up shows {rail}; the fixture's "
             f"sittings from {built} to {wk_end} fall on {due}")
 
-        idx = json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))
+        idx = SR.bill_index(root / "site")
         current = max((b.get("term") or "" for b in idx), default="")
         kind_of = {(str(b.get("year")), str(b.get("id")).upper()):
                    (b.get("term") or "", b.get("kind") or "") for b in idx}
@@ -24298,11 +24750,11 @@ def _feed_needs_a_year():
                  "title": "a bill with a year", "committee": "", "topic": "",
                  "status": "In committee", "kind": "active", "nrc": 0,
                  "last_action": "2026-02-01", "votedays": []},
-                {"id": "HB2", "n": "HB 2", "year": "", "term": "",
+                {"id": "HB2", "n": "HB 2", "year": "", "term": "2025-2026",
                  "title": "a bill with none", "committee": "", "topic": "",
                  "status": "In committee", "kind": "active", "nrc": 0,
                  "last_action": "2026-02-01", "votedays": []}]
-        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        _bill_index_write(site, rows)
         # Records travel inside their pages, as build_bill_pages writes them.
         # This fixture used to write site/bills/2026/<ID>.json, the layout the
         # site stopped having on 9 September -- so it went on passing while
@@ -24312,6 +24764,7 @@ def _feed_needs_a_year():
         for r in rows:
             # HB2's page sits in a year folder, but the index gives it no
             # year: a record the index cannot place must still get no feed.
+            # (Its term it has: every row of the index is in its term's file.)
             (site / "bill" / "2026" / f"{r['id'].lower()}.html").write_text(
                 '<script type="application/json" id="gr-data">'
                 + json.dumps(d) + "</script>", encoding="utf-8")
@@ -24356,7 +24809,7 @@ def _feeds_keyed_and_current():
                  "title": "a bill", "committee": "House Education", "topic": "",
                  "status": "In committee", "kind": "active", "nrc": 0,
                  "last_action": "2026-02-01", "votedays": []}]
-        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        _bill_index_write(site, rows)
         d = {"next_step": "", "sponsors": [],
              "events": [{"date": "2026-02-01", "text": "It was introduced."}]}
         (site / "bill" / "2026" / "hb1.html").write_text(
@@ -24432,7 +24885,7 @@ def _legislator_feed_dates():
                  "last_action": f"{year}-02-01", "votedays": []}
                 for year, term in ((2023, "2023-2024"), (2025, "2025-2026"))]
         (site / "legislators").mkdir(parents=True)
-        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        _bill_index_write(site, rows)
         for r in rows:
             page = site / "bill" / str(r["year"]) / "hb221.html"
             page.parent.mkdir(parents=True, exist_ok=True)
@@ -24519,7 +24972,8 @@ def _member_feed_links():
         site = root / "site"
         (site / "legislators").mkdir(parents=True)
         shutil.copy2(here / "bills.html", site / "bills.html")
-        (site / "index.json").write_text("[]", encoding="utf-8")
+        _bill_index_write(site, [{"id": "HB9999", "n": "HB 9999", "year": 2023,
+                                  "term": "2023-2024", "title": "nobody's bill"}])
         members = [
             {"id": "100", "name": "Voter, Vera", "display": "Rep. Vera Voter",
              "chamber": "H", "district_label": "Rock 1", "slug": "vera-voter-rock-1",
@@ -24919,12 +25373,12 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
             return {"id": bid, "n": re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid), "term": term,
                     "year": year, "title": "a title", "status": status, "kind": "done",
                     "committee": cmte, "committees": [cmte] if cmte else []}
-        (root / "site" / "index.json").write_text(json.dumps([
+        _bill_index_write(root / "site", [
             entry("HB255", 2017, "2017-2018", "Signed into law",
                   "House Executive Departments and Administration"),
             entry("HB273", 2017, "2017-2018", "Not introduced", ""),
             entry("HB1512", 2012, "2011-2012", "Withdrawn",
-                  "House Municipal and County Government")]), encoding="utf-8")
+                  "House Municipal and County Government")])
         P.write([_SITTING_ROWS["HB255 hearing"], _SITTING_ROWS["HB255 exec"],
                  _NOTICE_ROWS["HB273"], _NOTICE_ROWS["HB1512"]], root / "proceedings.csv")
         histories = {"2017-2018": hist["2017-2018"],
@@ -25174,11 +25628,11 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
         (root / "data" / "committees.json").write_text(json.dumps(
             {"H43": {"code": "H43", "name": "Fixture Affairs", "abbr": "FIXTURE"}}),
             encoding="utf-8")
-        (root / "site" / "index.json").write_text(json.dumps([
+        _bill_index_write(root / "site", [
             {"id": "HB1", "n": "HB 1", "term": "2025-2026", "year": "2026",
              "title": "A fixture bill", "status": "In committee", "kind": "bill",
              "committee": "House Fixture Affairs",
-             "committees": ["House Fixture Affairs"]}]), encoding="utf-8")
+             "committees": ["House Fixture Affairs"]}])
         (root / "committees.json").write_text(json.dumps({"H": rows}), encoding="utf-8")
         CD.write_details(book, root / "committee_details.json")
 
@@ -28245,8 +28699,7 @@ def _bills_by_term():
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
-        idx = {(x["term"], x["id"]): x for x in
-               json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
+        idx = {(x["term"], x["id"]): x for x in _site_bills(root / "site")}
         assert ("2023-2024", "HB1442") in idx, "the archived term produced no row"
         assert ("2025-2026", "HB1442") in idx, "the current term lost its row"
 
@@ -28403,8 +28856,7 @@ def _disposed_beats_stale_status():
     try:
         r = _fixture_site_v2(root)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
-        idx = {x["id"]: x for x in
-               json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
+        idx = {x["id"]: x for x in _site_bills(root / "site")}
         assert idx["SB900"]["status"] == "Killed", (
             f"SB900 reads {idx['SB900']['status']!r}; the Senate adopted "
             "Inexpedient to Legislate on it and the status field had not "
@@ -28506,8 +28958,7 @@ def _rollcalls_by_term():
         votes = {m["v"] for m in rcs[0].get("members", [])}
         assert votes == {"Yea"}, (f"the member grid holds {sorted(votes)}; the "
                                   "previous term's Nay has been counted too")
-        idx = {x["id"]: x for x in
-               json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
+        idx = {x["id"]: x for x in _site_bills(root / "site")}
         assert idx["HB1442"]["nrc"] == 1, idx["HB1442"]["nrc"]
         return "ok", "the same number in two terms stays two bills"
     finally:
@@ -28568,8 +29019,7 @@ def _chain_output():
             return next((x for x in d.get("stations", [])
                          if x.get("what") == "executive session"), None)
 
-        idx = {x["id"]: x for x in
-               json.loads((s / "index.json").read_text(encoding="utf-8"))}
+        idx = {x["id"]: x for x in _site_bills(s)}
         lg = json.loads((s / "legislators.json").read_text(encoding="utf-8"))
         checks = [
             # And nothing is left at the flat path, which would mean the
@@ -34354,7 +34804,7 @@ def _first_referral_on_disk(referrals, build_data):
 
     Wherever a chamber's docket names a first referral, data/bills.json must
     show that committee, or the search page's spelling of the same one
-    (build_data._same_committee). And every row of site/index.json whose
+    (build_data._same_committee). And every row of the bill index whose
     bill has a committee in the chamber it began in must name that one as
     THE committee. On the build of 23 September, 778 bill-chambers showed a
     later referral, 4,087 left out the originating chamber's committee and
@@ -34416,10 +34866,9 @@ def _first_referral_on_disk(referrals, build_data):
     assert not wrong, (f"{len(wrong)} of {checked:,} archived bill-chambers do not show "
                        "the docket's first referral (rebuild with build_all.py if the "
                        "code is newer than data/bills.json): " + "; ".join(wrong[:4]))
-    fi = Path("site/index.json")
-    if not fi.exists():
-        return "ok", f"{checked:,} archived bill-chambers show their first referral; no site/index.json"
-    rows = json.loads(fi.read_text(encoding="utf-8"))
+    rows = _site_bills()
+    if rows is None:
+        return "ok", f"{checked:,} archived bill-chambers show their first referral; no site built"
     off = []
     for row in rows:
         rec = (bills.get(row.get("term")) or {}).get(row.get("id")) or {}
@@ -34440,7 +34889,7 @@ def _committee_filter_one_name(committee_names):
     """The built record against the alias table.
 
     Every bill-chamber committee in data/bills.json, and every value of the
-    bills page's Committee filter in site/index.json, must be what
+    bills page's Committee filter in the bill index, must be what
     committee_names.official writes for it -- which is what build_data
     wrote, so this fails when a build ran on older code or a new spelling
     arrived that the table resolves and the data does not yet show. On the
@@ -34463,11 +34912,11 @@ def _committee_filter_one_name(committee_names):
                      "the committee's name at the time (rebuild with build_all.py "
                      "if the code is newer than data/bills.json): "
                      + "; ".join(k for k, _ in off.most_common(4)))
-    fi = Path("site/index.json")
-    if not fi.exists():
-        return "ok", "data/bills.json names each committee once; no site/index.json"
+    rows = _site_bills()
+    if rows is None:
+        return "ok", "data/bills.json names each committee once; no site built"
     facet = {}
-    for row in json.loads(fi.read_text(encoding="utf-8")):
+    for row in rows:
         for c in row.get("committees") or []:
             facet.setdefault(row.get("term"), set()).add(c)
     stray = sorted(f"{t} {c!r}" for t, cs in facet.items() for c in cs
@@ -35310,9 +35759,9 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
     try:
         for d in ("site", "data", "out"):
             (root / d).mkdir()
-        (root / "site" / "index.json").write_text(json.dumps(
-            [{"term": t, "id": b, "title": "a bill"}
-             for b in mixed for t in ("2025-2026", "2023-2024")]), encoding="utf-8")
+        _bill_index_write(root / "site",
+                          [{"term": t, "id": b, "title": "a bill"}
+                           for b in mixed for t in ("2025-2026", "2023-2024")])
         (root / "data" / "sponsors.json").write_text(json.dumps(
             {"2025-2026": {b: [{"member_id": "1", "name": "A", "prime": True}]
                            for b in mixed}}), encoding="utf-8")
@@ -40241,10 +40690,10 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         shutil.copy2(here / "bills.html", root / "site" / "bills.html")
         passages = {"HB1": "Hpppp", "SB2": "Spxx-", "HB3": "Hphh-",
                     "HR4": "Hpp", "HB5": ""}
-        (root / "site" / "index.json").write_text(json.dumps([
+        _bill_index_write(root / "site", [
             {"term": "2025-2026", "year": "2026", "id": b, "title": "a bill",
              "status": "In committee", "kind": "active", "passage": p}
-            for b, p in passages.items()]), encoding="utf-8")
+            for b, p in passages.items()])
         (root / "site" / "legislators.json").write_text("[]", encoding="utf-8")
         (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
         (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
@@ -41250,11 +41699,13 @@ def _runner_site(n_bills):
     """A built site as small as the census can count."""
     site = Path("site")
     site.mkdir(exist_ok=True)
-    (site / "index.json").write_text(json.dumps([{"b": i} for i in range(n_bills)]),
-                                     encoding="utf-8")
     (site / "legislators.json").write_text(json.dumps([{"l": i} for i in range(40)]),
                                            encoding="utf-8")
     (site / "meta.json").write_text(json.dumps({"bills": n_bills}), encoding="utf-8")
+    # The census counts the bill index as the pages read it, so the bills are
+    # rows of a term's file, with meta.json naming the term.
+    _bill_index_write(site, [{"term": "2025-2026", "id": f"HB{i}"}
+                             for i in range(n_bills)])
     for d, ext, n in (("bill", "html", 10), ("feed", "xml", 5)):
         (site / d).mkdir(exist_ok=True)
         for i in range(n):
@@ -50760,12 +51211,10 @@ def _next_step_settled():
     of 1989-2016 said that in their status box, under a chip reading
     "Signed into law", and it was published before anything looked. Read
     from the built pages and the index together."""
-    site = Path("site")
-    if not (site / "index.json").exists():
+    rows = _site_bills()
+    if rows is None:
         return "skip", "no site built"
-    kinds = {(str(r.get("year")), r["id"].upper()): r.get("kind")
-             for r in json.loads((site / "index.json").read_text(
-                 encoding="utf-8"))}
+    kinds = {(str(r.get("year")), r["id"].upper()): r.get("kind") for r in rows}
     bad, n = [], 0
     for year, bid, rec in _site_records():
         if kinds.get((year, bid)) not in ("law", "veto"):
@@ -50887,10 +51336,9 @@ def _rail():
     who never sees a resolution. Each of the three is said by name when it
     fails, and all that fail are said together.
     """
-    idx = Path("site/index.json")
-    if not idx.exists():
-        return "skip", "index.json is not built"
-    rows = json.loads(idx.read_text(encoding="utf-8"))
+    rows = _site_bills()
+    if rows is None:
+        return "skip", "the bill index is not built"
     bad, n, laws, pppp, vetoes = [], 0, 0, 0, 0
     both, gov = [], []
     for b in rows:
@@ -51067,11 +51515,10 @@ def _journey_agrees(build_site_v2):
 
     Read from the built pages and the index, so it is about what a reader sees.
     """
-    idx = Path("site/index.json")
-    if not (idx.exists() and Path("site/bill").is_dir()):
+    every = _site_bills() if Path("site/bill").is_dir() else None
+    if every is None:
         return "skip", "no built index and bill pages"
-    rows = {(r.get("term"), r.get("id")): r
-            for r in json.loads(idx.read_text(encoding="utf-8"))}
+    rows = {(r.get("term"), r.get("id")): r for r in every}
     recs = ((rec.get("term") or "", bid, rec) for _y, bid, rec in _site_records())
     n, now, old = _journey_story(recs, rows, build_site_v2)
     if not (n["agree"] or n["disagree"]):
@@ -52958,13 +53405,13 @@ def _learn_figures():
     nineteen. A page that published a bare [[name]], or a count that is not the
     index's, fails here."""
     page = Path("site") / "learn" / "how-a-bill-becomes-law.html"
-    idx = Path("site") / "index.json"
-    if not (page.exists() and idx.exists()):
+    idx = _site_bills() if page.exists() else None
+    if idx is None:
         return "skip", "the Learn pages or the index are not built"
     unfilled = [p.name for p in (Path("site") / "learn").glob("*.html")
                 if "[[" in p.read_text(encoding="utf-8", errors="replace")]
     assert not unfilled, f"a figure left unfilled on {unfilled}"
-    n = len(json.loads(idx.read_text(encoding="utf-8")))
+    n = len(idx)
     assert f"Across the {n:,} bills on this site" in page.read_text(encoding="utf-8"), (
         f"how-a-bill-becomes-law does not state the index's {n:,} bills: built before "
         "build_civics filled the figures, or from another index")
@@ -53098,8 +53545,7 @@ def _learn_examples_record():
         checked += 1
     # veto_pending: only while a veto of the current term awaits its override.
     gov = text(site / "learn" / "governor-and-council.html")
-    idx = json.loads((site / "index.json").read_text(encoding="utf-8")) \
-        if (site / "index.json").exists() else []
+    idx = _site_bills(site) or []
     term = max((r.get("term") or "" for r in idx), default="")
     if "awaiting" in gov and "override" in gov:
         assert any(r.get("status") == "Vetoed" and r.get("term") == term for r in idx), (
@@ -53426,7 +53872,9 @@ def _text_sponsors_built():
     carry exactly its names, prime first, on their pages and in the search index; a
     2023-2024 bill the database covers carries none of them; and sponsors.csv has both.
     """
-    ts_p, idx_p = Path("text_sponsors.json"), Path("site") / "index.json"
+    # meta.json, which names the bill index's terms and is written by the
+    # same step as their files, says when the index was built.
+    ts_p, idx_p = Path("text_sponsors.json"), Path("site") / "meta.json"
     if not (ts_p.exists() and idx_p.exists()):
         return "skip", "text_sponsors.json or the built index is not here"
     if ts_p.stat().st_mtime > idx_p.stat().st_mtime:
@@ -53436,7 +53884,7 @@ def _text_sponsors_built():
     except ImportError:
         return "skip", "site_read.py will not import"
     ts = json.loads(ts_p.read_text(encoding="utf-8"))
-    rows = {(r.get("term"), r.get("id")): r for r in json.loads(idx_p.read_text(encoding="utf-8"))}
+    rows = {(r.get("term"), r.get("id")): r for r in _site_bills() or []}
     picked = [(t, b, recs) for t in sorted(ts) if t < "2023"
               for b, recs in sorted(ts[t].items())[:1]][:4]
     if not picked:
@@ -58153,10 +58601,10 @@ def _left_out_on_site():
     where the view is on this machine; without it those bills have a record
     and a status and no history, which narrate_archive says.
     """
-    ip = Path("site/index.json")
-    if not ip.exists():
-        return "skip", "no site/index.json here; run build_site_v2.py"
-    idx = {(r.get("term"), r.get("id")): r for r in json.loads(ip.read_text(encoding="utf-8"))}
+    rows = _site_bills()
+    if rows is None:
+        return "skip", "no bill index here; run build_site_v2.py"
+    idx = {(r.get("term"), r.get("id")): r for r in rows}
     every = [k for v in _LEFT_OUT.values() for k in v]
     gone = [f"{b} of {t}" for t, b in every if (t, b) not in idx]
     if gone and not Path("db/past/PastLegislation.psv").exists():
@@ -58781,11 +59229,12 @@ def _introductions_against_journal(J, BD):
     heard, reported and voted on. A number stepped over is evidence only
     beside the rest of a bill's record, which is why the table is one.
     """
-    bp, ip = Path("data/bills.json"), Path("site/index.json")
-    if not (bp.exists() and ip.exists()):
-        return "skip", "no data/bills.json or site/index.json here"
+    bp = Path("data/bills.json")
+    rows = _site_bills() if bp.exists() else None
+    if rows is None:
+        return "skip", "no data/bills.json or bill index here"
     bills = json.loads(bp.read_text(encoding="utf-8"))
-    idx = {(r.get("term"), r.get("id")): r for r in json.loads(ip.read_text(encoding="utf-8"))}
+    idx = {(r.get("term"), r.get("id")): r for r in rows}
     never = {"Not introduced", "Withdrawn prior to introduction", "Refused introduction",
              "Proposed for the special session"}
     table = BD.INTRODUCTION_FROM_JOURNAL

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.3
+# GRANITE_VERSION: 2026-09-09.4
 """
 The built site, read back: one reader of the record inside a page.
 
@@ -28,6 +28,11 @@ The convention, which shell.py writes:
 build_bill_pages.embedded() reads the first of those for its own idempotence
 and predates this; it is the writer's own read-back and is left where it is.
 Anything that wants to know what the site published should come here.
+
+And every bill's row -- the list the bills page and the search draw from --
+is read here too, by bill_index(), from the per-term files the pages fetch
+(5 October 2026). The block above it says why, and what its three answers
+are.
 """
 
 import json
@@ -138,3 +143,120 @@ def video_years(default=("2025", "2026")):
         return found or list(default)
     except Exception:
         return list(default)
+
+
+# ---- the bill index ------------------------------------------------------------
+#
+# ONE READER OF EVERY BILL'S ROW (5 October 2026). Every bill's row -- title,
+# sponsor, committee, topic, status, passage -- is published one term to a
+# file, site/idx/<term>.json, and site/meta.json names the terms. Those are
+# what every page fetches. The build's own readers read site/index.json
+# instead: the same rows joined into one file that no page fetched, 23.7 MB
+# on 2 October -- nine tenths of the 25 MiB Cloudflare Pages takes in one
+# file -- and a term's worth bigger with every field added to a row. They read
+# the term files now, here, and the answer keeps apart three things a missing
+# file used to blur:
+#
+#   no site built yet   None: there is no site/meta.json. GitHub's machine
+#                       starts with site/ empty, and the callers that treat
+#                       that as normal -- handoff, the nightly's census,
+#                       preflight's data checks -- say so and go on.
+#   broken              Broken, raised: meta.json will not read or names no
+#                       term; a term it names has no file, or an empty or
+#                       unreadable one; a row sits in another term's file;
+#                       idx/ holds a term meta.json does not name, or term
+#                       files and no meta.json at all. Each is a site whose
+#                       pages would offer a different list of bills from the
+#                       one it describes.
+#   whole               every row: the terms in meta.json's order, which is
+#                       newest first, and each term's rows in its file's order.
+#
+# The next session's bill requests (idx/<year>-requests.json, which meta.json
+# names under "requests") are not bills, and are not in it.
+
+TERM_FILE = re.compile(r"\d{4}-\d{4}")
+
+
+class Broken(Exception):
+    """The bill index is on disk and does not hold together. The message says
+    which file, and how."""
+
+
+def bill_index_files(meta):
+    """The index files a meta.json names, as paths under the site: each term
+    in its order, then the bill requests where it names them. For a caller
+    that wants the bytes rather than the rows -- the nightly's fingerprint,
+    of a built site and of what production serves."""
+    meta = meta if isinstance(meta, dict) else {}
+    terms = meta.get("terms") if isinstance(meta.get("terms"), list) else []
+    names = [f"idx/{t}.json" for t in terms
+             if isinstance(t, str) and TERM_FILE.fullmatch(t)]
+    req = meta.get("requests")
+    if isinstance(req, dict) and isinstance(req.get("term"), str) and req["term"]:
+        names.append(f"idx/{req['term']}.json")
+    return names
+
+
+def bill_index(site="site"):
+    """Every bill row the site publishes; None where no site is built.
+
+    Raises Broken where the index is there and does not hold together. The
+    block above says what each answer means.
+    """
+    site = Path(site)
+    mp, idx = site / "meta.json", site / "idx"
+    if not mp.exists():
+        stray = (sorted(f.name for f in idx.glob("*.json") if TERM_FILE.fullmatch(f.stem))
+                 if idx.is_dir() else [])
+        if stray:
+            raise Broken(f"{idx} holds {len(stray)} term file(s) ({', '.join(stray[:3])}) "
+                         f"and there is no {mp} to say which are the site's")
+        return None
+    try:
+        meta = json.loads(mp.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise Broken(f"{mp} will not read: {e}") from None
+    terms = meta.get("terms") if isinstance(meta, dict) else None
+    if not isinstance(terms, list) or not terms:
+        raise Broken(f"{mp} names no terms, so no bill can be read")
+    odd = [t for t in terms if not (isinstance(t, str) and TERM_FILE.fullmatch(t))]
+    if odd:
+        raise Broken(f"{mp} names {odd[:3]} among its terms, and a term is two years")
+    rows = []
+    for t in terms:
+        f = idx / f"{t}.json"
+        if not f.exists():
+            raise Broken(f"{mp} names {t} and {f} is not there")
+        try:
+            part = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            raise Broken(f"{f} will not read: {e}") from None
+        if not isinstance(part, list) or not part:
+            raise Broken(f"{f} holds no bills")
+        other = [r for r in part if not isinstance(r, dict) or r.get("term") != t]
+        if other:
+            o = other[0] if isinstance(other[0], dict) else {}
+            raise Broken(f"{f} holds {len(other):,} row(s) that are not of {t}, the "
+                         f"first {o.get('id')!r} of {o.get('term')!r}")
+        rows.extend(part)
+    stray = sorted(f.stem for f in idx.glob("*.json")
+                   if TERM_FILE.fullmatch(f.stem) and f.stem not in terms)
+    if stray:
+        raise Broken(f"{idx} holds {', '.join(stray[:3])}, which {mp} does not name: "
+                     "a term no page offers, or one an earlier build left behind")
+    return rows
+
+
+def bill_index_or_stop(site="site", who=""):
+    """bill_index(), for a builder that cannot go on without every bill:
+    the rows, or SystemExit saying what is missing and what to run. A builder
+    that read an empty list here would write pages, counts and downloads of
+    no bills and exit 0."""
+    try:
+        rows = bill_index(site)
+    except Broken as e:
+        raise SystemExit(f"{who or 'this step'}: the bill index is broken: {e}") from None
+    if rows is None:
+        raise SystemExit(f"{who or 'this step'}: no bill index in {site} (no meta.json). "
+                         "Run build_site_v2.py first -- every bill comes from it.")
+    return rows
