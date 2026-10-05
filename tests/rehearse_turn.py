@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.1
+# GRANITE_VERSION: 2026-10-05.2
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -12,7 +12,10 @@ The turn from one term to the next, rehearsed offline on a copy.
                                                            fetch_day_db.py leaves (.night/dbday)
                                                            of the same days as the installed files
     python3 tests/rehearse_turn.py --copy DIR --reuse      the copy and its pre-turn build are
-                                                           there: run the nights again
+                                                           there from a run that stopped before
+                                                           its first night: run the nights. After
+                                                           a whole run the copy's installed files
+                                                           are 2027's, and a new copy is wanted
 
 DIR must not be inside the repository: the copy is the repository's committed
 code (git archive HEAD) and the kit's data (cloud_kit.json, as GitHub's
@@ -747,7 +750,9 @@ def check_new_term(root, batches, label):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--copy", required=True, help="the scratch folder (outside the repository)")
-    ap.add_argument("--reuse", action="store_true", help="the copy is made: run the nights again")
+    ap.add_argument("--reuse", action="store_true",
+                    help="the copy is made and built by a run that stopped before its first "
+                         "night: run the nights")
     ap.add_argument("--guards", action="store_true", help="no full build; the guards only")
     ap.add_argument("--views", help="a folder of the database's views for the database night")
     a = ap.parse_args()
