@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.150
+# GRANITE_VERSION: 2026-09-05.151
 """
 Generate the faceted site from real General Court data.
 
@@ -6903,29 +6903,52 @@ def load_ballots(path, bills):
     return out
 
 
+def ballot_source_name(row):
+    """The name of the place a ballot row's figures were read: "Ballotpedia"
+    for its list of New Hampshire ballot measures, the host otherwise."""
+    host = re.sub(r"^https://(?:www\.)?([^/]+).*$", r"\1", row.get("source") or "")
+    return {"ballotpedia.org": "Ballotpedia"}.get(host, host)
+
+
+# What status_source says of a CACR whose voters' answer is a ballot row's
+# figures against two thirds: the file the answer came from, which names its
+# source on every row.
+BALLOT_SOURCE = "ballot_results.json"
+
+
 def ballot_step(row):
     """The voters' line of a CACR's journey, from its ballot row: the day of
     the election and its outcome, in the words a docket referendum line
-    gets."""
+    gets -- and whose count it is. How it got here is the docket's list, and
+    this line is not the docket's: it stops at the second chamber for every
+    CACR this line is drawn for (the review of 5 October 2026)."""
     yes = ratified(row["yes"], row["no"])
     act = "ratified" if yes else "not_ratified"
     return {"date": row["election"], "body": "V", "act": act, "mark": J_MARK[act],
-            "text": ("Ratified" if yes else "Not ratified") + f", {row['yes']:,}–{row['no']:,}",
+            "text": ("Ratified" if yes else "Not ratified")
+            + f", {row['yes']:,}–{row['no']:,} ({ballot_source_name(row)}'s count)",
             "short": "ratified" if yes else "not ratified"}
 
 
-def ballot_card(row, narr):
+def ballot_card(row, narr, today=None):
     """What a CACR's Votes tab draws for the voters: the election, how the
     source lists it, the two counts and the outcome, or only the day where
     the election is still to come. Where the docket prints a referendum
     tally of its own and it is not the source's -- CACR 7 of 1992 reads
     "204,475" against the source's 204,457, and CACR 22 of 1998 "159,439"
     against 169,439 -- the docket's pair goes with it, so the card can say
-    so rather than show one figure and print the other a tab away."""
+    so rather than show one figure and print the other a tab away.
+
+    AN ELECTION PAST WITH NO COUNT IN THE FILE is `over` as well as pending:
+    the status turns to "went to the voters" the day after by itself
+    (cacr_to_the_voters), and the card said "The vote is on 3 November" until
+    a person typed the counts in (the review of 5 October 2026). `today` is
+    the build's day (build_date), as it is there."""
     card = {"date": row["election"], "label": row["label"],
             "source": row["source"], "read": row["read"]}
     if row.get("yes") is None:
-        return {**card, "pending": True}
+        over = (today or build_date.today()) > _date.fromisoformat(row["election"])
+        return {**card, "pending": True, **({"over": True} if over else {})}
     card.update(yes=row["yes"], no=row["no"], ratified=ratified(row["yes"], row["no"]))
     for e in reversed([e for e in (narr or {}).get("events", []) if not e.get("cancelled")]):
         raw = e.get("raw") or ""
@@ -8654,6 +8677,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                           or disp.source == PAST_SOURCE)
             else "General Court bill status page" if told
             else "derived from the docket")
+        # A CACR'S VOTERS ARE NOT ON ITS STATUS PAGE, which stops at the
+        # second chamber: "ratified" or "not ratified" was its docket's
+        # referendum line where it has one, and the ballot row's count against
+        # two thirds where it has not. Credited to the status page on all
+        # eighteen until the review of 5 October 2026.
+        if status in (RATIFIED, NOT_RATIFIED) and status_source in (
+                "General Court bill status page", "derived from the docket"):
+            status_source = ("General Court docket"
+                             if any(REFERENDUM.search(e.get("raw") or "") for e in ev)
+                             else BALLOT_SOURCE)
         # Committees carry their chamber. Both chambers have a Finance, a
         # Judiciary and a Ways and Means, and the ones that differ differ
         # slightly -- Senate "Health and Human Services" against House "Health,
@@ -8685,9 +8718,18 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # THE VOTERS' LINE, where the docket has none to read it from: the
         # election and its outcome, from the CACR's ballot row. The rail's
         # Voters stop is dated from it like every other stop.
+        voters = ballot_card(ballot, narr) if ballot else None
         if (ballot and ballot.get("yes") is not None
                 and not any(s_["body"] == "V" for s_ in jsteps)):
             jsteps.append(ballot_step(ballot))
+        # AND WHERE THE DOCKET'S OWN REFERENDUM COUNT IS NOT THE CARD'S, its
+        # line says whose it is: CACR 7 of 1992's How it got here read
+        # "249,759–204,475" a tab away from the Votes card's 204,457, with
+        # nothing to say which was which (the review of 5 October 2026).
+        elif (voters or {}).get("docket"):
+            for s_ in jsteps:
+                if s_["body"] == "V":
+                    s_["text"] += " (the docket's count)"
         if carried:
             carried = carried_over(dates, intro)
         # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
@@ -8974,8 +9016,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                if jsteps or jrail else {}),
             # THE VOTERS' VOTE on a CACR they were sent, for its Votes tab:
             # the election, the two counts and the outcome, or the day of an
-            # election still to come (ballot_card).
-            **({"ballot": ballot_card(ballot, narr)} if ballot else {}),
+            # election still to come (ballot_card), made above with the
+            # voters' line of How it got here.
+            **({"ballot": voters} if voters else {}),
             # Named for what it is rather than for the format the
             # scrape guessed at: the General Court's own text of
             # this bill, in the form its status page links to.

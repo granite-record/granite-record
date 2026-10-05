@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.27
+# GRANITE_VERSION: 2026-09-10.28
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -629,8 +629,8 @@ def data_page(site, out, tables, base, cov=()):
     <p class="src"><b>A constitutional amendment&#39;s ballot.</b> What the
       voters made of an amendment both chambers sent them is the
       docket&#39;s word where it records one, and otherwise
-      <code>ballot_results.json</code>&#39;s, a file in the repository that a
-      person copies by hand: the statewide Yes and No votes on each, from
+      <code>ballot_results.json</code>&#39;s, a file in the repository that
+      no script writes: the statewide Yes and No votes on each, from
       Ballotpedia&#39;s list of New Hampshire ballot measures, with the day
       they were read. An amendment needs two thirds of the votes cast on it,
       so the <code>status</code> says ratified or not ratified by that

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.143
+// GRANITE_VERSION: 2026-09-07.144
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -10,6 +10,14 @@ const DOCWHAT={text:"the bill as it currently stands",
 // introduction steps over, on 2 October 2026.
 const STATUS_NOT_FROM_PAGE="the General Court's own status page for this bill; "
   +"the status shown here is read from the House Journal instead";
+// And of a constitutional amendment the voters have answered: its status page
+// stops at the second chamber, so "ratified" or "not ratified" is the docket's
+// referendum line or the count on the Votes tab (build_site_v2's
+// status_source), not this page's (the review of 5 October 2026).
+const statusUpToTheVoters=d=>"the General Court's own status page for this "
+  +"amendment, which stops at the second chamber's vote; whether the voters "
+  +"ratified it is read from "+(d.status_source==="General Court docket"
+    ?"its docket's referendum line":"the count on the Votes tab");
 // WHAT THE SHORTHAND STANDS FOR. A citation is printed the way the General
 // Court prints it -- "HJ 1, page 32" is what a reader would quote -- but HJ
 // and SC are insider shorthand, and this site exists to make the record
@@ -3661,6 +3669,9 @@ function ballotRing(y,n,won){
 }
 // The votes the tab draws: the chambers' and, on a CACR, the voters'.
 const votesDrawn=d=>(d.rollcalls||[]).length+(d.ballot&&!d.ballot.pending?1:0);
+// ONE DATE STYLE IN THE CARD, the head's: "Nov 3, 2026" over "The vote is on
+// 3 November 2026" and "read 5 October 2026" was two in four lines (the
+// review of 5 October 2026), and the head's is every vote card's above it.
 function ballotCard(d){
   const v=d.ballot;
   if(!v)return "";
@@ -3668,11 +3679,17 @@ function ballotCard(d){
       <span class="rcd">${esc(fdate(v.date))} · State general election</span>${res}</div>`;
   const src=`<p class="src">Source: <a href="${esc(v.source)}" target="_blank"
       rel="noopener">Ballotpedia, List of New Hampshire ballot measures</a>, read
-      ${esc(railDay(v.read,true,true))}, which lists it as &ldquo;${esc(v.label)}&rdquo;.</p>`;
+      ${esc(fdate(v.read))}, which lists it as &ldquo;${esc(v.label)}&rdquo;.</p>`;
+  // An election to come, and one past whose count is not in the file yet
+  // (v.over, build_site_v2.ballot_card): the status says "went to the voters"
+  // the day after, and so does this.
   if(v.pending)return `<section class="rc ballot">${head("")}
-    <p class="bout">The vote is on ${esc(railDay(v.date,true,true))}.</p>
-    <p class="note">This is the statewide public vote, at the general election. An
-      amendment to the constitution needs two thirds of the votes cast on it.</p>
+    <p class="bout">${v.over
+      ?`The vote was on ${esc(fdate(v.date))}; its count is not recorded here yet.`
+      :`The vote is on ${esc(fdate(v.date))}.`}</p>
+    <p class="note">This ${v.over?"was":"is"} the statewide public vote, at the general
+      election. An amendment to the constitution needs two thirds of the votes cast
+      on it.</p>
     ${src}</section>`;
   const y=v.yes,n=v.no,tot=y+n,won=!!v.ratified;
   const word=won?"Ratified":"Not ratified";
@@ -3683,9 +3700,19 @@ function ballotCard(d){
       amendment to the constitution needs two thirds of the votes cast on it: the
       mark on the ring.</p>
     ${ballotRing(y,n,won)}
-    ${v.docket?`<p class="note">The General Court&#39;s docket records this vote as
-      ${thou(v.docket[0])} to ${thou(v.docket[1])}.</p>`:""}
+    ${v.docket?`<p class="note">${docketDiffers(v)}</p>`:""}
     ${src}</section>`;
+}
+// WHICH FIGURE DIFFERS, AND WHOSE THE CARD'S ARE. "The docket records this vote
+// as 249,759 to 204,475" under "No 204,457" left a transposition for the reader
+// to find and did not say which of the two the card drew (the review of 5
+// October 2026).
+function docketDiffers(v){
+  const [dy,dn]=v.docket;
+  const side=(got,ours,word)=>got===ours?"":`${thou(got)} votes ${word}, not ${thou(ours)}`;
+  const said=[side(dy,v.yes,"for"),side(dn,v.no,"against")].filter(Boolean).join(", and ");
+  return `The General Court&#39;s docket records ${said}. The counts above are
+      Ballotpedia&#39;s, and How it got here gives the docket&#39;s.`;
 }
 
 // What a player's frame is titled: "Recording of HB 2 - House Finance Public
@@ -4558,7 +4585,9 @@ function renderDocuments(b,d){
              // did not: a bill the House Journal leaves out of those it
              // introduced reads Not introduced here and IN COMMITTEE there.
              : `<span>${x.kind==="status"&&d.status_source==="House Journal"
-                 ? STATUS_NOT_FROM_PAGE : (DOCWHAT[x.kind]||"")}</span>`}</li>`;
+                 ? STATUS_NOT_FROM_PAGE
+                 : x.kind==="status"&&d.ballot&&!d.ballot.pending
+                 ? statusUpToTheVoters(d) : (DOCWHAT[x.kind]||"")}</span>`}</li>`;
          }).join("")}</ul>`
       : `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
@@ -5342,10 +5371,17 @@ function rail(b){
 //
 // A CARD IN A LIST HAS NO RECORD YET, so the index row carries the stops
 // (b.rail, build_site_v2.index_rail): ["Sp","2025-05-22","16–8, amended"],
-// the stop's letter and its mark, its day, its words. Once the record is here
-// its own rail is drawn, which is the same stops by construction (preflight
+// the stop's letter and its mark, its day, its words. The bill's own page
+// draws the record's rail, which is the same stops by construction (preflight
 // holds the two equal on every bill) and adds what each stop says in full,
 // for the sentence a reader hears.
+//
+// AND THE CARD KEEPS ITS ROW'S RAIL ONCE OPENED (cardHtml). It drew the
+// record's as soon as the record came, and what was drawn stayed the same
+// while what a screen reader heard changed under it: "Governor: passed,
+// signed" became "Governor: signed, 27 June 2025" (the review of 5 October
+// 2026). Opening a card changes nothing about its rail, seen or heard; a row
+// with no stops is the one card that still waits for the record's.
 //
 // A stop not reached has no date. The year is on the first date and wherever
 // it changes, so "8 Jan 2025 ... 13 Feb ... 7 Jan 2026" reads without a key.
@@ -5383,11 +5419,17 @@ function datedRail(b,d){
   const said=st.map(s=>{
     const when=s.date?railDay(s.date,true,true):"";
     // From the index, before the record is here, the mark's word and the
-    // stop's own: "House: passed, voice vote, 13 February 2025".
-    const what=(s.say||[RAILSAY[s.mark],s.short].filter(Boolean).join(", "))
+    // stop's own: "House: passed, voice vote, 13 February 2025". The
+    // governor's, the law's and the voters' own words already say how it
+    // went -- "signed", "Chapter 140", "not ratified" -- and "passed, signed"
+    // said it twice; so does "Nov 2026", in full, as every other date is.
+    const own=s.short&&/^(Governor|Law|Voters)$/.test(s.stop)&&/^[px]$/.test(s.mark);
+    const what=(s.say||(own?s.short:[RAILSAY[s.mark],s.short].filter(Boolean).join(", ")))
       .replace(/(\d)–(\d)/g,"$1 to $2")
       .replace(/\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
-        (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
+        (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`)
+      .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
+        (_m,mo,y)=>`${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
     return s.stop==="Introduced"
       ?`Introduced${when?` ${when}`:""}`
       :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${when?`, ${when}`:""}`;
@@ -5410,7 +5452,7 @@ function cardHtml(b,focus){
         <span class="cstat ${chipCls(b)}">${esc(chipOf(b))}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
-        ${datedRail(b,detail[dkey(b.id)])}
+        ${datedRail(b,focus||!(b.rail||[]).length?detail[dkey(b.id)]:undefined)}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
         open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
