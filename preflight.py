@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.345
+# GRANITE_VERSION: 2026-09-04.346
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44223,13 +44223,20 @@ def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
         Path("verification_manifest.csv").write_text("bill,sched_date\nHB1,2025-01-05\n",
                                                      encoding="utf-8")
         shutil.copy2(here / "member_corrections.json", "member_corrections.json")
+        # A bill the House withdrew, which the General Court's files do not
+        # carry, its sponsor as the House Journal printed him (member 4).
+        Path("journal_bills.json").write_text(json.dumps({T: {"HB9": {
+            "bill": "HB9", "chamber": "H", "designation": "HB 9", "year": "2025",
+            "title": "a bill the House withdrew.", "sponsors": ["Evans, Belk. 5"]}}}),
+            encoding="utf-8")
         _turn_views({"Legislation": json.loads(json.dumps(_TURN_LEGISLATION)),
                      "LegislationText": ["LegislationID", "SessionID", "Text"],
                      "CandH_Reports": ["LegislationID", "ReleaseDate", "HTMLText"]})
         rc, out = run("build_data.py", "--dir", ".", "--out", "pre")
         assert rc == 0, f"build_data on the fixture term: {out[-600:]}"
         pre_b, pre_s = built("pre")
-        assert sorted(pre_b[T]) == ["HB1", "HB1001"] and len(pre_s[T]["HB1"]) == 2, (pre_b, pre_s)
+        assert sorted(pre_b[T]) == ["HB1", "HB1001", "HB9"] and len(pre_s[T]["HB1"]) == 2 and \
+            [x["party"] for x in pre_s[T]["HB9"]] == ["R"], (pre_b, pre_s)
         assert not Path("pre/left_out.json").exists(), "an ordinary night wrote left_out.json"
         pre_v = {(v["member_id"], v["name"], v["party"])
                  for v in json.loads(Path("pre/member_votes.json").read_text(encoding="utf-8"))}
@@ -55509,6 +55516,32 @@ def _finished_term_sponsors(build_site_v2, member_links):
              for who, pages in ((sat, {"11420": now}), (now, None), (sat, {}))]
     assert [(c["party_code"], c["slug"]) for c in chips] == \
         [("D", B.own_slug(now)), ("R", B.own_slug(now)), ("D", "")], chips
+    # ... and through build_bills: a Representative of the term who sits in
+    # the Senate now is found among the term's own roster, and linked to the
+    # page he has; the sitting roster alone does not know him as a Rep.
+    rep["heard"], rep["committee"] = "2025-04-23", "Senate Fixture Committee"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-termspeaker-"))
+    try:
+        os.chdir(tmp)
+        out = tmp / "site"
+        out.mkdir()
+        heard = []
+        for rosters in ({T: {"11420": sat}}, None):
+            with contextlib.redirect_stdout(io.StringIO()):
+                B.build_bills(out, bills, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                              {"11460": senator}, {}, {}, {}, links={"11460": ["11420"]},
+                              former={}, term_rosters=rosters,
+                              hearing_reports={T: {"HB20": [rep]}})
+            page = json.loads((out / "bills" / "2025" / "HB20.json").read_text(encoding="utf-8"))
+            heard.append([s.get("member") for st in page.get("stations") or []
+                          for r in st.get("reports") or [] for sec in r.get("sections") or []
+                          for s in sec.get("speakers") or []])
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert heard[0] == [{"label": "Rep. Matt Doe", "party_code": "D",
+                         "slug": B.own_slug(senator)}] and heard[1] == [None], \
+        ("build_bills does not resolve a term's hearing speakers among its own roster", heard)
     return "ok", ("a finished term's sponsor named by a web id is found among the members who left, the "
                   "one who sat that term, and reads their seat as before; with no finished term, as it "
                   "was; and a term's own frozen roster labels a member now in the Senate as he sat")
