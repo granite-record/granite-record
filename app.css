@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.195 */
+/* GRANITE_VERSION: 2026-09-07.198 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1415,12 +1415,23 @@ letter-spacing:-.005em;line-height:1.25}
    the cap never binds and the auto margins compute to zero, so none of this
    reaches the narrow layout.
 
-   THE LIST IS NOT TOUCHED, and that is deliberate rather than an oversight.
-   On a card in a list of bills the rail is a glyph you scan past, one of
-   many down the page, and 310px is what keeps it that; on a bill's own page
-   it is a primary fact about the one thing you came for. Same component,
-   two jobs, and only the second one wants the width. */
-.card:is(.focus,.open) .rail{max-width:560px;margin-inline:auto}
+   THE LIST KEPT 310px UNTIL 5 OCTOBER 2026, as a glyph to scan past. The
+   person chose "One rail, always detailed" that day: every card draws the
+   dated rail from the start (app.js datedRail), and at the same width
+   closed as open, so opening a card changes nothing about its rail. The bare
+   rail keeps 310px for the row that has no stops to date. */
+.card:is(.focus,.open) .rail,.rail.dated{max-width:560px;margin-inline:auto}
+/* AND THE LIST CARD'S RAIL TAKES BACK THE ↗ LINK'S 30px. .chead reserves 46px
+   on the right for the link to the bill's own page, which sits beside the
+   number at the top; the rail is at the foot of the head, nowhere near it,
+   and kept inside that reserve it was 272px on a 360px phone against the
+   bill page's 302 -- five stops of 54px, where "8 Jan 2025" and "8 Jan 2026"
+   under neighbouring stops ran together into one line of text (the review of
+   5 October 2026: 4,132 rails within 3px). Across the whole head it is the
+   bill page's rail at every width: 302px there, and above that still 560px,
+   centred in the card rather than 15px left of its middle. */
+.card:not(.focus) .chead .rail.dated{width:calc(100% + 46px - var(--sp-6));
+margin-left:max(0px,calc((100% + 46px - var(--sp-6) - 560px) / 2))}
 /* An opened card in the list shows the same tabs as the bill's own page, so
    its rail is the page's rail, centred (the person, 24 September). */
 .stop{flex:1 1 0;position:relative;display:flex;justify-content:center;
@@ -1454,13 +1465,37 @@ box-shadow:0 0 0 3px var(--pine-soft)}
    label is --ink-2 now, so there is nothing left for them to change. */
 /* A card head is a button, and the rail inside it must not look clickable. */
 .chead .rail{pointer-events:none}
-/* THE DATED RAIL, on a bill's own view and an opened card: under each stop
-   its day and one or two words -- "22 May" / "16–8, amended". The label keeps
-   its line; the words under it may take two, which is the most a stop can
-   carry on a phone. Tabular figures, so the dates in a row line up by digit. */
-.rail.dated .stop{flex-direction:column;align-items:center;text-align:center}
+/* THE DATED RAIL, on a bill's own view and on every card: under each stop
+   its day, "22 May", and since 5 October 2026 nothing else -- the word or two
+   of how it went ("16–8, amended") crowded the card, the person said, and is
+   told in How it got here and the Votes tab instead (app.js datedRail). The
+   label keeps its line; the day under it may take two, "8 Jan" over "2025",
+   on a phone. Tabular figures, so the dates in a row line up by digit.
+
+   THE LABELS ON ONE LINE, FROM THE TOP. .stop centres its content, and in a
+   column that centred each stop's words in the height of the tallest, so a
+   stop with three lines under it set its label higher than one with two or
+   none: "House" and "Senate" sat 7px above "Introduced" and "Law" on HB 1,
+   and an unreached "Senate" 16px below a dated "House". Drawn on every card
+   in a list since 5 October, that ragged line was down the whole page. At
+   the top, every label shares one line and every stop's words start on the
+   next, which on a phone is also what keeps "Introduced", 4px wider than its
+   stop, clear of the House stop's words.
+
+   A GUTTER BETWEEN ONE STOP'S WORDS AND THE NEXT'S. Each stop's words are
+   centred in a fifth of the rail, and with nothing between them two that
+   each filled their fifth met edge to edge: "voice vote, amended" beside
+   "postponed" read as one phrase, closer than a word space. 4px either side
+   keeps any two stops' words 8px apart, twice a space at this size, and a
+   line that would cross into the gutter wraps instead -- "8 Jan" over
+   "2025" -- so a phone's rail is taller where it is full, and never one run
+   of words. On a 560px rail it changes nothing in the fallback face; in a
+   wider one it is what keeps two "voice vote, amended" apart there too. */
+.rail.dated .stop{flex-direction:column;align-items:center;justify-content:flex-start;
+text-align:center}
 .rail.dated small{display:block;margin-top:var(--sp-1);font-size:var(--t-xs);
-line-height:1.35;color:var(--ink-2);font-variant-numeric:tabular-nums}
+line-height:1.35;color:var(--ink-2);font-variant-numeric:tabular-nums;
+padding-inline:var(--sp-2)}
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
 /* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px
    radius, a 1px edge, and a 3px bar down the left in the colour of the thing
@@ -1594,6 +1629,19 @@ button.lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
 .sw{width:11px;height:11px;border-radius:var(--r-in);flex:0 0 auto}
 .sw-o{background:transparent;border:1.5px solid var(--rule-2)}
 .lrow .c{margin-left:auto;color:var(--ink-2)}
+/* THE VOTERS' CARD on a CACR (5 October 2026). Its counts run to six figures
+   with their separators, "452,307 · 65.6%", so a count is never broken across
+   lines: the legend is 215px at its narrowest and drops under the ring on a
+   phone, which leaves it the card's whole width. The outcome in words sits
+   under the head.
+
+   AT THE CARD'S TEXT SIZE, NOT THE HEADING'S. The outcome and the source were
+   set at 16px, the size of "The voters" above them, where every roll call's
+   card on the tab sets its words at 14px under a 16px question (measured at
+   360 and 1440, the review of 5 October 2026). A heading outranks its text. */
+.ballot .lrow .c{white-space:nowrap;font-variant-numeric:tabular-nums}
+.bout{font-size:var(--t-ui);margin:var(--sp-3) 0 0}
+.ballot .src{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0 0}
 .othergrp{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px dashed var(--rule-2)}
 .otherhd{display:flex;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);padding:0 0 var(--sp-2)}
 .otherhd .c{margin-left:auto;font-weight:400;font-style:italic}

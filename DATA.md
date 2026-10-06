@@ -29,6 +29,14 @@ a stopwatch. They are included under the same terms, and are worth naming
 separately only because they cannot be regenerated: if they are lost, somebody
 has to sit down and watch the videos again.
 
+One file holds figures from outside the General Court's record.
+ballot_results.json is the statewide Yes and No vote on each constitutional
+amendment both chambers sent to the voters, taken from Ballotpedia's list of
+New Hampshire ballot measures; each row names the page and the day it was read,
+and says which CACR it is and why. The counts are facts, and no claim is made
+over them; the page they came from is Ballotpedia's and is not reproduced here.
+Like the files above, no script writes it.
+
 THE LOGO AND THE ICONS ARE NOT HERE
 
 The logo and the icons are not offered under the MIT licence, or under any
