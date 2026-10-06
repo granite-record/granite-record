@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.343
+# GRANITE_VERSION: 2026-09-04.344
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44284,16 +44284,20 @@ def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
         assert left["terms"] == [T] and all(left["rows"].get(f) for f in (
             "Docket.txt", "LSRs.txt", "LsrsOnly.txt", "LsrSponsors.txt")) and \
             {"2026 HB1001", "2026 HB1002"} <= set(left["bills"]), left
-        # A frozen build made from another freeze, and a turn nobody froze.
+        # A frozen build made from another freeze, and a turn nobody froze --
+        # beside the frozen build, where the pass looks for it.
         rec = Path(f"data/frozen/{T}/frozen.json")
         good = rec.read_text(encoding="utf-8")
-        rec.write_text(good.replace(json.loads(good)["built_from"]["views"], "0" * 64),
-                       encoding="utf-8")
-        rc, out = run("build_data.py", "--dir", ".", "--out", "x")
+        other = json.loads(good)
+        other["built_from"] = {k: "0" * 64 for k in other["built_from"]}
+        rec.write_text(json.dumps(other), encoding="utf-8")
+        rc, out = run("build_data.py", "--dir", ".", "--out", "data")
         assert rc and "HAS NOT BEEN BUILT" in out, "a build of another freeze was taken"
         rec.write_text(good, encoding="utf-8")
+        rc, out = run("build_data.py", "--dir", ".", "--out", "data")
+        assert rc == 0, f"the frozen build put back was not taken: {out[-300:]}"
         shutil.move("frozen", "unfrozen")
-        rc, out = run("build_data.py", "--dir", ".", "--out", "x")
+        rc, out = run("build_data.py", "--dir", ".", "--out", "data")
         assert rc and "a turn nobody froze" in out, "a turn nobody froze was built on"
         shutil.move("unfrozen", "frozen")
 
@@ -44461,6 +44465,25 @@ def _db_roster_named(DF):
         roster_stops = [s for s in r["stops"] if "roster" in s or "legislators.txt" in s]
         assert (not roster_stops) == taken and \
             (taken or any("not frozen" in s for s in roster_stops)), (frozen, r["stops"])
+    # ... and with nothing said, asked of the folder the night installs into.
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dbroster-"))
+    try:
+        os.chdir(tmp)
+        Path("Docket.txt").write_text("2026|0001|1/7/2026 10:00:00 AM|HB1|H|Introduced|x\n",
+                                      encoding="utf-8")
+        for frozen in (False, True):
+            if frozen:
+                (Path("frozen") / "2025-2026" / "day").mkdir(parents=True)
+                (Path("frozen") / "2025-2026" / "day" / "legislators.txt").write_text(
+                    "\n".join(old) + "\n", encoding="utf-8")
+            r = DF.judge({**empty, "legislators.txt": new}, {**empty, "legislators.txt": old},
+                         {"members": members(new)})
+            roster_stops = [s for s in r["stops"] if "roster" in s or "legislators.txt" in s]
+            assert (not roster_stops) == frozen, ("asked of the folder", frozen, r["stops"])
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a third of the roster new stops a database night unless tonight's Members.txt "
                   "names it, and no more than four people besides, and the term's own roster is "
                   "frozen; then its joined and left are named")
@@ -55446,6 +55469,34 @@ def _finished_term_sponsors(build_site_v2, member_links):
                                             "sat", got["display_full"], got["slug"])
     assert label(None)["display_full"].startswith("Sen."), \
         "with no term roster the sitting record no longer labels the sponsor (the fixture is stale)"
+    # And through build_bills, as main hands it the term rosters: the page's
+    # own record reads the seat he sat in.
+    import contextlib
+    import io
+    T = "2025-2026"
+    bills = {T: {"HB20": {"bill": "HB20", "lsr": "2025-0020", "lsr_year": "2025",
+                          "title": "relative to a fixture.", "chamber": "H",
+                          "designation": "HB 20"}}}
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-termroster-"))
+    try:
+        os.chdir(tmp)
+        out = tmp / "site"
+        out.mkdir()
+        got = []
+        for rosters in ({T: {"11420": as_sat}}, None):
+            with contextlib.redirect_stdout(io.StringIO()):
+                B.build_bills(out, bills, {}, {}, {}, his, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                              {"11460": senator}, {B.sort_name(senator["name"]): senator},
+                              {B.name_key(senator["name"]): senator}, {},
+                              links={"11460": ["11420"]}, former={}, term_rosters=rosters)
+            page = json.loads((out / "bills" / "2025" / "HB20.json").read_text(encoding="utf-8"))
+            got.append(page["sponsors"][0]["display_full"])
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert got == ["Rep. Matt Doe (R - Rock 30)", "Sen. Matt Doe (R - SD23)"], \
+        ("build_bills does not label a term's sponsors from the term roster main gives it", got)
     return "ok", ("a finished term's sponsor named by a web id is found among the members who left, the "
                   "one who sat that term, and reads their seat as before; with no finished term, as it "
                   "was; and a term's own frozen roster labels a member now in the Senate as he sat")

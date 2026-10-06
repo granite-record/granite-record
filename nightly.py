@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.37
+# GRANITE_VERSION: 2026-09-04.38
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -2057,16 +2057,6 @@ def released_tonight(archive, since=None):
             if isinstance(x, dict) and x.get("name")]
 
 
-def roster_frozen(root="."):
-    """Whether the term the installed files describe has its own roster
-    frozen (frozen/<term>/day/legislators.txt), which a new roster needs
-    before it is installed (snapshot_gencourt.roster_moved and
-    dayfiles_from_db.judge)."""
-    import proceedings as P
-    term = P.session_term(root)
-    return bool(term) and (Path(root) / "frozen" / term / "day" / "legislators.txt").exists()
-
-
 def new_term_ready(root="."):
     """(ok, sentence): whether a New term run may ask for tonight's files.
 
@@ -2299,10 +2289,6 @@ def from_database(a, night, tries, since):
         # when it names the database's (dayfiles_from_db.roster_named, the
         # person's decision of 5 October 2026). Never written to the verdict.
         facts["members"] = tonights_members(a.archive, since)
-        # ... and only where the installed term's own roster is frozen: the
-        # build names the term's members from it once the installed roster
-        # is not its own (the review of 5 October 2026).
-        facts["roster_frozen"] = roster_frozen(".")
         result = DF.judge(files, was, facts)
         block.update(years=facts["years"], files=facts["rows"],
                      differences=result["differences"], held=result.get("held"),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.12
+# GRANITE_VERSION: 2026-10-01.13
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -2000,6 +2000,16 @@ def roster_named(rows, members):
                   f"database's {len(roster):,} members")
 
 
+def roster_frozen(root="."):
+    """Whether the term the installed files in `root` describe has its own
+    roster frozen (frozen/<term>/day/legislators.txt, freeze_term.py), which
+    a new roster needs before it is taken (judge, and snapshot_gencourt.
+    roster_moved for the export)."""
+    import proceedings as P
+    term = P.session_term(root)
+    return bool(term) and (Path(root) / "frozen" / term / "day" / "legislators.txt").exists()
+
+
 def _hold_roster(old, rows, named=False):
     """The roster, member by member, on what the build reads of each: (stops,
     what was counted, what is named). `named`: tonight's Members.txt names
@@ -2201,8 +2211,12 @@ def judge(files, installed, facts=None):
     # frozen roster once the installed one is not it (freeze_term.
     # own_roster_terms). With none frozen the new roster would leave a third
     # of the term's sponsors and ballots nameless, so it stops the night as
-    # it did before the person's decision. The nightly says (roster_frozen).
-    if moved and agrees and not (facts or {}).get("roster_frozen"):
+    # it did before the person's decision. Asked here, of the folder the
+    # night installs into, unless `facts` says (roster_frozen).
+    frozen = (facts or {}).get("roster_frozen")
+    if frozen is None:
+        frozen = roster_frozen(".")
+    if moved and agrees and not frozen:
         agrees, how = False, (how + "; but the installed term's own roster is not frozen "
                               "(freeze_term.py --session), and its members would go unnamed")
     if moved and agrees:
