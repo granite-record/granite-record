@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.74
+# GRANITE_VERSION: 2026-09-04.75
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -137,6 +137,48 @@ CC_THEN = (" The chamber adopts all the reports on its consent calendar in one v
 CONSENT_VOTE = re.compile(
     r"/\s*CONS(?:ENT)?\.?\s+CAL\b|\(\s*(?:Consent\s+Calendar|Cons(?:ent)?\.?\s+Cal\b|CC\s+by\b)",
     re.I)
+# AND ONLY WHERE THE CALENDAR'S ROWS AGREE ON IT (7 October 2026). Two of the
+# 28 rows of the calendar of 25 March 2014 read "MA Div 289-9 (Consent
+# Calendar)" (HB 1286 and HB 1348), where the other 26 read 282-9, the count
+# House Journal 13 prints for the calendar's adoption; told as the calendar's
+# vote, the site gave two counts for one vote. A count fewer of the day's
+# consent rows in that chamber carry than another is not told as the
+# calendar's: the history says the bill went with the calendar and gives no
+# count, the rail the same (calendar_count_disputed, which build_site_v2
+# reads), and the docket line keeps the clerk's words. Which count the row
+# should have said is a person's to settle (docket_corrections.json), not a
+# rule's. {(term, chamber, day): Counter of (vote, yeas, nays)}, filled by
+# main() from the term's histories; empty, every count is told.
+CONSENT_COUNTS = {}
+
+
+def consent_counts(results):
+    """{(term, chamber, day): Counter((vote, yeas, nays))} of the floor rows
+    whose count is a consent calendar's (CONSENT_VOTE), from built histories
+    ({term: {bill: history}})."""
+    from collections import Counter
+    out = defaultdict(Counter)
+    for term, byb in results.items():
+        for rec in byb.values():
+            for e in rec.get("events") or []:
+                if (e.get("type") == "floor" and e.get("yeas") and e.get("nays")
+                        and CONSENT_VOTE.search(e.get("raw") or "")):
+                    out[(term, e.get("body"), e.get("date"))][
+                        ((e.get("vote_kind") or "").upper(), e["yeas"], e["nays"])] += 1
+    return dict(out)
+
+
+def calendar_count_disputed(ev):
+    """Does another count stand on more of this consent calendar's rows than
+    the one this row gives (CONSENT_COUNTS)?"""
+    when = ev.get("when")
+    got = CONSENT_COUNTS.get((ev.get("_term"), ev.get("body"),
+                              when.strftime("%Y-%m-%d") if hasattr(when, "strftime") else ""))
+    if not got or not CONSENT_VOTE.search(ev.get("_raw") or ""):
+        return False
+    mine = ((ev.get("vote") or "").upper(), ev.get("y"), ev.get("n"))
+    top, most = got.most_common(1)[0]
+    return mine != top and got.get(mine, 0) < most
 
 CALENDAR = {
     # Two halves. The first explains what the consent calendar IS and is
@@ -2573,8 +2615,16 @@ def describe(ev, body, seen_intro=False):
             base = f"On {when} the {chamber} {motion or 'considered'} \u201c{action}\u201d"
 
         if vk and tally and motion == "adopted" and CONSENT_VOTE.search(ev.get("_raw") or ""):
-            # The count is the consent calendar's (CONSENT_VOTE).
-            base += f" as part of its consent calendar, which it adopted on a {vk}{tally}"
+            # The count is the consent calendar's (CONSENT_VOTE), unless the
+            # calendar's other rows give another (calendar_count_disputed).
+            # And "adopted" once: the House "adopted 'Refer to Interim
+            # Study' as part of its consent calendar, which it adopted on a
+            # division vote" (HB 1286 of 2014).
+            if calendar_count_disputed(ev):
+                base += " as part of its consent calendar"
+            else:
+                base += (f" as part of its consent calendar, which it "
+                         f"{'adopted' if verb else 'approved'} on a {vk}{tally}")
         elif vk:
             base += f" on a {vk}{tally}"
         if OT_RDG.search(ev.get("_raw", "")):
@@ -4856,7 +4906,11 @@ def build(bill, rows, introduction=None):
                     **({**_floor_fields(e),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
-                        "yeas": e.get("y"), "nays": e.get("n")}
+                        "yeas": e.get("y"), "nays": e.get("n"),
+                        # A consent calendar's count its other rows do not
+                        # give (CONSENT_COUNTS): the rail tells no count.
+                        **({"calendar_count_disputed": True}
+                           if calendar_count_disputed(e) else {})}
                        if e["_type"] == "floor" else
                        # An amendment's number, what was moved on it and how it
                        # was decided. These were parsed and then thrown away at
@@ -5033,11 +5087,33 @@ def main():
     # year -- all 2,233 of them, split 847 in 2025 and 1,386 in 2026 with no
     # bill in both -- so the first row settles which term the bill belongs to.
     results = defaultdict(dict)
-    global TERM
+    global TERM, CONSENT_COUNTS
     for b, rows in bills.items():
         TERM = P.term_of(rows[0].get("session", ""))
         results[TERM][b] = build(b, rows)
     results = dict(results)
+    # A CONSENT CALENDAR'S COUNT, BY ALL ITS ROWS (CONSENT_COUNTS): read once
+    # every history is built, and the few bills whose row gives a count the
+    # calendar's other rows do not are built again with it. The movers they
+    # name are counted once.
+    CONSENT_COUNTS = consent_counts(results)
+    again = sorted({(t, b) for t, byb in results.items() for b, rec in byb.items()
+                    for e in rec.get("events") or []
+                    if e.get("type") == "floor" and e.get("yeas") and e.get("nays")
+                    and CONSENT_VOTE.search(e.get("raw") or "")
+                    and (lambda got, mine: got and mine != got.most_common(1)[0][0]
+                         and got.get(mine, 0) < got.most_common(1)[0][1])(
+                        CONSENT_COUNTS.get((t, e.get("body"), e.get("date"))),
+                        ((e.get("vote_kind") or "").upper(), e["yeas"], e["nays"]))})
+    if again:
+        was = EXPANDED[0]
+        for t, b in again:
+            TERM = t
+            results[t][b] = build(b, bills[b])
+        EXPANDED[0] = was
+        print(f"  {len(again)} bill(s) whose consent calendar row gives a count the "
+              f"calendar's other rows do not, told with no count: "
+              + ", ".join(f"{b} of {t}" for t, b in again))
     # THE SESSION'S DOCKET SPEAKS FOR THE SESSION'S TERM ONLY (5 October
     # 2026). Below, every term this run builds replaces that term's histories
     # whole, which is right for a docket that holds the term. A turned

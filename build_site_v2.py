@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.160
+# GRANITE_VERSION: 2026-09-05.161
 """
 Generate the faceted site from real General Court data.
 
@@ -4717,7 +4717,7 @@ def _j_words(st, bid):
     act, body = st["act"], st["body"]
     other = {"H": "Senate", "S": "House"}.get(body, "")
     long_, short = _j_vote_words(st.get("vote"))
-    if st.get("consent") and long_.startswith(","):
+    if st.get("consent") and (long_.startswith(",") or not long_):
         long_ = " on the consent calendar" + long_
     pre = bill_prefix(bid)
     # A bill of intent is one chamber's and is no resolution: its docket's
@@ -5283,6 +5283,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
             # of 7 January 1998 as the bill's own.
             if (st.get("vote") or ("", None))[1] is not None and N.CONSENT_VOTE.search(seg):
                 st["consent"] = True
+                # And a count the calendar's other rows do not give is no
+                # count of the calendar's (narrative.calendar_count_disputed):
+                # "on the consent calendar", and no count.
+                if e.get("calendar_count_disputed"):
+                    st["vote"] = ("", None, None)
             # Whether its own clause names the amendment, before the day's
             # amendment rows mark every passage of that day (_j_merge).
             if got["act"] in J_PASSING:

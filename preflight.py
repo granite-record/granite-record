@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.362
+# GRANITE_VERSION: 2026-09-04.363
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1630,9 +1630,11 @@ _CONSENT_VOTE_TOLD = {
                              "248–8, then sent it on to the Finance committee",
                              "sent to Finance on the consent calendar, 248–8",
                              "changes on a roll call"),
-    ("HB1286", "2013-2014"): ("as part of its consent calendar, which it adopted on a division vote "
-                              "289–9.", "on the consent calendar, 289–9",
-                              "” on a division vote"),
+    # Built alone, with no other row of its calendar to go by, the bill's
+    # count is told as the calendar's -- and "adopted" once.
+    ("HB1286", "2013-2014"): ("the House adopted “Refer to Interim Study” as part of its consent "
+                              "calendar, which it approved on a division vote 289–9.",
+                              "on the consent calendar, 289–9", "” on a division vote"),
     # A roll call of its own, on no calendar: as it was.
     ("SB437", "1997-1998"): ("the House voted to pass it with changes on a roll call 210–104.",
                              "Passed with an amendment, 210–104", "consent calendar"),
@@ -1665,9 +1667,33 @@ def _consent_calendar_count(N, B):
             bad.append(f"{name}'s rail does not say {stop!r}: {rail!r}")
         if unsaid in text or unsaid in rail:
             bad.append(f"{name} says {unsaid!r}")
+    # AND NOT A COUNT THE CALENDAR'S OTHER ROWS DO NOT GIVE. HB 1286's row
+    # says 289-9 and 26 of the calendar's 28 rows say 282-9, the count House
+    # Journal 13 prints: told as the calendar's vote, two pages gave a count
+    # for it that the other 26 contradict. With the day's rows known
+    # (narrative.CONSENT_COUNTS, which main() fills), the history and the rail
+    # say it went with the calendar and give no count.
+    from collections import Counter as _Counter
+    saved = getattr(N, "CONSENT_COUNTS", {})
+    try:
+        N.CONSENT_COUNTS = {("2013-2014", "H", "2014-03-25"): _Counter(
+            {("DV", "282", "9"): 26, ("DV", "289", "9"): 2})}
+        n = _narrated(N, "2013-2014", "HB1286", _DOCKET_CONSENT_VOTE[("HB1286", "2013-2014")])
+    finally:
+        N.CONSENT_COUNTS = saved
+    text = " ".join(s["text"] for s in n["stages"])
+    _intro, steps = B.journey(n, "HB1286", term="2013-2014")[:2]
+    rail = " | ".join(s.get("text", "") for s in steps)
+    if "the House adopted “Refer to Interim Study” as part of its consent calendar." not in text \
+            or "289" in text:
+        bad.append(f"HB 1286 of 2014, whose calendar's other rows say 282-9, is told: {text[-220:]!r}")
+    if "on the consent calendar" not in rail or "289" in rail:
+        bad.append(f"HB 1286 of 2014's rail, whose calendar's other rows say 282-9: {rail!r}")
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_CONSENT_VOTE) - 1} bills' consent calendar counts told as the "
-                  "calendar's, in the history and on the rail, and a bill's own roll call as before")
+                  "calendar's, in the history and on the rail, and a bill's own roll call as "
+                  "before; HB 1286 of 2014's 289-9, which the calendar's other rows do not give, "
+                  "told as no count of the calendar's")
 
 
 # Real rows: Docket_db_1997-1998.txt 589 and 591 (HB 800), 9396 and 9398 (HB
