@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.79
+# GRANITE_VERSION: 2026-09-04.80
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3256,9 +3256,23 @@ def _cancelled_by(ev, evs):
     after that row, and the meeting sat that day at another hour; else
     (None, None)."""
     day = ev["when"].date()
+    # A row that says only "Hearing Cancelled" and names no day
+    # (docket_era_1999.cancelled_notice) calls off the bill's hearing it was
+    # entered over: of those entered before it, for its day or later, the one
+    # entered last. SB 12 of 1999's "Hearing Cancelled" of 16 March is its
+    # hearing of 2 April, entered on 10 March, and not that of 17 February.
+    for o in evs:
+        if (o.get("_cancels_next") and o is not ev and o["body"] == ev["body"]
+                and ev["_type"] == "hearing" and _entered_before(ev, o["_entered"])):
+            over = [x for x in evs
+                    if x["_type"] == "hearing" and x["body"] == o["body"]
+                    and not x.get("_cancels") and _entered_before(x, o["_entered"])
+                    and x["when"].date() >= o["_entered"].date()]
+            if over and max(over, key=lambda x: x["_entered"]) is ev:
+                return "cancelled", o
     for o in evs:
         if not (o is not ev and o["body"] == ev["body"] and o["_type"] == ev["_type"]
-                and _entered_before(ev, o["_entered"])
+                and _entered_before(ev, o["_entered"]) and not o.get("_cancels_next")
                 and o["cancelled"] and o["when"].date() == day):
             continue
         a, b = _meeting_minute(ev), _meeting_minute(o)
@@ -4117,7 +4131,7 @@ def build(bill, rows, introduction=None):
         # the clerk wrote once at its end ("entry").
         ev["cite"], ev["cite_page"] = cite_of(r.get("entry") or r["desc"])
         ev["body"] = r["body"]
-        ev["cancelled"] = cancel_marked(r, ev["_type"])
+        ev["cancelled"] = cancel_marked(r, ev["_type"]) or bool(ev.get("_cancels"))
         ev["recessed"] = "RECESSED" in r["flags"]
         # The row as the clerk typed it, marks and all, for overtaken().
         ev["_said"] = r["desc"]

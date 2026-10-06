@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.14
+# GRANITE_VERSION: 2026-09-11.15
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -318,6 +318,13 @@ def classify(desc, created=None, session=None):
     # with its marks, since clean() has taken "==RESCHEDULED==" off it.
     moved = getattr(mod, "rescheduled_notice", None)
     got = moved(desc, created) if moved is not None else None
+    if got:
+        return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
+    # And a row that says only that a hearing was called off
+    # (docket_era_1999.cancelled_notice): a cancelled hearing, which
+    # narrative.build carries as one.
+    off = getattr(mod, "cancelled_notice", None)
+    got = off(desc, created) if off is not None else None
     if got:
         return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
     for name, pat in routine:

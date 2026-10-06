@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.10
+# GRANITE_VERSION: 2026-09-11.11
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -238,7 +238,11 @@ HEARING = re.compile(
     # Jan 9" (SB 102 of 2002, passed by the House and sent to Public Works).
     r"Pub(?:lic)?\s+W(?:or)?ks|"
     r"Full\s+Comm(?:ittee)?|Re-?Ref(?:er)?|Int(?:erim)?\s+Study)\s+){0,2}"
-    r"(?P<kind>Public\s+Hearing|Hearing)"
+    # "Hearings, Feb 16, Room 102, LOB, 2:20 p.m." (SB 19, SB 28 and SB 36 of
+    # 1999): the Senate's notice in the plural, with its comma and nothing in
+    # front of it, which read as nothing left SB 36 no hearing told once its
+    # Finance hearing of 2 April was called off (cancelled_notice).
+    r"(?P<kind>Public\s+Hearing|(?<![A-Za-z]\s)Hearings(?=\s*,)|Hearing)"
     r"(?:\s+on\s+(?:the\s+)?(?:Prop(?:osed)?\.?\s+(?:Comm\s+)?Am(?:endment|end)?\.?|Amendment)"
     r"(?:\s*\{\d+\w?\})?)?(?:\s+(?:and|&)\s+Exec(?:utive)?\.?\s+Sess(?:ion)?)?"
     r"\s*[;,:]?\s*(?:=\s*)*(?:RESCHEDULED\s*=*\s*)?"
@@ -446,9 +450,16 @@ MONTHS = {m: i for i, m in enumerate(
 # or room change on the same day ("==TIME CHANGE== Jan. 25", "==NEW TIME==
 # Feb.10"), and not a recessed hearing's new day ("==RECESSED== NEW DATE==
 # Feb.9", "Hearing == RE-CONVINED = May 3"), which sat and went on.
+#
+# And the notice the Senate entered once a hearing it had put off "TO A DATE
+# UNDETERMINED" had its day (decision 59b): "==HEARING== April 24, Room 102,
+# LOB, 2:00 p.m.; SC21, Pg.13" (HB 618 of 2000, after "Hearing; RESCHEDULED TO
+# A DATE UNDETERMINED" over its hearing of 28 March), which Senate Calendars
+# 21 to 24 print on 24 April. Read as nothing, the bill's one Senate hearing
+# told was the one called off. The only row of its kind on disk.
 RESCHEDULED_TO = re.compile(
     r"^\W*(?:"
-    r"(?:Hearing\s*)?=+\s*(?:CANCELL?ED\s+AND\s+)?RESCHEDULED\s*=+\s*,?\s*(?:Hearing\s*)?"
+    r"(?:Hearing\s*)?=+\s*(?:CANCELL?ED\s+AND\s+)?(?:RESCHEDULED|HEARING)\s*=+\s*,?\s*(?:Hearing\s*)?"
     r"|\(\s*RESCHEDULED\s*\)\s*"
     r"|New\s+Date\s*,\s*"
     r"|(?:Hearing\s+Rescheduled|Rescheduled\s+Hearings?)\s*,\s*"
@@ -477,6 +488,50 @@ def rescheduled_notice(desc, created):
     if not day:
         return None
     return {"_type": "hearing", "kind": "Hearing", "date": day, "_era": "1999:rescheduled"}
+
+
+# A ROW THAT SAYS ONLY THAT A HEARING WAS CALLED OFF (decision 59b, 7 October
+# 2026). The Senate of 1999 typed the cancellation as a row of its own and
+# named no meeting: "Hearing Cancelled" and "Hearing cancelled" (SB 12, SB 36,
+# SB 37, SB 45 and SB 131, entered on 16 March over their Finance hearings of
+# 2 April, which Senate Calendar 15 prints "CANCELLED"), "Hearing Cancelled
+# Due To Town Meeting Day" (SB 55, SB 58, SB 107, SB 114 and SCR 2, over their
+# hearings of 9 March, Town Meeting Day), or with the day: "3/8/99 Hearing
+# Cancelled" (SB 24), "Hearing, 3/10/99 Cancelled" (SB 66). And 2002's
+# "Hearing === CANCELLED === TO BE RESCHEDULED AT A LATER DATE ===; SC3" (SB
+# 344, over its hearing of 16 January) and 2000's "Hearing; RESCHEDULED TO A
+# DATE UNDETERMINED" (HB 618, over its hearing of 28 March, which Senate
+# Calendar 19 no longer prints). The era's patterns refuse a row that says
+# "cancel" (NOCANCEL) and read these as nothing, so the history told the
+# hearing each one called off. Each is a hearing called off: on the day it
+# names, or, naming none, the bill's hearing it was entered over
+# (narrative._cancelled_by).
+CANCELLED_ONLY = re.compile(
+    r"^\W*(?:(?P<before>" + DTXT + r")\s+)?Hearing\s*"
+    r"(?:,\s*(?P<after>" + DTXT + r")\s*)?"
+    r"(?:=+\s*)?Cancell?ed\b\s*=*\s*"
+    r"(?:Due\s+To\s+[A-Za-z ]{3,30}?|TO\s+BE\s+RESCHEDULED(?:\s+AT\s+A\s+LATER\s+DATE)?\s*=*)?"
+    r"\s*(?:;\s*SC\s*\d+[A-Za-z]?(?:\s*,\s*P(?:g)?\.?\s*\d+)?)?\s*$"
+    r"|^\W*Hearing\s*;\s*RESCHEDULED\s+TO\s+A\s+DATE\s+UNDETERMINED\s*$", re.I)
+
+
+def cancelled_notice(desc, created):
+    """A row that says only that a hearing was called off (CANCELLED_ONLY), as
+    {"_type": "hearing", "date", "_cancels": True}, with "_cancels_next" where
+    it names no day; or None."""
+    m = CANCELLED_ONLY.match(desc or "")
+    if not m or created is None:
+        return None
+    said = m.group("before") or m.group("after")
+    day = full_date(said, created, forward=True) if said else None
+    if said and not day:
+        return None
+    got = {"_type": "hearing", "kind": "Hearing", "_era": "1999:cancelled", "_cancels": True}
+    if day:
+        got["date"] = day
+    else:
+        got["_cancels_next"] = True
+    return got
 
 
 def full_date(txt, created, forward=False):

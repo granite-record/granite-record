@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.371
+# GRANITE_VERSION: 2026-09-04.372
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3398,6 +3398,99 @@ def _cancel_spelled(N):
                   "that sat")
 
 
+# Real rows: Docket_db_1999-2000.txt 2044-2050 (SB 12), 7317-7320 (SB 107),
+# 10583-10587 (HB 618) and 10755-10761 (SB 36); Docket_db_2001-2002.txt
+# 18184-18188 (SB 344).
+_DOCKET_CANCEL_ONLY = {
+    ("SB12", "1999-2000"): [
+        "1999|0253|01/07/1999 09:45:37 AM|SB12|S|Introducing and referred to Public Affairs; SJ 2, P 26|01/07/1999 09:45:37 AM",
+        "1999|0253|01/28/1999 02:51:58 PM|SB12|S|Hearing, Feb. 17, 1:00 p.m., Room 104, LOB|01/28/1999 02:51:58 PM",
+        "1999|0253|03/04/1999 12:58:30 PM|SB12|S|OTP, MA, VV; Referred to Finance (Rule #24); SJ 6, P 66|03/04/1999 12:58:30 PM",
+        "1999|0253|03/10/1999 08:26:05 AM|SB12|S|Hearing, 4/2/99, Room 103, SH, 8:30 a.m.|03/10/1999 08:26:05 AM",
+        "1999|0253|03/16/1999 09:14:24 AM|SB12|S|Hearing Cancelled|03/16/1999 09:14:24 AM",
+        "1999|0253|03/16/1999 09:15:40 AM|SB12|S|Committee Report, Ought to Pass, 3/17/99|03/16/1999 09:15:40 AM"],
+    ("SB107", "1999-2000"): [
+        "1999|0873|01/28/1999 12:55:55 PM|SB107|S|Introduction and referring to Insurance 1/28/99;  SJ 3, P 35|01/28/1999 12:55:55 PM",
+        "1999|0873|02/10/1999 09:51:28 AM|SB107|S|Hearing, 3/9/99, Room 103, SH, 8:50 a.m.|02/10/1999 09:51:28 AM",
+        "1999|0873|02/17/1999 11:31:43 AM|SB107|S|Hearing Cancelled Due To Town Meeting Day|02/17/1999 11:31:43 AM",
+        "1999|0873|02/24/1999 10:26:00 AM|SB107|S|Hearing, 3/16/99, Room 103, SH, 8:50 a.m.|02/24/1999 10:26:00 AM"],
+    ("HB618", "1999-2000"): [
+        "2000|0444|01/13/2000 09:53:27 AM|HB618|S|Introduced and Ref. to Public Institutions,Health & Human Services ; SJ 1, Pg.36|01/13/2000 09:53:27 AM",
+        "2000|0444|02/23/2000 02:08:13 PM|HB618|S|Hearing March 28, Room 102, LOB, 2:00 p.m.; SC13, Pg.4|02/23/2000 02:08:13 PM",
+        "2000|0444|03/27/2000 04:21:45 PM|HB618|S|Hearing; RESCHEDULED TO  A  DATE UNDETERMINED|03/27/2000 04:21:45 PM",
+        "2000|0444|04/04/2000 05:21:17 PM|HB618|S|==HEARING== April 24, Room 102, LOB, 2:00 p.m.; SC21, Pg.13|04/04/2000 05:21:17 PM",
+        "2000|0444|04/26/2000 03:30:20 PM|HB618|S|Committee Report Ought to Pass, 4/27/2000; SC25|04/26/2000 03:30:20 PM"],
+    ("SB36", "1999-2000"): [
+        "2000|0496|01/07/1999 11:40:56 AM|SB36|S|Introduction and referring to Public Institutions, Health and Human Services:  SJ 2, Pg. 27|01/07/1999 11:40:56 AM",
+        "2000|0496|01/28/1999 03:54:18 PM|SB36|S|Hearings, Feb 16, Room 102, LOB, 2:20 p.m.|01/28/1999 03:54:18 PM",
+        "2000|0496|03/04/1999 01:53:19 PM|SB36|S|OTP, MA, VV; Referred to Finance (Rule #24); SJ 6, Pg. 68|03/04/1999 01:53:19 PM",
+        "2000|0496|03/10/1999 08:27:41 AM|SB36|S|Hearing, 4/2/99, Room 103, SH, 10:00 a.m.|03/10/1999 08:27:41 AM",
+        "2000|0496|03/16/1999 09:21:33 AM|SB36|S|Hearing Cancelled|03/16/1999 09:21:33 AM",
+        "2000|0496|03/16/1999 09:41:49 AM|SB36|S|Committee Report, Ought to Pass, 3/17/99|03/16/1999 09:41:49 AM"],
+    ("SB344", "2001-2002"): [
+        "2002|3065|01/02/2002 12:53:48 PM|SB344|S|Introduce and Ref. to Ways & Means; SJ 1, Pg.5|01/02/2002 12:53:48 PM",
+        "2002|3065|01/02/2002 03:43:15 PM|SB344|S|Hearing; January 16, 2002, Room 103, SH, 11:15 a.m.; SC1|01/02/2002 03:43:15 PM",
+        "2002|3065|01/10/2002 03:10:24 PM|SB344|S|Hearing === CANCELLED === TO BE RESCHEDULED AT A LATER DATE ===; SC3|01/10/2002 03:10:24 PM",
+        "2002|3065|02/12/2002 05:36:20 PM|SB344|S|Hearing; === RESCHEDULED === February 19, 2002, Room 103, LOB , 9:00 a.m.; SC11A|02/12/2002 05:36:20 PM"],
+}
+# The Senate hearings each history tells, and the day it leaves off.
+_CANCEL_ONLY_TOLD = {
+    ("SB12", "1999-2000"): (["1999-02-17"], "1999-04-02"),
+    ("SB107", "1999-2000"): (["1999-03-16"], "1999-03-09"),
+    ("HB618", "1999-2000"): (["2000-04-24"], "2000-03-28"),
+    ("SB36", "1999-2000"): (["1999-02-16"], "1999-04-02"),
+    ("SB344", "2001-2002"): (["2002-02-19"], "2002-01-16"),
+}
+
+
+@check("narrative", "a row that says only that a hearing was called off cancels the hearing it "
+                    "names, or the one it was entered over, and the notices that replaced them "
+                    "are read", needs=("narrative",))
+def _cancel_only_rows(N):
+    """Decision 59b: the Senate of 1999 typed the cancellation as a row of its
+    own -- "Hearing Cancelled" over SB 12's Finance hearing of 2 April 1999,
+    which Senate Calendar 15 prints "THE FINANCE COMMITTEE HEARINGS FOR THIS
+    DATE HAVE BEEN CANCELLED", and "Hearing Cancelled Due To Town Meeting
+    Day" over SB 107's of 9 March -- and the histories told both hearings
+    held. So did SB 344 of 2002's of 16 January ("=== CANCELLED === TO BE
+    RESCHEDULED AT A LATER DATE ==="), and HB 618 of 2000's of 28 March,
+    put off "TO A DATE UNDETERMINED", whose new notice "==HEARING== April 24"
+    was read as nothing; and SB 36's notice "Hearings, Feb 16", in the
+    plural, so that its history would have told no Senate hearing at all.
+    A row with a meeting's whole notice and "Hearing Cancelled" after it is
+    the notice called off, as before, and not this."""
+    import docket_era_1999 as E
+    from datetime import datetime as _dt
+    bad = []
+    at = _dt(1999, 3, 16, 9, 0)
+    for desc, want in (("Hearing Cancelled", (None, True)),
+                       ("Hearing cancelled", (None, True)),
+                       ("Hearing Cancelled Due To Town Meeting Day", (None, True)),
+                       ("3/8/99 Hearing Cancelled", ("03/08/1999", False)),
+                       ("Hearing, 3/10/99 Cancelled", ("03/10/1999", False)),
+                       ("Hearing === CANCELLED === TO BE RESCHEDULED AT A LATER DATE ===; SC3", (None, True)),
+                       ("Hearing; RESCHEDULED TO  A  DATE UNDETERMINED", (None, True)),
+                       ("Hearing, 3/17/99, Room 105-A, SH 8:30 a.m. Hearing Cancelled", None),
+                       ("Hearing; === CANCELLED === March 4, 2003, Room 101, LOB, 3:15 p.m.; SC9", None)):
+        got = E.cancelled_notice(desc, at)
+        got = got and (got.get("date"), bool(got.get("_cancels_next")))
+        if got != want:
+            bad.append(f"{desc!r} is read as {got!r}, not {want!r}")
+    for key, lines in _DOCKET_CANCEL_ONLY.items():
+        heard, off = _CANCEL_ONLY_TOLD[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        told = sorted(e["date"] for e in n["events"] if e["type"] == "hearing" and e["body"] == "S"
+                      and not e["cancelled"])
+        if told != heard:
+            bad.append(f"{name} tells Senate hearings on {told}, not {heard}")
+        if off not in _voided_days(n):
+            bad.append(f"{name}: its hearing of {off} is not left off (voided {n.get('voided')!r})")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"nine rows read by their words; {len(_DOCKET_CANCEL_ONLY)} histories from real "
+                  "rows tell the hearing that sat and leave the one called off")
+
+
 # Real rows: Docket_db_2001-2002.txt (SB 373) and Docket_db_1999-2000.txt (SB
 # 79, SB 395 and SB 27), and rows that are cancellations.
 _RESCHEDULED_ROWS = [
@@ -3500,8 +3593,11 @@ def _rescheduled_rows_in_manifests():
     """Decision 60: the three bills had no hearing drawn anywhere, because the
     manifests had no row for the day a rescheduling row names. The rows were
     added with build_manifest --merge; a manifest rebuilt without them, or a
-    parser that stops reading them, takes the three off the site again."""
-    want = {"1999-2000": [("SB79", "1999-03-24"), ("SB395", "2000-02-24")],
+    parser that stops reading them, takes the three off the site again. And
+    HB 618 of 2000's hearing of 24 April (decision 59b), whose notice
+    "==HEARING== April 24" was read as nothing until then."""
+    want = {"1999-2000": [("SB79", "1999-03-24"), ("SB395", "2000-02-24"),
+                          ("HB618", "2000-04-24")],
             "2001-2002": [("SB373", "2002-01-22")]}
     bad, n = [], 0
     for term, pairs in want.items():
