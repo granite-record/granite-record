@@ -416,6 +416,55 @@ terms, which only the built site can answer. `matchScore()` is the one place
 a bill's score is added up, for `/bills`, the header, `/search` and those
 cases.
 
+## The bill index, one file per term
+
+Every bill's row -- title, sponsor, committees, topic, status, passage -- is
+published one term to a file, `site/idx/<term>.json`, and `site/meta.json`
+names the terms, newest first. Those are what the bills page, the header's
+search, `/search` and every record page fetch. The build reads the same files
+through one reader, `site_read.bill_index(site)`, which answers in three ways:
+`None` where no site is built (there is no `meta.json`: GitHub's machine starts
+with `site/` empty); `site_read.Broken` where the files do not hold together (a
+term named with no file, an empty or unreadable one, a row in another term's
+file, a term file `meta.json` does not name); and otherwise every row, newest
+term first. A builder that cannot go on without every bill asks
+`bill_index_or_stop`, which turns both of the first two into a stop that says
+what to run: four of the old readers read a missing file as no bills and went
+on. The nightly's census counts it, its fingerprint hashes the files
+`meta.json` names, and `check_site` refuses a site whose index does not hold
+together. `build_site_v2.py` deletes a term's file it did not write this time,
+which an earlier build on the laptop's never-emptied `site/` could leave and
+the reader would refuse. Once a deploy is up, `check_live.py --gate` reads the
+served `meta.json` and the newest term's file: a `meta.json` naming no term or
+other terms than the build's, or a term file empty, not JSON or a web page in
+its place, fails it as a deploy that did not land; a file too large for it to
+read fails it as not checked, with an exit of its own (`NOT_CHECKED`) that the
+nightly reports as such rather than as a deploy that did not land.
+
+`/index.json`, the same rows joined into one file, was retired on 5 October
+2026. No page read it; six build steps did, and it had reached 23.7 MB --
+90.5% of the 25 MiB Cloudflare Pages takes in one file -- growing about a
+megabyte with every field added to a row. Each term's file is 1.0 to 1.3 MB,
+so the limit no longer depends on how many terms there are. For programs,
+`data/manifest.json` lists the term files with their addresses, bills and
+sizes, and `data/bills.csv` is every bill in one table. `build_site_v2.py`
+deletes a leftover `site/index.json`, because `site/` is never emptied and
+`publish` would otherwise go on deploying a frozen copy, and `check_site`
+refuses one.
+
+The order a builder writes in is its own to state, not the order the rows
+arrive in. The sitemap lists the newest term's bills first, and a committee's
+file its terms newest first, sorted where they are written; within a term the
+sitemap keeps the order of the term's file, which the reader keeps. Until 5
+October both followed `index.json`'s order, which was `data/bills.json`'s:
+2025-2026, 2023-2024, then 1989-1990 upward.
+
+The governor's veto messages are read before the site data, which puts each
+on its bill's page, so the report of the vetoed bills with no message is a
+step of its own after it (`extract_vetoes.py --gaps`): at the end of the
+writing run it read the previous build's index, and on GitHub's machine
+nothing at all.
+
 ## Sitting days, built 19 September
 
 A page for every day the House sat, at `/session/H/<date>`, and for every day
@@ -453,6 +502,128 @@ the bill. So a speaker is never listed under a bill, only under a motion, and
 9 April 2026 the House recorded 186 yeas to 169 nays and the veto was
 sustained, an override needing two thirds. Inferring the winner from the tally
 gets every override and every constitutional amendment backwards.
+
+**Every roll call on record is drawn, and counted once (2 October 2026).**
+The pages were first made of the docket rows typed as floor motions and
+nothing else, and a roll call on an amendment, a committee of conference
+report, a motion worded without "MA", a veto row spelled "Overriden", or a
+second question on one 1999-2006 line was on no page: 1,552 of the House's
+5,577 roll calls and 1,431 of the Senate's 3,988, with the opening's count
+wrong on 697 pages. `session_days._roll_calls` now takes `rollcalls.json`
+as the list. Each roll call is paired with its docket tally the way
+`rollcall_outcomes` pairs it for its outcome, and drawn on the floor motion
+that is that vote (the ballots' count, the record's outcome), on a motion of
+its own worded and dated from the row or clause that states it, under its bill
+worded as the roll-call file words it where no docket row does, or among the
+day's "Votes on no bill" -- rules, rulings of the chair, printing a debate --
+which the page builds from the roll-call file alone. A roll call the file
+dates on a day the chamber did not sit (the House's of 24 and 25 February 2021
+are all dated the 26th) goes on the sitting the docket and the journal put
+it on. Before 1999 the docket is the only record, and its roll calls are drawn
+from its own words. The opening counts votes, not motions: one motion entered
+on 35 bills' dockets is one roll call, and so is a consent calendar. What no
+sitting draws is a named list with its reason (a quorum call, a date no sitting
+holds), and `preflight` holds every roll call and every page's count to that.
+
+**And held to the journal the build did not make.** A review of that change
+found one vote drawn twice on ten pages, a vote on two pages, a division drawn
+as a roll call and speeches moved onto motions they were not made on -- all
+invisible to a check that compared the pages with the model that made them.
+So the chamber's journal on disk is read for what it prints (`_journal_day`:
+the House's YEAS-NAYS and divisions from 1997, the Senate's "Yeas: n - Nays: n"
+from 2003, and the measures each sitting names), and it decides four things.
+Where the docket and the roll-call file date a vote on different days, it is
+drawn on the one whose journal prints its count (SB 319's roll calls of 15 May
+2014 were on a 16 May page of a day the House did not sit; three such pages are
+gone). Where the docket says division and the journal prints a division, it
+stays one, whatever the roll-call file holds (HB 299, 20 February 2025). Where
+a page would count more votes of one count than the journal prints, a count only
+the docket states beside a roll call on record is a copy and is taken off its
+motion (HB 461's "MA RC 289-48" of 22 January 2014 is HB 597's), and a copied
+row on a bill the day's journal never names is not drawn (HB 1559's special
+order of 12 March 2026 is HB 1708's). And business the docket marks as done in
+recess carries no roll call: a recess takes none. Without the journal the
+record still finds each vote's motion: an uncounted motion owns the clause of
+its line that names it, a count the reader missed is read off the motion's own
+line, several roll calls of one count are told apart by what their questions
+name (the consent calendar, the bill, the member), a roll call filed under the
+wrong bill goes to the one docket row that states it (SB 287's conference report
+of 26 June 2025, filed under HB 287), and the file's own bill is drawn even where
+the docket holds no row for it (HB 476). A speech goes to a motion only by the
+journal's count, never by being the one motion of a run, and never to two
+motions of one count or to both sides of one; a name is said once.
+`preflight` now holds every page to each roll call once, the House journal's
+own count on every day it is on disk (nineteen days named, each for its reason)
+and the speaker lists of every built page.
+
+**And to what the journal prints after each speech (3 October 2026).** A
+second review read 1,127 speakers on 35 House pages against their journals and
+found 76 on a motion the journal contradicts: on another bill, on a censure or
+a reprimand, on a rules suspension, or on an amendment's failure set down as a
+speech on the report. A speech is now read where it stands -- it was found
+again by its first forty characters, which is the first sentence that begins
+the same way -- in a text whose running heads leave the line break they sat in,
+since a bill heading that opened a page was glued to the line before and its
+speeches read as the previous bill's (`journal_days.clean(lines=True)`, used
+for the speeches only). A speech is closed by what the journal prints first
+after it: a roll call, a division, or a question carried or lost by voice
+("Floor amendment (0786h) failed."), unless a motion was moved in between,
+which is then that motion's (`decided`). A motion claims a speech only where
+that is its own decision: the one motion a bill had that day no longer takes a
+speech the journal ties to another count, and a speech tied to a vote none of
+the bill's motions is -- a reprimand, a censure, an amendment's division the
+page does not draw -- is named nowhere, which is less than the journal says and
+nothing it contradicts. The same review found the docket's division counts
+copied and mistyped as its roll calls are. A division the docket alone states
+loses its count where the House Journal prints a count within three of it after
+the bill's own heading and not the count itself, or prints the count fewer
+times than the docket states it, after the heading of another bill whose row
+states it; a motion with no heading of its own (a reconsideration, a tabling)
+is printed under whichever came before, so a division is never taken off for
+that alone. One division entered on many bills counts once where the journal
+prints it fewer times than it is entered. And a vote is drawn as the question
+its own clause names: a veto override's result is read from its result words,
+never from "override"; a count before 1999 belongs to the clause that holds it,
+not the line's final disposition (HB 386's "OTP/AM ML RC(45-241); ITL REPORT
+ADOPTED" of 3 January 1996); and a Senate amendment row's roll call on third
+reading or re-referral, and a motion to divide, are drawn as those questions.
+
+**And to what comes between a speech and its decision (3 October 2026).** A
+third review read every name the second pass put on a motion. A speech whose
+question was decided after another motion was moved fell through to the next
+roll call in the bill: Rep. Rowe spoke for HB 1670's committee amendment on 15
+February 2012, a Call of the House was moved, the amendment carried 177-99 on
+a division, and the page named him on the floor amendment lost 96-179 next.
+`journal_days` now walks forward from each speech (`walk`): a Call of the House
+is read through; the previous question, or a motion to limit debate or print
+remarks, is read through with the decision printed straight after it where
+that is plainly its own; a motion to table, postpone, make a special order,
+recommit, refer or divide is read past where the journal shows it failing,
+withdrawn or ruled out of order (HR 20's report of 23 March 2000, debated, a
+tabling lost, then 162-179 on the report); and anything else put first -- a
+motion, an amendment offered, an appeal of the chair -- ties the speech to
+nothing (`untied`), and its speaker is named as having spoken during the
+bill. A bare "Adopted." straight after an amendment is offered is the
+amendment's, not the report's, and a voice verdict the other way from the
+motion ("The report failed." before an adopted Ought to Pass with Amendment)
+is another question's. A conference report's own heading
+("COMMITTEE OF CONFERENCE REPORT ON SB 449") opens its bill's stretch, and a
+resolution offered from the floor ends the bill before it. A speaker's name is
+one member's: "moved ..., spoke in favor" is read, and a name no longer runs
+back over a committee statement's right-aligned signature. The clerk's count a
+roll call is printed under can be one vote off its ballots or the docket's
+count, and still ties the speeches before it (`build_session_pages.clerk_counts`).
+A division whose docket count the journal prints within three under the bill's
+own heading is drawn with the journal's count rather than with none; one the
+journal prints nowhere, for a bill it names that day, loses its count; a
+docket-only count that contradicts its own outcome (a tabling "adopted" 154 to
+167) is drawn with neither; and a consent calendar's count is the one the
+journal prints. A carried override is said to have overridden the veto in that
+chamber, never to have made the bill law. `preflight`'s data check
+`_every_speaker_where_the_journal_decides` holds every counted motion on a House
+page to the journal by a walk written apart from `journal_days`', in both
+directions: each name on a motion spoke on its question, and each speech the
+journal decides with its count is named.
 
 **What the Senate's pages leave out, and why.** Who spoke. Across all 491
 Senate journal files "spoke in favor" occurs four times and "spoke against"

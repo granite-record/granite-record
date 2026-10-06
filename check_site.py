@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Check the site is fit to publish before uploading it.
 
@@ -31,6 +31,7 @@ from pathlib import Path
 # them. They are not in the repository, so a site built from a bare clone has
 # none of them, and every page's head still links four.
 from build_pages import BRAND_FILES
+import site_read
 
 # A JSON file here whose emptiness is a fact about the record rather than a
 # build that produced nothing. Every other empty one is a failure: silence is
@@ -49,12 +50,14 @@ MAY_BE_EMPTY = {"former.json"}
 # checker noticing -- which calendar.html did, between being added to both nav
 # emitters and being added to this list.
 REQUIRED = ["index.html", "bills.html", "legislators.html", "learn.html",
-            "about.html", "calendar.html", "style.css", "index.json",
+            "about.html", "calendar.html", "style.css",
             "meta.json", "legislators.json", "home.json"]
 
 # Cloudflare Pages refuses a deployment holding a file over 25 MiB. Nothing
 # measured a file against that until 2 October, when index.json stood at
 # 22.6 MiB and the only guard was build_exports' own, for its own CSVs.
+# index.json is retired since (bill_index, below); this still measures the
+# rest.
 # Warned from nine tenths of it: a file grows a bill at a time, and the
 # number to act on is the one before a deploy is refused.
 FILE_CAP = 25 * 1024 * 1024
@@ -75,6 +78,35 @@ def near_the_cap(sizes, errors, warnings):
             errors.append(said + " - the deployment would be refused")
         else:
             warnings.append(said)
+
+
+def bill_index(site, errors):
+    """Every bill's row, as the pages read it: site/idx/<term>.json for each
+    term site/meta.json names (site_read.bill_index). A term named with no
+    file, an empty or unreadable one, a row in another term's file or a term
+    file meta.json does not name is a site whose bills page would offer a
+    different list from the one the rest of it describes, and is refused.
+
+    AND NO index.json (retired 5 October 2026). It was the same rows joined
+    into one file, which no page read: 23.7 MB on 2 October, nine tenths of
+    what a file may be. The build deletes the last one; one still here is a
+    site that would go on deploying a frozen list of every bill, and is
+    refused too."""
+    if (site / "index.json").exists():
+        errors.append("index.json is in the site: it was retired, and a copy here "
+                      "is a frozen list of every bill that would still deploy. "
+                      "build_site_v2.py deletes it; run the build again")
+    try:
+        rows = site_read.bill_index(site)
+    except site_read.Broken as e:
+        errors.append(f"the bill index does not hold together: {e}")
+        return
+    if rows is None:
+        return              # no meta.json: the required files say so
+    terms = sorted({r["term"] for r in rows}, reverse=True)
+    print(f"\nbill index: {len(rows):,} bills across {len(terms)} "
+          f"term{'' if len(terms) == 1 else 's'}, {terms[-1]} to {terms[0]}, as "
+          "meta.json names them")
 
 
 def search_index(site, errors, warnings):
@@ -274,7 +306,8 @@ def main():
             "its own -- a mark in brand/ and python3 build_brand.py, or files "
             "of those names in assets/ -- and then builds again")
 
-    # ---- the search index ---------------------------------------------------
+    # ---- the bill index, and the search index beside it --------------------
+    bill_index(site, errors)
     search_index(site, errors, warnings)
 
     # ---- per-bill pages and feeds -------------------------------------------

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.39
+# GRANITE_VERSION: 2026-09-07.42
 """
 A page's worth of data for every committee.
 
@@ -20,7 +20,8 @@ WHERE EACH PART COMES FROM
                                which file gives which field)
   who sits on it               data/committee_members.json
                                                         fetch_committee_members_db.py
-  bills referred               site/index.json          the search index
+  bills referred               site/idx/<term>.json     the bill index
+                               (site_read.bill_index)
   what happened on a day       proceedings.csv          one row per
                                                         (bill, date, kind, recording)
   what the committee decided   committee_reports.json, senate_reports.json
@@ -318,7 +319,7 @@ def untaken_guard(filed):
     if not bad:
         return ""
     return (f"{len(bad)} row(s) of proceedings.csv are filed under a committee's day "
-            "for a bill site/index.json says was never introduced: "
+            "for a bill the bill index (site/idx) says was never introduced: "
             + ", ".join(bad[:6]) + ". No committee sat on such a bill. Its history "
             "in narratives.json does not say what the index says, so the two are "
             "of different builds or the history is missing: run narrative.py "
@@ -451,9 +452,14 @@ def feed_link(code, name):
 def bills_in_order(by_term):
     """A committee's referred bills, per term, by number as bills.html lists
     them. Sorted on the id's text this put HB1003 before HB101 on the page:
-    the Bills tab shows this file's order and has no sort control."""
-    return {t: sorted(v, key=lambda b: BO.bill_key(b["id"]))
-            for t, v in by_term.items()}
+    the Bills tab shows this file's order and has no sort control.
+
+    The terms newest first, as meta.json names them. They were in whatever
+    order index.json held its rows -- 2025-2026, 2023-2024 and then 1989-1990
+    upward, the order build_data met the dockets in -- which the page never
+    showed (recordTerms sorts them) and the file should not depend on."""
+    return {t: sorted(by_term[t], key=lambda b: BO.bill_key(b["id"]))
+            for t in sorted(by_term, key=lambda t: str(t or ""), reverse=True)}
 
 
 # THE CEILING ON COMMITTEE NAMES THAT REACH NO PAGE. A hearing whose
@@ -525,10 +531,10 @@ def main():
     a = ap.parse_args()
     site, data = Path(a.site), Path(a.data)
 
-    idx = load(site / "index.json", [])
-    if not idx:
-        raise SystemExit(f"{site}/index.json is not there. Run build_site_v2 "
-                         "first -- the bills a committee heard come from it.")
+    # Every bill's row, from the term files the pages read; it stops, saying
+    # why, where there is no site or the files do not hold together -- the
+    # bills a committee heard come from it.
+    idx = SR.bill_index_or_stop(site, "build_committees.py")
     # committees.json with committee_details.json joined in. Two files since
     # 26 September, because GitHub's weekly job swaps committees.json in whole
     # from the listing pages, which carry no clerk and no purpose: read alone,
@@ -781,6 +787,9 @@ def main():
                     "id": b.get("id"), "n": b.get("n"), "year": b.get("year"),
                     "title": b.get("title", ""), "status": b.get("status", ""),
                     "kind": b.get("kind", ""), "term": b.get("term"),
+                    # The word the bill's card shows (build_site_v2.chip_word),
+                    # for a card drawn from this row rather than the index's.
+                    "chip": b.get("chip", ""),
                 })
 
     out = site / "committee"

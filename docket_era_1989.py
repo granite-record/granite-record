@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.4
+# GRANITE_VERSION: 2026-09-11.6
 """
 The 1989-1998 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -174,9 +174,13 @@ P("exec", "exec",
 P("introduced", "introduced",
   r"(?:^|;\s*)(?:(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4})\s+)?INTRODUCED(?:\s*\([^)]*\))?"
   r"\s+AND\s+(?:RE-?)?REF(?:ERRED)?\.?\s+TO\s+(?P<committee>[A-Z][^;(]*?)\s*(?:[;(]|\s{2,}|\s+[HS]J\s*\d|$)")
+# The committee runs to the mover, the vote or the end, and a comma inside
+# it is its own: "VACATED TO RES, REC & DEV, REP HAGER MA VV" (HB 1218 of
+# 1992) sent the bill "to the Res committee" while a comma ended the name,
+# "VACATED TO SCI, TECH & ENERGY" to "the Sci committee" -- ten histories.
 P("vacated", "vacated",
   r"(?:^|;\s*)VACATED\s+(?:FROM\s+[A-Z][^;]*?\s+AND\s+)?(?:RE-?)?(?:REF(?:ERRED)?\s+)?TO\s+"
-  r"(?P<committee>[A-Z][^;(,]*?)\s*(?:[;(,]|\b(?:VV|MA)\b|$)")
+  r"(?P<committee>[A-Z][^;(]*?)\s*(?:[;(]|,?\s*\b(?:REPS?|SENS?)\b|,?\s*\b(?:VV|MA)\b|,?\s*$)")
 P("retained", "retained",
   r"(?:^|;\s*)RE-?REF(?:ERRED)?\s+TO\s+COMM(?:ITTEE)?\b")
 P("rereferred", "rereferred",
@@ -421,7 +425,14 @@ def fix(d, typ, created):
             act = f"{act} ({hon} {rest.title()})"
         d["action"] = act
         if d.get("refer"):
-            d["refer"] = committee_name(d["refer"])
+            # "PASSED WITH AM AND REF TO FINANCE/CONSENT CAL RC(248-8)": eleven
+            # rows of 7 January 1998, each the House adopting its consent
+            # calendar on that roll call and the bill going on to Finance. The
+            # calendar is not part of the committee's name -- the history said
+            # "sent it on to the Finance/Consent Cal committee" -- and CMTE
+            # keeps the slash for names that have one ("PUB INST/H&HS").
+            d["refer"] = committee_name(re.sub(
+                r"\s*/\s*CONS(?:ENT)?\.?\s*CAL\w*\.?\s*$", "", d["refer"], flags=I))
     if typ == "amendment":
         w = (d.get("what") or "").upper()
         d["what"] = ("Enrolled Bill Amendment" if "ENROLLED" in w else

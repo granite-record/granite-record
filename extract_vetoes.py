@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.15
+# GRANITE_VERSION: 2026-09-07.16
 """
 The governor's veto messages, from the House calendars already on disk.
 
     python3 extract_vetoes.py --probe          # print what it finds, write nothing
     python3 extract_vetoes.py                  # write veto_messages.json
+    python3 extract_vetoes.py --gaps           # once the site is built: the
+                                               #   vetoed bills with no message
 
 NO NETWORK. calendars/2025 and calendars/2026 were fetched for the committee
 reports and carry these too, so this reads what is already here.
@@ -434,6 +436,58 @@ def is_whole(lines):
     return True, ""
 
 
+def gaps(a):
+    """--gaps: the vetoed bills of each term whose message is not on file
+    here, and why -- said out loud rather than left to be found on a page.
+    Reads veto_messages.json and the built site's own word for which bills
+    were vetoed, and writes nothing.
+
+    A STEP OF ITS OWN, AFTER THE SITE DATA (5 October 2026). This was the
+    end of the run that writes the messages, and that run has to come before
+    the site data, which puts each message on its bill's page. So it read
+    the site the LAST build had left, site/index.json; and on GitHub's
+    machine, where site/ starts empty, it read nothing and said nothing. The
+    statuses are the site's -- build_site_v2 reads them from the status page
+    and the docket together -- so this waits for them (build_all.py).
+    """
+    import site_read as SR
+    rows = SR.bill_index_or_stop(a.site, "extract_vetoes.py --gaps")
+    try:
+        have = json.loads(Path(a.out).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        sys.exit(f"{a.out} will not read ({e}): run extract_vetoes.py first")
+    sroot = Path(a.senate_dir)
+    # The terms a calendar on disk covers, by the year folder it sits in, the
+    # way main() files what it reads.
+    covered = {P.term_of(f.parts[-2]) for r in (Path(a.dir), sroot) if r.exists()
+               for f in r.rglob("*.txt")}
+    want = collections.Counter()
+    vetoed = 0
+    for b in rows:
+        if "eto" not in (b.get("status") or ""):
+            continue
+        vetoed += 1
+        if b.get("id") in (have.get(b.get("term")) or {}):
+            continue
+        want[(b.get("term"), re.match(r"[A-Z]+", b["id"]).group(0))] += 1
+    print(f"{vetoed:,} vetoed bills in the site's index, "
+          f"{vetoed - sum(want.values()):,} with a message in {a.out}")
+    if want:
+        print("  vetoed bills with no message here:")
+        for (term, kind), n in sorted(want.items()):
+            # Two different gaps, and a bill can be in both. Say which one
+            # actually applies rather than whichever the test reaches first.
+            if term not in covered:
+                why = f"no calendar for {term} is on disk"
+            elif kind == "SB" and not sroot.exists():
+                why = ("their messages are in the SENATE calendars, and "
+                       f"{a.senate_dir}/ is not there")
+            else:
+                why = "no calendar on disk carries one"
+            print(f"    {n:>2} {kind} in {term} -- {why}")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default="calendars",
@@ -444,7 +498,15 @@ def main():
     ap.add_argument("--index", default="calendars.json",
                     help="calendar name -> its address on gc.nh.gov")
     ap.add_argument("--probe", action="store_true", help="print, write nothing")
+    ap.add_argument("--gaps", action="store_true",
+                    help="once the site is built: the vetoed bills with no "
+                         "message here, and why; writes nothing")
+    ap.add_argument("--site", default="site",
+                    help="(--gaps) the built site, whose bill index says "
+                         "which bills were vetoed")
     a = ap.parse_args()
+    if a.gaps:
+        return gaps(a)
 
     root = Path(a.dir)
     if not root.exists():
@@ -546,31 +608,8 @@ def main():
         for x in mismatched[:4]:
             print(f"    {x}")
 
-    # What is missing, said out loud rather than left to be found on a page.
-    try:
-        idx = json.loads(Path("site/index.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        idx = []
-    want = collections.Counter()
-    for b in idx:
-        if "eto" not in (b.get("status") or ""):
-            continue
-        if b.get("id") in (out.get(b.get("term")) or {}):
-            continue
-        want[(b.get("term"), re.match(r"[A-Z]+", b["id"]).group(0))] += 1
-    if want:
-        print("  vetoed bills with no message here:")
-        for (term, kind), n in sorted(want.items()):
-            # Two different gaps, and a bill can be in both. Say which one
-            # actually applies rather than whichever the test reaches first.
-            if term not in out:
-                why = f"no calendar for {term} is on disk"
-            elif kind == "SB" and not sroot.exists():
-                why = ("their messages are in the SENATE calendars, and "
-                       f"{a.senate_dir}/ is not there")
-            else:
-                why = "no calendar on disk carries one"
-            print(f"    {n:>2} {kind} in {term} -- {why}")
+    # What is missing is said by --gaps, a step of its own once the site is
+    # built: gaps() says why it is not said here.
 
     if a.probe:
         k = next(iter(sorted(best)), None)

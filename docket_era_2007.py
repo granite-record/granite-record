@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.4
+# GRANITE_VERSION: 2026-09-11.5
 """
 The 2007-2016 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -132,7 +132,15 @@ ERA = [
         r"(?:\s*\(?\s*(?P<y>\d+)\s*Y?\s*-\s*(?P<n>\d+)\s*N?\)?)?|=)[,;:\s]*){1,5}"
         r"(?(motion)|(?!))"
         r"(?:OT\s*\d\s*rdg[,;\s]*)?"
-        r"(?:Refer(?:red)?\s+to\s+(?P<refer>[A-Z][A-Za-z ]+?)(?:\s*\[?\s*Rule\s*[\d\-]+\s*\]?)?)?"
+        # The committee runs to the rule, bracket or separator after it: with
+        # nothing required after it, "[A-Za-z ]+?" stopped at two letters, and
+        # "Refer to Finance [Rule 26]" sent the bill on to "the Fi committee"
+        # (SB 106 of 2009), "Refer to Executive ..." to "the Ex committee".
+        # Read ahead, so that what the pattern goes on to take -- the date,
+        # where the row has one -- is what it always took.
+        r"(?:(?=Refer(?:red)?\s+to\s+(?P<refer>[A-Z][A-Za-z ]*?[A-Za-z])"
+        r"(?=\s*(?:\[|\(|Rule\b|[,;]|\d|$)))?"
+        r"Refer(?:red)?\s+to\s+[A-Z][A-Za-z ]+?(?:\s*\[?\s*Rule\s*[\d\-]+\s*\]?)?)?"
         # the modern shape carries its date straight after the vote
         r"[,;\s]*(?:\(?\s*in\s+recess(?:\s+of)?\s*)?(?P<date>\d{1,2}/\d{1,2}/\d{4})?",
         re.I)),

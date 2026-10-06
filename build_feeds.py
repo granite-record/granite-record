@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -249,7 +249,8 @@ def main():
                     help="remove stale feeds even when more than a quarter of a folder")
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
-    idx = json.loads((site / "index.json").read_text(encoding="utf-8"))
+    # Every bill's row, from the term files the pages read (site_read).
+    idx = SR.bill_index_or_stop(site, "build_feeds.py")
     # Keyed on (term, bill), because a bill number is unique within a term and
     # not across terms. build_feeds had no notion of a term at all, and it is
     # 2,233 of the site's 8,017 files.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.24
+# GRANITE_VERSION: 2026-09-10.30
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -10,8 +10,9 @@ WHY
 Everything this site knows is already published as JSON, and JSON is a fine
 answer for a program and a poor one for a person with a spreadsheet and a
 question. Somebody building a scorecard, checking a claim about a member's
-votes, or teaching a class should not have to learn how index.json is shaped
-or which of nineteen per-term files to fetch first. A CSV opens in anything.
+votes, or teaching a class should not have to learn how the bill index is
+shaped or which of nineteen per-term files to fetch first. A CSV opens in
+anything.
 
 WHAT IT REFUSES TO DO
 
@@ -35,6 +36,7 @@ from pathlib import Path
 import bill_order as BO
 import build_date
 import past_sponsors as PSP
+import site_read as SR
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
 # the bill pages say it: one constant, so the three cannot drift apart.
@@ -117,11 +119,18 @@ def coverage(out):
 
 
 def bills(out, site):
-    idx = load(site / "index.json", [])
+    # Every bill's row, from the term files the pages read (site_read). It
+    # stops where there is none: this read [] from a missing file and would
+    # have written a bills.csv of no bills.
+    idx = SR.bill_index_or_stop(site, "build_exports.py")
     # chapter goes last so a reader who counted columns before it existed
-    # still finds each one where it was.
+    # still finds each one where it was -- and chip after it, for the same
+    # reason. chip is a column of its own rather than a new meaning for
+    # status: status keeps how the bill stands or ended ("Killed", "Vetoed,
+    # override failed"), and chip is the word its card shows
+    # (build_site_v2.chip_word, 5 October 2026).
     cols = ["term", "year", "bill", "title", "sponsor", "committee", "topic",
-            "status", "outcome", "passage", "roll_calls", "chapter"]
+            "status", "outcome", "passage", "roll_calls", "chapter", "chip"]
     rows = ([b.get("term", ""), b.get("year", ""), b.get("id", ""),
              b.get("title", ""), b.get("sponsor", ""),
              "; ".join(b.get("committees") or ([b["committee"]]
@@ -129,7 +138,8 @@ def bills(out, site):
              b.get("topic", ""), b.get("status", ""), b.get("kind", ""),
              # Five characters: where it started and each stop it reached.
              # Documented on the data page rather than left as a code.
-             b.get("passage", ""), b.get("nrc", 0), b.get("chapter", "")]
+             b.get("passage", ""), b.get("nrc", 0), b.get("chapter", ""),
+             b.get("chip", "")]
             # By term, then by number as the site lists bills. As text,
             # HB1003 was row 38 of 2025-2026 and HB103 row 67.
             for b in sorted(idx, key=lambda b: (str(b.get("term")),
@@ -258,13 +268,13 @@ def proceedings_table(out, site, table=None, histories=None):
     from disk unless a caller hands them in.
     """
     import proceedings as P
-    import site_read as SR
     cols = ["term", "bill", "body", "kind", "date", "time", "committee",
             "venue", "video_id", "video_title", "start_seconds",
             "end_seconds", "how_placed", "end_how", "scheduled_seconds"]
-    idx = load(Path(site) / "index.json", [])
+    # The year folder each bill's page is under. No site is no folders, and
+    # then no station either; main() has already stopped in bills() for it.
     folder = {(b.get("term"), b.get("id")): str(b.get("year") or "")
-              for b in (idx if isinstance(idx, list) else [])}
+              for b in (SR.bill_index(site) or [])}
     stations = SR.by_bill(site, SR.video_years(), fields=("stations",))
 
     def published(r):
@@ -579,6 +589,29 @@ def data_page(site, out, tables, base, cov=()):
       the pair <code>bill</code>&nbsp;+&nbsp;<code>term</code> is what joins
       them. Getting this wrong silently merges two centuries of different
       bills, which is a mistake this project has made and fixed.</p>
+    <p class="src"><b>The <code>status</code>, <code>outcome</code> and
+      <code>chip</code> columns</b> in bills.csv say where a bill stands in
+      three ways. <code>status</code> is how it stands or how it ended, in
+      full: <i>Killed</i>, <i>Died on the table</i>, <i>Vetoed, override
+      failed</i>, <i>In committee</i>. <code>outcome</code> is the kind of
+      that status: <code>active</code> for a bill still moving,
+      <code>law</code>, <code>done</code>, <code>veto</code>,
+      <code>study</code> for interim study, and <code>adopted</code> for a
+      resolution adopted or a constitutional amendment both chambers passed.
+      <code>chip</code> is the word the bill&#39;s card and the bill
+      search&#39;s Status filter show: Became Law, Died, Interim Study,
+      Tabled, Vetoed or Withdrawn. Tabled is a bill on the table while its
+      session still has days to sit, and Vetoed a veto whose override vote
+      is still to come; once the session has ended either is Died, and a
+      veto both chambers overrode is Became Law. A bill still moving has its
+      stage there instead, and an adopted resolution, a constitutional
+      amendment&#39;s ballot, a bill only proposed for a special session, one
+      the House did not introduce and one awaiting the governor have their
+      own words. Each row of <code>/idx/&lt;term&gt;.json</code> and of a
+      committee&#39;s file carries the same
+      word as <code>chip</code>, beside its <code>status</code>.
+      <code>chip</code> is the last column, so every column before it is
+      where it was before it was added.</p>
     <p class="src"><b>The <code>passage</code> column</b> in bills.csv is
       where the bill started, <code>H</code> or <code>S</code>, then one
       character per stop in the order it travelled: the chamber it started
@@ -590,6 +623,26 @@ def data_page(site, out, tables, base, cov=()):
       resolution goes to both chambers and has five. The column is empty
       where the docket does not record enough of the bill&#39;s journey to
       draw it, or records one its outcome contradicts.</p>
+    <p class="src"><b>The <code>rail</code> field</b> of a row of
+      <code>/idx/&lt;term&gt;.json</code> is the rail the bill&#39;s card
+      draws: one entry a stop, in the order the bill travelled, each the
+      stop&#39;s letter &mdash; <code>I</code> introduced, <code>H</code>,
+      <code>S</code>, <code>G</code> the Governor, <code>L</code> the statute
+      book, <code>V</code> the voters &mdash; with its mark as in
+      <code>passage</code>, then the day and a word or two of how it went
+      where there are any. The card draws the day under each stop; the words
+      are what its rail says to a reader who hears the page. It is not in
+      bills.csv.</p>
+    <p class="src"><b>A constitutional amendment&#39;s ballot.</b> What the
+      voters made of an amendment both chambers sent them is the
+      docket&#39;s word where it records one, and otherwise
+      <code>ballot_results.json</code>&#39;s, a file in the repository that
+      no script writes: the statewide Yes and No votes on each, from
+      Ballotpedia&#39;s list of New Hampshire ballot measures, with the day
+      they were read. An amendment needs two thirds of the votes cast on it,
+      so the <code>status</code> says ratified or not ratified by that
+      measure and not by a majority, and a bill&#39;s own page shows the two
+      counts beside it.</p>
     <p class="src"><b>The <code>chapter</code> column</b> is the chapter of
       that year's session laws the bill became: the bill&#39;s status page
       where the General Court gives one, and otherwise the docket&#39;s law
@@ -650,12 +703,15 @@ def data_page(site, out, tables, base, cov=()):
       every table with its rows, byte size and column names, so a script can
       discover what is here in one request instead of guessing from
       filenames. The site&#39;s own JSON is served from this origin too and is
-      open to cross-origin requests:
-      <a href="index.json">index.json</a> (every bill),
-      <a href="legislators.json">legislators.json</a>,
-      <a href="rollcalls_index.json">rollcalls_index.json</a>, and
-      <code>idx/&lt;term&gt;.json</code>, which is index.json split by
-      biennium for anybody who wants one term rather than all nineteen.</p>
+      open to cross-origin requests: <code>idx/&lt;term&gt;.json</code>, each
+      term&#39;s bills as the bill list and the search read them, which the
+      manifest lists with their addresses and sizes;
+      <a href="legislators.json">legislators.json</a>; and
+      <a href="rollcalls_index.json">rollcalls_index.json</a>. Every
+      term&#39;s file together is every bill. One file of all of them,
+      index.json, was retired on 5 October 2026, when it had grown to nine
+      tenths of the largest file this site&#39;s host will serve; the same
+      bills are bills.csv above, in one table.</p>
 
     {feeds(site)}
 
@@ -681,7 +737,7 @@ def data_page(site, out, tables, base, cov=()):
       <dd>{_rf}The roll-call history as the General Court published it, and
         the handful of files a person made by hand &mdash; the timings taken
         with a stopwatch, the corrections, the offices filled in from official
-        sources.</dd>
+        sources, the voters&#39; counts on the constitutional amendments.</dd>
       <dt>What it does not</dt>
       <dd>The rest of the record &mdash; the dockets, the database dump, the saved
         bill pages, the calendars and the journals &mdash; which is the
@@ -723,6 +779,32 @@ def data_page(site, out, tables, base, cov=()):
                         f'<div id="results">{body}</div>', 1)
     (site / "data.html").write_text(page, encoding="utf-8")
     print(f"  {'data.html':<28} the same tables, described")
+
+
+def bill_indexes(site, origin):
+    """The bill index the site publishes, one JSON file per term, for the
+    manifest: each term, its address, its bills and its bytes, newest term
+    first -- the order meta.json names them in, and site_read reads them in.
+
+    THE MANIFEST NAMES THEM because it is where a program starts (the data
+    page says so, and the host lets another site read it), and the files are
+    the site's own JSON rather than a table here: every bill's row, as the
+    bills page and the search read it. One request finds every term's file
+    and how big it is."""
+    rows = SR.bill_index_or_stop(site, "build_exports.py")
+    counts = {}
+    for r in rows:
+        counts[r["term"]] = counts.get(r["term"], 0) + 1
+    return {
+        "what": "Every bill's row as the site's own bill list and search read "
+                "it -- title, sponsor, committees, topic, status, passage -- "
+                "as JSON, one file per term, newest term first. Together they "
+                "are every bill of every term; bills.csv is the same bills as "
+                "one table.",
+        "terms": [{"term": t, "url": f"{origin}/idx/{t}.json", "bills": n,
+                   "bytes": (Path(site) / "idx" / f"{t}.json").stat().st_size}
+                  for t, n in counts.items()],
+    }
 
 
 def main():
@@ -773,6 +855,7 @@ def main():
         "tables": [{k: v for k, v in t.items() if k != "over_cap"}
                    for t in tables],
     }
+    manifest["bill_indexes"] = bill_indexes(site, manifest["site"])
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)

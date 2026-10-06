@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.140
+// GRANITE_VERSION: 2026-09-07.145
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -10,6 +10,14 @@ const DOCWHAT={text:"the bill as it currently stands",
 // introduction steps over, on 2 October 2026.
 const STATUS_NOT_FROM_PAGE="the General Court's own status page for this bill; "
   +"the status shown here is read from the House Journal instead";
+// And of a constitutional amendment the voters have answered: its status page
+// stops at the second chamber, so "ratified" or "not ratified" is the docket's
+// referendum line or the count on the Votes tab (build_site_v2's
+// status_source), not this page's (the review of 5 October 2026).
+const statusUpToTheVoters=d=>"the General Court's own status page for this "
+  +"amendment, which stops at the second chamber's vote; whether the voters "
+  +"ratified it is read from "+(d.status_source==="General Court docket"
+    ?"its docket's referendum line":"the count on the Votes tab");
 // WHAT THE SHORTHAND STANDS FOR. A citation is printed the way the General
 // Court prints it -- "HJ 1, page 32" is what a reader would quote -- but HJ
 // and SC are insider shorthand, and this site exists to make the record
@@ -35,10 +43,25 @@ const byParty=(a,b)=>partyRank(a)-partyRank(b)||String(a).localeCompare(String(b
 const yeaFirst=(a,b)=>a===b?0:(a==="Yea"?-1:1);
 const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
             study:"s-study",adopted:"s-adopted"};
-// "Became law" is wrong for a resolution: an adopted House Resolution is
-// finished and successful and is not law. It needed its own word.
-const KINDL={active:"In progress",law:"Became law",done:"Killed",
-             veto:"Vetoed",study:"Interim study",adopted:"Adopted"};
+// THE CHIP: six words for where a bill stands, and a still-moving bill's
+// stage (the person, 5 October 2026). build_site_v2.chip_word chooses the
+// word and the index carries it as `chip`; this only draws it. The status --
+// "Killed", "Vetoed, override failed" -- stays on the bill's own view, in On
+// the record, the history and the rail. The colour is the word's, so every
+// Died is one colour whether the bill was killed or its veto stood; a word
+// that is not one of the six -- a stage, an adopted resolution -- takes its
+// kind's. "Became law" is wrong for a resolution, which is adopted and is
+// not law: its chip is its own word, "Adopted by the House".
+const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",
+  "Tabled":"s-active","Vetoed":"s-veto","Withdrawn":"s-done"};
+const CHIPORDER=Object.keys(CHIPCLASS);
+// A request's row has no chip, and its status is its word.
+const chipOf=b=>(b&&(b.chip||b.status))||"";
+const chipCls=b=>CHIPCLASS[chipOf(b)]||KIND[b.kind]||"";
+// The six first, in their order, then the rest as words.
+const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
+  return (x<0?CHIPORDER.length:x)-(y<0?CHIPORDER.length:y)
+    ||String(a).localeCompare(String(b));};
 // WHAT THE BALLOT CODE SAYS, AND NOTHING IT DOES NOT. Each line is attributed
 // to the record ("Recorded as ...") because the roll call carries the code and
 // no reason. On 42% of the House member-days with an Excused ballot,
@@ -2170,7 +2193,9 @@ const billCmp=(a,b)=>{const x=billKey({id:String(a||"")}),y=billKey({id:String(b
 // committees, so a facet value is a list. Sorting the list alphabetically also
 // groups it: every House committee, then every Senate one.
 function facetVals(b,k){
-  if(k==="kind")return [b.kind];
+  // The Status filter is the chip's word. Not chipOf: a request has no chip,
+  // and its "Filed as a request" is not a status to filter by.
+  if(k==="chip")return [b.chip];
   if(k==="committee")return b.committees||(b.committee?[b.committee]:[]);
   return [b[k]];
 }
@@ -2195,8 +2220,10 @@ function sortRows(rows){
     // After that the outcomes group together and run alphabetically inside
     // each group. That is a filing order, not a ranking: a bill dying is an
     // outcome, not a failure, and nothing here puts one outcome above another.
+    // A group is a chip's word, and inside it the bills run by their status,
+    // so the Died are listed killed with killed and tabled with tabled.
     status:(a,b)=>((a.kind==="active"?0:1)-(b.kind==="active"?0:1))
-                  || (a.kind||"").localeCompare(b.kind||"")
+                  || chipCmp(chipOf(a),chipOf(b))
                   || (a.status||"").localeCompare(b.status||"")
                   || billKey(a)[1]-billKey(b)[1],
   }[sortBy]||(()=>0);
@@ -2214,7 +2241,7 @@ function sortRows(rows){
   }
   return rows.slice().sort(by);
 }
-const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),kind:new Set(),
+const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),chip:new Set(),
            voteday:new Set()};
 // On a phone the filter column stacks ABOVE the results, and an open
 // Committee group is 340 pixels of it -- so the first bill sat past a
@@ -2634,7 +2661,7 @@ function matches(b,ignore){
   if(ids)return ids.includes(b.id.toUpperCase())&&inTermOf(b);
 
   if(!inTermOf(b))return false;
-  for(const k of["committee","topic","sponsor","kind"])
+  for(const k of["committee","topic","sponsor","chip"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
   const q=query.trim(); if(!q)return true;
@@ -2642,7 +2669,11 @@ function matches(b,ignore){
   return groupsFor(q).every(g=>groupWeight(b,g)>0);
 }
 
-function fgroup(key,label,vals,counts,searchable){
+// `paint`, where given, draws each value as a chip of that class: the Status
+// filter's words look as they do on the cards. The chip wraps here: "Passed
+// both chambers, goes to the voters in November 2026" ran out of the 250px
+// column on one line and was cut off at "the vote".
+function fgroup(key,label,vals,counts,searchable,paint){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
@@ -2658,7 +2689,8 @@ function fgroup(key,label,vals,counts,searchable){
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
-      <span>${key==="kind"?`<span class="cstat ${KIND[v]}" style="padding:1px 8px">${KINDL[v]}</span>`:esc(v)}</span>
+      <span>${paint?`<span class="cstat ${paint(v)}" style="padding:1px 8px;white-space:normal;display:inline-block">${
+        esc(v)}</span>`:esc(v)}</span>
       <span class="c">${counts[v]||0}</span></label>`).join("");
   }
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
@@ -2679,7 +2711,14 @@ function renderFacets(){
   // the biennium, and splitting one term into its two filing years was a
   // second control for a distinction the card prints on its own. (The
   // <select id="year"> is the TERM picker, despite its id, and stays.)
-  h+=fgroup("kind","Status",["active","law","done","veto"].filter(k=>present("kind").includes(k)),cnt("kind","kind"));
+  // THE CHIP'S WORDS (chip_word), the six first and then the stages of the
+  // bills still moving and the words that are not one of the six. It offered
+  // four kinds -- In progress, Became law, Killed, Vetoed -- and no way to
+  // ask for a bill sent to interim study or an adopted resolution.
+  const chipKind={};
+  inYear.forEach(b=>{if(b.chip&&!(b.chip in chipKind))chipKind[b.chip]=b.kind;});
+  h+=fgroup("chip","Status",present("chip").sort(chipCmp),cnt("chip","chip"),false,
+    v=>CHIPCLASS[v]||KIND[chipKind[v]]||"");
   const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
   const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
   if(allDays.length)h+=fgroup("voteday","Floor vote day",allDays,days);
@@ -3431,7 +3470,8 @@ function factsTable(b,d){
 //    the page said nothing, so "Referred for interim study" stood as the last
 //    word for months after the committee had answered.
 //  - a term that has run out of session days finishes every bill still
-//    pending. The chip keeps the record's own word ("Laid on the table");
+//    pending. The status keeps the record's own word ("Laid on the table",
+//    where the chip says Died);
 //    this says why nothing follows it. status/status.txt sets the date.
 function endNote(d){
   const s=d.study_report,out=[];
@@ -3579,7 +3619,100 @@ function renderVotes(b,d){
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
-    :`<p class="note">No roll call votes on this bill.</p>`);
+    :`<p class="note">No roll call votes on this bill.</p>`)+ballotCard(d);
+}
+
+// THE VOTERS' VOTE ON A CONSTITUTIONAL AMENDMENT (the person, 5 October 2026:
+// "an additional vote on those CACRs for the public vote with the 2/3
+// indicator"). After the chambers' votes, the statewide one at the general
+// election, from d.ballot (build_site_v2.ballot_card, out of the hand-made
+// ballot_results.json), and the day of it where it is still to come.
+//
+// THE SAME RING AS EVERY OTHER COUNTED VOTE, with the mark at two thirds of
+// the votes cast -- not at a majority, which is the whole point of it: CACR 6
+// of 2024 won 65.6% and was not ratified, and a majority mark would call that
+// a win. Whether it was ratified is the build's answer (ratified()), drawn
+// here, not worked out again.
+//
+// THE COUNTS ARE NOT IN THE RING. They run to six figures with their
+// separators -- "452,307" -- and the hole in the ring is 92px across: a roll
+// call's "309 | 9" fits there and "452,307 | 237,221" does not. The yes share
+// goes there instead, and the counts in full go in the legend beside it,
+// which drops under the ring on a phone and does not wrap a number.
+const thou=n=>Number(n||0).toLocaleString("en-US");
+const share=(n,of)=>`${(of?100*n/of:0).toFixed(1)}%`;
+function ballotRing(y,n,won){
+  const tot=(y+n)||1;
+  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap;
+  const seg=(len,fill,sideWon)=>`<circle r="${R}" cx="86" cy="86" fill="none" stroke="${fill}"
+    stroke-width="28" opacity="${sideWon?1:.75}"
+    stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-gap/2}"></circle>`;
+  // Two thirds of the way round from the gap: where the yes side had to reach.
+  const a=(180+GAP/2+(360-GAP)*2/3)*Math.PI/180;
+  const said=`The voters: ${thou(y)} yes to ${thou(n)} no, ${share(y,tot)} yes, `
+    +`needing two thirds; ${won?"ratified":"not ratified"}`;
+  const check=`<span class="won" title="this side prevailed">\u2713</span>`;
+  return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
+    role="img" aria-label="${esc(said)}">
+    <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
+    <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
+    ${marker(a,R,"Two thirds of the votes cast","")}${yn(GAP,R,won)}
+    <text x="86" y="89" text-anchor="middle" font-size="18" font-weight="${won?700:400}"
+      fill="var(--ink)" font-variant-numeric="tabular-nums">${share(y,tot)}</text>
+    <text x="86" y="106" text-anchor="middle" font-size="12" fill="var(--ink-2)">yes</text></svg>
+    <div class="legend">
+      <div class="lrow"><span class="sw" style="background:var(--yes)"></span>
+        <span>Yes${won?check:""}</span><span class="c">${thou(y)} · ${share(y,tot)}</span></div>
+      <div class="lrow"><span class="sw" style="background:var(--no)"></span>
+        <span>No${won?"":check}</span><span class="c">${thou(n)} · ${share(n,tot)}</span></div>
+    </div></div>`;
+}
+// The votes the tab draws: the chambers' and, on a CACR, the voters'.
+const votesDrawn=d=>(d.rollcalls||[]).length+(d.ballot&&!d.ballot.pending?1:0);
+// ONE DATE STYLE IN THE CARD, the head's: "Nov 3, 2026" over "The vote is on
+// 3 November 2026" and "read 5 October 2026" was two in four lines (the
+// review of 5 October 2026), and the head's is every vote card's above it.
+function ballotCard(d){
+  const v=d.ballot;
+  if(!v)return "";
+  const head=res=>`<div class="rchead"><h2 class="rcq">The voters</h2>
+      <span class="rcd">${esc(fdate(v.date))} · State general election</span>${res}</div>`;
+  const src=`<p class="src">Source: <a href="${esc(v.source)}" target="_blank"
+      rel="noopener">Ballotpedia, List of New Hampshire ballot measures</a>, read
+      ${esc(fdate(v.read))}, which lists it as &ldquo;${esc(v.label)}&rdquo;.</p>`;
+  // An election to come, and one past whose count is not in the file yet
+  // (v.over, build_site_v2.ballot_card): the status says "went to the voters"
+  // the day after, and so does this.
+  if(v.pending)return `<section class="rc ballot">${head("")}
+    <p class="bout">${v.over
+      ?`The vote was on ${esc(fdate(v.date))}; its count is not recorded here yet.`
+      :`The vote is on ${esc(fdate(v.date))}.`}</p>
+    <p class="note">This ${v.over?"was":"is"} the statewide public vote, at the general
+      election. An amendment to the constitution needs two thirds of the votes cast
+      on it.</p>
+    ${src}</section>`;
+  const y=v.yes,n=v.no,tot=y+n,won=!!v.ratified;
+  const word=won?"Ratified":"Not ratified";
+  const how=3*y===2*tot?"exactly":won?"more than":"short of";
+  return `<section class="rc ballot">${head(`<span class="rcres ${won?"pass":"fail"}">${word}</span>`)}
+    <p class="bout">${word}: ${share(y,tot)} voted yes, ${how} the two thirds it needed.</p>
+    <p class="note">This was the statewide public vote, at the general election. An
+      amendment to the constitution needs two thirds of the votes cast on it: the
+      mark on the ring.</p>
+    ${ballotRing(y,n,won)}
+    ${v.docket?`<p class="note">${docketDiffers(v)}</p>`:""}
+    ${src}</section>`;
+}
+// WHICH FIGURE DIFFERS, AND WHOSE THE CARD'S ARE. "The docket records this vote
+// as 249,759 to 204,475" under "No 204,457" left a transposition for the reader
+// to find and did not say which of the two the card drew (the review of 5
+// October 2026).
+function docketDiffers(v){
+  const [dy,dn]=v.docket;
+  const side=(got,ours,word)=>got===ours?"":`${thou(got)} votes ${word}, not ${thou(ours)}`;
+  const said=[side(dy,v.yes,"for"),side(dn,v.no,"against")].filter(Boolean).join(", and ");
+  return `The General Court&#39;s docket records ${said}. The counts above are
+      Ballotpedia&#39;s, and How it got here gives the docket&#39;s.`;
 }
 
 // What a player's frame is titled: "Recording of HB 2 - House Finance Public
@@ -4452,7 +4585,9 @@ function renderDocuments(b,d){
              // did not: a bill the House Journal leaves out of those it
              // introduced reads Not introduced here and IN COMMITTEE there.
              : `<span>${x.kind==="status"&&d.status_source==="House Journal"
-                 ? STATUS_NOT_FROM_PAGE : (DOCWHAT[x.kind]||"")}</span>`}</li>`;
+                 ? STATUS_NOT_FROM_PAGE
+                 : x.kind==="status"&&d.ballot&&!d.ballot.pending
+                 ? statusUpToTheVoters(d) : (DOCWHAT[x.kind]||"")}</span>`}</li>`;
          }).join("")}</ul>`
       : `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
@@ -4785,7 +4920,8 @@ function renderDetail(b,d){
         // 2,011 of the current term's 2,234 bills -- mostly bills whose only
         // votes were voice votes, which showed "Votes" with nothing beside
         // it and 3 sections beneath.
-        (d.rollcalls||[]).length?` (${d.rollcalls.length})`:""}</button>
+        // And the voters' vote on an amendment they were sent, once cast.
+        votesDrawn(d)?` (${votesDrawn(d)})`:""}</button>
     <!-- HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
          time and the room -- and a recording where one exists. Recordings
          begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
@@ -5217,18 +5353,47 @@ function rail(b){
     ).join("")}</span>`;
 }
 
-// THE RAIL ON A BILL'S OWN VIEW, DATED -- the bill's own page and a card
-// opened in the list (the person chose it on 24 September). Under each stop
-// the day and one or two words of what happened there: "Senate / 22 May /
-// 16–8, amended". The list card keeps the bare rail above, which is a glyph
-// to scan past; this one is read.
+// THE RAIL, DATED -- on the bill's own page (the person chose it on 24
+// September) and, since 5 October 2026, on every card in a list from the
+// start: "One rail, always detailed". Under each stop the day of what
+// happened there, and nothing else: "Senate / 22 May". The list card drew
+// the bare rail above until then, and opening a card swapped one for the
+// other, so the rail changed shape as the card opened; now opening it
+// changes nothing about the rail. The bare one is left for a row that carries
+// no stops (idxRow's stand-in for a bill the index does not hold).
+//
+// THE DAY ALONE, NOT THE WORDS (the person, 5 October 2026: "only have
+// dates for the actions under each of the items since including the
+// explanations like voice vote and such just crowds things up"). Each stop
+// carried a word or two under its day as well -- "16–8, amended", "voice
+// vote", "signed", "Chapter 160", "Nov 2026" -- and on a card in a list, five
+// stops of that was a paragraph under every bill. How each chamber decided is
+// told where it always was: How it got here, the history, the Votes tab and
+// the voters' card. A stop with no day -- the Law stop, a vote the voters have
+// still to take, a stop never reached -- has nothing under its name. The
+// sentence a screen reader hears keeps its words, since nothing is drawn
+// from it.
 //
 // Its stops follow the bill's route and come from the record's journey
 // (build_site_v2.journey_rail): Introduced first; a resolution of one chamber
 // has that chamber; a concurrent resolution two chambers and no governor; a
 // CACR goes to the Voters, ringed while it waits for them. The marks are the
-// index's passage, the same the list card draws, and the words are the same
-// lines "How it got here" lists -- one account in three places.
+// index's passage, and the words are the same lines "How it got here" lists --
+// one account in three places.
+//
+// A CARD IN A LIST HAS NO RECORD YET, so the index row carries the stops
+// (b.rail, build_site_v2.index_rail): ["Sp","2025-05-22","16–8, amended"],
+// the stop's letter and its mark, its day, and the words its sentence says.
+// The bill's own page draws the record's rail, which is the same stops on the
+// same days by construction (preflight holds the two equal on every bill) and
+// carries what each stop says in full, for the sentence a reader hears.
+//
+// AND THE CARD KEEPS ITS ROW'S RAIL ONCE OPENED (cardHtml). It drew the
+// record's as soon as the record came, and what was drawn stayed the same
+// while what a screen reader heard changed under it: "Governor: passed,
+// signed" became "Governor: signed, 27 June 2025" (the review of 5 October
+// 2026). Opening a card changes nothing about its rail, seen or heard; a row
+// with no stops is the one card that still waits for the record's.
 //
 // A stop not reached has no date. The year is on the first date and wherever
 // it changes, so "8 Jan 2025 ... 13 Feb ... 7 Jan 2026" reads without a key.
@@ -5240,27 +5405,43 @@ function railDay(iso,year,long){
   if(!m)return "";
   return `${+m[3]} ${(long?RAILMONTH:RAILMON)[+m[2]-1]}${year?` ${m[1]}`:""}`;
 }
+const RAILSTOP={I:"Introduced",H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
+function railStops(b,d){
+  const own=((d||{}).journey||{}).rail||[];
+  if(own.length)return own;
+  return (b.rail||[]).map(([sm,date,short])=>({stop:RAILSTOP[sm[0]]||sm[0],
+    mark:sm.slice(1),date:date||"",short:short||"",say:""}));
+}
 function datedRail(b,d){
-  const st=((d||{}).journey||{}).rail||[];
+  const st=railStops(b,d);
   if(!st.length)return rail(b);
   let was="";
   const cells=st.map(s=>{
     const y=(s.date||"").slice(0,4);
     const day=s.date?railDay(s.date,y!==was):"";
     if(s.date)was=y;
-    const sub=[day,s.short].filter(Boolean);
+    // The day and nothing else: s.short is said below, never drawn.
     return `<span class="stop s-${esc(s.mark==="-"?"o":s.mark)}"><b>${
-      RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${sub.length
-      ?`<small>${sub.map(esc).join("<br>")}</small>`:""}</span>`;
+      RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${day
+      ?`<small>${esc(day)}</small>`:""}</span>`;
   });
   // The same facts as a sentence, for a reader who hears the page: every
   // date in full -- the Law stop's words carry one of their own, "in effect
   // 11 Jan 2026" -- and a tally read "16 to 8" rather than a dash.
   const said=st.map(s=>{
     const when=s.date?railDay(s.date,true,true):"";
-    const what=(s.say||"").replace(/(\d)–(\d)/g,"$1 to $2")
+    // From the index, before the record is here, the mark's word and the
+    // stop's own: "House: passed, voice vote, 13 February 2025". The
+    // governor's, the law's and the voters' own words already say how it
+    // went -- "signed", "Chapter 140", "not ratified" -- and "passed, signed"
+    // said it twice; so does "Nov 2026", in full, as every other date is.
+    const own=s.short&&/^(Governor|Law|Voters)$/.test(s.stop)&&/^[px]$/.test(s.mark);
+    const what=(s.say||(own?s.short:[RAILSAY[s.mark],s.short].filter(Boolean).join(", ")))
+      .replace(/(\d)–(\d)/g,"$1 to $2")
       .replace(/\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
-        (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
+        (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`)
+      .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
+        (_m,mo,y)=>`${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
     return s.stop==="Introduced"
       ?`Introduced${when?` ${when}`:""}`
       :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${when?`, ${when}`:""}`;
@@ -5280,10 +5461,10 @@ function cardHtml(b,focus){
         <div class="crow"><span class="cnum">${esc(b.n)} (${esc(String(y))})</span>
         <span class="cyear">${b.carried
           ?` <span class="chip" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
-        <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
+        <span class="cstat ${chipCls(b)}">${esc(chipOf(b))}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
-        ${(open||focus)&&detail[dkey(b.id)]?datedRail(b,detail[dkey(b.id)]):rail(b)}
+        ${datedRail(b,focus||!(b.rail||[]).length?detail[dkey(b.id)]:undefined)}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
         open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
@@ -5360,15 +5541,18 @@ function idxRow(b){
   return IDX.find(x=>x.id===id&&(!t||x.term===t))
       || (b.year?IDX.find(x=>x.id===id&&String(x.year)===String(b.year)):null)
       || {id,n:b.n||id,title:b.title||"",year:b.year||"",term:t,
-          status:b.status||"",kind:b.kind||"",sponsor:"",committees:[]};
+          status:b.status||"",kind:b.kind||"",chip:b.chip||"",sponsor:"",committees:[]};
 }
 
-// The bills of one tab, as cards, with the outcome filter above them.
+// The bills of one tab, as cards, with the outcome filter above them: the
+// chip's words, as the bill search's Status filter offers them. "Bill
+// status", not "Status": on a legislator's page a bare "Status: Died" sits
+// under the member's own name and facts, and the word is a bill's.
 function billPane(rows,note){
   rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
-  const statuses=[...new Set(rows.map(b=>b.status).filter(Boolean))].sort();
-  const shown=rows.filter(b=>!PAGE.status||b.status===PAGE.status);
-  return `<div class="bfilt"><label>Status
+  const statuses=[...new Set(rows.map(chipOf).filter(Boolean))].sort(chipCmp);
+  const shown=rows.filter(b=>!PAGE.status||chipOf(b)===PAGE.status);
+  return `<div class="bfilt"><label>Bill status
       <select data-pf="status"><option value="">Any</option>
       ${statuses.map(x=>`<option value="${esc(x)}"${x===PAGE.status?" selected":""}>${
         esc(x)}</option>`).join("")}</select></label></div>
@@ -6630,7 +6814,7 @@ function render(more){
   // Counted over what is on screen, not over the whole result set, so the
   // number beside a heading always matches the cards under it.
   const grpN={};
-  if(sortBy==="status")for(const b of shown)grpN[b.status||""]=(grpN[b.status||""]||0)+1;
+  if(sortBy==="status")for(const b of shown)grpN[chipOf(b)]=(grpN[chipOf(b)]||0)+1;
   // A LINK, TO THE BILL SEARCH. It was a button that called history.back(),
   // under a label that names a place: opened directly, a bill's page left
   // the site; reached from a member's page, "Back to bill search" went back
@@ -6639,9 +6823,9 @@ function render(more){
   // list returns as it was left; everywhere else this is an ordinary link.
   $("#results").innerHTML=(fb?`<a class="backto" href="${BASE}bills" data-back="1">\u2190 Back to
     bill search</a>`:"")+((rows.length||fb)?shown.map((b,gi,arr)=>`
-    ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
-      ?`<h2 class="grp">${esc(b.status||"No status recorded")}
-         <span>${grpN[b.status||""]}</span></h2>`:""}
+    ${!fb&&sortBy==="status"&&(gi===0||chipOf(arr[gi-1])!==chipOf(b))
+      ?`<h2 class="grp">${esc(chipOf(b)||"No status recorded")}
+         <span>${grpN[chipOf(b)]}</span></h2>`:""}
     ${b.lsr?lsrCardHtml(b):cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
       shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
       class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")

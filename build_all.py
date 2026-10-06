@@ -675,7 +675,19 @@ def plan(a):
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],
-             needs=["data/bills.json"], produces=["site/index.json"]),
+             needs=["data/bills.json"],
+             produces=["site/meta.json", "site/idx"]),
+
+        # AFTER THE SITE DATA, because what it reads is the site's own word for
+        # which bills were vetoed. It was the end of the step that writes the
+        # messages, which must come before the site data that puts them on the
+        # pages -- so it read the LAST build's index, and on GitHub's machine,
+        # where site/ starts empty, nothing at all, and said nothing.
+        Step("the vetoed bills whose message is not here",
+             ["extract_vetoes.py", "--gaps"],
+             needs=["site/meta.json", "veto_messages.json"],
+             note="writes nothing: the vetoed bills of each term with no "
+                  "message on disk, and why"),
 
         # AFTER "site data" AND BEFORE build_indexes: it reads the meta.json
         # build_site_v2 writes and merges one key into it, so running it first
@@ -684,12 +696,11 @@ def plan(a):
         # ordering to stay put.
         Step("the 2027 bill requests",
              ["build_lsrs.py", "--site", "site"],
-             # index.json rather than meta.json: the same step writes both,
-             # so this orders it the same way, and it is the one that step
-             # declares. build_lsrs.py asserts on meta.json itself, which is
-             # the guard that matters -- a missing key would otherwise show
-             # only as the picker quietly lacking an option.
-             needs=["site/index.json"], produces=["site/idx/2027-requests.json"],
+             # meta.json, which it reads and merges its key into. build_lsrs.py
+             # asserts on it as well, which is the guard that matters -- a
+             # missing key would otherwise show only as the picker quietly
+             # lacking an option.
+             needs=["site/meta.json"], produces=["site/idx/2027-requests.json"],
              note="what the next session will be about, months before a bill "
                   "of it exists: title and prime sponsor and nothing else, "
                   "which is all an LSR has"),
@@ -718,7 +729,7 @@ def plan(a):
 
         Step("a static page for every bill",
              ["build_bill_pages.py", "--site", "site", "--base", a.base],
-             needs=["site/index.json"], produces=["site/sitemap.xml"],
+             needs=["site/meta.json"], produces=["site/sitemap.xml"],
              note="what makes bills findable in a search engine"),
 
         Step("a static page for every sitting legislator",
@@ -730,14 +741,14 @@ def plan(a):
         Step("a page for every committee",
              ["build_committees.py", "--site", "site", "--data", "data",
               "--base", a.base],
-             needs=["site/index.json", "site/legislators.json"],
+             needs=["site/meta.json", "site/legislators.json"],
              produces=["site/committees.json"],
              note="what a committee did on a day, which bill-first search "
                   "cannot answer"),
 
         Step("how New Hampshire works",
              ["build_civics.py", "--site", "site", "--base", a.base],
-             needs=["site/index.json"],
+             needs=["site/meta.json"],
              produces=["site/learn.html"],
              note="eleven civics pages and the hub they hang off; needs no "
                   "data and no network, and it owns learn.html"),
@@ -811,13 +822,13 @@ def plan(a):
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base]
              + (["--allow-prune"] if getattr(a, "allow_prune", False) else []),
-             needs=["site/index.json"], produces=["site/feed/all.xml"],
+             needs=["site/meta.json"], produces=["site/feed/all.xml"],
              note="following a bill without an account, an email address or a "
                   "list that could leak"),
 
         Step("bulk downloads",
              ["build_exports.py", "--site", "site", "--base", a.base],
-             needs=["site/index.json", "site/feed/all.xml"],
+             needs=["site/meta.json", "site/feed/all.xml"],
              produces=["site/data/manifest.json", "site/data.html"],
              note="the same record as CSV, for anybody who would rather work "
                   "with it than read it, and the page that describes both the "

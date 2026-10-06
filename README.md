@@ -226,8 +226,7 @@ addresses:
 
 | | |
 |---|---|
-| `/index.json` | every bill, every term — title, sponsor, committee, topic, status, passage |
-| `/idx/<term>.json` | one term's bills; this is what the search page loads |
+| `/idx/<term>.json` | one term's bills — title, sponsor, committee, topic, status, the chip's word (`chip`: Became Law, Died, Interim Study, Tabled, Vetoed, Withdrawn, or a word of its own), passage, and its dated rail (`rail`: each stop, its mark, its day and a word or two of how it went — the card draws the day, and says the words to a reader who hears the page) — and what the bills page and the search load. Every term's file together is every bill of every term; `/data/manifest.json` lists them with their addresses, bills and sizes. They replace `/index.json`, the same rows in one file, retired on 5 October 2026 at nine tenths of the 25 MiB a file may be |
 | `/sidx/<term>.json` | what each of that term's bills is about, from its analysis and text: for each word, the bills it is central to and how central, and for each bill the pairs of those words that stand next to each other, each pair as five letters of a hash. The search fetches it when somebody searches. `/sidx/manifest.json` says what each file holds and weighs, and `/sidx/words.json` is every word of five letters or more that any bill of any term uses, with the names of members and towns and without the record's own slips ("goverment", in one bill): what tells a misspelt search from a real word no bill is about |
 | `/legislators.json` | the roster — who holds a seat now, with districts, towns and committees |
 | `/former.json` | the 1,785 people in the record who hold no seat now, with the span of their record. Deliberately a separate file: everything that reads the roster reads it to mean "who serves today" |
@@ -239,7 +238,8 @@ Every table is also downloadable as CSV from
 **[graniterecord.org/data](https://graniterecord.org/data)** — bills, votes,
 sponsors, roll calls, legislators and proceedings, about 2.5 million rows
 across 19 files. `/data/manifest.json` lists each one with its rows, size and
-column names, so a program can discover what is there in one request.
+column names, and each term's `/idx/` file with its address, bills and size,
+so a program can discover what is there in one request.
 
 That manifest also carries a per-term coverage table, and it is the honest
 answer to "how far back does this go". Titles, topics, committees and passage

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.8
+# GRANITE_VERSION: 2026-09-13.9
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -125,7 +125,12 @@ def bills_page(site, base, term, rows, urls, label=""):
             if not r.get("lsr"):
                 href = S.canon(f"bill/{r.get('year')}/{r['id'].lower()}.html")
                 num = f'<a href="{S.E(href)}">{num}</a>'
-            status = f' <span class="dirstatus">{S.E(r["status"])}</span>' if r.get("status") else ""
+            # THE CHIP'S WORD, as the bill list's card says it
+            # (build_site_v2.chip_word): Died, not how it died, which is on
+            # the bill's own page. A request has no chip, and its status --
+            # "Filed as a request" -- is the word.
+            word = r.get("chip") or r.get("status") or ""
+            status = f' <span class="dirstatus">{S.E(word)}</span>' if word else ""
             body.append(f'<li>{num} '
                         f'{S.E((r.get("title") or "").strip())}{status}</li>')
         body.append("</ul>")

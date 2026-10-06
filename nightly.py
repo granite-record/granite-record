@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -47,7 +47,8 @@ THE GATES, before any deploy
   there that may pass the census is the New term run (--new-term, below), and
   it cannot pass the ceiling either.
 
-    bills          2% fewer in index.json
+    bills          2% fewer in the bill index (idx/<term>.json, as meta.json
+                   names them); none where it is not there or will not read
     legislators    2% fewer in legislators.json
     bill_data      2% fewer per-bill JSON files
     bill_pages     5% fewer static pages
@@ -367,6 +368,8 @@ from pathlib import Path
 
 import child
 import refusal
+import site_read as SR
+from check_live import NOT_CHECKED as LIVE_NOT_CHECKED
 
 LOG = []
 
@@ -501,6 +504,12 @@ LATE_CAPTION_UNCHECKED = 10
 # the laptop's publish said THE DEPLOY DID NOT LAND for a deploy that had,
 # because it looked eight seconds after the upload.
 LIVE_WAITS = (10, 30, 60, 120)
+# What a deploy is called when the live check could not read a file to its end
+# (check_live's NOT_CHECKED). Not "not serving what was built": nothing said it
+# was not, and nothing said it was.
+LIVE_UNREAD = ("DEPLOYED, BUT NOT CHECKED: the live check could not read a file "
+               "to its end (it names the file above), so whether the site is "
+               "serving what was built is not known.")
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -693,7 +702,16 @@ def census(site):
             return len(json.loads((site / name).read_text(encoding="utf-8")))
         except Exception:
             return 0
-    return {"bills": count_json("index.json"),
+
+    def count_bills():
+        # The bill index as the pages read it (site_read.bill_index). No site,
+        # or one whose index does not hold together, counts none, so that the
+        # gate names the fall rather than this stopping the night.
+        try:
+            return len(SR.bill_index(site) or [])
+        except SR.Broken:
+            return 0
+    return {"bills": count_bills(),
             "legislators": count_json("legislators.json"),
             "bill_data": (sum(1 for _ in (site / "bills").glob("*/*.json"))
                           + sum(1 for _ in (site / "bills").glob("*.json"))),
@@ -748,13 +766,31 @@ def terms_fell(before, after):
     return out
 
 
-FINGERPRINTED = ("index.json", "meta.json", "home.json", "legislators.json")
+def fingerprinted(meta):
+    """The files the fingerprint is of, in order: meta.json, then the bill
+    index it names -- each term's file and the bill requests' -- then
+    home.json and legislators.json.
+
+    THE TERM FILES, NOT index.json (5 October 2026), which was the same rows
+    in one file that no page read, at 23.7 MB of the 25 MiB a file may be.
+    Every term's file is in it, so a change to an archived term's bills is a
+    change; and the requests file, which index.json never held."""
+    return ["meta.json", *SR.bill_index_files(meta), "home.json", "legislators.json"]
+
+
+def _meta_of(raw):
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
 
 
 def fingerprint(site):
     """Changed or not, without caring about file order or timestamps."""
     h = hashlib.sha256()
-    for name in FINGERPRINTED:
+    mp = site / "meta.json"
+    meta = _meta_of(mp.read_bytes()) if mp.exists() else {}
+    for name in fingerprinted(meta):
         f = site / name
         if f.exists():
             h.update(f.read_bytes())
@@ -1257,8 +1293,12 @@ def deploy(a):
         say("\nSTOPPED: the deploy failed four times. The previous version is still live.")
         return False
     time.sleep(8)
-    if run(["check_live.py", "--gate", "--base", a.base, "--site", a.site],
-           "what the live site is now serving") != 0:
+    rc = run(["check_live.py", "--gate", "--base", a.base, "--site", a.site],
+             "what the live site is now serving")
+    if rc == LIVE_NOT_CHECKED:
+        say(f"\n{LIVE_UNREAD}")
+        return False
+    if rc != 0:
         say("\nDEPLOYED, BUT THE LIVE SITE IS NOT SERVING WHAT WAS BUILT.\n"
             "A previous version can be restored from the Deployments tab in Cloudflare.")
         return False
@@ -2628,22 +2668,29 @@ def tracked_changes():
 def live_fingerprint(base, timeout=180):
     """fingerprint() of what `base` serves now, or None if it could not be read.
 
-    The same four files, so the two compare: equal means production already
-    serves this build, and there is nothing to approve.
+    The same files, so the two compare: equal means production already
+    serves this build, and there is nothing to approve. meta.json first,
+    because the rest are the files the served meta.json names (fingerprinted).
     """
     h = hashlib.sha256()
-    for name in FINGERPRINTED:
+    names, meta = ["meta.json"], None
+    while names:
+        name = names.pop(0)
         req = urllib.request.Request(f"{base.rstrip('/')}/{name}", headers={
             "User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache"})
+        body = b""
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                h.update(r.read())
+                body = r.read()
+                h.update(body)
         except urllib.error.HTTPError as e:
-            if e.code == 404:           # as fingerprint() passes over a missing file
-                continue
-            return None
+            if e.code != 404:           # a 404 is passed over, as fingerprint()
+                return None             # passes over a missing file
         except Exception:               # noqa: BLE001 -- unreadable is "may differ"
             return None
+        if meta is None:
+            meta = _meta_of(body) if body else {}
+            names = fingerprinted(meta)[1:]
     return h.hexdigest()[:16]
 
 
@@ -3036,7 +3083,9 @@ def runner_deploy(a):
 
 
 def upload_and_check(a, site, target, base):
-    """wrangler to `target`, four attempts, then the live check, retried."""
+    """wrangler to `target`, four attempts, then the live check, retried --
+    except where it could not read a file to its end, which looking again
+    would not change."""
     out = ""
     for attempt in range(1, 5):
         # The pinned wrangler, with the branch named: PREVIEW_BRANCH is a
@@ -3056,10 +3105,15 @@ def upload_and_check(a, site, target, base):
         return False
     for i, wait in enumerate(LIVE_WAITS, 1):
         time.sleep(wait)
-        if run(["check_live.py", "--gate", "--base", base, "--site", str(site)],
-               f"what {base} is serving (look {i} of {len(LIVE_WAITS)})") == 0:
+        rc = run(["check_live.py", "--gate", "--base", base, "--site", str(site)],
+                 f"what {base} is serving (look {i} of {len(LIVE_WAITS)})")
+        if rc == 0:
             say(f"\nLive at {base}")
             return True
+        if rc == LIVE_NOT_CHECKED:
+            # Looking again would read the same file and stop at the same byte.
+            say(f"\n{LIVE_UNREAD}")
+            return False
     say(f"\nDEPLOYED, BUT {base} IS NOT SERVING WHAT WAS BUILT, after "
         f"{sum(LIVE_WAITS)} seconds of looking. A previous version can be restored "
         "from the Deployments tab in Cloudflare.")
