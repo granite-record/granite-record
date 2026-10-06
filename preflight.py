@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.379
+# GRANITE_VERSION: 2026-09-04.380
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2950,9 +2950,11 @@ _SENATE_2000_MOVES_TOLD = {
                             ["March 17"]),
     ("SB326", "1999-2000"): ("The committee held a public hearing on February 22, 2000.",
                              ["January 18"]),
-    # A recessed hearing's new day is no move, and is not read as one.
-    ("SB370", "1999-2000"): ("The committee held a public hearing on January 19, 2000.",
-                             ["February 9"]),
+    # A recessed hearing's new day is no move, and is not read as one: the
+    # hearing of 19 January is still told, and the day it reconvened beside
+    # it (decision 59g, docket_era_1999.reconvened_notice).
+    ("SB370", "1999-2000"): ("The committee held public hearings on January 19, 2000 and "
+                             "February 9, 2000.", []),
 }
 
 
@@ -2971,7 +2973,8 @@ def _senate_2000_moves(N):
     "Cancelled" under 16 May. And the hearings of 25 January 2000, moved on
     rows typed the next day, which Senate Calendar 10 prints "RESCHEDULED FROM
     JANUARY 25TH" (SB 381, CACR 38, SB 387). A recessed hearing's new day
-    ("==RECESSED== NEW DATE== Feb.9", SB 370) is not a move."""
+    ("==RECESSED== NEW DATE== Feb.9", SB 370) is not a move: the hearing of
+    19 January is told, and since decision 59g the day it went on beside it."""
     bad = []
     for key, lines in _DOCKET_SENATE_2000_MOVES.items():
         said, unsaid = _SENATE_2000_MOVES_TOLD[key]
