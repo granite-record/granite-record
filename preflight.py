@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.372
+# GRANITE_VERSION: 2026-09-04.373
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3489,6 +3489,39 @@ def _cancel_only_rows(N):
     assert not bad, "\n".join(bad)
     return "ok", (f"nine rows read by their words; {len(_DOCKET_CANCEL_ONLY)} histories from real "
                   "rows tell the hearing that sat and leave the one called off")
+
+
+# Real rows: Docket_db_2001-2002.txt 11149-11154 (HB 462).
+_DOCKET_TIME_CHANGED = [
+    "2002|0752|01/02/2002 07:49:59 PM|HB462|S|Introduced and Ref. to Executive Departments & Administration; SJ 1, Pg.13|01/02/2002 07:49:59 PM",
+    "2002|0752|01/29/2002 05:09:46 PM|HB462|S|Hearing; February 6, 2002, Room 104, LOB, 3:15 p.m.; SC8|01/29/2002 05:09:46 PM",
+    "2002|0752|01/30/2002 04:26:12 PM|HB462|S|Hearing; === TIME CHANGE === February 6, 2002, Room 104, LOB, 3:45 p.m.; SC8A|01/30/2002 04:26:12 PM",
+    "2002|0752|02/04/2002 12:47:24 PM|HB462|S|Hearing; === CANCELLED === February 6, 2002, Room 104, LOB, 3:45 p.m.; SC9|02/04/2002 12:47:24 PM",
+    "2002|0752|02/07/2002 05:18:03 PM|HB462|S|Hearing; === RESCHEDULED === February 13, 2002, Room 104, LOB, 2:00 p.m.; SC10|02/07/2002 05:18:03 PM",
+    "2002|0752|03/12/2002 03:46:34 PM|HB462|S|Committee Report; Ought to Pass with Amendment {2905},(New Title), [03/14/02]; SC16A, Pg.8|03/12/2002 03:46:34 PM",
+]
+
+
+@check("narrative", "a cancellation of the hour a later row moved a notice to cancels that notice",
+       needs=("narrative",))
+def _time_changed_then_cancelled(N):
+    """Decision 59c: HB 462 and HB 560 of 2002 were noticed for 6 February at
+    3:15 and 3:00, moved within the day by "=== TIME CHANGE ===" to 3:45 and
+    3:30, and those hours cancelled ("=== CANCELLED === February 6, 2002 ...
+    3:45 p.m.") and the hearings rescheduled to the 13th, which Senate
+    Calendar 10 prints. The cancellation reached only the notice at its own
+    hour, and both histories still said the committee held public hearings
+    on 6 and 13 February. A notice whose hour a later row changed is the
+    meeting at its new hour."""
+    n = _told_from_rows(N, "2001-2002", "HB462", _DOCKET_TIME_CHANGED)
+    text = " ".join(s["text"] for s in n["stages"])
+    bad = []
+    if "February 6, 2002" in text or "February 13, 2002" not in text:
+        bad.append(f"HB 462 of 2002 does not tell the hearing of 13 February alone: {text[:400]!r}")
+    if "2002-02-06" not in _voided_days(n):
+        bad.append(f"HB 462's hearing of 6 February is drawn as a sitting: voided {n.get('voided')!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", "HB 462 of 2002 tells its hearing of 13 February and not the 6th's, moved and cancelled"
 
 
 # Real rows: Docket_db_2001-2002.txt (SB 373) and Docket_db_1999-2000.txt (SB

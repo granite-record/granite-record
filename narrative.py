@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3181,6 +3181,9 @@ RESCHEDULING = re.compile(
     r"|^\W*(?:(?:Public\s+)?Hearing\s*[;:,]?\s*)?RESCHED(?:ULED)?\b(?!\s+TIME)"
     r"|^\W*New\s+Date\s*,",
     re.I)
+# A row that gives a notice of the same day a new hour: "Hearing; === TIME
+# CHANGE === February 6, 2002" (HB 462 of 2002), "==NEW TIME== Feb.10".
+TIME_CHANGED = re.compile(r"\bTIME\s+CHANGE\b|\bNEW\s+TIME\b", re.I)
 GOES_ON = re.compile(r"\bCONTINU|\bRECONVEN|\bRECESS", re.I)
 # A day the docket notices a hearing carried on from an earlier one: not one
 # that recessed, which sat (HJR 22 of 2006's of 23 March).
@@ -3280,6 +3283,21 @@ def _cancelled_by(ev, evs):
                 x and y and x != y for x, y in ((_session_of(ev), _session_of(o)),
                                                 (_room_of(ev), _room_of(o)))):
             continue
+        # THE HOUR A LATER ROW MOVED THIS NOTICE TO (decision 59c, 7 October
+        # 2026). "Hearing; February 6, 2002, Room 104, LOB, 3:15 p.m.; SC8",
+        # then "Hearing; === TIME CHANGE === February 6, 2002, ... 3:45 p.m.;
+        # SC8A", then "Hearing; === CANCELLED === February 6, 2002, ... 3:45
+        # p.m.; SC9", and the hearing was held on the 13th, which Senate
+        # Calendar 10 prints (HB 462 and HB 560 of 2002): the cancellation is
+        # of the meeting the first notice set, at the hour the second gave it,
+        # and the history went on telling the hearing of the 6th.
+        if a is not None and b is not None and abs(a - b) > 5 and any(
+                x is not ev and x["body"] == ev["body"] and x["_type"] == ev["_type"]
+                and x["when"].date() == day and TIME_CHANGED.search(x.get("_said") or "")
+                and _entered_before(ev, x["_entered"]) and _entered_before(x, o["_entered"])
+                and _meeting_minute(x) is not None and abs(_meeting_minute(x) - b) <= 5
+                for x in evs):
+            a = b
         if a is None or b is None or abs(a - b) <= 5:
             # Unless the day's meeting was only moved to another hour: a
             # notice for the same day entered after the cancellation is the
