@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.3
+# GRANITE_VERSION: 2026-10-05.4
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -859,13 +859,31 @@ def differs(root, term, names=CHANGING):
 RECORD = {"Docket.txt": 6, "RollCallSummary.txt": None, "RollCallHistory.txt": None}
 
 
-def rows_of(data, name, term):
-    """{row}: the rows of `term` in one file, cut to what RECORD compares."""
+def organization_keys(data):
+    """{(year, body, number)}: the roll calls of a RollCallSummary.txt taken
+    on or after Organization Day of an even year -- the next term's, whatever
+    year they are filed under (proceedings.vote_term)."""
+    out = set()
+    for line in data.decode("utf-8-sig", "replace").splitlines():
+        f = [x.strip() for x in line.lstrip("﻿").split("|")]
+        if len(f) > 3 and P.vote_term(f[0], f[3]) != P.term_of(f[0]):
+            out.add(tuple(f[:3]))
+    return out
+
+
+def rows_of(data, name, term, skip=frozenset()):
+    """{row}: the rows of `term` in one file, cut to what RECORD compares.
+
+    Not a roll call of Organization Day (`skip`, organization_keys), which is
+    the next term's and no row of this one's record: filed under the old year,
+    it would have stopped every New term run from 2 December until the term
+    was frozen again with the next House's votes in it."""
     width, col, want = RECORD.get(name), YEAR_COLUMN.get(name, 0), term_years(term)
     out = set()
     for line in data.decode("utf-8-sig", "replace").splitlines():
         f = [x.strip() for x in line.lstrip("﻿").split("|")]
-        if len(f) > col and f[col] in want:
+        if len(f) > col and f[col] in want and not (
+                name in ROLLCALL_FILES and tuple(f[:3]) in skip):
             out.add("|".join(f[:width] if width else f).rstrip("|"))
     return out
 
@@ -885,9 +903,14 @@ def ready(root=Path("."), term=None):
     if bad:
         return False, f"{term} is not frozen whole: {'; '.join(bad[:4])}. Freeze first: {how}"
     moved = []
+    org = set()
+    for summary in (root / "RollCallSummary.txt", root / FROZEN / term / DAY / "RollCallSummary.txt"):
+        if summary.exists():
+            org |= organization_keys(summary.read_bytes())
     for name in RECORD:
-        now = rows_of((root / name).read_bytes(), name, term) if (root / name).exists() else set()
-        was = rows_of((root / FROZEN / term / DAY / name).read_bytes(), name, term)
+        now = (rows_of((root / name).read_bytes(), name, term, org)
+               if (root / name).exists() else set())
+        was = rows_of((root / FROZEN / term / DAY / name).read_bytes(), name, term, org)
         if now != was:
             moved.append(f"{name}: {len(now - was):,} row(s) of {term} installed and not frozen, "
                          f"{len(was - now):,} frozen and not installed")

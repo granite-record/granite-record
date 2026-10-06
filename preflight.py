@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.354
+# GRANITE_VERSION: 2026-09-04.355
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24110,6 +24110,133 @@ _OVERRIDES_SAID = {
     ("SB88", "H"): "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
                    "so the bill became law.",
 }
+
+
+@check("session", "a roll call of Organization Day is the next term's, whatever year it is filed "
+                  "under, and a vote on no bill draws its sitting",
+       needs=("proceedings", "build_data", "session_days", "build_session_pages"))
+def _organization_day_votes(P, BD, SD, BSP):
+    """The person's note of 6 October 2026: Organization Day -- the first
+    Wednesday of December of an even year, 2 December 2026 next -- is the
+    next General Court's, its votes the Speaker's election and the House's
+    rules, on no bill. The docket files the day's resolutions under the next
+    session (HR 1 of 2025, "Introduced and Adopted VV 12/04/2024"), and a roll
+    call is keyed by its session year everywhere a term is asked of it; one
+    filed under 2026 would have gone with 2025-2026, been set aside as a stray
+    row of the frozen term (build_data.rows_all) and counted in left_out.json,
+    its ballots tallied with that term's members and linked to its bills. No
+    roll call file holds one yet (0 of 9,565), so this holds the rule on a
+    fixture: proceedings.vote_term, rollcall_parser's terms, the frozen term's
+    files, and a sitting page drawn for a vote on no bill."""
+    import datetime as _dt
+    import html as _html
+    bad = []
+    # The days, against the docket's own rows of Organization Day: 12/04/2024
+    # (HR 1 of 2025), 12/07/2022 (SR 1 of 2023), 12/02/2020 (HR 1 of 2021),
+    # 12/01/2004 (HB 31 of 2005), 12/02/1998 (SCR 1 of 1999).
+    for y, d in ((2026, "2026-12-02"), (2024, "2024-12-04"), (2022, "2022-12-07"),
+                 (2020, "2020-12-02"), (2004, "2004-12-01"), (1998, "1998-12-02")):
+        if str(P.organization_day(y)) != d:
+            bad.append(f"Organization Day of {y} is {P.organization_day(y)}, not {d}")
+    if P.organization_day(2025) is not None:
+        bad.append("an odd year has an Organization Day")
+    for year, when, want in (("2026", "2026-12-02", "2027-2028"),
+                             ("2026", "12/2/2026 10:31:07 AM", "2027-2028"),
+                             ("2027", "2026-12-02", "2027-2028"),
+                             ("2026", "2026-12-01", "2025-2026"),
+                             ("2026", "2026-08-19", "2025-2026"),
+                             ("2025", "2025-12-03", "2025-2026"),
+                             ("2026", "", "2025-2026")):
+        if P.vote_term(year, when) != want:
+            bad.append(f"a roll call of {year} taken {when or 'on no day'} is "
+                       f"{P.vote_term(year, when)!r}, not {want}")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-orgday-"))
+    try:
+        # The session's files after the turn, holding one roll call of the
+        # day under 2026 and one under 2027; 2026 is frozen beside them.
+        org26 = "2026|H|400|12/2/2026 10:31:07 AM||210|180|0|10|||Election of Speaker|||"
+        org27 = "2027|S|1|12/2/2026 10:05:00 AM|SR1|24|0|0|0|||Adopt|relative to the rules|"
+        jan27 = "2027|H|1|1/6/2027 10:00:00 AM|HB1|200|150|0|50|||OTP|relative to something|"
+        (tmp / "RollCallSummary.txt").write_text("\n".join([org26, org27, jan27]) + "\n",
+                                                 encoding="utf-8")
+        (tmp / "RollCallHistory.txt").write_text(
+            "2026|H|400|123456|10001|x|1|\n2027|H|1|123456|10001|x|1|\n", encoding="utf-8")
+        (tmp / "rollcalls").mkdir()
+        (tmp / "rollcalls" / "RollCallSummary_2026.txt").write_text(
+            "2026|H|300|8/19/2026 2:58:41 PM|SB434|165|140|0|95|||Override|relative to school materials|\n",
+            encoding="utf-8")
+        (tmp / "rollcalls" / "RollCallHistory_2026.txt").write_text(
+            "2026|H|300|123456|10001|x|1|\n", encoding="utf-8")
+        left = Counter()
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()):
+            summary = BD.rows_all(tmp, "RollCallSummary", archive=tmp,
+                                  finished={"2025", "2026"}, left=left)
+            ballots = BD.rows_all(tmp, "RollCallHistory", 8, archive=tmp,
+                                  finished={"2025", "2026"}, left=left)
+        keys = {tuple(r[:3]) for r in summary}
+        if ("2026", "H", "400") not in keys or ("2026", "H", "300") not in keys:
+            bad.append(f"the frozen term's files and Organization Day's roll call are read as {sorted(keys)}")
+        if ("2026", "H", "400") not in {tuple(r[:3]) for r in ballots}:
+            bad.append("Organization Day's ballots are set aside as the frozen term's")
+        if left:
+            bad.append(f"Organization Day's roll call is counted as a row left out: {dict(left)}")
+        # rollcall_parser keys each roll call by its term, as rollcalls.json is.
+        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+                  "RollCallSummary.txt", "--dir", "rollcalls", "--all", "--out", "rollcalls.json"],
+                 cwd=str(tmp), capture_output=True)
+        got = json.loads((tmp / "rollcalls.json").read_text(encoding="utf-8")) \
+            if (tmp / "rollcalls.json").exists() else {}
+        where = {(x["year"], x["body"], x["number"]): t
+                 for t, byb in got.items() for rows in byb.values() for x in rows}
+        want = {("2026", "H", 400): "2027-2028", ("2027", "S", 1): "2027-2028",
+                ("2027", "H", 1): "2027-2028", ("2026", "H", 300): "2025-2026"}
+        if where != want:
+            bad.append(f"rollcalls.json files the roll calls under {where}"
+                       + ("" if got else f" ({(r.stderr or r.stdout)[-300:]})"))
+        if "_procedural" not in (got.get("2027-2028") or {}):
+            bad.append("the Speaker's election is not with the next term's votes on no bill")
+        # Nor is it a row of the frozen term's record, which a New term run
+        # holds the installed files to (freeze_term.ready): the day's roll
+        # call filed under 2026 would have stopped every run from 2 December.
+        import freeze_term as FT
+        summ = (tmp / "RollCallSummary.txt").read_bytes()
+        org = FT.organization_keys(summ)
+        if org != {("2026", "H", "400")}:
+            bad.append(f"freeze_term reads Organization Day's roll calls as {org}")
+        for name in FT.ROLLCALL_FILES:
+            rows = FT.rows_of((tmp / name).read_bytes(), name, "2025-2026", org)
+            if any(r.startswith("2026|H|400|") for r in rows):
+                bad.append(f"Organization Day's roll call is in 2025-2026's record of {name}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    # A sitting of the day, for the next term's resolution and a vote on no bill.
+    narr = {"2027-2028": {"HR1": [{"type": "floor", "date": "2026-12-02", "body": "H",
+                                   "raw": "Ought to Pass: MA VV 12/02/2026  HJ 1",
+                                   "action": "Ought to Pass", "motion": "MA",
+                                   "vote_kind": "VV", "cite": "HJ 1"}]}}
+    rolls = {"2027-2028": {"_procedural": [
+        _rc("2026", "H", 400, "2026-12-02", "", "Election of Speaker", 210, 180, True,
+            procedural=True)]}}
+    days = _sitting_fixture(SD, narr, rolls)
+    day = days.get(("H", "2026-12-02"))
+    if day is None:
+        bad.append(f"no sitting of 2 December 2026 is drawn: {sorted(days)}")
+    else:
+        if not any((i.yeas, i.nays) == (210, 180) for i in list(day.items) + list(day.others)):
+            bad.append("the vote on no bill is not on the sitting of 2 December 2026")
+        nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
+        try:
+            page = BSP.render(day, {"attributions": []}, {}, {("2027-2028", "HR1"): 2027},
+                              nobody, _html.escape)[0]
+            if "210" not in page or "HR 1" not in page:
+                bad.append("the sitting of 2 December 2026 does not draw the day's votes")
+        except Exception as e:
+            bad.append(f"the sitting of 2 December 2026 does not render: {type(e).__name__}: {e}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("Organization Day's roll calls are the next term's, filed under either year: "
+                  "kept beside the frozen term's files and out of its record, keyed 2027-2028 "
+                  "in rollcalls.json, and drawn with a vote on no bill on the day's sitting")
 
 
 @check("session", "a veto override the other chamber carried too says the bill became law, on "

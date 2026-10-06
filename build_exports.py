@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.30
+# GRANITE_VERSION: 2026-09-10.31
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -214,12 +214,15 @@ def rollcalls(out):
 
 def votes(out, data):
     """Member votes, split by term because one file would exceed the cap."""
+    import proceedings as P
     mv = load(Path(data) / "member_votes.json", [])
     cols = ["roll_call", "term", "date", "bill", "question", "member_id",
             "member", "party", "chamber", "vote"]
     by_term = {}
     for v in mv:
-        by_term.setdefault(term_of(v.get("year")), []).append(v)
+        # Organization Day's ballots with the next term's (proceedings.vote_term).
+        by_term.setdefault(P.vote_term(v.get("year"), v.get("date")) if v.get("year") else "",
+                           []).append(v)
     made = []
     for term in sorted(by_term):
         if not term:

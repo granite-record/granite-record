@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.157
+# GRANITE_VERSION: 2026-09-05.158
 """
 Generate the faceted site from real General Court data.
 
@@ -2690,7 +2690,7 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             # who resigned from one who died, and must not start here.
             "served": {"first": dated[0].get("date") or "",
                        "last": last.get("date") or "",
-                       "terms": sorted({P.term_of(v.get("year", ""))
+                       "terms": sorted({P.vote_term(v.get("year", ""), v.get("date"))
                                         for v in mv if v.get("year")})},
         }
     return out
@@ -2842,7 +2842,8 @@ def member_attendance(votes, context=None):
     dates, chair = ctx.get("dates", {}), ctx.get("chair", {})
     by_term = defaultdict(list)
     for v in votes:
-        t = P.term_of(str(v.get("year") or ""))
+        # Organization Day's ballots are the next term's (proceedings.vote_term).
+        t = P.vote_term(str(v.get("year") or ""), v.get("date"))
         if not t:
             continue
         kind = ATTENDANCE_KIND.get(v.get("vote"), "no_vote")
@@ -3010,7 +3011,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                        "v": v["vote"],
                        "k": (f'{v["year"]}-{v["body"]}-{v["vote_number"]}'),
                        "y": (bill_year or {}).get(
-                           (P.term_of(v.get("year", "")), v["bill"]), "")}
+                           (P.vote_term(v.get("year", ""), v.get("date")), v["bill"]), "")}
                       for v in mv],
         }), encoding="utf-8")
     if unnamed:
@@ -9738,7 +9739,9 @@ def main():
         # The bill is keyed by term for the same reason every other per-bill
         # map now is: HB396 exists in every biennium.
         key = f"{v['year']}-{v['body']}-{v['vote_number']}"
-        votes_by_bill[(P.term_of(v["year"]), v["bill"])][key].append(v)
+        # A ballot of Organization Day is on the next term's measure
+        # (proceedings.vote_term): HR 1 of 2027, not of 2025.
+        votes_by_bill[(P.vote_term(v["year"], v.get("date")), v["bill"])][key].append(v)
         votes_by_member[v["member_id"]].append(v)
     print(f"{len(bills):,} bills, {len(legs):,} legislators, "
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
