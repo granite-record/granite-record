@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.357
+# GRANITE_VERSION: 2026-09-04.358
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44553,7 +44553,8 @@ def _nightly_review_recent(NI):
     carried it}, which judge() fills from the build production serves -- told
     by its fingerprint, dated by the day its own night wrote into
     "sendable_kinds" -- and cuts to the window. A night held and never
-    published adds nothing, however recent; with no record yet, or a build
+    published adds nothing, however recent, and nor does a New term run sent
+    for a build production already serves; with no record yet, or a build
     sent before its day was kept, nothing is added and the gate holds as it
     did."""
     from datetime import date, timedelta
@@ -44640,9 +44641,45 @@ def _nightly_review_recent(NI):
                 ("a kind seen only on nights never published was taken for a published one's",
                  v.get("review"), v.get("published_kinds"))
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
+
+    # A New term run is sent even for a build production already serves
+    # (judge). Never published, its kinds are not a published night's, though
+    # production's fingerprint is its build's: the build stays the one the
+    # night that sent it first carried. Recorded as sent, the bill requests
+    # failing on that run alone passed for a published night's for fourteen
+    # days, and the night that failed them again was cleared.
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="391")
+        g.how["touch"] = 3
+        g.night("--runner", run_id="392")
+        g.publish("392")
+        sent = g.verdict()["sendable_kinds"]
+        g.how["lsrs_rc"] = 1
+        code, _ = g.night("--runner", "--new-term", run_id="393")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["fingerprint"] == v["live_fingerprint"] and \
+            any(k.startswith("next session's bill") for k in v["warning_kinds"]), \
+            ("the fixture's New term run is not one production already serves the build of",
+             code, v.get("not_clean"))
+        assert v["sendable_kinds"] == sent, \
+            ("a New term run for a build production already served was taken as sent",
+             v.get("sendable_kinds"))
+        g.how["lsrs_rc"] = 0
+        v = night(run_id="394")
+        assert not any(k.startswith("next session's bill") for k in v["published_kinds"]), \
+            ("a New term run never published was taken for a published night",
+             v.get("published_kinds"))
+        g.publish("394")
+        g.how["lsrs_rc"] = 1
+        v = night(run_id="395")
+        assert any("next session's bill requests" in r for r in news(v)), \
+            ("a kind carried only by a New term run never published did not hold the night",
+             v.get("review"), v.get("published_kinds"))
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", ("a kind a night published within fourteen days carried does not hold the "
                   "night, though the build production serves lacks it; one last published "
-                  "twenty days ago, or seen only on nights never published, does")
+                  "twenty days ago, or seen only on nights never published -- a New term run "
+                  "for the build production serves among them -- does")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

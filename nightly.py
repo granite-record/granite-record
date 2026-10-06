@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -681,7 +681,8 @@ REVIEW_FAILED = "the gate could not work out {what} ({kind}), so it would wait"
 # tonight. The verdict carries "published_kinds", {kind: the day of the newest
 # published night that carried it}: judge() adds the kinds of the build
 # production serves, told by production's own fingerprint as above -- so a
-# night held and never published, or a dry run, adds nothing -- at that
+# night held and never published, or a dry run, adds nothing, nor a New term
+# run sent for a build production already served (finish) -- at that
 # build's own day, which "sendable_kinds" carries for it, and lets go of
 # every kind older than the window. A verdict without the record, or a build
 # whose record names no day (one sent before this), adds nothing, and the gate
@@ -3648,10 +3649,16 @@ class Night:
                 warned, served["kinds"] if isinstance(served, dict) else None,
                 recent_kinds(v.get(KINDS_PUBLISHED), self.day))
             v["review"] = {"needed": bool(reasons), "why": reasons}
-            if v.get("publishable") and not self.a.dry_run:
+            if v.get("publishable") and not self.a.dry_run and \
+                    v.get("fingerprint") != v.get("live_fingerprint"):
                 # Sent for production: what production may serve by the next
                 # night, and with it these kinds (WARNING KINDS), and its day,
-                # which the kinds keep once it is published.
+                # which the kinds keep once it is published. Not a build
+                # production serves already, which only a New term run sends
+                # (judge): told by that fingerprint, its kinds would pass the
+                # next night for those of a published night, though the run
+                # was never published, and the build production serves is
+                # the night's that sent it first.
                 v[KINDS_SENDABLE] = {"fingerprint": v.get("fingerprint"),
                                      "kinds": v["warning_kinds"], "day": self.day}
         write_json(VERDICT, v)
