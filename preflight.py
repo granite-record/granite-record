@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.351
+# GRANITE_VERSION: 2026-09-04.352
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44135,6 +44135,99 @@ def _nightly_review_release(NI):
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", ("a night whose commit is not production's waits, and the one after the release "
                   "is published does not; production unreadable or no commit tonight waits")
+
+
+@check("build", "the gate holds a night that changed far more than a data night does: a finished "
+       "term's bill list rewritten, or more of the current term's rows than the term ever moved",
+       needs=("nightly",))
+def _nightly_review_size(NI):
+    """Every page carries the date of its build, so pages changed is no
+    measure. The bill lists are: a finished term's list differing from
+    production's at all, on a night whose code is production's, is something
+    no data night does, and the current term's rows changed against
+    production's, by bill, are held past REVIEW_ROWS_MOST -- set from the
+    term's own docket, which no night of 2025-2026 came near. A release is not
+    held for either (it waits anyway, and rewrites what it likes), though
+    both are measured on every night. A list production could not be read for
+    is not known, and waits; one production's meta.json does not name, read
+    whole, is one production does not have, and every row of it is new."""
+    rows = NI.bill_rows(json.dumps([{"id": "HB1", "year": 2025}, {"id": "HB1", "year": 2026},
+                                    {"id": "HB1", "year": 2026}, {"x": 1}]).encode())
+    assert len(rows) == 4, f"a term's two sessions' HB1, or a repeated row, was folded: {rows}"
+    assert NI.bill_rows(None) == {} and NI.REVIEW_ROWS_MOST == 600, NI.REVIEW_ROWS_MOST
+    a, b = GATE_SHA
+    with _GateNights(NI) as g:
+        g.how.update(terms={"2023-2024": 40, "2025-2026": 1000})
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="341")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="342")
+        assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
+        g.publish("342")
+
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="343")
+        v = g.verdict()
+        assert code == 0 and v["review"] == {"needed": False, "why": []} and \
+            v["against_production"] == {"term": "2025-2026", "bills": 1000, "rows_changed": 1,
+                                        "finished_differ": [], "unread": []}, \
+            (v.get("review"), v.get("against_production"))
+
+        # A finished term rewritten on a night whose code is production's.
+        g.how["rewrite"] = "2023-2024"
+        code, _ = g.night("--runner", "--no-fetch", run_id="344")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"]["why"] == [
+            NI.REVIEW_FINISHED.format(terms="2023-2024")], v.get("review")
+        g.how["rewrite"] = None
+
+        # The current term: as many rows as the threshold is a data night;
+        # one more is not.
+        for touch, held in ((3 + NI.REVIEW_ROWS_MOST, False), (4 + NI.REVIEW_ROWS_MOST, True)):
+            g.how["touch"] = touch
+            code, _ = g.night("--runner", "--no-fetch", run_id=f"345-{touch}")
+            v = g.verdict()
+            n = touch - 3
+            assert code == 0 and v["against_production"]["rows_changed"] == n and \
+                v["review"]["why"] == ([NI.REVIEW_ROWS.format(n=n, of=1000, term="2025-2026",
+                                                              most=NI.REVIEW_ROWS_MOST)]
+                                       if held else []), (touch, v.get("review"))
+        assert f"{NI.REVIEW_ROWS_MOST + 1:,} of the 1,000 bills of 2025-2026 changed" in g.summary, \
+            g.summary
+
+        # A release that rewrote all of it waits as a release, and says only
+        # that; what it changed is measured all the same.
+        g.how["rewrite"], g.how["touch"] = "2023-2024", 900
+        code, _ = g.night("--runner", "--no-fetch", run_id="346", sha=b)
+        v = g.verdict()
+        assert code == 0 and v["review"]["why"] == [
+            NI.REVIEW_RELEASE.format(tonight=b[:12], served=a[:12])] and \
+            v["against_production"]["finished_differ"] == ["2023-2024"] and \
+            v["against_production"]["rows_changed"] == 897, \
+            (v.get("review"), v.get("against_production"))
+
+        # Production that cannot be read: not known, so wait.
+        g.how["rewrite"], g.how["touch"] = None, 4
+        g.down = True
+        code, _ = g.night("--runner", "--no-fetch", run_id="347")
+        v = g.verdict()
+        assert code == 0 and NI.REVIEW_UNREAD.format(terms="2023-2024, 2025-2026") in \
+            v["review"]["why"] and v["against_production"]["unread"] == ["2023-2024", "2025-2026"], \
+            v.get("review")
+        g.down = False
+
+        # A list production does not have, its meta.json read whole: none of
+        # it is production's, and nothing is "unread".
+        g.how["terms"] = {"2023-2024": 40, "2025-2026": 1000, "2027-2028": 30}
+        g.how["touch"] = 0
+        code, _ = g.night("--runner", "--no-fetch", run_id="348")
+        v = g.verdict()
+        assert code == 0 and v["against_production"] == {
+            "term": "2027-2028", "bills": 30, "rows_changed": 30, "finished_differ": ["2025-2026"],
+            "unread": []}, v.get("against_production")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", (f"a finished term's list rewritten on a data night waits; {NI.REVIEW_ROWS_MOST} "
+                  "of the current term's rows changed does not and one more does; a release "
+                  "waits as a release, measured all the same; production unreadable waits")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

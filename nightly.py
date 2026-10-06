@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.43
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -573,6 +573,41 @@ REVIEW_LIVE_UNKNOWN = ("the commit of the build production serves could not be r
                        "tonight's code is a release's is not known")
 REVIEW_SHA_UNKNOWN = ("tonight's own commit is not known, so whether its code is a release's is "
                       "not known")
+# The third: a night that changed far more than a data night does. Measured on
+# the bill lists, site/idx/<term>.json, against production's copies, which
+# live_fingerprint reads already -- and not on pages: the date of the build is
+# printed on every page, so every page changes every night (38,013 of the
+# 54,975 files between the builds of 25 and 26 September 2026). Two measures,
+# both only on a night whose code is not known to be a release's, which
+# rewrites what it likes and waits anyway:
+#
+#   a finished term   its list differing from production's at all. A data night
+#                     does not rewrite a finished term: of the nights whose
+#                     every built file is on record, the three whose code was
+#                     the night before's (29 and 30 September, 4 October 2026)
+#                     rewrote none, and the four whose code had moved rewrote
+#                     none, eight, all eighteen and all eighteen
+#   the current term  more than REVIEW_ROWS_MOST of its bills' rows changed,
+#                     added or gone, by bill
+#
+# REVIEW_ROWS_MOST, FROM THE TERM'S OWN DOCKET. The nights' what-changed
+# reports, 13 September to 6 October 2026, moved 35 bills at most, but they
+# are all of the interim, and three times that would have held 66 of the 355
+# days of 2025-2026 that the docket gained lines on -- most session days. The
+# docket itself (Docket.txt, each line by when it was entered) holds the
+# session: 346 bills on its busiest day (5 February 2026), and 579 over its
+# busiest three days running (21 to 23 January 2025), which is what a night
+# after two failed ones would carry. A bill's row moves with its docket, so
+# 600 holds no night that term had, and holds one that rewrote more than about
+# a quarter of the term's 2,243 bills.
+REVIEW_ROWS_MOST = 600
+REVIEW_UNREAD = ("production's bill list of {terms} could not be read, so how much tonight "
+                 "changed is not known")
+REVIEW_FINISHED = ("the bill list of {terms} differs from production's, and a data night does "
+                   "not rewrite a finished term")
+REVIEW_ROWS = ("{n:,} of the {of:,} bills of {term} changed against production's, more than "
+               "the {most:,} a data night changes")
+REVIEW_FAILED = "the gate could not work out {what} ({kind}), so it would wait"
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -2793,18 +2828,22 @@ def live_fingerprint(base, timeout=180):
     serves this build, and there is nothing to approve. meta.json first,
     because the rest are the files the served meta.json names (fingerprinted).
 
-    And, beside the fingerprint, into SERVED for the gate: the commit
-    production's build.json names (served_commit), asked for last and only
-    once the fingerprint was read whole.
+    And, beside the fingerprint, into SERVED for the gate: each bill list it
+    read, by its path, as bytes, or None where production answered 404
+    ("files"); "whole" once every file was read, so that a list production's
+    meta.json does not name is known to be one production does not have; and
+    the commit production's build.json names (served_commit), asked for last
+    and only once the fingerprint was read whole.
     """
     SERVED.clear()
+    files = SERVED["files"] = {}
     h = hashlib.sha256()
     names, meta = ["meta.json"], None
     while names:
         name = names.pop(0)
         req = urllib.request.Request(f"{base.rstrip('/')}/{name}", headers={
             "User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache"})
-        body = b""
+        body, found = b"", True
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 body = r.read()
@@ -2812,11 +2851,15 @@ def live_fingerprint(base, timeout=180):
         except urllib.error.HTTPError as e:
             if e.code != 404:           # a 404 is passed over, as fingerprint()
                 return None             # passes over a missing file
+            found = False
         except Exception:               # noqa: BLE001 -- unreadable is "may differ"
             return None
+        if name.startswith("idx/"):
+            files[name] = body if found else None
         if meta is None:
             meta = _meta_of(body) if body else {}
             names = fingerprinted(meta)[1:]
+    SERVED["whole"] = True
     SERVED["commit"] = served_commit(base, timeout)
     return h.hexdigest()[:16]
 
@@ -2873,6 +2916,74 @@ def release_reasons(sha, served):
     if code_differs(sha, served):
         return [REVIEW_RELEASE.format(tonight=sha[:12], served=served[:12])]
     return []
+
+
+def bill_rows(raw):
+    """{bill: its row as canonical JSON} of a bill list's bytes, the bill by
+    its id and year (a term's two sessions may share a number); {} for none.
+    A key that repeats keeps every row, in order."""
+    rows = json.loads(raw) if raw else []
+    if not isinstance(rows, list):
+        raise ValueError("a bill list that is not a list")
+    out = {}
+    for r in rows:
+        s = json.dumps(r, sort_keys=True, ensure_ascii=False)
+        k = f"{r.get('id')}|{r.get('year')}" if isinstance(r, dict) and r.get("id") else s
+        while k in out:
+            k += "+"
+        out[k] = s
+    return out
+
+
+def size_reasons(site, served, differs):
+    """(reasons, measured): the gate's third reason, a night that changed far
+    more than a data night does, from tonight's bill lists and production's
+    copies (served["files"]). `measured` is recorded on every night: the
+    current term, its bills, how many of their rows changed against
+    production's, the finished terms whose lists differ, and the lists that
+    could not be read. The reasons are given only where `differs` is not True
+    (code_differs): a release waits anyway, and rewrites what it likes."""
+    site = Path(site)
+    mp = site / "meta.json"
+    meta = _meta_of(mp.read_bytes()) if mp.exists() else {}
+    terms = sorted({n[len("idx/"):-len(".json")] for n in SR.bill_index_files(meta)
+                    if SR.TERM_FILE.fullmatch(n[len("idx/"):-len(".json")])})
+    if not terms:
+        raise ValueError("tonight's meta.json names no term")
+    files = served.get("files") if isinstance(served.get("files"), dict) else {}
+
+    def theirs(t):
+        # Production's copy: bytes, None where it has none, or "unread".
+        name = f"idx/{t}.json"
+        if name in files:
+            return files[name]
+        return None if served.get("whole") else "unread"
+    unread, differ = [], []
+    for t in terms[:-1]:
+        got = theirs(t)
+        if got == "unread":
+            unread.append(t)
+        elif got != (site / "idx" / f"{t}.json").read_bytes():
+            differ.append(t)
+    newest, n, of = terms[-1], None, None
+    got = theirs(newest)
+    if got == "unread":
+        unread.append(newest)
+    else:
+        mine, prod = bill_rows((site / "idx" / f"{newest}.json").read_bytes()), bill_rows(got)
+        n, of = sum(1 for k in mine.keys() | prod.keys() if mine.get(k) != prod.get(k)), len(mine)
+    measured = {"term": newest, "bills": of, "rows_changed": n, "finished_differ": differ,
+                "unread": unread}
+    if differs:
+        return [], measured
+    why = []
+    if unread:
+        why.append(REVIEW_UNREAD.format(terms=", ".join(unread)))
+    if differ:
+        why.append(REVIEW_FINISHED.format(terms=", ".join(differ)))
+    if n is not None and n > REVIEW_ROWS_MOST:
+        why.append(REVIEW_ROWS.format(n=n, of=of, term=newest, most=REVIEW_ROWS_MOST))
+    return why, measured
 
 
 def stamp_commit(site, sha):
@@ -3052,8 +3163,11 @@ class Night:
         v["live_fingerprint"] = live
         already = live == fp
         # The commit production's build names, read with it: None is "not
-        # known", and a gate that cannot read it waits.
+        # known", and a gate that cannot read it waits. And the bill lists it
+        # read, for how much tonight changed against them; let go once used.
         v["live_commit"] = SERVED.get("commit")
+        served = dict(SERVED)
+        SERVED.clear()
         if not stop and a.new_term:
             # NOT WRITTEN TONIGHT. Written here, the lower counts were the
             # baseline before anyone had approved the switch, and the next
@@ -3076,6 +3190,15 @@ class Night:
         if a.new_term:
             self.review_why.append(REVIEW_NEW_TERM)
         self.review_why += release_reasons(v["sha"], v["live_commit"])
+        try:
+            why, v["against_production"] = size_reasons(
+                site, served, code_differs(v["sha"], v["live_commit"]))
+        except Exception as e:          # noqa: BLE001 -- the gate never stops a night
+            say(f"  the gate could not measure tonight's change: {type(e).__name__}: {e}",
+                echo=False)
+            why = [REVIEW_FAILED.format(what="how much tonight changed", kind=type(e).__name__)]
+        self.review_why += why
+        del served
         # A New term run goes to the publish job even when production already
         # serves this very build: publishing is what lets what it accepted be
         # kept, and without it the next night would refuse the files for ever.
