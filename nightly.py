@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -514,6 +514,26 @@ LIVE_WAITS = (10, 30, 60, 120)
 LIVE_UNREAD = ("DEPLOYED, BUT NOT CHECKED: the live check could not read a file "
                "to its end (it names the file above), so whether the site is "
                "serving what was built is not known.")
+
+# THE COMMIT A BUILD WAS MADE FROM, PUBLISHED WITH IT (6 October 2026). The gate
+# below holds the first night after a release for a person's look, and to know
+# that night it has to know the code of the build production serves, which the
+# site did not carry. So the night writes its own commit into site/build.json --
+# a file build_all already writes, which the fingerprint does not hash -- and
+# reads production's copy back where it reads production for live_fingerprint.
+# Read from production rather than recorded at deploy, because production is
+# what it is about: a deploy rolled back in Cloudflare, or one made from the
+# laptop (whose build.json names no commit), is seen as it is. A build.json
+# that cannot be read, or names no commit, is a commit not known, and the
+# gate's answer to that is to wait.
+BUILD_RECORD = "build.json"
+BUILD_RECORD_MOST = 1 << 20     # build.json is a few KB; more is not one
+COMMIT = re.compile(r"[0-9a-f]{40}")
+# What live_fingerprint read of production beside the fingerprint, for the
+# gate: "commit", what production's build.json names (None where it could not
+# be read or names none). Emptied at the start of every read, and by judge
+# before it reads, so a night never judges by an earlier night's answer.
+SERVED = {}
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -2727,7 +2747,12 @@ def live_fingerprint(base, timeout=180):
     The same files, so the two compare: equal means production already
     serves this build, and there is nothing to approve. meta.json first,
     because the rest are the files the served meta.json names (fingerprinted).
+
+    And, beside the fingerprint, into SERVED for the gate: the commit
+    production's build.json names (served_commit), asked for last and only
+    once the fingerprint was read whole.
     """
+    SERVED.clear()
     h = hashlib.sha256()
     names, meta = ["meta.json"], None
     while names:
@@ -2747,7 +2772,43 @@ def live_fingerprint(base, timeout=180):
         if meta is None:
             meta = _meta_of(body) if body else {}
             names = fingerprinted(meta)[1:]
+    SERVED["commit"] = served_commit(base, timeout)
     return h.hexdigest()[:16]
+
+
+def served_commit(base, timeout=60):
+    """The commit `base`'s build.json names, or None: where it cannot be read,
+    is not JSON (a web page wearing its name), or names no commit -- a build
+    published before 6 October 2026, or from the laptop."""
+    req = urllib.request.Request(f"{base.rstrip('/')}/{BUILD_RECORD}", headers={
+        "User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            d = json.loads(r.read(BUILD_RECORD_MOST))
+    except Exception:                   # noqa: BLE001 -- unreadable is "not known"
+        return None
+    c = d.get("commit") if isinstance(d, dict) else None
+    return c if isinstance(c, str) and COMMIT.fullmatch(c) else None
+
+
+def stamp_commit(site, sha):
+    """Tonight's commit into site/build.json, which build_all wrote: what a
+    later night reads back from production (served_commit). Only a full commit
+    id, and only into a build.json that is there and reads as one; True when
+    written. A build.json left without it is a commit a later night does not
+    know, and waits for."""
+    p = Path(site) / BUILD_RECORD
+    if not COMMIT.fullmatch(str(sha or "")):
+        return False
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(d, dict):
+        return False
+    d["commit"] = sha
+    p.write_text(json.dumps(d, indent=2), encoding="utf-8")
+    return True
 
 
 def site_manifest(site, out):
@@ -2852,6 +2913,15 @@ class Night:
                  changed=changed)
         fp = fingerprint(site)
         v["fingerprint"] = fp
+        # Tonight's commit goes out with the build (BUILD_RECORD), before the
+        # list of every built file is made and before the preview and the
+        # publish job take the site.
+        if stamp_commit(site, v["sha"]):
+            say(f"\n  {site.as_posix()}/{BUILD_RECORD} names commit {v['sha'][:12]}: a later "
+                "night reads it back from production")
+        else:
+            say(f"\n  {site.as_posix()}/{BUILD_RECORD} names no commit (no full commit id "
+                "tonight, or no build.json): a later night will not know this build's code")
         blocking = []
         if before is None:
             v["gates"] = "no baseline"
@@ -2890,9 +2960,13 @@ class Night:
             say("\n  tracked data files the night rewrote (reported, not a stop): "
                 + ", ".join(data[:12]) + (f" and {len(data) - 12} more" if len(data) > 12 else ""))
 
+        SERVED.clear()
         live = live_fingerprint(a.base)
         v["live_fingerprint"] = live
         already = live == fp
+        # The commit production's build names, read with it: None is "not
+        # known", and a gate that cannot read it waits.
+        v["live_commit"] = SERVED.get("commit")
         if not stop and a.new_term:
             # NOT WRITTEN TONIGHT. Written here, the lower counts were the
             # baseline before anyone had approved the switch, and the next

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.347
+# GRANITE_VERSION: 2026-09-04.348
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13764,8 +13764,11 @@ def _census_and_fingerprint_of_the_bill_index():
         finally:
             urllib.request.urlopen = saved
         assert live == fp, f"production serving this very tree fingerprints {live}, here {fp}"
+        # build.json last: the commit production's build names, for the gate,
+        # and none of the fingerprint (_nightly_publishes_its_commit).
         assert asked == ["meta.json", "idx/2025-2026.json", "idx/1989-1990.json",
-                         "idx/2027-requests.json", "home.json", "legislators.json"], (
+                         "idx/2027-requests.json", "home.json", "legislators.json",
+                         "build.json"], (
             f"live_fingerprint asked for {asked}")
 
         old = site / "idx" / "1989-1990.json"
@@ -43679,6 +43682,255 @@ def _nightly_runner(NI):
     return "ok", ("gates from archive/census.json, and none is no production; no late-caption "
                   "check, changed code or an unchanged site is no production; a refusal "
                   "stops the fetch; no reports; production only this night's build, from main")
+
+
+# ---- the gate: which nights wait for a person (6 October 2026) -------------------
+#
+# The design approved on 6 October 2026: an ordinary data night may later publish
+# itself, and a night waits for the person when it is a New term run, the first
+# night after a release, a night that changed far more than a data night does,
+# or one with a kind of warning the night before did not carry. In shadow first:
+# the verdict and the run's page say what the gate would have done. These checks
+# drive whole nights through nightly.main() in a throwaway folder, against a
+# production that is a folder too, served by a fake urlopen -- so the real
+# live_fingerprint reads it, and nothing is asked of the network.
+
+GATE_BASE = "https://graniterecord.org"
+GATE_SHA = ("a" * 40, "b" * 40)
+
+
+class _GateNights:
+    """A folder of nights, every step faked, and a production served from
+    prod/ to the real live_fingerprint. `how` shapes the next build: "bills"
+    of the current term, "terms" ({term: bills}, the newest the current one),
+    "touch" (rows of the current term marked as changed tonight), "rewrite" (a
+    finished term whose file is rewritten), "record" (False: no build.json).
+    `down` makes production unreadable. A deploy to production copies site/
+    into prod/, which is what production then serves."""
+
+    ENV = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+           "GITHUB_SHA", "REVIEW_GATE")
+
+    def __init__(self, NI):
+        import types
+        import urllib.request
+        import caption_span                # noqa: F401 -- imported here, before the chdir
+        import refusal
+        import snapshot_gencourt           # noqa: F401 -- the same
+        self.NI, self.refusal, self.ur = NI, refusal, urllib.request
+        self.types = types
+        self.how = {"bills": 100, "terms": None, "touch": 0, "rewrite": None, "record": True}
+        self.down, self.asked, self.stray = False, [], []
+
+    def __enter__(self):
+        NI, refusal = self.NI, self.refusal
+        self.here = os.getcwd()
+        self.tmp = Path(tempfile.mkdtemp(prefix="gr-gate-"))
+        self.saved = (NI.run, NI.LOG, NI.QUIET, NI.tracked_changes, NI.current_branch,
+                      NI.upload_and_check, NI.captions_compared, NI.time, sys.argv,
+                      refusal.MARK, refusal.LOCK, self.ur.urlopen)
+        self.saved_env = {k: os.environ.get(k) for k in self.ENV}
+        os.chdir(self.tmp)
+        for k in self.ENV:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = self.tmp / "archive" / "refused.json", self.tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        Path("prod").mkdir()
+        NI.run = self.fake
+        NI.time = self.types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.tracked_changes = lambda: ([], [])
+        NI.current_branch = lambda: "main"
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
+        NI.upload_and_check = self.deployed
+        self.ur.urlopen = self.served
+        return self
+
+    def __exit__(self, *exc):
+        NI, refusal = self.NI, self.refusal
+        os.chdir(self.here)
+        (NI.run, NI.LOG, NI.QUIET, NI.tracked_changes, NI.current_branch, NI.upload_and_check,
+         NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK,
+         self.ur.urlopen) = self.saved
+        for k, val in self.saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        return False
+
+    def build(self):
+        h = self.how
+        _runner_site(h["bills"], terms=h["terms"])
+        site = Path("site")
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        newest = max(meta["terms"])
+        for t in meta["terms"]:
+            f = site / "idx" / f"{t}.json"
+            rows = json.loads(f.read_text(encoding="utf-8"))
+            if t == newest:
+                for r in rows[:h["touch"]]:
+                    r["status"] = f"changed by run {os.environ.get('GITHUB_RUN_ID')}"
+            elif t == h["rewrite"]:
+                rows[0]["title"] = "rewritten tonight"
+            f.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
+        rec = site / "build.json"
+        rec.unlink(missing_ok=True)
+        if h["record"]:
+            rec.write_text(json.dumps({"finished": "2026-10-06T03:00:00", "ok": True,
+                                       "steps": []}, indent=2), encoding="utf-8")
+
+    def fake(self, args, label, cwd=None):
+        self.NI.say(f"\n--- {label} ---")
+        if Path(args[0]).name == "build_all.py":
+            self.build()
+        self.NI.say("  (0s, exit 0)")
+        return 0
+
+    def served(self, req, timeout=None):
+        import io
+        import urllib.error
+        url = req.full_url
+        if not url.startswith(GATE_BASE + "/"):
+            self.stray.append(url)
+            raise urllib.error.URLError("not production")
+        path = url[len(GATE_BASE) + 1:]
+        self.asked.append(path)
+        if self.down:
+            raise urllib.error.URLError("production did not answer")
+        f = Path("prod") / path
+        if not f.is_file():
+            raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+        return io.BytesIO(f.read_bytes())
+
+    def deployed(self, a, site, target, base):
+        if target == self.NI.PRODUCTION_BRANCH:
+            shutil.rmtree("prod")
+            shutil.copytree(site, "prod")
+        return True
+
+    def night(self, *argv, run_id, sha=GATE_SHA[0], github=False):
+        import contextlib
+        import io
+        self.NI.LOG = []
+        os.environ["GITHUB_RUN_ID"] = run_id
+        if sha:
+            os.environ["GITHUB_SHA"] = sha
+        else:
+            os.environ.pop("GITHUB_SHA", None)
+        summary, output = self.tmp / "summary.md", self.tmp / "output.txt"
+        for f in (summary, output):
+            f.write_text("", encoding="utf-8")
+        os.environ["GITHUB_STEP_SUMMARY"], os.environ["GITHUB_OUTPUT"] = str(summary), str(output)
+        if github:
+            os.environ["GITHUB_ACTIONS"] = "true"
+        sys.argv = ["nightly.py", *argv]
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = self.NI.main()
+                except SystemExit as e:
+                    code = e.code
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        self.summary = summary.read_text(encoding="utf-8")
+        self.output = dict(ln.split("=", 1) for ln in output.read_text(encoding="utf-8").splitlines()
+                           if "=" in ln)
+        return code, out.getvalue()
+
+    def verdict(self):
+        return json.loads(self.NI.VERDICT.read_text(encoding="utf-8"))
+
+    def publish(self, run_id):
+        code, _ = self.night("--runner", "--deploy-to", "production", run_id=run_id)
+        assert code == 0, f"the fixture's production deploy of run {run_id} did not land"
+
+
+@check("build", "the night publishes the commit it was built from in build.json, and reads the "
+       "commit production serves back from production's", needs=("nightly",))
+def _nightly_publishes_its_commit(NI):
+    """The gate holds the first night after a release, so a night has to know
+    the code of the build production serves, which the site did not carry. The
+    night writes its own commit into site/build.json -- which build_all writes
+    and the fingerprint does not hash, so no build is told apart by it -- and
+    live_fingerprint reads production's build.json last, after the files it
+    hashes, into SERVED. A build.json that will not read, is a web page, names
+    no commit or is not there, and a production that does not answer, are all
+    a commit not known: None, never a guess. And it is production's copy that
+    is read, so a deploy rolled back, or one from the laptop, is seen as it
+    is."""
+    sha = GATE_SHA[0]
+    with _GateNights(NI) as g:
+        site = Path("site")
+        site.mkdir()
+        assert not NI.stamp_commit(site, sha) and not (site / "build.json").exists(), \
+            "a commit was written into a build.json build_all never wrote"
+        (site / "build.json").write_text(json.dumps({"finished": "x", "steps": [1]}, indent=2),
+                                         encoding="utf-8")
+        for bad in ("", None, "abc123", sha.upper(), sha + "0"):
+            assert not NI.stamp_commit(site, bad), f"{bad!r} was published as a commit"
+        assert NI.stamp_commit(site, sha) and json.loads(
+            (site / "build.json").read_text(encoding="utf-8")) == \
+            {"finished": "x", "steps": [1], "commit": sha}, "build.json lost what build_all wrote"
+
+        # What production's build.json says, as served_commit reads it.
+        for body, want in ((json.dumps({"commit": sha}), sha), (json.dumps({"finished": "x"}), None),
+                           ("<!doctype html><html></html>", None), (json.dumps([sha]), None),
+                           (json.dumps({"commit": "abc"}), None)):
+            (Path("prod") / "build.json").write_text(body, encoding="utf-8")
+            got = NI.served_commit(GATE_BASE)
+            assert got == want, f"production's build.json {body[:40]!r} read as commit {got!r}"
+        (Path("prod") / "build.json").unlink()
+        assert NI.served_commit(GATE_BASE) is None, "a build.json production does not have named a commit"
+        g.down = True
+        assert NI.served_commit(GATE_BASE) is None, "a production that did not answer named a commit"
+        g.down = False
+
+        # Read with the fingerprint, last, into SERVED; never left from an
+        # earlier read.
+        _bill_index_write(Path("prod"), [{"term": "2025-2026", "id": "HB1"}])
+        (Path("prod") / "build.json").write_text(json.dumps({"commit": sha}), encoding="utf-8")
+        del g.asked[:]
+        live = NI.live_fingerprint(GATE_BASE)
+        assert live and NI.SERVED.get("commit") == sha and g.asked[-1] == "build.json" and \
+            g.asked.count("build.json") == 1, (live, NI.SERVED, g.asked)
+        g.down = True
+        assert NI.live_fingerprint(GATE_BASE) is None and NI.SERVED.get("commit") is None, \
+            ("a production that did not answer kept the commit an earlier read found", NI.SERVED)
+        g.down = False
+
+        # A whole night: the build goes out naming the commit it was made
+        # from, and the night after reads it back from production.
+        shutil.rmtree("site")
+        shutil.rmtree("prod")
+        Path("prod").mkdir()
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="301")
+        assert code == 0, g.verdict().get("not_clean")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="302")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["live_commit"] is None, (code, v.get("live_commit"))
+        assert json.loads((site / "build.json").read_text(encoding="utf-8"))["commit"] == sha, \
+            "the night's build does not name the commit it was made from"
+        g.publish("302")
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="303")
+        assert code == 0 and g.verdict()["live_commit"] == sha, \
+            ("the night after a deploy did not read the commit production serves",
+             g.verdict().get("live_commit"))
+        # A build with no build.json goes out naming none, and the night
+        # after does not know production's code.
+        g.how["record"] = False
+        code, _ = g.night("--runner", "--no-fetch", run_id="304")
+        g.publish("304")
+        g.how["record"], g.how["touch"] = True, 5
+        code, _ = g.night("--runner", "--no-fetch", run_id="305")
+        assert code == 0 and g.verdict()["live_commit"] is None, g.verdict().get("live_commit")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("tonight's commit is written into site/build.json and read back from "
+                  "production's, last, with the fingerprint; unreadable, a web page, none, or "
+                  "no answer is None")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
