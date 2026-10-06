@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.366
+# GRANITE_VERSION: 2026-09-04.367
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2814,6 +2814,34 @@ def _overtaken_meeting_not_day(N, P):
     return "ok", ("HB 1288 of 1990's Senate hearing of 8 March and HB 650 of 2014's Finance "
                   "hearing of 18 February are left off at their hour, and the hearing of 6 March, "
                   "the work session of the 18th and HB 1132 of 2002's hearing of 19 March stay")
+
+
+# Real rows: Docket_db_2001-2002.txt 11208-11214 (SB 102).
+_DOCKET_PUB_WORKS = [
+    "2002|0772|12/20/2001 04:01:24 PM|SB102|H|Maj Report   OTP   for   Jan 2   (vote 17-0;Reg)|12/20/2001 04:01:24 PM",
+    "2002|0772|01/02/2002 10:47:15 AM|SB102|H|Passed and ref to Public Works VV;  HJ5, p211-212|01/02/2002 10:47:15 AM",
+    "2002|0772|01/03/2002 11:16:05 AM|SB102|H|Pub Works  Hearing   Jan 9   10:30   RM201,LOB|01/03/2002 11:16:05 AM",
+    "2002|0772|01/16/2002 12:48:42 PM|SB102|H|Pub Works Hearing on Prop Am   Jan 22   2:30   RM201,LOB|01/16/2002 12:48:42 PM",
+    "2002|0772|01/24/2002 03:05:50 PM|SB102|H|Pub Wks Maj Report   OTP/AM   for   Jan 31   (vote 16-0;Reg)|01/24/2002 03:05:50 PM",
+    "2002|0772|01/31/2002 01:10:58 PM|SB102|H|Comm Am, AA VV;  Passed with Am and ref to Finance VV;  HJ14, p566-567|01/31/2002 01:10:58 PM"]
+
+
+@check("narrative", "a House row of 2001-2002 headed with the second committee's name is that "
+                    "committee's hearing or report", needs=("narrative",))
+def _second_committee_rows(N):
+    """SB 102 of 2002 was passed by the House and sent to Public Works, which
+    heard it on 9 and 22 January and reported it 16-0: "Pub Works  Hearing
+    Jan 9", "Pub Wks Maj Report OTP/AM ... (vote 16-0;Reg)". The reader took
+    the committee's name before "Hearing" and "Maj Report" for Finance's and
+    Ways and Means' only, so the history went from Commerce to Finance with
+    no Public Works stage, while the Reports tab drew its written report."""
+    n = _told_from_rows(N, "2001-2002", "SB102", _DOCKET_PUB_WORKS)
+    st = [s for s in n["stages"] if "Public Works" in s["label"]]
+    text = " ".join(s["text"] for s in st)
+    assert st and "public hearings on January 9, 2002 and January 22, 2002" in text \
+        and "16" in text, (
+        f"SB 102 of 2002's Public Works stage: {[(s['label'], s['text']) for s in n['stages']]}")
+    return "ok", "SB 102 of 2002's Public Works hearings and 16-0 report are told under that committee"
 
 
 # Real rows: Docket_db_1999-2000.txt 2664-2667 (HB 120) and 3699-3703 (SB 182),

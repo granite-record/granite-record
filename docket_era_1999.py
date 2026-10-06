@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.9
+# GRANITE_VERSION: 2026-09-11.10
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -234,6 +234,9 @@ REREF_H = re.compile(
 HEARING = re.compile(
     NOCANCEL +
     r"^(?:(?:(?:Re-?)?Resched(?:uled|\.)?|Continued|Fin(?:ance)?(?:\s+Div\s+[IV]+)?|Joint|W\s*&\s*M|Ways\s*&\s*Means|"
+    # The second committee's own name, as Finance's is: "Pub Works  Hearing
+    # Jan 9" (SB 102 of 2002, passed by the House and sent to Public Works).
+    r"Pub(?:lic)?\s+W(?:or)?ks|"
     r"Full\s+Comm(?:ittee)?|Re-?Ref(?:er)?|Int(?:erim)?\s+Study)\s+){0,2}"
     r"(?P<kind>Public\s+Hearing|Hearing)"
     r"(?:\s+on\s+(?:the\s+)?(?:Prop(?:osed)?\.?\s+(?:Comm\s+)?Am(?:endment|end)?\.?|Amendment)"
@@ -271,7 +274,7 @@ H_REC = (r"ITL|OTP/AM|OTPA|OTP|Ought\s+to\s+Pass(?:\s+with\s+Am\w*)?|Inexpedient
          r"|Lay\s+on\s+(?:the\s+)?Table")
 REPORT_H = re.compile(
     r"^(?!.*\b(?:MA|ML|MF)\b)(?!.*\b(?:Passed|adopted)\b)"
-    r"(?:(?:Fin(?:ance)?|W\s*&\s*M|Ways\s*&\s*Means|RE-?REF|Re-?Ref(?:erred)?|Int(?:erim)?\s+Study"
+    r"(?:(?:Fin(?:ance)?|W\s*&\s*M|Ways\s*&\s*Means|Pub(?:lic)?\s+W(?:or)?ks|RE-?REF|Re-?Ref(?:erred)?|Int(?:erim)?\s+Study"
     r"|Ret(?:ained)?|Educ|Elec|ED\s*&\s*A|Comm)\s+){0,2}"
     r"(?:(?P<side>Maj\w*|Min\w*)\.?\s+(?:Comm(?:ittee)?\s+)?|Comm(?:ittee)?\s+)"
     r"(?:Rep(?:or)?t|Rprt|Rpt)\.?\s*:?\s*"
