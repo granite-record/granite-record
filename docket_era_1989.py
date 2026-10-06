@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.6
+# GRANITE_VERSION: 2026-09-11.7
 """
 The 1989-1998 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -171,9 +171,22 @@ P("exec", "exec",
   r"^" + NOTCANCEL + PREFIX + r"EXEC(?:UTIVE)?\s+SESS(?:ION)?S?\s*:?\s*(?:ON\s+)?(?P<date>" + DATE + r")")
 
 # ---------------------------------------------------------------- referral
+# AND WITH THE RULES COMMITTEE'S APPROVAL NOTED IN WHATEVER BRACKETS THE CLERK
+# HAD TO HAND (6 October 2026; the person's word on decision 49): the House's
+# late bills of 1997 read "INTRODUCED <APPROVED BY RULES> AND REF TO ELEC LAW"
+# (HB 800 to HB 808), "INTRODUCED [APPROVED BY RULES] AND REF TO FINANCE" (HB
+# 1 and HB 2), "[APPROVED BY RULES] INTRODUCED AND REF TO PUBLIC WORKS" (HB
+# 25), and of 1995 "INTRODUCED (APPROVED BY RULES) & REF TO MUN & CNTY GOVT"
+# (HB 658). Only the round brackets and "AND" were read, and the seventeen
+# others had no introduction: their histories began with a hearing. Not a
+# date in brackets before it ("(JAN23)INTRODUCED AND REF TO BANKS", HB 128 of
+# 1997), which states a day this pattern does not read; and "&" only after
+# such a note, so that "INTRODUCED & REF TO JT COMM TO MONITOR PSNH
+# REORGANIZATION" (SB 205 of 1989) is read as it was.
 P("introduced", "introduced",
-  r"(?:^|;\s*)(?:(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4})\s+)?INTRODUCED(?:\s*\([^)]*\))?"
-  r"\s+AND\s+(?:RE-?)?REF(?:ERRED)?\.?\s+TO\s+(?P<committee>[A-Z][^;(]*?)\s*(?:[;(]|\s{2,}|\s+[HS]J\s*\d|$)")
+  r"(?:^|;\s*)(?:(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4})\s+)?(?:\[[^\]]*\]\s*)?INTRODUCED"
+  r"(?:\s*(?:\([^)]*\)|\[[^\]]*\]|<[^>]*>)\s+(?:AND|&)|\s+AND)"
+  r"\s+(?:RE-?)?REF(?:ERRED)?\.?\s+TO\s+(?P<committee>[A-Z][^;(]*?)\s*(?:[;(]|\s{2,}|\s+[HS]J\s*\d|$)")
 # The committee runs to the mover, the vote or the end, and a comma inside
 # it is its own: "VACATED TO RES, REC & DEV, REP HAGER MA VV" (HB 1218 of
 # 1992) sent the bill "to the Res committee" while a comma ended the name,

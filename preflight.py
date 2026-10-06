@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.350
+# GRANITE_VERSION: 2026-09-04.351
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1668,6 +1668,70 @@ def _consent_calendar_count(N, B):
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_CONSENT_VOTE) - 1} bills' consent calendar counts told as the "
                   "calendar's, in the history and on the rail, and a bill's own roll call as before")
+
+
+# Real rows: Docket_db_1997-1998.txt 589 and 591 (HB 800), 9396 and 9398 (HB
+# 25), 9516 (HB 1) and 604 (HB 128); Docket_db_1995-1996.txt 8453-8454 (HB
+# 658) and 20298 (HB 1634); Docket_db_1989-1990.txt 8386 (SB 205).
+# (session, the row, read as an introduction to this committee, or None)
+_APPROVED_BY_RULES = [
+    ("1997", "INTRODUCED <APPROVED BY RULES> AND REF TO ELEC LAW; HJ25,P480", "Election Law"),
+    ("1997", "INTRODUCED [APPROVED BY RULES] AND REF TO FINANCE; HJ29,P603", "Finance"),
+    ("1997", "[APPROVED BY RULES] INTRODUCED AND REF TO PUBLIC WORKS; HJ29,P577", "Public Works"),
+    ("1995", "INTRODUCED (APPROVED BY RULES) & REF TO MUN & CNTY GOVT; REPS A",
+     "Municipal and County Government"),
+    # As before: the round brackets, which were always read ...
+    ("1996", "INTRODUCED (APPROVED BY RULES) AND REF TO EXEC DEPTS & ADMIN; HJ30,P1117",
+     "Executive Departments and Administration"),
+    # ... and neither a day in brackets this pattern does not read, nor "&"
+    # with no note before it.
+    ("1997", "(JAN.23)INTRODUCED AND REF TO BANKS; SJ3, P49", None),
+    ("1989", "INTRODUCED & REF TO JT COMM TO MONITOR PSNH REORGANIZATION", None),
+]
+_DOCKET_APPROVED_BY_RULES = {
+    ("HB800", "1997-1998"): [
+        "1997|0082|02/13/1997 03:30:57 PM|HB800|H|INTRODUCED <APPROVED BY RULES> AND REF TO ELEC LAW; HJ25,P480|02/13/1997 03:30:57 PM",
+        "1997|0082|02/18/1997 03:31:36 PM|HB800|H|HEARING FEB27 11:00 RM308,LOB    FOR: ELEC LAW|02/18/1997 03:31:36 PM"],
+    ("HB25", "1997-1998"): [
+        "1997|1125|02/19/1997 04:47:20 PM|HB25|H|[APPROVED BY RULES] INTRODUCED AND REF TO PUBLIC WORKS; HJ29,P577|02/19/1997 04:47:20 PM",
+        "1997|1125|02/28/1997 11:59:10 AM|HB25|H|HEARINGS MAR04 09:00 - 03:00 RM201,LOB    FOR: PUBLIC WORKS|02/28/1997 11:59:10 AM"],
+    ("HB658", "1995-1996"): [
+        "1995|0932|05/23/1995 03:37:32 PM|HB658|H|INTRODUCED (APPROVED BY RULES) & REF TO MUN & CNTY GOVT; REPS A|05/23/1995 03:37:32 PM",
+        "1995|0932|05/23/1995 03:37:49 PM|HB658|H|TORR & TROMBLY SUSP RULES FOR HEARING, MA 2/3VV; HJ71,P1972|05/23/1995 03:37:49 PM"],
+}
+_APPROVED_BY_RULES_TOLD = {
+    ("HB800", "1997-1998"): "It was introduced on February 13, 1997 and referred to the House "
+                            "Election Law committee.",
+    ("HB25", "1997-1998"): "It was introduced on February 19, 1997 and referred to the House "
+                           "Public Works and Highways committee.",
+    ("HB658", "1995-1996"): "It was introduced on May 23, 1995 and referred to the House "
+                            "Municipal and County Government committee.",
+}
+
+
+@check("narrative", "an introduction the Rules Committee approved is read as an introduction, in "
+                    "whatever brackets the clerk noted it", needs=("narrative", "docket_vocab"))
+def _approved_by_rules(N, V):
+    """Decision 49, the person's word of 6 October 2026. The House's late
+    bills of 1997 were introduced on rows that note the Rules Committee's
+    approval in angle or square brackets -- "INTRODUCED <APPROVED BY RULES> AND
+    REF TO ELEC LAW" -- or before the word, and the 1995 row of HB 658 with
+    "&": only "INTRODUCED (APPROVED BY RULES) AND REF TO" was read, and
+    seventeen histories began with a hearing and no introduction."""
+    from datetime import datetime as _dt
+    bad = []
+    for session, raw, want in _APPROVED_BY_RULES:
+        e = V.classify(raw, _dt(int(session), 2, 13), session)
+        got = e.get("committee") if e.get("_type") == "introduced" else None
+        if got != want:
+            bad.append(f"{raw[:60]!r} is read as an introduction to {got!r}, not {want!r}")
+    for key, lines in _DOCKET_APPROVED_BY_RULES.items():
+        n = _narrated(N, key[1], key[0], lines)
+        if not n["narrative"].startswith(_APPROVED_BY_RULES_TOLD[key]):
+            bad.append(f"{key[0]} of {key[1]} begins {n['narrative'][:120]!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_APPROVED_BY_RULES)} rows read as they should be and "
+                  f"{len(_DOCKET_APPROVED_BY_RULES)} histories that begin with the introduction")
 
 
 # Real rows: Docket.txt 7406 (HB 517 of 2025) and 19102 (SB 635 of 2026);
