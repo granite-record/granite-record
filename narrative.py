@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.78
+# GRANITE_VERSION: 2026-09-04.79
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4039,10 +4039,39 @@ CANCELLED_AND_RESCHEDULED = re.compile(
     r"=+\s*CANCELL?ED\s*=+\s*RESCHEDULED\s*=+\s*(?=[A-Z][a-z]+\.?\s+\d|\d{1,2}/\d)", re.I)
 
 
-def cancel_marked(r):
-    """Does the row's own mark call off the meeting it names?"""
+# AND THE MARK SPELLED ANY OTHER WAY THE CLERK SPELLED IT (decision 59a, 7
+# October 2026). parse_docket's flags are "==WORD==" in capitals, and 74 rows
+# of 2009-2021 that the proceedings reader (docket_parser.cancelled) already
+# leaves off were told as meetings held: "=Cancelled= Executive Session:
+# 2/11/2010 10:00 AM LOB 204" (HB 1134 of 2010), "==Cancelled==Retained Bill -
+# Executive Session: 10/29/2013 10:00 AM LOB 302" (twenty retained bills of
+# Commerce, re-noticed "==Rescheduled==" for 22 October), "Executive Session:
+# 2/06/2014 2:15 PM LOB 302 =cancelled due to weather=", "... LOB
+# 210-211=CANCELLED=" (SB 370 of 2014, moved to 1 May), "Cancelled Continued
+# Executive Session: 5/8/2014" (SB 220) and "CANCELLED Subcommittee Work
+# Session: 09/17/2021" (SB 92). Each is the clerk's mark on the notice itself,
+# and the calendars on disk agree where they print the bills: the meeting
+# printed before the mark, and the bill's next meeting printed after it
+# (cancel_spellings in the stage 2b survey). Not a mark that moves the
+# meeting ("==CANCELED AND RESCHEDULED== Feb.11", SB 405 of 2000, the notice
+# of the new day), and not "Cancelled" in a row's prose.
+CANCEL_SPELLED = re.compile(
+    r"=+\s*cancell?ed\b(?:(?!resched)[^=]){0,40}=+"
+    r"|^\W*cancell?ed\s+(?=(?:continued\s+|retained\s+bill\s*-\s*)?(?:public\s+hearing|executive"
+    r"\s+session|(?:sub)?committee\s+work|full\s+committee|work\s+session|division))", re.I)
+
+
+def cancel_marked(r, kind=None):
+    """Does the row's own mark call off the meeting it names? The mark spelled
+    another way (CANCEL_SPELLED) counts only on a meeting's own row, `kind`
+    being the event's type: "=== CANCELLED SESSION === Committee Report: Ought
+    to Pass" (HB 407 of 2015) is the Senate's report for a session called
+    off, and still a report."""
+    desc = r.get("desc") or ""
+    if CANCELLED_AND_RESCHEDULED.search(desc):
+        return False
     return (any(f in CANCEL_FLAGS for f in r["flags"])
-            and not CANCELLED_AND_RESCHEDULED.search(r.get("desc") or ""))
+            or (kind in ROW_MEETINGS and bool(CANCEL_SPELLED.search(desc))))
 
 
 def build(bill, rows, introduction=None):
@@ -4088,7 +4117,7 @@ def build(bill, rows, introduction=None):
         # the clerk wrote once at its end ("entry").
         ev["cite"], ev["cite_page"] = cite_of(r.get("entry") or r["desc"])
         ev["body"] = r["body"]
-        ev["cancelled"] = cancel_marked(r)
+        ev["cancelled"] = cancel_marked(r, ev["_type"])
         ev["recessed"] = "RECESSED" in r["flags"]
         # The row as the clerk typed it, marks and all, for overtaken().
         ev["_said"] = r["desc"]

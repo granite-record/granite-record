@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.370
+# GRANITE_VERSION: 2026-09-04.371
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3323,6 +3323,79 @@ def _whole_day_cancelled(N):
     assert not bad, "\n".join(bad)
     return "ok", ("a session cancelled on two of three bills and dropped by the calendars is "
                   "cancelled for the third; not where a later calendar prints it, nor with none")
+
+
+# Real rows: Docket_db_2009-2010.txt 13721-13727 (HB 1134) and
+# Docket_db_2013-2014.txt 11854-11859 (HB 1112).
+_DOCKET_CANCEL_SPELLED = {
+    ("HB1134", "2009-2010"): [
+        "2010|2058|01/06/2010 11:49:56 AM|HB1134|H|Introduced and Referred to Criminal Justice and Public Safety; HJ 6, PG.230|01/06/2010 11:49:56 AM",
+        "2010|2058|01/06/2010 09:42:26 PM|HB1134|H|Public Hearing: 1/14/2010 2:00 PM LOB 204|01/06/2010 09:42:26 PM",
+        "2010|2058|02/03/2010 01:37:09 PM|HB1134|H|Subcommittee Work Session: 2/11/2010 9:00 AM LOB 204|02/03/2010 01:37:09 PM",
+        "2010|2058|02/03/2010 04:36:16 PM|HB1134|H|=Cancelled= Executive Session: 2/11/2010 10:00 AM LOB 204|02/03/2010 04:36:16 PM",
+        "2010|2058|02/10/2010 09:39:02 AM|HB1134|H|Executive Session: 2/16/2010 10:00 AM LOB 204|02/10/2010 09:39:02 AM",
+        "2010|2058|02/16/2010 04:24:34 PM|HB1134|H|Committee Report: Ought to Pass with AM #0687h (NT) for Mar 3 CC (Vote 14-1); HC 17, PG.797|02/16/2010 04:24:34 PM"],
+    ("HB1112", "2013-2014"): [
+        "2014|2076|12/12/2013 12:06:24 PM|HB1112|H|Introduced 1/8/2014 and Referred to Commerce and Consumer Affairs|12/12/2013 12:06:24 PM",
+        "2014|2076|01/22/2014 10:33:11 AM|HB1112|H|Public Hearing: 1/30/2014 10:30 AM LOB 302|01/22/2014 10:33:11 AM",
+        "2014|2076|01/31/2014 04:22:35 PM|HB1112|H|Executive Session: 2/06/2014 2:15 PM LOB 302|01/31/2014 04:22:35 PM",
+        "2014|2076|02/05/2014 09:14:36 AM|HB1112|H|Executive Session: 2/06/2014 2:15 PM LOB 302 =cancelled due to weather=|02/05/2014 09:14:36 AM",
+        "2014|2076|02/05/2014 09:15:33 AM|HB1112|H|Rescheduled Executive Session: 2/11/2014 1:30 PM LOB 302|02/05/2014 09:15:33 AM",
+        "2014|2076|02/20/2014 01:10:24 PM|HB1112|H|Committee Report: Ought to Pass (Vote 17-0; CC); HC 13|02/20/2014 01:10:24 PM"],
+}
+# The sentence each tells, the day it no longer tells, and the meetings it
+# carries as voided.
+_CANCEL_SPELLED_TOLD = {
+    ("HB1134", "2009-2010"): ("The committee met in executive session on February 16, 2010",
+                              "February 11, 2010 to vote", []),
+    ("HB1112", "2013-2014"): ("The committee met in executive session on February 11, 2014",
+                              "February 6, 2014", [["2014-02-06", "H", "executive session", "14:15"]]),
+}
+
+
+@check("narrative", "a meeting row the clerk marked cancelled in any spelling is not told as a "
+                    "meeting held, and a mark that moves a meeting or names a report is not one",
+       needs=("narrative",))
+def _cancel_spelled(N):
+    """Decision 59a: 74 rows of 2009-2021 marked "=Cancelled=", "=CANCELLED=",
+    "==Cancelled==", "=cancelled due to weather=", a trailing "=CANCELLED=", or
+    "Cancelled ..." in front of the meeting, which proceedings.csv already
+    left off and the history told as meetings held: HB 1134 of 2010 "met in
+    executive session on February 11, 2010 and February 16, 2010", and HB 1112
+    of 2014 on 6 and 11 February, though the clerk entered the second notice of
+    the 6th "=cancelled due to weather=" and rescheduled it.
+
+    And not "=== CANCELLED SESSION === Committee Report: Ought to Pass" (HB
+    407 of 2015), the Senate's report for a session called off, nor
+    "==CANCELED AND RESCHEDULED== Feb.11" (SB 405 of 2000), the notice of the
+    day the hearing went to."""
+    bad = []
+    for desc, kind, off in (
+            ("=Cancelled= Executive Session: 2/11/2010 10:00 AM LOB 204", "exec", True),
+            ("==Cancelled==Retained Bill - Executive Session: 10/29/2013 10:00 AM LOB 302", "exec", True),
+            ("Executive Session: 5/8/2014 10:00 AM LOB 210-211=CANCELLED=", "exec", True),
+            ("Executive Session: 2/6/2104 2:30 PM LOB 205 =Cancelled due to weather=", "exec", True),
+            ("Cancelled Continued Executive Session: 5/8/2014 10:00 AM LOB 202", "exec", True),
+            ("CANCELLED Subcommittee Work Session: 09/17/2021 10:00 am LOB 204", "worksession", True),
+            ("=== CANCELLED SESSION === Committee Report: Ought to Pass with Amendment 1355s, NT, "
+             "4/23/15; Vote 5-0; CC; SC18", "report", False),
+            ("==CANCELED AND RESCHEDULED== Feb.11, Room 103, SH, 10:00 a.m.; SC5, Pg.6", "hearing", False),
+            ("Executive Session: 2/11/2010 10:00 AM LOB 204", "exec", False)):
+        r = {"desc": desc, "flags": re.findall(r"==\s*([A-Z][A-Z ]*?)\s*==", desc)}
+        if N.cancel_marked(r, kind) != off:
+            bad.append(f"{desc!r} ({kind}) is read as {'live' if off else 'cancelled'}")
+    for key, lines in _DOCKET_CANCEL_SPELLED.items():
+        said, unsaid, voided = _CANCEL_SPELLED_TOLD[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        text = " ".join(s["text"] for s in n["stages"])
+        if said not in text or unsaid in text:
+            bad.append(f"{name} does not tell its executive session alone: {text[:400]!r}")
+        if (n.get("voided") or []) != voided:
+            bad.append(f"{name}: voided {n.get('voided')!r}, not {voided!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("nine rows read by their marks; two histories from real rows tell the session "
+                  "that sat")
 
 
 # Real rows: Docket_db_2001-2002.txt (SB 373) and Docket_db_1999-2000.txt (SB
