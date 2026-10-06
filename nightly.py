@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.43
+# GRANITE_VERSION: 2026-09-04.44
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -608,6 +608,17 @@ REVIEW_FINISHED = ("the bill list of {terms} differs from production's, and a da
 REVIEW_ROWS = ("{n:,} of the {of:,} bills of {term} changed against production's, more than "
                "the {most:,} a data night changes")
 REVIEW_FAILED = "the gate could not work out {what} ({kind}), so it would wait"
+# WARNING KINDS, the fourth reason: a warning of a kind the night before did
+# not carry. A warning seen on clean nights already -- the recordings the laptop
+# has yet to read, night after night -- is not news; a check that warns for
+# the first time is. Kinds, not numbers: 27 recordings waiting after 26 is
+# the same kind. The night before is the verdict every night reads as it
+# starts, and its kinds are kept in it ("warning_kinds"); a verdict that names
+# none -- one from before 6 October 2026, or one written for a night that
+# never started, which keeps its own night before's -- counts as none, and
+# every warning tonight is news.
+REVIEW_WARNING = "a kind of warning the night before did not carry: {said}"
+REVIEW_WARNING_SAID = 140       # characters of the warning the reason quotes
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -2986,6 +2997,39 @@ def size_reasons(site, served, differs):
     return why, measured
 
 
+def kind_of(said):
+    """A warning's words as a kind: what comes before its first ";" (where the
+    sentences here put what was kept), without anything in brackets (an exit
+    status, a count) and with every number as "#", the singular and plural of
+    a count made one. 'not taken: the fetch did not complete (exit 1); the
+    earlier 3 kept' and '... (exit 2); none on file' are one kind."""
+    s = str(said).split(";")[0]
+    s = re.sub(r"\([^)]*\)", " ", s)
+    s = re.sub(r"\d[\d,.]*", "#", s.lower())
+    s = re.sub(r"# (\w+?)s\b", r"# \1", s)
+    for many, one in ((" are ", " is "), (" have ", " has "), (" their ", " its "),
+                      (" were ", " was ")):
+        s = s.replace(many, one)
+    return re.sub(r"\s+", " ", s).strip(" .:,")
+
+
+def warning_reasons(warned, before):
+    """The gate's fourth reason, one for each kind of warning tonight that
+    the night before did not carry: `warned` is [(kind, sentence)] (warned()),
+    `before` the night before's kinds. Each quotes tonight's own sentence,
+    cut short, which the run's page carries in full as a warning already."""
+    seen, out = set(before or []), []
+    for kind, said in warned:
+        if kind in seen:
+            continue
+        seen.add(kind)
+        said = str(said)
+        if len(said) > REVIEW_WARNING_SAID:
+            said = said[:REVIEW_WARNING_SAID - 3].rstrip(" ,;:") + "..."
+        out.append(REVIEW_WARNING.format(said=said))
+    return out
+
+
 def stamp_commit(site, sha):
     """Tonight's commit into site/build.json, which build_all wrote: what a
     later night reads back from production (served_commit). Only a full commit
@@ -3043,6 +3087,10 @@ class Night:
         # filled in by judge; finish() adds the warnings' and writes "review".
         self.review_why = []
         prev = load_json(VERDICT)
+        # The kinds of warning the night before carried, for the gate's fourth
+        # reason; none where its verdict names none.
+        kinds = prev.get("warning_kinds") if isinstance(prev, dict) else None
+        self.kinds_before = [str(k) for k in kinds] if isinstance(kinds, list) else []
         # How many nights in a row the day's files have come from the
         # database, carried from the night before: a night that installs the
         # export sets it to 0, one that falls back adds one, and a night that
@@ -3253,65 +3301,86 @@ class Night:
     def warnings(self):
         """What the night went ahead without: a list beside the record kept from
         an earlier night. Reported on the run's page and in the verdict, and
-        never a reason to hold the night back."""
+        never a reason to hold the night back. (Night.warned, not self.warned:
+        a check reads the sentences off a verdict alone.)"""
+        return [w for _kind, w in Night.warned(self)]
+
+    def warned(self):
+        """warnings(), each with its kind: [(kind, sentence)]. The kind is
+        what the gate compares with the night before's (WARNING KINDS): which
+        check warned, and of what, without the numbers -- the same check
+        warning again with other counts is the same kind. Most are named here,
+        where each sentence is written; the rest are kind_of() their words."""
         out = []
         if from_db(self.v):
             # First, so that it leads the run's page.
             df, n = self.v["day_files"], int(self.v.get("db_nights") or 0)
-            out.append("the day's files were built from the General Court's database, because "
-                       "its export came back empty"
-                       + on_tries(int(self.v.get("fetch_tries") or 1))
-                       + (f" (night {n} in a row)" if n > 1 else ""))
-            out += [str(w) for w in df.get("warnings") or []]
+            out.append(("the day's files from the General Court's database",
+                        "the day's files were built from the General Court's database, because "
+                        "its export came back empty"
+                        + on_tries(int(self.v.get("fetch_tries") or 1))
+                        + (f" (night {n} in a row)" if n > 1 else "")))
+            out += [("the database's files: " + kind_of(w), str(w))
+                    for w in df.get("warnings") or []]
         elif db_tried(self.v) and self.v.get("fetch") == "installed":
             # The export's files, on a later try, after the database was
             # turned to and installed nothing: the night is the export's and
             # is clean, and its page says what the database did.
-            out.append("the day's files are the export's, which arrived whole on try "
-                       f"{int(self.v.get('fetch_tries') or 1)}: it came back empty first, and "
-                       "the General Court's database, turned to then, installed nothing ("
-                       + DB_WHY[self.v["day_files"]["why_code"]] + ")")
+            code = self.v["day_files"]["why_code"]
+            out.append((f"the export's files after the database installed nothing: {code}",
+                        "the day's files are the export's, which arrived whole on try "
+                        f"{int(self.v.get('fetch_tries') or 1)}: it came back empty first, and "
+                        "the General Court's database, turned to then, installed nothing ("
+                        + DB_WHY[code] + ")"))
         empty = self.v.get("empty_rollcalls")
         if isinstance(empty, dict) and empty.get("files"):
-            out.append(f"{' and '.join(empty['files'])} came back empty and were taken as files "
-                       f"with no roll call in them yet: {str(empty.get('why') or '')[:150]}")
+            out.append(("roll-call files empty and taken",
+                        f"{' and '.join(empty['files'])} came back empty and were taken as files "
+                        f"with no roll call in them yet: {str(empty.get('why') or '')[:150]}"))
         left = self.v.get("left_out")
         if isinstance(left, dict) and left.get("rows"):
             # Rows of a finished term in tonight's files, counted and left out
             # (build_data): a late correction to that term would be one, and
             # whether its freeze should take it is a person's to decide.
             bills = [str(b) for b in left.get("bills") or []]
-            out.append(f"rows of {', '.join(left.get('terms') or []) or 'a finished term'} in "
-                       "tonight's files were left out, the term being built from its freeze: "
-                       + ", ".join(f"{k} {v:,}" for k, v in sorted(left["rows"].items()))
-                       + (f" ({', '.join(bills[:4])}{' ...' if len(bills) > 4 else ''})"
-                          if bills else "")
-                       + f"; {LEFT_OUT} lists them")
+            out.append(("rows of a finished term left out",
+                        f"rows of {', '.join(left.get('terms') or []) or 'a finished term'} in "
+                        "tonight's files were left out, the term being built from its freeze: "
+                        + ", ".join(f"{k} {v:,}" for k, v in sorted(left["rows"].items()))
+                        + (f" ({', '.join(bills[:4])}{' ...' if len(bills) > 4 else ''})"
+                           if bills else "")
+                        + f"; {LEFT_OUT} lists them"))
         for name, term in (self.v.get("released") or []):
             # A file that turned after the switch, taken because the copy it
             # replaced is a finished term's frozen one (snapshot_gencourt).
-            out.append(f"{name} came back much smaller and was taken: the copy it replaced "
-                       f"is {term}'s, frozen byte for byte, and that term is built from the "
-                       "frozen copy")
+            out.append((f"{name} taken over a finished term's frozen copy",
+                        f"{name} came back much smaller and was taken: the copy it replaced "
+                        f"is {term}'s, frozen byte for byte, and that term is built from the "
+                        "frozen copy"))
         if study_held(self.v):
             # Short: the run's page cuts a note off at 300 characters.
-            out.append("the study committees' meetings were not asked for: " + sql_hold_said())
+            out.append(("the study committees' meetings not asked for: a hold",
+                        "the study committees' meetings were not asked for: " + sql_hold_said()))
         elif study_not_again(self.v):
-            out.append("the study committees' meetings were not asked for: the General Court's "
-                       "database did not give the day's files earlier tonight, and it is not "
-                       "asked again the same night")
+            out.append(("the study committees' meetings not asked for: not asked twice",
+                        "the study committees' meetings were not asked for: the General Court's "
+                        "database did not give the day's files earlier tonight, and it is not "
+                        "asked again the same night"))
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
-            out.append(f"next session's bill requests: {lsrs}")
+            out.append(("next session's bill requests: " + kind_of(lsrs),
+                        f"next session's bill requests: {lsrs}"))
         docs = self.v.get("documents")
         if docs and not str(docs).startswith("installed"):
-            out.append(f"the General Court's list of calendars and journals: {docs}")
+            out.append(("the General Court's list of calendars and journals: " + kind_of(docs),
+                        f"the General Court's list of calendars and journals: {docs}"))
         n = captions_waiting()
         if n:
-            out.append(f"{n} recording{'s' if n != 1 else ''} finished more than "
-                       f"{CAPTION_WAIT_DAYS} days ago {'have' if n != 1 else 'has'} no start "
-                       f"time from {'their' if n != 1 else 'its'} captions yet: the laptop's "
-                       "evening catch-up (laptop_evening.py) reads them")
+            out.append(("recordings with no start time from their captions yet",
+                        f"{n} recording{'s' if n != 1 else ''} finished more than "
+                        f"{CAPTION_WAIT_DAYS} days ago {'have' if n != 1 else 'has'} no start "
+                        f"time from {'their' if n != 1 else 'its'} captions yet: the laptop's "
+                        "evening catch-up (laptop_evening.py) reads them"))
         return out
 
     def alarms(self):
@@ -3347,13 +3416,15 @@ class Night:
         v = self.v
         why = self.problems()
         alarms = self.alarms()
+        warned = self.warned()
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code,
                  clean=not why and not alarms and code == 0, not_clean=why + alarms,
-                 alarms=alarms, warnings=self.warnings())
+                 alarms=alarms, warnings=[w for _kind, w in warned],
+                 warning_kinds=sorted({kind for kind, _w in warned}))
         if v.get("built"):
             # THE GATE, for every night that built: whether it would wait for a
             # person, and why. In shadow it decides nothing.
-            reasons = list(self.review_why)
+            reasons = list(self.review_why) + warning_reasons(warned, self.kinds_before)
             v["review"] = {"needed": bool(reasons), "why": reasons}
         write_json(VERDICT, v)
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {VERDICT}")
@@ -3526,6 +3597,11 @@ def close_verdict(a):
             v["db_stopped"] = db_stopped_of(older)
             if db_stopped_day_of(older):
                 v["db_stopped_day"] = db_stopped_day_of(older)
+            # ... and the kinds of warning the gate compares with: a night that
+            # never started warned of nothing, and is not the night before
+            # anything is new against (WARNING KINDS).
+            if isinstance(older, dict) and isinstance(older.get("warning_kinds"), list):
+                v["warning_kinds"] = older["warning_kinds"]
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
     if failed:

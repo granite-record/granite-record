@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.352
+# GRANITE_VERSION: 2026-09-04.353
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44228,6 +44228,103 @@ def _nightly_review_size(NI):
     return "ok", (f"a finished term's list rewritten on a data night waits; {NI.REVIEW_ROWS_MOST} "
                   "of the current term's rows changed does not and one more does; a release "
                   "waits as a release, measured all the same; production unreadable waits")
+
+
+@check("build", "the gate holds a night with a kind of warning the night before did not carry, "
+       "and compares kinds, not the numbers in them", needs=("nightly",))
+def _nightly_review_warnings(NI):
+    """A warning already seen on clean nights -- the recordings the laptop has
+    yet to read -- is not news; a check that warns for the first time is. So
+    every verdict keeps the kinds of warning it carried ("warning_kinds"), and
+    the gate holds a night with a kind the night before's verdict did not
+    carry, quoting tonight's sentence. Kinds, not numbers: two recordings
+    waiting after one, or an exit status of 2 after 1, is the same kind, and
+    a fetch that would withdraw requests is another kind than one that did not
+    complete. A verdict that names no kinds counts as none; the verdict
+    written for a night that never started keeps the kinds of the night
+    before it."""
+    k = NI.kind_of
+    assert k("not taken: the fetch did not complete (exit 1); the earlier 3 kept") == \
+        k("not taken: the fetch did not complete (exit 2); none on file") != \
+        k("not taken: it would newly withdraw 8 of the 10 standing requests; the earlier 10 kept")
+    assert k("1 member installed is not on the database's roster, and 3 rows of LsrsOnly.txt "
+             "went with them") == k("12 members installed are not on the database's roster, "
+                                    "and 1 row of LsrsOnly.txt went with them"), \
+        "a count of one and a count of twelve are two kinds"
+    said = "x" * 300
+    got = NI.warning_reasons([("a", said), ("a", "again"), ("b", "short")], ["b"])
+    assert got == [NI.REVIEW_WARNING.format(said="x" * (NI.REVIEW_WARNING_SAID - 3) + "...")], got
+
+    from datetime import datetime, timedelta, timezone
+
+    def late(n):
+        ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        Path("archive/livestreams.json").write_text(json.dumps({"videos": {
+            f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
+            for i in range(n)}}), encoding="utf-8")
+
+    def news(v):
+        return [r for r in v["review"]["why"] if r.startswith(NI.REVIEW_WARNING.split("{")[0])]
+
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="351")
+        g.how["touch"] = 3
+        g.night("--runner", "--no-fetch", run_id="352")
+        g.publish("352")
+        assert g.verdict()["warning_kinds"] == [], g.verdict().get("warning_kinds")
+
+        # One recording waiting: news. Two the night after: the same kind.
+        late(1)
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="353")
+        v = g.verdict()
+        rec = next(w for w in v["warnings"] if w.startswith("1 recording finished"))
+        assert code == 0 and v["review"] == {"needed": True, "why": NI.warning_reasons(
+            [("x", rec)], [])} and len(v["warning_kinds"]) == 1, v.get("review")
+        assert "- Would have waited for approval: a kind of warning the night before did not " \
+            "carry: 1 recording finished" in g.summary, g.summary
+        late(2)
+        g.how["touch"] = 5
+        code, _ = g.night("--runner", "--no-fetch", run_id="354")
+        v = g.verdict()
+        assert code == 0 and any(w.startswith("2 recordings finished") for w in v["warnings"]) and \
+            v["review"] == {"needed": False, "why": []}, \
+            ("two recordings waiting after one was taken for a new kind of warning", v.get("review"))
+
+        # The fetch's own warnings: the bill requests failing is news; failing
+        # again with another exit status is not.
+        code, _ = g.night("--runner", run_id="355")
+        g.how["lsrs_rc"] = 1
+        code, _ = g.night("--runner", run_id="356")
+        v = g.verdict()
+        lsrs = next(w for w in v["warnings"] if w.startswith("next session's bill requests"))
+        assert code == 0 and NI.warning_reasons([("x", lsrs)], [])[0] in news(v), \
+            ("the bill requests failing for the first time was not news", v.get("review"))
+        g.how["lsrs_rc"] = 2
+        code, _ = g.night("--runner", run_id="357")
+        v = g.verdict()
+        assert code == 0 and "exit 2" in " ".join(v["warnings"]) and news(v) == [], \
+            ("the bill requests failing again, with another exit status, was news", v.get("review"))
+
+        # A night that never started keeps the kinds of the night before it.
+        kinds = g.verdict()["warning_kinds"]
+        code, _ = g.night("--runner", "--close", "--outcome", "kit-down=failure", run_id="358")
+        assert g.verdict()["warning_kinds"] == kinds and g.verdict()["run_id"] == "358", \
+            g.verdict().get("warning_kinds")
+        code, _ = g.night("--runner", run_id="359")
+        assert code == 0 and news(g.verdict()) == [], g.verdict().get("review")
+
+        # A verdict that names no kinds: every warning tonight is news.
+        v = g.verdict()
+        del v["warning_kinds"]
+        NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
+        code, _ = g.night("--runner", run_id="360")
+        v = g.verdict()
+        assert code == 0 and len(news(v)) == len(v["warning_kinds"]) == 3, v.get("review")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a new kind of warning holds the night, quoting it; the same kind with other "
+                  "counts or another exit status does not; none named counts as none; a night "
+                  "that never started keeps the kinds before it")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
