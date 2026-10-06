@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.352
+# GRANITE_VERSION: 2026-09-04.353
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24009,6 +24009,56 @@ def _session_clause_names_question(SD, BSP):
                   "clause; a Senate amendment row's third reading and a motion to divide "
                   "drawn as themselves; a counted division never a voice vote; no ballots "
                   "pointer without a roll call; a removal said and no more")
+
+
+# Real rows, as narrative.py reads them: Docket.txt 25128 and 25153 (HB 1102 of
+# 2026), 25146 and 25149 (SB 434); Docket_db_2011-2012.txt 2320-2321 (SB 88).
+_OVERRIDES = {
+    "HB1102": [("H", "2026-08-19", "Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote"),
+               ("S", "2026-08-19", "Notwithstanding the Governor's Veto, Shall HB 1102 Become Law: "
+                                   "RC 24Y-0N, Veto Overridden by necessary two-thirds vote; 08/19/2026")],
+    "SB434": [("H", "2026-08-19", "Veto Sustained 08/19/2026: RC 165-140 Lacking Necessary Two-Thirds Vote"),
+              ("S", "2026-08-19", "Notwithstanding the Governor's Veto, Shall SB 434 Become Law: "
+                                  "RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026")],
+    "SB88": [("S", "2011-09-07", "Notwithstanding the Governor’s Veto, Shall SB 88 Become Law: "
+                                 "RC 17Y-7N, Veto Overridden by required two-thirds vote"),
+             ("H", "2011-09-14", "Veto Overridden: RC 251-111 by Required Two-Thirds")],
+}
+_OVERRIDES_SAID = {
+    ("HB1102", "H"): "the veto was overridden in this chamber and, the same day, in the Senate, "
+                     "so the bill became law.",
+    ("HB1102", "S"): "the veto was overridden in this chamber and, the same day, in the House, "
+                     "so the bill became law.",
+    ("SB434", "H"): "the veto was sustained, so the bill did not become law.",
+    ("SB434", "S"): "the veto was overridden in this chamber.",
+    ("SB88", "S"): "the veto was overridden in this chamber and, on 14 September 2011, in the House, "
+                   "so the bill became law.",
+    ("SB88", "H"): "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
+                   "so the bill became law.",
+}
+
+
+@check("session", "a veto override the other chamber carried too says the bill became law, on "
+                  "both chambers' sitting pages", needs=("session_days",))
+def _session_both_overrides(SD):
+    """Decision 46, the person's word of 6 October 2026. A sitting page says
+    of a carried override "the veto was overridden in this chamber" and no
+    more, because one chamber's override does not make a law (SB 434 of 2026:
+    overridden 16-8 by the Senate, sustained 165-140 by the House). Where the
+    other chamber's override is on record too it made the bill law, and no
+    page said so of any of the 22 bills: HB 1102 of 2026, overridden by both
+    chambers on 19 August 2026, and SB 88 of 2011, by the Senate on 7 September
+    and the House on 14 September."""
+    bad = []
+    for bill, rows in _OVERRIDES.items():
+        events = [{"type": "veto_override", "body": b, "date": d, "raw": raw} for b, d, raw in rows]
+        for e, it in SD.floor_items(bill, "", events):
+            want = _OVERRIDES_SAID[(bill, e["body"])]
+            if not (it.outcome_words or "").endswith(want):
+                bad.append(f"{bill}'s {e['body']} override reads {it.outcome_words!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 1102 of 2026 and SB 88 of 2011 became law on both chambers' pages, the day "
+                  "of the other's override said where it is another; SB 434's one override did not")
 
 
 @check("session", "a division is held to the House journal, and counted once however many bills it is drawn under",
