@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.47
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3050,13 +3050,25 @@ def size_reasons(site, served, differs):
 
 
 def kind_of(said):
-    """A warning's words as a kind: what comes before its first ";" (where the
-    sentences here put what was kept), without anything in brackets (an exit
-    status, a count) and with every number as "#", the singular and plural of
-    a count made one. 'not taken: the fetch did not complete (exit 1); the
-    earlier 3 kept' and '... (exit 2); none on file' are one kind."""
-    s = str(said).split(";")[0]
-    s = re.sub(r"\([^)]*\)", " ", s)
+    """A warning's words as a kind: without anything in brackets (an exit
+    status, a count), what comes before its first ";" (where the sentences
+    here put what was kept), with every number as "#", the singular and plural
+    of a count made one. 'not taken: the fetch did not complete (exit 1); the
+    earlier 3 kept' and '... (exit 2); none on file' are one kind.
+
+    The brackets go first: a database lookup note puts a ";" inside its
+    brackets when both directions differ ('SubjectCodes.txt differs from the
+    database's Subject (3 rows only in the database; 2 rows only in the
+    installed file): ...', dayfiles_from_db.lookup_notes), and cut there
+    first, the same difference was another kind as it grew from one side to
+    both or shrank back."""
+    s = str(said)
+    while True:                         # innermost first, so nested ones go too
+        t = re.sub(r"\([^()]*\)", " ", s)
+        if t == s:
+            break
+        s = t
+    s = s.split(";")[0]
     s = re.sub(r"\d[\d,.]*", "#", s.lower())
     s = re.sub(r"# (\w+?)s\b", r"# \1", s)
     for many, one in ((" are ", " is "), (" have ", " has "), (" their ", " its "),

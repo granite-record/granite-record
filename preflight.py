@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.355
+# GRANITE_VERSION: 2026-09-04.356
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44260,6 +44260,13 @@ def _nightly_review_warnings(NI):
              "went with them") == k("12 members installed are not on the database's roster, "
                                     "and 1 row of LsrsOnly.txt went with them"), \
         "a count of one and a count of twelve are two kinds"
+    # A database lookup note, as dayfiles_from_db.lookup_notes words it: one
+    # side, the other, or both -- with a ";" inside the brackets -- is one kind.
+    lookup = [f"SubjectCodes.txt differs from the database's Subject ({x}): the installed "
+              "file stays" for x in ("3 rows only in the database", "2 rows only in the installed file",
+                        "3 rows only in the database; 2 rows only in the installed file")]
+    assert len({k(x) for x in lookup}) == 1, [k(x) for x in lookup]
+    assert k("a (b (c; d) e); f") == k("a; g") == "a", k("a (b (c; d) e); f")
     said = "x" * 300
     got = NI.warning_reasons([("a", said), ("a", "again"), ("b", "short")], ["b"])
     assert got == [NI.REVIEW_WARNING.format(said="x" * (NI.REVIEW_WARNING_SAID - 3) + "...")], got
