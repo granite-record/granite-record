@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -912,14 +912,46 @@ def rescheduled_to(r):
     except ValueError:
         return None
     got = _E1999.rescheduled_notice(r.get("desc") or "", written)
+    # And the day a recessed hearing went on (decision 59g): "Hearing; ===
+    # RECESSED === RECONVENE === April 17, 2002, Room 104, LOB, 1:30 p.m."
+    # (HB 1218 of 2002), "==RECESSED== NEW DATE== Feb.9" (SB 370 of 2000).
+    if not got and hasattr(_E1999, "reconvened_notice"):
+        got = _E1999.reconvened_notice(r.get("desc") or "", written)
     return datetime.strptime(got["date"], "%m/%d/%Y").date() if got else None
+
+
+def _same_day(m, r, day):
+    """Does SENATE_SCHED_RE's reading of the row give `day`'s month and day?
+    Then its reading stands, year and all: _parse_date puts "May 18, 2004" on
+    a row of 2005 in 2005 (HB 307), where the row's own words do not."""
+    try:
+        written = datetime.strptime((r.get("created") or "").strip(), "%m/%d/%Y %I:%M:%S %p")
+    except ValueError:
+        written = None
+    d = _parse_date(m.group("date"), written)
+    return d is not None and (d.month, d.day) == (day.month, day.day)
+
+
+def reconvened_to(r):
+    """Is this a row giving the day a recessed hearing went on
+    (docket_era_1999.reconvened_notice)?"""
+    if _E1999 is None or not hasattr(_E1999, "reconvened_notice"):
+        return False
+    try:
+        written = datetime.strptime((r.get("created") or "").strip(), "%m/%d/%Y %I:%M:%S %p")
+    except ValueError:
+        return False
+    head = (r.get("lsr") or "").split("-")[0]
+    return (head.isdigit() and RESCHEDULED_YEARS[0] <= int(head) <= RESCHEDULED_YEARS[1]
+            and _E1999.reconvened_notice(r.get("desc") or "", written) is not None)
 
 
 def rescheduled_proceeding(r, flags, day, timeline):
     """The Senate hearing a row read by rescheduled_to gives notice of: its
     day, and the hour and room the row states after it."""
     said = _E1999.mend(r["desc"]) if hasattr(_E1999, "mend") else r["desc"]
-    m = _E1999.RESCHEDULED_TO.match(said)
+    m = _E1999.RESCHEDULED_TO.match(said) or (
+        _E1999.RECONVENED_TO.match(said) if hasattr(_E1999, "RECONVENED_TO") else None)
     rest = said[m.end("date"):] if m else said
     at = RESCHEDULED_TIME.search(rest)
     t = _parse_time(f"{at.group('time')}{at.group('mer')}") if at else None
@@ -1174,7 +1206,12 @@ def parse_proceedings(rows, timeline):
         # The notice of a hearing's new day (rescheduled_to), where nothing
         # else here reads the row: its day, from the history's own reading.
         moved_to = rescheduled_to(r) if senate else None
-        if moved_to is not None and not m:
+        # A recessed hearing's next day is read from its own words even where
+        # SENATE_SCHED_RE reads the row: that pattern takes the first date,
+        # and "Hearing ==RECESSED March 28== RECONVENE == April 11 2001" (SB
+        # 189 of 2001) gives the day it recessed first.
+        if moved_to is not None and (not m or (reconvened_to(r)
+                                               and not _same_day(m, r, moved_to))):
             out.append(rescheduled_proceeding(r, flags, moved_to, timeline))
             continue
         # And the cancellation on such a row is the earlier day's.

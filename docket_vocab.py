@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.16
+# GRANITE_VERSION: 2026-09-11.17
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -334,6 +334,12 @@ def classify(desc, created=None, session=None):
     # narrative.build carries as one.
     off = getattr(mod, "cancelled_notice", None)
     got = off(desc, created) if off is not None else None
+    if got:
+        return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
+    # And a row that gives the day a recessed hearing went on
+    # (docket_era_1999.reconvened_notice): a sitting of the hearing that day.
+    on = getattr(mod, "reconvened_notice", None)
+    got = on(desc, created) if on is not None else None
     if got:
         return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
     for name, pat in routine:

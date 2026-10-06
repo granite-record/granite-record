@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.376
+# GRANITE_VERSION: 2026-09-04.377
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3538,6 +3538,79 @@ def _time_changed_then_cancelled(N):
     return "ok", "HB 462 of 2002 tells its hearing of 13 February and not the 6th's, moved and cancelled"
 
 
+# Real rows: Docket_db_1999-2000.txt 14944-14947 (SB 370) and
+# Docket_db_2001-2002.txt 12176-12179 (SB 189).
+_DOCKET_RECONVENED = {
+    ("SB370", "1999-2000"): [
+        "2000|2264|01/05/2000 11:09:51 AM|SB370|S|Introduced and Ref. to Wildlife and Recreation; SJ Convening Day, Pg.10|01/05/2000 11:09:51 AM",
+        "2000|2264|01/06/2000 11:48:10 AM|SB370|S|Hearing, Jan. 19, 2:45 p.m., Room 101, LOB; SC1, Pg.5|01/06/2000 11:48:10 AM",
+        "2000|2264|01/26/2000 03:50:33 PM|SB370|S|==RECESSED== NEW DATE== Feb.9,Room 101 , LOB, 2:30 p.m.; SC6, Pg.4|01/26/2000 03:50:33 PM",
+        "2000|2264|02/16/2000 02:38:40 PM|SB370|S|Committee Report, Ought to Pass with Amendment{3402}, SC 12, Pg.3 and 7|02/16/2000 02:38:40 PM"],
+    ("SB189", "2001-2002"): [
+        "2002|0946|03/15/2001 12:00:39 PM|SB189|S|Introduced and Ref. to Environment; SJ 6, Pg.68|03/15/2001 12:00:39 PM",
+        "2002|0946|03/21/2001 04:03:13 PM|SB189|S|Hearing; March 28, 2001, Room 104, LOB, 9:00 a.m.; SC14|03/21/2001 04:03:13 PM",
+        "2002|0946|03/28/2001 05:57:09 PM|SB189|S|Hearing ==RECESSED March 28== RECONVENE == April 11 2001, Room 104, LOB, 9:00 a.m.; SC15|03/28/2001 05:57:09 PM",
+        "2002|0946|05/02/2001 04:25:12 PM|SB189|S|Committee Report; Ought to Pass with Amendment {1093}, [05/09/01]; SC22-A, Pg.21-26|05/02/2001 04:25:12 PM"],
+}
+_RECONVENED_TOLD = {("SB370", "1999-2000"): ["2000-01-19", "2000-02-09"],
+                    ("SB189", "2001-2002"): ["2001-03-28", "2001-04-11"]}
+# What proceedings.csv reads of them: SB 370's notice "Hearing, Jan. 19" is a
+# date docket_parser does not read (the month with a full stop), as before.
+_RECONVENED_SITTINGS = {("SB370", "1999-2000"): ["2000-02-09"],
+                        ("SB189", "2001-2002"): ["2001-03-28", "2001-04-11"]}
+
+
+@check("narrative", "a row giving the day a recessed hearing went on is told as a day of the "
+                    "hearing and is a sitting on that day, and the day it recessed stays",
+       needs=("narrative", "docket_parser"))
+def _reconvened_days(N, D):
+    """Decision 59g: the Senate of 1999-2006 noticed a recessed hearing's next
+    sitting under a run of marks -- "==RECESSED== NEW DATE== Feb.9" (SB 370
+    of 2000), "Hearing ==RECESSED March 28== RECONVENE == April 11 2001" (SB
+    189 of 2001), "Hearing; === RECESSED === RECONVENE === April 17, 2002" --
+    and 45 histories never told the day it reconvened, while docket_parser
+    filed SB 189's at the day it recessed. Each is a continuation: the day it
+    recessed is still a day of the hearing, and nothing reads the first
+    notice as moved. A recess noted after the fact, "==RECESSED Feb.15 ==",
+    and a reconvened sitting the docket called off are no sitting."""
+    import docket_era_1999 as E
+    from datetime import datetime as _dt
+    bad = []
+    at = _dt(2001, 3, 1, 9, 0)
+    for desc, want in (("Hearing; === RECESSED === RECONVENE === April 17, 2002, Room 104, LOB, 1:30 p.m.; SC24", "04/17/2002"),
+                       ("=== RECESSED=== 01/30/01,  ===RECONVINED=== February 13, 2001, Room 105-A, SH, 1:00 p.m.; SC5", "02/13/2001"),
+                       ("Hearing; === RECESSED === RECONVENED== 30 min. After Session [06/05/01], Rm 103, SH", "06/05/2001"),
+                       ("== RECESSED == Re-Opened  April 13, Room 103, LOB, 3:00 p.m.; SC21, Pg.12", "04/13/2001"),
+                       ("==RECESSED AND WILL BE CONTINUED==, Feb.7, Room 103, SH, 10:00 a.m.", "02/07/2001"),
+                       ("==RECESSED Feb.15 ==", None),
+                       ("Hearing ==RECESSED== on 4/19/2000", None),
+                       ("=== RECESSED (02/13/01) === RECONVENED=== March 6, 2001, Room 101, LOB, 1:00 p.m.; SC9;==CANCELLED==", None)):
+        got = E.reconvened_notice(desc, at)
+        if (got or {}).get("date") != want:
+            bad.append(f"{desc!r} is read as {got!r}, not {want!r}")
+    for key, lines in _DOCKET_RECONVENED.items():
+        n = _told_from_rows(N, key[1], key[0], lines)
+        told = sorted(e["date"] for e in n["events"] if e["type"] == "hearing" and e["body"] == "S"
+                      and not e["cancelled"])
+        if told != _RECONVENED_TOLD[key] or _voided_days(n):
+            bad.append(f"{key[0]} of {key[1]} tells Senate hearings on {told}, voided "
+                       f"{n.get('voided')!r}, not {_RECONVENED_TOLD[key]}")
+        tmp = Path(tempfile.mkdtemp(prefix="gr-reconvened-"))
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = D.parse_rows(str(tmp / "Docket.txt"))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+        days = sorted(p.sched_date for p in procs if p.confidence != "X-cancelled")
+        if days != _RECONVENED_SITTINGS[key]:
+            bad.append(f"{key[0]} of {key[1]}'s sittings in proceedings.csv are {days}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("eight rows read by their words; SB 370 of 2000 and SB 189 of 2001 tell both days "
+                  "of their hearings, and proceedings.csv reads the day each reconvened")
+
+
 # Real rows: Docket_db_1999-2000.txt 15318-15322 (SB 393 of 2000).
 _DOCKET_SLIPS = [
     "2000|2307|01/05/2000 09:45:06 AM|SB393|S|Introduced and Ref. Insurance; SJ Convening Day, Pg.12|01/05/2000 09:45:06 AM",
@@ -3804,8 +3877,9 @@ def _rescheduled_rows_in_manifests():
     HB 618 of 2000's hearing of 24 April (decision 59b), whose notice
     "==HEARING== April 24" was read as nothing until then."""
     want = {"1999-2000": [("SB79", "1999-03-24"), ("SB395", "2000-02-24"),
-                          ("HB618", "2000-04-24"), ("SB393", "2000-02-08")],
-            "2001-2002": [("SB373", "2002-01-22")]}
+                          ("HB618", "2000-04-24"), ("SB393", "2000-02-08"),
+                          ("SB370", "2000-02-09")],
+            "2001-2002": [("SB373", "2002-01-22"), ("SB189", "2001-04-11")]}
     bad, n = [], 0
     for term, pairs in want.items():
         f = Path(f"verification_manifest_{term}.csv")
