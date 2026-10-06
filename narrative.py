@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.82
+# GRANITE_VERSION: 2026-09-04.83
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3603,11 +3603,17 @@ def whole_day_meetings(noticed=None, calendar=None):
         mine = set(off) | set(told)
         if any(r["date"] == day and _calendar_bill(r.get("bill")) in mine for r in rows):
             continue
+        # The meeting each told bill was set down for instead, printed for the
+        # meeting's bills -- this one's, or the others' where the calendar's
+        # line is one calendar_meetings does not read every bill of: House
+        # Calendar 60 of 2013 prints SB 92 in Commerce's session of 22
+        # October beside the twenty bills moved there from the 29th, at a
+        # line's end ("credit card fees, SB 92,") its parse passes over.
         shown = []
         for b in told:
             days = {o[0] for o in instead[b]}
             got = sorted({r.get("calendar") or r.get("noticed") for r in rows
-                          if _calendar_bill(r.get("bill")) == b and r["date"] in days})
+                          if _calendar_bill(r.get("bill")) in mine and r["date"] in days})
             if not got:
                 break
             shown += got

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.378
+# GRANITE_VERSION: 2026-09-04.379
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3329,6 +3329,15 @@ def _whole_day_cancelled(N):
     still = _WHOLE_DAY_CALENDAR + [{"bill": "HB386", "date": "2015-10-29",
                                     "kind": "executive session", "noticed": "2015-10-02",
                                     "calendar": "2015/HC056"}]
+    # A calendar that prints the other meeting for the meeting's other bills
+    # and not this one's line is still the calendars' word (House Calendar 60
+    # of 2013 prints SB 92 in Commerce's session of 22 October at a line's end
+    # calendar_meetings does not read): the session of the 29th is cancelled.
+    others = [r for r in _WHOLE_DAY_CALENDAR if r["bill"] != "HB571"]
+    hs, got = told(others)
+    if "October 29" in " ".join(s["text"] for s in hs["HB571"]["stages"]) or not got:
+        bad.append("HB 571's session of 29 October is told where the calendars print the other "
+                   "meeting for the meeting's other bills alone")
     for name, cal in (("a later calendar printing it", still), ("no calendar", [])):
         hs, got = told(cal)
         text = " ".join(s["text"] for s in hs["HB571"]["stages"])
