@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.355
+# GRANITE_VERSION: 2026-09-04.356
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2604,6 +2604,21 @@ _OVERTAKEN_TOLD = {
 }
 
 
+def _told_from_rows(N, term, bill, lines):
+    """A bill's history built from its real docket rows, read as the docket's
+    own file is (parse_docket): the marks on a row are what overtaken() reads."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-overtaken-"))
+    saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        rows = N.parse_docket(str(tmp / "Docket.txt"))[bill]
+        N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS, N.TERM = [], [], {}, term
+        return N.build(bill, rows)
+    finally:
+        N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 @check("narrative", "a meeting a later row of the docket cancelled or moved is told as a notice, "
                     "in its committee's stage, and is no day a committee sat",
        needs=("narrative", "proceedings"))
@@ -2622,18 +2637,7 @@ def _overtaken_notices(N, P):
     follows (HB 607 of 2005), and a cancelled session of another subcommittee
     in another room (HB 145 of 2007)."""
     def told(term, bill, lines):
-        # Read as the docket's own file is (parse_docket): the marks on a
-        # row are what this rule reads.
-        tmp = Path(tempfile.mkdtemp(prefix="gr-overtaken-"))
-        saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
-        try:
-            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-            rows = N.parse_docket(str(tmp / "Docket.txt"))[bill]
-            N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS, N.TERM = [], [], {}, term
-            return N.build(bill, rows)
-        finally:
-            N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
-            shutil.rmtree(tmp, ignore_errors=True)
+        return _told_from_rows(N, term, bill, lines)
 
     bad = []
     for key, lines in _DOCKET_OVERTAKEN.items():
@@ -2664,6 +2668,126 @@ def _overtaken_notices(N, P):
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_OVERTAKEN)} histories from real rows: "
                   f"{sum(len(v[0]) for v in _OVERTAKEN_TOLD.values())} notices, and four that are not")
+
+
+# Real rows: Docket_2015-2016.txt 2699-2703 (HB 462), 614-619 (HB 234) and
+# 1813-1817 (HB 445); Docket_db_2005-2006.txt 12687-12690 (HB 1626) and
+# 18163-18166 (HB 1345); Docket_db_2013-2014.txt 20035-20046 (HB 2014);
+# Docket_db_1999-2000.txt 1088-1091 (SB 191); Docket_db_2011-2012.txt
+# 7708-7713 (SB 120).
+_DOCKET_MOVED_OR_HELD = {
+    ("HB462", "2015-2016"): [
+        "2015|0333|01/08/2015 08:42:51 AM|HB462|H|Introduced and Referred to Ways and Means; HJ 12, PG. 225|01/08/2015 08:42:51 AM",
+        "2015|0333|02/04/2015 12:38:58 PM|HB462|H|Public Hearing: 2/12/2015 11:00 AM LOB 202|02/04/2015 12:38:58 PM",
+        "2015|0333|02/05/2015 12:04:09 PM|HB462|H|==RESCHEDULED== Public Hearing: 2/13/2015 10:00 AM LOB 202|02/05/2015 12:04:09 PM",
+        "2015|0333|02/05/2015 03:36:20 PM|HB462|H|===CANCELLED=== Public Hearing: 2/12/2015 11:00 AM LOB 202|02/05/2015 03:36:20 PM",
+        "2015|0333|02/18/2015 12:36:09 PM|HB462|H|Executive Session: 2/18/2015 12:30 PM LOB 202|02/18/2015 12:36:09 PM"],
+    ("HB1626", "2005-2006"): [
+        "2006|2106|01/04/2006 09:22:00 AM|HB1626|H|Introduced and ref to Finance  HJ 7, pg 350|01/04/2006 09:22:00 AM",
+        "2006|2106|01/05/2006 11:55:55 AM|HB1626|H|===RESCHEDULED===Public Hearing    Jan 17  11:00  RM210-211/LOB|01/05/2006 11:55:55 AM",
+        "2006|2106|01/05/2006 02:24:10 PM|HB1626|H|===CANCELLED===Public Hearing   Jan 24  10:30  RM210-211/LOB|01/05/2006 02:24:10 PM",
+        "2006|2106|02/17/2006 03:09:29 PM|HB1626|H|Division I Work Session    Feb 21  1:00  RM 212/LOB|02/17/2006 03:09:29 PM"],
+    ("HB234", "2015-2016"): [
+        "2015|0083|01/08/2015 03:28:59 PM|HB234|H|Introduced and Referred to Science, Technology and Energy; HJ 12, PG. 214|01/08/2015 03:28:59 PM",
+        "2015|0083|01/21/2015 03:01:25 PM|HB234|H|==POSTPONED==Public Hearing: 1/27/2015 11:15 AM LOB 304|01/21/2015 03:01:25 PM",
+        "2015|0083|01/22/2015 03:43:50 PM|HB234|H|==POSTPONED== Public Hearing: 1/27/2015 11:15 AM Representatives Hall|01/22/2015 03:43:50 PM",
+        "2015|0083|01/26/2015 09:43:07 AM|HB234|H|==RESCHEDULED== Public Hearing: 1/28/2015 11:15 AM Representatives Hall|01/26/2015 09:43:07 AM",
+        "2015|0083|01/28/2015 04:52:02 PM|HB234|H|Public Hearing: 2/5/2015 2:00 PM LOB 304|01/28/2015 04:52:02 PM",
+        "2015|0083|02/11/2015 10:49:18 AM|HB234|H|Executive Session: 2/17/2015 1:15 PM LOB 304|02/11/2015 10:49:18 AM"],
+    ("HB2014", "2013-2014"): [
+        "2014|2852|01/22/2014 09:50:05 AM|HB2014|H|Introduced and referred to Public Works and Highways|01/22/2014 09:50:05 AM",
+        "2014|2852|01/29/2014 08:15:03 AM|HB2014|H|Public Hearing: 2/6/2014 10:45 AM LOB 201|01/29/2014 08:15:03 AM",
+        "2014|2852|01/29/2014 08:19:03 AM|HB2014|H|Full Committee Work Session: 2/6/2014 11:15 AM LOB 201|01/29/2014 08:19:03 AM",
+        "2014|2852|01/29/2014 08:46:30 AM|HB2014|H|Continued Public Hearing: 2/11/2014 10:00 AM LOB 201|01/29/2014 08:46:30 AM",
+        "2014|2852|01/29/2014 08:52:12 AM|HB2014|H|Full Committee Work Session: 2/11/2014 11:15 AM LOB 201|01/29/2014 08:52:12 AM",
+        "2014|2852|01/29/2014 08:58:32 AM|HB2014|H|==RESCHEDULED== Public Hearing: 2/11/2014 10:45 AM LOB 201|01/29/2014 08:58:32 AM",
+        "2014|2852|01/29/2014 01:27:10 PM|HB2014|H|===CANCELLED=== Public Hearing: 2/11/2014 10:45 AM LOB 201|01/29/2014 01:27:10 PM",
+        "2014|2852|01/29/2014 01:38:21 PM|HB2014|H|===CANCELLED=== Public Hearing: 2/11/2014 10:00 AM LOB 201|01/29/2014 01:38:21 PM",
+        "2014|2852|01/29/2014 01:40:51 PM|HB2014|H|==RESCHEDULED== Work Session: 2/11/2014 11:00 AM LOB 201|01/29/2014 01:40:51 PM",
+        "2014|2852|02/04/2014 01:11:31 PM|HB2014|H|===CANCELLED=== Work Session: 2/6/2014 11:15 AM LOB 201|02/04/2014 01:11:31 PM",
+        "2014|2852|02/04/2014 02:58:14 PM|HB2014|H|===CANCELLED=== Work Session: 2/11/2014 11:00 AM LOB 201|02/04/2014 02:58:14 PM",
+        "2014|2852|02/04/2014 03:11:04 PM|HB2014|H|Continued Public Hearing: 2/11/2014 11:00 AM LOB 201|02/04/2014 03:11:04 PM"],
+    ("HB445", "2015-2016"): [
+        "2015|0230|01/08/2015 03:57:58 PM|HB445|H|Introduced and Referred to Ways and Means; HJ 12, PG. 224|01/08/2015 03:57:58 PM",
+        "2015|0230|02/04/2015 12:38:58 PM|HB445|H|Public Hearing: 2/12/2015 10:30 AM LOB 202|02/04/2015 12:38:58 PM",
+        "2015|0230|02/05/2015 12:04:09 PM|HB445|H|==RESCHEDULED== Public Hearing: 2/13/2015 11:00 AM LOB 202|02/05/2015 12:04:09 PM",
+        "2015|0230|02/05/2015 03:51:52 PM|HB445|H|Continued Public Hearing: 2/13/2015 11:00 AM LOB 202|02/05/2015 03:51:52 PM"],
+    ("SB191", "1999-2000"): [
+        "1999|0144|02/18/1999 10:42:21 AM|SB191|S|Introduction and referring to Education;  SJ 5, P 60|02/18/1999 10:42:21 AM",
+        "1999|0144|03/04/1999 05:52:52 PM|SB191|S|Hearing, 3/17/99, Room 105-A, SH 8:30 a.m. Hearing Cancelled|03/04/1999 05:52:52 PM",
+        "1999|0144|03/10/1999 02:50:24 PM|SB191|S|Rescheduled Hearing, 3/24/99, Room 105-A, SH, 8:30 a.m.|03/10/1999 02:50:24 PM",
+        "1999|0144|03/24/1999 10:05:24 AM|SB191|S|Rescheduled Hearing, 3/31/99, Room 105-A, SH, 8:30 a.m.|03/24/1999 10:05:24 AM"],
+    ("HB1345", "2005-2006"): [
+        "2006|2749|01/04/2006 12:20:35 PM|HB1345|H|Introduced and ref to Municipal and County Government   HJ 7, pg 341|01/04/2006 12:20:35 PM",
+        "2006|2749|01/04/2006 03:47:44 PM|HB1345|H|===RESCHEDULED===Public Hearing    Jan 11  2:00  RM301/LOB|01/04/2006 03:47:44 PM",
+        "2006|2749|01/04/2006 06:23:42 PM|HB1345|H|===RESCHEDULED===Public Hearing   Jan 19  11:00  RM301/LOB|01/04/2006 06:23:42 PM",
+        "2006|2749|01/10/2006 11:08:53 AM|HB1345|H|Public Hearing   Jan 25  11:00  RM301/LOB|01/10/2006 11:08:53 AM"],
+    ("SB120", "2011-2012"): [
+        "2011|1039|01/19/2011 03:44:13 PM|SB120|S|Introduced and Referred to Commerce, SJ 3, Pg.37|01/19/2011 03:44:13 PM",
+        "2011|1039|02/02/2011 02:01:30 PM|SB120|S|Hearing: 2/22/2011, Room 102, LOB, 10:30 a.m.; SC10|02/02/2011 02:01:30 PM",
+        "2011|1039|02/10/2011 09:52:38 AM|SB120|S|Hearing: === CANCELLED === 2/22/11, Room 102, LOB, 10:30 a.m.; SC11|02/10/2011 09:52:38 AM",
+        "2011|1039|02/24/2011 02:38:19 PM|SB120|S|Hearing: === RESCHEDULED === 3/15/11, Room 102, LOB, 10:00 a.m.; SC14|02/24/2011 02:38:19 PM",
+        "2011|1039|03/10/2011 09:48:33 AM|SB120|S|Hearing: === DATE CHANGE === 3/22/11, Room 102, LOB, 10:15 a.m.; SC15|03/10/2011 09:48:33 AM",
+        "2011|1039|03/17/2011 12:02:12 PM|SB120|S|Hearing: === ROOM CHANGE === 3/22/11, Room 100, State House, 10:15 a.m.; SC16|03/17/2011 12:02:12 PM"],
+}
+
+# For each: the hearings held that no later row moved, by the calendar that
+# printed them, and the days a later row of the docket cancelled or moved, by
+# the calendar that printed the move.
+_MOVED_OR_HELD = {
+    ("HB462", "2015-2016"): (["2015-02-13"], ["2015-02-12"]),      # House Calendar 13
+    ("HB1626", "2005-2006"): (["2006-01-17"], []),                  # House Calendar 6
+    ("HB234", "2015-2016"): (["2015-01-28", "2015-02-05"], ["2015-01-27"]),  # Calendar 10
+    ("HB2014", "2013-2014"): (["2014-02-06", "2014-02-11"], []),    # House Calendars 7 and 9
+    ("HB445", "2015-2016"): (["2015-02-12", "2015-02-13"], []),     # House Calendar 11
+    ("SB191", "1999-2000"): (["1999-03-31"], ["1999-03-24"]),       # Senate Calendar 15
+    ("HB1345", "2005-2006"): (["2006-01-25"], ["2006-01-11", "2006-01-19"]),  # Calendars 4, 6
+    ("SB120", "2011-2012"): (["2011-03-22"], ["2011-02-22", "2011-03-15"]),   # Senate Calendar 15
+}
+
+
+@check("narrative", "a notice is voided as moved only on the rows' own evidence of a move, and "
+                    "never by a later row that is itself cancelled or a hearing carried on",
+       needs=("narrative",))
+def _overtaken_only_on_evidence(N):
+    """Decision 56 voids a notice a later row moved, and a voided notice is a
+    hearing the history does not tell. So a hearing that was held and is read
+    as moved disappears from its bill's history, and the House calendars found
+    five the first reading had: HB 462 of 2015's of 13 February and HB 1626 of
+    2006's of 17 January, "moved" by later rows that were themselves cancelled;
+    HB 234 of 2015's of 28 January, "moved" by a plain notice typed that
+    afternoon for the hearing House Calendar 10 calls "Continued"; and HB 2014
+    of 2014's of 6 February and HB 445 of 2015's of 12 February, "moved" to days
+    the docket notices continued hearings on.
+
+    And the moves the rows do show, which still void: a rescheduling row typed
+    on the morning of the day it moved (SB 191 of 1999, whose move Senate
+    Calendar 15 had printed the day before), the House's 2006 mark on each
+    notice it moved in turn (HB 1345), and the Senate's "=== DATE CHANGE ==="
+    (SB 120 of 2011)."""
+    from datetime import date as _date
+    bad = []
+    for key, lines in _DOCKET_MOVED_OR_HELD.items():
+        held, moved = _MOVED_OR_HELD[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        text = " ".join(s["text"] for s in n["stages"])
+        gone = set(n.get("no_sitting") or [])
+        for d in held:
+            said = _date.fromisoformat(d)
+            day = f"{said:%B} {said.day}, {said.year}"
+            if d in gone or not re.search(
+                    r"held (?:a public hearing|public hearings)[^.]*\b" + re.escape(day), text):
+                bad.append(f"{name}: the hearing of {day} is not told as held "
+                           f"(no_sitting {sorted(gone)})")
+        for d in moved:
+            if d not in gone:
+                bad.append(f"{name}: {d}, which a later row cancelled or moved, is still a day a "
+                           f"committee sat (no_sitting {sorted(gone)})")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_MOVED_OR_HELD)} histories from real rows: "
+                  f"{sum(len(v[0]) for v in _MOVED_OR_HELD.values())} hearings held and "
+                  f"{sum(len(v[1]) for v in _MOVED_OR_HELD.values())} days cancelled or moved")
 
 
 # =============================================================== code: status ==
