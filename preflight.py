@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.373
+# GRANITE_VERSION: 2026-09-04.374
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3522,6 +3522,107 @@ def _time_changed_then_cancelled(N):
         bad.append(f"HB 462's hearing of 6 February is drawn as a sitting: voided {n.get('voided')!r}")
     assert not bad, "\n".join(bad)
     return "ok", "HB 462 of 2002 tells its hearing of 13 February and not the 6th's, moved and cancelled"
+
+
+# Real rows: Docket_2015-2016.txt (HB 564 of 2015).
+_DOCKET_CANCELED_SITTINGS = [
+    "2015|0652|01/08/2015 03:27:23 PM|HB564|H|Introduced and Referred to Health, Human Services and Elderly Affairs; HJ 12, PG. 231|01/08/2015 03:27:23 PM",
+    "2015|0652|02/03/2015 03:10:49 PM|HB564|H|==CANCELED== Public Hearing: 2/12/2015 1:15 PM LOB 206-208|02/03/2015 03:10:49 PM",
+    "2015|0652|02/04/2015 12:50:42 PM|HB564|H|==RESCHEDULED== Public Hearing: 2/12/2015 2:30 PM LOB 205|02/04/2015 12:50:42 PM",
+    "2015|0044|01/20/2015 03:51:45 PM|HB230|H|==CANCELED== Executive Session: 2/3/2015 LOB 302|01/20/2015 03:51:45 PM",
+]
+
+
+@check("build", "a notice marked cancelled with one L is no sitting in proceedings.csv, and "
+                "--merge --drop-cancelled takes such a row out of a manifest and nothing else",
+       needs=("docket_parser", "build_manifest"))
+def _one_l_cancelled_sittings(D, M):
+    """Decision 59d: 51 rows of proceedings.csv, 49 of them 2015-2016, were
+    notices the clerk marked "==CANCELED==" -- HB 230 of 2015's executive
+    session of 3 February, HB 564's hearing of 12 February at 1:15, moved to
+    2:30 -- which build_sittings filed as sittings because it looked for the
+    flag "CANCELLED" alone, so the stations, the committees' days and the
+    download drew them beside histories that tell them as called off. The
+    manifests were mended with --merge --drop-cancelled, which takes out a row
+    whose meeting the parse reads only as called off, keeps every other row
+    as it was, and refuses to take out one with a hand-marked time."""
+    bad = []
+    tmp = Path(tempfile.mkdtemp(prefix="gr-one-l-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_CANCELED_SITTINGS) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+        live = sorted((p.bill, p.sched_date, p.sched_time) for p in procs
+                      if p.confidence != "X-cancelled")
+        if live != [("HB564", "2015-02-12", "14:30")]:
+            bad.append(f"the sittings read are {live!r}, not HB 564's hearing at 2:30 alone")
+        cols = M.MANIFEST_COLUMNS
+        line = lambda b, k, d, t, mark="": (",".join([b, "H", "", k, d, t, "", "A-unique-slot", "1",
+                                                      "no video found"] + [""] * (len(cols) - 13)
+                                                     + [mark, "", ""]) + "\r\n")
+        kept = [line("HB230", "executive session", "2015-02-03", ""),
+                line("HB564", "public hearing", "2015-02-12", "13:15"),
+                line("HB564", "public hearing", "2015-02-12", "14:30")]
+        f = tmp / "verification_manifest_2015-2016.csv"
+        f.write_text(",".join(cols) + "\r\n" + "".join(kept), encoding="utf-8", newline="")
+        row = {**{c: "" for c in cols}, "bill": "HB564", "body": "H", "proceeding": "public hearing",
+               "sched_date": "2015-02-12", "sched_time": "14:30"}
+        off = {("HB230", "H", "2015-02-03", "executive session", ""),
+               ("HB564", "H", "2015-02-12", "public hearing", "13:15")}
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            M.merge_rows(str(f), [row], ["HB564@2015-02-12", "HB230"], off)
+        got = f.read_text(encoding="utf-8", newline="")
+        if got != ",".join(cols) + "\r\n" + kept[2]:
+            bad.append(f"--drop-cancelled left {got!r}")
+        f.write_text(",".join(cols) + "\r\n" + line("HB230", "executive session", "2015-02-03", "",
+                                                   "0:41:10"), encoding="utf-8", newline="")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                M.merge_rows(str(f), [], None, off)
+            bad.append("--drop-cancelled took out a row carrying a hand-marked time")
+        except SystemExit:
+            pass
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert not bad, "\n".join(bad)
+    return "ok", ("two one-L notices read as called off; --drop-cancelled takes out two rows, "
+                  "keeps the held one and refuses a hand-marked row")
+
+
+@check("data", "no archived manifest holds a sitting its docket marks called off")
+def _manifests_hold_no_called_off_sitting():
+    """Decision 59d: the 51 one-L rows taken out of the 2001-2002, 2009-2010
+    and 2015-2016 manifests stay out, and no other term's manifest holds a
+    meeting its docket reads only as called off."""
+    D = imp("docket_parser")
+    NA = imp("narrate_archive")
+    if D is None or NA is None:
+        return "skip", "docket_parser or narrate_archive will not import"
+    bad, n = [], 0
+    for term in ("2001-2002", "2009-2010", "2015-2016"):
+        path = NA.dockets().get(term)
+        man = Path(f"verification_manifest_{term}.csv")
+        if not path or not Path(path).exists() or not man.exists():
+            return "skip", f"no docket or manifest of {term} here"
+        rows = D.parse_rows(path)
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+        key = lambda b, body, d, k, t: (b.strip().upper(), body.strip().upper(), d, k.lower(), t or "")
+        live = {key(p.bill, p.body, p.sched_date, p.kind, p.sched_time) for p in procs
+                if p.confidence != "X-cancelled"}
+        off = {key(p.bill, p.body, p.sched_date, p.kind, p.sched_time) for p in procs
+               if p.confidence == "X-cancelled"} - live
+        with man.open(encoding="utf-8", newline="") as fh:
+            for r in csv.DictReader(fh):
+                n += 1
+                if key(r["bill"], r["body"], r["sched_date"], r["proceeding"], r["sched_time"]) in off:
+                    bad.append(f"{man.name}: {r['bill']} {r['proceeding']} {r['sched_date']} "
+                               f"{r['sched_time']} is a meeting its docket calls off")
+    assert not bad, "\n".join(bad[:20])
+    return "ok", f"{n:,} rows of three terms' manifests, none a meeting called off"
 
 
 # Real rows: Docket_db_2001-2002.txt (SB 373) and Docket_db_1999-2000.txt (SB

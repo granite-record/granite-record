@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -1370,7 +1370,14 @@ def build_sittings(procs):
     """
     sittings = defaultdict(list)
     for p in procs:
-        if "CANCELLED" in p.flags:
+        # THE MARK WITH ONE L TOO (decision 59d, 7 October 2026). cancelled()
+        # reads the word however it is spelled and adds "CANCELLED" only where
+        # no flag says it, so a row FLAG_RE flagged "CANCELED" -- "==CANCELED==
+        # Executive Session: 2/3/2015 LOB 302" (HB 230 of 2015), 49 rows of
+        # 2015-2016 and one each of 2001 and 2010 -- reached here with that
+        # flag alone, was filed as a sitting, and stayed one in proceedings.csv
+        # beside a history that tells it as called off.
+        if any("CANCEL" in str(f).upper() for f in p.flags):
             p.confidence = "X-cancelled"
             p.notes.append("cancelled; no video expected for this row")
             continue

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -537,7 +537,18 @@ def _records(text):
 # for are added where main() would sort them, and --only names the bills, or
 # the bills on their days, whose rows those are. What --only leaves out is
 # counted, so a run says what else the parse would have added.
-def merge_rows(path, rows, only=None):
+# AND A ROW THE PARSE NOW READS ONLY AS CALLED OFF (decision 59d), with
+# --drop-cancelled: a manifest row whose meeting -- bill, chamber, day, kind and
+# hour -- the parse has as a cancelled sitting and as no live one is taken out,
+# as a whole rebuild would leave it out, and every other row stays the bytes it
+# is. Never a row carrying a hand-marked time: that refuses the run. 2015-2016
+# had 49 rows of notices the clerk marked "==CANCELED==", with one L, which
+# docket_parser filed as sittings until its build_sittings read that flag.
+def _meeting(r):
+    return _row_key(r) + (str(r.get("sched_time") or "").strip(),)
+
+
+def merge_rows(path, rows, only=None, called_off=None):
     p = Path(path)
     if not p.exists():
         sys.exit(f"--merge adds to {path}, which is not there. A manifest is built "
@@ -561,13 +572,23 @@ def merge_rows(path, rows, only=None):
     new = [r for r in rows if _row_key(r) not in have]
     add = sorted((r for r in new if asked(r)), key=_row_order)
     left = [r for r in new if not asked(r)]
+    live = {_meeting(r) for r in rows}
+    dropped = [r for _raw, r in kept if called_off is not None and asked(r)
+               and _meeting(r) in called_off and _meeting(r) not in live]
+    marked = [r for r in dropped if (r.get("observed_start") or "").strip()]
+    if marked:
+        sys.exit(f"--drop-cancelled would take out {len(marked)} row(s) carrying a hand-marked "
+                 f"time ({marked[0]['bill']} {marked[0]['sched_date']}); nothing written")
+    gone = {id(r) for r in dropped}
+    kept = [(raw, r) for raw, r in kept if id(r) not in gone]
     if wanted:
         named = {tuple(w) for w in wanted}
-        found = {(r["bill"].upper(),) for r in add} | {(r["bill"].upper(), r["sched_date"])
-                                                       for r in add}
+        found = {(r["bill"].upper(),) for r in add + dropped} | {
+            (r["bill"].upper(), r["sched_date"]) for r in add + dropped}
         missing = sorted("@".join(w) for w in named if w not in found)
         if missing:
-            sys.exit(f"--only names {', '.join(missing)}, and this parse adds no row for it")
+            sys.exit(f"--only names {', '.join(missing)}, and this parse adds or takes out "
+                 "no row for it")
     eol = "\r\n" if head_text.endswith("\r\n") else "\n"
     import io as _io
     lines = []
@@ -585,9 +606,13 @@ def merge_rows(path, rows, only=None):
     merged += [x[1] for x in lines[i:]]
     with open(p, "w", encoding="utf-8", newline="") as fh:
         fh.write("".join(merged))
-    print(f"\nMerged into {path}: {len(kept):,} rows kept as they were, {len(add):,} added")
+    print(f"\nMerged into {path}: {len(kept):,} rows kept as they were, {len(add):,} added"
+          + (f", {len(dropped):,} taken out as called off" if called_off is not None else ""))
     for r in add:
         print(f"  + {r['bill']} {r['body']} {r['proceeding']} {r['sched_date']} "
+              f"{r['sched_time'] or ''} {r['venue'] or ''}")
+    for r in dropped:
+        print(f"  - {r['bill']} {r['body']} {r['proceeding']} {r['sched_date']} "
               f"{r['sched_time'] or ''} {r['venue'] or ''}")
     if left:
         print(f"  {len(left):,} more row(s) of this parse the manifest has no meeting for, "
@@ -615,12 +640,15 @@ def main():
                     help="keep every row --out already has exactly as it is, "
                          "and add only the rows of this parse it does not have "
                          "(by bill, chamber, day and kind); see merge_rows")
+    ap.add_argument("--drop-cancelled", action="store_true",
+                    help="with --merge, also take out the rows whose meeting this "
+                         "parse reads only as called off (merge_rows)")
     ap.add_argument("--only", nargs="+", metavar="BILL[@YYYY-MM-DD]",
                     help="with --merge, add only these bills' rows, or only "
                          "the rows of these bills on these days")
     a = ap.parse_args()
-    if a.only and not a.merge:
-        sys.exit("--only limits what --merge adds, and means nothing without it")
+    if (a.only or a.drop_cancelled) and not a.merge:
+        sys.exit("--only and --drop-cancelled say what --merge does, and mean nothing without it")
 
     # A build_* SCRIPT DOES NOT TOUCH THE NETWORK. This used to fetch
     # Docket.txt from gc.nh.gov when the file was absent, and the whole
@@ -670,6 +698,9 @@ def main():
     vids = load_videos(a.videos, build_roster(procs))
     bodies = {v.get("body") or ("S" if "senate" in (v.get("source") or "").lower()
                                 else "H") for v in vids}
+    called_off = {(p.bill.strip().upper(), p.body.strip().upper(), p.sched_date,
+                   p.kind.lower(), p.sched_time or "") for p in procs
+                  if p.confidence == "X-cancelled"}
     procs = [p for p in procs
              if p.confidence != "X-cancelled" and p.body in bodies]
     from collections import Counter as _C
@@ -899,7 +930,7 @@ def main():
     if not out:
         print("  no proceeding in this docket yet: the manifest is its columns and no row")
     if a.merge:
-        merge_rows(a.out, out, a.only)
+        merge_rows(a.out, out, a.only, called_off if a.drop_cancelled else None)
         return
     with open(a.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()) if out else MANIFEST_COLUMNS)
