@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.360
+# GRANITE_VERSION: 2026-09-04.361
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24388,18 +24388,48 @@ def _session_clause_names_question(SD, BSP):
                   "pointer without a roll call; a removal said and no more")
 
 
-# Real rows, as narrative.py reads them: Docket.txt 25128 and 25153 (HB 1102 of
-# 2026), 25146 and 25149 (SB 434); Docket_db_2011-2012.txt 2320-2321 (SB 88).
+# Real rows, as narrative.py reads them (body, date, the type the reader gives
+# the row, raw): Docket.txt 25128 and 25153 (HB 1102 of 2026), 25146 and 25149
+# (SB 434); Docket_db_2011-2012.txt 2320-2321 (SB 88), 6971-6972 (SB 57) and
+# 5920 (HB 542, which puts the House's sitting of 30 November 2011 on the
+# record); Docket_2019-2020.txt 9956-9958 (HB 455). The reader types the
+# Senate's row of HB 455 and the House's of SB 57 "other", and each reaches its
+# sitting through the roll call on record (_OVERRIDE_ROLLS, rollcalls.json).
 _OVERRIDES = {
-    "HB1102": [("H", "2026-08-19", "Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote"),
-               ("S", "2026-08-19", "Notwithstanding the Governor's Veto, Shall HB 1102 Become Law: "
-                                   "RC 24Y-0N, Veto Overridden by necessary two-thirds vote; 08/19/2026")],
-    "SB434": [("H", "2026-08-19", "Veto Sustained 08/19/2026: RC 165-140 Lacking Necessary Two-Thirds Vote"),
-              ("S", "2026-08-19", "Notwithstanding the Governor's Veto, Shall SB 434 Become Law: "
-                                  "RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026")],
-    "SB88": [("S", "2011-09-07", "Notwithstanding the Governor’s Veto, Shall SB 88 Become Law: "
-                                 "RC 17Y-7N, Veto Overridden by required two-thirds vote"),
-             ("H", "2011-09-14", "Veto Overridden: RC 251-111 by Required Two-Thirds")],
+    ("HB1102", "2025-2026"): [
+        ("H", "2026-08-19", "veto_override", "Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote"),
+        ("S", "2026-08-19", "veto_override", "Notwithstanding the Governor's Veto, Shall HB 1102 Become Law: "
+                                             "RC 24Y-0N, Veto Overridden by necessary two-thirds vote; 08/19/2026")],
+    ("SB434", "2025-2026"): [
+        ("H", "2026-08-19", "veto_override", "Veto Sustained 08/19/2026: RC 165-140 Lacking Necessary Two-Thirds Vote"),
+        ("S", "2026-08-19", "veto_override", "Notwithstanding the Governor's Veto, Shall SB 434 Become Law: "
+                                             "RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026")],
+    ("SB88", "2011-2012"): [
+        ("S", "2011-09-07", "veto_override", "Notwithstanding the Governor’s Veto, Shall SB 88 Become Law: "
+                                             "RC 17Y-7N, Veto Overridden by required two-thirds vote"),
+        ("H", "2011-09-14", "veto_override", "Veto Overridden: RC 251-111 by Required Two-Thirds")],
+    ("HB455", "2019-2020"): [
+        ("H", "2019-05-23", "veto_override", "Veto Overridden 05/23/2019: RC 247-123 by Required Two-Thirds Vote"),
+        ("S", "2019-05-30", "other", "Notwithstanding the Governor's Veto, Shall HB 455-FN Become Law: RC 16Y-8N, "
+                                     "Veto Overridden by necessary two-thirds vote; 05/30/2019"),
+        ("H", "2019-05-30", "other", "Veto Overriden 05/30/2019: Eff: 05/30/2019; Chapter 42")],
+    ("SB57", "2011-2012"): [
+        ("S", "2011-09-07", "veto_override", "Notwithstanding the Governor’s Veto, Shall SB 57 Become Law:  "
+                                             "RC 17Y-7N, Veto Overridden by required two-thirds vote"),
+        ("H", "2011-11-30", "other", "Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during "
+                                     "1/4/2012 morning veto session]")],
+    ("HB542", "2011-2012"): [
+        ("H", "2011-11-30", "veto_override", "Shall HB542 Become Law: Veto Sustained, RC 244-130, Lacking "
+                                             "Required Two-Thirds Vote")],
+}
+# rollcalls.json's roll calls of those two (year, body, number, date, question,
+# yeas, nays): SB 57's House vote is of 4 January 2012, as its row says.
+_OVERRIDE_ROLLS = {
+    ("HB455", "2019-2020"): [("2019", "H", 201, "2019-05-23", "Veto Override", 247, 123),
+                             ("2019", "S", 163, "2019-05-30", "Veto Override", 16, 8)],
+    ("SB57", "2011-2012"): [("2011", "S", 101, "2011-09-07",
+                             "Notwithstanding the Governor's veto shall the bill become law?", 17, 7),
+                            ("2011", "H", 270, "2012-01-04", "SHALL SB 57 BECOME LAW", 248, 123)],
 }
 _OVERRIDES_SAID = {
     ("HB1102", "H"): "the veto was overridden in this chamber and, the same day, in the Senate, "
@@ -24412,6 +24442,13 @@ _OVERRIDES_SAID = {
                    "so the bill became law.",
     ("SB88", "H"): "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
                    "so the bill became law.",
+    ("HB455", "H"): "the veto was overridden in this chamber and, on 30 May 2019, in the Senate, "
+                    "so the bill became law.",
+    ("HB455", "S"): "the veto was overridden in this chamber and, on 23 May 2019, in the House, "
+                    "so the bill became law.",
+    # The House's row and its roll call give two days, so neither page says one.
+    ("SB57", "H"): "the veto was overridden in this chamber and in the Senate, so the bill became law.",
+    ("SB57", "S"): "the veto was overridden in this chamber and in the House, so the bill became law.",
 }
 
 
@@ -24550,19 +24587,46 @@ def _session_both_overrides(SD):
     more, because one chamber's override does not make a law (SB 434 of 2026:
     overridden 16-8 by the Senate, sustained 165-140 by the House). Where the
     other chamber's override is on record too it made the bill law, and no
-    page said so of any of the 22 bills: HB 1102 of 2026, overridden by both
+    page said so of any of the 39 bills: HB 1102 of 2026, overridden by both
     chambers on 19 August 2026, and SB 88 of 2011, by the Senate on 7 September
-    and the House on 14 September."""
+    and the House on 14 September.
+
+    And not only where both are the docket's veto rows. 17 of the 39 have one
+    chamber's override on a row the reader types "other", drawn on its sitting
+    from the roll call on record, and the first pairing, among the veto rows
+    alone, missed every one: HB 455 of 2019, overridden by the House on 23 May
+    and the Senate on 30 May 2019, said only "overridden in this chamber" on
+    both pages. Paired over the sittings (session_days._became_law), and the
+    day said only where the row and its roll call agree on it: SB 57 of 2011's
+    House row is dated 30 November 2011 and its roll call 4 January 2012."""
     bad = []
-    for bill, rows in _OVERRIDES.items():
-        events = [{"type": "veto_override", "body": b, "date": d, "raw": raw} for b, d, raw in rows]
-        for e, it in SD.floor_items(bill, "", events):
-            want = _OVERRIDES_SAID[(bill, e["body"])]
-            if not (it.outcome_words or "").endswith(want):
-                bad.append(f"{bill}'s {e['body']} override reads {it.outcome_words!r}")
+    narr = {}
+    for (bill, term), rows in _OVERRIDES.items():
+        narr.setdefault(term, {})[bill] = [
+            {"type": t, "body": b, "date": d, "raw": raw, "cancelled": False}
+            for b, d, t, raw in rows]
+    rolls = {}
+    for (bill, term), rr in _OVERRIDE_ROLLS.items():
+        rolls.setdefault(term, {})[bill] = [
+            _rc(y, b, n, d, bill, q, yy, nn, True, need=(2 * (yy + nn) + 2) // 3)
+            for y, b, n, d, q, yy, nn in rr]
+    days = _sitting_fixture(SD, narr, rolls)
+    seen = set()
+    for (body, date), d in days.items():
+        for it in d.items:
+            if not it.veto:
+                continue
+            seen.add((it.bill, body))
+            want = _OVERRIDES_SAID.get((it.bill, body))
+            if want and not (it.outcome_words or "").endswith(want):
+                bad.append(f"{it.bill}'s {body} override of {date} reads {it.outcome_words!r}")
+    bad += [f"{b}'s {c} override is on no sitting" for b, c in _OVERRIDES_SAID if (b, c) not in seen]
     assert not bad, "\n".join(bad)
-    return "ok", ("HB 1102 of 2026 and SB 88 of 2011 became law on both chambers' pages, the day "
-                  "of the other's override said where it is another; SB 434's one override did not")
+    return "ok", ("HB 1102 of 2026, SB 88 of 2011 and HB 455 of 2019, whose Senate override is on "
+                  "a row the reader types \"other\", became law on both chambers' pages, the day "
+                  "of the other's override said where it is another; SB 57 of 2011's, whose "
+                  "House row and roll call differ on the day, without one; SB 434's one "
+                  "override did not")
 
 
 @check("session", "a division is held to the House journal, and counted once however many bills it is drawn under",
