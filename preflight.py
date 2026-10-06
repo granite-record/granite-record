@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.359
+# GRANITE_VERSION: 2026-09-04.360
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6991,8 +6991,8 @@ def _consent_rows(n, loose):
 
 @check("data", "every consent note on every history is an agreed text; a removal, or a return "
                "to the calendar, is said of each chamber whose docket records one and of no "
-               "other, under that chamber's stage and after the rule; and no page puts SB 106 "
-               "of 2009's Senate hearing on a day")
+               "other, under that chamber's stage and after the rule; and SB 106 of 2009's "
+               "Senate hearing is on the 10 February a person entered and on no other day")
 def _consent_and_no_sitting_on_disk():
     """The two readings above, asked of what is built.
 
@@ -7023,8 +7023,12 @@ def _consent_and_no_sitting_on_disk():
     SB 106 OF 2009'S HEARING. One hearing carried three days on one page --
     5 February in the history, 10 January on the stations and in the
     download -- and none was the 10 February that Senate Calendar 10 prints.
-    Until a person enters that day (docket_corrections.json), no page gives
-    the hearing a day at all.
+    Until a person entered that day, no page gave the hearing a day at all.
+    The person entered it on 6 October 2026 (docket_corrections.json,
+    decision 9), so the history tells the hearing on 10 February 2009 and on
+    no other day; the 10 January the row states is carried only as the date
+    the docket gives, beside the person's note, on the bill's docket line,
+    and is no day a committee sat, on the page or in the download.
     """
     N = imp("narrative")
     if N is None:
@@ -7094,21 +7098,35 @@ def _consent_and_no_sitting_on_disk():
     sb106 = (narr.get("2009-2010") or {}).get("SB106") or {}
     if sb106:
         text = " ".join(s.get("text") or "" for s in sb106.get("stages", [])[:1])
-        assert "held a public hearing." in text and sb106.get("no_sitting") == ["2009-01-10"], (
+        heard = [e for e in sb106.get("events", [])
+                 if e.get("body") == "S" and e.get("type") == "hearing" and not e.get("cancelled")]
+        assert ("held a public hearing on February 10, 2009." in text
+                and "January 10" not in text
+                and sb106.get("no_sitting") == ["2009-01-10"]
+                and [(e.get("date"), e.get("date_as_recorded")) for e in heard]
+                == [("2009-02-10", "2009-01-10")] and heard[0].get("date_note")), (
             f"SB 106 of 2009's first stage is told: {text!r}; no_sitting "
-            f"{sb106.get('no_sitting')!r}")
+            f"{sb106.get('no_sitting')!r}; Senate hearing rows "
+            f"{[(e.get('date'), e.get('date_as_recorded'), bool(e.get('date_note'))) for e in heard]}")
     said = (f"{placed:,} notes state the consent calendar's rule, {removals:,} say a chamber "
             f"took the bill off it and {returns:,} that it put the bill back, each beside a row "
             "the check found for itself and under that chamber")
     page, table = Path("site/bill/2009/sb106.html"), Path("site/data/proceedings.csv")
     if not (page.exists() and table.exists()):
         return "ok", said + "; no built site here to read SB 106's page in"
-    assert "2009-01-10" not in page.read_text(encoding="utf-8"), (
-        "site/bill/2009/sb106.html still carries 10 January 2009")
+    # 10 January only as the date the docket gives, beside the person's note:
+    # nowhere else on the page, and no row of the download.
+    html = page.read_text(encoding="utf-8")
+    left = html.replace('"date_as_recorded": "2009-01-10"', "")
+    assert "2009-01-10" not in left and "2009-02-10" in html, (
+        "site/bill/2009/sb106.html carries 10 January 2009 other than as the docket's own "
+        "date of the corrected row, or does not carry 10 February")
     rows = [line for line in table.read_text(encoding="utf-8").splitlines()
-            if line.startswith("2009-2010,SB106,S,")]
-    assert not rows, f"the download still lists a Senate sitting on SB 106 of 2009: {rows}"
-    return "ok", said + "; SB 106 of 2009's Senate hearing is on no day, on its page and in the download"
+            if line.startswith("2009-2010,SB106,S,") and ",2009-02-10," not in line]
+    assert not rows, (f"the download lists a Senate sitting on SB 106 of 2009 on another day "
+                      f"than 10 February: {rows}")
+    return "ok", said + ("; SB 106 of 2009's Senate hearing is on 10 February, and 10 January "
+                         "only as the docket's own date on its page")
 
 
 _WRITTEN_DAY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
@@ -63286,12 +63304,21 @@ def _introductions_against_journal(J, BD):
         h = (narr.get(r["term"]) or {}).get(r["bill"]) or {}
         # Or a day its history puts no sitting on ("no_sitting"), and then
         # one of its docket lines says why beside it: the day a notice states
-        # that is before the chamber had the bill (SB 106 of 2009), or a
-        # notice the chamber overtook by taking the measure from its
-        # committee (HA 1 of 2008).
+        # that is before the chamber had the bill, or a notice the chamber
+        # overtook by taking the measure from its committee (HA 1 of 2008);
+        # the notice itself, on that day, where a later row of the docket
+        # cancelled or moved the meeting it names (decision 56: HB 114 of
+        # 2013's of 15 January); or the row a person dated afresh, where that
+        # day is the one the docket gives (SB 106 of 2009's 10 January, told
+        # on 10 February: docket_corrections.json).
         unsat = r["date"] in (h.get("no_sitting") or []) and any(
             "has no row on the bill before" in (e.get("row_note") or "")
             or "took the measure from the committee" in (e.get("row_note") or "")
+            or (e.get("notice") and e.get("overtaken") in ("cancelled", "moved")
+                and e.get("date") == r["date"]
+                and "A later row of the docket" in (e.get("row_note") or ""))
+            or (e.get("date_as_recorded") == r["date"] and e.get("date_note")
+                and e.get("date") != r["date"])
             for e in h.get("events", []))
         if not (h.get("not_introduced") or (h.get("withdrawn") and r["date"] > h["withdrawn"])
                 or unsat):
@@ -63352,8 +63379,9 @@ def _introductions_against_journal(J, BD):
                   "none never introduced carries a committee, a rail, a carried mark or "
                   f"a committee proceeding; none of the {len(untaken)} bills told as never "
                   f"introduced is on any of {len(pages)} committee pages, and none of the "
-                  f"{len(notices)} docket notices for a bill withdrawn or never introduced "
-                  f"is a committee's day, a station or one of the download's "
+                  f"{len(notices)} docket notices -- for a bill withdrawn or never introduced, "
+                  "or of a meeting a later row cancelled or moved -- is a committee's day, a "
+                  "station or one of the download's "
                   f"{listed_rows:,} rows"
                   + (f"; no journals here for {', '.join(sorted(unread))}" if unread else ""))
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.72
+# GRANITE_VERSION: 2026-09-04.73
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3066,8 +3066,8 @@ def notice_note(ev):
 #     mark the new notice instead: "Hearing; === RESCHEDULED === February 22,
 #     2006", entered on 8 February over SB 339's notice for 15 March;
 #     "RESCHEDULED HEARING 3/27/89" over HB 228's for the 22nd. Either mark,
-#     and a later notice for another day entered before the meeting the first
-#     one named. Not a continuation ("Continued", "RECONVENE", "RECESSED":
+#     and a later notice for another day entered by the day the first one
+#     named. Not a continuation ("Continued", "RECONVENE", "RECESSED":
 #     the hearing sat and went on another day), and not an executive or work
 #     session: those recur, and a committee that meets every Tuesday notices
 #     the next Tuesday before this one (HB 607 of 2005).
@@ -3075,7 +3075,7 @@ def notice_note(ev):
 #     AND ONLY A LATER NOTICE THAT IS ITSELF A MEETING, on the evidence of the
 #     rows (7 October 2026). A move now takes a hearing out of the history, so
 #     a held hearing read as moved disappears from it, and the House
-#     calendars found four that had:
+#     calendars found five that had:
 #       - a later row that is itself cancelled is no meeting the first one
 #         moved to. HB 462 of 2015's "==RESCHEDULED== Public Hearing:
 #         2/13/2015 10:00 AM" was read as moved by "===CANCELLED=== Public
@@ -3084,16 +3084,19 @@ def notice_note(ev):
 #         of 2006's "===RESCHEDULED===Public Hearing Jan 17" by
 #         "===CANCELLED===Public Hearing Jan 24" (House Calendar 6: "11:00
 #         a.m. Rescheduled public hearing on HB 1626-FN-A" on 17 January).
-#         Nor is one a later row cancelled in its turn: HB 2014 of 2014's
-#         "==RESCHEDULED== Public Hearing: 2/11/2014 10:45 AM", which
-#         "===CANCELLED=== Public Hearing: 2/11/2014 10:45 AM" took back that
-#         afternoon, did not move the hearing of 6 February (House Calendar 7
-#         prints it at 10:45 that day, and Calendar 9 the 11th as "Continued
-#         public hearing on HB 2014"). And no day the docket itself notices a
-#         continued hearing on is a day the first one moved to: HB 2014's
-#         rows had already set "Continued Public Hearing: 2/11/2014 10:00 AM"
-#         before the rescheduled notice for the 11th, and kept two more for
-#         that day after its cancellation.
+#       - no day the docket itself notices a continued hearing on is a day
+#         the first one moved to. HB 2014 of 2014's rows set "Continued Public
+#         Hearing: 2/11/2014 10:00 AM" before "==RESCHEDULED== Public Hearing:
+#         2/11/2014 10:45 AM", and the hearing of 6 February sat (House
+#         Calendar 7 prints it at 10:45 that day, and Calendar 9 the 11th as
+#         "Continued public hearing on HB 2014"); HB 445 of 2015's
+#         "Continued Public Hearing: 2/13/2015 11:00 AM" followed its
+#         "==RESCHEDULED==" notice for that day by three hours, and House
+#         Calendar 11 prints the hearing on the 12th and again on the 13th.
+#         A rescheduling row the docket called off in its turn still moved
+#         the notice before it: HB 1334 of 1990's hearing of 15 February went
+#         to 8 March by "RESCHEDULED HEARING 3/8/90", which was cancelled and
+#         moved again to the 16th.
 #       - where the only mark is the first notice's own "rescheduled", a
 #         plain notice entered after the hour the first one named is the
 #         next meeting, not the same one moved: HB 234 of 2015's "Public
