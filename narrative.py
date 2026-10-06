@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.71
+# GRANITE_VERSION: 2026-09-04.72
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4000,20 +4000,27 @@ def build(bill, rows, introduction=None):
                     and e["_entered"] < out_["_entered"]
                     and e["when"].date() > out_["when"].date()):
                 e["_void"] = "taken"
-    # AND A MEETING A LATER ROW CANCELLED OR MOVED (6 October 2026; the
-    # person's word on decision 56). overtaken() says which. Decided for
-    # every row first and then applied, since applying one moves its day.
-    # The notice is told where the docket entered it, inside the stage of the
-    # committee that had the bill: on its own day SB 339 of 2006's 15 March
-    # notice headed a committee stage of its own after the Senate had passed
-    # the bill and sent it to Finance.
+    # AND A MEETING A LATER ROW CANCELLED OR MOVED IS NOT TOLD AT ALL (6
+    # October 2026; the person's word on decision 56, and that day again:
+    # "hearings that were cancelled and rescheduled do not need to be listed
+    # as it just adds visual clutter"). overtaken() says which. Decided for
+    # every row first and then applied, since a row carried as cancelled is
+    # one rule (a) reads. Carried as a row the docket cancelled is, so neither
+    # the narration nor any rule that reads what happened takes it for a
+    # meeting, and the history tells the meeting that sat -- the rescheduled
+    # day, where the docket gives one. For a day the notice was told as "A
+    # public hearing had been scheduled for ...", where the docket entered it,
+    # and SB 339 of 2006's first stage read "... had been scheduled for
+    # January 19, 2006. A public hearing had been scheduled for March 15,
+    # 2006. The committee held a public hearing on February 22, 2006." The row
+    # keeps its day and its place among the bill's docket lines, with its note
+    # (notice_note), and the calendar it cites stays among the bill's
+    # documents: that calendar printed the bill.
     over = [(e, overtaken(e, evs)) for e in evs]
-    over = [(e, why) for e, why in over if why]
     for e, why in over:
-        e["_void"], e["_unheld_day"] = why, e["when"].date()
-        if isinstance(e["_entered"], datetime) and e["_entered"] != datetime.min:
-            e["when"] = e["_entered"]
-    if gone or journal_out or over:
+        if why:
+            e["_void"], e["_unheld_day"], e["cancelled"] = why, e["when"].date(), True
+    if gone or journal_out:
         evs = [e for _i, e in sorted(enumerate(evs),
                                      key=lambda x: (x[1]["when"].date(), x[0]))]
 
@@ -4449,8 +4456,8 @@ def build(bill, rows, introduction=None):
             # it is told where its date puts it, since nothing in the row says
             # it was not the second committee's to hold. (SB 339 of 2006's
             # hearing of 15 March was the case in point, until the later row
-            # that moved it to 22 February was read: overtaken() tells it as a
-            # notice, where the docket entered it.) A report is told before the
+            # that moved it to 22 February was read: overtaken() leaves it out
+            # of the history.) A report is told before the
             # vote on the committee's amendment the stage already tells (HB 1202
             # of 2024),
             # as the committee reported it before the floor took it up.
@@ -4751,11 +4758,16 @@ def build(bill, rows, introduction=None):
                     **({"row_note": e["row_note"]} if e.get("row_note") else {}),
                     # A meeting row told as a notice. "cancelled" above keeps
                     # it out of everything that reads what happened; this says
-                    # the docket did not cancel it, so the bill's list of
+                    # the row did not cancel itself, so the bill's list of
                     # docket lines still shows the row, with why it is not
-                    # told as a meeting beside it (notice_note).
+                    # told as a meeting beside it (notice_note). And for one a
+                    # later row cancelled or moved (overtaken), which: the
+                    # calendar it cites is still one that printed the bill
+                    # (build_site_v2.bill_documents).
                     **({"notice": True,
-                        "row_note": e.get("row_note") or notice_note(e)}
+                        "row_note": e.get("row_note") or notice_note(e),
+                        **({"overtaken": e["_void"]}
+                           if e["_void"] in ("cancelled", "moved") else {})}
                        if e.get("_void") else {}),
                     # One line the clerk typed, read whole from rows the
                     # database cut it into, and how many floor actions those

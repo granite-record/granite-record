@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.358
+# GRANITE_VERSION: 2026-09-04.359
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2390,14 +2390,13 @@ _REFERRAL_UNMADE_HEADS = {
 # begun). EDA's notice of 15 March on SB 339 of 2006, entered before the
 # passage for a day after it, was kept out of EDA's stage before the passage
 # while it was told as a hearing held; since a later row was read as moving
-# it to 22 February (decision 56, narrative.overtaken) it is a notice, told in
-# EDA's stage where the docket entered it, and no later stage says it.
+# it to 22 February (decision 56, narrative.overtaken) no stage tells it.
 _REFERRAL_UNMADE_PLACED = {
     ("HB186", "2025-2026"): [(1, "whose chair waived the referral", True),
                              (2, "waived", False)],
     ("HB1574", "2025-2026"): [(1, "whose chair waived the referral", True)],
-    ("SB339", "2005-2006"): [(0, "A public hearing had been scheduled for March 15, 2006.", True),
-                             (1, "March 15", False), (2, "March 15", False)],
+    ("SB339", "2005-2006"): [(0, "March 15", False), (1, "March 15", False),
+                             (2, "March 15", False)],
 }
 
 # Every wording on disk of a referral its chair waived or declined, and of a
@@ -2577,29 +2576,25 @@ _DOCKET_OVERTAKEN = {
 # what it must not say.
 _OVERTAKEN_TOLD = {
     ("SB339", "2005-2006"): (["2006-01-19", "2006-03-15"],
-                             ["A public hearing had been scheduled for January 19, 2006.",
-                              "A public hearing had been scheduled for March 15, 2006.",
-                              "The committee held a public hearing on February 22, 2006."],
-                             ["held public hearings", "held a public hearing on January",
-                              "held a public hearing on March"]),
+                             ["The committee held a public hearing on February 22, 2006."],
+                             ["held public hearings", "had been scheduled", "January 19",
+                              "March 15"]),
     ("HB1696", "2005-2006"): (["2006-01-31"],
-                              ["A public hearing had been scheduled for January 31, 2006.",
-                               "The committee held a public hearing on February 9, 2006."],
-                              ["held public hearings"]),
+                              ["The committee held a public hearing on February 9, 2006."],
+                              ["held public hearings", "had been scheduled", "January 31"]),
     ("SB24", "2005-2006"): ([], ["The committee held a public hearing on March 30, 2006."],
                             ["had been scheduled"]),
     ("HB607", "2005-2006"): ([], ["November 8, 2005", "November 15, 2005"], ["had been scheduled"]),
     ("HB114", "2013-2014"): (["2013-01-15"],
-                             ["A public hearing had been scheduled for January 15, 2013.",
-                              "The committee held a public hearing on January 22, 2013."],
-                             ["held public hearings"]),
+                             ["The committee held a public hearing on January 22, 2013."],
+                             ["held public hearings", "had been scheduled", "January 15"]),
     ("HB142", "2015-2016"): (["2015-02-03"],
-                             ["A public hearing had been scheduled for February 3, 2015.",
-                              "The committee held a public hearing on February 12, 2015."],
-                             ["had been scheduled for February 12", "held public hearings"]),
+                             ["The committee held a public hearing on February 12, 2015."],
+                             ["had been scheduled", "held public hearings", "February 3"]),
     ("SB17", "2009-2010"): (["2009-01-27"],
-                            ["A public hearing had been scheduled for January 27, 2009."],
-                            ["January 27, 2009 and", "and January 27, 2009"]),
+                            ["The committee held public hearings on January 13, 2009 and "
+                             "March 24, 2009."],
+                            ["had been scheduled", "January 27"]),
     ("HB145", "2007-2008"): ([], ["August 21, 2007"], ["had been scheduled"]),
 }
 
@@ -2619,17 +2614,25 @@ def _told_from_rows(N, term, bill, lines):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-@check("narrative", "a meeting a later row of the docket cancelled or moved is told as a notice, "
-                    "in its committee's stage, and is no day a committee sat",
+@check("narrative", "a meeting a later row of the docket cancelled or moved is not told in the "
+                    "history, keeps its docket line, its day and its note, and is no day a "
+                    "committee sat",
        needs=("narrative", "proceedings"))
 def _overtaken_notices(N, P):
-    """Decision 56, the person's word of 6 October 2026: a notice a later row
-    cancelled or moved is told as a notice and not as a meeting held. SB 339 of
-    2006's history said the committee held public hearings on 19 January and
-    22 February and, after the Senate had passed the bill and sent it to
-    Finance, held one on 15 March; Senate Calendar 2 printed the 19th
-    cancelled, and the 15 March notice was moved to 22 February. HB 114 of
-    2013's hearing of 15 January was cancelled the next morning.
+    """Decision 56, and the person's word on it of 6 October 2026: "hearings
+    that were cancelled and rescheduled do not need to be listed as it just
+    adds visual clutter". SB 339 of 2006's history said the committee held
+    public hearings on 19 January and 22 February and, after the Senate had
+    passed the bill and sent it to Finance, held one on 15 March; Senate
+    Calendar 2 printed the 19th cancelled, and the 15 March notice was moved
+    to 22 February. Told for a day as "A public hearing had been scheduled for
+    January 19, 2006. A public hearing had been scheduled for March 15, 2006.
+    The committee held a public hearing on February 22, 2006.", it now tells
+    the hearing of 22 February and nothing of the other two. HB 114 of 2013's
+    hearing of 15 January was cancelled the next morning.
+
+    The rows stay among the bill's docket lines, on the day they name, each
+    with the note that says why the history does not tell it.
 
     And what is not that: a hearing moved to another hour of the same day
     (HB 142 of 2015's of 12 February), a rescheduled hearing nothing later
@@ -2650,24 +2653,47 @@ def _overtaken_notices(N, P):
         bad += [f"{name} does not say {w!r}" for w in said if w not in text]
         bad += [f"{name} says {w!r}" for w in unsaid if w in text]
         notes = [e for e in n["events"] if e.get("notice")]
-        if len(notes) != len(days) or any(
-                not e["cancelled"] or "A later row of the docket" not in (e.get("row_note") or "")
+        if sorted(e["date"] for e in notes) != days or any(
+                not e["cancelled"] or e.get("overtaken") not in ("cancelled", "moved")
+                or "A later row of the docket" not in (e.get("row_note") or "")
                 for e in notes):
-            bad.append(f"{name}: notices {[(e['date'], e.get('row_note')) for e in notes]}")
+            bad.append(f"{name}: docket lines {[(e['date'], e.get('row_note')) for e in notes]}")
         for d in days:
             if not P.notice_only({"kind": "public hearing", "date": d}, n):
                 bad.append(f"{name}: {d} is still a day a committee sat")
-    # Each notice is told in the stage of the committee that had the bill, not
-    # after the floor vote that sent it on.
-    sb339 = told("2005-2006", "SB339", _DOCKET_OVERTAKEN[("SB339", "2005-2006")])
-    first = sb339["stages"][0]["text"]
-    if ("March 15" not in first
-            or any("had been scheduled" in s["text"] for s in sb339["stages"][1:])):
-        bad.append("SB339 of 2006's 15 March notice is told in "
-                   + repr([s["label"] for s in sb339["stages"] if "March 15" in s["text"]]))
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_OVERTAKEN)} histories from real rows: "
-                  f"{sum(len(v[0]) for v in _OVERTAKEN_TOLD.values())} notices, and four that are not")
+                  f"{sum(len(v[0]) for v in _OVERTAKEN_TOLD.values())} notices left untold and "
+                  "listed, and four that are not notices")
+
+
+@check("site", "a notice a later row cancelled or moved keeps the calendar it cites among its "
+               "bill's documents, and a row the docket cancelled adds none",
+       needs=("build_site_v2", "narrative"))
+def _overtaken_notice_documents(B, N):
+    """The calendar that printed a notice printed the bill. Carried as
+    cancelled so that nothing reads it as a sitting, a notice a later row
+    cancelled or moved (narrative.overtaken) was skipped by bill_documents as
+    a row the docket cancelled is, and 59 bills' Documents tabs lost 62
+    calendars: SB 339 of 2006 lost Senate Calendar 1A, which printed its
+    hearing of 19 January. Built from SB 339's real rows (_DOCKET_OVERTAKEN),
+    whose voided notice of 19 January cites SC1A and nothing else does; the
+    rows the docket cancelled cite SC1, SC2 and SC4, which stay off as before."""
+    n = _told_from_rows(N, "2005-2006", "SB339", _DOCKET_OVERTAKEN[("SB339", "2005-2006")])
+    cites = {e.get("cite") for e in n["events"]}
+    url = "https://gc.nh.gov/calendars/2006/sc{}.pdf"
+    sources = {f"{c} 2006": url.format(c.split()[-1].lower()) for c in cites if c}
+    docs, _text = B.bill_documents({"journal": {"from": "fixture"}}, "SB339", {}, n,
+                                   sources, [], [])
+    got = sorted(d["label"] for d in docs if d.get("kind") == "record")
+    assert any(lab.startswith("SC 1A") for lab in got), (
+        f"SB 339's Documents tab does not list Senate Calendar 1A, which printed the notice "
+        f"a later row cancelled: {got} (cited {sorted(c for c in cites if c)})")
+    off = [e.get("cite") for e in n["events"]
+           if e.get("cancelled") and not e.get("overtaken") and e.get("cite")]
+    assert not any(lab.split(",")[0] in off for lab in got), (
+        f"a calendar only a row the docket cancelled cites is listed: {got}, {off}")
+    return "ok", f"SB 339 of 2006 lists {', '.join(got)}; {', '.join(off)} stay off"
 
 
 # Real rows: Docket_2015-2016.txt 2699-2703 (HB 462), 614-619 (HB 234) and
