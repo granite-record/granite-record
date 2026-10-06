@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.369
+# GRANITE_VERSION: 2026-09-04.370
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35865,6 +35865,56 @@ def _journal_step_not_skipped(BA):
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("from the kit, no journals/ stops the build at the journal step; "
                   "on a laptop's bare folder the step is skipped and named")
+
+
+@check("pipeline", "the nightly's build fails, not skips, without the calendars the veto "
+       "messages are read from, and writes them before anything reads them",
+       needs=("build_all",))
+def _veto_step_not_skipped(BA):
+    """veto_messages.json was tracked until 6 October 2026, so a night whose
+    calendars did not arrive still built from the committed copy. It is
+    gitignored now and every build writes it (extract_vetoes.py), so on the
+    nightly's machine that step is the only source: skipped for a missing
+    calendars/, the site data and the civics pages would build with no veto
+    message at all and every step would report success. So the step is
+    kit_required, as the journal step is, and it comes before build_site_v2
+    and build_civics, which read what it writes.
+    """
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive"})
+    steps = BA.plan(A())
+    at = {tuple(s.args[:1]): i for i, s in reversed(list(enumerate(steps)))}
+    veto = next((i for i, s in enumerate(steps) if s.args == ["extract_vetoes.py"]), None)
+    assert veto is not None, "build_all has no extract_vetoes.py step"
+    assert steps[veto].kit_required, \
+        "the veto step may be skipped on the nightly's machine, where nothing else makes the file"
+    for reader in ("build_site_v2.py", "build_civics.py"):
+        assert (reader,) in at and veto < at[(reader,)], (
+            f"{reader} reads veto_messages.json and runs before the step that writes it")
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-veto-step-"))
+    try:
+        (root / "archive" / "cloud").mkdir(parents=True)
+        (root / BA.KIT_RECORD).write_text("{}", encoding="utf-8")
+        for p, _, _ in BA.CARRIED:
+            (root / p).write_text('{"recordings": {}}' if p == "caption_spans.json"
+                                  else "{}", encoding="utf-8")
+        r = _sealed_run([sys.executable, str(here / "build_all.py"), "--local", "--dry-run"],
+                        cwd=root, capture_output=True, text=True, timeout=120,
+                        env={"GITHUB_ACTIONS": ""})
+        lines = r.stdout.splitlines()
+        at_veto = next((i for i, ln in enumerate(lines)
+                        if ln.strip() == "python3 extract_vetoes.py"), None)
+        assert r.returncode == 0 and at_veto is not None and at_veto + 1 < len(lines), (
+            f"the kit's dry run did not list the veto step: {r.stdout[-300:]}")
+        assert "would fail, the kit's build may not skip it: missing calendars" \
+            in lines[at_veto + 1], (
+                "from the kit, a missing calendars/ would skip the veto step: "
+                + lines[at_veto + 1].strip())
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("from the kit, no calendars/ stops the build at the veto step, which "
+                  "runs before build_site_v2 and build_civics read its file")
 
 
 @check("build", "a journal record joins the record only where nothing else has the bill",
