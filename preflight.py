@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.368
+# GRANITE_VERSION: 2026-09-04.369
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3231,6 +3231,98 @@ def _cancelled_and_rescheduled(N):
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_CANCELLED_AND_RESCHEDULED)} histories from real rows tell the "
                   "hearing on the day the row names; seven rows read by what their marks say")
+
+
+# Real rows: Docket_2015-2016.txt 15060-15070 (HB 359), 15226-15235 (HB 386)
+# and 15921-15928 (HB 571). Ways and Means' session of 29 October 2015.
+_DOCKET_WHOLE_DAY = [
+    "2016|0781|1/8/2015 12:00:00 AM|HB359|H|Introduced and Referred to Ways and Means.|1/8/2015 12:00:00 AM",
+    "2016|0781|3/4/2015 12:00:00 AM|HB359|H|Retained in Committee|3/4/2015 12:00:00 AM",
+    "2016|0781|9/16/2015 12:00:00 AM|HB359|H|==CANCELED==Executive Session: 10/29/2015 10:00 AM LOB 202|9/16/2015 12:00:00 AM",
+    "2016|0781|9/23/2015 12:00:00 AM|HB359|H|==RESCHEDULED==Executive Session: 10/14/2015 10:00 AM LOB 202|9/23/2015 12:00:00 AM",
+    "2016|0132|1/8/2015 12:00:00 AM|HB386|H|Introduced and Referred to Ways and Means; HJ 12 , PG. 221|1/8/2015 12:00:00 AM",
+    "2016|0132|3/4/2015 12:00:00 AM|HB386|H|Retained in Committee|3/4/2015 12:00:00 AM",
+    "2016|0132|9/16/2015 12:00:00 AM|HB386|H|==CANCELED==Executive Session: 10/29/2015 10:00 AM LOB 202|9/16/2015 12:00:00 AM",
+    "2016|0132|9/23/2015 12:00:00 AM|HB386|H|==RESCHEDULED==Executive Session: 10/14/2015 10:00 AM LOB 202|9/23/2015 12:00:00 AM",
+    "2016|0818|1/8/2015 12:00:00 AM|HB571|H|Introduced and Referred to Ways and Means; HJ 12 , PG. 230|1/8/2015 12:00:00 AM",
+    "2016|0818|3/4/2015 12:00:00 AM|HB571|H|Retained in Committee|3/4/2015 12:00:00 AM",
+    "2016|0818|9/16/2015 12:00:00 AM|HB571|H|Executive Session: 10/29/2015 10:00 AM LOB 202|9/16/2015 12:00:00 AM",
+    "2016|0818|9/23/2015 12:00:00 AM|HB571|H|Executive Session: 10/14/2015 10:00 AM LOB 202|9/23/2015 12:00:00 AM",
+    "2016|0818|11/12/2015 12:00:00 AM|HB571|H|Committee Report: Inexpedient to Legislate for Jan 6 (Vote 18-0; CC); HC 67 , PG. 11-12|11/12/2015 12:00:00 AM",
+]
+# What House Calendars 53 (18 September 2015) and 55 (25 September) print of
+# them, as calendar_meetings reads a calendar: Calendar 53 the session of the
+# 29th, Calendar 55 the one of the 14th and no Ways and Means of the 29th.
+_WHOLE_DAY_CALENDAR = [
+    {"bill": b, "date": d, "kind": "executive session", "noticed": n, "calendar": c}
+    for c, n, d, bills in (("2015/HC053", "2015-09-18", "2015-10-29", ("HB359",)),
+                           ("2015/HC055", "2015-09-25", "2015-10-14",
+                            ("HB359", "HB386", "HB571")))
+    for b in bills]
+
+
+@check("narrative", "a meeting the docket cancels on most of its bills, and no calendar printed "
+                    "after they were set down for another one prints, is cancelled for all of them",
+       needs=("narrative",))
+def _whole_day_cancelled(N):
+    """Decision 58: Ways and Means' executive session of 29 October 2015. The
+    docket cancels it on nine of its eleven bills and re-notices them for the
+    14th; HB 571's and HB 634's notices carry no mark, and their histories
+    said the committee met on 14 and 29 October. House Calendar 53 printed
+    the 29th; Calendars 55, 56 and 58 print the 14th, and none printed after
+    the bills were set down for it prints a session of the 29th. The whole day
+    was called off.
+
+    And only on the calendars' word: not where a calendar printed after the
+    other notices still prints the meeting (Judiciary's of 15 November 2023,
+    printed for all nine bills by every calendar to 3 November), nor where no
+    calendar printed between them is on disk (Education Funding's of 2 May
+    2025, moved on 1 May)."""
+    def told(calendar):
+        tmp = Path(tempfile.mkdtemp(prefix="gr-whole-day-"))
+        saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS, N.WHOLE_DAY)
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(_DOCKET_WHOLE_DAY) + "\n", encoding="utf-8")
+            rows = N.parse_docket(str(tmp / "Docket.txt"))
+            N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS, N.TERM = [], [], {}, "2015-2016"
+            N.WHOLE_DAY = {}
+            N.NOTICED.clear()
+            for b in rows:
+                N.build(b, rows[b])
+            N.WHOLE_DAY = N.whole_day_meetings(calendar=lambda chamber, term: calendar)
+            N.NOTICED.clear()
+            return {b: N.build(b, rows[b]) for b in rows}, N.WHOLE_DAY
+        finally:
+            N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS, N.WHOLE_DAY = saved
+            N.NOTICED.clear()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    bad = []
+    hs, got = told(_WHOLE_DAY_CALENDAR)
+    text = " ".join(s["text"] for s in hs["HB571"]["stages"])
+    if "October 29" in text or "October 14, 2015" not in text:
+        bad.append(f"HB 571 of 2015 does not tell the session of 14 October alone: {text[:500]!r}")
+    if ["2015-10-29", "H", "executive session", "10:00"] not in (hs["HB571"].get("voided") or []):
+        bad.append(f"HB 571's session of 29 October is drawn as a sitting: voided "
+                   f"{hs['HB571'].get('voided')!r}")
+    line = [e for e in hs["HB571"]["events"] if e["date"] == "2015-10-29"]
+    if not (line and line[0].get("notice") and "most of the bills" in (line[0].get("row_note") or "")):
+        bad.append(f"HB 571's row of 29 October is not kept among its docket lines with its note: {line!r}")
+    if list(got) != [("2015-2016", "H", "Ways and Means", "2015-10-29", "exec", 600)]:
+        bad.append(f"the meetings cancelled whole are {list(got)!r}")
+    # A calendar printed after the bills were set down for the 14th still
+    # printing the 29th, and no calendar at all: the history tells it.
+    still = _WHOLE_DAY_CALENDAR + [{"bill": "HB386", "date": "2015-10-29",
+                                    "kind": "executive session", "noticed": "2015-10-02",
+                                    "calendar": "2015/HC056"}]
+    for name, cal in (("a later calendar printing it", still), ("no calendar", [])):
+        hs, got = told(cal)
+        text = " ".join(s["text"] for s in hs["HB571"]["stages"])
+        if got or "October 29, 2015" not in text:
+            bad.append(f"with {name}, HB 571's session of 29 October is not told: {text[:400]!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("a session cancelled on two of three bills and dropped by the calendars is "
+                  "cancelled for the third; not where a later calendar prints it, nor with none")
 
 
 # =============================================================== code: status ==
