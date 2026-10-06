@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.350
+# GRANITE_VERSION: 2026-09-04.351
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44065,6 +44065,76 @@ def _nightly_review_new_term(NI):
             g.summary
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", "a New term run that built is held, first reason the switch, on an otherwise clear night"
+
+
+@check("build", "the gate holds the first night after a release, and any night whose code or "
+       "production's it cannot know", needs=("nightly",))
+def _nightly_review_release(NI):
+    """A release -- a merge to main -- is the person's own act, and the first
+    night built from it is their one look at it: the gate holds a night whose
+    commit is not the one production's build.json names. It is commit for
+    commit, so a release that touched only documents waits too. The night
+    after the release was published is a data night again. And where either
+    commit is not known -- production down, a build.json naming none, a night
+    with no commit of its own -- the answer is to wait, never to guess."""
+    a, b = GATE_SHA
+    assert NI.release_reasons(a, a) == [] and NI.code_differs(a, a) is False
+    said = NI.release_reasons(b, a)
+    assert said == [NI.REVIEW_RELEASE.format(tonight=b[:12], served=a[:12])] and \
+        NI.code_differs(b, a) is True, said
+    assert NI.release_reasons(a, None) == [NI.REVIEW_LIVE_UNKNOWN] and \
+        NI.release_reasons(a, "abc") == [NI.REVIEW_LIVE_UNKNOWN] and \
+        NI.code_differs(a, None) is None
+    assert NI.release_reasons("", a) == [NI.REVIEW_SHA_UNKNOWN] == NI.release_reasons(None, None)
+
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="331")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="332")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and NI.REVIEW_LIVE_UNKNOWN in v["review"]["why"], \
+            ("a production whose build names no commit was taken for this night's code",
+             v.get("review"))
+        g.publish("332")
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="333")
+        assert code == 0 and g.verdict()["review"] == {"needed": False, "why": []}, \
+            g.verdict().get("review")
+
+        # The release: main moves, and the first night built from it waits.
+        code, _ = g.night("--runner", "--no-fetch", run_id="334", sha=b)
+        v = g.verdict()
+        rel = NI.REVIEW_RELEASE.format(tonight=b[:12], served=a[:12])
+        assert code == 0 and v["publishable"] and v["review"] == {"needed": True, "why": [rel]}, \
+            ("the first night after a release would have published without approval",
+             v.get("review"))
+        assert f"- Would have waited for approval: {rel}." in g.summary.splitlines() and \
+            g.output.get("review") == "true", g.summary
+        # Once published, the release's next night is a data night again.
+        g.publish("334")
+        g.how["touch"] = 5
+        code, _ = g.night("--runner", "--no-fetch", run_id="335", sha=b)
+        assert code == 0 and g.verdict()["review"] == {"needed": False, "why": []}, \
+            ("the night after a published release was held as a release", g.verdict().get("review"))
+
+        # Production that does not answer, and a night with no commit of its
+        # own: not known, so wait -- a dry run says what it would have done.
+        g.down = True
+        code, _ = g.night("--runner", "--no-fetch", run_id="336", sha=b)
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"]["needed"] and \
+            NI.REVIEW_LIVE_UNKNOWN in v["review"]["why"], v.get("review")
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="337", sha=b)
+        assert any(ln.startswith("- A dry run, so nothing was published; had it not been one, it "
+                                 "would have waited for approval: ") and NI.REVIEW_LIVE_UNKNOWN in ln
+                   for ln in g.summary.splitlines()), g.summary
+        g.down = False
+        code, _ = g.night("--runner", "--no-fetch", run_id="338", sha="")
+        v = g.verdict()
+        assert code == 0 and v["review"]["why"] == [NI.REVIEW_SHA_UNKNOWN], v.get("review")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a night whose commit is not production's waits, and the one after the release "
+                  "is published does not; production unreadable or no commit tonight waits")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

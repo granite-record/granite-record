@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.41
+# GRANITE_VERSION: 2026-09-04.42
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -562,6 +562,17 @@ REVIEW_LINES = ("Would have published without approval.",
                 "Would have waited for approval: {why}.")
 REVIEW_DRY = "A dry run, so nothing was published; had it not been one, it {would}"
 REVIEW_NOT_FOR = "Not for production tonight, so there was nothing to approve."
+# The gate's second reason: a release. A release is a merge to main, the
+# person's own act, and the first night after it is their one look at it; a
+# night whose code is production's is a data night. Commit for commit: a merge
+# of nothing but documents waits too, which is the safe side. Where either
+# commit is not known, the night waits.
+REVIEW_RELEASE = ("tonight's code (commit {tonight}) is not the code of the build production "
+                  "serves (commit {served}): the first night after a release")
+REVIEW_LIVE_UNKNOWN = ("the commit of the build production serves could not be read, so whether "
+                       "tonight's code is a release's is not known")
+REVIEW_SHA_UNKNOWN = ("tonight's own commit is not known, so whether its code is a release's is "
+                      "not known")
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -2842,6 +2853,28 @@ def review_line(v, dry_run):
     return said
 
 
+def code_differs(sha, served):
+    """True where tonight's commit and the one production's build names are
+    both known and differ, False where both are known and the same, and None
+    where either is not known."""
+    if not COMMIT.fullmatch(str(sha or "")) or not COMMIT.fullmatch(str(served or "")):
+        return None
+    return sha != served
+
+
+def release_reasons(sha, served):
+    """The gate's second reason, as a list: [] on a night whose code is the
+    code of the build production serves; one sentence where it is not, or
+    where either commit is not known."""
+    if not COMMIT.fullmatch(str(sha or "")):
+        return [REVIEW_SHA_UNKNOWN]
+    if not COMMIT.fullmatch(str(served or "")):
+        return [REVIEW_LIVE_UNKNOWN]
+    if code_differs(sha, served):
+        return [REVIEW_RELEASE.format(tonight=sha[:12], served=served[:12])]
+    return []
+
+
 def stamp_commit(site, sha):
     """Tonight's commit into site/build.json, which build_all wrote: what a
     later night reads back from production (served_commit). Only a full commit
@@ -3042,6 +3075,7 @@ class Night:
         # finish() adds the warnings' and writes the verdict's "review".
         if a.new_term:
             self.review_why.append(REVIEW_NEW_TERM)
+        self.review_why += release_reasons(v["sha"], v["live_commit"])
         # A New term run goes to the publish job even when production already
         # serves this very build: publishing is what lets what it accepted be
         # kept, and without it the next night would refuse the files for ever.
