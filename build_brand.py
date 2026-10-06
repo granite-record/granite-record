@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.10
+# GRANITE_VERSION: 2026-09-12.11
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -70,9 +70,10 @@ A NOTE ON THE ORIGINALS' NAMES. They arrived as "Logo Black.png" and "Logo
 White.png", named for their BACKGROUND: the first is the white wordmark on
 black. brand/ holds them as logo-on-black.png and logo-on-white.png, named for
 what they are, because the first draft of this script read the wrong one and
-put a black tile in a white frame on every shared link. The arrival names may
-still sit at the root of the person's own folder as byte-identical copies,
-untracked like brand/; this script reads brand/ only.
+put a black tile in a white frame on every shared link. Byte-identical copies
+under the arrival names (and Icon.png) sat at the root of the person's own
+folder, untracked, until the prune of 6 October 2026 listed them to be moved
+aside; nothing read them. This script reads brand/ only.
 """
 import argparse
 import pathlib

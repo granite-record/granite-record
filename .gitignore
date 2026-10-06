@@ -78,6 +78,11 @@ journal_bills.json
 # Which House committee reports the calendar printed under another bill,
 # rebuilt whole by report_check.py on every build.
 report_corrections.json
+# The governor's veto messages, read off the calendars' text by
+# extract_vetoes.py on every build, GitHub's included (the kit carries the
+# calendars' text, calendars.json and archive/queue.csv it reads). Tracked
+# until 6 October 2026; a run with no earlier copy writes the same file.
+/veto_messages.json
 # One per term now: build_manifest.py writes verification_manifest.csv for
 # the current term and verification_manifest_<term>.csv for each archived
 # one, and build_proceedings.py reads them all. Named individually, the

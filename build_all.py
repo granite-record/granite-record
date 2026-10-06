@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.52
+# GRANITE_VERSION: 2026-09-05.53
 """
 Run the whole pipeline in the right order.
 
@@ -473,10 +473,20 @@ def plan(a):
         # committee reports and they carry the veto messages too. Skipped
         # where there is no calendars/ folder, so a checkout without it builds
         # exactly as before.
+        #
+        # NOT SKIPPED ON THE NIGHTLY'S MACHINE (6 October 2026).
+        # veto_messages.json was tracked until then, so a night whose
+        # calendars did not arrive still had the committed copy to build
+        # from. It is not in git now -- this step writes it on every build,
+        # and with no earlier copy writes the same 261 messages -- so without
+        # calendars/ the site data and the civics pages would build with no
+        # veto message at all and every step would report success. Where the
+        # build is the kit's, a missing calendars/ stops it instead.
         Step("the governor's veto messages",
              ["extract_vetoes.py"],
              needs=["calendars"],
              produces=["veto_messages.json"],
+             kit_required=True,
              note="34 of the current term's 34 House vetoes; the Senate's are "
                   "in the Senate calendars, which this project does not fetch"),
 

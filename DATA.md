@@ -55,8 +55,9 @@ kit. The one file of assets/ that is tracked is site.webmanifest, which is
 text and is MIT like the code.
 
 The clipart was in the repository until it was removed on 1 October 2026, so
-commits from before the removal carry it: the images in brand/, the copies of
-them at the root (Icon.png, Logo Black.png and Logo White.png), and what
+commits from before the removal carry it: the images in brand/, byte-identical
+copies of three of them at the root under the names they arrived with
+(Icon.png, Logo Black.png and Logo White.png, which no code read), and what
 build_brand.py drew from them into assets/. The history was not rewritten.
 Those files were never offered under the MIT licence and are not now; that an
 old commit still holds them is not a licence to use them.

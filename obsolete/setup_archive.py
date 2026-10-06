@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
 """
 Lay out the archive so more than one legislative term can coexist.
 

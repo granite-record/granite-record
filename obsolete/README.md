@@ -102,8 +102,167 @@ database's "2016" rows are the 2015 history of 190 carried-over bills, so
 seeding from them skips those bills' whole 2016 record. The lane's queue uses
 `Docket_db_2015.txt` instead.
 
-`watchers/narrative_watch.py` still reads `logs/docket_chain.log` for the
-line this wrote when a term's docket was complete. That watcher is dormant
-too, and says so in `watchers/README.md`.
+`narrative_watch.py`, below, reads `logs/docket_chain.log` for the line this
+wrote when a term's docket was complete. It followed this here on 6 October
+2026.
 
 **It starts fetches.** Do not run it.
+
+---
+
+The rest moved here on 6 October 2026, the refactor plan's second phase, with
+the person's agreement: one-offs whose job is done and watchers that had stood
+dormant since the drains they followed finished. Nothing ran any of them --
+not `build_all.py`, the nightly, the weekly, the laptop's evening job, the
+lane's queue or a scheduled task -- and no check imported one. Each one that
+imports a project module (`proceedings`, `docket_parser`, `build_manifest`)
+expects to be run from the repository root, as it was.
+
+## `fetch_archive_years.py`
+
+The loop that brought every archived term's bills down from the Advanced Bill
+Status Search, two requests a session year, by running
+`fetch_archive_bills.py --year` once a year with a wait between and a stop
+after two failures in a row. It did its job: `archive_years.json`, the record
+it wrote, has every term from 1989-1990 to 2023-2024 and no failure.
+`fetch_archive_bills.py` is still at the root and still the fetcher; this was
+only the loop around it.
+
+**It asks the General Court, and it never called `refusal.check()` itself**:
+it carries no `gc.nh.gov` address of its own, so the refusal check that reads
+every script never asked it to. The script it ran does call it. Do not run
+this; a year is one `fetch_archive_bills.py --year` in the lane.
+
+## `fix_meridiem_manifests.py`
+
+A one-off repair of the manifests built before `docket_parser._unslip` learned
+to correct a meridiem the clerk typed the wrong way round ("12:15 am" for a
+hearing at quarter past noon). It recomputed `sched_time`, `predicted_offset`
+and `watch_url` in the rows inside the window and left every other column --
+`observed_start` and `observed_end` above all -- as it found them. Run without
+`--apply` on 6 October it found 0 reversed meridiems across the 19 manifests,
+and every manifest built since is right without it.
+
+Kept for its account of what a repair of a derived file may and may not
+touch, which is the rule the hand-marked times were lost twice for want of.
+
+## `index_to_csv.py`
+
+Turned `channel_index_full.json`, the channel walk that found the
+recordings before 2025, into the video CSV shape `build_manifest.py` reads,
+with the stream start left empty. On 9 September it proved the point on
+2023-2024 with no network: 1,643 of 1,648 recordings converted and 81% of that
+term's proceedings matched a single recording, because a recording is matched
+to a hearing by the date and the committee in its title, not by its start.
+The `videos_*_2019-...` and `videos_*_2023-...` lists the build reads were
+then written by `fetch_channel_index.py`, which records the stream start as
+well, so nothing has read this one's output since.
+
+## `setup_archive.py`
+
+A sketch of an `archive/<term>/raw|pages|parsed` layout, written on 4
+September so that bill numbers repeating between terms could not overwrite one
+another. It was never switched on -- `archive/sessions.json`, which it writes,
+does not exist -- because the same problem was solved inside the files
+instead: every per-bill file is `{term: {bill: ...}}`, and `preflight` refuses
+the old shape. Kept for its statement of that problem, which is still the
+reason for the keying.
+
+## `caption_gaps.py`
+
+Which recordings `proceedings.csv` names and has no captions for, split into
+the two cases one count hides: a recording never fetched, and one fetched that
+produced nothing. Measured on 6 September at 119 proceedings on 54
+recordings, 112 of them committees of conference. No network and no writes,
+and nothing ran it after that day; `probe_alignment.py --missing` writes the
+recordings with no captions, busiest first, for a fetcher to read, and
+`STATE.md` counts the caption folders. `proceedings.py`'s docstring still
+names it among the readers that open `proceedings.csv` by name.
+
+## `captions_watch.py`
+
+Lived in `watchers/`. A politeness loop for YouTube, not the General Court:
+when YouTube answered 429 to this address on the first request at a
+twenty-second pace, it probed a few recordings at a time through
+`fetch_archive_captions.py`, backed off when refused and drained when not.
+Captions now arrive through `livestreams.py`, which the laptop's evening job
+runs (`--catch-up`) and the nightly reads (`--markers`), and nothing starts
+this any more. Kept for its shape: a loop that
+lengthens its wait on every refusal costs the far end less in a night than
+one impatient minute.
+
+## `extract_watch.py`
+
+Lived in `watchers/`. It walked behind the calendar drain and wrote the text
+beside each new calendar and journal PDF, through `extract_calendar_text.py`,
+because the hearings parser reads the `.txt` and 696 House calendars had sat
+unread without one. The drain is finished; `extract_calendar_text.py` is still
+at the root, does nothing when nothing is missing, and is run by hand after a
+fetch of PDFs (`archive_status.py` says when).
+
+## `narrative_watch.py`
+
+Lived in `watchers/`, and was stood down on purpose before it moved. It
+narrated each archived docket as its fetch finished, and once built 2015-2016
+from a half-complete database seed, putting ten wrong passage rails on the
+live site -- HB148 among them, with a vote rail beside the word "vetoed".
+Its two guards (skip `Docket_db_*.txt`; wait for `docket_chain.py` to log the
+term done) came from that. The archived terms are narrated by the build now:
+`narrative.py` and `narrate_archive.py` are steps of `build_all.py`, and both
+merge rather than replace.
+
+Kept for the rule it enforced, and checked rather than assumed: a writer of a
+derived file run on a subset destroys the rest, so it compared the terms in
+`narratives.json` before and after each run and stopped if one went missing.
+
+## `score_alignment.py`
+
+The first scorer: `work/*/segments.json`, the clustering model's own output,
+against the `observed_start` a person typed into the manifest, with the
+question it was written for -- not "is the aligner accurate" but "does it
+know when it is", the share of published estimates inside the tolerance they
+claimed. `probe_alignment.py`, written the next day, scored the clustering
+model at 1m 27s on 5 September, and its `--truth --site` asks the same
+question of what the site actually publishes -- how many of the published
+tolerances the true error falls inside -- split by whether the chair stated
+the boundary. It also reads `review/checked.jsonl`, the bench, where
+this read only the manifest's 35 marks; and it cannot read
+`ground_truth.csv`, the truth file since, which calls the proceeding `kind`
+where this wants `proceeding`. Nothing named it but `transcribe_and_align.py`'s
+docstring, which now names `probe_alignment.py --truth`.
+
+## `probe_amendments.py`
+
+Asked one question before anyone wrote a fetcher: is the amendment text
+already on this disk? It read the cached House calendars for amendment
+numbers and checked them against the ones the docket cites. The answer was
+yes -- the calendar prints each amendment where a member reads it before the
+vote -- and `extract_amendments.py` was built on it and says so in its own
+docstring. No network, no writes, and nothing ran it after that. It was one
+of two callers of `narrative.load_narratives` that the new-term plan meant to
+look at in the rehearsal; there is one now.
+
+## `probe_archive.py`
+
+Asked whether the Secretary of State's bill histories, at an address built
+from a year, a chamber and a bill (`/BillHistory/SofS_Archives/...`), were
+readable text or scans. 2005 and 2023 both answered 404 on that pattern with
+`netcheck.py` clean straight after, so the address shape was wrong rather
+than blocked, and the database's dockets made the route unnecessary for the
+docket and the votes. Nothing has used it since. **It asks the General
+Court**: it calls `refusal.check()`, and is here to be read, not run.
+
+## `probe_legacy.py`
+
+Asked, with two requests, whether the Advanced Bill Status Search at
+`bill_status/legacy/bs2016/` answers a whole session year on one page when
+the form is posted back as a browser would (`__VIEWSTATE`, `txtsessionyear`)
+rather than guessed at. It does -- 768 bills for 2019 -- and
+`fetch_archive_bills.py` does exactly this now, with `--save` keeping the page
+as `archive_<year>.html` for `--file` to read offline, which was the only
+thing this added. Its saved `probe_legacy_2024.html` is the page that
+parser was written against.
+
+**It asks the General Court, on the one path their IT office asked this
+project to go lightly on.** Do not run it; `fetch_archive_bills.py --year`
+is the same two requests.

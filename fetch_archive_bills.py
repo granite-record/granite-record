@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.3
+# GRANITE_VERSION: 2026-09-06.4
 """
 Every bill of an archived session year, from the General Court's own search.
 
-    python3 fetch_archive_bills.py --file probe_legacy_2024.html   # no network
-    python3 fetch_archive_bills.py --year 2024
+    python3 fetch_archive_bills.py --file archive_2024.html   # no network
+    python3 fetch_archive_bills.py --year 2024 --save
 
 WHY THIS EXISTS
 
@@ -40,8 +40,9 @@ that build_data and build_site_v2 need no new format:
                               "lsr": ..., "text_id": ..., "text_pdf": ...,
                               "committee": ..., "last_hearing": ...}}}
 
---file parses a page already saved by probe_legacy.py --raw and makes no
-request, which is how the parser below was written and checked.
+--file parses a page already saved -- by --save, which keeps it as
+archive_<year>.html, or by obsolete/probe_legacy.py --raw, which is how the
+parser below was written and checked -- and makes no request.
 """
 
 import argparse

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.368
+# GRANITE_VERSION: 2026-09-04.370
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9236,34 +9236,51 @@ def _whisper_transcript(segment_markers):
         shutil.rmtree(d, ignore_errors=True)
 
 
-@check("markers", "apply_markers runs and changes nothing without --apply")
-def _markers_report():
+@check("markers", "the clustering fallback on one fixture: apply_markers reports and changes "
+                  "nothing, --apply patches with a backup and repeats safely, and verify_batch "
+                  "prints sub-minute bands")
+def _markers_fallback():
+    """THE SUPERSEDED CLUSTERING PATH, KEPT, AND CHECKED IN ONE RUN (6 October
+    2026). build_all.py runs apply_markers.py only with --with-superseded: it
+    is the fallback for recordings segment_markers.py finds nothing on, and
+    the person decided to keep it. Until this date it had three checks, each
+    building the same fixture of two recordings and running apply_markers
+    again on it -- the report-only run, --apply twice, and verify_batch.py
+    over an applied tree. They are one fixture and one sequence now, with
+    every assertion the three made, in the order a person would run them:
+
+      1. a run without --apply exits 0, finds the stated boundaries and
+         leaves segments.json byte for byte as it was;
+      2. --apply exits 0, keeps segments.pre_markers.json, marks the House
+         hearing's two ends stated at a 30-second tolerance, and a second
+         --apply moves neither end nor the tolerance; the Senate bill whose
+         close alone was announced has its end stated, its start NOT stated,
+         and a tolerance narrowed below the clustering's 900 seconds;
+      3. verify_batch.py, over that applied tree, exits 0 and prints a band
+         in seconds -- a 30-second tolerance printed as "+/- 0 min" was the
+         bug it was written for.
+
+    verify_batch.py absent skips the check, as its own check did, rather than
+    passing on the first two parts alone.
+    """
     if not Path("apply_markers.py").exists():
         return "skip", "apply_markers.py not here"
     root = Path(tempfile.mkdtemp())
     try:
         _fixture(root)
-        before = (root / "work" / "PFHOUSE" / "segments.json").read_text(encoding="utf-8")
+        p = root / "work" / "PFHOUSE" / "segments.json"
+
+        # 1. Report only: it finds the boundaries and writes nothing.
+        before = p.read_text(encoding="utf-8")
         r = _run_markers(root)
         assert r.returncode == 0, (r.stderr or r.stdout)[-200:]
         assert "stated boundaries found" in r.stdout, r.stdout[-200:]
-        after = (root / "work" / "PFHOUSE" / "segments.json").read_text(encoding="utf-8")
-        assert before == after, "the report-only run rewrote segments.json"
-        n = next(l for l in r.stdout.splitlines() if "stated boundaries found" in l)
-        return "ok", n.strip()
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
+        assert p.read_text(encoding="utf-8") == before, \
+            "the report-only run rewrote segments.json"
+        found = next(l for l in r.stdout.splitlines() if "stated boundaries found" in l)
 
-
-@check("markers", "--apply patches, keeps a backup, and repeats safely")
-def _markers_apply():
-    if not Path("apply_markers.py").exists():
-        return "skip", "apply_markers.py not here"
-    root = Path(tempfile.mkdtemp())
-    try:
-        _fixture(root)
+        # 2. --apply patches, keeps a backup, and a second run moves nothing.
         assert _run_markers(root, "--apply").returncode == 0
-        p = root / "work" / "PFHOUSE" / "segments.json"
         first = json.loads(p.read_text(encoding="utf-8"))[0]
         assert (root / "work" / "PFHOUSE" / "segments.pre_markers.json").exists(), \
             "no backup was written"
@@ -9283,28 +9300,21 @@ def _markers_apply():
             "an unannounced Senate opening was reported as stated"
         assert closeonly["tolerance"] < 900, \
             "the stated close should narrow the start's tolerance"
-        return "ok", ("House both ends stated at +/-30s; Senate close stated, "
-                      "start still estimated")
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
 
-
-@check("markers", "verify_batch prints sub-minute bands")
-def _verify_bands():
-    if not (Path("apply_markers.py").exists() and Path("verify_batch.py").exists()):
-        return "skip", "apply_markers.py or verify_batch.py not here"
-    root = Path(tempfile.mkdtemp())
-    try:
-        _fixture(root)
-        _run_markers(root, "--apply")
+        # 3. verify_batch over the applied tree prints a sub-minute band.
+        if not Path("verify_batch.py").exists():
+            return "skip", ("apply_markers passed; verify_batch.py is not here, so its "
+                            "bands were not read")
         r = _run([sys.executable, "verify_batch.py",
-                            "--work", str(root / "work"),
-                            "--manifest", str(root / "manifest.csv")],
-                           capture_output=True, text=True, timeout=120)
+                  "--work", str(root / "work"),
+                  "--manifest", str(root / "manifest.csv")],
+                 capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout)[-160:]
         assert "sec" in r.stdout, ("no sub-minute band; a 30s tolerance would "
                                    "print as '+/- 0 min'")
-        return "ok", next(l.strip() for l in r.stdout.splitlines() if "sec" in l)
+        band = next(l.strip() for l in r.stdout.splitlines() if "sec" in l)
+        return "ok", (f"{found.strip()}; House both ends stated at +/-30s, Senate close "
+                      f"stated and start still estimated; verify_batch: {band}")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -35855,6 +35865,56 @@ def _journal_step_not_skipped(BA):
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("from the kit, no journals/ stops the build at the journal step; "
                   "on a laptop's bare folder the step is skipped and named")
+
+
+@check("pipeline", "the nightly's build fails, not skips, without the calendars the veto "
+       "messages are read from, and writes them before anything reads them",
+       needs=("build_all",))
+def _veto_step_not_skipped(BA):
+    """veto_messages.json was tracked until 6 October 2026, so a night whose
+    calendars did not arrive still built from the committed copy. It is
+    gitignored now and every build writes it (extract_vetoes.py), so on the
+    nightly's machine that step is the only source: skipped for a missing
+    calendars/, the site data and the civics pages would build with no veto
+    message at all and every step would report success. So the step is
+    kit_required, as the journal step is, and it comes before build_site_v2
+    and build_civics, which read what it writes.
+    """
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive"})
+    steps = BA.plan(A())
+    at = {tuple(s.args[:1]): i for i, s in reversed(list(enumerate(steps)))}
+    veto = next((i for i, s in enumerate(steps) if s.args == ["extract_vetoes.py"]), None)
+    assert veto is not None, "build_all has no extract_vetoes.py step"
+    assert steps[veto].kit_required, \
+        "the veto step may be skipped on the nightly's machine, where nothing else makes the file"
+    for reader in ("build_site_v2.py", "build_civics.py"):
+        assert (reader,) in at and veto < at[(reader,)], (
+            f"{reader} reads veto_messages.json and runs before the step that writes it")
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-veto-step-"))
+    try:
+        (root / "archive" / "cloud").mkdir(parents=True)
+        (root / BA.KIT_RECORD).write_text("{}", encoding="utf-8")
+        for p, _, _ in BA.CARRIED:
+            (root / p).write_text('{"recordings": {}}' if p == "caption_spans.json"
+                                  else "{}", encoding="utf-8")
+        r = _sealed_run([sys.executable, str(here / "build_all.py"), "--local", "--dry-run"],
+                        cwd=root, capture_output=True, text=True, timeout=120,
+                        env={"GITHUB_ACTIONS": ""})
+        lines = r.stdout.splitlines()
+        at_veto = next((i for i, ln in enumerate(lines)
+                        if ln.strip() == "python3 extract_vetoes.py"), None)
+        assert r.returncode == 0 and at_veto is not None and at_veto + 1 < len(lines), (
+            f"the kit's dry run did not list the veto step: {r.stdout[-300:]}")
+        assert "would fail, the kit's build may not skip it: missing calendars" \
+            in lines[at_veto + 1], (
+                "from the kit, a missing calendars/ would skip the veto step: "
+                + lines[at_veto + 1].strip())
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("from the kit, no calendars/ stops the build at the veto step, which "
+                  "runs before build_site_v2 and build_civics read its file")
 
 
 @check("build", "a journal record joins the record only where nothing else has the bill",
