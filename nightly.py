@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.47
+# GRANITE_VERSION: 2026-09-04.48
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -624,8 +624,8 @@ REVIEW_SHA_UNKNOWN = ("tonight's own commit is not known, so whether its code is
 #
 # REVIEW_ROWS_MOST, FROM THE TERM'S OWN DOCKET. The nights' what-changed
 # reports, 13 September to 6 October 2026, moved 35 bills at most, but they
-# are all of the interim, and three times that would have held 66 of the 355
-# days of 2025-2026 that the docket gained lines on -- most session days. The
+# are all of the interim, and three times that, 105, would have held 59 of the
+# 355 days of 2025-2026 that the docket gained lines on -- most session days. The
 # docket itself (Docket.txt, each line by when it was entered) holds the
 # session: 346 bills on its busiest day (5 February 2026), and 579 over its
 # busiest three days running (21 to 23 January 2025), which is what a night
