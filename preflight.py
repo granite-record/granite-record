@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.342
+# GRANITE_VERSION: 2026-09-04.343
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43886,6 +43886,17 @@ def _freeze_term(FT, P):
         assert FA.terms_lost("Legislation", Path("db/Legislation.psv"), Path("db/turned.psv"),
                              cols, cols) == [T] and FA.frozen_holds("Legislation", T) and \
             not FA.frozen_holds("Legislation", "2023-2024"), "fetch_archive_db's term guard"
+        # ... by the session year, not the term (the review of 5 October 2026):
+        # a dump that lost 2025 and kept 2026 has lost the term's 2025 records.
+        Path("db/half.psv").write_text("1|B|2026|0001\r\n", encoding="utf-8")
+        assert FA.terms_lost("Legislation", Path("db/Legislation.psv"), Path("db/half.psv"),
+                             cols, cols) == [T], "a dump that lost one year of the term passed"
+        # ... and a current-term view keyed on no year, come back far shorter.
+        Path("db/short.psv").write_text("", encoding="utf-8")
+        assert FA.far_shorter("LegislationText", Path("db/LegislationText.psv"),
+                              Path("db/short.psv")) == (3, 0) and \
+            FA.far_shorter("LegislationText", Path("db/LegislationText.psv"),
+                           Path("db/LegislationText.psv")) is None, "an empty LegislationText passed"
 
         FT.freeze_session(T)
         for p in (f"Docket_{T}.txt", f"verification_manifest_{T}.csv",

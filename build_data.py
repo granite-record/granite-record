@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -3038,8 +3038,12 @@ def main():
                         .replace("\u2019", "'").replace("\u201c", '"')
                         .replace("\u201d", '"'))
 
-    # A concrete spot check beats any amount of schema inference.
-    sample = next((b for b in sponsors if sponsors[b]), None)
+    # A concrete spot check beats any amount of schema inference. Of a bill
+    # the session's files hold: on a night whose sponsor files alone name the
+    # next term, every sponsor's bill is another term's, and this stopped the
+    # build on a KeyError after everything was written (the rehearsal of the
+    # review, 5 October 2026).
+    sample = next((b for b in sponsors if sponsors[b] and b in bills), None)
     if sample:
         print(f"\nSpot check \u2014 {sample}: {bills[sample]['title'][:64]}")
         print(f"  subject: {bills[sample]['subject'] or '(none)'}")
