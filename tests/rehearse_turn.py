@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.4
+# GRANITE_VERSION: 2026-10-05.5
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -72,7 +72,11 @@ THE NIGHTS, IN ORDER (each says what it expects, and PASS or FAIL)
                the switch: the views hold 2027 rows and a new roster. With
                tonight's Members.txt naming the new roster it is installed,
                the 2027 rows left out and said, and built in full and compared
-               as OD is; with the old Members.txt the roster guard stops it
+               as OD is -- but for the bills whose docket rows the views, of
+               another day than the export installed, hold otherwise: their
+               history, stations and status are counted apart, and their
+               sponsors and ballots held as every bill's are; with the old
+               Members.txt the roster guard stops it
   NT           THE SWITCH: a New term run of B (roll calls still 2026's, the new
                roster), the full build, the publish
   A1           the next scheduled night: B grown by five rows and a 2026 row left
@@ -693,12 +697,19 @@ def speaker_moved(was, now, site):
         and (site / "legislator" / f"{y}.html").exists() for p, x, y in leaves)
 
 
-def compare_term(root, pre, label, finished=True):
+def compare_term(root, pre, label, finished=True, other_day=None):
     """2025-2026 after the turn against the pre-turn build: what differs, by field.
     `finished` False is a night before the switch whose roster has turned
     (OD, DB1): the term is still the session's, and nothing of it moves --
     not the archived mark, not the session_over note -- but a sponsor who
-    left mid-term gaining a link."""
+    left mid-term gaining a link.
+
+    `other_day` is the bills whose docket rows the night's files hold
+    otherwise than the pre-turn build's (DB1's database views are another
+    day's than the export installed): their history, stations and status may
+    move with the docket, and are counted apart; their sponsors and ballots
+    may not, and the proceedings of every other bill are held equal."""
+    other_day = set(other_day or ())
     from collections import Counter
     bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
     sp = json.loads((root / "data" / "sponsors.json").read_text(encoding="utf-8"))
@@ -749,6 +760,9 @@ def compare_term(root, pre, label, finished=True):
             missing.append(f"{yr}/{bid}")
             continue
         for k in json_diff_keys(a, b):
+            if bid in other_day and k.split(".")[0] not in ("sponsors", "rollcalls"):
+                fields["(another day's docket)"] += 1
+                continue
             # A CACR's journey and status turn with the calendar, not the
             # term: "goes to the voters in November 2026" is "went" once the
             # election has passed, which by the turn it has.
@@ -773,6 +787,7 @@ def compare_term(root, pre, label, finished=True):
         pages["new"] += sum(1 for q in p1.rglob("*.html") if not (p0 / q.relative_to(p1)).exists())
     other = {k: n for k, n in fields.items() if (not EXPECTED.match(k) or not finished)
              and "(CACR)" not in k and k not in ("sponsors (a link gained)",
+                                                 "(another day's docket)",
                                                  "sponsors (a page moved with its seat)",
                                                  "stations (a speaker's page moved with their seat)")}
     RESULTS.setdefault("term_fields", {})[label] = {"fields": dict(fields), "samples": samples,
@@ -796,6 +811,8 @@ def compare_term(root, pre, label, finished=True):
     i1 = idx(root / "site" / "idx" / f"{TERM}.json")
     kf = Counter()
     for k in i0:
+        if k[1] in other_day:
+            continue
         for f in json_diff_keys(i0[k], i1.get(k, {})):
             kf[f"{f} (CACR)" if str(k[1]).startswith("CACR") else f] += 1
     RESULTS["term_fields"][label]["index"] = dict(kf)
@@ -810,7 +827,8 @@ def compare_term(root, pre, label, finished=True):
     import csv
     def procs(p):
         with open(p, encoding="utf-8", newline="") as fh:
-            return sorted(tuple(r.values()) for r in csv.DictReader(fh) if r.get("term") == TERM)
+            return sorted(tuple(r.values()) for r in csv.DictReader(fh) if r.get("term") == TERM
+                          and r.get("bill") not in other_day)
     a, b = procs(pre / "proceedings.csv"), procs(root / "proceedings.csv")
     note(a == b, f"{label}: proceedings.csv's {len(a):,} rows of {TERM} equal in content",
          f"{len(a)} against {len(b)}")
@@ -1095,6 +1113,23 @@ def main():
     return 1 if bad else 0
 
 
+def docket_days_apart(a, b):
+    """{bill}: the bills of the term whose docket rows two dockets hold
+    otherwise, by the first six columns (a database night rewrites the
+    seventh)."""
+    from collections import defaultdict
+
+    def rows(data):
+        out = defaultdict(set)
+        for ln in lines(data):
+            f = [x.strip() for x in ln.split("|")]
+            if len(f) > 5 and f[0] in TERM.split("-"):
+                out[f[3].upper()].add("|".join(f[:6]))
+        return out
+    x, y = rows(a), rows(b)
+    return {k for k in set(x) | set(y) if x.get(k) != y.get(k)}
+
+
 def run_db(N, root, views, batches, pre_files, real="stub", pre=None):
     """The database night at the turn: the views hold 2027's first rows and the
     new roster, and the export is empty. DB1 is built in full where `real`
@@ -1161,7 +1196,14 @@ def run_db(N, root, views, batches, pre_files, real="stub", pre=None):
                 RESULTS.setdefault("db1_verdict", {"publishable": v.get("publishable"),
                                                    "gates": v.get("gates"),
                                                    "not_clean": v.get("not_clean")})
-                compare_term(root, pre, "DB1", finished=False)
+                # The views are another day's than the export installed: the
+                # bills whose docket rows they hold otherwise are set apart.
+                apart = docket_days_apart(pre_files["Docket.txt"],
+                                          (root / "Docket.txt").read_bytes())
+                RESULTS["db1_other_day"] = sorted(apart)
+                print(f"    the database's docket holds {len(apart)} of {TERM}'s bills otherwise "
+                      "than the export installed: another day's", flush=True)
+                compare_term(root, pre, "DB1", finished=False, other_day=apart)
         else:
             note(df.get("source") != "database" and any("roster" in s or "legislators.txt" in s
                                                         for s in df.get("stops") or []),

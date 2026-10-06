@@ -159,7 +159,7 @@
     "snapshot_gencourt.py": "2026-09-04.10",
     "structured.py": "2026-09-13.3",
     "testimony_from_db.py": "2026-09-11.3",
-    "tests/rehearse_turn.py": "2026-10-05.4",
+    "tests/rehearse_turn.py": "2026-10-05.5",
     "tests/test_cmte_match.js": "2026-09-12.4",
     "tests/test_markers.py": "2026-09-05.6",
     "text_sponsors.py": "2026-09-14.5",
