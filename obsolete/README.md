@@ -214,3 +214,19 @@ merge rather than replace.
 Kept for the rule it enforced, and checked rather than assumed: a writer of a
 derived file run on a subset destroys the rest, so it compared the terms in
 `narratives.json` before and after each run and stopped if one went missing.
+
+## `score_alignment.py`
+
+The first scorer: `work/*/segments.json`, the clustering model's own output,
+against the `observed_start` a person typed into the manifest, with the
+question it was written for -- not "is the aligner accurate" but "does it
+know when it is", the share of published estimates inside the tolerance they
+claimed. `probe_alignment.py`, written the next day, scored the clustering
+model at 1m 27s on 5 September, and its `--truth --site` asks the same
+question of what the site actually publishes -- how many of the published
+tolerances the true error falls inside -- split by whether the chair stated
+the boundary. It also reads `review/checked.jsonl`, the bench, where
+this read only the manifest's 35 marks; and it cannot read
+`ground_truth.csv`, the truth file since, which calls the proceeding `kind`
+where this wants `proceeding`. Nothing named it but `transcribe_and_align.py`'s
+docstring, which now names `probe_alignment.py --truth`.

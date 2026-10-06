@@ -1209,12 +1209,13 @@ Each is described where it belongs; this is the list in one place.
 - `build_bills` and `main` are the two longest functions in
   `build_site_v2.py`, each several hundred lines. Item 5 says why length is a
   hazard there.
-- Seven tools carry `--manifest default="verification_manifest.csv"`:
+- Six tools carry `--manifest default="verification_manifest.csv"`:
   `align_all`, `apply_markers`, `fetch_testimony`, `probe_alignment`,
-  `score_alignment`, `transcribe_and_align`, `verify_batch`. Six of them open
-  whatever `--manifest` names, so run with no flag they open that exact file:
-  real coupling rather than a stale pointer, and only `fetch_testimony` never
-  reads the value it declares. `ground_truth.py` is an eighth reader, falling
+  `transcribe_and_align`, `verify_batch`. Five of them open whatever
+  `--manifest` names, so run with no flag they open that exact file: real
+  coupling rather than a stale pointer, and only `fetch_testimony` never
+  reads the value it declares (`score_alignment`, the seventh, went to
+  `obsolete/` on 6 October 2026). `ground_truth.py` is another reader, falling
   back to the literal name when the flag is absent, and `preflight` opens it
   too. `build_proceedings.py` is the one that has moved -- it globs every
   `verification_manifest*.csv` rather than naming one -- and its own docstring

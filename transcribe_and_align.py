@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Transcribe one hearing video and work out where each docketed bill sits in it.
 
@@ -208,8 +208,8 @@ def fetch_captions(video_id, out, workdir):
     Quality is the open question. Auto-captions are usually weaker than Whisper
     on proper nouns, but bill numbers are digits, and searching them by hand in
     the YouTube player does find the right moments -- so the signal we actually
-    depend on appears to survive. Run score_alignment.py both ways on a video
-    with hand-marked times before trusting it wholesale.
+    depend on appears to survive. Score both against the hand-marked times
+    (probe_alignment.py --truth) before trusting it wholesale.
     """
     if out.exists():
         print(f"  transcript cached: {out}")
