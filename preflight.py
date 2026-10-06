@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.341
+# GRANITE_VERSION: 2026-09-04.342
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43834,11 +43834,46 @@ def _freeze_term(FT, P):
         assert man["files"]["Legislation.psv"]["years"] == {"2025": 4, "2026": 4} and \
             not list(FT.VIEWS_DIR.glob("*.part")), (said, man)
         before = (FT.VIEWS_DIR / T / FT.MANIFEST).read_bytes()
-        for setup, why in (((("2026",),), "both of"), ((("2025", "2026", "2027"),), "turned past"),
-                           ((("2025", "2026"), 3), "fewer of the term's rows")):
+        for setup, why in (((("2026",),), "both of"), ((("2025", "2026"), 3), "fewer of the term's rows")):
             views(*setup)
             msg = refused(FT.freeze_views, T, Path("db"))
             assert why in msg and (FT.VIEWS_DIR / T / FT.MANIFEST).read_bytes() == before, (setup, msg)
+        # A DUMP THAT HAS BEGUN TO TURN (the review of 5 October 2026): over a
+        # freeze of the term it is frozen of the term's rows only -- by year,
+        # and by the SessionIDs the earlier freeze holds -- and the later year
+        # left out; with no freeze to say which rows are the term's, refused.
+        views(("2025", "2026", "2027"))
+        said = FT.freeze_views(T, Path("db"))
+        man = json.loads((FT.VIEWS_DIR / T / FT.MANIFEST).read_text(encoding="utf-8"))
+        leg = (FT.VIEWS_DIR / T / "Legislation.psv").read_text(encoding="utf-8")
+        assert man["files"]["Legislation.psv"]["years"] == {"2025": 4, "2026": 4} and \
+            man["files"]["Legislation.psv"]["left_out"] == 4 and "|2027|" not in leg and \
+            man["files"]["LegislationText.psv"]["rows"] == 3 and man["left_out_years"] == ["2027"], \
+            (said, man)
+        shutil.rmtree(FT.VIEWS_DIR / T)
+        msg = refused(FT.freeze_views, T, Path("db"))
+        assert "no freeze of" in msg and not (FT.VIEWS_DIR / T).exists(), msg
+        # A VIEW THE NEXT DUMP DOES NOT HOLD IS CARRIED, not deleted: the
+        # sign-ins testimony_from_db rebuilds the term from.
+        views()
+        cols = json.loads((Path("db") / "_columns.json").read_text(encoding="utf-8"))
+        cols["houseRemoteTestify"] = ["id", "CommitteeDate", "legislationID"]
+        (Path("db") / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+        (Path("db") / "houseRemoteTestify.psv").write_text("1|02/03/2026|5\r\n2|02/04/2026|6\r\n",
+                                                           encoding="utf-8")
+        FT.freeze_views(T, Path("db"))
+        (Path("db") / "houseRemoteTestify.psv").unlink()
+        said = FT.freeze_views(T, Path("db"))
+        man = json.loads((FT.VIEWS_DIR / T / FT.MANIFEST).read_text(encoding="utf-8"))
+        kept = FT.VIEWS_DIR / T / FT.EXTRA / "houseRemoteTestify.psv"
+        assert kept.exists() and man["files"]["extra/houseRemoteTestify.psv"].get("carried_from") \
+            and FT.views_intact(".", T) == [], ("a view the next dump lacked left the freeze", said)
+        # A FROZEN VIEW OF THE SAME SIZE AND OTHER BYTES IS NOT WHOLE.
+        b = kept.read_bytes()
+        kept.write_bytes(b.replace(b"1|02", b"7|02"))
+        assert any("not the file its manifest names" in x for x in FT.views_intact(".", T)), \
+            "a tampered frozen view of the same size passed"
+        kept.write_bytes(b)
         views()
         (Path("db") / "_manifest.json").write_text(json.dumps(
             {"Legislation": {"rows": 99, "fetched": "2026-09-08T20:45:00"}}), encoding="utf-8")
@@ -43858,6 +43893,34 @@ def _freeze_term(FT, P):
                   f"frozen/{T}/day/Members.txt", f"frozen/{T}/manifest.json"):
             assert Path(p).exists(), f"--session did not write {p}"
         assert FT.intact(".", T) == [] and FT.ready()[0], FT.ready()
+        # A day file of the same size and other bytes is not the freeze.
+        frozen_lsrs = FT.FROZEN / T / FT.DAY / "LSRs.txt"
+        b = frozen_lsrs.read_bytes()
+        frozen_lsrs.write_bytes(b.replace(b"title", b"tittl"))
+        assert any("not the file its manifest names" in x for x in FT.intact(".", T)), \
+            "a tampered frozen day file of the same size passed"
+        frozen_lsrs.write_bytes(b)
+        # THE ROSTER IS THE TERM'S OWN (the review of 5 October 2026). With a
+        # freeze holding it, a roster that has turned since is not frozen
+        # over it: the freeze's is kept, and the term's members are named
+        # from it (own_roster_terms) while the installed one is the next
+        # House's. Before that, nothing is.
+        assert FT.own_roster_terms(".") == [] and not FT.roster_turned(".")[0]
+        installed()
+        Path("legislators.txt").write_bytes(day([f"{i}|L|F||H|1|1|1|R||||NH||m@x"
+                                                 for i in range(100, 110)]))
+        said = FT.freeze_session(T)
+        frozen_roster = (FT.FROZEN / T / FT.DAY / "legislators.txt").read_bytes()
+        assert FT.member_ids(frozen_roster) == {str(i) for i in range(10)} and \
+            any("is kept" in s for s in said), ("a turned roster was frozen over the term's", said)
+        assert FT.roster_turned(".")[0] and FT.own_roster_terms(".") == [T], FT.roster_turned(".")
+        # ... and with no freeze to keep one from, a roster of strangers to
+        # the term's own sponsors and voters is refused, first freeze or not.
+        shutil.rmtree(FT.FROZEN / T)
+        msg = refused(FT.freeze_session, T)
+        assert "is not 2025-2026's roster" in msg and not (FT.FROZEN / T).exists(), msg
+        installed()
+        FT.freeze_session(T)
         stamp = (FT.FROZEN / T / FT.MANIFEST).read_bytes()
         installed(extra_docket=["2027|0001|12/2/2026 10:00:00 AM|HR1|H|Introduced|12/2/2026"])
         msg = refused(FT.freeze_session, T)
@@ -43878,9 +43941,12 @@ def _freeze_term(FT, P):
     finally:
         os.chdir(here)
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("--views refuses one year, a turned dump, a short view and a smaller one, and "
-                  "keeps the freeze; --session writes the day files, the docket, the manifest and "
-                  "the roll-call copies, and refuses another term's rows and lost ones; ready() "
+    return "ok", ("--views refuses one year, a short view and a smaller one, freezes the term's "
+                  "rows of a dump that has begun to turn over an earlier freeze and refuses one "
+                  "with none, and carries a view the next dump lacks; a same-size tampered file "
+                  "is not whole; --session writes the day files, the docket, the manifest and "
+                  "the roll-call copies, refuses another term's rows, lost ones and a roster of "
+                  "strangers, and keeps the term's roster over one that turned; ready() "
                   "reads the record by its rows, so a database night's seventh column is not stale")
 
 
@@ -44004,6 +44070,286 @@ def _finished_term_rule(BA, SHR, NA, BPR, P, FTD, NAR, BBV, EC, BD):
                   "build_bill_versions, extract_chapters and build_proceedings keep it")
 
 
+# ---- the turn, built on a fixture -------------------------------------------------
+#
+# THE RULES BY WHAT THEY DO (the review of 5 October 2026). Fourteen of thirty
+# mutations of the turn's rules got past preflight --code, because the never-
+# merge rule and several freeze checks were held by words in the source: a
+# build_data that merged a finished term's docket rows, took a build of another
+# freeze, or went on over an older term nobody froze passed every check. So a
+# term of two bills is written as the General Court's fourteen day files,
+# frozen with freeze_term, turned, and built with build_data itself.
+
+_TURN_LASTS = ("Adams", "Baker", "Clark", "Davis", "Evans", "Foster", "Grant", "Hayes", "Irwin",
+               "Jones")
+
+
+def _turn_day(rows):
+    return ("﻿" + "".join(r + "\r\n" for r in rows)).encode("utf-8")
+
+
+def _turn_member(i):
+    # A surname of letters only: build_data matches a member by first and last
+    # name with every other character taken out.
+    last = _TURN_LASTS[i % 10] + "son" * (i // 10)
+    return (f"{i}|{last}|Pat||H|{1000 + i}|01|{i % 9 + 1}|R||1 Main St|Concord|NH|03301|"
+            f"m{i}@gc.nh.gov")
+
+
+def _turn_lsr(year, num, bill, title):
+    f = [""] * 39
+    f[0], f[1], f[2], f[3] = year, num, title, "H"
+    f[5] = f[6] = f[7] = "0"
+    f[8], f[9], f[10] = f"{year[2:]}-{num}", f"{bill[:2]}  {int(bill[2:]):04d}", bill
+    f[12], f[13] = "AGR", "H01"
+    return "|".join(f)
+
+
+def _turn_files(members, docket, lsrs, only, spons, summary, history):
+    """The fourteen day files, as snapshot_gencourt installs them."""
+    head = ("LastName\tFirstName\tMiddleName\tLegislativeBody\tseatno\tCounty\tDistrict\t"
+            "electedStatus\tWorkEmail\tparty\tCommittee1")
+    rows = [_turn_member(i).split("|") for i in members]
+    return {
+        "Docket.txt": _turn_day(docket), "LSRs.txt": _turn_day(lsrs),
+        "LsrsOnly.txt": _turn_day(only), "LsrSponsors.txt": _turn_day(spons),
+        "legislators.txt": _turn_day(["|".join(f) for f in rows]),
+        "Members.txt": _turn_day([head] + [f"{f[1]}\t{f[2]}\t\tH\t0\tBelknap\t{f[7]}\tIncumbent\t"
+                                           f"{f[14]}\tR\tFixture Affairs" for f in rows]),
+        "RollCallSummary.txt": _turn_day(summary), "RollCallHistory.txt": _turn_day(history),
+        "Committees.txt": _turn_day(["H01|Fixture Affairs|FA"]),
+        "SubjectCodes.txt": _turn_day(["1|AGR|Agriculture"]),
+        "GeneralCodes.txt": _turn_day(["02|HOUSE"]),
+        "BodyStatusCodes.txt": _turn_day(["15|CONFERENCE COMMITTEE"]),
+        "HouseDistricts.txt": _turn_day(["01|01|0|Fixtureville"]),
+        "Counties.txt": _turn_day(["01|Belknap|Belk."])}
+
+
+def _turn_views(cols):
+    """db/ as a dump of the term: Legislation, LegislationText, CandH_Reports."""
+    db = Path("db")
+    db.mkdir(exist_ok=True)
+    (db / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+
+    def row(view, **kw):
+        r = {c: "" for c in cols[view]}
+        r.update(kw)
+        return "|".join(r[c] for c in cols[view]) + "\r\n"
+    (db / "Legislation.psv").write_text(
+        row("Legislation", sessionyear="2025", lsr="0001", ExpandedBillNo="HB1", legislationID="5")
+        + row("Legislation", sessionyear="2026", lsr="0002", ExpandedBillNo="HB1001",
+              legislationID="6"), encoding="utf-8")
+    (db / "LegislationText.psv").write_text(row("LegislationText", LegislationID="5", SessionID="6"),
+                                            encoding="utf-8")
+    (db / "CandH_Reports.psv").write_text(
+        row("CandH_Reports", LegislationID="6", ReleaseDate="02/03/2026 10:00:00"), encoding="utf-8")
+
+
+@check("build", "the turn, built on a fixture: a finished term is its freeze's whole, the next "
+       "term takes none of its rows, an unfrozen or mismatched freeze stops the build, and a "
+       "roster that turns first leaves the term's sponsors as they were",
+       needs=("freeze_term", "proceedings", "build_all", "fetch_testimony_db",
+              "build_proceedings", "report_check", "testimony_from_db"))
+def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
+    """A term of two bills (HB 1 of 2025, HB 1001 of 2026), its sponsors, a
+    roll call and six members, written as the day files and the database's
+    views, frozen with freeze_term and built with build_data.py and
+    narrative.py as build_all runs them:
+
+      before the turn     the baseline the rest is held to
+      Organization Day    the next House installed and LsrsOnly.txt listing
+                          only the sitting -- before the files turn: the
+                          term's bills and sponsors as they were, its ballots
+                          named, its roster beside the data for the histories
+      the switch          2027's HB 1 under the 2025 bill's number and LSR,
+                          and a 2026 row left in the docket, the requests and
+                          the sponsor files: 2025-2026 its freeze's, archived,
+                          2027-2028 HB 1 alone with its own sponsor, the rows
+                          left out named in left_out.json; a frozen build of
+                          another freeze, and no freeze at all, stop the build
+      and beside it       narrative.py, fetch_testimony_db's and
+                          testimony_from_db's merges, build_proceedings'
+                          manifests and report_check's reports keep a
+                          finished term as its freeze has it
+    """
+    import contextlib
+    import io
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-turnfix-"))
+    T, NEW = "2025-2026", "2027-2028"
+    old_cwd = os.getcwd()
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
+               HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
+
+    def run(script, *args):
+        r = _run([sys.executable, str(here / script), *args], cwd=tmp, capture_output=True,
+                 text=True, encoding="utf-8", errors="replace", env=env, timeout=300)
+        return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+    def built(out):
+        b = json.loads((tmp / out / "bills.json").read_text(encoding="utf-8"))
+        s = json.loads((tmp / out / "sponsors.json").read_text(encoding="utf-8"))
+        return b, s
+
+    def install(files):
+        for n, b in files.items():
+            (tmp / n).write_bytes(b)
+
+    title25, title26 = "relative to the fixture of 2025.", "relative to the fixture of 2026."
+    docket = ["2025|0001|1/8/2025 10:00:00 AM|HB1|H|Introduced and Referred to Fixture Affairs; "
+              "HJ 1|1/8/2025 10:00:00 AM",
+              "2026|0002|1/7/2026 10:00:00 AM|HB1001|H|Introduced and Referred to Fixture Affairs; "
+              "HJ 1|1/7/2026 10:00:00 AM"]
+    sponsors = [f"25-0001|1|1|2025|Prime|HB1|H|{title25}", f"25-0001|2|1|2025|Sponsor|HB1|H|{title25}",
+                f"26-0002|3|2|2026|Prime|HB1001|H|{title26}",
+                f"26-0002|4|2|2026|Sponsor|HB1001|H|{title26}"]
+    summary = [f"2026|H|1|1/7/2026 10:15:33 AM|HB1001|3|3|0|0|||Ought to Pass|{title26}||"]
+    history = [f"2026|H|1|{300000 + i}|{i}||{'Yea' if i < 4 else 'Nay'}|" for i in range(1, 7)]
+    try:
+        os.chdir(tmp)
+        install(_turn_files(range(1, 7), docket, [_turn_lsr("2026", "0002", "HB1001", title26)],
+                            sponsors, ["2025|0001|1|1|1", "2026|0002|1|3|1"], summary, history))
+        Path("verification_manifest.csv").write_text("bill,sched_date\nHB1,2025-01-05\n",
+                                                     encoding="utf-8")
+        shutil.copy2(here / "member_corrections.json", "member_corrections.json")
+        _turn_views({"Legislation": json.loads(json.dumps(_TURN_LEGISLATION)),
+                     "LegislationText": ["LegislationID", "SessionID", "Text"],
+                     "CandH_Reports": ["LegislationID", "ReleaseDate", "HTMLText"]})
+        rc, out = run("build_data.py", "--dir", ".", "--out", "pre")
+        assert rc == 0, f"build_data on the fixture term: {out[-600:]}"
+        pre_b, pre_s = built("pre")
+        assert sorted(pre_b[T]) == ["HB1", "HB1001"] and len(pre_s[T]["HB1"]) == 2, (pre_b, pre_s)
+        assert not Path("pre/left_out.json").exists(), "an ordinary night wrote left_out.json"
+        pre_v = {(v["member_id"], v["name"], v["party"])
+                 for v in json.loads(Path("pre/member_votes.json").read_text(encoding="utf-8"))}
+        FT.freeze_views(T, Path("db"))
+        FT.freeze_session(T)
+
+        # ORGANIZATION DAY, BEFORE THE FILES TURN: members 1-3 gone, member 4
+        # of another party now, and LsrsOnly.txt listing the sitting only.
+        Path("legislators.txt").write_bytes(_turn_day(
+            [_turn_member(4).replace("|R||1 Main", "|D||1 Main")]
+            + [_turn_member(i) for i in (5, 6, 101, 102, 103)]))
+        Path("LsrsOnly.txt").write_bytes(_turn_day([sponsors[3]]))
+        assert FT.own_roster_terms(".") == [T], FT.own_roster_terms(".")
+        rc, out = run("build_data.py", "--dir", ".", "--out", "od")
+        assert rc == 0, out[-600:]
+        od_b, od_s = built("od")
+        od_v = {(v["member_id"], v["name"], v["party"])
+                for v in json.loads(Path("od/member_votes.json").read_text(encoding="utf-8"))}
+        assert od_b[T] == pre_b[T] and od_s[T] == pre_s[T], (
+            "with the next House installed before the files turn, the term's records moved",
+            od_s[T], pre_s[T])
+        assert od_v == pre_v, ("the term's ballots were named otherwise once its members left",
+                               sorted(od_v - pre_v)[:3])
+        assert Path(f"od/frozen/{T}/legislators.json").exists() and \
+            BA.session_roster() == f"data/frozen/{T}/legislators.json", BA.session_roster()
+
+        # THE SWITCH, with a 2026 row left in the docket, the requests and
+        # the sponsor files, and 2027's HB 1 under the 2025 bill's number and LSR.
+        Path("Docket.txt").write_bytes(_turn_day([
+            "2027|0001|12/2/2026 10:00:00 AM|HB1|H|Introduced and Referred to Fixture Affairs; "
+            "HJ 1|12/2/2026 10:00:00 AM",
+            "2026|0002|12/10/2026 10:00:00 AM|HB1001|H|Signed by Governor; Chapter 0999|"
+            "12/10/2026 10:00:00 AM"]))
+        Path("LSRs.txt").write_bytes(_turn_day([_turn_lsr("2027", "0001", "HB1", "TEST-2027."),
+                                                _turn_lsr("2026", "0003", "HB1002", "late.")]))
+        Path("LsrsOnly.txt").write_bytes(_turn_day(["27-0001|101|1|2027|Prime|HB1|H|TEST-2027.",
+                                                    f"26-0002|5|2|2026|Sponsor|HB1001|H|{title26}"]))
+        Path("LsrSponsors.txt").write_bytes(_turn_day(["2027|0001|1|101|1", "2026|0002|2|5|0"]))
+        assert P.session_term(".") == NEW and FT.own_roster_terms(".") == [T]
+        rc, out = run("build_data.py", "--dir", ".", "--out", "data", "--frozen-terms")
+        assert rc == 0, out[-600:]
+        rc, out = run("build_data.py", "--dir", ".", "--out", "data")
+        assert rc == 0, out[-600:]
+        b, s = built("data")
+        assert {k: {x: y for x, y in v.items() if x != "archived"} for k, v in b[T].items()} \
+            == pre_b[T] and all(v.get("archived") for v in b[T].values()) and s[T] == pre_s[T], \
+            "after the switch 2025-2026 is not its freeze's build, archived"
+        assert sorted(b[NEW]) == ["HB1"] and sorted(s[NEW]) == ["HB1"] and \
+            [x["member_id"] for x in s[NEW]["HB1"]] == ["101"], \
+            ("a 2026 row reached 2027-2028", sorted(b[NEW]), s.get(NEW))
+        left = json.loads(Path("data/left_out.json").read_text(encoding="utf-8"))
+        assert left["terms"] == [T] and all(left["rows"].get(f) for f in (
+            "Docket.txt", "LSRs.txt", "LsrsOnly.txt", "LsrSponsors.txt")) and \
+            {"2026 HB1001", "2026 HB1002"} <= set(left["bills"]), left
+        # A frozen build made from another freeze, and a turn nobody froze.
+        rec = Path(f"data/frozen/{T}/frozen.json")
+        good = rec.read_text(encoding="utf-8")
+        rec.write_text(good.replace(json.loads(good)["built_from"]["views"], "0" * 64),
+                       encoding="utf-8")
+        rc, out = run("build_data.py", "--dir", ".", "--out", "x")
+        assert rc and "HAS NOT BEEN BUILT" in out, "a build of another freeze was taken"
+        rec.write_text(good, encoding="utf-8")
+        shutil.move("frozen", "unfrozen")
+        rc, out = run("build_data.py", "--dir", ".", "--out", "x")
+        assert rc and "a turn nobody froze" in out, "a turn nobody froze was built on"
+        shutil.move("unfrozen", "frozen")
+
+        # narrative.py on the turned docket speaks for its own term only.
+        Path("nar.json").write_text(json.dumps({T: {"HB1001": {"sentinel": True}}}), encoding="utf-8")
+        rc, out = run("narrative.py", "--docket", "Docket.txt", "--all", "--out", "nar.json",
+                      "--members", "data/legislators.json", "--bills", "data/bills.json")
+        nar = json.loads(Path("nar.json").read_text(encoding="utf-8"))
+        assert rc == 0 and nar.get(T) == {"HB1001": {"sentinel": True}} and NEW in nar, \
+            ("narrative.py on the session's docket replaced a finished term's histories", out[-400:])
+        # The writers' merges keep a finished term as the file has it.
+        got = {T: {"HB1": {"total": 1}}, NEW: {"HB1": {"total": 2}}}
+        with contextlib.redirect_stdout(io.StringIO()):
+            FTD.keep_finished(got, {T: {"HB1": {"total": 9}}}, NEW)
+        assert T not in got and NEW in got, "fetch_testimony_db would replace a finished term"
+        archived = {T: {"HB1": {"total": 1}}}
+        with contextlib.redirect_stdout(io.StringIO()):
+            TFD.keep_frozen(archived, {T: {"HB1": {"total": 9}}}, [T])
+        assert not archived, "testimony_from_db would replace a finished, frozen term"
+        archived = {T: {"HB1": {"total": 1}}}
+        with contextlib.redirect_stdout(io.StringIO()):
+            TFD.keep_frozen(archived, {T: {"HB1": {"total": 9}}}, [T], replace=[T])
+        assert archived, "testimony_from_db --replace did not write the term"
+        # build_proceedings: the session's frozen manifest waits; a finished
+        # term's is its own.
+        mfs = [Path("verification_manifest.csv"), Path(f"verification_manifest_{T}.csv")]
+        with contextlib.redirect_stdout(io.StringIO()):
+            files, finished = BPR.session_manifests(mfs, T)
+        assert files == mfs[:1] and not finished, (files, finished)
+        with contextlib.redirect_stdout(io.StringIO()):
+            files, finished = BPR.session_manifests(mfs, NEW)
+        assert files == mfs and finished == {T}, (files, finished)
+        # report_check: a finished term's reports from its freeze, the current
+        # view's of it counted and left out.
+        cur = Path("CandH_now.psv")
+        cur.write_text("|".join(["7", "", "Committee Report", "", "H", "<p>x</p>", "HB1001",
+                                 "02/04/2026 10:00:00"]) + "\r\n", encoding="utf-8")
+        _out, census = RC.filed_reports({}, past=Path("none.jsonl"), current=cur,
+                                        frozen={T: FT.VIEWS_DIR / T / "CandH_Reports.psv"})
+        assert any(k.startswith(f"reports of {T} in the current view, left out") for k in census), \
+            dict(census)
+    finally:
+        os.chdir(old_cwd)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a two-bill term frozen, turned and built: before the switch the next House "
+                  "leaves its sponsors and ballots as they were; after it the term is its "
+                  "freeze's, archived, 2027-2028 takes none of its rows, the left-out rows are "
+                  "named, and another freeze's build or none stops the build; narrative, both "
+                  "sign-in writers, build_proceedings and report_check keep a finished term")
+
+
+# The Legislation view's columns as the 8 September dump gives them, for the
+# fixture above: build_data reads it by position.
+_TURN_LEGISLATION = [
+    "legislationnbr", "documenttypecode", "sessionyear", "lsr", "LSRTitle", "DateLSREntered",
+    "LegislativeBody", "BillType", "AppropriationCode", "FiscalImpactCode", "LocalCode", "FullLSR",
+    "SubjectCode", "ExpandedBillNo", "CondensedBillNo", "DateLSRBill", "ChapterNo", "SessionType",
+    "HouseCommitteeReferralCode", "HouseCurrentCommitteeCode", "HouseDateIntroduced",
+    "HouseStatusCode", "HouseStatusDate", "houseduedate", "housefloordate", "houseamended",
+    "SenateCommitteeReferralCode", "SenateCurrentCommitteeCode", "SenateDateIntroduced",
+    "SenateStatusCode", "SenateStatusDate", "SenateDueDate ", "SenateFloorDate", "SenateAmended",
+    "GeneralStatusCode", "GeneralStatusDate", "EffectiveDate", "AdditionalEffectiveDates",
+    "Rereferred", "username", "DateModified", "CurrentLSRStatus", "LatestCommitteeHearingCode",
+    "LatestCommitteeHearingDate", "LatestCommitteeHearingPlace", "Retained", "Database",
+    "legislationID"]
+
+
 @check("build", "no fact of 2025-2026 reaches a 2027 bill by its number: the sign-ins are the "
        "database's by term, the Legislation fill keeps to the bill's own term, and titles are "
        "read by term", needs=("build_data", "build_site_v2", "build_all", "testimony_from_db"))
@@ -44088,8 +44434,25 @@ def _db_roster_named(DF):
     ok, why = DF.roster_named(new, members(old))
     assert not ok and "does not name 10" in why, why
     assert not DF.roster_named(new, None)[0]
+    # Five people more than the roster is a Members.txt of another roster.
+    extra = [leg(950 + i, f"Extra{i}", f"extra{i}@gc.nh.gov") for i in range(5)]
+    ok, why = DF.roster_named(new, members(new + extra))
+    assert not ok and "names 5 people" in why, why
+    ok, why = DF.roster_named(new, members(new + extra[:4]))
+    assert ok, why
+    # THROUGH judge(), AND ONLY OVER THE TERM'S FROZEN ROSTER (the review of 5
+    # October 2026): the term is still the session's, and its members are
+    # named from its own frozen roster once the installed one is not it.
+    empty = {n: [] for n in DF.DAY_FILES}
+    for frozen, taken in ((True, True), (False, False)):
+        r = DF.judge({**empty, "legislators.txt": new}, {**empty, "legislators.txt": old},
+                     {"members": members(new), "roster_frozen": frozen})
+        roster_stops = [s for s in r["stops"] if "roster" in s or "legislators.txt" in s]
+        assert (not roster_stops) == taken and \
+            (taken or any("not frozen" in s for s in roster_stops)), (frozen, r["stops"])
     return "ok", ("a third of the roster new stops a database night unless tonight's Members.txt "
-                  "names it, and then its joined and left are named")
+                  "names it, and no more than four people besides, and the term's own roster is "
+                  "frozen; then its joined and left are named")
 
 
 @check("data", "status.txt's session_over is a day of the term the session's files describe",
@@ -44139,8 +44502,11 @@ def _freeze_on_disk(FT, P):
     if not FT.frozen_terms(".") and not FT.VIEWS_DIR.is_dir():
         return "skip", "nothing frozen here (freeze_term.py has not run)"
     code, lines = FT.check(".")
+    # A freeze of the session's own term not yet made is the order of things
+    # (--views now, --session in November), not a broken one (the review of 5
+    # October 2026): it is said, and fails nothing.
     broken = [ln.strip() for ln in lines if ln.strip().startswith(("the day files:", "the views:"))
-              and not ln.strip().endswith("whole")]
+              and not ln.strip().endswith("whole") and "not yet frozen" not in ln]
     assert not broken, "; ".join(broken)
     return "ok", " / ".join(ln.strip() for ln in lines)
 
@@ -44467,12 +44833,39 @@ def _nightly_new_term(NI, SG, BA):
         how["terms"] = None
         NI.CENSUS.write_text(before_terms, encoding="utf-8")
 
-        # THE NEW TERM RUN: the smaller files in, the feeds and the sitting
-        # members fewer, a study view at a tenth of its rows -- all let
-        # through, the prune allowed. Publishable, behind the approval -- and
-        # NO baseline written: the counts ride in the verdict until the build
-        # is published.
-        how["feeds"], how["legs"], how["rows"] = 2, 30, {"StatStudDetails": 3}
+        # THE SITTING LEGISLATORS DO NOT FALL ON IT EITHER (the review of 5
+        # October 2026): only the feeds may, as the design said. A
+        # legislators.txt cut short on the switch night stops it.
+        how["legs"] = 30
+        code, _ = night("--runner", "--new-term", run_id="203e")
+        v = verdict()
+        assert code == 1 and not v["publishable"] and \
+            v["gates"] == "blocked: legislators fell from 40 to 30", \
+            ("a New term run let the sitting legislators fall", v.get("gates"))
+        how["legs"] = 40
+        # AND IT ASKS NOTHING OVER A TERM IN ITS LAST SESSION THAT IS NOT
+        # FROZEN (new_term_ready, called by main() before any request): the
+        # docket of both years, LSRs.txt and the roll calls of the second.
+        Path("Docket.txt").write_text("2025|0001|1/5/2025 10:00:00 AM|HB1|H|Introduced|x\n"
+                                      "2026|0002|1/6/2026 10:00:00 AM|HB1001|H|Introduced|x\n",
+                                      encoding="utf-8")
+        Path("LSRs.txt").write_text("2026|0002|t|H\n", encoding="utf-8")
+        Path("RollCallSummary.txt").write_text("2026|H|1|1/7/2026 10:15:33 AM||1|2|3|4|||Q|||\n",
+                                               encoding="utf-8")
+        code, _ = night("--runner", "--new-term", run_id="203f")
+        v = verdict()
+        assert code == 1 and (v.get("new_term") or {}).get("refused") == NI.REFUSED_FREEZE and \
+            not of("snapshot_gencourt.py"), \
+            ("a New term run over an unfrozen term in its last session asked for the files",
+             v.get("new_term"))
+        for f in ("Docket.txt", "LSRs.txt", "RollCallSummary.txt"):
+            Path(f).unlink()
+
+        # THE NEW TERM RUN: the smaller files in, the feeds fewer, a study
+        # view at a tenth of its rows -- all let through, the prune allowed.
+        # Publishable, behind the approval -- and NO baseline written: the
+        # counts ride in the verdict until the build is published.
+        how["feeds"], how["rows"] = 2, {"StatStudDetails": 3}
         code, _ = night("--runner", "--new-term", run_id="204")
         v = verdict()
         assert code == 0 and v["clean"] and v["publishable"], (code, v.get("not_clean"))
@@ -44480,7 +44873,7 @@ def _nightly_new_term(NI, SG, BA):
                                                   for c in of("snapshot_gencourt.py")), calls
         assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune"]], \
             of("build_all.py")
-        let = "legislators fell from 40 to 30; feeds fell from 5 to 2"
+        let = "feeds fell from 5 to 2"
         assert v["fetch"] == "installed" and v["asked"]["new_term"] is True and \
             v["new_term"]["files"].startswith("accepted 1 much smaller") and \
             "Docket.txt 900 bytes against 90,000 (-99%)" in v["new_term"]["files"] and \
@@ -44650,20 +45043,86 @@ def _term_turn_guard(NI, SG, FT):
         v = SG.judge({"LSRs.txt": small}, ".")
         assert not v["installed"] and not v["released"], \
             ("a file was let in over an installed copy that is not the frozen one", v)
-        # The New term run's own precondition.
+        # The New term run's own precondition: the last session of a term,
+        # its docket of both years and LSRs.txt and the roll calls of the
+        # second, is frozen before anything is asked; any other is a new
+        # session year, and in a term's second January the docket already
+        # holds both years (the review of 5 October 2026).
         Path("Docket.txt").write_bytes(old)
+        Path("RollCallSummary.txt").write_bytes(b"2026|H|1|1/7/2026 10:15:33 AM||1|2|3|4|||Q|||\r\n")
         ok, why = NI.new_term_ready(".")
         assert not ok and "not frozen whole" in why, why
         Path("Docket.txt").write_bytes(old.split(b"2026|")[0])
         ok, why = NI.new_term_ready(".")
         assert ok and "new session year" in why, why
+        second_january = b"".join(b"%d|%04d|11/5/2027 10:00:00 AM|HB%d|H|Introduced|x\r\n" % (y, i, i)
+                                  for y in (2027, 2028) for i in range(1, 9))
+        Path("Docket.txt").write_bytes(second_january)
+        Path("LSRs.txt").write_bytes(b"2028|0001|t|H\r\n")
+        Path("RollCallSummary.txt").write_bytes(b"2027|H|9|6/1/2027 10:15:33 AM||1|2|3|4|||Q|||\r\n")
+        ok, why = NI.new_term_ready(".")
+        assert ok and "new session year" in why, ("a term's second January asked for a freeze", why)
+        Path("RollCallSummary.txt").write_bytes(b"2028|H|9|6/1/2028 10:15:33 AM||1|2|3|4|||Q|||\r\n")
+        ok, why = NI.new_term_ready(".")
+        assert not ok and "2027-2028 is not frozen whole" in why, why
+
+        # A NEW ROSTER BEFORE THE TERM'S OWN IS FROZEN (the review of 5 October
+        # 2026): Organization Day's House, before the files show the next
+        # term, goes in only over a frozen roster of the term it would name.
+        Path("Docket.txt").write_bytes(old)
+        Path("LSRs.txt").write_bytes(lsrs)
+        Path("RollCallSummary.txt").unlink()
+        roster = b"".join(b"%d|L|F||H|1|1|1|R||||NH||m@x\r\n" % i for i in range(30))
+        house = b"".join(b"%d|L|F||H|1|1|1|R||||NH||m@x\r\n" % i for i in range(10, 40))
+        Path("legislators.txt").write_bytes(roster)
+        v = SG.judge({"legislators.txt": house}, ".")
+        assert not v["installed"] and v["refused"] == "roster" and \
+            v["roster"] == {"moved": 20, "installed": 30, "term": T, "frozen": False}, v
+        (Path("frozen") / T / "day" / "legislators.txt").write_bytes(roster)
+        v = SG.judge({"legislators.txt": house}, ".")
+        assert v["installed"] and v["roster"]["frozen"], \
+            ("a new roster was refused over the term's frozen one", v)
+        one = b"".join(b"%d|L|F||H|1|1|1|R||||NH||m@x\r\n" % i for i in [*range(29), 99])
+        v = SG.judge({"legislators.txt": one}, ".")
+        assert v["installed"] and not v.get("roster"), ("one member changed read as a new roster", v)
+        (Path("frozen") / T / "day" / "legislators.txt").unlink()
+        day2 = Path("arch2") / "snapshots" / f"{__import__('datetime').datetime.now():%Y-%m-%d}"
+        day2.mkdir(parents=True)
+        (day2 / "manifest.json").write_text("{}", encoding="utf-8")
+        (day2 / NI.INSTALL_RECORD).write_text(json.dumps(
+            {"installed": False, "refused": "roster", "turned": None, "shrunk": [],
+             "roster": {"moved": 20, "installed": 30, "term": T, "frozen": False}}),
+            encoding="utf-8")
+        said = NI.fetch_status(1, "arch2")
+        assert said.startswith("roster: legislators.txt is another roster") and \
+            NI.plain_why({"fetch": said}).startswith(NI.NEW_TERM_ROSTER), said
+
+        # ONE DEFINITION OF THE SESSION'S TERM, the guard's six files (the
+        # review of 5 October 2026): sponsor files naming 2027 before the
+        # docket does make the session 2027-2028's for the build as well.
+        import proceedings as P
+        import build_data as BD
+        import types
+        assert P.SESSION_YEAR_COLUMN == SG.YEAR_COLUMN, \
+            "the session's term and the turn guard read the years of different files"
+        Path("LsrsOnly.txt").write_bytes(b"27-0001|1|1|2027|Prime|HB1|H|t\r\n")
+        assert P.session_term(".") == "2027-2028", P.session_term(".")
+        Path("LsrsOnly.txt").unlink()
+        # The rows of a finished term a build left out reach the run's page.
+        assert str(NI.LEFT_OUT) == f"data/{BD.LEFT_OUT}" or NI.LEFT_OUT.as_posix() == \
+            f"data/{BD.LEFT_OUT}", (NI.LEFT_OUT, BD.LEFT_OUT)
+        w = NI.Night.warnings(types.SimpleNamespace(v={"left_out": {
+            "terms": [T], "rows": {"Docket.txt": 1}, "bills": ["2026 SB570"]}}))
+        assert any("left out" in x and "2026 SB570" in x and "Docket.txt 1" in x for x in w), w
     finally:
         os.chdir(here)
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a docket that grew into 2027 is refused as a new term, taken with --allow-turn "
                   "only once the term is frozen; LSRs.txt turning later goes in over its frozen "
                   "copy after the switch and not before; the page says a new term; a New term run "
-                  "stops on an unfrozen two-year docket and not on a one-year one")
+                  "stops on an unfrozen term in its last session and not in a term's second "
+                  "January; a new roster goes in only over the term's frozen one; the session's "
+                  "term is read from the guard's six files; left-out rows reach the run's page")
 
 
 @check("build", "the roll-call files may be empty for the weeks before a new term's first vote, "
@@ -54952,8 +55411,33 @@ def _finished_term_sponsors(build_site_v2, member_links):
     assert sp[1]["slug"] == B.own_slug(legs["990100"]), "the member re-elected lost her link"
     sp, _ = run(False)
     assert not sp[0]["slug"], "with no finished term the name was looked for among former members"
+    # A TERM'S OWN ROSTER LABELS ITS MEMBERS AS THEY SAT (the review of 5
+    # October 2026): a Representative elected to the Senate under a new id,
+    # whom member_links joins to the sitting senator once he votes, read
+    # "Sen. ... (R - SD23)" on every one of his House bills of the term. The
+    # term's frozen roster (`term_roster`) gives the seat; the link is still
+    # his own page, the senator's.
+    senator = {"id": "11460", "name": "Doe, Matt", "chamber": "S", "party_code": "R",
+               "district": "23", "county": "Rockingham", "county_abbr": "Rock"}
+    as_sat = {"id": "11420", "name": "Doe, Matt", "chamber": "H", "party_code": "R",
+              "district": "30", "county": "Rockingham", "county_abbr": "Rock"}
+    joined = {**people, "11460": senator, "11420": senator}
+    his = {"2025-2026": {"HB20": [{"member_id": "11420", "name": "Doe, Matt", "chamber": "H",
+                                   "prime": True}]}}
+
+    def label(roster):
+        return B.bill_sponsor_list("HB20", {"designation": "HB 20", "title": "a bill"}, "2025",
+                                   "2025-2026", "2027-2028", his, joined, by_sort, by_name,
+                                   defaultdict(list), None, term_roster=roster)[0]
+    got = label({"11420": as_sat})
+    assert got["display_full"] == "Rep. Matt Doe (R - Rock 30)" and \
+        got["slug"] == B.own_slug(senator), ("a term's own roster did not label its member as he "
+                                            "sat", got["display_full"], got["slug"])
+    assert label(None)["display_full"].startswith("Sen."), \
+        "with no term roster the sitting record no longer labels the sponsor (the fixture is stale)"
     return "ok", ("a finished term's sponsor named by a web id is found among the members who left, the "
-                  "one who sat that term, and reads their seat as before; with no finished term, as it was")
+                  "one who sat that term, and reads their seat as before; with no finished term, as it "
+                  "was; and a term's own frozen roster labels a member now in the Senate as he sat")
 
 
 @check("naming", "a bill text's sponsor line is read as each era prints it, and a surname is a member only where one fits",

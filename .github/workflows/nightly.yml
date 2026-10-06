@@ -74,8 +74,8 @@ on:
       # their size; this run takes them (--allow-turn), and only once the
       # term it leaves is frozen as installed (freeze_term.py --session, sent
       # with seed-kit): otherwise it stops before asking anything. The census
-      # lets only the feeds and the sitting legislators fall on it, and a
-      # finished term that lost bills stops it as it stops any night. The
+      # lets only the feeds fall on it, and a finished term that lost bills
+      # stops it as it stops any night. The
       # switch is the first night the files show the new term, Organization
       # Day's resolutions included, and a file that turns later goes in on an
       # ordinary night over its frozen copy.

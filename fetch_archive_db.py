@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.7
+# GRANITE_VERSION: 2026-09-08.8
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -207,18 +207,48 @@ COLUMNS = OUT / "_columns.json"
 
 
 def terms_lost(view, old, new, old_cols, new_cols):
-    """The terms `old` holds rows of and `new` holds none of, by the column
-    freeze_term reads each view's years from; [] for a view with no year."""
+    """The terms of the session years -- or the SessionIDs, read as the
+    session's term -- that `old` holds rows of and `new` holds none of, by
+    the column freeze_term reads each view's years from; [] for a view with
+    no year.
+
+    BY THE SESSION YEAR, NOT THE TERM (the review of 5 October 2026): a dump
+    that had lost 2025's 847 Legislation rows and kept 2026's still held the
+    term, so it was swapped in, and the only database-shaped copy of 2025
+    went with it. A year gone is its term gone, unless the term is frozen."""
     import freeze_term as FT
     import proceedings as PR
     if view not in FT.VIEW_YEAR or not old.exists() or not old_cols or not new_cols:
         return []
     _, was = FT.view_rows(old, old_cols, view)
     _, now = FT.view_rows(new, new_cols, view)
+    gone = set(was) - set(now)
+    return sorted({PR.term_of(k) if re.fullmatch(r"\d{4}", k) else PR.session_term(".")
+                   for k in gone} - {""})
 
-    def terms(parts):
-        return {PR.term_of(k) for k in parts if re.fullmatch(r"\d{4}", k)}
-    return sorted(terms(was) - terms(now))
+
+# AND NOT BY ONE THAT CAME BACK FAR SHORTER (the review of 5 October 2026):
+# LegislationText is keyed on an internal SessionID and VHearings on nothing
+# that names a year, so neither could lose a term by the rule above, and
+# either was swapped in empty. A current-term view at less than SHRINK_MOST
+# of its installed rows goes in only where the session's term is frozen
+# under db/term/<term>/ with that view.
+CURRENT_TERM = ("Legislation", "LegislationText", "CandH_Reports", "Sponsors", "VHearings",
+                "houseRemoteTestify", "DocumentVersion")
+SHRINK_MOST = 0.5
+
+
+def far_shorter(view, old, new):
+    """(installed rows, tonight's) where `new` is a current-term view at less
+    than SHRINK_MOST of `old`'s lines, else None."""
+    if view not in CURRENT_TERM or not old.exists():
+        return None
+
+    def n(p):
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            return sum(1 for ln in fh if ln.strip())
+    a, b = n(old), n(new)
+    return (a, b) if a and b < a * SHRINK_MOST else None
 
 
 def frozen_holds(view, term):
@@ -328,12 +358,18 @@ def main():
             cols = json.loads(COLUMNS.read_text(encoding="utf-8")) if COLUMNS.exists() else {}
             lost = [t for t in terms_lost(name, path, part, cols.get(name), names)
                     if not frozen_holds(name, t)]
-            if lost:
+            short = far_shorter(name, path, part)
+            import proceedings as PR
+            if short and frozen_holds(name, PR.session_term(".")):
+                short = None
+            if lost or short:
                 held = path.with_name(path.name + ".new")
                 os.replace(part, held)
-                print(f"          NOT INSTALLED: it holds no row of {', '.join(lost)}, which "
-                      f"{path} does and no db/term/<term>/ holds. Freeze the term first "
-                      f"(freeze_term.py --views); what came back is at {held}", flush=True)
+                why = (f"it holds no row of {', '.join(lost)}, which {path} does" if lost else
+                       f"it is {short[1]:,} lines against the {short[0]:,} of {path}")
+                print(f"          NOT INSTALLED: {why}, and no db/term/<term>/ holds the term. "
+                      f"Freeze the term first (freeze_term.py --views); what came back is at "
+                      f"{held}", flush=True)
                 failed += 1
                 continue
             os.replace(part, path)

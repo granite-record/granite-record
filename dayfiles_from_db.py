@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.11
+# GRANITE_VERSION: 2026-10-01.12
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -2196,6 +2196,15 @@ def judge(files, installed, facts=None):
     moved = (a and abs(b - a) > ROSTER_TOLERANCE * a) or (a and len(left) > ROSTER_TOLERANCE * a)
     agrees, how = roster_named(rows["legislators.txt"], (facts or {}).get("members")) \
         if moved or left or b != a else (False, "")
+    # ONLY OVER A FROZEN ROSTER OF THE TERM (the review of 5 October 2026): the
+    # term is still the session's, and its members are named from its own
+    # frozen roster once the installed one is not it (freeze_term.
+    # own_roster_terms). With none frozen the new roster would leave a third
+    # of the term's sponsors and ballots nameless, so it stops the night as
+    # it did before the person's decision. The nightly says (roster_frozen).
+    if moved and agrees and not (facts or {}).get("roster_frozen"):
+        agrees, how = False, (how + "; but the installed term's own roster is not frozen "
+                              "(freeze_term.py --session), and its members would go unnamed")
     if moved and agrees:
         warnings.append(f"the roster changed: {b:,} members against {a:,} installed, {len(left):,} "
                         f"of them gone; {how}, so it is taken")

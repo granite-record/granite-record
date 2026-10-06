@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.51
+# GRANITE_VERSION: 2026-09-05.52
 """
 Run the whole pipeline in the right order.
 
@@ -248,6 +248,26 @@ class Step:
         return [str(n) for n in self.needs if not n.exists()]
 
 
+def session_roster():
+    """The roster the session's histories are told with: data/legislators.json,
+    the sitting one -- or, once Organization Day has seated the next House
+    before the files show the next term, the session's own term's frozen
+    roster, which build_data writes to data/frozen/<term>/legislators.json
+    (freeze_term.own_roster_terms). On a copy with the next House installed,
+    170 of 2025-2026's histories gave a departed member's motion as initials,
+    "Rep. N. Germana" (the review of 5 October 2026). Read off the installed
+    files when the plan is made, which is after the night has installed them."""
+    try:
+        import freeze_term
+        import proceedings
+        sess = proceedings.session_term(".")
+        if sess and sess in freeze_term.own_roster_terms("."):
+            return f"data/frozen/{sess}/legislators.json"
+    except Exception:                                           # noqa: BLE001
+        pass
+    return "data/legislators.json"
+
+
 def plan(a):
     vids = sorted(str(p) for p in Path(".").glob("videos_*.csv"))
 
@@ -441,7 +461,7 @@ def plan(a):
 
         Step("plain-language bill histories",
              ["narrative.py", "--docket", "Docket.txt", "--all",
-              "--out", "narratives.json", "--members", "data/legislators.json"],
+              "--out", "narratives.json", "--members", session_roster()],
              needs=["Docket.txt"], produces=["narratives.json"],
              note="runs AFTER build_data so the roster exists: it turns "
                   "\"a motion by Rep. N. Germana\" into the member's full name. "

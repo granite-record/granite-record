@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -359,6 +359,35 @@ def shrunk(fetched, into):
     return out
 
 
+# A NEW ROSTER BEFORE ITS TERM'S IS FROZEN (the review of 5 October 2026).
+# Organization Day seats the next House, and the General Court's roster may
+# show it nights before the files show the next term. The term is still the
+# session's then, and on a copy with the next House installed its bills drew
+# 1,392 sponsors with no party and a third of its ballots unnamed, and nothing
+# failed. The build names a term's members from its own frozen roster once
+# the installed one is not it (freeze_term.own_roster_terms) -- which it can
+# only where that roster is frozen. So tonight's legislators.txt, when more
+# than freeze_term.ROSTER_MOVED of the installed members differ, goes in only
+# when the term the installed files describe has its roster frozen; without
+# it nothing goes in ("roster"), and the run's page says to freeze. After the
+# switch the installed term is the next House's own, and it goes in as ever.
+def roster_moved(fetched, into, term):
+    """None when tonight's legislators.txt is not another roster than the
+    installed one, else {"moved", "installed", "term", "frozen"}: how many
+    members differ, of how many installed, the installed files' term, and
+    whether its own roster is frozen (frozen/<term>/day/legislators.txt)."""
+    new, old = fetched.get("legislators.txt"), Path(into) / "legislators.txt"
+    if not new or not old.exists():
+        return None
+    import freeze_term
+    a, b = freeze_term.member_ids(old.read_bytes()), freeze_term.member_ids(new)
+    moved = len(a ^ b)
+    if not a or moved <= freeze_term.ROSTER_MOVED * len(a):
+        return None
+    return {"moved": moved, "installed": len(a), "term": term,
+            "frozen": bool(term) and (Path(into) / FROZEN / term / "day" / "legislators.txt").exists()}
+
+
 def judge(fetched, into, allow_shrink=False, allow_turn=False):
     """What install() would do with tonight's files, and why: {"installed",
     "shrunk", "released", "turned", "lines"}. Writes nothing.
@@ -368,6 +397,9 @@ def judge(fetched, into, allow_shrink=False, allow_turn=False):
                one (frozen_copy): kept for that term, so not a reason to stop
     turned     {"from", "to", "files"} when tonight's files name a term newer
                than the newest the installed ones name, else None
+    roster     roster_moved()'s answer, once the turn is judged: tonight's
+               legislators.txt another roster, and whether the term's own is
+               frozen ("refused": "roster" when it is not)
     """
     into = Path(into)
     small = shrunk(fetched, into)
@@ -401,6 +433,17 @@ def judge(fetched, into, allow_shrink=False, allow_turn=False):
             out["refused"] = "freeze"
             out["lines"] = [f"NOT INSTALLED, any of it: a new term, {turned['to']}, and {why}"]
             return out
+    roster = roster_moved(fetched, into, was)
+    out["roster"] = roster
+    if roster and not roster["frozen"]:
+        out["refused"] = "roster"
+        out["lines"] = [f"NOT INSTALLED, any of it: tonight's legislators.txt is another roster -- "
+                        f"{roster['moved']:,} of the {roster['installed']:,} members installed "
+                        f"differ -- and {roster['term']}'s own roster is not frozen.",
+                        "Organization Day seats the next House before the files show the next "
+                        "term; the term's members are named from its frozen roster, so it is "
+                        "frozen first (freeze_term.py --session, sent with seed-kit)."]
+        return out
     if held and not allow_shrink:
         out["refused"] = "shrink"
         out["lines"] = ["NOT INSTALLED, any of it: " + "; ".join(said),
@@ -621,6 +664,7 @@ def run(a, held):
                  "shrunk": [{"name": n, "bytes": now, "installed_bytes": before}
                             for n, now, before in v["shrunk"]],
                  "released": v["released"], "turned": v["turned"],
+                 **({"roster": v["roster"]} if v.get("roster") else {}),
                  **({"refused": v["refused"]} if v["refused"] else {}),
                  **({"empty": empty_taken} if empty_taken else {})},
                 indent=2).encode("utf-8"))

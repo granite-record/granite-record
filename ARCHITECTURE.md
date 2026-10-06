@@ -883,8 +883,28 @@ counted and left out, never merged, in every reader that would otherwise
 replace or skip a whole term; `snapshot_gencourt` refuses files that name a
 newer term whatever their size, and only the New term run takes them, once the
 term it leaves is frozen as installed. `proceedings.session_term()` is the one
-answer to which term the session's files describe. `tests/rehearse_turn.py`
-runs the turn's nights on a copy.
+answer to which term the session's files describe, read from the same six
+files the guard reads. `tests/rehearse_turn.py` runs the turn's nights on a
+copy.
+
+**Organization Day can come first.** The General Court's roster may show the
+next House nights before its files show the next term, and `LsrsOnly.txt` lists
+sitting members only. So a roster that is not the term's own goes in only once
+the term's roster is frozen (`snapshot_gencourt.roster_moved`, and the
+database night's `roster_frozen`), and from then until the switch the term's
+members and sponsor files are the freeze's (`freeze_term.own_roster_terms`):
+`build_data` reads its sponsors from the frozen `LsrsOnly.txt` and
+`LsrSponsors.txt` and names them from the frozen roster, a continuing member's
+ballots keep the party and seat of that roster, `narrative.py` tells its
+histories with it (`build_all.session_roster`), and `build_site_v2` labels the
+term's sponsors from it -- a member now in the Senate under a new id reads as
+the Representative they were -- for a finished term as for the session's.
+`freeze_term --session` refuses a roster whose members sponsored and voted
+nothing in the term, and keeps the freeze's roster over one that has turned.
+The rows of a finished term a night's files still carry go on the run's page
+(`data/left_out.json`). The New term run lets only the feeds fall, and asks for
+a freeze only while the installed files are in the last session of their term,
+so a term's second January passes as a new session year.
 
 **Fix, for what is left: `(term, bill)` everywhere.** `setup_archive.py` and
 `probe_archive.py` already sketch this. The year-keyed journal and calendar

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.2
+# GRANITE_VERSION: 2026-09-11.3
 """
 Sign-in counts for an archived term's hearings, from the database dump on disk.
 
@@ -193,11 +193,26 @@ def _sign_in(line, cur, arch, frozen, only, own, unjoined):
     return term, bill, date, stance
 
 
+def keep_frozen(archived, merged, frozen, replace=(), out=OUT):
+    """Take out of `archived` every frozen term `merged` already holds, unless
+    `replace` names it, saying so. Out of main() so that preflight holds the
+    rule by what it does (the review of 5 October 2026)."""
+    for t in sorted(frozen):
+        if t in archived and t in merged and t not in (replace or []):
+            print(f"  {t}: finished and frozen, and already in {out} ({len(merged[t]):,} "
+                  f"bills): kept; this rebuild's {len(archived[t]):,} are not written "
+                  f"(--replace {t} to write them)")
+            del archived[t]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true",
                     help="rebuild the current term and compare; write nothing")
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--replace", action="append", metavar="TERM",
+                    help="write this finished, frozen term over the file's copy of it, which "
+                         "is otherwise kept (repeatable)")
     a = ap.parse_args()
     for f in (TESTIFY, LEGISLATION):
         if not f.exists():
@@ -244,6 +259,14 @@ def main():
         merged = json.loads(out_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         merged = {}
+    # A FINISHED TERM ALREADY IN THE FILE IS KEPT (the review of 5 October
+    # 2026), unless --replace names it: fetch_testimony_db's rule, which this
+    # writer did not keep. Its rebuild here is only as new as the freeze's
+    # sign-ins -- the last --views -- and from a freeze without them it is
+    # whatever stray rows the current dump still holds (33 bills against the
+    # file's 2,019, on a copy), either of which would have replaced the term
+    # whole. A term the file lacks is written as before.
+    keep_frozen(archived, merged, frozen_terms(current), a.replace, a.out)
     merged.update(archived)      # merge: every other term is left as it is
     out_path.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     print(f"-> {a.out}: " + ", ".join(f"{t} {len(v):,}"

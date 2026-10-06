@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.2
+# GRANITE_VERSION: 2026-10-05.3
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -69,19 +69,25 @@ standing; every file is a part file and a rename.
 WHAT IT REFUSES
 
   --views     a dump that does not hold rows of both years of the term in
-              Legislation; a dump whose newest year is past the term (the
-              views have turned, and the freeze already on disk is the term's
-              record: it is kept, and this says so); a view shorter than the
-              dump's own manifest says it was, or empty; views dumped more
-              than a day apart (two dumps are not one record); and any view
-              holding fewer rows of the term than the freeze it would replace
+              Legislation; a dump whose newest year is past the term when no
+              freeze of the term is on disk to say which of its rows are the
+              term's (with one, the term's rows are frozen out of it and the
+              later years left out, below); a view shorter than the dump's own
+              manifest says it was, or empty; views dumped more than a day
+              apart (two dumps are not one record); and any view holding
+              fewer rows of the term than the freeze it would replace
   --session   files that hold any year outside the term (a turn has begun, or
               some of tonight's files are another term's); a docket without
               both years of the term; a file missing or empty; a docket that
               has lost a bill, or any file that has lost more than FALL_MOST of
               its rows of the term, against the freeze it would replace; and a
-              roster that has turned (more than ROSTER_MOVED of its members
-              differ from the freeze before it). If the roster turned before
+              roster that is not the term's -- more than ROSTER_MOVED of its
+              members sponsored nothing and cast no vote in the term's own
+              files (roster_strangers; none of 406 did on 5 October 2026), or
+              more than ROSTER_MOVED differ from the freeze before it -- when
+              no freeze of the term holds its own roster. Where one does, that
+              roster (legislators.txt and Members.txt) is kept and the rest of
+              the files frozen anew. With none, if the roster turned before
               the docket did -- Organization Day is 2 December 2026 -- put the
               last roster of the old term back first, from nh-archive:
                   python3 -c "import snapshot_gencourt as S; S.restore('nh-archive', 'DAY', 'legislators.txt', 'legislators.txt')"
@@ -89,25 +95,48 @@ WHAT IT REFUSES
               before Organization Day, so 2025-2026's chips keep the seat each
               member held then
 
+A LATER DUMP, AND A VIEW IT LACKS (the review of 5 October 2026). Whether the
+late-November dump's Legislation already holds 2027's first requests is not
+known, and refusing it kept the 8 September views, so that whatever the term
+gained after them -- a report, a version -- would leave the site at the turn.
+With a freeze of the term already on disk, such a dump is frozen of the
+term's rows only: by session year where a view has one, by the SessionIDs the
+earlier freeze holds where it has those (LegislationText), and the later
+years are counted and left out. A view that cannot be read for the term
+(DocumentVersion, VHearings), or that the new dump does not hold at all, is
+carried forward from the earlier freeze, as it was, and the manifest says
+from when: a second --views from a dump lacking houseRemoteTestify had
+deleted the copy testimony_from_db rebuilds the term's sign-ins from.
+
 WHEN, AND WHO
 
 It asks nobody anything, so the assistant may run it; what it writes reaches
 GitHub's nightly only through the person's seed-kit, and the roll-call copies
 only through a merge to main.
 
-  1. Now, and again straight after the late-November database download that
-     is the person's to start: --views. The 8 September dump is the only copy
-     of 2025's 847 bill records in the database's own shape, and that
-     download writes over db/ (R2 keeps a replaced copy 30 days). Then
+  1. Now, on the 8 September dump, before anything else: --views. It is the
+     only copy of 2025's 847 bill records in the database's own shape, and
+     the late-November download writes over db/ (R2 keeps a replaced copy 30
+     days). Then
          python3 cloud.py seed-kit --only "db/term/*/*"
-  2. The switch night: the first scheduled night that refuses the General
+  2. Straight after the late-November database download that is the
+     person's to start: --views again, and the same seed-kit.
+  3. Before Organization Day (2 December 2026), while the installed roster
+     is still the term's: --session and --check, commit any roll-call copy it
+     wrote, and
+         python3 cloud.py seed-kit --only "frozen/**" Docket_2025-2026.txt verification_manifest_2025-2026.csv
+     From Organization Day the roster is the next House; a night that would
+     install it before the term's roster is frozen installs nothing
+     (snapshot_gencourt.judge, "roster"), and the term's own members are
+     named from this freeze once it is (own_roster_terms).
+  4. The switch night: the first scheduled night that refuses the General
      Court's files as a new term. Its installed files are still the last of
      2025-2026, because a refused night installs nothing. Bring them here
-     (cloud.py pull), then --session and --check, commit any roll-call copy
-     it wrote, and
-         python3 cloud.py seed-kit --only "frozen/**" Docket_2025-2026.txt verification_manifest_2025-2026.csv
-     Then the nightly by hand with New term ticked; it stops before asking
-     anything if this freeze is not the files installed (ready()).
+     (cloud.py pull), then --session and --check again -- where the
+     installed roster has turned since step 3, the roster that freeze holds
+     is kept and the rest frozen anew -- and the same seed-kit. Then the
+     nightly by hand with New term ticked; it stops before asking anything if
+     this freeze is not the files installed (ready()).
 
 WHAT READS IT
 
@@ -181,8 +210,11 @@ ONE_DUMP_HOURS = 24
 # file's rows of the term, nor by a docket that has lost a bill. A clerk's
 # correction deletes a row or two; a file cut short loses far more.
 FALL_MOST = 0.01
-# ... nor by a roster of which more than this share of members differ from
-# the freeze before it: Organization Day replaces about a third of the House.
+# A roster is not the term's when more than this share of its members differ
+# from the freeze before it, or sponsored nothing and cast no vote in the term
+# (roster_strangers): Organization Day replaces about a third of the House. The
+# same share says when the installed roster is no longer a frozen term's own
+# (roster_turned), and the term's members are named from its freeze.
 ROSTER_MOVED = 0.10
 
 YEAR = re.compile(r"(?:^|\D)((?:19|20)\d\d)(?:\D|$)")
@@ -309,6 +341,47 @@ def of_term(entry, term):
     return int(entry.get("rows") or 0)
 
 
+def row_part(f, columns, view):
+    """The part of the term one row of a view is of, as view_rows counts it:
+    "2026", "session 6", or "" where the row does not say."""
+    col, how = VIEW_YEAR.get(view, (None, None))
+    if col not in columns or len(f) != len(columns):
+        return ""
+    v = f[columns.index(col)].strip()
+    if how == "date":
+        m = DATE_YEAR.match(v)
+        v = m.group(1) if m else ""
+    return (v if how != "id" else f"session {v}") if v else ""
+
+
+def term_parts(view, term, earlier_entry):
+    """The parts of a view that are `term`'s: its two years, or -- for a view
+    keyed on an internal SessionID -- the ids the earlier freeze of the term
+    holds. None where neither says (the view cannot be read for the term)."""
+    col, how = VIEW_YEAR.get(view, (None, None))
+    if how in ("year", "date"):
+        return term_years(term)
+    if how == "id":
+        ids = {k for k in ((earlier_entry or {}).get("years") or {}) if k.startswith("session ")}
+        return ids or None
+    return None
+
+
+def copy_term_rows(path, out, columns, view, parts):
+    """`path` into `out`, the rows of `parts` only: (kept, left out)."""
+    kept = left = 0
+    with open(path, encoding="utf-8", errors="replace", newline="") as fh, \
+            open(out, "w", encoding="utf-8", newline="") as w:
+        for line in fh:
+            f = line.rstrip("\r\n").split("|")
+            if row_part(f, columns, view) in parts:
+                w.write(line)
+                kept += 1
+            elif line.strip():
+                left += 1
+    return kept, left
+
+
 def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
     """db/term/<term>/ from the dump in `src`. Lines for the person."""
     said = []
@@ -354,30 +427,60 @@ def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
                           f"{listed:,}: a view cut short is not frozen")
         entries[v] = {"rows": rows, **({"years": parts} if parts else {})}
 
-    # THE TERM, AND NOTHING PAST IT. Legislation says which years the dump
-    # holds. Both of the term's, or this is not the term's record; a year
-    # past it, and the views have turned -- whatever is frozen already is
-    # the term's last record and stays.
+    # THE TERM. Legislation says which years the dump holds: both of the
+    # term's, or this is not the term's record.
     yrs = {k for k in (entries["Legislation"].get("years") or {})}
     want = term_years(term)
     if not want <= yrs:
         raise Refused(f"{src / 'Legislation.psv'} holds session years "
                       f"{', '.join(sorted(yrs)) or 'none'}: both of {term}'s are needed")
-    past = sorted(y for y in yrs if y > max(want))
-    if past:
-        raise Refused(f"{src / 'Legislation.psv'} already holds {', '.join(past)}: the "
-                      f"General Court's views have turned past {term}, and the freeze "
-                      f"of {term} on disk, if there is one, is its record and is kept")
-
     final = out_root / term
     earlier = load_json(final / MANIFEST) or {}
+    was_files = earlier.get("files") or {}
+
+    def before(v):
+        return was_files.get(f"{v}.psv") or was_files.get(f"{EXTRA}/{v}.psv")
+
+    # AND A YEAR PAST IT (the review of 5 October 2026): the views have begun
+    # to turn. With no freeze of the term on disk nothing says which of the
+    # dump's rows are the term's, and it is refused. With one, the dump is
+    # frozen of the term's rows only and the later years left out, each
+    # view's count said; a view that cannot be read for the term is carried
+    # from the earlier freeze, as is every view this dump does not hold.
+    past = sorted(y for y in yrs if y > max(want))
+    if past and not earlier:
+        raise Refused(f"{src / 'Legislation.psv'} already holds {', '.join(past)}: the "
+                      f"General Court's views have turned past {term}, and no freeze of "
+                      f"{term} is on disk to say which of the dump's rows are the term's. "
+                      "Freeze a dump of the term alone first")
+    keep_parts, carried = {}, {}
+    for v in list(entries):
+        if not past:
+            continue
+        parts = term_parts(v, term, before(v))
+        if parts is None:
+            del entries[v]
+            if before(v):
+                carried[v] = f"it holds {', '.join(past)} and cannot be read for {term}"
+            else:
+                said.append(f"  {v}: holds {', '.join(past)} and cannot be read for {term}, "
+                            "and no freeze holds it: not frozen")
+            continue
+        e = entries[v]
+        kept = {k: n for k, n in (e.get("years") or {}).items() if k in parts}
+        keep_parts[v] = parts
+        entries[v] = {"rows": sum(kept.values()), "years": kept,
+                      "left_out": e["rows"] - sum(kept.values())}
+    for rel in was_files:
+        v = Path(rel).stem
+        if rel.endswith(".psv") and v not in entries and v not in carried:
+            carried[v] = "this dump does not hold it"
+
     worse = []
     for v, e in entries.items():
-        before = ((earlier.get("files") or {}).get(f"{v}.psv")
-                  or (earlier.get("files") or {}).get(f"{EXTRA}/{v}.psv"))
-        if before and of_term(e, term) < of_term(before, term):
+        if before(v) and of_term(e, term) < of_term(before(v), term):
             worse.append(f"{v} {of_term(e, term):,} rows of {term} against "
-                         f"{of_term(before, term):,} frozen")
+                         f"{of_term(before(v), term):,} frozen")
     if worse:
         raise Refused("this dump holds fewer of the term's rows than the freeze it would "
                       "replace: " + "; ".join(worse) + ". The freeze on disk is kept")
@@ -391,21 +494,42 @@ def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
         rel = f"{EXTRA}/{v}.psv" if v in VIEWS_EXTRA else f"{v}.psv"
         (part / rel).parent.mkdir(exist_ok=True)
         tmp = part / (rel + ".part")
-        shutil.copyfile(src / f"{v}.psv", tmp)
+        if v in keep_parts:
+            kept, left = copy_term_rows(src / f"{v}.psv", tmp, cols[v], v, keep_parts[v])
+            if kept != e["rows"]:
+                raise Refused(f"{v}: {kept:,} rows of {term} copied where {e['rows']:,} were "
+                              "counted: not frozen")
+        else:
+            shutil.copyfile(src / f"{v}.psv", tmp)
         os.replace(tmp, part / rel)
         files[rel] = {"sha256": sha256_of(part / rel), "bytes": (part / rel).stat().st_size, **e}
         said.append(f"  {rel:32} {e['rows']:>9,} rows  "
-                    + ", ".join(f"{k} {n:,}" for k, n in (e.get("years") or {}).items()))
-    write_bytes(part / "_columns.json",
-                json.dumps({v: cols[v] for v in entries}, indent=1).encode("utf-8"))
+                    + ", ".join(f"{k} {n:,}" for k, n in (e.get("years") or {}).items())
+                    + (f"; {e['left_out']:,} of later years left out" if e.get("left_out") else ""))
+    was_cols = load_json(final / "_columns.json") or {}
+    for v, why in carried.items():
+        rel = f"{EXTRA}/{v}.psv" if v in VIEWS_EXTRA else f"{v}.psv"
+        (part / rel).parent.mkdir(exist_ok=True)
+        tmp = part / (rel + ".part")
+        shutil.copyfile(final / rel, tmp)
+        os.replace(tmp, part / rel)
+        files[rel] = {**before(v), "carried_from": earlier.get("frozen")}
+        said.append(f"  {rel:32} carried from the freeze of {earlier.get('frozen')}: {why}")
+    columns = {**{v: cols[v] for v in entries},
+               **{v: was_cols[v] for v in carried if v in was_cols}}
+    write_bytes(part / "_columns.json", json.dumps(columns, indent=1).encode("utf-8"))
     files["_columns.json"] = {"sha256": sha256_of(part / "_columns.json"),
                               "bytes": (part / "_columns.json").stat().st_size}
+    dumped = {v: dump.get(v) for v in entries if dump.get(v)}
+    dumped.update({v: (earlier.get("dump") or {}).get(v) for v in carried
+                   if (earlier.get("dump") or {}).get(v)})
     write_bytes(part / MANIFEST, json.dumps({
         "term": term, "frozen": stamp(), "from": str(src).replace("\\", "/"),
-        "dump": {v: dump.get(v) for v in entries if dump.get(v)},
-        "files": files}, indent=1).encode("utf-8"))
+        "dump": dumped, "files": files,
+        **({"left_out_years": past} if past else {})}, indent=1).encode("utf-8"))
     put_in_place(part, final)
-    said.append(f"{final}: {len(entries)} views of {term}, "
+    said.append(f"{final}: {len(entries)} views of {term}"
+                + (f" and {len(carried)} carried" if carried else "") + ", "
                 + ("replacing the freeze of " + str(earlier.get("frozen")) if earlier
                    else "the first freeze"))
     return said
@@ -429,6 +553,70 @@ def rollcall_copies(root, data_by_name):
 def member_ids(data):
     return {ln.split("|")[0].lstrip("﻿").strip()
             for ln in data.decode("utf-8-sig", "replace").splitlines() if "|" in ln}
+
+
+# WHO SAT IN THE TERM, BY ITS OWN RECORD (the review of 5 October 2026). The
+# roster was checked only against an earlier freeze, so a first --session
+# after Organization Day froze the next House as 2025-2026's, and every night
+# after built the term from it: on a copy, 1,506 sponsor rows "Former member
+# #", 75,169 ballots unnamed. The term's own files say who sat in it -- the
+# sponsors in LsrsOnly.txt and LsrSponsors.txt, the voters in the roll calls,
+# the installed year's and the other year's copy beside it -- and every member
+# on its roster is among them: all 406 on 5 October 2026. A roster more than
+# ROSTER_MOVED of whose members are not is another term's.
+SPONSOR_ID = {"LsrsOnly.txt": 1, "LsrSponsors.txt": 3, "RollCallHistory.txt": 4}
+
+
+def roster_strangers(data, term, root=Path(".")):
+    """The members on `data`'s legislators.txt who sponsored nothing and cast
+    no vote in `term` by its own files (`data`, {name: bytes}, and the roll
+    calls of the term's years under rollcalls/ in `root`)."""
+    seen, want = set(), term_years(term)
+    sources = [(name, data.get(name) or b"") for name in SPONSOR_ID]
+    for y in sorted(want):
+        p = Path(root) / "rollcalls" / f"RollCallHistory_{y}.txt"
+        if p.exists():
+            sources.append(("RollCallHistory.txt", p.read_bytes()))
+    for name, b in sources:
+        col, ycol = SPONSOR_ID[name], YEAR_COLUMN[name]
+        for line in b.decode("utf-8-sig", "replace").splitlines():
+            f = line.lstrip("﻿").split("|")
+            if len(f) > max(col, ycol) and f[ycol].strip() in want:
+                seen.add(f[col].strip())
+    return sorted(member_ids(data.get("legislators.txt") or b"") - seen)
+
+
+def roster_turned(root=Path("."), term=None):
+    """(turned, differ, frozen): whether the roster installed in `root` is no
+    longer `term`'s frozen one (the session's by default) -- more than
+    ROSTER_MOVED of the frozen roster's members differ -- with how many
+    differ and how many the freeze holds. (False, 0, 0) with nothing frozen."""
+    root = Path(root)
+    term = term or P.session_term(root)
+    fp, ip = root / FROZEN / str(term) / DAY / "legislators.txt", root / "legislators.txt"
+    if not term or not fp.exists() or not ip.exists():
+        return False, 0, 0
+    a, b = member_ids(fp.read_bytes()), member_ids(ip.read_bytes())
+    moved = len(a ^ b)
+    return bool(a) and moved > ROSTER_MOVED * len(a), moved, len(a)
+
+
+def own_roster_terms(root=Path(".")):
+    """The frozen terms whose members are named from their own frozen roster,
+    oldest first: every finished one (older than the session's), and the
+    session's own once the installed roster has turned (roster_turned) --
+    Organization Day seats the next House some nights before the files show
+    the next term, and a member who left at the election, or sits in another
+    seat now, is the term's as they sat in it. Before any of that, none."""
+    root = Path(root)
+    sess = P.session_term(root)
+    out = []
+    for t in frozen_terms(root):
+        if not (root / FROZEN / t / DAY / "legislators.txt").exists() or not sess:
+            continue
+        if t < sess or (t == sess and roster_turned(root, t)[0]):
+            out.append(t)
+    return out
 
 
 def freeze_session(term, root=Path(".")):
@@ -477,14 +665,33 @@ def freeze_session(term, root=Path(".")):
         if gone:
             worse.append(f"Docket.txt has lost {len(gone)} bill(s) the freeze holds "
                          f"({', '.join(gone[:5])}{', ...' if len(gone) > 5 else ''})")
-        old_frozen = final / DAY / "legislators.txt"
-        if old_frozen.exists():
-            a, b = member_ids(old_frozen.read_bytes()), member_ids(data["legislators.txt"])
-            moved = len(a ^ b)
-            if a and moved > ROSTER_MOVED * len(a):
-                worse.append(f"legislators.txt: {moved} members differ from the freeze's "
-                             f"{len(a)} -- the roster has turned; put 2025-2026's back from "
-                             "nh-archive first (this script's docstring says how)")
+    # THE ROSTER (the review of 5 October 2026): the term's own, by its record
+    # (roster_strangers), and not turned against the freeze before it. Where
+    # it is not and a freeze of the term holds the term's roster, that roster
+    # is kept -- Organization Day may have seated the next House before the
+    # switch night's --session -- and the rest of the files frozen anew; with
+    # none, nothing is frozen.
+    strangers = roster_strangers(data, term, root)
+    n_roster = len(member_ids(data["legislators.txt"]))
+    old_frozen = final / DAY / "legislators.txt"
+    was_ids = member_ids(old_frozen.read_bytes()) if old_frozen.exists() else set()
+    moved = len(was_ids ^ member_ids(data["legislators.txt"])) if was_ids else 0
+    if len(strangers) > ROSTER_MOVED * n_roster or moved > ROSTER_MOVED * max(1, len(was_ids)):
+        why = (f"legislators.txt is not {term}'s roster: {len(strangers):,} of its {n_roster:,} "
+               f"members sponsored nothing and cast no vote in the term's files"
+               + (f", and {moved:,} differ from the freeze's" if moved else ""))
+        kept = bool(was_ids) and (final / DAY / "Members.txt").exists()
+        if kept:
+            kept = len(roster_strangers({**data, "legislators.txt": old_frozen.read_bytes()},
+                                        term, root)) <= ROSTER_MOVED * len(was_ids)
+        if not kept:
+            raise Refused(why + ". Put the term's last roster back from nh-archive first (this "
+                          "script's docstring says how); nothing is frozen")
+        for name in ("legislators.txt", "Members.txt"):
+            data[name] = (final / DAY / name).read_bytes()
+            entries[name] = session_entry(data[name], name)
+        said.append(f"{why}: the roster of the freeze of {earlier.get('frozen')} is kept, and "
+                    "the term's members are named from it")
     if worse:
         raise Refused("the installed files are worse than the freeze they would replace: "
                       + "; ".join(worse) + ". The freeze on disk is kept")
@@ -611,8 +818,8 @@ def views_intact(root, term):
         p = base / rel
         if not p.exists():
             bad.append(f"{VIEWS_DIR.as_posix()}/{term}/{rel} is missing")
-        elif p.stat().st_size != e.get("bytes"):
-            bad.append(f"{VIEWS_DIR.as_posix()}/{term}/{rel} is not the size its manifest gives")
+        elif p.stat().st_size != e.get("bytes") or sha256_of(p) != e.get("sha256"):
+            bad.append(f"{VIEWS_DIR.as_posix()}/{term}/{rel} is not the file its manifest names")
     leg = (rec.get("files") or {}).get("Legislation.psv") or {}
     if not term_years(term) <= set(leg.get("years") or {}):
         bad.append(f"{VIEWS_DIR.as_posix()}/{term}/Legislation.psv does not hold both years")
@@ -710,22 +917,41 @@ def check(root=Path("."), term=None):
         return 2, [f"nothing is frozen here (no {FROZEN}/<term>/ and no {VIEWS_DIR.as_posix()}/<term>/)"]
     lines, code = [f"the installed files are {sess or 'of no term'}'s"], 0
     for t in terms:
-        session_bad = intact(root, t) if (root / FROZEN / t).exists() else \
-            [f"frozen/{t}/ is not here: --session has not run"]
-        view_bad = views_intact(root, t)
+        # NOT YET IS NOT BROKEN (the review of 5 October 2026): the order is
+        # --views now and --session in November, so for weeks the session's
+        # own term has its views frozen and no day files, which this said as
+        # a failure and preflight's data check failed on. For the session's
+        # term a freeze not yet made says so; one made and not whole, or a
+        # finished term's missing, is a failure.
+        mine = t == sess
+        session_bad = (intact(root, t) if (root / FROZEN / t).exists() else
+                       [f"frozen/{t}/ is not here: --session has not run"])
+        view_bad = (views_intact(root, t) if (root / VIEWS_DIR / t).exists() or not mine else
+                    [f"{VIEWS_DIR.as_posix()}/{t}/ is not here: --views has not run"])
+        session_yet = mine and not (root / FROZEN / t).exists()
+        views_yet = mine and not (root / VIEWS_DIR / t).exists()
         lines.append(f"{t}:")
-        lines.append("  the day files: " + ("whole" if not session_bad else "; ".join(session_bad)))
-        lines.append("  the views:     " + ("whole" if not view_bad else "; ".join(view_bad)))
-        if t == sess and not session_bad:
+        lines.append("  the day files: " + ("whole" if not session_bad else
+                                            "not yet frozen (--session has not run)"
+                                            if session_yet else "; ".join(session_bad)))
+        lines.append("  the views:     " + ("whole" if not view_bad else
+                                            "not yet frozen (--views has not run)"
+                                            if views_yet else "; ".join(view_bad)))
+        if mine and not session_bad:
             moved = differs(root, t)
             lines.append("  against the files installed: "
                          + ("fresh, byte for byte" if not moved else
                             "STALE: " + "; ".join(moved) + " -- freeze again before the switch"))
+            turned, n, of = roster_turned(root, t)
+            if turned:
+                lines.append(f"  the installed roster is not the term's ({n:,} of {of:,} members "
+                             "differ): the term's members are named from this freeze")
             code = max(code, 1 if moved else 0)
         elif t != sess and sess and t < sess:
             lines.append(f"  the session's files have moved on to {sess}: this freeze is "
                          f"{t}'s record, and build_data --frozen-terms builds the term from it")
-        code = max(code, 1 if session_bad or view_bad else 0)
+        code = max(code, 1 if (session_bad and not session_yet) or (view_bad and not views_yet)
+                   else 0)
     return code, lines
 
 

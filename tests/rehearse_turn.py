@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.2
+# GRANITE_VERSION: 2026-10-05.3
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -16,6 +16,10 @@ The turn from one term to the next, rehearsed offline on a copy.
                                                            its first night: run the nights. After
                                                            a whole run the copy's installed files
                                                            are 2027's, and a new copy is wanted
+    python3 tests/rehearse_turn.py --copy DIR --pre-only   make the copy, freeze, build the pre-
+                                                           turn baseline and stop: its site is
+                                                           there to compare with another build's
+                                                           before --reuse runs the nights
 
 DIR must not be inside the repository: the copy is the repository's committed
 code (git archive HEAD) and the kit's data (cloud_kit.json, as GitHub's
@@ -56,20 +60,34 @@ THE NIGHTS, IN ORDER (each says what it expects, and PASS or FAIL)
                and the database is asked
   G8           a New term run whose freeze is stale: stops before any request
   G9           a New term run of B with the roll-call files empty: taken
+  OD0          Organization Day's roster before the docket turns, with the term's
+               freeze moved aside: "roster", nothing installed (the review of 5
+               October 2026)
+  OD           the same with the freeze in place: the next House and an
+               LsrsOnly.txt of the sitting only installed on a scheduled night,
+               a full build, and 2025-2026 compared with the pre-turn build --
+               still the session's term, so nothing of it moves but a sponsor
+               who left mid-term gaining a link
   DB1, DB2     (with --views) the database night between Organization Day and
                the switch: the views hold 2027 rows and a new roster. With
                tonight's Members.txt naming the new roster it is installed,
-               the 2027 rows left out and said; with the old Members.txt the
-               roster guard stops it
+               the 2027 rows left out and said, and built in full and compared
+               as OD is; with the old Members.txt the roster guard stops it
   NT           THE SWITCH: a New term run of B (roll calls still 2026's, the new
                roster), the full build, the publish
-  A1           the next scheduled night: B grown by five rows, the roll calls
-               empty (the copies they replace are 2025-2026's frozen ones): a
-               full build, and clean
+  A1           the next scheduled night: B grown by five rows and a 2026 row left
+               in, the roll calls empty (the copies they replace are 2025-2026's
+               frozen ones): a full build, clean, and the left-out row on the
+               run's page
   A2           the first 2027 roll calls: installed
-  C-, D-level  variants C and D after the switch, at build_data and narrative
-               level: the term stays whole, the stragglers are counted and left
-               out, and nobody's 2026 sponsors are filed under 2027-2028
+  C-, D-, S-level  variants C and D after the switch, and S -- only the sponsor
+               files naming 2027 -- at build_data and narrative level: the term
+               stays whole, the stragglers are counted and left out, and nobody's
+               2026 sponsors are filed under 2027-2028
+
+The fake roster seats a third of the House new, moves one continuing member to
+another district and changes another's party: their 2025-2026 sponsorships keep
+the seat and party they held then (build_site_v2's term roster).
 
 WHAT IT PROVES, AND HOW (after NT and after A1, against the pre-turn build)
 
@@ -81,13 +99,17 @@ WHAT IT PROVES, AND HOW (after NT and after A1, against the pre-turn build)
                          archived mark and its coverage, the session_over
                          note, a CACR's election, a sponsor who left mid-term
                          gaining the link the pre-turn build lacked) stand
-                         apart from anything else; index.json's entries the
-                         same way; proceedings.csv's rows of the
+                         apart from anything else; the term's index file,
+                         site/idx/<term>.json, the same way; proceedings.csv's
+                         rows of the
                          term equal in content; the Senate's hearing reports,
                          chapters and topics of the term equal
   2027-2028 appears      its index and its bills, with the sentinel titles
   no leak                no 2025-2026 title on a 2027 page, and the two bills
-                         given a 2025 bill's number and LSR take nothing of it
+                         given a 2025 bill's number and LSR take nothing of it,
+                         read from each 2027 page's own record
+                         (build_bill_pages.embedded), and none examined is a
+                         failure
   the verdicts           the scheduled nights publish nothing of the turn; the
                          New term run is publishable and its publish sets the
                          baseline; A1 is clean and publishable
@@ -273,14 +295,18 @@ def fake_sponsors(lsr_rows, legislators):
 
 def new_roster(legislators, members):
     """A third of the House new on Organization Day, the same people in
-    legislators.txt and Members.txt (R1 of the design). (legislators, members,
-    [(old id, new id)])."""
+    legislators.txt and Members.txt (R1 of the design); and of those who
+    stay, one in another district and one of another party, whose 2025-2026
+    records must keep the seat and party of the term (the review of 5
+    October 2026). (legislators, members, [(old id, new id)], {id: (field,
+    was, now)})."""
     leg = lines(legislators)
     mem = lines(members)
     head, mrows = mem[0], mem[1:]
-    swapped, out = [], []
+    swapped, out, moved = [], [], {}
     house = [i for i, ln in enumerate(leg) if ln.split("|")[4:5] == ["H"]]
     pick = set(house[::3])
+    stay = [i for i in house if i not in pick]
     by_mail = {}
     for i, ln in enumerate(leg):
         f = ln.split("|")
@@ -292,6 +318,12 @@ def new_roster(legislators, members):
             f[14] = f"Test.Newmember{k}@gc.nh.gov"
             by_mail[old_mail] = (f[1], f[2], f[14])
             swapped.append((ln.split("|")[0], new))
+        elif stay and i == stay[0]:
+            moved[f[0]] = ("district", f[7], str(int(f[7] or 0) + 40))
+            f[7] = moved[f[0]][2]
+        elif len(stay) > 1 and i == stay[1]:
+            moved[f[0]] = ("party", f[8], "D" if f[8].upper() == "R" else "R")
+            f[8] = moved[f[0]][2]
         out.append("|".join(f))
     cols = {c.strip().lower(): j for j, c in enumerate(head.split("\t"))}
     mout = [head]
@@ -302,7 +334,8 @@ def new_roster(legislators, members):
             last, first, mail = by_mail[key]
             g[cols["lastname"]], g[cols["firstname"]], g[cols["workemail"]] = last, first, mail
         mout.append("\t".join(g))
-    return (join(out), BOM + "".join(r + "\r\n" for r in mout).encode("utf-8"), swapped)
+    return (join(out), BOM + "".join(r + "\r\n" for r in mout).encode("utf-8"), swapped,
+            moved)
 
 
 def rollcalls_2027():
@@ -323,7 +356,8 @@ class Batches:
         self.batch, self.lsr_map, self.coincide = first_batch(b["Docket.txt"])
         self.resolutions, _, _ = first_batch(b["Docket.txt"], resolutions_only=True)
         self.lsrs = fake_lsrs(b["LSRs.txt"], self.lsr_map)
-        self.leg_r1, self.mem_r1, self.swapped = new_roster(b["legislators.txt"], b["Members.txt"])
+        self.leg_r1, self.mem_r1, self.swapped, self.moved = new_roster(b["legislators.txt"],
+                                                                       b["Members.txt"])
         self.only, self.spons = fake_sponsors(self.lsrs, self.leg_r1)
         self.straggle = lines(b["Docket.txt"])[-10:]
 
@@ -343,6 +377,14 @@ class Batches:
             b["RollCallSummary.txt"], b["RollCallHistory.txt"] = rollcalls_2027()
         if roster == "new":
             b["legislators.txt"], b["Members.txt"] = self.leg_r1, self.mem_r1
+            if lsrs is None:
+                # THE SITTING ONLY: LsrsOnly.txt lists sitting members alone
+                # (none of its 353 was off the roster on 5 October 2026), so
+                # the export of a night whose roster has turned drops the
+                # departed members' sponsorships of 2025-2026 with them.
+                sitting = {ln.split("|")[0] for ln in lines(self.leg_r1)}
+                b["LsrsOnly.txt"] = join([ln for ln in lines(b["LsrsOnly.txt"])
+                                          if ln.split("|")[1:2] and ln.split("|")[1] in sitting])
         for n in empty:
             b[n] = BOM
         return b
@@ -351,11 +393,26 @@ class Batches:
         base_docket = lines(self.base["Docket.txt"])
         if v == "R":
             return self.export(docket=self.resolutions, roster="new", **kw)
+        if v == "OD":
+            # Organization Day's roster, the files still 2025-2026's.
+            return self.export(roster="new", **kw)
+        if v == "S":
+            # Only the sponsor files naming 2027 (the review of 5 October
+            # 2026): the guard and the build must agree it is a new term.
+            b = self.export(**kw)
+            b["LsrsOnly.txt"] = join(lines(b["LsrsOnly.txt"]) + self.only)
+            b["LsrSponsors.txt"] = join(lines(b["LsrSponsors.txt"]) + self.spons)
+            return b
         if v == "B":
             return self.export(docket=self.batch, lsrs=self.lsrs, roster="new", **kw)
         if v == "B+":
             grown = self.batch + [r.replace("Introduced", "Introduced again", 1)
                                   for r in self.batch[-5:]]
+            return self.export(docket=grown, lsrs=self.lsrs, roster="new", **kw)
+        if v == "B+late":
+            # ... and a 2026 row entered after the switch: a chapter number, say.
+            grown = self.batch + [r.replace("Introduced", "Introduced again", 1)
+                                  for r in self.batch[-5:]] + self.straggle[-1:]
             return self.export(docket=grown, lsrs=self.lsrs, roster="new", **kw)
         if v == "C":
             return self.export(docket=self.batch + self.straggle, lsrs=self.lsrs, roster="new", **kw)
@@ -539,8 +596,10 @@ def keep_pre_turn(root, pre):
     sp = json.loads((root / "data" / "sponsors.json").read_text(encoding="utf-8"))
     (pre / "bills.json").write_text(json.dumps({TERM: bills.get(TERM)}), encoding="utf-8")
     (pre / "sponsors.json").write_text(json.dumps({TERM: sp.get(TERM)}), encoding="utf-8")
-    for rel in ("site/index.json", "proceedings.csv", "senate_hearing_reports.json",
-                "chapters.json", "topics_assigned.json", f"site/idx/{TERM}.json", "floor_index.json"):
+    # The term's index file, not index.json, which dev retired on 5 October 2026.
+    for rel in ("site/meta.json", "proceedings.csv", "senate_hearing_reports.json",
+                "chapters.json", "topics_assigned.json", f"site/idx/{TERM}.json", "floor_index.json",
+                "data/member_votes.json"):
         if (root / rel).exists():
             (pre / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(root / rel, pre / rel)
@@ -591,22 +650,38 @@ def link_gained(was, now, site):
     return True
 
 
-def compare_term(root, pre, label):
-    """2025-2026 after the turn against the pre-turn build: what differs, by field."""
+def compare_term(root, pre, label, finished=True):
+    """2025-2026 after the turn against the pre-turn build: what differs, by field.
+    `finished` False is a night before the switch whose roster has turned
+    (OD, DB1): the term is still the session's, and nothing of it moves --
+    not the archived mark, not the session_over note -- but a sponsor who
+    left mid-term gaining a link."""
     from collections import Counter
     bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
     sp = json.loads((root / "data" / "sponsors.json").read_text(encoding="utf-8"))
     was_b = json.loads((pre / "bills.json").read_text(encoding="utf-8"))[TERM]
     was_s = json.loads((pre / "sponsors.json").read_text(encoding="utf-8"))[TERM]
     now_b = bills.get(TERM) or {}
-    differ = [b for b in was_b if {k: v for k, v in (now_b.get(b) or {}).items() if k != "archived"}
-              != was_b[b]]
+    differ = [b for b in was_b if {k: v for k, v in (now_b.get(b) or {}).items()
+                                   if k != "archived" or not finished} != was_b[b]]
     note(len(now_b) == len(was_b) and not differ,
-         f"{label}: data/bills.json {TERM} is the pre-turn slice record for record but the "
-         f"archived mark ({len(now_b):,} of {len(was_b):,} records, {len(differ)} differing)",
-         differ[:5])
-    note(all(r.get("archived") for r in now_b.values()),
-         f"{label}: every {TERM} record carries the archived mark")
+         f"{label}: data/bills.json {TERM} is the pre-turn slice record for record"
+         + (" but the archived mark" if finished else "")
+         + f" ({len(now_b):,} of {len(was_b):,} records, {len(differ)} differing)", differ[:5])
+    if finished:
+        note(all(r.get("archived") for r in now_b.values()),
+             f"{label}: every {TERM} record carries the archived mark")
+    # The ballots of the term, by who cast them and how they are named.
+    if (pre / "data" / "member_votes.json").exists():
+        def ballots(p):
+            return Counter((v["member_id"], v["name"], v["party"], v["vote_number"], v["year"])
+                           for v in json.loads(p.read_text(encoding="utf-8"))
+                           if v.get("year") in ("2025", "2026"))
+        a, b = ballots(pre / "data" / "member_votes.json"), ballots(root / "data" / "member_votes.json")
+        unnamed = sum(n for k, n in b.items() if str(k[1]).startswith(("Member #", "Former member")))
+        note(a == b, f"{label}: the term's {sum(a.values()):,} ballots are cast and named as before, "
+                     f"each member with their party ({unnamed:,} unnamed)",
+             [k for k in (set(a) ^ set(b))][:4])
     note((sp.get(TERM) or {}) == was_s,
          f"{label}: data/sponsors.json {TERM} equal to the pre-turn slice, every list "
          f"({len(sp.get(TERM) or {}):,} of {len(was_s):,})")
@@ -623,8 +698,8 @@ def compare_term(root, pre, label):
             BBP.embedded(site / "bill" / yr / f"{bid.lower()}.html")
         return json.loads(raw) if raw else None
     fields, pages, samples, missing = Counter(), Counter(), {}, []
-    rows0 = json.loads((pre / "site" / "index.json").read_text(encoding="utf-8"))
-    mine = [(str(r.get("year")), r["id"]) for r in rows0 if r.get("term") == TERM]
+    rows0 = json.loads((pre / "site" / "idx" / f"{TERM}.json").read_text(encoding="utf-8"))
+    mine = [(str(r.get("year")), r["id"]) for r in rows0]
     for yr, bid in mine:
         a, b = record(pre / "site", yr, bid), record(root / "site", yr, bid)
         if a is None or b is None:
@@ -649,33 +724,37 @@ def compare_term(root, pre, label):
             pages["same" if q.exists() and q.read_bytes() == p.read_bytes() else
                   "differ" if q.exists() else "gone"] += 1
         pages["new"] += sum(1 for q in p1.rglob("*.html") if not (p0 / q.relative_to(p1)).exists())
-    other = {k: n for k, n in fields.items() if not EXPECTED.match(k) and "(CACR)" not in k
-             and k != "sponsors (a link gained)"}
+    other = {k: n for k, n in fields.items() if (not EXPECTED.match(k) or not finished)
+             and "(CACR)" not in k and k != "sponsors (a link gained)"}
     RESULTS.setdefault("term_fields", {})[label] = {"fields": dict(fields), "samples": samples,
                                                     "pages": dict(pages), "missing": missing}
     print(f"    the {len(mine):,} records of {TERM}: fields that differ {dict(fields)}")
     print(f"    site/bill/{{2025,2026}} pages: {dict(pages)}")
     note(not missing, f"{label}: every {TERM} bill has its record on the site", missing[:5])
     note(not other, f"{label}: the {len(mine):,} records of {TERM} differ from the pre-turn build "
-                    "only in the archived mark, the session_over note, a CACR's election and "
-                    "a sponsor who left mid-term gaining a link",
+                    + ("only in the archived mark, the session_over note, a CACR's election and "
+                       "a sponsor who left mid-term gaining a link" if finished else
+                       "only in a sponsor who left mid-term gaining a link"),
          {k: samples.get(k) for k in list(other)[:6]})
-    # index.json's entries of the term.
+    # The term's index file's entries (site/idx/<term>.json; index.json is
+    # retired).
     def idx(p):
         rows = json.loads(p.read_text(encoding="utf-8"))
-        return {(r.get("term") or r.get("t"), r.get("id") or r.get("b")): r for r in rows
-                if isinstance(r, dict)}
-    i0, i1 = idx(pre / "site" / "index.json"), idx(root / "site" / "index.json")
-    mine = [k for k in i0 if str(k[0]) == TERM]
+        return {(str(r.get("year")), r.get("id")): r for r in rows if isinstance(r, dict)}
+    i0 = idx(pre / "site" / "idx" / f"{TERM}.json")
+    i1 = idx(root / "site" / "idx" / f"{TERM}.json")
     kf = Counter()
-    for k in mine:
+    for k in i0:
         for f in json_diff_keys(i0[k], i1.get(k, {})):
             kf[f"{f} (CACR)" if str(k[1]).startswith("CACR") else f] += 1
     RESULTS["term_fields"][label]["index"] = dict(kf)
-    print(f"    index.json entries of {TERM}: {len(mine):,}; fields that differ: {dict(kf)}")
-    note(not [f for f in kf if f != "archived" and "(CACR)" not in f],
-         f"{label}: index.json's {len(mine):,} entries of {TERM} differ only in the archived mark "
-         "and a CACR's election", dict(kf))
+    print(f"    site/idx/{TERM}.json entries: {len(i0):,} against {len(i1):,}; fields that differ: "
+          f"{dict(kf)}")
+    note(len(i0) == len(i1) and not [f for f in kf if (f != "archived" or not finished)
+                                      and "(CACR)" not in f],
+         f"{label}: site/idx/{TERM}.json's {len(i0):,} entries differ only in "
+         + ("the archived mark and a CACR's election" if finished else "a CACR's election"),
+         dict(kf))
     # The table of proceedings, by content.
     import csv
     def procs(p):
@@ -713,12 +792,30 @@ def check_new_term(root, batches, label):
                            f"{len(want)} measures ({len(new)} in all)", sorted(want - set(new))[:6])
     note((root / "site" / "idx" / f"{NEW}.json").exists(), f"{label}: site/idx/{NEW}.json written")
     old_titles = {r.get("title") for r in (bills.get(TERM) or {}).values() if r.get("title")}
-    leaked = []
-    for p in (root / "site" / "bills" / "2027").glob("*.json"):
-        r = json.loads(p.read_text(encoding="utf-8"))
-        if r.get("title") in old_titles and r.get("title"):
-            leaked.append(p.name)
-    note(not leaked, f"{label}: no 2027 bill page carries a 2025-2026 title", leaked[:6])
+    # EACH 2027 PAGE'S OWN RECORD (the review of 5 October 2026): these read
+    # site/bills/2027/*.json, which the build does not write for records this
+    # small -- they travel inside their pages -- so they examined nothing and
+    # passed. A record is read as compare_term reads one, and none read fails.
+    sys.path.insert(0, str(root))
+    import build_bill_pages as BBP
+
+    def record(bid):
+        f = root / "site" / "bills" / "2027" / f"{bid}.json"
+        raw = f.read_text(encoding="utf-8") if f.exists() else \
+            BBP.embedded(root / "site" / "bill" / "2027" / f"{bid.lower()}.html")
+        return json.loads(raw) if raw else None
+    pages = sorted({p.stem.upper() for p in (root / "site" / "bill" / "2027").glob("*.html")}
+                   | {p.stem.upper() for p in (root / "site" / "bills" / "2027").glob("*.json")})
+    leaked, read = [], 0
+    for bid in pages:
+        r = record(bid)
+        if r is None:
+            continue
+        read += 1
+        if r.get("title") and r.get("title") in old_titles:
+            leaked.append(bid)
+    note(read and not leaked, f"{label}: no 2027 bill page carries a 2025-2026 title "
+                              f"({read} of {len(pages)} pages' records read)", leaked[:6])
     for b in batches.coincide:
         r = new.get(b) or {}
         # The subject: a committee may come from the bill's own docket rows,
@@ -734,12 +831,13 @@ def check_new_term(root, batches, label):
         took = {k: r.get(k) for k in ("subject_code",) if r.get(k)}
         if old.get("subject_code") and r.get("subject") == old.get("subject"):
             took["subject"] = r.get("subject")
-        page = root / "site" / "bills" / "2027" / f"{b}.json"
-        rec = json.loads(page.read_text(encoding="utf-8")) if page.exists() else {}
-        testimony = any(e.get("testimony") for e in rec.get("events") or [])
-        note(not took and not testimony,
+        rec = record(b)
+        # Anywhere in it: a docket line's count or a hearing station's.
+        testimony = rec is not None and '"testimony"' in json.dumps(rec)
+        note(rec is not None and not took and not testimony,
              f"{label}: {b} of 2027, given a 2025 bill's number and LSR, takes neither its "
-             "committee, subject nor sign-in counts", {**took, "testimony": testimony})
+             "committee, subject nor sign-in counts, by its page's own record",
+             {**took, "testimony": testimony, "record": rec is not None})
     sp = json.loads((root / "data" / "sponsors.json").read_text(encoding="utf-8"))
     stray = [b for b in (sp.get(NEW) or {}) if b not in new]
     note(not stray, f"{label}: sponsors.json {NEW} lists only bills of {NEW}", stray[:6])
@@ -755,6 +853,8 @@ def main():
                          "night: run the nights")
     ap.add_argument("--guards", action="store_true", help="no full build; the guards only")
     ap.add_argument("--views", help="a folder of the database's views for the database night")
+    ap.add_argument("--pre-only", action="store_true",
+                    help="make the copy, freeze and build the pre-turn baseline, and stop")
     a = ap.parse_args()
     root = Path(a.copy).resolve()
     logs = root / "_rehearsal"
@@ -781,11 +881,15 @@ def main():
             d = json.loads((logs / "pre_data" / f"{f}.json").read_text(encoding="utf-8"))
             (pre / f"{f}.json").write_text(json.dumps({TERM: d.get(TERM)}), encoding="utf-8")
     # THE PRE-TURN BUILD, the baseline of every comparison.
-    if not a.guards and not (a.reuse and (pre / "site" / "index.json").exists()):
+    if not a.guards and not (a.reuse and (pre / "site" / "idx" / f"{TERM}.json").exists()):
         rc, secs, _ = sh(["build_all.py", "--local", "--no-captions"], root, logs / "build_pre.log")
         print(f"pre-turn build: exit {rc} in {secs / 60:.0f} min")
         note(rc == 0, "the pre-turn build, with the freeze in place")
         keep_pre_turn(root, pre)
+    if a.pre_only:
+        (logs / "rehearsal.json").write_text(json.dumps(RESULTS, indent=1), encoding="utf-8")
+        print(f"\n--pre-only: the copy and its pre-turn build are at {root}; --reuse runs the nights")
+        return 1 if RESULTS["failed"] else 0
     N = Nights(root, logs)
     NI = N.NI
     # The census a night is gated against: this build's, as a night would keep it.
@@ -813,10 +917,10 @@ def main():
     code, v, rec = N.night("G1", "--runner", export=batches.export(), run_id="901")
     note(v.get("fetch") == "installed" and installed_state(root) == pre_files,
          "G1: the export as installed is installed, and nothing moves", v.get("fetch"))
-    # G2-G5: the turn on a scheduled night.
-    for label, var in (("G2", "R"), ("G3", "B"), ("G4", "C"), ("G5", "D")):
+    # G2-G5: the turn on a scheduled night; G10, only the sponsor files naming 2027.
+    for label, var in (("G2", "R"), ("G3", "B"), ("G4", "C"), ("G5", "D"), ("G10", "S")):
         code, v, rec = N.night(label, "--runner", export=batches.variant(var), run_id="902")
-        refused_as_turn(f"{label} ({var})", v, rec, False if var == "D" else None)
+        refused_as_turn(f"{label} ({var})", v, rec, False if var in ("D", "S") else None)
     # G6: the 20 September pattern.
     code, v, rec = N.night("G6", "--runner", export=batches.export(
         empty=("LSRs.txt", "legislators.txt")), run_id="906")
@@ -844,13 +948,52 @@ def main():
     note(v.get("fetch") == "installed" and (root / "RollCallSummary.txt").read_bytes() == BOM,
          "G9: the New term run installs the turn with the roll-call files empty", v.get("fetch"))
     restore(root, pre_files)
+    real = "stub" if a.guards else "real"
+    # THE TERM'S ROSTER, FROZEN FIRST (the review of 5 October 2026): a first
+    # --session after Organization Day would freeze the next House as the
+    # term's. On the copy's own files with the new roster, in a folder of its
+    # own, it is refused.
+    import freeze_term as FT
+    late = logs / "first_freeze_late"
+    shutil.rmtree(late, ignore_errors=True)
+    late.mkdir(parents=True)
+    restore(late, {**pre_files, "legislators.txt": batches.leg_r1, "Members.txt": batches.mem_r1})
+    shutil.copy2(root / "verification_manifest.csv", late / "verification_manifest.csv")
+    try:
+        FT.freeze_session(TERM, root=late)
+        said = "frozen"
+    except FT.Refused as e:
+        said = str(e)
+    note(f"is not {TERM}'s roster" in said and not (late / "frozen").exists(),
+         "a first --session over Organization Day's roster is refused", said[:200])
+    shutil.rmtree(late, ignore_errors=True)
+    # OD0, OD: ORGANIZATION DAY'S ROSTER BEFORE THE DOCKET TURNS. Without the
+    # term's frozen roster nothing is installed; with it, the night installs
+    # it, builds in full, and 2025-2026 -- still the session's -- is as it was.
+    shutil.move(str(root / "frozen" / TERM), str(logs / "frozen_aside"))
+    code, v, rec = N.night("OD0", "--runner", export=batches.variant("OD"), run_id="913")
+    shutil.move(str(logs / "frozen_aside"), str(root / "frozen" / TERM))
+    note(str(v.get("fetch")).startswith("roster") and installed_state(root) == pre_files
+         and NI.NEW_TERM_ROSTER in NI.plain_why(v),
+         "OD0: a new roster over a term with no frozen roster installs nothing, and says to freeze",
+         (v.get("fetch"), NI.plain_why(v)[:160]))
+    code, v, rec = N.night("OD", "--runner", export=batches.variant("OD"), build=real, run_id="914")
+    note(v.get("fetch") == "installed" and b"Newmember0" in (root / "legislators.txt").read_bytes()
+         and FT.own_roster_terms(root) == [TERM],
+         "OD: Organization Day's roster goes in over the term's frozen roster, and the term's "
+         "members are named from that", (v.get("fetch"), FT.own_roster_terms(root)))
+    if not a.guards:
+        note(v.get("built"), "OD: built in full", v.get("not_clean"))
+        RESULTS.setdefault("od_verdict", {"publishable": v.get("publishable"),
+                                          "gates": v.get("gates"), "not_clean": v.get("not_clean")})
+        compare_term(root, pre, "OD", finished=False)
+    restore(root, pre_files)
     # DB1, DB2: the database night between Organization Day and the switch.
     if a.views:
-        run_db(N, root, Path(a.views), batches, pre_files)
+        run_db(N, root, Path(a.views), batches, pre_files, real, pre)
         restore(root, pre_files)
 
     # NT: THE SWITCH.
-    real = "stub" if a.guards else "real"
     code, v, rec = N.night("NT", "--runner", "--new-term",
                            export=batches.variant("B"), build=real, run_id="910")
     note(v.get("fetch") == "installed" and (rec.get("turned") or {}).get("to") == NEW,
@@ -867,8 +1010,9 @@ def main():
     else:
         NI.write_json(NI.CENSUS, {**(NI.load_json(NI.CENSUS) or {}), "run_id": "910", "new_term": True})
     after_switch = installed_state(root)
-    # A1: the next night: grown, and the roll calls empty over 2026's frozen copies.
-    code, v, rec = N.night("A1", "--runner", export=batches.variant("B+", rollcalls="empty"),
+    # A1: the next night: grown, a 2026 row entered after the switch, and the
+    # roll calls empty over 2026's frozen copies.
+    code, v, rec = N.night("A1", "--runner", export=batches.variant("B+late", rollcalls="empty"),
                            build=real, run_id="911")
     note(v.get("fetch") == "installed" and {x["name"] for x in rec.get("released") or []}
          == {"RollCallSummary.txt", "RollCallHistory.txt"},
@@ -877,6 +1021,9 @@ def main():
     if not a.guards:
         note(v.get("clean") and v.get("publishable"), "A1: the night after the switch is clean",
              v.get("not_clean"))
+        note(any("left out" in w and TERM in w for w in v.get("warnings") or []),
+             "A1: the 2026 row entered after the switch is on the run's page, left out",
+             v.get("warnings"))
         compare_term(root, pre, "A1")
         check_new_term(root, batches, "A1")
     # A2: the first roll calls of 2027.
@@ -884,8 +1031,8 @@ def main():
                            run_id="912")
     note(v.get("fetch") == "installed" and b"2027|H|1|" in (root / "RollCallSummary.txt").read_bytes(),
          "A2: the first 2027 roll calls are installed", v.get("fetch"))
-    # C and D after the switch, at build_data and narrative level.
-    for var in ("C", "D"):
+    # C, D and S after the switch, at build_data and narrative level.
+    for var in ("C", "D", "S"):
         level(root, batches, var, pre, logs)
 
     os.chdir(REPO)
@@ -897,9 +1044,11 @@ def main():
     return 1 if bad else 0
 
 
-def run_db(N, root, views, batches, pre_files):
+def run_db(N, root, views, batches, pre_files, real="stub", pre=None):
     """The database night at the turn: the views hold 2027's first rows and the
-    new roster, and the export is empty."""
+    new roster, and the export is empty. DB1 is built in full where `real`
+    is, and its 2025-2026 compared as OD's is (the review of 5 October 2026:
+    its build was a stub, and nobody looked at what it would publish)."""
     NI = N.NI
     work = root / "_rehearsal" / "views"
     shutil.rmtree(work, ignore_errors=True)
@@ -944,7 +1093,7 @@ def run_db(N, root, views, batches, pre_files):
     for label, members in (("DB1", batches.mem_r1), ("DB2", batches.base["Members.txt"])):
         restore(root, pre_files)
         code, v, rec = N.night(label, "--runner", export={**empty, "Members.txt": members},
-                               views=work, run_id="920")
+                               views=work, run_id="920", build=real if label == "DB1" else "stub")
         df = v.get("day_files") or {}
         if label == "DB1":
             leg = (root / "legislators.txt").read_bytes()
@@ -956,6 +1105,12 @@ def run_db(N, root, views, batches, pre_files):
             note(any("New term" in w for w in v.get("warnings") or []),
                  "DB1: its page says a newer session year is a New term run's to take",
                  v.get("warnings"))
+            if real == "real" and pre is not None:
+                note(v.get("built"), "DB1: built in full", v.get("not_clean"))
+                RESULTS.setdefault("db1_verdict", {"publishable": v.get("publishable"),
+                                                   "gates": v.get("gates"),
+                                                   "not_clean": v.get("not_clean")})
+                compare_term(root, pre, "DB1", finished=False)
         else:
             note(df.get("source") != "database" and any("roster" in s or "legislators.txt" in s
                                                         for s in df.get("stops") or []),
@@ -982,6 +1137,17 @@ def level(root, batches, var, pre, logs):
         same = sum(1 for b, r in was_b.items()
                    if {k: x for k, x in (now.get(b) or {}).items() if k != "archived"} == r)
         note(same == len(was_b) == len(now), f"{var}-level: {TERM} whole, {same:,} of {len(was_b):,} records equal")
+    if var == "S":
+        # Only the sponsor files name 2027: the build reads the session's
+        # term from the guard's six files, so 2025-2026 is finished and its
+        # freeze's, and no 2027 sponsor is filed on a 2025-2026 bill.
+        was_s = json.loads((pre / "sponsors.json").read_text(encoding="utf-8"))[TERM]
+        note(sp.get(TERM) == was_s, f"S-level: {TERM}'s sponsors are its freeze's, every list, "
+                                    "with only the sponsor files naming 2027")
+        note("left out" in said2, "S-level: the session's 2025-2026 rows are counted and left out",
+             [ln for ln in said2.splitlines() if "left out" in ln][:2])
+        restore(root, saved)
+        return
     want = {f.split("|")[3] for f in batches.batch}
     note(want <= set(bills.get(NEW) or {}), f"{var}-level: the 2027 batch is there "
                                             f"({len(bills.get(NEW) or {})} measures)")
