@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.363
+# GRANITE_VERSION: 2026-09-04.364
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2814,6 +2814,92 @@ def _overtaken_meeting_not_day(N, P):
     return "ok", ("HB 1288 of 1990's Senate hearing of 8 March and HB 650 of 2014's Finance "
                   "hearing of 18 February are left off at their hour, and the hearing of 6 March, "
                   "the work session of the 18th and HB 1132 of 2002's hearing of 19 March stay")
+
+
+# Real rows: Docket_db_1999-2000.txt 14087-14091 (HB 1195), 18320-18323 (SB
+# 405), 13072-13076 (SB 387), 12195-12198 (SB 79), 18156-18160 (SB 326) and
+# 14944-14947 (SB 370).
+_DOCKET_SENATE_2000_MOVES = {
+    ("HB1195", "1999-2000"): [
+        "2000|2175|04/06/2000 10:58:01 AM|HB1195|S|Introduced and Ref. to Public Institutions, Health & Human Services; SJ 9, Pg.284|04/06/2000 10:58:01 AM",
+        "2000|2175|04/11/2000 03:56:39 PM|HB1195|S|Hearing May 16, Room 102, LOB, 2:00 p.m.; SC22|04/11/2000 03:56:39 PM",
+        "2000|2175|04/13/2000 04:01:01 PM|HB1195|S|=RESCHEDULED= Hearing  April 24, Room 102, LOB, 2:30 pm; SC23|04/13/2000 04:01:01 PM",
+        "2000|2175|04/26/2000 03:31:22 PM|HB1195|S|Committee Report Ought to Pass, 4/27/2000; SC25|04/26/2000 03:31:22 PM",
+        "2000|2175|04/27/2000 01:52:22 PM|HB1195|S|Ought to Pass, MA, VV; OT3rdg, MA, VV; SJ 12, Pg.330|04/27/2000 01:52:22 PM"],
+    ("SB405", "1999-2000"): [
+        "2000|2616|01/05/2000 12:54:20 PM|SB405|S|Introduced and Ref. to Ways and Means; SJ Convening Day, Pg.13|01/05/2000 12:54:20 PM",
+        "2000|2616|01/06/2000 02:25:23 PM|SB405|S|Hearing, Jan. 28, Room 103, SH, 11:00 a.m.; SC1, Pg.7|01/06/2000 02:25:23 PM",
+        "2000|2616|01/19/2000 03:57:56 PM|SB405|S|==CANCELED AND RESCHEDULED== Feb.11, Room 103, SH, 10:00 a.m.; SC5, Pg.6|01/19/2000 03:57:56 PM",
+        "2000|2616|03/10/2000 01:57:16 PM|SB405|S|Hearing March 17, Room 103, SH, 10:00 a.m.; SC16A.|03/10/2000 01:57:16 PM"],
+    ("SB387", "1999-2000"): [
+        "2000|2068|01/05/2000 09:25:22 AM|SB387|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 11|01/05/2000 09:25:22 AM",
+        "2000|2068|01/06/2000 01:40:01 PM|SB387|S|Hearing, Jan. 25 , Room 104 , LOB ,3:40 p.m.;SC1, Pg.6|01/06/2000 01:40:01 PM",
+        "2000|2068|01/19/2000 03:50:53 PM|SB387|S|==TIME CHANGE== Jan. 25, Room 104, LOB, 3:25 p.m.; SC 5, Pg.3|01/19/2000 03:50:53 PM",
+        "2000|2068|01/26/2000 04:05:34 PM|SB387|S|==RESCHEDULED==Feb.15,Room 104,LOB,3:30 p.m.; SC 6,Pg.6|01/26/2000 04:05:34 PM",
+        "2000|2068|03/06/2000 04:43:58 PM|SB387|S|Committee Report Ought to Pass; SC15, Pg.5|03/06/2000 04:43:58 PM"],
+    ("SB79", "1999-2000"): [
+        "2000|0923|01/28/1999 10:39:54 AM|SB79|S|Introduction and referring to Banks 1/28/99;  SJ 3, P 34|01/28/1999 10:39:54 AM",
+        "2000|0923|03/05/1999 09:33:07 AM|SB79|S|Hearing, 3/17/99, Room 103, LOB, 9:00 a.m.|03/05/1999 09:33:07 AM",
+        "2000|0923|03/10/1999 02:39:49 PM|SB79|S|Rescheduled Hearing, 3/24/99, Room 103, LOB, 9:00 a.m. Hearing Cancelled|03/10/1999 02:39:49 PM",
+        "2000|0923|05/14/1999 10:54:41 AM|SB79|S|Committee Report, Rereferred to Committee, 5/18/99|05/14/1999 10:54:41 AM"],
+    ("SB326", "1999-2000"): [
+        "2000|2605|01/05/2000 11:07:36 AM|SB326|S|Introduced and Ref. to Public Institutions, Health and Human Services; SJ Convening Day, Pg.7|01/05/2000 11:07:36 AM",
+        "2000|2605|01/06/2000 10:40:09 AM|SB326|S|Hearing , Jan. 18 , 1:00 p.m., Room 102 , LOB; SC 1, Pg.4|01/06/2000 10:40:09 AM",
+        "2000|2605|01/11/2000 09:42:06 AM|SB326|S|== Canceled== and Rescheduled; SC 2, Pg.19|01/11/2000 09:42:06 AM",
+        "2000|2605|01/11/2000 09:44:06 AM|SB326|S|New Date , Feb. 22 , 2:30 p.m., Room 102 , LOB; SC 2, Pg.19  Jt Hearing with House E D & A|01/11/2000 09:44:06 AM",
+        "2000|2605|03/22/2000 08:44:22 AM|SB326|S|Committee Report Ought to Pass with Amendment{3829},[New Title], 3/23/2000, SC18, Pg.15|03/22/2000 08:44:22 AM"],
+    ("SB370", "1999-2000"): [
+        "2000|2264|01/05/2000 11:09:51 AM|SB370|S|Introduced and Ref. to Wildlife and Recreation; SJ Convening Day, Pg.10|01/05/2000 11:09:51 AM",
+        "2000|2264|01/06/2000 11:48:10 AM|SB370|S|Hearing, Jan. 19, 2:45 p.m., Room 101, LOB; SC1, Pg.5|01/06/2000 11:48:10 AM",
+        "2000|2264|01/26/2000 03:50:33 PM|SB370|S|==RECESSED== NEW DATE== Feb.9,Room 101 , LOB, 2:30 p.m.; SC6, Pg.4|01/26/2000 03:50:33 PM",
+        "2000|2264|02/16/2000 02:38:40 PM|SB370|S|Committee Report, Ought to Pass with Amendment{3402}, SC 12, Pg.3 and 7|02/16/2000 02:38:40 PM"],
+}
+# For each: what its Senate committee stage says, and what it must not say.
+_SENATE_2000_MOVES_TOLD = {
+    ("HB1195", "1999-2000"): ("The committee held a public hearing on April 24, 2000.", ["May 16"]),
+    ("SB405", "1999-2000"): ("The committee held public hearings on February 11, 2000 and "
+                             "March 17, 2000.", ["January 28"]),
+    ("SB387", "1999-2000"): ("The committee held a public hearing on February 15, 2000.",
+                             ["January 25"]),
+    ("SB79", "1999-2000"): ("The committee held a public hearing on March 24, 1999.",
+                            ["March 17"]),
+    ("SB326", "1999-2000"): ("The committee held a public hearing on February 22, 2000.",
+                             ["January 18"]),
+    # A recessed hearing's new day is no move, and is not read as one.
+    ("SB370", "1999-2000"): ("The committee held a public hearing on January 19, 2000.",
+                             ["February 9"]),
+}
+
+
+@check("narrative", "a Senate row of 1999-2000 that gives a hearing's new day is the notice of "
+                    "that day, and moves the hearing it replaced there",
+       needs=("narrative",))
+def _senate_2000_moves(N):
+    """Decision 56, the reviewers' finding of 7 October 2026. The Senate of
+    1999-2000 wrote the move of a hearing a dozen ways the reader did not
+    read -- "=RESCHEDULED= Hearing April 24", "==CANCELED AND RESCHEDULED==
+    Feb.11", "==RESCHEDULED==Feb.15" with the mark taken off, "New Date , Feb.
+    22", "Rescheduled Hearing, 3/24/99 ... Hearing Cancelled" -- so each
+    history told the hearing on the day it was moved from and never on the
+    day it sat: HB 1195's on 16 May 2000, after the Senate had passed the bill
+    on 27 April, which Senate Calendar 23 prints rescheduled to 24 April and
+    "Cancelled" under 16 May. And the hearings of 25 January 2000, moved on
+    rows typed the next day, which Senate Calendar 10 prints "RESCHEDULED FROM
+    JANUARY 25TH" (SB 381, CACR 38, SB 387). A recessed hearing's new day
+    ("==RECESSED== NEW DATE== Feb.9", SB 370) is not a move."""
+    bad = []
+    for key, lines in _DOCKET_SENATE_2000_MOVES.items():
+        said, unsaid = _SENATE_2000_MOVES_TOLD[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        text = " ".join(s["text"] for s in n["stages"])
+        if said not in text:
+            bad.append(f"{name} does not say {said!r}: {text[:400]!r}")
+        bad += [f"{name} says {w!r}" for w in unsaid if w in text]
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_SENATE_2000_MOVES) - 1} Senate histories of 1999-2000 tell the "
+                  "hearing on the day it was moved to, one moved on a row typed the day after, "
+                  "and a recessed hearing's new day is no move")
 
 
 # Real rows: Docket_2015-2016.txt 2699-2703 (HB 462), 614-619 (HB 234) and

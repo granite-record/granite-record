@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.75
+# GRANITE_VERSION: 2026-09-04.76
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3165,9 +3165,13 @@ RESCHEDULED_MARK = re.compile(r"=+\s*RESCHEDULED\s*=+", re.I)
 # which is the same row by another name: "Hearing: === RESCHEDULED ===
 # 3/15/11" and then "Hearing: === DATE CHANGE === 3/22/11" (SB 120 of 2011;
 # Senate Calendar 15 prints "SB 120 has been rescheduled for March 22nd").
+# And the Senate of 1999-2000's other words for it (docket_era_1999.
+# RESCHEDULED_TO): "==CANCELED AND RESCHEDULED== Feb.11" (SB 405), "New Date ,
+# Feb. 22" (SB 326), "Hearing Rescheduled, 3/16/99" (SB 155).
 RESCHEDULING = re.compile(
-    r"=+\s*(?:RESCHEDULED|DATE\s+CHANGE)\s*=+"
-    r"|^\W*(?:(?:Public\s+)?Hearing\s*[;:,]\s*)?RESCHED(?:ULED)?\b(?!\s+TIME)",
+    r"=+\s*(?:RESCHEDULED|DATE\s+CHANGE|CANCELL?ED\s+AND\s+RESCHEDULED)\s*=+"
+    r"|^\W*(?:(?:Public\s+)?Hearing\s*[;:,]?\s*)?RESCHED(?:ULED)?\b(?!\s+TIME)"
+    r"|^\W*New\s+Date\s*,",
     re.I)
 GOES_ON = re.compile(r"\bCONTINU|\bRECONVEN|\bRECESS", re.I)
 # A day the docket notices a hearing carried on from an earlier one: not one
@@ -3284,7 +3288,7 @@ def overtaken_by(ev, evs):
                 or not _entered_before(ev, o["_entered"])
                 or o["cancelled"] or o.get("recessed") or o["when"].date() == day
                 or GOES_ON.search(o.get("_said") or o["_raw"])
-                or o["_entered"].date() > day
+                or (o["_entered"].date() > day and not _moved_after(o, day))
                 or any(x["body"] == ev["body"] and x["_type"] == ev["_type"]
                        and x["when"].date() == o["when"].date()
                        and GOES_ON_DAY.search(x.get("_said") or x["_raw"]) for x in evs)):
@@ -3303,6 +3307,26 @@ def overtaken_by(ev, evs):
                     and not _replaces_unmarked(ev, evs))):
             return "moved", o
     return "", None
+
+
+# THE SENATE OF 2000 TYPED SOME MOVES THE DAY AFTER. Its hearings of 25
+# January 2000 were moved on rows entered on the 26th -- "==RESCHEDULED==
+# Feb.15,Room 104,LOB,3:30 p.m." (SB 387) -- and those of 3 February on the
+# 7th ("=RESCHEDULED= Feb. 17", SB 373 and SB 396); Senate Calendar 10 prints
+# "SB 381-FN, CACR 38, & SB 387-FN-L HAVE BEEN RESCHEDULED FROM JANUARY 25TH",
+# SB 378, SB 404 and SB 416 "RESCHEDULED FROM JANUARY 25TH", and SB 373 and SB
+# 396 "RESCHEDULED FROM FEBRUARY 3RD". A later notice entered after the day
+# is otherwise the next meeting, not the same one moved (overtaken_by); a row
+# whose only reading is the move (docket_era_1999.rescheduled_notice), typed
+# within a week of the day, is the move.
+MOVED_LATE_DAYS = 7
+
+
+def _moved_after(o, day):
+    """Is `o`, entered after `day`, the clerk's row moving that day's hearing?"""
+    return (o.get("_era") == "1999:rescheduled"
+            and 0 < (o["_entered"].date() - day).days <= MOVED_LATE_DAYS
+            and bool(RESCHEDULING.search(o.get("_said") or "")))
 
 
 def _replaces_unmarked(ev, evs):

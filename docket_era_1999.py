@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.8
+# GRANITE_VERSION: 2026-09-11.9
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -413,6 +413,67 @@ OLD = [
 # ------------------------------------------------------- the glue
 MONTHS = {m: i for i, m in enumerate(
     ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
+# A ROW THAT GIVES A HEARING'S NEW DAY AND NAMES NO HEARING IN A WAY THE
+# PATTERNS ABOVE READ (7 October 2026). The Senate of 1999-2000 wrote the move
+# a dozen ways, and every one was read as no event at all, so the history told
+# the hearing on the day it was moved from and never on the day it was held:
+#
+#   "==RESCHEDULED== Feb.3, Room 104, LOB, 8:30 a.m.; SC3, Pg. 6"   (SB 373)
+#   "=RESCHEDULED= Hearing  April 24, Room 102, LOB, 2:30 pm; SC23"  (HB 1195)
+#   "Hearing =RESCHEDULED= Hearing May 1, Room102, LOB, 11:30 a.m."  (HB 1335)
+#   "==CANCELED AND RESCHEDULED== Feb.11, Room 103, SH, 10:00 a.m."  (SB 405)
+#   "(RESCHEDULED) Feb. 14, 10:00 a.m. Rooms 206-208, LOB"           (SB 324)
+#   "New Date , Feb. 22 , 2:30 p.m., Room 102 , LOB"                 (SB 326)
+#   "Hearing Rescheduled, 3/16/99, Room 104, LOB, 2:45 p.m."         (SB 155)
+#   "Rescheduled Hearings, 4/2/99, Room 103, SH, 9:00 a.m."          (SB 186)
+#   "Rescheduled Hearing, 3/24/99, Room 103, LOB, 9:00 a.m. Hearing Cancelled"
+#
+# The last is the notice of the 24th and the cancellation is the earlier
+# hearing's: Senate Calendar 12a of 1999 prints SB 79 on 24 March
+# "RESCHEDULED FROM MARCH 17TH", and Calendar 11 SB 27's "RESCHEDULED TO
+# MARCH 17TH" from the 10th. HB 1195's and HB 1335's hearings of 16 May 2000
+# were told after the Senate had passed the bills; Calendar 23 prints both
+# rescheduled, to 24 April and 1 May, and "Cancelled" under 16 May.
+#
+# Each is the notice of the day it names (rescheduled_notice), read only
+# where nothing else reads the row, and its words are the rescheduling row's
+# (narrative.RESCHEDULING), which moves the earlier notice there. Not a time
+# or room change on the same day ("==TIME CHANGE== Jan. 25", "==NEW TIME==
+# Feb.10"), and not a recessed hearing's new day ("==RECESSED== NEW DATE==
+# Feb.9", "Hearing == RE-CONVINED = May 3"), which sat and went on.
+RESCHEDULED_TO = re.compile(
+    r"^\W*(?:"
+    r"(?:Hearing\s*)?=+\s*(?:CANCELL?ED\s+AND\s+)?RESCHEDULED\s*=+\s*,?\s*(?:Hearing\s*)?"
+    r"|\(\s*RESCHEDULED\s*\)\s*"
+    r"|New\s+Date\s*,\s*"
+    r"|(?:Hearing\s+Rescheduled|Rescheduled\s+Hearings?)\s*,\s*"
+    r")(?P<date>" + DTXT + r")"
+    r"(?:(?!\bcancel|\brecess|\bcontinu|\breconven|\bre-?con|\bre-?open|\bundetermined)"
+    r"[^;])*?(?:;|$|\bHearing\s+Cancell?ed\s*$)", re.I)
+# "Rescheduled Hearing, 3/24/99 ... Hearing Cancelled" only with those words
+# last; another cancellation or a recess anywhere in the row is not this.
+RESCHEDULED_TO_CANCEL = re.compile(r"\bcancel", re.I)
+
+
+def rescheduled_notice(desc, created):
+    """The hearing notice a row that gives a hearing's new day is
+    (RESCHEDULED_TO), as {"_type": "hearing", "kind", "date"}, or None."""
+    m = RESCHEDULED_TO.match(desc or "")
+    if not m or created is None:
+        return None
+    rest = (desc or "")[m.end("date"):]
+    if RESCHEDULED_TO_CANCEL.search(rest) and not re.search(
+            r"\bHearing\s+Cancell?ed\s*$", rest, re.I):
+        return None
+    if RESCHEDULED_TO_CANCEL.search(desc[:m.start("date")]) and not re.search(
+            r"CANCELL?ED\s+AND\s+RESCHEDULED", desc[:m.start("date")], re.I):
+        return None
+    day = full_date(m.group("date"), created, forward=True)
+    if not day:
+        return None
+    return {"_type": "hearing", "kind": "Hearing", "date": day, "_era": "1999:rescheduled"}
 
 
 def full_date(txt, created, forward=False):
