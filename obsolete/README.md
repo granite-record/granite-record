@@ -230,3 +230,39 @@ this read only the manifest's 35 marks; and it cannot read
 `ground_truth.csv`, the truth file since, which calls the proceeding `kind`
 where this wants `proceeding`. Nothing named it but `transcribe_and_align.py`'s
 docstring, which now names `probe_alignment.py --truth`.
+
+## `probe_amendments.py`
+
+Asked one question before anyone wrote a fetcher: is the amendment text
+already on this disk? It read the cached House calendars for amendment
+numbers and checked them against the ones the docket cites. The answer was
+yes -- the calendar prints each amendment where a member reads it before the
+vote -- and `extract_amendments.py` was built on it and says so in its own
+docstring. No network, no writes, and nothing ran it after that. It was one
+of two callers of `narrative.load_narratives` that the new-term plan meant to
+look at in the rehearsal; there is one now.
+
+## `probe_archive.py`
+
+Asked whether the Secretary of State's bill histories, at an address built
+from a year, a chamber and a bill (`/BillHistory/SofS_Archives/...`), were
+readable text or scans. 2005 and 2023 both answered 404 on that pattern with
+`netcheck.py` clean straight after, so the address shape was wrong rather
+than blocked, and the database's dockets made the route unnecessary for the
+docket and the votes. Nothing has used it since. **It asks the General
+Court**: it calls `refusal.check()`, and is here to be read, not run.
+
+## `probe_legacy.py`
+
+Asked, with two requests, whether the Advanced Bill Status Search at
+`bill_status/legacy/bs2016/` answers a whole session year on one page when
+the form is posted back as a browser would (`__VIEWSTATE`, `txtsessionyear`)
+rather than guessed at. It does -- 768 bills for 2019 -- and
+`fetch_archive_bills.py` does exactly this now, with `--save` keeping the page
+as `archive_<year>.html` for `--file` to read offline, which was the only
+thing this added. Its saved `probe_legacy_2024.html` is the page that
+parser was written against.
+
+**It asks the General Court, on the one path their IT office asked this
+project to go lightly on.** Do not run it; `fetch_archive_bills.py --year`
+is the same two requests.

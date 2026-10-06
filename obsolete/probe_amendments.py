@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
 """
 Is the amendment text already on this disk?
 

@@ -229,11 +229,12 @@ because `Docket.txt` was on disk; it would have fired in a clean checkout,
 which is the state a refactor is most likely to create.
 It now prints the fetch command and exits.
 
-The contract has exceptions. `probe_archive.py`, `probe_archive_shape.py`,
-`probe_calendars.py`, `probe_legacy.py`, `probe_schema.py`,
-`resolve_members.py`, `snapshot_gencourt.py` and `check_civics_links.py` ask
-the General Court too, and each calls `refusal.check()` before its first
-request; `preflight._every_fetcher_checks_refusal` finds every script that
+The contract has exceptions. `probe_archive_shape.py`, `probe_calendars.py`,
+`probe_schema.py`, `resolve_members.py`, `snapshot_gencourt.py` and
+`check_civics_links.py` ask the General Court too (`probe_archive.py` and
+`probe_legacy.py` did, and are in `obsolete/` since 6 October 2026), and
+each calls `refusal.check()` before its first request;
+`preflight._every_fetcher_checks_refusal` finds every script that
 asks, whatever its name, and fails one that does not check. `netcheck.py`
 asks gc.nh.gov and skips the check on purpose, because it is what a person
 runs to diagnose a refusal. `probe_db.py` queries the General Court's SQL
@@ -906,10 +907,11 @@ The rows of a finished term a night's files still carry go on the run's page
 a freeze only while the installed files are in the last session of their term,
 so a term's second January passes as a new session year.
 
-**Fix, for what is left: `(term, bill)` everywhere.** `probe_archive.py` and
-`obsolete/setup_archive.py` sketched this; the per-term files took a
-different road, `{term: {bill: ...}}` inside each file. The year-keyed journal and calendar
-citations were part of the same job.
+**Fix, for what is left: `(term, bill)` everywhere.**
+`obsolete/probe_archive.py` and `obsolete/setup_archive.py` sketched this;
+the per-term files took a different road, `{term: {bill: ...}}` inside each
+file. The year-keyed journal and calendar citations were part of the same
+job.
 
 ### 4. The deployment has a file cap
 
