@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.337
+# GRANITE_VERSION: 2026-09-04.338
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -15087,6 +15087,10 @@ def _journey_bills(B):
                "year": 2025, "term": "2025-2026", "kind": kind, "status": status,
                "passage": rail, "committees": [], "sponsor": "",
                "rail": B.index_rail(jrail)}
+        # The record's stops carry no words once the row has them, as
+        # build_bills writes it: the page says each in its `say`.
+        for s in jrail:
+            s.pop("short", None)
         # The status page's per-chamber fields, which the records still
         # carry: the page must not draw them. Without them here, a page that
         # drew the House Status and Senate Status rows again passed.
@@ -15784,6 +15788,11 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 # share rows. The narrowest gap between two stops' words on one row is the
 # answer. Chrome also breaks after a dash, "197–" over "149,", which this
 # does not, so it errs narrow.
+#
+# A stop's words have been its day alone since the same evening (the person:
+# "only have dates for the actions under each of the items"): "8 Jan 2025",
+# never "voice vote, amended" (_rail_drawn). The rails below keep the words
+# their index rows carry, which a card says and no longer draws.
 _VERDANA = dict(zip(map(chr, range(32, 127)), (
     352, 394, 459, 818, 636, 1076, 727, 269, 454, 454, 636, 818, 364, 454, 364, 454, 636, 636,
     636, 636, 636, 636, 636, 636, 636, 636, 454, 454, 818, 818, 818, 545, 1000, 684, 686, 698,
@@ -15833,9 +15842,29 @@ def _rail_phone(css):
     return 334 - 16 - (16 if back else 46), pad
 
 
+def _rail_drawn(rail):
+    """What a card draws under each stop of `rail` (an index row's stops):
+    its day, with the year on the first and wherever it changes, or nothing.
+    Never the stop's words (the person, 5 October 2026: "only have dates for
+    the actions under each of the items") -- _rail_on_a_phone holds app.js's
+    datedRail to exactly this."""
+    mon = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
+    was, out = "", []
+    for cell in rail:
+        day = (list(cell) + [""])[1]
+        if day:
+            y, m, d = day.split("-")
+            out.append(f"{int(d)} {mon[int(m) - 1]}" + (f" {y}" if y != was else ""))
+            was = y
+        else:
+            out.append("")
+    return out
+
+
 def _rail_gap(rail, width, pad):
     """The narrowest gap, in px, between two neighbouring stops' words on one
-    row of `rail` (an index row's stops) laid out `width` wide."""
+    row of `rail` (an index row's stops) laid out `width` wide, as a card
+    draws them (_rail_drawn)."""
     def w(s, px):
         return sum(_VERDANA.get(c, 1000) for c in s) * px / 1000
 
@@ -15850,22 +15879,29 @@ def _rail_gap(rail, width, pad):
                 cur = t
         return lines + ([cur] if cur else [])
 
-    mon = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
-    was, rows = "", []
+    rows = []
     slot = width / len(rail)
-    for cell in rail:
-        stop, day, short = (list(cell) + ["", ""])[:3]
-        words = []
-        if day:
-            y, m, d = day.split("-")
-            words.append(f"{int(d)} {mon[int(m) - 1]}" + (f" {y}" if y != was else ""))
-            was = y
-        if short:
-            words.append(short)
-        lines = [ln for p in words for ln in wrap(p, slot - 2 * pad)]
+    for cell, drawn in zip(rail, _rail_drawn(rail)):
+        stop = cell[0]
+        lines = wrap(drawn, slot - 2 * pad) if drawn else []
         rows.append([w(_RAIL_LABEL.get(stop[:1], stop), 12)] + [w(ln, 11) for ln in lines])
     return min([slot - (a[i] + b[i]) / 2 for a, b in zip(rows, rows[1:])
                 for i in range(min(len(a), len(b)))] or [slot])
+
+
+# Rails from the index whose stops carry words and no day, beside those of
+# _RAIL_WORST: under each stop a card draws its day, or nothing.
+_RAIL_UNDATED = [
+    ("2025-2026 CACR13", [["Ip", "2026-01-07"], ["Hp", "2026-02-05", "325–15"],
+                          ["Sp", "2026-03-26", "23–1"], ["Vh", "", "Nov 2026"]]),
+    ("2005-2006 CACR30", [["Ip", "2006-01-04"], ["Hp", "2006-03-22", "277–61, amended"],
+                          ["Sp", "2006-04-20", "24–0"], ["Vp", "2006-11-07", "ratified"]]),
+    ("2025-2026 HB1", [["Ip", "2025-02-20"], ["Hp", "2025-04-10", "192–183, amended"],
+                       ["Sp", "2025-06-05", "15–9, amended"], ["Gp", "2025-06-27", "signed"],
+                       ["Lp", "", "Chapter 140"]]),
+    ("2015-2016 SB305", [["Ip", "2016-01-06"], ["Sp", "2016-02-18", "voice vote"],
+                         ["Hx", "", "report not accepted"], ["G-"], ["Lx"]]),
+]
 
 
 @check("frontend", "a phone's rail keeps every stop's words apart from the next stop's")
@@ -15873,10 +15909,33 @@ def _rail_on_a_phone():
     """The list card's rail on a 360px phone: as wide as the bill page's, a
     gutter either side of each stop's words, and on the rails that were
     tightest when it was 272px and had none, no two stops' words closer than
-    a word space, laid out in a face wider than the site's (_rail_gap)."""
+    a word space, laid out in a face wider than the site's (_rail_gap).
+
+    And what is laid out is what app.js draws: under each stop its day and
+    nothing else, or nothing where the stop has no day (the person, 5 October
+    2026). datedRail is run in node over those rails and the ones with words
+    and no day; a stop that draws "voice vote", "Chapter 140" or "Nov 2026"
+    again fails here."""
     css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
+    rails = _RAIL_WORST + _RAIL_UNDATED
+    got = _app_js(json.dumps([r for _n, r in rails])
+                  + ".map(r => scope.datedRail({id: 'X', passage: '', rail: r}))",
+                  names=("datedRail",))
+    drew = "node is not here to draw them"
+    if got is not None:
+        for (name, rail), html in zip(rails, got):
+            stops = re.findall(r'<span class="stop [^"]*">(.*?)</span>', html, re.S)
+            drawn = [" ".join(re.sub(r"<[^>]+>", " ", (re.findall(r"<small>(.*?)</small>", s, re.S)
+                                                       or [""])[0]).split()) for s in stops]
+            assert drawn == _rail_drawn(rail), (
+                f"{name}'s rail draws {drawn!a} under its stops, where a card draws the "
+                f"day alone: {_rail_drawn(rail)!a}")
+            assert all(re.fullmatch(r"(?:\d{1,2} [A-Z][a-z]{2}(?: \d{4})?)?", d) for d in drawn), (
+                f"{name}'s rail draws words under a stop: {drawn!a}")
+        drew = (f"app.js draws the day alone under each stop of {len(rails)} rails, and "
+                "nothing under a stop with no day")
     width, pad = _rail_phone(css)
     assert width >= 302, (
         f"a list card's rail is {width}px on a 360px phone, inside the corner link's "
@@ -15891,13 +15950,15 @@ def _rail_on_a_phone():
     worst = min((_rail_gap(r, width, pad), n) for n, r in _RAIL_WORST)
     return "ok", (f"{width}px with {pad:g}px either side of each stop's words; the six "
                   f"tightest rails of the review are {worst[0]:.1f}px apart at least "
-                  f"({worst[1]}), in Verdana's widths")
+                  f"({worst[1]}), in Verdana's widths; {drew}")
 
 
 @check("data", "every index rail keeps its stops' words apart on a phone")
 def _rails_on_a_phone():
     """_rail_on_a_phone's measure over every rail the index carries, laid out
-    as a list card draws it on a 360px phone."""
+    as a list card draws it on a 360px phone: each stop's day and nothing else
+    (_rail_drawn, which _rail_on_a_phone holds app.js to). The words a row
+    carries beside its days are said and not drawn, so they take no room."""
     idx = Path("site/idx")
     css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
     if not (idx.is_dir() and css):
@@ -16004,12 +16065,15 @@ def _ballot_built(build_site_v2):
 def _journey_drawn(build_site_v2):
     """Option A and C of 24 September, drawn in node the way the page draws them.
 
-    The rail on a bill's own view gains Introduced and, under each stop, a day
-    and a word or two -- and since 5 October 2026 ("One rail, always
-    detailed") so does the rail on a card in a list, from the index row's
-    stops before anything is fetched, and the same rail once the card is
-    opened: opening a card changes nothing about its rail. A row with no stops
-    keeps the bare rail. On the record's House Status and Senate Status rows
+    The rail on a bill's own view gains Introduced and, under each stop, its
+    day -- and since 5 October 2026 ("One rail, always detailed") so does the
+    rail on a card in a list, from the index row's stops before anything is
+    fetched, and the same rail once the card is opened: opening a card changes
+    nothing about its rail. Under each stop the day and nothing else, from the
+    same evening ("only have dates for the actions under each of the items"):
+    no "voice vote", "16–8, amended", "signed" or "Chapter 160", and nothing
+    under a stop with no day. A row with no stops keeps the bare rail. On the
+    record's House Status and Senate Status rows
     give way to How it got here, one line per decision, the same lines the
     rail is dated from. A signed bill, a bill killed in the second chamber and
     a CACR, whose route ends at the voters rather than the governor."""
@@ -16074,8 +16138,8 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     # messages below print with !a: a check or a cross is not in the Windows
     # console's code page, and a failure that cannot be printed stops the run.
     want = {
-        "HB57": ("✓ Introduced 8 Jan 2025 ✓ House 13 Feb voice vote ✓ Senate 22 May 16–8, "
-                 "amended ✓ Governor 15 Jul signed ✓ Law Chapter 160",
+        "HB57": ("✓ Introduced 8 Jan 2025 ✓ House 13 Feb ✓ Senate 22 May ✓ Governor 15 Jul "
+                 "✓ Law",
                  ["✓ House Passed on a voice vote 13 Feb 2025",
                   "✓ Senate Passed with an amendment, 16–8 22 May 2025",
                   "✓ House Agreed to the Senate's amendment, 192–153 12 Jun 2025",
@@ -16084,13 +16148,11 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
                  "Introduced 8 January 2025; House: passed on a voice vote, 13 February 2025; "
                  "Senate: passed with an amendment, 16 to 8, 22 May 2025; Governor: signed, "
                  "15 July 2025; Law: chapter 160, in effect 11 January 2026"),
-        "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar 217–156, amended ✕ Senate 7 Jan 2026 "
-                 "killed Governor ✕ Law",
+        "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar ✕ Senate 7 Jan 2026 Governor ✕ Law",
                  ["✓ House Passed with an amendment, 217–156 20 Mar 2025",
                   "↺ Senate Sent back to committee on a voice vote 1 May 2025",
                   "✕ Senate Killed on a voice vote 7 Jan 2026"], None),
-        "CACR13": ("✓ Introduced 7 Jan 2026 ✓ House 5 Feb 325–15 ✓ Senate 26 Mar 23–1 "
-                   "Voters Nov 2026",
+        "CACR13": ("✓ Introduced 7 Jan 2026 ✓ House 5 Feb ✓ Senate 26 Mar Voters",
                    ["✓ House Passed, 325–15 5 Feb 2026", "✓ Senate Passed, 23–1 26 Mar 2026"],
                    None),
     }
@@ -16123,6 +16185,16 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             f"{rail_of(g['opened'])[0]!a} opened")
         assert "Introduced" in rail_of(g["card"])[0], (
             f"{bid}'s list card says {rail_of(g['card'])[0]!a} to a reader who hears it")
+        # THE DAY ALONE under every stop, on the page, the card and the card
+        # opened: a word back under any of them fails here as well as above.
+        for where in ("page", "card", "opened"):
+            m = re.search(r'<span class="rail dated".*?</span>\s*</button>', g[where], re.S)
+            under = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", s)).strip()
+                     for s in re.findall(r"<small>(.*?)</small>", m.group(0) if m else "", re.S)]
+            words = [u for u in under if not re.fullmatch(r"\d{1,2} [A-Z][a-z]{2}(?: \d{4})?", u)]
+            assert under and not words, (
+                f"{bid}'s rail on its {where} draws {words or under!a} under its stops, "
+                "where it draws a day and nothing else")
         # A row with no stops to date keeps the bare rail: no Introduced, no
         # dates, the index's four marks.
         assert 'class="rail"' in g["bare"] and "<small>" not in g["bare"] \
@@ -16165,7 +16237,8 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         and " hidden" not in opened, (
             f"opened, the nine decisions are not all there in order: {opened[:200]!a}")
     return "ok", ("HB 57, HB 68 and CACR 13: one dated rail on their own view and on the "
-                  "list card, closed and opened, the bare rail only for a row without stops, "
+                  "list card, closed and opened, a day and no words under each stop, the "
+                  "bare rail only for a row without stops, "
                   "How it got here in place of the status rows, six lines until the rest "
                   "are opened in place")
 
@@ -50915,10 +50988,14 @@ def _rail_on_the_card(build_site_v2):
     fetched, and the record's own once it is. The two are written by one
     line of build_bills from one journey_rail, and this is the test that
     what idx/<term>.json carries is what the bill's page carries -- every
-    stop, its mark, its day and its words -- on every bill of every term.
-    A row with no stops is a record with none; a record with stops and a row
-    without would draw the bare rail on the card and the dated one opened,
-    which is the shape-change the decision removed."""
+    stop, its mark and its day, which is all either draws -- on every bill of
+    every term. A row with no stops is a record with none; a record with stops
+    and a row without would draw the bare rail on the card and the dated one
+    opened, which is the shape-change the decision removed.
+
+    The row's words beside each day are what its card says to a reader who
+    hears it; the record's stops carry none (the person, 5 October 2026: the
+    rail draws dates only), since the page says each stop in its `say`."""
     idx = Path("site/idx")
     if not (idx.is_dir() and Path("site/bill").is_dir()):
         return "skip", "no built idx/ and bill pages"
@@ -50929,25 +51006,30 @@ def _rail_on_the_card(build_site_v2):
             continue
         for r in json.loads(f.read_text(encoding="utf-8")):
             rows[(r.get("term"), r.get("id"))] = r
-    n, bad = 0, []
+    n, bad, worded = 0, [], []
     for _y, bid, rec in _site_records():
         row = rows.get((rec.get("term") or "", bid))
         if not row:
             continue
-        own = [(s_.get("stop"), s_.get("mark"), s_.get("date") or "", s_.get("short") or "")
-               for s_ in ((rec.get("journey") or {}).get("rail") or [])]
-        card = [(code.get(c[0][:1], "?"), c[0][1:], (c + ["", ""])[1], (c + ["", ""])[2])
+        stops = (rec.get("journey") or {}).get("rail") or []
+        own = [(s_.get("stop"), s_.get("mark"), s_.get("date") or "") for s_ in stops]
+        card = [(code.get(c[0][:1], "?"), c[0][1:], (c + [""])[1])
                 for c in (row.get("rail") or [])]
         n += 1
         if own != card:
             bad.append(f"{rec.get('term')} {bid}: the card {card[:2]!a}..., the page {own[:2]!a}...")
+        if any("short" in s_ for s_ in stops):
+            worded.append(f"{rec.get('term')} {bid}")
     if not n:
         return "skip", "no bill page matched an index row"
     assert not bad, f"{len(bad)} bills draw one rail on the card and another opened: " + (
         "; ".join(bad[:3]))
+    assert not worded, (f"{len(worded)} records' rails carry words to draw under a stop, "
+                        f"which draws its day alone: {worded[:3]}")
     with_stops = sum(1 for r in rows.values() if r.get("rail"))
-    return "ok", (f"{n:,} bills: the card's rail is the page's, stop for stop; "
-                  f"{with_stops:,} index rows carry stops, the rest have no rail to draw")
+    return "ok", (f"{n:,} bills: the card's rail is the page's, stop for stop, mark and day, "
+                  f"and no record's stop carries words to draw; {with_stops:,} index rows "
+                  "carry stops, the rest have no rail to draw")
 
 
 @check("data", "every CACR with a ballot row shows the voters' vote, and its outcome by two thirds",

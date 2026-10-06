@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.197 */
+/* GRANITE_VERSION: 2026-09-07.198 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1466,9 +1466,11 @@ box-shadow:0 0 0 3px var(--pine-soft)}
 /* A card head is a button, and the rail inside it must not look clickable. */
 .chead .rail{pointer-events:none}
 /* THE DATED RAIL, on a bill's own view and on every card: under each stop
-   its day and one or two words -- "22 May" / "16–8, amended". The label keeps
-   its line; the words under it may take two, which is the most a stop can
-   carry on a phone. Tabular figures, so the dates in a row line up by digit.
+   its day, "22 May", and since 5 October 2026 nothing else -- the word or two
+   of how it went ("16–8, amended") crowded the card, the person said, and is
+   told in How it got here and the Votes tab instead (app.js datedRail). The
+   label keeps its line; the day under it may take two, "8 Jan" over "2025",
+   on a phone. Tabular figures, so the dates in a row line up by digit.
 
    THE LABELS ON ONE LINE, FROM THE TOP. .stop centres its content, and in a
    column that centred each stop's words in the height of the tallest, so a

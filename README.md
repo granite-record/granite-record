@@ -227,7 +227,7 @@ addresses:
 | | |
 |---|---|
 | `/index.json` | every bill, every term — title, sponsor, committee, topic, status, the chip's word (`chip`: Became Law, Died, Interim Study, Tabled, Vetoed, Withdrawn, or a word of its own), passage |
-| `/idx/<term>.json` | one term's bills, each with the fields `/index.json` gives it and its dated rail as its card draws it (`rail`: each stop, its mark, its day and a word or two); this is what the search page loads |
+| `/idx/<term>.json` | one term's bills, each with the fields `/index.json` gives it and its dated rail (`rail`: each stop, its mark, its day and a word or two of how it went — the card draws the day, and says the words to a reader who hears the page); this is what the search page loads |
 | `/sidx/<term>.json` | what each of that term's bills is about, from its analysis and text: for each word, the bills it is central to and how central, and for each bill the pairs of those words that stand next to each other, each pair as five letters of a hash. The search fetches it when somebody searches. `/sidx/manifest.json` says what each file holds and weighs, and `/sidx/words.json` is every word of five letters or more that any bill of any term uses, with the names of members and towns and without the record's own slips ("goverment", in one bill): what tells a misspelt search from a real word no bill is about |
 | `/legislators.json` | the roster — who holds a seat now, with districts, towns and committees |
 | `/former.json` | the 1,785 people in the record who hold no seat now, with the span of their record. Deliberately a separate file: everything that reads the roster reads it to mean "who serves today" |

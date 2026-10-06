@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.28
+# GRANITE_VERSION: 2026-09-10.29
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -624,8 +624,10 @@ def data_page(site, out, tables, base, cov=()):
       stop&#39;s letter &mdash; <code>I</code> introduced, <code>H</code>,
       <code>S</code>, <code>G</code> the Governor, <code>L</code> the statute
       book, <code>V</code> the voters &mdash; with its mark as in
-      <code>passage</code>, then the day and a word or two where there are
-      any. It is in neither bills.csv nor <code>/index.json</code>.</p>
+      <code>passage</code>, then the day and a word or two of how it went
+      where there are any. The card draws the day under each stop; the words
+      are what its rail says to a reader who hears the page. It is in neither
+      bills.csv nor <code>/index.json</code>.</p>
     <p class="src"><b>A constitutional amendment&#39;s ballot.</b> What the
       voters made of an amendment both chambers sent them is the
       docket&#39;s word where it records one, and otherwise

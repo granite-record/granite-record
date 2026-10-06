@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.151
+# GRANITE_VERSION: 2026-09-05.152
 """
 Generate the faceted site from real General Court data.
 
@@ -5837,10 +5837,12 @@ def journey_rail(intro, steps, rail, bid, status=""):
 
     The marks are the index's -- the same `passage` the list card draws -- so
     the card and the page cannot disagree about a stop; the journey gives
-    each one its date and its word. The stops follow the bill's route: a
-    resolution of one chamber has that chamber; a concurrent resolution two
-    chambers and no governor; a CACR goes to the voters instead of the
-    governor, with the ring on Voters while it waits for them."""
+    each one its date, its word (`short`, which only the index row keeps, for
+    the sentence its card says) and its sentence (`say`). The stops follow
+    the bill's route: a resolution of one chamber has that chamber; a
+    concurrent resolution two chambers and no governor; a CACR goes to the
+    voters instead of the governor, with the ring on Voters while it waits
+    for them."""
     if not rail or rail[0] not in ("H", "S"):
         return []
     origin = rail[0]
@@ -5918,8 +5920,15 @@ RAIL_SAY = {"p": "Passed", "h": "Is here now", "x": "Stopped here",
 # fetched, so its stops travel in the term's index row: each one the stop's
 # letter and its mark, its day and its words, ["Hp", "2025-02-13", "voice
 # vote"], with blanks at the end left off -- ["S-"] for a Senate it never
-# reached. The words a reader hears (`say`) stay in the record, which the
-# card reads them from once it has it; what is drawn is the same either way.
+# reached. The words a reader hears on the bill's page (`say`) stay in the
+# record.
+#
+# THE DAY IS DRAWN AND THE WORDS ARE NOT (the person, the same day: "only
+# have dates for the actions under each of the items"). A stop's words --
+# "voice vote", "16–8, amended", "Chapter 160" -- are what the card's rail
+# says to a reader who hears it, and drawn nowhere; the record's stops carry
+# none, because its `say` is what the page says (build_bills drops them once
+# the index row has its copy).
 #
 # idx/<term>.json only. index.json already stands past the nine tenths of
 # Cloudflare's 25 MiB for one file at which check_site warns (FILE_CAP), the
@@ -8785,6 +8794,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if why and term == current:
             j_current.append(f"{bid}: {why}")
         for s_ in jsteps:
+            s_.pop("short", None)
+        # NOR DO THE RECORD'S STOPS (RAIL_CODE): the rail draws a day and no
+        # words, and the page says each stop in its own `say`. The index row
+        # keeps its copy, the only one a card has to say before the record.
+        for s_ in jrail:
             s_.pop("short", None)
 
         # ---- one detail file per bill, loaded only when expanded

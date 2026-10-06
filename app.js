@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.144
+// GRANITE_VERSION: 2026-09-07.145
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5355,12 +5355,24 @@ function rail(b){
 
 // THE RAIL, DATED -- on the bill's own page (the person chose it on 24
 // September) and, since 5 October 2026, on every card in a list from the
-// start: "One rail, always detailed". Under each stop the day and one or two
-// words of what happened there: "Senate / 22 May / 16–8, amended". The list
-// card drew the bare rail above until then, and opening a card swapped one
-// for the other, so the rail changed shape as the card opened; now opening it
+// start: "One rail, always detailed". Under each stop the day of what
+// happened there, and nothing else: "Senate / 22 May". The list card drew
+// the bare rail above until then, and opening a card swapped one for the
+// other, so the rail changed shape as the card opened; now opening it
 // changes nothing about the rail. The bare one is left for a row that carries
 // no stops (idxRow's stand-in for a bill the index does not hold).
+//
+// THE DAY ALONE, NOT THE WORDS (the person, 5 October 2026: "only have
+// dates for the actions under each of the items since including the
+// explanations like voice vote and such just crowds things up"). Each stop
+// carried a word or two under its day as well -- "16–8, amended", "voice
+// vote", "signed", "Chapter 160", "Nov 2026" -- and on a card in a list, five
+// stops of that was a paragraph under every bill. How each chamber decided is
+// told where it always was: How it got here, the history, the Votes tab and
+// the voters' card. A stop with no day -- the Law stop, a vote the voters have
+// still to take, a stop never reached -- has nothing under its name. The
+// sentence a screen reader hears keeps its words, since nothing is drawn
+// from it.
 //
 // Its stops follow the bill's route and come from the record's journey
 // (build_site_v2.journey_rail): Introduced first; a resolution of one chamber
@@ -5371,10 +5383,10 @@ function rail(b){
 //
 // A CARD IN A LIST HAS NO RECORD YET, so the index row carries the stops
 // (b.rail, build_site_v2.index_rail): ["Sp","2025-05-22","16–8, amended"],
-// the stop's letter and its mark, its day, its words. The bill's own page
-// draws the record's rail, which is the same stops by construction (preflight
-// holds the two equal on every bill) and adds what each stop says in full,
-// for the sentence a reader hears.
+// the stop's letter and its mark, its day, and the words its sentence says.
+// The bill's own page draws the record's rail, which is the same stops on the
+// same days by construction (preflight holds the two equal on every bill) and
+// carries what each stop says in full, for the sentence a reader hears.
 //
 // AND THE CARD KEEPS ITS ROW'S RAIL ONCE OPENED (cardHtml). It drew the
 // record's as soon as the record came, and what was drawn stayed the same
@@ -5408,10 +5420,10 @@ function datedRail(b,d){
     const y=(s.date||"").slice(0,4);
     const day=s.date?railDay(s.date,y!==was):"";
     if(s.date)was=y;
-    const sub=[day,s.short].filter(Boolean);
+    // The day and nothing else: s.short is said below, never drawn.
     return `<span class="stop s-${esc(s.mark==="-"?"o":s.mark)}"><b>${
-      RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${sub.length
-      ?`<small>${sub.map(esc).join("<br>")}</small>`:""}</span>`;
+      RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${day
+      ?`<small>${esc(day)}</small>`:""}</span>`;
   });
   // The same facts as a sentence, for a reader who hears the page: every
   // date in full -- the Law stop's words carry one of their own, "in effect
