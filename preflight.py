@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.344
+# GRANITE_VERSION: 2026-09-04.345
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55497,6 +55497,18 @@ def _finished_term_sponsors(build_site_v2, member_links):
         shutil.rmtree(tmp, ignore_errors=True)
     assert got == ["Rep. Matt Doe (R - Rock 30)", "Sen. Matt Doe (R - SD23)"], \
         ("build_bills does not label a term's sponsors from the term roster main gives it", got)
+    # A Senate hearing report's speaker, resolved among the term's own roster:
+    # the party they sat with, the link to their page as it is now, and none
+    # where they have no page.
+    import senate_hearing_reports as SHR
+    sat = {**as_sat, "last": "Doe", "first": "Matt", "party_code": "D"}
+    now = {**as_sat, "last": "Doe", "first": "Matt", "party_code": "R", "district": "70"}
+    rep = {"sections": [{"speakers": [{"who": "Rep. Matt Doe, Rock. 30"}]}]}
+    chips = [B.hearing_report_for_page(rep, B.speaker_index([who]), SHR.name_part, pages)[0]
+             ["sections"][0]["speakers"][0].get("member")
+             for who, pages in ((sat, {"11420": now}), (now, None), (sat, {}))]
+    assert [(c["party_code"], c["slug"]) for c in chips] == \
+        [("D", B.own_slug(now)), ("R", B.own_slug(now)), ("D", "")], chips
     return "ok", ("a finished term's sponsor named by a web id is found among the members who left, the "
                   "one who sat that term, and reads their seat as before; with no finished term, as it "
                   "was; and a term's own frozen roster labels a member now in the Senate as he sat")

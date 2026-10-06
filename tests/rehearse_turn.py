@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.3
+# GRANITE_VERSION: 2026-10-05.4
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -650,6 +650,49 @@ def link_gained(was, now, site):
     return True
 
 
+def page_moved(was, now, site):
+    """True when two lists of sponsors differ only in the link of members who
+    gained one (link_gained) or whose own page moved with the seat
+    Organization Day gave them -- the label still the seat they sat in, the
+    link to the page there is now -- and in at least one of the latter."""
+    if not isinstance(was, list) or not isinstance(now, list) or len(was) != len(now):
+        return False
+    moved = False
+    for x, y in zip(was, now):
+        if x == y:
+            continue
+        keys = {k for k in set(x) | set(y) if x.get(k) != y.get(k)}
+        if not y.get("slug") or not (site / "legislator" / f"{y['slug']}.html").exists():
+            return False
+        if keys == {"slug"} and x.get("slug"):
+            moved = True
+        elif x.get("slug") or not keys <= LINK_GAINED:
+            return False
+    return moved
+
+
+def speaker_moved(was, now, site):
+    """True when two lists of a bill's stations differ only in the link of a
+    hearing report's speaker whose own page moved with their seat."""
+    leaves = []
+
+    def walk(x, y, path):
+        if x == y:
+            return
+        if isinstance(x, dict) and isinstance(y, dict):
+            for k in set(x) | set(y):
+                walk(x.get(k), y.get(k), path + (k,))
+        elif isinstance(x, list) and isinstance(y, list) and len(x) == len(y):
+            for a, b in zip(x, y):
+                walk(a, b, path)
+        else:
+            leaves.append((path, x, y))
+    walk(was, now, ())
+    return bool(leaves) and all(
+        p[-2:] == ("member", "slug") and x and y
+        and (site / "legislator" / f"{y}.html").exists() for p, x, y in leaves)
+
+
 def compare_term(root, pre, label, finished=True):
     """2025-2026 after the turn against the pre-turn build: what differs, by field.
     `finished` False is a night before the switch whose roster has turned
@@ -713,6 +756,10 @@ def compare_term(root, pre, label, finished=True):
                    and k.split(".")[0] in ("journey", "status", "next_step") else k)
             if k == "sponsors" and link_gained(a.get(k), b.get(k), root / "site"):
                 key = "sponsors (a link gained)"
+            elif k == "sponsors" and page_moved(a.get(k), b.get(k), root / "site"):
+                key = "sponsors (a page moved with its seat)"
+            elif k == "stations" and speaker_moved(a.get(k), b.get(k), root / "site"):
+                key = "stations (a speaker's page moved with their seat)"
             fields[key] += 1
             top = k.split(".")[0]
             samples.setdefault(key, f"{yr}/{bid}: {str(a.get(top))[:160]} -> "
@@ -725,16 +772,20 @@ def compare_term(root, pre, label, finished=True):
                   "differ" if q.exists() else "gone"] += 1
         pages["new"] += sum(1 for q in p1.rglob("*.html") if not (p0 / q.relative_to(p1)).exists())
     other = {k: n for k, n in fields.items() if (not EXPECTED.match(k) or not finished)
-             and "(CACR)" not in k and k != "sponsors (a link gained)"}
+             and "(CACR)" not in k and k not in ("sponsors (a link gained)",
+                                                 "sponsors (a page moved with its seat)",
+                                                 "stations (a speaker's page moved with their seat)")}
     RESULTS.setdefault("term_fields", {})[label] = {"fields": dict(fields), "samples": samples,
                                                     "pages": dict(pages), "missing": missing}
     print(f"    the {len(mine):,} records of {TERM}: fields that differ {dict(fields)}")
     print(f"    site/bill/{{2025,2026}} pages: {dict(pages)}")
     note(not missing, f"{label}: every {TERM} bill has its record on the site", missing[:5])
     note(not other, f"{label}: the {len(mine):,} records of {TERM} differ from the pre-turn build "
-                    + ("only in the archived mark, the session_over note, a CACR's election and "
-                       "a sponsor who left mid-term gaining a link" if finished else
-                       "only in a sponsor who left mid-term gaining a link"),
+                    + ("only in the archived mark, the session_over note, a CACR's election, "
+                       "a sponsor who left mid-term gaining a link and one whose page moved with "
+                       "their seat" if finished else
+                       "only in a sponsor who left mid-term gaining a link and one whose page "
+                       "moved with their seat"),
          {k: samples.get(k) for k in list(other)[:6]})
     # The term's index file's entries (site/idx/<term>.json; index.json is
     # retired).

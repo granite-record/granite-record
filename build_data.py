@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2984,9 +2984,12 @@ def main():
             for _b, _rec in _byb.items():
                 if _slice.get(_b):
                     continue
+                # The session's term's own roster where it is frozen and not
+                # the installed one (term_legs, above): HB 476's sponsor read
+                # Rock 53 on the rehearsal once the next House moved her.
                 _rows = journal_sponsor_rows(
-                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat, legs,
-                    current_term)
+                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat,
+                    term_legs if _t == sess else legs, current_term)
                 if _rows:
                     _slice[_b] = _rows
                     _jn += 1

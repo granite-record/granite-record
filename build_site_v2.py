@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.155
+# GRANITE_VERSION: 2026-09-05.156
 """
 Generate the faceted site from real General Court data.
 
@@ -3629,10 +3629,13 @@ def resolve_speaker(heading, idx, name_part):
     return None
 
 
-def hearing_report_for_page(rec, idx, name_part):
+def hearing_report_for_page(rec, idx, name_part, pages=None):
     """One parsed report as the Hearings tab draws it, legislators resolved.
 
     Returns (report, members resolved, legislator lines left as text).
+    `pages` is attach_hearing_reports': the party is the member's as `idx`
+    holds them, which for a term whose own roster is frozen is the party
+    they sat with; the link is to their own page, wherever it is now.
     """
     got = miss = 0
     secs = []
@@ -3648,9 +3651,10 @@ def hearing_report_for_page(rec, idx, name_part):
                     # The report's own words for the person, in the chip the
                     # site draws a legislator with: the party colour and the
                     # link are the site's; the name is the Senate's.
+                    _page = mem if pages is None else pages.get(str(mem.get("id")))
                     sp["member"] = {"label": name_part(sp["who"]),
                                     "party_code": mem.get("party_code") or "",
-                                    "slug": own_slug(mem)}
+                                    "slug": own_slug(_page) if _page else ""}
                 elif SPEAKER_TITLE.match(name_part(sp.get("who", "")) or ""):
                     miss += 1
                 o["speakers"].append(sp)
@@ -3706,7 +3710,7 @@ def report_station(rep, docket_dates):
 
 
 def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
-                           unmatched):
+                           unmatched, pages=None):
     """Each report onto the station of the hearing it reports.
 
     That is the bill's Senate public hearing on the date the report gives --
@@ -3716,6 +3720,9 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
     docket has no Senate hearing for is not pinned to some other sitting: it
     is counted and named in `unmatched`, and stands on a station of its own
     under the date it gives (report_station).
+
+    `pages` is {id: member} of whose page a member resolved in `idx` links
+    to, where `idx` is a term's own frozen roster (build_bills says when).
     """
     heard = [s for s in stations
              if s.get("body") == "S"
@@ -3735,7 +3742,7 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
                 stations.append(at)
         else:
             tally["matched"] += 1
-        page, got, miss = hearing_report_for_page(rep, idx, name_part)
+        page, got, miss = hearing_report_for_page(rep, idx, name_part, pages)
         at.setdefault("reports", []).append(page)
         tally["members"] += got
         tally["members_unresolved"] += miss
@@ -8587,6 +8594,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # a line names one. Counted as they are attached, so the build says how
     # many found their hearing and names the ones that did not.
     _hr_idx = speaker_index([*legs.values(), *(former or {}).values()])
+    # ... and for a term whose own roster is frozen and is not the sitting
+    # one, that roster and the members who left before it was frozen: a
+    # speaker is resolved among the people who sat that term, with the party
+    # they sat with, and linked to their page as it is now -- or not linked,
+    # where they have none (the rehearsal of the review, 5 October 2026).
+    _hr_term = {_t: speaker_index([*_r.values(),
+                                   *(f for _mid, f in (former or {}).items() if _mid not in _r)])
+                for _t, _r in term_rosters.items()}
     _hr_name = SHR.name_part
     hr_tally = Counter()
     hr_unmatched = []
@@ -8934,7 +8949,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # below, so it takes its place in the bill's order of events.
         attach_hearing_reports(
             stations, (hearing_reports or {}).get(term, {}).get(bid, []),
-            bid, _hr_idx, _hr_name, hr_tally, hr_unmatched)
+            bid, _hr_term.get(term, _hr_idx), _hr_name, hr_tally, hr_unmatched,
+            pages=_people if term in _hr_term else None)
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
