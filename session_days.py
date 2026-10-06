@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.24
+# GRANITE_VERSION: 2026-09-19.25
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -90,7 +90,7 @@ DEFERS = ("refer for interim study", "re-refer to committee", "lay ",
           "table", "special order", "rerefer")
 
 
-def _consequence(action, carried, law=None):
+def _consequence(action, carried, law=None, overturned=None):
     """What this motion carrying or failing did to the bill, in plain words.
 
     None where the motion is one this cannot speak for -- and returning None
@@ -100,6 +100,10 @@ def _consequence(action, carried, law=None):
     `law` is (the other chamber, the day of its override in words, "" for the
     same day, or None where the record gives two days for one of the votes)
     for an override the other chamber also carried (Item.law, _became_law).
+
+    `overturned` is (the day in words, whether the bill then became law) for a
+    veto this chamber sustained and overrode at a later sitting (Item.
+    overturned, _became_law).
     """
     a = (action or "").strip().lower()
     if not a or carried is None:
@@ -125,6 +129,17 @@ def _consequence(action, carried, law=None):
             return (f"the veto was overridden in this chamber and, "
                     f"{('on ' + day) if day else 'the same day'}, in the {other}, "
                     "so the bill became law")
+        # A SUSTAINED VETO THE SAME CHAMBER LATER OVERRODE is not the end of
+        # the bill (decision 59h): the House sustained HB 542 of 2011's veto
+        # 244-130 on 30 November 2011, reconsidered and overrode it 255-112
+        # on 4 January 2012, the Senate having overridden it too, and the bill
+        # became law -- while the page of 30 November said "so the bill did
+        # not become law".
+        if not carried and overturned:
+            day, became = overturned
+            return ("the veto was sustained that day; the chamber overrode it "
+                    + (f"on {day}" if day else "later")
+                    + (", and the bill became law" if became else ""))
         return ("the veto was overridden in this chamber" if carried else
                 "the veto was sustained, so the bill did not become law")
     if a.startswith(KILLS):
@@ -473,7 +488,8 @@ class Item:
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
                  "consent", "fifths", "entered", "recess", "joined",
-                 "rc", "said", "added", "plain", "shared", "stated_kind", "law")
+                 "rc", "said", "added", "plain", "shared", "stated_kind", "law",
+                 "overturned")
 
     def __init__(self, bill, term, e, seq):
         # The roll call on record this motion is (rollcalls.json's row), or
@@ -486,6 +502,10 @@ class Item:
         # same day) where this is an override the other chamber carried too:
         # floor_items sets it, and outcome_words says the bill became law.
         self.law = None
+        # (the day in words, whether the bill became law) where this is a
+        # veto this chamber sustained and overrode at a later sitting:
+        # _became_law sets it, and outcome_words does not say the bill died.
+        self.overturned = None
         # The count the docket line states, where the page draws the
         # ballots' instead: speeches are tied to a motion by the journal's
         # count, which is the docket's more often than the ballots'.
@@ -617,7 +637,8 @@ class Item:
             return ""
         verb = "was adopted" if self.carried else "failed"
         how = f" on a {self.kind_words}" if self.kind_words else ""
-        tail = None if self.plain else _consequence(self.action, self.carried, self.law)
+        tail = None if self.plain else _consequence(self.action, self.carried, self.law,
+                                                    self.overturned)
         return (f"The motion {verb}{how}"
                 + (f" — {tail}." if tail else "."))
 
@@ -923,6 +944,22 @@ def _became_law(days):
                 except ValueError:
                     said = None
             it.law = ({"H": "House", "S": "Senate"}[other], said)
+    # And a veto a chamber sustained and then overrode (Item.overturned): the
+    # first override that chamber carried after the sitting that sustained it.
+    for (body, date), d in days.items():
+        for it in d.items:
+            if not (it.veto and it.carried is False and body in ("H", "S")):
+                continue
+            later = sorted((day, x) for b, day, _s, x in carried.get((it.term, it.bill), ())
+                           if b == body and day > date)
+            if later:
+                day, x = later[0]
+                try:
+                    dd = _date.fromisoformat(day)
+                    words = f"{dd.day} {dd:%B %Y}"
+                except ValueError:
+                    words = ""
+                it.overturned = (words, bool(x.law))
 
 
 def _fifths_from_rollcalls(path=ROLLCALLS):

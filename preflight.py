@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.377
+# GRANITE_VERSION: 2026-09-04.378
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25364,7 +25364,9 @@ _OVERRIDES = {
     ("SB57", "2011-2012"): [
         ("S", "2011-09-07", "veto_override", "Notwithstanding the Governor’s Veto, Shall SB 57 Become Law:  "
                                              "RC 17Y-7N, Veto Overridden by required two-thirds vote"),
-        ("H", "2011-11-30", "other", "Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during "
+        # Dated by its own "done during 1/4/2012" (docket_vocab, decision 59h),
+        # the day of its roll call 270.
+        ("H", "2012-01-04", "other", "Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during "
                                      "1/4/2012 morning veto session]")],
     ("HB542", "2011-2012"): [
         ("H", "2011-11-30", "veto_override", "Shall HB542 Become Law: Veto Sustained, RC 244-130, Lacking "
@@ -25394,9 +25396,12 @@ _OVERRIDES_SAID = {
                     "so the bill became law.",
     ("HB455", "S"): "the veto was overridden in this chamber and, on 23 May 2019, in the House, "
                     "so the bill became law.",
-    # The House's row and its roll call give two days, so neither page says one.
-    ("SB57", "H"): "the veto was overridden in this chamber and in the Senate, so the bill became law.",
-    ("SB57", "S"): "the veto was overridden in this chamber and in the House, so the bill became law.",
+    # The House's row and its roll call agree on 4 January 2012, the day the
+    # row says the vote was done (decision 59h), so both pages say the day.
+    ("SB57", "H"): "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
+                   "so the bill became law.",
+    ("SB57", "S"): "the veto was overridden in this chamber and, on 4 January 2012, in the House, "
+                   "so the bill became law.",
 }
 
 
@@ -25545,8 +25550,9 @@ def _session_both_overrides(SD):
     alone, missed every one: HB 455 of 2019, overridden by the House on 23 May
     and the Senate on 30 May 2019, said only "overridden in this chamber" on
     both pages. Paired over the sittings (session_days._became_law), and the
-    day said only where the row and its roll call agree on it: SB 57 of 2011's
-    House row is dated 30 November 2011 and its roll call 4 January 2012."""
+    day said only where the row and its roll call agree on it -- as SB 57 of
+    2011's House row now does, dated by its own "[done during 1/4/2012 morning
+    veto session]" and not by the 30 November it was entered (decision 59h)."""
     bad = []
     narr = {}
     for (bill, term), rows in _OVERRIDES.items():
@@ -25583,9 +25589,74 @@ def _session_both_overrides(SD):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 1102 of 2026, SB 88 of 2011 and HB 455 of 2019, whose Senate override is on "
                   "a row the reader types \"other\", became law on both chambers' pages, the day "
-                  "of the other's override said where it is another; SB 57 of 2011's, whose "
-                  "House row and roll call differ on the day, without one; SB 434's one "
-                  "override did not")
+                  "of the other's override said where it is another, SB 57 of 2011's on the 4 "
+                  "January 2012 its own row and roll call give; SB 434's one override did not")
+
+
+# Real rows: Docket_db_2011-2012.txt 5920-5924 (HB 542) and 6972 (SB 57), as
+# narrative.py dates them -- the House's reconsideration and override "[done
+# during 1/4/2012 morning veto session]" on that day -- and the Senate's
+# override of HB 542 of 7 September 2011 (roll call 100).
+_SUSTAINED_THEN = [
+    ("H", "2011-11-30", "veto_override", "Shall HB542 Become Law: Veto Sustained, RC 244-130, Lacking "
+                                         "Required Two-Thirds Vote"),
+    ("H", "2012-01-04", "floor", "Reconsideration (Rep Kurk): MA DIV 256-115, [done during 1/4/2012 "
+                                 "morning veto session]"),
+    ("H", "2012-01-04", "veto_override", "Veto Overridden: RC 255-112 By Required Two-Thirds Vote, [done "
+                                         "during 1/4/2012 morning veto session]"),
+    ("S", "2011-09-07", "veto_override", "Notwithstanding the Governor's Veto, Shall HB 542 Become Law: "
+                                         "RC 17Y-5N, Veto Overridden by required two-thirds vote"),
+]
+
+
+@check("session", "a veto a chamber sustained and overrode at a later sitting is not said to have "
+                  "killed the bill, and a row is drawn on the day it says it was done",
+       needs=("session_days", "docket_vocab"))
+def _session_sustained_then_overridden(SD, V):
+    """Decision 59h. The House sustained HB 542 of 2011's veto 244-130 on 30
+    November 2011, reconsidered, and overrode it 255-112 on 4 January 2012;
+    the Senate had overridden it on 7 September, and the bill became law
+    (Chapter 271). The House's page of 30 November said "the veto was
+    sustained, so the bill did not become law". It now says the chamber
+    overrode it on 4 January 2012 and the bill became law; and SB 434 of
+    2026's sustained veto, which nothing later overrode, still killed it.
+
+    And the same page drew SB 57's override of 4 January 2012: "Veto
+    Overriden: RC 248-123 By Required Two-Thirds Vote, [done during 1/4/2012
+    morning veto session]", entered on 30 November, which the reader types no
+    vote for its spelling and so dated by its stamp. docket_vocab dates such a
+    row by its own "done during", as it does a floor row."""
+    import datetime as _dt
+    bad = []
+    narr = {"2011-2012": {"HB542": [{"type": t, "body": b, "date": d, "raw": raw, "cancelled": False,
+                                     **({"action": "Reconsideration", "motion": "MA", "vote_kind": "DV",
+                                         "yeas": "256", "nays": "115"} if t == "floor" else {})}
+                                    for b, d, t, raw in _SUSTAINED_THEN]},
+            "2025-2026": {"SB434": [{"type": t, "body": b, "date": d, "raw": raw, "cancelled": False}
+                                    for b, d, t, raw in _OVERRIDES[("SB434", "2025-2026")]]}}
+    days = _sitting_fixture(SD, narr, {})
+    said = {(it.bill, key): it.outcome_words for key, d in days.items() for it in d.items if it.veto}
+    want = {("HB542", ("H", "2011-11-30")):
+            "the veto was sustained that day; the chamber overrode it on 4 January 2012, "
+            "and the bill became law.",
+            ("HB542", ("H", "2012-01-04")):
+            "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
+            "so the bill became law.",
+            ("SB434", ("H", "2026-08-19")): "the veto was sustained, so the bill did not become law."}
+    for k, w in want.items():
+        if not (said.get(k) or "").endswith(w):
+            bad.append(f"{k[0]}'s {k[1][0]} veto vote of {k[1][1]} reads {said.get(k)!r}")
+    ev = V.classify("Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during 1/4/2012 "
+                    "morning veto session]; HJ 76, PG.2302-2305",
+                    _dt.datetime(2011, 11, 30, 10, 48, 20), "2011")
+    if (ev or {}).get("date") != "01/04/2012":
+        bad.append(f"SB 57 of 2011's House override is dated {(ev or {}).get('date')!r}, not 4 January 2012")
+    other = V.classify("Copy to Chairman [12/01/2011]", _dt.datetime(2011, 11, 30, 10, 0), "2011")
+    if (other or {}).get("date"):
+        bad.append(f"a bare date in brackets dates a row the reader types nothing: {other!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 542 of 2011's sustained veto is drawn as overridden on 4 January 2012 and the "
+                  "bill law; SB 434's still killed it; SB 57's House override is dated 4 January 2012")
 
 
 @check("session", "a division is held to the House journal, and counted once however many bills it is drawn under",
