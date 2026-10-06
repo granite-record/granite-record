@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -312,6 +312,30 @@ def committee_only(rows=None):
     return [r for r in rows if r["kind"] not in FLOOR_KINDS]
 
 
+def same_minute(a, b):
+    """Are two "HH:MM" clocks within five minutes of each other? True where
+    either is unknown."""
+    try:
+        ha, ma = (int(x) for x in str(a).split(":")[:2])
+        hb, mb = (int(x) for x in str(b).split(":")[:2])
+    except ValueError:
+        return True
+    return abs((ha * 60 + ma) - (hb * 60 + mb)) <= 5
+
+
+def voided(row, meeting):
+    """Is this row of the table the meeting `meeting` names -- [day, chamber,
+    kind, "HH:MM" or ""], one a later row of the docket cancelled or moved
+    (narrative.voided_meetings)? Its day, its kind ("hearing" is a "public
+    hearing" too, "work session" a subcommittee's or the full committee's),
+    its chamber where the row gives one and its hour where both give one."""
+    day, body, kind, at = (list(meeting) + ["", "", "", ""])[:4]
+    k = (row.get("kind") or row.get("what") or "").strip().lower()
+    b = (row.get("body") or "").strip().upper()
+    return (bool(kind) and (row.get("date") or "-") == day and kind in k
+            and (not b or b == body) and same_minute((row.get("time") or "").strip(), at))
+
+
 def notice_only(row, narr):
     """Is this committee row the docket's notice of a sitting and nothing more:
     one set for a bill that was never introduced, or for a day after the bill
@@ -336,6 +360,11 @@ def notice_only(row, narr):
     2008, two days after the House took the address from its joint committee
     and laid it on the table.
 
+    AND A MEETING A LATER ROW OF THE DOCKET CANCELLED OR MOVED ("voided"):
+    that meeting, by its day, kind, chamber and hour (voided), and not the
+    rest of its day. HB 650 of 2014's Finance hearing of 18 February at ten
+    was cancelled, and its work session that day at one was held.
+
     `narr` is the bill's history as narrative.build tells it, which dates a
     withdrawal ("withdrawn"), says where a bill was never introduced
     ("not_introduced") and lists those days ("no_sitting"); None, for a bill
@@ -357,7 +386,8 @@ def notice_only(row, narr):
         return True
     gone = narr.get("withdrawn") or ""
     return ((bool(gone) and (row.get("date") or "") > gone)
-            or (row.get("date") or "-") in (narr.get("no_sitting") or ()))
+            or (row.get("date") or "-") in (narr.get("no_sitting") or ())
+            or any(voided(row, m) for m in narr.get("voided") or ()))
 
 
 def sittings(rows, histories):

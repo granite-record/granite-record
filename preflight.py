@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.361
+# GRANITE_VERSION: 2026-09-04.362
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2599,6 +2599,12 @@ _OVERTAKEN_TOLD = {
 }
 
 
+def _voided_days(n):
+    """The days a history leaves a committee's sitting off: its no_sitting,
+    and the day of each meeting a later row cancelled or moved ("voided")."""
+    return sorted(set(n.get("no_sitting") or []) | {m[0] for m in n.get("voided") or []})
+
+
 def _told_from_rows(N, term, bill, lines):
     """A bill's history built from its real docket rows, read as the docket's
     own file is (parse_docket): the marks on a row are what overtaken() reads."""
@@ -2648,8 +2654,9 @@ def _overtaken_notices(N, P):
         n = told(key[1], key[0], lines)
         name = f"{key[0]} of {key[1]}"
         text = " ".join(s["text"] for s in n["stages"])
-        if (n.get("no_sitting") or []) != days:
-            bad.append(f"{name}: no_sitting {n.get('no_sitting')!r}, not {days!r}")
+        if _voided_days(n) != days:
+            bad.append(f"{name}: voided {n.get('voided')!r}, no_sitting "
+                       f"{n.get('no_sitting')!r}, not {days!r}")
         bad += [f"{name} does not say {w!r}" for w in said if w not in text]
         bad += [f"{name} says {w!r}" for w in unsaid if w in text]
         notes = [e for e in n["events"] if e.get("notice")]
@@ -2694,6 +2701,93 @@ def _overtaken_notice_documents(B, N):
     assert not any(lab.split(",")[0] in off for lab in got), (
         f"a calendar only a row the docket cancelled cites is listed: {got}, {off}")
     return "ok", f"SB 339 of 2006 lists {', '.join(got)}; {', '.join(off)} stay off"
+
+
+# Real rows: Docket_db_1989-1990.txt 16778-16783 (HB 1288),
+# Docket_db_2013-2014.txt 9771 and 9781-9787 (HB 650) and
+# Docket_db_2001-2002.txt 14022-14026 (HB 1132).
+_DOCKET_VOIDED_MEETING = {
+    ("HB1288", "1989-1990"): [
+        "1990|2553|02/15/1990 02:38:59 PM|HB1288|S|INTRODUCED AND REF TO EDUCATION        SJ 9  , P 178|02/15/1990 02:38:59 PM",
+        "1990|2553|02/26/1990 02:52:47 PM|HB1288|S|HEARING 3/8/90           11:00 RM 209,LOB FOR: EDUCATION|02/26/1990 02:52:47 PM",
+        "1990|2553|02/28/1990 01:54:23 PM|HB1288|S|==CANCELLED==HEARING 3/8/90 11:00 RM 209,LOB FOR: EDUCATION|02/28/1990 01:54:23 PM",
+        "1990|2553|02/28/1990 01:55:35 PM|HB1288|S|RESCHEDULED HEARING  3/6/90  11:00 RM 209,LOB FOR: EDUCATION|02/28/1990 01:55:35 PM",
+        "1990|2553|03/08/1990 04:14:57 PM|HB1288|S|COMMITTEE REPORT OTP|03/08/1990 04:14:57 PM",
+        "1990|2553|03/08/1990 04:15:06 PM|HB1288|S|PASSED/ADOPTED|03/08/1990 04:15:06 PM"],
+    ("HB650", "2013-2014"): [
+        "2014|0591|01/03/2013 09:32:22 AM|HB650|H|Introduced 1/3/2013 and Referred to Transportation; HJ 12, PG.204   <Fin>|01/03/2013 09:32:22 AM",
+        "2014|0591|01/29/2014 06:15:22 PM|HB650|H|Referred to Finance|01/29/2014 06:15:22 PM",
+        "2014|0591|02/06/2014 10:57:07 AM|HB650|H|Public Hearing: 2/18/2014 10:00 AM LOB 210-211|02/06/2014 10:57:07 AM",
+        "2014|0591|02/06/2014 12:41:41 PM|HB650|H|===CANCELLED=== Public Hearing: 2/18/2014 10:00 AM LOB 210-211|02/06/2014 12:41:41 PM",
+        "2014|0591|02/06/2014 02:03:20 PM|HB650|H|===CANCELLED=== Division II Work Session: 2/13/2014 1:00 PM LOB 209|02/06/2014 02:03:20 PM",
+        "2014|0591|02/07/2014 09:38:01 AM|HB650|H|===CANCELLED=== Executive Session: 2/18/2014 10:00 AM LOB 210-211|02/07/2014 09:38:01 AM",
+        "2014|0591|02/12/2014 03:44:22 PM|HB650|H|==RESCHEDULED== Work Session: 2/18/2014 1:00 PM LOB 209|02/12/2014 03:44:22 PM",
+        "2014|0591|02/20/2014 10:27:19 AM|HB650|H|Executive Session: 2/20/2014 11:00 AM LOB 210-211 ===RECESSED===|02/20/2014 10:27:19 AM"],
+    ("HB1132", "2001-2002"): [
+        "2002|2131|01/31/2002 09:24:32 AM|HB1132|S|Introduced and Ref. to Transportation; SJ 4, Pg.77|01/31/2002 09:24:32 AM",
+        "2002|2131|02/19/2002 08:01:49 PM|HB1132|S|Hearing; March 19, 2002, Room 104, LOB, 8:30 a.m.; SC12A|02/19/2002 08:01:49 PM",
+        "2002|2131|02/28/2002 02:57:12 PM|HB1132|S|Hearing; === CANCELLED === RESCHEDULED === March 7, 2002, Room 104, LOB, 8:45 a.m.; SC13|02/28/2002 02:57:12 PM",
+        "2002|2131|03/05/2002 04:08:58 PM|HB1132|S|Hearing; March 7, 2002, Room 104, LOB, 8:45 a.m. === CANCELLED === TO BE RESCHEDULED===; SC14|03/05/2002 04:08:58 PM",
+        "2002|2131|03/07/2002 02:32:44 PM|HB1132|S|Hearing; March 19, 2002, Room 104, LOB, 8:45 a.m.; SC15|03/07/2002 02:32:44 PM"],
+}
+# For each: the meetings left off ([day, chamber, kind, hour]), the rows of
+# proceedings.csv that are those meetings, and the rows that day that are not.
+_VOIDED_MEETING = {
+    ("HB1288", "1989-1990"): (
+        [["1990-03-08", "S", "hearing", "11:00"]],
+        [{"body": "S", "kind": "hearing", "date": "1990-03-08", "time": "11:00"}],
+        [{"body": "S", "kind": "hearing", "date": "1990-03-06", "time": "11:00"}]),
+    ("HB650", "2013-2014"): (
+        [["2014-02-18", "H", "hearing", "10:00"]],
+        [{"body": "H", "kind": "public hearing", "date": "2014-02-18", "time": "10:00"}],
+        [{"body": "H", "kind": "work session", "date": "2014-02-18", "time": "13:00"},
+         {"what": "work session", "when": "2014-02-18", "date": "2014-02-18", "time": "13:00"}]),
+    # The 8:30 notice of the 19th was moved, and the hearing noticed again for
+    # 8:45 that day was held: the table's one row of the day gives 8:30.
+    ("HB1132", "2001-2002"): (
+        [["2002-03-07", "S", "hearing", "08:45"]],
+        [{"body": "S", "kind": "hearing", "date": "2002-03-07", "time": "08:45"}],
+        [{"body": "S", "kind": "hearing", "date": "2002-03-19", "time": "08:30"}]),
+}
+
+
+@check("narrative", "a meeting a later row cancelled or moved is left off as that meeting, at its "
+                    "kind and hour, and the rest of its day stays a day the committee sat",
+       needs=("narrative", "proceedings"))
+def _overtaken_meeting_not_day(N, P):
+    """Decision 56 leaves a meeting a later row of the docket cancelled or
+    moved off the stations, the committees' sitting days and the download.
+    It was carried as a day, and only where the history told nothing else on
+    it, so 33 of the 541 such notices kept their meeting wherever the bill had
+    anything else that day: HB 1288 of 1990's Senate hearing of 8 March,
+    cancelled and held on the 6th, stayed a station, a row of the download and
+    a day Senate Education "met ... for a hearing on HB 1288-FN", because the
+    Senate passed the bill on the 8th; and Finance's page said it "met on
+    February 18, 2014 for public hearings on HB 435-FN, HB 461-FN, HB 525-FN
+    and HB 650-FN-A", a hearing cancelled the day it was noticed, beside the
+    work session it held that afternoon. Built from the real rows: the
+    meeting is carried as [day, chamber, kind, hour], notice_only leaves its
+    row off, and the work session and the hearing of the 6th stay. And not
+    where the table's row could be a meeting the history tells: HB 1132 of
+    2002's Senate hearing of 19 March was noticed for 8:30, moved, and noticed
+    again for 8:45 that day, when it was held, and the table's one row of the
+    day gives 8:30."""
+    bad = []
+    for key, lines in _DOCKET_VOIDED_MEETING.items():
+        want, off, kept = _VOIDED_MEETING[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        if n.get("voided") != want:
+            bad.append(f"{name}: voided {n.get('voided')!r}, not {want!r} "
+                       f"(no_sitting {n.get('no_sitting')!r})")
+        bad += [f"{name}: {r} is still a meeting the committee held"
+                for r in off if not P.notice_only(r, n)]
+        bad += [f"{name}: {r}, which was held, is left off as a notice"
+                for r in kept if P.notice_only(r, n)]
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 1288 of 1990's Senate hearing of 8 March and HB 650 of 2014's Finance "
+                  "hearing of 18 February are left off at their hour, and the hearing of 6 March, "
+                  "the work session of the 18th and HB 1132 of 2002's hearing of 19 March stay")
 
 
 # Real rows: Docket_2015-2016.txt 2699-2703 (HB 462), 614-619 (HB 234) and
@@ -2798,7 +2892,11 @@ def _overtaken_only_on_evidence(N):
         n = _told_from_rows(N, key[1], key[0], lines)
         name = f"{key[0]} of {key[1]}"
         text = " ".join(s["text"] for s in n["stages"])
-        gone = set(n.get("no_sitting") or [])
+        # The days a hearing is left off on: a work session cancelled on the
+        # day of a hearing held (HB 2014's of 6 and 11 February) leaves the
+        # hearing a meeting the committee held.
+        gone = set(n.get("no_sitting") or []) | {
+            m[0] for m in n.get("voided") or [] if m[2] == "hearing"}
         for d in held:
             said = _date.fromisoformat(d)
             day = f"{said:%B} {said.day}, {said.year}"
@@ -2944,8 +3042,9 @@ def _cancelled_and_rescheduled(N):
         text = " ".join(s["text"] for s in n["stages"])
         if said not in text:
             bad.append(f"{name} does not say {said!r}: {text[:500]!r}")
-        if (n.get("no_sitting") or []) != days:
-            bad.append(f"{name}: no_sitting {n.get('no_sitting')!r}, not {days!r}")
+        if _voided_days(n) != days:
+            bad.append(f"{name}: voided {n.get('voided')!r}, no_sitting "
+                       f"{n.get('no_sitting')!r}, not {days!r}")
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_CANCELLED_AND_RESCHEDULED)} histories from real rows tell the "
                   "hearing on the day the row names; seven rows read by what their marks say")
@@ -63363,7 +63462,14 @@ def _introductions_against_journal(J, BD):
     # histories on disk, and each is held to be what the rule says it is.
     import proceedings as _P
     _sat, notices = _P.sittings(_P.load(), narr)
-    noticed = {(r["term"], r["bill"], r["date"]) for r in notices}
+
+    def meeting(term, bill, day, kind, time):
+        return (term, bill, day, (kind or "").strip().lower(), (time or "").strip()[:5])
+    # A notice is a row of the table, by its kind and hour, and not its day:
+    # a meeting a later row cancelled or moved leaves the rest of its day
+    # (narrative.voided_meetings).
+    noticed = {meeting(r["term"], r["bill"], r["date"], r.get("kind"), r.get("time"))
+               for r in notices}
     for r in notices:
         h = (narr.get(r["term"]) or {}).get(r["bill"]) or {}
         # Or a day its history puts no sitting on ("no_sitting"), and then
@@ -63375,7 +63481,8 @@ def _introductions_against_journal(J, BD):
         # 2013's of 15 January); or the row a person dated afresh, where that
         # day is the one the docket gives (SB 106 of 2009's 10 January, told
         # on 10 February: docket_corrections.json).
-        unsat = r["date"] in (h.get("no_sitting") or []) and any(
+        unsat = (r["date"] in (h.get("no_sitting") or [])
+                 or any(_P.voided(r, m) for m in h.get("voided") or [])) and any(
             "has no row on the bill before" in (e.get("row_note") or "")
             or "took the measure from the committee" in (e.get("row_note") or "")
             or (e.get("notice") and e.get("overtaken") in ("cancelled", "moved")
@@ -63391,8 +63498,9 @@ def _introductions_against_journal(J, BD):
                        "as withdrawn before that day, nor says why no committee sat that day")
         page = _SR.one("site", (idx.get((r["term"], r["bill"])) or {}).get("year"),
                        r["bill"]) or {}
-        if any(s.get("when") == r["date"] and (s.get("what") or "").lower()
-               not in _P.FLOOR_KINDS for s in page.get("stations") or []):
+        if any(meeting(r["term"], r["bill"], s.get("when"), s.get("what"), s.get("time"))
+               == meeting(r["term"], r["bill"], r["date"], r.get("kind"), r.get("time"))
+               for s in page.get("stations") or []):
             bad.append(f"{r['bill']} of {r['term']}: its page draws a committee proceeding "
                        f"on {r['date']}, which its history tells as a notice")
     dl, listed_rows = Path("site/data/proceedings.csv"), 0
@@ -63406,7 +63514,8 @@ def _introductions_against_journal(J, BD):
                     bad.append(f"{r.get('bill')} of {r.get('term')}, never introduced, is in "
                                f"the download as a {r.get('kind')} of {r.get('committee')} "
                                f"on {r.get('date')} (site/data/proceedings.csv)")
-                elif (r.get("term"), r.get("bill"), r.get("date")) in noticed:
+                elif meeting(r.get("term"), r.get("bill"), r.get("date"), r.get("kind"),
+                             r.get("time")) in noticed:
                     bad.append(f"{r.get('bill')} of {r.get('term')}: the download lists a "
                                f"{r.get('kind')} on {r.get('date')}, which its history tells "
                                "as a notice (site/data/proceedings.csv)")
@@ -63429,7 +63538,8 @@ def _introductions_against_journal(J, BD):
                     bad.append(f"{d.get('name')} ({f.name}) is said to have sat on "
                                f"{it.get('bill')} of {it.get('term')}, never introduced, "
                                f"on {s.get('date')} ({it.get('kind')})")
-                elif (it.get("term"), it.get("bill"), s.get("date")) in noticed:
+                elif meeting(it.get("term"), it.get("bill"), s.get("date"), it.get("kind"),
+                             it.get("time")) in noticed:
                     bad.append(f"{d.get('name')} ({f.name}) is said to have sat on "
                                f"{it.get('bill')} of {it.get('term')} on {s.get('date')} "
                                f"({it.get('kind')}), which its history tells as a notice")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.159
+# GRANITE_VERSION: 2026-09-05.160
 """
 Generate the faceted site from real General Court data.
 
@@ -8937,8 +8937,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The rule is proceedings.notice_only, and the committee's page, the
         # download and the Learn pages' count ask it of the same rows, so none
         # of them says a committee sat where this page draws nothing.
+        # And a meeting a later row of the docket cancelled or moved, by its
+        # kind and hour, which leaves the rest of its day drawn.
         stations = [x for x in stations
-                    if not P.notice_only({"date": x.get("when")}, narr)]
+                    if not P.notice_only({"date": x.get("when"), "kind": x.get("what"),
+                                          "time": x.get("time"), "body": x.get("body")},
+                                         narr)]
         # The sign-in counts, on the hearing itself. They already reach the
         # docket line that records the hearing -- 2,115 of them across 2,018
         # bills -- but that line sits inside a collapsed disclosure on another

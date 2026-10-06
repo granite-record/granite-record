@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.73
+# GRANITE_VERSION: 2026-09-04.74
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3278,6 +3278,72 @@ def overtaken(ev, evs):
     return overtaken_by(ev, evs)[0]
 
 
+# WHAT A VOIDED NOTICE LEAVES OFF IS ITS MEETING, NOT ITS DAY (7 October 2026).
+# The day of a notice a later row cancelled or moved was carried out of build()
+# whole, and only where nothing the history tells fell on it, since
+# proceedings.notice_only read a day. So 33 of the 541 such notices kept their
+# meeting wherever the bill had anything else that day, in either chamber: HB
+# 1288 of 1990's Senate hearing of 8 March, cancelled and held on the 6th, was
+# still a station, a row of the download and a day Senate Education "met ...
+# for a hearing on HB 1288-FN", because the Senate passed the bill on the 8th;
+# and Finance "met on February 18, 2014 for public hearings on HB 435-FN, HB
+# 461-FN, HB 525-FN and HB 650-FN-A", whose hearing was cancelled that
+# afternoon and whose work session that day, moved to one o'clock, was held.
+# Each is now carried as the meeting it was -- day, chamber, kind and hour --
+# and notice_only leaves off the row of the table that is that meeting and
+# keeps the rest of the day.
+#
+# NOT WHERE THE TABLE'S ROW COULD BE A MEETING THE HISTORY TELLS: one of the
+# same chamber and kind that day at the same hour, or of the same kind of
+# session at any hour, since the table keeps one row of a kind a day and
+# gives it the first notice's hour. HB 1132 of 2002's Senate hearing set for
+# 8:30 on 19 March was moved to the 7th, called off, and noticed again for
+# 8:45 on the 19th, when it was held; the table's one row of that day says
+# 8:30. A work session of another kind is another row: HB 2014 of 2014's work
+# session of 11:00 on 11 February, cancelled, is the table's "work session"
+# at 11:00, and the full committee's at 11:15 that it held is its own.
+VOIDED_KIND = {"hearing": "hearing", "exec": "executive session",
+               "worksession": "work session"}
+
+
+def _clock(ev):
+    """"10:00", the hour a meeting row states, or ""."""
+    s = _meeting_start(ev)
+    return s.strftime("%H:%M") if s else ""
+
+
+def _session_of_kind(ev):
+    """Which work session a row names, as the table tells them apart
+    (docket_parser): a subcommittee's, the full committee's, or neither."""
+    if ev["_type"] != "worksession":
+        return ""
+    k = (ev.get("_said") or ev.get("_raw") or "").lower()
+    if re.search(r"\bsub-?comm?", k):
+        return "sub"
+    if re.search(r"\bfull\s+comm", k):
+        return "full"
+    return ""
+
+
+def voided_meetings(evs):
+    """[[day, chamber, kind, "HH:MM" or ""]], each meeting a later row of the
+    docket cancelled or moved (overtaken) whose row in the table could be no
+    meeting the history tells (above), for proceedings.notice_only."""
+    told = [e for e in evs
+            if not e["cancelled"] and not e.get("_void") and e["_type"] in ROW_MEETINGS]
+    out = set()
+    for e in evs:
+        if not e.get("_unheld_day") or e["_type"] not in VOIDED_KIND:
+            continue
+        day, at = e["_unheld_day"], _clock(e)
+        if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
+               and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
+               for t in told):
+            continue
+        out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
+    return [list(x) for x in sorted(out)]
+
+
 # "Withdraw From Joint Committee (Reps Wallner and Hess): MA VV" (HA 1 of
 # 2008): the chamber's vote to take a measure from the committee it is in.
 # Not "Per House Rule 50, Withdrawn from Committee" (HB 457 of 2015) or
@@ -4699,18 +4765,16 @@ def build(bill, rows, introduction=None):
                # they came up.
                "notes": st["notes"]}
               for st in stages]
-    # And the day of a meeting a later row cancelled or moved (overtaken), where
-    # nothing the history tells of the bill falls on it: notice_only reads a
-    # day, not a row, and HB 142 of 2015's hearing at ten on 12 February was
-    # held where the one at one o'clock was cancelled.
+    # A meeting a later row cancelled or moved (overtaken) is carried as that
+    # meeting, not its day (voided_meetings): HB 142 of 2015's hearing at ten
+    # on 12 February was held where the one at one o'clock was cancelled.
     told_on = {e["when"].date() for e in evs
                if not e["cancelled"] and not e.get("_void")
                and e["_type"] in ROW_MEETINGS + ("conference_meeting",) + tuple(FLOOR_TYPES)}
+    voided = voided_meetings(evs)
     no_sitting = sorted({e["_no_day"] for e in evs if e.get("_no_day")}
                         | {e["when"].strftime("%Y-%m-%d") for e in evs
                            if e.get("_void") == "taken"}
-                        | {e["_unheld_day"].strftime("%Y-%m-%d") for e in evs
-                           if e.get("_unheld_day") and e["_unheld_day"] not in told_on}
                         # And the day a person's correction took off a meeting
                         # row (docket_corrections.json): proceedings.csv reads
                         # the docket's day, and SB 106 of 2009's hearing of 10
@@ -4854,6 +4918,10 @@ def build(bill, rows, introduction=None):
         # taking the measure from its committee. proceedings.notice_only
         # reads it, for the stations, the committee's days and the download.
         **({"no_sitting": no_sitting} if no_sitting else {}),
+        # And each meeting a later row cancelled or moved, as [day, chamber,
+        # kind, hour] (voided_meetings), which notice_only reads the same way
+        # for that meeting alone.
+        **({"voided": voided} if voided else {}),
     }
 
 
