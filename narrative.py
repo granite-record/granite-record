@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.70
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3709,6 +3709,23 @@ def _entered_before(ev, stamp):
             and datetime.min not in (e, stamp) and e < stamp)
 
 
+# "==CANCELED==" IS "==CANCELLED==" (7 October 2026). The clerk spelled the
+# mark with one L on 53 rows of the dockets the histories read, 49 of them in
+# 2015-2016: "==CANCELED== Executive Session: 2/3/2015 LOB 302" (HB 230 of
+# 2015), "===CANCELED===Public Hearing: 1/29/2015 11:00 AM LOB 306" (HB 377 of
+# 2015), "Hearing;===CANCELED=== January 23, 2001" (SB 19 of 2001). The
+# history read only the two-L flag, so it told each as a meeting
+# held -- the executive session HB 230's committee never sat, the hearing HB
+# 377's never held -- while proceedings.csv, whose reader looks for the word
+# however it is spelled (docket_parser.cancelled), left them off as cancelled.
+CANCEL_FLAGS = ("CANCELLED", "CANCELED")
+
+
+def cancel_marked(r):
+    """Does the row's own mark call off the meeting it names?"""
+    return any(f in CANCEL_FLAGS for f in r["flags"])
+
+
 def build(bill, rows, introduction=None):
     rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
     if CORRECTIONS:
@@ -3752,7 +3769,7 @@ def build(bill, rows, introduction=None):
         # the clerk wrote once at its end ("entry").
         ev["cite"], ev["cite_page"] = cite_of(r.get("entry") or r["desc"])
         ev["body"] = r["body"]
-        ev["cancelled"] = "CANCELLED" in r["flags"]
+        ev["cancelled"] = cancel_marked(r)
         ev["recessed"] = "RECESSED" in r["flags"]
         # The row as the clerk typed it, marks and all, for overtaken().
         ev["_said"] = r["desc"]

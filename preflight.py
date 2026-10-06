@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.356
+# GRANITE_VERSION: 2026-09-04.357
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2788,6 +2788,74 @@ def _overtaken_only_on_evidence(N):
     return "ok", (f"{len(_DOCKET_MOVED_OR_HELD)} histories from real rows: "
                   f"{sum(len(v[0]) for v in _MOVED_OR_HELD.values())} hearings held and "
                   f"{sum(len(v[1]) for v in _MOVED_OR_HELD.values())} days cancelled or moved")
+
+
+# Real rows: Docket_2015-2016.txt 314-319 (HB 230) and 15131-15134 (HB 377);
+# Docket_db_2001-2002.txt 3731-3734 (SB 19).
+_DOCKET_CANCELED_ONE_L = {
+    ("HB230", "2015-2016"): [
+        "2015|0044|01/08/2015 03:26:36 PM|HB230|H|Introduced and Referred to Commerce and Consumer Affairs; HJ 12, PG. 213|01/08/2015 03:26:36 PM",
+        "2015|0044|01/20/2015 03:14:09 PM|HB230|H|==POSTPONED==Public Hearing: 1/27/2015 11:00 AM LOB 302|01/20/2015 03:14:09 PM",
+        "2015|0044|01/20/2015 03:35:51 PM|HB230|H|==RESCHEDULED== Public Hearing: 1/28/2015 11:00 AM LOB 302|01/20/2015 03:35:51 PM",
+        "2015|0044|01/20/2015 03:51:45 PM|HB230|H|==CANCELED== Executive Session: 2/3/2015 LOB 302|01/20/2015 03:51:45 PM",
+        "2015|0044|01/29/2015 10:23:31 AM|HB230|H|Subcommittee Work Session: 2/5/2015 1:15 PM LOB 302|01/29/2015 10:23:31 AM",
+        "2015|0044|02/06/2015 08:42:32 AM|HB230|H|Executive Session: 2/10/2015 11:30 AM LOB 302|02/06/2015 08:42:32 AM"],
+    ("HB377", "2015-2016"): [
+        "2016|0527|1/8/2015 12:00:00 AM|HB377|H|Introduced and Referred to Executive Departments and Administration; HJ 12 , PG. 219|1/8/2015 12:00:00 AM",
+        "2016|0527|1/21/2015 12:00:00 AM|HB377|H|===CANCELED===Public Hearing: 1/29/2015 11:00 AM LOB 306|1/21/2015 12:00:00 AM",
+        "2016|0527|2/4/2015 12:00:00 AM|HB377|H|Public Hearing: 2/17/2015 10:00 AM LOB 306|2/4/2015 12:00:00 AM",
+        "2016|0527|2/24/2015 12:00:00 AM|HB377|H|Executive Session: 3/2/2015 12:30 PM LOB 306|2/24/2015 12:00:00 AM"],
+    ("SB19", "2001-2002"): [
+        "2001|0516|01/04/2001 01:30:57 PM|SB19|S|Introduced and Ref. to Public Affairs; SJ 2, Pg.23|01/04/2001 01:30:57 PM",
+        "2001|0516|01/18/2001 04:10:09 PM|SB19|S|Hearing;===CANCELED=== January 23, 2001, Room 105-A, SH, 1:00 p.m.; SC3|01/18/2001 04:10:09 PM",
+        "2001|0516|01/25/2001 05:12:38 PM|SB19|S|Hearing;=== RESCHEDULED=== February 6, 2001, Room 105-A, SH, 1:00 p.m.; SC4|01/25/2001 05:12:38 PM",
+        "2001|0516|02/08/2001 03:52:08 PM|SB19|S|Committee Report; Ought to Pass ( 02/ 15/01 ); SC7|02/08/2001 03:52:08 PM"],
+}
+
+# For each: what the history says, and the meeting the row called off, which
+# it must not tell.
+_CANCELED_ONE_L_TOLD = {
+    ("HB230", "2015-2016"): (["The committee held a public hearing on January 28, 2015.",
+                              "met in executive session on February 10, 2015"],
+                             ["February 3, 2015"]),
+    ("HB377", "2015-2016"): (["The committee held a public hearing on February 17, 2015."],
+                             ["January 29, 2015"]),
+    ("SB19", "2001-2002"): (["The committee held a public hearing on February 6, 2001."],
+                            ["January 23, 2001"]),
+}
+
+
+@check("narrative", "a meeting the clerk marked \"==CANCELED==\", with one L, is called off as "
+                    "one marked \"==CANCELLED==\" is",
+       needs=("narrative",))
+def _canceled_with_one_l(N):
+    """53 rows of the dockets the histories read spell the mark with one L. The
+    history read only the two-L flag and told each as a meeting held: HB 230 of
+    2015's committee
+    "met in executive session on February 3, 2015", which the row calls off and
+    House Calendar 10 of 30 January no longer prints; HB 377's hearing of 29
+    January 2015; SB 19 of 2001's of 23 January. proceedings.csv, whose reader
+    looks for the word however it is spelled, had left all three off."""
+    bad = []
+    marked = getattr(N, "cancel_marked", None)
+    if marked is None or not (marked({"flags": ["CANCELED"]}) and marked({"flags": ["CANCELLED"]})
+                              and not marked({"flags": ["RESCHEDULED"]})):
+        bad.append("narrative.cancel_marked does not read both spellings, and no other mark")
+    for key, lines in _DOCKET_CANCELED_ONE_L.items():
+        said, unsaid = _CANCELED_ONE_L_TOLD[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        text = " ".join(s["text"] for s in n["stages"])
+        bad += [f"{name} does not say {w!r}: {text[:400]!r}" for w in said if w not in text]
+        bad += [f"{name} tells the meeting of {w}, which its row calls off" for w in unsaid
+                if w in text]
+        off = [e for e in n["events"] if "CANCELED" in (e.get("raw") or "") or (
+            e.get("cancelled") and not e.get("notice"))]
+        if not off:
+            bad.append(f"{name}: no docket line is marked cancelled")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_CANCELED_ONE_L)} histories from real rows leave out the "
+                  "meeting each one-L row calls off")
 
 
 # =============================================================== code: status ==
