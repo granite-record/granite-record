@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.356
+# GRANITE_VERSION: 2026-09-04.357
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44249,9 +44249,10 @@ def _nightly_review_warnings(NI):
     after 1, is the same kind, and a fetch that would withdraw requests is
     another kind than one that did not complete. A build whose warnings no
     verdict holds -- a verdict from before the gate, a rollback -- is not
-    known, and every warning tonight is news; the verdict written for a night
-    that never started carries both, so a build published before it is
-    known after it."""
+    known, and every warning tonight is news that no night published in the
+    last fourteen days carried ("published_kinds", _nightly_review_recent);
+    the verdict written for a night that never started carries all three, so
+    a build published before it is known after it."""
     k = NI.kind_of
     assert k("not taken: the fetch did not complete (exit 1); the earlier 3 kept") == \
         k("not taken: the fetch did not complete (exit 2); none on file") != \
@@ -44304,7 +44305,7 @@ def _nightly_review_warnings(NI):
         g.publish("352")
         v = g.verdict()
         assert v["warning_kinds"] == [] and v["sendable_kinds"] == {
-            "fingerprint": v["fingerprint"], "kinds": []}, v.get("sendable_kinds")
+            "fingerprint": v["fingerprint"], "kinds": [], "day": v["day"]}, v.get("sendable_kinds")
         shutil.copytree("prod", "prod-352")         # for a rollback, below
 
         # One recording waiting: news.
@@ -44313,8 +44314,8 @@ def _nightly_review_warnings(NI):
         rec = next(w for w in v["warnings"] if w.startswith("1 recording finished"))
         assert v["review"] == {"needed": True, "why": NI.warning_reasons([("x", rec)], [])} and \
             len(v["warning_kinds"]) == 1 and v["served_kinds"]["kinds"] == [], v.get("review")
-        assert "- Would have waited for approval: a kind of warning the build production serves " \
-            "did not carry: 1 recording finished" in g.summary, g.summary
+        assert "- Would have waited for approval: " + NI.REVIEW_WARNING.format(
+            said="1 recording finished") in g.summary, g.summary
 
         # Held, and never published: the night after carries it again, and is
         # held again, though the night before carried it -- and so is a
@@ -44354,11 +44355,12 @@ def _nightly_review_warnings(NI):
         assert NI.warning_reasons([("x", lsrs)], [])[0] in news(v), \
             ("the bill requests failing for the first time was not news", v.get("review"))
         g.publish("359")
-        sent, was = v["sendable_kinds"], v["served_kinds"]
+        sent, was, pub = v["sendable_kinds"], v["served_kinds"], v["published_kinds"]
         g.night("--runner", "--close", "--outcome", "kit-down=failure", run_id="360")
         v = g.verdict()
         assert v["run_id"] == "360" and v["sendable_kinds"] == sent and \
-            v["served_kinds"] == was and "warning_kinds" not in v, \
+            v["served_kinds"] == was and v["published_kinds"] == pub and pub and \
+            "warning_kinds" not in v, \
             ("a night that never started did not carry what production serves", v)
         g.how["lsrs_rc"] = 2
         v = night(run_id="361")
@@ -44367,32 +44369,280 @@ def _nightly_review_warnings(NI):
             ("the bill requests failing again, with another exit status, was news", v.get("review"))
         g.publish("361")
 
-        # A verdict that names neither -- one from before the gate: what
-        # production serves is not known, so every warning tonight is news.
+        # A verdict that names none of the three -- one from before the gate:
+        # what production serves is not known, nor any recent published
+        # night, so every warning tonight is news.
         v = g.verdict()
-        del v["served_kinds"], v["sendable_kinds"]
+        del v["served_kinds"], v["sendable_kinds"], v["published_kinds"]
         NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
         v = night(run_id="362")
         assert v["served_kinds"] is None and len(news(v, known=False)) == \
             len(v["warning_kinds"]) == 3, v.get("review")
-        assert "- Would have waited for approval: a kind of warning the build production serves " \
-            "is not known to have carried: " in g.summary, g.summary
+        assert "- Would have waited for approval: " + \
+            NI.REVIEW_WARNING_UNKNOWN.split("{")[0] in g.summary, g.summary
         g.publish("362")
         v = night(run_id="363")
         assert news(v) == [] == news(v, known=False), v.get("review")
 
         # Production rolled back to an older build, whose warnings the verdict
-        # does not hold: not known, though its code is tonight's.
+        # does not hold: not known, though its code is tonight's -- and the
+        # kinds the nights published since carried are known all the same,
+        # since they are published nights' of the last fourteen days. Without
+        # that record, none is.
         shutil.rmtree("prod")
         shutil.copytree("prod-352", "prod")
         v = night(run_id="364")
         assert v["served_kinds"] is None and v["live_commit"] == GATE_SHA[0] and \
-            len(news(v, known=False)) == len(v["warning_kinds"]) == 3, v.get("review")
+            news(v, known=False) == [] and len(v["warning_kinds"]) == 3 and \
+            sorted(v["published_kinds"]) == v["warning_kinds"], \
+            (v.get("review"), v.get("published_kinds"))
+        del v["published_kinds"]
+        NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
+        v = night(run_id="365")
+        assert v["served_kinds"] is None and len(news(v, known=False)) == \
+            len(v["warning_kinds"]) == 3 and v["published_kinds"] == {}, v.get("review")
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", ("a kind of warning the build production serves did not carry holds the night, "
                   "quoting it, and holds it again until a build carrying it is published, a dry "
                   "run between or not; the same kind with other counts or another exit status "
-                  "does not; a build whose kinds are not known holds every warning")
+                  "does not; a build whose kinds are not known holds every warning no recent "
+                  "published night carried")
+
+
+def _gate_late(n):
+    """n recordings, finished five days ago, whose captions the laptop has
+    yet to read: the warning the gate's checks use as a kind that comes and
+    goes. Written where the night reads the livestream state."""
+    from datetime import datetime, timedelta, timezone
+    ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    Path("archive/livestreams.json").write_text(json.dumps({"videos": {
+        f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
+        for i in range(n)}}), encoding="utf-8")
+
+
+@check("build", "the gate never holds a night for the day's files coming from the General "
+       "Court's database, nor for an error on the run's page, and still holds one with a new "
+       "kind of any other warning", needs=("nightly",))
+def _nightly_review_fallback(NI):
+    """The person, 6 October 2026: the export coming back empty or unusable
+    while the night still builds the day's files from the General Court's
+    database "is not a reason to hold", and "if the page itself is still
+    publishing fine, then I'd prefer to let it update". So no note of that
+    fallback holds a night that builds and passes its checks, new kind or
+    not (KINDS_FALLBACK): the day's files from the database, the database's
+    own notes on them, the export's files taken after the database installed
+    nothing, the study views left unasked because the database failed
+    earlier that night. Nor does an error on the page (alarms) of any kind,
+    the seventh database night in a row among them. Each stays on the run's
+    page and in the verdict exactly as before, for the morning triage. A new
+    kind of any other warning still holds the night beside them, and the SQL
+    host's own hold is not the fallback's."""
+    import types
+    lookup = ("SubjectCodes.txt differs from the database's Subject (3 rows only in the "
+              "database): the installed file stays")
+    db = {"kind": "nightly", "fetch": "empty: 13 of 14 files came back with no data in them",
+          "fetch_tries": 1, "db_nights": NI.DB_NIGHTS_MOST,
+          "day_files": {"source": NI.DB_SOURCE, "warnings": [lookup]}}
+    after = {"kind": "nightly", "fetch": "installed", "fetch_tries": 2,
+             "day_files": {"source": "none", "why_code": "query", "after_try": 1},
+             "study_meetings": {"x": NI.STUDY_NOT_AGAIN}}
+    other = ("the General Court's list of calendars and journals: not taken",
+             "the General Court's list of calendars and journals: not taken (exit 1)")
+    assert not NI.fallback_kind("the study committees' meetings not asked for: a hold") and \
+        not NI.fallback_kind(other[0]), "a warning not the fallback's was taken for one of its notes"
+    real = (NI.Night.judge, NI.Night.alarms)
+    how = {"db": None, "alarm": None}
+
+    def judge(self, *args, **kw):
+        # Tonight's day files, as the fallback leaves them in the verdict.
+        if how["db"]:
+            self.v.update(day_files=json.loads(json.dumps(db["day_files"])),
+                          db_nights=NI.DB_NIGHTS_MOST, files_from=NI.DB_SOURCE)
+        return real[0](self, *args, **kw)
+
+    def alarms(self):
+        return real[1](self) + ([how["alarm"]] if how["alarm"] else [])
+
+    with _GateNights(NI) as g:
+        # Every note of the fallback is of a kind that never holds, whether
+        # the kinds of the build production serves are known or not.
+        for v in (db, after):
+            warned = NI.Night.warned(types.SimpleNamespace(v=v))
+            assert len(warned) == 2 and all(NI.fallback_kind(k) for k, _ in warned), warned
+            assert NI.warning_reasons(warned, []) == [] == NI.warning_reasons(warned, None), \
+                ("a note of the database fallback would have held the night", warned)
+            assert NI.warning_reasons(warned + [other], []) == [
+                NI.REVIEW_WARNING.format(said=other[1])], \
+                "a new kind of warning beside the fallback's did not hold the night"
+        assert f"{NI.DB_NIGHTS_MOST} nights in a row" in \
+            NI.Night.alarms(types.SimpleNamespace(v=db))[0], "the long run of database nights lost its error"
+
+        NI.Night.judge, NI.Night.alarms = judge, alarms
+        try:
+            g.night("--runner", "--no-fetch", "--dry-run", run_id="371")
+            g.how["touch"] = 3
+            code, _ = g.night("--runner", "--no-fetch", run_id="372")
+            assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
+            g.publish("372")
+
+            # The seventh night in a row built from the database, otherwise
+            # clean: its warning leads the page, its error is on it, both are
+            # in the verdict, and the gate clears it.
+            how["db"] = db
+            g.how["touch"] = 4
+            code, _ = g.night("--runner", "--no-fetch", run_id="373")
+            v = g.verdict()
+            assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []}, \
+                ("a night whose day files came from the database was held for it", v.get("review"))
+            assert v["warnings"][0].startswith("the day's files were built from the General "
+                                               "Court's database") and \
+                f"(night {NI.DB_NIGHTS_MOST} in a row)" in v["warnings"][0] and \
+                lookup in v["warnings"] and len(v["warning_kinds"]) == 2 and \
+                all(NI.fallback_kind(k) for k in v["warning_kinds"]) and \
+                v["alarms"] and v["not_clean"] == v["alarms"] and \
+                f"{NI.DB_NIGHTS_MOST} nights in a row" in v["alarms"][0], \
+                (v.get("warnings"), v.get("warning_kinds"), v.get("alarms"))
+            lines = g.summary.splitlines()
+            assert f"- **{v['warnings'][0]}**" in lines and \
+                f"- **error: {v['alarms'][0]}**" in lines and \
+                "- Would have published without approval." in lines and \
+                g.output.get("review") == "false", g.summary
+
+            # An error of any other kind on the page holds nothing either.
+            how["db"], how["alarm"] = None, "an error of another kind, for somebody to act on"
+            g.how["touch"] = 5
+            code, _ = g.night("--runner", "--no-fetch", run_id="374")
+            v = g.verdict()
+            assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []} \
+                and v["alarms"] == [how["alarm"]] and v["not_clean"] == v["alarms"] and \
+                f"- **error: {how['alarm']}**" in g.summary.splitlines(), \
+                ("an error on the page held the night", v.get("review"), v.get("alarms"))
+
+            # A new kind of anything else still holds, beside the fallback's
+            # notes and an error, and is the only reason given.
+            how["db"] = db
+            _gate_late(1)
+            g.how["touch"] = 6
+            code, _ = g.night("--runner", "--no-fetch", run_id="375")
+            v = g.verdict()
+            rec = next(w for w in v["warnings"] if w.startswith("1 recording finished"))
+            assert code == 0 and v["review"] == {
+                "needed": True, "why": NI.warning_reasons([("x", rec)], [])} and \
+                len(v["warning_kinds"]) == 3 and v["alarms"], \
+                ("a new kind of warning beside the database's was not held, or not alone",
+                 v.get("review"))
+        finally:
+            NI.Night.judge, NI.Night.alarms = real
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("the day's files from the database, its notes and the seventh such night's "
+                  "error clear a night that is otherwise clean, and stay on its page and in its "
+                  "verdict; another error does too; a new kind of anything else still holds")
+
+
+@check("build", "a kind of warning a night production published in the last fourteen days "
+       "carried is known to the gate, and one seen longer ago, or only on nights never "
+       "published, is not", needs=("nightly",))
+def _nightly_review_recent(NI):
+    """The person, 6 October 2026, on warnings that come and go. Compared with
+    the build production serves alone, the database fallback's warning was
+    news each time it came back after a published night that did not carry
+    it, and the recordings waiting will be the first time the laptop catches
+    up. So a kind is known as well when a night production actually served
+    carried it within KINDS_RECENT_DAYS, fourteen: the verdict carries
+    "published_kinds", {kind: the day of the newest published night that
+    carried it}, which judge() fills from the build production serves -- told
+    by its fingerprint, dated by the day its own night wrote into
+    "sendable_kinds" -- and cuts to the window. A night held and never
+    published adds nothing, however recent; with no record yet, or a build
+    sent before its day was kept, nothing is added and the gate holds as it
+    did."""
+    from datetime import date, timedelta
+    day = "2026-10-20"
+    rec = {"a": "2026-10-10", "b": "2026-09-30", "c": "not a day", "d": "2026-10-06",
+           "e": "2026-10-21"}
+    assert NI.KINDS_RECENT_DAYS == 14 and NI.recent_kinds(rec, day) == {"a", "d"}, \
+        ("ten and fourteen days ago are within the window, twenty and a day to come are not",
+         NI.recent_kinds(rec, day))
+    assert NI.recent_kinds(None, day) == set() == NI.recent_kinds(rec, "")
+    pub = {"fingerprint": "f", "kinds": ["b", "f"], "day": "2026-10-19"}
+    assert NI.published_kinds(rec, pub, day) == {
+        "a": "2026-10-10", "b": "2026-10-19", "d": "2026-10-06", "f": "2026-10-19"}, \
+        NI.published_kinds(rec, pub, day)
+    assert NI.published_kinds(rec, dict(pub, day=None), day) == \
+        {"a": "2026-10-10", "d": "2026-10-06"}, "a build whose day is not known added its kinds"
+    assert NI.published_kinds({"a": "2026-10-19"}, dict(pub, kinds=["a"], day="2026-10-10"),
+                              day) == {"a": "2026-10-19"}, "an older published night set a kind back"
+    assert NI.published_kinds(None, None, day) == {} == NI.published_kinds("x", "y", day)
+    assert NI.warning_reasons([("a", "A"), ("b", "B")], [], NI.recent_kinds(rec, day)) == \
+        [NI.REVIEW_WARNING.format(said="B")], "a kind of a recent published night held the night"
+    assert NI.warning_reasons([("a", "A")], None, NI.recent_kinds(rec, day)) == [] and \
+        NI.warning_reasons([("a", "A")], None, NI.recent_kinds(None, day)) == \
+        [NI.REVIEW_WARNING_UNKNOWN.format(said="A")], "with no record the gate did not hold as before"
+    one = {"fingerprint": "f1", "kinds": ["a"], "day": "2026-10-19"}
+    assert NI.served_kinds("f1", None, one) == one and \
+        NI.served_kinds("f1", dict(one, day="x"), None) == {"fingerprint": "f1", "kinds": ["a"]}, \
+        "the day of the build production serves was not carried with its kinds"
+
+    def news(v, known=True):
+        said = (NI.REVIEW_WARNING if known else NI.REVIEW_WARNING_UNKNOWN).split("{")[0]
+        return [r for r in v["review"]["why"] if r.startswith(said)]
+
+    def night(*argv, run_id):
+        g.how["touch"] += 1             # a build production does not serve yet
+        code, _ = g.night("--runner", *argv, run_id=run_id)
+        assert code == 0, (run_id, g.verdict().get("not_clean"))
+        return g.verdict()
+
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="381")
+        g.how["touch"] = 3
+        g.night("--runner", "--no-fetch", run_id="382")
+        g.publish("382")
+
+        # A kind a published night carried, gone from the night published
+        # after it, and back: known, though production serves a build
+        # without it.
+        _gate_late(1)
+        v = night("--no-fetch", run_id="383")
+        kind = next(k for k in v["warning_kinds"] if k.startswith("recordings"))
+        assert len(news(v)) == 1 and v["sendable_kinds"]["day"] == v["day"], v.get("review")
+        g.publish("383")
+        _gate_late(0)
+        v = night("--no-fetch", run_id="384")
+        assert v["review"] == {"needed": False, "why": []} and \
+            v["published_kinds"] == {kind: v["day"]}, v.get("published_kinds")
+        g.publish("384")
+        _gate_late(2)
+        v = night("--no-fetch", run_id="385")
+        assert v["served_kinds"]["kinds"] == [] and v["review"] == {"needed": False, "why": []}, \
+            ("a kind a night published today carried was news again because the night "
+             "published after it did not carry it", v.get("review"))
+
+        # Ten days ago is within the window; twenty is not, and is let go.
+        today = date.fromisoformat(v["day"])
+        for ago, held in ((10, False), (20, True)):
+            v = g.verdict()
+            v["published_kinds"] = {kind: (today - timedelta(days=ago)).isoformat()}
+            NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
+            v = night("--no-fetch", run_id=f"386-{ago}")
+            assert (len(news(v)) == 1) == held and (kind in v["published_kinds"]) != held, \
+                (f"a kind last on a published night {ago} days ago", v.get("review"),
+                 v.get("published_kinds"))
+
+        # Seen only on nights never published: not known, however recent.
+        _gate_late(0)
+        g.how["lsrs_rc"] = 1
+        for rid in ("387", "388"):
+            v = night(run_id=rid)
+            lsrs = next(k for k in v["warning_kinds"] if k.startswith("next session's bill"))
+            assert any("next session's bill requests" in r for r in news(v)) and \
+                lsrs not in v["published_kinds"], \
+                ("a kind seen only on nights never published was taken for a published one's",
+                 v.get("review"), v.get("published_kinds"))
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a kind a night published within fourteen days carried does not hold the "
+                  "night, though the build production serves lacks it; one last published "
+                  "twenty days ago, or seen only on nights never published, does")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
@@ -49445,6 +49695,17 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert code == 0 and v["db_nights"] == 7 == NI.DB_NIGHTS_MOST and v["publishable"] and \
             not v["clean"] and v["alarms"] and v["not_clean"] == v["alarms"] and \
             "7 nights in a row" in v["alarms"][0], (code, v.get("alarms"), v["not_clean"])
+        # ... and the gate gives none of it as a reason to wait (the person, 6
+        # October 2026; _nightly_review_fallback): not the database's warning,
+        # though no build production serves is known to have carried it, and
+        # not the error. This fixture's production is not read, so the gate
+        # waits for that, and for the other kinds of warning it carries.
+        news = (NI.REVIEW_WARNING.split("{")[0], NI.REVIEW_WARNING_UNKNOWN.split("{")[0])
+        assert v["warnings"][0].startswith("the day's files were built from the General Court's "
+                                           "database") and \
+            not [r for r in v["review"]["why"]
+                 if r.startswith(news) and "the General Court's database" in r] and \
+            not set(v["alarms"]) & set(v["review"]["why"]), v["review"]
         os.environ["GITHUB_ACTIONS"] = "true"
         try:
             code, out = night("--runner", "--close", "--outcome", "night=success", run_id="305")
