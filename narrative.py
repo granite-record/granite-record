@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.67
+# GRANITE_VERSION: 2026-09-04.68
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2209,14 +2209,19 @@ def misfiled(r, bill):
     the note for r where it is the belonging bill's own row of that vote."""
     desc = _squash(r.get("desc"))
     for i, e in enumerate(MISFILED):
-        if (str(e.get("session")) != str(r.get("session"))
-                or str(e.get("body", "")).upper() != str(r.get("body", "")).upper()):
+        if str(e.get("body", "")).upper() != str(r.get("body", "")).upper():
             continue
-        if (str(e.get("bill", "")).upper() == bill.upper()
+        if (str(e.get("session")) == str(r.get("session"))
+                and str(e.get("bill", "")).upper() == bill.upper()
                 and _squash(e["source_says"]) == desc):
             MOVED.add(i)
             return e, ""
-        if (str(e.get("belongs_to", "")).upper() == bill.upper()
+        # The bill it belongs to by the TERM: its own rows can carry the
+        # term's other session year. SB 286 of 2025's "Enrolled" row
+        # (session 2025) is SB 268's, whose rows say 2026.
+        if (P.term_of(str(e.get("session")))
+                and P.term_of(str(e.get("session"))) == P.term_of(str(r.get("session")))
+                and str(e.get("belongs_to", "")).upper() == bill.upper()
                 and _squash(e.get("belongs_to_says")) == desc):
             return None, (e.get("note_there") or "").strip()
     return None, ""
@@ -3556,6 +3561,14 @@ def house_reported(term, bill):
     return {committee_placed(c, "H", term) for c in HOUSE_REPORTED[term].get(bill, ())} - {""}
 
 
+def _day_of(iso):
+    """2009-01-10 as a date, or None."""
+    try:
+        return date.fromisoformat(str(iso)[:10])
+    except ValueError:
+        return None
+
+
 def _entered_before(ev, stamp):
     """Was this row entered before `stamp`? Only where both carry a stamp:
     the dockets of 2017 on stamp every row at midnight, so a row of the same
@@ -3632,6 +3645,7 @@ def build(bill, rows, introduction=None):
                 entry.get("stated_date") or "")
             ev["date_note"] = (entry.get("note") or "").strip()
             ev["date"] = fixed
+            ev["_corrected"] = True
         if not fixed:
             # The day the row states (STATES_ITS_DAY), before clamp_year,
             # which then has nothing of its to bring back.
@@ -4516,7 +4530,16 @@ def build(bill, rows, introduction=None):
                         | {e["when"].strftime("%Y-%m-%d") for e in evs
                            if e.get("_void") == "taken"}
                         | {e["_unheld_day"].strftime("%Y-%m-%d") for e in evs
-                           if e.get("_unheld_day") and e["_unheld_day"] not in told_on})
+                           if e.get("_unheld_day") and e["_unheld_day"] not in told_on}
+                        # And the day a person's correction took off a meeting
+                        # row (docket_corrections.json): proceedings.csv reads
+                        # the docket's day, and SB 106 of 2009's hearing of 10
+                        # February would be drawn again at the 10 January its
+                        # row states.
+                        | {e["date_as_recorded"] for e in evs
+                           if e.get("_corrected") and e.get("date_as_recorded")
+                           and e["_type"] in ROW_MEETINGS
+                           and _day_of(e["date_as_recorded"]) not in told_on})
     return {
         "bill": bill,
         "narrative": " ".join(x["text"] for x in staged),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.353
+# GRANITE_VERSION: 2026-09-04.354
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1732,6 +1732,80 @@ def _approved_by_rules(N, V):
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_APPROVED_BY_RULES)} rows read as they should be and "
                   f"{len(_DOCKET_APPROVED_BY_RULES)} histories that begin with the introduction")
+
+
+# Real rows: Docket_db_2009-2010.txt 8216-8218 (SB 106); Docket.txt 1662, 6183,
+# 11748 and 14657 (SB 286 of 2025), 1591 and 14674 (SB 268).
+_DOCKET_PERSON_CORRECTED = {
+    ("SB106", "2009-2010"): [
+        "2009|0936|02/04/2009 09:03:49 AM|SB106|S|Introduced and Referred to Judiciary|02/04/2009 09:03:49 AM",
+        "2009|0936|02/05/2009 01:53:50 PM|SB106|S|Hearing; January 10, 2009, Room 103, State House, 2:45 p.m.; SC10|02/05/2009 01:53:50 PM",
+        "2009|0936|02/11/2009 10:24:10 AM|SB106|S|Committee Report; Ought to Pass [2/18/09]; SC11|02/11/2009 10:24:10 AM"],
+    ("SB286", "2025-2026"): [
+        "2025|1080|1/24/2025 10:37:36 AM|SB286|S|  Introduced 01/09/2025 and Referred to Executive Departments and Administration;  SJ 3|1/24/2025 10:37:36 AM",
+        "2025|1080|3/20/2025 12:31:43 PM|SB286|S|Sen. Pearl Moved Laid on Table, MA, VV; 03/20/2025;  SJ 8|3/20/2025 12:31:43 PM",
+        "2025|1080|11/3/2025 1:21:53 PM|SB286|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:21:53 PM",
+        "2025|1080|1/21/2026 3:17:21 PM|SB286|S|Enrolled Adopted, VV, (In recess 01/07/2026);  SJ 2|1/21/2026 3:17:21 PM"],
+    ("SB268", "2025-2026"): [
+        "2026|1128|1/23/2025 4:31:58 PM|SB268|S|  Introduced 01/09/2025 and Referred to Judiciary;  SJ 3|1/23/2025 4:31:58 PM",
+        "2026|1128|1/21/2026 4:06:30 PM|SB268|S|Enrolled Adopted, VV, (In recess 01/07/2026);  SJ 2|1/27/2026 4:10:27 PM"],
+}
+
+
+@check("narrative", "the two corrections the person approved on 6 October 2026 are in "
+                    "docket_corrections.json and do what they say", needs=("narrative", "proceedings"))
+def _person_corrected(N, P):
+    """Decision 9, the person's word of 6 October 2026, on the two entries
+    drafted for docket_corrections.json (their file; added by hand, with the
+    evidence beside each). SB 106 of 2009's hearing, which its row dates 10
+    January 2009, 25 days before the bill was introduced, is told on 10
+    February, the day Senate Calendar 10 prints it -- and the 10 January the
+    proceedings table reads from the row is no day a committee sat. SB 286 of
+    2025's "Enrolled Adopted" row is SB 268's, the digits transposed: it is
+    taken off SB 286's history, whose last stage said it was enrolled on its
+    way to the governor, and noted on SB 268's own row of that enrolment,
+    whose rows carry the term's other session year (2026)."""
+    path = Path("docket_corrections.json")
+    assert path.exists(), "docket_corrections.json is not here"
+    dates, moved = N.load_corrections(path), N.load_corrections(path, "misfiled")
+    bad = []
+    if not any(e.get("bill") == "SB106" and e.get("corrected_to") == "2009-02-10" for e in dates):
+        bad.append("docket_corrections.json has no entry putting SB 106 of 2009's hearing on 10 "
+                   "February 2009")
+    if not any(e.get("bill") == "SB286" and e.get("belongs_to") == "SB268" for e in moved):
+        bad.append("docket_corrections.json has no entry giving SB 286 of 2025's Enrolled row to SB 268")
+    got = {}
+    for (bill, term), lines in _DOCKET_PERSON_CORRECTED.items():
+        tmp = Path(tempfile.mkdtemp(prefix="gr-corrected-"))
+        saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS, set(N.CORRECTED), set(N.MOVED))
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = N.parse_docket(str(tmp / "Docket.txt"))[bill]
+            N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS, N.TERM = dates, moved, {}, term
+            got[bill] = N.build(bill, rows)
+        finally:
+            (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS, corrected, moved_) = saved
+            N.CORRECTED.clear(); N.CORRECTED.update(corrected)
+            N.MOVED.clear(); N.MOVED.update(moved_)
+            shutil.rmtree(tmp, ignore_errors=True)
+    sb106, sb286, sb268 = got["SB106"], got["SB286"], got["SB268"]
+    if "The committee held a public hearing on February 10, 2009." not in sb106["narrative"]:
+        bad.append("SB 106 of 2009 is told: " + sb106["narrative"][:200])
+    if not P.notice_only({"kind": "hearing", "date": "2009-01-10"}, sb106):
+        bad.append(f"SB 106 of 2009's 10 January is still a day its committee sat "
+                   f"(no_sitting {sb106.get('no_sitting')!r})")
+    if "enrolled" in sb286["narrative"].lower() or any(
+            e["type"] == "enrolled" for e in sb286["events"]):
+        bad.append("SB 286 of 2025 is still said to have been enrolled: " + sb286["narrative"][-200:])
+    if [m.get("belongs_to") for m in sb286.get("misfiled", [])] != ["SB268"]:
+        bad.append(f"SB 286 of 2025's docket lines do not give the row to SB 268: "
+                   f"{sb286.get('misfiled')!r}")
+    if not any("also lists this enrolment under SB 286" in (e.get("row_note") or "")
+               for e in sb268["events"]):
+        bad.append("SB 268's own row of the enrolment carries no note of SB 286's")
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 106 of 2009 heard on 10 February and not on 10 January; SB 286 of 2025 "
+                  "not enrolled, its row noted on SB 268's")
 
 
 # Real lines: journals/1997/HJ003.txt 1245-1249, 1256-1262 and 2611 (a bill
@@ -53742,12 +53816,17 @@ def _corrections_still_match():
         checked += 1
         wants = [(str(e["bill"]).upper(), str(e["body"]).upper(),
                   N._squash(e["source_says"]))]
+        if not any(wants[0] in h for h in held):
+            stale.append(f"{wants[0][0]} of {session}: {wants[0][2][:70]!r}")
+        # The bill it belongs to, by the term (narrative.misfiled): SB 286 of
+        # 2025's "Enrolled" row is SB 268's, whose rows say 2026.
         if e.get("belongs_to"):
-            wants.append((str(e["belongs_to"]).upper(), str(e["body"]).upper(),
-                          N._squash(e.get("belongs_to_says"))))
-        for want in wants:
-            if not any(want in h for h in held):
-                stale.append(f"{want[0]} of {session}: {want[2][:70]!r}")
+            term = N.P.term_of(session)
+            in_term = [h for p in paths for s_, h in rows(p).items() if N.P.term_of(s_) == term]
+            want = (str(e["belongs_to"]).upper(), str(e["body"]).upper(),
+                    N._squash(e.get("belongs_to_says")))
+            if not any(want in h for h in in_term):
+                stale.append(f"{want[0]} of {term}: {want[2][:70]!r}")
     assert not stale, (
         f"{len(stale)} correction(s) match no docket row, so the date or the "
         "row they held back is published again: " + "; ".join(stale[:4]) + ". "
