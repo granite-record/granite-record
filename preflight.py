@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.348
+# GRANITE_VERSION: 2026-09-04.349
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43770,7 +43770,7 @@ class _GateNights:
             rows = json.loads(f.read_text(encoding="utf-8"))
             if t == newest:
                 for r in rows[:h["touch"]]:
-                    r["status"] = f"changed by run {os.environ.get('GITHUB_RUN_ID')}"
+                    r["status"] = "changed tonight"
             elif t == h["rewrite"]:
                 rows[0]["title"] = "rewritten tonight"
             f.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
@@ -43931,6 +43931,93 @@ def _nightly_publishes_its_commit(NI):
     return "ok", ("tonight's commit is written into site/build.json and read back from "
                   "production's, last, with the fingerprint; unreadable, a web page, none, or "
                   "no answer is None")
+
+
+@check("build", "every night that builds says in its verdict, its output and one line on its run's "
+       "page whether the gate would have held it for approval, and why", needs=("nightly",))
+def _nightly_review_says(NI):
+    """The gate runs in shadow before any reviewer comes off: the person keeps
+    approving as now, and each night says what the gate would have done, so
+    the two can be compared over the shadow nights. So every night that
+    builds carries "review": {"needed", "why"} in its verdict; the night's
+    step gives the workflow "review" as an output, true wherever the gate did
+    not clear the night -- a night that did not build included, the safe side
+    for anything that reads it -- and the night job hands it on; and the run's
+    page carries one plain line: "Would have published without approval.",
+    "Would have waited for approval: <reasons>.", for a dry run what it would
+    have been, and for a build that could not go to production at all, that
+    there was nothing to approve. Every other word on the page is unchanged."""
+    yes, no = NI.REVIEW_LINES
+    assert NI.review_line({}, False) == "", "a night that did not build has a gate line"
+    for dry in (False, True):
+        assert NI.review_line({"review": {"needed": True, "why": ["x"]}, "publishable": False},
+                              dry) == NI.REVIEW_NOT_FOR
+    said = NI.review_line({"review": {"needed": True, "why": ["one", "two"]}, "publishable": True},
+                          False)
+    assert said == "Would have waited for approval: one; two." == no.format(why="one; two"), said
+    assert NI.review_line({"review": {"needed": False, "why": []}, "publishable": True}, False) \
+        == yes == "Would have published without approval."
+    assert NI.review_line({"review": {"needed": False, "why": []}, "publishable": True}, True) == \
+        "A dry run, so nothing was published; had it not been one, it would have published " \
+        "without approval.", NI.review_line({"review": {"needed": False}, "publishable": True}, True)
+    assert NI.review_line({"review": {"needed": True, "why": ["one"]}, "publishable": True}, True) \
+        == "A dry run, so nothing was published; had it not been one, it would have waited for " \
+        "approval: one."
+
+    with _GateNights(NI) as g:
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="311")
+        v = g.verdict()
+        assert code == 0 and v["built"] and not v["publishable"] and "review" in v and \
+            f"- {NI.REVIEW_NOT_FOR}" in g.summary, (v.get("review"), g.summary)
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="312")
+        assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
+        g.publish("312")
+
+        # An ordinary data night after it: the code production serves, a few
+        # rows changed, nothing new to warn of -- nothing for the gate.
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="313")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []}, \
+            ("an ordinary data night was held by the gate", v.get("review"))
+        assert g.output.get("review") == "false" and f"- {yes}" in g.summary.splitlines(), \
+            (g.output, g.summary)
+        assert g.summary.splitlines().index(f"- {yes}") == 2, \
+            f"the gate's line is not under the night's first two lines: {g.summary}"
+
+        # The same, as a dry run.
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="314")
+        assert code == 0 and g.verdict()["review"]["needed"] is False and \
+            "- A dry run, so nothing was published; had it not been one, it would have " \
+            "published without approval." in g.summary.splitlines(), g.summary
+
+        # A build production already serves could not go to production.
+        g.publish("314")
+        code, _ = g.night("--runner", "--no-fetch", run_id="315")
+        v = g.verdict()
+        assert code == 0 and not v["publishable"] and "review" in v and \
+            f"- {NI.REVIEW_NOT_FOR}" in g.summary.splitlines(), g.summary
+
+        # A night that did not build has no review, and its output holds.
+        code, _ = g.night("--runner", "--new-term", "--dry-run", run_id="316")
+        v = g.verdict()
+        assert code == 1 and not v["built"] and "review" not in v and \
+            g.output.get("review") == "true" and not any(
+                ln[2:] in (yes, NI.REVIEW_NOT_FOR) or ln.startswith(("- Would have", "- A dry run"))
+                for ln in g.summary.splitlines()), (v.get("review"), g.output, g.summary)
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+
+    # The night job hands the step's output on, for the routing to read.
+    wf = Path(".github/workflows/nightly.yml")
+    if wf.exists():
+        night = _wf_jobs(wf.read_text(encoding="utf-8")).get("night") or []
+        outs = [ln.strip() for ln in _wf_code(night)]
+        assert "review: ${{ steps.night.outputs.review }}" in outs, \
+            "nightly.yml's night job does not hand on the step's review output"
+    return "ok", ("a built night's verdict carries review {needed, why}, its output review, and "
+                  "its page one line: published without approval, waited with reasons, a dry "
+                  "run's would-have, or nothing to approve; a night that did not build, none")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

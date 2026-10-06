@@ -142,6 +142,11 @@ jobs:
     outputs:
       built: ${{ steps.night.outputs.built }}
       publishable: ${{ steps.night.outputs.publishable }}
+      # THE GATE (6 October 2026; nightly.py says what it is): "false" when the
+      # night would publish without approval, "true" when it would wait for
+      # it. In shadow nothing reads it yet: every night still waits in
+      # "production". The routing that reads it is a person's change to make.
+      review: ${{ steps.night.outputs.review }}
     steps:
       - name: Tell Healthchecks the night has started
         env:

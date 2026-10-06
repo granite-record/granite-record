@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.40
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -534,6 +534,34 @@ COMMIT = re.compile(r"[0-9a-f]{40}")
 # be read or names none). Emptied at the start of every read, and by judge
 # before it reads, so a night never judges by an earlier night's answer.
 SERVED = {}
+
+# THE GATE (6 October 2026). Every night that passes its checks waits today for
+# a person's approval in the "production" environment, and the live record
+# lags by however long that takes. The design approved on 6 October 2026 lets an
+# ordinary data night publish itself and keeps the look for a night that is
+# one of these:
+#
+#   a New term run       always: the person's rule of 30 September 2026
+#   a release            tonight's code is not the code of the build production
+#                        serves (BUILD_RECORD): the first night after a merge to
+#                        main, which is the person's one look at it. Where
+#                        production's commit cannot be read, the answer is wait
+#   far more changed     than a data night changes (REVIEW_ROWS_MOST)
+#   a new warning        of a kind the night before did not carry
+#
+# Every night that builds says in its verdict, as "review": {"needed", "why"},
+# whether the gate holds it and why; the night's step says it to the workflow
+# as the output "review", and the run's page says it in one line. IN SHADOW
+# until the workflow routes by it: the page says what the gate WOULD have done,
+# and every night still waits for approval in "production" as before. Nothing
+# here decides what is published, or when.
+#
+# How the run's page puts it, for a night whose build could go to production
+# (REVIEW_LINES), for a dry run, and for a night whose build could not.
+REVIEW_LINES = ("Would have published without approval.",
+                "Would have waited for approval: {why}.")
+REVIEW_DRY = "A dry run, so nothing was published; had it not been one, it {would}"
+REVIEW_NOT_FOR = "Not for production tonight, so there was nothing to approve."
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -2791,6 +2819,23 @@ def served_commit(base, timeout=60):
     return c if isinstance(c, str) and COMMIT.fullmatch(c) else None
 
 
+def review_line(v, dry_run):
+    """The gate's one line on the run's page, for a verdict that carries a
+    review; "" for one that does not (a night that did not build). Each
+    reason is a sentence of this file's own, from its own counts and the
+    project's public commit ids: the page is public."""
+    r = v.get("review") if isinstance(v.get("review"), dict) else None
+    if not r:
+        return ""
+    if not v.get("publishable"):
+        return REVIEW_NOT_FOR
+    said = (REVIEW_LINES[1].format(why="; ".join(str(x) for x in r.get("why") or []))
+            if r.get("needed") else REVIEW_LINES[0])
+    if dry_run:
+        return REVIEW_DRY.format(would=("would have " + said[len("Would have "):]))
+    return said
+
+
 def stamp_commit(site, sha):
     """Tonight's commit into site/build.json, which build_all wrote: what a
     later night reads back from production (served_commit). Only a full commit
@@ -2844,6 +2889,9 @@ class Night:
                   "asked": {"fetch": not a.no_fetch, "dry_run": a.dry_run,
                             "new_term": a.new_term},
                   "built": False, "publishable": False, "clean": False}
+        # The gate's reasons from the build and from production (THE GATE),
+        # filled in by judge; finish() adds the warnings' and writes "review".
+        self.review_why = []
         prev = load_json(VERDICT)
         # How many nights in a row the day's files have come from the
         # database, carried from the night before: a night that installs the
@@ -3135,20 +3183,33 @@ class Night:
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code,
                  clean=not why and not alarms and code == 0, not_clean=why + alarms,
                  alarms=alarms, warnings=self.warnings())
+        if v.get("built"):
+            # THE GATE, for every night that built: whether it would wait for a
+            # person, and why. In shadow it decides nothing.
+            reasons = list(self.review_why)
+            v["review"] = {"needed": bool(reasons), "why": reasons}
         write_json(VERDICT, v)
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {VERDICT}")
         for w in why + alarms:
             say(f"  - {w}")
         for w in v["warnings"]:
             say(f"  - warning: {w}")
+        line = review_line(v, self.a.dry_run)
+        if line:
+            say(f"\nthe gate: {line}")
+        # "review" is true wherever the gate did not clear the night, a night
+        # that did not build included: the safe side for anything that reads it.
         gh_output(built=bool(v.get("built")), publishable=bool(v.get("publishable")),
-                  clean=bool(v["clean"]), day=self.day)
+                  clean=bool(v["clean"]), day=self.day,
+                  review=bool((v.get("review") or {"needed": True})["needed"]))
         tries = int(v.get("fetch_tries") or 1)
         gh_summary([f"### Nightly {self.day}: {'clean' if v['clean'] else 'not clean'}",
                     f"- built: {'yes' if v.get('built') else 'no'}; for production: "
                     f"{'yes' if v.get('publishable') else 'no'}"]
                    + ([f"- **{v['warnings'][0]}**"] if from_db(v) and v["warnings"] else [])
                    + [f"- **error: {x}**" for x in alarms]
+                   # The gate's line, under what leads the page.
+                   + ([f"- {line}"] if line else [])
                    + ([f"- the day's files arrived whole on try {tries}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + tried_lines(v)
