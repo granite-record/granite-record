@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.45
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -349,6 +349,23 @@ GitHub's night only, with the day's files, under the same lock:
                       days behind is no reason to hold back the day's docket.
                       A refusal met while asking is recorded as every
                       refusal is, and the next night does not ask at all
+
+THE GATE, IN SHADOW (6 October 2026)
+
+Every night that passes its checks waits for approval in GitHub's "production"
+environment, and the record lags by however long that takes. The design the
+person approved on 6 October 2026 lets an ordinary data night publish itself
+and keeps their look for a night that is a New term run, the first night after
+a release (its commit is not the one production's build.json names, or either
+is not known), a night that changed far more than a data night does (a
+finished term's bill list rewritten, or more than REVIEW_ROWS_MOST of the
+current term's rows), or one with a kind of warning the night before did not
+carry. Every night that builds says so in its verdict ("review"), its output
+("review") and one line on its run's page. The workflow's REVIEW_GATE says
+whether the publish job is routed by it; until the person switches it on, after
+five scheduled nights where its answer matches theirs, it is "shadow", the
+page says what the gate WOULD have done, and nothing about what is published,
+when, or behind which environment changes. THE GATE, below, has the detail.
 """
 
 import argparse
@@ -551,16 +568,30 @@ SERVED = {}
 #
 # Every night that builds says in its verdict, as "review": {"needed", "why"},
 # whether the gate holds it and why; the night's step says it to the workflow
-# as the output "review", and the run's page says it in one line. IN SHADOW
-# until the workflow routes by it: the page says what the gate WOULD have done,
-# and every night still waits for approval in "production" as before. Nothing
-# here decides what is published, or when.
+# as the output "review", and the run's page says it in one line. Nothing here
+# decides what is published, or when: the workflow does, by its publish job's
+# environment, and it tells the night which way it does in GATE_ENV --
 #
-# How the run's page puts it, for a night whose build could go to production
-# (REVIEW_LINES), for a dry run, and for a night whose build could not.
+#   "shadow"  every night waits for approval in "production" as before, and
+#             the page says what the gate WOULD have done (REVIEW_LINES). So
+#             from 6 October 2026, until the person has seen five scheduled
+#             nights where its answer matches theirs
+#   "on"      the publish job goes through "production", with no reviewer, for
+#             a night the gate clears, and through "production-review", which
+#             has one, for a night it holds and for every New term run; the
+#             page says which (REVIEW_LINES_ON). preflight holds the
+#             workflow's word to its environment line
+#
+# Anything else, or nothing (the laptop, a check), is read as shadow.
+GATE_ENV, GATE_SHADOW, GATE_ON = "REVIEW_GATE", "shadow", "on"
 REVIEW_LINES = ("Would have published without approval.",
                 "Would have waited for approval: {why}.")
-REVIEW_DRY = "A dry run, so nothing was published; had it not been one, it {would}"
+REVIEW_LINES_ON = ("Goes to production without approval.", "Waits for approval: {why}.")
+# ... for a dry run, whichever way, and for a build that could not go at all.
+REVIEW_DRY = ("A dry run, so nothing was published; had it not been one, it would have "
+              "published without approval.",
+              "A dry run, so nothing was published; had it not been one, it would have waited "
+              "for approval: {why}.")
 REVIEW_NOT_FOR = "Not for production tonight, so there was nothing to approve."
 # The gate's second reason: a release. A release is a merge to main, the
 # person's own act, and the first night after it is their one look at it; a
@@ -2900,11 +2931,16 @@ def review_line(v, dry_run):
         return ""
     if not v.get("publishable"):
         return REVIEW_NOT_FOR
-    said = (REVIEW_LINES[1].format(why="; ".join(str(x) for x in r.get("why") or []))
-            if r.get("needed") else REVIEW_LINES[0])
-    if dry_run:
-        return REVIEW_DRY.format(would=("would have " + said[len("Would have "):]))
-    return said
+    lines = REVIEW_DRY if dry_run else REVIEW_LINES_ON if gate_on() else REVIEW_LINES
+    if r.get("needed"):
+        return lines[1].format(why="; ".join(str(x) for x in r.get("why") or []))
+    return lines[0]
+
+
+def gate_on():
+    """Whether the workflow says it routes the publish job by the gate
+    (GATE_ENV); anything but "on" is shadow."""
+    return os.environ.get(GATE_ENV) == GATE_ON
 
 
 def code_differs(sha, served):
@@ -3258,6 +3294,10 @@ class Night:
             say(f"\n  {a.base} already serves this build: there is nothing to publish")
         elif a.dry_run:
             say("\n  this build could go to production; a dry run sends nothing there")
+        elif gate_on():
+            say("\n  this build can go to production. The publish job goes through the "
+                "\"production\" environment, with no reviewer, if the gate clears it (below), "
+                "and through \"production-review\", where there is one, if it does not.")
         else:
             say("\n  this build can go to production. The publish job waits for approval "
                 "in the \"production\" environment, where there is a reviewer.")

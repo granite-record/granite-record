@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.353
+# GRANITE_VERSION: 2026-09-04.354
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -52084,7 +52084,9 @@ def _wf_environment(job_lines):
             if m.group(1):
                 return m.group(1).strip("'\"")
             for nxt in job_lines[i + 1:]:
-                n = re.match(r"^      name:\s*(\S+)", nxt)
+                # The whole value: an expression that chooses one (GATE_ROUTED)
+                # is several words.
+                n = re.match(r"^      name:\s*(.+?)\s*$", nxt)
                 if n:
                     return n.group(1).strip("'\"")
                 if re.match(r"^    \S", nxt):
@@ -52279,7 +52281,10 @@ def _workflows_production(NI):
             assert not re.search(r"^\s+[^#\n]*\bwrangler\b", body, re.M), \
                 f"{f.name}: job {j} runs wrangler itself, not through nightly.py"
             if "--deploy-to production" in body:
-                assert env == "production", \
+                # "production", or once the gate is on, the one expression that
+                # chooses "production-review" for a night the gate holds and
+                # for every New term run (_workflows_gate holds the two modes).
+                assert env in ("production", GATE_ROUTED), \
                     f"{f.name}: job {j} deploys production outside the production environment"
                 cond = re.search(r"^    if:\s*(.+)$", body, re.M)
                 assert re.search(r"^    needs:\s*\S+", body, re.M) and cond and \
@@ -52499,8 +52504,10 @@ def _workflows_new_term(NI):
         assert NEW_TERM_ENV in _wf_block(lines, "env"), \
             f"{f.name} does not take NEW_TERM from the box, on a run by hand alone"
         name = _wf_block(lines, "run-name")
+        # ... and, once the gate is on, the publish job's environment line,
+        # which sends every New term run to "production-review" (GATE_ROUTED).
         stray = [ln.strip() for ln in code if "inputs.new_term" in ln
-                 and ln != NEW_TERM_ENV and ln not in name]
+                 and ln != NEW_TERM_ENV and ln not in name and ln != GATE_ROUTED_LINE]
         assert not stray, f"{f.name} reads the New term box outside its env line: {stray}"
 
         # Handed to the night or the week; and, where the workflow publishes,
@@ -52591,6 +52598,144 @@ def _workflows_new_term(NI):
     return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
                   f"only to the night or the week; {', '.join(reviewed)} holds what the run "
                   "took until its publish job releases it, and keeps its required-reviewer note")
+
+
+# THE GATE IN THE WORKFLOW (6 October 2026). In shadow the publish job goes
+# through "production", where the person is the required reviewer, every night.
+# On the switch day the person applies the routing (a patch kept off the
+# repository): REVIEW_GATE turns "on", and the publish job's environment is
+# this expression -- "production", with no reviewer, only where the night's
+# review output is exactly "false" and the run is not a New term run, and
+# "production-review" for everything else, a missing output included. The
+# New term clause names the box itself, so the switch to a new term waits
+# for a reviewer even if the night's own reason for it were ever lost.
+GATE_ROUTED = ("${{ (needs.night.outputs.review == 'false' && !(github.event_name == "
+               "'workflow_dispatch' && inputs.new_term)) && 'production' || 'production-review' }}")
+GATE_ROUTED_LINE = "      name: " + GATE_ROUTED
+GATE_MODE = {"shadow": "  REVIEW_GATE: shadow", "on": '  REVIEW_GATE: "on"'}
+GATE_OUTPUT = "      review: ${{ steps.night.outputs.review }}"
+GATE_SHADOW_ENV = ("    environment:\n      name: production\n"
+                   "      url: https://graniterecord.org\n")
+
+
+def _gate_route(text):
+    """nightly.yml's code as the routing leaves it: REVIEW_GATE on, and the
+    publish job's environment GATE_ROUTED. (The patch applied on the switch
+    day changes the comments that say so as well.)"""
+    assert text.count(GATE_SHADOW_ENV) == 1 and text.count(GATE_MODE["shadow"] + "\n") == 1, \
+        "nightly.yml's publish environment or REVIEW_GATE is not where the routing expects it"
+    return (text.replace(GATE_SHADOW_ENV, GATE_SHADOW_ENV.replace(
+        "name: production", "name: " + GATE_ROUTED))
+        .replace(GATE_MODE["shadow"] + "\n", GATE_MODE["on"] + "\n"))
+
+
+def _gate_problems(text):
+    """(mode, problems) of a workflow that deploys production: REVIEW_GATE set
+    once, in the top-level env, to shadow or "on"; every job that deploys
+    production in "production" in shadow and in GATE_ROUTED when on; and the
+    night job handing on the step's review output either way."""
+    lines = text.splitlines()
+    code = "\n".join(_wf_code(lines))
+    modes = [m for m, ln in GATE_MODE.items() if ln in _wf_block(lines, "env")]
+    if len(modes) != 1 or code.count("REVIEW_GATE") != 1:
+        return None, ['REVIEW_GATE is not set once, to shadow or "on", in the top-level env']
+    mode, out = modes[0], []
+    want = "production" if mode == "shadow" else GATE_ROUTED
+    jobs = _wf_jobs(text)
+    for j, jl in jobs.items():
+        if "--deploy-to production" in "\n".join(_wf_code(jl)):
+            env = _wf_environment(_wf_code(jl))
+            if env != want:
+                out.append(f"REVIEW_GATE is {mode}, and job {j} deploys production through "
+                           f"{env!r}, not {want!r}")
+    if GATE_OUTPUT not in _wf_code(jobs.get("night") or []):
+        out.append("the night job does not hand on the step's review output")
+    return mode, out
+
+
+@check("workflows", "the workflow says whether the gate routes the publish job, and its publish "
+       "environment agrees; the routing the person applies on the switch day passes the "
+       "production rule and the New term rule", needs=("nightly",))
+def _workflows_gate(NI):
+    """The gate runs in shadow from 6 October 2026: every night still waits for
+    approval in "production", and the night says what the gate would have
+    done. After five scheduled nights where its answer matches the person's,
+    they create "production-review" with themselves as reviewer, apply the
+    routing, and take the reviewer off "production". So nightly.yml says
+    which mode it is in (REVIEW_GATE, which nightly.py reads to word the run's
+    page), and preflight holds the publish job's environment to that word:
+    "production" in shadow, GATE_ROUTED when on. And the routing is proved
+    here before anyone applies it: nightly.yml as it would leave it passes this
+    rule, the production rule (_workflows_production) and the New term rule
+    (_workflows_new_term), and a routing that dropped the New term clause, or
+    that left REVIEW_GATE in shadow, does not."""
+    global WORKFLOW_DIR
+    assert (NI.GATE_ENV, NI.GATE_SHADOW, NI.GATE_ON) == ("REVIEW_GATE", "shadow", "on"), \
+        "nightly.py reads another word for the gate's mode than the workflow sets"
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    mode, problems = _gate_problems(text)
+    assert not problems, "; ".join(problems)
+
+    # nightly.py words the page by the mode.
+    saved_env = os.environ.get(NI.GATE_ENV)
+    try:
+        v = {"review": {"needed": True, "why": ["x"]}, "publishable": True}
+        os.environ[NI.GATE_ENV] = NI.GATE_ON
+        assert NI.gate_on() and NI.review_line(v, False) == "Waits for approval: x." and \
+            NI.review_line({**v, "review": {"needed": False, "why": []}}, False) == \
+            "Goes to production without approval." and \
+            NI.review_line(v, True).startswith("A dry run"), NI.review_line(v, False)
+        os.environ[NI.GATE_ENV] = NI.GATE_SHADOW
+        assert not NI.gate_on() and NI.review_line(v, False) == "Would have waited for approval: x."
+    finally:
+        if saved_env is None:
+            os.environ.pop(NI.GATE_ENV, None)
+        else:
+            os.environ[NI.GATE_ENV] = saved_env
+    if mode == "on":
+        return "ok", "the gate is on: the publish job goes through GATE_ROUTED"
+
+    # The routing, before anyone applies it.
+    routed = _gate_route(text)
+    assert _gate_problems(routed) == ("on", []), _gate_problems(routed)
+    yaml = imp("yaml")
+    if yaml is not None:
+        doc = yaml.safe_load(routed)
+        assert doc["jobs"]["publish"]["environment"]["name"] == GATE_ROUTED and \
+            doc["env"]["REVIEW_GATE"] == "on", "the routing does not read back as YAML as written"
+    assert _gate_problems(routed.replace(GATE_MODE["on"], GATE_MODE["shadow"]))[1], \
+        "a routed publish job with REVIEW_GATE left in shadow passed"
+    assert _gate_problems(text.replace(GATE_MODE["shadow"], GATE_MODE["on"]))[1], \
+        "REVIEW_GATE on with the publish job still in production passed"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-gate-wf-"))
+    saved = WORKFLOW_DIR
+    try:
+        for f in _workflows():
+            shutil.copy(f, tmp / f.name)
+        WORKFLOW_DIR = tmp
+        (tmp / "nightly.yml").write_text(routed, encoding="utf-8")
+        for rule in (_workflows_production, _workflows_new_term):
+            status, msg = rule(NI)
+            assert status == "ok", f"the routing fails {rule.__name__}: {msg}"
+        lost = routed.replace(" && !(github.event_name == 'workflow_dispatch' && inputs.new_term)",
+                              "")
+        assert lost != routed
+        (tmp / "nightly.yml").write_text(lost, encoding="utf-8")
+        try:
+            passed = _workflows_production(NI)[0] == "ok"
+        except AssertionError:
+            passed = False
+        assert not passed, ("a routing that lets a New term run through without a reviewer "
+                            "passed the production rule")
+    finally:
+        WORKFLOW_DIR = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("REVIEW_GATE is shadow and the publish job goes through production; the routing "
+                  "(on, GATE_ROUTED) passes this, the production rule and the New term rule, and "
+                  "without its New term clause or left in shadow does not")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
