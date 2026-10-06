@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.351
+# GRANITE_VERSION: 2026-09-04.352
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1734,6 +1734,81 @@ def _approved_by_rules(N, V):
                   f"{len(_DOCKET_APPROVED_BY_RULES)} histories that begin with the introduction")
 
 
+# Real lines: journals/1997/HJ003.txt 1245-1249, 1256-1262 and 2611 (a bill
+# listed for third reading, with no report), and
+# journals/1998/HJ014.txt 538-541 (the House Journal's reports); and real rows,
+# Docket_db_1997-1998.txt 1538 and 1540-1542 (HB 163) and 21937 and 21941-21943
+# (SB 479).
+_JOURNAL_REPORTS_TEXT = """HB 141-L, relative to the powers and authority of local police chiefs. INEXPEDIENT TO
+LEGISLATE
+
+Rep. Herbert R. Hansen for Criminal Justice and Public Safety: This bill removes a provision which
+limits the authority of a local police chief in operating the police department to written formal
+HB 163, repealing the law which requires the commissioner of health and human services to deny
+the application or renewal of the license of an emergency medical technician convicted of driving
+while intoxicated. OUGHT TO PASS
+
+Rep. Herbert R. Hansen for Criminal Justice and Public Safety: This bill repeals the law which
+requires the commissioner of health and human services to deny the application or renewal of the
+license of an emergency medical technician convicted of driving while intoxicated. The committee felt
+HB 165, establishing a committee to study withdrawal from cooperative school districts.
+
+SB 479-FN, establishing a committee to study the supervision of juvenile delinquents on probation
+or parole. OUGHT TO PASS
+
+Rep. Herbert R. Hansen for Criminal Justice and Public Safety: This bill establishes a committee to
+"""
+_DOCKET_JOURNAL_SAYS = {
+    ("HB163", "1997-1998"): [
+        "1997|0207|01/08/1997 04:36:47 PM|HB163|H|INTRODUCED AND REF TO COMMERCE; HJ10,P155|01/08/1997 04:36:47 PM",
+        "1997|0207|01/08/1997 04:41:00 PM|HB163|H|HEARING JAN15 10:00 RM204,LOB    FOR: CRIM JUST & PSFTY|01/08/1997 04:41:00 PM",
+        "1997|0207|01/23/1997 11:23:30 AM|HB163|H|MAJ REPORT  OTP  FOR JAN29  (VOTE 20-0;CC)|01/23/1997 11:23:30 AM",
+        "1997|0207|01/29/1997 01:25:07 PM|HB163|H|PASSED; HJ17,P264 + 278|01/29/1997 01:25:07 PM"],
+    ("SB479", "1997-1998"): [
+        "1998|2840|05/07/1998 02:40:49 PM|SB479|H|INTRODUCED AND REF TO ST-FED RELATIONS; (SEE PERM JOURNAL)|05/07/1998 02:40:49 PM",
+        "1998|2840|05/15/1998 02:21:24 PM|SB479|H|HEARING MAY19 10:00 RM204,LOB    FOR: CRIM JUST|05/15/1998 02:21:24 PM",
+        "1998|2840|05/19/1998 04:46:13 PM|SB479|H|MAJ REPORT  OTP  FOR MAY28  (VOTE 13-0;CC)|05/19/1998 04:46:13 PM",
+        "1998|2840|05/28/1998 10:52:43 AM|SB479|H|PASSED; HJ51,P2041 + 2057|05/28/1998 10:52:43 AM"],
+}
+
+
+@check("narrative", "a House row naming another committee than the referral's is settled by the "
+                    "House Journal's report where it names that committee", needs=("narrative",))
+def _journal_settles_the_committee(N):
+    """Decision 50, the person's word of 6 October 2026. HB 163 of 1997 was
+    referred to Commerce and heard "FOR: CRIM JUST & PSFTY"; SB 479 of 1998
+    was referred in the House to State-Federal Relations and heard "FOR: CRIM
+    JUST". A row naming another committee than the referral's heads what
+    follows with the House alone, and both histories told their committee's
+    hearing and report under "In House committee". The House Journal prints
+    each report "for Criminal Justice and Public Safety", and where it does,
+    for the committee the row names and not the referral's, the stage is
+    headed with it. With no journal saying so, the House alone, as before."""
+    bad = []
+    said = N.journal_reports(_JOURNAL_REPORTS_TEXT)
+    want = {"HB141": {"Criminal Justice and Public Safety"},
+            "HB163": {"Criminal Justice and Public Safety"},
+            "SB479": {"Criminal Justice and Public Safety"}}
+    if said != want:
+        bad.append(f"the House Journal's reports are read as {said}")
+    for key, lines in _DOCKET_JOURNAL_SAYS.items():
+        heads = [s["label"] for s in _narrated(N, key[1], key[0], lines, reported=said)["stages"]]
+        if ("In House committee — Criminal Justice and Public Safety" not in heads
+                or "In House committee" in heads):
+            bad.append(f"{key[0]} of {key[1]}, with the journal, is headed {heads}")
+        heads = [s["label"] for s in _narrated(N, key[1], key[0], lines)["stages"]]
+        if "In House committee" not in heads or any("Criminal" in h for h in heads):
+            bad.append(f"{key[0]} of {key[1]}, with no journal, is headed {heads}")
+        # Nor a journal that prints the referral's committee's report too.
+        both = {key[0]: want[key[0]] | {"Commerce", "State-Federal Relations and Veterans Affairs"}}
+        heads = [s["label"] for s in _narrated(N, key[1], key[0], lines, reported=both)["stages"]]
+        if any("Criminal" in h for h in heads):
+            bad.append(f"{key[0]} of {key[1]}, with a journal giving both committees, is headed {heads}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 163 of 1997 and SB 479 of 1998 headed Criminal Justice and Public Safety by "
+                  "the House Journal's reports, and the House alone without them")
+
+
 # Real rows: Docket.txt 7406 (HB 517 of 2025) and 19102 (SB 635 of 2026);
 # Docket_2019-2020.txt 18691 (SB 487), 17387 (SB 287), 93 (CACR 20) and 19735
 # (SB 618); Docket_db_1991-1992.txt 6595 (HB 363); Docket_db_1995-1996.txt 9948
@@ -3026,16 +3101,24 @@ def _between_chambers(build_site_v2):
 # journal. The checks from here to the conferees' below each hold one of the
 # readings that came of it, on the rows it was found on.
 
-def _narrated(N, term, bill, lines, introduction=None):
+def _narrated(N, term, bill, lines, introduction=None, reported=None):
     """A measure's history as narrative.build tells it from real docket rows
-    (Docket*.txt lines), with no corrections file and no journal reading."""
+    (Docket*.txt lines), with no corrections file and no journal reading: the
+    House Journals' reports (narrative.house_reported) are `reported`,
+    {bill: {committee}}, and none where it is None, whatever is on disk."""
     saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
+    journals = (getattr(N, "JOURNALS", None), getattr(N, "HOUSE_REPORTED", None))
     try:
         N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS = [], [], {}
         N.TERM = term
+        if journals[1] is not None:
+            N.JOURNALS = Path(tempfile.gettempdir()) / "gr-no-journals-here"
+            N.HOUSE_REPORTED = {term: dict(reported or {})}
         return N.build(bill, _docket_rows(lines), introduction=introduction)
     finally:
         N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
+        if journals[1] is not None:
+            N.JOURNALS, N.HOUSE_REPORTED = journals
 
 
 # Real rows: Docket_db_2009-2010.txt lines 18146-18147 and 18151 (HA 1) and

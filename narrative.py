@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.66
+# GRANITE_VERSION: 2026-09-04.67
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3499,6 +3499,63 @@ def row_names(ev, body, term):
 OTHER_CHAMBER = {"H": "S", "S": "H"}
 
 
+# THE HOUSE JOURNAL'S WORD ON WHICH COMMITTEE REPORTED (6 October 2026; the
+# person's word on decision 50). Where a House row names another committee
+# than the one the docket referred the bill to, the stage after it is headed
+# with the House alone (build(), "A ROW THAT NAMES ANOTHER COMMITTEE"). HB 163
+# of 1997 was "INTRODUCED AND REF TO COMMERCE", heard "FOR: CRIM JUST &
+# PSFTY" and reported 20-0; SB 479 of 1998 was "INTRODUCED AND REF TO ST-FED
+# RELATIONS" in the House, heard "FOR: CRIM JUST" and reported 13-0. The
+# House Journal prints each report under the bill -- "Rep. Herbert R. Hansen
+# for Criminal Justice and Public Safety: This bill repeals ... Vote 20-0."
+# (journals/1997/HJ003.txt), "... Vote 13-0." (journals/1998/HJ014.txt) -- and
+# where it prints the bill's report for the committee the row names, and for
+# none the referral named, the row names the committee that had the bill and
+# the stage is headed with it. Read from the House Journals of the term on
+# disk, once a term and only when a row asks (house_reported); where none is
+# on disk the stage is headed as before.
+JOURNALS = Path("journals")
+JOURNAL_BILL = re.compile(
+    r"^(?P<pre>HB|SB|HCR|SCR|HJR|SJR|HR|SR|CACR|HA|PET)\s*(?P<n>\d+)(?:-[A-Z]+)*,", re.M)
+JOURNAL_FOR = re.compile(
+    r"^Rep\.\s+[^:\n]{2,80}?\s+for\s+(?P<c>[A-Z][A-Za-z,&'./ \-]{2,90}?)\s*:", re.M)
+# {term: {bill: {committee as printed}}}, filled by house_reported.
+HOUSE_REPORTED = {}
+
+
+def journal_reports(text):
+    """{bill: {committee}}: each committee a House Journal's text prints a
+    report on a bill for, "Rep. ... for <committee>:" under the bill's own
+    heading and before the next."""
+    out = defaultdict(set)
+    heads = list(JOURNAL_BILL.finditer(text))
+    for i, h in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        m = JOURNAL_FOR.search(text, h.end(), end)
+        if m:
+            out[f"{h.group('pre')}{int(h.group('n'))}"].add(" ".join(m.group("c").split()))
+    return dict(out)
+
+
+def house_reported(term, bill):
+    """The committees the House Journals of `term` on disk print reports on
+    `bill` for, as committee_placed names them for the House."""
+    if term not in HOUSE_REPORTED:
+        got = defaultdict(set)
+        for year in (term or "").split("-")[:2]:
+            if not year.isdigit():
+                continue
+            for f in sorted((JOURNALS / year).glob("HJ*.txt")):
+                try:
+                    text = f.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                for b, cs in journal_reports(text).items():
+                    got[b] |= cs
+        HOUSE_REPORTED[term] = dict(got)
+    return {committee_placed(c, "H", term) for c in HOUSE_REPORTED[term].get(bill, ())} - {""}
+
+
 def _entered_before(ev, stamp):
     """Was this row entered before `stamp`? Only where both carry a stamp:
     the dockets of 2017 on stamp every row at midnight, so a row of the same
@@ -4168,9 +4225,11 @@ def build(bill, rows, introduction=None):
                     # HCR 25 of 1998, whose hearing of the 12th, in the same
                     # room and hour, was Internal Affairs'; "HEARING JAN15 ...
                     # FOR: CRIM JUST & PSFTY" on HB 163 of 1997, referred to
-                    # Commerce, whose 20-0 report the House Journal gives to
-                    # Criminal Justice. A holder the row does not place -- a
-                    # name the database cut, "RE-REFERRED TO REG" -- is kept.
+                    # Commerce. UNLESS THE HOUSE JOURNAL SAYS WHICH: it gives
+                    # HB 163's 20-0 report to Criminal Justice and Public
+                    # Safety, and the stage is headed with it (house_reported).
+                    # A holder the row does not place -- a name the database
+                    # cut, "RE-REFERRED TO REG" -- is kept.
                     named = row_names(ev, b, term)
                     if named and named != cmte:
                         held = last_cmte.get(b, "")
@@ -4180,6 +4239,12 @@ def build(bill, rows, introduction=None):
                             cmte = named
                         elif named == held:
                             cmte = named
+                        elif b == "H" and named in (said_by := house_reported(term, bill)) \
+                                and held not in said_by:
+                            # The House Journal prints the bill's report
+                            # for the committee this row names (house_reported).
+                            last_cmte[b] = cmte = named
+                            moved.pop(b, None)
                         elif committee_placed(held, b, term):
                             last_cmte[b] = cmte = ""
                 if cmte:
