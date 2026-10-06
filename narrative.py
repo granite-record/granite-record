@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.65
+# GRANITE_VERSION: 2026-09-04.66
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -124,6 +124,20 @@ MOTION = {
 # vote, and a bill can be taken off first.
 CC_THEN = (" The chamber adopts all the reports on its consent calendar in one vote, "
            "without floor debate, unless a bill is taken off it first.")
+# A FLOOR ROW WHOSE COUNT IS THE CONSENT CALENDAR'S (6 October 2026; the
+# person's word on decision 51). The House adopted its consent calendar of 7
+# January 1998 on one roll call, and the clerk wrote it on each of the 113
+# bills the calendar held -- "PASSED WITH AM/CONSENT CAL RC(248-8)", "ITL
+# REPORT ADOPTED/CONS CAL RC(248-8)" -- and the calendar of 25 March 2014 on
+# a division, "Ought to Pass: MA Div 282-9 (Consent Calendar)", on 28. Each
+# history told the count as the bill's own vote ("voted to pass it with
+# changes on a roll call 248-8"); it is the calendar's, and the history says
+# so (describe). A row that names the consent calendar with no count -- "ITL
+# MA (Cons Cal by nec 2/3)" -- states no vote of the bill's to mistake.
+CONSENT_VOTE = re.compile(
+    r"/\s*CONS(?:ENT)?\.?\s+CAL\b|\(\s*(?:Consent\s+Calendar|Cons(?:ent)?\.?\s+Cal\b|CC\s+by\b)",
+    re.I)
+
 CALENDAR = {
     # Two halves. The first explains what the consent calendar IS and is
     # said whenever a bill is put on one, rule and all. The second says that
@@ -2553,7 +2567,10 @@ def describe(ev, body, seen_intro=False):
         else:
             base = f"On {when} the {chamber} {motion or 'considered'} \u201c{action}\u201d"
 
-        if vk:
+        if vk and tally and motion == "adopted" and CONSENT_VOTE.search(ev.get("_raw") or ""):
+            # The count is the consent calendar's (CONSENT_VOTE).
+            base += f" as part of its consent calendar, which it adopted on a {vk}{tally}"
+        elif vk:
             base += f" on a {vk}{tally}"
         if OT_RDG.search(ev.get("_raw", "")):
             base += " and ordered it to a third reading"

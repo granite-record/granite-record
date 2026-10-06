@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.156
+# GRANITE_VERSION: 2026-09-05.157
 """
 Generate the faceted site from real General Court data.
 
@@ -4716,6 +4716,8 @@ def _j_words(st, bid):
     act, body = st["act"], st["body"]
     other = {"H": "Senate", "S": "House"}.get(body, "")
     long_, short = _j_vote_words(st.get("vote"))
+    if st.get("consent") and long_.startswith(","):
+        long_ = " on the consent calendar" + long_
     pre = bill_prefix(bid)
     # A bill of intent is one chamber's and is no resolution: its docket's
     # word is PASSED.
@@ -5274,6 +5276,12 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 got = {**got, "act": act,
                        "amended": act == "passed" and bool(re.search(r"amend", rec, re.I))}
             st = {"date": date, "body": body, **got, "_untold": _j_untold(e, seg, evs)}
+            # A COUNT THAT IS THE CONSENT CALENDAR'S (decision 51,
+            # narrative.CONSENT_VOTE): "PASSED WITH AM/CONSENT CAL RC(248-8)"
+            # read "Passed with an amendment, 248-8", the calendar's roll call
+            # of 7 January 1998 as the bill's own.
+            if (st.get("vote") or ("", None))[1] is not None and N.CONSENT_VOTE.search(seg):
+                st["consent"] = True
             # Whether its own clause names the amendment, before the day's
             # amendment rows mark every passage of that day (_j_merge).
             if got["act"] in J_PASSING:
@@ -5526,6 +5534,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
                   "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third",
+                  "consent",
                   "_recess", "unaccepted", "_own_am"):
             st.pop(k, None)
         if st.pop("_untold", False) and untold is not None:
@@ -5748,10 +5757,12 @@ def _j_merge(into, st):
     # has no count of its own to give, and the earlier one stands.
     if st.get("_own_am") and not into.get("_own_am") and st["vote"][0]:
         into["vote"], into["_own_am"] = st["vote"], True
+        into["consent"] = st.get("consent", False)
         into.pop("intro_adopt", None)
         return
     if into.pop("intro_adopt", False) or st["vote"][1] is not None or not into["vote"][0]:
-        into["vote"] = st["vote"]
+        # And whose count it is (the consent calendar's, decision 51).
+        into["vote"], into["consent"] = st["vote"], st.get("consent", False)
 
 
 def _j_settle(steps):

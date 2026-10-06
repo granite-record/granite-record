@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.349
+# GRANITE_VERSION: 2026-09-04.350
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1590,6 +1590,84 @@ def _report_names_its_stage(N, B):
     assert not bad, "\n".join(bad)
     return "ok", (f"{sum(len(v) for v in _REPORTED_BY.values())} reports of {len(_REPORTED_BY)} "
                   "histories, each its stage's committee, on the tab as in the history")
+
+
+# Real rows: Docket_db_1997-1998.txt 9728, 9736 and 9738 (HB 111), 10375, 10385
+# and 10386 (HB 166), 9681, 9691 and 9693 (HB 256), 21608 and 21625 (SB 437);
+# Docket_db_2013-2014.txt 14749, 14753 and 14754 (HB 1286).
+_DOCKET_CONSENT_VOTE = {
+    ("HB111", "1997-1998"): [
+        "1998|0043|01/08/1997 10:31:36 AM|HB111|H|INTRODUCED AND REF TO LEG ADMIN; HJ10,P154|01/08/1997 10:31:36 AM",
+        "1998|0043|10/15/1997 12:47:30 PM|HB111|H|RE-REF MAJ REPORT  OTP/AM  FOR 1998 SESSION  (VOTE 11-0;CC)|10/15/1997 12:47:30 PM",
+        "1998|0043|01/07/1998 03:58:55 PM|HB111|H|PASSED WITH AM/CONSENT CAL RC(248-8); HJ3,P171 + HJ3A,P218|01/07/1998 03:58:55 PM"],
+    ("HB166", "1997-1998"): [
+        "1998|0242|01/08/1997 04:37:51 PM|HB166|H|INTRODUCED AND REF TO EDUCATION; HJ10,P155|01/08/1997 04:37:51 PM",
+        "1998|0242|10/22/1997 05:49:12 PM|HB166|H|RE-REF MAJ REPORT  ITL  FOR 1998 SESSION  (VOTE 19-0;CC)|10/22/1997 05:49:12 PM",
+        "1998|0242|01/07/1998 01:55:40 PM|HB166|H|ITL REPORT ADOPTED/CONS CAL RC(248-8); HJ3,P154|01/07/1998 01:55:40 PM"],
+    ("HB256", "1997-1998"): [
+        "1998|0018|01/09/1997 09:52:53 AM|HB256|H|INTRODUCED AND REF TO EXEC DEPTS & ADMIN; HJ12,P178|01/09/1997 09:52:53 AM",
+        "1998|0018|10/16/1997 04:18:48 PM|HB256|H|RE-REF MAJ REPORT  OTP/AM  FOR 1998 SESSION  (VOTE 17-0;CC)|10/16/1997 04:18:48 PM",
+        "1998|0018|01/07/1998 03:18:19 PM|HB256|H|PASSED WITH AM AND REF TO FINANCE/CONSENT CAL RC(248-8);|01/07/1998 03:18:19 PM"],
+    ("HB1286", "2013-2014"): [
+        "2014|2382|12/13/2013 03:18:16 PM|HB1286|H|Introduced 1/8/2014 and Referred to Resources, Recreation and Development|12/13/2013 03:18:16 PM",
+        "2014|2382|03/07/2014 12:24:27 PM|HB1286|H|Committee Report: Refer to Interim Study (Vote 15-0; CC)|03/07/2014 12:24:27 PM",
+        "2014|2382|03/25/2014 11:10:49 AM|HB1286|H|Refer to Interim Study: MA Div 289-9 (Consent Calendar)|03/25/2014 11:10:49 AM"],
+    ("SB437", "1997-1998"): [
+        "1998|2808|01/07/1998 10:04:26 AM|SB437|S|INTRODUCED AND REF TO JUDICIARY; SJ1,P11|01/07/1998 10:04:26 AM",
+        "1998|2808|05/28/1998 12:07:43 PM|SB437|H|PASSED WITH AM RC(210-104); HJ51,P2043-2048 + 2057|05/28/1998 12:07:43 PM"],
+}
+
+# (what the history says, what the passage rail's stop says, what neither may say)
+_CONSENT_VOTE_TOLD = {
+    ("HB111", "1997-1998"): ("the House voted to pass it with changes as part of its consent "
+                             "calendar, which it adopted on a roll call 248–8.",
+                             "Passed with an amendment on the consent calendar, 248–8",
+                             "changes on a roll call"),
+    ("HB166", "1997-1998"): ("the House voted to kill it as part of its consent calendar, which it "
+                             "adopted on a roll call 248–8.",
+                             "Killed on the consent calendar, 248–8", "kill it on a roll call"),
+    ("HB256", "1997-1998"): ("as part of its consent calendar, which it adopted on a roll call "
+                             "248–8, then sent it on to the Finance committee",
+                             "sent to Finance on the consent calendar, 248–8",
+                             "changes on a roll call"),
+    ("HB1286", "2013-2014"): ("as part of its consent calendar, which it adopted on a division vote "
+                              "289–9.", "on the consent calendar, 289–9",
+                              "” on a division vote"),
+    # A roll call of its own, on no calendar: as it was.
+    ("SB437", "1997-1998"): ("the House voted to pass it with changes on a roll call 210–104.",
+                             "Passed with an amendment, 210–104", "consent calendar"),
+}
+
+
+@check("narrative", "a count the clerk wrote on each bill of a consent calendar is told as the "
+                    "calendar's vote, not the bill's own", needs=("narrative", "build_site_v2"))
+def _consent_calendar_count(N, B):
+    """Decision 51, the person's word of 6 October 2026. The House adopted its
+    consent calendar of 7 January 1998 on one roll call, 248-8, and the clerk
+    wrote it on each of the 113 bills it held -- "PASSED WITH AM/CONSENT CAL
+    RC(248-8)" -- and the history of each said "the House voted to pass it with
+    changes on a roll call 248-8", and its passage rail "Passed with an
+    amendment, 248-8": the calendar's vote as the bill's own. The 28 bills of
+    the calendar of 25 March 2014, "Ought to Pass: MA Div 282-9 (Consent
+    Calendar)", the same. Each is told as part of the calendar, and the count
+    as the calendar's; a roll call of the bill's own is told as before."""
+    bad = []
+    for key, lines in _DOCKET_CONSENT_VOTE.items():
+        said, stop, unsaid = _CONSENT_VOTE_TOLD[key]
+        n = _narrated(N, key[1], key[0], lines)
+        text = " ".join(s["text"] for s in n["stages"])
+        _intro, steps = B.journey(n, key[0], term=key[1])[:2]
+        rail = " | ".join(s.get("text", "") for s in steps)
+        name = f"{key[0]} of {key[1]}"
+        if said not in text:
+            bad.append(f"{name}'s history does not say {said!r}: {text[-200:]!r}")
+        if stop not in rail:
+            bad.append(f"{name}'s rail does not say {stop!r}: {rail!r}")
+        if unsaid in text or unsaid in rail:
+            bad.append(f"{name} says {unsaid!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_CONSENT_VOTE) - 1} bills' consent calendar counts told as the "
+                  "calendar's, in the history and on the rail, and a bill's own roll call as before")
 
 
 # Real rows: Docket.txt 7406 (HB 517 of 2025) and 19102 (SB 635 of 2026);
