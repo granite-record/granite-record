@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.76
+# GRANITE_VERSION: 2026-09-04.77
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1547,7 +1547,11 @@ def parse_docket(path, want_bill=None, want_session=None, lsrs=None):
                 created = datetime.min
             bills[bill].append({
                 "lsr": f"{p[0]}-{p[1]}", "session": p[0].strip(),
-                "body": p[4].strip(),
+                # "s" is "S": 65 rows of 1999-2002 give the chamber in lower
+                # case, and SB 182 of 1999's Senate committee report, its
+                # chamber "s", was told in a stage headed with no chamber and
+                # named on the Reports tab for the House's committee.
+                "body": p[4].strip().upper(),
                 "desc": p[5], "created": created,
                 "flags": re.findall(r"==\s*([A-Z][A-Z ]*?)\s*==", p[5]),
             })

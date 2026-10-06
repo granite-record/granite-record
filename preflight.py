@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.365
+# GRANITE_VERSION: 2026-09-04.366
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2814,6 +2814,49 @@ def _overtaken_meeting_not_day(N, P):
     return "ok", ("HB 1288 of 1990's Senate hearing of 8 March and HB 650 of 2014's Finance "
                   "hearing of 18 February are left off at their hour, and the hearing of 6 March, "
                   "the work session of the 18th and HB 1132 of 2002's hearing of 19 March stay")
+
+
+# Real rows: Docket_db_1999-2000.txt 2664-2667 (HB 120) and 3699-3703 (SB 182),
+# each with one row whose chamber the clerk typed in lower case.
+_DOCKET_LOWER_CHAMBER = {
+    ("HB120", "1999-2000"): [
+        "1999|0324|01/07/1999 11:21:13 AM|HB120|H|Introduced and ref to Finance;  HJ15, p186|01/07/1999 11:21:13 AM",
+        "1999|0324|01/21/1999 04:51:49 PM|HB120|H|Hearing  Jan 28  1:45  Rms210-211,LOB|01/21/1999 04:51:49 PM",
+        "1999|0324|02/04/1999 05:40:18 PM|HB120|h|Maj Report  ITL  for  Feb 10   (vote 22-1;Reg)|02/04/1999 05:40:18 PM",
+        "1999|0324|02/10/1999 01:39:05 PM|HB120|H|ITL report adopted RC(211-141); HJ18, p286-288|02/10/1999 01:39:05 PM"],
+    ("SB182", "1999-2000"): [
+        "1999|0461|02/18/1999 10:26:04 AM|SB182|S|Introduction and referring to Insurance; SJ 5, P 60|02/18/1999 10:26:04 AM",
+        "1999|0461|03/24/1999 11:51:50 AM|SB182|S|Rescheduled Hearing, 4/2/99, Room 103, SH, 8:30 a.m.|03/24/1999 11:51:50 AM",
+        "1999|0461|04/07/1999 11:00:23 AM|SB182|s|Committee Report, Ought to Pass W/Amendment, 4/8/99|04/07/1999 11:00:23 AM"],
+}
+
+
+@check("narrative", "a docket row whose chamber the clerk typed in lower case is that chamber's",
+       needs=("narrative",))
+def _lower_case_chamber(N):
+    """65 rows of 1999-2002 give the chamber as "h" or "s". Read as no
+    chamber, HB 120 of 1999's committee report said "the majority of the
+    committee recommended that the Senate kill it" in a stage of its own,
+    SB 182's report sat in a stage headed with nothing, named on the Reports
+    tab for the House's committee, and SB 26's House passage of 20 May 1999
+    read "the Senate voted to pass it with changes"."""
+    bad = []
+    for key, lines in _DOCKET_LOWER_CHAMBER.items():
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        if any(not s["label"] for s in n["stages"]):
+            bad.append(f"{name} has a stage headed with nothing: "
+                       f"{[(s['label'], s['text'][:60]) for s in n['stages']]}")
+        if any((e.get("body") or "") not in ("H", "S") for e in n["events"]):
+            bad.append(f"{name} has events of no chamber: "
+                       f"{sorted({e.get('body') for e in n['events']})}")
+    text = " ".join(s["text"] for s in _told_from_rows(
+        N, "1999-2000", "HB120", _DOCKET_LOWER_CHAMBER[("HB120", "1999-2000")])["stages"])
+    if "recommended that the House kill it" not in text:
+        bad.append(f"HB 120 of 1999's report is told: {text!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 120's and SB 182's lower-case rows of 1999 are the House's and the "
+                  "Senate's, in the stage of their committee")
 
 
 # Real rows: Docket_db_1999-2000.txt 14087-14091 (HB 1195), 18320-18323 (SB
