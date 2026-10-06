@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.357
+# GRANITE_VERSION: 2026-09-04.358
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2856,6 +2856,73 @@ def _canceled_with_one_l(N):
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_CANCELED_ONE_L)} histories from real rows leave out the "
                   "meeting each one-L row calls off")
+
+
+# Real rows: Docket_db_2001-2002.txt 1458-1461 (HB 643's in the Senate) and
+# 14022-14027 (HB 1132's).
+_DOCKET_CANCELLED_AND_RESCHEDULED = {
+    ("HB643", "2001-2002"): [
+        "2001|0226|03/29/2001 01:28:33 PM|HB643|S|Introduced and Ref. to Public Institutions, Health & Human Services; SJ 7, Pg.89|03/29/2001 01:28:33 PM",
+        "2001|0226|04/11/2001 12:08:37 PM|HB643|S|Hearing; May 1, 2001, Room 101, LOB, 2:15 p.m.; SC17|04/11/2001 12:08:37 PM",
+        "2001|0226|04/17/2001 05:57:57 PM|HB643|S|Hearing; ==CANCELLED== RESCHEDULED == May 8, 2001, Room 101, LOB, 2:15 p.m.; SC19|04/17/2001 05:57:57 PM",
+        "2001|0226|05/30/2001 02:59:27 PM|HB643|S|Committee Report; Ought to Pass with Amendment {1372}, [05/31/01]; SC27, Pg.9|05/30/2001 02:59:27 PM"],
+    ("HB1132", "2001-2002"): [
+        "2002|2131|01/31/2002 09:24:32 AM|HB1132|S|Introduced and Ref. to Transportation; SJ 4, Pg.77|01/31/2002 09:24:32 AM",
+        "2002|2131|02/19/2002 08:01:49 PM|HB1132|S|Hearing; March 19, 2002, Room 104, LOB, 8:30 a.m.; SC12A|02/19/2002 08:01:49 PM",
+        "2002|2131|02/28/2002 02:57:12 PM|HB1132|S|Hearing; === CANCELLED === RESCHEDULED === March 7, 2002, Room 104, LOB, 8:45 a.m.; SC13|02/28/2002 02:57:12 PM",
+        "2002|2131|03/05/2002 04:08:58 PM|HB1132|S|Hearing; March 7, 2002, Room 104, LOB, 8:45 a.m. === CANCELLED === TO BE RESCHEDULED===; SC14|03/05/2002 04:08:58 PM",
+        "2002|2131|03/07/2002 02:32:44 PM|HB1132|S|Hearing; March 19, 2002, Room 104, LOB, 8:45 a.m.; SC15|03/07/2002 02:32:44 PM",
+        "2002|2131|03/19/2002 03:46:05 PM|HB1132|S|Committee Report; Ought to Pass [03/21/02]; SC17A|03/19/2002 03:46:05 PM"],
+}
+
+# For each: the hearing the history tells, and the days no committee sat.
+_CANCELLED_AND_RESCHEDULED_TOLD = {
+    ("HB643", "2001-2002"): ("The committee held a public hearing on May 8, 2001.", ["2001-05-01"]),
+    # SC13 prints 19 March "CANCELLED AND RESCHEDULED FOR MARCH 7TH", SC14 the
+    # 7th cancelled, SC15 the hearing on the 19th again, at 8:45.
+    ("HB1132", "2001-2002"): ("The committee held a public hearing on March 19, 2002.",
+                              ["2002-03-07"]),
+}
+
+
+@check("narrative", "a Senate row that cancels a hearing and names the day it was rescheduled "
+                    "to is the notice of that day, and the history tells the hearing on it",
+       needs=("narrative",))
+def _cancelled_and_rescheduled(N):
+    """"Hearing; ==CANCELLED== RESCHEDULED == May 8, 2001, Room 101, LOB, 2:15
+    p.m.; SC19" (HB 643 of 2001): Senate Calendar 19 prints the 1 May hearings
+    of HB 332, HB 553, HB 635 and HB 643 "CANCELLED AND RESCHEDULED FOR MAY
+    8TH" and lists all four under 8 May. Read as cancelled, the row told 8 May
+    nowhere; once the 1 May notice was read as moved by it, the four had no
+    Senate hearing at all, and SB 373 of 2002 no occasion anywhere on the site.
+
+    And not what is a cancellation: "=== CANCELLED === TO BE RESCHEDULED ===",
+    or the House's "==CANCELLED==Rescheduled Hearing Mar 9" (HB 395 of 1999),
+    a rescheduled notice the House later called off."""
+    bad = []
+    for desc, off in (
+            ("Hearing; ==CANCELLED== RESCHEDULED == May 8, 2001, Room 101, LOB, 2:15 p.m.; SC19", False),
+            ("Hearing; === CANCELED == RESCHEDULED == May 23, 2001, Room 105-A, SH, 1:00 p.m.; SC23-A", False),
+            ("Hearing; === CANCELLED === RESCHEDULED === March 17, 2009, Room 103, State House, 2:00 p.m.; SC11", False),
+            ("Hearing; March 7, 2002, Room 104, LOB, 8:45 a.m. === CANCELLED === TO BE RESCHEDULED===; SC14", True),
+            ("==CANCELLED==Rescheduled Hearing  Mar 9  11:00  Rm303,LOB", True),
+            ("==CANCELLED==RESCHEDULED HEARING FEB07 10:00 RM205,LOB", True),
+            ("Hearing; === CANCELLED === January 19, 2006, Room 102, LOB, 1:50 p.m.; SC2", True)):
+        r = {"desc": desc, "flags": re.findall(r"==\s*([A-Z][A-Z ]*?)\s*==", desc)}
+        if N.cancel_marked(r) != off:
+            bad.append(f"{desc!r} is read as {'live' if off else 'cancelled'}")
+    for key, lines in _DOCKET_CANCELLED_AND_RESCHEDULED.items():
+        said, days = _CANCELLED_AND_RESCHEDULED_TOLD[key]
+        n = _told_from_rows(N, key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        text = " ".join(s["text"] for s in n["stages"])
+        if said not in text:
+            bad.append(f"{name} does not say {said!r}: {text[:500]!r}")
+        if (n.get("no_sitting") or []) != days:
+            bad.append(f"{name}: no_sitting {n.get('no_sitting')!r}, not {days!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_CANCELLED_AND_RESCHEDULED)} histories from real rows tell the "
+                  "hearing on the day the row names; seven rows read by what their marks say")
 
 
 # =============================================================== code: status ==

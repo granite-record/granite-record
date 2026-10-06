@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.70
+# GRANITE_VERSION: 2026-09-04.71
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3720,10 +3720,32 @@ def _entered_before(ev, stamp):
 # however it is spelled (docket_parser.cancelled), left them off as cancelled.
 CANCEL_FLAGS = ("CANCELLED", "CANCELED")
 
+# AND A ROW THAT CANCELS A HEARING AND NAMES ITS NEW DAY IS THE NOTICE OF THAT
+# DAY (7 October 2026). The Senate wrote both on one row in 2001-2002 and
+# 2009: "Hearing; ==CANCELLED== RESCHEDULED == May 8, 2001, Room 101, LOB,
+# 2:15 p.m.; SC19" (HB 643 of 2001), after the notice for 1 May. Senate
+# Calendar 19 prints the 1 May hearings of HB 332, HB 553, HB 635 and HB 643
+# "CANCELLED AND RESCHEDULED FOR MAY 8TH" and lists all four under Tuesday 8
+# May; Calendar 22 does the same for HB 412's and HB 748's of 16 May ("one
+# L": "=== CANCELED == RESCHEDULED == May 23, 2001"), and Calendar 20 of 2002
+# for HB 1393's of 2 April. Read as cancelled, the row told the new day
+# nowhere, and once the 1 May notice was read as moved by it (decision 56)
+# those bills had no Senate hearing at all. So the mark is the old day's, the
+# row is a live notice of the day it names, and "RESCHEDULED" in it is the
+# rescheduling row's word (RESCHEDULING) that moves the earlier notice there.
+# Only that order and that second mark: "=== CANCELLED === TO BE RESCHEDULED
+# ===" is a cancellation, and so is the House's "==CANCELLED==Rescheduled
+# Hearing Mar 9 11:00 Rm303,LOB" (HB 395 of 1999), a rescheduled notice it
+# later called off -- House Calendars 21 and 22 print the rescheduled hearing
+# of 9 March, and the docket moves it again to the 23rd and the 24th.
+CANCELLED_AND_RESCHEDULED = re.compile(
+    r"=+\s*CANCELL?ED\s*=+\s*RESCHEDULED\s*=+\s*(?=[A-Z][a-z]+\.?\s+\d|\d{1,2}/\d)", re.I)
+
 
 def cancel_marked(r):
     """Does the row's own mark call off the meeting it names?"""
-    return any(f in CANCEL_FLAGS for f in r["flags"])
+    return (any(f in CANCEL_FLAGS for f in r["flags"])
+            and not CANCELLED_AND_RESCHEDULED.search(r.get("desc") or ""))
 
 
 def build(bill, rows, introduction=None):
