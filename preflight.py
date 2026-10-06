@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.348
+# GRANITE_VERSION: 2026-09-04.349
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1545,6 +1545,51 @@ def _committee_holds_the_bill(N):
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_SENT_ON)} histories from real rows, each stage headed with the "
                   "committee that had the bill, as it was named then")
+
+
+# Each report's committee, in order, as the Reports tab names it (decision 48).
+_REPORTED_BY = {
+    ("SB286", "2025-2026"): ["Executive Departments and Administration", "Finance"],
+    ("SB106", "2009-2010"): ["Judiciary", "Finance"],
+    ("SB58", "1989-1990"): ["Public Works", "Appropriations"],
+    # Commerce's report, entered before the passage that sent the bill to
+    # Finance and dated after it, is told in Commerce's stage.
+    ("HB1076", "2023-2024"): ["Commerce", "Finance"],
+    ("CACR1", "1989-1990"): ["Executive Departments"],
+}
+
+
+@check("narrative", "a committee report names the committee its stage of the history is headed with, "
+                    "on the Reports tab as in the history", needs=("narrative", "build_site_v2"))
+def _report_names_its_stage(N, B):
+    """Decision 48, the person's word of 6 October 2026. A report's committee
+    was the referral line's, carried forward, while the history's heading
+    named the committee that had the bill: Finance's 6-0 report on SB 286 of
+    2025, told under "In Senate committee -- Finance", was Executive
+    Departments and Administration's on the Reports tab: 3,228 reports of
+    1989-2026 were another committee's in the history than in the docket's
+    reports, and 2,472 more were named by a clerk's abbreviation ("Child Y and
+    Jj") where the heading gives the name of the day. Each report below, read
+    from its real rows, is the committee of the stage that tells it, in the
+    history's events and in the docket's reports the tab draws where no
+    written report is on file."""
+    bad = []
+    for key, want in _REPORTED_BY.items():
+        n = _narrated(N, key[1], key[0], _DOCKET_SENT_ON[key])
+        heads = {s["label"].split(" — ", 1)[1] for s in n["stages"] if " — " in s["label"]}
+        got = [e.get("committee") for e in n["events"] if e["type"] == "report"]
+        if got != want:
+            bad.append(f"{key[0]} of {key[1]}: reports by {got}, not {want}")
+        if not set(got) <= heads:
+            bad.append(f"{key[0]} of {key[1]}: reports by {sorted(set(got) - heads)}, "
+                       f"which no stage is headed with ({sorted(heads)})")
+        _written, docket, _between = B.committee_reports([], n, {}, "", "")
+        tab = [r.get("committee") for r in docket]
+        if tab != want:
+            bad.append(f"{key[0]} of {key[1]}: the Reports tab names {tab}, not {want}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{sum(len(v) for v in _REPORTED_BY.values())} reports of {len(_REPORTED_BY)} "
+                  "histories, each its stage's committee, on the tab as in the history")
 
 
 # Real rows: Docket.txt 7406 (HB 517 of 2025) and 19102 (SB 635 of 2026);

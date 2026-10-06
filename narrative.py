@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.64
+# GRANITE_VERSION: 2026-09-04.65
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4206,6 +4206,16 @@ def build(bill, rows, introduction=None):
                     base = f"{base} \u2014 {key[2]}"
                 here = {"key": key, "label": base, "sentences": [s], "notes": []}
                 stages.append(here)
+            # THE REPORTS TAB NAMES THE COMMITTEE THE HISTORY HEADS THE REPORT
+            # WITH (6 October 2026; the person's word on decision 48). The
+            # report's own "committee" was the referral line's, carried
+            # forward (committee_now), so Finance's 6-0 report on SB 286 of
+            # 2025, told under "In Senate committee -- Finance", was
+            # Executive Departments and Administration's on the tab. The
+            # stage's committee where it names one; where it names the
+            # chamber alone the report keeps the referral's, as before.
+            if ev["_type"] == "report" and len(here["key"]) > 2:
+                ev["_stage_cmte"] = here["key"][2]
         elif ev["_type"] == "other":
             unknown.append(ev["_raw"])
 
@@ -4523,7 +4533,9 @@ def build(bill, rows, introduction=None):
                        # the vote, in the docket, and were being read and
                        # discarded at this door.
                        {"side": report_side(e.get("side")),
-                        "committee": e.get("committee_now", ""),
+                        # The committee its stage of the history is headed
+                        # with (decision 48), else the referral's.
+                        "committee": e.get("_stage_cmte") or e.get("committee_now", ""),
                         "recommendation": (e.get("rec") or "").strip(),
                         "amendment": (e.get("amend") or "").strip(),
                         # The day the committee signed, not the day the clerk
