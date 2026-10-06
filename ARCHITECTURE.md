@@ -906,8 +906,9 @@ The rows of a finished term a night's files still carry go on the run's page
 a freeze only while the installed files are in the last session of their term,
 so a term's second January passes as a new session year.
 
-**Fix, for what is left: `(term, bill)` everywhere.** `setup_archive.py` and
-`probe_archive.py` already sketch this. The year-keyed journal and calendar
+**Fix, for what is left: `(term, bill)` everywhere.** `probe_archive.py` and
+`obsolete/setup_archive.py` sketched this; the per-term files took a
+different road, `{term: {bill: ...}}` inside each file. The year-keyed journal and calendar
 citations were part of the same job.
 
 ### 4. The deployment has a file cap

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
 """
 Which recordings the site has proceedings for and no captions.
 

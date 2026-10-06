@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.1
 """
 channel_index_full.json -> the video CSV shape build_manifest.py reads.
 

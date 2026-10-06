@@ -12,6 +12,12 @@ them; they are started by hand, they run until stopped, and this page is how
 the next person finds out what is already running before starting a second
 copy of it.
 
+What is left here is the lane, `gc_lane.py`, its queue and the pause it can
+run as a step (`rest.py`). The other loops finished their work and moved to
+`obsolete/` -- `docket_chain.py` on 1 October 2026, and `captions_watch.py`,
+`extract_watch.py` and `narrative_watch.py` on 6 October -- where
+`obsolete/README.md` says what each was and why it is kept.
+
 **Check before you start one.** Two of the same watcher is two fetchers.
 Pasted into `cmd` as it stands, this lists every watcher, the lane, a
 nightly, any fetch or probe, `resolve_members`, the snapshot, a publish and a
@@ -123,53 +129,19 @@ Started 11 September with the person's leave for that absence: the
 2015-2016 docket, then bill text 2017-2024 in 800-request runs. What is
 queued is in `gc_lane.queue`, with the reasoning beside each line.
 
-## `captions_watch.py`
+## Moved to `obsolete/`
 
-Asks YouTube for captions again every so often and drains a little when it says
-yes. **YouTube, not the General Court** — it does not take `archive/.lock` and
-does not contend with a docket or calendar fetch.
+- **`docket_chain.py`**, superseded by `gc_lane.py` and moved on 1 October
+  2026, with `fetch_archive_text.py`, the two-request bill-text route its tail
+  queued and `fetch_legislation.py` superseded on 10 September.
+- **`captions_watch.py`**, the politeness loop for YouTube's captions, moved
+  on 6 October 2026. Captions come through `livestreams.py` now.
+- **`extract_watch.py`**, which wrote the text beside each calendar and
+  journal PDF behind the calendar drain, moved on 6 October 2026. The drain is
+  finished; `extract_calendar_text.py` is run by hand after a fetch of PDFs.
+- **`narrative_watch.py`**, stood down on purpose after it narrated 2015-2016
+  from a half-complete database seed, moved on 6 October 2026. The archived
+  terms are narrated by `build_all.py` (`narrative.py`, `narrate_archive.py`).
 
-It is a politeness loop rather than a drain: YouTube answered 429 on the first
-request at a twenty-second delay, which is a per-address throttle and not a
-burst limit, so pacing alone will not get through it and hammering it is how an
-address stops being served at all. It probes with a handful of requests and
-backs off when refused.
-
-```
-python3 watchers/captions_watch.py          # from the repository root
-tail -f caption_run.log
-```
-
-## `narrative_watch.py`
-
-Watches for a docket file to finish and runs `narrative.py` over it.
-
-It **skips `Docket_db_*.txt`**, the seeds read out of the database, and it
-requires `logs/docket_chain.log` to say `<term>: done` before it will build a
-term. Both guards exist because it once built 2015-2016 from a half-complete
-database seed — the `Docket` view runs out part way through 2016 — and put ten
-wrong passage rails on the live site, including HB148 showing a vote rail
-beside the word "vetoed".
-
-If you fetch a docket with the bare script rather than the chain, this watcher
-will not act on it. Run `narrative.py` yourself, which is what happened for
-2021-2022 on 10 September.
-
-## `extract_watch.py`
-
-Pulls text out of calendar and journal PDFs as they arrive. No network.
-
-## `docket_chain.py`
-
-**Superseded by `gc_lane.py`, and moved to `obsolete/` on 1 October 2026**,
-with `fetch_archive_text.py`, the two-request bill-text route its tail
-queued and `fetch_legislation.py` superseded on 10 September.
-`obsolete/README.md` says what each was and why it is kept.
-
-## Not running, on purpose: `narrative_watch.py`
-
-It narrates a docket the moment its fetch finishes. The 2015-2016 docket
-now being fetched mixes the database's lines for 2015 -- which the
-narrator's grammar fails on 42-64% of -- with web lines for 2016, and
-narrating it unattended is how wrong passage rails reached the site on the
-10th. Narrate it by hand once the grammar for the older lines is in.
+`obsolete/README.md` says what each was and why it is kept. Nothing here
+starts any of them.

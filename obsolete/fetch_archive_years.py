@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.1
 """
 Every bill the General Court has filed since 1989, two requests a year.
 

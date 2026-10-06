@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
 """
 Put the reversed meridiems right in the manifests that are already built.
 
