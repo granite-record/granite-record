@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.347
+# GRANITE_VERSION: 2026-09-04.358
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13764,8 +13764,11 @@ def _census_and_fingerprint_of_the_bill_index():
         finally:
             urllib.request.urlopen = saved
         assert live == fp, f"production serving this very tree fingerprints {live}, here {fp}"
+        # build.json last: the commit production's build names, for the gate,
+        # and none of the fingerprint (_nightly_publishes_its_commit).
         assert asked == ["meta.json", "idx/2025-2026.json", "idx/1989-1990.json",
-                         "idx/2027-requests.json", "home.json", "legislators.json"], (
+                         "idx/2027-requests.json", "home.json", "legislators.json",
+                         "build.json"], (
             f"live_fingerprint asked for {asked}")
 
         old = site / "idx" / "1989-1990.json"
@@ -43681,6 +43684,1004 @@ def _nightly_runner(NI):
                   "stops the fetch; no reports; production only this night's build, from main")
 
 
+# ---- the gate: which nights wait for a person (6 October 2026) -------------------
+#
+# The design approved on 6 October 2026: an ordinary data night may later publish
+# itself, and a night waits for the person when it is a New term run, the first
+# night after a release, a night that changed far more than a data night does,
+# or one with a kind of warning the build production serves did not carry. In
+# shadow first: the verdict and the run's page say what the gate would have
+# done. These checks drive whole nights through nightly.main() in a throwaway
+# folder, against a
+# production that is a folder too, served by a fake urlopen -- so the real
+# live_fingerprint reads it, and nothing is asked of the network.
+
+GATE_BASE = "https://graniterecord.org"
+GATE_SHA = ("a" * 40, "b" * 40)
+
+
+class _GateNights:
+    """A folder of nights, every step faked, and a production served from
+    prod/ to the real live_fingerprint. `how` shapes the next build: "bills"
+    of the current term, "terms" ({term: bills}, the newest the current one),
+    "touch" (rows of the current term marked as changed tonight), "rewrite" (a
+    finished term whose file is rewritten), "record" (False: no build.json).
+    `down` makes production unreadable. A deploy to production copies site/
+    into prod/, which is what production then serves."""
+
+    ENV = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+           "GITHUB_SHA", "REVIEW_GATE")
+
+    def __init__(self, NI):
+        import types
+        import urllib.request
+        import caption_span                # noqa: F401 -- imported here, before the chdir
+        import refusal
+        import snapshot_gencourt           # noqa: F401 -- the same
+        self.NI, self.refusal, self.ur = NI, refusal, urllib.request
+        self.types = types
+        self.how = {"bills": 100, "terms": None, "touch": 0, "rewrite": None, "record": True}
+        self.down, self.asked, self.stray = False, [], []
+
+    def __enter__(self):
+        NI, refusal = self.NI, self.refusal
+        self.here = os.getcwd()
+        self.tmp = Path(tempfile.mkdtemp(prefix="gr-gate-"))
+        self.saved = (NI.run, NI.LOG, NI.QUIET, NI.tracked_changes, NI.current_branch,
+                      NI.upload_and_check, NI.captions_compared, NI.time, sys.argv,
+                      refusal.MARK, refusal.LOCK, self.ur.urlopen)
+        self.saved_env = {k: os.environ.get(k) for k in self.ENV}
+        os.chdir(self.tmp)
+        for k in self.ENV:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = self.tmp / "archive" / "refused.json", self.tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        Path("prod").mkdir()
+        Path("db").mkdir()
+        NI.run = self.fake
+        NI.time = self.types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.tracked_changes = lambda: ([], [])
+        NI.current_branch = lambda: "main"
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
+        NI.upload_and_check = self.deployed
+        self.ur.urlopen = self.served
+        return self
+
+    def __exit__(self, *exc):
+        NI, refusal = self.NI, self.refusal
+        os.chdir(self.here)
+        (NI.run, NI.LOG, NI.QUIET, NI.tracked_changes, NI.current_branch, NI.upload_and_check,
+         NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK,
+         self.ur.urlopen) = self.saved
+        for k, val in self.saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        return False
+
+    def build(self):
+        h = self.how
+        _runner_site(h["bills"], terms=h["terms"])
+        site = Path("site")
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        newest = max(meta["terms"])
+        for t in meta["terms"]:
+            f = site / "idx" / f"{t}.json"
+            rows = json.loads(f.read_text(encoding="utf-8"))
+            if t == newest:
+                for r in rows[:h["touch"]]:
+                    r["status"] = "changed tonight"
+            elif t == h["rewrite"]:
+                rows[0]["title"] = "rewritten tonight"
+            f.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
+        rec = site / "build.json"
+        rec.unlink(missing_ok=True)
+        if h["record"]:
+            rec.write_text(json.dumps({"finished": "2026-10-06T03:00:00", "ok": True,
+                                       "steps": []}, indent=2), encoding="utf-8")
+
+    def fake(self, args, label, cwd=None):
+        self.NI.say(f"\n--- {label} ---")
+        name, rc = Path(args[0]).name, 0
+        if name == "build_all.py":
+            self.build()
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd)
+        elif name == "fetch_lsrs.py":
+            rc = self.how.get("lsrs_rc", 0)
+            if not rc:
+                Path("lsrs.json").write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                                             encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        self.NI.say(f"  (0s, exit {rc})")
+        return rc
+
+    def served(self, req, timeout=None):
+        import io
+        import urllib.error
+        url = req.full_url
+        if not url.startswith(GATE_BASE + "/"):
+            self.stray.append(url)
+            raise urllib.error.URLError("not production")
+        path = url[len(GATE_BASE) + 1:]
+        self.asked.append(path)
+        if self.down:
+            raise urllib.error.URLError("production did not answer")
+        f = Path("prod") / path
+        if not f.is_file():
+            raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+        return io.BytesIO(f.read_bytes())
+
+    def deployed(self, a, site, target, base):
+        if target == self.NI.PRODUCTION_BRANCH:
+            shutil.rmtree("prod")
+            shutil.copytree(site, "prod")
+        return True
+
+    def night(self, *argv, run_id, sha=GATE_SHA[0], github=False):
+        import contextlib
+        import io
+        self.NI.LOG = []
+        os.environ["GITHUB_RUN_ID"] = run_id
+        if sha:
+            os.environ["GITHUB_SHA"] = sha
+        else:
+            os.environ.pop("GITHUB_SHA", None)
+        summary, output = self.tmp / "summary.md", self.tmp / "output.txt"
+        for f in (summary, output):
+            f.write_text("", encoding="utf-8")
+        os.environ["GITHUB_STEP_SUMMARY"], os.environ["GITHUB_OUTPUT"] = str(summary), str(output)
+        if github:
+            os.environ["GITHUB_ACTIONS"] = "true"
+        sys.argv = ["nightly.py", *argv]
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = self.NI.main()
+                except SystemExit as e:
+                    code = e.code
+        finally:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        self.summary = summary.read_text(encoding="utf-8")
+        self.output = dict(ln.split("=", 1) for ln in output.read_text(encoding="utf-8").splitlines()
+                           if "=" in ln)
+        return code, out.getvalue()
+
+    def verdict(self):
+        return json.loads(self.NI.VERDICT.read_text(encoding="utf-8"))
+
+    def publish(self, run_id):
+        code, _ = self.night("--runner", "--deploy-to", "production", run_id=run_id)
+        assert code == 0, f"the fixture's production deploy of run {run_id} did not land"
+
+
+@check("build", "the night publishes the commit it was built from in build.json, and reads the "
+       "commit production serves back from production's", needs=("nightly",))
+def _nightly_publishes_its_commit(NI):
+    """The gate holds the first night after a release, so a night has to know
+    the code of the build production serves, which the site did not carry. The
+    night writes its own commit into site/build.json -- which build_all writes
+    and the fingerprint does not hash, so no build is told apart by it -- and
+    live_fingerprint reads production's build.json last, after the files it
+    hashes, into SERVED. A build.json that will not read, is a web page, names
+    no commit or is not there, and a production that does not answer, are all
+    a commit not known: None, never a guess. And it is production's copy that
+    is read, so a deploy rolled back, or one from the laptop, is seen as it
+    is."""
+    sha = GATE_SHA[0]
+    with _GateNights(NI) as g:
+        site = Path("site")
+        site.mkdir()
+        assert not NI.stamp_commit(site, sha) and not (site / "build.json").exists(), \
+            "a commit was written into a build.json build_all never wrote"
+        (site / "build.json").write_text(json.dumps({"finished": "x", "steps": [1]}, indent=2),
+                                         encoding="utf-8")
+        for bad in ("", None, "abc123", sha.upper(), sha + "0"):
+            assert not NI.stamp_commit(site, bad), f"{bad!r} was published as a commit"
+        assert NI.stamp_commit(site, sha) and json.loads(
+            (site / "build.json").read_text(encoding="utf-8")) == \
+            {"finished": "x", "steps": [1], "commit": sha}, "build.json lost what build_all wrote"
+
+        # What production's build.json says, as served_commit reads it.
+        for body, want in ((json.dumps({"commit": sha}), sha), (json.dumps({"finished": "x"}), None),
+                           ("<!doctype html><html></html>", None), (json.dumps([sha]), None),
+                           (json.dumps({"commit": "abc"}), None)):
+            (Path("prod") / "build.json").write_text(body, encoding="utf-8")
+            got = NI.served_commit(GATE_BASE)
+            assert got == want, f"production's build.json {body[:40]!r} read as commit {got!r}"
+        (Path("prod") / "build.json").unlink()
+        assert NI.served_commit(GATE_BASE) is None, "a build.json production does not have named a commit"
+        g.down = True
+        assert NI.served_commit(GATE_BASE) is None, "a production that did not answer named a commit"
+        g.down = False
+
+        # Read with the fingerprint, last, into SERVED; never left from an
+        # earlier read.
+        _bill_index_write(Path("prod"), [{"term": "2025-2026", "id": "HB1"}])
+        (Path("prod") / "build.json").write_text(json.dumps({"commit": sha}), encoding="utf-8")
+        del g.asked[:]
+        live = NI.live_fingerprint(GATE_BASE)
+        assert live and NI.SERVED.get("commit") == sha and g.asked[-1] == "build.json" and \
+            g.asked.count("build.json") == 1, (live, NI.SERVED, g.asked)
+        g.down = True
+        assert NI.live_fingerprint(GATE_BASE) is None and NI.SERVED.get("commit") is None, \
+            ("a production that did not answer kept the commit an earlier read found", NI.SERVED)
+        g.down = False
+
+        # A whole night: the build goes out naming the commit it was made
+        # from, and the night after reads it back from production.
+        shutil.rmtree("site")
+        shutil.rmtree("prod")
+        Path("prod").mkdir()
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="301")
+        assert code == 0, g.verdict().get("not_clean")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="302")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["live_commit"] is None, (code, v.get("live_commit"))
+        assert json.loads((site / "build.json").read_text(encoding="utf-8"))["commit"] == sha, \
+            "the night's build does not name the commit it was made from"
+        g.publish("302")
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="303")
+        assert code == 0 and g.verdict()["live_commit"] == sha, \
+            ("the night after a deploy did not read the commit production serves",
+             g.verdict().get("live_commit"))
+        # A build with no build.json goes out naming none, and the night
+        # after does not know production's code.
+        g.how["record"] = False
+        code, _ = g.night("--runner", "--no-fetch", run_id="304")
+        g.publish("304")
+        g.how["record"], g.how["touch"] = True, 5
+        code, _ = g.night("--runner", "--no-fetch", run_id="305")
+        assert code == 0 and g.verdict()["live_commit"] is None, g.verdict().get("live_commit")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("tonight's commit is written into site/build.json and read back from "
+                  "production's, last, with the fingerprint; unreadable, a web page, none, or "
+                  "no answer is None")
+
+
+@check("build", "every night that builds says in its verdict, its output and one line on its run's "
+       "page whether the gate would have held it for approval, and why", needs=("nightly",))
+def _nightly_review_says(NI):
+    """The gate runs in shadow before any reviewer comes off: the person keeps
+    approving as now, and each night says what the gate would have done, so
+    the two can be compared over the shadow nights. So every night that
+    builds carries "review": {"needed", "why"} in its verdict; the night's
+    step gives the workflow "review" as an output, true wherever the gate did
+    not clear the night -- a night that did not build included, the safe side
+    for anything that reads it -- and the night job hands it on; and the run's
+    page carries one plain line: "Would have published without approval.",
+    "Would have waited for approval: <reasons>.", for a dry run what it would
+    have been, and for a build that could not go to production at all, that
+    there was nothing to approve. Every other word on the page is unchanged."""
+    yes, no = NI.REVIEW_LINES
+    assert NI.review_line({}, False) == "", "a night that did not build has a gate line"
+    for dry in (False, True):
+        assert NI.review_line({"review": {"needed": True, "why": ["x"]}, "publishable": False},
+                              dry) == NI.REVIEW_NOT_FOR
+    said = NI.review_line({"review": {"needed": True, "why": ["one", "two"]}, "publishable": True},
+                          False)
+    assert said == "Would have waited for approval: one; two." == no.format(why="one; two"), said
+    assert NI.review_line({"review": {"needed": False, "why": []}, "publishable": True}, False) \
+        == yes == "Would have published without approval."
+    assert NI.review_line({"review": {"needed": False, "why": []}, "publishable": True}, True) == \
+        "A dry run, so nothing was published; had it not been one, it would have published " \
+        "without approval.", NI.review_line({"review": {"needed": False}, "publishable": True}, True)
+    assert NI.review_line({"review": {"needed": True, "why": ["one"]}, "publishable": True}, True) \
+        == "A dry run, so nothing was published; had it not been one, it would have waited for " \
+        "approval: one."
+
+    with _GateNights(NI) as g:
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="311")
+        v = g.verdict()
+        assert code == 0 and v["built"] and not v["publishable"] and "review" in v and \
+            f"- {NI.REVIEW_NOT_FOR}" in g.summary, (v.get("review"), g.summary)
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="312")
+        assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
+        g.publish("312")
+
+        # An ordinary data night after it: the code production serves, a few
+        # rows changed, nothing new to warn of -- nothing for the gate.
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="313")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []}, \
+            ("an ordinary data night was held by the gate", v.get("review"))
+        assert g.output.get("review") == "false" and f"- {yes}" in g.summary.splitlines(), \
+            (g.output, g.summary)
+        assert g.summary.splitlines().index(f"- {yes}") == 2, \
+            f"the gate's line is not under the night's first two lines: {g.summary}"
+
+        # The same, as a dry run.
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="314")
+        assert code == 0 and g.verdict()["review"]["needed"] is False and \
+            "- A dry run, so nothing was published; had it not been one, it would have " \
+            "published without approval." in g.summary.splitlines(), g.summary
+
+        # A build production already serves could not go to production.
+        g.publish("314")
+        code, _ = g.night("--runner", "--no-fetch", run_id="315")
+        v = g.verdict()
+        assert code == 0 and not v["publishable"] and "review" in v and \
+            f"- {NI.REVIEW_NOT_FOR}" in g.summary.splitlines(), g.summary
+
+        # A night that did not build has no review, and its output holds.
+        code, _ = g.night("--runner", "--new-term", "--dry-run", run_id="316")
+        v = g.verdict()
+        assert code == 1 and not v["built"] and "review" not in v and \
+            g.output.get("review") == "true" and not any(
+                ln[2:] in (yes, NI.REVIEW_NOT_FOR) or ln.startswith(("- Would have", "- A dry run"))
+                for ln in g.summary.splitlines()), (v.get("review"), g.output, g.summary)
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+
+    # The night job hands the step's output on, for the routing to read.
+    wf = Path(".github/workflows/nightly.yml")
+    if wf.exists():
+        night = _wf_jobs(wf.read_text(encoding="utf-8")).get("night") or []
+        outs = [ln.strip() for ln in _wf_code(night)]
+        assert "review: ${{ steps.night.outputs.review }}" in outs, \
+            "nightly.yml's night job does not hand on the step's review output"
+    return "ok", ("a built night's verdict carries review {needed, why}, its output review, and "
+                  "its page one line: published without approval, waited with reasons, a dry "
+                  "run's would-have, or nothing to approve; a night that did not build, none")
+
+
+@check("build", "the gate holds a New term run for approval whatever else is true of it",
+       needs=("nightly",))
+def _nightly_review_new_term(NI):
+    """The person decided on 30 September 2026 that the switch to a new term
+    waits for their approval even once ordinary nights publish themselves, and
+    the note above the New term box in nightly.yml says so. So a New term run
+    that built is held by the gate, with that as its first reason, on a night
+    with nothing else to hold it: the code production serves, a row or two
+    changed, and the warnings the night before carried."""
+    assert NI.NEW_TERM_BOX in NI.REVIEW_NEW_TERM and "approval" in NI.REVIEW_NEW_TERM
+    with _GateNights(NI) as g:
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="321")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", run_id="322")
+        v = g.verdict()
+        assert code == 0 and v["publishable"], (code, v.get("not_clean"))
+        g.publish("322")
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", run_id="323")
+        assert code == 0 and g.verdict()["review"] == {"needed": False, "why": []}, \
+            ("the fixture's ordinary fetch night is held, so this proves nothing",
+             g.verdict().get("review"))
+        code, _ = g.night("--runner", "--new-term", run_id="324")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["asked"]["new_term"], (code, v.get("not_clean"))
+        assert v["review"] == {"needed": True, "why": [NI.REVIEW_NEW_TERM]} and \
+            g.output.get("review") == "true", ("a New term run would have published without "
+                                               "approval", v.get("review"))
+        assert f"- Would have waited for approval: {NI.REVIEW_NEW_TERM}." in g.summary.splitlines(), \
+            g.summary
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", "a New term run that built is held, first reason the switch, on an otherwise clear night"
+
+
+@check("build", "the gate holds the first night after a release, and any night whose code or "
+       "production's it cannot know", needs=("nightly",))
+def _nightly_review_release(NI):
+    """A release -- a merge to main -- is the person's own act, and the first
+    night built from it is their one look at it: the gate holds a night whose
+    commit is not the one production's build.json names. It is commit for
+    commit, so a release that touched only documents waits too. The night
+    after the release was published is a data night again. And where either
+    commit is not known -- production down, a build.json naming none, a night
+    with no commit of its own -- the answer is to wait, never to guess."""
+    a, b = GATE_SHA
+    assert NI.release_reasons(a, a) == [] and NI.code_differs(a, a) is False
+    said = NI.release_reasons(b, a)
+    assert said == [NI.REVIEW_RELEASE.format(tonight=b[:12], served=a[:12])] and \
+        NI.code_differs(b, a) is True, said
+    assert NI.release_reasons(a, None) == [NI.REVIEW_LIVE_UNKNOWN] and \
+        NI.release_reasons(a, "abc") == [NI.REVIEW_LIVE_UNKNOWN] and \
+        NI.code_differs(a, None) is None
+    assert NI.release_reasons("", a) == [NI.REVIEW_SHA_UNKNOWN] == NI.release_reasons(None, None)
+
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="331")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="332")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and NI.REVIEW_LIVE_UNKNOWN in v["review"]["why"], \
+            ("a production whose build names no commit was taken for this night's code",
+             v.get("review"))
+        g.publish("332")
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="333")
+        assert code == 0 and g.verdict()["review"] == {"needed": False, "why": []}, \
+            g.verdict().get("review")
+
+        # The release: main moves, and the first night built from it waits.
+        code, _ = g.night("--runner", "--no-fetch", run_id="334", sha=b)
+        v = g.verdict()
+        rel = NI.REVIEW_RELEASE.format(tonight=b[:12], served=a[:12])
+        assert code == 0 and v["publishable"] and v["review"] == {"needed": True, "why": [rel]}, \
+            ("the first night after a release would have published without approval",
+             v.get("review"))
+        assert f"- Would have waited for approval: {rel}." in g.summary.splitlines() and \
+            g.output.get("review") == "true", g.summary
+        # Once published, the release's next night is a data night again.
+        g.publish("334")
+        g.how["touch"] = 5
+        code, _ = g.night("--runner", "--no-fetch", run_id="335", sha=b)
+        assert code == 0 and g.verdict()["review"] == {"needed": False, "why": []}, \
+            ("the night after a published release was held as a release", g.verdict().get("review"))
+
+        # Production that does not answer, and a night with no commit of its
+        # own: not known, so wait -- a dry run says what it would have done.
+        g.down = True
+        code, _ = g.night("--runner", "--no-fetch", run_id="336", sha=b)
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"]["needed"] and \
+            NI.REVIEW_LIVE_UNKNOWN in v["review"]["why"], v.get("review")
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="337", sha=b)
+        assert any(ln.startswith("- A dry run, so nothing was published; had it not been one, it "
+                                 "would have waited for approval: ") and NI.REVIEW_LIVE_UNKNOWN in ln
+                   for ln in g.summary.splitlines()), g.summary
+        g.down = False
+        code, _ = g.night("--runner", "--no-fetch", run_id="338", sha="")
+        v = g.verdict()
+        assert code == 0 and v["review"]["why"] == [NI.REVIEW_SHA_UNKNOWN], v.get("review")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a night whose commit is not production's waits, and the one after the release "
+                  "is published does not; production unreadable or no commit tonight waits")
+
+
+@check("build", "the gate holds a night that changed far more than a data night does: a finished "
+       "term's bill list rewritten, or more of the current term's rows than the term ever moved",
+       needs=("nightly",))
+def _nightly_review_size(NI):
+    """Every page carries the date of its build, so pages changed is no
+    measure. The bill lists are: a finished term's list differing from
+    production's at all, on a night whose code is production's, is something
+    no data night does, and the current term's rows changed against
+    production's, by bill, are held past REVIEW_ROWS_MOST -- set from the
+    term's own docket, which no night of 2025-2026 came near. A release is not
+    held for either (it waits anyway, and rewrites what it likes), though
+    both are measured on every night. A list production could not be read for
+    is not known, and waits; one production's meta.json does not name, read
+    whole, is one production does not have, and every row of it is new."""
+    rows = NI.bill_rows(json.dumps([{"id": "HB1", "year": 2025}, {"id": "HB1", "year": 2026},
+                                    {"id": "HB1", "year": 2026}, {"x": 1}]).encode())
+    assert len(rows) == 4, f"a term's two sessions' HB1, or a repeated row, was folded: {rows}"
+    assert NI.bill_rows(None) == {} and NI.REVIEW_ROWS_MOST == 600, NI.REVIEW_ROWS_MOST
+    a, b = GATE_SHA
+    with _GateNights(NI) as g:
+        g.how.update(terms={"2023-2024": 40, "2025-2026": 1000})
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="341")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="342")
+        assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
+        g.publish("342")
+
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", "--no-fetch", run_id="343")
+        v = g.verdict()
+        assert code == 0 and v["review"] == {"needed": False, "why": []} and \
+            v["against_production"] == {"term": "2025-2026", "bills": 1000, "rows_changed": 1,
+                                        "finished_differ": [], "unread": []}, \
+            (v.get("review"), v.get("against_production"))
+
+        # A finished term rewritten on a night whose code is production's.
+        g.how["rewrite"] = "2023-2024"
+        code, _ = g.night("--runner", "--no-fetch", run_id="344")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"]["why"] == [
+            NI.REVIEW_FINISHED.format(terms="2023-2024")], v.get("review")
+        g.how["rewrite"] = None
+
+        # The current term: as many rows as the threshold is a data night;
+        # one more is not.
+        for touch, held in ((3 + NI.REVIEW_ROWS_MOST, False), (4 + NI.REVIEW_ROWS_MOST, True)):
+            g.how["touch"] = touch
+            code, _ = g.night("--runner", "--no-fetch", run_id=f"345-{touch}")
+            v = g.verdict()
+            n = touch - 3
+            assert code == 0 and v["against_production"]["rows_changed"] == n and \
+                v["review"]["why"] == ([NI.REVIEW_ROWS.format(n=n, of=1000, term="2025-2026",
+                                                              most=NI.REVIEW_ROWS_MOST)]
+                                       if held else []), (touch, v.get("review"))
+        assert f"{NI.REVIEW_ROWS_MOST + 1:,} of the 1,000 bills of 2025-2026 changed" in g.summary, \
+            g.summary
+
+        # A release that rewrote all of it waits as a release, and says only
+        # that; what it changed is measured all the same.
+        g.how["rewrite"], g.how["touch"] = "2023-2024", 900
+        code, _ = g.night("--runner", "--no-fetch", run_id="346", sha=b)
+        v = g.verdict()
+        assert code == 0 and v["review"]["why"] == [
+            NI.REVIEW_RELEASE.format(tonight=b[:12], served=a[:12])] and \
+            v["against_production"]["finished_differ"] == ["2023-2024"] and \
+            v["against_production"]["rows_changed"] == 897, \
+            (v.get("review"), v.get("against_production"))
+
+        # Production that cannot be read: not known, so wait.
+        g.how["rewrite"], g.how["touch"] = None, 4
+        g.down = True
+        code, _ = g.night("--runner", "--no-fetch", run_id="347")
+        v = g.verdict()
+        assert code == 0 and NI.REVIEW_UNREAD.format(terms="2023-2024, 2025-2026") in \
+            v["review"]["why"] and v["against_production"]["unread"] == ["2023-2024", "2025-2026"], \
+            v.get("review")
+        g.down = False
+
+        # A list production does not have, its meta.json read whole: none of
+        # it is production's, and nothing is "unread".
+        g.how["terms"] = {"2023-2024": 40, "2025-2026": 1000, "2027-2028": 30}
+        g.how["touch"] = 0
+        code, _ = g.night("--runner", "--no-fetch", run_id="348")
+        v = g.verdict()
+        assert code == 0 and v["against_production"] == {
+            "term": "2027-2028", "bills": 30, "rows_changed": 30, "finished_differ": ["2025-2026"],
+            "unread": []}, v.get("against_production")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", (f"a finished term's list rewritten on a data night waits; {NI.REVIEW_ROWS_MOST} "
+                  "of the current term's rows changed does not and one more does; a release "
+                  "waits as a release, measured all the same; production unreadable waits")
+
+
+@check("build", "the gate holds a night with a kind of warning the build production serves did "
+       "not carry, and compares kinds, not the numbers in them", needs=("nightly",))
+def _nightly_review_warnings(NI):
+    """A warning already seen on a published night -- the recordings the
+    laptop has yet to read -- is not news; a check that warns for the first
+    time since is. So every verdict keeps the kinds of warning it carried
+    ("warning_kinds"), and the gate holds a night with a kind the build
+    production serves did not carry, quoting tonight's sentence. Which build
+    that is, production's own fingerprint says: the newest build a night sent
+    for production ("sendable_kinds"), once production serves it, or else the
+    one it served before ("served_kinds"). Not the night before's verdict: a
+    night held for a new warning and never published, or a dry run between,
+    is not what production serves, and the same warning on the night after is
+    held again -- under the routing, cleared, it went out unreviewed. Kinds,
+    not numbers: two recordings waiting after one, or an exit status of 2
+    after 1, is the same kind, and a fetch that would withdraw requests is
+    another kind than one that did not complete. A build whose warnings no
+    verdict holds -- a verdict from before the gate, a rollback -- is not
+    known, and every warning tonight is news that no night published in the
+    last fourteen days carried ("published_kinds", _nightly_review_recent);
+    the verdict written for a night that never started carries all three, so
+    a build published before it is known after it."""
+    k = NI.kind_of
+    assert k("not taken: the fetch did not complete (exit 1); the earlier 3 kept") == \
+        k("not taken: the fetch did not complete (exit 2); none on file") != \
+        k("not taken: it would newly withdraw 8 of the 10 standing requests; the earlier 10 kept")
+    assert k("1 member installed is not on the database's roster, and 3 rows of LsrsOnly.txt "
+             "went with them") == k("12 members installed are not on the database's roster, "
+                                    "and 1 row of LsrsOnly.txt went with them"), \
+        "a count of one and a count of twelve are two kinds"
+    # A database lookup note, as dayfiles_from_db.lookup_notes words it: one
+    # side, the other, or both -- with a ";" inside the brackets -- is one kind.
+    lookup = [f"SubjectCodes.txt differs from the database's Subject ({x}): the installed "
+              "file stays" for x in ("3 rows only in the database", "2 rows only in the installed file",
+                        "3 rows only in the database; 2 rows only in the installed file")]
+    assert len({k(x) for x in lookup}) == 1, [k(x) for x in lookup]
+    assert k("a (b (c; d) e); f") == k("a; g") == "a", k("a (b (c; d) e); f")
+    said = "x" * 300
+    got = NI.warning_reasons([("a", said), ("a", "again"), ("b", "short")], ["b"])
+    assert got == [NI.REVIEW_WARNING.format(said="x" * (NI.REVIEW_WARNING_SAID - 3) + "...")], got
+    assert NI.warning_reasons([("b", "short")], None) == \
+        [NI.REVIEW_WARNING_UNKNOWN.format(said="short")], "a build not known had its kinds"
+    one, two = {"fingerprint": "f1", "kinds": ["a"]}, {"fingerprint": "f2", "kinds": ["b"]}
+    assert NI.served_kinds("f2", one, two) == two and NI.served_kinds("f1", one, two) == one, \
+        "production's build was not told by its fingerprint"
+    assert NI.served_kinds("f3", one, two) is None and NI.served_kinds("f3", None, None) is None, \
+        "a build no verdict holds was given another build's kinds"
+    assert NI.served_kinds(None, one, two) == one, "production not read lost what it served"
+
+    from datetime import datetime, timedelta, timezone
+
+    def late(n):
+        ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        Path("archive/livestreams.json").write_text(json.dumps({"videos": {
+            f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
+            for i in range(n)}}), encoding="utf-8")
+
+    def news(v, known=True):
+        said = (NI.REVIEW_WARNING if known else NI.REVIEW_WARNING_UNKNOWN).split("{")[0]
+        return [r for r in v["review"]["why"] if r.startswith(said)]
+
+    def night(*argv, run_id):
+        g.how["touch"] += 1             # a build production does not serve yet
+        code, _ = g.night("--runner", *argv, run_id=run_id)
+        assert code == 0, (run_id, g.verdict().get("not_clean"))
+        return g.verdict()
+
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="351")
+        g.how["touch"] = 3
+        g.night("--runner", "--no-fetch", run_id="352")
+        g.publish("352")
+        v = g.verdict()
+        assert v["warning_kinds"] == [] and v["sendable_kinds"] == {
+            "fingerprint": v["fingerprint"], "kinds": [], "day": v["day"]}, v.get("sendable_kinds")
+        shutil.copytree("prod", "prod-352")         # for a rollback, below
+
+        # One recording waiting: news.
+        late(1)
+        v = night("--no-fetch", run_id="353")
+        rec = next(w for w in v["warnings"] if w.startswith("1 recording finished"))
+        assert v["review"] == {"needed": True, "why": NI.warning_reasons([("x", rec)], [])} and \
+            len(v["warning_kinds"]) == 1 and v["served_kinds"]["kinds"] == [], v.get("review")
+        assert "- Would have waited for approval: " + NI.REVIEW_WARNING.format(
+            said="1 recording finished") in g.summary, g.summary
+
+        # Held, and never published: the night after carries it again, and is
+        # held again, though the night before carried it -- and so is a
+        # scheduled night after a dry run that carried it.
+        late(2)
+        v = night("--no-fetch", run_id="354")
+        assert len(news(v)) == 1 and v["review"]["needed"], \
+            ("a night held for a new warning, never published, cleared the same warning the "
+             "night after", v.get("review"))
+        sent = v["sendable_kinds"]
+        v = night("--no-fetch", "--dry-run", run_id="355")
+        assert len(news(v)) == 1 and v["sendable_kinds"] == sent, \
+            ("a dry run was taken for a build sent for production", v.get("sendable_kinds"))
+        v = night("--no-fetch", run_id="356")
+        assert len(news(v)) == 1, ("a warning first seen on a held night and a dry run, never "
+                                   "published, cleared the scheduled night after", v.get("review"))
+
+        # Published, it is production's: three recordings after two is the
+        # same kind, and nothing for the gate.
+        g.publish("356")
+        late(3)
+        v = night("--no-fetch", run_id="357")
+        assert any(w.startswith("3 recordings finished") for w in v["warnings"]) and \
+            v["review"] == {"needed": False, "why": []}, \
+            ("three recordings waiting after two was taken for a new kind of warning",
+             v.get("review"))
+
+        # The fetch's own warnings: the bill requests failing is news. Published,
+        # and a night that never started between, failing again with another
+        # exit status is not: the night that never started carries what
+        # production served and the build sent before it.
+        night(run_id="358")
+        g.publish("358")
+        g.how["lsrs_rc"] = 1
+        v = night(run_id="359")
+        lsrs = next(w for w in v["warnings"] if w.startswith("next session's bill requests"))
+        assert NI.warning_reasons([("x", lsrs)], [])[0] in news(v), \
+            ("the bill requests failing for the first time was not news", v.get("review"))
+        g.publish("359")
+        sent, was, pub = v["sendable_kinds"], v["served_kinds"], v["published_kinds"]
+        g.night("--runner", "--close", "--outcome", "kit-down=failure", run_id="360")
+        v = g.verdict()
+        assert v["run_id"] == "360" and v["sendable_kinds"] == sent and \
+            v["served_kinds"] == was and v["published_kinds"] == pub and pub and \
+            "warning_kinds" not in v, \
+            ("a night that never started did not carry what production serves", v)
+        g.how["lsrs_rc"] = 2
+        v = night(run_id="361")
+        assert "exit 2" in " ".join(v["warnings"]) and news(v) == [] and \
+            v["served_kinds"]["kinds"] == sent["kinds"], \
+            ("the bill requests failing again, with another exit status, was news", v.get("review"))
+        g.publish("361")
+
+        # A verdict that names none of the three -- one from before the gate:
+        # what production serves is not known, nor any recent published
+        # night, so every warning tonight is news.
+        v = g.verdict()
+        del v["served_kinds"], v["sendable_kinds"], v["published_kinds"]
+        NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
+        v = night(run_id="362")
+        assert v["served_kinds"] is None and len(news(v, known=False)) == \
+            len(v["warning_kinds"]) == 3, v.get("review")
+        assert "- Would have waited for approval: " + \
+            NI.REVIEW_WARNING_UNKNOWN.split("{")[0] in g.summary, g.summary
+        g.publish("362")
+        v = night(run_id="363")
+        assert news(v) == [] == news(v, known=False), v.get("review")
+
+        # Production rolled back to an older build, whose warnings the verdict
+        # does not hold: not known, though its code is tonight's -- and the
+        # kinds the nights published since carried are known all the same,
+        # since they are published nights' of the last fourteen days. Without
+        # that record, none is.
+        shutil.rmtree("prod")
+        shutil.copytree("prod-352", "prod")
+        v = night(run_id="364")
+        assert v["served_kinds"] is None and v["live_commit"] == GATE_SHA[0] and \
+            news(v, known=False) == [] and len(v["warning_kinds"]) == 3 and \
+            sorted(v["published_kinds"]) == v["warning_kinds"], \
+            (v.get("review"), v.get("published_kinds"))
+        del v["published_kinds"]
+        NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
+        v = night(run_id="365")
+        assert v["served_kinds"] is None and len(news(v, known=False)) == \
+            len(v["warning_kinds"]) == 3 and v["published_kinds"] == {}, v.get("review")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a kind of warning the build production serves did not carry holds the night, "
+                  "quoting it, and holds it again until a build carrying it is published, a dry "
+                  "run between or not; the same kind with other counts or another exit status "
+                  "does not; a build whose kinds are not known holds every warning no recent "
+                  "published night carried")
+
+
+def _gate_late(n):
+    """n recordings, finished five days ago, whose captions the laptop has
+    yet to read: the warning the gate's checks use as a kind that comes and
+    goes. Written where the night reads the livestream state."""
+    from datetime import datetime, timedelta, timezone
+    ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    Path("archive/livestreams.json").write_text(json.dumps({"videos": {
+        f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
+        for i in range(n)}}), encoding="utf-8")
+
+
+@check("build", "the gate never holds a night for the day's files coming from the General "
+       "Court's database, nor for an error on the run's page, and still holds one with a new "
+       "kind of any other warning", needs=("nightly",))
+def _nightly_review_fallback(NI):
+    """The person, 6 October 2026: the export coming back empty or unusable
+    while the night still builds the day's files from the General Court's
+    database "is not a reason to hold", and "if the page itself is still
+    publishing fine, then I'd prefer to let it update". So no note of that
+    fallback holds a night that builds and passes its checks, new kind or
+    not (KINDS_FALLBACK): the day's files from the database, the database's
+    own notes on them, the export's files taken after the database installed
+    nothing, the study views left unasked because the database failed
+    earlier that night. Nor does an error on the page (alarms) of any kind,
+    the seventh database night in a row among them. Each stays on the run's
+    page and in the verdict exactly as before, for the morning triage. A new
+    kind of any other warning still holds the night beside them, and the SQL
+    host's own hold is not the fallback's."""
+    import types
+    lookup = ("SubjectCodes.txt differs from the database's Subject (3 rows only in the "
+              "database): the installed file stays")
+    db = {"kind": "nightly", "fetch": "empty: 13 of 14 files came back with no data in them",
+          "fetch_tries": 1, "db_nights": NI.DB_NIGHTS_MOST,
+          "day_files": {"source": NI.DB_SOURCE, "warnings": [lookup]}}
+    after = {"kind": "nightly", "fetch": "installed", "fetch_tries": 2,
+             "day_files": {"source": "none", "why_code": "query", "after_try": 1},
+             "study_meetings": {"x": NI.STUDY_NOT_AGAIN}}
+    other = ("the General Court's list of calendars and journals: not taken",
+             "the General Court's list of calendars and journals: not taken (exit 1)")
+    assert not NI.fallback_kind("the study committees' meetings not asked for: a hold") and \
+        not NI.fallback_kind(other[0]), "a warning not the fallback's was taken for one of its notes"
+    real = (NI.Night.judge, NI.Night.alarms)
+    how = {"db": None, "alarm": None}
+
+    def judge(self, *args, **kw):
+        # Tonight's day files, as the fallback leaves them in the verdict.
+        if how["db"]:
+            self.v.update(day_files=json.loads(json.dumps(db["day_files"])),
+                          db_nights=NI.DB_NIGHTS_MOST, files_from=NI.DB_SOURCE)
+        return real[0](self, *args, **kw)
+
+    def alarms(self):
+        return real[1](self) + ([how["alarm"]] if how["alarm"] else [])
+
+    with _GateNights(NI) as g:
+        # Every note of the fallback is of a kind that never holds, whether
+        # the kinds of the build production serves are known or not.
+        for v in (db, after):
+            warned = NI.Night.warned(types.SimpleNamespace(v=v))
+            assert len(warned) == 2 and all(NI.fallback_kind(k) for k, _ in warned), warned
+            assert NI.warning_reasons(warned, []) == [] == NI.warning_reasons(warned, None), \
+                ("a note of the database fallback would have held the night", warned)
+            assert NI.warning_reasons(warned + [other], []) == [
+                NI.REVIEW_WARNING.format(said=other[1])], \
+                "a new kind of warning beside the fallback's did not hold the night"
+        assert f"{NI.DB_NIGHTS_MOST} nights in a row" in \
+            NI.Night.alarms(types.SimpleNamespace(v=db))[0], "the long run of database nights lost its error"
+
+        NI.Night.judge, NI.Night.alarms = judge, alarms
+        try:
+            g.night("--runner", "--no-fetch", "--dry-run", run_id="371")
+            g.how["touch"] = 3
+            code, _ = g.night("--runner", "--no-fetch", run_id="372")
+            assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
+            g.publish("372")
+
+            # The seventh night in a row built from the database, otherwise
+            # clean: its warning leads the page, its error is on it, both are
+            # in the verdict, and the gate clears it.
+            how["db"] = db
+            g.how["touch"] = 4
+            code, _ = g.night("--runner", "--no-fetch", run_id="373")
+            v = g.verdict()
+            assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []}, \
+                ("a night whose day files came from the database was held for it", v.get("review"))
+            assert v["warnings"][0].startswith("the day's files were built from the General "
+                                               "Court's database") and \
+                f"(night {NI.DB_NIGHTS_MOST} in a row)" in v["warnings"][0] and \
+                lookup in v["warnings"] and len(v["warning_kinds"]) == 2 and \
+                all(NI.fallback_kind(k) for k in v["warning_kinds"]) and \
+                v["alarms"] and v["not_clean"] == v["alarms"] and \
+                f"{NI.DB_NIGHTS_MOST} nights in a row" in v["alarms"][0], \
+                (v.get("warnings"), v.get("warning_kinds"), v.get("alarms"))
+            lines = g.summary.splitlines()
+            assert f"- **{v['warnings'][0]}**" in lines and \
+                f"- **error: {v['alarms'][0]}**" in lines and \
+                "- Would have published without approval." in lines and \
+                g.output.get("review") == "false", g.summary
+
+            # An error of any other kind on the page holds nothing either.
+            how["db"], how["alarm"] = None, "an error of another kind, for somebody to act on"
+            g.how["touch"] = 5
+            code, _ = g.night("--runner", "--no-fetch", run_id="374")
+            v = g.verdict()
+            assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []} \
+                and v["alarms"] == [how["alarm"]] and v["not_clean"] == v["alarms"] and \
+                f"- **error: {how['alarm']}**" in g.summary.splitlines(), \
+                ("an error on the page held the night", v.get("review"), v.get("alarms"))
+
+            # A new kind of anything else still holds, beside the fallback's
+            # notes and an error, and is the only reason given.
+            how["db"] = db
+            _gate_late(1)
+            g.how["touch"] = 6
+            code, _ = g.night("--runner", "--no-fetch", run_id="375")
+            v = g.verdict()
+            rec = next(w for w in v["warnings"] if w.startswith("1 recording finished"))
+            assert code == 0 and v["review"] == {
+                "needed": True, "why": NI.warning_reasons([("x", rec)], [])} and \
+                len(v["warning_kinds"]) == 3 and v["alarms"], \
+                ("a new kind of warning beside the database's was not held, or not alone",
+                 v.get("review"))
+        finally:
+            NI.Night.judge, NI.Night.alarms = real
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("the day's files from the database, its notes and the seventh such night's "
+                  "error clear a night that is otherwise clean, and stay on its page and in its "
+                  "verdict; another error does too; a new kind of anything else still holds")
+
+
+@check("build", "a kind of warning a night production published in the last fourteen days "
+       "carried is known to the gate, and one seen longer ago, or only on nights never "
+       "published, is not", needs=("nightly",))
+def _nightly_review_recent(NI):
+    """The person, 6 October 2026, on warnings that come and go. Compared with
+    the build production serves alone, the database fallback's warning was
+    news each time it came back after a published night that did not carry
+    it, and the recordings waiting will be the first time the laptop catches
+    up. So a kind is known as well when a night production actually served
+    carried it within KINDS_RECENT_DAYS, fourteen: the verdict carries
+    "published_kinds", {kind: the day of the newest published night that
+    carried it}, which judge() fills from the build production serves -- told
+    by its fingerprint, dated by the day its own night wrote into
+    "sendable_kinds" -- and cuts to the window. A night held and never
+    published adds nothing, however recent, and nor does a New term run sent
+    for a build production already serves; with no record yet, or a build
+    sent before its day was kept, nothing is added and the gate holds as it
+    did."""
+    from datetime import date, timedelta
+    day = "2026-10-20"
+    rec = {"a": "2026-10-10", "b": "2026-09-30", "c": "not a day", "d": "2026-10-06",
+           "e": "2026-10-21"}
+    assert NI.KINDS_RECENT_DAYS == 14 and NI.recent_kinds(rec, day) == {"a", "d"}, \
+        ("ten and fourteen days ago are within the window, twenty and a day to come are not",
+         NI.recent_kinds(rec, day))
+    assert NI.recent_kinds(None, day) == set() == NI.recent_kinds(rec, "")
+    pub = {"fingerprint": "f", "kinds": ["b", "f"], "day": "2026-10-19"}
+    assert NI.published_kinds(rec, pub, day) == {
+        "a": "2026-10-10", "b": "2026-10-19", "d": "2026-10-06", "f": "2026-10-19"}, \
+        NI.published_kinds(rec, pub, day)
+    assert NI.published_kinds(rec, dict(pub, day=None), day) == \
+        {"a": "2026-10-10", "d": "2026-10-06"}, "a build whose day is not known added its kinds"
+    assert NI.published_kinds({"a": "2026-10-19"}, dict(pub, kinds=["a"], day="2026-10-10"),
+                              day) == {"a": "2026-10-19"}, "an older published night set a kind back"
+    assert NI.published_kinds(None, None, day) == {} == NI.published_kinds("x", "y", day)
+    assert NI.warning_reasons([("a", "A"), ("b", "B")], [], NI.recent_kinds(rec, day)) == \
+        [NI.REVIEW_WARNING.format(said="B")], "a kind of a recent published night held the night"
+    assert NI.warning_reasons([("a", "A")], None, NI.recent_kinds(rec, day)) == [] and \
+        NI.warning_reasons([("a", "A")], None, NI.recent_kinds(None, day)) == \
+        [NI.REVIEW_WARNING_UNKNOWN.format(said="A")], "with no record the gate did not hold as before"
+    one = {"fingerprint": "f1", "kinds": ["a"], "day": "2026-10-19"}
+    assert NI.served_kinds("f1", None, one) == one and \
+        NI.served_kinds("f1", dict(one, day="x"), None) == {"fingerprint": "f1", "kinds": ["a"]}, \
+        "the day of the build production serves was not carried with its kinds"
+
+    def news(v, known=True):
+        said = (NI.REVIEW_WARNING if known else NI.REVIEW_WARNING_UNKNOWN).split("{")[0]
+        return [r for r in v["review"]["why"] if r.startswith(said)]
+
+    def night(*argv, run_id):
+        g.how["touch"] += 1             # a build production does not serve yet
+        code, _ = g.night("--runner", *argv, run_id=run_id)
+        assert code == 0, (run_id, g.verdict().get("not_clean"))
+        return g.verdict()
+
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="381")
+        g.how["touch"] = 3
+        g.night("--runner", "--no-fetch", run_id="382")
+        g.publish("382")
+
+        # A kind a published night carried, gone from the night published
+        # after it, and back: known, though production serves a build
+        # without it.
+        _gate_late(1)
+        v = night("--no-fetch", run_id="383")
+        kind = next(k for k in v["warning_kinds"] if k.startswith("recordings"))
+        assert len(news(v)) == 1 and v["sendable_kinds"]["day"] == v["day"], v.get("review")
+        g.publish("383")
+        _gate_late(0)
+        v = night("--no-fetch", run_id="384")
+        assert v["review"] == {"needed": False, "why": []} and \
+            v["published_kinds"] == {kind: v["day"]}, v.get("published_kinds")
+        g.publish("384")
+        _gate_late(2)
+        v = night("--no-fetch", run_id="385")
+        assert v["served_kinds"]["kinds"] == [] and v["review"] == {"needed": False, "why": []}, \
+            ("a kind a night published today carried was news again because the night "
+             "published after it did not carry it", v.get("review"))
+
+        # Ten days ago is within the window; twenty is not, and is let go.
+        today = date.fromisoformat(v["day"])
+        for ago, held in ((10, False), (20, True)):
+            v = g.verdict()
+            v["published_kinds"] = {kind: (today - timedelta(days=ago)).isoformat()}
+            NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
+            v = night("--no-fetch", run_id=f"386-{ago}")
+            assert (len(news(v)) == 1) == held and (kind in v["published_kinds"]) != held, \
+                (f"a kind last on a published night {ago} days ago", v.get("review"),
+                 v.get("published_kinds"))
+
+        # Seen only on nights never published: not known, however recent.
+        _gate_late(0)
+        g.how["lsrs_rc"] = 1
+        for rid in ("387", "388"):
+            v = night(run_id=rid)
+            lsrs = next(k for k in v["warning_kinds"] if k.startswith("next session's bill"))
+            assert any("next session's bill requests" in r for r in news(v)) and \
+                lsrs not in v["published_kinds"], \
+                ("a kind seen only on nights never published was taken for a published one's",
+                 v.get("review"), v.get("published_kinds"))
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+
+    # A New term run is sent even for a build production already serves
+    # (judge). Never published, its kinds are not a published night's, though
+    # production's fingerprint is its build's: the build stays the one the
+    # night that sent it first carried. Recorded as sent, the bill requests
+    # failing on that run alone passed for a published night's for fourteen
+    # days, and the night that failed them again was cleared.
+    with _GateNights(NI) as g:
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="391")
+        g.how["touch"] = 3
+        g.night("--runner", run_id="392")
+        g.publish("392")
+        sent = g.verdict()["sendable_kinds"]
+        g.how["lsrs_rc"] = 1
+        code, _ = g.night("--runner", "--new-term", run_id="393")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["fingerprint"] == v["live_fingerprint"] and \
+            any(k.startswith("next session's bill") for k in v["warning_kinds"]), \
+            ("the fixture's New term run is not one production already serves the build of",
+             code, v.get("not_clean"))
+        assert v["sendable_kinds"] == sent, \
+            ("a New term run for a build production already served was taken as sent",
+             v.get("sendable_kinds"))
+        g.how["lsrs_rc"] = 0
+        v = night(run_id="394")
+        assert not any(k.startswith("next session's bill") for k in v["published_kinds"]), \
+            ("a New term run never published was taken for a published night",
+             v.get("published_kinds"))
+        g.publish("394")
+        g.how["lsrs_rc"] = 1
+        v = night(run_id="395")
+        assert any("next session's bill requests" in r for r in news(v)), \
+            ("a kind carried only by a New term run never published did not hold the night",
+             v.get("review"), v.get("published_kinds"))
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a kind a night published within fourteen days carried does not hold the "
+                  "night, though the build production serves lacks it; one last published "
+                  "twenty days ago, or seen only on nights never published -- a New term run "
+                  "for the build production serves among them -- does")
+
+
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
 def _nightly_weekly(NI):
     """--runner --weekly takes the committee rosters, the members who have left, the
@@ -48731,6 +49732,17 @@ def _nightly_falls_back(NI, DF, PD, SG):
         assert code == 0 and v["db_nights"] == 7 == NI.DB_NIGHTS_MOST and v["publishable"] and \
             not v["clean"] and v["alarms"] and v["not_clean"] == v["alarms"] and \
             "7 nights in a row" in v["alarms"][0], (code, v.get("alarms"), v["not_clean"])
+        # ... and the gate gives none of it as a reason to wait (the person, 6
+        # October 2026; _nightly_review_fallback): not the database's warning,
+        # though no build production serves is known to have carried it, and
+        # not the error. This fixture's production is not read, so the gate
+        # waits for that, and for the other kinds of warning it carries.
+        news = (NI.REVIEW_WARNING.split("{")[0], NI.REVIEW_WARNING_UNKNOWN.split("{")[0])
+        assert v["warnings"][0].startswith("the day's files were built from the General Court's "
+                                           "database") and \
+            not [r for r in v["review"]["why"]
+                 if r.startswith(news) and "the General Court's database" in r] and \
+            not set(v["alarms"]) & set(v["review"]["why"]), v["review"]
         os.environ["GITHUB_ACTIONS"] = "true"
         try:
             code, out = night("--runner", "--close", "--outcome", "night=success", run_id="305")
@@ -51438,7 +52450,9 @@ def _wf_environment(job_lines):
             if m.group(1):
                 return m.group(1).strip("'\"")
             for nxt in job_lines[i + 1:]:
-                n = re.match(r"^      name:\s*(\S+)", nxt)
+                # The whole value: an expression that chooses one (GATE_ROUTED)
+                # is several words.
+                n = re.match(r"^      name:\s*(.+?)\s*$", nxt)
                 if n:
                     return n.group(1).strip("'\"")
                 if re.match(r"^    \S", nxt):
@@ -51633,7 +52647,10 @@ def _workflows_production(NI):
             assert not re.search(r"^\s+[^#\n]*\bwrangler\b", body, re.M), \
                 f"{f.name}: job {j} runs wrangler itself, not through nightly.py"
             if "--deploy-to production" in body:
-                assert env == "production", \
+                # "production", or once the gate is on, the one expression that
+                # chooses "production-review" for a night the gate holds and
+                # for every New term run (_workflows_gate holds the two modes).
+                assert env in ("production", GATE_ROUTED), \
                     f"{f.name}: job {j} deploys production outside the production environment"
                 cond = re.search(r"^    if:\s*(.+)$", body, re.M)
                 assert re.search(r"^    needs:\s*\S+", body, re.M) and cond and \
@@ -51853,8 +52870,10 @@ def _workflows_new_term(NI):
         assert NEW_TERM_ENV in _wf_block(lines, "env"), \
             f"{f.name} does not take NEW_TERM from the box, on a run by hand alone"
         name = _wf_block(lines, "run-name")
+        # ... and, once the gate is on, the publish job's environment line,
+        # which sends every New term run to "production-review" (GATE_ROUTED).
         stray = [ln.strip() for ln in code if "inputs.new_term" in ln
-                 and ln != NEW_TERM_ENV and ln not in name]
+                 and ln != NEW_TERM_ENV and ln not in name and ln != GATE_ROUTED_LINE]
         assert not stray, f"{f.name} reads the New term box outside its env line: {stray}"
 
         # Handed to the night or the week; and, where the workflow publishes,
@@ -51945,6 +52964,144 @@ def _workflows_new_term(NI):
     return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
                   f"only to the night or the week; {', '.join(reviewed)} holds what the run "
                   "took until its publish job releases it, and keeps its required-reviewer note")
+
+
+# THE GATE IN THE WORKFLOW (6 October 2026). In shadow the publish job goes
+# through "production", where the person is the required reviewer, every night.
+# On the switch day the person applies the routing (a patch kept off the
+# repository): REVIEW_GATE turns "on", and the publish job's environment is
+# this expression -- "production", with no reviewer, only where the night's
+# review output is exactly "false" and the run is not a New term run, and
+# "production-review" for everything else, a missing output included. The
+# New term clause names the box itself, so the switch to a new term waits
+# for a reviewer even if the night's own reason for it were ever lost.
+GATE_ROUTED = ("${{ (needs.night.outputs.review == 'false' && !(github.event_name == "
+               "'workflow_dispatch' && inputs.new_term)) && 'production' || 'production-review' }}")
+GATE_ROUTED_LINE = "      name: " + GATE_ROUTED
+GATE_MODE = {"shadow": "  REVIEW_GATE: shadow", "on": '  REVIEW_GATE: "on"'}
+GATE_OUTPUT = "      review: ${{ steps.night.outputs.review }}"
+GATE_SHADOW_ENV = ("    environment:\n      name: production\n"
+                   "      url: https://graniterecord.org\n")
+
+
+def _gate_route(text):
+    """nightly.yml's code as the routing leaves it: REVIEW_GATE on, and the
+    publish job's environment GATE_ROUTED. (The patch applied on the switch
+    day changes the comments that say so as well.)"""
+    assert text.count(GATE_SHADOW_ENV) == 1 and text.count(GATE_MODE["shadow"] + "\n") == 1, \
+        "nightly.yml's publish environment or REVIEW_GATE is not where the routing expects it"
+    return (text.replace(GATE_SHADOW_ENV, GATE_SHADOW_ENV.replace(
+        "name: production", "name: " + GATE_ROUTED))
+        .replace(GATE_MODE["shadow"] + "\n", GATE_MODE["on"] + "\n"))
+
+
+def _gate_problems(text):
+    """(mode, problems) of a workflow that deploys production: REVIEW_GATE set
+    once, in the top-level env, to shadow or "on"; every job that deploys
+    production in "production" in shadow and in GATE_ROUTED when on; and the
+    night job handing on the step's review output either way."""
+    lines = text.splitlines()
+    code = "\n".join(_wf_code(lines))
+    modes = [m for m, ln in GATE_MODE.items() if ln in _wf_block(lines, "env")]
+    if len(modes) != 1 or code.count("REVIEW_GATE") != 1:
+        return None, ['REVIEW_GATE is not set once, to shadow or "on", in the top-level env']
+    mode, out = modes[0], []
+    want = "production" if mode == "shadow" else GATE_ROUTED
+    jobs = _wf_jobs(text)
+    for j, jl in jobs.items():
+        if "--deploy-to production" in "\n".join(_wf_code(jl)):
+            env = _wf_environment(_wf_code(jl))
+            if env != want:
+                out.append(f"REVIEW_GATE is {mode}, and job {j} deploys production through "
+                           f"{env!r}, not {want!r}")
+    if GATE_OUTPUT not in _wf_code(jobs.get("night") or []):
+        out.append("the night job does not hand on the step's review output")
+    return mode, out
+
+
+@check("workflows", "the workflow says whether the gate routes the publish job, and its publish "
+       "environment agrees; the routing the person applies on the switch day passes the "
+       "production rule and the New term rule", needs=("nightly",))
+def _workflows_gate(NI):
+    """The gate runs in shadow from 6 October 2026: every night still waits for
+    approval in "production", and the night says what the gate would have
+    done. After five scheduled nights where its answer matches the person's,
+    they create "production-review" with themselves as reviewer, apply the
+    routing, and take the reviewer off "production". So nightly.yml says
+    which mode it is in (REVIEW_GATE, which nightly.py reads to word the run's
+    page), and preflight holds the publish job's environment to that word:
+    "production" in shadow, GATE_ROUTED when on. And the routing is proved
+    here before anyone applies it: nightly.yml as it would leave it passes this
+    rule, the production rule (_workflows_production) and the New term rule
+    (_workflows_new_term), and a routing that dropped the New term clause, or
+    that left REVIEW_GATE in shadow, does not."""
+    global WORKFLOW_DIR
+    assert (NI.GATE_ENV, NI.GATE_SHADOW, NI.GATE_ON) == ("REVIEW_GATE", "shadow", "on"), \
+        "nightly.py reads another word for the gate's mode than the workflow sets"
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    mode, problems = _gate_problems(text)
+    assert not problems, "; ".join(problems)
+
+    # nightly.py words the page by the mode.
+    saved_env = os.environ.get(NI.GATE_ENV)
+    try:
+        v = {"review": {"needed": True, "why": ["x"]}, "publishable": True}
+        os.environ[NI.GATE_ENV] = NI.GATE_ON
+        assert NI.gate_on() and NI.review_line(v, False) == "Waits for approval: x." and \
+            NI.review_line({**v, "review": {"needed": False, "why": []}}, False) == \
+            "Goes to production without approval." and \
+            NI.review_line(v, True).startswith("A dry run"), NI.review_line(v, False)
+        os.environ[NI.GATE_ENV] = NI.GATE_SHADOW
+        assert not NI.gate_on() and NI.review_line(v, False) == "Would have waited for approval: x."
+    finally:
+        if saved_env is None:
+            os.environ.pop(NI.GATE_ENV, None)
+        else:
+            os.environ[NI.GATE_ENV] = saved_env
+    if mode == "on":
+        return "ok", "the gate is on: the publish job goes through GATE_ROUTED"
+
+    # The routing, before anyone applies it.
+    routed = _gate_route(text)
+    assert _gate_problems(routed) == ("on", []), _gate_problems(routed)
+    yaml = imp("yaml")
+    if yaml is not None:
+        doc = yaml.safe_load(routed)
+        assert doc["jobs"]["publish"]["environment"]["name"] == GATE_ROUTED and \
+            doc["env"]["REVIEW_GATE"] == "on", "the routing does not read back as YAML as written"
+    assert _gate_problems(routed.replace(GATE_MODE["on"], GATE_MODE["shadow"]))[1], \
+        "a routed publish job with REVIEW_GATE left in shadow passed"
+    assert _gate_problems(text.replace(GATE_MODE["shadow"], GATE_MODE["on"]))[1], \
+        "REVIEW_GATE on with the publish job still in production passed"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-gate-wf-"))
+    saved = WORKFLOW_DIR
+    try:
+        for f in _workflows():
+            shutil.copy(f, tmp / f.name)
+        WORKFLOW_DIR = tmp
+        (tmp / "nightly.yml").write_text(routed, encoding="utf-8")
+        for rule in (_workflows_production, _workflows_new_term):
+            status, msg = rule(NI)
+            assert status == "ok", f"the routing fails {rule.__name__}: {msg}"
+        lost = routed.replace(" && !(github.event_name == 'workflow_dispatch' && inputs.new_term)",
+                              "")
+        assert lost != routed
+        (tmp / "nightly.yml").write_text(lost, encoding="utf-8")
+        try:
+            passed = _workflows_production(NI)[0] == "ok"
+        except AssertionError:
+            passed = False
+        assert not passed, ("a routing that lets a New term run through without a reviewer "
+                            "passed the production rule")
+    finally:
+        WORKFLOW_DIR = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("REVIEW_GATE is shadow and the publish job goes through production; the routing "
+                  "(on, GATE_ROUTED) passes this, the production rule and the New term rule, and "
+                  "without its New term clause or left in shadow does not")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
