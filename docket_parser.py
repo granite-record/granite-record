@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -866,6 +866,75 @@ def cancelled(desc):
     return r is None or c > r
 
 
+# A ROW THAT NAMES A HEARING'S NEW DAY IS THE NOTICE OF THAT DAY, AS THE
+# HISTORY READS IT (decision 60, 6 October 2026). The Senate wrote the move
+# two ways this reader read as no hearing on the new day, so the history told
+# a hearing on a day proceedings.csv has no row for, and SB 373 of 2002 and SB
+# 79 and SB 395 of 1999-2000 had no hearing drawn anywhere on the site:
+#
+#   "Hearing; === CANCELLED === RESCHEDULED === January 22, 2002, 1:00 p.m.;
+#   SC2" (SB 373 of 2002), after the notice for 15 January. FLAG_RE took
+#   "== CANCELLED ==" off it as the row's own flag and build_sittings filed
+#   it as a cancelled sitting; the mark is the old day's, and the row is the
+#   notice of the day it names (narrative.CANCELLED_AND_RESCHEDULED, the same
+#   pattern, which preflight holds to this one). 2001-2002 and 2009 only.
+#
+#   "==RESCHEDULED== Feb.24, Room 103, SH,10:00 a.m., SC 12, Pg.8" (SB 395 of
+#   2000), and the dozen other ways the Senate of 1999-2000 gave the new day
+#   with no kind of meeting in front of it, which SENATE_SCHED_RE needs; and
+#   "Rescheduled Hearing, 3/24/99, Room 103, LOB, 9:00 a.m. Hearing Cancelled"
+#   (SB 79 of 1999), whose cancellation is the earlier hearing's -- Senate
+#   Calendar 12a of 1999 prints SB 79 on 24 March "RESCHEDULED FROM MARCH
+#   17TH" -- and which cancelled() read as the new notice called off. Both are
+#   docket_era_1999.rescheduled_notice's, which the history reads them with,
+#   for the rows of 1999-2006 it reads.
+CANCELLED_AND_RESCHEDULED = re.compile(
+    r"=+\s*CANCELL?ED\s*=+\s*RESCHEDULED\s*=+\s*(?=[A-Z][a-z]+\.?\s+\d|\d{1,2}/\d)", re.I)
+RESCHEDULED_YEARS = (1999, 2006)
+RESCHEDULED_TIME = re.compile(r"(?P<time>\d{1,2}:\d{2})\s*(?P<mer>" + r"[ap]\s?\.?\s?m\.?" + r")",
+                              re.I)
+try:
+    import docket_era_1999 as _E1999
+except ImportError:                                 # a checkout without it reads as before
+    _E1999 = None
+
+
+def rescheduled_to(r):
+    """The day a row giving a hearing's new day names, as a date, where the
+    history reads the row as the notice of that day
+    (docket_era_1999.rescheduled_notice); else None."""
+    head = (r.get("lsr") or "").split("-")[0]
+    if _E1999 is None or not head.isdigit() \
+            or not RESCHEDULED_YEARS[0] <= int(head) <= RESCHEDULED_YEARS[1]:
+        return None
+    try:
+        written = datetime.strptime((r.get("created") or "").strip(), "%m/%d/%Y %I:%M:%S %p")
+    except ValueError:
+        return None
+    got = _E1999.rescheduled_notice(r.get("desc") or "", written)
+    return datetime.strptime(got["date"], "%m/%d/%Y").date() if got else None
+
+
+def rescheduled_proceeding(r, flags, day, timeline):
+    """The Senate hearing a row read by rescheduled_to gives notice of: its
+    day, and the hour and room the row states after it."""
+    m = _E1999.RESCHEDULED_TO.match(r["desc"])
+    rest = r["desc"][m.end("date"):] if m else r["desc"]
+    at = RESCHEDULED_TIME.search(rest)
+    t = _parse_time(f"{at.group('time')}{at.group('mer')}") if at else None
+    # The room is read as SENATE_SCHED_RE's is: between the day and the hour,
+    # or after the hour -- "(RESCHEDULED) Feb. 14, 10:00 a.m. Rooms 206-208,
+    # LOB" (SB 324 of 2000).
+    between, after = (rest[:at.start()], rest[at.end():]) if at else (rest, "")
+    return Proceeding(
+        bill=r["bill"], body=r["body"], lsr=r["lsr"], kind="hearing",
+        sched_date=day.isoformat(), sched_time=t.strftime("%H:%M") if t else None,
+        venue=senate_venue(between, after),
+        flags=[f for f in flags if "CANCEL" not in str(f).upper()],
+        committee=committee_on(timeline, r["bill"], day, r["body"]),
+        raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"])
+
+
 def extract_flags(desc):
     flags = [m.group(1).strip() for m in FLAG_RE.finditer(desc)]
     clean = FLAG_RE.sub(" ", desc).strip()
@@ -1099,8 +1168,17 @@ def parse_proceedings(rows, timeline):
         # .upper(), because the body code is not always upper case. 65 rows of
         # 1999-2002 carry a lower-case 's' or 'h', and an exact == "S" meant
         # SENATE_SCHED_RE was never even tried on them.
-        m = (SENATE_SCHED_RE.search(clean)
-             if (r["body"] or "").strip().upper() == "S" else None)
+        senate = (r["body"] or "").strip().upper() == "S"
+        m = SENATE_SCHED_RE.search(clean) if senate else None
+        # The notice of a hearing's new day (rescheduled_to), where nothing
+        # else here reads the row: its day, from the history's own reading.
+        moved_to = rescheduled_to(r) if senate else None
+        if moved_to is not None and not m:
+            out.append(rescheduled_proceeding(r, flags, moved_to, timeline))
+            continue
+        # And the cancellation on such a row is the earlier day's.
+        if moved_to is not None or CANCELLED_AND_RESCHEDULED.search(r["desc"]):
+            flags = [f for f in flags if "CANCEL" not in str(f).upper()]
         if m:
             kind = senate_kind(m.group("kind"))
             venue = senate_venue(m.group("between"), m.group("rest"))
@@ -1168,7 +1246,7 @@ def parse_proceedings(rows, timeline):
         # for this and the two House branches did not, so 1,363 called-off
         # sittings published as real meetings.
         if cancelled(r["desc"]) and not any("CANCEL" in str(f).upper()
-                                            for f in flags):
+                                            for f in flags) and moved_to is None:
             flags = list(flags) + ["CANCELLED"]
 
         if kind not in VIDEO_KINDS:

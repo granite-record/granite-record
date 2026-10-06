@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -496,6 +496,106 @@ MANIFEST_COLUMNS = ["bill", "body", "committee", "proceeding", "sched_date", "sc
                     "candidate_ids", "observed_start", "observed_end", "notes"]
 
 
+def _row_key(r):
+    """A manifest row's meeting: bill, chamber, day and kind."""
+    return (str(r.get("bill") or "").strip().upper(), str(r.get("body") or "").strip().upper(),
+            str(r.get("sched_date") or "").strip(), str(r.get("proceeding") or "").strip().lower())
+
+
+def _row_order(r):
+    """The order main() writes rows in."""
+    return (str(r.get("sched_date") or ""), str(r.get("sched_time") or "") or "99:99",
+            str(r.get("bill") or ""))
+
+
+def _records(text):
+    """[(the record's own text, its fields)] for a CSV file's text, newlines
+    and quoting kept as they are."""
+    out, buf = [], ""
+    for line in text.splitlines(keepends=True):
+        buf += line
+        if buf.count('"') % 2:
+            continue
+        out.append((buf, next(csv.reader([buf.rstrip("\r\n")]), [])))
+        buf = ""
+    if buf:
+        out.append((buf, next(csv.reader([buf.rstrip("\r\n")]), [])))
+    return out
+
+
+# WRITERS MERGE, AND A WHOLE REBUILD IS ITS OWN FLAG (decision 60, 6 October
+# 2026). Run without --merge this writes --out whole from the docket, carrying
+# the hand-marked times forward (load_marks), which is what build_all does
+# every night for the session's own manifest. An archived term's manifest was
+# built once, by the parser of its day, and the parser has learnt since: run
+# whole over Docket_db_2001-2002.txt today it adds eight House conference
+# meetings of June 2001 that nobody asked for, and moves a row whose time was
+# corrected in place (fix_meridiem_manifests). So a change that gives a term
+# rows it lacked -- the Senate's notices of a hearing's new day, which
+# docket_parser.rescheduled_to now reads -- goes in with --merge: every row the
+# manifest has stays the bytes it is, the rows of this parse it has no meeting
+# for are added where main() would sort them, and --only names the bills, or
+# the bills on their days, whose rows those are. What --only leaves out is
+# counted, so a run says what else the parse would have added.
+def merge_rows(path, rows, only=None):
+    p = Path(path)
+    if not p.exists():
+        sys.exit(f"--merge adds to {path}, which is not there. A manifest is built "
+                 "whole first, without --merge.")
+    with open(p, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    recs = _records(text)
+    if not recs:
+        sys.exit(f"{path} has no header to merge into")
+    head_text, cols = recs[0]
+    kept = [(raw, dict(zip(cols, fields))) for raw, fields in recs[1:]]
+    have = {_row_key(r) for _raw, r in kept}
+    wanted = [o.strip().upper().split("@", 1) for o in (only or [])]
+
+    def asked(r):
+        if not wanted:
+            return True
+        return any(w[0] == r["bill"].upper() and (len(w) == 1 or w[1] == r["sched_date"])
+                   for w in wanted)
+
+    new = [r for r in rows if _row_key(r) not in have]
+    add = sorted((r for r in new if asked(r)), key=_row_order)
+    left = [r for r in new if not asked(r)]
+    if wanted:
+        named = {tuple(w) for w in wanted}
+        found = {(r["bill"].upper(),) for r in add} | {(r["bill"].upper(), r["sched_date"])
+                                                       for r in add}
+        missing = sorted("@".join(w) for w in named if w not in found)
+        if missing:
+            sys.exit(f"--only names {', '.join(missing)}, and this parse adds no row for it")
+    eol = "\r\n" if head_text.endswith("\r\n") else "\n"
+    import io as _io
+    lines = []
+    for r in add:
+        buf = _io.StringIO()
+        csv.writer(buf, lineterminator=eol).writerow([r.get(c, "") if r.get(c) is not None
+                                                      else "" for c in cols])
+        lines.append((_row_order(r), buf.getvalue()))
+    merged, i = [head_text], 0
+    for raw, r in kept:
+        while i < len(lines) and lines[i][0] < _row_order(r):
+            merged.append(lines[i][1])
+            i += 1
+        merged.append(raw)
+    merged += [x[1] for x in lines[i:]]
+    with open(p, "w", encoding="utf-8", newline="") as fh:
+        fh.write("".join(merged))
+    print(f"\nMerged into {path}: {len(kept):,} rows kept as they were, {len(add):,} added")
+    for r in add:
+        print(f"  + {r['bill']} {r['body']} {r['proceeding']} {r['sched_date']} "
+              f"{r['sched_time'] or ''} {r['venue'] or ''}")
+    if left:
+        print(f"  {len(left):,} more row(s) of this parse the manifest has no meeting for, "
+              "left out by --only:")
+        for r in sorted(left, key=_row_order)[:12]:
+            print(f"    {r['bill']} {r['body']} {r['proceeding']} {r['sched_date']}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--videos", required=True, nargs="+",
@@ -511,7 +611,16 @@ def main():
                     help="carry observed_start/observed_end forward from an "
                          "earlier manifest (.csv or .xlsx). Without this they "
                          "are lost on every rebuild.")
+    ap.add_argument("--merge", action="store_true",
+                    help="keep every row --out already has exactly as it is, "
+                         "and add only the rows of this parse it does not have "
+                         "(by bill, chamber, day and kind); see merge_rows")
+    ap.add_argument("--only", nargs="+", metavar="BILL[@YYYY-MM-DD]",
+                    help="with --merge, add only these bills' rows, or only "
+                         "the rows of these bills on these days")
     a = ap.parse_args()
+    if a.only and not a.merge:
+        sys.exit("--only limits what --merge adds, and means nothing without it")
 
     # A build_* SCRIPT DOES NOT TOUCH THE NETWORK. This used to fetch
     # Docket.txt from gc.nh.gov when the file was absent, and the whole
@@ -789,6 +898,9 @@ def main():
     # The columns are named instead, and a manifest of none is written.
     if not out:
         print("  no proceeding in this docket yet: the manifest is its columns and no row")
+    if a.merge:
+        merge_rows(a.out, out, a.only)
+        return
     with open(a.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()) if out else MANIFEST_COLUMNS)
         w.writeheader()

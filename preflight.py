@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.369
+# GRANITE_VERSION: 2026-09-04.370
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3323,6 +3323,127 @@ def _whole_day_cancelled(N):
     assert not bad, "\n".join(bad)
     return "ok", ("a session cancelled on two of three bills and dropped by the calendars is "
                   "cancelled for the third; not where a later calendar prints it, nor with none")
+
+
+# Real rows: Docket_db_2001-2002.txt (SB 373) and Docket_db_1999-2000.txt (SB
+# 79, SB 395 and SB 27), and rows that are cancellations.
+_RESCHEDULED_ROWS = [
+    # (row, the day and hour proceedings.csv should read, or None for a row
+    # that is a cancelled sitting)
+    ("2002|3004|01/02/2002 05:03:29 PM|SB373|S|Hearing; === CANCELLED === RESCHEDULED === "
+     "January 22, 2002, 1:00 p.m.; SC2|01/02/2002 05:03:29 PM", ("2002-01-22", "13:00")),
+    ("2001|0226|04/17/2001 05:57:57 PM|HB643|S|Hearing; ==CANCELLED== RESCHEDULED == May 8, 2001, "
+     "Room 101, LOB, 2:15 p.m.; SC19|04/17/2001 05:57:57 PM", ("2001-05-08", "14:15")),
+    ("2000|2327|02/16/2000 03:27:09 PM|SB395|S|==RESCHEDULED== Feb.24, Room 103, SH,10:00 a.m., "
+     "SC 12, Pg.8|02/16/2000 03:27:09 PM", ("2000-02-24", "10:00")),
+    ("2000|0923|03/10/1999 02:39:49 PM|SB79|S|Rescheduled Hearing, 3/24/99, Room 103, LOB, "
+     "9:00 a.m. Hearing Cancelled|03/10/1999 02:39:49 PM", ("1999-03-24", "09:00")),
+    ("2000|2679|01/13/2000 04:15:57 PM|SB324|S|(RESCHEDULED) Feb. 14, 10:00 a.m. Rooms 206-208, "
+     "LOB;SC3, Pg.7|01/13/2000 04:15:57 PM", ("2000-02-14", "10:00")),
+    ("2002|2131|03/05/2002 04:08:58 PM|HB1132|S|Hearing; March 7, 2002, Room 104, LOB, 8:45 a.m. "
+     "=== CANCELLED === TO BE RESCHEDULED===; SC14|03/05/2002 04:08:58 PM", None),
+    ("1999|0006|04/08/1999 08:48:51 AM|HB238|S|CANCELLED Hearing, 4/14/99, Room 101, LOB, "
+     "3:30 p.m.|04/08/1999 08:48:51 AM", None),
+    ("1999|0144|03/04/1999 05:52:52 PM|SB191|S|Hearing, 3/17/99, Room 105-A, SH 8:30 a.m. "
+     "Hearing Cancelled|03/04/1999 05:52:52 PM", None),
+]
+
+
+@check("build", "a Senate row that names a hearing's new day gives proceedings.csv a sitting on "
+                "that day, as the history reads it, and --merge adds it to a manifest whole",
+       needs=("docket_parser", "build_manifest", "narrative"))
+def _rescheduled_rows_proceedings(D, M, N):
+    """Decision 60. SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 had no
+    hearing drawn anywhere: the history tells each on the day a row names --
+    "Hearing; === CANCELLED === RESCHEDULED === January 22, 2002",
+    "==RESCHEDULED== Feb.24, Room 103, SH,10:00 a.m.", "Rescheduled Hearing,
+    3/24/99 ... Hearing Cancelled" -- and docket_parser read the first as a
+    cancelled sitting, the second as nothing and the third as the new notice
+    called off. Now each is a sitting on the day it names, and a cancellation
+    is still one. The two readers' pattern for the first is one pattern.
+
+    And build_manifest --merge: the rows a manifest has are kept byte for
+    byte, a row of the parse it has no meeting for is added where main()
+    sorts it, and --only keeps out what it does not name (the eight House
+    conference meetings of June 2001 a whole rebuild of 2001-2002 adds)."""
+    bad = []
+    if D.CANCELLED_AND_RESCHEDULED.pattern != N.CANCELLED_AND_RESCHEDULED.pattern:
+        bad.append("docket_parser and narrative read a cancelled-and-rescheduled row differently")
+    for line, want in _RESCHEDULED_ROWS:
+        tmp = Path(tempfile.mkdtemp(prefix="gr-resched-"))
+        try:
+            (tmp / "Docket.txt").write_text(line + "\n", encoding="utf-8")
+            rows = D.parse_rows(str(tmp / "Docket.txt"))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+        live = [(p.sched_date, p.sched_time) for p in procs if p.confidence != "X-cancelled"]
+        if want and live != [want]:
+            bad.append(f"{rows[0]['bill']}: read as {live!r}, not a sitting at {want!r}")
+        if not want and live:
+            bad.append(f"{rows[0]['bill']}'s cancellation is read as a sitting at {live!r}")
+    # --merge, on a manifest of two rows written as build_manifest writes them.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-merge-"))
+    try:
+        cols = M.MANIFEST_COLUMNS
+        head = ",".join(cols) + "\r\n"
+        kept = ['SB79,S,,hearing,1999-03-17,09:00,LOB 103,A-unique-slot,1,no video found'
+                + "," * (len(cols) - 10) + "\r\n",
+                'SB395,S,Insurance,hearing,2000-02-22,10:30,SH 103,A-unique-slot,1,no video found'
+                + "," * (len(cols) - 10) + "\r\n"]
+        f = tmp / "verification_manifest_1999-2000.csv"
+        f.write_text(head + "".join(kept), encoding="utf-8", newline="")
+        row = lambda b, d, t, k="hearing": {**{c: "" for c in cols}, "bill": b, "body": "S",
+                                            "proceeding": k, "sched_date": d, "sched_time": t,
+                                            "tier": "A-unique-slot", "bills_in_slot": 1,
+                                            "match": "no video found"}
+        parse = [row("SB79", "1999-03-17", "09:00"), row("SB79", "1999-03-24", "09:00"),
+                 row("SB395", "2000-02-22", "10:30"), row("SB395", "2000-02-24", "10:00"),
+                 row("HB170", "2001-06-15", "13:30", "committee of conference")]
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            M.merge_rows(str(f), parse, ["SB79@1999-03-24", "SB395"])
+        got = f.read_text(encoding="utf-8", newline="").split("\r\n")
+        if [x + "\r\n" for x in (got[1], got[3])] != kept:
+            bad.append(f"--merge changed or moved a row it had: {got!r}")
+        if not (got[2].startswith("SB79,S,,hearing,1999-03-24,09:00")
+                and got[4].startswith("SB395,S,,hearing,2000-02-24,10:00")):
+            bad.append(f"--merge did not add the two new rows where they sort: {got!r}")
+        if any("HB170" in x for x in got):
+            bad.append("--merge added a row --only does not name")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{sum(1 for _, w in _RESCHEDULED_ROWS if w)} rows naming a new day are sittings "
+                  f"on it, {sum(1 for _, w in _RESCHEDULED_ROWS if not w)} cancellations are not; "
+                  "--merge keeps every row and adds what --only names")
+
+
+@check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "
+               "history tells in their term's manifest")
+def _rescheduled_rows_in_manifests():
+    """Decision 60: the three bills had no hearing drawn anywhere, because the
+    manifests had no row for the day a rescheduling row names. The rows were
+    added with build_manifest --merge; a manifest rebuilt without them, or a
+    parser that stops reading them, takes the three off the site again."""
+    want = {"1999-2000": [("SB79", "1999-03-24"), ("SB395", "2000-02-24")],
+            "2001-2002": [("SB373", "2002-01-22")]}
+    bad, n = [], 0
+    for term, pairs in want.items():
+        f = Path(f"verification_manifest_{term}.csv")
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            have = {(r["bill"], r["sched_date"]) for r in csv.DictReader(fh)
+                    if r["body"].upper() == "S" and r["proceeding"] == "hearing"}
+        for b, d in pairs:
+            n += 1
+            if (b, d) not in have:
+                bad.append(f"{f.name} has no Senate hearing of {b} on {d}")
+    assert not bad, "\n".join(bad)
+    return "ok", f"{n} hearings on the day each history tells them"
 
 
 # =============================================================== code: status ==
