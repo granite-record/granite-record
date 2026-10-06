@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.354
+# GRANITE_VERSION: 2026-09-04.355
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43689,9 +43689,10 @@ def _nightly_runner(NI):
 # The design approved on 6 October 2026: an ordinary data night may later publish
 # itself, and a night waits for the person when it is a New term run, the first
 # night after a release, a night that changed far more than a data night does,
-# or one with a kind of warning the night before did not carry. In shadow first:
-# the verdict and the run's page say what the gate would have done. These checks
-# drive whole nights through nightly.main() in a throwaway folder, against a
+# or one with a kind of warning the build production serves did not carry. In
+# shadow first: the verdict and the run's page say what the gate would have
+# done. These checks drive whole nights through nightly.main() in a throwaway
+# folder, against a
 # production that is a folder too, served by a fake urlopen -- so the real
 # live_fingerprint reads it, and nothing is asked of the network.
 
@@ -44230,19 +44231,27 @@ def _nightly_review_size(NI):
                   "waits as a release, measured all the same; production unreadable waits")
 
 
-@check("build", "the gate holds a night with a kind of warning the night before did not carry, "
-       "and compares kinds, not the numbers in them", needs=("nightly",))
+@check("build", "the gate holds a night with a kind of warning the build production serves did "
+       "not carry, and compares kinds, not the numbers in them", needs=("nightly",))
 def _nightly_review_warnings(NI):
-    """A warning already seen on clean nights -- the recordings the laptop has
-    yet to read -- is not news; a check that warns for the first time is. So
-    every verdict keeps the kinds of warning it carried ("warning_kinds"), and
-    the gate holds a night with a kind the night before's verdict did not
-    carry, quoting tonight's sentence. Kinds, not numbers: two recordings
-    waiting after one, or an exit status of 2 after 1, is the same kind, and
-    a fetch that would withdraw requests is another kind than one that did not
-    complete. A verdict that names no kinds counts as none; the verdict
-    written for a night that never started keeps the kinds of the night
-    before it."""
+    """A warning already seen on a published night -- the recordings the
+    laptop has yet to read -- is not news; a check that warns for the first
+    time since is. So every verdict keeps the kinds of warning it carried
+    ("warning_kinds"), and the gate holds a night with a kind the build
+    production serves did not carry, quoting tonight's sentence. Which build
+    that is, production's own fingerprint says: the newest build a night sent
+    for production ("sendable_kinds"), once production serves it, or else the
+    one it served before ("served_kinds"). Not the night before's verdict: a
+    night held for a new warning and never published, or a dry run between,
+    is not what production serves, and the same warning on the night after is
+    held again -- under the routing, cleared, it went out unreviewed. Kinds,
+    not numbers: two recordings waiting after one, or an exit status of 2
+    after 1, is the same kind, and a fetch that would withdraw requests is
+    another kind than one that did not complete. A build whose warnings no
+    verdict holds -- a verdict from before the gate, a rollback -- is not
+    known, and every warning tonight is news; the verdict written for a night
+    that never started carries both, so a build published before it is
+    known after it."""
     k = NI.kind_of
     assert k("not taken: the fetch did not complete (exit 1); the earlier 3 kept") == \
         k("not taken: the fetch did not complete (exit 2); none on file") != \
@@ -44254,6 +44263,14 @@ def _nightly_review_warnings(NI):
     said = "x" * 300
     got = NI.warning_reasons([("a", said), ("a", "again"), ("b", "short")], ["b"])
     assert got == [NI.REVIEW_WARNING.format(said="x" * (NI.REVIEW_WARNING_SAID - 3) + "...")], got
+    assert NI.warning_reasons([("b", "short")], None) == \
+        [NI.REVIEW_WARNING_UNKNOWN.format(said="short")], "a build not known had its kinds"
+    one, two = {"fingerprint": "f1", "kinds": ["a"]}, {"fingerprint": "f2", "kinds": ["b"]}
+    assert NI.served_kinds("f2", one, two) == two and NI.served_kinds("f1", one, two) == one, \
+        "production's build was not told by its fingerprint"
+    assert NI.served_kinds("f3", one, two) is None and NI.served_kinds("f3", None, None) is None, \
+        "a build no verdict holds was given another build's kinds"
+    assert NI.served_kinds(None, one, two) == one, "production not read lost what it served"
 
     from datetime import datetime, timedelta, timezone
 
@@ -44263,68 +44280,112 @@ def _nightly_review_warnings(NI):
             f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
             for i in range(n)}}), encoding="utf-8")
 
-    def news(v):
-        return [r for r in v["review"]["why"] if r.startswith(NI.REVIEW_WARNING.split("{")[0])]
+    def news(v, known=True):
+        said = (NI.REVIEW_WARNING if known else NI.REVIEW_WARNING_UNKNOWN).split("{")[0]
+        return [r for r in v["review"]["why"] if r.startswith(said)]
+
+    def night(*argv, run_id):
+        g.how["touch"] += 1             # a build production does not serve yet
+        code, _ = g.night("--runner", *argv, run_id=run_id)
+        assert code == 0, (run_id, g.verdict().get("not_clean"))
+        return g.verdict()
 
     with _GateNights(NI) as g:
         g.night("--runner", "--no-fetch", "--dry-run", run_id="351")
         g.how["touch"] = 3
         g.night("--runner", "--no-fetch", run_id="352")
         g.publish("352")
-        assert g.verdict()["warning_kinds"] == [], g.verdict().get("warning_kinds")
+        v = g.verdict()
+        assert v["warning_kinds"] == [] and v["sendable_kinds"] == {
+            "fingerprint": v["fingerprint"], "kinds": []}, v.get("sendable_kinds")
+        shutil.copytree("prod", "prod-352")         # for a rollback, below
 
-        # One recording waiting: news. Two the night after: the same kind.
+        # One recording waiting: news.
         late(1)
-        g.how["touch"] = 4
-        code, _ = g.night("--runner", "--no-fetch", run_id="353")
-        v = g.verdict()
+        v = night("--no-fetch", run_id="353")
         rec = next(w for w in v["warnings"] if w.startswith("1 recording finished"))
-        assert code == 0 and v["review"] == {"needed": True, "why": NI.warning_reasons(
-            [("x", rec)], [])} and len(v["warning_kinds"]) == 1, v.get("review")
-        assert "- Would have waited for approval: a kind of warning the night before did not " \
-            "carry: 1 recording finished" in g.summary, g.summary
+        assert v["review"] == {"needed": True, "why": NI.warning_reasons([("x", rec)], [])} and \
+            len(v["warning_kinds"]) == 1 and v["served_kinds"]["kinds"] == [], v.get("review")
+        assert "- Would have waited for approval: a kind of warning the build production serves " \
+            "did not carry: 1 recording finished" in g.summary, g.summary
+
+        # Held, and never published: the night after carries it again, and is
+        # held again, though the night before carried it -- and so is a
+        # scheduled night after a dry run that carried it.
         late(2)
-        g.how["touch"] = 5
-        code, _ = g.night("--runner", "--no-fetch", run_id="354")
-        v = g.verdict()
-        assert code == 0 and any(w.startswith("2 recordings finished") for w in v["warnings"]) and \
+        v = night("--no-fetch", run_id="354")
+        assert len(news(v)) == 1 and v["review"]["needed"], \
+            ("a night held for a new warning, never published, cleared the same warning the "
+             "night after", v.get("review"))
+        sent = v["sendable_kinds"]
+        v = night("--no-fetch", "--dry-run", run_id="355")
+        assert len(news(v)) == 1 and v["sendable_kinds"] == sent, \
+            ("a dry run was taken for a build sent for production", v.get("sendable_kinds"))
+        v = night("--no-fetch", run_id="356")
+        assert len(news(v)) == 1, ("a warning first seen on a held night and a dry run, never "
+                                   "published, cleared the scheduled night after", v.get("review"))
+
+        # Published, it is production's: three recordings after two is the
+        # same kind, and nothing for the gate.
+        g.publish("356")
+        late(3)
+        v = night("--no-fetch", run_id="357")
+        assert any(w.startswith("3 recordings finished") for w in v["warnings"]) and \
             v["review"] == {"needed": False, "why": []}, \
-            ("two recordings waiting after one was taken for a new kind of warning", v.get("review"))
+            ("three recordings waiting after two was taken for a new kind of warning",
+             v.get("review"))
 
-        # The fetch's own warnings: the bill requests failing is news; failing
-        # again with another exit status is not.
-        code, _ = g.night("--runner", run_id="355")
+        # The fetch's own warnings: the bill requests failing is news. Published,
+        # and a night that never started between, failing again with another
+        # exit status is not: the night that never started carries what
+        # production served and the build sent before it.
+        night(run_id="358")
+        g.publish("358")
         g.how["lsrs_rc"] = 1
-        code, _ = g.night("--runner", run_id="356")
-        v = g.verdict()
+        v = night(run_id="359")
         lsrs = next(w for w in v["warnings"] if w.startswith("next session's bill requests"))
-        assert code == 0 and NI.warning_reasons([("x", lsrs)], [])[0] in news(v), \
+        assert NI.warning_reasons([("x", lsrs)], [])[0] in news(v), \
             ("the bill requests failing for the first time was not news", v.get("review"))
+        g.publish("359")
+        sent, was = v["sendable_kinds"], v["served_kinds"]
+        g.night("--runner", "--close", "--outcome", "kit-down=failure", run_id="360")
+        v = g.verdict()
+        assert v["run_id"] == "360" and v["sendable_kinds"] == sent and \
+            v["served_kinds"] == was and "warning_kinds" not in v, \
+            ("a night that never started did not carry what production serves", v)
         g.how["lsrs_rc"] = 2
-        code, _ = g.night("--runner", run_id="357")
-        v = g.verdict()
-        assert code == 0 and "exit 2" in " ".join(v["warnings"]) and news(v) == [], \
+        v = night(run_id="361")
+        assert "exit 2" in " ".join(v["warnings"]) and news(v) == [] and \
+            v["served_kinds"]["kinds"] == sent["kinds"], \
             ("the bill requests failing again, with another exit status, was news", v.get("review"))
+        g.publish("361")
 
-        # A night that never started keeps the kinds of the night before it.
-        kinds = g.verdict()["warning_kinds"]
-        code, _ = g.night("--runner", "--close", "--outcome", "kit-down=failure", run_id="358")
-        assert g.verdict()["warning_kinds"] == kinds and g.verdict()["run_id"] == "358", \
-            g.verdict().get("warning_kinds")
-        code, _ = g.night("--runner", run_id="359")
-        assert code == 0 and news(g.verdict()) == [], g.verdict().get("review")
-
-        # A verdict that names no kinds: every warning tonight is news.
+        # A verdict that names neither -- one from before the gate: what
+        # production serves is not known, so every warning tonight is news.
         v = g.verdict()
-        del v["warning_kinds"]
+        del v["served_kinds"], v["sendable_kinds"]
         NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
-        code, _ = g.night("--runner", run_id="360")
-        v = g.verdict()
-        assert code == 0 and len(news(v)) == len(v["warning_kinds"]) == 3, v.get("review")
+        v = night(run_id="362")
+        assert v["served_kinds"] is None and len(news(v, known=False)) == \
+            len(v["warning_kinds"]) == 3, v.get("review")
+        assert "- Would have waited for approval: a kind of warning the build production serves " \
+            "is not known to have carried: " in g.summary, g.summary
+        g.publish("362")
+        v = night(run_id="363")
+        assert news(v) == [] == news(v, known=False), v.get("review")
+
+        # Production rolled back to an older build, whose warnings the verdict
+        # does not hold: not known, though its code is tonight's.
+        shutil.rmtree("prod")
+        shutil.copytree("prod-352", "prod")
+        v = night(run_id="364")
+        assert v["served_kinds"] is None and v["live_commit"] == GATE_SHA[0] and \
+            len(news(v, known=False)) == len(v["warning_kinds"]) == 3, v.get("review")
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
-    return "ok", ("a new kind of warning holds the night, quoting it; the same kind with other "
-                  "counts or another exit status does not; none named counts as none; a night "
-                  "that never started keeps the kinds before it")
+    return "ok", ("a kind of warning the build production serves did not carry holds the night, "
+                  "quoting it, and holds it again until a build carrying it is published, a dry "
+                  "run between or not; the same kind with other counts or another exit status "
+                  "does not; a build whose kinds are not known holds every warning")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

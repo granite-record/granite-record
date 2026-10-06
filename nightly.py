@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -359,10 +359,11 @@ and keeps their look for a night that is a New term run, the first night after
 a release (its commit is not the one production's build.json names, or either
 is not known), a night that changed far more than a data night does (a
 finished term's bill list rewritten, or more than REVIEW_ROWS_MOST of the
-current term's rows), or one with a kind of warning the night before did not
-carry. Every night that builds says so in its verdict ("review"), its output
-("review") and one line on its run's page. The workflow's REVIEW_GATE says
-whether the publish job is routed by it; until the person switches it on, after
+current term's rows), or one with a kind of warning the build production
+serves did not carry. Every night that builds says so in its verdict
+("review"), its output ("review") and one line on its run's page. The
+workflow's REVIEW_GATE says whether the publish job is routed by it; until the
+person switches it on, after
 five scheduled nights where its answer matches theirs, it is "shadow", the
 page says what the gate WOULD have done, and nothing about what is published,
 when, or behind which environment changes. THE GATE, below, has the detail.
@@ -564,7 +565,7 @@ SERVED = {}
 #                        main, which is the person's one look at it. Where
 #                        production's commit cannot be read, the answer is wait
 #   far more changed     than a data night changes (REVIEW_ROWS_MOST)
-#   a new warning        of a kind the night before did not carry
+#   a new warning        of a kind the build production serves did not carry
 #
 # Every night that builds says in its verdict, as "review": {"needed", "why"},
 # whether the gate holds it and why; the night's step says it to the workflow
@@ -639,17 +640,32 @@ REVIEW_FINISHED = ("the bill list of {terms} differs from production's, and a da
 REVIEW_ROWS = ("{n:,} of the {of:,} bills of {term} changed against production's, more than "
                "the {most:,} a data night changes")
 REVIEW_FAILED = "the gate could not work out {what} ({kind}), so it would wait"
-# WARNING KINDS, the fourth reason: a warning of a kind the night before did
-# not carry. A warning seen on clean nights already -- the recordings the laptop
-# has yet to read, night after night -- is not news; a check that warns for
-# the first time is. Kinds, not numbers: 27 recordings waiting after 26 is
-# the same kind. The night before is the verdict every night reads as it
-# starts, and its kinds are kept in it ("warning_kinds"); a verdict that names
-# none -- one from before 6 October 2026, or one written for a night that
-# never started, which keeps its own night before's -- counts as none, and
-# every warning tonight is news.
-REVIEW_WARNING = "a kind of warning the night before did not carry: {said}"
+# WARNING KINDS, the fourth reason: a warning of a kind the build production
+# serves did not carry -- "new since the last published night", in the design's
+# words. A warning a published night carried already -- the recordings the
+# laptop has yet to read, night after night -- is not news; a check that warns
+# for the first time since is. Kinds, not numbers: 27 recordings waiting after
+# 26 is the same kind. Every verdict keeps its own kinds ("warning_kinds").
+#
+# NOT THE NIGHT BEFORE'S. Compared with the night before's verdict, a night
+# held for a new warning and never published was followed by a night that
+# cleared the same warning, though no build carrying it had been approved;
+# and a dry run by hand, which publishes nothing, made a warning old for the
+# scheduled night after it. So the verdict carries two records, each
+# {"fingerprint", "kinds"}: "sendable_kinds", the newest build a night sent for
+# production (fit for it, not a dry run), which production may serve by the
+# next night if it was approved; and "served_kinds", what production served
+# when the night read it. Production's own fingerprint, read for the gate
+# already, says which it serves now (served_kinds()); one it serves that
+# neither names -- a rollback, a publish from the laptop -- has kinds not
+# known, and so has a verdict from before this (none named). Not known, every
+# warning tonight is news. A night that does not build, or never started,
+# carries both as they were.
+REVIEW_WARNING = "a kind of warning the build production serves did not carry: {said}"
+REVIEW_WARNING_UNKNOWN = ("a kind of warning the build production serves is not known to have "
+                          "carried: {said}")
 REVIEW_WARNING_SAID = 140       # characters of the warning the reason quotes
+KINDS_SERVED, KINDS_SENDABLE = "served_kinds", "sendable_kinds"
 
 # Tracked files that are code. On GitHub's machine nobody edits anything, so a
 # tracked code file differing from the commit means something wrote where it
@@ -3049,12 +3065,14 @@ def kind_of(said):
     return re.sub(r"\s+", " ", s).strip(" .:,")
 
 
-def warning_reasons(warned, before):
+def warning_reasons(warned, served):
     """The gate's fourth reason, one for each kind of warning tonight that
-    the night before did not carry: `warned` is [(kind, sentence)] (warned()),
-    `before` the night before's kinds. Each quotes tonight's own sentence,
-    cut short, which the run's page carries in full as a warning already."""
-    seen, out = set(before or []), []
+    the build production serves did not carry: `warned` is [(kind, sentence)]
+    (warned()), `served` that build's kinds, or None where they are not known
+    and every kind is news. Each quotes tonight's own sentence, cut short,
+    which the run's page carries in full as a warning already."""
+    said_as = REVIEW_WARNING if served is not None else REVIEW_WARNING_UNKNOWN
+    seen, out = set(served or []), []
     for kind, said in warned:
         if kind in seen:
             continue
@@ -3062,8 +3080,28 @@ def warning_reasons(warned, before):
         said = str(said)
         if len(said) > REVIEW_WARNING_SAID:
             said = said[:REVIEW_WARNING_SAID - 3].rstrip(" ,;:") + "..."
-        out.append(REVIEW_WARNING.format(said=said))
+        out.append(said_as.format(said=said))
     return out
+
+
+def served_kinds(live, served, sendable):
+    """{"fingerprint", "kinds"} of the build production serves, by `live`, its
+    fingerprint tonight (WARNING KINDS): `sendable`, the newest build a night
+    sent for production, where production serves that now; `served`, what it
+    served when last read, where it serves that still; and None where it
+    serves a build neither names, whose kinds no verdict here holds. `live`
+    None -- production not read -- leaves `served` as it was."""
+    def kinds_of(d):
+        ok = isinstance(d, dict) and isinstance(d.get("kinds"), list) and d.get("fingerprint")
+        return {"fingerprint": d["fingerprint"], "kinds": [str(k) for k in d["kinds"]]} \
+            if ok else None
+    if live is None:
+        return kinds_of(served)
+    for d in (sendable, served):
+        d = kinds_of(d)
+        if d and d["fingerprint"] == live:
+            return d
+    return None
 
 
 def stamp_commit(site, sha):
@@ -3123,10 +3161,14 @@ class Night:
         # filled in by judge; finish() adds the warnings' and writes "review".
         self.review_why = []
         prev = load_json(VERDICT)
-        # The kinds of warning the night before carried, for the gate's fourth
-        # reason; none where its verdict names none.
-        kinds = prev.get("warning_kinds") if isinstance(prev, dict) else None
-        self.kinds_before = [str(k) for k in kinds] if isinstance(kinds, list) else []
+        # What the gate's fourth reason compares with (WARNING KINDS): the
+        # kinds of the build production served when last read, and of the
+        # newest build a night sent for production. Carried as they were;
+        # judge() reads which production serves tonight, and finish() makes
+        # tonight's build the newest sent where it is one.
+        for k in (KINDS_SERVED, KINDS_SENDABLE):
+            if isinstance(prev, dict) and isinstance(prev.get(k), dict):
+                self.v[k] = prev[k]
         # How many nights in a row the day's files have come from the
         # database, carried from the night before: a night that installs the
         # export sets it to 0, one that falls back adds one, and a night that
@@ -3252,6 +3294,9 @@ class Night:
         v["live_commit"] = SERVED.get("commit")
         served = dict(SERVED)
         SERVED.clear()
+        # ... and which build that is, by its fingerprint, for the kinds of
+        # warning it carried (WARNING KINDS): None where they are not known.
+        v[KINDS_SERVED] = served_kinds(live, v.get(KINDS_SERVED), v.get(KINDS_SENDABLE))
         if not stop and a.new_term:
             # NOT WRITTEN TONIGHT. Written here, the lower counts were the
             # baseline before anyone had approved the switch, and the next
@@ -3464,8 +3509,15 @@ class Night:
         if v.get("built"):
             # THE GATE, for every night that built: whether it would wait for a
             # person, and why. In shadow it decides nothing.
-            reasons = list(self.review_why) + warning_reasons(warned, self.kinds_before)
+            served = v.get(KINDS_SERVED)
+            reasons = list(self.review_why) + warning_reasons(
+                warned, served["kinds"] if isinstance(served, dict) else None)
             v["review"] = {"needed": bool(reasons), "why": reasons}
+            if v.get("publishable") and not self.a.dry_run:
+                # Sent for production: what production may serve by the next
+                # night, and with it these kinds (WARNING KINDS).
+                v[KINDS_SENDABLE] = {"fingerprint": v.get("fingerprint"),
+                                     "kinds": v["warning_kinds"]}
         write_json(VERDICT, v)
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {VERDICT}")
         for w in why + alarms:
@@ -3637,11 +3689,13 @@ def close_verdict(a):
             v["db_stopped"] = db_stopped_of(older)
             if db_stopped_day_of(older):
                 v["db_stopped_day"] = db_stopped_day_of(older)
-            # ... and the kinds of warning the gate compares with: a night that
-            # never started warned of nothing, and is not the night before
-            # anything is new against (WARNING KINDS).
-            if isinstance(older, dict) and isinstance(older.get("warning_kinds"), list):
-                v["warning_kinds"] = older["warning_kinds"]
+            # ... and what the gate compares warnings with (WARNING KINDS): a
+            # night that never started sent nothing and read nothing, so the
+            # build production served and the newest one sent stay as they
+            # were, and a build published before this night is known after it.
+            for k in (KINDS_SERVED, KINDS_SENDABLE):
+                if isinstance(older, dict) and isinstance(older.get(k), dict):
+                    v[k] = older[k]
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
     if failed:
