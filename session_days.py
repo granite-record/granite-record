@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.23
+# GRANITE_VERSION: 2026-09-19.24
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -856,7 +856,26 @@ def floor_items(bill, term, events):
             or (not it.veto and not it.mover and not came_off(raw)
                 and bool(SAID_IN_ROW.search(raw)))
             or (report is None and _reported_after(events, n, e, it)))
+    # A ROW THAT RECORDS THE LAW IS NO SECOND MOTION. "VETO OVERRIDDEN (BECAME
+    # LAW WITHOUT SIGNATURE) 09/15/93" (HB 25 of 1993) and "Veto Overridden
+    # 09/13/2018: Eff. 09/13/2018; Chapter 378" (HB 143 of 2018) are the
+    # bill's status, entered beside the override vote of the same day, and
+    # each House page drew two motions to override the veto for one vote --
+    # and, with the other chamber's override paired (_became_law), said twice
+    # that the bill became law. Left off only where that day's chamber has the
+    # vote itself.
+    voted = {((e.get("body") or "").strip().upper(), (e.get("date") or "")[:10])
+             for e, it in out if it.veto and not LAW_STATUS.search(e.get("raw") or "")}
+    out = [(e, it) for e, it in out
+           if not (it.veto and not it.counted and LAW_STATUS.search(e.get("raw") or "")
+                   and ((e.get("body") or "").strip().upper(),
+                        (e.get("date") or "")[:10]) in voted)]
     return out
+
+
+# The status a law's row records: "BECAME LAW", a chapter, an effective date.
+LAW_STATUS = re.compile(r"\bbecame\s+law\b|\bchap(?:ter)?\b\.?\s*\d|\beff(?:ective)?\b\.?\s*:?\s*\d",
+                        re.I)
 
 
 def _became_law(days):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.364
+# GRANITE_VERSION: 2026-09-04.365
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24832,6 +24832,17 @@ def _session_both_overrides(SD):
             if want and not (it.outcome_words or "").endswith(want):
                 bad.append(f"{it.bill}'s {body} override of {date} reads {it.outcome_words!r}")
     bad += [f"{b}'s {c} override is on no sitting" for b, c in _OVERRIDES_SAID if (b, c) not in seen]
+    # And the row that records the law is no second motion: HB 143 of 2018's
+    # House page drew "Veto Overridden 09/13/2018: Eff. 09/13/2018; Chapter
+    # 378" as a second override beside the vote (Docket_2017-2018.txt 3206, 3208).
+    hb143 = [{"type": "veto_override", "body": "H", "date": "2018-09-13",
+              "raw": "Veto Overridden 09/13/2018: RC 255-89 by Required Two-Thirds Vote"},
+             {"type": "veto_override", "body": "H", "date": "2018-09-13",
+              "raw": "Veto Overridden 09/13/2018: Eff. 09/13/2018; Chapter 378"}]
+    got = [it for _e, it in SD.floor_items("HB143", "2017-2018", hb143) if it.veto]
+    if len(got) != 1 or (got[0].yeas, got[0].nays) != (255, 89):
+        bad.append(f"HB 143 of 2018's House override is drawn as {len(got)} motion(s): "
+                   f"{[i.raw for i in got]}")
     assert not bad, "\n".join(bad)
     return "ok", ("HB 1102 of 2026, SB 88 of 2011 and HB 455 of 2019, whose Senate override is on "
                   "a row the reader types \"other\", became law on both chambers' pages, the day "
