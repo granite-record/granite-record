@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.347
+# GRANITE_VERSION: 2026-09-04.348
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2052,12 +2052,16 @@ _REFERRAL_UNMADE_HEADS = {
 # tells them). The waiver goes in the last stage of its own chamber, not the
 # last stage of all (HB 186 of 2026: the Senate's committee had already
 # begun). EDA's notice of 15 March on SB 339 of 2006, entered before the
-# passage for a day after it, stays out of EDA's stage before the passage.
+# passage for a day after it, was kept out of EDA's stage before the passage
+# while it was told as a hearing held; since a later row was read as moving
+# it to 22 February (decision 56, narrative.overtaken) it is a notice, told in
+# EDA's stage where the docket entered it, and no later stage says it.
 _REFERRAL_UNMADE_PLACED = {
     ("HB186", "2025-2026"): [(1, "whose chair waived the referral", True),
                              (2, "waived", False)],
     ("HB1574", "2025-2026"): [(1, "whose chair waived the referral", True)],
-    ("SB339", "2005-2006"): [(0, "March 15", False)],
+    ("SB339", "2005-2006"): [(0, "A public hearing had been scheduled for March 15, 2006.", True),
+                             (1, "March 15", False), (2, "March 15", False)],
 }
 
 # Every wording on disk of a referral its chair waived or declined, and of a
@@ -2157,6 +2161,173 @@ def _referral_unmade(N):
     real = sum(len(k) == 2 for k in _DOCKET_REFERRAL_UNMADE)
     return "ok", (f"{real} histories from real rows, {len(_DOCKET_REFERRAL_UNMADE) - real} with one row "
                   f"changed, and {len(_WAIVED_SAID) + len(_SUSPENDED_FOR_REFERRAL)} wordings")
+
+
+# Real rows: Docket_db_2005-2006.txt 17549-17561 (SB 339), 12571-12577 (HB
+# 1696), 11485-11489 (SB 24's in the House), 8702-8704 and 8715-8720 (HB 607);
+# Docket_db_2013-2014.txt 8250-8255 (HB 114); Docket_2015-2016.txt 672-679 (HB
+# 142); Docket_db_2009-2010.txt 2243-2249 (SB 17); Docket_db_2007-2008.txt
+# 13950 and 13953-13954 (HB 145).
+_DOCKET_OVERTAKEN = {
+    ("SB339", "2005-2006"): [
+        "2006|2668|01/04/2006 12:18:07 PM|SB339|S|Introduced and Referred to Executive Departments and Administration; SJ 1, Pg.12|01/04/2006 12:18:07 PM",
+        "2006|2668|01/04/2006 01:45:43 PM|SB339|S|Hearing; === CANCELLED === January 18, 2006, Room 102, LOB, 1:50 p.m.; SC1|01/04/2006 01:45:43 PM",
+        "2006|2668|01/04/2006 02:53:44 PM|SB339|S|Hearing; === RESCHEDULED === January 19, 2006, Room 102, LOB, 1:50 p.m.; SC1A|01/04/2006 02:53:44 PM",
+        "2006|2668|01/12/2006 12:35:20 PM|SB339|S|Hearing; === CANCELLED === January 19, 2006, Room 102, LOB, 1:50 p.m.; SC2|01/12/2006 12:35:20 PM",
+        "2006|2668|01/20/2006 03:14:40 PM|SB339|S|Hearing; === RESCHEDULED === March 15, 2006, Room 102, LOB, 1:20 p.m.|01/20/2006 03:14:40 PM",
+        "2006|2668|01/26/2006 10:42:47 AM|SB339|S|Hearing; === CANCELLED === TIME CHANGE === March 15, 2006, Room 102, LOB, 1:00 p.m.; SC4|01/26/2006 10:42:47 AM",
+        "2006|2668|02/08/2006 09:32:10 AM|SB339|S|Hearing; === RESCHEDULED === February 22, 2006, Room 102, LOB, 2:30 p.m.; SC6|02/08/2006 09:32:10 AM",
+        "2006|2668|02/27/2006 11:39:09 AM|SB339|S|Committee Report; Ought to Pass [03/09/06]; SC9|02/27/2006 11:39:09 AM",
+        "2006|2668|03/09/2006 02:42:33 PM|SB339|S|Ought to Pass, MA, VV; Refer To Finance [Rule 26]; SJ 7, Pg.164|03/09/2006 02:42:33 PM",
+        "2006|2668|03/16/2006 09:11:40 AM|SB339|S|Committee Report; Ought to Pass with Amendment{1409} [03/22/06]; SC11, Pg.17|03/16/2006 09:11:40 AM",
+        "2006|2668|03/22/2006 04:50:04 PM|SB339|S|Committee Amendment{1409}, AA, VV; SJ 9, Pg.261-362|03/22/2006 04:50:04 PM",
+        "2006|2668|03/22/2006 04:51:34 PM|SB339|S|Ought to Pass with Amendment{1409}, MA, VV; OT3rdg; SJ 9, Pg.262|03/22/2006 04:51:34 PM",
+        "2006|2668|03/22/2006 06:44:14 PM|SB339|S|Passed by Third Reading Resolution; SJ 9, Pg.308|03/22/2006 06:44:14 PM"],
+    ("HB1696", "2005-2006"): [
+        "2006|2095|01/04/2006 02:43:00 PM|HB1696|H|Introduced and ref to Executive Departments & Administration  HJ 7, pg 353|01/04/2006 02:43:00 PM",
+        "2006|2095|01/04/2006 02:43:26 PM|HB1696|H|===RESCHEDULED===Public Hearing Jan 31 11:00 RM 306 LOB|01/04/2006 02:43:26 PM",
+        "2006|2095|01/19/2006 10:51:48 AM|HB1696|H|Public Hearing    Feb 9  10:00  RM306/LOB|01/19/2006 10:51:48 AM",
+        "2006|2095|02/14/2006 02:18:21 PM|HB1696|H|Subcommittee Work Session    Feb 16   9:00  RM306/LOB|02/14/2006 02:18:21 PM",
+        "2006|2095|02/16/2006 06:50:37 PM|HB1696|H|Subcommittee Work Session   Feb 21  1:30  RM306/LOB|02/16/2006 06:50:37 PM",
+        "2006|2095|02/23/2006 01:04:17 PM|HB1696|H|Comm Rprt:  OTP/AM {1198h}  for March 7 (vote 14-0; CC)|02/23/2006 01:04:17 PM",
+        "2006|2095|03/07/2006 04:56:38 PM|HB1696|H|Passed with AM {1198h}, MA,  VV   HJ 23, pg 1395-1401|03/07/2006 04:56:38 PM"],
+    ("SB24", "2005-2006"): [
+        "2006|0987|02/22/2006 11:05:47 AM|SB24|H|Introduced and ref Judiciary    HJ20, pg 1256|02/22/2006 11:05:47 AM",
+        "2006|0987|03/09/2006 08:23:45 AM|SB24|H|===CANCELLED===Public Hearing    March 21    10:00   RM208/LOB|03/09/2006 08:23:45 AM",
+        "2006|0987|03/09/2006 09:33:27 AM|SB24|H|===RESCHEDULED===Public Hearing  March 30   10:00  RM208/LOB|03/09/2006 09:33:27 AM",
+        "2006|0987|03/31/2006 07:59:03 AM|SB24|H|Subcommittee Work Session     April 11   9:30  RM208/LOB|03/31/2006 07:59:03 AM",
+        "2006|0987|04/20/2006 09:58:29 AM|SB24|H|Comm Rprt:   OTP    April 26 (vote 18-2; CC)   HC 34, pg 1818|04/20/2006 09:58:29 AM"],
+    ("HB607", "2005-2006"): [
+        "2006|0085|01/26/2005 01:54:05 PM|HB607|H|Introduced and ref to Elec Law;  HJ 15, p 259|01/26/2005 01:54:05 PM",
+        "2006|0085|02/23/2005 06:15:20 PM|HB607|H|Hearing   Mar 15   2:00   RM308,LOB|02/23/2005 06:15:20 PM",
+        "2006|0085|03/23/2005 09:20:58 AM|HB607|H|Retained in committee|03/23/2005 09:20:58 AM",
+        "2006|0085|10/25/2005 02:22:58 PM|HB607|H|Ret Subcommittee Work Session   Nov 1  10:00  RM308/LOB|10/25/2005 02:22:58 PM",
+        "2006|0085|10/25/2005 02:23:26 PM|HB607|H|===RESCHEDULED===   Ret Subcommittee Work Session   Nov 8 10:00  RM308/LOB|10/25/2005 02:23:26 PM",
+        "2006|0085|11/01/2005 12:52:06 PM|HB607|H|Ret Subcommittee Work Session   Nov 8  9:00 ===NOTE TIME CHANGE===|11/01/2005 12:52:06 PM",
+        "2006|0085|11/08/2005 01:20:20 PM|HB607|H|Ret Subcommittee Work Session    Nov 15 10:00  RM308/LOB  <Rep Drisko>|11/08/2005 01:20:20 PM",
+        "2006|0085|11/15/2005 01:43:12 PM|HB607|H|Ret Subcommittee Work Session    Nov 22 9:30  RM308/LOB  <Rep Drisko>|11/15/2005 01:43:12 PM",
+        "2006|0085|12/01/2005 04:16:05 PM|HB607|H|Comm Rprt for Jan 18:  ITL  (vote 11-3;  RC)|12/01/2005 04:16:05 PM"],
+    ("HB114", "2013-2014"): [
+        "2014|0067|01/03/2013 09:38:55 AM|HB114|H|Introduced 1/3/2013 and Referred to Municipal and County Government; HJ 12, PG.183|01/03/2013 09:38:55 AM",
+        "2014|0067|01/09/2013 08:07:44 AM|HB114|H|Public Hearing: 1/15/2013 2:00 PM LOB 301|01/09/2013 08:07:44 AM",
+        "2014|0067|01/10/2013 08:24:51 AM|HB114|H|===CANCELLED=== Public Hearing: 1/15/2013 2:00 PM LOB 301|01/10/2013 08:24:51 AM",
+        "2014|0067|01/16/2013 10:45:08 AM|HB114|H|Public Hearing: 1/22/2013 11:30 AM LOB 301|01/16/2013 10:45:08 AM",
+        "2014|0067|01/23/2013 11:16:52 AM|HB114|H|Executive Session: 1/30/2013 10:00 AM LOB 301|01/23/2013 11:16:52 AM",
+        "2014|0067|01/30/2013 04:04:01 PM|HB114|H|Retained in Committee|01/30/2013 04:04:01 PM"],
+    ("HB142", "2015-2016"): [
+        "2015|0091|01/08/2015 09:45:42 AM|HB142|H|Introduced and Referred to Education; HJ 12, PG. 209|01/08/2015 09:45:42 AM",
+        "2015|0091|01/21/2015 11:46:00 AM|HB142|H|Public Hearing: 2/3/2015 10:00 AM LOB 207|01/21/2015 11:46:00 AM",
+        "2015|0091|01/29/2015 09:15:21 AM|HB142|H|===CANCELLED=== Public Hearing: 2/3/2015 10:00 AM LOB 207|01/29/2015 09:15:21 AM",
+        "2015|0091|01/29/2015 09:46:40 AM|HB142|H|Public Hearing: 2/12/2015 1:00 PM LOB 207|01/29/2015 09:46:40 AM",
+        "2015|0091|02/04/2015 11:56:17 AM|HB142|H|===CANCELLED=== Public Hearing: 2/12/2015 1:00 PM LOB 207|02/04/2015 11:56:17 AM",
+        "2015|0091|02/04/2015 11:58:53 AM|HB142|H|Public Hearing: 2/12/2015 10:00 AM LOB 207|02/04/2015 11:58:53 AM",
+        "2015|0091|02/11/2015 11:19:58 AM|HB142|H|Executive Session: 2/17/2015 10:00 AM LOB 207|02/11/2015 11:19:58 AM",
+        "2015|0091|02/20/2015 12:02:55 PM|HB142|H|Committee Report: Ought to Pass with Amendment #2015-0424h for Mar 4 (Vote 16-4; RC); HC18, PG. 356|02/20/2015 12:02:55 PM"],
+    ("SB17", "2009-2010"): [
+        "2009|0256|01/08/2009 01:23:48 PM|SB17|S|Introduced and Referred to Executive Departments and Administration; SJ 2, Pg.21|01/08/2009 01:23:48 PM",
+        "2009|0256|01/08/2009 04:06:04 PM|SB17|S|Hearing; === RECESSED === January 13, 2009, Room 101, LOB, 2:40 p.m.; SC6 Pg. 2|01/08/2009 04:06:04 PM",
+        "2009|0256|01/15/2009 09:36:51 AM|SB17|S|Hearing; === RECONVENE === January 27, 2009, Room 101, LOB, 2:00 p.m.; SC7|01/15/2009 09:36:51 AM",
+        "2009|0256|01/22/2009 11:57:12 AM|SB17|S|Hearing; === CANCELLED === RECONVENE === January 27, 2009, Room 101, LOB, 2:00 p.m.; SC8|01/22/2009 11:57:12 AM",
+        "2009|0256|03/18/2009 04:22:50 PM|SB17|S|Hearing; === RECONVENE === March 24, 2009, Room 101, LOB, 2:00 p.m.; SC16|03/18/2009 04:22:50 PM",
+        "2009|0256|03/26/2009 11:06:20 AM|SB17|S|Committee Report; Inexpedient to Legislate [04/01/09]; SC17|03/26/2009 11:06:20 AM",
+        "2009|0256|04/01/2009 03:25:59 PM|SB17|S|Inexpedient to Legislate, MF, VV; S J 10, Pg.165|04/01/2009 03:25:59 PM"],
+    ("HB145", "2007-2008"): [
+        "2008|0662|07/05/2007 12:47:20 PM|HB145|H|Sales Tax Subcommittee Work Session: 8/21/07 1:00 PM LOB 202|07/05/2007 12:47:20 PM",
+        "2008|0662|08/14/2007 03:57:09 PM|HB145|H|==CANCELLED==Casino Subcommittee Work Session: 8/21/07 9:00 AM LOB 202|08/14/2007 03:57:09 PM",
+        "2008|0662|08/14/2007 03:57:59 PM|HB145|H|==CANCELLED==Casino Subcommittee Work Session: 8/21/07 1:00 PM LOB 207|08/14/2007 03:57:59 PM"],
+}
+
+# For each: the days told as notices (no_sitting), what the history says, and
+# what it must not say.
+_OVERTAKEN_TOLD = {
+    ("SB339", "2005-2006"): (["2006-01-19", "2006-03-15"],
+                             ["A public hearing had been scheduled for January 19, 2006.",
+                              "A public hearing had been scheduled for March 15, 2006.",
+                              "The committee held a public hearing on February 22, 2006."],
+                             ["held public hearings", "held a public hearing on January",
+                              "held a public hearing on March"]),
+    ("HB1696", "2005-2006"): (["2006-01-31"],
+                              ["A public hearing had been scheduled for January 31, 2006.",
+                               "The committee held a public hearing on February 9, 2006."],
+                              ["held public hearings"]),
+    ("SB24", "2005-2006"): ([], ["The committee held a public hearing on March 30, 2006."],
+                            ["had been scheduled"]),
+    ("HB607", "2005-2006"): ([], ["November 8, 2005", "November 15, 2005"], ["had been scheduled"]),
+    ("HB114", "2013-2014"): (["2013-01-15"],
+                             ["A public hearing had been scheduled for January 15, 2013.",
+                              "The committee held a public hearing on January 22, 2013."],
+                             ["held public hearings"]),
+    ("HB142", "2015-2016"): (["2015-02-03"],
+                             ["A public hearing had been scheduled for February 3, 2015.",
+                              "The committee held a public hearing on February 12, 2015."],
+                             ["had been scheduled for February 12", "held public hearings"]),
+    ("SB17", "2009-2010"): (["2009-01-27"],
+                            ["A public hearing had been scheduled for January 27, 2009."],
+                            ["January 27, 2009 and", "and January 27, 2009"]),
+    ("HB145", "2007-2008"): ([], ["August 21, 2007"], ["had been scheduled"]),
+}
+
+
+@check("narrative", "a meeting a later row of the docket cancelled or moved is told as a notice, "
+                    "in its committee's stage, and is no day a committee sat",
+       needs=("narrative", "proceedings"))
+def _overtaken_notices(N, P):
+    """Decision 56, the person's word of 6 October 2026: a notice a later row
+    cancelled or moved is told as a notice and not as a meeting held. SB 339 of
+    2006's history said the committee held public hearings on 19 January and
+    22 February and, after the Senate had passed the bill and sent it to
+    Finance, held one on 15 March; Senate Calendar 2 printed the 19th
+    cancelled, and the 15 March notice was moved to 22 February. HB 114 of
+    2013's hearing of 15 January was cancelled the next morning.
+
+    And what is not that: a hearing moved to another hour of the same day
+    (HB 142 of 2015's of 12 February), a rescheduled hearing nothing later
+    moved (SB 24's in the House in 2006), a work session a later weekly notice
+    follows (HB 607 of 2005), and a cancelled session of another subcommittee
+    in another room (HB 145 of 2007)."""
+    def told(term, bill, lines):
+        # Read as the docket's own file is (parse_docket): the marks on a
+        # row are what this rule reads.
+        tmp = Path(tempfile.mkdtemp(prefix="gr-overtaken-"))
+        saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS)
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = N.parse_docket(str(tmp / "Docket.txt"))[bill]
+            N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS, N.TERM = [], [], {}, term
+            return N.build(bill, rows)
+        finally:
+            N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS = saved
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    bad = []
+    for key, lines in _DOCKET_OVERTAKEN.items():
+        days, said, unsaid = _OVERTAKEN_TOLD[key]
+        n = told(key[1], key[0], lines)
+        name = f"{key[0]} of {key[1]}"
+        text = " ".join(s["text"] for s in n["stages"])
+        if (n.get("no_sitting") or []) != days:
+            bad.append(f"{name}: no_sitting {n.get('no_sitting')!r}, not {days!r}")
+        bad += [f"{name} does not say {w!r}" for w in said if w not in text]
+        bad += [f"{name} says {w!r}" for w in unsaid if w in text]
+        notes = [e for e in n["events"] if e.get("notice")]
+        if len(notes) != len(days) or any(
+                not e["cancelled"] or "A later row of the docket" not in (e.get("row_note") or "")
+                for e in notes):
+            bad.append(f"{name}: notices {[(e['date'], e.get('row_note')) for e in notes]}")
+        for d in days:
+            if not P.notice_only({"kind": "public hearing", "date": d}, n):
+                bad.append(f"{name}: {d} is still a day a committee sat")
+    # Each notice is told in the stage of the committee that had the bill, not
+    # after the floor vote that sent it on.
+    sb339 = told("2005-2006", "SB339", _DOCKET_OVERTAKEN[("SB339", "2005-2006")])
+    first = sb339["stages"][0]["text"]
+    if ("March 15" not in first
+            or any("had been scheduled" in s["text"] for s in sb339["stages"][1:])):
+        bad.append("SB339 of 2006's 15 March notice is told in "
+                   + repr([s["label"] for s in sb339["stages"] if "March 15" in s["text"]]))
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_OVERTAKEN)} histories from real rows: "
+                  f"{sum(len(v[0]) for v in _OVERTAKEN_TOLD.values())} notices, and four that are not")
 
 
 # =============================================================== code: status ==
@@ -26879,8 +27050,10 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
         [_NOTICE_ROWS["HB273"], _SITTING_ROWS["HB273 of 2011"]], swapped)[1]] == ["2011-2012"]
 
     ceiling = BC.NOTICE_CEILING
-    assert 20 <= ceiling <= 500, (
-        f"NOTICE_CEILING is {ceiling}: a handful of notices are left off, and "
+    # A few hundred notices are left off since a meeting a later row cancelled
+    # or moved stopped being told as held (425 on 6 October 2026).
+    assert 500 <= ceiling <= 2000, (
+        f"NOTICE_CEILING is {ceiling}: a few hundred notices are left off, and "
         "proceedings.csv has tens of thousands of rows to lose")
     assert BC.notice_guard(["HB1284 public hearing 2012-01-12"] * ceiling) == "", (
         "the guard stops a build at its own ceiling")

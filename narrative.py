@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.64
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3007,7 +3007,119 @@ def notice_note(ev):
     if ev.get("_void") == "taken":
         return (f"A notice. The {CHAMBER_NAME.get(ev.get('body'), 'chamber')} took the "
                 "measure from the committee before the day it names.")
+    if ev.get("_void") == "cancelled":
+        return "A notice. A later row of the docket cancels the meeting it names."
+    if ev.get("_void") == "moved":
+        return "A notice. A later row of the docket moves the hearing to another day."
     return "A notice, for a bill that was never introduced."
+
+
+# A MEETING A LATER ROW OF THE DOCKET CANCELLED OR MOVED WAS NOT HELD
+# (6 October 2026; the person's word on decision 56). The docket keeps the
+# notice and adds a row after it, and the history told the notice as a
+# meeting held:
+#
+#   - CANCELLED BY A LATER ROW. "Public Hearing: 1/15/2013 2:00 PM LOB 301"
+#     and, the next morning, "===CANCELLED=== Public Hearing: 1/15/2013 2:00
+#     PM LOB 301" (HB 114 of 2013, whose history said the committee held
+#     public hearings on 15 and 22 January). The House from 2007 cancels a
+#     meeting that way, and the Senate's "Hearing; === CANCELLED === January
+#     19, 2006" (SB 339 of 2006; Senate Calendar 2 prints "SB 339, HAS BEEN
+#     CANCELLED AND WILL BE RESCHEDULED FOR A LATER DATE") is the same. A
+#     later cancelled row of the same chamber, kind and day, at the same time
+#     within five minutes where both state one; and for an executive or work
+#     session, in the same room and of the same session where both name one,
+#     since two of one day are two meetings ("Sales Tax" and "Casino"
+#     subcommittees of HB 145 of 2007, at 1:00 in rooms 202 and 207 of the
+#     Legislative Office Building). And not where a notice for the same
+#     day was entered after the cancellation: the meeting only moved to
+#     another hour and sat that day (HB 142 of 2015's hearing of 12 February,
+#     moved from one o'clock to ten), and the history tells it once.
+#   - MOVED BY A LATER ROW, for a public hearing only. The House's docket of
+#     2005-2006 marks the notice it moved -- "===RESCHEDULED===Public Hearing
+#     Jan 31 11:00 RM 306 LOB" and then "Public Hearing Feb 9 10:00" (HB 1696
+#     of 2006; House Calendar 8 prints "Rescheduled public hearing on HB
+#     1696-FN" under 9 February) -- and so does the House's "==POSTPONED=="
+#     of the storm of 27 January 2015. The Senate and the dockets before 2000
+#     mark the new notice instead: "Hearing; === RESCHEDULED === February 22,
+#     2006", entered on 8 February over SB 339's notice for 15 March;
+#     "RESCHEDULED HEARING 3/27/89" over HB 228's for the 22nd. Either mark,
+#     and a later notice for another day entered by the day the first one
+#     named. Not a continuation ("Continued", "RECONVENE", "RECESSED": the
+#     hearing sat and went on another day), and not an executive or work
+#     session: those recur, and a committee that meets every Tuesday notices
+#     the next Tuesday before this one (HB 607 of 2005).
+MOVED_MARK = re.compile(r"=+\s*(?:RESCHEDULED|POSTPONED)\s*=+", re.I)
+RESCHEDULING = re.compile(
+    r"=+\s*RESCHEDULED\s*=+|^\W*(?:(?:Public\s+)?Hearing\s*[;:,]\s*)?RESCHED(?:ULED)?\b(?!\s+TIME)",
+    re.I)
+GOES_ON = re.compile(r"\bCONTINU|\bRECONVEN|\bRECESS", re.I)
+MEETING_TIME = re.compile(r"\b(\d{1,2}):(\d{2})\b")
+
+
+# Which session, where a row names one: "Sales Tax Subcommittee Work Session:
+# 8/21/07 1:00 PM LOB 202" is not "==CANCELLED==Casino Subcommittee Work
+# Session: 8/21/07 1:00 PM LOB 207" (HB 145 of 2007). The room, and the words
+# before "Work Session" or "Executive Session" that are not the same for every
+# session ("Retained Bill - Subcommittee").
+ROOM_SAID = re.compile(r"\b(?:LOB|SH|RM|Room)\W*(\d{2,3})", re.I)
+SESSION_SAID = re.compile(r"^(.*?)(?:Work\s*Sess|Exec\w*\.?\s*Sess)", re.I)
+SESSION_ANY = re.compile(r"\b(?:ret(?:ained)?|bill|interim|study|subcom\w*|full|committee|"
+                         r"continued)\b|[^A-Za-z ]", re.I)
+
+
+def _session_of(ev):
+    m = SESSION_SAID.search(ev.get("_raw") or "")
+    return " ".join(SESSION_ANY.sub(" ", m.group(1)).lower().split()) if m else ""
+
+
+def _room_of(ev):
+    m = ROOM_SAID.search(ev.get("_raw") or "")
+    return m.group(1) if m else ""
+
+
+def _meeting_minute(ev):
+    """The minute of the half-day a meeting row states (h:mm, with no
+    meridiem: "2:15 a.m." for 2:15 p.m. is a slip of SB 348 of 2010's), or
+    None."""
+    m = MEETING_TIME.search(ev.get("_said") or ev.get("_raw") or "")
+    return (int(m.group(1)) % 12) * 60 + int(m.group(2)) if m else None
+
+
+def overtaken(ev, evs):
+    """"cancelled" or "moved" where a later row of the docket cancelled or
+    moved the meeting this notice names (the rules above); else ""."""
+    if (ev["_type"] not in ("hearing", "exec", "worksession") or ev["cancelled"]
+            or ev.get("_void") or ev.get("recessed")):
+        return ""
+    day = ev["when"].date()
+    later = [o for o in evs if o is not ev and o["body"] == ev["body"]
+             and o["_type"] == ev["_type"] and _entered_before(ev, o["_entered"])]
+    for o in later:
+        if o["cancelled"] and o["when"].date() == day:
+            a, b = _meeting_minute(ev), _meeting_minute(o)
+            if ev["_type"] != "hearing" and any(
+                    x and y and x != y for x, y in ((_session_of(ev), _session_of(o)),
+                                                    (_room_of(ev), _room_of(o)))):
+                continue
+            if a is None or b is None or abs(a - b) <= 5:
+                # Unless the day's meeting was only moved to another hour: a
+                # notice for the same day entered after the cancellation is
+                # the meeting that sat, and the history tells it once.
+                if any(x["_type"] == ev["_type"] and x["body"] == ev["body"]
+                       and not x["cancelled"] and x["when"].date() == day
+                       and _entered_before(o, x["_entered"]) for x in evs):
+                    return ""
+                return "cancelled"
+    if ev["_type"] != "hearing":
+        return ""
+    for o in later:
+        if (o["when"].date() != day and o["_entered"].date() <= day
+                and not GOES_ON.search(o.get("_said") or o["_raw"])
+                and (MOVED_MARK.search(ev.get("_said") or "")
+                     or RESCHEDULING.search(o.get("_said") or ""))):
+            return "moved"
+    return ""
 
 
 # "Withdraw From Joint Committee (Reps Wallner and Hess): MA VV" (HA 1 of
@@ -3424,6 +3536,8 @@ def build(bill, rows, introduction=None):
         ev["body"] = r["body"]
         ev["cancelled"] = "CANCELLED" in r["flags"]
         ev["recessed"] = "RECESSED" in r["flags"]
+        # The row as the clerk typed it, marks and all, for overtaken().
+        ev["_said"] = r["desc"]
         # A line docket_vocab.join_rows put back together from rows the
         # database cut it into, which read one by one were more than one
         # floor action and which still tells one: how many, where its era
@@ -3628,7 +3742,20 @@ def build(bill, rows, introduction=None):
                     and e["_entered"] < out_["_entered"]
                     and e["when"].date() > out_["when"].date()):
                 e["_void"] = "taken"
-    if gone or journal_out:
+    # AND A MEETING A LATER ROW CANCELLED OR MOVED (6 October 2026; the
+    # person's word on decision 56). overtaken() says which. Decided for
+    # every row first and then applied, since applying one moves its day.
+    # The notice is told where the docket entered it, inside the stage of the
+    # committee that had the bill: on its own day SB 339 of 2006's 15 March
+    # notice headed a committee stage of its own after the Senate had passed
+    # the bill and sent it to Finance.
+    over = [(e, overtaken(e, evs)) for e in evs]
+    over = [(e, why) for e, why in over if why]
+    for e, why in over:
+        e["_void"], e["_unheld_day"] = why, e["when"].date()
+        if isinstance(e["_entered"], datetime) and e["_entered"] != datetime.min:
+            e["when"] = e["_entered"]
+    if gone or journal_out or over:
         evs = [e for _i, e in sorted(enumerate(evs),
                                      key=lambda x: (x[1]["when"].date(), x[0]))]
 
@@ -4053,10 +4180,13 @@ def build(bill, rows, introduction=None):
             # the bill to Finance, on 31 histories. Only a report, or an
             # amendment, that the rules above give back to that committee by
             # what it is: a meeting entered before the referral for a day after
-            # it is told where its date puts it (SB 339 of 2006's hearing of 15
-            # March), since nothing in the row says it was not the second
-            # committee's to hold. A report is told before the vote on the
-            # committee's amendment the stage already tells (HB 1202 of 2024),
+            # it is told where its date puts it, since nothing in the row says
+            # it was not the second committee's to hold. (SB 339 of 2006's
+            # hearing of 15 March was the case in point, until the later row
+            # that moved it to 22 February was read: overtaken() tells it as a
+            # notice, where the docket entered it.) A report is told before the
+            # vote on the committee's amendment the stage already tells (HB 1202
+            # of 2024),
             # as the committee reported it before the floor took it up.
             home = moved.get(key[0], ())[2:3]
             if (back and home and home[0] is not None and home[0]["key"] == key
@@ -4283,9 +4413,18 @@ def build(bill, rows, introduction=None):
                # they came up.
                "notes": st["notes"]}
               for st in stages]
+    # And the day of a meeting a later row cancelled or moved (overtaken), where
+    # nothing the history tells of the bill falls on it: notice_only reads a
+    # day, not a row, and HB 142 of 2015's hearing at ten on 12 February was
+    # held where the one at one o'clock was cancelled.
+    told_on = {e["when"].date() for e in evs
+               if not e["cancelled"] and not e.get("_void")
+               and e["_type"] in ROW_MEETINGS + ("conference_meeting",) + tuple(FLOOR_TYPES)}
     no_sitting = sorted({e["_no_day"] for e in evs if e.get("_no_day")}
                         | {e["when"].strftime("%Y-%m-%d") for e in evs
-                           if e.get("_void") == "taken"})
+                           if e.get("_void") == "taken"}
+                        | {e["_unheld_day"].strftime("%Y-%m-%d") for e in evs
+                           if e.get("_unheld_day") and e["_unheld_day"] not in told_on})
     return {
         "bill": bill,
         "narrative": " ".join(x["text"] for x in staged),

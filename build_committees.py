@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.42
+# GRANITE_VERSION: 2026-09-07.43
 """
 A page's worth of data for every committee.
 
@@ -277,7 +277,13 @@ def its_own_sitting(r):
 # 2012 (introduced, and withdrawn on the 4th) and HB 273 of 2017's. A ceiling
 # well above that lets a few more such bills through and stops the build on a
 # count of another kind.
-NOTICE_CEILING = 50
+#
+# 425 ON 6 OCTOBER 2026, when a meeting a later row of the docket cancelled or
+# moved stopped being told as held (narrative.overtaken): HB 114 of 2013's
+# hearing of 15 January, cancelled the next morning, and some 420 more of
+# 1989-2023, against the six before. Still a few hundred of 95,422; a history
+# that read whole terms as withdrawn would leave off tens of thousands.
+NOTICE_CEILING = 1000
 
 
 def notice_guard(notices, ceiling=NOTICE_CEILING):
@@ -287,11 +293,12 @@ def notice_guard(notices, ceiling=NOTICE_CEILING):
     on their bills off every committee's page, and exit 0."""
     if len(notices) <= ceiling:
         return ""
-    return (f"{len(notices):,} rows of proceedings.csv are for a bill its history "
-            "tells as withdrawn before the day or never introduced, past the "
+    return (f"{len(notices):,} rows of proceedings.csv are notices its bill's history "
+            "does not tell as a meeting held (withdrawn before the day, never introduced, "
+            "or cancelled or moved by a later row), past the "
             f"ceiling of {ceiling} (NOTICE_CEILING): " + ", ".join(notices[:6])
-            + ". These are meant to be the few notices the docket entered ahead "
-            "for such a bill. Read what narratives.json says of these bills "
+            + ". These are meant to be the docket's notices of meetings that did "
+            "not sit. Read what narratives.json says of these bills "
             "before raising the ceiling: left off, they take the committees' "
             "sitting days with them.")
 
