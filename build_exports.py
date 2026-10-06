@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.31
+# GRANITE_VERSION: 2026-09-10.32
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -53,15 +53,6 @@ def load(p, default):
         return json.loads(Path(p).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return default
-
-
-def term_of(year):
-    try:
-        y = int(str(year)[:4])
-    except (TypeError, ValueError):
-        return ""
-    a = y if y % 2 else y - 1
-    return f"{a}-{a + 1}"
 
 
 def write(out, name, columns, rows, what):
