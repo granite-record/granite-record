@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.156
+# GRANITE_VERSION: 2026-09-05.161
 """
 Generate the faceted site from real General Court data.
 
@@ -2690,7 +2690,7 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             # who resigned from one who died, and must not start here.
             "served": {"first": dated[0].get("date") or "",
                        "last": last.get("date") or "",
-                       "terms": sorted({P.term_of(v.get("year", ""))
+                       "terms": sorted({P.vote_term(v.get("year", ""), v.get("date"))
                                         for v in mv if v.get("year")})},
         }
     return out
@@ -2842,7 +2842,8 @@ def member_attendance(votes, context=None):
     dates, chair = ctx.get("dates", {}), ctx.get("chair", {})
     by_term = defaultdict(list)
     for v in votes:
-        t = P.term_of(str(v.get("year") or ""))
+        # Organization Day's ballots are the next term's (proceedings.vote_term).
+        t = P.vote_term(str(v.get("year") or ""), v.get("date"))
         if not t:
             continue
         kind = ATTENDANCE_KIND.get(v.get("vote"), "no_vote")
@@ -3010,7 +3011,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                        "v": v["vote"],
                        "k": (f'{v["year"]}-{v["body"]}-{v["vote_number"]}'),
                        "y": (bill_year or {}).get(
-                           (P.term_of(v.get("year", "")), v["bill"]), "")}
+                           (P.vote_term(v.get("year", ""), v.get("date")), v["bill"]), "")}
                       for v in mv],
         }), encoding="utf-8")
     if unnamed:
@@ -4716,6 +4717,8 @@ def _j_words(st, bid):
     act, body = st["act"], st["body"]
     other = {"H": "Senate", "S": "House"}.get(body, "")
     long_, short = _j_vote_words(st.get("vote"))
+    if st.get("consent") and (long_.startswith(",") or not long_):
+        long_ = " on the consent calendar" + long_
     pre = bill_prefix(bid)
     # A bill of intent is one chamber's and is no resolution: its docket's
     # word is PASSED.
@@ -5274,6 +5277,17 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 got = {**got, "act": act,
                        "amended": act == "passed" and bool(re.search(r"amend", rec, re.I))}
             st = {"date": date, "body": body, **got, "_untold": _j_untold(e, seg, evs)}
+            # A COUNT THAT IS THE CONSENT CALENDAR'S (decision 51,
+            # narrative.CONSENT_VOTE): "PASSED WITH AM/CONSENT CAL RC(248-8)"
+            # read "Passed with an amendment, 248-8", the calendar's roll call
+            # of 7 January 1998 as the bill's own.
+            if (st.get("vote") or ("", None))[1] is not None and N.CONSENT_VOTE.search(seg):
+                st["consent"] = True
+                # And a count the calendar's other rows do not give is no
+                # count of the calendar's (narrative.calendar_count_disputed):
+                # "on the consent calendar", and no count.
+                if e.get("calendar_count_disputed"):
+                    st["vote"] = ("", None, None)
             # Whether its own clause names the amendment, before the day's
             # amendment rows mark every passage of that day (_j_merge).
             if got["act"] in J_PASSING:
@@ -5526,6 +5540,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
                   "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third",
+                  "consent",
                   "_recess", "unaccepted", "_own_am"):
             st.pop(k, None)
         if st.pop("_untold", False) and untold is not None:
@@ -5748,10 +5763,12 @@ def _j_merge(into, st):
     # has no count of its own to give, and the earlier one stands.
     if st.get("_own_am") and not into.get("_own_am") and st["vote"][0]:
         into["vote"], into["_own_am"] = st["vote"], True
+        into["consent"] = st.get("consent", False)
         into.pop("intro_adopt", None)
         return
     if into.pop("intro_adopt", False) or st["vote"][1] is not None or not into["vote"][0]:
-        into["vote"] = st["vote"]
+        # And whose count it is (the consent calendar's, decision 51).
+        into["vote"], into["consent"] = st["vote"], st.get("consent", False)
 
 
 def _j_settle(steps):
@@ -7672,7 +7689,13 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
     # HJ 7 at both 143 and 144, and the list named only 143.
     vols = {}
     for e in (narr or {}).get("events", []):
-        if e.get("cancelled"):
+        # Not a row the docket cancelled. A notice a later row cancelled or
+        # moved (narrative.overtaken) is carried as cancelled so that nothing
+        # reads it as a sitting, but the calendar it cites printed the bill:
+        # Senate Calendar 1A of 2006 printed SB 339's hearing of 19 January,
+        # and the Documents tabs of 59 bills lost 62 calendars like it when
+        # those notices stopped being told as held (decision 56).
+        if e.get("cancelled") and not e.get("overtaken"):
             continue
         c = _cite(e, sources, e.get("cite_year") or (e.get("date") or "")[:4])
         if not c.get("cite_url"):
@@ -8919,8 +8942,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The rule is proceedings.notice_only, and the committee's page, the
         # download and the Learn pages' count ask it of the same rows, so none
         # of them says a committee sat where this page draws nothing.
+        # And a meeting a later row of the docket cancelled or moved, by its
+        # kind and hour, which leaves the rest of its day drawn.
         stations = [x for x in stations
-                    if not P.notice_only({"date": x.get("when")}, narr)]
+                    if not P.notice_only({"date": x.get("when"), "kind": x.get("what"),
+                                          "time": x.get("time"), "body": x.get("body")},
+                                         narr)]
         # The sign-in counts, on the hearing itself. They already reach the
         # docket line that records the hearing -- 2,115 of them across 2,018
         # bills -- but that line sits inside a collapsed disclosure on another
@@ -9727,7 +9754,9 @@ def main():
         # The bill is keyed by term for the same reason every other per-bill
         # map now is: HB396 exists in every biennium.
         key = f"{v['year']}-{v['body']}-{v['vote_number']}"
-        votes_by_bill[(P.term_of(v["year"]), v["bill"])][key].append(v)
+        # A ballot of Organization Day is on the next term's measure
+        # (proceedings.vote_term): HR 1 of 2027, not of 2025.
+        votes_by_bill[(P.vote_term(v["year"], v.get("date")), v["bill"])][key].append(v)
         votes_by_member[v["member_id"]].append(v)
     print(f"{len(bills):,} bills, {len(legs):,} legislators, "
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")

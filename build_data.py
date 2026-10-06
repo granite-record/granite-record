@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.51
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -86,6 +86,18 @@ def rows(path, expect=None):
     return out
 
 
+def organization_votes(d, years):
+    """{(year, body, number)}: the session's roll calls (RollCallSummary.txt)
+    filed under one of `years` and taken on or after Organization Day of an
+    even year -- the next term's (proceedings.vote_term) -- for both files
+    of a roll call: the ballots carry no day of their own."""
+    out = set()
+    for r in rows(Path(d) / "RollCallSummary.txt"):
+        if len(r) > 3 and r[0] in years and P.vote_term(r[0], r[3]) != P.term_of(r[0]):
+            out.add(tuple(r[:3]))
+    return out
+
+
 def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
     """base.txt plus every rollcalls/base_<year>.txt beside it -- or beside
     `archive`, where the session's own files are a frozen term's and the past
@@ -123,7 +135,11 @@ def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
     kept = {y for y in (finished or ()) if (extra / f"{base}_{y}.txt").exists()}
     if kept:
         n = len(out)
-        out = [r for r in out if r[0] not in kept]
+        # NOT A ROLL CALL OF ORGANIZATION DAY, whatever year it is filed
+        # under: it is the next term's (proceedings.vote_term), and none of
+        # the finished term's own files holds it (organization_votes).
+        org = organization_votes(d, kept)
+        out = [r for r in out if r[0] not in kept or tuple(r[:3]) in org]
         if left is not None and n > len(out):
             left[f"{base}.txt"] += n - len(out)
     seen = {tuple(r[:3]) for r in out}
@@ -205,16 +221,12 @@ def date_ballot_seats(member_votes, legs, path="text_sponsors.json"):
     if not one:
         return 0
 
-    def term_of(year):
-        y = int(year)
-        t = y if y % 2 else y - 1
-        return f"{t}-{t + 1}"
-
     abbr = {v["county"]: v.get("county_abbr", "") for v in legs.values()
             if v.get("county") and v.get("county_abbr")}
     cache, n = {}, 0
     for row in member_votes:
-        key = (term_of(row["year"]), str(row.get("member_id")))
+        # Organization Day's ballots are the next term's (proceedings.vote_term).
+        key = (P.vote_term(row["year"], row.get("date")), str(row.get("member_id")))
         seat = one.get(key)
         if not seat:
             continue
@@ -2574,7 +2586,10 @@ def main():
         # roster, the ones they voted under, and not the ones Organization
         # Day gave them (the review of 5 October 2026). A member who left is
         # named from `former`, as above, in the shape former_roster reads.
-        if m and mid in (year_legs.get(r[0]) or {}):
+        # Not on a ballot of Organization Day, which the next House cast
+        # (proceedings.vote_term): the roster installed is theirs.
+        if (m and mid in (year_legs.get(r[0]) or {})
+                and P.vote_term(r[0], s["datetime"]) == P.term_of(r[0])):
             m = year_legs[r[0]][mid]
         vote_kinds[r[6]] += 1
         member_votes.append({

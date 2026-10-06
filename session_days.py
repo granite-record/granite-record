@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.21
+# GRANITE_VERSION: 2026-09-19.24
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -90,12 +90,16 @@ DEFERS = ("refer for interim study", "re-refer to committee", "lay ",
           "table", "special order", "rerefer")
 
 
-def _consequence(action, carried):
+def _consequence(action, carried, law=None):
     """What this motion carrying or failing did to the bill, in plain words.
 
     None where the motion is one this cannot speak for -- and returning None
     is the point. A page prints the motion and the outcome plainly when this
     has nothing to add, rather than being handed a confident wrong sentence.
+
+    `law` is (the other chamber, the day of its override in words, "" for the
+    same day, or None where the record gives two days for one of the votes)
+    for an override the other chamber also carried (Item.law, _became_law).
     """
     a = (action or "").strip().lower()
     if not a or carried is None:
@@ -106,7 +110,21 @@ def _consequence(action, carried):
     # overrode SB 434 16-8 on 19 August 2026, the House sustained it 165-140,
     # and the Senate's page said it became law without the Governor. A
     # sustained veto in either chamber is the end of the bill.
+    # AND BOTH CHAMBERS' OVERRIDES MAKE ONE (6 October 2026; the person's word
+    # on decision 46). Where the other chamber's override is on record too the
+    # page said only "the veto was overridden in this chamber", on both
+    # chambers' pages of all 39 such bills -- HB 1102 of 2026, overridden
+    # 231-88 by the House and 24-0 by the Senate on 19 August 2026, became law
+    # and no page said so. load() pairs them (_became_law).
     if a.startswith("override the governor"):
+        if carried and law:
+            other, day = law
+            if day is None:
+                return (f"the veto was overridden in this chamber and in the {other}, "
+                        "so the bill became law")
+            return (f"the veto was overridden in this chamber and, "
+                    f"{('on ' + day) if day else 'the same day'}, in the {other}, "
+                    "so the bill became law")
         return ("the veto was overridden in this chamber" if carried else
                 "the veto was sustained, so the bill did not become law")
     if a.startswith(KILLS):
@@ -455,7 +473,7 @@ class Item:
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
                  "consent", "fifths", "entered", "recess", "joined",
-                 "rc", "said", "added", "plain", "shared", "stated_kind")
+                 "rc", "said", "added", "plain", "shared", "stated_kind", "law")
 
     def __init__(self, bill, term, e, seq):
         # The roll call on record this motion is (rollcalls.json's row), or
@@ -464,6 +482,10 @@ class Item:
         # The kind of vote the docket line stated, where tie() drew it as a
         # roll call: a "DV" the House Journal confirms is kept (_divisions).
         self.stated_kind = ""
+        # (the other chamber, the day of its override in words or "" for the
+        # same day) where this is an override the other chamber carried too:
+        # floor_items sets it, and outcome_words says the bill became law.
+        self.law = None
         # The count the docket line states, where the page draws the
         # ballots' instead: speeches are tied to a motion by the journal's
         # count, which is the docket's more often than the ballots'.
@@ -595,7 +617,7 @@ class Item:
             return ""
         verb = "was adopted" if self.carried else "failed"
         how = f" on a {self.kind_words}" if self.kind_words else ""
-        tail = None if self.plain else _consequence(self.action, self.carried)
+        tail = None if self.plain else _consequence(self.action, self.carried, self.law)
         return (f"The motion {verb}{how}"
                 + (f" — {tail}." if tail else "."))
 
@@ -834,7 +856,73 @@ def floor_items(bill, term, events):
             or (not it.veto and not it.mover and not came_off(raw)
                 and bool(SAID_IN_ROW.search(raw)))
             or (report is None and _reported_after(events, n, e, it)))
+    # A ROW THAT RECORDS THE LAW IS NO SECOND MOTION. "VETO OVERRIDDEN (BECAME
+    # LAW WITHOUT SIGNATURE) 09/15/93" (HB 25 of 1993) and "Veto Overridden
+    # 09/13/2018: Eff. 09/13/2018; Chapter 378" (HB 143 of 2018) are the
+    # bill's status, entered beside the override vote of the same day, and
+    # each House page drew two motions to override the veto for one vote --
+    # and, with the other chamber's override paired (_became_law), said twice
+    # that the bill became law. Left off only where that day's chamber has the
+    # vote itself.
+    voted = {((e.get("body") or "").strip().upper(), (e.get("date") or "")[:10])
+             for e, it in out if it.veto and not LAW_STATUS.search(e.get("raw") or "")}
+    out = [(e, it) for e, it in out
+           if not (it.veto and not it.counted and LAW_STATUS.search(e.get("raw") or "")
+                   and ((e.get("body") or "").strip().upper(),
+                        (e.get("date") or "")[:10]) in voted)]
     return out
+
+
+# The status a law's row records: "BECAME LAW", a chapter, an effective date.
+LAW_STATUS = re.compile(r"\bbecame\s+law\b|\bchap(?:ter)?\b\.?\s*\d|\beff(?:ective)?\b\.?\s*:?\s*\d",
+                        re.I)
+
+
+def _became_law(days):
+    """AN OVERRIDE THE OTHER CHAMBER CARRIED TOO made the bill law (decision
+    46, _consequence): each carried override on a sitting learns the other
+    chamber's, and its day where that is another day.
+
+    Paired once every sitting's items are together (load()), not among the
+    docket's veto rows alone (floor_items): 17 of the 39 bills both chambers
+    overrode have one chamber's override on a row the reader does not type a
+    veto vote, which reaches its sitting through the roll call on record
+    (_roll_calls) -- "Notwithstanding the Governor's Veto, Shall HB 455-FN
+    Become Law: RC 16Y-8N, Veto Overridden" (HB 455 of 2019, 30 May 2019),
+    "Veto Overriden: RC 248-123" (SB 57 of 2011), "2/3 nec. RC 18Y-6N, Veto
+    Overridden" (HB 520 of 2004) -- and both chambers' pages said only "the
+    veto was overridden in this chamber" of a bill that became law.
+
+    The day of a vote is its sitting's, and is said only where its roll call
+    on record, if it has one, is of that day too. Of the 80 carried overrides
+    two are not: SB 57 of 2011's House row is dated 30 November 2011 and says
+    it was "done during 1/4/2012 morning veto session", the day of the House's
+    roll call 270; and HB 724 of 2003's is dated 4 September 2003, the day the
+    Senate overrode it and it became law, while the roll-call file dates the
+    House's vote 7 January 2004, the day its journal was printed. There the
+    page says the other chamber overrode the veto too, and not when."""
+    carried = collections.defaultdict(list)
+    for (body, date), d in days.items():
+        for it in d.items:
+            if it.veto and it.carried and body in ("H", "S"):
+                sure = (it.rc or {}).get("date") in (None, "", date)
+                carried[(it.term, it.bill)].append((body, date, sure, it))
+    for got in carried.values():
+        for body, day, sure, it in got:
+            other = {"H": "S", "S": "H"}[body]
+            theirs = sorted({(d, s) for b, d, s, _i in got if b == other},
+                            key=lambda x: (x[0] != day, x[0], not x[1]))
+            if not theirs:
+                continue
+            when, known = theirs[0]
+            said = None
+            if sure and known:
+                try:
+                    d = _date.fromisoformat(when)
+                    said = "" if when == day else f"{d.day} {d:%B %Y}"
+                except ValueError:
+                    said = None
+            it.law = ({"H": "House", "S": "Senate"}[other], said)
 
 
 def _fifths_from_rollcalls(path=ROLLCALLS):
@@ -3329,6 +3417,7 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
                 if k[0] == "motion":
                     for i in its:
                         i.shared = len(its)
+    _became_law(days)
     return days
 
 

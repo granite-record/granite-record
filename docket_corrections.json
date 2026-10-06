@@ -422,6 +422,25 @@
       ],
       "note": "The General Court's online docket dates this 12 March 2026, the day the entry was made. The roll call it records was taken on 11 March 2026 and the House Journal for that day prints it, so it is shown on 11 March.",
       "checked": "2026-09-24"
+    },
+    {
+      "session": "2009",
+      "bill": "SB106",
+      "body": "S",
+      "row_written": "2009-02-05 13:53:50",
+      "source_says": "Hearing; January 10, 2009, Room 103, State House, 2:45 p.m.; SC10",
+      "stated_date": "2009-01-10",
+      "corrected_to": "2009-02-10",
+      "why": "A month slip: January for February. The row was written at 1:53 PM on 5 February 2009, the day after the Senate introduced the bill, among the Judiciary committee's notices for Senate Calendar 10, and Senate Calendar 10 prints the hearing under Tuesday 10 February 2009 at 2:45 p.m.",
+      "evidence": [
+        "Docket_db_2009-2010.txt line 8217: '2009|0936|02/05/2009 01:53:50 PM|SB106|S|Hearing; January 10, 2009, Room 103, State House, 2:45 p.m.; SC10|02/05/2009 01:53:50 PM'",
+        "Docket_db_2009-2010.txt line 8216: the bill's first row, 'Introduced and Referred to Judiciary', written 02/04/2009; 10 January 2009 was a Saturday, 25 days before it",
+        "calendars_senate/2009/SC010.txt line 149 'TUESDAY, FEBRUARY 10, 2009', line 213 'JUDICIARY, Room 103, SH', line 227 '2:45 p.m. SB 106-FN, establishing a program for mediation of civil writs in the district court and funding the program'",
+        "Docket_db_2009-2010.txt lines 8245 and 8871: SB 70's and SB 74's notices of the same afternoon's Judiciary hearings, written at 1:47 and 1:52 PM on 5 February 2009, read 'Hearing; February 10, 2009, Room 103, State House, 2:15 p.m.; SC10' and 'Hearing; February 10, 2009, Room 103, State House, 2:30 p.m.; SC10'",
+        "Docket_db_2009-2010.txt line 8218: the committee's report, 'Committee Report; Ought to Pass [2/18/09]; SC11', written 02/11/2009, the day after the hearing"
+      ],
+      "note": "The General Court's docket dates this hearing 10 January 2009, before the bill was introduced. Senate Calendar 10 prints it on Tuesday 10 February 2009 at 2:45 p.m., so it is shown on 10 February.",
+      "checked": "2026-10-06"
     }
   ],
 
@@ -446,6 +465,26 @@
       "note": "This vote was not on HB 1364. The House Journal for 11 March 2026 records it as Rep. Luneau's motion to make HB 1824 a special order, which failed 151-180, and the roll call is filed under HB 1824; the General Court's online docket lists it under this bill as well. It is left out of this bill's history.",
       "note_there": "The General Court's online docket also lists this vote under HB 1364, dated 12 March 2026. The House Journal for 11 March 2026 and the roll call place it on this bill.",
       "checked": "2026-09-24"
+    },
+    {
+      "session": "2025",
+      "bill": "SB286",
+      "body": "S",
+      "row_written": "2026-01-21 15:17:21",
+      "source_says": "Enrolled Adopted, VV, (In recess 01/07/2026);  SJ 2",
+      "belongs_to": "SB268",
+      "belongs_to_says": "Enrolled Adopted, VV, (In recess 01/07/2026);  SJ 2",
+      "why": "Filed under the wrong bill: SB 286 for SB 268, the digits transposed. The Senate never enrolled SB 286: it laid the bill on the table on 20 March 2025, and it was made Inexpedient to Legislate under Senate Rule 3-23 on 31 October 2025. The report of the Committee on Enrolled Bills that Senate Journal 2 prints, adopted in recess, names HB 480, SB 189 and SB 268. The row was written at 3:17 PM on 21 January 2026, straight after HB 480's and SB 189's rows of the same report; SB 268's own row was written at 4:06 PM.",
+      "evidence": [
+        "Docket.txt line 14657: '2025|1080|1/21/2026 3:17:21 PM|SB286|S|Enrolled Adopted, VV, (In recess 01/07/2026);  SJ 2|1/21/2026 3:17:21 PM'",
+        "Docket.txt lines 14655-14656: the same row on HB 480 and SB 189, written at 3:16:55 and 3:17:10 PM on 21 January 2026; line 14674: on SB 268, written at 4:06:30 PM",
+        "journals_senate/2026/SJ 02 January 29, 2026.txt lines 289-294, REPORT OF COMMITTEE ON ENROLLED BILLS: 'HB 480, relative to restoration of competency to stand trial for criminal defendants. SB 189, relative to fetal death records. SB 268, permitting classification of individuals based on biological sex under certain limited circumstances.' SB 286 is not among them",
+        "Docket.txt line 6183: 'Sen. Pearl Moved Laid on Table, MA, VV; 03/20/2025;  SJ 8'; line 11748: 'Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1'",
+        "journals_senate/2026/SJ 01 January 7, 2026.txt line 93 lists 'SB 286-FN, creating the New Hampshire office of film and creative media' under OUTSTANDING BILLS, the bills remaining on the table made Inexpedient to Legislate under Senate Rule 3-23"
+      ],
+      "note": "This enrolment was not of SB 286, which the Senate killed on its table on 31 October 2025. The report of the Committee on Enrolled Bills in Senate Journal 2 names HB 480, SB 189 and SB 268; the General Court's online docket lists the row under this bill as well. It is left out of this bill's history.",
+      "note_there": "The General Court's online docket also lists this enrolment under SB 286. The report of the Committee on Enrolled Bills in Senate Journal 2 names this bill, and not SB 286.",
+      "checked": "2026-10-06"
     }
   ]
 }

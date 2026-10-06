@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.13
+# GRANITE_VERSION: 2026-09-11.14
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -313,6 +313,13 @@ def classify(desc, created=None, session=None):
         if m:
             return _event(pid, typ, m, fixed, clean, mod, created, session,
                           desc)
+    # A row that gives a hearing's new day in words none of the era's
+    # patterns read (docket_era_1999.rescheduled_notice), read from the line
+    # with its marks, since clean() has taken "==RESCHEDULED==" off it.
+    moved = getattr(mod, "rescheduled_notice", None)
+    got = moved(desc, created) if moved is not None else None
+    if got:
+        return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
     for name, pat in routine:
         if pat.search(clean):
             return {"_type": "other", "_raw": clean, "_era": "routine:" + name}

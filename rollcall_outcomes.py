@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-23.1
+# GRANITE_VERSION: 2026-09-23.3
 """
 What each roll call decided, from the General Court's own record, and what it
 needed to carry.
@@ -692,13 +692,16 @@ def apply(rolls, root=".", paths=None):
     roll call, in place. Returns a count of each outcome_source."""
     root = Path(root)
     paths = paths if paths is not None else docket_paths(root)
-    terms = {term_of(r["year"]) for r in rolls}
+    # A roll call of Organization Day is the next term's, whatever year it is
+    # filed under, and so are the docket rows that tell it (proceedings.vote_term).
+    import proceedings as P
+    terms = {P.vote_term(r["year"], r.get("date")) for r in rolls}
     dk = load_docket(paths, terms)
     groups = defaultdict(list)
     for r in rolls:
         b = norm_bill(r.get("bill"))
         if b:
-            groups[(term_of(r["year"]), b, r["body"])].append(r)
+            groups[(P.vote_term(r["year"], r.get("date")), b, r["body"])].append(r)
     link = {}
     for key, rs in groups.items():
         rows = dk.get(key)
@@ -807,9 +810,3 @@ def _clerks_corrections(rolls, root, stats):
             f"{'was adopted' if carried else 'failed'}. The members' votes shown "
             f"here are the General Court's roll-call file, which still adds up "
             f"to {r['yeas']}–{r['nays']}.")
-
-
-def term_of(year):
-    y = int(str(year)[:4])
-    s = y if y % 2 else y - 1
-    return f"{s}-{s + 1}"

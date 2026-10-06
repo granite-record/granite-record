@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -487,7 +487,9 @@ def main():
             # OTHER_MEASURE has named the measure it was on.
             key = bill_number(r["bill"]) or (
                 r["bill"] if other_measure(r) else "_procedural")
-            by_term[P.term_of(r["year"])][key].append(r)
+            # By its session year, or the next term's for a roll call of
+            # Organization Day (proceedings.vote_term).
+            by_term[P.vote_term(r["year"], r["date"])][key].append(r)
         stray = by_term.pop("", None)
         if stray:
             print(f"  {sum(len(v) for v in stray.values()):,} roll calls have "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.12
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -103,6 +103,60 @@ def term_of(date_str):
         return ""
     start = y if y % 2 else y - 1
     return f"{start}-{start + 1}"
+
+
+# ORGANIZATION DAY BELONGS TO THE NEXT TERM (6 October 2026). The General
+# Court that was elected in November organizes on the first Wednesday of
+# December of the even year -- 2 December 2026 -- and elects its Speaker and
+# adopts its rules that day: the next term's business, in the old term's
+# calendar year. The docket files the day's resolutions under the next
+# session (HR 1 of 2025, "Introduced and Adopted VV 12/04/2024"), and a roll
+# call is keyed by its session year everywhere a term is asked of it; one
+# filed under the old year would have gone with 2025-2026 -- set aside as a
+# stray row of a frozen term (build_data.rows_all), its ballots tallied with
+# that term's members and linked to that term's bills. No roll call file on
+# disk holds one yet (0 of 9,565), so this is the rule, not a correction of
+# anything published: a roll call taken on or after Organization Day of an
+# even year is the next term's, whatever year it is filed under.
+
+def organization_day(year):
+    """The first Wednesday of December of an even `year`, as a date; None
+    for an odd year or one that is not a year."""
+    import datetime as _dt
+    try:
+        y = int(str(year)[:4])
+    except (TypeError, ValueError):
+        return None
+    if y % 2:
+        return None
+    first = _dt.date(y, 12, 1)
+    return first + _dt.timedelta(days=(2 - first.weekday()) % 7)
+
+
+def vote_day(when):
+    """A roll call's day, from "2026-12-02" or "12/2/2026 10:30:00 AM", as a
+    date; None where it gives none."""
+    import datetime as _dt
+    s = str(when or "").strip()
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s) or re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", s)
+    if not m:
+        return None
+    a, b, c = (int(x) for x in m.groups())
+    try:
+        return _dt.date(a, b, c) if a > 31 else _dt.date(c, a, b)
+    except ValueError:
+        return None
+
+
+def vote_term(year, when=""):
+    """The term a roll call belongs to: its session year's, or the next
+    term's where it was taken on or after Organization Day of an even year
+    (ORGANIZATION DAY BELONGS TO THE NEXT TERM)."""
+    day = vote_day(when)
+    org = organization_day(day.year) if day else None
+    if org and day >= org:
+        return term_of(day.year + 1)
+    return term_of(year)
 
 
 # A term as this project writes one. Several derived files are {term: {...}}
@@ -258,6 +312,30 @@ def committee_only(rows=None):
     return [r for r in rows if r["kind"] not in FLOOR_KINDS]
 
 
+def same_minute(a, b):
+    """Are two "HH:MM" clocks within five minutes of each other? True where
+    either is unknown."""
+    try:
+        ha, ma = (int(x) for x in str(a).split(":")[:2])
+        hb, mb = (int(x) for x in str(b).split(":")[:2])
+    except ValueError:
+        return True
+    return abs((ha * 60 + ma) - (hb * 60 + mb)) <= 5
+
+
+def voided(row, meeting):
+    """Is this row of the table the meeting `meeting` names -- [day, chamber,
+    kind, "HH:MM" or ""], one a later row of the docket cancelled or moved
+    (narrative.voided_meetings)? Its day, its kind ("hearing" is a "public
+    hearing" too, "work session" a subcommittee's or the full committee's),
+    its chamber where the row gives one and its hour where both give one."""
+    day, body, kind, at = (list(meeting) + ["", "", "", ""])[:4]
+    k = (row.get("kind") or row.get("what") or "").strip().lower()
+    b = (row.get("body") or "").strip().upper()
+    return (bool(kind) and (row.get("date") or "-") == day and kind in k
+            and (not b or b == body) and same_minute((row.get("time") or "").strip(), at))
+
+
 def notice_only(row, narr):
     """Is this committee row the docket's notice of a sitting and nothing more:
     one set for a bill that was never introduced, or for a day after the bill
@@ -282,6 +360,11 @@ def notice_only(row, narr):
     2008, two days after the House took the address from its joint committee
     and laid it on the table.
 
+    AND A MEETING A LATER ROW OF THE DOCKET CANCELLED OR MOVED ("voided"):
+    that meeting, by its day, kind, chamber and hour (voided), and not the
+    rest of its day. HB 650 of 2014's Finance hearing of 18 February at ten
+    was cancelled, and its work session that day at one was held.
+
     `narr` is the bill's history as narrative.build tells it, which dates a
     withdrawal ("withdrawn"), says where a bill was never introduced
     ("not_introduced") and lists those days ("no_sitting"); None, for a bill
@@ -303,7 +386,8 @@ def notice_only(row, narr):
         return True
     gone = narr.get("withdrawn") or ""
     return ((bool(gone) and (row.get("date") or "") > gone)
-            or (row.get("date") or "-") in (narr.get("no_sitting") or ()))
+            or (row.get("date") or "-") in (narr.get("no_sitting") or ())
+            or any(voided(row, m) for m in narr.get("voided") or ()))
 
 
 def sittings(rows, histories):
