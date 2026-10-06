@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.41
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1454,6 +1454,12 @@ STEP_WHY = {
 # the New term run says when it was also ticked as a dry run, which it will not
 # be. preflight holds both to the box's name in nightly.yml.
 NEW_TERM_BOX = "New term"
+# The gate's first reason (THE GATE, above): a New term run waits for approval
+# whatever else is true of it, because the person decided on 30 September 2026
+# that the switch to a new term keeps their approval after ordinary nights
+# stop needing it (the note above the box in nightly.yml).
+REVIEW_NEW_TERM = (f"a {NEW_TERM_BOX} run, and the switch to a new term always waits for "
+                   "approval")
 # "OR A NEW SESSION YEAR" (5 October 2026): a term's second January shrinks
 # LSRs.txt to the new year's few requests and meets the same rule, and the
 # same box answers it. A new TERM is no longer seen by size at all: the
@@ -3032,6 +3038,10 @@ class Night:
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
 
         v["blocking"] = blocking
+        # THE GATE'S REASONS from the build and from production, in order:
+        # finish() adds the warnings' and writes the verdict's "review".
+        if a.new_term:
+            self.review_why.append(REVIEW_NEW_TERM)
         # A New term run goes to the publish job even when production already
         # serves this very build: publishing is what lets what it accepted be
         # kept, and without it the next night would refuse the files for ever.

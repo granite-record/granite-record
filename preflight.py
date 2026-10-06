@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.349
+# GRANITE_VERSION: 2026-09-04.350
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43736,6 +43736,7 @@ class _GateNights:
         refusal.MARK, refusal.LOCK = self.tmp / "archive" / "refused.json", self.tmp / "archive" / ".lock"
         Path("archive").mkdir()
         Path("prod").mkdir()
+        Path("db").mkdir()
         NI.run = self.fake
         NI.time = self.types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
         NI.tracked_changes = lambda: ([], [])
@@ -43782,10 +43783,22 @@ class _GateNights:
 
     def fake(self, args, label, cwd=None):
         self.NI.say(f"\n--- {label} ---")
-        if Path(args[0]).name == "build_all.py":
+        name, rc = Path(args[0]).name, 0
+        if name == "build_all.py":
             self.build()
-        self.NI.say("  (0s, exit 0)")
-        return 0
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd)
+        elif name == "fetch_lsrs.py":
+            rc = self.how.get("lsrs_rc", 0)
+            if not rc:
+                Path("lsrs.json").write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                                             encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        self.NI.say(f"  (0s, exit {rc})")
+        return rc
 
     def served(self, req, timeout=None):
         import io
@@ -44018,6 +44031,40 @@ def _nightly_review_says(NI):
     return "ok", ("a built night's verdict carries review {needed, why}, its output review, and "
                   "its page one line: published without approval, waited with reasons, a dry "
                   "run's would-have, or nothing to approve; a night that did not build, none")
+
+
+@check("build", "the gate holds a New term run for approval whatever else is true of it",
+       needs=("nightly",))
+def _nightly_review_new_term(NI):
+    """The person decided on 30 September 2026 that the switch to a new term
+    waits for their approval even once ordinary nights publish themselves, and
+    the note above the New term box in nightly.yml says so. So a New term run
+    that built is held by the gate, with that as its first reason, on a night
+    with nothing else to hold it: the code production serves, a row or two
+    changed, and the warnings the night before carried."""
+    assert NI.NEW_TERM_BOX in NI.REVIEW_NEW_TERM and "approval" in NI.REVIEW_NEW_TERM
+    with _GateNights(NI) as g:
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="321")
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", run_id="322")
+        v = g.verdict()
+        assert code == 0 and v["publishable"], (code, v.get("not_clean"))
+        g.publish("322")
+        g.how["touch"] = 4
+        code, _ = g.night("--runner", run_id="323")
+        assert code == 0 and g.verdict()["review"] == {"needed": False, "why": []}, \
+            ("the fixture's ordinary fetch night is held, so this proves nothing",
+             g.verdict().get("review"))
+        code, _ = g.night("--runner", "--new-term", run_id="324")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["asked"]["new_term"], (code, v.get("not_clean"))
+        assert v["review"] == {"needed": True, "why": [NI.REVIEW_NEW_TERM]} and \
+            g.output.get("review") == "true", ("a New term run would have published without "
+                                               "approval", v.get("review"))
+        assert f"- Would have waited for approval: {NI.REVIEW_NEW_TERM}." in g.summary.splitlines(), \
+            g.summary
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", "a New term run that built is held, first reason the switch, on an otherwise clear night"
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
