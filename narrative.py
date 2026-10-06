@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.81
+# GRANITE_VERSION: 2026-09-04.82
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2450,6 +2450,19 @@ def describe(ev, body, seen_intro=False):
     if ev.get("_void") and t in ("hearing", "exec", "worksession"):
         # Scheduled for a day after the bill was withdrawn: a notice, not a
         # meeting. The past tense of every sentence below would say it sat.
+        #
+        # AND NOT TOLD AT ALL (decision 59e, the person's rule of 6 October
+        # 2026 for a meeting that did not sit): HB 1284 and HB 1512 of 2012,
+        # withdrawn on 4 January with a hearing set for the 12th, and HA 1 of
+        # 2008, taken from its committee two days before its hearing of 25
+        # April, were the last histories saying "A public hearing had been
+        # scheduled for ...". The row stays among the docket lines with its
+        # note (notice_note), as every notice a later row cancelled does; and
+        # so does one set for a bill that was never introduced, which no
+        # committee had. Only HB 273 of 2017's, whose bill the House Journal
+        # leaves out, is told, because nothing on disk says it did not sit.
+        if not ev.get("_journal"):
+            return None
         what = {"hearing": "A public hearing", "exec": "An executive session",
                 "worksession": "A work session"}[t]
         if ev.get("_journal"):
@@ -2463,7 +2476,6 @@ def describe(ev, body, seen_intro=False):
             return (f"The docket schedules {what[0].lower()}{what[1:]} for "
                     f"{fdate(ev['date'])}, for a bill the House did not introduce; no "
                     "record on this site says whether it was held.")
-        return f"{what} had been scheduled for {fdate(ev['date'])}."
 
     if t == "withdrawn":
         when = (fdate(ev["date"]) if ev.get("date")

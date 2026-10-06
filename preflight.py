@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.374
+# GRANITE_VERSION: 2026-09-04.375
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2726,7 +2726,21 @@ def _overtaken_notice_documents(B, N):
            if e.get("cancelled") and not e.get("overtaken") and e.get("cite")]
     assert not any(lab.split(",")[0] in off for lab in got), (
         f"a calendar only a row the docket cancelled cites is listed: {got}, {off}")
-    return "ok", f"SB 339 of 2006 lists {', '.join(got)}; {', '.join(off)} stay off"
+    # And a notice the history leaves untold for another reason -- set for
+    # after the bill was withdrawn (decision 59e) -- keeps its calendar too:
+    # the event as narrative.build carries HB 1512 of 2012's, with a cite.
+    withdrawn = {"events": [
+        {"date": "2012-01-04", "type": "withdrawn", "body": "H", "cancelled": False,
+         "raw": "Withdrawn", "cite": "", "cite_page": ""},
+        {"date": "2012-01-12", "type": "hearing", "body": "H", "cancelled": True,
+         "raw": "Public Hearing: 1/12/2012 10:30 AM LOB 207", "cite": "HC 3", "cite_page": "",
+         "notice": True, "row_note": "A notice. The bill was withdrawn before the day it names."}]}
+    docs, _text = B.bill_documents({"journal": {"from": "fixture"}}, "HB1512", {}, withdrawn,
+                                   {"HC 3 2012": "https://gc.nh.gov/calendars/2012/hc3.pdf"}, [], [])
+    assert any(d["label"].startswith("HC 3") for d in docs if d.get("kind") == "record"), (
+        f"a withdrawn bill's notice drops the calendar that printed it: {docs}")
+    return "ok", (f"SB 339 of 2006 lists {', '.join(got)}; {', '.join(off)} stay off; a withdrawn "
+                  "bill's notice keeps its calendar")
 
 
 # Real rows: Docket_db_1989-1990.txt 16778-16783 (HB 1288),
@@ -7163,8 +7177,8 @@ def _rows_read_on_the_second_pass(N, B):
     if (not row.get("notice") or not row["cancelled"]
             or "took the measure from the committee" not in (row.get("row_note") or "")):
         bad.append(f"HA1 of 2008's hearing of 25 April is {row}")
-    if "held a public hearing" in ha1["narrative"] or (
-            "A public hearing had been scheduled for April 25, 2008." not in ha1["narrative"]):
+    # Not told at all (decision 59e): a meeting that did not sit.
+    if "held a public hearing" in ha1["narrative"] or "April 25, 2008" in ha1["narrative"]:
         bad.append("HA1 of 2008 is told: " + ha1["narrative"])
     import proceedings as _P
     if ha1.get("no_sitting") != ["2008-04-25"] or not _P.notice_only(
@@ -63233,13 +63247,12 @@ def _never_introduced(N, B, BD):
     assert "before_introduction" not in narr["HB1472"]["events"][1], (
         "a row that says only Withdrawn was read as saying when")
     # A hearing and an executive session set for after the withdrawal are
-    # notices, told as notices, and leave the events as a cancelled row does.
+    # notices, not told (decision 59e: a meeting that did not sit), and leave
+    # the events as a cancelled row does.
     assert told("HB1284") == [(
         "Before introduction in the House", "H:filed",
         "It was to be introduced on January 4, 2012 and referred to the House Education "
-        "committee. A public hearing had been scheduled for January 12, 2012. An "
-        "executive session had been scheduled for January 24, 2012. It was withdrawn on "
-        "January 4, 2012.")], told("HB1284")
+        "committee. It was withdrawn on January 4, 2012.")], told("HB1284")
     assert kinds("HB1284") == [
         ("2011-11-21", "to_be_introduced", False), ("2011-12-15", "hearing", True),
         ("2011-12-15", "exec", True), ("2012-01-04", "withdrawn", False)], kinds("HB1284")
@@ -63288,8 +63301,7 @@ def _never_introduced(N, B, BD):
     assert told("HB1512") == [(
         "In House committee — Municipal and County Government", "H:committee",
         "It was introduced on January 4, 2012 and referred to the House Municipal and "
-        "County Government committee. It was withdrawn on January 4, 2012. A public "
-        "hearing had been scheduled for January 12, 2012.")], told("HB1512")
+        "County Government committee. It was withdrawn on January 4, 2012.")], told("HB1512")
     assert kinds("HB1512") == [
         ("2012-01-04", "introduced", False), ("2012-01-04", "withdrawn", False),
         ("2012-01-12", "hearing", True)], kinds("HB1512")
@@ -63394,8 +63406,7 @@ def _never_introduced(N, B, BD):
         ("2009-12-10", "to_be_introduced", False, None),
         ("2009-12-15", "hearing", True, "A notice, for a bill that was never introduced."),
         ("2009-12-22", "withdrawn", False, None)], early["events"]
-    assert "A public hearing had been scheduled for December 22, 2009." in early["narrative"] \
-        and "held a public hearing" not in early["narrative"], early["narrative"]
+    assert "public hearing" not in early["narrative"], early["narrative"]
     assert all(narr[b].get("not_introduced") is True and "withdrawn" not in narr[b]
                and not narr[b]["unrecognised"] for b in four), [narr[b] for b in four]
     assert "held a public hearing" not in narr["HB273"]["narrative"], narr["HB273"]["narrative"]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.161
+# GRANITE_VERSION: 2026-09-05.162
 """
 Generate the faceted site from real General Court data.
 
@@ -7694,8 +7694,11 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
         # reads it as a sitting, but the calendar it cites printed the bill:
         # Senate Calendar 1A of 2006 printed SB 339's hearing of 19 January,
         # and the Documents tabs of 59 bills lost 62 calendars like it when
-        # those notices stopped being told as held (decision 56).
-        if e.get("cancelled") and not e.get("overtaken"):
+        # those notices stopped being told as held (decision 56). And so does
+        # every other notice the history no longer tells -- one set for after
+        # the bill was withdrawn, or after the chamber took the measure from
+        # its committee (decision 59e) -- since its calendar printed the bill.
+        if e.get("cancelled") and not (e.get("overtaken") or e.get("notice")):
             continue
         c = _cite(e, sources, e.get("cite_year") or (e.get("date") or "")[:4])
         if not c.get("cite_url"):
