@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.10
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -53,6 +53,30 @@ passes it only on the run a person starts by hand with "New term" ticked
 --into did -- whether it installed, and which files were much smaller -- so
 the night's verdict can tell a refused shrink from a file that never arrived,
 and say on the run's page which box to tick.
+
+A NEW TERM IS SEEN BY ITS YEARS, NOT BY ITS SIZE (5 October 2026). On a copy,
+a docket holding 2025, 2026 and 2027 together grew, no file shrank, and a
+scheduled night would have installed the new term with nobody's approval: the
+size rule only ever saw a turn that happened to make a file smaller. So
+install() reads the session year in each file that has one (YEAR_COLUMN) and
+refuses any night whose files name a term newer than the newest the installed
+files name, whatever their size; snapshots/<day>/install.json records it as
+"turned". --allow-turn lets it through, and the nightly passes it only on the
+New term run, which the person approves -- and only when the term being left
+is frozen as installed (freeze_term.ready), so that installing the new one
+loses nothing of it. The person decided on 5 October that the switch is the
+first night the files show the new term, even if Organization Day brings only
+resolutions.
+
+AND A FILE THAT TURNS LATER GOES IN WITHOUT A SECOND APPROVAL. The files do
+not all turn on one night: LSRs.txt holds one session year and may turn on
+1 January, and the roll calls at the new term's first vote. Each is much
+smaller than the old term's copy it replaces. Once the switch is installed,
+a file whose installed copy is a finished term's frozen one, byte for byte
+(frozen/<term>/day/), may be replaced however much smaller tonight's is: what
+it held is kept where the build reads that term from (the person's decision
+of 5 October). Before the switch the frozen term is still the installed one,
+and nothing is let through this way.
 """
 
 import argparse
@@ -106,6 +130,80 @@ INSTALL_RECORD = "install.json"
 # What may precede a data file's first character: a byte-order mark, which
 # the General Court's files carry, and whitespace.
 LEADING = "".join(map(chr, (0xFEFF, 32, 13, 10, 9)))
+
+# WHICH COLUMN SAYS WHAT SESSION A ROW IS OF (5 October 2026): the year itself,
+# first in each, and the fourth field of LsrsOnly.txt ("26-2001|944|1190|2026|
+# Sponsor|SB416|..."). The other files name no year. freeze_term.YEAR_COLUMN is
+# the same, and preflight holds the two together.
+YEAR_COLUMN = {"Docket.txt": 0, "LSRs.txt": 0, "LsrSponsors.txt": 0,
+               "LsrsOnly.txt": 3, "RollCallSummary.txt": 0,
+               "RollCallHistory.txt": 0}
+# Where a finished term's day files are frozen (freeze_term.py), relative to
+# the folder they are installed in.
+FROZEN = "frozen"
+
+
+def years_in(data, name):
+    """The session years one file's rows name, by its YEAR_COLUMN: a set,
+    empty for a file that names none."""
+    col = YEAR_COLUMN.get(name)
+    if col is None or not data:
+        return set()
+    out = set()
+    for line in data.decode("utf-8-sig", "replace").splitlines():
+        f = line.lstrip("﻿").split("|")
+        if len(f) > col:
+            y = f[col].strip()
+            if len(y) == 4 and y.isdigit():
+                out.add(y)
+    return out
+
+
+def term_of(year):
+    """'2027' -> '2027-2028': a term begins in the odd year."""
+    y = int(year)
+    start = y if y % 2 else y - 1
+    return f"{start}-{start + 1}"
+
+
+def newest_term(files):
+    """(term, {name: its newest year}) of the newest session year any of
+    these files names, {name: bytes}; ("", {}) when none names one."""
+    newest = {}
+    for name, data in files.items():
+        ys = years_in(data, name)
+        if ys:
+            newest[name] = max(ys)
+    return (term_of(max(newest.values())) if newest else ""), newest
+
+
+def installed_term(into):
+    """The newest term the files installed in `into` name, and by file."""
+    into = Path(into)
+    return newest_term({n: (into / n).read_bytes() for n in YEAR_COLUMN
+                        if (into / n).exists()})
+
+
+def frozen_copy(into, name, data, newest):
+    """The finished term whose frozen copy of `name` is `data` byte for byte,
+    or "": a term older than `newest`, the newest term installed, so never
+    the session's own term before the switch."""
+    root = Path(into) / FROZEN
+    if not root.is_dir() or not newest:
+        return ""
+    digest = hashlib.sha256(data).hexdigest()
+    for d in sorted(root.iterdir()):
+        if not d.is_dir() or d.name >= newest:
+            continue
+        try:
+            rec = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        e = (rec.get("files") or {}).get(name) if isinstance(rec, dict) else None
+        if isinstance(e, dict) and e.get("sha256") == digest \
+                and (d / "day" / name).exists():
+            return d.name
+    return ""
 
 
 def targets():
@@ -178,8 +276,60 @@ def get(url, timeout=120):
         return r.read()
 
 
-def read_one(url):
-    """(data, None) or (None, (kind, why)). One request; no retry of its own."""
+# THE ROLL CALLS MAY HOLD NOTHING YET (5 October 2026). Between a new term's
+# first files and its first vote the two roll-call files may be empty: 2025's
+# first roll call was on 8 January, and Organization Day is in early December.
+# A body that is a byte-order mark and nothing else was "not a data file", so
+# the New term run -- which never asks the database -- would have asked the
+# export six times over two and a half hours and installed nothing, and every
+# scheduled night after the switch would have gone to the database. So for
+# these two files ONLY, such a body is taken as a file with no roll call in it
+# -- but only where nothing else says it is a failure (empty_is_data): every
+# other file must have arrived whole, which tells it from the 20 September
+# pattern, when two OTHER files came back three bytes long; and there must be
+# a reason to expect no roll call: tonight's files name a new term, or the
+# copies installed are empty too, or they are a finished term's frozen ones.
+# Before any turn, with the installed files holding the session's votes, two
+# empty roll-call files are a failure as they always were, and the database
+# is asked. Taken, an empty file is still much smaller than a full one it
+# would replace, and goes in only as the shrink rule allows: on the New term
+# run, or over a finished term's frozen copy.
+MAY_BE_EMPTY = ("RollCallSummary.txt", "RollCallHistory.txt")
+
+
+def is_empty(data):
+    """A body with nothing in it but a byte-order mark and whitespace."""
+    return data is not None and len(data) < MIN_BYTES and \
+        not data.decode("utf-8", "replace").strip(LEADING)
+
+
+def empty_is_data(names, fetched, failed, into):
+    """(taken, why): whether the MAY_BE_EMPTY files in `names`, which came back
+    empty, are files with no roll call in them yet rather than a failure.
+    `fetched` is every other file that arrived, `failed` how many did not."""
+    if failed:
+        return False, "another file did not arrive whole tonight"
+    if into is None:
+        return True, "every other file arrived whole"
+    into = Path(into)
+    was, _ = installed_term(into)
+    now, _ = newest_term({n: d for n, d in fetched.items() if n in YEAR_COLUMN})
+    if was and now and now > was:
+        return True, f"tonight's files name a new term, {now}, which has not voted yet"
+    copies = {n: (into / n).read_bytes() if (into / n).exists() else None for n in names}
+    if all(d is not None and is_empty(d) for d in copies.values()):
+        return True, "the copies installed are empty too: no roll call yet this term"
+    held = [frozen_copy(into, n, d, was) for n, d in copies.items() if d is not None]
+    if held and all(held) and len(held) == len(names):
+        return True, f"the copies they replace are {held[0]}'s, frozen"
+    return False, ("no new term is in sight and the installed copies hold this term's "
+                   "roll calls")
+
+
+def read_one(url, name=None):
+    """(data, None) or (None, (kind, why)). One request; no retry of its own.
+    An empty body of a MAY_BE_EMPTY file comes back as data, for run() to
+    judge with the others (empty_is_data)."""
     try:
         data = get(url)
     except Exception as e:                                  # noqa: BLE001
@@ -187,6 +337,8 @@ def read_one(url):
     head = data[:4000].decode("utf-8", "replace")
     if refusal.classify(body=head) == "refused":
         return None, ("refused", "the firewall's block page, served as 200")
+    if name in MAY_BE_EMPTY and is_empty(data):
+        return data, None
     stripped = head.lstrip(LEADING).lower()
     if len(data) < MIN_BYTES or stripped.startswith(("<!doctype", "<html", "<?xml")):
         return None, ("failed", f"not a data file ({len(data):,} bytes)")
@@ -207,21 +359,123 @@ def shrunk(fetched, into):
     return out
 
 
-def install(fetched, into, allow_shrink=False):
+# A NEW ROSTER BEFORE ITS TERM'S IS FROZEN (the review of 5 October 2026).
+# Organization Day seats the next House, and the General Court's roster may
+# show it nights before the files show the next term. The term is still the
+# session's then, and on a copy with the next House installed its bills drew
+# 1,392 sponsors with no party and a third of its ballots unnamed, and nothing
+# failed. The build names a term's members from its own frozen roster once
+# the installed one is not it (freeze_term.own_roster_terms) -- which it can
+# only where that roster is frozen. So tonight's legislators.txt, when more
+# than freeze_term.ROSTER_MOVED of the installed members differ, goes in only
+# when the term the installed files describe has its roster frozen; without
+# it nothing goes in ("roster"), and the run's page says to freeze. After the
+# switch the installed term is the next House's own, and it goes in as ever.
+def roster_moved(fetched, into, term):
+    """None when tonight's legislators.txt is not another roster than the
+    installed one, else {"moved", "installed", "term", "frozen"}: how many
+    members differ, of how many installed, the installed files' term, and
+    whether its own roster is frozen (frozen/<term>/day/legislators.txt)."""
+    new, old = fetched.get("legislators.txt"), Path(into) / "legislators.txt"
+    if not new or not old.exists():
+        return None
+    import freeze_term
+    a, b = freeze_term.member_ids(old.read_bytes()), freeze_term.member_ids(new)
+    moved = len(a ^ b)
+    if not a or moved <= freeze_term.ROSTER_MOVED * len(a):
+        return None
+    return {"moved": moved, "installed": len(a), "term": term,
+            "frozen": bool(term) and (Path(into) / FROZEN / term / "day" / "legislators.txt").exists()}
+
+
+def judge(fetched, into, allow_shrink=False, allow_turn=False):
+    """What install() would do with tonight's files, and why: {"installed",
+    "shrunk", "released", "turned", "lines"}. Writes nothing.
+
+    shrunk     every file much smaller than its installed copy, as shrunk() gives
+    released   those of them whose installed copy is a finished term's frozen
+               one (frozen_copy): kept for that term, so not a reason to stop
+    turned     {"from", "to", "files"} when tonight's files name a term newer
+               than the newest the installed ones name, else None
+    roster     roster_moved()'s answer, once the turn is judged: tonight's
+               legislators.txt another roster, and whether the term's own is
+               frozen ("refused": "roster" when it is not)
+    """
+    into = Path(into)
+    small = shrunk(fetched, into)
+    was, _ = installed_term(into)
+    now, by_file = newest_term({n: d for n, d in fetched.items() if n in YEAR_COLUMN})
+    released = []
+    for name, _now, _before in small:
+        t = frozen_copy(into, name, (into / name).read_bytes(), was)
+        if t:
+            released.append({"name": name, "term": t})
+    held = [x for x in small if x[0] not in {r["name"] for r in released}]
+    turned = ({"from": was, "to": now,
+               "files": sorted(n for n, y in by_file.items() if term_of(y) == now)}
+              if was and now and now > was else None)
+    said = [f"{name} is {n:,} bytes against {before:,} installed "
+            f"({(n - before) / before:+.0%})" for name, n, before in held]
+    out = {"installed": False, "shrunk": small, "released": released,
+           "turned": turned, "refused": "", "lines": []}
+    if turned and not allow_turn:
+        out["refused"] = "turn"
+        out["lines"] = [f"NOT INSTALLED, any of it: a new term. {', '.join(turned['files'])} "
+                        f"name {turned['to']}, and the newest term the installed files name is "
+                        f"{turned['from']}.",
+                        "A new term is a person's decision: the New term run (--allow-turn), "
+                        "once the term being left is frozen (freeze_term.py)."]
+        return out
+    if turned:
+        import freeze_term
+        ok, why = freeze_term.ready(into)
+        if not ok:
+            out["refused"] = "freeze"
+            out["lines"] = [f"NOT INSTALLED, any of it: a new term, {turned['to']}, and {why}"]
+            return out
+    roster = roster_moved(fetched, into, was)
+    out["roster"] = roster
+    if roster and not roster["frozen"]:
+        out["refused"] = "roster"
+        out["lines"] = [f"NOT INSTALLED, any of it: tonight's legislators.txt is another roster -- "
+                        f"{roster['moved']:,} of the {roster['installed']:,} members installed "
+                        f"differ -- and {roster['term']}'s own roster is not frozen.",
+                        "Organization Day seats the next House before the files show the next "
+                        "term; the term's members are named from its frozen roster, so it is "
+                        "frozen first (freeze_term.py --session, sent with seed-kit)."]
+        return out
+    if held and not allow_shrink:
+        out["refused"] = "shrink"
+        out["lines"] = ["NOT INSTALLED, any of it: " + "; ".join(said),
+                        "A fall that size is a truncated file far more often than a "
+                        "record getting shorter. --allow-shrink if it is real."]
+        return out
+    out["installed"] = True
+    out["lines"] = ((["ACCEPTED, a new term, with --allow-turn: "
+                      f"{turned['from']} to {turned['to']} ({', '.join(turned['files'])})"]
+                     if turned else [])
+                    + (["ACCEPTED, much smaller, with --allow-shrink (a new term): "
+                        + "; ".join(said)] if held else [])
+                    + [f"ACCEPTED, much smaller, because the copy it replaces is "
+                       f"{r['term']}'s frozen {r['name']}, byte for byte: what it held is "
+                       "kept for that term" for r in released])
+    return out
+
+
+def install(fetched, into, allow_shrink=False, allow_turn=False, verdict=None):
     """Copy tonight's files where the build reads them: all, or none. (ok, lines)
 
     A file much smaller than the copy it replaces stops all of them, unless
-    allow_shrink -- a new term's night -- and then the log still names each one.
+    allow_shrink -- a new term's night -- and then the log still names each
+    one; and so do files that name a newer term than the installed ones,
+    unless allow_turn (judge() says each). `verdict`, if given, is judge()'s
+    answer already worked out for these files.
     """
     into = Path(into)
-    small = [f"{name} is {now:,} bytes against {before:,} installed "
-             f"({(now - before) / before:+.0%})" for name, now, before in shrunk(fetched, into)]
-    if small and not allow_shrink:
-        return False, ["NOT INSTALLED, any of it: " + "; ".join(small),
-                       "A fall that size is a truncated file far more often than a "
-                       "record getting shorter. --allow-shrink if it is real."]
-    lines = (["ACCEPTED, much smaller, with --allow-shrink (a new term): " + "; ".join(small)]
-             if small else [])
+    v = verdict or judge(fetched, into, allow_shrink, allow_turn)
+    lines = list(v["lines"])
+    if not v["installed"]:
+        return False, lines
     for name, data in fetched.items():
         write_atomically(into / name, data)
         lines.append(f"  installed {name} -> {into / name}")
@@ -236,6 +490,9 @@ def main():
     ap.add_argument("--allow-shrink", action="store_true",
                     help="install files much smaller than the copies they replace: a new "
                          "term's night, and only that one")
+    ap.add_argument("--allow-turn", action="store_true",
+                    help="install files that name a newer term than the installed ones: "
+                         "the New term run's, once the term being left is frozen")
     ap.add_argument("--delay", type=float, default=4.0,
                     help="seconds between files (default 4), jittered")
     ap.add_argument("--plan", action="store_true", help="list the requests; make none")
@@ -278,6 +535,33 @@ def run(a, held):
     work = targets()
     i = 0
     retried = set()
+    empties, empty_taken = {}, []       # MAY_BE_EMPTY files that came back empty
+
+    def keep(name, data, new, same):
+        """Store one file's answer in the archive, and count it: (new, same)."""
+        digest = hashlib.sha256(data).hexdigest()
+        blob = store / f"{digest}.gz"
+        if not blob.exists():
+            tmp = blob.with_name(blob.name + ".part")
+            with gzip.open(tmp, "wb") as fh:
+                fh.write(data)
+            os.replace(tmp, blob)
+            new += 1
+            tag = "NEW "
+        else:
+            same += 1
+            tag = "same"
+        write_atomically(snap / (name + ".sha256"), digest.encode("utf-8"))
+        manifest[name] = {"sha256": digest, "bytes": len(data)}
+        prev = index.get(name, {}).get("last_sha256")
+        changed = " (changed)" if prev and prev != digest else ""
+        print(f"  {tag}  {name:24} {len(data):>10,} bytes{changed}", flush=True)
+        index.setdefault(name, {})["last_sha256"] = digest
+        index[name].setdefault("history", [])
+        if not index[name]["history"] or index[name]["history"][-1][1] != digest:
+            index[name]["history"].append([today, digest])
+        fetched[name] = data
+        return new, same
 
     # The page first: opening it is what rebuilds the files.
     if refusal.MARK.exists():
@@ -312,7 +596,14 @@ def run(a, held):
             stopped = "lock"
             print("  the run holding archive/.lock is gone. Stopping.")
             break
-        data, err = read_one(url)
+        data, err = read_one(url, name)
+        if not err and name in MAY_BE_EMPTY and is_empty(data):
+            # Judged once every file is in (empty_is_data, below).
+            empties[name] = data
+            print(f"  ----  {name:24} {len(data):>10,} bytes: empty, judged with the rest",
+                  flush=True)
+            i += 1
+            continue
         if err:
             kind, why = err
             print(f"  FAIL  {name}: {kind}: {why[:100]}", flush=True)
@@ -338,29 +629,22 @@ def run(a, held):
             i += 1
             continue
 
-        digest = hashlib.sha256(data).hexdigest()
-        blob = store / f"{digest}.gz"
-        if not blob.exists():
-            tmp = blob.with_name(blob.name + ".part")
-            with gzip.open(tmp, "wb") as fh:
-                fh.write(data)
-            os.replace(tmp, blob)
-            new += 1
-            tag = "NEW "
-        else:
-            same += 1
-            tag = "same"
-        write_atomically(snap / (name + ".sha256"), digest.encode("utf-8"))
-        manifest[name] = {"sha256": digest, "bytes": len(data)}
-        prev = index.get(name, {}).get("last_sha256")
-        changed = " (changed)" if prev and prev != digest else ""
-        print(f"  {tag}  {name:24} {len(data):>10,} bytes{changed}", flush=True)
-        index.setdefault(name, {})["last_sha256"] = digest
-        index[name].setdefault("history", [])
-        if not index[name]["history"] or index[name]["history"][-1][1] != digest:
-            index[name]["history"].append([today, digest])
-        fetched[name] = data
+        new, same = keep(name, data, new, same)
         i += 1
+
+    if empties and not stopped:
+        took, why = empty_is_data(list(empties), fetched, failed, a.into)
+        print(f"  the roll-call files came back empty, and {why}: "
+              + ("taken as files with no roll call in them yet" if took else
+                 "a failure, as any empty file is"), flush=True)
+        for name, data in empties.items():
+            if took:
+                new, same = keep(name, data, new, same)
+            else:
+                failed += 1
+                manifest[name] = {"error": f"failed: not a data file ({len(data):,} bytes)"}
+        if took:
+            empty_taken = {"files": sorted(empties), "why": why}
 
     write_atomically(snap / "manifest.json", json.dumps(manifest, indent=2).encode("utf-8"))
     write_atomically(index_path, json.dumps(index, indent=2).encode("utf-8"))
@@ -372,12 +656,18 @@ def run(a, held):
     complete = not stopped and not failed and len(fetched) == len(work)
     if a.into:
         if complete:
-            small = shrunk(fetched, a.into)
-            ok, lines = install(fetched, a.into, a.allow_shrink)
+            v = judge(fetched, a.into, a.allow_shrink, getattr(a, "allow_turn", False))
+            ok, lines = install(fetched, a.into, verdict=v)
             write_atomically(record, json.dumps(
                 {"installed": ok, "allow_shrink": bool(a.allow_shrink),
+                 "allow_turn": bool(getattr(a, "allow_turn", False)),
                  "shrunk": [{"name": n, "bytes": now, "installed_bytes": before}
-                            for n, now, before in small]}, indent=2).encode("utf-8"))
+                            for n, now, before in v["shrunk"]],
+                 "released": v["released"], "turned": v["turned"],
+                 **({"roster": v["roster"]} if v.get("roster") else {}),
+                 **({"refused": v["refused"]} if v["refused"] else {}),
+                 **({"empty": empty_taken} if empty_taken else {})},
+                indent=2).encode("utf-8"))
             print("\n".join(lines))
             if not ok:
                 return 1

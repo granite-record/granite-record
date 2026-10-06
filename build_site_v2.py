@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.153
+# GRANITE_VERSION: 2026-09-05.156
 """
 Generate the faceted site from real General Court data.
 
@@ -3629,10 +3629,13 @@ def resolve_speaker(heading, idx, name_part):
     return None
 
 
-def hearing_report_for_page(rec, idx, name_part):
+def hearing_report_for_page(rec, idx, name_part, pages=None):
     """One parsed report as the Hearings tab draws it, legislators resolved.
 
     Returns (report, members resolved, legislator lines left as text).
+    `pages` is attach_hearing_reports': the party is the member's as `idx`
+    holds them, which for a term whose own roster is frozen is the party
+    they sat with; the link is to their own page, wherever it is now.
     """
     got = miss = 0
     secs = []
@@ -3648,9 +3651,10 @@ def hearing_report_for_page(rec, idx, name_part):
                     # The report's own words for the person, in the chip the
                     # site draws a legislator with: the party colour and the
                     # link are the site's; the name is the Senate's.
+                    _page = mem if pages is None else pages.get(str(mem.get("id")))
                     sp["member"] = {"label": name_part(sp["who"]),
                                     "party_code": mem.get("party_code") or "",
-                                    "slug": own_slug(mem)}
+                                    "slug": own_slug(_page) if _page else ""}
                 elif SPEAKER_TITLE.match(name_part(sp.get("who", "")) or ""):
                     miss += 1
                 o["speakers"].append(sp)
@@ -3706,7 +3710,7 @@ def report_station(rep, docket_dates):
 
 
 def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
-                           unmatched):
+                           unmatched, pages=None):
     """Each report onto the station of the hearing it reports.
 
     That is the bill's Senate public hearing on the date the report gives --
@@ -3716,6 +3720,9 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
     docket has no Senate hearing for is not pinned to some other sitting: it
     is counted and named in `unmatched`, and stands on a station of its own
     under the date it gives (report_station).
+
+    `pages` is {id: member} of whose page a member resolved in `idx` links
+    to, where `idx` is a term's own frozen roster (build_bills says when).
     """
     heard = [s for s in stations
              if s.get("body") == "S"
@@ -3735,7 +3742,7 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
                 stations.append(at)
         else:
             tally["matched"] += 1
-        page, got, miss = hearing_report_for_page(rep, idx, name_part)
+        page, got, miss = hearing_report_for_page(rep, idx, name_part, pages)
         at.setdefault("reports", []).append(page)
         tally["members"] += got
         tally["members_unresolved"] += miss
@@ -6252,7 +6259,8 @@ def vote_member(m, body, legs, unnamed):
 
 
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
-                      leg_by_sort, leg_by_name, sponsored, seats=None):
+                      leg_by_sort, leg_by_name, sponsored, seats=None, left=None,
+                      term_roster=None):
     """Who put their name to this bill, and their own bill list, both.
 
     It mutates `sponsored`, which is the caller's accumulator of what
@@ -6260,6 +6268,12 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
     `unnamed`. That is why it is passed explicitly rather than closed
     over: a function that changes something belonging to its caller
     should say so in its signature.
+
+    `left` is ({sort name: [member]}, {name key: [member]}) of the members
+    who hold no seat now, and `term_roster` {id: member} the term's own
+    roster as it was frozen, both passed only for a term whose frozen roster
+    is not the sitting one (build_bills says which); None everywhere else,
+    which is every term before the first Organization Day.
 
     `prime` stays in the loop. It is one line and it reads better
     beside the payload that uses it than as an extra return value.
@@ -6280,6 +6294,25 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                     t == term and (not ch or c == ch)
                     for t, c in seats.get(str(_m.get("id")), ())):
                 _m = None
+            # A FINISHED TERM'S MEMBERS WHO HOLD NO SEAT NOW (5 October 2026).
+            # While 2025-2026 was the session's, this name fell back on the
+            # roster, which was that term's. After the turn the roster is the
+            # next House, and on the rehearsal of the turn 900 sponsor names
+            # on 491 of the term's bills -- a third of the House, gone at the
+            # election -- lost their link and read their seat as the record
+            # pads it ("Belk 07"), though each of them has a page under
+            # `former`. So for a term frozen and finished (`left`), a name
+            # the sitting roster does not answer is looked for among those
+            # members too, under the same rule: only one who sat in that
+            # chamber that term.
+            if not _m and left:
+                for _f in (*left[0].get(sort_name(_s.get("name") or ""), ()),
+                           *left[1].get(name_key(_s.get("name") or "") or ("", ""), ())):
+                    if seats is None or any(
+                            t == term and (not ch or c == ch)
+                            for t, c in seats.get(str(_f.get("id")), ())):
+                        _m = _f
+                        break
         _m = _m or {}
         # The roster first, then whatever the sponsor record carries in
         # its own right. build_data fills the county and district in for a
@@ -6304,6 +6337,16 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # day. Neither takes anything from the roster: a 1993 bill's sponsor
         # who sits in the Senate today was drawn "Sen." at today's district,
         # and one with no party on that term's ballots is given none.
+        #
+        # AND A TERM WHOSE OWN ROSTER IS FROZEN (`term_roster`, the review of
+        # 5 October 2026): its member as that roster has them, the seat they
+        # sat in, before the record of whoever they are today. After the turn
+        # `_m` is the sitting record, and a Representative elected to the
+        # Senate under a new id is joined to it by member_links: all 93 of
+        # Rep. Sabourin dit Choinière's 2025-2026 bills would have read "Sen.
+        # ... (R - SD23)". The link still goes to their own page, through `_m`.
+        _t = ((term_roster or {}).get(str(_s.get("member_id") or ""))
+              or (term_roster or {}).get(str(_m.get("id") or "")) or _m)
         if _s.get("seat_source") in (PSP.SOURCE, JOURNAL_SOURCE):
             _lab = member_labels(
                 _s.get("name"),
@@ -6313,19 +6356,19 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         elif _s.get("source") == TS.SOURCE or _s.get("seat_source") == TS.SOURCE:
             _lab = member_labels(
                 _s.get("name"),
-                chamber=_s.get("chamber") or _m.get("chamber"),
-                party=_s.get("party") or _m.get("party_code"),
-                district=_s.get("district") or _m.get("district"),
-                county=_s.get("county") or _m.get("county"),
-                county_abbr=None if _s.get("district") else _m.get("county_abbr"))
+                chamber=_s.get("chamber") or _t.get("chamber"),
+                party=_s.get("party") or _t.get("party_code"),
+                district=_s.get("district") or _t.get("district"),
+                county=_s.get("county") or _t.get("county"),
+                county_abbr=None if _s.get("district") else _t.get("county_abbr"))
         else:
             _lab = member_labels(
                 _s.get("name"),
-                chamber=_m.get("chamber") or _s.get("chamber"),
-                party=_m.get("party_code") or _s.get("party"),
-                district=_m.get("district") or _s.get("district"),
-                county=_m.get("county") or _s.get("county"),
-                county_abbr=_m.get("county_abbr"))
+                chamber=_t.get("chamber") or _s.get("chamber"),
+                party=_t.get("party_code") or _s.get("party"),
+                district=_t.get("district") or _s.get("district"),
+                county=_t.get("county") or _s.get("county"),
+                county_abbr=_t.get("county_abbr"))
         # The address of this member's own page, where the sponsor was
         # matched to the roster. Where they were not -- a former member,
         # or a name the join missed -- there is no page and no link, which
@@ -8485,7 +8528,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
-                links=None, hearing_reports=None, ballots=None):
+                links=None, hearing_reports=None, ballots=None, term_rosters=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -8534,10 +8577,31 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
             _people.setdefault(str(_old), legs.get(_sit) or {})
+    # And, for a term whose own roster is frozen and not the sitting one
+    # (main says which), the members who left by name: bill_sponsor_list
+    # says why. Every one of a name, in order, since only the one who sat
+    # that term is taken.
+    _left = None
+    term_rosters = term_rosters or {}
+    if term_rosters:
+        _left = (defaultdict(list), defaultdict(list))
+        for _m in (former or {}).values():
+            _left[0][sort_name(_m.get("name") or "")].append(_m)
+            _k = name_key(_m.get("name") or "")
+            if _k:
+                _left[1][_k].append(_m)
     # The Senate's hearing reports: who testified, resolved to members where
     # a line names one. Counted as they are attached, so the build says how
     # many found their hearing and names the ones that did not.
     _hr_idx = speaker_index([*legs.values(), *(former or {}).values()])
+    # ... and for a term whose own roster is frozen and is not the sitting
+    # one, that roster and the members who left before it was frozen: a
+    # speaker is resolved among the people who sat that term, with the party
+    # they sat with, and linked to their page as it is now -- or not linked,
+    # where they have none (the rehearsal of the review, 5 October 2026).
+    _hr_term = {_t: speaker_index([*_r.values(),
+                                   *(f for _mid, f in (former or {}).items() if _mid not in _r)])
+                for _t, _r in term_rosters.items()}
     _hr_name = SHR.name_part
     hr_tally = Counter()
     hr_unmatched = []
@@ -8550,8 +8614,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # still be in the flat shape, in which case it holds the current term and
     # P.per_term hands an archived term nothing -- HB100 exists in every
     # biennium, so the current term's text on an archived bill is worse than
-    # no text. testimony.json is still flat and is read through the `own`
-    # guard below for the same reason.
+    # no text. The scraped testimony.json, flat and once read through the
+    # `own` guard below for the same reason, is retired (main says why): the
+    # `testimony` handed in is empty, and every count is testimony_db.json's.
     current = max(bills) if bills else ""
     session_over = session_over_in(session_over, current)
     n_stale = 0
@@ -8652,7 +8717,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # member belongs in a sponsor list, not in a roster.
         sp_list = bill_sponsor_list(bid, b, year, term, current,
                                     sponsors, _people, leg_by_sort,
-                                    leg_by_name, sponsored, seats)
+                                    leg_by_name, sponsored, seats,
+                                    left=_left if term in term_rosters else None,
+                                    term_roster=term_rosters.get(term))
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -8882,7 +8949,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # below, so it takes its place in the bill's order of events.
         attach_hearing_reports(
             stations, (hearing_reports or {}).get(term, {}).get(bid, []),
-            bid, _hr_idx, _hr_name, hr_tally, hr_unmatched)
+            bid, _hr_term.get(term, _hr_idx), _hr_name, hr_tally, hr_unmatched,
+            pages=_people if term in _hr_term else None)
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
@@ -9567,7 +9635,18 @@ def main():
     for _k, _u in calendar_keys_from_queue().items():
         sources.setdefault(_k, _u)
     # Sign-in counts, attached to the hearing they were filed for.
-    testimony = load("testimony.json", {})
+    #
+    # testimony.json IS RETIRED (5 October 2026), with fetch_testimony's step,
+    # at the person's word and on their condition that the counts stay
+    # retrievable another way. They do: the scraped file's 565 bills were all
+    # in testimony_db.json, so the page never showed one of its counts
+    # (hearing_testimony takes it only for a bill the database has nothing
+    # for), and testimony_from_db.py rebuilds the database's 2,019 bills of
+    # 2025-2026 from the dump, every count and every hearing equal. Kept, the
+    # flat file was a leak waiting for the turn: read by number for the
+    # current term, 102 of its bills have numbers 2027's first-year bills
+    # will reuse, and each would have shown 2025-2026's sign-ins.
+    testimony = {}
     # Counts per bill AND per hearing, from the General Court's database:
     # 2,019 bills against the scraped page's 565. Keyed on the term, because
     # legislationID is reused across terms -- joining without that put 67,119
@@ -9577,8 +9656,6 @@ def main():
         nb = sum(len(v) for v in testimony_db.values())
         ns = sum(r["total"] for v in testimony_db.values() for r in v.values())
         print(f"testimony sign-ins: {ns:,} across {nb:,} bills, per hearing")
-    if testimony:
-        print(f"testimony counts for {len(testimony):,} bills")
     if sources:
         print(f"source links available for {len(sources)} journals and calendars")
     # One table for every proceeding on the site: committee hearings, executive
@@ -9676,6 +9753,21 @@ def main():
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "
               "unchanged")
+    # The terms whose own roster is frozen and is not the sitting one
+    # (freeze_term.own_roster_terms): every finished term, and the session's
+    # once Organization Day has seated the next House before the files show
+    # the next term (the review of 5 October 2026). Their sponsors are looked
+    # for by name among `former` too, and labelled from that roster, as they
+    # sat -- build_data writes it to data/frozen/<term>/legislators.json. None
+    # before the first Organization Day, so nothing here moves until then.
+    import freeze_term
+    term_rosters = {t: {str(m.get("id")): m for m in load(D / "frozen" / t / "legislators.json", [])
+                        if isinstance(m, dict)}
+                    for t in freeze_term.own_roster_terms()}
+    if term_rosters:
+        print(f"  {', '.join(term_rosters)}: a frozen roster that is not the sitting one, "
+              f"{sum(len(v) for v in term_rosters.values()):,} members; their sponsors are "
+              "labelled from it and looked for among the members who hold no seat now")
     # BEFORE seats_held, and over both populations. A sponsor matched on their
     # name alone is only that member if this says they held a seat in that
     # chamber that term -- so a former member absent from it would be matched
@@ -9695,6 +9787,7 @@ def main():
                                chapters=chapters, seats=seats,
                                former=former, links=links,
                                hearing_reports=hearing_reports,
+                               term_rosters=term_rosters,
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,

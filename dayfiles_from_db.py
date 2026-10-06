@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.9
+# GRANITE_VERSION: 2026-10-01.13
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -312,14 +312,15 @@ Every guard fails closed, and some real days are on the wrong side of one:
     the roster at a new term            on Organization Day, the first
                                         Wednesday of December (2 December
                                         2026), about a third of the House is
-                                        new: far past the 2% and the four,
-                                        and so every database night from that
-                                        day until an export installs the new
-                                        roster. It was so before these guards
-                                        (the 2% is the first version's); the
-                                        export's own install has only the
-                                        shrink rule. Like a new term's files,
-                                        a person's decision
+                                        new: far past the 2% and the four.
+                                        Since 5 October 2026 such a roster is
+                                        taken, and its members joined and
+                                        left named, when tonight's
+                                        Members.txt from the website names
+                                        the same people (roster_named, the
+                                        person's decision); without that it
+                                        still stops every database night
+                                        until an export installs the roster
     three tallies corrected at          or one changed with no ballot to go
     once                                with it; or a new roll call three
                                         ballots from its typed counts (one in
@@ -1947,9 +1948,73 @@ def _hold_rollcalls(old_s, new_s, old_h, new_h, known=(), asked=None, nights=1):
                    "new": len(fresh), "strangers": len(strangers), "unsummed": len(near)}, told
 
 
-def _hold_roster(old, rows):
+# A NEW ROSTER THE WEBSITE NAMES TOO (5 October 2026). Organization Day, the
+# first Wednesday of December, seats a new House -- about a third of it new --
+# and from that day the database's roster is past every ceiling here, so
+# every database night would stop until an export installed the new roster.
+# The person decided that a database night may take a changed roster when
+# tonight's Members.txt agrees: that file comes from the website's /downloads/,
+# not the failing export, and has arrived whole on every failed night. Agrees
+# means it names every member on the database's roster, by work e-mail or by
+# last and first name, and at most ROSTER_MOVED_MOST people the roster does
+# not (on 6 September two of 408). Then the members joined and left are
+# named, not stopped on; a member's name, party or district changed is still
+# held to its own ceiling.
+def roster_named(rows, members):
+    """(named, why): whether tonight's Members.txt names the roster `rows`
+    (legislators.txt's lines, rebuilt from the database)."""
+    if not members:
+        return False, "no Members.txt arrived from the website tonight"
+    text = members.decode("utf-8-sig", "replace") if isinstance(members, bytes) else members
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return False, "tonight's Members.txt is empty"
+    col = {n.strip().strip('"').lower(): i for i, n in enumerate(lines[0].split("\t"))}
+
+    def get(f, name):
+        i = col.get(name)
+        v = f[i].strip() if i is not None and i < len(f) else ""
+        return (v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v).strip().lower()
+    mails, names = set(), set()
+    for ln in lines[1:]:
+        f = ln.split("\t")
+        if get(f, "workemail"):
+            mails.add(get(f, "workemail"))
+        names.add((get(f, "lastname"), get(f, "firstname")))
+    roster = [_fields(ln, 15) for ln in rows]
+    missing = [f for f in roster if f[14].strip().lower() not in mails
+               and (f[1].strip().lower(), f[2].strip().lower()) not in names]
+    on_roster = {f[14].strip().lower() for f in roster} | \
+        {(f[1].strip().lower(), f[2].strip().lower()) for f in roster}
+    others = sum(1 for ln in lines[1:]
+                 if get(ln.split("\t"), "workemail") not in on_roster
+                 and (get(ln.split("\t"), "lastname"), get(ln.split("\t"), "firstname"))
+                 not in on_roster)
+    if missing:
+        return False, (f"tonight's Members.txt does not name {len(missing):,} of the "
+                       f"database's {len(roster):,} members")
+    if others > ROSTER_MOVED_MOST:
+        return False, (f"tonight's Members.txt names {others:,} people the database's roster "
+                       f"does not, more than {ROSTER_MOVED_MOST}")
+    return True, (f"tonight's Members.txt, from the website, names every one of the "
+                  f"database's {len(roster):,} members")
+
+
+def roster_frozen(root="."):
+    """Whether the term the installed files in `root` describe has its own
+    roster frozen (frozen/<term>/day/legislators.txt, freeze_term.py), which
+    a new roster needs before it is taken (judge, and snapshot_gencourt.
+    roster_moved for the export)."""
+    import proceedings as P
+    term = P.session_term(root)
+    return bool(term) and (Path(root) / "frozen" / term / "day" / "legislators.txt").exists()
+
+
+def _hold_roster(old, rows, named=False):
     """The roster, member by member, on what the build reads of each: (stops,
-    what was counted, what is named)."""
+    what was counted, what is named). `named`: tonight's Members.txt names
+    the new roster (roster_named), and members joined and left are named
+    rather than stopped on."""
     stops, told = [], {}
     was = {f[0]: f for f in (_fields(ln, 15) for ln in old)}
     now = {f[0]: f for f in (_fields(ln, 15) for ln in rows)}
@@ -1996,7 +2061,7 @@ def _hold_roster(old, rows):
     for found, side, what in ((left, was, "installed members not on the database's roster"),
                               (joined, now, "members on the database's roster and not the "
                                             "installed one")):
-        if len(found) > ROSTER_MOVED_MOST:
+        if len(found) > ROSTER_MOVED_MOST and not named:
             stops.append(f"legislators.txt: {len(found):,} {what}, more than "
                          f"{ROSTER_MOVED_MOST}: {_eg(member(side[found[0]]))}")
         elif found:
@@ -2138,14 +2203,36 @@ def judge(files, installed, facts=None):
     a, b = len(old["legislators.txt"]), len(rows["legislators.txt"])
     sitting = people(rows["legislators.txt"])
     left = people(old["legislators.txt"]) - sitting
-    if a and abs(b - a) > ROSTER_TOLERANCE * a:
+    moved = (a and abs(b - a) > ROSTER_TOLERANCE * a) or (a and len(left) > ROSTER_TOLERANCE * a)
+    agrees, how = roster_named(rows["legislators.txt"], (facts or {}).get("members")) \
+        if moved or left or b != a else (False, "")
+    # ONLY OVER A FROZEN ROSTER OF THE TERM (the review of 5 October 2026): the
+    # term is still the session's, and its members are named from its own
+    # frozen roster once the installed one is not it (freeze_term.
+    # own_roster_terms). With none frozen the new roster would leave a third
+    # of the term's sponsors and ballots nameless, so it stops the night as
+    # it did before the person's decision. Asked here, of the folder the
+    # night installs into, unless `facts` says (roster_frozen).
+    frozen = (facts or {}).get("roster_frozen")
+    if frozen is None:
+        frozen = roster_frozen(".")
+    if moved and agrees and not frozen:
+        agrees, how = False, (how + "; but the installed term's own roster is not frozen "
+                              "(freeze_term.py --session), and its members would go unnamed")
+    if moved and agrees:
+        warnings.append(f"the roster changed: {b:,} members against {a:,} installed, {len(left):,} "
+                        f"of them gone; {how}, so it is taken")
+    elif a and abs(b - a) > ROSTER_TOLERANCE * a:
         stops.append(f"the roster is {b:,} members against {a:,} installed, more than "
-                     f"{ROSTER_TOLERANCE:.0%} apart")
+                     f"{ROSTER_TOLERANCE:.0%} apart" + (f" ({how})" if how else ""))
     elif a and len(left) > ROSTER_TOLERANCE * a:
         stops.append(f"{len(left):,} of the {a:,} members installed are not on the "
-                     f"database's roster, more than {ROSTER_TOLERANCE:.0%}")
+                     f"database's roster, more than {ROSTER_TOLERANCE:.0%}"
+                     + (f" ({how})" if how else ""))
+    if moved:
+        held["roster_named"] = bool(agrees)
     said, held["legislators.txt"], named = _hold_roster(old["legislators.txt"],
-                                                        rows["legislators.txt"])
+                                                        rows["legislators.txt"], agrees)
     stops += said
     told.update(named)
 
@@ -2196,14 +2283,17 @@ def judge(files, installed, facts=None):
                         f"arrived from the database's {view} view: entered while it was "
                         "being read, and in tonight's files")
 
-    # The session has not turned -- or, if it has, the night says so.
+    # The session has not turned -- or, if it has, the night says so: in the
+    # nightly's own words for a new term (5 October 2026), since that is what
+    # a newer year in the views most often is, and the box is the answer.
     newer = (facts or {}).get("newer_years") or {}
     if newer:
         years = sorted({y for d in newer.values() for y in d})
         warnings.append("the database holds session year "
                         + ", ".join(years) + ", newer than the installed files': tonight's "
-                        "files keep the installed files' years, and a new term is a person's "
-                        "decision")
+                        "files keep the installed files' years. A new term, or a new session "
+                        "year? Only a run by hand with New term ticked takes one, from the "
+                        "export, once the term being left is frozen")
     return {"stops": [str(s) for s in stops], "warnings": warnings, "differences": diff,
             "held": held, "told": {what: _name(named) for what, named in told.items()},
             "wider": sum(1 for s in stops if isinstance(s, _Wider))}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.38
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -54,6 +54,9 @@ THE GATES, before any deploy
     bill_pages     5% fewer static pages
     feeds          5% fewer feed files -- without this, a failed build_feeds
                    unpublishes every feed and no other count moves
+    terms          1% fewer bills in any term but the newest, by its own list
+                   (site/idx/<term>.json), on every run, the New term run
+                   included (5 October 2026, terms_fell)
 
 WHAT IT WRITES FOR THE MORNING
 
@@ -137,13 +140,19 @@ scheduled night never carries it. For that one run:
 
   the day's files     snapshot_gencourt.py --allow-shrink: tonight's files
                       are installed though they are much smaller, and the
-                      log names each one. An empty file is still refused
+                      log names each one. An empty file is still refused,
+                      but for the two roll-call files when every other file
+                      arrived whole and names the new term: none has voted
+                      yet (snapshot_gencourt.MAY_BE_EMPTY, 5 October 2026)
   the study views     taken however much smaller, though never empty
   the feeds           build_all.py --allow-prune, for build_feeds.py. On
                       GitHub's machine site/ starts empty and nothing is
                       stale, so there the census is what sees feeds fall
-  the census gates   a fall is reported and does not stop the night. The
-                      file ceiling still stops it
+  the census gates   a fall of the feeds is reported and does not stop the
+                      night (NEW_TERM_MAY_FALL, since 5 October 2026: until
+                      then any fall). Any other gate's fall, the sitting
+                      legislators' included, a finished term that lost bills
+                      and the file ceiling still stop it
   the weekly          the committee rosters, the committee list and the
                       study committees' views taken however much smaller,
                       never empty; the members who have left are a merge and
@@ -154,6 +163,22 @@ run that takes the smaller files and may publish them, and it waits for the
 person's approval in the "production" environment (nightly.yml says why that
 must outlast the approvals of ordinary nights). Ticked with Dry run, or
 without the fetch, it does nothing and says which boxes to tick.
+
+A NEW TERM IS SEEN BY ITS YEARS (5 October 2026). Size was the only sign of a
+turn, and on a copy a docket holding 2025, 2026 and 2027 grew, nothing shrank,
+and a scheduled night would have published the new term unasked. Now the
+snapshot refuses files that name a newer term than the installed ones,
+whatever their size (snapshot_gencourt.judge), and the page says so
+(NEW_TERM_TURN); the New term run passes --allow-turn as well. The switch is
+the first night the files show the new term, Organization Day's resolutions
+included (the person's decision of 5 October). And before that run asks
+anything, the term it would leave must be frozen as installed
+(new_term_ready, freeze_term.ready), or it stops and says to freeze first:
+after the turn that term is built every night from its frozen inputs and
+from nothing else. A file that turns on a later night -- LSRs.txt in January,
+the roll calls at the first vote -- goes in on an ordinary night when the
+copy it replaces is the finished term's frozen one, byte for byte; the page
+names it among the warnings.
 
 WHAT IT ACCEPTED IS KEPT ONLY ONCE ITS BUILD IS PUBLISHED (1 October 2026).
 The first version of this wrote tonight's counts to archive/census.json and
@@ -398,6 +423,10 @@ WRANGLER = "wrangler@4.140.0"
 # prefix and back (cloud_kit.json's "state" list). The refusal record travels
 # the same way, and is refusal.MARK itself.
 CENSUS = Path("archive/census.json")          # the last good build's counts and fingerprint
+# A finished term's rows that tonight's files still carried, counted and left
+# out by build_data, with the bills they name (build_data.LEFT_OUT, under its
+# --out; preflight holds the two names together). A night with none has none.
+LEFT_OUT = Path("data/left_out.json")
 VERDICT = Path("archive/last-night.json")     # what tonight did, and whether it was clean
 WEEKLY_VERDICT = Path("archive/last-weekly.json")
 
@@ -692,7 +721,56 @@ def census(site):
                           + sum(1 for _ in (site / "bills").glob("*.json"))),
             "bill_pages": sum(1 for _ in (site / "bill").rglob("*.html")),
             "feeds": sum(1 for _ in (site / "feed").rglob("*.xml")),
-            "files": sum(1 for p in site.rglob("*") if p.is_file())}
+            "files": sum(1 for p in site.rglob("*") if p.is_file()),
+            "terms": term_counts(site)}
+
+
+# THE CENSUS BY TERM (5 October 2026). The bills gate counts the whole index,
+# and a turn that lost 2025-2026 and gained 2027's first batch fell 6% --
+# which a New term run let through as a fall it expects. So every term is
+# counted from its own list, site/idx/<term>.json, and on EVERY run, the New
+# term run included, a term other than the newest that has lost more than
+# TERM_FALL_MOST of its bills stops the night. A little, not nothing: a
+# correction that merges a duplicate or withholds a record takes one or two
+# away. A baseline with no counts by term is no baseline for this gate.
+TERM_FALL_MOST = 0.01
+# What a New term run may let fall, of the gates above: the feeds, because the
+# last term's moving bills stop being current (215 of 703 on 3 October 2026).
+# Nothing else -- the design's word, and the review's of 5 October 2026: the
+# sitting legislators were let fall too, so a legislators.txt cut short on
+# the switch night passed every gate and was left to the approver. Organization
+# Day fills the seats an election left empty (406 of 424 sat on 5 October
+# 2026), so a real one does not fall past the 2% gate.
+NEW_TERM_MAY_FALL = ("feeds",)
+
+
+def term_counts(site):
+    """{term: bills} from each term's list, site/idx/<term>.json."""
+    out = {}
+    for p in sorted((site / "idx").glob("*.json")) if (site / "idx").is_dir() else []:
+        if re.fullmatch(r"\d{4}-\d{4}", p.stem):
+            try:
+                out[p.stem] = len(json.loads(p.read_text(encoding="utf-8")))
+            except Exception:
+                out[p.stem] = 0
+    return out
+
+
+def terms_fell(before, after):
+    """["2025-2026 fell from 2,243 to 19", ...]: each term but the newest the
+    build holds that lost more than TERM_FALL_MOST of its bills, or all."""
+    was, now = before.get("terms"), after.get("terms")
+    if not isinstance(was, dict) or not was or not isinstance(now, dict):
+        return []
+    newest = max(now) if now else ""
+    out = []
+    for t, n in sorted(was.items()):
+        if t == newest or not isinstance(n, int) or not n:
+            continue
+        m = now.get(t, 0)
+        if m < n * (1 - TERM_FALL_MOST):
+            out.append(f"{t} fell from {n:,} to {m:,}")
+    return out
 
 
 def fingerprinted(meta):
@@ -737,21 +815,37 @@ def tree_clean():
     return (r.returncode == 0 and not dirty), ("; ".join(dirty[:6]) or f"git exit {r.returncode}")
 
 
-def gated(before, after, force):
-    """(blocked, lines) for the census gates and the file ceiling."""
+def gated(before, after, force, new_term=False):
+    """(stop, blocked, lines) for the census gates, the terms and the file
+    ceiling. `force` (the laptop's --force) lets every gate's fall through
+    but the ceiling's; `new_term` only NEW_TERM_MAY_FALL's."""
     lines = [f"  {'':<14}{'before':>10}{'after':>10}   change"]
-    blocked = []
+    blocked, held = [], []
     for key, tol in GATES:
         b, n = before[key], after[key]
         if b and n < b * (1 - tol):
             blocked.append(f"{key} fell from {b:,} to {n:,}")
+            if new_term and key not in NEW_TERM_MAY_FALL:
+                held.append(blocked[-1])
         pct = f"{(n - b) / b * 100:+.1f}%" if b else "n/a"
         lines.append(f"  {key:<14}{b:>10,}{n:>10,}   {pct}")
+    fell = terms_fell(before, after)
+    blocked += fell
+    if not isinstance(before.get("terms"), dict) or not before.get("terms"):
+        lines.append(f"  {'terms':<14}{'-':>10}{len(after.get('terms') or {}):>10}   "
+                     "no counts by term to compare with")
+    else:
+        lines.append(f"  {'terms':<14}{len(before['terms']):>10}{len(after.get('terms') or {}):>10}   "
+                     + ("; ".join(fell) if fell else "no term but the newest fell"))
     ceiling = after["files"] >= FILE_CEILING
     lines.append(f"  {'files':<14}{before['files']:>10,}{after['files']:>10,}   "
                  f"ceiling {FILE_CEILING:,}")
     hard = [f"{after['files']:,} files is past the {FILE_CEILING:,} ceiling"] if ceiling else []
-    return (hard + ([] if force else blocked)), blocked, lines
+    if force:
+        return hard, blocked, lines
+    if new_term:
+        return hard + held + fell, blocked, lines
+    return hard + blocked, blocked, lines
 
 
 def main():
@@ -878,6 +972,18 @@ def main():
                 night.v["fetch"] = "not asked"
         else:
             ok, why = gc_quiet()
+            if ok and night and a.new_term:
+                # THE TERM BEING LEFT IS FROZEN FIRST (5 October 2026), before
+                # anything is asked: a New term run that took the new term's
+                # files over a term this disk does not hold whole would lose
+                # it, and the snapshot would only refuse it after asking.
+                ready, said = new_term_ready()
+                night.v["new_term"]["freeze"] = said
+                say(f"\n--- the term being left ---\n  {said}")
+                if not ready:
+                    say("\nSTOPPED: " + NEW_TERM_FREEZE)
+                    night.v["new_term"]["refused"] = REFUSED_FREEZE
+                    return 1
             if not ok:
                 say(f"\nFETCH DEFERRED: {why}")
                 if night:
@@ -902,7 +1008,7 @@ def main():
                         for tries in range(1, EMPTY_TRIES + 1):
                             asked = datetime.now()
                             rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."]
-                                     + (["--allow-shrink"] if a.new_term else []),
+                                     + (["--allow-shrink", "--allow-turn"] if a.new_term else []),
                                      "the day's bulk files"
                                      + (f", try {tries} of {last}" if tries > 1 else ""))
                             got = fetch_status(rc, a.archive, asked)
@@ -1001,6 +1107,13 @@ def main():
                         night.v["db_stopped_day"] = night.day
                     if a.new_term and rc == 0:
                         night.v["new_term"]["files"] = shrink_accepted(a.archive, asked)
+                    if rc == 0 and released_tonight(a.archive, asked):
+                        night.v["released"] = released_tonight(a.archive, asked)
+                    _rec = load_json(snapshot_day(a.archive, asked) / INSTALL_RECORD)
+                    if rc == 0 and isinstance(_rec, dict) and isinstance(_rec.get("empty"), dict):
+                        # The roll-call files, empty and taken as no roll
+                        # call yet (snapshot_gencourt.empty_is_data).
+                        night.v["empty_rollcalls"] = _rec["empty"]
                     if page_said:
                         night.v["data_page_said"] = page_said
                         night.v["data_page_try"] = page_at
@@ -1057,6 +1170,12 @@ def main():
                     night.v.update(build="passed", check_site="failed")
                 return 1
             rebuilt = True
+            # A finished term's rows in tonight's files, left out of the build
+            # (build_data.LEFT_OUT), go on the run's page: the count reached
+            # build_data's log and nothing else (the review of 5 October 2026).
+            left = load_json(LEFT_OUT)
+            if night and isinstance(left, dict) and left.get("rows"):
+                night.v["left_out"] = left
             after = census(site)
             if before is None:
                 stop, blocked = [], []
@@ -1067,7 +1186,7 @@ def main():
                 if after["files"] >= FILE_CEILING:
                     stop = [f"{after['files']:,} files is past the {FILE_CEILING:,} ceiling"]
             else:
-                stop, blocked, lines = gated(before, after, a.force or a.new_term)
+                stop, blocked, lines = gated(before, after, a.force, a.new_term)
             say("\n--- gates ---")
             for ln in lines:
                 say(ln)
@@ -1287,8 +1406,29 @@ STEP_WHY = {
 # the New term run says when it was also ticked as a dry run, which it will not
 # be. preflight holds both to the box's name in nightly.yml.
 NEW_TERM_BOX = "New term"
-NEW_TERM_HINT = (f"The General Court's files are much smaller: a new term? Run the nightly by "
-                 f"hand with {NEW_TERM_BOX} ticked.")
+# "OR A NEW SESSION YEAR" (5 October 2026): a term's second January shrinks
+# LSRs.txt to the new year's few requests and meets the same rule, and the
+# same box answers it. A new TERM is no longer seen by size at all: the
+# snapshot reads the files' years (NEW_TERM_TURN, below).
+NEW_TERM_HINT = (f"The General Court's files are much smaller: a new term, or a new session "
+                 f"year? Run the nightly by hand with {NEW_TERM_BOX} ticked.")
+# What an ordinary night says when the snapshot refused files that name a
+# newer term than the installed ones (snapshot_gencourt.judge, "turned"),
+# whatever their size. The person decided on 5 October 2026 that the switch
+# is the first night the files show the new term, even if Organization Day
+# brings only resolutions, and that it keeps their approval.
+NEW_TERM_TURN = (f"The General Court's files show a new term, which only a run by hand with "
+                 f"{NEW_TERM_BOX} ticked may take, once the term being left is frozen "
+                 "(freeze_term.py --session, sent with seed-kit).")
+# ... and when tonight's roster is another House's and the installed term's own
+# roster is not frozen (snapshot_gencourt.roster_moved, the review of 5
+# October 2026): Organization Day can seat the next House before the files
+# show the next term, and the term's members are named from its frozen
+# roster. No box takes it; a freeze lets the next night take it.
+NEW_TERM_ROSTER = ("The General Court's roster is a new House, and the term the site holds has "
+                   "no frozen roster of its own to name its members by, so nothing was "
+                   "installed. Freeze it (freeze_term.py --session, sent with seed-kit, while "
+                   "the installed roster is still the term's) and the next night takes the files.")
 # The other boxes that run needs, by the words each one starts with on GitHub's
 # "Run workflow" form: a run by hand has Dry run ticked and the fetch unticked
 # unless a person changes them, and the hint alone named neither. preflight
@@ -1310,6 +1450,14 @@ NEW_TERM_NO_FETCH = (f'{NEW_TERM_BOX} was ticked without "{FETCH_BOX}", so nothi
 # What a New term run's verdict records when its other boxes stopped it.
 REFUSED_DRY = "ticked with Dry run"
 REFUSED_NO_FETCH = "ticked without the fetch"
+# ... and when the term it would leave is not frozen as installed: it stops
+# before any request (new_term_ready).
+REFUSED_FREEZE = "stopped before any request: the term it would leave is not frozen as installed"
+NEW_TERM_FREEZE = (f"{NEW_TERM_BOX} was ticked, and the term the installed files hold is not "
+                   "frozen as they are, so nothing was asked for: installing a new term would "
+                   "lose what of the old one is not frozen. Freeze it (freeze_term.py --session, "
+                   f"sent with seed-kit) and run the nightly by hand with {NEW_TERM_BOX} ticked "
+                   "again.")
 # The weekly job's own two sentences: it has no Dry run box and publishes nothing.
 WEEKLY_NEW_TERM_HINT = ("The General Court's committee lists are much smaller: a new term? Run "
                         f'the weekly by hand with {NEW_TERM_BOX} and "{WEEKLY_FETCH_BOX}" ticked.')
@@ -1350,7 +1498,8 @@ def plain_why(v, weekly=False):
     if from_db(v) and fetch.startswith("empty"):
         fetch = "installed"
     if new_term.get("refused"):
-        why = NEW_TERM_NO_FETCH if new_term["refused"] == REFUSED_NO_FETCH else NEW_TERM_DRY
+        why = {REFUSED_NO_FETCH: NEW_TERM_NO_FETCH,
+               REFUSED_FREEZE: NEW_TERM_FREEZE}.get(new_term["refused"], NEW_TERM_DRY)
     elif v.get("preflight") == "failed":
         why = "The code checks failed, so nothing was fetched or built."
     elif fetch == "refused":
@@ -1370,6 +1519,16 @@ def plain_why(v, weekly=False):
                + (f' Their data page said{page_try(v)}: "{v["data_page_said"]}"'
                   if v.get("data_page_said") else "")
                + db_tried(v))
+    elif fetch.startswith("turned"):
+        # The files name a newer term than the installed ones: never taken on
+        # a night nobody started, whatever their size (5 October 2026).
+        why = (NEW_TERM_TURN + " " + NEW_TERM_HOW + unpublished_note(v)
+               + " The site still serves the last term's files as they were installed.")
+    elif fetch.startswith("roster"):
+        # Organization Day's roster before the term's own is frozen (the
+        # review of 5 October 2026): no box answers it, a freeze does.
+        why = (NEW_TERM_ROSTER + unpublished_note(v)
+               + " The site still serves the files as they were installed.")
     elif fetch.startswith("smaller"):
         # The shrink rule, which is right on every night but the one a term
         # turns over -- and that night is a person's to call.
@@ -1393,6 +1552,14 @@ def plain_why(v, weekly=False):
         # The state and the kit come down before the night; the rest after it.
         why = (f"The night could not start: {step}." if first in ("state-down", "kit-down")
                else f"The night ran, but {step}.")
+    elif str(v.get("gates") or "").startswith("blocked:") and \
+            re.search(r"\d{4}-\d{4} fell from", v["gates"]):
+        # A term other than the newest has lost bills (terms_fell): never a
+        # new term's doing, so no box answers it.
+        why = ("The site was built, but a finished term has fewer bills than the last good "
+               "night's build had, and no run may publish that, New term or not: "
+               + "; ".join(re.findall(r"\d{4}-\d{4} fell from [\d,]+ to [\d,]+", v["gates"]))
+               + ". The term's frozen inputs and its build are the place to look.")
     elif str(v.get("gates") or "").startswith("blocked:") and "fell from" in v["gates"]:
         # The census gates: a build that counts far less than the last good
         # night's. Wrong on the one night a term turns over, as the shrink
@@ -1832,7 +1999,30 @@ def fetch_status(rc, archive, since=None):
                     "back as something that is neither data nor an empty file")
         return f"empty: {len(errs)} of {len(man)} files came back with no data in them"
     rec = load_json(day / INSTALL_RECORD)
+    # A NEW TERM, BY ITS YEARS (5 October 2026): before the size, because a
+    # turn need not shrink anything, and one that does is still a turn.
+    turned = rec.get("turned") if isinstance(rec, dict) and not rec.get("installed") else None
+    if isinstance(turned, dict) and turned.get("to"):
+        return (f"turned: {', '.join(turned.get('files') or []) or 'the files'} name "
+                f"{turned['to']}, and the installed files {turned.get('from') or '?'}, so none "
+                "was installed"
+                + (": the term they would leave is not frozen as installed"
+                   if rec.get("refused") == "freeze" else ""))
+    # A NEW ROSTER BEFORE THE TERM'S OWN IS FROZEN (the review of 5 October
+    # 2026; snapshot_gencourt.roster_moved): nothing installed, whatever else
+    # tonight's files hold.
+    roster = rec.get("roster") if isinstance(rec, dict) and not rec.get("installed") else None
+    if isinstance(roster, dict) and rec.get("refused") == "roster":
+        return (f"roster: legislators.txt is another roster, {roster.get('moved', '?')} of the "
+                f"{roster.get('installed', '?')} members installed differ, and "
+                f"{roster.get('term') or 'the term'}'s own roster is not frozen, so none was "
+                "installed")
     small = rec.get("shrunk") if isinstance(rec, dict) and not rec.get("installed") else None
+    if small and isinstance(small, list):
+        # Not a file whose installed copy was a finished term's frozen one:
+        # that one was let through (snapshot_gencourt.frozen_copy).
+        freed = {x.get("name") for x in (rec.get("released") or []) if isinstance(x, dict)}
+        small = [x for x in small if not isinstance(x, dict) or x.get("name") not in freed]
     if small and isinstance(small, list):
         names = shrink_sizes(small)
         return (f"smaller: {len(names)} of the files much smaller than the copies installed "
@@ -1849,8 +2039,66 @@ def shrink_accepted(archive, since=None):
     names = shrink_sizes(small)
     if not isinstance(rec, dict):
         return "the snapshot left no record of what it installed"
-    return (f"accepted {len(names)} much smaller than the copies installed: {'; '.join(names)}"
-            if names else "none of the files was much smaller")
+    turned = rec.get("turned") if isinstance(rec.get("turned"), dict) else None
+    return ((f"accepted {len(names)} much smaller than the copies installed: {'; '.join(names)}"
+             if names else "none of the files was much smaller")
+            + (f"; the new term taken, {turned.get('from')} to {turned.get('to')}"
+               if turned and turned.get("to") else ""))
+
+
+def released_tonight(archive, since=None):
+    """[[file, term]] the night's snapshot installed though much smaller,
+    because the copy each replaced was that finished term's frozen one; []
+    when it installed nothing."""
+    rec = load_json(snapshot_day(archive, since) / INSTALL_RECORD)
+    if not isinstance(rec, dict) or not rec.get("installed"):
+        return []
+    return [[str(x.get("name")), str(x.get("term"))] for x in rec.get("released") or []
+            if isinstance(x, dict) and x.get("name")]
+
+
+def new_term_ready(root="."):
+    """(ok, sentence): whether a New term run may ask for tonight's files.
+
+    Only where the installed files are in the LAST session of their term is
+    the run's turn a new term, and then that term must be frozen as
+    installed (freeze_term.ready: its docket and roll calls byte for byte,
+    its views under db/term/). Before that the run can only be taking a new
+    session year, which loses nothing and needs no freeze; files that name a
+    new term would still be refused by the snapshot unless the term were
+    frozen.
+
+    THE LAST SESSION, NOT A DOCKET OF TWO YEARS (the review of 5 October
+    2026). This asked whether the docket held both years of its term, and it
+    does from the November of the first: 3,498 of today's 2026 rows are dated
+    in 2025, the first 328 on 7 November 2025. So in a term's second January,
+    when RollCallSummary.txt -- one session year -- meets its first vote of
+    the new year and shrinks past the 30% rule, the box every scheduled night
+    pointed to would have stopped for a freeze of an unfinished term. The
+    files are in the last session when LSRs.txt and RollCallSummary.txt,
+    which each hold one session year, both name the term's second year and
+    nothing else: 2026 on 2 December 2026, 2027 in January 2028."""
+    import freeze_term
+    import proceedings as P
+    import snapshot_gencourt as SG
+    term = P.session_term(root)
+    docket = Path(root) / "Docket.txt"
+    years = SG.years_in(docket.read_bytes(), "Docket.txt") if docket.exists() else set()
+    second = max(freeze_term.term_years(term)) if term else ""
+    last = {}
+    for name in ("LSRs.txt", "RollCallSummary.txt"):
+        p = Path(root) / name
+        last[name] = SG.years_in(p.read_bytes(), name) if p.exists() else set()
+    if not term or not freeze_term.term_years(term) <= years or \
+            any(ys != {second} for ys in last.values()):
+        return True, ("the installed files are not in the last session of "
+                      + (term or "a term") + " (LSRs.txt "
+                      + (", ".join(sorted(last["LSRs.txt"])) or "no year")
+                      + ", RollCallSummary.txt "
+                      + (", ".join(sorted(last["RollCallSummary.txt"])) or "no year")
+                      + "): a new session year needs no freeze, and the snapshot still refuses "
+                        "a new term's files unless the term they leave is frozen")
+    return freeze_term.ready(Path(root), term)
 
 
 def installed_day(archive, docket):
@@ -2037,6 +2285,10 @@ def from_database(a, night, tries, since):
             return stop("short", str(e))
         # The ceilings are a night's, and the installed files may be older.
         facts["nights"] = nights_since(a.archive, was["Docket.txt"], night.day)
+        # Tonight's Members.txt, from the website: a changed roster is taken
+        # when it names the database's (dayfiles_from_db.roster_named, the
+        # person's decision of 5 October 2026). Never written to the verdict.
+        facts["members"] = tonights_members(a.archive, since)
         result = DF.judge(files, was, facts)
         block.update(years=facts["years"], files=facts["rows"],
                      differences=result["differences"], held=result.get("held"),
@@ -2730,6 +2982,28 @@ class Night:
                        f"{int(self.v.get('fetch_tries') or 1)}: it came back empty first, and "
                        "the General Court's database, turned to then, installed nothing ("
                        + DB_WHY[self.v["day_files"]["why_code"]] + ")")
+        empty = self.v.get("empty_rollcalls")
+        if isinstance(empty, dict) and empty.get("files"):
+            out.append(f"{' and '.join(empty['files'])} came back empty and were taken as files "
+                       f"with no roll call in them yet: {str(empty.get('why') or '')[:150]}")
+        left = self.v.get("left_out")
+        if isinstance(left, dict) and left.get("rows"):
+            # Rows of a finished term in tonight's files, counted and left out
+            # (build_data): a late correction to that term would be one, and
+            # whether its freeze should take it is a person's to decide.
+            bills = [str(b) for b in left.get("bills") or []]
+            out.append(f"rows of {', '.join(left.get('terms') or []) or 'a finished term'} in "
+                       "tonight's files were left out, the term being built from its freeze: "
+                       + ", ".join(f"{k} {v:,}" for k, v in sorted(left["rows"].items()))
+                       + (f" ({', '.join(bills[:4])}{' ...' if len(bills) > 4 else ''})"
+                          if bills else "")
+                       + f"; {LEFT_OUT} lists them")
+        for name, term in (self.v.get("released") or []):
+            # A file that turned after the switch, taken because the copy it
+            # replaced is a finished term's frozen one (snapshot_gencourt).
+            out.append(f"{name} came back much smaller and was taken: the copy it replaced "
+                       f"is {term}'s, frozen byte for byte, and that term is built from the "
+                       "frozen copy")
         if study_held(self.v):
             # Short: the run's page cuts a note off at 300 characters.
             out.append("the study committees' meetings were not asked for: " + sql_hold_said())

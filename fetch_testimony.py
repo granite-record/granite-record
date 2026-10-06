@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Collect House online testimony sign-ins: who registered support or opposition
 on each bill, and who filed written testimony.
+
+RETIRED (5 October 2026). Nothing reads testimony.json any more and build_all
+no longer runs this. The person agreed to retire it on the condition that the
+counts stay retrievable another way, and they do: the database's own record
+(fetch_testimony_db.py, testimony_db.json) held all 565 of this file's bills
+and 1,454 more, so the site never showed a count from here, and
+testimony_from_db.py rebuilds those 2,019 bills from the dump, every count
+and hearing equal -- a finished term from its frozen copy too. Kept, the file
+was keyed on the bill number alone, and from the turn 2027's bills would have
+shown 2025-2026's sign-ins. This script is left as it was, for its reading of
+the form; it asks gc.nh.gov a request per bill, and is not to be run.
 
     python3 fetch_testimony.py --probe        # DO THIS FIRST
     python3 fetch_testimony.py --manifest verification_manifest.csv --limit 5

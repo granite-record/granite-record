@@ -168,6 +168,10 @@ _*.py
 # 2.8 million rows and about 400 MB. Re-fetchable in one run, and it changes
 # whenever the General Court updates it.
 db/
+# ---- a finished term's day files, frozen before the files turn over --------
+# freeze_term.py --session: the General Court's files, as installed, which
+# git does not track either; the kit carries them (cloud_kit.json).
+frozen/
 
 # ---- parsed out of the calendars by calendar_meetings.py ----------------
 # 21,611 rows, 6 MB, rebuilt from calendars/ in about a minute with no network.

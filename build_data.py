@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.50
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -86,8 +86,10 @@ def rows(path, expect=None):
     return out
 
 
-def rows_all(d, base, expect=None):
-    """base.txt plus every rollcalls/base_<year>.txt beside it.
+def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
+    """base.txt plus every rollcalls/base_<year>.txt beside it -- or beside
+    `archive`, where the session's own files are a frozen term's and the past
+    years' are where they always were.
 
     The General Court publishes one bulk file per CURRENT session, so the
     download alone holds no roll call older than this year. fetch_rollcalls_db
@@ -113,8 +115,18 @@ def rows_all(d, base, expect=None):
     then take all of 2026 from those few.
     """
     out = rows(d / f"{base}.txt", expect)
+    extra = Path(archive or d) / "rollcalls"
+    # A finished term's year whose own file is here comes from that file and
+    # not from the session's (5 October 2026): rows of a finished term in
+    # new files are counted and left out, never merged. Until the turn the
+    # session's year is no finished one, and the download is read first.
+    kept = {y for y in (finished or ()) if (extra / f"{base}_{y}.txt").exists()}
+    if kept:
+        n = len(out)
+        out = [r for r in out if r[0] not in kept]
+        if left is not None and n > len(out):
+            left[f"{base}.txt"] += n - len(out)
     seen = {tuple(r[:3]) for r in out}
-    extra = d / "rollcalls"
     if extra.is_dir():
         for f in sorted(extra.glob(f"{base}_*.txt")):
             got = rows(f, expect)
@@ -305,7 +317,7 @@ JOURNAL_BILLS = "journal_bills.json"
 JOURNAL_SOURCE = "House Journal"
 
 
-def add_journal_bills(by_term, path=JOURNAL_BILLS):
+def add_journal_bills(by_term, path=JOURNAL_BILLS, skip=()):
     """{term: {bill: record}}: the House's withdrawn bills, from journal_bills.py,
     added to `by_term` -- and only where the General Court's own files have
     nothing for them.
@@ -345,6 +357,10 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS):
         return {}
     added, kept, skipped = defaultdict(dict), [], []
     for term, byb in sorted(data.items()):
+        if term in skip:
+            # A finished term frozen and built whole, its withdrawn bills
+            # with it (finished_builds).
+            continue
         if term not in by_term:
             skipped += [f"{b} {term} (no such term here)" for b in byb]
             continue
@@ -1355,25 +1371,118 @@ def status_for_session(raw, bills):
     return out, missing
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default=".")
-    ap.add_argument("--out", default="data")
-    a = ap.parse_args()
-    d, out = Path(a.dir), Path(a.out)
-    out.mkdir(parents=True, exist_ok=True)
-    report = []
+# Rows of a finished term that the session's files still carried, counted and
+# left out by main(), with the bills they name: <out>/left_out.json, which the
+# nightly reads after the build and puts on the run's page (nightly.LEFT_OUT).
+LEFT_OUT = "left_out.json"
 
-    # ---------------------------------------------------------- counties ---
-    counties = {}
-    for r in rows(d / "Counties.txt", 3):
-        counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
-    print(f"counties: {len(counties)}")
 
-    # ------------------------------------------------------- legislators ---
+def build_frozen_terms(d, out):
+    """--frozen-terms: each frozen term older than the session's, built from
+    its own inputs into <out>/frozen/<term>/, one run of this script apiece.
+    0 when there is nothing to build or every term built.
+
+    A FINISHED TERM IS BUILT FROM WHAT IT WAS, EVERY NIGHT (5 October 2026).
+    Once the General Court's files turn to 2027-2028 they hold no 2025-2026,
+    and this script, reading them, would write none: on a copy it wrote
+    eighteen archived terms and 78 bills of 2027 and exited 0. freeze_term.py
+    keeps the term's day files as installed (frozen/<term>/day/) and the
+    database's view of it (db/term/<term>/), and this builds the term from
+    them as the session files once built it -- the same code, the same
+    reading of member_corrections.json, bill_status.json and the rest -- so
+    the published slice is what it was the day before the turn, and a
+    correction made after it still reaches the term. The person chose that
+    over freezing the built output on 5 October 2026. Until the session's
+    files move on, a term frozen early waits and is not built here: the
+    session files are still its source."""
+    import subprocess
+    import freeze_term
+    sess = P.session_term(d)
+    frozen = freeze_term.frozen_terms(d)
+    terms = [t for t in frozen if sess and t < sess]
+    if not terms:
+        print("no finished term is frozen here"
+              + (f": {', '.join(frozen)} frozen, and the session's files are still "
+                 f"{sess}'s, which build it" if frozen else "")
+              + " -- nothing to build")
+        return 0
+    for t in terms:
+        bad = freeze_term.intact(d, t) + freeze_term.views_intact(d, t)
+        if bad:
+            print(f"THE FROZEN TERM {t} IS NOT WHOLE, and is not built: " + "; ".join(bad))
+            return 1
+        r = subprocess.run([sys.executable, __file__, "--dir", str(d), "--out",
+                            str(Path(out) / "frozen" / t), "--frozen", t],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        said = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+        for ln in said[-4:]:
+            print(f"  {t}: {ln}")
+        if r.returncode:
+            print(f"THE FROZEN TERM {t} DID NOT BUILD (exit {r.returncode}): "
+                  + ((r.stderr or "").strip().splitlines() or ["no error text"])[-1])
+            return r.returncode
+    return 0
+
+
+def frozen_record(d, term):
+    """What a frozen term's build is built from: the sha256 of its two
+    manifests, which change whenever freeze_term writes either."""
+    import hashlib
+    out = {}
+    for key, p in (("day_files", Path(d) / "frozen" / term / "manifest.json"),
+                   ("views", Path(d) / "db" / "term" / term / "manifest.json")):
+        out[key] = hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
+    return out
+
+
+def finished_builds(d, out):
+    """{term: (bills, sponsors)} of every frozen term older than the session's,
+    from <out>/frozen/<term>/ as build_frozen_terms left it. A term frozen and
+    not built -- or built from another freeze than the one on disk -- stops
+    the run: without it that term would leave the site with nothing failing,
+    which is what this was written against."""
+    import freeze_term
+    sess = P.session_term(d)
+    got = {}
+    for t in freeze_term.frozen_terms(d):
+        if not sess or t >= sess:
+            continue
+        base = Path(out) / "frozen" / t
+        try:
+            rec = json.loads((base / "frozen.json").read_text(encoding="utf-8"))
+            bills = json.loads((base / "bills.json").read_text(encoding="utf-8"))[t]
+            sponsors = json.loads((base / "sponsors.json").read_text(encoding="utf-8")).get(t) or {}
+        except (OSError, ValueError, KeyError):
+            rec, bills, sponsors = None, None, None
+        if not isinstance(rec, dict) or rec.get("built_from") != frozen_record(d, t) or not bills:
+            sys.exit(f"THE FROZEN TERM {t} HAS NOT BEEN BUILT from the freeze on disk ({base}). "
+                     "Run build_data.py --frozen-terms first -- build_all.py does, in the step "
+                     f"before this one. Without it {t} would leave the site.")
+        got[t] = (bills, sponsors)
+    return got
+
+
+def read_roster(folder, counties, report=None):
+    """{id: member} from legislators.txt in `folder`, with each member's
+    committees from Members.txt beside it: the roster as build_data reads it.
+    `report` is the run's list of findings, and None reads quietly -- the
+    frozen roster of a term (own_roster_terms), read beside the sitting one.
+
+    OUT OF main() (the review of 5 October 2026), unchanged, so that a
+    frozen term's roster is read by the same lines as the installed one
+    rather than by a second parser that would drift from it."""
+    quiet = report is None
+
+    def say(s):
+        if not quiet:
+            print(s)
+
+    def note(s):
+        if not quiet:
+            report.append(s)
     legs = {}
     bad_party = Counter()
-    for r in rows(d / "legislators.txt", 15):
+    for r in rows(Path(folder) / "legislators.txt", 15):
         pcode = (r[8] or "").upper()
         if r[8] and r[8] != pcode:
             bad_party[r[8]] += 1          # the file contains a lowercase 'r'
@@ -1436,7 +1545,7 @@ def main():
     # id, so it cannot be joined on the key everything else uses -- but both it
     # and legislators.txt carry the work email, which is unique. Falling back to
     # a name match catches the few where an address differs.
-    mp = d / "Members.txt"
+    mp = Path(folder) / "Members.txt"
     if mp.exists():
         by_email = {m["email"].lower(): m for m in legs.values() if m.get("email")}
         by_name = {f"{m['last']}|{m['first']}".lower(): m for m in legs.values()}
@@ -1466,22 +1575,132 @@ def main():
                 m["phone"] = get("phone")
                 m["elected_status"] = get("electedstatus")
         withc = sum(1 for m in legs.values() if m.get("committees"))
-        print(f"committee assignments: {matched} members matched, "
+        say(f"committee assignments: {matched} members matched, "
               f"{withc} with at least one committee")
         if unmatched:
-            report.append(f"{unmatched} rows in Members.txt matched nobody in the "
+            note(f"{unmatched} rows in Members.txt matched nobody in the "
                           "roster \u2014 expected, since that file also lists members "
                           "who have left")
         allc = Counter(c for m in legs.values() for c in m.get("committees", []))
-        report.append(f"{len(allc)} distinct committees named across the roster; "
+        note(f"{len(allc)} distinct committees named across the roster; "
                       f"largest is {allc.most_common(1)[0][0]} with "
                       f"{allc.most_common(1)[0][1]} members" if allc else
                       "no committee assignments parsed \u2014 check Members.txt")
 
     house = sum(1 for m in legs.values() if m["chamber"] == "H")
-    print(f"legislators: {len(legs)}  ({house} House, {len(legs)-house} Senate)")
+    say(f"legislators: {len(legs)}  ({house} House, {len(legs)-house} Senate)")
     if bad_party:
-        report.append(f"party codes with inconsistent case, normalised: {dict(bad_party)}")
+        note(f"party codes with inconsistent case, normalised: {dict(bad_party)}")
+    return legs
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dir", default=".")
+    ap.add_argument("--out", default="data")
+    ap.add_argument("--frozen", metavar="TERM", default="",
+                    help="build TERM alone from its frozen inputs (frozen/TERM/day/ and "
+                         "db/term/TERM/), writing only its bills and sponsors to --out")
+    ap.add_argument("--frozen-terms", action="store_true",
+                    help="build every frozen term older than the session's, each into "
+                         "<out>/frozen/<term>/, and nothing else")
+    a = ap.parse_args()
+    d, out = Path(a.dir), Path(a.out)
+    if a.frozen_terms:
+        return build_frozen_terms(d, out)
+    out.mkdir(parents=True, exist_ok=True)
+    report = []
+    # WHERE THE SESSION'S OWN FILES ARE. The fourteen the night installs are
+    # read from here, and for a frozen term from its freeze; everything else
+    # -- the database's past views, the roll calls of past years, the
+    # journals' withdrawn bills, the status pages, the corrections a person
+    # made -- from --dir and the working folder as ever.
+    frozen = a.frozen
+    sd = d / "frozen" / frozen / "day" if frozen else d
+    if frozen:
+        if not P.TERM_RE.match(frozen) or not (sd / "Docket.txt").exists():
+            sys.exit(f"no frozen day files for {frozen!r} at {sd}")
+        if P.session_term(sd) != frozen:
+            sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
+                     f"not {frozen}'s")
+        print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
+    # ROWS OF A FINISHED TERM IN THE SESSION'S FILES ARE COUNTED AND LEFT OUT,
+    # NEVER MERGED (5 October 2026). The General Court's files do not all turn
+    # on one night, and a turned file can still carry the old term's last rows:
+    # on a copy, ten 2026 docket rows left in a 2027 Docket.txt made
+    # 2025-2026 "already built from session files", so the archive was
+    # skipped for the whole term and it shrank to 19 bills; their sponsors
+    # were filed under 2027-2028; and a docket holding 2025, 2026 and 2027
+    # together keyed the new term's stubs by number onto 2025's. A term frozen
+    # and older than the session's is built from its freeze alone
+    # (finished_builds), so its rows here are dropped as they are read, each
+    # file's count said. One rule for every place that would otherwise replace
+    # or skip a whole term on meeting one such row: senate_hearing_reports,
+    # fetch_testimony_db, narrative, build_proceedings and build_bill_versions
+    # keep it too. And an older term's rows beside the session's with NO
+    # freeze stop the run: that is a turn nobody froze, and building on would
+    # lose the term or mix the two.
+    import freeze_term
+    sess = P.session_term(sd)
+    gone_terms = [] if frozen else [t for t in freeze_term.frozen_terms(d) if sess and t < sess]
+    gone_years = {y for t in gone_terms for y in freeze_term.term_years(t)}
+    left_out, left_named = Counter(), set()
+    for _name, _col in freeze_term.YEAR_COLUMN.items():
+        if not (sd / _name).exists():
+            continue
+        _older = sorted({r[_col] for r in rows(sd / _name) if len(r) > _col
+                         and re.fullmatch(r"\d{4}", r[_col]) and sess
+                         and P.term_of(r[_col]) < sess and r[_col] not in gone_years})
+        if _older:
+            sys.exit(f"THE SESSION'S FILES HOLD {', '.join(_older)} BESIDE {sess} ({_name}), "
+                     f"and {P.term_of(_older[0])} is not frozen: a turn nobody froze. "
+                     "freeze_term.py --session on the last files of that term, before the switch; "
+                     "building on would lose the term or mix the two.")
+
+    # ---------------------------------------------------------- counties ---
+    counties = {}
+    for r in rows(sd / "Counties.txt", 3):
+        counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
+    print(f"counties: {len(counties)}")
+
+    # ------------------------------------------------------- legislators ---
+    legs = read_roster(sd, counties, report)
+
+    # THE TERM'S OWN MEMBERS, ONCE THE ROSTER IS NOT ITS OWN (the review of 5
+    # October 2026). Organization Day seats the next House, and the General
+    # Court's roster may show it nights before its files show the next term:
+    # a database night takes it when tonight's Members.txt agrees, and an
+    # export whose legislators.txt turns first brings it as it comes. The term
+    # is still the session's then, and built from these files: on a copy with
+    # the next House installed, 1,392 of its bills drew sponsors with no party
+    # ("Former member #10578") and 477 tallied ballots under none. And
+    # LsrsOnly.txt lists sitting members only -- none of its 353 was off the
+    # roster on 5 October 2026, where LsrSponsors.txt kept 21 -- so it would
+    # lose every departed member's sponsorships with them. So while the
+    # session's own term is frozen and the installed roster is not its own
+    # (freeze_term.own_roster_terms), the term's sponsor files and its roster
+    # are the freeze's: its sponsors are read and named as they were before
+    # Organization Day, and the members who left are named on its ballots
+    # from that roster (below), as a finished term's are. Its docket and roll
+    # calls are still the installed ones, and the sitting roster
+    # (legislators.json) is the installed one. Before any of that, nothing
+    # here moves.
+    roster_terms = [] if frozen else freeze_term.own_roster_terms(d)
+    year_legs = {}
+    for _t in roster_terms:
+        _day = d / "frozen" / _t / "day"
+        _fc = {r[0]: {"name": r[1], "abbr": r[2].rstrip(".")} for r in rows(_day / "Counties.txt", 3)}
+        _roster = read_roster(_day, _fc)
+        for _y in freeze_term.term_years(_t):
+            year_legs[_y] = _roster
+    md, term_legs, sess_roster = sd, legs, {}
+    if sess in roster_terms:
+        md = d / "frozen" / sess / "day"
+        sess_roster = year_legs[max(freeze_term.term_years(sess))]
+        term_legs = {**legs, **sess_roster}
+        print(f"the installed roster is not {sess}'s: "
+              f"{len(set(term_legs) - set(legs)):,} of its members hold no seat in it, and "
+              f"its members and sponsor files are read from {md}")
 
     # ------------------------------------------------------------ towns ---
     # countyCode + district -> towns, and the reverse.
@@ -1513,7 +1732,7 @@ def main():
         print(f"districts: {len(towns)} towns from districts.json "
               f"({nflot} floterial town-district pairs)")
 
-    for r in ([] if dj else rows(d / "HouseDistricts.txt", 4)):
+    for r in ([] if dj else rows(sd / "HouseDistricts.txt", 4)):
         cc, dist, ward, town = r[0].zfill(2), r[1].lstrip("0") or "0", r[2], r[3]
         key = f"{cc}-{dist}"
         seats[key].append({"town": town, "ward": ward})
@@ -1591,15 +1810,19 @@ def main():
 
     # --------------------------------------------------------- subjects ---
     subjects = {r[1]: {"id": r[0], "code": r[1], "name": r[2]}
-                for r in rows(d / "SubjectCodes.txt", 3)}
+                for r in rows(sd / "SubjectCodes.txt", 3)}
     committees = {r[0]: {"code": r[0], "name": r[1], "abbr": r[2]}
-                  for r in rows(d / "Committees.txt", 3)}
+                  for r in rows(sd / "Committees.txt", 3)}
     print(f"subjects: {len(subjects)}   committees: {len(committees)}")
 
     # ------------------------------------------------------------ bills ---
     bills, by_lsr = {}, {}
-    for r in rows(d / "LSRs.txt"):
+    for r in rows(sd / "LSRs.txt"):
         if len(r) < 33:
+            continue
+        if r[0] in gone_years:
+            left_out["LSRs.txt"] += 1
+            left_named.add(f"{r[0]} {r[10].upper()}")
             continue
         bill = r[10].upper()
         if not bill:
@@ -1635,29 +1858,45 @@ def main():
     # searchable and has a history page even without a subject or committee.
     from_lsrs = len(bills)
     docket_bills, docket_titles = {}, {}
-    dp = d / "Docket.txt"
+    dp = sd / "Docket.txt"
     if dp.exists():
         with open(dp, encoding="utf-8-sig", errors="replace") as fh:
             for line in fh:
                 f = line.split("|")
                 if len(f) > 5 and f[3].strip():
+                    if f[0].strip() in gone_years:
+                        left_out["Docket.txt"] += 1
+                        left_named.add(f"{f[0].strip()} {f[3].strip().upper()}")
+                        continue
                     b = f[3].strip().upper()
                     docket_bills.setdefault(b, (f[0].strip(), f[1].strip()))
     # Roll call rows carry a title, which is better than nothing for a stub.
-    rp = d / "RollCallSummary.txt"
+    rp = sd / "RollCallSummary.txt"
     if rp.exists():
         with open(rp, encoding="utf-8-sig", errors="replace") as fh:
             for line in fh:
                 f = line.split("|")
-                if len(f) > 12 and f[4].strip() and f[12].strip():
+                if len(f) > 12 and f[4].strip() and f[12].strip() \
+                        and f[0].strip() not in gone_years:
                     docket_titles.setdefault(f[4].strip().upper(), f[12].strip())
     # Titles recovered from the legacy docket pages for bills the current
     # session's files no longer describe.
+    #
+    # ONLY BY TERM (5 October 2026). The file was read by bill number alone,
+    # as fetch_bill_titles.py once wrote it: absent today, but a flat copy put
+    # back would give every 2027 stub the 2025 title of its number. A file
+    # keyed on the term gives the session's term its own slice; a flat one is
+    # not read at all, and preflight refuses one.
     fetched_titles = {}
     tp = Path("bill_titles.json")
     if tp.exists():
-        fetched_titles = json.loads(tp.read_text(encoding="utf-8"))
-        print(f"recovered titles on file: {len(fetched_titles):,}")
+        _titles = json.loads(tp.read_text(encoding="utf-8"))
+        if P.term_keyed(_titles):
+            fetched_titles = _titles.get(sess) or {}
+            print(f"recovered titles on file for {sess}: {len(fetched_titles):,}")
+        else:
+            print(f"  {tp} is keyed on the bill number alone, so it is not read: a title of "
+                  "one term would reach a bill of another. It must be {term: {bill: title}}.")
 
     added = 0
     for b, (yr, lsr) in docket_bills.items():
@@ -1685,7 +1924,15 @@ def main():
     # 1,387 each, as do the LSRs. So it fills the same fields from the same
     # record, only where a bill has none, and only for the bill whose LSR it
     # names.
-    lp = d / "db" / "Legislation.psv"
+    #
+    # AND ONLY OF THE BILL'S OWN TERM (5 October 2026). The join was on the
+    # number and the LSR and ignored the row's session year (column 2), and
+    # between consecutive terms 0 to 5 bills share both -- 2023-2024 and
+    # 2025-2026 share HB 1066 (LSR 2314) and SB 83 (LSR 994). After the turn
+    # the view may still hold the last term while the docket's stubs are the
+    # new one's, and a 2027 stub with no committee or subject would have taken
+    # 2025's. It changes nothing today: the view and the bills are one term.
+    lp = (d / "db" / "term" / frozen if frozen else d / "db") / "Legislation.psv"
     if lp.exists():
         leg_filled = Counter()
         with open(lp, encoding="utf-8", errors="replace") as fh:
@@ -1696,6 +1943,9 @@ def main():
                 rec = bills.get(f[14].strip().upper())
                 if not rec or str(rec.get("lsr_num") or "").lstrip("0") != \
                         f[3].strip().lstrip("0"):
+                    continue
+                if P.term_of(f[2].strip()) != P.term_of(str(rec.get("lsr_year") or "")):
+                    leg_filled["another term's row, not taken"] += 1
                     continue
                 hc, sc, subj = f[18].strip(), f[26].strip(), f[12].strip()
                 if hc and not rec.get("house_committee"):
@@ -1748,13 +1998,15 @@ def main():
     # omits entirely.
     #   26-2001|944|1190|2026|Sponsor|SB416|H|relative to the pooling of tips.
     sponsors = defaultdict(list)
-    lo = d / "LsrsOnly.txt"
+    lo = md / "LsrsOnly.txt"
     lo_rows = [r for r in rows(lo, 8)] if lo.exists() else []
+    left_out["LsrsOnly.txt"] += sum(1 for r in lo_rows if r[3] in gone_years)
+    lo_rows = [r for r in lo_rows if r[3] not in gone_years]
     if lo_rows:
         seen = set()
         for r in lo_rows:
             bill, mid, role = r[5].upper(), r[1], r[4]
-            m = legs.get(mid)
+            m = term_legs.get(mid)
             if not bill or (bill, mid) in seen:
                 continue
             seen.add((bill, mid))
@@ -1805,7 +2057,10 @@ def main():
     # LsrsOnly.txt does not cover every bill -- HB197 and HB104 came back with
     # no sponsors at all. So fall back to LsrSponsors.txt per bill rather than
     # picking one file for everything.
-    for r in rows(d / "LsrSponsors.txt", 5):
+    for r in rows(md / "LsrSponsors.txt", 5):
+        if r[0] in gone_years:
+            left_out["LsrSponsors.txt"] += 1
+            continue
         bill = by_lsr.get((r[0], r[1].zfill(4)))
         if not bill:
             missing_lsr += 1
@@ -1816,7 +2071,7 @@ def main():
             if bill in lo_noprime and r[4] == "1":
                 lo_flagged_prime[bill] = r[3]
             continue
-        m = legs.get(r[3])
+        m = term_legs.get(r[3])
         if not m:
             missing_member += 1
             # A PRIME dropped here is not just a missing name, it is a wrong
@@ -2030,6 +2285,35 @@ def main():
     if _new:
         print(f"voters named only by the solver, from those same pages: {_new:,}")
 
+    # A FINISHED TERM'S MEMBERS, FROM ITS FROZEN ROSTER (5 October 2026).
+    # Organization Day seats a new House, and a third of the members who
+    # served in 2025-2026 then hold no seat. Nothing above knows those who
+    # left at an election until the laptop's fetchers name them, so on the
+    # rehearsal of the turn 477 bills' roll calls tallied their ballots under
+    # no party and 1,392 bills drew their sponsors without one. The roster
+    # frozen with the term (freeze_term.py) is the term's own record of them:
+    # their name, party, county and district as they sat. It fills only where
+    # nothing above names a member, and the corrections below still come last.
+    # Every term whose own roster is frozen and not the installed one
+    # (roster_terms): the session's too, once Organization Day has turned
+    # the roster before the files show the next term (the review of 5
+    # October 2026).
+    _frozen_gave, _frozen_named = 0, set()
+    for _t in roster_terms:
+        _counties = {r[0]: r[1] for r in rows(d / "frozen" / _t / "day" / "Counties.txt", 3)}
+        for r in rows(d / "frozen" / _t / "day" / "legislators.txt", 15):
+            if r[0] in legs or r[0] in former:
+                continue
+            former[r[0]] = {"name": f"{r[1]}, {r[2]}".strip(", "),
+                            "party": (r[8] or "").upper(),
+                            "county": _counties.get(r[6].zfill(2), ""),
+                            "district": r[7]}
+            _frozen_gave += 1
+            _frozen_named.add(r[0])
+    if _frozen_gave:
+        print(f"members of {', '.join(roster_terms)} who hold no seat now, named from that "
+              f"term's frozen roster: {_frozen_gave:,}")
+
     # ------------------------------------------ what a person has corrected ---
     #
     # LAST, OVER EVERY GENERATED SOURCE, AND OVER NOTHING ELSE. By this line
@@ -2122,8 +2406,14 @@ def main():
         w = re.sub(r"[^A-Za-z ]", " ", n).lower().split()
         return (w[0], w[-1]) if len(w) >= 2 else None
 
+    # Not the members a frozen roster named just above: they are their term's
+    # own, read from it with their seat, and a sponsor row matched to one by
+    # name alone was placed as nothing placed it before Organization Day (the
+    # review of 5 October 2026).
     former_by_name = {}
     for _mid, _f in former.items():
+        if _mid in _frozen_named:
+            continue
         _k = _first_last(_f.get("name"))
         if _k:
             former_by_name[_k] = (_mid, _f)
@@ -2231,7 +2521,7 @@ def main():
     # already true before past years were readable, which is why adding them
     # needed nothing here beyond the extra files.
     summary = {}
-    for r in rows_all(d, "RollCallSummary"):
+    for r in rows_all(sd, "RollCallSummary", archive=d, finished=gone_years, left=left_out):
         if len(r) < 13:
             continue
         summary[(r[0], r[1], r[2])] = {
@@ -2252,7 +2542,7 @@ def main():
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes, no_person = set(), 0, Counter()
     ballot_fixed = Counter()
-    for r in rows_all(d, "RollCallHistory", 8):
+    for r in rows_all(sd, "RollCallHistory", 8, archive=d, finished=gone_years, left=left_out):
         key = (r[0], r[1], r[2])
         hist_bodies[r[1]] += 1
         vnums.add(int(r[2]) if r[2].isdigit() else -1)
@@ -2279,6 +2569,13 @@ def main():
         if not r[4].strip() and mid:
             no_person[mid] += 1
         m = legs.get(mid)
+        # A MEMBER WHO SITS ON, on a ballot of a term whose own roster is
+        # frozen and is not the installed one: the party and seat of that
+        # roster, the ones they voted under, and not the ones Organization
+        # Day gave them (the review of 5 October 2026). A member who left is
+        # named from `former`, as above, in the shape former_roster reads.
+        if m and mid in (year_legs.get(r[0]) or {}):
+            m = year_legs[r[0]][mid]
         vote_kinds[r[6]] += 1
         member_votes.append({
             # 420 members cast votes but only 406 are in legislators.txt: the
@@ -2378,11 +2675,49 @@ def main():
         report.append(f"votes per member: median {n[len(n)//2]}, "
                       f"min {n[0]}, max {n[-1]}, members covered {len(per_member)}")
 
+    # Only what was counted: a file read with nothing left out is no line
+    # (the LsrsOnly count's += 0 made every ordinary night say "rows of  left
+    # out ...: LsrsOnly.txt 0").
+    left_out = +left_out
+    if left_out:
+        print(f"  rows of {', '.join(gone_terms)} left out of the session's files, the "
+              "term being built from its freeze: "
+              + ", ".join(f"{k} {v:,}" for k, v in sorted(left_out.items())))
+    # AND SAID WHERE THE NIGHT READS IT (the review of 5 October 2026): the
+    # count reached this log and nothing else, so a real late correction to a
+    # finished term -- a chapter number entered in December -- would have been
+    # dropped with nobody told. LEFT_OUT, beside the data, holds the rows and
+    # the bills they name, and the nightly puts them on the run's page; a
+    # night with none removes it, so last night's never reads as tonight's.
+    if not frozen:
+        _lo = out / LEFT_OUT
+        if left_out:
+            _lo.write_text(json.dumps({"terms": gone_terms, "rows": dict(sorted(left_out.items())),
+                                       "bills": sorted(left_named)}, indent=1), encoding="utf-8")
+        else:
+            _lo.unlink(missing_ok=True)
     # ------------------------------------------------------------ write ---
+    # A frozen term's run writes its own term's bills and sponsors (below),
+    # and its roster as it was frozen, which narrate_archive tells the term's
+    # histories with -- a motion by "Rep. N. Germana" is given the full name
+    # of a member who sat then, not left to initials because the House turned
+    # over (the rehearsal of 5 October 2026). The ballots and the towns are
+    # the session's.
     (out / "legislators.json").write_text(
         json.dumps(sorted(legs.values(), key=lambda m: m["name"]), indent=2), encoding="utf-8")
-    (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
-    (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
+    # And while the session's own term's roster is frozen and not the
+    # installed one, that roster where a finished term's goes (above, and
+    # build_frozen_terms): narrative.py tells the term's histories with it
+    # (build_all names it) and build_site_v2 labels the term's members by it.
+    if sess in roster_terms and not frozen:
+        _tr = out / "frozen" / sess
+        _tr.mkdir(parents=True, exist_ok=True)
+        (_tr / "legislators.json").write_text(json.dumps(
+            sorted(sess_roster.values(), key=lambda m: m["name"]), indent=2),
+            encoding="utf-8")
+    if not frozen:
+        (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
+        (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
     # {term: {bill: record}}. A bill number is unique within a term and not
     # across terms, and this is the file every other per-bill lookup is driven
     # from -- the loop in build_site_v2.build_bills iterates it. Keyed on the
@@ -2547,7 +2882,7 @@ def main():
     # in by_term and before the committee names are settled below, so that
     # one of these can never stand in for a term nor over a bill the General
     # Court's files carry. add_journal_bills says why each.
-    journal_added = add_journal_bills(by_term, d / JOURNAL_BILLS)
+    journal_added = add_journal_bills(by_term, d / JOURNAL_BILLS, skip=gone_terms)
     # The flags on the archive's designations, last of the records' own
     # fields, so the ones just added take theirs too.
     if past:
@@ -2580,10 +2915,31 @@ def main():
     # The newest term the pipeline holds, which is the one the current
     # session's own files describe.
     current_term = max(by_term) if by_term else ""
-    (out / "bills.json").write_text(
-        json.dumps(dict(by_term), indent=2), encoding="utf-8")
-    for t in sorted(by_term):
-        print(f"  bills.json {t}: {len(by_term[t]):,}")
+    # THE FINISHED TERMS, FROM THEIR OWN BUILDS (5 October 2026): each frozen
+    # term older than the session's, as build_frozen_terms built it from its
+    # freeze a step before this run, whole, in place of anything the
+    # session's files still say of it. Last, so that nothing above -- the
+    # archive, the past views, the journals, the committee names -- touches
+    # a term that was built entire, as the session once built it.
+    finished = {} if frozen else finished_builds(d, out)
+    for _t, (_fb, _fs) in finished.items():
+        _was = len(by_term.get(_t) or {})
+        # MARKED ARCHIVED, AS EVERY FINISHED TERM IS (the person's decision of
+        # 5 October 2026): the page then says what the term's record holds in
+        # the coverage note the older terms carry, in place of the current
+        # term's session_over note, and the term keeps its full per-bill
+        # pages and every field it was built with. Nothing else of the
+        # record changes.
+        by_term[_t] = {b: {**r, "archived": True} for b, r in _fb.items()}
+        print(f"  {_t}: {len(_fb):,} bills from its frozen inputs"
+              + (f", in place of {_was:,} the session's files still gave it" if _was else ""))
+    if finished:
+        # The session's term first, then the finished ones newest first, then
+        # the archive as it was: the order the file had while the session's
+        # term was the newest.
+        _order = ([current_term] + sorted(finished, reverse=True)
+                  + [t for t in by_term if t != current_term and t not in finished])
+        by_term = defaultdict(dict, {t: by_term[t] for t in _order if t in by_term})
     # {term: {bill: [sponsor]}}, for the reason bills.json is: HB100 of 2023
     # and HB100 of 2025 have different sponsors, and a flat file gives the
     # second to the first without saying so.
@@ -2609,7 +2965,7 @@ def main():
     # sponsor found nothing before 2025.
     if bsp.exists() and P.term_keyed(raw):
         for _t, _byb in raw.items():
-            if _t == current_term:
+            if _t == current_term or _t in gone_terms:
                 continue
             _rows = {bid: status_sponsors(v) for bid, v in _byb.items()
                      if v.get("sponsors")}
@@ -2628,9 +2984,12 @@ def main():
             for _b, _rec in _byb.items():
                 if _slice.get(_b):
                     continue
+                # The session's term's own roster where it is frozen and not
+                # the installed one (term_legs, above): HB 476's sponsor read
+                # Rock 53 on the rehearsal once the next House moved her.
                 _rows = journal_sponsor_rows(
-                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat, legs,
-                    current_term)
+                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat,
+                    term_legs if _t == sess else legs, current_term)
                 if _rows:
                     _slice[_b] = _rows
                     _jn += 1
@@ -2638,6 +2997,32 @@ def main():
                     _jr += sum(1 for r in _rows if r.get("member_id"))
         print(f"  sponsors.json: {_jn} bill(s) took their sponsors from "
               f"the House Journal, {_jr} of {_jt} names placed on a member")
+    # A finished term's sponsors are its own build's, every list as it was.
+    for _t, (_fb, _fs) in finished.items():
+        sp_by_term[_t] = _fs
+    if finished:
+        sp_by_term = {t: sp_by_term[t] for t in
+                      [current_term] + sorted(finished, reverse=True)
+                      + [t for t in sp_by_term if t != current_term and t not in finished]
+                      if t in sp_by_term}
+    if frozen:
+        # THE FROZEN TERM'S RUN WRITES ITS TERM AND NOTHING ELSE, with what it
+        # was built from, which the session's run checks before it takes it.
+        (out / "bills.json").write_text(
+            json.dumps({frozen: by_term.get(frozen) or {}}, indent=2), encoding="utf-8")
+        (out / "sponsors.json").write_text(
+            json.dumps({frozen: sp_by_term.get(frozen) or {}}, indent=2), encoding="utf-8")
+        (out / "frozen.json").write_text(json.dumps(
+            {"term": frozen, "built_from": frozen_record(d, frozen),
+             "bills": len(by_term.get(frozen) or {}),
+             "sponsors": len(sp_by_term.get(frozen) or {})}, indent=1), encoding="utf-8")
+        print(f"\n{frozen} built from its frozen inputs: {len(by_term.get(frozen) or {}):,} "
+              f"bills, {len(sp_by_term.get(frozen) or {}):,} with sponsors -> {out}/")
+        return 0
+    (out / "bills.json").write_text(
+        json.dumps(dict(by_term), indent=2), encoding="utf-8")
+    for t in sorted(by_term):
+        print(f"  bills.json {t}: {len(by_term[t]):,}")
     (out / "sponsors.json").write_text(
         json.dumps(sp_by_term, indent=2), encoding="utf-8")
     for t in sorted(sp_by_term):
@@ -2656,8 +3041,12 @@ def main():
                         .replace("\u2019", "'").replace("\u201c", '"')
                         .replace("\u201d", '"'))
 
-    # A concrete spot check beats any amount of schema inference.
-    sample = next((b for b in sponsors if sponsors[b]), None)
+    # A concrete spot check beats any amount of schema inference. Of a bill
+    # the session's files hold: on a night whose sponsor files alone name the
+    # next term, every sponsor's bill is another term's, and this stopped the
+    # build on a KeyError after everything was written (the rehearsal of the
+    # review, 5 October 2026).
+    sample = next((b for b in sponsors if sponsors[b] and b in bills), None)
     if sample:
         print(f"\nSpot check \u2014 {sample}: {bills[sample]['title'][:64]}")
         print(f"  subject: {bills[sample]['subject'] or '(none)'}")
@@ -2669,4 +3058,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

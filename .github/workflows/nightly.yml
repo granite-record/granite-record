@@ -69,6 +69,17 @@ on:
       # takes the new files and may publish the switch. The preview shows the
       # switched site before anyone approves it.
       #
+      # A NEW TERM IS SEEN BY ITS YEARS (5 October 2026). A scheduled night
+      # refuses files naming a newer term than the installed ones whatever
+      # their size; this run takes them (--allow-turn), and only once the
+      # term it leaves is frozen as installed (freeze_term.py --session, sent
+      # with seed-kit): otherwise it stops before asking anything. The census
+      # lets only the feeds fall on it, and a finished term that lost bills
+      # stops it as it stops any night. The
+      # switch is the first night the files show the new term, Organization
+      # Day's resolutions included, and a file that turns later goes in on an
+      # ordinary night over its frozen copy.
+      #
       # NOTHING IT ACCEPTS IS KEPT UNTIL ITS BUILD IS PUBLISHED (1 October
       # 2026). The night job of this run sends none of what it took back to the
       # kit (cloud.py kit-up --hold: it waits under nights/<run>/kit/) and

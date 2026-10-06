@@ -38,10 +38,16 @@
                 "db/past/PastCommitteeReports.jsonl"]
     },
     {
-      "what": "Each term's current-term views as they stood at its end (db/term/<term>/: Legislation, LegislationText, CandH_Reports and their _columns.json), frozen before the General Court turns the views over to the next term. build_bill_versions.py and senate_hearing_reports.py read them after the current dump, so a past term keeps its versions and Senate hearing reports. Nothing is here until the first freeze, so it may be empty.",
+      "what": "Each term's current-term views as they stood at its end (db/term/<term>/: Legislation, LegislationText, CandH_Reports and their _columns.json), frozen before the General Court turns the views over to the next term. build_bill_versions.py and senate_hearing_reports.py read them after the current dump, so a past term keeps its versions and Senate hearing reports. Nothing is here until the first freeze, so it may be empty. Until the turn the term's copy is the current dump's own rows again, about 250 MB that no night reads: carried anyway, from the first freeze, as the insurance it is (the review of 5 October 2026); the sign-ins in db/term/<term>/extra/ are not, by depth.",
       "owner": "laptop",
       "optional": true,
       "globs": ["db/term/*/*"]
+    },
+    {
+      "what": "A finished term's day files as they were last installed, and their manifest (freeze_term.py --session, frozen/<term>/day/ and frozen/<term>/manifest.json): after the turn build_data.py --frozen-terms builds the term from them every night, and the New term run will not take a new term's files until the term it leaves is frozen as installed. The person sends them with seed-kit on the switch night. Optional: nothing is here until the first freeze, and a required glob that matched nothing would stop every night's kit-down.",
+      "owner": "laptop",
+      "optional": true,
+      "globs": ["frozen/**"]
     },
     {
       "what": "The General Court's own text of every past bill's printings, 1989-2024 (fetch_past_db.py; 944 MB). archive_text.py reads it to show 2018's final version where the saved page printed an earlier one, and without it GitHub's build would keep the earlier printing on those 23 bills. It changes only when the laptop dumps the views again.",
@@ -97,7 +103,7 @@
       "owner": "laptop",
       "paths": ["meetings.json", "schedule_pages/_events.json", "bill_status.json", "member_party.json",
                 "archive_bills.json", "bill_text.json", "amendments.json", "committee_reports.json",
-                "senate_reports.json", "testimony_db.json", "testimony.json", "journals.json",
+                "senate_reports.json", "testimony_db.json", "journals.json",
                 "calendars.json", "past_members.json"]
     },
     {

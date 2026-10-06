@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.10
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -115,6 +115,47 @@ TERM_RE = re.compile(r"^\d{4}-\d{4}$")
 def term_keyed(data):
     """Is this a {term: {...}} file rather than one keyed on bill number?"""
     return bool(data) and all(TERM_RE.match(k) for k in data)
+
+
+# THE TERM THE SESSION'S OWN FILES DESCRIBE (5 October 2026). The newest term
+# a derived file holds is not it: at the turn data/bills.json keeps 2025-2026
+# while the day files already name 2027. Six of the General Court's files say
+# which session year each row is of, and the newest of them is the session's.
+# Read off the files every time it is asked, so a reader never carries one
+# night's answer into the next.
+#
+# THE SAME SIX THE TURN GUARD READS (the review of 5 October 2026). This read
+# Docket.txt and LSRs.txt alone while snapshot_gencourt.judge read all six, so
+# sponsor files naming 2027 before the docket did were refused as a new term
+# on a scheduled night, taken by the New term run -- and then built as
+# 2025-2026's, the 2027 rows filed by number onto 2025-2026 bills, HB 10's
+# nine sponsors replaced by one. One definition: the column each file gives
+# its session year in (freeze_term.YEAR_COLUMN and snapshot_gencourt's, which
+# preflight holds to this).
+SESSION_FILES = ("Docket.txt", "LSRs.txt", "LsrSponsors.txt", "LsrsOnly.txt",
+                 "RollCallSummary.txt", "RollCallHistory.txt")
+SESSION_YEAR_COLUMN = {"Docket.txt": 0, "LSRs.txt": 0, "LsrSponsors.txt": 0,
+                       "LsrsOnly.txt": 3, "RollCallSummary.txt": 0,
+                       "RollCallHistory.txt": 0}
+
+
+def session_term(folder="."):
+    """The term of the newest session year any of SESSION_FILES in `folder`
+    names, each in its own column (SESSION_YEAR_COLUMN); "" when none is
+    there or names a year."""
+    newest = ""
+    for name in SESSION_FILES:
+        p = Path(folder) / name
+        if not p.exists():
+            continue
+        col = SESSION_YEAR_COLUMN[name]
+        with p.open(encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                f = line.lstrip("﻿").split("|", col + 1)
+                y = f[col].strip() if len(f) > col else ""
+                if len(y) == 4 and y.isdigit() and y > newest:
+                    newest = y
+    return term_of(newest) if newest else ""
 
 
 def per_term(data, term, current=""):

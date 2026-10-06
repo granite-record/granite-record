@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.51
+# GRANITE_VERSION: 2026-09-05.52
 """
 Run the whole pipeline in the right order.
 
@@ -248,6 +248,26 @@ class Step:
         return [str(n) for n in self.needs if not n.exists()]
 
 
+def session_roster():
+    """The roster the session's histories are told with: data/legislators.json,
+    the sitting one -- or, once Organization Day has seated the next House
+    before the files show the next term, the session's own term's frozen
+    roster, which build_data writes to data/frozen/<term>/legislators.json
+    (freeze_term.own_roster_terms). On a copy with the next House installed,
+    170 of 2025-2026's histories gave a departed member's motion as initials,
+    "Rep. N. Germana" (the review of 5 October 2026). Read off the installed
+    files when the plan is made, which is after the night has installed them."""
+    try:
+        import freeze_term
+        import proceedings
+        sess = proceedings.session_term(".")
+        if sess and sess in freeze_term.own_roster_terms("."):
+            return f"data/frozen/{sess}/legislators.json"
+    except Exception:                                           # noqa: BLE001
+        pass
+    return "data/legislators.json"
+
+
 def plan(a):
     vids = sorted(str(p) for p in Path(".").glob("videos_*.csv"))
 
@@ -303,6 +323,20 @@ def plan(a):
              kit_required=True,
              note="the House Journal's introduction lists and its withdrawals, "
                   "2025 on, for bills the session files do not carry"),
+
+        # A FINISHED TERM, FROM ITS FROZEN INPUTS (5 October 2026). Once the
+        # General Court's files turn to the next term they hold none of the
+        # last, so each frozen term older than the session's is built from
+        # its own day files and database views (freeze_term.py) into
+        # data/frozen/<term>/, and the pass below takes it from there whole.
+        # BEFORE it, because it refuses to run without a finished term's
+        # build; after the journals, which this reads too. Until the files
+        # turn it builds nothing and says so: a term frozen early waits.
+        Step("a finished term, rebuilt from its frozen inputs",
+             ["build_data.py", "--dir", ".", "--out", "data", "--frozen-terms"],
+             needs=["Docket.txt"],
+             note="about a minute a term, and nothing until the session's files have "
+                  "moved past a frozen term"),
 
         Step("build data (first pass)",
              ["build_data.py", "--dir", ".", "--out", "data"],
@@ -427,7 +461,7 @@ def plan(a):
 
         Step("plain-language bill histories",
              ["narrative.py", "--docket", "Docket.txt", "--all",
-              "--out", "narratives.json", "--members", "data/legislators.json"],
+              "--out", "narratives.json", "--members", session_roster()],
              needs=["Docket.txt"], produces=["narratives.json"],
              note="runs AFTER build_data so the roster exists: it turns "
                   "\"a motion by Rep. N. Germana\" into the member's full name. "
@@ -496,6 +530,11 @@ def plan(a):
              network=True, optional=True,
              note="calendars are cached; discovery only needs running once a session"),
 
+        # THE ONLY SOURCE OF SIGN-IN COUNTS since 5 October 2026: the scraped
+        # page's step (fetch_testimony.py, testimony.json, a request per bill
+        # to gc.nh.gov) is retired, at the person's word, once it was shown
+        # that every count the site showed came from this one -- and
+        # testimony_from_db.py rebuilds it from the dump, frozen terms too.
         Step("how many signed in for and against, per hearing",
              ["fetch_testimony_db.py"],
              produces=["testimony_db.json"],
@@ -540,13 +579,6 @@ def plan(a):
         Step("match docket proceedings to recordings",
              ["build_manifest.py", "--videos"] + manifest_videos(),
              needs=["Docket.txt"], optional=True),
-
-        Step("testimony sign-in counts",
-             ["fetch_testimony.py"],
-             produces=["testimony.json"], network=True, optional=True,
-             note="was never in this list, so the counts on the site only "
-                  "refreshed when it was remembered by hand. Slow -- one "
-                  "request per bill with a delay -- and skipped by --local"),
 
         Step("floor debate index",
              ["build_floor_index.py", "--videos"] + (vids or ["videos_house.csv"])

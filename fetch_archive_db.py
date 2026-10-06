@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.6
+# GRANITE_VERSION: 2026-09-08.8
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -59,6 +59,8 @@ named below with the reason.
 
 import argparse
 import json
+import os
+import re
 import time
 from pathlib import Path
 
@@ -161,7 +163,8 @@ CAST = {"text", "ntext", "xml"}
 
 
 def columns(database, view):
-    """(sql, note) -- the SELECT list for this view, blobs left behind."""
+    """(sql, note, [column names as written]) -- the SELECT list for this
+    view, blobs left behind. The names are [] where they are not known."""
     conn = connstr(database)
     rows, err = P.run(conn, [("cols",
         "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
@@ -170,20 +173,92 @@ def columns(database, view):
         # INFORMATION_SCHEMA is closed on some of these databases. A star is
         # the fallback, and it is only reached for a view small enough that
         # it has already been read once by a probe.
-        return f"SELECT * FROM {view}", "columns unknown, SELECT *"
-    picked, dropped = [], []
+        return f"SELECT * FROM {view}", "columns unknown, SELECT *", []
+    picked, dropped, names = [], [], []
     for c in rows[0]["rows"]:
         name, ty = c["c"], (c["ty"] or "").lower()
         if ty in BLOB:
             picked.append(f"DATALENGTH([{name}]) AS [{name}_bytes]")
             dropped.append(name)
+            names.append(f"{name}_bytes")
         elif ty in CAST:
             picked.append(f"CAST([{name}] AS varchar(max)) AS [{name}]")
+            names.append(name)
         else:
             picked.append(f"[{name}]")
+            names.append(name)
     note = (f"{len(dropped)} blob column(s) left behind as a byte count: "
             + ", ".join(dropped)) if dropped else ""
-    return "SELECT " + ", ".join(picked) + f" FROM {view}", note
+    return "SELECT " + ", ".join(picked) + f" FROM {view}", note, names
+
+
+# A VIEW IS NOT REPLACED BY ONE THAT HAS LOST A TERM NOTHING ELSE HOLDS
+# (5 October 2026). The current-term views -- Legislation, LegislationText,
+# CandH_Reports, Sponsors, VHearings, the testimony sign-ins -- drop a term
+# when the General Court turns them over, and this wrote straight over
+# db/<view>.psv, with no part file, so the late-November download would have
+# taken the only database-shaped copy of 2025's 847 bill records with it.
+# Now every view is written beside its copy first and swapped in only when it
+# arrived; and a view that holds no row of a term the installed copy does is
+# swapped in only when that term is frozen under db/term/<term>/
+# (freeze_term.py --views). Otherwise the new one is left at <view>.psv.new,
+# the installed copy stays, and the run says which term would have gone.
+COLUMNS = OUT / "_columns.json"
+
+
+def terms_lost(view, old, new, old_cols, new_cols):
+    """The terms of the session years -- or the SessionIDs, read as the
+    session's term -- that `old` holds rows of and `new` holds none of, by
+    the column freeze_term reads each view's years from; [] for a view with
+    no year.
+
+    BY THE SESSION YEAR, NOT THE TERM (the review of 5 October 2026): a dump
+    that had lost 2025's 847 Legislation rows and kept 2026's still held the
+    term, so it was swapped in, and the only database-shaped copy of 2025
+    went with it. A year gone is its term gone, unless the term is frozen."""
+    import freeze_term as FT
+    import proceedings as PR
+    if view not in FT.VIEW_YEAR or not old.exists() or not old_cols or not new_cols:
+        return []
+    _, was = FT.view_rows(old, old_cols, view)
+    _, now = FT.view_rows(new, new_cols, view)
+    gone = set(was) - set(now)
+    return sorted({PR.term_of(k) if re.fullmatch(r"\d{4}", k) else PR.session_term(".")
+                   for k in gone} - {""})
+
+
+# AND NOT BY ONE THAT CAME BACK FAR SHORTER (the review of 5 October 2026):
+# LegislationText is keyed on an internal SessionID and VHearings on nothing
+# that names a year, so neither could lose a term by the rule above, and
+# either was swapped in empty. A current-term view at less than SHRINK_MOST
+# of its installed rows goes in only where the session's term is frozen
+# under db/term/<term>/ with that view.
+CURRENT_TERM = ("Legislation", "LegislationText", "CandH_Reports", "Sponsors", "VHearings",
+                "houseRemoteTestify", "DocumentVersion")
+SHRINK_MOST = 0.5
+
+
+def far_shorter(view, old, new):
+    """(installed rows, tonight's) where `new` is a current-term view at less
+    than SHRINK_MOST of `old`'s lines, else None."""
+    if view not in CURRENT_TERM or not old.exists():
+        return None
+
+    def n(p):
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            return sum(1 for ln in fh if ln.strip())
+    a, b = n(old), n(new)
+    return (a, b) if a and b < a * SHRINK_MOST else None
+
+
+def frozen_holds(view, term):
+    """Whether db/term/<term>/ holds this view, as freeze_term wrote it."""
+    try:
+        rec = json.loads((OUT / "term" / term / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    files = rec.get("files") or {}
+    return f"{view}.psv" in files or f"extra/{view}.psv" in files
 
 
 def connstr(database):
@@ -258,27 +333,51 @@ def main():
                   f"({path.stat().st_size:,} bytes)", flush=True)
             skipped += 1
             continue
-        sql, note = columns(db, name)
+        sql, note, names = columns(db, name)
         if order:
             sql += f" ORDER BY {order}"
         print(f"[{i}/{len(todo)}] {name}: {why}", flush=True)
         if note:
             print(f"          {note}", flush=True)
         started = time.time()
+        part = path.with_name(path.name + ".part")
         rows, err = P.run_to_file(
-            connstr(db), sql, path, timeout=a.timeout,
+            connstr(db), sql, part, timeout=a.timeout,
             label=f"{name}: ", newline=" " if name in PROSE else "")
         took = time.time() - started
         if err:
             # A view that is not in this database is a fact worth recording,
-            # not a crash. The run keeps going.
+            # not a crash. The run keeps going. The installed copy, if there
+            # is one, is not touched.
             print(f"          FAILED after {took:.0f}s: {err[:180]}", flush=True)
             man[name] = {"database": db, "error": err[:400],
                          "seconds": round(took, 1)}
             failed += 1
-            if path.exists() and path.stat().st_size == 0:
-                path.unlink()
+            part.unlink(missing_ok=True)
         else:
+            cols = json.loads(COLUMNS.read_text(encoding="utf-8")) if COLUMNS.exists() else {}
+            lost = [t for t in terms_lost(name, path, part, cols.get(name), names)
+                    if not frozen_holds(name, t)]
+            short = far_shorter(name, path, part)
+            import proceedings as PR
+            if short and frozen_holds(name, PR.session_term(".")):
+                short = None
+            if lost or short:
+                held = path.with_name(path.name + ".new")
+                os.replace(part, held)
+                why = (f"it holds no row of {', '.join(lost)}, which {path} does" if lost else
+                       f"it is {short[1]:,} lines against the {short[0]:,} of {path}")
+                print(f"          NOT INSTALLED: {why}, and no db/term/<term>/ holds the term. "
+                      f"Freeze the term first (freeze_term.py --views); what came back is at "
+                      f"{held}", flush=True)
+                failed += 1
+                continue
+            os.replace(part, path)
+            if names:
+                cols[name] = names
+                tmp = COLUMNS.with_name(COLUMNS.name + ".part")
+                tmp.write_text(json.dumps(cols, indent=1), encoding="utf-8")
+                os.replace(tmp, COLUMNS)
             size = path.stat().st_size if path.exists() else 0
             print(f"          {rows:,} rows, {size:,} bytes, {took:.0f}s",
                   flush=True)

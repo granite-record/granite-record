@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -488,6 +488,14 @@ def load_marks(path):
     return marks
 
 
+# The manifest's columns, in the order every row writes them (main), for the
+# manifest of a docket with no proceeding in it yet.
+MANIFEST_COLUMNS = ["bill", "body", "committee", "proceeding", "sched_date", "sched_time",
+                    "venue", "tier", "bills_in_slot", "match", "video_id", "video_title",
+                    "stream_start", "predicted_offset", "watch_url", "candidates",
+                    "candidate_ids", "observed_start", "observed_end", "notes"]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--videos", required=True, nargs="+",
@@ -774,8 +782,15 @@ def main():
                 kept += 1
 
     out.sort(key=lambda r: (r["sched_date"], r["sched_time"] or "99:99", r["bill"]))
+    # A DOCKET WITH NO PROCEEDING YET (5 October 2026). A new term's first
+    # files are Organization Day's resolutions and the first bills'
+    # introductions, and no hearing: this took its columns from the first row
+    # and stopped on an IndexError, so the manifest stayed the last term's.
+    # The columns are named instead, and a manifest of none is written.
+    if not out:
+        print("  no proceeding in this docket yet: the manifest is its columns and no row")
     with open(a.out, "w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
+        w = csv.DictWriter(fh, fieldnames=list(out[0].keys()) if out else MANIFEST_COLUMNS)
         w.writeheader()
         w.writerows(out)
 

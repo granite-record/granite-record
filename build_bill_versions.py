@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.9
+# GRANITE_VERSION: 2026-09-09.10
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -223,12 +223,37 @@ def read_versions(folder, C, order, unknown):
     return per
 
 
-def all_versions(order, unknown):
+def all_versions(order, unknown, session=None):
     """{(bill, year): [version]} from the current dump and every frozen term.
-    The current views first, so a bill-year they hold is theirs."""
+    The current views first, so a bill-year they hold is theirs -- except a
+    finished term's.
+
+    A FINISHED TERM'S BILL-YEARS ARE ITS FREEZE'S (5 October 2026): a frozen
+    term older than the session's files' (proceedings.session_term) takes
+    every bill-year of its own years from its freeze, and the current views'
+    rows of those years are counted and left out, never merged -- the one
+    rule for a finished term's rows in new files. A term frozen while it is
+    still the session's waits, and is not read: the current views hold it."""
+    import proceedings as PR
+    session = PR.session_term() if session is None else session
     per = collections.defaultdict(list)
-    for folder, C in sources():
+    srcs = sources()
+    finished = {d.name for d, _ in srcs[1:] if PR.TERM_RE.match(d.name)
+                and session and d.name < session}
+    years = {y for t in finished for y in t.split("-")}
+    for folder, C in srcs:
+        if folder != DB and PR.TERM_RE.match(folder.name) and session \
+                and folder.name >= session:
+            print(f"  {folder} waits: {folder.name} is still the session's term")
+            continue
         mine = read_versions(folder, C, order, unknown)
+        if folder == DB and years:
+            gone = [k for k in mine if str(k[1]) in years]
+            for k in gone:
+                del mine[k]
+            if gone:
+                print(f"  {len(gone):,} bill-years of {', '.join(sorted(finished))} in the "
+                      "current views left out: the term is read from its freeze")
         taken = [k for k in mine if k not in per]
         for k in taken:
             per[k] = mine[k]
