@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.346
+# GRANITE_VERSION: 2026-09-04.347
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8489,10 +8489,11 @@ def _ls_nights(livestreams, build_manifest):
     its stream aired; finds that one, eight days old, has no captions, and
     does not take one answer for it: it is to be asked again in a day,
     behind whatever is new; captions one; meets a data centre's bot check
-    on the next and stops there. Night two, past the twelve-hour hold, makes
-    one request -- the refused recording again, the oldest not yet asked --
-    is refused again and asks for nothing else, and turns
-    the recording that was only scheduled into an aired one; the build's
+    on the next and stops there. Night two, past the twelve-hour hold, turns
+    the recording that was only scheduled into an aired one and asks for it
+    first -- the refused recording, though older, goes behind it -- finds no
+    captions on it yet, then asks the refused one again, is refused again and
+    asks for nothing after it (the retry due that night waits); the build's
     --markers step reads the captioned one and touches nothing else; night
     three finds the laptop has read it and stops carrying it. No night changes
     a committed file, and build_manifest takes the aired row over the
@@ -8544,9 +8545,13 @@ def _ls_nights(livestreams, build_manifest):
         assert st["videos"]["PFNEW000002"]["status"] == "finished"
         ref = st["refusals"]["runner"]
         assert ref["count"] == 2 and ref["until_iso"] == "2026-09-27T04:30:00Z", \
-            f"the second night did not open with one request, refused again: {ref}"
-        assert st["videos"]["PFNEW000002"]["captions"] == "deferred", \
-            "the second night went on asking YouTube past a refusal"
+            f"the second night did not ask the refused recording again and stop: {ref}"
+        aired = st["videos"]["PFNEW000002"]
+        assert aired["captions"] == "none-yet" and aired.get("asks") == 1 \
+            and aired.get("tried") == "2026-09-26T06:30:00Z", \
+            f"the recording refused the night before was asked ahead of a newer one: {aired}"
+        assert st["videos"]["PFSEN000001"].get("refused") == "2026-09-26T06:30:00Z", \
+            st["videos"]["PFSEN000001"]
         assert not (root / "work" / "PFNEW000002").exists()
         stale = st["videos"]["PFSTALE0001"]
         assert stale["captions"] == "deferred" and stale.get("asks") == 1 \
@@ -8645,8 +8650,9 @@ def _ls_nights(livestreams, build_manifest):
         return "ok", ("3 new and 1 pre-air row indexed at 6 units, then 3, then 2; "
                       "one captioned, read by --markers and put back the next "
                       "night without its captions, then handed to the laptop; "
-                      "one refused, and refused again at the next night's one "
-                      "request; one with no captions put behind the new ones, not "
+                      "one refused, then asked behind the newly aired one the next "
+                      "night and refused again; one with no captions put behind the "
+                      "new ones, not "
                       "closed; committed index untouched")
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -8906,6 +8912,32 @@ def _ls_gentle(livestreams, segment_markers):
         got, why = run(st, late, table)
         assert asked == [("REF", "en")] and why and table["laptop"]["count"] == 1, (asked, table)
 
+        # A refused recording goes behind the rest of its lane, so the next
+        # run asks another first. From 30 September 2026 the laptop asked the
+        # same oldest recording first four evenings running and was refused
+        # on it each time, with 26 waiting behind it.
+        (src / "NEXT").mkdir()
+        (src / "NEXT" / "captions.en.json3").write_text(words, encoding="utf-8")
+        st = {"videos": {
+            "REF": {"status": "finished", "captions": "waiting",
+                    "ended": L.iso(late - timedelta(days=9))},
+            "NEXT": {"status": "finished", "captions": "waiting",
+                     "ended": L.iso(late - timedelta(days=2))}}}
+        assert L.caption_queue(st, late) == (["REF", "NEXT"], []), L.caption_queue(st, late)
+        got, why = run(st, late, {})
+        assert asked == [("REF", "en")] and why and st["videos"]["REF"].get("refused"), \
+            (asked, st)
+        assert L.caption_queue(st, late) == (["NEXT", "REF"], []), \
+            "a recording refused last time is still asked first"
+        got, why = run(st, late, {})
+        assert asked == [("NEXT", "en"), ("REF", "en")] and got["captioned"] == 1 and why, \
+            (asked, got, why)
+        # Its next answer that is not a refusal clears the mark.
+        (src / "REF" / "ERROR.txt").unlink()
+        got, why = run(st, late, {})
+        assert asked == [("REF", "en")] and "refused" not in st["videos"]["REF"], \
+            (asked, st["videos"]["REF"])
+
         # An evening with nothing new and more retries a week old than a run
         # has requests for. Each is at its last ask, so each is two requests,
         # and the run is MAX_CAPTIONS requests and no more: while a run was
@@ -8974,6 +9006,34 @@ def _ls_gentle(livestreams, segment_markers):
         os.chdir(here)
         assert (night / "archive" / "livestreams.json").read_bytes() == before, \
             "the catch-up wrote the night's state"
+
+        # The laptop keeps a refusal against the recording it met, so the
+        # next evening asks another first: the evenings of 30 September to
+        # 5 October 2026 asked aNisQhENQwc first every time.
+        night2 = root / "night2"
+        (night2 / "archive").mkdir(parents=True)
+        for vid in ("OLDR", "NEWR"):
+            (night2 / "src" / vid).mkdir(parents=True)
+        (night2 / "src" / "OLDR" / "ERROR.txt").write_text(
+            "ERROR: Unable to download video subtitles for 'en': HTTP Error 429: "
+            "Too Many Requests", encoding="utf-8")
+        (night2 / "src" / "NEWR" / "captions.en.json3").write_text(words, encoding="utf-8")
+        state["videos"] = {
+            "OLDR": {"status": "finished", "captions": "deferred", "chamber": "house",
+                     "ended": L.iso(now - timedelta(days=9)), "title": "x"},
+            "NEWR": {"status": "finished", "captions": "deferred", "chamber": "house",
+                     "ended": L.iso(now - timedelta(days=1)), "title": "y"}}
+        (night2 / "archive" / "livestreams.json").write_text(json.dumps(state),
+                                                             encoding="utf-8")
+        record = night2 / "archive" / "youtube.refused.json"
+        os.chdir(night2)
+        was, line, kept = evening(0)
+        assert was == [("OLDR", "en")] and "refused" in line and kept["OLDR"].get("refused"), \
+            (was, line, kept)
+        was, line, kept = evening(1)
+        assert was == [("NEWR", "en"), ("OLDR", "en")] and "1 captioned" in line, \
+            f"the evening after a refusal asked the refused recording first: {was}"
+        os.chdir(here)
         return "ok", (f"`en` alone to an ask; {L.MAX_CAPTIONS} oldest of {len(vids)} asked and 3 "
                       f"of 3, {L.DELAY:g}-{L.DELAY + L.JITTER:g}s apart; the longest run of "
                       f"any mix, {most} recordings and {requests} requests, {longest / 60:.0f} "
@@ -8981,7 +9041,7 @@ def _ls_gentle(livestreams, segment_markers):
                       f"{L.MAX_CAPTIONS} requests, not {dear * L.MAX_CAPTIONS}; `en-orig` only at a "
                       "last ask, never a first, and never after a refusal; a recording with "
                       "none is closed only by a run that captioned something, and the laptop "
-                      "remembers it")
+                      "remembers it; a refused recording goes behind the rest")
     finally:
         L.ask_track, L.read_markers, L.write_summary = real_ask, real_read, real_summary
         os.chdir(here)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.5
+# GRANITE_VERSION: 2026-09-25.6
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and left where the build
@@ -1160,6 +1160,16 @@ def caption_queue(st, now, work=WORK):
 
     One that failed three times for reasons that were not refusals is left
     for the laptop.
+
+    A recording whose last ask was refused goes behind the rest of its lane
+    (`refused`, cleared by its next answer), so the next run asks another
+    first. From 30 September 2026 the laptop's catch-up asked the same
+    recording first every evening, the oldest one waiting (aNisQhENQwc, House
+    Commerce of 9 September), and was refused on it with a 429 four evenings
+    running -- the first of them a minute after another recording had been
+    captioned -- while 26 others waited behind it and the hold grew to four
+    days. Whether the refusal is the recording's or the machine's, a run that
+    meets another first finds out, and still asks nothing after a refusal.
     """
     first, again = [], []
     for vid, v in st["videos"].items():
@@ -1179,8 +1189,11 @@ def caption_queue(st, now, work=WORK):
     def age(x):
         return (st["videos"][x].get("ended") or "", x)
 
-    first.sort(key=age)
-    again.sort(key=lambda x: (st["videos"][x].get("again") or "",) + age(x))
+    def refused(x):
+        return (bool(st["videos"][x].get("refused")),)
+
+    first.sort(key=lambda x: refused(x) + age(x))
+    again.sort(key=lambda x: refused(x) + (st["videos"][x].get("again") or "",) + age(x))
     return first, again
 
 
@@ -1321,6 +1334,7 @@ def run_captions(st, first, again, refusals, now, a, work=WORK, save=None):
                    + " or ".join(CAPTION_TRACKS))
         if outcome == "refused":
             v["why"] = why
+            v["refused"] = iso(now)
             hours = hold(why)
             refused = why
             print(f"  {vid}: REFUSED -- {why}\n  Stopping. Nothing more is "
@@ -1330,6 +1344,7 @@ def run_captions(st, first, again, refusals, now, a, work=WORK, save=None):
             break
         done += 1
         got[outcome] += 1
+        v.pop("refused", None)
         if outcome == "captioned":
             v.update(captions="captioned", fetched=iso(now), by=a.origin, why="")
             for k in ("tries", "asks", "again", "vouched"):
@@ -1722,9 +1737,9 @@ def catch_up(a):
     shadow = {"videos": {}}
     for vid in want:
         v = dict(st["videos"][vid], captions="waiting")
-        for k in ("asks", "again", "tries", "vouched"):
+        for k in ("asks", "again", "tries", "vouched", "refused"):
             v.pop(k, None)
-        v.update({k: mine[vid][k] for k in ("asks", "again", "vouched")
+        v.update({k: mine[vid][k] for k in ("asks", "again", "vouched", "refused")
                   if (mine.get(vid) or {}).get(k)})
         shadow["videos"][vid] = v
     first, again = caption_queue(shadow, now)
@@ -1747,8 +1762,12 @@ def catch_up(a):
         if v.get("captions") == "captioned":
             mine.pop(vid, None)
             continue
+        if v.get("refused") == iso(now):
+            # Refused this run: as it was, and behind the rest next evening.
+            mine[vid] = dict(mine.get(vid) or {}, refused=iso(now))
+            continue
         if int(v.get("asks") or 0) <= int((mine.get(vid) or {}).get("asks") or 0):
-            continue            # not asked this run, or refused: as it was
+            continue            # not asked this run: as it was
         e = {"asks": int(v["asks"]), "tried": iso(now),
              "why": str(v.get("why") or "")[:200]}
         if v.get("vouched"):
