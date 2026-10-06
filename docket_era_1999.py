@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.11
+# GRANITE_VERSION: 2026-09-11.12
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -474,6 +474,7 @@ RESCHEDULED_TO_CANCEL = re.compile(r"\bcancel", re.I)
 def rescheduled_notice(desc, created):
     """The hearing notice a row that gives a hearing's new day is
     (RESCHEDULED_TO), as {"_type": "hearing", "kind", "date"}, or None."""
+    desc = mend(desc)
     m = RESCHEDULED_TO.match(desc or "")
     if not m or created is None:
         return None
@@ -488,6 +489,34 @@ def rescheduled_notice(desc, created):
     if not day:
         return None
     return {"_type": "hearing", "kind": "Hearing", "date": day, "_era": "1999:rescheduled"}
+
+
+# TWO SLIPS OF THE CLERK'S, READ AS WHAT THEY PLAINLY MEAN (decision 59f, and
+# the person's rule of 18 September 2026 for a source typo: our own reading
+# ruled out first, and only where nothing else explains it). SB 393 of 2000's
+# Senate hearing was noticed "Hearning, Feb. 15, Room 103, SH, 10:40 a.m.;
+# SC1, Pg.8" (Docket_db_1999-2000.txt line 15319) and moved by "=RESCHEDULED=
+# Fed. 8, Room 103, SH, 10:30 a.m. SC9, Pg. 2" (line 15321), and read as
+# typed the history told no Senate hearing of the bill at all. Senate
+# Calendar 10 of 2000 prints SB 393 under Tuesday 8 February at 10:30,
+# "RESCHEDULED FROM FEBRUARY 15TH", and under the 15th, at the 10:40 the first
+# row gives, among "THE FOLLOWING HEARINGS HAVE BEEN RESCHEDULED FOR FEBRUARY
+# 8TH". "Hearning" is no word and "Fed" no month; the two rows are the only
+# ones of either spelling on disk. Each is read where it stands and nowhere
+# else -- the patterns match those rows' own words -- and the docket line
+# keeps what the clerk typed (docket_vocab.classify). A third slip is a new
+# entry here, with its evidence, and preflight holds the list to these two.
+SLIPS = [
+    (re.compile(r"^Hearning(?=,\s*Feb\.\s*15,)"), "Hearing"),
+    (re.compile(r"^(=RESCHEDULED=\s*)Fed\.(?=\s*8,\s*Room\s+103,\s*SH,\s*10:30\s+a\.m\.)"), r"\1Feb."),
+]
+
+
+def mend(desc):
+    """The row with a slip in SLIPS read as what it means; else the row."""
+    for pat, rep in SLIPS:
+        desc = pat.sub(rep, desc or "")
+    return desc
 
 
 # A ROW THAT SAYS ONLY THAT A HEARING WAS CALLED OFF (decision 59b, 7 October

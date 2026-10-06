@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.15
+# GRANITE_VERSION: 2026-09-11.16
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -291,6 +291,15 @@ def classify(desc, created=None, session=None):
     if era is None:
         return None
     mod, first, after, routine = era
+    # A slip of the clerk's the era reads as what it plainly means
+    # (docket_era_1999.SLIPS): read as mended, and the docket line keeps the
+    # words the clerk typed.
+    mend = getattr(mod, "mend", None)
+    if mend is not None and mend(desc) != desc:
+        ev = classify(mend(desc), created, session)
+        if ev:
+            ev["_raw"] = narrative.clean(desc)
+        return ev
     clean = narrative.clean(desc)
     for pid, typ, pat, fixed in first:
         m = pat.search(clean)

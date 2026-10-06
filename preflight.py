@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.375
+# GRANITE_VERSION: 2026-09-04.376
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3538,6 +3538,65 @@ def _time_changed_then_cancelled(N):
     return "ok", "HB 462 of 2002 tells its hearing of 13 February and not the 6th's, moved and cancelled"
 
 
+# Real rows: Docket_db_1999-2000.txt 15318-15322 (SB 393 of 2000).
+_DOCKET_SLIPS = [
+    "2000|2307|01/05/2000 09:45:06 AM|SB393|S|Introduced and Ref. Insurance; SJ Convening Day, Pg.12|01/05/2000 09:45:06 AM",
+    "2000|2307|01/06/2000 04:12:07 PM|SB393|S|Hearning, Feb. 15, Room 103, SH, 10:40 a.m.; SC1, Pg.8|01/06/2000 04:12:07 PM",
+    "2000|2307|02/07/2000 08:53:29 AM|SB393|S|=CANCELLED= SC9, Pg.4|02/07/2000 08:53:29 AM",
+    "2000|2307|02/07/2000 08:54:36 AM|SB393|S|=RESCHEDULED= Fed. 8, Room 103, SH, 10:30 a.m. SC9, Pg. 2|02/07/2000 08:54:36 AM",
+    "2000|2307|03/06/2000 03:54:53 PM|SB393|S|Committee Report Ought to Pass with Amendment{3592}; SC15, Pg.3|03/06/2000 03:54:53 PM",
+]
+
+
+@check("narrative", "the two slips of the clerk's read as what they mean are read on their own rows "
+                    "alone, and the docket line keeps what the clerk typed",
+       needs=("narrative", "docket_parser"))
+def _clerk_slips_read(N, D):
+    """Decision 59f, under the person's rule for a source typo: SB 393 of
+    2000's hearing was noticed "Hearning, Feb. 15" and moved by
+    "=RESCHEDULED= Fed. 8", and read as typed its history told no Senate
+    hearing at all. Senate Calendar 10 of 2000 prints it on 8 February,
+    "RESCHEDULED FROM FEBRUARY 15TH". The history now tells the hearing of 8
+    February and leaves the 15th's off; the docket lines say "Hearning" and
+    "Fed." as the clerk typed them; proceedings.csv reads the hearing of the
+    8th; and the list of slips is these two, so a third is a decision with
+    its evidence and not a widening."""
+    import docket_era_1999 as E
+    bad = []
+    if len(E.SLIPS) != 2:
+        bad.append(f"docket_era_1999.SLIPS holds {len(E.SLIPS)} slips; a new one is a person's "
+                   "decision, with its evidence, and this check is changed with it")
+    for typed, read in (("Hearning, Feb. 15, Room 103, SH, 10:40 a.m.; SC1, Pg.8",
+                         "Hearing, Feb. 15, Room 103, SH, 10:40 a.m.; SC1, Pg.8"),
+                        ("=RESCHEDULED= Fed. 8, Room 103, SH, 10:30 a.m. SC9, Pg. 2",
+                         "=RESCHEDULED= Feb. 8, Room 103, SH, 10:30 a.m. SC9, Pg. 2"),
+                        ("Hearning, Feb. 16, Room 103, SH", "Hearning, Feb. 16, Room 103, SH"),
+                        ("=RESCHEDULED= Fed. 9, Room 103, SH", "=RESCHEDULED= Fed. 9, Room 103, SH")):
+        if E.mend(typed) != read:
+            bad.append(f"{typed!r} is read as {E.mend(typed)!r}, not {read!r}")
+    n = _told_from_rows(N, "1999-2000", "SB393", _DOCKET_SLIPS)
+    told = sorted(e["date"] for e in n["events"] if e["type"] == "hearing" and e["body"] == "S"
+                  and not e["cancelled"])
+    if told != ["2000-02-08"] or "2000-02-15" not in _voided_days(n):
+        bad.append(f"SB 393 of 2000 tells Senate hearings on {told}, voided {n.get('voided')!r}")
+    raws = " | ".join(e["raw"] for e in n["events"])
+    if "Hearning" not in raws or "Fed. 8" not in raws:
+        bad.append(f"SB 393's docket lines do not keep the clerk's words: {raws}")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-slips-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_SLIPS) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    D.build_sittings(procs)
+    live = [(p.sched_date, p.sched_time) for p in procs if p.confidence != "X-cancelled"]
+    if ("2000-02-08", "10:30") not in live:
+        bad.append(f"proceedings.csv reads SB 393's sittings as {live!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", "two slips read on their own rows; SB 393 of 2000 heard on 8 February, as typed on its docket"
+
+
 # Real rows: Docket_2015-2016.txt (HB 564 of 2015).
 _DOCKET_CANCELED_SITTINGS = [
     "2015|0652|01/08/2015 03:27:23 PM|HB564|H|Introduced and Referred to Health, Human Services and Elderly Affairs; HJ 12, PG. 231|01/08/2015 03:27:23 PM",
@@ -3745,7 +3804,7 @@ def _rescheduled_rows_in_manifests():
     HB 618 of 2000's hearing of 24 April (decision 59b), whose notice
     "==HEARING== April 24" was read as nothing until then."""
     want = {"1999-2000": [("SB79", "1999-03-24"), ("SB395", "2000-02-24"),
-                          ("HB618", "2000-04-24")],
+                          ("HB618", "2000-04-24"), ("SB393", "2000-02-08")],
             "2001-2002": [("SB373", "2002-01-22")]}
     bad, n = [], 0
     for term, pairs in want.items():

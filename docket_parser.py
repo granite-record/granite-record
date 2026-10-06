@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -918,8 +918,9 @@ def rescheduled_to(r):
 def rescheduled_proceeding(r, flags, day, timeline):
     """The Senate hearing a row read by rescheduled_to gives notice of: its
     day, and the hour and room the row states after it."""
-    m = _E1999.RESCHEDULED_TO.match(r["desc"])
-    rest = r["desc"][m.end("date"):] if m else r["desc"]
+    said = _E1999.mend(r["desc"]) if hasattr(_E1999, "mend") else r["desc"]
+    m = _E1999.RESCHEDULED_TO.match(said)
+    rest = said[m.end("date"):] if m else said
     at = RESCHEDULED_TIME.search(rest)
     t = _parse_time(f"{at.group('time')}{at.group('mer')}") if at else None
     # The room is read as SENATE_SCHED_RE's is: between the day and the hour,
