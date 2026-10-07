@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.427
+# GRANITE_VERSION: 2026-09-04.428
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44761,6 +44761,12 @@ def _every_fetcher_notes_refusal():
     record a refusal; nor may one that stops at its first failure record a
     single dropped connection, which is not one; nor check_civics_links a 403
     from nh.gov, which is that server's.
+
+    AND TWO THAT NOTED AND WENT ON (7 October 2026): fetch_rollcall_parties
+    stopped only at its second refusal and read a 503, the block page and a
+    dropped connection as a page not there, and fetch_lsrs did not notice the
+    block page and stopped on a refusal with status 1. Both are driven here,
+    and on a 503 too, never run against the address.
     """
     import contextlib
     import http.client
@@ -44877,6 +44883,16 @@ def _every_fetcher_notes_refusal():
             {"403": 1, "block": 1, "drop": 2}),
         "probe_calendars": ([], None, {"403": 1, "block": 1}),
         "probe_schema": (["--dir", "."], None, {"403": 1, "block": 1, "drop": 2}),
+        # AND TWO THAT NOTED BUT DID NOT STOP (7 October 2026). The roll call
+        # party fetch asked once more after a 403 (--stop-refused 2) and read
+        # a 503, the block page and a dropped connection as a missing page;
+        # the LSR fetch did not notice the block page, and on its postback
+        # asked for the results page next. Two roll calls, a chamber each.
+        "fetch_rollcall_parties": (["--budget", "5", "--delay", "0"], files(**{
+            "rollcalls/RollCallSummary_2004.txt":
+                "2004|H|46|x|HB1|200|150|0|50|x\n2004|S|12|x|SB1|20|4|0|0|x\n"}),
+            {"403": 1, "503": 1, "block": 1, "drop": 2}),
+        "fetch_lsrs": ([], None, {"403": 1, "503": 1, "block": 1}),
     }
 
     class Page:
@@ -44896,8 +44912,9 @@ def _every_fetcher_notes_refusal():
             return False
 
     def answer(how, url):
-        if how in ("403", "404"):
-            raise urllib.error.HTTPError(url, int(how), "Forbidden" if how == "403" else "Not Found",
+        if how in ("403", "404", "503"):
+            raise urllib.error.HTTPError(url, int(how), {"403": "Forbidden", "404": "Not Found",
+                                                         "503": "Service Unavailable"}[how],
                                          http.client.HTTPMessage(), io.BytesIO(b""))
         if how == "drop":
             raise http.client.RemoteDisconnected("Remote end closed connection without response")
@@ -44930,6 +44947,12 @@ def _every_fetcher_notes_refusal():
                  '<option value="HC2.pdf">No 2 January 9 2026</option></select>')
         plan.append(("fetch_committee_reports", "its calendar PDFs", ["--year", "2026"], None,
                      {"403": 2, "block": 2, "drop": 3}, (index,), None))
+    if "fetch_lsrs" in present:
+        # The search page, answered with its CSV link, leads to the postback.
+        search = ('<a href="javascript:__doPostBack(&#39;ctl00$pageBody$lnkCVS&#39;,&#39;&#39;)">'
+                  'Download CSV File</a>')
+        plan.append(("fetch_lsrs", "its postback", [], None,
+                     {"403": 2, "503": 2, "block": 2}, (search,), None))
     for name, what, argv, hows in (
             ("fetch_bill_status", "--bill", ["--bill", "HB1"], {"403": 1, "block": 1}),
             ("fetch_bill_text", "--probe", ["--probe", "HB1"], {"403": 1, "block": 1}),
@@ -45000,7 +45023,8 @@ def _every_fetcher_notes_refusal():
                             setattr(M, k, v)
                     runs += 1
                     noted = refusal.MARK.exists()
-                    said = {"403": "a 403", "404": "a 404 everywhere", "block": "the block page",
+                    said = {"403": "a 403", "503": "a 503", "404": "a 404 everywhere",
+                            "block": "the block page",
                             "drop": ("two dropped connections" if want is not None
                                      else "a dropped connection")}[how]
                     if links and how in ("403", "drop"):
