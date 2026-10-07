@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 What is the live site actually serving?
 
-    python3 check_live.py
-    python3 check_live.py --base https://graniterecord.org --site site
+    python3 src/checks/check_live.py
+    python3 src/checks/check_live.py --base https://graniterecord.org --site site
 
 Fetches a handful of URLs from the published site and compares each against the
 file that was supposed to produce it. Reads nothing from the General Court.

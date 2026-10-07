@@ -255,7 +255,7 @@ live on every page.
     python3 preflight.py
     python3 src/hearings/probe_alignment.py --truth
     python3 src/hearings/probe_alignment.py --truth --no-bench
-    python3 check_site.py
+    python3 src/checks/check_site.py
 
 Those four commands are the check on a change of this kind.
 
@@ -437,7 +437,7 @@ on. The nightly's census counts it, its fingerprint hashes the files
 `meta.json` names, and `check_site` refuses a site whose index does not hold
 together. `build_site_v2.py` deletes a term's file it did not write this time,
 which an earlier build on the laptop's never-emptied `site/` could leave and
-the reader would refuse. Once a deploy is up, `check_live.py --gate` reads the
+the reader would refuse. Once a deploy is up, `python3 src/checks/check_live.py --gate` reads the
 served `meta.json` and the newest term's file: a `meta.json` naming no term or
 other terms than the build's, or a term file empty, not JSON or a web page in
 its place, fails it as a deploy that did not land; a file too large for it to
@@ -932,7 +932,7 @@ people have reported the 20,000 limit still enforced after upgrading the
 latter.
 
 `check_site.py` warns once the site passes 90,000 files, and the nightly will
-not deploy past 95,000. Run `python3 check_site.py` for the count rather than
+not deploy past 95,000. Run `python3 src/checks/check_site.py` for the count rather than
 quoting one.
 
 ### 5. Long functions where declaration order is load-bearing

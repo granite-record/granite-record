@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.8
+# GRANITE_VERSION: 2026-09-12.9
 """
 What changed at the General Court between two copies of its bulk files.
 
-    python3 gc_changes.py                       # the archive's last two versions of each file
-    python3 gc_changes.py --against-installed   # the archive's newest vs what the build reads now
-    python3 gc_changes.py --out reports/gc-changes-2026-09-13.md
-    python3 gc_changes.py --db-night 2026-10-02 # a night whose files came from the database
+    python3 src/checks/gc_changes.py                       # the archive's last two versions of each file
+    python3 src/checks/gc_changes.py --against-installed   # the archive's newest vs what the build reads now
+    python3 src/checks/gc_changes.py --out reports/gc-changes-2026-09-13.md
+    python3 src/checks/gc_changes.py --db-night 2026-10-02 # a night whose files came from the database
 
 No network. It reads nh-archive/ (snapshot_gencourt.py's content-addressed
 store and its index of which version each day had) and, with

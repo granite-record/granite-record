@@ -64,7 +64,7 @@ if errorlevel 1 goto :failed
 :verify
 echo.
 echo === Checking the site before publishing ===
-python3 check_site.py --site site --base %BASE%
+python3 src/checks/check_site.py --site site --base %BASE%
 if errorlevel 1 goto :failed
 
 if "%1"=="--check" (
@@ -118,7 +118,7 @@ REM production domain never took, because the project's production branch
 REM was main while this repo is on master. --gate fails only when what is
 REM served is not what was built; dashboard settings are reported but do
 REM not fail the publish.
-python3 check_live.py --gate --base %BASE% --site site
+python3 src/checks/check_live.py --gate --base %BASE% --site site
 if errorlevel 1 goto :notlanded
 
 echo.

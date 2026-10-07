@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Check the site is fit to publish before uploading it.
 
-    python3 check_site.py --site site --base https://graniterecord.org
+    python3 src/checks/check_site.py --site site --base https://graniterecord.org
 
 Deployment is the point at which mistakes stop being private. A missing file or
 a link to a page that was never generated is invisible on a local server, where

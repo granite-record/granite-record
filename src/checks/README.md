@@ -18,7 +18,7 @@ Does not belong here: `preflight.py`, the test suite, which stays at the
 root; the timestamp scorer, which sits in `hearings/` beside the method it
 scores.
 
-The files move here in stages 1 and 4 (`src/README.md`); until a file's
-stage, it is still at the repository root. `publish.bat` names `check_site`
-and `check_live` by their paths, so its two lines change in the stage that
-moves them.
+The files moved here in stages 1 and 4 (`src/README.md`). `publish.bat`
+names `check_site` and `check_live` by their paths
+(`python3 src/checks/check_site.py --site site --base %BASE%`), so its two
+lines changed in the commit that moved them.
