@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
-    python3 parse_clerks_csv.py --report    # say what it found, write nothing
-    python3 parse_clerks_csv.py             # -> town_clerks.json
+    python3 src/towns/parse_clerks_csv.py --report    # say what it found, write nothing
+    python3 src/towns/parse_clerks_csv.py             # -> town_clerks.json
 
 THIS SUPERSEDES parse_clerks.py, AND THE REASON IS WORTH KEEPING.
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 One canonical list of New Hampshire places, and what each source says about it.
 
-    python3 build_places.py --report     # says what it found, writes nothing
-    python3 build_places.py              # -> places.json
+    python3 src/towns/build_places.py --report     # says what it found, writes nothing
+    python3 src/towns/build_places.py              # -> places.json
 
 WHY THIS FILE EXISTS
 

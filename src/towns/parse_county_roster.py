@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-22.3
+# GRANITE_VERSION: 2026-09-22.4
 """
 New Hampshire's elected county officers, out of the Secretary of State's roster.
 
-    python3 parse_county_roster.py --report   # what it found, writes nothing
-    python3 parse_county_roster.py            # -> county_officials.json
+    python3 src/towns/parse_county_roster.py --report   # what it found, writes nothing
+    python3 src/towns/parse_county_roster.py            # -> county_officials.json
 
 WHICH OFFICES, AND WHY THESE. RSA 655:9 names them: county commissioner,
 sheriff, county attorney, county treasurer, register of deeds and register of

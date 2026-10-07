@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.7
+# GRANITE_VERSION: 2026-09-12.8
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
-    python3 parse_clerks.py --report      # says what it found, writes nothing
-    python3 parse_clerks.py               # -> town_clerks.json
+    python3 src/towns/parse_clerks.py --report      # says what it found, writes nothing
+    python3 src/towns/parse_clerks.py               # -> town_clerks.json
 
 WHY A PDF AND NOT A FETCH
 

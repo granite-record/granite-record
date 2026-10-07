@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 The Secretary of State's own district table, and what it says about ours.
 
-    python3 parse_sos_districts.py --report    # compare, write nothing
-    python3 parse_sos_districts.py             # -> sos_districts.json
+    python3 src/towns/parse_sos_districts.py --report    # compare, write nothing
+    python3 src/towns/parse_sos_districts.py             # -> sos_districts.json
 
 WHY. `districts/congress.txt`, `council.txt`, `senate.txt` and `house.txt`
 carry no provenance of any kind: no source URL, no retrieval date, no

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 NH GRANIT's district geometry, and whether it carries the districts we publish.
 
-    python3 parse_granit.py --report     # say what the layers hold, write nothing
-    python3 parse_granit.py              # -> granit_layers.json
+    python3 src/towns/parse_granit.py --report     # say what the layers hold, write nothing
+    python3 src/towns/parse_granit.py              # -> granit_layers.json
 
 WHAT IS HERE AND WHERE IT CAME FROM. Six shapefiles under `sources/gis/`,
 fetched on 20 September 2026 from
