@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.203 */
+/* GRANITE_VERSION: 2026-09-07.204 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1032,6 +1032,11 @@ font-size:var(--t-ui);line-height:1.6}
 /* The artist's credit, which her licence asks for in the footer of every
    page (and on About): a line under the attribution, in its voice. */
 footer .logocredit{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* WHO MAKES IT, one quiet line under the attribution (the person, 7 October
+   2026): the logo credit's size and grey, and above it, because it is the
+   site's own and the logo's is a credit within it. */
+footer .footby{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+footer .footby + .logocredit{margin-top:var(--sp-2)}
 footer .attrib b{color:var(--ink);font-weight:600}
 /* AN EXTERNAL LINK SAYS SO. Settled in the footer artifact and wanted
    generally; it was never implemented, so "Source on GitHub" and the feedback

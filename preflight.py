@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.430
+# GRANITE_VERSION: 2026-09-04.431
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13736,7 +13736,7 @@ def _class_collisions():
         # pages and again in build_pages.shell() for the static ones
         "brand", "navdrop", "navmenu", "navtabs", "top", "in", "skip", "sr",
         "attrib", "fcol", "fcolhead", "fcols", "footdata", "lic", "flinks",
-        "logocredit",
+        "logocredit", "footby",
         "out", "note", "src", "count", "caret", "chev",
         # .src.fill, a source note that takes the width it has: the
         # committees index (build_committees) and a committee page (app.js)
@@ -44196,6 +44196,43 @@ def _docket_cancel_mark_kept(N, B):
         f"the note beside a cancelled report calls it a meeting: {B.CANCELLED_ROW_NOT_TOLD!r}")
     return "ok", (f"{len(cases)} lines in the dockets' shapes, the mark where the clerk typed "
                   "it and nowhere a pattern reads; the cancelled report and introduction listed")
+
+
+@check("frontend", "every page's footer says who makes the site and leads to About, which says it once")
+def _footer_credit():
+    """"An independent project by Alice Wade" and a link to About: one quiet
+    line in the footer of every page, and on the About page one plain
+    sentence that Granite Record is built and maintained by Alice Wade,
+    independently, with a place left for the person's own fuller description
+    (7 October 2026). Both footers carry it -- bills.html's, which every
+    record page is built from, and build_pages.shell's -- and every page the
+    fixture's builders wrote carries it once."""
+    line = ('<p class="footby">An independent project by Alice Wade &middot; '
+            '<a href="about.html">About</a></p>')
+    for f in ("bills.html", "build_pages.py"):
+        src = _paths.locate(f).read_text(encoding="utf-8")
+        assert src.count(line) == 1, f"{f}: the footer's credit line is missing or doubled"
+        assert src.index(line) < src.index('class="logocredit"'), (
+            f"{f}: the credit line is not above the logo's")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site").rglob("*.html"))
+    with_footer = [p for p in pages if "<footer>" in p.read_text(encoding="utf-8", errors="replace")]
+    # The 404 page is served at any address, so its links are written from
+    # the root ("/about.html"), which is the same line.
+    said = re.compile(re.escape(line).replace(re.escape('href="about.html"'),
+                                              r'href="/?about\.html"'))
+    lacking = [p.relative_to(shared / "site").as_posix() for p in with_footer
+               if len(said.findall(p.read_text(encoding="utf-8", errors="replace"))) != 1]
+    assert with_footer and not lacking, (
+        f"{len(lacking)} of {len(with_footer)} pages carry the credit line other than once: "
+        f"{lacking[:5]}")
+    about = (shared / "site" / "about.html").read_text(encoding="utf-8")
+    assert about.count("Granite Record is built and maintained by Alice Wade, independently.") == 1 \
+        and '<h2 id="who">Who makes Granite Record</h2>' in about, (
+            "the About page does not say who makes the site, once, under its own heading")
+    assert "<!-- WHO MAKES IT:" in about, "the About page leaves no place for the person's description"
+    return "ok", (f"the credit line once on each of {len(with_footer)} pages with a footer, and "
+                  "About says who makes it")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

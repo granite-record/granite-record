@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.150
+# GRANITE_VERSION: 2026-09-04.151
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1306,6 +1306,7 @@ def shell(title, current, body, wide=False, script="", desc="",
 General Court</b>. Not affiliated with the General Court, and not a substitute
 for it &mdash; where this site and the Court&rsquo;s own record disagree, the
 Court is right and we want to know.</p>
+<p class="footby">An independent project by Alice Wade &middot; <a href="about.html">About</a></p>
 <p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
 &middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
 </div>
@@ -1613,6 +1614,12 @@ deleted after a week.</p>
 <h2>Corrections</h2>
 <p>If something here misrepresents the record, it should be corrected. The official
 record at gc.nh.gov always takes precedence over anything shown here.</p>
+
+<h2 id="who">Who makes Granite Record</h2>
+<p>Granite Record is built and maintained by Alice Wade, independently.</p>
+<!-- WHO MAKES IT: the person is writing the fuller description of who makes
+     the site and why (7 October 2026). It goes here, under this sentence, and
+     nothing else is to be written in its place. -->
 
 <h2>Independence</h2>
 <p>This site is not affiliated with or endorsed by the New Hampshire General Court.
