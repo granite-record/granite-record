@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.419
+# GRANITE_VERSION: 2026-09-04.420
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -49879,6 +49879,213 @@ _TURN_LEGISLATION = [
     "legislationID"]
 
 
+# ---- the sponsors who have left, built on a fixture --------------------------------
+#
+# Real rows, cut on 7 October 2026 from the files on disk (the export of 24
+# September and the database dump of 8 September), for four bills of 2026:
+#
+#   HB 1449   LsrsOnly.txt lists eight sitting members, Rep. McGrath the prime;
+#             LsrSponsors.txt lists them and Rep. Morton, who has left
+#   HB 1036   LsrsOnly.txt lists four and marks none prime; LsrSponsors.txt
+#             flags Rep. Vose, who has left
+#   HB 171    in LsrSponsors.txt alone, a 2025 request retained into 2026:
+#             Rep. Germana the prime and two others sitting, and Reps.
+#             Rochefort, Haskins and Massimilla, who have left
+#   CACR 30   in LsrSponsors.txt alone, its one sponsor Rep. Oppel, who has
+#             left, and whom the status page names with no id
+#
+# with each bill's record in LSRs.txt and its first docket row; the fifteen
+# sitting members from legislators.txt, their address columns left empty and
+# their e-mail addresses made up, so that none a scraper could use is in the
+# repository; and the six who have left as former_members.json,
+# past_members.json and db/Legislators.psv (its first eleven columns) hold
+# them.
+_SPONSORS_WHO_LEFT = {
+    "LsrsOnly.txt": [
+        f"26-2787|{m}|1995|2026|{r}|HB1449|H|(New Title) limiting times vaccine clinics may "
+        "operate at schools, with certain exceptions."
+        for m, r in (("9866", "Sponsor"), ("9940", "Sponsor"), ("10694", "Sponsor"),
+                     ("10913", "Sponsor"), ("11401", "Sponsor"), ("11420", "Sponsor"),
+                     ("11421", "Prime"), ("11424", "Sponsor"))] + [
+        f"26-2797|{m}|2005|2026|Sponsor|HB1036|H|relative to the maximum duration of term alimony."
+        for m in ("570", "9895", "9937", "10695")],
+    "LsrSponsors.txt": [
+        "2026|2797|2|570|0", "2026|149|7|746|0", "2026|2797|1|909|1", "2026|2787|9|9866|0",
+        "2026|2797|3|9895|0", "2026|2797|6|9937|0", "2026|2787|4|9940|0", "2026|149|6|10610|0",
+        "2026|149|3|10614|0", "2026|2787|7|10694|0", "2026|2797|4|10695|0", "2026|149|4|10726|0",
+        "2026|149|1|10748|1", "2026|149|5|10855|0", "2026|2787|5|10913|0", "2026|2674|1|11182|1",
+        "2026|2787|6|11371|0", "2026|2787|3|11401|0", "2026|2787|8|11420|0", "2026|2787|1|11421|1",
+        "2026|2787|2|11424|0"],
+    "LSRs.txt": [
+        "2026|0149|establishing a moratorium on the issuance of permits for new landfills.|H|1|0|0|"
+        "0|25-0149|HB  0171|HB171||ENA|H06|H06|1/8/2025 12:00:00 AM|11||3/20/2025 12:00:00 AM|"
+        "3/20/2025 12:00:00 AM|0|S38|S38|3/20/2025 12:00:00 AM|09|01/07/2026||1/7/2026 12:00:00 AM|"
+        "0|03|S38|4/15/2025 9:00:00 AM|SH Room 103||||0|0|",
+        "2026|2674|relating to the public utilities commissioners.Providing that the public "
+        "utilities commissioners are elected.|H|3|0|0|0|26-2674|CACR0030|CACR30||ELE|H36|H36|"
+        "1/7/2026 12:00:00 AM|09||3/5/2026 12:00:00 AM|3/5/2026 12:00:00 AM|0||||||||0|02|H36|"
+        "2/17/2026 10:00:00 AM|GP Room 158||||0|0|",
+        "2026|2787|(New Title) limiting times vaccine clinics may operate at schools, with certain "
+        "exceptions.|H|1|0|0|0|26-2787|HB  1449|HB1449||EDG|H09|H09|1/7/2026 12:00:00 AM|13||"
+        "3/5/2026 12:00:00 AM|5/21/2026 12:00:00 AM|0|S26|S26|3/12/2026 12:00:00 AM|11|04/16/2026||"
+        "4/16/2026 12:00:00 AM|0|02|H09|4/2/2026 2:00:00 PM|SH Room 103||||0|0|",
+        "2026|2797|relative to the maximum duration of term alimony.|H|1|0|0|0|26-2797|HB  1036|"
+        "HB1036||DOM|H37|H37|1/7/2026 12:00:00 AM|09||3/5/2026 12:00:00 AM|3/5/2026 12:00:00 AM|0||"
+        "||||||0|02|H37|2/3/2026 10:00:00 AM|GP Room 230||||0|0|"],
+    "Docket.txt": [
+        "2026|0149|1/6/2025 8:54:53 AM|HB171|H|  Introduced 01/08/2025 and referred to Environment "
+        "and Agriculture  HJ 2  P. 8|1/21/2025 2:02:04 PM",
+        "2026|2797|11/7/2025 11:38:24 AM|HB1036|H|  Introduced 01/07/2026 and referred to Children "
+        "and Family Law  HJ 1  P. 3|3/24/2026 2:03:43 PM",
+        "2026|2787|12/4/2025 10:49:24 AM|HB1449|H|  Introduced 01/07/2026 and referred to Health, "
+        "Human Services and Elderly Affairs  HJ 1  P. 22|3/25/2026 12:14:29 PM",
+        "2026|2674|12/18/2025 3:29:23 PM|CACR30|H|  Introduced 01/07/2026 and referred to Election "
+        "Law  HJ 1  P. 41|3/27/2026 1:42:46 PM"],
+    # legislators.txt's first nine columns: id, last, first, middle, chamber,
+    # seat, county, district, party.
+    "legislators.txt": [
+        "11421|McGrath|Linda||H|3093|8|40|R", "11424|DeRoy|Susan|G|H|1030|9|3|R",
+        "11401|DeVito|Sayra|Lynn|H|3019|8|8|R", "9940|Litchfield|Melissa|A.|H|3117|8|32|R",
+        "10913|McFarlane|Donald|S|H|2093|5|18|R", "10694|Perez|Kristine||H|2071|8|16|R",
+        "11420|Sabourin dit Choinière|Matt|R|H|3028|8|30|R", "9866|Terry|Paul|A|H|1012|1|7|R",
+        "570|DeSimone|Debra|L|H|1001|8|18|R", "9895|Kofalt|Jim|A|H|2101|6|32|R",
+        "10695|Kuttab|Katelyn|T|H|3064|8|17|R", "9937|Lynn|Bob|J.|H|2090|8|17|R",
+        "10748|Germana|Nicholas|A|H|4004|3|15|D", "10726|Potenza|Kelley|L|H|3023|9|19|R",
+        "10610|King|Seth||H|2081|4|4|R"],
+    "Counties.txt": ["01|Belknap|Belk.", "02|Carroll|Carr.", "03|Cheshire|Ches.", "04|Coos|Coos",
+                     "05|Grafton|Graf.", "06|Hillsborough|Hills.", "07|Merrimack|Merr.",
+                     "08|Rockingham|Rock.", "09|Strafford|Straf.", "10|Sullivan|Sull."],
+    "Committees.txt": ["H06|Environment and Agriculture|E&A",
+                       "H09|Health, Human Services and Elderly Affairs|HHS&EA",
+                       "H36|Election Law|ELEC LAW", "H37|Children and Family Law|CHILD&FAMI",
+                       "S26|Health and Human Services|HHS", "S38|Energy and Natural Resources|ENR"],
+    "SubjectCodes.txt": ["16|DOM|Domestic Relations", "18|EDG|Education - General",
+                         "21|ELE|Elections", "26|ENA|Environment - Administration"],
+    # db/Legislators.psv's first eleven columns: PersonID, LastName,
+    # FirstName, Employeeno, MiddleName, LegislativeBody, Active, seatno,
+    # countycode, District, party.
+    "Legislators.psv": [
+        "11371|Morton|Jonathan|409274||H|False||06|39|R", "909|Vose|Michael|377272||H|False||08|05|R",
+        "11182|Oppel|Thomas|409281||H|False||05|09|D",
+        "10614|Rochefort|David|409162||H|False|2019|05|01|r",
+        "10855|Haskins|Linda|409107|J|H|False||08|11|D",
+        "746|Massimilla|Linda|377141|A.|H|False|5002|05|01|d"],
+    "former_members.json": {
+        "11371": {"county": "Hillsborough", "district": "39", "name": "Morton, Jonathan",
+                  "party": "Republican"},
+        "909": {"county": "Rockingham", "district": "05", "name": "Vose, Michael",
+                "party": "Republican"},
+        "11182": {"county": "Grafton", "district": "09", "name": "Oppel, Thomas",
+                  "party": "Democrat"},
+        "10614": {"county": "Grafton", "district": "01", "name": "Rochefort, David",
+                  "party": "Republican"},
+        "10855": {"county": "Rockingham", "district": "11", "name": "Haskins, Linda",
+                  "party": "Democrat"},
+        "746": {"county": "Grafton", "district": "01", "name": "Massimilla, Linda",
+                "party": "Democrat"}},
+    "past_members.json": {"409281": "Rep. Oppel, Thomas(Graf. 09)"},
+    "bill_status.json": {"2025-2026": {"CACR30": {
+        "title": "relating to the public utilities commissioners. Providing that the public "
+                 "utilities commissioners are elected.",
+        "lsr": "2674", "body": "H",
+        "sponsors": [{"name": "Thomas Oppel", "party": "D", "web_member_id": "",
+                      "senate_district": "", "chamber": "", "url": "",
+                      "no_member_page": True}]}}},
+}
+
+
+@check("build", "a sponsor who has left is on the bill from LsrSponsors.txt, once, named with "
+       "the chamber they sat in, built on real rows")
+def _sponsors_who_left():
+    """LsrsOnly.txt lists sitting members only (dayfiles_from_db asks for
+    Active), and build_data read a bill's sponsors from it and asked
+    LsrSponsors.txt only for a prime LsrsOnly left unmarked; on a bill only
+    LsrSponsors.txt covers, it dropped a member off the roster as unknown. So
+    168 sponsorships of 2025-2026 on 157 bills, by 20 members who had left,
+    were on no page: HB 1449's Rep. Morton among them. A departed prime was
+    put back, but as "Vose, Michael" with no chamber, under "Chamber not on
+    file" on 34 bills; and where every sponsor had left, the status page filled
+    the bill by name first, so CACR 30 listed Rep. Oppel twice, once by his
+    PersonID and once by the employee number past_members.json gives him.
+
+    build_data.py, on these four bills' real rows: every LsrSponsors.txt row
+    is on its bill, once; LsrsOnly's prime and order stand, and a departed
+    prime it left unmarked is the prime; a bill only LsrSponsors.txt covers
+    keeps its sequence; and each member who has left is labelled as a sitting
+    member is, with the chamber db/Legislators.psv gives them."""
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sponsors-left-"))
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
+               HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
+    fx = _SPONSORS_WHO_LEFT
+    try:
+        files = _turn_files([], fx["Docket.txt"], fx["LSRs.txt"], fx["LsrsOnly.txt"],
+                            fx["LsrSponsors.txt"], [], [])
+        files["legislators.txt"] = _turn_day([f"{r}||||NH||rep{r.split('|')[0]}@example.gov"
+                                              for r in fx["legislators.txt"]])
+        for name in ("Counties.txt", "Committees.txt", "SubjectCodes.txt"):
+            files[name] = _turn_day(fx[name])
+        for n, b in files.items():
+            (tmp / n).write_bytes(b)
+        db = tmp / "db"
+        db.mkdir()
+        cols = ["PersonID", "LastName", "FirstName", "Employeeno", "MiddleName", "LegislativeBody",
+                "Active", "seatno", "countycode", "District", "party", "Expr1", "Address",
+                "address2", "city", "Zipcode", "Expr2", "EMailAddress", "GenderCode",
+                "SecretaryID", "database"]
+        (db / "_columns.json").write_text(json.dumps({"Legislators": cols}), encoding="utf-8")
+        (db / "Legislators.psv").write_text(
+            "".join(r + "|" * (len(cols) - 11) + "\r\n" for r in fx["Legislators.psv"]),
+            encoding="utf-8")
+        for name in ("former_members.json", "past_members.json", "bill_status.json"):
+            (tmp / name).write_text(json.dumps(fx[name]), encoding="utf-8")
+        shutil.copy2(here / "member_corrections.json", tmp / "member_corrections.json")
+        (tmp / "verification_manifest.csv").write_text("bill,sched_date\n", encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_data.py"), "--dir", ".", "--out", "data"],
+                 cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                 env=env, timeout=300)
+        out = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode == 0, f"build_data on the fixture: {out[-600:]}"
+        sp = json.loads((tmp / "data" / "sponsors.json").read_text(encoding="utf-8"))
+        sp = sp.get("2025-2026") or {}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    def seen(bill):
+        return [(x["member_id"], x["chamber"], x["label"], bool(x.get("prime")))
+                for x in sp.get(bill) or []]
+    want = {
+        "HB1449": [("11421", "H", "Rep. Linda McGrath (R - Rock 40)", True),
+                   ("11424", "H", "Rep. Susan DeRoy (R - Straf 3)", False),
+                   ("11401", "H", "Rep. Sayra DeVito (R - Rock 8)", False),
+                   ("9940", "H", "Rep. Melissa Litchfield (R - Rock 32)", False),
+                   ("10913", "H", "Rep. Donald McFarlane (R - Graf 18)", False),
+                   ("11371", "H", "Rep. Jonathan Morton (R - Hills 39)", False),
+                   ("10694", "H", "Rep. Kristine Perez (R - Rock 16)", False),
+                   ("11420", "H", "Rep. Matt Sabourin dit Choinière (R - Rock 30)", False),
+                   ("9866", "H", "Rep. Paul Terry (R - Belk 7)", False)],
+        "HB1036": [("909", "H", "Rep. Michael Vose (R - Rock 5)", True),
+                   ("570", "H", "Rep. Debra DeSimone (R - Rock 18)", False),
+                   ("9895", "H", "Rep. Jim Kofalt (R - Hills 32)", False),
+                   ("10695", "H", "Rep. Katelyn Kuttab (R - Rock 17)", False),
+                   ("9937", "H", "Rep. Bob Lynn (R - Rock 17)", False)],
+        "HB171": [("10748", "H", "Rep. Nicholas Germana (D - Ches 15)", True),
+                  ("10614", "H", "Rep. David Rochefort (R - Graf 1)", False),
+                  ("10726", "H", "Rep. Kelley Potenza (R - Straf 19)", False),
+                  ("10855", "H", "Rep. Linda Haskins (D - Rock 11)", False),
+                  ("10610", "H", "Rep. Seth King (R - Coos 4)", False),
+                  ("746", "H", "Rep. Linda Massimilla (D - Graf 1)", False)],
+        "CACR30": [("11182", "H", "Rep. Thomas Oppel (D - Graf 9)", True)],
+    }
+    bad = [f"{b}: {seen(b)}, not {w}" for b, w in want.items() if seen(b) != w]
+    assert not bad, "the sponsors of the fixture's bills are not the record's:\n  " + \
+        "\n  ".join(bad)
+    return "ok", ("HB 1449 keeps Rep. Morton beside LsrsOnly's eight, HB 1036's prime is "
+                  "Rep. Vose, HB 171 keeps its three who have left in sequence, and CACR 30 "
+                  "lists Rep. Oppel once; each who has left labelled as a sitting member is, "
+                  "with the chamber db/Legislators.psv gives them")
+
+
 @check("build", "no fact of 2025-2026 reaches a 2027 bill by its number: the sign-ins are the "
        "database's by term, the Legislation fill keeps to the bill's own term, and titles are "
        "read by term", needs=("build_data", "build_site_v2", "build_all", "testimony_from_db"))
@@ -60259,6 +60466,86 @@ def _sponsors_by_term():
     census = ", ".join(f"{t} {len(v):,}/{len(bills.get(t, {})):,}"
                        for t, v in sorted(sponsors.items()))
     return "ok", f"sponsors by term: {census}"
+
+
+@check("data", "every sponsor LsrSponsors.txt gives the session's bills is on the bill, once, "
+       "and a member the database knows has a chamber")
+def _sponsors_on_record():
+    """The data side of _sponsors_who_left. LsrSponsors.txt is the General
+    Court's every sponsor of the session's requests, sitting or not; LsrsOnly
+    .txt holds the sitting only. Read from the second, 168 sponsorships of
+    2025-2026 by 20 members who had left were on no page -- LsrSponsors.txt:
+    7674, "2026|2787|6|11371|0", is Rep. Morton on HB 1449 -- 7 bills listed
+    their only sponsor twice, by PersonID and by employee number (CACR 30's
+    Rep. Oppel, 11182 and 409281; HB 728's Rep. Doucette, 893 and 377220),
+    and 34 primes who had left had no chamber (HB 1036's Rep. Vose).
+
+    For the newest term: every LsrSponsors.txt row of its years, on the bill
+    its request is (bills.json's lsr_year and lsr_num), is among that bill's
+    sponsors; no bill lists one person twice, an employee number counted as
+    the PersonID db/Legislators.psv gives it; and every sponsor whose id is a
+    PersonID there has a chamber. Two people of one name are two ids: HB 583's
+    Patrick Long (409256) and Pat Long (218767)."""
+    sp, bl, ls = Path("data/sponsors.json"), Path("data/bills.json"), Path("LsrSponsors.txt")
+    if not (sp.exists() and bl.exists() and ls.exists()):
+        return "skip", "data/sponsors.json, data/bills.json or LsrSponsors.txt not here"
+    sponsors = json.loads(sp.read_text(encoding="utf-8"))
+    bills = json.loads(bl.read_text(encoding="utf-8"))
+    if not all(re.match(r"^\d{4}-\d{4}$", k) for k in sponsors):
+        return "skip", "data/sponsors.json is not keyed on the term yet"
+    newest = max(bills)
+    years = set(newest.split("-"))
+    mine = sponsors.get(newest) or {}
+    by_lsr = {(str(r.get("lsr_year") or ""), str(r.get("lsr_num") or "").zfill(4)): b
+              for b, r in (bills.get(newest) or {}).items()}
+    pid = {}        # Employeeno -> PersonID
+    people = set()  # PersonID
+    lp, lc = Path("db/Legislators.psv"), Path("db/_columns.json")
+    if lp.exists() and lc.exists():
+        cols = json.loads(lc.read_text(encoding="utf-8")).get("Legislators") or []
+        if "PersonID" in cols and "Employeeno" in cols:
+            ip, ie = cols.index("PersonID"), cols.index("Employeeno")
+            for line in lp.read_text(encoding="utf-8", errors="replace").splitlines():
+                f = [x.strip() for x in line.split("|")]
+                if len(f) == len(cols) and f[ip]:
+                    people.add(f[ip])
+                    if f[ie]:
+                        pid[f[ie]] = f[ip]
+
+    def who(x):
+        m = str(x.get("member_id") or "")
+        return pid.get(m, m)
+    missing, rows = [], 0
+    for line in ls.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+        f = [x.strip() for x in line.split("|")]
+        if len(f) != 5 or f[0] not in years:
+            continue
+        bill = by_lsr.get((f[0], f[1].zfill(4)))
+        if not bill:
+            continue        # a request with no bill: build_data leaves it out, and says so
+        rows += 1
+        if f[3] not in {who(x) for x in mine.get(bill) or []}:
+            missing.append((bill, f[3]))
+    twice = sorted(b for b, v in mine.items()
+                   if any(n > 1 for i, n in Counter(who(x) for x in v).items() if i))
+    nochamber = sorted({b for b, v in mine.items() for x in v
+                        if str(x.get("member_id") or "") in people
+                        and x.get("chamber") not in ("H", "S")})
+    assert rows, f"no row of LsrSponsors.txt names a bill of {newest}"
+    bad = []
+    if missing:
+        bad.append(f"{len(missing):,} LsrSponsors.txt row(s) on {len({b for b, _ in missing}):,} "
+                   f"bill(s) are not on the bill: "
+                   + ", ".join(f"{b} {m}" for b, m in sorted(missing)[:6]))
+    if twice:
+        bad.append(f"{len(twice)} bill(s) list one person twice: {', '.join(twice[:8])}")
+    if nochamber:
+        bad.append(f"{len(nochamber)} bill(s) have a sponsor the database knows with no chamber: "
+                   + ", ".join(nochamber[:8]))
+    assert not bad, f"{newest}'s sponsors: " + "; ".join(bad)
+    return "ok", (f"{newest}: all {rows:,} LsrSponsors.txt rows on their bills, nobody listed "
+                  f"twice, and every sponsor the database knows has a chamber"
+                  + ("" if people else " (db/Legislators.psv not here, so ids not joined)"))
 
 
 @check("data", "every voter in the record is one person, with a party")
