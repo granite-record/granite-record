@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Turn the Senate and Executive Council district lists into a town lookup.
 
-    python3 parse_districts.py --dir districts --out site/districts.json
+    python3 src/towns/parse_districts.py --dir districts --out site/districts.json
 
 The General Court's data files carry House districts only, so town lookup
 covered representatives and nothing else. These lists close that gap, and add

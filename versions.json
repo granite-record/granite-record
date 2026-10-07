@@ -115,7 +115,7 @@
     "parse_clerks.py": "2026-09-12.8",
     "parse_clerks_csv.py": "2026-09-20.4",
     "parse_county_roster.py": "2026-09-22.4",
-    "parse_districts.py": "2026-09-04.2",
+    "parse_districts.py": "2026-09-04.3",
     "parse_granit.py": "2026-09-20.4",
     "parse_officials.py": "2026-09-12.6",
     "parse_town_sites.py": "2026-09-20.11",
