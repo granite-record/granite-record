@@ -6,7 +6,7 @@
   "site/sidx built, the same cases run over the real index of the term, where at_most catches a flood,",
   "every term of the table is looked for in every term's titles and texts, and a retitled bill is reported.",
   "",
-  "Nothing here is typed. python3 build_search_index.py --fixture tests/search_cases.json copies every",
+  "Nothing here is typed. python3 src/pages/build_search_index.py --fixture tests/search_cases.json copies every",
   "bill's title, sponsor, committees and topic from site/idx, cuts search_index.json out of the term's",
   "real search index for exactly these bills, and copies the text of the few bills listed under \"texts\"",
   "into search_texts.json. Add a bill by naming its id in a case and running that: an invented title",

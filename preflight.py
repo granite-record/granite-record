@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.415
+# GRANITE_VERSION: 2026-09-04.416
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1412,13 +1412,23 @@ def _dash_c_problems(root=None):
 # (src/parse/x.py, watchers\gc_lane.py) is never read as one.
 _BARE_PY3 = re.compile(r"\bpython3?(?:\.exe)?[ \t]+(?:-[A-Za-z]+[ \t]+)*([A-Za-z0-9_]+\.py)\b")
 _BARE_TICK = re.compile(r"`(?:python3?[ \t]+)?([A-Za-z0-9_]+\.py)[ \t]+-[^`\n]*`")
+# The other tracked kinds a person reads a command off: a fixture's _about, a
+# page's or a script's comment, a config file's note. Stage 3 left
+# tests/search_cases.json telling the reader to run `python3
+# build_search_index.py --fixture`, which a reader of .py, .md, .bat and the
+# workflows alone did not see. Not the data tables (.txt, .csv, .pdf), which
+# are the General Court's or a build's; not the bench's append-only .jsonl;
+# and not the lane's queue, whose lines name each script bare on purpose and
+# whose text never changes.
+_BARE_ALSO = (".json", ".js", ".html", ".css", ".toml", ".sql", ".webmanifest")
 
 
 def _bare_command_problems(root=None):
     """([sentence], files read) for each command the repository writes that
     names a script under src/ by its bare name: `python3 x.py` in any tracked
-    script, document, workflow or .bat file, and in a document a backticked
-    `x.py --flag`, where x.py is no longer at the root. None without git.
+    script, document, workflow, .bat file or file of _BARE_ALSO's kinds, and
+    in a document a backticked `x.py --flag`, where x.py is no longer at the
+    root. None without git.
 
     Tracked files only, outside obsolete/: the laptop's root also holds
     STATE.md, CLAUDE.local.md and other files git does not carry, and a
@@ -1437,7 +1447,7 @@ def _bare_command_problems(root=None):
         return None
     rels = sorted(p for p in (r.stdout or "").split("\0")
                   if p and not p.startswith("obsolete/") and p != "CLAUDE.md"
-                  and (p.endswith((".py", ".md", ".bat"))
+                  and (p.endswith((".py", ".md", ".bat") + _BARE_ALSO)
                        or (p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml")))))
     bad, seen, n = [], set(), 0
     for rel in rels:
@@ -1513,9 +1523,9 @@ def _dash_c_imports_paths():
                      + "; ".join(bad))
     said = f"{n} files read; every -c program that imports a module of ours imports _paths first"
 
-    # A script named without its folder, in a tree git tracks: five commands
-    # that would answer "can't open file" from the root, and six that would
-    # not or are not the repository's.
+    # A script named without its folder, in a tree git tracks: six commands
+    # that would answer "can't open file" from the root, and eight that would
+    # not or are not read: the repository's, a data table's, the lane's.
     mover = "planted_mover.py"
     tmp = Path(tempfile.mkdtemp(prefix="gr-bare-"))
     try:
@@ -1533,23 +1543,28 @@ def _dash_c_imports_paths():
                                       f'"""`{mover} --doc` is a reference here."""\n'),
                 "publish.bat": f"python3 -u {mover} --site site\n",
                 ".github/workflows/w.yml": f"run: python {mover}\n",
+                "tests/cases.json": f'{{"_about": ["python3 {mover} --fixture tests/cases.json"]}}\n',
+                "Docket.txt": f"python3 {mover}\n",
+                "watchers/gc_lane.queue": f"# python3 {mover} --all\n{mover} --all\n",
                 "CLAUDE.md": f"python3 {mover}\n",
                 "obsolete/README.md": f"python3 {mover}\n"}
             _plant(tmp, dict(tree, **{"notes.md": f"python3 {mover}\n"}))
             _run(["git", "-C", str(tmp), "add", "--", *tree], capture_output=True, timeout=60)
             got = _bare_command_problems(tmp)
             want = ["README.md:1 gives", "README.md:2 gives", "src/parse/hint.py:1 gives",
-                    "publish.bat:1 gives", ".github/workflows/w.yml:1 gives"]
+                    "publish.bat:1 gives", ".github/workflows/w.yml:1 gives",
+                    "tests/cases.json:1 gives"]
             assert got is not None and len(got[0]) == len(want) and all(
                 any(g.startswith(w) for g in got[0]) for w in want), \
-                f"the reader of bare script names found {got} in a tree made to hold five"
+                f"the reader of bare script names found {got} in a tree made to hold six"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     got = _bare_command_problems()
     if got is None:
         return "ok", said + "; not a git checkout, so no command was read for a bare script name"
     bad, m = got
-    assert m >= 180, f"only {m} tracked files were read for commands; 187 were on 7 October"
+    assert m >= 220, (f"only {m} tracked files were read for commands; 227 were on 7 October, "
+                      "the JSON, JavaScript, HTML and config files among them")
     assert not bad, ("these commands name a script by its bare name, and it is no longer at "
                      "the root, so typed there they answer \"can't open file\"; give the "
                      "path: " + "; ".join(bad))
