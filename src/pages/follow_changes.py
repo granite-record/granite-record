@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.1
+# GRANITE_VERSION: 2026-10-07.2
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -30,11 +30,22 @@ thing. Public data only: nothing here knows who follows anything.
 
 WHAT "NEW" MEANS: THE NIGHT AN ITEM FIRST APPEARED (the person, 7 October
 2026: "since sometimes there is a delay until the calendar for that week is
-released"). The ledger holds every guid the feeds carry with the night it
-was first published, so a docket row entered three days after the day it
-records goes out the next morning, dated by the record and filed under the
-night it appeared. Each item is filed under exactly one night, which is the
-contract's rule that a record's item is in at most one night's file.
+released"). The ledger holds every item each record's feed carries with the
+night it was first published there, so a docket row entered three days after
+the day it records goes out the next morning, dated by the record and filed
+under the night it appeared. Each record's item is filed under exactly one
+night, which is the contract's rule that a record's item is in at most one
+night's file.
+
+BY RECORD, NOT BY GUID ALONE (the review of 7 October 2026). A topic's feed
+carries what has happened, so an executive session scheduled a week ahead
+enters it on the day it sits -- a week after its bill's feed carried it as
+scheduled. Kept by guid alone it was known by then, and a topic's follower
+was never told of a hearing or a session announced in advance, which is
+nearly all of them, while the topic's RSS reader was. Kept by record, the
+bill's follower hears of it when it is scheduled and the topic's when it
+enters the topic, as their two feeds tell it; someone following both hears
+twice, once of each.
 
 THE LEDGER, archive/first-seen.json. Carried between nights in the night's
 state, as archive/census.json is (cloud_kit.json's "state" list), because
@@ -45,13 +56,13 @@ site/: a fresh clone must build the same site from the same inputs. It holds
                 compares with to find a record that has left, which is owed
                 an "ended", and what that ending calls it
   nights        the eight nights the files carry: each night's built stamp,
-                sitting term, the guids first seen in it (by the build that
-                saw them) and the endings told in it
-  carried       every guid the feeds carried on any of the last eight nights,
-                by the last night that carried it
+                sitting term, the guids first seen in it under each record
+                (by the build that saw them) and the endings told in it
+  carried       every guid each record's feed carried on any of the last
+                eight nights, by the last night that carried it
 
-Nothing else, so it stays bounded: a guid no feed has carried for eight
-nights, and that no kept night files, is let go. The eight-night memory is
+Nothing else, so it stays bounded: a record's guid its feed has not carried
+for eight nights, and that no kept night files, is let go. The eight-night memory is
 what keeps one bad build from flooding anyone: a build whose member files
 came out empty forgets nothing, and when they come back their votes are not
 new. A night's files are rewritten from the ledger and from tonight's feeds,
@@ -91,7 +102,11 @@ from datetime import date, timedelta
 from pathlib import Path
 
 FORMAT = 1
-NIGHTS_KEPT = 8                       # the contract's "the last eight nights at least"
+# The ledger's own shape: 2 keeps each guid under the record whose feed
+# carried it. A ledger of 1, by guid alone, is refused and the night goes by
+# the record's dates, rather than being read in a shape it is not.
+LEDGER_FORMAT = 2
+NIGHTS_KEPT = 8                      # the contract's "the last eight nights at least"
 LEDGER = Path("archive/first-seen.json")
 CANDIDATE = Path("archive/first-seen.next.json")
 FOLDER = "changes"                    # under site/
@@ -230,10 +245,10 @@ def load(path=LEDGER, tonight=None):
         led = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         return None, f"{p.as_posix()} will not read ({type(e).__name__})"
-    if not isinstance(led, dict) or led.get("format") != FORMAT or \
+    if not isinstance(led, dict) or led.get("format") != LEDGER_FORMAT or \
             not isinstance(led.get("nights"), dict) or not isinstance(led.get("carried"), dict) \
             or not isinstance(led.get("followable"), dict) or not DAY.match(str(led.get("date"))):
-        return None, f"{p.as_posix()} is not a ledger of format {FORMAT}"
+        return None, f"{p.as_posix()} is not a ledger of format {LEDGER_FORMAT}"
     if tonight and led["date"] > tonight:
         return None, (f"{p.as_posix()} is of {led['date']}, after tonight's {tonight}: a build "
                       "dated earlier than the ledger cannot say what is new since")
@@ -284,15 +299,25 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
     Returns (ledger, new_by, counts)."""
     days = window(tonight)
     keep = set(days)
-    # The guids a night may file: those of a record followable tonight, or
-    # one that leaves tonight (its last items go with its ending).
+    # What a night may file: the items of a record followable tonight, or of
+    # one that leaves tonight (its last items go with its ending), each as
+    # (record, guid) -- the ledger knows an item under each record whose feed
+    # carried it, not once for them all (BY RECORD, above).
     prev_follow = dict((led or {}).get("followable") or {})
     gone = sorted(k for k in prev_follow if k not in followable and kind_of_key(k) in ENDS)
     fileable = {}
     for key in list(followable) + gone:
         for it in lists.get(key) or []:
-            fileable.setdefault(it["guid"], it)
-    every = {it["guid"]: it for its in lists.values() for it in its}
+            fileable.setdefault((key, it["guid"]), it)
+    every = {(key, it["guid"]): it for key, its in lists.items() for it in its}
+
+    def file_under(first_seen, stamp, pairs):
+        """Add (record, guid) pairs to one night's first_seen under `stamp`."""
+        by_key = first_seen.setdefault(stamp, {})
+        for k, g in pairs:
+            by_key.setdefault(k, []).append(g)
+        for k in by_key:
+            by_key[k] = sorted(set(by_key[k]))
 
     nights = {}
     counts = {"new": 0, "ended": 0, "taken_back": 0}
@@ -301,37 +326,38 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
         for d in days:
             nights[d] = {"built": built, "sitting_term": sitting_term,
                          "first_seen": {}, "ended": {}}
-        for g, it in sorted(fileable.items()):
+        for (k, g), it in sorted(fileable.items()):
             d = day_shift(it["date"], 1)
             if d in keep:
-                nights[d]["first_seen"].setdefault(built, []).append(g)
+                file_under(nights[d]["first_seen"], built, [(k, g)])
                 counts["new"] += 1
         # What record-date placed, and everything older, is known from now on;
         # an item dated tonight or later is not, and is new tomorrow.
-        carried = {g: tonight for g, it in every.items() if it["date"] < tonight}
+        carried = {kg: tonight for kg, it in every.items() if it["date"] < tonight}
     else:
         new_by = FIRST_SEEN
         known = {}
-        for d, gs in (led.get("carried") or {}).items():
-            for g in gs:
-                known[g] = max(d, known.get(g, ""))
-        for d, n in (led.get("nights") or {}).items():
-            for gs in (n.get("first_seen") or {}).values():
+        for d, by_key in (led.get("carried") or {}).items():
+            for k, gs in (by_key or {}).items():
                 for g in gs:
-                    known.setdefault(g, d)
+                    known[(k, g)] = max(d, known.get((k, g), ""))
+        for d, n in (led.get("nights") or {}).items():
+            for by_key in (n.get("first_seen") or {}).values():
+                for k, gs in (by_key or {}).items():
+                    for g in gs:
+                        known.setdefault((k, g), d)
             if d in keep:
                 nights[d] = {"built": n.get("built") or built,
                              "sitting_term": n.get("sitting_term") or sitting_term,
-                             "first_seen": {s: list(gs) for s, gs in
-                                            (n.get("first_seen") or {}).items()},
+                             "first_seen": {s: {k: list(gs) for k, gs in (by_key or {}).items()}
+                                            for s, by_key in (n.get("first_seen") or {}).items()},
                              "ended": dict(n.get("ended") or {})}
         here = nights.setdefault(tonight, {"built": built, "sitting_term": sitting_term,
                                            "first_seen": {}, "ended": {}})
         here["built"], here["sitting_term"] = built, sitting_term
-        new = sorted(g for g in fileable if g not in known)
+        new = sorted(kg for kg in fileable if kg not in known)
         if new:
-            here["first_seen"].setdefault(built, [])
-            here["first_seen"][built] = sorted(set(here["first_seen"][built]) | set(new))
+            file_under(here["first_seen"], built, new)
         counts["new"] = len(new)
         # A record that left gets its ending tonight; one that is back has
         # its ending taken back, from whichever kept night told it.
@@ -346,28 +372,30 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
             for k in [k for k in n["ended"] if k in followable]:
                 del n["ended"][k]
                 counts["taken_back"] += 1
-        carried = {g: d for g, d in known.items() if d >= days[0]}
-        for g in every:
-            carried[g] = tonight
+        carried = {kg: d for kg, d in known.items() if d >= days[0]}
+        for kg in every:
+            carried[kg] = tonight
     for d in days:
         nights.setdefault(d, {"built": built, "sitting_term": sitting_term,
                               "first_seen": {}, "ended": {}})
     by_day = {}
-    for g, d in carried.items():
-        by_day.setdefault(d, []).append(g)
+    for (k, g), d in carried.items():
+        by_day.setdefault(d, {}).setdefault(k, []).append(g)
     ledger = {
-        "format": FORMAT,
+        "format": LEDGER_FORMAT,
         "about": ("The first-seen ledger of the changes files (src/pages/follow_changes.py): "
-                  "every guid the feeds carried in the last eight nights, by the last night "
-                  "that carried it; the guids first seen in each kept night; the endings "
-                  "told; and what tonight listed as followable."),
+                  "every guid each record's feed carried in the last eight nights, by the "
+                  "last night that carried it; the guids first seen under each record in "
+                  "each kept night; the endings told; and what tonight listed as followable."),
         "date": tonight, "built": built, "sitting_term": sitting_term, "new_by": new_by,
         "followable": {k: followable[k]["label"] for k in sorted(followable)},
         "nights": {d: {"built": n["built"], "sitting_term": n["sitting_term"],
-                       "first_seen": {s: sorted(gs) for s, gs in sorted(n["first_seen"].items())},
+                       "first_seen": {s: {k: sorted(gs) for k, gs in sorted(by_key.items()) if gs}
+                                      for s, by_key in sorted(n["first_seen"].items())},
                        "ended": {k: n["ended"][k] for k in sorted(n["ended"])}}
                    for d, n in sorted(nights.items()) if d in keep},
-        "carried": {d: sorted(gs) for d, gs in sorted(by_day.items())},
+        "carried": {d: {k: sorted(gs) for k, gs in sorted(by_key.items())}
+                    for d, by_key in sorted(by_day.items())},
     }
     counts["carried"] = len(carried)
     return ledger, new_by, counts
@@ -378,18 +406,19 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
 def night_file(ledger, d, new_by, followable, lists):
     """One night's file, rewritten from the ledger and tonight's items."""
     n = ledger["nights"][d]
-    filed = {g: s for s, gs in n["first_seen"].items() for g in gs}
+    filed = {(k, g): s for s, by_key in n["first_seen"].items()
+             for k, gs in by_key.items() for g in gs}
     later = {k for dd, nn in ledger["nights"].items() if dd >= d for k in nn["ended"]}
     refs = {}
     for key in sorted(set(followable) | later):
         entry, items, studies, had = {}, [], [], set()
         for it in lists.get(key) or []:
-            if it["guid"] not in filed or it["guid"] in had:
+            if (key, it["guid"]) not in filed or it["guid"] in had:
                 continue
             had.add(it["guid"])
             out = {f: it[f] for f in ("guid", "date", "kind", "summary", "url", "term") if f in it}
             if new_by == FIRST_SEEN:
-                out["seen"] = filed[it["guid"]]
+                out["seen"] = filed[(key, it["guid"])]
             if "_study" in it and kind_of_key(key) == "bill":
                 studies.append((it, out))
             else:
@@ -484,13 +513,16 @@ def write(site, *, built, sitting_term, followable, lists, upcoming, hints, led,
         by_kind[kind_of_key(k)] = by_kind.get(kind_of_key(k), 0) + 1
     said.append(f"changes/: {len(followable):,} followable ("
                 + ", ".join(f"{n:,} {k}s" for k, n in sorted(by_kind.items())) + f"), {new_by}")
-    said.append((f"  {counts['new']:,} items placed by their own dates across the eight nights; "
-                 if new_by == RECORD_DATE else f"  {counts['new']:,} items new tonight; ")
+    # Counted by record: a roll call new to its bill and its topic is two.
+    said.append((f"  {counts['new']:,} records' items placed by their own dates across the "
+                  "eight nights; " if new_by == RECORD_DATE
+                  else f"  {counts['new']:,} records' items new tonight; ")
                 + f"{tonight}.json names {len(tonight_refs):,} records, {counts['ended']:,} ended"
                 + (f", {counts['taken_back']:,} endings taken back (the record is followable "
                    "again)" if counts["taken_back"] else ""))
     said.append(f"  {len(files) - 1} nights written, {len(stale)} stale file(s) removed; the "
-                f"ledger carries {counts['carried']:,} guids -> {Path(ledger_out).as_posix()}")
+                f"ledger carries {counts['carried']:,} records' items -> "
+                f"{Path(ledger_out).as_posix()}")
     if new_by == RECORD_DATE:
         said.append(f"  WARNING: the changes files go by the record's dates tonight, not by "
                     f"first-seen: {why}. Each night holds the items dated the day before it, so "

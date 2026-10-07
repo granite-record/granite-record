@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.421
+# GRANITE_VERSION: 2026-09-04.422
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -30059,6 +30059,12 @@ def _changes_scenario(FC):
            "House Example — 29 September 2026", url="/committee/H90")
     n1 = it("2027-2028:HB9901:2026-12-03:introduced", "2026-12-03", "action",
             "HB 9901 — Introduced", url="/bill/2027/hb9901", term="2027-2028")
+    # A hearing announced ahead: its bill's feed carries it from the night it
+    # is scheduled, the topic's (what has happened) from the day it sits.
+    n2 = "2027-2028:HB9901:2026-10-08:public-hearing"
+    n2s = it(n2, "2026-10-08", "scheduled", "HB 9901 — Public Hearing: 10/08/2026 10:00 am LOB 205",
+             url="/bill/2027/hb9901", term="2027-2028")
+    n2h = dict(n2s, kind="hearing")
     row = FC.upcoming_row("2026-10-03", "public hearing", "10:00", "House Example", "LOB 205")
     old = FC.upcoming_row("2026-09-30", "public hearing", "10:00", "House Example", "LOB 205")
     whole = {HB: {"label": "HB 9901", "title": "relative to an invented question",
@@ -30100,9 +30106,13 @@ def _changes_scenario(FC):
               {"bill:2027/HB9901": [n1], "committee:H90": [s], "topic:housing": [n1],
                HB: [e, d, c, b, late, a]}, term="2027-2028"),
     ]
+    out.append(night("2026-10-07T08:20:00Z", turned,
+                     {"bill:2027/HB9901": [n2s, n1], "committee:H90": [s], "topic:housing": [n1]},
+                     term="2027-2028"))
     out += [night(f"2026-10-{dd:02d}T08:20:00Z", turned,
-                  {"bill:2027/HB9901": [n1], "committee:H90": [s], "topic:housing": [n1]},
-                  term="2027-2028") for dd in range(7, 17)]
+                  {"bill:2027/HB9901": [n2h, n1], "committee:H90": [s],
+                   "topic:housing": [n2h, n1]},
+                  term="2027-2028") for dd in range(8, 17)]
     return out
 
 
@@ -30170,7 +30180,10 @@ def _changes_nights(FC):
          is new, and the ending the bad night told is taken back
       6  the turn of a term: the old bill ends "term-ended", the topic carries
          the new term's item alone, nothing of the old term is new
-      7-16 quiet nights: each written with empty refs, and the ledger lets go
+      7,8 a hearing announced ahead: its bill's news the night it is
+         scheduled, its topic's the night it sits and the topic's feed takes
+         it (the ledger knows an item by record, not by guid alone)
+      9-16 quiet nights: each written with empty refs, and the ledger lets go
          of what no feed carries and no kept night files
     Every folder passes follow_changes.check() and, where the sender's code
     is in the tree, its own check_changes.js; and the whole run, replayed in
@@ -30206,7 +30219,7 @@ def _changes_nights(FC):
             guids(f, "2026-09-30", "committee:H90") == ["committee:H90:2026-09-29"], \
             "under record-date a night holds other than the items dated the day before it"
         led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
-        known = {g for gs in led["carried"].values() for g in gs}
+        known = {g for by in led["carried"].values() for gs in by.values() for g in gs}
         assert "2025-2026:HB9901:2026-10-01:hearing" not in known and \
             "2025-2026:HB9901:2026-10-05:exec" not in known, \
             "the ledger was seeded with an item record-date had not placed: it would never be sent"
@@ -30271,17 +30284,39 @@ def _changes_nights(FC):
                                                  "as new", refs)
         assert f["2026-10-06.json"]["sitting_term"] == "2027-2028" and \
             f["2026-10-05.json"]["sitting_term"] == "2025-2026"
-        # 7-16: quiet, written, and bounded.
+        # 7, 8: a hearing announced ahead is its bill's news the night it is
+        # scheduled, and its topic's the night the topic's feed takes it --
+        # not never, as when the ledger knew a guid once for every record.
+        n2 = "2027-2028:HB9901:2026-10-08:public-hearing"
+        f = seen[7][1]
+        assert guids(f, "2026-10-07", "bill:2027/HB9901") == [n2] and \
+            "topic:housing" not in f["2026-10-07.json"]["refs"], f["2026-10-07.json"]["refs"]
+        f = seen[8][1]
+        assert f["2026-10-08.json"]["refs"] == {"topic:housing": {"items": [{
+            "guid": n2, "date": "2026-10-08", "kind": "hearing",
+            "summary": "HB 9901 — Public Hearing: 10/08/2026 10:00 am LOB 205",
+            "url": "/bill/2027/hb9901", "term": "2027-2028", "seen": "2026-10-08T08:20:00Z"}]}} \
+            and guids(f, "2026-10-07", "bill:2027/HB9901") == [n2], (
+                "a hearing its bill's feed carried ahead was not its topic's news when the "
+                "topic's feed took it, or was its bill's twice", f["2026-10-08.json"]["refs"])
+        # 9-16: quiet, written, and bounded.
         said, f = seen[-1]
         assert all(o["refs"] == {} for k, o in f.items() if k != "current.json"), \
             "a quiet night was not written with empty refs"
         led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
-        assert led["carried"] == {"2026-10-16": ["2027-2028:HB9901:2026-12-03:introduced",
-                                                 "committee:H90:2026-09-29"]} and \
+        assert led["carried"] == {"2026-10-16": {
+            "bill:2027/HB9901": [n2, "2027-2028:HB9901:2026-12-03:introduced"],
+            "committee:H90": ["committee:H90:2026-09-29"],
+            "topic:housing": [n2, "2027-2028:HB9901:2026-12-03:introduced"]}} and \
             sorted(led["nights"]) == [f"2026-10-{d:02d}" for d in range(9, 17)], \
             ("the ledger keeps what no feed carries and no kept night files", led["carried"])
-        # A ledger dated after tonight is not read as one.
+        # A ledger dated after tonight is not read as one, nor one of the
+        # first shape, which knew a guid once for every record.
         assert FC.load(root / "archive" / "first-seen.json", "2026-10-15")[0] is None
+        (root / "old.json").write_text(json.dumps(dict(led, format=1)), encoding="utf-8")
+        assert FC.load(root / "old.json", "2026-10-17")[0] is None and \
+            FC.load(root / "archive" / "first-seen.json", "2026-10-17")[0] is not None, \
+            "a ledger of format 1 was read as this one, or this one was not"
 
         # The same bytes, under two hash seeds, as here.
         mine = _changes_bytes(root)
