@@ -86,10 +86,12 @@ whether it was clean, its warnings and its errors -- is written to
 A dry run's verdict is kept apart, in `archive/last-dry-run.json`
 (`state/last-dry-run.json`): it leaves the night's verdict, the census and
 the gate's records as the last real night left them, and its kit-up and
-state-up send back only what it fetched -- the day's files as the export
-served them and their archive, a refusal or a hold -- with its own verdict
-and its logs, the logs under `logs/<date>/dry-run/`, so nothing its branch's
-code made is read by `main`'s next night. The workflow's `DRY_RUN` says so to
+state-up send back only what it fetched -- the archive's copy of each file
+the export served that night, sent only where its bytes are the sha256 its
+name says, and a refusal or a hold -- with its own verdict and its logs, the
+logs under `logs/<date>/dry-run/`, so nothing its branch's code made or
+chose is read by `main`'s next night: not the day's files it installed, and
+not the archive's index or day records, which `main`'s next night appends to. The workflow's `DRY_RUN` says so to
 every step, and `nightly.py` and `cloud.py` read it themselves. A dry run's
 preview goes to its own address, `dry-run.graniterecord.pages.dev`, and never
 to `nightly.graniterecord.pages.dev`, where a night waiting for approval is

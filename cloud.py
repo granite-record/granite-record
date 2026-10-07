@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.15
+# GRANITE_VERSION: 2026-09-25.16
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -127,11 +127,25 @@ but main (REF_ENV, MAIN_REF), which is a dry run whatever its boxes say (the
 person's decision of 7 October 2026) -- sends back only what cloud_kit.json's
 "dry_run" names:
 
-  the day's files     each only where it is byte for byte a file the General
-                      Court's export served: the archive's store holds one by
-                      its sha256 (a database night's are rebuilt by the run's
-                      own code, and stay where they are)
-  their archive       nh-archive's index, snapshots and store; not the
+  what it fetched     the archive's copy of each file the General Court's
+                      export served tonight: a blob of nh-archive/store that
+                      kit-down did not bring, sent only where its bytes,
+                      unpacked, are the sha256 its name says (dry_sends,
+                      blob_holds). The General Court's bytes, which no code
+                      shapes; nothing is lost of what the run fetched
+  not what it chose   THE REVIEW OF 7 OCTOBER 2026. This sent the day's files
+                      as the run installed them too, where the store held
+                      their bytes, and the archive's index.json and its
+                      snapshots/<day>/ records. Those are the branch's code's
+                      work: its index, in whatever shape it writes, is what
+                      main's next snapshot opens and appends to and what
+                      installed_day and gc_changes read; its install.json is
+                      its own judging; and "the store holds it" is true of
+                      every file the export ever served, so a branch that put
+                      an older docket back sent that to kit/ for main's next
+                      night to install. None of them goes back now: the kit's
+                      day files, index and day records stay main's, and the
+                      next real night fetches and indexes its own. Nor the
                       database nights' copies under nh-archive/from-db/
   its logs            under logs/<day>/dry-run/, apart from the night's, so
                       that pull, which takes logs/<day>/<name> alone, never
@@ -145,8 +159,8 @@ person's decision of 7 October 2026) -- sends back only what cloud_kit.json's
 
 Nothing is removed from the kit on a dry night, and the rest it changed is
 named as kept back. The weekly's dry run -- every run of it off main, since 7
-October 2026 -- is the same command and the same rule: it fetches no day
-file, so none of the lists it took goes back, only its logs, a refusal or a
+October 2026 -- is the same command and the same rule: it archives nothing
+in the store, so none of the lists it took goes back, only its logs, a refusal or a
 hold, and its verdict, apart. A dev weekly proves the weekly's code and keeps
 nothing it fetched. A New term run ticked with Dry run, which nightly.py
 refuses before it asks for anything, is still given --hold by the workflow:
@@ -451,11 +465,14 @@ def load_kit(root):
     # state never what the next real night is gated against.
     d = kit.get("dry_run") or {}
     keys = {s["key"] for s in kit.get("state", [])}
-    for x in list(d.get("served", [])) + list(d.get("globs", [])) + [d.get("store") or "x"]:
+    for x in list(d.get("globs", [])) + [d.get("store") or "x"]:
         check_rel(x)
-    for x in list(d.get("served", [])) + [re.sub(r"\*+", "x", g) for g in d.get("globs", [])]:
+    for x in [re.sub(r"\*+", "x", g) for g in d.get("globs", [])]:
         if owner_of(kit, x) != "night":
             raise Failed(f"{KIT_FILE}: \"dry_run\" names {x}, which is not a night's kit file")
+    if "served" in d:
+        raise Failed(f"{KIT_FILE}: \"dry_run\" names day files to send, and a dry night sends none "
+                     "since the review of 7 October 2026: what it installed is its code's choice")
     bad = [k for k in d.get("state", []) if k not in keys or k in DRY_NEVER]
     if bad:
         raise Failed(f"{KIT_FILE}: \"dry_run\" sends state {bad}, which is not in the state list "
@@ -470,14 +487,33 @@ def dry_night(a):
     return bool(getattr(a, "dry_night", False)) or dry_by_workflow()
 
 
-def dry_sends(kit, root, rel, sha256):
-    """Whether a dry night sends this night's file back: a day's file only
-    when the archive's store holds it, byte for byte, as the export served
-    it; the archive by its globs; nothing else."""
+def dry_sends(kit, root, rel, before):
+    """Whether a dry night sends this night's file back: only the archive's
+    copy of something the export served tonight -- a blob of "dry_run"'s
+    store, matched by its globs, that kit-down did not bring (`before`, the
+    record of what it did) and whose bytes unpacked are the sha256 its name
+    says. Nothing else: not a day's file, whatever its bytes, nor the
+    archive's index or its day records (the docstring says why)."""
     d = kit.get("dry_run") or {}
-    if rel in d.get("served", []):
-        return bool(d.get("store")) and local(root, f"{d['store']}/{sha256}.gz").is_file()
-    return any(glob_re(g).match(rel) for g in d.get("globs", []))
+    store = d.get("store")
+    if not store or rel in before or not any(glob_re(g).match(rel) for g in d.get("globs", [])):
+        return False
+    m = re.fullmatch(re.escape(store) + r"/([0-9a-f]{64})\.gz", rel)
+    return bool(m) and blob_holds(local(root, rel), m.group(1))
+
+
+def blob_holds(path, sha256):
+    """Whether the archive's blob at `path` unpacks to bytes whose sha256 is
+    `sha256`: what the store's names promise, read rather than trusted."""
+    import gzip
+    h = hashlib.sha256()
+    try:
+        with gzip.open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+    except (OSError, EOFError, ValueError):
+        return False
+    return h.hexdigest() == sha256
 
 
 def never_rx(kit):
@@ -1485,11 +1521,10 @@ def cmd_kit_up(a, root):
             held_off, hold = hold, None
             night, gone = night + waiting, gone + gone_waiting
             waiting, gone_waiting = [], []
-        served = set((kit.get("dry_run") or {}).get("served", []))
-        sendable = [] if held_off else [r for r in night
-                                        if dry_sends(kit, root, r, entries[r]["sha256"])]
-        unserved = [r for r in night if r not in sendable and r in served]
-        kept_back = [r for r in night if r not in sendable and r not in served]
+        archived = [glob_re(g) for g in (kit.get("dry_run") or {}).get("globs", [])]
+        sendable = [] if held_off else [r for r in night if dry_sends(kit, root, r, before)]
+        unserved = [r for r in night if r not in sendable and any(x.match(r) for x in archived)]
+        kept_back = [r for r in night if r not in sendable and r not in unserved]
         night, gone_left, gone = sendable, gone, []
     man, _ = read_manifest(bucket, "kit")
     cur = (man or {}).get("files", {})
@@ -1519,16 +1554,18 @@ def cmd_kit_up(a, root):
         show("the night's, gone since kit-down; the removal waits too", gone_waiting,
              {r: before[r][0] for r in gone_waiting})
     if dry:
-        say("  a dry run: only what it fetched goes back, and its logs go to "
+        say("  a dry run: only what it fetched goes back -- the archive's copies of what the "
+            f"export served tonight, each read against its name -- and its logs go to "
             f"logs/{day}/{DRY_LOGS}/; of the state only "
             + (", ".join((kit.get("dry_run") or {}).get("state", [])) or "nothing"))
         if held_off:
             say(f"  --hold {held_off} on a dry run: a New term run ticked with Dry run, which "
                 "nightly.py refuses, so nothing is held and nothing of the kit goes back")
-        show("kept back: what the run's own code made, which main's next night would "
-             "build from", kept_back, sz)
-        show("kept back: day files that are not byte for byte what the export served",
-             unserved, sz)
+        show("kept back: what the run's own code made or chose -- the day's files it "
+             "installed, the archive's index and day records, the outputs a build carries -- "
+             "which main's next night would read", kept_back, sz)
+        show("kept back: archive copies kit-down brought, or whose bytes are not what their "
+             "names say", unserved, sz)
         show("gone since kit-down, and left in kit/: a dry run removes nothing", gone_left,
              {r: before[r][0] for r in gone_left})
     say(f"  logs for logs/{day}/{DRY_LOGS + '/' if dry else ''}: {len(logs):,} files, "
