@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.3
 """
 One record per person, across every term they served.
 
-    python3 build_careers.py            # writes careers.json
-    python3 build_careers.py --check    # report only, writes nothing
+    python3 src/parse/build_careers.py            # writes careers.json
+    python3 src/parse/build_careers.py --check    # report only, writes nothing
 
 No network. Reads db/Legislators.psv and db/RollCallHistory.psv, both already
 on this disk.

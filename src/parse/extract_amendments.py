@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Amendment text, out of the calendars already on this disk.
 
-    python3 extract_amendments.py             # write amendments.json
-    python3 extract_amendments.py --show 2    # print two and write nothing
-    python3 extract_amendments.py --check     # coverage only, write nothing
+    python3 src/parse/extract_amendments.py             # write amendments.json
+    python3 src/parse/extract_amendments.py --show 2    # print two and write nothing
+    python3 src/parse/extract_amendments.py --check     # coverage only, write nothing
 
 No network. Reads calendars/ and narratives.json, writes amendments.json.
 

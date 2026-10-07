@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.4
+# GRANITE_VERSION: 2026-09-19.5
 """
 Turn repaired journal text into rows: one per member, per vote. No network.
 
-    python3 unh_extract.py --all              # every repaired volume
-    python3 unh_extract.py journalofhouseof1991newh
-    python3 unh_extract.py --all --summary    # counts only, write nothing
+    python3 src/parse/unh_extract.py --all              # every repaired volume
+    python3 src/parse/unh_extract.py journalofhouseof1991newh
+    python3 src/parse/unh_extract.py --all --summary    # counts only, write nothing
 
 Writes two files:
 

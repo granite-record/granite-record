@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 The text beside every calendar PDF, so the parsers can read the archive.
 
-    python3 extract_calendar_text.py --check     # what is missing, extracts nothing
-    python3 extract_calendar_text.py            # extract every missing one
-    python3 extract_calendar_text.py --limit 50
+    python3 src/parse/extract_calendar_text.py --check     # what is missing, extracts nothing
+    python3 src/parse/extract_calendar_text.py            # extract every missing one
+    python3 src/parse/extract_calendar_text.py --limit 50
 
 No network. Reads and writes only calendars/, calendars_senate/, journals/
 and journals_senate/.

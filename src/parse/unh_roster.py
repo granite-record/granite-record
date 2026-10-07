@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 Who was in the House, out of the House's own roll. No network.
 
-    python3 unh_roster.py journalofhouseof1997newh            # write the roster
-    python3 unh_roster.py journalofhouseof1997newh --check    # score it
-    python3 unh_roster.py journalofhouseof1997newh --against journals/1997
+    python3 src/parse/unh_roster.py journalofhouseof1997newh            # write the roster
+    python3 src/parse/unh_roster.py journalofhouseof1997newh --check    # score it
+    python3 src/parse/unh_roster.py journalofhouseof1997newh --against journals/1997
 
 WHY THE ROSTER IS THE NEXT THING AFTER THE VOTES
 

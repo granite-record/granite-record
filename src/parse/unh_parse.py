@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 Read what unh_survey.py cached. Touches no network, ever.
 
-    python3 unh_parse.py --catalogue     # write data/unh/catalogue.csv
-    python3 unh_parse.py --coverage      # which years of which chamber exist
-    python3 unh_parse.py --gap           # just the years this site is missing
+    python3 src/parse/unh_parse.py --catalogue     # write data/unh/catalogue.csv
+    python3 src/parse/unh_parse.py --coverage      # which years of which chamber exist
+    python3 src/parse/unh_parse.py --gap           # just the years this site is missing
 
 WHY A SEPARATE SCRIPT
 

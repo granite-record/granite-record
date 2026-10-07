@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.4
+# GRANITE_VERSION: 2026-09-11.5
 """
 Sign-in counts for an archived term's hearings, from the database dump on disk.
 
-    python3 testimony_from_db.py --check     # rebuild 2025-2026, compare, write nothing
-    python3 testimony_from_db.py             # write the archived terms into testimony_db.json
+    python3 src/parse/testimony_from_db.py --check     # rebuild 2025-2026, compare, write nothing
+    python3 src/parse/testimony_from_db.py             # write the archived terms into testimony_db.json
 
 No network. Reads db/houseRemoteTestify.psv, db/Legislation.psv and
 archive_bills.json; writes testimony_db.json by merging.

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.10
+# GRANITE_VERSION: 2026-09-18.11
 """
 Score what can be read out of a scanned journal. Touches no network.
 
-    python3 unh_measure.py                # all four, in order
-    python3 unh_measure.py --tallies      # do the YEAS/NAYS lines agree
-    python3 unh_measure.py --names        # do the member names agree
-    python3 unh_measure.py --headroom     # is a missing name damaged, or gone
-    python3 unh_measure.py --split        # is a name on the right side
-    python3 unh_measure.py --names --show 20   # and print the disagreements
+    python3 src/parse/unh_measure.py                # all four, in order
+    python3 src/parse/unh_measure.py --tallies      # do the YEAS/NAYS lines agree
+    python3 src/parse/unh_measure.py --names        # do the member names agree
+    python3 src/parse/unh_measure.py --headroom     # is a missing name damaged, or gone
+    python3 src/parse/unh_measure.py --split        # is a name on the right side
+    python3 src/parse/unh_measure.py --names --show 20   # and print the disagreements
 
 WHAT IS BEING MEASURED, AND AGAINST WHAT
 

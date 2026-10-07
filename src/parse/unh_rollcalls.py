@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.6
+# GRANITE_VERSION: 2026-09-19.7
 """
 Put the words back in the order the page prints them. No network.
 
-    python3 unh_rollcalls.py --reflow journalofhouseof1997newh
-    python3 unh_rollcalls.py --page 85 journalofhouseof1997newh   # one page, to read
-    python3 unh_rollcalls.py --confidence journalofhouseof1997newh
+    python3 src/parse/unh_rollcalls.py --reflow journalofhouseof1997newh
+    python3 src/parse/unh_rollcalls.py --page 85 journalofhouseof1997newh   # one page, to read
+    python3 src/parse/unh_rollcalls.py --confidence journalofhouseof1997newh
 
 WHAT IS WRONG WITH THE TEXT LAYER, AND WHY THIS FIXES IT
 
@@ -36,7 +36,7 @@ and an inference layer here would be a second thing that can be wrong.
 
 The output is scored by the same extractor that scored the flat text:
 
-    python3 unh_measure.py --ocr data/unh/reflow/journalofhouseof1997newh.txt
+    python3 src/parse/unh_measure.py --ocr data/unh/reflow/journalofhouseof1997newh.txt
 
 Same code, same roll calls, one difference. Whatever the number moves by is
 what reading order was worth.

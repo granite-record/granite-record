@@ -54,8 +54,8 @@ Digital Commons repository.
 the 145 is an index rather than a journal. By chamber: 77 Senate, 51 House, 16
 bound with both, 1 index.
 
-    python3 unh_parse.py --catalogue     # writes data/unh/catalogue.csv
-    python3 unh_parse.py --coverage      # year by year, both chambers
+    python3 src/parse/unh_parse.py --catalogue     # writes data/unh/catalogue.csv
+    python3 src/parse/unh_parse.py --coverage      # year by year, both chambers
 
 A volume is a bound book, not a sitting day, and its title says what is bound
 into it. Reading the list as one volume per year is wrong and produces three
@@ -66,7 +66,7 @@ with the recall session of November 1995.
 
 ### The decade this project needs
 
-    python3 unh_parse.py --gap
+    python3 src/parse/unh_parse.py --gap
 
 | year | House | Senate |
 |------|-------|--------|
@@ -190,7 +190,7 @@ is available if the flat text proves insufficient — which it does.
 
 ## 4. What can actually be got out of a page
 
-    python3 unh_measure.py
+    python3 src/parse/unh_measure.py
 
 1997 was chosen because the site already holds it: `journals/1997/` has
 sixteen sitting days of the House in text from the General Court's own digital
@@ -238,7 +238,7 @@ anyway.
 
 ### And then the finding that decides everything
 
-    python3 unh_measure.py --split
+    python3 src/parse/unh_measure.py --split
 
 | | |
 |---|---|
@@ -267,8 +267,8 @@ member voted.**
 
 ### The geometry fixes it, and the fix is small
 
-    python3 unh_rollcalls.py --reflow journalofhouseof1997newh
-    python3 unh_measure.py --ocr data/unh/reflow/journalofhouseof1997newh.txt
+    python3 src/parse/unh_rollcalls.py --reflow journalofhouseof1997newh
+    python3 src/parse/unh_measure.py --ocr data/unh/reflow/journalofhouseof1997newh.txt
 
 The `_djvu.xml` carries a bounding box per word. Page 85 of the 1997 volume
 states the layout with no inference required:
@@ -338,7 +338,7 @@ pointed at it, and now scores **98%**, better than 1997. What was wrong:
 
 ## 5. The roster, out of the same book
 
-    python3 unh_roster.py journalofhouseof1997newh --against journals/1997
+    python3 src/parse/unh_roster.py journalofhouseof1997newh --against journals/1997
 
 Every volume opens with the CALL OF THE ROLL: every member by county and
 district, with a full name and the party or parties that nominated them.
@@ -378,8 +378,8 @@ roster exists.
 
 ## 6. The repair pass
 
-    python3 unh_repair.py journalofhouseof1997newh --vocab
-    python3 unh_measure.py --ocr data/unh/repaired/journalofhouseof1997newh.txt
+    python3 src/parse/unh_repair.py journalofhouseof1997newh --vocab
+    python3 src/parse/unh_measure.py --ocr data/unh/repaired/journalofhouseof1997newh.txt
 
 Two things survive the reflow, and neither is a lost name:
 
@@ -420,10 +420,10 @@ of them touches a name on the roll.
 ## 7. What the extraction actually produced
 
     python3 src/fetch/other/unh_fetch.py --gap          # the volumes, one at a time
-    python3 unh_rollcalls.py --reflow <id>
-    python3 unh_roster.py <id>
-    python3 unh_repair.py <id>
-    python3 unh_extract.py --all        # -> data/unh/rollcalls.csv, members.csv
+    python3 src/parse/unh_rollcalls.py --reflow <id>
+    python3 src/parse/unh_roster.py <id>
+    python3 src/parse/unh_repair.py <id>
+    python3 src/parse/unh_extract.py --all        # -> data/unh/rollcalls.csv, members.csv
 
 26 volumes fetched and read. **305,214 member votes across 1,397 roll calls**,
 every one carrying a sitting date, 64.5% carrying a bill number.

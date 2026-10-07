@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.7
+# GRANITE_VERSION: 2026-09-19.8
 """
 Let the book correct itself. No network.
 
-    python3 unh_repair.py journalofhouseof1997newh              # write the repair
-    python3 unh_repair.py journalofhouseof1997newh --vocab      # what it would change
-    python3 unh_repair.py journalofhouseof1991newh
+    python3 src/parse/unh_repair.py journalofhouseof1997newh              # write the repair
+    python3 src/parse/unh_repair.py journalofhouseof1997newh --vocab      # what it would change
+    python3 src/parse/unh_repair.py journalofhouseof1991newh
 
-    python3 unh_measure.py --ocr data/unh/repaired/journalofhouseof1997newh.txt
+    python3 src/parse/unh_measure.py --ocr data/unh/repaired/journalofhouseof1997newh.txt
 
 WHAT IS LEFT TO FIX, AND WHY IT IS FIXABLE
 

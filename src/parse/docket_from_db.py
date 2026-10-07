@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.3
 """
 db/Docket.psv -> the seven-column shape narrative.py already reads.
 
-    python3 docket_from_db.py --out Docket_db.txt              # 1989-2016
-    python3 docket_from_db.py --out x.txt --years 1989 1990    # a slice
+    python3 src/parse/docket_from_db.py --out Docket_db.txt              # 1989-2016
+    python3 src/parse/docket_from_db.py --out x.txt --years 1989 1990    # a slice
 
 The dump's own columns are
 
