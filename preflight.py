@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.422
+# GRANITE_VERSION: 2026-09-04.423
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5134,6 +5134,65 @@ def _sb411_manifest_row():
     assert got == [("Environment", "13:00")], (
         f"{f.name} has SB 411's Senate rows of 10 February 2000 as {got!r}")
     return "ok", "SB 411 of 2000 heard by Environment at 1:00 on 10 February"
+
+
+# Real rows: Docket_db_1999-2000.txt 17032-17037 (SB 398 of 2000).
+_DOCKET_VACATED_SB398 = [
+    "2000|2486|01/05/2000 09:56:03 AM|SB398|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 12|01/05/2000 09:56:03 AM",
+    "2000|2486|01/05/2000 03:17:52 PM|SB398|S|Hearing, Jan. 11, 3:45 p.m., Room 102, LOB; SC1, Pg. 3 ==CANCELLED==|01/05/2000 03:17:52 PM",
+    "2000|2486|01/05/2000 03:18:43 PM|SB398|S|Vacated from Transportation to Wildlife and Recreation, MA, VV; SJ Convening Day, Pg. 6|01/05/2000 03:18:43 PM",
+    "2000|2486|03/09/2000 08:48:04 AM|SB398|S|Hearing March 15, Room 101, LOB, 2:45 p.m.; SC16|03/09/2000 08:48:04 AM",
+    "2000|2486|03/22/2000 09:00:23 AM|SB398|S|Committee Report Inexpedient to Legislate; 3/23/2000, SC18|03/22/2000 09:00:23 AM",
+    "2000|2486|03/23/2000 04:29:52 PM|SB398|S|Inexpedient to Legislate, MA, VV  ==KILLED==; SJ 7, Pg. 224|03/23/2000 04:29:52 PM",
+]
+
+
+@check("build", "SB 398 of 2000's hearing is the committee's the Senate vacated the bill to, as "
+                "its committee row and history say", needs=("docket_parser",))
+def _vacated_sb398(D):
+    """SB 398 of 2000 was introduced to Transportation and, the same
+    afternoon, "Vacated from Transportation to Wildlife and Recreation";
+    Wildlife and Recreation heard it on 15 March. The bill's committee row
+    (referrals.vacated, data/bills.json) and its history named Wildlife and
+    Recreation, and the 1999-2000 manifest, merged before docket_parser read
+    the Senate's "Vacated from X to Y" (VACATED_FROM_TO_RE, the review of
+    decision 60), filed the hearing under Transportation -- the station on
+    the bill's page and Senate Transportation's day. The parser reads it;
+    _vacated_sb398_manifest holds the files on disk to it."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vacated-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_VACATED_SB398) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    live = [(p.sched_date, p.committee) for p in procs if p.confidence != "X-cancelled"]
+    assert live == [("2000-03-15", "Wildlife and Recreation")], (
+        f"SB 398's sittings are read as {live!r}, not Wildlife and Recreation's hearing of 15 March")
+    return "ok", "SB 398 of 2000 heard by Wildlife and Recreation on 15 March"
+
+
+@check("data", "SB 398 of 2000's hearing of 15 March is Wildlife and Recreation's in the 1999-2000 "
+               "manifest and proceedings.csv")
+def _vacated_sb398_manifest():
+    """_vacated_sb398, in the files on disk: a manifest merged before
+    docket_parser read the vacate, or a table built from one, files the
+    hearing under Transportation, the committee the Senate took the bill
+    from. A full rebuild of the term's manifest puts it right."""
+    got = []
+    for f, bill, body, day, cmte in (
+            (Path("verification_manifest_1999-2000.csv"), "bill", "body", "sched_date", "committee"),
+            (Path("proceedings.csv"), "bill", "body", "date", "committee")):
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            got += [(f.name, r[cmte]) for r in csv.DictReader(fh)
+                    if r[bill] == "SB398" and r[body].upper() == "S" and r[day] == "2000-03-15"]
+    want = [("verification_manifest_1999-2000.csv", "Wildlife and Recreation"),
+            ("proceedings.csv", "Wildlife and Recreation")]
+    assert got == want, f"SB 398's hearing of 15 March 2000 is filed as {got!r}"
+    return "ok", "Wildlife and Recreation's, in the manifest and the table"
 
 
 # Real rows: Docket_db_1999-2000.txt 2716-2717 (SB 39 of 1999) and 9481-9482
