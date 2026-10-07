@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.12
+# GRANITE_VERSION: 2026-09-25.13
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -122,7 +122,9 @@ livestream index, the census and the night's verdict -- every one of them
 written by that branch's code, and every one taken down and read by main's
 next night. So a dry run's code reached production a night later, without a
 merge. --dry-night, which the workflow's DRY_RUN (DRY_ENV) implies on
-GitHub's machine whatever a step passes, sends back only what cloud_kit.json's
+GitHub's machine whatever a step passes -- and so does a run of any branch
+but main (REF_ENV, MAIN_REF), which is a dry run whatever its boxes say (the
+person's decision of 7 October 2026) -- sends back only what cloud_kit.json's
 "dry_run" names:
 
   the day's files     each only where it is byte for byte a file the General
@@ -268,6 +270,13 @@ SITE_VERDICT = "archive/run-verdict.json"
 # night's whatever they were told (--dry-night), and keeps site-up from
 # sending a dry run's site for production.
 DRY_ENV = "DRY_RUN"
+# ... and every run of a branch other than main is one, whatever DRY_RUN says
+# (7 October 2026, the person's decision): GitHub names the run's branch in
+# GITHUB_REF, read here again so that an edit to the workflow's DRY_RUN line
+# cannot reopen what it closes (nightly.REF_ENV and MAIN_REF, which preflight
+# holds these to).
+REF_ENV = "GITHUB_REF"
+MAIN_REF = "refs/heads/main"
 # Where a dry night's logs go, under logs/<day>/: a folder pull does not read.
 DRY_LOGS = "dry-run"
 # The state a dry night never sends, whatever cloud_kit.json's "dry_run" says:
@@ -2081,9 +2090,13 @@ def _site_files(site):
 
 
 def dry_by_workflow():
-    """Whether the workflow says this run is a dry run (DRY_ENV), on GitHub's
-    machine -- nightly.dry_by_workflow()'s rule."""
-    return os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get(DRY_ENV) == "true"
+    """Whether the workflow says this run is a dry run (DRY_ENV), or it is a
+    run of a branch other than main (REF_ENV is set and is not MAIN_REF), on
+    GitHub's machine -- nightly.dry_by_workflow()'s rule."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return False
+    ref = os.environ.get(REF_ENV) or ""
+    return os.environ.get(DRY_ENV) == "true" or bool(ref and ref != MAIN_REF)
 
 
 def _night_verdict(root, run):
@@ -3055,7 +3068,8 @@ def main(argv=None):
     ap.add_argument("--dry-night", action="store_true",
                     help="kit-up, state-up: a dry run's night -- only what it fetched, its "
                          "logs apart and a refusal, a hold and its own verdict go back; on "
-                         "GitHub's machine the workflow's DRY_RUN says so whatever is passed")
+                         "GitHub's machine the workflow's DRY_RUN, or a run of a branch "
+                         "other than main, says so whatever is passed")
     ap.add_argument("--hold", metavar="RUN",
                     help="kit-up, on a New term run: what the night changed waits under "
                          "nights/RUN/kit/ and stays out of kit/ until kit-release --run RUN")

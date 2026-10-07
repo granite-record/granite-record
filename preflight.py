@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.419
+# GRANITE_VERSION: 2026-09-04.420
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34923,8 +34923,10 @@ def _cloud_dry_night(CL, BA, SG):
     night's verdict -- all written by that branch's code, and all taken down
     and read by main's next night. So dev's code reached production a night
     later with no merge. Now a dry night (--dry-night, or the workflow's
-    DRY_RUN on GitHub's machine whatever a step passes) sends back only what
-    the run fetched, as cloud_kit.json's "dry_run" names it:
+    DRY_RUN on GitHub's machine whatever a step passes, or there a ref other
+    than main alone -- every run off main is a dry run, the person's decision
+    of 7 October 2026) sends back only what the run fetched, as
+    cloud_kit.json's "dry_run" names it:
 
       - the real kit's: the day's files, and only those, as "served"; the
         archive of them, never the database nights' copies; and of the state
@@ -34982,7 +34984,7 @@ def _cloud_dry_night(CL, BA, SG):
 
     # Driven, on a folder bucket. The workflow's word alone makes it a dry night.
     tmp = Path(tempfile.mkdtemp(prefix="gr-drynight-"))
-    saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV)}
+    saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV, CL.REF_ENV)}
     try:
         bucket = tmp / "bucket"
         kit = {"kit": [
@@ -35082,6 +35084,25 @@ def _cloud_dry_night(CL, BA, SG):
         assert call(dry, "state-up")[0] == 0 and remote("state/sql-held.json") and \
             remote("state/census.json") == census and remote("state/last-night.json") == night_v
         os.environ.pop(CL.DRY_ENV, None)
+        # ... and the ref alone: a run of dev with Dry run unticked, no DRY_RUN
+        # and no --dry-night, is a dry night all the same (7 October 2026, the
+        # person's decision: until then it sent back everything dev's code
+        # made, the census and the night's verdict with it), and sends no site
+        # for production.
+        os.environ[CL.REF_ENV] = "refs/heads/dev"
+        (dry / "narratives.json").write_bytes(b"{\"dev\": 2}")
+        (dry / "archive/census.json").write_bytes(b"{\"census\": {\"bills\": 2}}")
+        (dry / "archive/last-night.json").write_bytes(b"{\"run_id\": \"702\"}")
+        code, out = call(dry, "kit-up")
+        assert code == 0 and remote("kit/narratives.json") == b"{\"main\": 1}" and \
+            remote("state/census.json") == census and remote("state/last-night.json") == night_v \
+            and "a dry run" in out, (
+                "a kit-up on GitHub's machine for a run of dev with Dry run unticked sent back "
+                "what dev's code made, the census or the night's verdict", out[-400:])
+        code, out = call(dry, "site-up", "--run", "702")
+        assert code == 1 and not (bucket / "nights").exists(), \
+            "a run of a branch other than main sent its site for production"
+        os.environ.pop(CL.REF_ENV, None)
         # A New term run ticked with Dry run (the box is ticked unless a person
         # unticks it) is refused by nightly.py, and the workflow still gives its
         # kit-up --hold: nothing is held, nothing of the kit goes back -- not
@@ -47885,7 +47906,7 @@ class _GateNights:
     into prod/, which is what production then serves."""
 
     ENV = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-           "GITHUB_SHA", "REVIEW_GATE", "DRY_RUN")
+           "GITHUB_SHA", "REVIEW_GATE", "DRY_RUN", "GITHUB_REF")
 
     def __init__(self, NI):
         import types
@@ -48892,6 +48913,10 @@ def _nightly_dry_run_apart(NI, CL):
       - the workflow's DRY_RUN makes a step a dry run's whatever flags it was
         given: its preview deploys from its own verdict, its --close finishes
         that verdict, and a production deploy under it is refused
+      - and so does a ref other than main alone, Dry run unticked (the
+        person's decision of 7 October 2026): the night's verdict and the
+        census untouched, its page saying which branch made it one
+        (off_main_line), production refused; a run of main is a real night
       - the publish job deploys a run's own build by its own verdict
         (RUN_VERDICT, which site-down brings with the site): never a dry
         run's, and not an older night's over a newer one fit for production
@@ -48992,6 +49017,45 @@ def _nightly_dry_run_apart(NI, CL):
         finally:
             os.environ.pop("DRY_RUN", None)
 
+        # EVERY RUN OFF MAIN IS A DRY RUN (7 October 2026, the person's
+        # decision): a run by hand on dev with Dry run unticked -- no
+        # --dry-run, no DRY_RUN, only GitHub's ref -- keeps its verdict apart,
+        # leaves the night's verdict and the census byte for byte, says on its
+        # page which branch made it one, finishes its own verdict, and is
+        # refused production. Until then it was a real night's in all of it.
+        os.environ["GITHUB_REF"] = "refs/heads/dev"
+        try:
+            g.how["touch"] = 9
+            code, _ = g.night("--runner", "--no-fetch", run_id="504b", sha=GATE_SHA[1],
+                              github=True)
+            d = g.dry_verdict()
+            assert code == 0 and d["run_id"] == "504b" and d["asked"]["dry_run"] and \
+                d.get("kept_apart") == NI.DRY_APART and d.get("off_main") == "refs/heads/dev", \
+                ("a run of dev with Dry run unticked was not a dry run", d.get("asked"),
+                 d.get("off_main"))
+            assert NI.VERDICT.read_bytes() == night_v and NI.CENSUS.read_bytes() == census, (
+                "a run of dev with Dry run unticked rewrote the night's verdict or the census, "
+                "which main's next night and the waiting night's deploy read")
+            assert f"- {NI.off_main_line('refs/heads/dev')}" in g.summary.splitlines() and \
+                "dev, not main" in NI.off_main_line("refs/heads/dev"), \
+                f"the page of a run of dev does not say why it is a dry run: {g.summary}"
+            code, _ = g.night("--runner", "--close", "--outcome", "night=success", run_id="504b",
+                              github=True)
+            assert code == 0 and g.dry_verdict()["steps"] == {"night": "success"} and \
+                NI.VERDICT.read_bytes() == night_v, "a run of dev's --close wrote the night's verdict"
+            del sent[:]
+            NI.write_json(NI.RUN_VERDICT, g.kept["502"])
+            code, _ = g.night("--runner", "--deploy-to", "production", run_id="502", github=True)
+            assert code == 1 and not sent, "a run of a branch other than main deployed production"
+            # ... and a run of main is what it always was: a real night.
+            os.environ["GITHUB_REF"] = MAIN_REF
+            assert g.night("--runner", "--deploy-to", "preview", run_id="502", github=True)[0] == 0 \
+                and sent == [NI.PREVIEW_BRANCH] and g.verdict()["preview"]["landed"], \
+                ("a run of main was not a real night's", sent)
+        finally:
+            os.environ.pop("GITHUB_REF", None)
+        del sent[:]
+
         # A dry run's verdict never goes to production, even handed to the
         # publish job.
         NI.write_json(NI.RUN_VERDICT, g.kept["503"])
@@ -49060,7 +49124,8 @@ def _nightly_dry_run_apart(NI, CL):
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", ("a dry run's verdict is archive/last-dry-run.json, carried and pulled beside the "
                   "night's, which it leaves byte for byte with the census; its preview, its close "
-                  "and a refused production deploy follow the workflow's DRY_RUN; production "
+                  "and a refused production deploy follow the workflow's DRY_RUN, and a ref "
+                  "other than main alone, which its page names; production "
                   "deploys a run by its own verdict, never a dry run's, and an older night only "
                   "when no newer night built a site fit for production")
 
@@ -50026,7 +50091,8 @@ def _nightly_new_term(NI, SG, BA):
     a snapshot that is told whether tonight's files are smaller. So it shows
     what one run does: that the allowance is passed only by the box; that a
     New term run with Dry run ticked, or without the fetch, does nothing and
-    says which boxes to tick; that the run writes NO census, and that
+    says which boxes to tick, and one of a branch other than main does
+    nothing and says to run it from main; that the run writes NO census, and that
     --deploy-to production writes it when, and only when, the deploy landed;
     that the run's page gives each accepted file's size and how far it fell.
     It cannot show that the next night refuses the smaller files, because here
@@ -50071,7 +50137,7 @@ def _nightly_new_term(NI, SG, BA):
              NI.captions_compared, NI.time, NI.FILE_CEILING, sys.argv, refusal.MARK,
              refusal.LOCK, SG.get, SG.time, NI.upload_and_check, NI.current_branch)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA")
+                "GITHUB_SHA", "GITHUB_REF")
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, how = [], {"bills": 100, "smaller": False, "rows": {}}
     today = f"{datetime.now():%Y-%m-%d}"
@@ -50294,6 +50360,30 @@ def _nightly_new_term(NI, SG, BA):
             assert page_note(out) == sentence + " Nothing was published.", page_note(out)
             assert all(x in sentence for x in (NI.NEW_TERM_BOX, f'"{NI.FETCH_BOX}" ticked',
                                                f"{NI.DRY_BOX} unticked")), sentence
+
+        # ... and on a branch other than main, with every box as the switch
+        # needs them, nothing either (7 October 2026): a run of any branch but
+        # main is a dry run whatever its boxes say, so it is refused as one
+        # ticked with Dry run is, and its page says the branch stopped it and
+        # to run it from main.
+        os.environ["GITHUB_REF"] = "refs/heads/dev"
+        try:
+            code, _ = night("--runner", "--new-term", run_id="203n", github=True)
+            v = json.loads(NI.DRY_VERDICT.read_text(encoding="utf-8"))
+            assert code == 1 and not calls and v["run_id"] == "203n" and \
+                v["new_term"] == {"refused": NI.REFUSED_NOT_MAIN} and v["asked"]["dry_run"] and \
+                not v["built"] and baseline()["census"]["bills"] == 100, \
+                ("a New term run of a branch other than main was not refused", code, calls,
+                 v.get("new_term"))
+            code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="203n",
+                              github=True)
+            assert page_note(out) == NI.NEW_TERM_NOT_MAIN + " Nothing was published.", \
+                page_note(out)
+        finally:
+            os.environ.pop("GITHUB_REF", None)
+        assert all(x in NI.NEW_TERM_NOT_MAIN for x in (
+            NI.NEW_TERM_BOX, f'"{NI.FETCH_BOX}" ticked', f"{NI.DRY_BOX} unticked",
+            f"from {NI.REPO_BRANCH}")), NI.NEW_TERM_NOT_MAIN
 
         # A NEW TERM RUN LETS ONLY THE FEEDS AND THE SITTING LEGISLATORS FALL
         # (5 October 2026): half the bills gone, or a finished term shrunk, is
@@ -57513,12 +57603,187 @@ def _workflows_gate(NI):
 
 
 # A DRY RUN IS KEPT APART (7 October 2026): the workflow's one word for it,
-# which every step inherits, and which nightly.py and cloud.py read themselves.
-DRY_RUN_ENV = "  DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}"
+# which every step inherits, and which nightly.py and cloud.py read themselves
+# -- from the Dry run box on a run by hand, and, since the person's decision of
+# 7 October 2026, from the ref: every run of a branch other than main is one.
+DRY_RUN_ENV = ("  DRY_RUN: ${{ (github.event_name != 'schedule' && inputs.dry_run) "
+               "|| github.ref != 'refs/heads/main' }}")
+MAIN_REF = "refs/heads/main"
 # ... and so preflight inherits it too, when the night runs it first on
 # GitHub's machine. The workflow's words for its own run, which no check's
 # fixture may take for its own: main() takes them out before any check runs.
-WORKFLOW_WORDS = ("DRY_RUN",)
+# GITHUB_REF is GitHub's own, and on dev it makes nightly.py and cloud.py take
+# every fixture's night, kit-up and state-up for a dry run's, as DRY_RUN did.
+WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME")
+
+# EVERY KIND OF RUN, AND WHAT EACH MUST BE (7 October 2026). For each
+# workflow: the run's event, its ref, the boxes as given (an input left out is
+# null, as every input is on a schedule), whether it is a dry run, and its
+# title on the Actions tab. A scheduled run is always main's; a run by hand
+# of any other branch is a dry run whatever its boxes say, and its title
+# says why where the Dry run box was unticked.
+_HAND = {"dry_run": True, "fetch": False, "preview": True, "new_term": False}
+WF_RUNS = {
+    "nightly.yml": [
+        ("schedule", MAIN_REF, {}, False, "nightly (scheduled)"),
+        ("workflow_dispatch", MAIN_REF, _HAND, True, "nightly (dry run)"),
+        ("workflow_dispatch", MAIN_REF, dict(_HAND, dry_run=False), False,
+         "nightly (by hand, may publish)"),
+        ("workflow_dispatch", "refs/heads/dev", _HAND, True, "nightly (dry run)"),
+        ("workflow_dispatch", "refs/heads/dev", dict(_HAND, dry_run=False, fetch=True), True,
+         "nightly (dry run: not main)"),
+        ("workflow_dispatch", "refs/heads/dev", dict(_HAND, dry_run=False, fetch=True,
+                                                     new_term=True), True,
+         "nightly (by hand, new term: refused, not main)"),
+        ("workflow_dispatch", MAIN_REF, dict(_HAND, dry_run=False, fetch=True, new_term=True),
+         False, "nightly (by hand, new term)"),
+        ("workflow_dispatch", MAIN_REF, dict(_HAND, fetch=True, new_term=True), True,
+         "nightly (by hand, new term: refused, its page says which boxes)"),
+    ],
+}
+
+_GH_TOKEN = re.compile(r"\s*(?:(\|\||&&|==|!=|!|\(|\))|('(?:[^']|'')*')|([A-Za-z_][\w.\-]*)"
+                       r"|(-?\d+(?:\.\d+)?))")
+
+
+def _gh_eval(expr, ctx):
+    """A GitHub Actions expression, as GitHub evaluates it -- the part the
+    workflows use: literals, context paths, (), !, == and !=, && and ||, and
+    always(), success() and failure() -- so that a check can read what a line
+    does in each kind of run, not only what it says. `ctx` maps a path
+    ("inputs.dry_run", "env.DRY_RUN") to its value; a path it does not hold
+    is null, as every input is on a schedule. A status function is true (the
+    step was reached) unless `ctx` says otherwise. && and || return one of
+    their operands, as GitHub's do; strings compare without case, and values
+    of two types compare as numbers, as GitHub's docs say."""
+    expr = expr.strip()
+    if expr.startswith("${{") and expr.endswith("}}"):
+        expr = expr[3:-2]
+    toks, i, s = [], 0, expr.rstrip()
+    while i < len(s):
+        m = _GH_TOKEN.match(s, i)
+        if not m or m.end() == i:
+            raise ValueError(f"an expression this cannot read, at {s[i:i + 30]!r}")
+        op, lit, name, num = m.groups()
+        if op:
+            toks.append(("op", op))
+        elif lit is not None:
+            toks.append(("lit", lit[1:-1].replace("''", "'")))
+        elif name is not None:
+            toks.append(("lit", {"true": True, "false": False, "null": None}[name])
+                        if name in ("true", "false", "null") else ("name", name))
+        else:
+            toks.append(("lit", float(num)))
+        i = m.end()
+    at = [0]
+
+    def peek():
+        return toks[at[0]] if at[0] < len(toks) else (None, None)
+
+    def take():
+        t = peek()
+        at[0] += 1
+        return t
+
+    def truthy(v):
+        return not (v is None or v is False or v == "" or (type(v) is float and v == 0))
+
+    def number(v):
+        if v is None or v is False:
+            return 0.0
+        if v is True:
+            return 1.0
+        if isinstance(v, float):
+            return v
+        try:
+            return float(v.strip()) if v.strip() else 0.0
+        except ValueError:
+            return float("nan")
+
+    def same(a, b):
+        if type(a) is type(b):
+            return a.lower() == b.lower() if isinstance(a, str) else a == b
+        return number(a) == number(b)
+
+    def either():
+        v = both()
+        while peek() == ("op", "||"):
+            take()
+            r = both()
+            v = v if truthy(v) else r
+        return v
+
+    def both():
+        v = compare()
+        while peek() == ("op", "&&"):
+            take()
+            r = compare()
+            v = r if truthy(v) else v
+        return v
+
+    def compare():
+        v = unary()
+        while peek() in (("op", "=="), ("op", "!=")):
+            op = take()[1]
+            r = unary()
+            v = same(v, r) if op == "==" else not same(v, r)
+        return v
+
+    def unary():
+        if peek() == ("op", "!"):
+            take()
+            return not truthy(unary())
+        return primary()
+
+    def primary():
+        kind, val = take()
+        if (kind, val) == ("op", "("):
+            v = either()
+            if take() != ("op", ")"):
+                raise ValueError(f"an unclosed ( in {expr!r}")
+            return v
+        if kind == "lit":
+            return val
+        if kind == "name":
+            if peek() == ("op", "("):
+                take()
+                if take() != ("op", ")") or val not in ("always", "success", "failure"):
+                    raise ValueError(f"{val}(...) in {expr!r}, which this does not evaluate")
+                return ctx.get(f"{val}()", True)
+            return ctx.get(val)
+        raise ValueError(f"{val!r} where a value belongs in {expr!r}")
+    v = either()
+    if at[0] != len(toks):
+        raise ValueError(f"more after the end of {expr!r}")
+    return v
+
+
+def _gh_render(text, ctx):
+    """A value with ${{ }} in it, as GitHub writes it out: an env value or a
+    run's title."""
+    def one(m):
+        v = _gh_eval(m.group(1), ctx)
+        return ("true" if v is True else "false" if v is False else "" if v is None
+                else str(int(v)) if isinstance(v, float) and v == int(v) else str(v))
+    return re.sub(r"\$\{\{(.*?)\}\}", one, text, flags=re.S)
+
+
+def _wf_value(lines, key):
+    """A top-level env entry's or the run-name's value as one line: a folded
+    run-name (>-) joined by spaces, as YAML folds it."""
+    block = _wf_block(lines, key) if key == "run-name" else \
+        [ln for ln in _wf_block(lines, "env") if re.match(rf"^  {re.escape(key)}:", ln)]
+    if not block:
+        return None
+    first = block[0].split(":", 1)[1].strip()
+    if key == "run-name" and first in (">-", ">"):
+        return " ".join(ln.strip() for ln in _wf_code(block[1:]) if ln.strip())
+    return first
+
+
+def _wf_run_ctx(event, ref, boxes):
+    return {"github.event_name": event, "github.ref": ref,
+            **{f"inputs.{k}": v for k, v in boxes.items()}}
 
 
 def _not_the_runs():
@@ -57532,13 +57797,19 @@ def _not_the_runs():
     it (the kit round trip, the R2 adapter, the New term nights, the database
     fallback among them), so every dry run would have stopped at "preflight
     failed. Nothing fetched, nothing built." A check that wants a dry run sets
-    the word itself, and puts back what it found."""
+    the word itself, and puts back what it found.
+
+    And since every run of a branch other than main is a dry run (7 October
+    2026), GitHub's own GITHUB_REF says it too, on every run of dev: it is
+    taken out with GITHUB_REF_NAME, and a check that wants a run of a branch
+    sets the ref itself."""
     for k in WORKFLOW_WORDS:
         os.environ.pop(k, None)
 
 
 @check("workflows", "preflight's checks are not told that the run preflight is part of is a dry "
-       "run, so a dry run on GitHub's machine does not fail its own preflight",
+       "run, by its box or its branch, so a dry run on GitHub's machine does not fail its own "
+       "preflight",
        needs=("nightly", "cloud"))
 def _preflight_not_the_runs(NI, CL):
     """THE REVIEW OF 7 OCTOBER 2026 (_not_the_runs says what it found). The
@@ -57548,13 +57819,21 @@ def _preflight_not_the_runs(NI, CL):
     import inspect
     assert NI.DRY_ENV in WORKFLOW_WORDS and CL.DRY_ENV in WORKFLOW_WORDS, \
         (NI.DRY_ENV, CL.DRY_ENV, WORKFLOW_WORDS)
+    assert NI.REF_ENV in WORKFLOW_WORDS and CL.REF_ENV in WORKFLOW_WORDS, \
+        ("the ref nightly.py and cloud.py read a dry run from is not taken out of the checks' "
+         "environment", NI.REF_ENV, CL.REF_ENV, WORKFLOW_WORDS)
     saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS",) + WORKFLOW_WORDS}
     try:
-        os.environ.update(GITHUB_ACTIONS="true", **{k: "true" for k in WORKFLOW_WORDS})
-        assert NI.dry_by_workflow() and CL.dry_by_workflow()
-        _not_the_runs()
-        assert not NI.dry_by_workflow() and not CL.dry_by_workflow(), \
-            "a dry run's word on GitHub's machine reaches the checks' fixtures"
+        # A dry run by the box, and a run of dev with the box unticked, as
+        # GitHub's machine hands each to preflight.
+        for env in ({k: "true" for k in WORKFLOW_WORDS},
+                    {"DRY_RUN": "false", "GITHUB_REF": "refs/heads/dev", "GITHUB_REF_NAME": "dev"}):
+            os.environ.update(GITHUB_ACTIONS="true", **env)
+            assert NI.dry_by_workflow() and CL.dry_by_workflow(), env
+            _not_the_runs()
+            assert not NI.dry_by_workflow() and not CL.dry_by_workflow(), (
+                "a dry run's word, or a ref other than main, on GitHub's machine reaches the "
+                "checks' fixtures", env)
     finally:
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
@@ -57562,13 +57841,15 @@ def _preflight_not_the_runs(NI, CL):
     at = src.find("_not_the_runs()")
     assert at != -1 and at < src.find("for c in CHECKS"), \
         "preflight's main() runs its checks without first taking out the workflow's words"
-    return "ok", (f"{', '.join(WORKFLOW_WORDS)} is taken out before any check runs, so the "
-                  "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's machine")
+    return "ok", (f"{', '.join(WORKFLOW_WORDS)} are taken out before any check runs, so the "
+                  "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's "
+                  "machine, by the box or by the branch")
 
 
 @check("workflows", "a dry run is one word in nightly.yml that every step inherits and nightly.py "
-       "and cloud.py read themselves, and a dry run sends no site for production and starts "
-       "no publish job", needs=("nightly", "cloud"))
+       "and cloud.py read themselves -- the Dry run box, or any branch but main -- and a dry run "
+       "sends no site for production, starts no publish job, and says so in its title",
+       needs=("nightly", "cloud"))
 def _workflows_dry_run(NI, CL):
     """A dry run on dev is routine now, and what keeps it apart -- its own
     verdict, no census, only what it fetched sent back, nothing to production
@@ -57578,7 +57859,18 @@ def _workflows_dry_run(NI, CL):
     run's; nightly.py and cloud.py take a run as a dry run's on GitHub's
     machine whenever that word says so, whatever flags a step passed; the
     site goes up for production only when it does not; and the publish job
-    never runs for one."""
+    never runs for one.
+
+    EVERY RUN OFF MAIN IS A DRY RUN (7 October 2026, the person's decision).
+    A run by hand on dev with the box unticked counted as a real night: it
+    wrote the census, the night's verdict and the kit, so dev's code reached
+    main's next night, and it could make a waiting night unapprovable. So the
+    word reads the ref as well; the publish job, whose if cannot read env,
+    names main itself; nightly.py and cloud.py read GITHUB_REF too, so an
+    edit to the workflow's line cannot reopen it; and each kind of run in
+    WF_RUNS is evaluated as GitHub would evaluate these lines -- its DRY_RUN,
+    whether the publish job runs for a night fit for production, and its
+    title, which says "not main" where the box was unticked."""
     wf = WORKFLOW_DIR / "nightly.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/nightly.yml here"
@@ -57586,12 +57878,15 @@ def _workflows_dry_run(NI, CL):
     lines = text.splitlines()
     code = _wf_code(lines)
     assert DRY_RUN_ENV in _wf_block(lines, "env"), (
-        "nightly.yml does not set DRY_RUN in its top-level env from the Dry run box, on a run "
-        "by hand alone")
+        "nightly.yml does not set DRY_RUN in its top-level env from the Dry run box on a run by "
+        "hand, and from the ref on a run of any branch but main")
     sets = [ln.strip() for ln in code if re.match(r"^\s*DRY_RUN\s*:", ln)]
     assert sets == [DRY_RUN_ENV.strip()], \
         f"nightly.yml sets DRY_RUN more than once, and a step's own would hide the run's: {sets}"
     assert NI.DRY_ENV == CL.DRY_ENV == "DRY_RUN", (NI.DRY_ENV, CL.DRY_ENV)
+    assert NI.REF_ENV == CL.REF_ENV == "GITHUB_REF" and NI.MAIN_REF == CL.MAIN_REF == MAIN_REF \
+        and NI.MAIN_REF == f"refs/heads/{NI.REPO_BRANCH}", (NI.REF_ENV, CL.REF_ENV, NI.MAIN_REF,
+                                                            CL.MAIN_REF)
     jobs = _wf_jobs(text)
     ups = 0
     for j, jl in jobs.items():
@@ -57603,18 +57898,41 @@ def _workflows_dry_run(NI, CL):
                     f"nightly.yml: job {j} sends the site for production on a dry run"
     assert ups == 1, f"nightly.yml sends the site for production from {ups} steps, not one"
     cond = re.search(r"^    if:\s*(.+)$", "\n".join(_wf_code(jobs.get("publish") or [])), re.M)
-    assert cond and "inputs.dry_run == false" in cond.group(1), \
-        "nightly.yml's publish job can run for a dry run"
+    assert cond and "inputs.dry_run == false" in cond.group(1) and \
+        f"github.ref == '{MAIN_REF}'" in cond.group(1), \
+        "nightly.yml's publish job can run for a dry run, or for a run of a branch other than main"
 
-    # The two read the word themselves, and on GitHub's machine only.
-    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV)}
+    # Each kind of run, as GitHub evaluates the lines.
+    dry_line, title = _wf_value(lines, "DRY_RUN"), _wf_value(lines, "run-name")
+    wrong = []
+    for event, ref, boxes, dry, want in WF_RUNS["nightly.yml"]:
+        ctx = _wf_run_ctx(event, ref, boxes)
+        said = _gh_render(dry_line, ctx)
+        runs = bool(_gh_eval(cond.group(1), dict(ctx, **{
+            "needs.night.outputs.publishable": "true"})))
+        named = _gh_render(title or "", ctx)
+        if said != ("true" if dry else "false") or runs == dry or named != want:
+            wrong.append(f"{event} of {ref} with {boxes or 'no boxes'}: DRY_RUN={said}, the "
+                         f"publish job {'runs' if runs else 'does not run'}, titled {named!r} "
+                         f"(want DRY_RUN={str(dry).lower()} and {want!r})")
+    assert not wrong, "nightly.yml, as GitHub would read it: " + "; ".join(wrong)
+
+    # The two read the word themselves, and the ref, and on GitHub's machine only.
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV, NI.REF_ENV)}
     try:
-        for actions, dry, want in (("true", "true", True), ("true", "false", False),
-                                   (None, "true", False)):
-            for k, val in (("GITHUB_ACTIONS", actions), (NI.DRY_ENV, dry)):
+        for actions, dry, ref, want in (
+                ("true", "true", MAIN_REF, True), ("true", "false", MAIN_REF, False),
+                (None, "true", None, False), ("true", "false", "refs/heads/dev", True),
+                ("true", None, "refs/heads/dev", True), (None, "false", "refs/heads/dev", False),
+                ("true", "false", None, False), ("true", "true", "refs/heads/dev", True)):
+            for k, val in (("GITHUB_ACTIONS", actions), (NI.DRY_ENV, dry), (NI.REF_ENV, ref)):
                 os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
-            assert NI.dry_by_workflow() is want and CL.dry_by_workflow() is want, \
-                (actions, dry, want)
+            assert NI.dry_by_workflow() is want and CL.dry_by_workflow() is want, (
+                "nightly.py or cloud.py reads a dry run otherwise than the workflow: GITHUB_ACTIONS="
+                f"{actions}, DRY_RUN={dry}, GITHUB_REF={ref}; nightly says {NI.dry_by_workflow()}, "
+                f"cloud says {CL.dry_by_workflow()}, and it is {want}")
+            assert NI.not_main() == (ref if want and ref and ref != MAIN_REF else ""), \
+                (ref, NI.not_main())
     finally:
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
@@ -57624,9 +57942,74 @@ def _workflows_dry_run(NI, CL):
     assert at != -1 and at < main.find("on_the_runner()") and \
         "a.dry_run = True" in main[at:at + 120], \
         "nightly.py does not take a dry run from the workflow's word before the runner starts"
-    return "ok", ("DRY_RUN is set once, from the box on a run by hand; nightly.py and cloud.py "
-                  "read it on GitHub's machine whatever a step passes; the site goes up only "
-                  "when it is false, and the publish job never runs for a dry run")
+    return "ok", (f"DRY_RUN is set once, from the box on a run by hand or a ref other than main; "
+                  f"{len(WF_RUNS['nightly.yml'])} kinds of run read as GitHub reads them; "
+                  "nightly.py and cloud.py read the word and the ref on GitHub's machine whatever "
+                  "a step passes; the site goes up only when it is false, and the publish job "
+                  "runs only for main and never for a dry run")
+
+
+# The workflows whose every kind of run (WF_RUNS) Healthchecks is held to.
+WF_PINGS = ("nightly.yml",)
+
+
+def _gh_unwrap(cond):
+    cond = cond.strip()
+    return cond[3:-2].strip() if cond.startswith("${{") and cond.endswith("}}") else cond
+
+
+@check("workflows", "Healthchecks hears from a scheduled night and a real run by hand of main, "
+       "and never from a dry run, by its box or its branch")
+def _workflows_healthchecks():
+    """HEALTHCHECKS IS THE DEAD-MAN'S SWITCH FOR A NIGHT THAT NEVER RAN (7
+    October 2026). Every nightly run pinged it -- /start, then its ending --
+    a dry run on dev included; so a dry run that succeeded on a day the
+    scheduled night failed to start would have told Healthchecks a night had
+    run, and hidden that one. Now each step that names HEALTHCHECKS_URL is
+    evaluated, as GitHub would, for every kind of run in WF_RUNS, with the
+    job going well and with it failed (a step whose if names no status
+    function is success() and its if, as GitHub reads it): it pings for no
+    dry run at all, by the box or by the branch, and for every run that is
+    not one -- a scheduled night, a run by hand of main with Dry run
+    unticked -- in the outcome it is there for, as before."""
+    files = {f.name: f for f in _workflows()}
+    if not files:
+        return "skip", "no .github/workflows here"
+    held = []
+    for name in WF_PINGS:
+        assert name in files, f"{name} is not among the workflows"
+        lines = files[name].read_text(encoding="utf-8").splitlines()
+        dry_line = _wf_value(lines, "DRY_RUN")
+        assert dry_line, f"{name} sets no DRY_RUN in its top-level env, so no step can tell a dry run"
+        pings = []
+        for jl in _wf_jobs("\n".join(lines)).values():
+            for st in _wf_steps(_wf_code(jl)):
+                s = "\n".join(st)
+                if "secrets.HEALTHCHECKS_URL" not in s:
+                    continue
+                m = re.search(r"^        if:\s*(.+?)\s*$", s, re.M)
+                cond = _gh_unwrap(m.group(1)) if m else "true"
+                if not re.search(r"\b(?:always|success|failure)\(\)", cond):
+                    cond = f"success() && ({cond})"
+                pings.append((re.sub(r"^\s*- name:\s*", "", st[0]).strip(), cond))
+        assert pings, f"{name} pings Healthchecks from no step"
+        wrong = []
+        for event, ref, boxes, dry, _title in WF_RUNS[name]:
+            ctx = _wf_run_ctx(event, ref, boxes)
+            ctx["env.DRY_RUN"] = _gh_render(dry_line, ctx)
+            run = f"{event} of {ref}, {boxes or 'no boxes'}"
+            for step, cond in pings:
+                when = [failed for failed in (False, True)
+                        if _gh_eval(cond, dict(ctx, **{"success()": not failed,
+                                                       "failure()": failed}))]
+                if dry and when:
+                    wrong.append(f"{step!r} pings for a dry run ({run})")
+                elif not dry and not when:
+                    wrong.append(f"{step!r} never pings for a run that is not a dry run ({run})")
+        assert not wrong, f"{name}: " + "; ".join(wrong)
+        held.append(f"{name} ({len(pings)} step{'s' if len(pings) > 1 else ''})")
+    return "ok", (f"{', '.join(held)}: each ping evaluated for every kind of run; none for a dry "
+                  "run, by the box or by the branch, and each for every run that is not one")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")

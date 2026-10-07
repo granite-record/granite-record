@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.55
+# GRANITE_VERSION: 2026-09-04.56
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -156,6 +156,13 @@ of this may depend on remembering not to start one:
   how it is known     --dry-run, or on GitHub's machine the workflow's
                       DRY_RUN (DRY_ENV), which every step of a run inherits:
                       a step that forgets the flag is a dry run's all the same
+  every run off main  is one, whatever its boxes say (the person's decision
+                      of 7 October 2026): DRY_RUN reads the ref, and so does
+                      this, from GITHUB_REF (MAIN_REF, not_main), so that a
+                      by-hand run on dev with Dry run unticked -- which wrote
+                      the night's verdict, the census and the kit like a real
+                      night -- keeps apart too, and its page says why. A
+                      scheduled night is always main's
   what it sends back  only what it fetched: cloud.py's --dry-night, which the
                       same DRY_RUN implies, says what (its docstring)
 
@@ -207,7 +214,9 @@ It is never a dry run, and never a run that does not fetch: the switch is the
 run that takes the smaller files and may publish them, and it waits for the
 person's approval in the "production" environment (nightly.yml says why that
 must outlast the approvals of ordinary nights). Ticked with Dry run, or
-without the fetch, it does nothing and says which boxes to tick.
+without the fetch, it does nothing and says which boxes to tick; on a branch
+other than main, which makes any run a dry run, it does nothing and says to
+run it from main (NEW_TERM_NOT_MAIN).
 
 A NEW TERM IS SEEN BY ITS YEARS (5 October 2026). Size was the only sign of a
 turn, and on a copy a docket holding 2025, 2026 and 2027 grew, nothing shrank,
@@ -512,6 +521,18 @@ RUN_VERDICT = Path("archive/run-verdict.json")
 # step inherits). cloud.DRY_ENV is the same name; preflight holds the two and
 # the workflow's line together.
 DRY_ENV = "DRY_RUN"
+# EVERY RUN OFF MAIN IS A DRY RUN (7 October 2026, the person's decision).
+# GitHub names the branch a run is of in GITHUB_REF, and a run of any branch
+# but REPO_BRANCH is a dry run's whatever its boxes say (not_main,
+# dry_by_workflow): a run by hand on dev with Dry run unticked wrote the
+# night's verdict, the census and the kit like a real night, so dev's code
+# reached main's next night through the bucket, and it could make a night
+# waiting for approval unapprovable. The workflow's DRY_RUN says the same;
+# this reads the ref again, so that an edit to that line cannot reopen it.
+# cloud.REF_ENV and cloud.MAIN_REF are the same; preflight takes REF_ENV out
+# for its own checks, as it does DRY_ENV.
+REF_ENV = "GITHUB_REF"
+MAIN_REF = f"refs/heads/{REPO_BRANCH}"
 # In a real night's verdict, carried from night to night: the newest real
 # night whose build its checks found fit for production -- {"run_id", "day",
 # "started", "fingerprint"} -- whether or not production already served it.
@@ -1182,7 +1203,8 @@ def main():
                      "--deploy-to steps, and production is behind its own environment.")
         # A DRY RUN IS KNOWN BY THE WORKFLOW'S WORD (7 October 2026) as well as
         # by the flag: every step of a run inherits DRY_RUN, so a step that
-        # forgets --dry-run still keeps its verdict apart.
+        # forgets --dry-run still keeps its verdict apart. And by the ref: a
+        # run of a branch other than main is one, whatever DRY_RUN says.
         if not a.dry_run and not a.weekly and dry_by_workflow():
             a.dry_run = True
         if a.new_term and (a.deploy_to or a.close):
@@ -1227,8 +1249,12 @@ def main():
             # that fell for some other reason through the census as though a
             # term had turned over. A run by hand has Dry run ticked and the
             # fetch unticked unless a person changes them, so both are said.
-            say("\nSTOPPED: " + (NEW_TERM_DRY if a.dry_run else NEW_TERM_NO_FETCH))
-            night.v["new_term"] = {"refused": REFUSED_DRY if a.dry_run else REFUSED_NO_FETCH}
+            # A run of a branch other than main is a dry run whatever its
+            # boxes say (7 October 2026), and no box answers that: it says so.
+            refused = (REFUSED_NOT_MAIN if night.v.get("off_main") else
+                       REFUSED_DRY if a.dry_run else REFUSED_NO_FETCH)
+            say("\nSTOPPED: " + NEW_TERM_REFUSED[refused])
+            night.v["new_term"] = {"refused": refused}
             return 1
         if build_running():
             # THE REPORTS ARE STILL PULLED, and the line above used to say the
@@ -1650,10 +1676,27 @@ def github(name, default=""):
     return os.environ.get(name, default)
 
 
+def not_main():
+    """The ref of a run on GitHub's machine of a branch other than REPO_BRANCH
+    ("refs/heads/dev", say), or "": for a run of main, off GitHub's machine,
+    or where GitHub names no ref (the workflow's DRY_RUN, which reads the ref
+    itself, still holds that one)."""
+    ref = github(REF_ENV)
+    return ref if github("GITHUB_ACTIONS") == "true" and ref and ref != MAIN_REF else ""
+
+
+def off_main_line(ref):
+    """What a run off main says of itself, on its page and in its log."""
+    name = ref[len("refs/heads/"):] if ref.startswith("refs/heads/") else ref
+    return (f"This run is of {name}, not {REPO_BRANCH}: every run of a branch other than "
+            f"{REPO_BRANCH} is a dry run, whatever its boxes say.")
+
+
 def dry_by_workflow():
-    """Whether the workflow says this run is a dry run (DRY_ENV), on GitHub's
-    machine: what makes a step that forgets --dry-run a dry run's anyway."""
-    return github("GITHUB_ACTIONS") == "true" and github(DRY_ENV) == "true"
+    """Whether the workflow says this run is a dry run (DRY_ENV), or it is a
+    run of a branch other than main (not_main), on GitHub's machine: what
+    makes a step that forgets --dry-run a dry run's anyway."""
+    return github("GITHUB_ACTIONS") == "true" and (github(DRY_ENV) == "true" or bool(not_main()))
 
 
 def gh_output(**kv):
@@ -1758,9 +1801,21 @@ NEW_TERM_DRY = (f"{NEW_TERM_BOX} was ticked with {DRY_BOX}, so nothing was fetch
 NEW_TERM_NO_FETCH = (f'{NEW_TERM_BOX} was ticked without "{FETCH_BOX}", so nothing was fetched or '
                      "built: the switch to a new term is the run that takes the General Court's "
                      "smaller files. " + NEW_TERM_AGAIN)
+# A run of a branch other than main is a dry run whatever its boxes say (7
+# October 2026, MAIN_REF), so a New term run there is refused as one ticked
+# with Dry run is, and its page says that the branch, not a box, stopped it.
+# GitHub's "Run workflow" form chooses the branch under "Use workflow from".
+NEW_TERM_NOT_MAIN = (f"{NEW_TERM_BOX} was ticked on a run of a branch other than {REPO_BRANCH}, "
+                     "which is a dry run whatever its boxes say, so nothing was fetched or built: "
+                     "the switch to a new term is a run that may publish, and only a run of "
+                     f"{REPO_BRANCH} may. Run the nightly by hand from {REPO_BRANCH} (\"Use "
+                     f"workflow from\") with {NEW_TERM_BOX} and \"{FETCH_BOX}\" ticked and "
+                     f"{DRY_BOX} unticked.")
 # What a New term run's verdict records when its other boxes stopped it.
 REFUSED_DRY = "ticked with Dry run"
 REFUSED_NO_FETCH = "ticked without the fetch"
+# ... or its branch.
+REFUSED_NOT_MAIN = "ticked on a branch other than main"
 # ... and when the term it would leave is not frozen as installed: it stops
 # before any request (new_term_ready).
 REFUSED_FREEZE = "stopped before any request: the term it would leave is not frozen as installed"
@@ -1769,6 +1824,9 @@ NEW_TERM_FREEZE = (f"{NEW_TERM_BOX} was ticked, and the term the installed files
                    "lose what of the old one is not frozen. Freeze it (python3 src/lib/freeze_term.py --session, "
                    f"sent with seed-kit) and run the nightly by hand with {NEW_TERM_BOX} ticked "
                    "again.")
+# Each refusal's sentence, on the run's page and in its log.
+NEW_TERM_REFUSED = {REFUSED_DRY: NEW_TERM_DRY, REFUSED_NO_FETCH: NEW_TERM_NO_FETCH,
+                    REFUSED_NOT_MAIN: NEW_TERM_NOT_MAIN, REFUSED_FREEZE: NEW_TERM_FREEZE}
 # The weekly job's own two sentences: it has no Dry run box and publishes nothing.
 WEEKLY_NEW_TERM_HINT = ("The General Court's committee lists are much smaller: a new term? Run "
                         f'the weekly by hand with {NEW_TERM_BOX} and "{WEEKLY_FETCH_BOX}" ticked.')
@@ -1809,8 +1867,7 @@ def plain_why(v, weekly=False):
     if from_db(v) and fetch.startswith("empty"):
         fetch = "installed"
     if new_term.get("refused"):
-        why = {REFUSED_NO_FETCH: NEW_TERM_NO_FETCH,
-               REFUSED_FREEZE: NEW_TERM_FREEZE}.get(new_term["refused"], NEW_TERM_DRY)
+        why = NEW_TERM_REFUSED.get(new_term["refused"], NEW_TERM_DRY)
     elif v.get("preflight") == "failed":
         why = "The code checks failed, so nothing was fetched or built."
     elif fetch == "refused":
@@ -3384,6 +3441,10 @@ class Night:
         # Either way it starts from the last REAL night's, so a dry run is
         # judged as the night would be, and changes nothing that night left.
         self.path = DRY_VERDICT if a.dry_run else VERDICT
+        # A run of a branch other than main is a dry run whatever its boxes say
+        # (MAIN_REF), and its verdict and its page say which branch it was.
+        if not_main():
+            self.v["off_main"] = not_main()
         prev = load_json(VERDICT)
         # What the gate's fourth reason compares with (WARNING KINDS): the
         # kinds of the build production served when last read, and of the
@@ -3435,6 +3496,8 @@ class Night:
                f"{DRY_VERDICT.as_posix()}" if self.a.dry_run else "")
             + (f"; {NEW_TERM_BOX}: the General Court's smaller files accepted, once"
                if self.a.new_term else ""))
+        if self.v.get("off_main"):
+            say(f"  {off_main_line(self.v['off_main'])}")
         say(f"  the refusal record is {refusal.MARK}; python {sys.version.split()[0]}")
 
     def baseline(self):
@@ -3785,6 +3848,8 @@ class Night:
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {self.path.as_posix()}")
         if self.a.dry_run:
             say(f"  {DRY_APART}")
+        if v.get("off_main"):
+            say(f"  {off_main_line(v['off_main'])}")
         for w in why + alarms:
             say(f"  - {w}")
         for w in v["warnings"]:
@@ -3802,6 +3867,7 @@ class Night:
                     f"- built: {'yes' if v.get('built') else 'no'}; for production: "
                     f"{'yes' if v.get('publishable') else 'no'}"]
                    + ([f"- {DRY_APART}"] if self.a.dry_run else [])
+                   + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else [])
                    + ([f"- **{v['warnings'][0]}**"] if from_db(v) and v["warnings"] else [])
                    + [f"- **error: {x}**" for x in alarms]
                    # The gate's line, under what leads the page.
@@ -4032,7 +4098,10 @@ def close_verdict(a):
         if a.dry_run:
             v["asked"] = {"dry_run": True}
             v["kept_apart"] = DRY_APART
-            gh_summary([f"- {DRY_APART}"])
+            if not_main():
+                v["off_main"] = not_main()
+            gh_summary([f"- {DRY_APART}"]
+                       + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else []))
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
     if failed:

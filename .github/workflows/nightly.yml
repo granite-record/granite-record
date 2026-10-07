@@ -31,18 +31,24 @@
 # refusal.NIGHT_WINDOWS, which keeps the laptop's fetches clear of the
 # night, moves with the cron line.
 #
-# By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
-# its four boxes say; a scheduled night fetches, deploys a preview, and asks
-# for approval to publish. The fourth box, New term, is for the one night a
-# term turns over, and the note above it says what it lets through, and that
-# nothing it lets through is kept until its build is published.
+# By hand: the Actions tab, "nightly", "Run workflow". A run by hand of main
+# does what its four boxes say; a scheduled night fetches, deploys a preview,
+# and asks for approval to publish. A run of any other branch ("Use workflow
+# from") is a dry run whatever its boxes say, and its title says so -- "(dry
+# run: not main)" where the box was unticked (the person's decision of 7
+# October 2026; DRY_RUN, below). The fourth box, New term, is for the one
+# night a term turns over, and the note above it says what it lets through,
+# and that nothing it lets through is kept until its build is published.
 
 name: nightly
 run-name: >-
   nightly ${{ github.event_name == 'schedule' && '(scheduled)'
-  || (inputs.new_term && ((inputs.dry_run || !inputs.fetch)
-  && '(by hand, new term: refused, its page says which boxes)' || '(by hand, new term)')
-  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)')) }}
+  || (inputs.new_term && (github.ref != 'refs/heads/main'
+  && '(by hand, new term: refused, not main)'
+  || ((inputs.dry_run || !inputs.fetch)
+  && '(by hand, new term: refused, its page says which boxes)' || '(by hand, new term)'))
+  || (inputs.dry_run && '(dry run)'
+  || (github.ref != 'refs/heads/main' && '(dry run: not main)' || '(by hand, may publish)'))) }}
 
 on:
   workflow_dispatch:
@@ -122,7 +128,14 @@ env:
   # the run fetched, and nothing goes to production -- whether or not a step
   # passes --dry-run. So a dry run on dev, started while a night waits for
   # approval, leaves that night approvable. preflight holds this line.
-  DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}
+  # EVERY RUN OFF MAIN IS ONE (7 October 2026, the person's decision), Dry run
+  # ticked or not: a run by hand on dev with the box unticked counted as a
+  # real night, wrote the census, the night's verdict and the kit, so dev's
+  # code reached main's next night through the bucket, and it could make a
+  # waiting night unapprovable. nightly.py and cloud.py read the ref too
+  # (GITHUB_REF), so an edit to this line does not reopen that. A scheduled
+  # night is always main's, and it and a run by hand of main are as before.
+  DRY_RUN: ${{ (github.event_name != 'schedule' && inputs.dry_run) || github.ref != 'refs/heads/main' }}
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
   # Only ever from the box, on a run by hand: never on a scheduled night.
   NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
@@ -162,7 +175,14 @@ jobs:
       # "production". The routing that reads it is a person's change to make.
       review: ${{ steps.night.outputs.review }}
     steps:
+      # HEALTHCHECKS HEARS ONLY FROM A REAL RUN (7 October 2026). Its check is
+      # the dead-man's switch for a night that never ran: a scheduled night,
+      # or a run by hand of main that is not a dry run, pings it. A dry run --
+      # by the box, or by its branch -- pings nothing, at the start or the
+      # end: its success on a day the scheduled night failed to start would
+      # stand in for that night and hide it. preflight holds both steps.
       - name: Tell Healthchecks the night has started
+        if: env.DRY_RUN == 'false'
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
         run: |
@@ -378,8 +398,9 @@ jobs:
           python cloud.py state-up
           exit $LASTEXITCODE
 
+      # Never for a dry run (the note above the first step).
       - name: Tell Healthchecks how the night ended
-        if: always()
+        if: always() && env.DRY_RUN == 'false'
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
           ENDED: ${{ job.status }}
@@ -402,11 +423,13 @@ jobs:
   # only once a newer night has built a site fit for production. A dry run,
   # or a newer night that built nothing for production, never makes a night
   # waiting here unapprovable (7 October 2026). A New term run's last step
-  # here is what lets later nights keep what it accepted.
+  # here is what lets later nights keep what it accepted. A run of a branch
+  # other than main is a dry run whatever its boxes say, and this job never
+  # runs for one (a job's if cannot read env, so it names the ref itself).
   publish:
     name: publish to production
     needs: night
-    if: needs.night.outputs.publishable == 'true' && (github.event_name == 'schedule' || inputs.dry_run == false)
+    if: needs.night.outputs.publishable == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.dry_run == false)
     runs-on: windows-2022
     timeout-minutes: 60
     environment:
