@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """
 Municipal officials, out of the Department of Transportation's directory.
 
@@ -79,7 +79,9 @@ import json
 import pathlib
 import re
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 PDF = ROOT / "sources" / "nh-municipal-officials-2025-09-01.pdf"
 OUT = ROOT / "town_officials.json"
 

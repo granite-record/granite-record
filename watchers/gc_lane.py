@@ -114,7 +114,6 @@ import time
 ROOT = pathlib.Path.cwd()
 if not (ROOT / "refusal.py").exists():
     sys.exit(f"run this from the repository root; {ROOT} is not it")
-sys.path.insert(0, str(ROOT))
 try:
     import refusal
 except Exception as e:                                          # noqa: BLE001

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -35,7 +35,6 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import segment_markers as S  # noqa: E402
 
 

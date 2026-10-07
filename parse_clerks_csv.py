@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
@@ -65,7 +65,9 @@ import re
 import parse_clerks
 import parse_officials
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 CSV_IN = ROOT / "sources" / "sos-clerks-and-polling-places-2026-09-20.csv"
 OUT = ROOT / "town_clerks.json"
 CORRECTIONS = ROOT / "place_corrections.json"

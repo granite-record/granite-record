@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.6
+# GRANITE_VERSION: 2026-09-12.7
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
@@ -107,7 +107,9 @@ import re
 # about what a town page may link.
 import parse_officials
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 PDF = ROOT / "sources" / "sos-clerks-and-polling-places.pdf"
 OUT = ROOT / "town_clerks.json"
 

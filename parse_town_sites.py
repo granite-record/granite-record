@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.9
+# GRANITE_VERSION: 2026-09-20.10
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -81,10 +81,11 @@ import datetime
 import html
 import json
 import os
-import pathlib
 import re
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 STORE = ROOT / "town_sites"
 OUT = ROOT / "town_officials_web.json"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.5
+# GRANITE_VERSION: 2026-09-16.6
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 topic_model.py --apply              # write topics_assigned.json
@@ -124,9 +124,7 @@ import time
 
 import numpy as np
 
-REPO = Path(__file__).resolve().parent
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
+REPO = _paths.ROOT
 # topics.py and build_data.py address their files relative to the working
 # folder, so this module has to be standing in the repository to read them.
 # build_all.py already runs its steps from there; this is for a run that is not.

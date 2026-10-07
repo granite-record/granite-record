@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """
 The one place a credential is read from, and it is not the command line.
 
@@ -33,9 +33,13 @@ stop somebody reproducing this work from the same sources.
 """
 
 import json
-from pathlib import Path
 
-PATH = Path(__file__).resolve().parent / "secrets.json"
+import _paths
+
+# At the repository's root, wherever this module sits: cloud.home() takes the
+# folder holding it for the checkout whose refusals are the real ones, and
+# every script that needs a credential finds it here.
+PATH = _paths.ROOT / "secrets.json"
 EXAMPLE = "secrets.example.json"
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.8
+# GRANITE_VERSION: 2026-09-25.9
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -710,8 +710,8 @@ def home(root):
     whose refusals are the real ones, and whose pull records a read of the
     real bucket. A temp folder with a stand-down file in it is not, and
     neither is a checkout with no secrets.json in it: keys.PATH names the
-    file beside keys.py whether it is there or not, so a worktree or a fresh
-    clone would otherwise count as home."""
+    file at the checkout's root whether it is there or not, so a worktree or
+    a fresh clone would otherwise count as home."""
     import keys
     p = Path(keys.PATH)
     return p.exists() and Path(root).resolve() == p.resolve().parent

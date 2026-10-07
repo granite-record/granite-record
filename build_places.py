@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 One canonical list of New Hampshire places, and what each source says about it.
 
@@ -95,12 +95,13 @@ import argparse
 import collections
 import datetime
 import json
-import pathlib
 import re
 
 import parse_districts
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 OUT = ROOT / "places.json"
 
 DISTRICT_FILES = ("congress", "council", "senate", "house")

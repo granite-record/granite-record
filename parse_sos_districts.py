@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 The Secretary of State's own district table, and what it says about ours.
 
@@ -104,12 +104,13 @@ import _paths  # noqa: E402,F401
 import argparse
 import collections
 import json
-import pathlib
 import re
 
 import parse_districts
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 PDF = ROOT / "sources" / "sos-towns-and-wards-districted-2023-04-26.pdf"
 OUT = ROOT / "sos_districts.json"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-22.2
+# GRANITE_VERSION: 2026-09-22.3
 """
 New Hampshire's elected county officers, out of the Secretary of State's roster.
 
@@ -58,10 +58,11 @@ import _paths  # noqa: E402,F401
 import argparse
 import collections
 import json
-import pathlib
 import re
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 PDF = ROOT / "sources" / "sos-county-roster-2025-2026.pdf"
 OUT = ROOT / "county_officials.json"
 

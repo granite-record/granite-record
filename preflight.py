@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.388
+# GRANITE_VERSION: 2026-09-04.389
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -36139,7 +36139,8 @@ def _cloud_pull(CL, R):
             CL.make_bucket = saved[6]
         assert os.environ.get(CL.NO_BUCKET) == "1", "GRANITE_NO_BUCKET was lifted"
         # home() is the checkout that HOLDS secrets.json: keys.PATH names the
-        # file beside keys.py whether it is there or not.
+        # file at the checkout's root, wherever keys.py sits, whether it is
+        # there or not.
         import keys
         kept_path, homeless = keys.PATH, tmp / "homeless"
         homeless.mkdir()

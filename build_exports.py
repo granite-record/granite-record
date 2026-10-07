@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.33
+# GRANITE_VERSION: 2026-09-10.34
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -507,17 +507,20 @@ def feeds(site):
 def repo_facts():
     """What a clone of this repository gets, read from this one.
 
-    OFF __file__, NOT OFF THE WORKING DIRECTORY. preflight runs every builder
-    with its cwd set to a temporary fixture tree, so Path(".") here would
-    count that tree's files and find none of these -- a figure of zero, stated
-    with the confidence of something counted. __file__ is this script, and its
-    parent is the repository whichever directory the build was started from.
+    OFF THE REPOSITORY'S ROOT, NOT OFF THE WORKING DIRECTORY. preflight runs
+    every builder with its cwd set to a temporary fixture tree, so Path(".")
+    here would count that tree's files and find none of these -- a figure of
+    zero, stated with the confidence of something counted. _paths.ROOT is the
+    repository whichever directory the build was started from, and wherever
+    this script sits; it was __file__'s folder while every script was at the
+    root, which a move under src/ would have turned into src/pages/ and a
+    sentence dropped from data.html without a word.
 
     Every value is counted or absent. Where a file cannot be read the fact is
     left out rather than guessed at, because a wrong number that looks
     defended is worse than no number.
     """
-    root = Path(__file__).resolve().parent
+    root = _paths.ROOT
     out = {}
     try:
         out["stamped"] = len(json.loads(
@@ -525,7 +528,7 @@ def repo_facts():
     except Exception:
         pass
     try:
-        pf = (root / "preflight.py").read_text(encoding="utf-8")
+        pf = _paths.locate("preflight.py").read_text(encoding="utf-8")
         out["checks"] = pf.count("@check(")
     except Exception:
         pass

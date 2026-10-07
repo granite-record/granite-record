@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -371,7 +371,6 @@ def main():
     if not pdfs:
         sys.exit(f"No PDFs under {a.calendars}/ or below it.")
 
-    sys.path.insert(0, ".")
     from fetch_committee_reports import extract_text
 
     print(f"reading {len(pdfs)} calendars, no network\n")

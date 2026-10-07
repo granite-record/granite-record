@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.5
+# GRANITE_VERSION: 2026-09-30.6
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -83,7 +83,7 @@ import re
 import subprocess
 from datetime import datetime, timezone
 
-HERE = Path(__file__).resolve().parent
+HERE = _paths.ROOT                          # the repository, wherever this file sits
 STATE = Path("archive/livestreams.json")
 RECORD = Path("archive/cloud/evening.json")
 LOGS = Path("logs")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 NH GRANIT's district geometry, and whether it carries the districts we publish.
 
@@ -84,14 +84,15 @@ import _paths  # noqa: E402,F401
 import argparse
 import collections
 import json
-import pathlib
 import re
 import struct
 import zipfile
 
 import parse_districts
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 GIS = ROOT / "sources" / "gis"
 OUT = ROOT / "granit_layers.json"
 

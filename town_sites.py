@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.9
+# GRANITE_VERSION: 2026-09-20.10
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -63,14 +63,15 @@ import collections
 import hashlib
 import html
 import json
-import pathlib
 import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 STORE = ROOT / "town_sites"
 
 # WHO THIS SAYS IT IS, AND WHY THERE ARE TWO ANSWERS.
