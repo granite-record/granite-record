@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -601,6 +601,17 @@ VACATED_RE = re.compile(
     r"Vacated and Referred to\s+(?P<committee>.+?)\s*(?:\(|:)"
 )
 
+# "Vacated from Transportation to Wildlife and Recreation, MA, VV; SJ Convening
+# Day, Pg. 6" (build_referral_timeline): a row that begins so and names no
+# referral before "to", as the clerk of 1999-2000 typed it. Not "Vacated from
+# Ways and Means and Referred to Judiciary; HJ 22" or "Vacated from Executive
+# Depts & Admin and Ref to Science, Technology & Energy" (the House of
+# 2007-2012), nor the capitals of 1989-1998, whose hearing lines name their
+# committee (_legacy_committee): this has never read those, and does not start.
+VACATED_FROM_TO_RE = re.compile(
+    r"^\s*Vacated\s+from\s+(?:(?!\b(?i:re-?ref|ref|introduced)\w*\b)[^;,])+?\s+to\s+"
+    r"(?P<committee>[A-Z][^,;]*?)\s*(?:[,;]|$)")
+
 # "Committee Report: Ought to Pass, 01/30/2025, Vote 5-0;  SC 7"
 CMTE_REPORT_RE = re.compile(r"Committee Report:\s*(?P<rec>[^,(]+)")
 
@@ -946,15 +957,64 @@ def reconvened_to(r):
             and _E1999.reconvened_notice(r.get("desc") or "", written) is not None)
 
 
-def rescheduled_proceeding(r, flags, day, timeline):
+# THE HOUR A LATER ROW GAVE THE NEW DAY'S HEARING (the review of decision 60,
+# 7 October 2026). SB 411 of 2000's hearing of 4 February was cancelled and
+# set down for the 10th by "==RESCHEDULED== Feb.10, Room 104, LOB, 9:00 a.m.;
+# SC3", and two weeks later "==NEW TIME== Feb.10, Room 104, LOB, 1:00 p.m., SC6
+# Pg. 4"; Senate Calendar 10 prints "PLEASE NOTE THE TIME CHANGE FROM 9:00 A.M.
+# TO 1:00 P.M." and the hearing at 1:00. The row merged for it said 9:00. A
+# later row of the same bill and chamber marked "NEW TIME" or "TIME CHANGE"
+# that names the same day gives the hour, the last such row entered winning.
+# Only for the rows rescheduled_proceeding reads; a notice SENATE_SCHED_RE
+# reads keeps the hour it states, as it did.
+TIME_CHANGED_ROW = re.compile(r"\bTIME\s+CHANGE\b|\bNEW\s+TIME\b", re.I)
+
+
+def _created(r):
+    try:
+        return datetime.strptime((r.get("created") or "").strip(), "%m/%d/%Y %I:%M:%S %p")
+    except ValueError:
+        return None
+
+
+def _time_changed_to(r, day, later_rows):
+    """The hour, as "HH:MM", the last row of `later_rows` -- the same bill's
+    rows in the same chamber -- entered after `r` and marked as a new time for
+    `day` gives that day's hearing; else None."""
+    if _E1999 is None or not hasattr(_E1999, "DTXT"):
+        return None
+    mine, best = _created(r), None
+    if mine is None:
+        return None
+    for o in later_rows or ():
+        when = _created(o)
+        desc = o.get("desc") or ""
+        if when is None or when <= mine or not TIME_CHANGED_ROW.search(desc):
+            continue
+        m = re.search(_E1999.DTXT, desc, re.I)
+        named = _E1999.full_date(m.group(0), when, forward=True) if m else None
+        if not named or datetime.strptime(named, "%m/%d/%Y").date() != day:
+            continue
+        at = RESCHEDULED_TIME.search(desc[m.end():])
+        t = _parse_time(f"{at.group('time')}{at.group('mer')}") if at else None
+        if t and (best is None or when >= best[0]):
+            best = (when, t.strftime("%H:%M"))
+    return best[1] if best else None
+
+
+def rescheduled_proceeding(r, flags, day, timeline, later_rows=None):
     """The Senate hearing a row read by rescheduled_to gives notice of: its
-    day, and the hour and room the row states after it."""
+    day, and the hour and room the row states after it -- or the hour a later
+    row gave that day (_time_changed_to)."""
     said = _E1999.mend(r["desc"]) if hasattr(_E1999, "mend") else r["desc"]
     m = _E1999.RESCHEDULED_TO.match(said) or (
         _E1999.RECONVENED_TO.match(said) if hasattr(_E1999, "RECONVENED_TO") else None)
     rest = said[m.end("date"):] if m else said
     at = RESCHEDULED_TIME.search(rest)
     t = _parse_time(f"{at.group('time')}{at.group('mer')}") if at else None
+    moved = _time_changed_to(r, day, later_rows)
+    if moved:
+        t = datetime.strptime(moved, "%H:%M")
     # The room is read as SENATE_SCHED_RE's is: between the day and the hour,
     # or after the hour -- "(RESCHEDULED) Feb. 14, 10:00 a.m. Rooms 206-208,
     # LOB" (SB 324 of 2000).
@@ -1010,6 +1070,18 @@ def build_referral_timeline(rows):
                 eff = _parse_date(m2.group(1)) if m2 else date.min
             timeline[(r["bill"], r["body"])].append(
                 (eff, normalize_committee(m_vac.group("committee")), "vacated"))
+            continue
+        # "Vacated from Ways and Means to Environment ; SJ Convening Day,
+        # Pg.6" (SB 411 of 2000), the Senate's of 1999-2000, three rows on
+        # disk: the committee it names last has the bill from the day the row
+        # was entered, after the introduction typed that day. Senate Calendar
+        # 10 of 2000 prints SB 411's hearing under ENVIRONMENT, where the
+        # row merged for it named Ways and Means (the review of decision 60).
+        m_from = VACATED_FROM_TO_RE.match(clean)
+        if m_from:
+            eff = _parse_date((r.get("created") or "").split(" ")[0]) or date.min
+            timeline[(r["bill"], r["body"])].append(
+                (eff, normalize_committee(m_from.group("committee")), "vacated"))
             continue
         if "Vacated" in clean:
             continue
@@ -1196,6 +1268,7 @@ def written_out(written, referred, body):
 def parse_proceedings(rows, timeline):
     out = []
     referred = None      # {(bill, chamber): [its referral committees]}, read at the first legacy hearing
+    by_bill = None       # {(bill, chamber): its rows}, read at the first row rescheduled_to reads
     for r in rows:
         flags, clean = extract_flags(r["desc"])
         # .upper(), because the body code is not always upper case. 65 rows of
@@ -1212,7 +1285,13 @@ def parse_proceedings(rows, timeline):
         # 189 of 2001) gives the day it recessed first.
         if moved_to is not None and (not m or (reconvened_to(r)
                                                and not _same_day(m, r, moved_to))):
-            out.append(rescheduled_proceeding(r, flags, moved_to, timeline))
+            if by_bill is None:
+                by_bill = defaultdict(list)
+                for o in rows:
+                    by_bill[(o["bill"], (o["body"] or "").strip().upper())].append(o)
+            out.append(rescheduled_proceeding(
+                r, flags, moved_to, timeline,
+                by_bill.get((r["bill"], (r["body"] or "").strip().upper()))))
             continue
         # And the cancellation on such a row is the earlier day's.
         if moved_to is not None or CANCELLED_AND_RESCHEDULED.search(r["desc"]):

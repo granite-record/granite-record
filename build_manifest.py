@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.15
+# GRANITE_VERSION: 2026-09-05.16
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -548,7 +548,24 @@ def _meeting(r):
     return _row_key(r) + (str(r.get("sched_time") or "").strip(),)
 
 
-def merge_rows(path, rows, only=None, called_off=None):
+# AND A ROW THE PARSE NOW READS DIFFERENTLY, with --refresh (the review of
+# decision 60, 7 October 2026): the row of each meeting --only names by bill
+# and day -- bill, chamber, day and kind -- is replaced by the parse's row for
+# it, where the two differ, and sorted where main() would put it. Every --only
+# must name a day, and never a row carrying a hand-marked time: either refuses
+# the run. SB 411 of 2000's hearing of 10 February went in at 9:00 under Ways
+# and Means; the docket moved it to 1:00 by a later "==NEW TIME==" row and the
+# Senate had vacated the bill to Environment, as Senate Calendar 10 prints, and
+# --merge alone keeps the row it has byte for byte.
+def _written(r, cols, eol):
+    import io as _io
+    buf = _io.StringIO()
+    csv.writer(buf, lineterminator=eol).writerow([r.get(c, "") if r.get(c) is not None
+                                                  else "" for c in cols])
+    return buf.getvalue()
+
+
+def merge_rows(path, rows, only=None, called_off=None, refresh=False):
     p = Path(path)
     if not p.exists():
         sys.exit(f"--merge adds to {path}, which is not there. A manifest is built "
@@ -581,22 +598,35 @@ def merge_rows(path, rows, only=None, called_off=None):
                  f"time ({marked[0]['bill']} {marked[0]['sched_date']}); nothing written")
     gone = {id(r) for r in dropped}
     kept = [(raw, r) for raw, r in kept if id(r) not in gone]
+    eol = "\r\n" if head_text.endswith("\r\n") else "\n"
+    replaced = []
+    if refresh:
+        if not wanted or any(len(w) == 1 for w in wanted):
+            sys.exit("--refresh replaces the rows of the meetings --only names, and each must "
+                     "name its day (BILL@YYYY-MM-DD); nothing written")
+        parsed = defaultdict(list)
+        for r in rows:
+            parsed[_row_key(r)].append(r)
+        for raw, r in kept:
+            got = parsed.get(_row_key(r)) or []
+            if not asked(r) or len(got) != 1 or _written(got[0], cols, eol) == raw:
+                continue
+            if (r.get("observed_start") or "").strip():
+                sys.exit(f"--refresh would replace a row carrying a hand-marked time "
+                         f"({r['bill']} {r['sched_date']}); nothing written")
+            replaced.append((r, got[0]))
+        out_ = {id(r) for r, _new in replaced}
+        kept = [(raw, r) for raw, r in kept if id(r) not in out_]
+        add = sorted(add + [new_ for _r, new_ in replaced], key=_row_order)
     if wanted:
         named = {tuple(w) for w in wanted}
         found = {(r["bill"].upper(),) for r in add + dropped} | {
             (r["bill"].upper(), r["sched_date"]) for r in add + dropped}
         missing = sorted("@".join(w) for w in named if w not in found)
         if missing:
-            sys.exit(f"--only names {', '.join(missing)}, and this parse adds or takes out "
-                 "no row for it")
-    eol = "\r\n" if head_text.endswith("\r\n") else "\n"
-    import io as _io
-    lines = []
-    for r in add:
-        buf = _io.StringIO()
-        csv.writer(buf, lineterminator=eol).writerow([r.get(c, "") if r.get(c) is not None
-                                                      else "" for c in cols])
-        lines.append((_row_order(r), buf.getvalue()))
+            sys.exit(f"--only names {', '.join(missing)}, and this parse adds, replaces or "
+                     "takes out no row for it")
+    lines = [(_row_order(r), _written(r, cols, eol)) for r in add]
     merged, i = [head_text], 0
     for raw, r in kept:
         while i < len(lines) and lines[i][0] < _row_order(r):
@@ -606,9 +636,17 @@ def merge_rows(path, rows, only=None, called_off=None):
     merged += [x[1] for x in lines[i:]]
     with open(p, "w", encoding="utf-8", newline="") as fh:
         fh.write("".join(merged))
-    print(f"\nMerged into {path}: {len(kept):,} rows kept as they were, {len(add):,} added"
+    print(f"\nMerged into {path}: {len(kept):,} rows kept as they were, "
+          f"{len(add) - len(replaced):,} added"
+          + (f", {len(replaced):,} replaced" if refresh else "")
           + (f", {len(dropped):,} taken out as called off" if called_off is not None else ""))
+    for old_, new_ in replaced:
+        print(f"  ~ {old_['bill']} {old_['body']} {old_['proceeding']} {old_['sched_date']} "
+              f"{old_['sched_time'] or ''} {old_['committee'] or ''} -> "
+              f"{new_['sched_time'] or ''} {new_['committee'] or ''} {new_['venue'] or ''}")
     for r in add:
+        if any(r is new_ for _o, new_ in replaced):
+            continue
         print(f"  + {r['bill']} {r['body']} {r['proceeding']} {r['sched_date']} "
               f"{r['sched_time'] or ''} {r['venue'] or ''}")
     for r in dropped:
@@ -643,12 +681,17 @@ def main():
     ap.add_argument("--drop-cancelled", action="store_true",
                     help="with --merge, also take out the rows whose meeting this "
                          "parse reads only as called off (merge_rows)")
+    ap.add_argument("--refresh", action="store_true",
+                    help="with --merge and --only BILL@DAY, replace the row of each "
+                         "meeting named with the parse's row for it, where they "
+                         "differ (merge_rows)")
     ap.add_argument("--only", nargs="+", metavar="BILL[@YYYY-MM-DD]",
                     help="with --merge, add only these bills' rows, or only "
                          "the rows of these bills on these days")
     a = ap.parse_args()
-    if (a.only or a.drop_cancelled) and not a.merge:
-        sys.exit("--only and --drop-cancelled say what --merge does, and mean nothing without it")
+    if (a.only or a.drop_cancelled or a.refresh) and not a.merge:
+        sys.exit("--only, --drop-cancelled and --refresh say what --merge does, and mean "
+                 "nothing without it")
 
     # A build_* SCRIPT DOES NOT TOUCH THE NETWORK. This used to fetch
     # Docket.txt from gc.nh.gov when the file was absent, and the whole
@@ -930,7 +973,8 @@ def main():
     if not out:
         print("  no proceeding in this docket yet: the manifest is its columns and no row")
     if a.merge:
-        merge_rows(a.out, out, a.only, called_off if a.drop_cancelled else None)
+        merge_rows(a.out, out, a.only, called_off if a.drop_cancelled else None,
+                   refresh=a.refresh)
         return
     with open(a.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()) if out else MANIFEST_COLUMNS)

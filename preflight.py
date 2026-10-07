@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.381
+# GRANITE_VERSION: 2026-09-04.382
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3931,6 +3931,107 @@ def _rescheduled_rows_proceedings(D, M, N):
     return "ok", (f"{sum(1 for _, w in _RESCHEDULED_ROWS if w)} rows naming a new day are sittings "
                   f"on it, {sum(1 for _, w in _RESCHEDULED_ROWS if not w)} cancellations are not; "
                   "--merge keeps every row and adds what --only names")
+
+
+# Real rows: Docket_db_1999-2000.txt 18564-18571 (SB 411 of 2000).
+_DOCKET_NEW_TIME = [
+    '2000|2637|01/05/2000 12:43:40 PM|SB411|S|Vacated from Ways and Means to Environment ; SJ Convening Day, Pg.6|01/05/2000 12:43:40 PM',
+    '2000|2637|01/05/2000 01:11:39 PM|SB411|S|Introduced and Ref. to Ways and Means; SJ Convening Day, Pg.13|01/05/2000 01:11:39 PM',
+    '2000|2637|01/06/2000 02:56:10 PM|SB411|S|Hearing, Feb. 4, Room 103, SH, 10:00 a.m.; SC1, Pg.7|01/06/2000 02:56:10 PM',
+    '2000|2637|01/11/2000 10:25:41 AM|SB411|S|==CANCELLED==; SC2, Pg.17|01/11/2000 10:25:41 AM',
+    '2000|2637|01/13/2000 04:30:01 PM|SB411|S|==RESCHEDULED== Feb.10, Room 104, LOB, 9:00 a.m.; SC3, Pg.7|01/13/2000 04:30:01 PM',
+    '2000|2637|01/26/2000 03:55:32 PM|SB411|S|==NEW TIME== Feb.10, Room 104, LOB, 1:00 p.m., SC6 Pg. 4|01/26/2000 03:55:32 PM',
+    '2000|2637|03/21/2000 05:23:30 PM|SB411|S|Committe Report Interim Study; 3/23/2000, SC18|03/21/2000 05:23:30 PM',
+    '2000|2637|03/23/2000 01:33:03 PM|SB411|S|Interim Study, MA, VV; SJ 7, Pg. 202|03/23/2000 01:33:03 PM',
+]
+
+
+@check("build", "a Senate hearing's new day takes the hour a later row gave it and the committee "
+                "the bill was vacated to, and --merge --refresh replaces the one row it names",
+       needs=("docket_parser", "build_manifest"))
+def _rescheduled_row_new_time(D, M):
+    """The review of decision 60: SB 411 of 2000's row merged into the
+    1999-2000 manifest put its Senate hearing of 10 February at 9:00 before
+    Ways and Means, the hour and committee of "==RESCHEDULED== Feb.10, Room
+    104, LOB, 9:00 a.m." and its introduction. The docket's later row
+    "==NEW TIME== Feb.10, Room 104, LOB, 1:00 p.m." moved it, and "Vacated
+    from Ways and Means to Environment" sent the bill on; Senate Calendar 10
+    prints "PLEASE NOTE THE TIME CHANGE FROM 9:00 A.M. TO 1:00 P.M." over
+    ENVIRONMENT and SB 411 at 1:00. The bill page's station, the download and
+    Senate Ways and Means' page, which said the committee met that day for a
+    hearing on SB 411, took both from the row. --merge keeps a row it has byte
+    for byte, so --refresh replaces the row of a meeting --only names by day,
+    and refuses a row with a hand-marked time or an --only without a day."""
+    bad = []
+    tmp = Path(tempfile.mkdtemp(prefix="gr-new-time-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_NEW_TIME) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+        live = [(p.sched_date, p.sched_time, p.committee) for p in procs
+                if p.confidence != "X-cancelled"]
+        if live != [("2000-02-10", "13:00", "Environment")]:
+            bad.append(f"SB 411's sittings are read as {live!r}, not Environment's hearing at 1:00 "
+                       "on 10 February")
+        cols = M.MANIFEST_COLUMNS
+        line = lambda b, c, d, t, mark="": (",".join([b, "S", c, "hearing", d, t, "LOB 104",
+                                                      "A-unique-slot", "1", "no video found"]
+                                                     + [""] * (len(cols) - 13) + [mark, "", ""])
+                                            + "\r\n")
+        kept = [line("SB405", "Ways and Means", "2000-02-08", "10:00"),
+                line("SB411", "Ways and Means", "2000-02-10", "09:00"),
+                line("SB405", "Ways and Means", "2000-02-11", "10:00")]
+        f = tmp / "verification_manifest_1999-2000.csv"
+        head = ",".join(cols) + "\r\n"
+        f.write_text(head + "".join(kept), encoding="utf-8", newline="")
+        row = lambda b, c, d, t: {**{x: "" for x in cols}, "bill": b, "body": "S", "committee": c,
+                                  "proceeding": "hearing", "sched_date": d, "sched_time": t,
+                                  "venue": "LOB 104", "tier": "A-unique-slot", "bills_in_slot": 1,
+                                  "match": "no video found"}
+        parse = [row("SB405", "Ways and Means", "2000-02-08", "11:00"),
+                 row("SB411", "Environment", "2000-02-10", "13:00"),
+                 row("SB405", "Ways and Means", "2000-02-11", "10:00")]
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            M.merge_rows(str(f), parse, ["SB411@2000-02-10"], refresh=True)
+        got = f.read_text(encoding="utf-8", newline="")
+        if got != head + kept[0] + line("SB411", "Environment", "2000-02-10", "13:00") + kept[2]:
+            bad.append(f"--refresh left {got!r}")
+        for only, mark in ((["SB411"], ""), (["SB411@2000-02-10"], "0:12:00")):
+            f.write_text(head + line("SB411", "Ways and Means", "2000-02-10", "09:00", mark),
+                         encoding="utf-8", newline="")
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    M.merge_rows(str(f), parse, only, refresh=True)
+                bad.append(f"--refresh ran with --only {only} on a row marked {mark!r}")
+            except SystemExit:
+                pass
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 411 of 2000 heard by Environment at 1:00 on 10 February; --refresh replaces "
+                  "the one row named and refuses a dayless --only and a marked row")
+
+
+@check("data", "SB 411 of 2000's Senate hearing of 10 February is Environment's, at 1:00, in the "
+               "1999-2000 manifest")
+def _sb411_manifest_row():
+    """The review of decision 60 (_rescheduled_row_new_time): the row merged
+    for SB 411 said Ways and Means at 9:00, and was replaced with build_manifest
+    --merge --refresh --only SB411@2000-02-10. A manifest put back from an
+    older copy brings Ways and Means' day of 10 February 2000 back."""
+    f = Path("verification_manifest_1999-2000.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = [(r["committee"], r["sched_time"]) for r in csv.DictReader(fh)
+               if r["bill"] == "SB411" and r["body"].upper() == "S"
+               and r["sched_date"] == "2000-02-10"]
+    assert got == [("Environment", "13:00")], (
+        f"{f.name} has SB 411's Senate rows of 10 February 2000 as {got!r}")
+    return "ok", "SB 411 of 2000 heard by Environment at 1:00 on 10 February"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "
