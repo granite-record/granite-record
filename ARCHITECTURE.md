@@ -91,6 +91,14 @@ served them and their archive, a refusal or a hold -- with its own verdict
 and its logs, the logs under `logs/<date>/dry-run/`, so nothing its branch's
 code made is read by `main`'s next night. The workflow's `DRY_RUN` says so to
 every step, and `nightly.py` and `cloud.py` read it themselves.
+Every run of a branch other than `main`, the nightly's or the weekly's, is a
+dry run whatever its boxes say (since 7 October 2026): `DRY_RUN` reads the
+ref and `nightly.py` and `cloud.py` read `GITHUB_REF` themselves, its title
+says "not main", the publish job runs only for `main`, a New term run there
+is refused, a dry weekly keeps its verdict apart in
+`archive/last-dry-weekly.json` and sends back none of the lists it took, and
+no dry run pings Healthchecks, whose check watches only the scheduled night,
+a real run by hand of `main` and a real week that failed.
 The second job deploys to production. It sits behind GitHub's `production`
 environment, so it waits for a person's approval, and
 `nightly.py --deploy-to production` deploys a run's own build by that night's

@@ -168,7 +168,12 @@ Three steps, each catching what the one before cannot.
    night stays approvable (until 7 October 2026 a dry run's verdict became
    the newest and that night's deploy was refused). It sends back to the
    bucket only what it fetched and its logs, so nothing `dev`'s code made is
-   built from by `main`'s next night.
+   built from by `main`'s next night. Since 7 October 2026 every run of a
+   branch other than `main` is a dry run whatever its boxes say -- unticking
+   "Dry run" on `dev` changes nothing, a weekly run on `dev` proves the
+   weekly's code and keeps nothing it fetched, a New term run there is
+   refused, and no dry run pings Healthchecks -- so only a run of `main` can
+   publish, or keep what it took for the next night.
 
 The first runs on a bare clone. The second needs the record on disk and the
 third the repository's own secrets, so for a pull request from outside they
