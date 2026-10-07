@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.209 */
+/* GRANITE_VERSION: 2026-09-07.210 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4301,6 +4301,9 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vblk-head,.vblk-legend{font-family:var(--sans);font-size:var(--t-sm);
   color:var(--ink-2);line-height:1.5}
 .vblk-item{margin-left:var(--sp-7)}
+/* A rule the document draws in characters (U+2500 box-drawing, "- - -", "____"): one
+   line, cut at the column's edge, never wrapped into three (app.js, VRULE). */
+.vblk.vrule{white-space:nowrap;overflow:hidden}
 /* NO HIGHLIGHT BEHIND IT. Bold italic is what the Court prints and what the
    bill's own legend tells the reader to look for; a coloured wash on top
    would be this site's convention laid over the Court's, and the comment

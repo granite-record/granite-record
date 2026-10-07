@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.153
+// GRANITE_VERSION: 2026-09-07.154
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -4655,6 +4655,16 @@ function hasVersionIndex(d){
 // make a passage that is added-by-the-bill and removed-by-an-amendment
 // unreadable, so this view reads the block's plain text and ignores the
 // per-run roles.
+// A RULE IS DRAWN AS A RULE (the look of 7 October 2026). The Court's
+// documents draw their horizontal rules in characters -- a run of "─", "-",
+// "_" or ". . .", 40 to 160 of them -- and with Full text now the first view
+// (F15), a phone showed the rule under a bill's sponsors wrapped onto three
+// lines. Such a paragraph keeps its characters, which are the document's, and
+// stays on one line, cut at the column's edge (app.css, .vrule).
+const VRULE=/^[\s\-─_.=]+$/;
+const vblkClass=(bl,t)=>`vblk vblk-${esc(bl.k||"ln")}${
+  VRULE.test(t)&&t.replace(/\s/g,"").length>=8?" vrule":""}`;
+
 function vmarked(bs,ms){
   const by={};
   ms.forEach(m=>{(by[m[0]]=by[m[0]]||[]).push(m);});
@@ -4683,7 +4693,7 @@ function vmarked(bs,ms){
         at=Math.max(at,e);}
     });
     html+=esc(t.slice(at));
-    out.push(`<p class="vblk vblk-${esc(bl.k||"ln")}">${html}</p>`);
+    out.push(`<p class="${vblkClass(bl,t)}">${html}</p>`);
   });
   gap();
   return `<div class="vdoc">${out.join("")}</div>`;
@@ -4791,7 +4801,7 @@ function renderVersions(b,d){
     const isBlocks=Array.isArray(got)&&got.length&&got[0]&&got[0].runs;
     body=got===undefined?`<p class="spin">Loading the text…</p>`
       :isBlocks?`<div class="vdoc">${got.map(bl=>
-          `<p class="vblk vblk-${esc(bl.k||"ln")}">${(bl.runs||[]).map(
+          `<p class="${vblkClass(bl,(bl.runs||[]).map(r=>r[1]).join(""))}">${(bl.runs||[]).map(
             ([role,t])=>role==="add"?`<ins class="vins">${esc(t)}</ins>`
               :role==="cut"?`<del class="vdel">${esc(t)}</del>`
               :esc(t)).join("")}</p>`).join("")}</div>`

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.436
+# GRANITE_VERSION: 2026-09-04.437
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44206,7 +44206,21 @@ def _bill_text_opens_whole():
         "the tab asks for the comparison before the reader has asked for it")
     assert re.search(r'class="vtog sel" data-vmode="[^"]*\|changes"', asked) \
         and "Loading what changed" in asked, "What changed no longer shows the comparison"
-    return "ok", "the newest printing, in full text; What changed one press away"
+    # A RULE THE DOCUMENT DRAWS IN CHARACTERS stays one line (the look of 7
+    # October 2026): with Full text first, a phone showed the rule under a
+    # bill's sponsors -- 65 box-drawing dashes -- wrapped onto three lines.
+    # The shapes the Court's blocks files hold, and two lines that are not one.
+    lines = ["─" * 65, "-" * 65, "- " * 74 + "-", "_" * 40, ". " * 80,
+             "SPONSORS:\tRep. Meuse, Rock. 37", "---"]
+    cls = _app_js("[" + ",".join("scope.vblkClass({k:'ln'}," + json.dumps(t) + ")"
+                                 for t in lines) + "]", names=("vblkClass",))
+    if cls is not None:
+        want = ["vblk vblk-ln vrule"] * 5 + ["vblk vblk-ln"] * 2
+        assert cls == want, f"the rule lines are classed {cls}"
+    assert ".vblk.vrule{white-space:nowrap;overflow:hidden}" in \
+        Path("app.css").read_text(encoding="utf-8"), "a rule line may still wrap"
+    return "ok", ("the newest printing, in full text; What changed one press away; a rule "
+                  "drawn in characters kept to one line")
 
 
 @check("session", "a docket line the clerk marked cancelled keeps the mark where the clerk typed it, for the docket list alone",
