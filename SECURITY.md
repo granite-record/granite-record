@@ -18,20 +18,21 @@ server, no database behind the pages, no login, no session, no cookie set by
 this site, and no user-supplied string that reaches a query.
 
 What arrives is not quite byte-for-byte what the build produced, which is worth
-knowing before you go looking for the difference. The pages link Public Sans
-and Newsreader from Google's font CDN, so every view fetches a stylesheet and
-the faces from there; nothing is self-hosted. And Cloudflare rewrites the HTML
+knowing before you go looking for the difference. The pages link Public Sans,
+Source Serif 4 and IBM Plex Mono from Google's font CDN, so every view fetches
+a stylesheet and the faces from there; nothing is self-hosted. And Cloudflare rewrites the HTML
 on the way out — the analytics beacon `/about` describes, and an email
 obfuscation pass that replaces every `mailto` with a hex string salted per
 request, which is why a contact address on the page only resolves once a
 Cloudflare script has run. Those two are dashboard switches rather than
-anything this repository emits, and `check_live.py` reports both.
+anything this repository emits, and `src/checks/check_live.py` reports both.
 
 **In this project's own code there is exactly one exception**, and its own
 header says so: `functions/api/report.js`, the endpoint behind the "report a
 problem" box on bill, member and committee pages. It is write-only, it is on no
 page's critical path, and when it is down the box falls back to an email link.
-If you are looking for something to attack, it is this.
+If you are looking for something to attack, it is this. (`workers/` is
+where a Cloudflare Worker deployed on its own would go; it holds none.)
 
 It has been red-teamed once, and the seven real defects that turned up are
 listed in the file's header — knowing what was already wrong is more useful
@@ -55,7 +56,9 @@ Worth saying in advance, so you do not spend an evening on them:
   they are not a leak.
 - **`site/_headers` sets `Access-Control-Allow-Origin: *` on the JSON and CSV.**
   That is on purpose: the published record is meant to be readable from another
-  origin. It is not set site-wide.
+  origin. It is not set site-wide: `src/pages/build_pages.py` writes it for
+  the bill index under `/idx/`, the roster, the roll calls and the downloads
+  under `/data/`, and nothing else.
 - **Legislators' contact details are published.** Those are official addresses
   the members themselves list as official. Members of the public who submit
   testimony are never named — testimony appears as counts only.
@@ -69,7 +72,12 @@ Worth saying in advance, so you do not spend an evening on them:
   name, and `about.html` promises that. A way around it is a real finding.
 - A way to get the project's fetching to hammer the General Court. Their
   firewall has blocked this address twice already, and the cost of a third
-  block falls on a Clerk's office as much as on us.
+  block falls on a Clerk's office as much as on us. Every script that asks
+  gc.nh.gov, but `netcheck.py`, which a person runs to diagnose a refusal,
+  consults `refusal.py`'s record before its first request and records a
+  refusal it meets, and the fetch lane, the pipeline's General
+  Court steps and the nightly do not ask while one is on file; a way past
+  that, or a way to make two fetches run at once, is a real finding.
 - A credential or key findable in the repository or its history. `preflight.py`
   has three checks aimed at this — one for key shapes in tracked files, one for
   the contact address, and one that every commit is authored by the project
