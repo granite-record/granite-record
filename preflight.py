@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.384
+# GRANITE_VERSION: 2026-09-04.385
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3899,21 +3899,27 @@ def _one_l_cancelled_sittings(D, M):
                   "keeps the held one and refuses a hand-marked row")
 
 
-@check("data", "no archived manifest holds a sitting its docket marks called off")
+@check("data", "no term's manifest holds a sitting its docket marks called off")
 def _manifests_hold_no_called_off_sitting():
     """Decision 59d: the 51 one-L rows taken out of the 2001-2002, 2009-2010
     and 2015-2016 manifests stay out, and no other term's manifest holds a
-    meeting its docket reads only as called off."""
+    meeting its docket reads only as called off. Every term's, and the
+    session's (Docket.txt, verification_manifest.csv): the check read those
+    three alone while its sentence spoke for every term (the review of 59d,
+    7 October 2026), and the review's reading of all nineteen found none."""
     D = imp("docket_parser")
     NA = imp("narrate_archive")
     if D is None or NA is None:
         return "skip", "docket_parser or narrate_archive will not import"
-    bad, n = [], 0
-    for term in ("2001-2002", "2009-2010", "2015-2016"):
-        path = NA.dockets().get(term)
-        man = Path(f"verification_manifest_{term}.csv")
+    bad, n, terms = [], 0, 0
+    pairs = [(t, p, Path(f"verification_manifest_{t}.csv")) for t, p in sorted(NA.dockets().items())]
+    pairs.append(("the session", "Docket.txt", Path("verification_manifest.csv")))
+    for term, path, man in pairs:
         if not path or not Path(path).exists() or not man.exists():
-            return "skip", f"no docket or manifest of {term} here"
+            if term in ("2001-2002", "2009-2010", "2015-2016"):
+                return "skip", f"no docket or manifest of {term} here"
+            continue
+        terms += 1
         rows = D.parse_rows(path)
         procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
         D.build_sittings(procs)
@@ -3929,7 +3935,7 @@ def _manifests_hold_no_called_off_sitting():
                     bad.append(f"{man.name}: {r['bill']} {r['proceeding']} {r['sched_date']} "
                                f"{r['sched_time']} is a meeting its docket calls off")
     assert not bad, "\n".join(bad[:20])
-    return "ok", f"{n:,} rows of three terms' manifests, none a meeting called off"
+    return "ok", f"{n:,} rows of {terms} manifests, none a meeting called off"
 
 
 # Real rows: Docket_db_2001-2002.txt (SB 373) and Docket_db_1999-2000.txt (SB
