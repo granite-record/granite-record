@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.391
+# GRANITE_VERSION: 2026-09-04.392
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -15861,8 +15861,9 @@ def _search_index_main(SI, CS):
 
         def build(*args, fewest=50, to=None):
             # main() itself, in a process of its own, with the floor on the
-            # vocabulary lowered to what eight bills can reach.
-            code = ("import sys, build_search_index as SI\n"
+            # vocabulary lowered to what eight bills can reach. _paths first,
+            # for every code folder on the path: the root is the -c's own.
+            code = ("import sys, _paths, build_search_index as SI\n"
                     f"SI.WORDS_FEWEST = {fewest}\n"
                     "sys.argv = ['build_search_index.py'] + sys.argv[1:]\n"
                     "SI.main()\n")
@@ -18194,9 +18195,12 @@ def _stamps():
     # listed.
     r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat"],
              capture_output=True, text=True)
+    # versions.json lists a script by its bare name wherever it sits, and git
+    # by its path: src/parse/narrative.py is the line "narrative.py".
+    listed = {_paths.locate(n).resolve() for n in want}
     unlisted = []
     for name in (r.stdout or "").split():
-        if name.startswith("obsolete/") or name in want:
+        if name.startswith("obsolete/") or name in want or Path(name).resolve() in listed:
             continue
         head = Path(name).read_text(encoding="utf-8", errors="replace")[:3000] \
             if Path(name).exists() else ""
