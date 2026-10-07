@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.164
+# GRANITE_VERSION: 2026-09-05.165
 """
 Generate the faceted site from real General Court data.
 
@@ -9826,7 +9826,7 @@ def main():
     print(f"{len(links)} sitting member(s) also voted under a number in the other "
           "chamber, and their pages carry both"
           + (f"; {len(not_joined)} candidate(s) not joined, listed by "
-             "python3 member_links.py" if not_joined else ""))
+             "python3 src/parse/member_links.py" if not_joined else ""))
     # The mid-term departures: they voted this term and the roster, which is a
     # snapshot of who serves today, does not carry them. former_roster says at
     # length why this is a separate map and not an addition to `legs`.

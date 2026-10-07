@@ -635,7 +635,7 @@ twice, and every one is ordinary English inside a speech rather than a marker
 RECORD is in `session_days`, so a Senate page carries bills, motions and
 votes without a debate section.
 
-**Numbers.** `python3 journal_days.py --coverage` prints what the journal
+**Numbers.** `python3 src/parse/journal_days.py --coverage` prints what the journal
 parse finds, corpus-wide.
 
 **A defect this uncovered.** The calendar was calling committee meetings the

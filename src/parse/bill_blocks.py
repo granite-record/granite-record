@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.6
+# GRANITE_VERSION: 2026-09-20.7
 """
 Read the General Court's own typeset bill HTML into blocks of marked runs.
 
-    python3 bill_blocks.py --probe            # score it over every row
-    python3 bill_blocks.py --show 893         # print one row as marked text
+    python3 src/parse/bill_blocks.py --probe            # score it over every row
+    python3 src/parse/bill_blocks.py --show 893         # print one row as marked text
 
 NO NETWORK. It reads db/LegislationText.psv, which the database dump already
 put on this disk, and writes nothing. Step three of the Bill Text rebuild, and

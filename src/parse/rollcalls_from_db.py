@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """db/RollCall*.psv -> the per-year files the parsers already read. No network.
 
-    python3 rollcalls_from_db.py --check 2023   # prove it against the live fetch
-    python3 rollcalls_from_db.py --missing      # write every year not on disk
-    python3 rollcalls_from_db.py --year 2011
+    python3 src/parse/rollcalls_from_db.py --check 2023   # prove it against the live fetch
+    python3 src/parse/rollcalls_from_db.py --missing      # write every year not on disk
+    python3 src/parse/rollcalls_from_db.py --year 2011
 
 WHY THIS EXISTS
 

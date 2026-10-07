@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.4
+# GRANITE_VERSION: 2026-09-13.5
 """
 Which sitting members voted under an earlier number in the other chamber.
 
-    python3 member_links.py          # the pairs and the near misses, with the evidence
+    python3 src/parse/member_links.py          # the pairs and the near misses, with the evidence
     from member_links import links   # what build_site_v2 joins a member's votes with
 
 A member who moves between the House and the Senate is given a new employee

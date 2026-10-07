@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.11
+# GRANITE_VERSION: 2026-09-10.12
 """The committee a bill was referred to, read out of the docket.
 
-    python3 referrals.py            # what it finds, by term, no network
-    python3 referrals.py --check    # every expansion, and the evidence for it
+    python3 src/parse/referrals.py            # what it finds, by term, no network
+    python3 src/parse/referrals.py --check    # every expansion, and the evidence for it
 
 WHY THIS EXISTS
 

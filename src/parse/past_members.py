@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """The 2,614 people the General Court's own list names, past and present.
 
-    python3 past_members.py            # what it holds, and what it would name
+    python3 src/parse/past_members.py            # what it holds, and what it would name
 
 WHY THIS EXISTS
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.11
+# GRANITE_VERSION: 2026-09-19.12
 """
 What the House journal adds that the record does not: who spoke, and what.
 
-    python3 journal_days.py --date 2018-03-07      # one day, read out
-    python3 journal_days.py --coverage             # what it finds, corpus-wide
+    python3 src/parse/journal_days.py --date 2018-03-07      # one day, read out
+    python3 src/parse/journal_days.py --coverage             # what it finds, corpus-wide
 
 session_days.py holds what the chamber DID, from narratives.json, and needs no
 parser. This holds what was SAID, which exists only as prose in the journal.

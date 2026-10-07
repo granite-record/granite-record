@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """A topic for the 29,449 bills the General Court never gave one.
 
-    python3 topics.py --score              # measure it; no files written
-    python3 topics.py --apply              # write topics_assigned.json
-    python3 topics.py --bill 1995-1996 HB101   # explain one answer
+    python3 src/parse/topics.py --score              # measure it; no files written
+    python3 src/parse/topics.py --apply              # write topics_assigned.json
+    python3 src/parse/topics.py --bill 1995-1996 HB101   # explain one answer
 
 WHAT IS MISSING
 
