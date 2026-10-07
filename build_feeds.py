@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -99,6 +99,17 @@ def iso_day(d):
     return ""
 
 
+def feed_events(d):
+    """The dated rows of a bill's docket list that a feed tells.
+
+    NOT A ROW THAT CALLS A MEETING OFF (7 October 2026). The bill's page lists
+    it, with a note saying it is a cancellation (build_site_v2.called_off),
+    and an item cannot carry the note: its line, the clerk's "==CANCELLED=="
+    stripped as every line's mark is, reads as a notice of the very meeting
+    it cancels. So the feeds tell what they told before the page listed it."""
+    return [e for e in (d.get("events") or []) if e.get("date") and not e.get("called_off")]
+
+
 def filed_date(d):
     """The day a bill's sponsorship is dated in its sponsors' feeds: the
     oldest dated docket event, and for a bill with no docket, the Introduced
@@ -107,7 +118,7 @@ def filed_date(d):
     A bill whose record is the House Journal's (build_site_v2.journal_story)
     has no docket event, and an empty date is today's to rfc822 -- so every
     sponsor's feed carried it as new, dated afresh every night."""
-    dated = sorted(e["date"] for e in (d.get("events") or []) if e.get("date"))
+    dated = sorted(e["date"] for e in feed_events(d))
     if dated:
         return dated[0]
     return next((s.get("date") or "" for s in
@@ -346,7 +357,7 @@ def main():
         if d is None:
             continue
         url = bill_url(b)
-        events = [e for e in (d.get("events") or []) if e.get("date")]
+        events = feed_events(d)
         events.sort(key=lambda e: e["date"], reverse=True)
         # A BILL WITH NO DOCKET is dated by its introduction: filed_date.
         filed = filed_date(d)

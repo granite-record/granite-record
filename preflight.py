@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.399
+# GRANITE_VERSION: 2026-09-04.400
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23470,6 +23470,155 @@ process.stdout.write("\\n@@" + JSON.stringify(scope.renderDetail(row, d)));
         N.MISFILED, N.CORRECTIONS, N.TERM = saved[0], saved[2], saved[3]
         N.MOVED.clear()
         N.MOVED.update(saved[1])
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# Two dockets with rows that call a meeting off. SB 107 of 1999's first rows, as
+# the database has them: the Senate's dateless "Hearing Cancelled" calls off the
+# hearing of 9 March, and the committee heard the bill on the 16th. And a 2026
+# bill in the House's form: a hearing noticed, cancelled by a later row, and
+# held a week on; an executive session marked cancelled; and a committee report
+# carrying the same mark, which calls no meeting off.
+DOCKET_CALLED_OFF = [
+    "1999|0873|01/28/1999 12:55:55 PM|SB107|S|Introduction and referring to Insurance "
+    "1/28/99;  SJ 3, P 35|01/28/1999 12:55:55 PM",
+    "1999|0873|02/10/1999 09:51:28 AM|SB107|S|Hearing, 3/9/99, Room 103, SH, 8:50 a.m.|"
+    "02/10/1999 09:51:28 AM",
+    "1999|0873|02/17/1999 11:31:43 AM|SB107|S|Hearing Cancelled Due To Town Meeting Day|"
+    "02/17/1999 11:31:43 AM",
+    "1999|0873|02/24/1999 10:26:00 AM|SB107|S|Hearing, 3/16/99, Room 103, SH, 8:50 a.m.|"
+    "02/24/1999 10:26:00 AM",
+    "2026|3001|1/5/2026 12:00:00 AM|HB1001|H|Introduced 01/07/2026 and referred to Education "
+    "Policy and Administration HJ 1|1/5/2026 12:00:00 AM",
+    "2026|3001|1/9/2026 12:00:00 AM|HB1001|H|Public Hearing: 01/22/2026 10:00 am GP 230|"
+    "1/9/2026 12:00:00 AM",
+    "2026|3001|1/20/2026 12:00:00 AM|HB1001|H|==CANCELLED== Public Hearing: 01/22/2026 10:00 am "
+    "GP 230|1/20/2026 12:00:00 AM",
+    "2026|3001|1/21/2026 12:00:00 AM|HB1001|H|Public Hearing: 01/29/2026 10:00 am GP 230|"
+    "1/21/2026 12:00:00 AM",
+    "2026|3001|2/2/2026 12:00:00 AM|HB1001|H|==CANCELLED== Executive Session: 02/04/2026 10:00 "
+    "am GP 230|2/2/2026 12:00:00 AM",
+    "2026|3001|2/9/2026 12:00:00 AM|HB1001|H|==CANCELLED== Committee Report: Ought to Pass "
+    "02/18/2026|2/9/2026 12:00:00 AM",
+]
+
+
+@check("session", "the docket list keeps every row that calls a meeting off, with its note, "
+                  "and the history tells none of them",
+       needs=("narrative", "build_site_v2", "build_feeds"))
+def _docket_keeps_called_off_rows(N, B, BF):
+    """THE DOCKET KEEPS EVERY ROW (7 October 2026; the person: "I just didn't
+    want to have the cancellations or rescheduling listed in the narrative,
+    but the docket should keep them as the official docket has them listed").
+    The bill page's list of docket lines, headed "every action the General
+    Court recorded", left off every row the docket cancelled -- 4,847 rows on
+    3,885 bills that day, "==CANCELLED== Public Hearing" as much as SB 107 of
+    1999's "Hearing Cancelled Due To Town Meeting Day" -- and stage 2b's
+    reading of more of the clerk's spellings took 99 more off. Each is listed
+    now with build_site_v2.CANCELLED_NOT_TOLD beside it, as a notice no
+    committee sat for is listed with narrative.notice_note's, while the
+    history tells none of them.
+
+    The same mark on a row of another kind -- SB 38 of 2009's committee
+    report, HB 1611 of 2020's introduction -- calls no meeting off, and stays
+    off the list. A feed leaves a cancellation out (build_feeds.feed_events):
+    its item could not carry the note, and its line, the clerk's mark
+    stripped as every line's is, reads as the notice it cancels.
+
+    The dockets above, through narrative.build and docket_lines, and the list
+    as the page builds it drawn by app.js under node.
+    """
+    saved = (N.MISFILED, N.CORRECTIONS, N.TERM)
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "Docket.txt").write_text("\n".join(DOCKET_CALLED_OFF) + "\n", encoding="utf-8")
+        N.MISFILED, N.CORRECTIONS = [], []
+        out = {}
+        for b, rows in N.parse_docket(str(root / "Docket.txt")).items():
+            N.TERM = N.P.term_of(rows[0]["session"])
+            out[b] = N.build(b, rows)
+        old, new = out["SB107"], out["HB1001"]
+
+        def listed(h):
+            return [(e["date"], B.docket_line(e), e.get("row_note") or "",
+                     B.called_off(e)) for e in B.docket_lines(h)]
+        got = listed(old)
+        off = [x for x in got if x[3]]
+        assert [x[:2] for x in off] == [("1999-02-17", "Hearing Cancelled Due To Town Meeting Day")], (
+            f"SB 107 of 1999's \"Hearing Cancelled\" is not on its docket list as the row "
+            f"that calls a meeting off: {got}")
+        assert any(x[1].startswith("Hearing, 3/9/99") and "later row" in x[2] for x in got), (
+            f"the notice of 9 March it calls off left the list, or lost its note: {got}")
+        got = listed(new)
+        off = [(x[0], x[1]) for x in got if x[3]]
+        assert off == [("2026-01-22", "Public Hearing: 01/22/2026 10:00 am GP 230"),
+                       ("2026-02-04", "Executive Session: 02/04/2026 10:00 am GP 230")], (
+            f"HB 1001's cancelled hearing and executive session are not both listed: {got}")
+        assert not any("Committee Report" in x[1] for x in got), (
+            "a committee report the clerk marked cancelled -- a row of another kind, which "
+            f"calls no meeting off -- was listed: {got}")
+        assert sum(1 for x in got if x[1] == "Public Hearing: 01/22/2026 10:00 am GP 230") == 2, (
+            f"the notice of 22 January and the row cancelling it are not both listed: {got}")
+        # The history tells none of them.
+        for h, gone, held in ((old, ("March 9", "February 17"), "March 16, 1999"),
+                              (new, ("January 22", "February 4", "February 18"),
+                               "January 29, 2026")):
+            told = h["narrative"]
+            assert held in told and not any(g in told for g in gone), (
+                f"{h['bill']}'s history tells a meeting the docket called off, or not the "
+                f"one held: {told!r}")
+        # The feeds leave the row out; the page draws it with its note.
+        rows = [{"date": e["date"], "text": B.docket_line(e),
+                 **({"row_note": B.CANCELLED_NOT_TOLD, "called_off": True}
+                    if B.called_off(e) else {}),
+                 **({"row_note": e["row_note"]} if e.get("row_note") else {})}
+                for e in B.docket_lines(new)]
+        told = [e["text"] for e in BF.feed_events({"events": rows})]
+        assert len(told) == len(rows) - 2 and len(set(told)) == len(told), (
+            f"a feed tells a row that calls a meeting off, as the notice it cancels: {told}")
+        js, stub = Path("app.js"), Path("dom_stub.js")
+        if js.exists() and stub.exists() and shutil.which("node"):
+            row = {"id": "HB1001", "year": 2026, "term": "2025-2026", "title": "",
+                   "status": "In committee", "kind": "active", "passage": "H---"}
+            # And the Documents tab, where the calendar the notice and the row
+            # calling it off both cite names the actions it records: the
+            # notice, once, and not a second line that reads as the notice.
+            heard = "Public Hearing: 01/22/2026 10:00 am GP 230"
+            d = {**row, "events": [{**e, "cite": "HC 5"} if e["text"] == heard else e
+                                   for e in rows],
+                 "documents": [{"label": "HC 5", "kind": "record",
+                                "url": "https://gc.nh.gov/house/calendars_journals/x.pdf"}]}
+            (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "d.json").write_text(json.dumps([row, d]), encoding="utf-8")
+            (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const scope = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderDetail, renderDocuments, detail, dkey, IDX, setFocused:(x)=>{focused=x;}})");
+const [row, d] = JSON.parse(fs.readFileSync("./d.json", "utf8"));
+scope.IDX.push(row);
+scope.detail[scope.dkey(row.id)] = d;
+scope.setFocused(row.id);
+process.stdout.write("\\n@@" + JSON.stringify([scope.renderDetail(row, d),
+                                                scope.renderDocuments(row, d)]));
+""", encoding="utf-8")
+            r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+            assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+                "app.js did not draw the docket under node: " + (r.stderr or r.stdout or "")[-300:])
+            html, docs = json.loads(r.stdout.rsplit("@@", 1)[1])
+            docket = html[html.find('class="docket"'):]
+            assert docket.count(B.CANCELLED_NOT_TOLD) == 2 and docket.count(
+                    "Executive Session: 02/04/2026") == 1, (
+                "the page does not draw the rows that call a meeting off, each with its note")
+            assert "HC 5" in docs and docs.count(heard) == 1, (
+                "the Documents tab names a row that calls a meeting off among the actions its "
+                "calendar records, where it reads as a second notice of the meeting")
+        return "ok", ("a row that calls a meeting off is on the docket list with its note, in "
+                      "1999's form and 2026's; a cancelled report is not; the history, the "
+                      "feeds and the Documents tab tell none")
+    finally:
+        N.MISFILED, N.CORRECTIONS, N.TERM = saved
         shutil.rmtree(root, ignore_errors=True)
 
 

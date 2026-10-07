@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.145
+// GRANITE_VERSION: 2026-09-07.146
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -4572,7 +4572,11 @@ function renderDocuments(b,d){
            // joined on it -- and a citation covering several actions names
            // all of them, because it is the record of all of them. Where
            // nothing matches, DOCWHAT's sentence stands as it always did.
-           const acts=(d.events||[]).filter(e=>e.cite&&e.cite===x.label);
+           // NOT A ROW THAT CALLS A MEETING OFF (e.called_off, 7 October
+           // 2026): the docket list shows it with the note that says so, and
+           // here, its mark stripped as every line's is, it would read as the
+           // notice it cancels.
+           const acts=(d.events||[]).filter(e=>e.cite&&e.cite===x.label&&!e.called_off);
            const src=x.kind==="record"?citeSource(x.label):"";
            const when=acts.length?fdate(acts[0].date):"";
            const of=[src,when].filter(Boolean).join(" \u00b7 ");
