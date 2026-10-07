@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.57
+# GRANITE_VERSION: 2026-09-04.58
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -162,6 +162,9 @@ of this may depend on remembering not to start one:
                       archive/cloud/), never archive/last-night.json. Its
                       preview deploy and --close read and finish that file,
                       and the verdict and the run's page say so (DRY_APART)
+  its preview         https://dry-run.graniterecord.pages.dev
+                      (DRY_PREVIEW_BRANCH), never the night's preview, where
+                      a night waiting for approval is looked at
   what it leaves      archive/last-night.json, archive/census.json and the
                       gate's records in the verdict -- the warning kinds, the
                       published kinds, the release commit read off
@@ -507,6 +510,14 @@ FAILED_NAME = "FAILED-{day}.txt"
 # is a preview to Cloudflare, and this one answers at
 # https://nightly.graniterecord.pages.dev.
 PREVIEW_BRANCH = "nightly"
+# A DRY RUN'S PREVIEW IS ITS OWN (7 October 2026). PREVIEW_BRANCH is where a
+# night waiting for approval is looked at before anyone approves it, and a dry
+# run deployed its build there too: a run of dev -- every one a dry run, and
+# one may be started while a night waits -- put dev's site where the person
+# was about to approve main's, which production would then deploy unseen. A
+# dry run's preview goes here instead, https://dry-run.graniterecord.pages.dev,
+# and the night job's environment names the address its run deployed to.
+DRY_PREVIEW_BRANCH = "dry-run"
 
 # npx takes whatever wrangler is newest unless told. CLOUD_MOVE.md recorded
 # 4.140.0 in the laptop's npx cache on 25 September, which is the version the
@@ -3970,7 +3981,8 @@ def runner_deploy(a):
 
     A workflow step of its own, because it alone is given the Pages token.
     The run's own verdict decides. A preview needs a build that passed its
-    checks, by the night's verdict, or a dry run's (DRY_VERDICT). Production
+    checks, by the night's verdict, or a dry run's (DRY_VERDICT), whose
+    preview goes to its own address (DRY_PREVIEW_BRANCH). Production
     reads only the verdict that came down with the site (RUN_VERDICT, from
     cloud.py site-down): this run's, not a dry run's, sending this build to
     production; the same site as the one judged (by fingerprint); this folder
@@ -3999,7 +4011,10 @@ def runner_deploy(a):
         if not v.get("built"):
             say("\nNOT DEPLOYED: tonight's build did not pass its checks.")
             return 1
-        target, base = PREVIEW_BRANCH, f"https://{PREVIEW_BRANCH}.{a.project}.pages.dev"
+        # A dry run's to its own address, never the one a waiting night is
+        # approved from (DRY_PREVIEW_BRANCH).
+        target = DRY_PREVIEW_BRANCH if a.dry_run else PREVIEW_BRANCH
+        base = f"https://{target}.{a.project}.pages.dev"
     else:
         if (v.get("asked") or {}).get("dry_run"):
             say("\nNOT DEPLOYED: this run's verdict is a dry run's, and a dry run sends nothing "

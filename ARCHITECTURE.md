@@ -90,7 +90,10 @@ state-up send back only what it fetched -- the day's files as the export
 served them and their archive, a refusal or a hold -- with its own verdict
 and its logs, the logs under `logs/<date>/dry-run/`, so nothing its branch's
 code made is read by `main`'s next night. The workflow's `DRY_RUN` says so to
-every step, and `nightly.py` and `cloud.py` read it themselves.
+every step, and `nightly.py` and `cloud.py` read it themselves. A dry run's
+preview goes to its own address, `dry-run.graniterecord.pages.dev`, and never
+to `nightly.graniterecord.pages.dev`, where a night waiting for approval is
+looked at before it is approved.
 Every run of a branch other than `main`, the nightly's or the weekly's, is a
 dry run whatever its boxes say (since 7 October 2026): `DRY_RUN` reads the
 ref and `nightly.py` and `cloud.py` read `GITHUB_REF` themselves, its title

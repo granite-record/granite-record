@@ -62,7 +62,7 @@ on:
         type: boolean
         default: false
       preview:
-        description: "Deploy the build to nightly.graniterecord.pages.dev (needs the Pages token)"
+        description: "Deploy the build to a preview address: nightly.graniterecord.pages.dev, or a dry run's to dry-run.graniterecord.pages.dev (needs the Pages token)"
         type: boolean
         default: true
       # NEW TERM (30 September 2026): the night the General Court's files first
@@ -157,10 +157,14 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 300
     # The preview's Pages token can live in this environment rather than in the
-    # repository's secrets; see the operator checklist.
+    # repository's secrets; see the operator checklist. A DRY RUN'S PREVIEW IS
+    # ITS OWN (7 October 2026; nightly.DRY_PREVIEW_BRANCH): the night's address
+    # is where a night waiting for approval is looked at, and a dry run -- every
+    # run of dev -- deployed its build over it. The url names the address this
+    # run deployed to; preflight holds the two together.
     environment:
       name: preview
-      url: https://nightly.graniterecord.pages.dev
+      url: ${{ env.DRY_RUN == 'true' && 'https://dry-run.graniterecord.pages.dev' || 'https://nightly.graniterecord.pages.dev' }}
     # One night at a time, and never beside the weekly job: a second start
     # waits for the first rather than running beside it.
     concurrency:
@@ -319,6 +323,9 @@ jobs:
           python cloud.py state-up
           exit $LASTEXITCODE
 
+      # A dry run's to its own address, dry-run.graniterecord.pages.dev, and
+      # never to the night's, which a night waiting for approval is approved
+      # from (nightly.py reads the dry run itself).
       - name: Deploy to the preview address
         id: preview
         if: always() && steps.night.outputs.built == 'true' && env.PREVIEW == 'true'

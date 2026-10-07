@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.422
+# GRANITE_VERSION: 2026-09-04.423
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -49205,16 +49205,22 @@ def _nightly_dry_run_apart(NI, CL):
         # Its preview, from its own verdict: by the flag, and by the workflow's
         # word alone, which also keeps its last word and any production deploy
         # its own.
+        # A DRY RUN'S PREVIEW IS ITS OWN (the review of 7 October 2026): never
+        # the night's, where a night waiting for approval is looked at.
+        dry_base = f"https://{NI.DRY_PREVIEW_BRANCH}.graniterecord.pages.dev"
         code, _ = g.night("--runner", "--deploy-to", "preview", "--dry-run", run_id="503")
-        assert code == 0 and sent == [NI.PREVIEW_BRANCH] and \
-            g.dry_verdict()["preview"]["landed"] and NI.VERDICT.read_bytes() == night_v, \
-            ("a dry run's preview did not deploy from its own verdict", sent)
+        assert code == 0 and sent == [NI.DRY_PREVIEW_BRANCH] and \
+            g.dry_verdict()["preview"]["landed"] and \
+            g.dry_verdict()["preview"]["base"] == dry_base and NI.VERDICT.read_bytes() == night_v, \
+            ("a dry run's preview did not deploy from its own verdict to its own address, or "
+             "went where a night waiting for approval is looked at", sent)
         del sent[:]
         os.environ["DRY_RUN"] = "true"
         try:
             code, _ = g.night("--runner", "--deploy-to", "preview", run_id="503", github=True)
-            assert code == 0 and sent == [NI.PREVIEW_BRANCH], \
-                "a preview step that forgot --dry-run did not read the dry run's verdict"
+            assert code == 0 and sent == [NI.DRY_PREVIEW_BRANCH], \
+                ("a preview step that forgot --dry-run did not read the dry run's verdict, or "
+                 "deployed it where a night waiting for approval is looked at", sent)
             code, _ = g.night("--runner", "--close", "--outcome", "night=success", run_id="503",
                               github=True)
             assert code == 0 and g.dry_verdict()["steps"] == {"night": "success"} and \
@@ -49254,6 +49260,12 @@ def _nightly_dry_run_apart(NI, CL):
             assert f"- {NI.off_main_line('refs/heads/dev')}" in g.summary.splitlines() and \
                 "dev, not main" in NI.off_main_line("refs/heads/dev"), \
                 f"the page of a run of dev does not say why it is a dry run: {g.summary}"
+            del sent[:]
+            code, _ = g.night("--runner", "--deploy-to", "preview", run_id="504b", github=True)
+            assert code == 0 and sent == [NI.DRY_PREVIEW_BRANCH] and \
+                g.dry_verdict()["preview"]["base"] == dry_base, \
+                ("a run of dev deployed its preview where a night waiting for approval is "
+                 "looked at", sent)
             code, _ = g.night("--runner", "--close", "--outcome", "night=success", run_id="504b",
                               github=True)
             assert code == 0 and g.dry_verdict()["steps"] == {"night": "success"} and \
@@ -57584,8 +57596,9 @@ def _workflows_production(NI):
         body.find("if branch != REPO_BRANCH:") < body.find("upload_and_check("), \
         "runner_deploy sends production without checking the folder is on main"
     assert "target, base = PRODUCTION_BRANCH, a.base" in body and \
-        "target, base = PREVIEW_BRANCH," in body and NI.PREVIEW_BRANCH != NI.PRODUCTION_BRANCH, \
-        "the preview and production deploys do not name their own branches"
+        "target = DRY_PREVIEW_BRANCH if a.dry_run else PREVIEW_BRANCH" in body and \
+        len({NI.PREVIEW_BRANCH, NI.DRY_PREVIEW_BRANCH, NI.PRODUCTION_BRANCH}) == 3, \
+        "the preview, a dry run's preview and production do not each name their own branch"
     assert re.fullmatch(r"wrangler@\d+\.\d+\.\d+", NI.WRANGLER), \
         f"nightly.py's wrangler is {NI.WRANGLER}, not one pinned version"
     return "ok", (f"production only from {', '.join(prod)}; the Pages token only in --deploy-to "
@@ -58294,7 +58307,13 @@ def _workflows_dry_run(NI, CL):
     edit to the workflow's line cannot reopen it; and each kind of run in
     WF_RUNS is evaluated as GitHub would evaluate these lines -- its DRY_RUN,
     whether the publish job runs for a night fit for production, and its
-    title, which says "not main" where the box was unticked."""
+    title, which says "not main" where the box was unticked.
+
+    A DRY RUN'S PREVIEW IS ITS OWN (the review of 7 October 2026): every
+    run of dev deployed its build to the night's preview, the address a
+    night waiting for approval is approved from. nightly.py sends a dry
+    run's to DRY_PREVIEW_BRANCH, and the night job's environment, evaluated
+    for each kind of run, names the address that run's preview went to."""
     wf = WORKFLOW_DIR / "nightly.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/nightly.yml here"
@@ -58340,6 +58359,23 @@ def _workflows_dry_run(NI, CL):
                          f"publish job {'runs' if runs else 'does not run'}, titled {named!r} "
                          f"(want DRY_RUN={str(dry).lower()} and {want!r})")
     assert not wrong, "nightly.yml, as GitHub would read it: " + "; ".join(wrong)
+
+    # A DRY RUN'S PREVIEW IS ITS OWN (the review of 7 October 2026): the night
+    # job's environment names the address each kind of run deploys its preview
+    # to -- a dry run's own, never the one a waiting night is approved from.
+    night = _wf_code(jobs.get("night") or [])
+    at = next((i for i, ln in enumerate(night) if re.match(r"^    environment:\s*$", ln)), None)
+    url = next((m.group(1) for ln in (night[at + 1:at + 3] if at is not None else [])
+                for m in [re.match(r"^      url:\s*(.+?)\s*$", ln)] if m), None)
+    assert url, "nightly.yml's night job names no preview address in its environment"
+    for event, ref, boxes, dry, _ in WF_RUNS["nightly.yml"]:
+        ctx = _wf_run_ctx(event, ref, boxes)
+        ctx["env.DRY_RUN"] = _gh_render(dry_line, ctx)
+        branch = NI.DRY_PREVIEW_BRANCH if dry else NI.PREVIEW_BRANCH
+        said = _gh_render(url, ctx)
+        assert said == f"https://{branch}.graniterecord.pages.dev", (
+            f"nightly.yml's night job names {said} for a {event} of {ref} with "
+            f"{boxes or 'no boxes'}, and nightly.py deploys that run's preview to {branch}")
 
     # The two read the word themselves, and the ref, and on GitHub's machine only.
     saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV, NI.REF_ENV)}
