@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.429
+# GRANITE_VERSION: 2026-09-04.430
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4873,9 +4873,24 @@ def _introduced_and_adopted(N, SD):
         day = days.get((body, "2024-12-04"))
         if day is None or not any(i.bill == bill for i in day.items):
             bad.append(f"no {body} sitting of 4 December 2024 draws {bill}: {sorted(days)}")
+    # A day before the bill's term is the clerk's slip, not a sitting
+    # (narrative._adopted_in_term): HR 6 of 2021, Docket_2021-2022.txt line
+    # 13807, adopted on 6 January 2021 and typed 2020.
+    n = _told_from_rows(N, "2021-2022", "HR6", [
+        "2021|1064|1/7/2021 12:00:00 AM|HR6|H|Introduced and Adopted VV 01/06/2020 HJ 2 P. 2|1/7/2021 12:00:00 AM"])
+    if any(e["type"] == "floor" for e in n["events"]):
+        bad.append(f"HR 6 of 2021's row dated 6 January 2020 is told as a sitting's: {n['events']!r}")
+    else:
+        try:
+            gone = _sitting_fixture(SD, {"2021-2022": {"HR6": n["events"]}}, {})
+        except (AssertionError, SystemExit):
+            gone = {}
+        if ("H", "2020-01-06") in gone:
+            bad.append("a House sitting of 6 January 2020 is drawn from HR 6 of 2021")
     assert not bad, "\n".join(bad)
     return "ok", ("HR 1 and SR 1 of 2025 and HR 1 of 2007 told as adopted, both chambers' sittings "
-                  "of 4 December 2024 drawn, and HR 16 of 2020's motion to introduce left as it was")
+                  "of 4 December 2024 drawn, HR 16 of 2020's motion to introduce left as it was, "
+                  "and HR 6 of 2021's row typed 2020 drawn on no sitting")
 
 
 # Real rows: Docket_2015-2016.txt (HB 564 of 2015).

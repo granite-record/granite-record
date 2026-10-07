@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.89
+# GRANITE_VERSION: 2026-09-04.90
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1324,6 +1324,29 @@ INTRODUCED_ADOPTED = re.compile(
     r"[,;\s]*(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
 RESOLUTION = re.compile(r"^[HS](?:C|J)?R\d+$", re.I)
 PASSAGE_ROW = re.compile(r"^\s*Ought\s+to\s+Pass\b", re.I)
+
+
+def _adopted_in_term(when, r, bill, session):
+    """Whether an "Introduced and Adopted" row's day can be the adoption's: a
+    day in the bill's own term, or one a person corrected the row to
+    (docket_corrections.json).
+
+    A DAY BEFORE THE TERM IS A SLIP, AND A SITTING NOBODY HELD (the review of
+    7 October 2026). HR 6 of 2021, memorializing Speaker Hinch, reads
+    "Introduced and Adopted VV 01/06/2020 HJ 2 P. 2", entered on 7 January
+    2021: House Journal 2 is the sitting of 6 January 2021, and read as
+    stated the row drew "The House, Monday 6 January 2020", a sitting of the
+    term before. Correcting the year is a person's (docket_corrections.json),
+    so until then the row is left as it was, unread, rather than drawn on a
+    day the House did not sit."""
+    try:
+        mo, dy, yr = (int(x) for x in str(when or "").split("/"))
+        year = int(str(r.get("session") or session)[:4])
+    except (TypeError, ValueError):
+        return True
+    if in_term(yr, mo, dy, year):
+        return True
+    return bool(CORRECTIONS) and corrected_date(r, bill)[0] is not None
 
 PATTERNS = [
     ("introduced", re.compile(
@@ -4279,10 +4302,11 @@ def build(bill, rows, introduction=None):
                 if not when and isinstance(r.get("created"), datetime) \
                         and r["created"] != datetime.min:
                     when = r["created"].strftime("%m/%d/%Y")
-                ev = {**ev, "_type": "floor", "action": "Ought to Pass", "motion": "MA",
-                      "vote": (adopted.group("vote") or "").upper() or None,
-                      "y": adopted.group("y"), "n": adopted.group("n"), "refer": None,
-                      "date": when}
+                if _adopted_in_term(when, r, bill, session):
+                    ev = {**ev, "_type": "floor", "action": "Ought to Pass", "motion": "MA",
+                          "vote": (adopted.group("vote") or "").upper() or None,
+                          "y": adopted.group("y"), "n": adopted.group("n"), "refer": None,
+                          "date": when}
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
         # And a committee's name is the one it had in this term (committee_said).
