@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.83
+# GRANITE_VERSION: 2026-09-04.84
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3095,6 +3095,8 @@ def notice_note(ev):
     if ev.get("_void") == "taken":
         return (f"A notice. The {CHAMBER_NAME.get(ev.get('body'), 'chamber')} took the "
                 "measure from the committee before the day it names.")
+    if ev.get("_void") == "reported":
+        return "A notice. The committee reported the bill before the day it names."
     if ev.get("_whole_day"):
         return ("A notice. The docket cancels this meeting for most of the bills it was set "
                 "for, and the calendars printed after this bill was set down for another "
@@ -3537,7 +3539,7 @@ def _notice_seen(bill, e, evs, term):
     cancelled or moved, and the meetings of the same kind the bill was set
     down for on other days after it, before its day."""
     if e["_type"] not in VOIDED_KIND or e.get("_void") in ("withdrawn", "taken",
-                                                            "not introduced"):
+                                                            "not introduced", "reported"):
         return
     k = _meeting_key(e, evs, term)
     if not k:
@@ -3629,6 +3631,10 @@ def whole_day_meetings(noticed=None, calendar=None):
 # are no vote and are followed by the committee's report.
 TAKEN_FROM_COMMITTEE = re.compile(r"^\s*Withdraw\s+from\s+(?:the\s+)?(?:Joint\s+)?Committee\b",
                                   re.I)
+# A row that sends a bill back to a committee whose name it may not give
+# ("Rereferred to Committee, MA, VV"), which sends_to does not read: after it,
+# a reconvened hearing may sit again (build(), the reported rule).
+RECOMMITTED_ROW = re.compile(r"\bRECOMM?IT|\bRE-?\s*REFER", re.I)
 
 
 # --------------------------------------------------- the committee that has it
@@ -4396,6 +4402,41 @@ def build(bill, rows, introduction=None):
     for e, why in over:
         if why:
             e["_void"], e["_unheld_day"], e["cancelled"] = why, e["when"].date(), True
+    # AND A RECESSED HEARING'S NEXT DAY THAT FELL AFTER THE COMMITTEE HAD
+    # REPORTED THE BILL (the review of decision 59g, 7 October 2026). HB 1218
+    # of 2002's Senate hearing of 9 April was entered on the 9th as "Hearing;
+    # === RECESSED === RECONVENE === April 17, 2002, Room 104, LOB, 1:30
+    # p.m.", and the next evening as "Committee Report; Ought to Pass with
+    # Amendment {3389}, (New Title) [04/11/02]"; the Senate tabled the bill on
+    # the 11th. Senate Calendar 24A of 9 April prints the report, "Vote 5-0",
+    # and under 17 April "PLEASE NOTE HB 1218 CANCELLED" and "Cancelled HB
+    # 1218", as Calendars 25 to 26A do after it, and the history said the
+    # committee held a public hearing on the 17th, a week after it had
+    # reported. A reconvened day (docket_era_1999.reconvened_notice) after a
+    # report of the same chamber entered after the notice, with nothing
+    # between sending the bill back to a committee, is a notice the report
+    # overtook: not told, its row kept among the docket lines with its note
+    # (notice_note) and no day a committee sat (voided_meetings). Across all
+    # nineteen terms it is this one; the other notices told for a day after
+    # such a report are the House's continued executive sessions "if needed"
+    # and the like, which nothing on disk says did not sit, and are left.
+    for e in evs:
+        if (e.get("_era") != "1999:reconvened" or e["cancelled"] or e.get("_void")
+                or e["_type"] != "hearing"):
+            continue
+        day = e["when"].date()
+        for rep in evs:
+            if not (rep["_type"] == "report" and rep["body"] == e["body"]
+                    and not rep["cancelled"] and rep["_entered"] > e["_entered"]
+                    and rep["when"].date() < day):
+                continue
+            if any(x["body"] == e["body"] and x["_entered"] > rep["_entered"]
+                   and x["when"].date() <= day
+                   and (sends_to(x, term) or RECOMMITTED_ROW.search(x.get("_raw") or ""))
+                   for x in evs):
+                continue
+            e["_void"], e["_unheld_day"], e["cancelled"] = "reported", day, True
+            break
     # AND A MEETING CANCELLED ON MOST OF ITS BILLS AND DROPPED BY THE CALENDARS
     # (WHOLE_DAY, which main() decides once every history is built), for a
     # bill whose own notice of it the docket left unmarked.

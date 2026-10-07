@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.380
+# GRANITE_VERSION: 2026-09-04.381
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3621,6 +3621,60 @@ def _reconvened_days(N, D):
     assert not bad, "\n".join(bad)
     return "ok", ("eight rows read by their words; SB 370 of 2000 and SB 189 of 2001 tell both days "
                   "of their hearings, and proceedings.csv reads the day each reconvened")
+
+
+# Real rows: Docket_db_2001-2002.txt 15236-15246 (HB 1218 of 2002 in the Senate).
+_DOCKET_RECONVENED_REPORTED = [
+    '2002|2257|03/14/2002 12:49:23 PM|HB1218|S|Introduced and Ref. to Executive Departments & Administration; SJ 7, Pg.198|03/14/2002 12:49:23 PM',
+    '2002|2257|03/22/2002 02:17:45 PM|HB1218|S|Hearing; === CANCELLED === April 3, 2002, Room 104, LOB, 1:45 p.m.; SC18|03/22/2002 02:17:45 PM',
+    '2002|2257|03/29/2002 02:14:06 PM|HB1218|S|Hearing; === CANCELLED === April 17, 2002, Room 104, LOB, 1:15 p.m.; SC20A|03/29/2002 02:14:06 PM',
+    '2002|2257|04/02/2002 12:19:39 PM|HB1218|S|Hearing; === RESCHEDULED === April 9, 2002, Room 103, LOB, 8:30 a.m.; SC21|04/02/2002 12:19:39 PM',
+    '2002|2257|04/09/2002 04:55:37 PM|HB1218|S|Hearing; === RECESSED === RECONVENE === April 17, 2002, Room 104, LOB, 1:30 p.m.; SC24|04/09/2002 04:55:37 PM',
+    '2002|2257|04/10/2002 09:36:00 PM|HB1218|S|Committee Report; Ought to Pass with Amendment {3389}, (New Title) [04/11/02]; SC24A, Pg.23-24|04/10/2002 09:36:00 PM',
+    '2002|2257|04/11/2002 04:44:24 PM|HB1218|S|Ought to Pass with Amendment {3389},(New Title); [Not Voted On]; SJ 10, Pg.331-333|04/11/2002 04:44:24 PM',
+    '2002|2257|04/11/2002 04:46:18 PM|HB1218|S|Sen. Prescott Moved Laid On Table, MA, VV; SJ 10, Pg.333|04/11/2002 04:46:18 PM',
+    '2002|2257|04/16/2002 01:52:00 PM|HB1218|S|Sen. Hollingworth Served Notice Of Reconsideration; SJ 11, Pg.351|04/16/2002 01:52:00 PM',
+    '2002|2257|04/18/2002 04:48:32 PM|HB1218|S|Sen. Hollingworth Remove From Table, MA, VV; SJ 12, Pg.417|04/18/2002 04:48:32 PM',
+    '2002|2257|04/18/2002 04:49:02 PM|HB1218|S|Ought to Pass with Amendment {3389}, AF; SJ 12, Pg.417|04/18/2002 04:49:02 PM',
+]
+
+
+@check("narrative", "a recessed hearing's next day that falls after the committee reported the "
+                    "bill is not told, keeps its docket line and note, and is no day a "
+                    "committee sat",
+       needs=("narrative", "proceedings"))
+def _reconvened_after_report(N, P):
+    """The review of decision 59g: HB 1218 of 2002's Senate hearing of 9
+    April recessed, "=== RECESSED === RECONVENE === April 17, 2002 ... 1:30
+    p.m.", and the committee reported the bill the next evening, "Ought to
+    Pass with Amendment {3389} ... [04/11/02]", which Senate Calendar 24A
+    prints with "Vote 5-0" and, under 17 April, "PLEASE NOTE HB 1218
+    CANCELLED"; the Senate tabled the bill on the 11th. Once 59g read the
+    reconvened day, the history said the committee held a public hearing on
+    17 April, a week after it had reported, and the day stayed a station,
+    a sitting of Senate Executive Departments and Administration and a row of
+    the download. A reconvened day after the same chamber's report on the
+    bill, with nothing between sending it back to a committee, is a notice
+    the report overtook. SB 370 of 2000 and SB 189 of 2001, whose reports came
+    after the day they reconvened, still tell it (_reconvened_days)."""
+    n = _told_from_rows(N, "2001-2002", "HB1218", _DOCKET_RECONVENED_REPORTED)
+    text = " ".join(s["text"] for s in n["stages"])
+    told = sorted(e["date"] for e in n["events"] if e["type"] == "hearing" and e["body"] == "S"
+                  and not e["cancelled"])
+    bad = []
+    if told != ["2002-04-09"] or "April 17, 2002" in text:
+        bad.append(f"HB 1218 of 2002 tells Senate hearings on {told}: {text[:300]!r}")
+    if n.get("voided") != [["2002-04-17", "S", "hearing", "13:30"]]:
+        bad.append(f"HB 1218's reconvened day is not left off as a sitting: voided {n.get('voided')!r}")
+    notes = [(e["date"], e.get("row_note")) for e in n["events"] if e.get("notice")]
+    if notes != [("2002-04-17", "A notice. The committee reported the bill before the day it names.")]:
+        bad.append(f"HB 1218's docket lines told as notices: {notes!r}")
+    if not P.notice_only({"kind": "hearing", "body": "S", "date": "2002-04-17", "time": "13:30"}, n):
+        bad.append("HB 1218's 17 April 2002 is still a day the committee sat")
+    if P.notice_only({"kind": "hearing", "body": "S", "date": "2002-04-09", "time": "08:30"}, n):
+        bad.append("HB 1218's hearing of 9 April, which sat, is left off as a notice")
+    assert not bad, "\n".join(bad)
+    return "ok", "HB 1218 of 2002 tells its hearing of 9 April and not the 17th's, reported out before it"
 
 
 # Real rows: Docket_db_1999-2000.txt 15318-15322 (SB 393 of 2000).
@@ -65572,7 +65626,9 @@ def _introductions_against_journal(J, BD):
         # overtook by taking the measure from its committee (HA 1 of 2008);
         # the notice itself, on that day, where a later row of the docket
         # cancelled or moved the meeting it names (decision 56: HB 114 of
-        # 2013's of 15 January); or the row a person dated afresh, where that
+        # 2013's of 15 January); the notice, on that day, of a recessed
+        # hearing's next day the committee's report came before (HB 1218 of
+        # 2002's 17 April); or the row a person dated afresh, where that
         # day is the one the docket gives (SB 106 of 2009's 10 January, told
         # on 10 February: docket_corrections.json).
         unsat = (r["date"] in (h.get("no_sitting") or [])
@@ -65582,6 +65638,9 @@ def _introductions_against_journal(J, BD):
             or (e.get("notice") and e.get("overtaken") in ("cancelled", "moved")
                 and e.get("date") == r["date"]
                 and "A later row of the docket" in (e.get("row_note") or ""))
+            or (e.get("notice") and e.get("date") == r["date"]
+                and "The committee reported the bill before the day it names"
+                in (e.get("row_note") or ""))
             or (e.get("date_as_recorded") == r["date"] and e.get("date_note")
                 and e.get("date") != r["date"])
             for e in h.get("events", []))
