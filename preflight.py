@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.425
+# GRANITE_VERSION: 2026-09-04.426
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4817,6 +4817,65 @@ def _veto_overriden_read(N, V):
     assert not bad, "\n".join(bad)
     return "ok", ("nine override votes spelt \"Overriden\" read as overrides with their roll calls, "
                   "the two chaptering rows left as they were, and HB 122 of 2015 tells both chambers'")
+
+
+# Real rows: Docket.txt lines 8 and 13 (HR 1 of 2025) and 1 (SR 1 of 2025);
+# Docket_db_2007-2008.txt 6757 (HR 1 of 2007); Docket_2019-2020.txt
+# 14093-14096 (HR 16 of 2020).
+_DOCKET_INTRODUCED_ADOPTED = [
+    ("2025-2026", "HR1", [
+        "2025|0939|12/4/2024 12:59:53 PM|HR1|H|Introduced and Adopted VV 12/04/2024  HJ 1|12/4/2024 12:59:56 PM",
+        "2025|0939|12/4/2024 12:59:44 PM|HR1|H|Amendment: AA VV 12/04/2024  HJ 1|12/4/2024 12:59:56 PM"],
+     "On December 4, 2024 the House voted to pass it on a voice vote."),
+    ("2025-2026", "SR1", [
+        "2025|0173|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV; 12/04/2024;  SJ 1|12/4/2024 10:44:26 AM"],
+     "On December 4, 2024 the Senate voted to pass it on a voice vote."),
+    ("2007-2008", "HR1", [
+        "2007|0829|12/06/2006 03:43:31 PM|HR1|H|Introduced and adopted VV; HJ 3, p.24|12/06/2006 03:43:31 PM"],
+     "On December 6, 2006 the House voted to pass it on a voice vote."),
+    ("2019-2020", "HR16", [
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Late Drafting and Introduction Approved by House by the Necessary 2/3 MA 308-13 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM",
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Introduced and Adopted 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM",
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Ought to Pass : MA DV 316-10 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM",
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Lay on Table (Rep. Almy): MA VV 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM"],
+     None),
+]
+
+
+@check("narrative", "a resolution introduced and adopted in one motion is told as adopted that day, "
+                    "and its chamber's sitting is drawn", needs=("narrative", "session_days"))
+def _introduced_and_adopted(N, SD):
+    """From 2007 the docket's "Introduced and Adopted VV 12/04/2024" -- HR 1
+    to HR 5 and SR 1 to SR 5 of each Organization Day, 172 rows -- was read as
+    nothing, so those resolutions had no history and no sitting page was drawn
+    for 4 December 2024. Read as the reader of 1999-2006 reads the same words,
+    the chamber adopting it, and told in the sentence every adopted
+    resolution's passage has. Not where the chamber passes it on a row of its
+    own: HR 16 of 2020's row is the motion to introduce, and its passage is
+    "Ought to Pass : MA DV 316-10", told once, as before."""
+    bad, narr = [], {}
+    for term, bill, lines, want in _DOCKET_INTRODUCED_ADOPTED:
+        n = _told_from_rows(N, term, bill, lines)
+        said = n.get("narrative") or ""
+        if want is not None and said != want:
+            bad.append(f"{bill} of {term} is told {said!r}, not {want!r}")
+        if want is None and (said.count("voted to pass it") != 1
+                             or any(e["type"] == "floor" and "Introduced and Adopted" in e["raw"]
+                                    for e in n["events"])):
+            bad.append(f"{bill} of {term}'s motion to introduce is told as its passage: {said!r}")
+        narr.setdefault(term, {})[bill] = n["events"]
+    try:
+        days = _sitting_fixture(SD, {"2025-2026": narr["2025-2026"]}, {})
+    except (AssertionError, SystemExit) as e:
+        days = {}
+        bad.append(f"no sitting is drawn from 2025's resolutions: {e}")
+    for body, bill in (("H", "HR1"), ("S", "SR1")):
+        day = days.get((body, "2024-12-04"))
+        if day is None or not any(i.bill == bill for i in day.items):
+            bad.append(f"no {body} sitting of 4 December 2024 draws {bill}: {sorted(days)}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HR 1 and SR 1 of 2025 and HR 1 of 2007 told as adopted, both chambers' sittings "
+                  "of 4 December 2024 drawn, and HR 16 of 2020's motion to introduce left as it was")
 
 
 # Real rows: Docket_2015-2016.txt (HB 564 of 2015).
