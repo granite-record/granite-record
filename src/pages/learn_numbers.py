@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.6
+# GRANITE_VERSION: 2026-09-14.7
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -740,13 +740,19 @@ def body(site=Path("site"), root=Path("."), strict=True):
                      for h in (rec or {}).get("hearings") or []), default="")
         tables = []
         for t in sorted(si, reverse=True):
-            srows = [[_bill_link(t, h["bill"], h["year"]), E(h["title"]), E(h["committee"]),
-                      _day(h["date"]) + (f"<br>on {h['on']}" if h["on"] else ""),
-                      f"{h['total']:,}", f"{h['support']:,}", f"{h['oppose']:,}",
-                      f"{h['neutral']:,}"] for h in si[t]]
+            # Five columns, the hearing's day and committee in one and the
+            # three positions in one: eight ran past the Learn column's 560
+            # pixels on a desktop, scrolled, and left the title 117 of them.
+            srows = [[_bill_link(t, h["bill"], h["year"]), E(h["title"]),
+                      _day(h["date"]) + (f", on {h['on']}" if h["on"] else "")
+                      + (f"<br>{E(h['committee'])}" if h["committee"] else ""),
+                      f"{h['total']:,}",
+                      f"{h['support']:,}&nbsp;support<br>{h['oppose']:,}&nbsp;oppose"
+                      + (f"<br>{h['neutral']:,}&nbsp;neutral" if h["neutral"] else "")]
+                     for h in si[t]]
             tables.append(f"<h3>{_t(t)}</h3>" + _table(
-                ["Bill", "Title as heard", "Committee", "Hearing", "Signed in", "Support",
-                 "Oppose", "Neutral"], srows))
+                ["Bill", "Title as heard", "Hearing and committee", "Signed in", "Positions"],
+                srows))
         out.append("<h2>The hearings with the most sign-ins</h2><p>Anyone may use the House's "
                    "online form to say they support or oppose a bill, or are neutral on it, at "
                    "its committee hearing. These are the hearings with the most of those "
@@ -954,7 +960,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
         for r in shown:
             y, n = r["yes"], r["no"]
             s = r["sos"]
-            brows.append([_t(r["term"]), _bill_link(r["term"], r["bill"]), _day(r["election"]),
+            brows.append([f'{_bill_link(r["term"], r["bill"])}<br>{_t(r["term"])}', _day(r["election"]),
                           f"{y:,}", f"{n:,}", _pct(y, y + n),
                           "Ratified" if ratified(y, n) else "Not ratified",
                           f'<a href="{E(s["source"])}" rel="noopener">{E(s["cite"])}</a>'])
@@ -978,6 +984,6 @@ def body(site=Path("site"), root=Path("."), strict=True):
                    f"{rat} of the {len(shown)} shown were ratified."
                    + (f" {len(held)} more that went to the voters are not shown until two sources "
                       "agree on their count." if held else "") + coming + "</p>"
-                   + _table(["Term", "Amendment", "Election", "Yes", "No", "Yes share", "Result",
+                   + _table(["Amendment", "Election", "Yes", "No", "Yes share", "Result",
                              "Secretary of State's count"], brows))
     return "".join(out)
