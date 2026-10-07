@@ -82,11 +82,14 @@ its bare name, as the root's scripts have. A new folder under `src/` goes on
 ## What preflight holds this to
 
 `python3 preflight.py --code` fails when two code files share a name, when a
-runnable script does not start with the bootstrap, when a name `build_all`,
-the night, the lane, the evening job, a workflow or `publish.bat` uses finds
-no file or two, when a file sits in the folder of a network it does not ask
-(a `refusal.check()` outside `fetch/gc_web/`, the SQL host outside
-`fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, a request from any folder
-outside `fetch/` but one from `checks/` to graniterecord.org), and when git
-cannot see a file of code. Asking nobody is the default: a new folder outside
-`fetch/` is held to it the day it is listed.
+runnable script does not start with the bootstrap, when a script finds a
+folder from its own `__file__` rather than `_paths.ROOT` or starts another by
+a path it made rather than through `_paths.script`, when a `python3 -c` in
+the code or the docs imports a module of ours before `_paths`, when a name
+`build_all`, the night, the lane, the evening job, a workflow or `publish.bat`
+uses finds no file or two, when a file sits in the folder of a network it
+does not ask (a `refusal.check()` outside `fetch/gc_web/`, the SQL host
+outside `fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, a request from any
+folder outside `fetch/` but one from `checks/` to graniterecord.org), and
+when git cannot see a file of code. Asking nobody is the default: a new
+folder outside `fetch/` is held to it the day it is listed.

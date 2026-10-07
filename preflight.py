@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.395
+# GRANITE_VERSION: 2026-09-04.396
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1166,6 +1166,160 @@ def _bootstrap_first():
     assert not bad, ("these scripts would not find their imports once they, or what they "
                      "import, sit under src/: " + "; ".join(bad))
     return "ok", f"{n} runnable scripts start with the bootstrap, before any import of ours"
+
+
+# THE OTHER TWO RULES FOR A SCRIPT (CONTRIBUTING.md, "Where new code goes").
+# The bootstrap check holds the first two, a unique name and the bootstrap.
+# These hold the last two: a path is found from _paths.ROOT, and a script is
+# started through _paths.script. Each was a trap the plan counted -- keys.py's
+# secrets.json, repo_facts' sentence on data.html, the laptop's evening probe
+# path -- and each comes back without a word in a new or edited file: the
+# file works at the root and loses its way the day it moves.
+_FROM_OWN_FILE = ("parent", "parents", "with_name", "with_stem", "with_suffix")
+
+
+def _launch_target(lst):
+    """The element of a launch list that names the script -- [sys.executable
+    (or "python3"), its flags, the script, ...] -- or None for any other list,
+    and for a -m or -c run."""
+    if not lst.elts:
+        return None
+    head = lst.elts[0]
+    if ast.unparse(head) != "sys.executable" and not (
+            isinstance(head, ast.Constant) and head.value in ("python", "python3", "py")):
+        return None
+    for el in lst.elts[1:]:
+        if isinstance(el, ast.Constant) and isinstance(el.value, str) and el.value.startswith("-"):
+            if el.value in ("-m", "-c"):
+                return None
+            continue
+        return None if isinstance(el, ast.Starred) else el
+    return None
+
+
+def _hand_made(node):
+    """Whether an expression makes a script's path by hand: it names a .py
+    file or joins a path (with / or os.path.join), and goes through neither
+    _paths.script, find or locate nor the file's own __file__."""
+    said = ast.unparse(node)
+    if "__file__" in said or re.search(r"_paths\.(?:script|find|locate)\(", said):
+        return False
+    return any((isinstance(c, ast.Constant) and isinstance(c.value, str) and c.value.endswith(".py"))
+               or (isinstance(c, ast.BinOp) and isinstance(c.op, ast.Div))
+               or (isinstance(c, ast.Call) and ast.unparse(c.func).endswith("path.join"))
+               for c in ast.walk(node))
+
+
+def _root_and_launch_problems(root=None):
+    """([sentence], files read): every place a code file finds a folder from
+    a file's own path -- `.parent`, `.parents` or a sibling (`with_name`) of
+    something built from __file__, or `os.path.dirname` of it -- outside
+    _paths.py, which is the one place that may; and every launch whose script
+    is a name relative to the working folder or a path made by hand rather
+    than by _paths.script, _paths.find or _paths.locate, read in the launch
+    itself or, for a script held in a variable, in what the file assigns to
+    it. A script launching its own __file__ is itself wherever it sits, and
+    passes; a variable filled some other way (an argument, a loop) cannot be
+    read here, and passes too. preflight is held to the first rule and not
+    the second: the scripts it starts by a bare name are copies it wrote into
+    a fixture folder and runs there, and a repository script it started by a
+    stale path would fail preflight itself, at once."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    found, files = {}, _paths.code_files("*.py", root=base)
+    blank = "\n" * _paths.BOOTSTRAP.count("\n")
+    for f in files:
+        if f.name == "_paths.py":
+            continue
+        rel = f.relative_to(base).as_posix()
+        text = f.read_text(encoding="utf-8").replace("\r\n", "\n").replace(_paths.BOOTSTRAP, blank)
+        tree = ast.parse(text)
+        given = {}
+        for a in ast.walk(tree):
+            if isinstance(a, (ast.Assign, ast.AnnAssign)) and a.value is not None:
+                for t in (a.targets if isinstance(a, ast.Assign) else [a.target]):
+                    if isinstance(t, ast.Name):
+                        given.setdefault(t.id, []).append(a.value)
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Attribute) and n.attr in _FROM_OWN_FILE \
+                    and "__file__" in ast.unparse(n.value):
+                found.setdefault((rel, n.lineno), (
+                    f"{rel}:{n.lineno} finds a folder from __file__ ({ast.unparse(n)}), the "
+                    "root only while the file sits there: use _paths.ROOT"))
+            elif isinstance(n, ast.Call) and ast.unparse(n.func).split(".")[-1] in ("dirname", "split") \
+                    and any("__file__" in ast.unparse(a) for a in n.args):
+                found.setdefault((rel, n.lineno), (
+                    f"{rel}:{n.lineno} finds a folder from __file__ ({ast.unparse(n)}), the "
+                    "root only while the file sits there: use _paths.ROOT"))
+            elif f.name != "preflight.py" and isinstance(n, ast.List):
+                target = _launch_target(n)
+                if target is None:
+                    continue
+                said = ast.unparse(target)
+                if "__file__" in said or re.search(r"_paths\.(?:script|find|locate)\(", said):
+                    continue
+                made = [said] if _hand_made(target) else [
+                    f"{v.id} = {ast.unparse(x)}" for v in ast.walk(target)
+                    if isinstance(v, ast.Name) for x in given.get(v.id, ()) if _hand_made(x)]
+                if made:
+                    how = f" ({made[0]})" if made[0] != said else ""
+                    found.setdefault((rel, n.lineno), (
+                        f"{rel}:{n.lineno} starts {said} by a path of its own making{how}, "
+                        "which finds it only while it sits there: start it through "
+                        "_paths.script"))
+    return [found[k] for k in sorted(found)], len(files)
+
+
+@check("files", "a script finds the repository through _paths.ROOT and starts another "
+                "through _paths.script, never from its own file's folder")
+def _root_and_launch_rules():
+    """CONTRIBUTING.md gives a new script four rules and says preflight holds
+    them. The bootstrap check holds the first two; this holds the third and
+    the fourth, read from what each file does so that they hold wherever it
+    sits. Path(__file__).parent was the root while every script sat there,
+    and is src/parse/ once one moves: keys.py would have looked for
+    secrets.json there, and build_exports would have counted no checks for
+    data.html. A launch of "narrative.py", or of HERE / "narrative.py", finds
+    the file only while it sits beside the working folder or HERE."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-rules-"))
+    try:
+        launch = "import subprocess, sys\nrun = subprocess.run\n"
+        _plant(tmp, {
+            "_paths.py": "HERE = Path(__file__).resolve().parent\n",
+            "src/parse/hand.py": (launch + "HERE = Path(__file__).resolve().parent\n"
+                                  'run([sys.executable, str(HERE / "other.py")])\n'),
+            "src/parse/bare.py": launch + 'run([sys.executable, "-u", "other.py", "--x"])\n',
+            "src/parse/up.py": "import os\nD = os.path.dirname(os.path.abspath(__file__))\n",
+            "src/lib/beside.py": 'K = Path(__file__).with_name("secrets.json")\n',
+            "src/pages/py.py": launch + 'run(["python3", "other.py"])\n',
+            "src/parse/held.py": launch + 'tool = Path("other.py")\nrun([sys.executable, str(tool)])\n',
+            "src/parse/joined.py": (launch + "HERE = _paths.ROOT\n"
+                                    "run([sys.executable, str(HERE / argv[0]), *argv[1:]])\n"),
+            "src/parse/fine.py": (_paths.BOOTSTRAP + launch +
+                                  'run([sys.executable, _paths.script("other.py"), "--x"])\n'
+                                  'run([sys.executable, __file__, "--child"])\n'
+                                  'run([sys.executable, "-m", "yt_dlp", "x.py"])\n'
+                                  'run([sys.executable, "-c", "print(1)"])\n'
+                                  "script = _paths.script(argv[0])\n"
+                                  "run([sys.executable, script])\n"
+                                  "run([sys.executable] + args)\n"
+                                  "for g in given:\n    run([sys.executable, str(g)])\n"
+                                  'SRC = Path(__file__).resolve().read_text()\n'
+                                  'K = _paths.ROOT / "secrets.json"\n'),
+            "preflight.py": launch + 'run([sys.executable, "copy.py"], cwd=tmp)\n'})
+        got, _ = _root_and_launch_problems(tmp)
+        want = ["src/parse/hand.py:3 finds", "src/parse/hand.py:4 starts", "src/parse/bare.py:3",
+                "src/parse/up.py:2", "src/lib/beside.py:1", "src/pages/py.py:3",
+                "src/parse/held.py:4", "src/parse/joined.py:4"]
+        assert len(got) == len(want) and all(any(g.startswith(w) for g in got) for w in want), \
+            f"the reader of paths and launches found {got} in a tree made to break eight ways"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad, n = _root_and_launch_problems()
+    assert n >= 160, f"only {n} scripts were read; there were 165 on 6 October"
+    assert not bad, ("these find the repository or start a script from where the file sits "
+                     "today, which stops being true when it moves: " + "; ".join(bad))
+    return "ok", (f"{n} scripts read: none finds a folder from its own file but _paths.py, and "
+                  "every launch whose script can be read goes through _paths")
 
 
 # A `python3 -c` program, written in a docstring for a person to type or in a

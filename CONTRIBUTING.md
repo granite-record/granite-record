@@ -165,10 +165,14 @@ Wherever it goes, a new script:
 4. **Finds the repository through `_paths.ROOT`**, never through
    `Path(__file__).parent`, which is the root only while the file sits there.
 
-`preflight` holds all four, and holds each `src/fetch/` folder to its
-network: a `refusal.check()` outside `gc_web/`, the SQL host outside
-`gc_db/`, yt-dlp outside `youtube/`, or a request from any folder under
-`src/` outside `fetch/` (but `checks/` asking graniterecord.org) fails it.
+`preflight` holds all four -- the third wherever it can see how the script's
+path was made, in the launch itself or in what the file assigns to the
+variable it launches -- and fails on a `python3 -c` written in the code or the
+docs that imports a module of ours before `_paths`. It also holds each
+`src/fetch/` folder to its network: a `refusal.check()` outside `gc_web/`, the
+SQL host outside `gc_db/`, yt-dlp outside `youtube/`, or a request from any
+folder under `src/` outside `fetch/` (but `checks/` asking graniterecord.org)
+fails it.
 
 ## Five files no generator may write
 
