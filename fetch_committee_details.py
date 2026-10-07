@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.8
+# GRANITE_VERSION: 2026-09-07.9
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -323,6 +323,12 @@ def main():
     # one this run that had it on file, and those whose page no longer names it.
     had = {k: [] for k in CD.ONLY_HERE}
     dropped = {k: [] for k in CD.ONLY_HERE}
+    # A REFUSAL ENDS THE RUN AND IS RECORDED (7 October 2026): one, or the
+    # second dropped connection, or the block page served as a 200 -- the
+    # reading every fetcher shares (refusal.classify). This stopped only at
+    # three failures, and recorded none of them, so a 403 was asked about
+    # twice more and the next fetch to start asked again.
+    refused, drops = "", 0
     for i, (chamber, code, row) in enumerate(todo):
         url = row["url"]
         try:
@@ -331,6 +337,11 @@ def main():
             failed.append(f"{code}: {type(e).__name__}: {e}")
             print(f"  {code:<5} {row.get('name', '')[:38]:<38} FAILED "
                   f"{type(e).__name__}")
+            kind = refusal.classify(e)
+            drops += kind == "dropped"
+            if kind == "refused" or drops >= 2:
+                refused = f"{type(e).__name__}: {e} on {url}"
+                break
             # A refusal is the one thing worth stopping for. Carrying on
             # through 40 more is how this address got blocked twice.
             if len(failed) >= 3:
@@ -340,6 +351,9 @@ def main():
                 break
             time.sleep(a.delay)
             continue
+        if refusal.classify(body=page) == "refused":
+            refused = f"the firewall's block page, with a 200, on {url}"
+            break
         if a.raw:
             name = f"committee_{code}.html"
             Path(name).write_text(page, encoding="utf-8")
@@ -385,6 +399,11 @@ def main():
         if i + 1 < len(todo):
             time.sleep(a.delay)
 
+    if refused:
+        refusal.note("fetch_committee_details", refused)
+        print(f"\nREFUSED: {refused}. Nothing more is asked, and refusal.py now "
+              "holds one for 24 hours;\npython3 netcheck.py says what kind it is "
+              "without making it worse. What was read is kept below.")
     print(f"\n{got} of {len(todo)} pages read")
     after, n_clerk, n_purp = CD.counts(details)
     print(f"  {n_clerk} committees now have a clerk, {n_purp} a stated purpose")
@@ -404,10 +423,10 @@ def main():
     if a.probe:
         print("\nNothing was written. Drop --probe once the fields above look "
               "right.")
-        return 0
+        return 2 if refused else 0
     if not got:
         print(f"\nNOT WRITING {a.out}: no page was read.")
-        return 1
+        return 2 if refused else 1
     if not (n_clerk or n_purp):
         print(f"\nNOT WRITING {a.out}: {got} pages were read and neither a "
               "clerk nor a purpose came out of any of them. That is a parser "
@@ -432,7 +451,7 @@ def main():
     print("\nRun build_committees.py to put the clerk and the purpose on the "
           "pages, and `python3 cloud.py seed-kit` so the nightly's kit has "
           "them.")
-    return 0
+    return 2 if refused else 0
 
 
 if __name__ == "__main__":

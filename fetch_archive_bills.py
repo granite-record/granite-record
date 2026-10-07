@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.5
+# GRANITE_VERSION: 2026-09-06.6
 """
 Every bill of an archived session year, from the General Court's own search.
 
@@ -152,7 +152,16 @@ def get(url, data=None):
         headers=dict(UA, **({"Content-Type":
                              "application/x-www-form-urlencoded"} if data else {})))
     with urllib.request.urlopen(req, timeout=90) as r:
-        return r.read().decode("utf-8", errors="replace")
+        page = r.read().decode("utf-8", errors="replace")
+    # THE BLOCK PAGE SERVED AS A 200 IS A REFUSAL, recorded like a 403: the
+    # second request would otherwise post the year to a firewall.
+    if refusal.classify(body=page) == "refused":
+        refusal.note("fetch_archive_bills", f"the firewall's block page, with a 200, on {url}")
+        print("  REFUSED: the block page, served as a page. refusal.py now holds "
+              "one for 24 hours;\n  python3 netcheck.py says what kind it is "
+              "without making it worse.", file=sys.stderr)
+        sys.exit(2)
+    return page
 
 
 def fetch_year(year):
@@ -192,11 +201,20 @@ def main():
         print(f"session year {year}, two requests")
         try:
             page = fetch_year(year)
-        except urllib.error.HTTPError as e:
-            sys.exit(f"  HTTP {e.code}. netcheck.py diagnoses a refusal "
-                     "without making it worse.")
         except Exception as e:
-            sys.exit(f"  {type(e).__name__}: {e}")
+            why = (f"HTTP {e.code} on {URL}" if isinstance(e, urllib.error.HTTPError)
+                   else f"{type(e).__name__}: {e}")
+            # A REFUSAL IS RECORDED, not only reported (7 October 2026): this
+            # printed the 403 and stopped, and the next fetch to start asked
+            # bill_status/legacy/bs2016/ again -- the path the General Court's
+            # IT office asked be requested lightly.
+            if refusal.classify(e) == "refused":
+                refusal.note("fetch_archive_bills", why)
+                print(f"  REFUSED: {why}. refusal.py now holds one for 24 hours; "
+                      "python3 netcheck.py says\n  what kind it is without making "
+                      "it worse.", file=sys.stderr)
+                sys.exit(2)
+            sys.exit(f"  {why}")
         if a.save:
             Path(f"archive_{year}.html").write_text(page, encoding="utf-8")
             print(f"  saved archive_{year}.html")

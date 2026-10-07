@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -404,6 +404,11 @@ def _options(page, name):
     return []
 
 
+class Refused(Exception):
+    """The General Court refused discovery. It is on file (refusal.note) by the
+    time this is raised, and nothing more is asked."""
+
+
 def calendar_urls(year, delay=2.0, rediscover=False):
     """{number: url} for every House calendar of one year, from the index page.
 
@@ -415,8 +420,22 @@ def calendar_urls(year, delay=2.0, rediscover=False):
             headers=dict(UA, **({"Content-Type":
                                  "application/x-www-form-urlencoded"}
                                 if data else {})))
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode("utf-8", errors="replace")
+        # A REFUSAL IS RECORDED (7 October 2026), the one reading every
+        # fetcher shares: a 403 came out of here as a traceback, and the block
+        # page served as a 200 as a year with no calendars.
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                page = r.read().decode("utf-8", errors="replace")
+        except Exception as e:
+            if refusal.classify(e) == "refused":
+                refusal.note("fetch_committee_reports", f"{type(e).__name__}: {e} on {INDEX}")
+                raise Refused(f"{type(e).__name__}: {e}") from None
+            raise
+        if refusal.classify(body=page) == "refused":
+            refusal.note("fetch_committee_reports",
+                         f"the firewall's block page, with a 200, on {INDEX}")
+            raise Refused("the firewall's block page, with a 200")
+        return page
 
     print(f"  reading the calendar list for {year}")
     page = fetch()
@@ -721,14 +740,12 @@ def main():
         try:
             urls = calendar_urls(a.year, delay=a.delay,
                                  rediscover=a.rediscover)
-        except Exception as e:
-            if type(e).__name__ != "Refused":
-                raise
-            print(f"\n  discovery stopped: {e}.\n"
-                  "  The General Court is refusing connections, which says "
-                  "nothing about\n  which calendars exist. Parsing the ones "
-                  "already downloaded instead.")
-            urls = {}
+        except Refused as e:
+            print(f"\n  REFUSED: {e}. Nothing more is asked, and refusal.py now "
+                  "holds one for 24 hours;\n  python3 netcheck.py says what kind it "
+                  "is without making it worse. --offline reads\n  the calendars "
+                  "already downloaded and asks nobody.")
+            sys.exit(2)
         print(f"  {len(urls)} editions found")
         if not urls:
             sys.exit("No calendar PDFs found. Check the year.")
@@ -738,19 +755,41 @@ def main():
             m = re.match(r"(\d+)([A-Z]*)", str(k))
             return (int(m.group(1)), m.group(2))
 
-        targets = []
+        targets, drops = [], 0
         for num in sorted(urls, key=order):
             n, suf = order(num)
             local = cache / f"HC{n:03d}{suf}.pdf"
             if not local.exists():
+                # ONE REFUSAL, OR A SECOND DROPPED CONNECTION, ENDS THE RUN AND
+                # IS RECORDED (7 October 2026). This printed a 403 and asked for
+                # the next calendar, and saved the block page served as a 200
+                # under the calendar's .pdf name. The calendars already here
+                # stay; --offline reads them without asking.
                 try:
                     req = urllib.request.Request(urls[num], headers=UA)
-                    with urllib.request.urlopen(req, timeout=120) as r, open(local, "wb") as fh:
-                        shutil.copyfileobj(r, fh)
-                    print(f"  downloaded HC {num}")
+                    with urllib.request.urlopen(req, timeout=120) as r:
+                        body = r.read()
                 except Exception as e:
                     print(f"  ! HC {num}: {e}")
+                    kind = refusal.classify(e)
+                    drops += kind == "dropped"
+                    if kind == "refused" or drops >= 2:
+                        refusal.note("fetch_committee_reports",
+                                     f"{type(e).__name__}: {e} on HC {num}")
+                        print("\n  REFUSED. Nothing more is asked, and refusal.py now "
+                              "holds one for 24 hours;\n  python3 netcheck.py says "
+                              "what kind it is without making it worse.")
+                        sys.exit(2)
                     continue
+                if refusal.classify(body=body[:4000].decode("utf-8", "replace")) == "refused":
+                    refusal.note("fetch_committee_reports",
+                                 f"the firewall's block page, with a 200, on HC {num}")
+                    print(f"\n  REFUSED: the block page, served as HC {num}. It is not "
+                          "saved, nothing more is asked,\n  and refusal.py now holds "
+                          "one for 24 hours.")
+                    sys.exit(2)
+                local.write_bytes(body)
+                print(f"  downloaded HC {num}")
             targets.append((num, local))
             if a.limit and len(targets) >= a.limit:
                 break

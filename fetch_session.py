@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Fetch a whole past session from the legacy docket pages.
 
@@ -97,17 +97,30 @@ class Rows(HTMLParser):
 
 
 def get(url, timeout, tries=3):
-    last = None
+    """(page, None, None), or (None, the error, refusal.classify's reading of it).
+
+    A REFUSAL IS NOT ASKED AGAIN (7 October 2026). Every failure was retried
+    twice, a 403 and a reset as much as a timeout, and the loop below then
+    asked for the next LSR. A refusal, or a dropped connection -- this
+    address's usual way of saying no -- comes straight back to the caller,
+    which records it; a block page served as a 200 is read as the refusal it
+    is, and never cached as an LSR's page."""
+    last, kind = None, None
     for n in range(tries):
         try:
             req = urllib.request.Request(url, headers=UA)
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.read().decode("utf-8", errors="replace"), None
+                page = r.read().decode("utf-8", errors="replace")
+            if refusal.classify(body=page) == "refused":
+                return None, RuntimeError("the firewall's block page, with a 200"), "refused"
+            return page, None, None
         except Exception as e:
-            last = e
+            last, kind = e, refusal.classify(e)
+            if kind in ("refused", "dropped"):
+                break
             if n < tries - 1:
                 time.sleep(2 * (n + 1))
-    return None, last
+    return None, last, kind
 
 
 def url_for(lsr, year):
@@ -162,9 +175,14 @@ def looks_empty(html, rec):
 def probe(year, lsr, timeout):
     u = url_for(lsr, year)
     print(f"fetching {u}\n")
-    html, err = get(u, timeout)
+    html, err, kind = get(u, timeout)
     if html is None:
         print(f"FAILED: {type(err).__name__}: {err}")
+        if kind == "refused":
+            refusal.note("fetch_session", f"{type(err).__name__}: {err} on {u}")
+            print("REFUSED. refusal.py now holds one for 24 hours; python3 netcheck.py "
+                  "says what kind it is without making it worse.")
+            sys.exit(2)
         return
     rec = parse(html, year)
     t = text_of(html)
@@ -218,7 +236,8 @@ def main():
     (root / "parsed").mkdir(parents=True, exist_ok=True)
 
     bills, empties, fetched, cached, fails = {}, 0, 0, 0, Counter()
-    checked = 0
+    checked = dropped = 0
+    refused = ""
     for lsr in range(a.start, a.max_lsr + 1):
         if a.limit and checked >= a.limit:
             break
@@ -231,9 +250,20 @@ def main():
             continue
         else:
             time.sleep(a.delay)
-            html, err = get(url_for(lsr, a.year), a.timeout)
+            html, err, kind = get(url_for(lsr, a.year), a.timeout)
             if html is None:
                 fails[f"{type(err).__name__}"] += 1
+                # ONE REFUSAL, OR A SECOND DROPPED CONNECTION, ENDS THE RUN AND
+                # IS RECORDED, so every General Court fetch stops for 24 hours.
+                # This counted it and asked for the next LSR.
+                dropped += kind == "dropped"
+                if kind == "refused" or dropped >= 2:
+                    refused = f"{type(err).__name__}: {err} on LSR {lsr} of {a.year}"
+                    refusal.note("fetch_session", refused)
+                    print(f"\nREFUSED: {refused}. Stopping, and refusal.py now holds one "
+                          "for 24 hours;\npython3 netcheck.py says what kind it is "
+                          "without making it worse. What was read is written below.")
+                    break
                 continue
             cpath.write_text(html, encoding="utf-8")
             fetched += 1
@@ -282,6 +312,8 @@ def main():
         print("of the three; --probe output would let it be fixed.")
     print("\nPages are cached permanently. Parser changes can be re-applied with")
     print("--reparse, which touches no network at all.")
+    if refused:
+        sys.exit(2)
 
 
 if __name__ == "__main__":

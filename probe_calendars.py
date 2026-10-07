@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Read the calendar list instead of guessing at it.
 
@@ -137,8 +137,26 @@ FORM = re.compile(r"<form\b([^>]*)>", re.I)
 def get(url, data=None):
     req = urllib.request.Request(url, data=data, headers=dict(
         UA, **({"Content-Type": "application/x-www-form-urlencoded"} if data else {})))
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read().decode("utf-8", errors="replace")
+    # A REFUSAL IS RECORDED AND ENDS THE PROBE (7 October 2026), the one
+    # reading every fetcher shares: a 403 was printed as a failed postback,
+    # and the block page served as a 200 was shown as the page.
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            page = r.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        if refusal.classify(e) == "refused":
+            refused(f"{type(e).__name__}: {e} on {url}")
+        raise
+    if refusal.classify(body=page) == "refused":
+        refused(f"the firewall's block page, with a 200, on {url}")
+    return page
+
+
+def refused(why):
+    refusal.note("probe_calendars", why)
+    print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds one for 24 hours;\n"
+          "python3 netcheck.py says what kind it is without making it worse.")
+    sys.exit(2)
 
 
 def attrs(s):

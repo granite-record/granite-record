@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Collect House online testimony sign-ins: who registered support or opposition
 on each bill, and who filed written testimony.
@@ -178,12 +178,18 @@ def get(url, data=None, timeout=60):
                            "Referer": PAGE} if data else {})})
     try:
         with _OPENER.open(req, timeout=timeout) as r:
-            return r.read().decode("utf-8", errors="replace")
+            page = r.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         # An ASP.NET 500 usually explains itself in the body. Reading it turns
         # "something went wrong" into the actual exception name, which is the
         # difference between fixing this in one attempt and in five.
         body = e.read().decode("utf-8", errors="replace")
+        # A REFUSAL IS RECORDED (7 October 2026), and ends the run: a 403 came
+        # out of here as a form-post error, which ended the run and recorded
+        # nothing, so the next fetch to start asked again. Read off the status
+        # and the body read above.
+        if "refused" in (refusal.classify(e), refusal.classify(body=body)):
+            refused(f"HTTP {e.code} on {url}")
         m = re.search(r"<title>([^<]{0,200})</title>", body, re.I)
         detail = re.search(r"(?:Exception Details|Description):\s*([^<\n]{0,220})",
                            body, re.I)
@@ -193,6 +199,22 @@ def get(url, data=None, timeout=60):
             f"  {detail.group(1).strip() if detail else ''}\n"
             "  A 500 here is almost always __EVENTVALIDATION rejecting a value "
             "that was not among the options the page rendered.") from None
+    except Exception as e:
+        if refusal.classify(e) == "refused":
+            refused(f"{type(e).__name__}: {e} on {url}")
+        raise
+    if refusal.classify(body=page) == "refused":
+        refused(f"the firewall's block page, with a 200, on {url}")
+    return page
+
+
+def refused(why):
+    """Record the refusal, so every General Court fetch stops for 24 hours,
+    and end the run. What is on file is what the last write kept."""
+    refusal.note("fetch_testimony", why)
+    print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds one for 24 hours;\n"
+          "python3 netcheck.py says what kind it is without making it worse.")
+    sys.exit(2)
 
 
 def tokens(html):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -274,17 +274,30 @@ def parse(html):
 
 
 def get(url, timeout, tries=3):
-    last = None
+    """(page, None, None), or (None, the error, refusal.classify's reading of it).
+
+    A REFUSAL IS NOT ASKED AGAIN (7 October 2026). Every failure was retried
+    twice, a 403 and a reset as much as a timeout, so one refusal became three
+    requests, and the loop below then moved on to the next bill. A refusal, or
+    a dropped connection -- this address's usual way of saying no -- comes
+    straight back to the caller, which records it; a block page served as a
+    200 is read as the refusal it is."""
+    last, kind = None, None
     for n in range(tries):
         try:
             req = urllib.request.Request(url, headers=UA)
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.read().decode("utf-8", errors="replace"), None
+                page = r.read().decode("utf-8", errors="replace")
+            if refusal.classify(body=page) == "refused":
+                return None, RuntimeError("the firewall's block page, with a 200"), "refused"
+            return page, None, None
         except Exception as e:
-            last = e
+            last, kind = e, refusal.classify(e)
+            if kind in ("refused", "dropped"):
+                break
             if n < tries - 1:
                 time.sleep(2 * (n + 1))
-    return None, last
+    return None, last, kind
 
 
 # What a link's ADDRESS looks like, with the values stripped out. Two links to
@@ -411,9 +424,14 @@ def main():
             html = cpath.read_text(encoding="utf-8", errors="replace")
             print(f"(reading {cpath}, not the network)\n")
         else:
-            html, err = get(url, a.timeout)
+            html, err, kind = get(url, a.timeout)
             if html is None:
                 print(f"failed: {err}")
+                if kind == "refused":
+                    refusal.note("fetch_bill_status", f"{type(err).__name__}: {err} on {url}")
+                    print("REFUSED. refusal.py now holds one for 24 hours; python3 "
+                          "netcheck.py says what kind it is without making it worse.")
+                    sys.exit(2)
                 return
         got = parse(html)
         print(json.dumps(got, indent=2)[:1200])
@@ -501,7 +519,7 @@ def main():
             out_all.pop(term, None)
         Path(a.out).write_text(json.dumps(out_all, indent=2), encoding="utf-8")
 
-    fetched = cached = 0
+    fetched = cached = dropped = 0
     fails = Counter()
     for i, bill in enumerate(todo, 1):
         if bill in out and not a.reparse:
@@ -519,9 +537,23 @@ def main():
             continue
         else:
             time.sleep(a.delay)
-            html, err = get(f"{BASE}?{q}", a.timeout)
+            html, err, kind = get(f"{BASE}?{q}", a.timeout)
             if html is None:
                 fails[type(err).__name__] += 1
+                # ONE REFUSAL, OR A SECOND DROPPED CONNECTION, ENDS THE RUN AND
+                # IS RECORDED, so every other General Court fetch stops too.
+                # This counted it among the failures and asked for the next
+                # bill, on bill_status/legacy/bs2016/, the path the General
+                # Court's IT office asked be requested lightly.
+                dropped += kind == "dropped"
+                if kind == "refused" or dropped >= 2:
+                    why = f"{type(err).__name__}: {err} on {bill}"
+                    refusal.note("fetch_bill_status", why)
+                    save()
+                    print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds one "
+                          "for 24 hours.\nWhat was fetched is saved; python3 netcheck.py "
+                          "says what kind it is without making it worse.")
+                    sys.exit(2)
                 continue
             cpath.write_text(html, encoding="utf-8")
             fetched += 1

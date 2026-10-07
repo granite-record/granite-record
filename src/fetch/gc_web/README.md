@@ -6,7 +6,9 @@ office. Nothing here runs without the person's say-so, and never two at
 once: look at `archive/.lock` and `logs/gc_lane.log` first
 (`watchers/README.md`). Every script calls `refusal.check()` straight after
 parsing its arguments, and preflight fails if one does not or if a script
-outside this folder does. `bill_status/legacy/bs2016/`
+outside this folder does. Every script records a refusal it meets with
+`refusal.note()` and stops with status 2, and preflight fails one that calls
+`refusal.check()` and never `refusal.note()`. `bill_status/legacy/bs2016/`
 (`fetch_archive_bills`, `resolve_members`) is the path IT asked be requested
 lightly on session days.
 
