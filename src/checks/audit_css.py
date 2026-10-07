@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 Which components are stranded, and which rules are dead.
 
-    python3 audit_css.py --site site
+    python3 src/checks/audit_css.py --site site
 
 WHY THIS EXISTS
 

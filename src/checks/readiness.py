@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 Write READINESS.md: how far the site is from the five conditions for launch.
 
-    python3 readiness.py            # write READINESS.md
-    python3 readiness.py --print    # to the screen instead
+    python3 src/checks/readiness.py            # write READINESS.md
+    python3 src/checks/readiness.py --print    # to the screen instead
 
 WHY THIS EXISTS. On 20 September the person set out what would make them feel
 prepared to launch -- the five conditions in CONDITIONS below -- and said

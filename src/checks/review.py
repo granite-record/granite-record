@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.17
+# GRANITE_VERSION: 2026-09-09.18
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
-    python3 review.py                 # opens on http://127.0.0.1:8799
-    python3 review.py --port 9000
-    python3 review.py --report        # what has been judged so far, no server
+    python3 src/checks/review.py                 # opens on http://127.0.0.1:8799
+    python3 src/checks/review.py --port 9000
+    python3 src/checks/review.py --report        # what has been judged so far, no server
 
 LOCAL ONLY, AND NOT PART OF THE SITE. It binds 127.0.0.1, writes nothing into
 site/, and site/ is never served from here. Nothing this tool produces reaches

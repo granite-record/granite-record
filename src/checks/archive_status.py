@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 How much of the record is on this disk, and what is still missing.
 
-    python3 archive_status.py            # every source, one line each
-    python3 archive_status.py --detail   # and the gaps, year by year
+    python3 src/checks/archive_status.py            # every source, one line each
+    python3 src/checks/archive_status.py --detail   # and the gaps, year by year
 
 No network, nothing written. Under a second.
 
