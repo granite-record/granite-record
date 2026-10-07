@@ -37,6 +37,25 @@ and says which CACR it is and why. The counts are facts, and no claim is made
 over them; the page they came from is Ballotpedia's and is not reproduced here.
 Like the files above, no script writes it.
 
+WHAT EACH PUBLISHED FILE HOLDS
+
+The site's own JSON and feeds are listed, with what each holds, in README.md
+under "The data". The bulk downloads describe themselves: /data/manifest.json
+names every CSV with its rows, size and columns, every term's bill index
+(/idx/<term>.json) with its address, bills and size, and a coverage table by
+term, so the counts are read from the file rather than from a document.
+/index.json, which held every bill of every term in one file, was retired on
+5 October 2026; the files under /idx/ are the same rows, a term at a time.
+
+What the public sends is never published as an individual's. Testimony
+sign-ins appear as counts on a bill and its hearings, from the General
+Court's database: src/fetch/gc_db/fetch_testimony_db.py counts them in SQL,
+so no name, town or written testimony is ever fetched, and
+src/parse/testimony_from_db.py counts the archived terms from the dump on
+disk, both into testimony_db.json. The scraped testimony.json was retired on
+5 October 2026. And the reports readers send through the "report a problem"
+box are not published at all.
+
 THE LOGO AND THE ICONS ARE NOT HERE
 
 The logo and the icons are not offered under the MIT licence, or under any
@@ -49,10 +68,11 @@ the header and the cards a shared link unfurls into -- is drawn by Debra
 Caplan, an artist in Peterborough, New Hampshire (linescapesnh.com), and
 licensed from her; her files have never been in this repository. The favicon
 and the other small icons are clipart the project bought, which reads better
-at those sizes. Both live in brand/ and assets/ on the machine that builds the
-site, gitignored, and reach the nightly build through the project's private
-kit. The one file of assets/ that is tracked is site.webmanifest, which is
-text and is MIT like the code.
+at those sizes. Both live in brand/ and assets/ on the maintainer's machine,
+gitignored, and the finished files in assets/ reach the nightly build through
+the project's private kit (the list in cloud_kit.json); brand/, which they are
+drawn from, goes to the private backup only. The one file of assets/ that is
+tracked is site.webmanifest, which is text and is MIT like the code.
 
 The clipart was in the repository until it was removed on 1 October 2026, so
 commits from before the removal carry it: the images in brand/, byte-identical
@@ -63,21 +83,21 @@ Those files were never offered under the MIT licence and are not now; that an
 old commit still holds them is not a licence to use them.
 
 A fork of this project should bring its own. The code that draws the icons,
-build_brand.py, is MIT like the rest of the code, and says what to put in
-brand/ when it is run without them; or put finished files in assets/ under the
-names build_pages.py lists as BRAND_FILES, and a mask named mark.png for a
-mark in the header. Without them the build still runs: it says once which
-files are missing, sets the home page's heading as text and the header as the
-site's name alone, and leaves the icon links in each page's head pointing at
-nothing -- which check_site.py reports as one error, so that a site without
-its icons is not published by accident.
+src/pages/build_brand.py, is MIT like the rest of the code, and says what to
+put in brand/ when it is run without them; or put finished files in assets/
+under the names src/pages/build_pages.py lists as BRAND_FILES, and a mask
+named mark.png for a mark in the header. Without them the build still runs: it
+says once which files are missing, sets the home page's heading as text and
+the header as the site's name alone, and leaves the icon links in each page's
+head pointing at nothing -- which src/checks/check_site.py reports as one
+error, so that a site without its icons is not published by accident.
 
 Two things in the code are this project's and a fork changes them with its
 logo. The footer of every page and the About page credit Debra Caplan for the
 logo, as her licence asks; that credit is written in bills.html and in
-build_pages.py (shell() and ABOUT), it is printed whether or not her files are
-there, and a site that does not carry her drawing should not carry it. And
-.gitignore keeps every image out of brand/ and assets/, because this
+src/pages/build_pages.py (shell() and ABOUT), it is printed whether or not her
+files are there, and a site that does not carry her drawing should not carry
+it. And .gitignore keeps every image out of brand/ and assets/, because this
 repository may hold none: a fork that wants its own logo in its own repository
 takes those lines out. preflight's _logo_licence check holds both in place for
 this project -- the credit present, the images untracked -- and is the check
