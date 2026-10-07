@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.150
+// GRANITE_VERSION: 2026-09-07.151
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -4617,6 +4617,12 @@ const VERS = {};                       // bill -> the index, once fetched
 const VTEXT = {};                      // url -> text, once fetched
 const VPICK = {};                      // bill -> which version is showing
 const VMODE = {};                      // bill -> "text" or "changes"
+// THE TAB OPENS ON THE FULL TEXT (the person, 7 October 2026, F15): the
+// current version, whole, as the Court printed it. What changed is one press
+// away; it opened on that, which answered a question before the reader had
+// read the bill it was about. One default, read by both the pane and what it
+// fetches, so the two cannot ask for different views.
+const VMODE_FIRST = "text";
 
 function verKey(b){ return `${b.year||yearOf(b.id)}/${b.id}`; }
 
@@ -4696,7 +4702,7 @@ function renderVersions(b,d){
   const vs=ix.versions||[], amds=ix.amendments||[];
   // THE CURRENT VERSION BY DEFAULT, which is the last one the record has.
   if(VPICK[key]===undefined)VPICK[key]=vs.length?vs.length-1:0;
-  const mode=VMODE[key]||"changes";
+  const mode=VMODE[key]||VMODE_FIRST;
   const i=Math.min(VPICK[key],Math.max(0,vs.length-1));
 
   // A group of toggle buttons, not a tablist: it declared role="tablist" with
@@ -4837,7 +4843,7 @@ function wantVersionBody(b){
   const key=verKey(b), ix=VERS[key];
   if(!ix||ix._error)return;
   const i=VPICK[key]===undefined?(ix.versions||[]).length-1:VPICK[key];
-  const mode=VMODE[key]||"changes";
+  const mode=VMODE[key]||VMODE_FIRST;
   const step=(ix.steps||[]).find(s=>s.to===i);
   // THE BLOCKS FILE WHERE THERE IS ONE, and the plain text where there is not.
   // build_bill_versions writes blocks_url BESIDE text_url rather than in place

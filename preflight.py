@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.428
+# GRANITE_VERSION: 2026-09-04.429
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44073,6 +44073,47 @@ def _on_the_record_rows():
     assert "Introduced" not in heads and "LSR" not in heads and "2025-0123" not in got, (
         f"On the record still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
     return "ok", f"On the record holds {', '.join(heads)}, and no Introduced or LSR row"
+
+
+@check("frontend", "the Bill Text tab opens on the current version in full text")
+def _bill_text_opens_whole():
+    """"Bill Text tab opens on the current version, in full text" (the person,
+    7 October 2026, F15), not on what the last amendment changed. A bill of
+    three printings, the last two compared, is drawn in node with nothing yet
+    chosen: the newest printing is the one pressed, Full text is the view
+    pressed, and what the pane asks for is that printing's text, not the
+    comparison. Choosing What changed still shows it."""
+    ix = {"versions": [{"title": "As Introduced", "date": "2025-01-08",
+                        "text_url": "/versions/2025/HB57/v0.txt"},
+                       {"title": "Amended by the House", "date": "2025-02-13",
+                        "text_url": "/versions/2025/HB57/v1.txt"},
+                       {"title": "Amended by the Senate", "date": "2025-05-22",
+                        "text_url": "/versions/2025/HB57/v2.txt"}],
+          "steps": [{"from": 0, "to": 1, "added": 4, "removed": 1,
+                     "runs_url": "/versions/2025/HB57/s1.json"},
+                    {"from": 1, "to": 2, "added": 9, "removed": 3,
+                     "runs_url": "/versions/2025/HB57/s2.json"}],
+          "amendments": []}
+    b = {"id": "HB57", "year": 2025, "term": "2025-2026"}
+    expr = ("(() => { const k = scope.verKey(" + json.dumps(b) + "); scope.VERS[k] = "
+            + json.dumps(ix) + "; const first = scope.renderVersions(" + json.dumps(b)
+            + ", {nver: 3}); scope.VMODE[k] = 'changes'; const asked = scope.renderVersions("
+            + json.dumps(b) + ", {nver: 3}); return [scope.VMODE_FIRST, first, asked]; })()")
+    got = _app_js(expr, names=("renderVersions", "verKey", "VERS", "VMODE", "VMODE_FIRST"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    first_mode, first, asked = got
+    assert first_mode == "text", f"the Bill Text tab opens on {first_mode!r}"
+    pressed = re.findall(r'<button class="vbtn sel"[^>]*>([^<]*)<', first)
+    assert pressed == ["Amended by the Senate"], f"the tab opens on the printing {pressed}"
+    assert re.search(r'<button class="vtog sel" data-vmode="[^"|]*\|text">Full text</button>', first) \
+        and not re.search(r'class="vtog sel" data-vmode="[^"]*\|changes"', first), (
+            "the tab does not open on Full text")
+    assert "Loading the text" in first and "Loading what changed" not in first, (
+        "the tab asks for the comparison before the reader has asked for it")
+    assert re.search(r'class="vtog sel" data-vmode="[^"]*\|changes"', asked) \
+        and "Loading what changed" in asked, "What changed no longer shows the comparison"
+    return "ok", "the newest printing, in full text; What changed one press away"
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
