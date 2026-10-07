@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.416
+# GRANITE_VERSION: 2026-09-04.419
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34778,7 +34778,10 @@ def _cloud_state_and_site(CL):
     bucket rather than as a GitHub artifact, which any signed-in user could
     download from a public repository with the licensed logo in it, or as
     55,000 billed writes: every file back, byte for byte, into an empty folder
-    and never over one that is not.
+    and never over one that is not. With it travels its own night's verdict
+    (7 October 2026), which the publish job deploys by: site-up sends none
+    but that run's, never a dry run's, and site-down writes it where
+    --deploy-to production reads it, or refuses a site that came without it.
     """
     real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
     tmp = Path(tempfile.mkdtemp(prefix="gr-state-"))
@@ -34841,6 +34844,29 @@ def _cloud_state_and_site(CL):
         (site / "bill" / "2026" / "hb1.html").write_text("<p>HB 1</p>", encoding="utf-8")
         (site / "assets").mkdir()
         (site / "assets" / "lockup.png").write_bytes(b"\x89PNG\r\n\x1a\n" + bytes(range(256)))
+        # Its own night's verdict goes with it, or nothing goes.
+        mine = night / CL.NIGHT_VERDICT
+        code, out = call(night, "site-up", "--run", "4242")
+        assert code == 1 and not (bucket / "nights").exists(), \
+            "a site went up with no verdict of its night beside it"
+        for other_v in ({"run_id": "4241", "kind": "nightly"},
+                        {"run_id": "4242", "kind": "nightly", "asked": {"dry_run": True}}):
+            mine.write_text(json.dumps(other_v), encoding="utf-8")
+            code, out = call(night, "site-up", "--run", "4242")
+            assert code == 1 and not (bucket / "nights").exists(), (
+                "a site went up with another run's verdict, or a dry run's", other_v)
+        own = {"run_id": "4242", "kind": "nightly", "publishable": True,
+               "asked": {"dry_run": False}}
+        mine.write_text(json.dumps(own), encoding="utf-8")
+        saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "DRY_RUN")}
+        os.environ.update(GITHUB_ACTIONS="true", DRY_RUN="true")
+        try:
+            code, out = call(night, "site-up", "--run", "4242")
+        finally:
+            for k, val in saved_env.items():
+                os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        assert code == 1 and not (bucket / "nights").exists(), \
+            "a run the workflow calls a dry run sent its site for production"
         code, out = call(night, "site-up", "--run", "4242")
         assert code == 0 and (bucket / "nights/4242/site.tar.gz").is_file(), out[-300:]
         assert len([p for p in (bucket / "nights").rglob("*") if p.is_file()]) == 2, \
@@ -34855,8 +34881,24 @@ def _cloud_state_and_site(CL):
         got = {p.relative_to(publish / "site").as_posix(): p.read_bytes()
                for p in (publish / "site").rglob("*") if p.is_file()}
         assert got == want, "the site came back different"
+        assert json.loads((publish / CL.SITE_VERDICT).read_text(encoding="utf-8")) == own, \
+            "site-down did not bring the night's own verdict to where the deploy reads it"
         code, out = call(publish, "site-down", "--run", "4242")
         assert code == 1 and "not empty" in out, "site-down unpacked over a site already there"
+        # A site.json that carries no verdict of its run -- one sent before 7
+        # October 2026, or doctored -- brings nothing down.
+        note = bucket / "nights/4242/site.json"
+        doc = json.loads(note.read_text(encoding="utf-8"))
+        bare = tmp / "bare"
+        bare.mkdir()
+        shutil.copy(night / "cloud_kit.json", bare / "cloud_kit.json")
+        for v in (None, {"run_id": "4241"}):
+            note.write_text(json.dumps(dict(doc, verdict=v)), encoding="utf-8")
+            code, out = call(bare, "site-down", "--run", "4242")
+            assert code == 1 and not (bare / "site").exists() and \
+                not (bare / CL.SITE_VERDICT).exists(), \
+                ("site-down brought a site down without its own night's verdict", v)
+        note.write_text(json.dumps(doc), encoding="utf-8")
         assert call(night, "site-up", "--run", "4242")[0] == 0
         assert list(bucket.glob("replaced/*/nights/4242/site.tar.gz*")), \
             "a second site-up for one run overwrote the first"
@@ -34866,6 +34908,225 @@ def _cloud_state_and_site(CL):
                       "up and comes down as one archive, byte for byte")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("cloud", "a dry run sends back only what it fetched -- the day's files as the export "
+                "served them, their archive, its logs apart, a refusal or a hold and its own "
+                "verdict -- so nothing its branch's code made reaches main's next night",
+       needs=("cloud", "build_all", "snapshot_gencourt"))
+def _cloud_dry_night(CL, BA, SG):
+    """7 October 2026. A dry run is how code not yet on main is tried, and
+    until then its kit-up sent back every file of the night's it had changed
+    and its state-up every state file: the outputs a build carries forward,
+    the one file of the site a build reads, the study views, the bill
+    requests, the list of calendars, the livestream index, the census and the
+    night's verdict -- all written by that branch's code, and all taken down
+    and read by main's next night. So dev's code reached production a night
+    later with no merge. Now a dry night (--dry-night, or the workflow's
+    DRY_RUN on GitHub's machine whatever a step passes) sends back only what
+    the run fetched, as cloud_kit.json's "dry_run" names it:
+
+      - the real kit's: the day's files, and only those, as "served"; the
+        archive of them, never the database nights' copies; and of the state
+        a refusal, a hold on the SQL host and its own verdict, never the
+        census or the night's verdict -- and no night file else
+      - driven on a folder bucket: a day file the store holds byte for byte
+        goes up, and one it does not (a database night's) stays; the archive
+        goes up but not from-db/; a carried output, the bill requests and a
+        removal stay as they were; the logs go to logs/<day>/dry-run/, which
+        pull does not take; the census and the night's verdict stay as they
+        were while a refusal and the dry run's own verdict go up; and the
+        next real night takes down main's outputs, not the dry run's
+    """
+    import contextlib
+    import hashlib
+    import io
+    real = CL.load_kit(".")
+    d = real.get("dry_run") or {}
+    day_files = [f for f in list(SG.FILES) + [n for _, n in SG.EXTRA] if CL.owner_of(real, f)]
+    assert d and sorted(d.get("served", [])) == sorted(day_files) and \
+        d.get("store") == "nh-archive/store", (
+            f"{CL.KIT_FILE}'s dry_run does not send the day's files, and only them, by the "
+            f"archive's store: {sorted(d.get('served', []))} against {sorted(day_files)}")
+    assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json"}, \
+        d.get("state")
+    # Every night file a dry night sends is one of those, or the archive of them.
+    store_sha = "0" * 64
+    samples = [p for e in real["kit"] if e["owner"] == "night" for p in e.get("paths", [])]
+    samples += [re.sub(r"\*+", "x", g) for e in real["kit"] if e["owner"] == "night"
+                for g in e.get("globs", [])]
+    samples += [c[0] for c in BA.CARRIED] + ["nh-archive/from-db/2026-10-07/Docket.txt.gz",
+                                              "nh-archive/from-db/2026-10-07/source.json",
+                                              "nh-archive/snapshots/2026-10-07/manifest.json",
+                                              "nh-archive/store/" + store_sha + ".gz",
+                                              "nh-archive/index.json"]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-drynight-"))
+    try:
+        (tmp / "nh-archive/store").mkdir(parents=True)
+        (tmp / f"nh-archive/store/{store_sha}.gz").write_bytes(b"x")
+        sent = sorted(r for r in set(samples) if CL.owner_of(real, r) == "night"
+                      and CL.dry_sends(real, tmp, r, store_sha))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    stray = [r for r in sent if r not in day_files and not re.match(
+        r"^nh-archive/(?:index\.json|snapshots/.+|store/[^/]+)$", r)]
+    assert not stray and set(day_files) <= set(sent) and \
+        not any(r.startswith("nh-archive/from-db/") for r in sent), (
+            "a dry night would send a night file its branch's code made, or not the day's files",
+            stray, sorted(set(day_files) - set(sent)))
+    must_stay = [c[0] for c in BA.CARRIED if CL.owner_of(real, c[0]) == "night"] + [
+        "site/committees.json", "lsrs.json", "archive/queue.csv", "db/StatStudMeetings.psv",
+        "db/_manifest.json", "videos_house_livestreams.csv", "committees.json"]
+    assert {"narratives.json", "proceedings.csv"} <= set(must_stay) and \
+        not [r for r in must_stay if r in sent], [r for r in must_stay if r in sent]
+
+    # Driven, on a folder bucket. The workflow's word alone makes it a dry night.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-drynight-"))
+    saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV)}
+    try:
+        bucket = tmp / "bucket"
+        kit = {"kit": [
+            {"what": "day", "owner": "night", "paths": ["Docket.txt"]},
+            {"what": "outputs", "owner": "night", "paths": ["narratives.json", "lsrs.json"]},
+            {"what": "archive", "owner": "night", "held": False, "globs": ["nh-archive/**"]},
+            {"what": "pages", "owner": "laptop", "globs": ["legislation/**"]}],
+            "state": [{"path": f"archive/{k}", "key": k, "what": "x"} for k in
+                      ("census.json", "refused.json", "sql-held.json", "last-night.json",
+                       "last-dry-run.json")],
+            "logs": {"globs": ["logs/*", "reports/gc-changes-*.md"]},
+            "dry_run": {"served": ["Docket.txt"], "store": "nh-archive/store",
+                        "globs": ["nh-archive/index.json", "nh-archive/snapshots/**",
+                                  "nh-archive/store/*"],
+                        "state": ["refused.json", "sql-held.json", "last-dry-run.json"]},
+            "backup": real["backup"], "never": real["never"]}
+
+        def machine(name, files=None):
+            root = tmp / name
+            root.mkdir()
+            (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+            for rel, body in (files or {}).items():
+                f = root.joinpath(*rel.split("/"))
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(body if isinstance(body, bytes) else body.encode("utf-8"))
+            return root
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
+
+        def remote(key):
+            f = bucket.joinpath(*key.split("/"))
+            return f.read_bytes() if f.is_file() else None
+
+        D1 = b"2025|0001|HB1|introduced\n"
+        laptop = machine("laptop", {
+            "Docket.txt": D1, "narratives.json": "{\"main\": 1}", "lsrs.json": "[]",
+            "nh-archive/index.json": "{}", "legislation/2026/HB1.html": "<p>1</p>",
+            "archive/census.json": "{\"census\": {\"bills\": 100}}",
+            "archive/last-night.json": "{\"run_id\": \"700\", \"kind\": \"nightly\"}"})
+        assert call(laptop, "seed-kit")[0] == 0 and call(laptop, "state-up")[0] == 0
+        census, night_v = remote("state/census.json"), remote("state/last-night.json")
+        assert census and night_v
+
+        # A dry run that fetched: the export's docket, archived and installed;
+        # and everything its own code made or changed beside it.
+        dry = machine("dry")
+        assert call(dry, "state-down")[0] == 0 and call(dry, "kit-down")[0] == 0
+        D2 = D1 + b"2025|0002|HB2|introduced\n"
+        sha2 = hashlib.sha256(D2).hexdigest()
+        today = f"{__import__('datetime').datetime.now():%Y-%m-%d}"
+        for rel, body in (("Docket.txt", D2), (f"nh-archive/store/{sha2}.gz", b"gz of D2"),
+                          (f"nh-archive/snapshots/{today}/manifest.json", b"{}"),
+                          (f"nh-archive/from-db/{today}/Docket.txt.gz", b"dev's rebuild"),
+                          ("narratives.json", b"{\"dev\": 1}"), ("lsrs.json", b"[1]"),
+                          (f"logs/nightly-{today}.log", b"the dry run's log"),
+                          (f"reports/gc-changes-{today}.md", b"what the dry run saw"),
+                          ("archive/census.json", b"{\"census\": {\"bills\": 1}}"),
+                          ("archive/last-night.json", b"{\"run_id\": \"701\"}"),
+                          ("archive/last-dry-run.json", b"{\"run_id\": \"701\"}"),
+                          ("archive/refused.json", b"{\"where\": \"docket\"}")):
+            f = dry.joinpath(*rel.split("/"))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(body)
+        (dry / "nh-archive/index.json").unlink()            # a removal, which stays undone
+        os.environ.update(GITHUB_ACTIONS="true", **{CL.DRY_ENV: "true"})
+        code, out = call(dry, "kit-up")
+        assert code == 0, out[-400:]
+        assert remote("kit/Docket.txt") == D2 and remote(f"kit/nh-archive/store/{sha2}.gz") and \
+            remote(f"kit/nh-archive/snapshots/{today}/manifest.json"), \
+            "a dry run's fetch -- the export's docket and its archive -- did not go back"
+        assert remote("kit/narratives.json") == b"{\"main\": 1}" and \
+            remote("kit/lsrs.json") == b"[]" and \
+            remote(f"kit/nh-archive/from-db/{today}/Docket.txt.gz") is None and \
+            remote("kit/nh-archive/index.json") == b"{}", (
+                "a dry run sent back what its own code made, or removed a kit file: main's next "
+                "night would build from it")
+        assert remote(f"logs/{today}/{CL.DRY_LOGS}/nightly-{today}.log") and \
+            remote(f"logs/{today}/{CL.DRY_LOGS}/gc-changes-{today}.md") and \
+            remote(f"logs/{today}/nightly-{today}.log") is None, \
+            "a dry run's logs went where pull takes the night's"
+        assert remote("state/census.json") == census and \
+            remote("state/last-night.json") == night_v and \
+            remote("state/last-dry-run.json") == b"{\"run_id\": \"701\"}" and \
+            remote("state/refused.json"), (
+                "a dry run's state-up sent the census or the night's verdict, or kept back its "
+                "own verdict or a refusal")
+        assert "kept back" in out and "narratives.json" in out, out[-600:]
+
+        # A database night's docket: not as the export served it, so it stays.
+        (dry / "Docket.txt").write_bytes(D2 + b"2025|0003|HB3|from the database\n")
+        code, out = call(dry, "kit-up")
+        assert code == 0 and remote("kit/Docket.txt") == D2, \
+            "a dry run sent back day files its own code rebuilt from the database"
+        # ... and state-up alone, under the word, sends the same and no more.
+        (dry / "archive/sql-held.json").write_bytes(b"{\"held\": true}")
+        assert call(dry, "state-up")[0] == 0 and remote("state/sql-held.json") and \
+            remote("state/census.json") == census and remote("state/last-night.json") == night_v
+        os.environ.pop(CL.DRY_ENV, None)
+        # A New term run ticked with Dry run (the box is ticked unless a person
+        # unticks it) is refused by nightly.py, and the workflow still gives its
+        # kit-up --hold: nothing is held, nothing of the kit goes back -- not
+        # even a day file the export served -- and its logs still go up, apart
+        # (the review of 7 October 2026: this failed, and the logs were lost).
+        D3 = D2 + b"2025|0004|HB4|introduced\n"
+        sha3 = hashlib.sha256(D3).hexdigest()
+        (dry / "Docket.txt").write_bytes(D3)
+        (dry / f"nh-archive/store/{sha3}.gz").write_bytes(b"gz of D3")
+        (dry / f"logs/refused-{today}.log").write_bytes(b"the refused New term run's log")
+        code, out = call(dry, "kit-up", "--dry-night", "--hold", "9")
+        assert code == 0 and remote("kit/Docket.txt") == D2 and \
+            remote(f"kit/nh-archive/store/{sha3}.gz") is None and \
+            not (bucket / "nights").exists() and \
+            remote(f"logs/{today}/{CL.DRY_LOGS}/refused-{today}.log") and \
+            remote("state/census.json") == census and \
+            remote("state/last-night.json") == night_v, (
+                "a dry night given --hold held or sent something of the kit, or failed and "
+                "lost its logs", out[-500:])
+
+        # The logs it sent are not taken by pull for the night's.
+        b = CL.make_bucket(str(bucket), 1)
+        with contextlib.redirect_stdout(io.StringIO()):
+            taken = CL.pull_logs(b, laptop, CL.load_kit(laptop), [today], False, {}, set(), True,
+                                 today)[0]
+        assert not taken, f"pull took a dry run's logs for the night's: {sorted(taken)}"
+
+        # The next real night takes down main's outputs, and the dry run's fetch.
+        os.environ.pop("GITHUB_ACTIONS", None)
+        nxt = machine("next")
+        assert call(nxt, "kit-down")[0] == 0
+        assert (nxt / "narratives.json").read_bytes() == b"{\"main\": 1}" and \
+            (nxt / "Docket.txt").read_bytes() == D2, \
+            "main's next night took down a dry run's outputs, or lost what it fetched"
+        # A real night's kit-up still sends what its night changed.
+        (nxt / "narratives.json").write_bytes(b"{\"main\": 2}")
+        assert call(nxt, "kit-up")[0] == 0 and remote("kit/narratives.json") == b"{\"main\": 2}"
+    finally:
+        for k, val in saved_env.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"a dry night sends the {len(day_files)} day files only as the export served "
+                  "them, their archive but not from-db/, its logs under dry-run/, a refusal, a "
+                  "hold and its own verdict; a carried output, the bill requests, a removal, the "
+                  "census and the night's verdict stay, and the next night takes down main's")
 
 
 def _fake_s3():
@@ -36006,8 +36267,9 @@ def _documents_night(NI, CA, CL):
         serve(pages)
 
         # A night that does not fetch asks for no list, and sets the baseline.
-        code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="401")
-        assert code == 0 and not listed_ran() and "documents" not in verdict(), \
+        code, _ = night("--runner", "--no-fetch", run_id="401")
+        assert not listed_ran() and "documents" not in verdict() and \
+            verdict()["gates"] == "no baseline", \
             "a night that does not fetch asked for the list of calendars and journals"
 
         # A night takes the list.
@@ -36171,7 +36433,7 @@ def _documents_night(NI, CA, CL):
             assert v["documents_short"]["nights"] == nights and \
                 f"(night {nights} of the 3 running" in v["documents"], (
                     run_id, v["documents"], v["documents_short"])
-        code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="411")
+        code, _ = night("--runner", "--no-fetch", run_id="411")
         assert verdict().get("documents_short", {}).get("nights") == 2, (
             "a night that did not ask lost the count of a list that came back short",
             verdict().get("documents_short"))
@@ -36778,6 +37040,7 @@ def _pull_fixture(root, kit_src):
     kit["kit"].append({"what": "site", "owner": "night", "optional": True,
                        "paths": ["site/committees.json"]})
     kit["state"] += [{"path": "archive/last-night.json", "key": "last-night.json", "what": "x"},
+                     {"path": "archive/last-dry-run.json", "key": "last-dry-run.json", "what": "x"},
                      {"path": "archive/last-weekly.json", "key": "last-weekly.json", "what": "x"},
                      {"path": "archive/livestreams.json", "key": "livestreams.json", "what": "x"}]
     kit["logs"] = {"globs": ["logs/*", "reports/gc-changes-*.md"]}
@@ -36994,6 +37257,10 @@ def _cloud_pull(CL, R):
         (night / "archive/last-night.json").write_text(json.dumps(
             {"kind": "nightly", "day": today, "started": f"{today}T02:17:00",
              "clean": True}), encoding="utf-8")
+        # ... and a dry run's, kept apart from it (7 October 2026).
+        (night / "archive/last-dry-run.json").write_text(json.dumps(
+            {"kind": "nightly", "day": today, "started": f"{today}T11:02:00",
+             "clean": True, "asked": {"dry_run": True}}), encoding="utf-8")
         (night / "archive/livestreams.json").write_text(json.dumps(
             {"version": 1, "videos": {}, "last_run": {"at": f"{today}T08:45:00Z"}}),
             encoding="utf-8")
@@ -37040,6 +37307,12 @@ def _cloud_pull(CL, R):
         assert text(laptop, "archive/cloud/last-night.json") and \
             not (laptop / "archive/last-night.json").exists(), \
             "the verdict went somewhere other than archive/cloud/"
+        assert text(laptop, "archive/cloud/last-night.json") == text(night, "archive/last-night.json") \
+            and text(laptop, "archive/cloud/last-dry-run.json") == \
+            text(night, "archive/last-dry-run.json") and \
+            not (laptop / "archive/last-dry-run.json").exists() and \
+            "last-dry-run.json: a dry run, kept apart from the night's, of" in out, \
+            "a dry run's verdict did not come down beside the night's, kept apart and said to be one"
         assert text(laptop, "archive/livestreams.json") == text(night, "archive/livestreams.json"), \
             "the night's livestream state did not reach archive/livestreams.json, where the " \
             "laptop's caption catch-up reads it"
@@ -47182,10 +47455,11 @@ def _nightly_runner(NI):
              NI.current_branch, NI.upload_and_check, NI.captions_compared, NI.time,
              sys.argv, refusal.MARK, refusal.LOCK)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA")
+                "GITHUB_SHA", "DRY_RUN")
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0, "pages": []}
     lsr = {"rc": 0, "rows": 3}
+    kept = {}                   # each night's own verdict, as site-up sends it with its site
 
     def fake(args, label, cwd=None):
         calls.append(list(args))
@@ -47255,6 +47529,10 @@ def _nightly_runner(NI):
     def verdict():
         return json.loads(NI.VERDICT.read_text(encoding="utf-8"))
 
+    def keep(run_id):
+        kept[run_id] = verdict()
+        return kept[run_id]
+
     try:
         os.chdir(tmp)
         for k in env_keys:
@@ -47271,16 +47549,19 @@ def _nightly_runner(NI):
         today = f"{datetime.now():%Y-%m-%d}"
 
         # The first dry run: no baseline, and nothing to compare captions with.
+        # Its verdict is kept apart, and it sets no baseline (A DRY RUN IS KEPT
+        # APART, 7 October 2026).
         code, out = night("--runner", "--no-fetch", "--dry-run")
-        v = verdict()
+        v = json.loads(NI.DRY_VERDICT.read_text(encoding="utf-8"))
         assert code == 0, f"a first dry run with nothing wrong in its build exited {code}"
-        assert v["run_id"] == "101" and v["built"] and not v["publishable"], v
+        assert v["run_id"] == "101" and v["built"] and not v["publishable"] and \
+            v.get("kept_apart") == NI.DRY_APART, v
         assert any("census" in b for b in v["blocking"]), \
             "a night with no census from an earlier one was not kept from production"
         assert any("late-caption" in b for b in v["blocking"]), \
             "a build whose late-caption check compared nothing was not kept from production"
-        assert json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"][
-            "bills"] == 100, "the first night's counts did not become the baseline"
+        assert not NI.CENSUS.exists() and not NI.VERDICT.exists(), \
+            "a dry run wrote the night's verdict or the census, which the next real night reads"
         build = next(c for c in calls if c[0] == "build_all.py")
         assert build[:2] == ["build_all.py", "--local"] and "--no-captions" in build, build
         assert not any(c[0] == "compile_reports.py" for c in calls), \
@@ -47293,13 +47574,21 @@ def _nightly_runner(NI):
         assert Path(f"logs/site-{today}.sha256").read_text(encoding="utf-8").count("\n") == 18, \
             "the list of every built file, for the comparison with the laptop, is wrong"
         assert all(str(p).replace("\\", "/").startswith("archive/")
-                   for p in (NI.CENSUS, NI.VERDICT, NI.WEEKLY_VERDICT)), \
+                   for p in (NI.CENSUS, NI.VERDICT, NI.DRY_VERDICT, NI.WEEKLY_VERDICT,
+                             NI.RUN_VERDICT)), \
             "what travels between nights is not where cloud.py carries it from"
+
+        # The first real night sets the baseline, and is kept from production
+        # for having none to compare with.
+        code, _ = night("--runner", "--no-fetch", run_id="101b")
+        assert code == 1 and verdict()["gates"] == "no baseline" and json.loads(
+            NI.CENSUS.read_text(encoding="utf-8"))["census"]["bills"] == 100, \
+            "the first real night's counts did not become the baseline"
 
         # The gates compare with that baseline: half the bills gone stops the
         # night, and does not become tomorrow's baseline.
         size["bills"] = 50
-        code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="102")
+        code, _ = night("--runner", "--no-fetch", run_id="102")
         assert code == 1 and verdict()["gates"].startswith("blocked"), \
             "half the bills vanishing did not stop the night"
         assert json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"][
@@ -47318,7 +47607,7 @@ def _nightly_runner(NI):
         # no code changed, and not what production already serves.
         NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
         code, _ = night("--runner", "--no-fetch", run_id="103")
-        v = verdict()
+        v = keep("103")
         assert code == 0 and v["publishable"] and v["clean"], v
         NI.tracked_changes = lambda: (["build_site_v2.py"], [])
         code, _ = night("--runner", "--no-fetch", run_id="104")
@@ -47327,23 +47616,37 @@ def _nightly_runner(NI):
         NI.tracked_changes = lambda: ([], ["veto_messages.json"])
         NI.live_fingerprint = lambda base, timeout=180: NI.fingerprint(Path("site"))
         code, _ = night("--runner", "--no-fetch", run_id="105")
-        v = verdict()
+        v = keep("105")
         assert code == 0 and not v["publishable"] and v["data_rewritten"] == ["veto_messages.json"], \
             "a build production already serves was offered again, or a rewritten data file stopped it"
         NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        size["bills"] = 101             # a site production does not serve, nor run 103 built
         code, _ = night("--runner", "--no-fetch", run_id="106")
-        assert code == 0 and verdict()["publishable"], verdict()
+        assert code == 0 and keep("106")["publishable"], verdict()
+        size["bills"] = 100
 
-        # Production takes this night's build, from this night, from main.
+        # Production takes a run's own build, by the verdict that came down
+        # with its site (cloud.py site-down writes it to RUN_VERDICT), from
+        # main -- and never an older night's over a newer one fit for it.
         sent = []
         NI.upload_and_check = lambda a, site, target, base: sent.append((target, base)) or True
         NI.current_branch = lambda: "main"
-        code, _ = night("--runner", "--deploy-to", "production", run_id="105")
-        assert code == 1 and not sent, "an older night's approval deployed after a newer night had run"
+        code, _ = night("--runner", "--deploy-to", "production", run_id="106")
+        assert code == 1 and not sent, "production was deployed with no verdict come down with the site"
+        NI.write_json(NI.RUN_VERDICT, kept["105"])
+        code, _ = night("--runner", "--deploy-to", "production", run_id="106")
+        assert code == 1 and not sent, "production was deployed by another run's verdict"
+        NI.write_json(NI.RUN_VERDICT, kept["103"])
+        _runner_site(100)
+        code, _ = night("--runner", "--deploy-to", "production", run_id="103")
+        assert code == 1 and not sent, \
+            "an older night's approval deployed after a newer night had built a site fit for production"
+        NI.write_json(NI.RUN_VERDICT, kept["106"])
+        _runner_site(101)
         (Path("site") / "meta.json").write_text("{}", encoding="utf-8")
         code, _ = night("--runner", "--deploy-to", "production", run_id="106")
         assert code == 1 and not sent, "a site other than the one the night judged went to production"
-        _runner_site(100)
+        _runner_site(101)
         NI.current_branch = lambda: "some-branch"
         code, _ = night("--runner", "--deploy-to", "production", run_id="106")
         assert code == 1 and not sent, "production was deployed from a branch other than main"
@@ -47359,6 +47662,7 @@ def _nightly_runner(NI):
         code, _ = night("--runner", "--deploy-to", "preview", run_id="106")
         assert code == 0 and sent == [(NI.PREVIEW_BRANCH, "https://nightly.graniterecord.pages.dev")] \
             and NI.PREVIEW_BRANCH != NI.PRODUCTION_BRANCH, sent
+        _runner_site(100)
 
         # Fetching: the day's files and the study committees' meetings, whole.
         Path("db").mkdir(exist_ok=True)
@@ -47581,7 +47885,7 @@ class _GateNights:
     into prod/, which is what production then serves."""
 
     ENV = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-           "GITHUB_SHA", "REVIEW_GATE")
+           "GITHUB_SHA", "REVIEW_GATE", "DRY_RUN")
 
     def __init__(self, NI):
         import types
@@ -47593,6 +47897,9 @@ class _GateNights:
         self.types = types
         self.how = {"bills": 100, "terms": None, "touch": 0, "rewrite": None, "record": True}
         self.down, self.asked, self.stray = False, [], []
+        # Each run's own verdict, as its night left it: what site-up sends with
+        # its site, and site-down brings to the publish job (nightly.RUN_VERDICT).
+        self.kept = {}
 
     def __enter__(self):
         NI, refusal = self.NI, self.refusal
@@ -47722,12 +48029,21 @@ class _GateNights:
         self.summary = summary.read_text(encoding="utf-8")
         self.output = dict(ln.split("=", 1) for ln in output.read_text(encoding="utf-8").splitlines()
                            if "=" in ln)
+        for p in (self.NI.VERDICT, self.NI.DRY_VERDICT):
+            v = self.NI.load_json(p)
+            if isinstance(v, dict) and v.get("run_id") == run_id:
+                self.kept[run_id] = v
         return code, out.getvalue()
 
     def verdict(self):
         return json.loads(self.NI.VERDICT.read_text(encoding="utf-8"))
 
+    def dry_verdict(self):
+        return json.loads(self.NI.DRY_VERDICT.read_text(encoding="utf-8"))
+
     def publish(self, run_id):
+        # The publish job's site-down brings the run's own verdict with its site.
+        self.NI.write_json(self.NI.RUN_VERDICT, self.kept[run_id])
         code, _ = self.night("--runner", "--deploy-to", "production", run_id=run_id)
         assert code == 0, f"the fixture's production deploy of run {run_id} did not land"
 
@@ -47790,8 +48106,9 @@ def _nightly_publishes_its_commit(NI):
         shutil.rmtree("site")
         shutil.rmtree("prod")
         Path("prod").mkdir()
-        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="301")
-        assert code == 0, g.verdict().get("not_clean")
+        # The first real night sets the baseline (a dry run sets none).
+        g.night("--runner", "--no-fetch", run_id="301")
+        assert g.verdict()["gates"] == "no baseline", g.verdict().get("not_clean")
         g.how["touch"] = 3
         code, _ = g.night("--runner", "--no-fetch", run_id="302")
         v = g.verdict()
@@ -47850,9 +48167,9 @@ def _nightly_review_says(NI):
         "approval: one."
 
     with _GateNights(NI) as g:
-        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="311")
+        code, _ = g.night("--runner", "--no-fetch", run_id="311")
         v = g.verdict()
-        assert code == 0 and v["built"] and not v["publishable"] and "review" in v and \
+        assert code == 1 and v["built"] and not v["publishable"] and "review" in v and \
             f"- {NI.REVIEW_NOT_FOR}" in g.summary, (v.get("review"), g.summary)
         g.how["touch"] = 3
         code, _ = g.night("--runner", "--no-fetch", run_id="312")
@@ -47871,14 +48188,15 @@ def _nightly_review_says(NI):
         assert g.summary.splitlines().index(f"- {yes}") == 2, \
             f"the gate's line is not under the night's first two lines: {g.summary}"
 
-        # The same, as a dry run.
+        # The same, as a dry run: its own verdict, kept apart, says it.
         code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="314")
-        assert code == 0 and g.verdict()["review"]["needed"] is False and \
+        assert code == 0 and g.dry_verdict()["review"]["needed"] is False and \
             "- A dry run, so nothing was published; had it not been one, it would have " \
             "published without approval." in g.summary.splitlines(), g.summary
 
-        # A build production already serves could not go to production.
-        g.publish("314")
+        # A build production already serves could not go to production: 313's,
+        # which is the dry run's too.
+        g.publish("313")
         code, _ = g.night("--runner", "--no-fetch", run_id="315")
         v = g.verdict()
         assert code == 0 and not v["publishable"] and "review" in v and \
@@ -47886,7 +48204,7 @@ def _nightly_review_says(NI):
 
         # A night that did not build has no review, and its output holds.
         code, _ = g.night("--runner", "--new-term", "--dry-run", run_id="316")
-        v = g.verdict()
+        v = g.dry_verdict()
         assert code == 1 and not v["built"] and "review" not in v and \
             g.output.get("review") == "true" and not any(
                 ln[2:] in (yes, NI.REVIEW_NOT_FOR) or ln.startswith(("- Would have", "- A dry run"))
@@ -47916,7 +48234,7 @@ def _nightly_review_new_term(NI):
     changed, and the warnings the night before carried."""
     assert NI.NEW_TERM_BOX in NI.REVIEW_NEW_TERM and "approval" in NI.REVIEW_NEW_TERM
     with _GateNights(NI) as g:
-        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="321")
+        code, _ = g.night("--runner", "--no-fetch", run_id="321")
         g.how["touch"] = 3
         code, _ = g.night("--runner", run_id="322")
         v = g.verdict()
@@ -47960,7 +48278,7 @@ def _nightly_review_release(NI):
     assert NI.release_reasons("", a) == [NI.REVIEW_SHA_UNKNOWN] == NI.release_reasons(None, None)
 
     with _GateNights(NI) as g:
-        g.night("--runner", "--no-fetch", "--dry-run", run_id="331")
+        g.night("--runner", "--no-fetch", run_id="331")
         g.how["touch"] = 3
         code, _ = g.night("--runner", "--no-fetch", run_id="332")
         v = g.verdict()
@@ -48030,7 +48348,7 @@ def _nightly_review_size(NI):
     a, b = GATE_SHA
     with _GateNights(NI) as g:
         g.how.update(terms={"2023-2024": 40, "2025-2026": 1000})
-        g.night("--runner", "--no-fetch", "--dry-run", run_id="341")
+        g.night("--runner", "--no-fetch", run_id="341")
         g.how["touch"] = 3
         code, _ = g.night("--runner", "--no-fetch", run_id="342")
         assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
@@ -48166,11 +48484,12 @@ def _nightly_review_warnings(NI):
     def night(*argv, run_id):
         g.how["touch"] += 1             # a build production does not serve yet
         code, _ = g.night("--runner", *argv, run_id=run_id)
-        assert code == 0, (run_id, g.verdict().get("not_clean"))
-        return g.verdict()
+        v = g.dry_verdict() if "--dry-run" in argv else g.verdict()
+        assert code == 0, (run_id, v.get("not_clean"))
+        return v
 
     with _GateNights(NI) as g:
-        g.night("--runner", "--no-fetch", "--dry-run", run_id="351")
+        g.night("--runner", "--no-fetch", run_id="351")
         g.how["touch"] = 3
         g.night("--runner", "--no-fetch", run_id="352")
         g.publish("352")
@@ -48350,7 +48669,7 @@ def _nightly_review_fallback(NI):
 
         NI.Night.judge, NI.Night.alarms = judge, alarms
         try:
-            g.night("--runner", "--no-fetch", "--dry-run", run_id="371")
+            g.night("--runner", "--no-fetch", run_id="371")
             g.how["touch"] = 3
             code, _ = g.night("--runner", "--no-fetch", run_id="372")
             assert code == 0 and g.verdict()["publishable"], g.verdict().get("not_clean")
@@ -48466,7 +48785,7 @@ def _nightly_review_recent(NI):
         return g.verdict()
 
     with _GateNights(NI) as g:
-        g.night("--runner", "--no-fetch", "--dry-run", run_id="381")
+        g.night("--runner", "--no-fetch", run_id="381")
         g.how["touch"] = 3
         g.night("--runner", "--no-fetch", run_id="382")
         g.publish("382")
@@ -48520,7 +48839,7 @@ def _nightly_review_recent(NI):
     # failing on that run alone passed for a published night's for fourteen
     # days, and the night that failed them again was cleared.
     with _GateNights(NI) as g:
-        g.night("--runner", "--no-fetch", "--dry-run", run_id="391")
+        g.night("--runner", "--no-fetch", run_id="391")
         g.how["touch"] = 3
         g.night("--runner", run_id="392")
         g.publish("392")
@@ -48551,6 +48870,199 @@ def _nightly_review_recent(NI):
                   "night, though the build production serves lacks it; one last published "
                   "twenty days ago, or seen only on nights never published -- a New term run "
                   "for the build production serves among them -- does")
+
+
+@check("build", "a dry run's verdict is kept apart: the night's verdict, the census and the gate's "
+       "records stay as the last real night left them, its preview deploys from its own "
+       "verdict, and no dry run or newer night that built nothing makes a waiting night "
+       "unapprovable", needs=("nightly", "cloud"))
+def _nightly_dry_run_apart(NI, CL):
+    """7 October 2026. Every run of the workflow wrote the bucket's
+    state/last-night.json, and the publish job deployed only when that file
+    named its own run: a dry run on dev, started while the scheduled night
+    waited for approval, made that night's deploy unapprovable ("A newer night
+    has run since"). Dry runs on dev are routine, so it may not depend on
+    remembering. Now:
+
+      - a dry run writes its verdict to archive/last-dry-run.json, which the
+        state list carries and pull brings to archive/cloud/, and leaves
+        archive/last-night.json -- the gate's records with it -- and
+        archive/census.json byte for byte as the last real night left them;
+        its verdict and its run's page say so (DRY_APART)
+      - the workflow's DRY_RUN makes a step a dry run's whatever flags it was
+        given: its preview deploys from its own verdict, its --close finishes
+        that verdict, and a production deploy under it is refused
+      - the publish job deploys a run's own build by its own verdict
+        (RUN_VERDICT, which site-down brings with the site): never a dry
+        run's, and not an older night's over a newer one fit for production
+        (newer_fit) -- while a dry run, a newer night that never started and
+        one whose checks kept it from production leave a waiting night
+        approvable
+    """
+    # The names hold together: nightly.py's, cloud.py's and the kit's.
+    assert NI.DRY_VERDICT.as_posix() == "archive/last-dry-run.json" != NI.VERDICT.as_posix(), \
+        NI.DRY_VERDICT
+    assert CL.NIGHT_VERDICT == NI.VERDICT.as_posix() and CL.SITE_VERDICT == NI.RUN_VERDICT.as_posix(), \
+        "cloud.py sends and brings down the run's verdict somewhere nightly.py does not read it"
+    assert CL.DRY_ENV == NI.DRY_ENV == "DRY_RUN", (CL.DRY_ENV, NI.DRY_ENV)
+    state = {s["key"]: s["path"] for s in CL.load_kit(".").get("state", [])}
+    assert state.get("last-dry-run.json") == NI.DRY_VERDICT.as_posix() and \
+        state.get("last-night.json") == NI.VERDICT.as_posix() and \
+        CL.VERDICTS.get("last-dry-run.json") == f"{CL.LOCAL}/last-dry-run.json", (
+            "a dry run's verdict is not carried to the bucket and back to the laptop beside the "
+            "night's", state)
+
+    # Which night is newer: by when each started, then by run id; a record that
+    # cannot be placed stands. A verdict from before the record stands for itself,
+    # and a dry run's never.
+    own = {"run_id": "500", "started": "2026-10-07T04:17:00"}
+
+    def rec(rid, started):
+        return {NI.NEWEST_FIT: {"run_id": rid, "started": started, "day": "2026-10-08",
+                                "fingerprint": "f"}}
+    assert (NI.newer_fit(rec("501", "2026-10-08T04:17:00"), own) or {}).get("run_id") == "501"
+    assert NI.newer_fit(rec("499", "2026-10-06T04:17:00"), own) is None and \
+        NI.newer_fit(rec("500", "2026-10-08T04:17:00"), own) is None, \
+        "an older night's record, or this run's own, stood in the way of its deploy"
+    assert NI.newer_fit(rec("501", own["started"]), own) and \
+        NI.newer_fit(rec("499", own["started"]), own) is None and \
+        NI.newer_fit(rec("x", None), own), "the same second, or no start, was read wrong"
+    assert NI.newer_fit({NI.NEWEST_FIT: None}, own) is None is NI.newer_fit(None, own)
+    old = {"kind": "nightly", "run_id": "502", "started": "2026-10-08T04:17:00", "built": True,
+           "blocking": [], "asked": {"dry_run": True}}
+    assert NI.newer_fit(old, own) is None, "a dry run's verdict from before the record stood in the way"
+    assert (NI.newer_fit(dict(old, asked={"dry_run": False}), own) or {}).get("run_id") == "502" \
+        and NI.newer_fit(dict(old, asked={}, built=False), own) is None
+
+    with _GateNights(NI) as g:
+        sent = []
+
+        def deployed(a, site, target, base):
+            sent.append(target)
+            return g.deployed(a, site, target, base)
+        NI.upload_and_check = deployed
+
+        g.night("--runner", "--no-fetch", run_id="501")             # the baseline
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", run_id="502")   # waits for approval
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v[NI.NEWEST_FIT]["run_id"] == "502", v
+        night_v, census = NI.VERDICT.read_bytes(), NI.CENSUS.read_bytes()
+
+        # A dry run on dev: another build, dev's commit. Nothing the night left moves.
+        g.how["touch"] = 9
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="503", sha=GATE_SHA[1])
+        d = g.dry_verdict()
+        assert code == 0 and d["run_id"] == "503" and d["built"] and d["publishable"] and \
+            d.get("kept_apart") == NI.DRY_APART and d["asked"]["dry_run"], d
+        assert NI.VERDICT.read_bytes() == night_v and NI.CENSUS.read_bytes() == census, (
+            "a dry run rewrote the night's verdict or the census, which the next real night "
+            "and the waiting night's deploy read")
+        assert f"- {NI.DRY_APART}" in g.summary.splitlines(), \
+            f"the dry run's page does not say its verdict is kept apart: {g.summary}"
+
+        # Its preview, from its own verdict: by the flag, and by the workflow's
+        # word alone, which also keeps its last word and any production deploy
+        # its own.
+        code, _ = g.night("--runner", "--deploy-to", "preview", "--dry-run", run_id="503")
+        assert code == 0 and sent == [NI.PREVIEW_BRANCH] and \
+            g.dry_verdict()["preview"]["landed"] and NI.VERDICT.read_bytes() == night_v, \
+            ("a dry run's preview did not deploy from its own verdict", sent)
+        del sent[:]
+        os.environ["DRY_RUN"] = "true"
+        try:
+            code, _ = g.night("--runner", "--deploy-to", "preview", run_id="503", github=True)
+            assert code == 0 and sent == [NI.PREVIEW_BRANCH], \
+                "a preview step that forgot --dry-run did not read the dry run's verdict"
+            code, _ = g.night("--runner", "--close", "--outcome", "night=success", run_id="503",
+                              github=True)
+            assert code == 0 and g.dry_verdict()["steps"] == {"night": "success"} and \
+                NI.VERDICT.read_bytes() == night_v, "a dry run's --close wrote the night's verdict"
+            code, _ = g.night("--runner", "--close", "--outcome", "kit-down=failure",
+                              run_id="504", github=True)
+            dd = g.dry_verdict()
+            assert code == 1 and dd["run_id"] == "504" and not dd["built"] and \
+                dd.get("kept_apart") == NI.DRY_APART and NI.VERDICT.read_bytes() == night_v and \
+                f"- {NI.DRY_APART}" in g.summary.splitlines(), \
+                ("a dry run that never started was not said, apart from the night", dd)
+            del sent[:]
+            NI.write_json(NI.RUN_VERDICT, g.kept["502"])
+            code, _ = g.night("--runner", "--deploy-to", "production", run_id="502", github=True)
+            assert code == 1 and not sent, "a run the workflow calls a dry run deployed production"
+        finally:
+            os.environ.pop("DRY_RUN", None)
+
+        # A dry run's verdict never goes to production, even handed to the
+        # publish job.
+        NI.write_json(NI.RUN_VERDICT, g.kept["503"])
+        code, _ = g.night("--runner", "--deploy-to", "production", run_id="503")
+        assert code == 1 and not sent, "a dry run's build was deployed to production"
+
+        # Newer real nights that never started, or that their checks kept from
+        # production, leave the waiting night approvable; and it is approved.
+        g.night("--runner", "--close", "--outcome", "kit-down=failure", run_id="505")
+        assert g.verdict()["run_id"] == "505" and g.verdict()[NI.NEWEST_FIT]["run_id"] == "502", \
+            "a night that never started lost the newest night fit for production"
+        NI.tracked_changes = lambda: (["nightly.py"], [])
+        g.how["touch"] = 10
+        code, _ = g.night("--runner", "--no-fetch", run_id="506")
+        NI.tracked_changes = lambda: ([], [])
+        assert code == 1 and not g.verdict()["publishable"] and \
+            g.verdict()[NI.NEWEST_FIT]["run_id"] == "502", g.verdict().get(NI.NEWEST_FIT)
+        # ... and so do newer nights that built a site fit for production and
+        # then failed their job, which no publish job follows (the review of 7
+        # October 2026): one whose night exited 1 for a problem beside its
+        # build, and one a later step failed, which --close is told of.
+        problems = NI.Night.problems
+        NI.Night.problems = lambda self: ["the study committees' meetings were not taken"]
+        try:
+            g.how["touch"] = 13
+            code, _ = g.night("--runner", "--no-fetch", run_id="506b")
+        finally:
+            NI.Night.problems = problems
+        v = g.verdict()
+        assert code == 1 and v["built"] and not v["blocking"] and \
+            v[NI.NEWEST_FIT]["run_id"] == "502", \
+            ("a night that failed its job made itself the newest fit for production",
+             v.get(NI.NEWEST_FIT))
+        g.how["touch"] = 14
+        code, _ = g.night("--runner", "--no-fetch", run_id="506c")
+        assert code == 0 and g.verdict()[NI.NEWEST_FIT]["run_id"] == "506c" and \
+            g.verdict()[NI.FIT_CARRIED]["run_id"] == "502", g.verdict().get(NI.FIT_CARRIED)
+        code, _ = g.night("--runner", "--close", "--outcome", "night=success",
+                          "--outcome", "preview=failure", run_id="506c")
+        v = g.verdict()
+        assert code == 1 and v[NI.NEWEST_FIT]["run_id"] == "502" and NI.FIT_CARRIED not in v, \
+            ("a night whose job failed after its build stood in the way of the waiting night",
+             v.get(NI.NEWEST_FIT))
+        g.how["touch"] = 3
+        g.build()                                   # 502's site, as site-down brings it
+        g.publish("502")
+        assert sent == [NI.PRODUCTION_BRANCH], \
+            "a dry run, or newer nights that built nothing for production, made 502 unapprovable"
+
+        # An older night is still not deployed over a newer one fit for it.
+        g.how["touch"] = 11
+        g.night("--runner", "--no-fetch", run_id="507")
+        g.how["touch"] = 12
+        g.night("--runner", "--no-fetch", run_id="508")
+        assert g.kept["507"]["publishable"] and g.kept["508"]["publishable"], g.kept["508"]
+        del sent[:]
+        g.how["touch"] = 11
+        g.build()
+        NI.write_json(NI.RUN_VERDICT, g.kept["507"])
+        code, _ = g.night("--runner", "--deploy-to", "production", run_id="507")
+        assert code == 1 and not sent and any("a newer night, run 508" in ln for ln in NI.LOG), \
+            "an older night was deployed over a newer one fit for production"
+        g.how["touch"] = 12
+        g.build()
+        g.publish("508")
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("a dry run's verdict is archive/last-dry-run.json, carried and pulled beside the "
+                  "night's, which it leaves byte for byte with the census; its preview, its close "
+                  "and a refused production deploy follow the workflow's DRY_RUN; production "
+                  "deploys a run by its own verdict, never a dry run's, and an older night only "
+                  "when no newer night built a site fit for production")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
@@ -49738,9 +50250,11 @@ def _nightly_new_term(NI, SG, BA):
             code, _ = night(*argv)
             assert code == 2, f"nightly.py accepted {' '.join(argv)}"
 
-        # An ordinary night: the files whole, the views taken, the baseline set.
-        code, _ = night("--runner", "--dry-run", run_id="201")
-        assert code == 0 and baseline()["census"]["bills"] == 100, verdict()
+        # An ordinary night: the files whole, the views taken, the baseline set
+        # -- by a real night, since a dry run sets none.
+        code, _ = night("--runner", run_id="201")
+        assert verdict()["gates"] == "no baseline" and baseline()["census"]["bills"] == 100, \
+            verdict()
         assert not any("--allow-shrink" in c for c in of("snapshot_gencourt.py")) and \
             of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], calls
         assert "new_term" not in verdict() and verdict()["asked"]["new_term"] is False
@@ -49770,11 +50284,13 @@ def _nightly_new_term(NI, SG, BA):
                 (("--no-fetch",), NI.REFUSED_NO_FETCH, NI.NEW_TERM_NO_FETCH),
                 (("--dry-run", "--no-fetch"), NI.REFUSED_DRY, NI.NEW_TERM_DRY)):
             code, _ = night("--runner", "--new-term", *flags, run_id="203")
-            v = verdict()
+            # Ticked with Dry run, it is a dry run's, and its verdict is kept apart.
+            v = json.loads((NI.DRY_VERDICT if "--dry-run" in flags else NI.VERDICT).read_text(
+                encoding="utf-8"))
             assert code == 1 and not calls and v["new_term"] == {"refused": refused} \
                 and not v["built"] and baseline()["census"]["bills"] == 100, (flags, code, calls, v)
             code, out = night("--runner", "--close", "--outcome", "night=failure", run_id="203",
-                              github=True)
+                              *(["--dry-run"] if "--dry-run" in flags else []), github=True)
             assert page_note(out) == sentence + " Nothing was published.", page_note(out)
             assert all(x in sentence for x in (NI.NEW_TERM_BOX, f'"{NI.FETCH_BOX}" ticked',
                                                f"{NI.DRY_BOX} unticked")), sentence
@@ -49862,8 +50378,10 @@ def _nightly_new_term(NI, SG, BA):
                 "published: the next scheduled night would pass its gates against it")
 
         # The baseline moves when that build has landed on production, and not
-        # when the deploy failed.
+        # when the deploy failed. (The publish job deploys by the run's own
+        # verdict, which site-down brings with the site to RUN_VERDICT.)
         NI.current_branch = lambda: "main"
+        NI.write_json(NI.RUN_VERDICT, verdict())
         NI.upload_and_check = lambda a, site, target, base: False
         code, _ = night("--runner", "--deploy-to", "production", run_id="204")
         assert code == 1 and baseline()["census"]["feeds"] == 5, \
@@ -50233,8 +50751,10 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
       - the next scheduled night takes down the old files, refuses the
         smaller ones, and its page says "a new term?", which boxes to tick,
         and that the New term run was not published
-      - that older run's approval, arriving late, deploys nothing and keeps
-        nothing
+      - that older run's approval, arriving late, is not refused for the
+        newer night that built nothing (a deploy that does not land keeps
+        nothing), and is refused once a newer night has built a site fit for
+        production -- deploying nothing and keeping nothing
       - a New term run whose deploy does not land keeps nothing; one whose
         deploy lands moves its files into the kit and its counts into the
         census, and the night after takes them down and is gated as usual
@@ -50420,12 +50940,16 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
             census=json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"]["feeds"]
             if NI.CENSUS.exists() else None)
 
+    tried = []
+
     def publish(name, run_id, lands=True):
         """The publish job, once approved: its deploy, and -- only when that
-        step succeeded, as a workflow step runs -- the release and the state."""
+        step succeeded, as a workflow step runs -- the release and the state.
+        `tried` names each deploy it asked for, landed or not."""
         machine(name, "state-down")
         cloud("site-down", "--run", run_id)
-        NI.upload_and_check = lambda a, site, target, base: lands
+        del tried[:]
+        NI.upload_and_check = lambda a, site, target, base: tried.append(target) or lands
         code, _ = night("--runner", "--deploy-to", "production", run_id=run_id)
         if code == 0:
             for verb in (("kit-release", "--run", run_id), ("state-up",)):
@@ -50473,8 +50997,9 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         code, out = cloud("seed-kit")
         assert code == 0, out[-300:]
         gc["docket"] = OLD
-        first = the_night("first", "300", "--dry-run")
-        assert first.code == 0 and first.v["fetch"] == "installed" and first.census == 10, first.v
+        first = the_night("first", "300")
+        assert first.v["gates"] == "no baseline" and first.v["fetch"] == "installed" and \
+            first.census == 10, first.v
         before = later_nights_get()
         assert before[0] == OLD and before[3] == 10, before[3]
 
@@ -50526,9 +51051,21 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
             f"The New term run of {today} was not published" in why, why
         assert later_nights_get() == before
 
-        # 302's approval, arriving after a newer night has run: nothing.
-        assert publish("late", "302") == 1 and later_nights_get() == before, \
-            "an older New term run's late approval deployed, or kept what it had accepted"
+        # 302's approval, arriving after a newer night that built nothing: that
+        # night is no reason to refuse it (7 October 2026: only a newer night
+        # fit for production is), so its deploy is asked for -- and here it
+        # does not land, so nothing is kept.
+        assert publish("late", "302", lands=False) == 1 and tried == [NI.PRODUCTION_BRANCH] and \
+            later_nights_get() == before, (
+                "a newer night that built nothing made a waiting New term run unapprovable, or "
+                "a deploy that did not land kept what the run had accepted", tried)
+        # ... and after a newer night that built a site fit for production --
+        # the old term's files, not fetched -- it deploys nothing and keeps
+        # nothing.
+        newer = the_night("newer", "303b", "--no-fetch")
+        assert newer.code == 0 and newer.v["publishable"], newer.v
+        assert publish("later", "302") == 1 and not tried and later_nights_get() == before, \
+            "an older New term run's late approval deployed over a newer night fit for production"
 
         # A NEW TERM RUN THAT IS PUBLISHED. A deploy that does not land keeps
         # nothing; one that lands moves the files into the kit and the counts
@@ -53464,8 +54001,8 @@ def _nightly_falls_back(NI, DF, PD, SG):
         Path("nh-archive/index.json").write_text(json.dumps({"Docket.txt": {"history": [
             ["2026-09-30", hashlib.sha256(Path("Docket.txt").read_bytes()).hexdigest()]]}}),
             encoding="utf-8")
-        code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="300")
-        assert code == 0 and verdict()["db_nights"] == 0, verdict()
+        code, _ = night("--runner", "--no-fetch", run_id="300")
+        assert verdict()["gates"] == "no baseline" and verdict()["db_nights"] == 0, verdict()
 
         # THE ORDER (2 October 2026): the export once; empty, the database at
         # once; and the wait only when the database cannot be used. The
@@ -56973,6 +57510,123 @@ def _workflows_gate(NI):
     return "ok", ("REVIEW_GATE is shadow and the publish job goes through production; the routing "
                   "(on, GATE_ROUTED) passes this, the production rule and the New term rule, and "
                   "without its New term clause or left in shadow does not")
+
+
+# A DRY RUN IS KEPT APART (7 October 2026): the workflow's one word for it,
+# which every step inherits, and which nightly.py and cloud.py read themselves.
+DRY_RUN_ENV = "  DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}"
+# ... and so preflight inherits it too, when the night runs it first on
+# GitHub's machine. The workflow's words for its own run, which no check's
+# fixture may take for its own: main() takes them out before any check runs.
+WORKFLOW_WORDS = ("DRY_RUN",)
+
+
+def _not_the_runs():
+    """Take the workflow's words for the run preflight is part of (WORKFLOW_WORDS)
+    out of this process's environment, and so out of every child it starts.
+
+    THE REVIEW OF 7 OCTOBER 2026. nightly.py runs preflight --code before it
+    fetches anything, with the workflow's environment, and on a dry run that
+    holds DRY_RUN=true beside GITHUB_ACTIONS=true -- which makes every kit-up,
+    state-up and night a fixture drives a dry run's. Eight checks failed under
+    it (the kit round trip, the R2 adapter, the New term nights, the database
+    fallback among them), so every dry run would have stopped at "preflight
+    failed. Nothing fetched, nothing built." A check that wants a dry run sets
+    the word itself, and puts back what it found."""
+    for k in WORKFLOW_WORDS:
+        os.environ.pop(k, None)
+
+
+@check("workflows", "preflight's checks are not told that the run preflight is part of is a dry "
+       "run, so a dry run on GitHub's machine does not fail its own preflight",
+       needs=("nightly", "cloud"))
+def _preflight_not_the_runs(NI, CL):
+    """THE REVIEW OF 7 OCTOBER 2026 (_not_the_runs says what it found). The
+    word nightly.py and cloud.py read is among the words taken out; taken out,
+    neither reads a dry run from GitHub's environment; and main() takes them
+    out before it runs any check."""
+    import inspect
+    assert NI.DRY_ENV in WORKFLOW_WORDS and CL.DRY_ENV in WORKFLOW_WORDS, \
+        (NI.DRY_ENV, CL.DRY_ENV, WORKFLOW_WORDS)
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS",) + WORKFLOW_WORDS}
+    try:
+        os.environ.update(GITHUB_ACTIONS="true", **{k: "true" for k in WORKFLOW_WORDS})
+        assert NI.dry_by_workflow() and CL.dry_by_workflow()
+        _not_the_runs()
+        assert not NI.dry_by_workflow() and not CL.dry_by_workflow(), \
+            "a dry run's word on GitHub's machine reaches the checks' fixtures"
+    finally:
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    src = inspect.getsource(main)
+    at = src.find("_not_the_runs()")
+    assert at != -1 and at < src.find("for c in CHECKS"), \
+        "preflight's main() runs its checks without first taking out the workflow's words"
+    return "ok", (f"{', '.join(WORKFLOW_WORDS)} is taken out before any check runs, so the "
+                  "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's machine")
+
+
+@check("workflows", "a dry run is one word in nightly.yml that every step inherits and nightly.py "
+       "and cloud.py read themselves, and a dry run sends no site for production and starts "
+       "no publish job", needs=("nightly", "cloud"))
+def _workflows_dry_run(NI, CL):
+    """A dry run on dev is routine now, and what keeps it apart -- its own
+    verdict, no census, only what it fetched sent back, nothing to production
+    -- must not depend on each step being told. So nightly.yml says it once,
+    in its top-level env, from the Dry run box on a run by hand and never on a
+    schedule; no step or job says it again, where its own would hide the
+    run's; nightly.py and cloud.py take a run as a dry run's on GitHub's
+    machine whenever that word says so, whatever flags a step passed; the
+    site goes up for production only when it does not; and the publish job
+    never runs for one."""
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    code = _wf_code(lines)
+    assert DRY_RUN_ENV in _wf_block(lines, "env"), (
+        "nightly.yml does not set DRY_RUN in its top-level env from the Dry run box, on a run "
+        "by hand alone")
+    sets = [ln.strip() for ln in code if re.match(r"^\s*DRY_RUN\s*:", ln)]
+    assert sets == [DRY_RUN_ENV.strip()], \
+        f"nightly.yml sets DRY_RUN more than once, and a step's own would hide the run's: {sets}"
+    assert NI.DRY_ENV == CL.DRY_ENV == "DRY_RUN", (NI.DRY_ENV, CL.DRY_ENV)
+    jobs = _wf_jobs(text)
+    ups = 0
+    for j, jl in jobs.items():
+        for st in _wf_steps(_wf_code(jl)):
+            s = "\n".join(st)
+            if "cloud.py site-up" in s:
+                ups += 1
+                assert re.search(r"^        if:.*env\.DRY_RUN == 'false'", s, re.M), \
+                    f"nightly.yml: job {j} sends the site for production on a dry run"
+    assert ups == 1, f"nightly.yml sends the site for production from {ups} steps, not one"
+    cond = re.search(r"^    if:\s*(.+)$", "\n".join(_wf_code(jobs.get("publish") or [])), re.M)
+    assert cond and "inputs.dry_run == false" in cond.group(1), \
+        "nightly.yml's publish job can run for a dry run"
+
+    # The two read the word themselves, and on GitHub's machine only.
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV)}
+    try:
+        for actions, dry, want in (("true", "true", True), ("true", "false", False),
+                                   (None, "true", False)):
+            for k, val in (("GITHUB_ACTIONS", actions), (NI.DRY_ENV, dry)):
+                os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+            assert NI.dry_by_workflow() is want and CL.dry_by_workflow() is want, \
+                (actions, dry, want)
+    finally:
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
+    main = src[src.find("def main("):src.find("def current_branch(")]
+    at = main.find("if not a.dry_run and not a.weekly and dry_by_workflow():")
+    assert at != -1 and at < main.find("on_the_runner()") and \
+        "a.dry_run = True" in main[at:at + 120], \
+        "nightly.py does not take a dry run from the workflow's word before the runner starts"
+    return "ok", ("DRY_RUN is set once, from the box on a run by hand; nightly.py and cloud.py "
+                  "read it on GitHub's machine whatever a step passes; the site goes up only "
+                  "when it is false, and the publish job never runs for a dry run")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
@@ -67506,6 +68160,9 @@ def main():
     # R2 while this is set, for this process and everything it runs; a folder
     # bucket (--local-bucket) still works.
     os.environ["GRANITE_NO_BUCKET"] = "1"
+    # THE CHECKS ARE NOT THE RUN'S (7 October 2026): the workflow's word that
+    # the run preflight is part of is a dry run is taken out first.
+    _not_the_runs()
     # THE CHECKS BUILD BY THE CLOCK. A day stated for comparing two builds
     # (build_date.py) is not carried into the fixtures, which date a hearing
     # three days from now by the clock and would find it outside a stated

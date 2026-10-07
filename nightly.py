@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.55
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -122,13 +122,58 @@ night itself does is here, and what differs on that machine is behind --runner:
                       and result, and a failing step's last lines
   the verdict         archive/last-night.json (R2's state/last-night.json):
                       what the night did and whether it was clean, finished
-                      by --close with the workflow's own step results
+                      by --close with the workflow's own step results. A dry
+                      run's is kept apart (below)
 
 --runner --weekly is Sunday night's job (.github/workflows/weekly.yml): the
 committee rosters, the members who have left and the study committees'
 members and bills, one fetch at a time, each whole or not at all, with a
 report of what changed in reports/gc-changes-weekly-<date>.md, beside the
 night's own what-changed reports.
+
+A DRY RUN IS KEPT APART (7 October 2026)
+
+Every run of the workflow wrote the bucket's state/last-night.json, a dry run
+by hand as much as a scheduled night, and the publish job deployed only when
+that file named its own run. So a dry run started on dev while the scheduled
+night waited for approval made that night's deploy unapprovable ("A newer
+night has run since"). And the next real night read what a dry run left as
+its own: its census as the baseline, its verdict's records for the gate, and
+every file of the kit the dry run's branch had rebuilt -- code not yet on
+main, carried into main's next build. Dry runs on dev are routine, so none
+of this may depend on remembering not to start one:
+
+  its verdict         archive/last-dry-run.json (DRY_VERDICT; R2's
+                      state/last-dry-run.json, which cloud.py pull brings to
+                      archive/cloud/), never archive/last-night.json. Its
+                      preview deploy and --close read and finish that file,
+                      and the verdict and the run's page say so (DRY_APART)
+  what it leaves      archive/last-night.json, archive/census.json and the
+                      gate's records in the verdict -- the warning kinds, the
+                      published kinds, the release commit read off
+                      production -- exactly as the last real night left
+                      them. A dry run is judged against them and writes none
+  how it is known     --dry-run, or on GitHub's machine the workflow's
+                      DRY_RUN (DRY_ENV), which every step of a run inherits:
+                      a step that forgets the flag is a dry run's all the same
+  what it sends back  only what it fetched: cloud.py's --dry-night, which the
+                      same DRY_RUN implies, says what (its docstring)
+
+THE PUBLISH JOB DEPLOYS A RUN'S OWN BUILD BY ITS OWN VERDICT (7 October 2026).
+cloud.py site-up sends the night's verdict with its site, and site-down
+brings it to RUN_VERDICT on the publish job's machine: --deploy-to production
+reads that, and nothing else, for what it may deploy. The newest real
+night's verdict, as state-down brings it, answers one question: has a NEWER
+night built a site fit for production since (NEWEST_FIT, newer_fit)? If one
+has, the older is not deployed over it. A dry run never writes that record,
+and a newer night that did not build, or whose checks kept its build from
+production, does not stand in the way -- nor one whose job failed, which no
+publish job follows: a night that exits non-zero never writes the record,
+and --close puts back the one it replaced when a later step of its job
+failed (FIT_CARRIED; the review of 7 October 2026 found a night that built
+a site fit for production and then failed its job -- the livestreams not
+set up, a preview that did not land -- refusing the waiting night with
+nothing to approve in its place).
 
 THE ONE NIGHT A TERM TURNS OVER: --new-term (30 September 2026)
 
@@ -453,8 +498,35 @@ CENSUS = Path("archive/census.json")          # the last good build's counts and
 # out by build_data, with the bills they name (build_data.LEFT_OUT, under its
 # --out; preflight holds the two names together). A night with none has none.
 LEFT_OUT = Path("data/left_out.json")
-VERDICT = Path("archive/last-night.json")     # what tonight did, and whether it was clean
+VERDICT = Path("archive/last-night.json")     # what the last real night did, and whether it was clean
 WEEKLY_VERDICT = Path("archive/last-weekly.json")
+# A DRY RUN IS KEPT APART (7 October 2026; the docstring says why). Its verdict
+# is this file and never VERDICT; cloud_kit.json's state list carries it as
+# state/last-dry-run.json, and cloud.py pull brings it to archive/cloud/.
+DRY_VERDICT = Path("archive/last-dry-run.json")
+# The publish job's: the verdict of the run whose site it deploys, which
+# cloud.py site-down brings down with that site (cloud.SITE_VERDICT, which
+# preflight holds to this). --deploy-to production reads nothing else for it.
+RUN_VERDICT = Path("archive/run-verdict.json")
+# The workflow's word that a run is a dry run (its top-level env, which every
+# step inherits). cloud.DRY_ENV is the same name; preflight holds the two and
+# the workflow's line together.
+DRY_ENV = "DRY_RUN"
+# In a real night's verdict, carried from night to night: the newest real
+# night whose build its checks found fit for production -- {"run_id", "day",
+# "started", "fingerprint"} -- whether or not production already served it.
+# What newer_fit() reads to keep an older night from being deployed over it.
+NEWEST_FIT = "newest_fit"
+# ... and, in the verdict of a night that made itself that record, the one it
+# replaced (a dict, or None where there was none), which --close puts back
+# when a step of the night's job failed: a failed job has no publish job, so
+# it is no newer night production can get.
+FIT_CARRIED = "newest_fit_carried"
+# What a dry run's verdict and its run's page say of it, in these words.
+DRY_APART = ("This dry run's verdict is kept apart, in archive/last-dry-run.json: the last "
+             "real night's verdict, the census and the gate's records are as that night left "
+             "them, and a night waiting for approval can still be approved. It sends back only "
+             "what it fetched, and its logs.")
 
 # Scratch space for a fetch that must arrive whole before it replaces anything.
 # Inside the working folder, so a swap is a rename on the same disk.
@@ -1108,6 +1180,11 @@ def main():
         if a.deploy:
             ap.error("--deploy is the laptop's. On GitHub's machine the deploys are "
                      "--deploy-to steps, and production is behind its own environment.")
+        # A DRY RUN IS KNOWN BY THE WORKFLOW'S WORD (7 October 2026) as well as
+        # by the flag: every step of a run inherits DRY_RUN, so a step that
+        # forgets --dry-run still keeps its verdict apart.
+        if not a.dry_run and not a.weekly and dry_by_workflow():
+            a.dry_run = True
         if a.new_term and (a.deploy_to or a.close):
             ap.error("--new-term is for the night or the weekly job: a deploy and the "
                      "verdict are the same on every night")
@@ -1571,6 +1648,12 @@ def write_json(path, obj):
 
 def github(name, default=""):
     return os.environ.get(name, default)
+
+
+def dry_by_workflow():
+    """Whether the workflow says this run is a dry run (DRY_ENV), on GitHub's
+    machine: what makes a step that forgets --dry-run a dry run's anyway."""
+    return github("GITHUB_ACTIONS") == "true" and github(DRY_ENV) == "true"
 
 
 def gh_output(**kv):
@@ -3297,6 +3380,10 @@ class Night:
         # The gate's reasons from the build and from production (THE GATE),
         # filled in by judge; finish() adds the warnings' and writes "review".
         self.review_why = []
+        # Where this run's verdict goes: a dry run's is kept apart (DRY_APART).
+        # Either way it starts from the last REAL night's, so a dry run is
+        # judged as the night would be, and changes nothing that night left.
+        self.path = DRY_VERDICT if a.dry_run else VERDICT
         prev = load_json(VERDICT)
         # What the gate's fourth reason compares with (WARNING KINDS): the
         # kinds of the build production served when last read, and of the
@@ -3304,8 +3391,9 @@ class Night:
         # nights published in the last KINDS_RECENT_DAYS. Carried as they
         # were; judge() reads which production serves tonight and adds its
         # kinds to the last, and finish() makes tonight's build the newest
-        # sent where it is one.
-        for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED):
+        # sent where it is one. And the newest real night fit for production
+        # (NEWEST_FIT), which finish() makes tonight where it is one.
+        for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED, NEWEST_FIT):
             if isinstance(prev, dict) and isinstance(prev.get(k), dict):
                 self.v[k] = prev[k]
         # How many nights in a row the day's files have come from the
@@ -3343,7 +3431,8 @@ class Night:
         say(f"on GitHub's machine: commit {self.v['sha'][:12] or '(not on GitHub)'}, "
             f"run {self.v['run_id'] or '-'}; "
             + ("taking the day's data" if not self.a.no_fetch else "no fetch")
-            + ("; a dry run: nothing goes to production" if self.a.dry_run else "")
+            + (f"; a dry run: nothing goes to production, and its verdict is kept apart in "
+               f"{DRY_VERDICT.as_posix()}" if self.a.dry_run else "")
             + (f"; {NEW_TERM_BOX}: the General Court's smaller files accepted, once"
                if self.a.new_term else ""))
         say(f"  the refusal record is {refusal.MARK}; python {sys.version.split()[0]}")
@@ -3391,8 +3480,10 @@ class Night:
             blocking.append("there is no census from an earlier night, so the gates had "
                             "nothing to compare with; "
                             + ("a New term run sets no baseline until its build is published, "
-                               "so run the nightly once without New term first (a dry run "
-                               "that does not fetch sets one)" if a.new_term else
+                               "so run the nightly once without New term first, with Dry run "
+                               "unticked (a dry run sets none)" if a.new_term else
+                               "a dry run sets no baseline, so the next real night's counts "
+                               "will be it" if a.dry_run else
                                "tonight's counts are the baseline from tomorrow"))
         elif stop:
             v["gates"] = "blocked: " + "; ".join(stop)
@@ -3448,6 +3539,10 @@ class Night:
                                      "build is published, and not before")
             say(f"  {CENSUS} is left as it was: a New term run's counts become the baseline "
                 "when its build is published")
+        elif not stop and a.dry_run:
+            # A DRY RUN IS KEPT APART: its counts are its branch's build's, and
+            # the next real night is gated against the last real night's.
+            say(f"  {CENSUS} is left as the last real night left it: a dry run sets no baseline")
         elif not stop:
             write_json(CENSUS, {"census": after, "fingerprint": fp, "day": self.day,
                                 "run_id": v["run_id"], "sha": v["sha"]})
@@ -3673,8 +3768,23 @@ class Night:
                 # the night's that sent it first.
                 v[KINDS_SENDABLE] = {"fingerprint": v.get("fingerprint"),
                                      "kinds": v["warning_kinds"], "day": self.day}
-        write_json(VERDICT, v)
-        say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {VERDICT}")
+        if self.a.dry_run:
+            v["kept_apart"] = DRY_APART
+        elif v.get("built") and not v.get("blocking") and code == 0:
+            # The newest real night fit for production is tonight's, whether
+            # or not production serves it already: an older night waiting for
+            # approval is not deployed over it (newer_fit). Only a night that
+            # exits 0: one that does not fails its job, and no publish job
+            # follows it. The record it replaces is kept beside it, for
+            # --close to put back if a later step of the job fails.
+            carried = v.get(NEWEST_FIT)
+            v[FIT_CARRIED] = carried if isinstance(carried, dict) else None
+            v[NEWEST_FIT] = {"run_id": str(v.get("run_id") or ""), "day": self.day,
+                             "started": v.get("started"), "fingerprint": v.get("fingerprint")}
+        write_json(self.path, v)
+        say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {self.path.as_posix()}")
+        if self.a.dry_run:
+            say(f"  {DRY_APART}")
         for w in why + alarms:
             say(f"  - {w}")
         for w in v["warnings"]:
@@ -3691,6 +3801,7 @@ class Night:
         gh_summary([f"### Nightly {self.day}: {'clean' if v['clean'] else 'not clean'}",
                     f"- built: {'yes' if v.get('built') else 'no'}; for production: "
                     f"{'yes' if v.get('publishable') else 'no'}"]
+                   + ([f"- {DRY_APART}"] if self.a.dry_run else [])
                    + ([f"- **{v['warnings'][0]}**"] if from_db(v) and v["warnings"] else [])
                    + [f"- **error: {x}**" for x in alarms]
                    # The gate's line, under what leads the page.
@@ -3707,25 +3818,74 @@ class Night:
                    + [f"- warning: {w}" for w in v["warnings"]])
 
 
+def fit_record(v):
+    """The newest real night fit for production, as the verdict `v` records it
+    (NEWEST_FIT), or None. A verdict written before 7 October 2026 records
+    none, and stands for itself: its own night, where that built a site fit
+    for production and was not a dry run."""
+    if not isinstance(v, dict):
+        return None
+    if NEWEST_FIT in v:
+        r = v[NEWEST_FIT]
+        return r if isinstance(r, dict) and str(r.get("run_id") or "") else None
+    if v.get("kind") == "nightly" and v.get("built") and not v.get("blocking") and \
+            not (v.get("asked") or {}).get("dry_run") and str(v.get("run_id") or ""):
+        return {"run_id": str(v["run_id"]), "day": v.get("day"), "started": v.get("started"),
+                "fingerprint": v.get("fingerprint")}
+    return None
+
+
+def newer_fit(newest, own):
+    """The record of a real night that built a site fit for production after
+    the run whose verdict is `own` started, by `newest` -- the last real
+    night's verdict -- or None. Not this run, and not one older than it (this
+    run's own record never reached the bucket, say). Which is older is told
+    by when each started and, started the same second, by GitHub's run ids,
+    which grow; where neither tells, the record stands, which keeps
+    production as it is: the safe side. A newer night that built the very
+    same site stands too: a New term run's deploy also lets what it accepted
+    be kept, which no later night's approval should do for it."""
+    r = fit_record(newest)
+    if not r or str(r.get("run_id")) == str(own.get("run_id") or ""):
+        return None
+    theirs, mine = str(r.get("started") or ""), str(own.get("started") or "")
+    if theirs and mine and theirs != mine:
+        return r if theirs > mine else None
+    ids = str(r.get("run_id") or ""), str(own.get("run_id") or "")
+    if theirs and theirs == mine and all(x.isdigit() for x in ids):
+        return r if int(ids[0]) > int(ids[1]) else None
+    return r
+
+
 def runner_deploy(a):
-    """--deploy-to preview|production: tonight's build, to one of two places.
+    """--deploy-to preview|production: a run's own build, to one of two places.
 
     A workflow step of its own, because it alone is given the Pages token.
-    Tonight's verdict decides: a preview needs a build that passed its checks;
-    production needs a build the night judged fit for it, the same site as the
-    one judged (by fingerprint), this folder on REPO_BRANCH, and the newest
-    night -- an older night's approval is refused, because a newer one has run.
+    The run's own verdict decides. A preview needs a build that passed its
+    checks, by the night's verdict, or a dry run's (DRY_VERDICT). Production
+    reads only the verdict that came down with the site (RUN_VERDICT, from
+    cloud.py site-down): this run's, not a dry run's, sending this build to
+    production; the same site as the one judged (by fingerprint); this folder
+    on REPO_BRANCH; and no newer real night fit for production since
+    (newer_fit), which the last real night's verdict, as state-down brought
+    it, records. So a dry run, or a newer night that did not build or was
+    kept from production, never makes a waiting night unapprovable, and an
+    older night is never deployed over a newer one production should get.
     """
     where = a.deploy_to
-    vpath = VERDICT
-    v = load_json(vpath) or {}
     site = Path(a.site)
     rid = github("GITHUB_RUN_ID")
     say(f"\n--- deploy to {where} ---")
+    if where == "production" and a.dry_run:
+        say("\nNOT DEPLOYED: a dry run sends nothing to production.")
+        return 1
+    vpath = RUN_VERDICT if where == "production" else DRY_VERDICT if a.dry_run else VERDICT
+    v = load_json(vpath) or {}
     if rid and v.get("run_id") != rid:
-        say(f"\nNOT DEPLOYED: {vpath} is the verdict of run {v.get('run_id') or '(none)'}, "
-            f"not this run ({rid})."
-            + (" A newer night has run since; approve that one." if where == "production" else ""))
+        say(f"\nNOT DEPLOYED: {vpath.as_posix()} is the verdict of run "
+            f"{v.get('run_id') or '(none)'}, not this run ({rid})."
+            + (" The site came down without its own night's verdict." if where == "production"
+               else ""))
         return 1
     if where == "preview":
         if not v.get("built"):
@@ -3733,8 +3893,20 @@ def runner_deploy(a):
             return 1
         target, base = PREVIEW_BRANCH, f"https://{PREVIEW_BRANCH}.{a.project}.pages.dev"
     else:
+        if (v.get("asked") or {}).get("dry_run"):
+            say("\nNOT DEPLOYED: this run's verdict is a dry run's, and a dry run sends nothing "
+                "to production.")
+            return 1
         if not v.get("publishable"):
             say("\nNOT DEPLOYED: tonight's verdict does not send this build to production.")
+            return 1
+        newer = newer_fit(load_json(VERDICT), v)
+        if newer:
+            say(f"\nNOT DEPLOYED: a newer night, run {newer.get('run_id')} of "
+                f"{newer.get('day') or '?'}, has built a site fit for production since this one, "
+                "and this older build is not deployed over it; approve that one. (A dry run, or "
+                "a newer night that did not build or was kept from production, does not stop "
+                "this.)")
             return 1
         if fingerprint(site) != v.get("fingerprint"):
             say("\nNOT DEPLOYED: the site in this folder is not the build tonight's checks "
@@ -3820,8 +3992,10 @@ def close_verdict(a):
     past its own failure -- the livestreams -- still fails the night at the end.
     A night that was not clean puts plain_why()'s sentence at the top of the
     run's page on GitHub: an error when the job fails, a warning otherwise.
+    A dry run's is its own verdict, kept apart (DRY_VERDICT): one that never
+    started is said there, and the last real night's stands as it was.
     """
-    path = WEEKLY_VERDICT if a.weekly else VERDICT
+    path = WEEKLY_VERDICT if a.weekly else DRY_VERDICT if a.dry_run else VERDICT
     v = load_json(path)
     rid = github("GITHUB_RUN_ID")
     steps = {}
@@ -3849,15 +4023,31 @@ def close_verdict(a):
             # build production served, the newest one sent and the recent
             # published nights' kinds stay as they were, and a build published
             # before this night is known after it.
-            for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED):
+            # ... and the newest real night fit for production (NEWEST_FIT):
+            # one that never started is no newer night, and an older one
+            # waiting for approval stays approvable.
+            for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED, NEWEST_FIT):
                 if isinstance(older, dict) and isinstance(older.get(k), dict):
                     v[k] = older[k]
+        if a.dry_run:
+            v["asked"] = {"dry_run": True}
+            v["kept_apart"] = DRY_APART
+            gh_summary([f"- {DRY_APART}"])
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
     if failed:
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "
                                              + ", ".join(failed))
+        # A FAILED JOB IS NO NEWER NIGHT FIT FOR PRODUCTION (FIT_CARRIED): this
+        # step exits 1, the job fails, and no publish job follows it, so the
+        # record tonight made of itself gives way to the one it replaced, and
+        # a night already waiting for approval stays approvable.
+        own = v.get(NEWEST_FIT)
+        if not a.weekly and not a.dry_run and isinstance(own, dict) and \
+                str(own.get("run_id") or "") == str(rid or v.get("run_id") or ""):
+            carried = v.pop(FIT_CARRIED, None)
+            v[NEWEST_FIT] = carried if isinstance(carried, dict) else None
     v["closed"] = datetime.now().isoformat(timespec="seconds")
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"

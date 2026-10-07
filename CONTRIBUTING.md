@@ -162,9 +162,13 @@ Three steps, each catching what the one before cannot.
    GitHub runs on `main`, on an empty machine with the kit from R2, built and
    checked by the same gates, and nothing goes to production. "Take the
    day's data" is unticked by default, so it builds from the kit and asks the
-   General Court nothing; tick it only when the change is to the fetch. **Never start one while a night is waiting for approval:**
-   the dry run's verdict becomes the newest, and production refuses to deploy
-   any night but the newest, so the waiting night's deploy is refused.
+   General Court nothing; tick it only when the change is to the fetch. It
+   can be started at any time, a night waiting for approval included: its
+   verdict is kept apart, in `archive/last-dry-run.json`, and the waiting
+   night stays approvable (until 7 October 2026 a dry run's verdict became
+   the newest and that night's deploy was refused). It sends back to the
+   bucket only what it fetched and its logs, so nothing `dev`'s code made is
+   built from by `main`'s next night.
 
 The first runs on a bare clone. The second needs the record on disk and the
 third the repository's own secrets, so for a pull request from outside they

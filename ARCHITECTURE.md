@@ -83,11 +83,24 @@ one archive for the second job; what the night changed goes back to the kit
 (`cloud.py kit-up`); and the night's verdict -- what it did,
 whether it was clean, its warnings and its errors -- is written to
 `archive/last-night.json` and kept in the bucket as `state/last-night.json`.
+A dry run's verdict is kept apart, in `archive/last-dry-run.json`
+(`state/last-dry-run.json`): it leaves the night's verdict, the census and
+the gate's records as the last real night left them, and its kit-up and
+state-up send back only what it fetched -- the day's files as the export
+served them and their archive, a refusal or a hold -- with its own verdict
+and its logs, the logs under `logs/<date>/dry-run/`, so nothing its branch's
+code made is read by `main`'s next night. The workflow's `DRY_RUN` says so to
+every step, and `nightly.py` and `cloud.py` read it themselves.
 The second job deploys to production. It sits behind GitHub's `production`
 environment, so it waits for a person's approval, and
-`nightly.py --deploy-to production` deploys only the newest night's build: a verdict from
-another run, a site whose fingerprint is not the one judged, or a checkout
-not on `main` is refused. The weekly workflow, `weekly.yml`, runs on Sunday
+`nightly.py --deploy-to production` deploys a run's own build by that night's
+own verdict, which `cloud.py site-up` sends with the site and `site-down`
+brings back: a dry run's verdict, a site whose fingerprint is not the one
+judged, or a checkout not on `main` is refused, and so is an older night once
+a newer one has built a site fit for production and finished its job
+(`newest_fit`). A dry run, or a newer night that built nothing for
+production or whose job failed, can no longer make a night waiting for
+approval unapprovable. The weekly workflow, `weekly.yml`, runs on Sunday
 night: the committee rosters, the members who have left and the study
 committees, each fetch whole or not at all. It publishes nothing; Monday's
 night builds what it took.
