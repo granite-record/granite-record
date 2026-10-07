@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.425
+# GRANITE_VERSION: 2026-09-04.426
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31995,10 +31995,9 @@ const IX=JSON.parse(fs.readFileSync(path.join(SITE,"calendar","documents.json"),
 const r=text.indexOf('<div id="results">'), s1=text.indexOf("<script>",r), e1=text.indexOf("</script>",s1),
       s2=text.indexOf("<script>",e1), e2=text.indexOf("</script>",s2);
 const a=text.indexOf('<section class="cdocs"'), e=text.indexOf("</section>",a)+10;
-const jump=(text.match(/<p class="cdjump">.*?<\/p>/)||[""])[0];
 function world(files){
   const W=makeWorld({today:[2026,3,11], path:"/calendar", files});
-  W.doc.body.innerHTML=jump+text.slice(a,e);
+  W.doc.body.innerHTML=text.slice(a,e);
   W.asked=[];
   // start() runs the section's script and returns before the list has come;
   // run() waits for it.
@@ -32071,10 +32070,8 @@ const addr=(id,doc)=>/^https:/.test(doc[1])?doc[1]:IX.base[set(id).chamber]+doc[
     const st=C.state(IX,s.id,y,i); ok(st.href===addr(s.id,d) && held.has(st.href), "state() made an address for "+s.id+" "+y+" "+i+": "+st.href); });
   ok(C.state(IX,"nothing","1066",99).set.id===first.id, "a set the index does not have is not answered with the first");
 
-  // ---- the link under the week's name scrolls and gives the heading focus ----
-  const ev=P.ev("click",{button:0}); $("cdjump").dispatchEvent(ev);
-  ok(ev.defaultPrevented && P.doc._scrolled.includes($("cdocs")) && P.doc.activeElement===$("cdhead"),
-     "the link from the week's heading did not scroll to the section and focus its heading");
+  // ---- no link under the week's name down to the section (F11, 7 October 2026) ----
+  ok(!/cdjump/.test(text), "the week's heading still links down to the Calendars & Journals");
 
   // ---- a reader in a picker while the list is on its way is told, and then told what came ----
   const A=world(served);
@@ -32477,23 +32474,38 @@ def _calendar_documents():
         assert '<h3 class="cdsub" id="cdnew">The newest listed here</h3>' in block, (
             "the four links are not headed as the newest LISTED: the list is as old as the "
             "queue, and on 1 October its newest House Calendar was 27 days old")
-        assert CD.jump_html("/calendar") == ('<p class="cdjump"><a href="/calendar#cdocs" '
-                                             'id="cdjump">Calendars &amp; Journals, as PDFs</a></p>'), (
-            "the link under the week's name ends (PDF), which on this site is a link that "
-            "opens one; this one goes to a section")
+        # A CALENDAR OR JOURNAL OPENS IN A NEW TAB, marked as going out (the
+        # person, 7 October 2026, F12): the newest listed, the picker's button
+        # and every document on the list page.
+        assert not hasattr(CD, "jump_html"), (
+            "calendar_documents still writes the link down from the week's name (F11)")
+        listed_page = " ".join(CD.list_body(docs, left))
+        to_docs = []
+        for m in re.finditer(r'<a [^>]*>', block + listed_page):
+            h = re.search(r'href="([^"]*)"', m.group(0))
+            if h and _h.unescape(h.group(1)) in recorded:
+                to_docs.append(m.group(0))
+        assert to_docs, "the section and the list page link no document"
+        bare = [a for a in to_docs if not ('target="_blank"' in a and 'rel="noopener"' in a
+                                           and re.search(r'class="(?:[^"]* )?out\b', a))]
+        assert not bare, (f"{len(bare)} of {len(to_docs)} links to a calendar or journal open "
+                          f"in the same tab or carry no outside-link mark: {bare[:2]}")
         for sid, label, url in (("hc", "HC 33", rows[0][4]),
                                 ("hj", "HJ 16 August 19, 2026", rows[8][4]),
                                 ("sc", f"SC 29 {dash} 3 September 2026", rows[9][4]),
                                 ("sj", f"SJ 15 {dash} 19 August 2026", rows[15][4])):
-            assert (f'<span class="cdset">{CD.ONE[sid]}</span> <a href="{_h.escape(url)}" '
-                    f'rel="noopener">{_h.escape(label)} (PDF)</a>') in block, (
-                f"the newest {CD.ONE[sid]} is not a plain link in the section")
+            assert (f'<span class="cdset">{CD.ONE[sid]}</span> <a class="out" '
+                    f'href="{_h.escape(url)}" target="_blank" rel="noopener">'
+                    f'{_h.escape(label)} (PDF)</a>') in block, (
+                f"the newest {CD.ONE[sid]} is not a link in the section that opens a new tab")
         for sid, ys in want.items():
             for y in ys:
                 assert f'<a href="/calendar/documents#{sid}-{y}">{y}</a>' in block, (
                     f"without script there is no link to {CD.MANY[sid]} of {y}")
-        assert 'target="_blank"' not in block, (
-            "the section opens a PDF in a new tab; the cards' links to the same PDFs do not")
+        # BOTH OPEN A NEW TAB NOW (F12, 7 October 2026): the section, and the
+        # cards' links to the same PDFs (_calendar_document_links).
+        assert 'target="_blank"' in block, (
+            "the section opens a PDF in the same tab; the cards' links to the same PDFs do not")
         assert '<p class="cdleft">4 documents the General Court lists are not linked here.</p>' in block
         for i, lab in (("cdset", "Calendar or journal"), ("cdyear", "Year"), ("cddoc", "Document")):
             assert f'<label for="{i}">{lab}</label><select id="{i}">' in block, (
@@ -32579,9 +32591,12 @@ def _calendar_documents():
             main_ = t[t.index('<div class="calmain">'):]
             assert main_.index('class="wknav wkfoot"') < main_.index('<section class="cdocs"') \
                 < main_.index('id="calpeek"'), f"{f}: the section is not under the schedule's arrows"
-            assert f'<p class="cdjump"><a href="{addr}#cdocs" id="cdjump">' in \
-                t[t.index('<div class="calhead">'):t.index('<div class="calside"')], (
-                f"{f}: the week's heading has no link down to the section at its own address")
+            # NO SUMMARY AND NO LINK DOWN UNDER THE WEEK'S NAME (the person, 7
+            # October 2026, F11): the PDFs are the last block of the column.
+            head = t[t.index('<div class="calhead">'):t.index('<div class="calside"')]
+            assert "cdjump" not in head and "as PDFs" not in head \
+                and "appears once a day" not in head and " sittings on " not in head, (
+                f"{f}: the week's heading still carries the summary or the link down: {head[:300]}")
         lp = (site / "calendar" / "documents.html").read_text(encoding="utf-8")
         assert body in lp and f'<link rel="canonical" href="{base}/calendar/documents">' in lp \
             and "<h1>Calendars and journals of the General Court</h1>" in lp, (
@@ -41191,13 +41206,11 @@ def _calendar_study_committees():
         # A CANCELLED MEETING IS NOT A SITTING. The week of 13 January 2025
         # said "22 sittings on 5 days" with the Opioid Abatement commission's
         # cancelled meeting among the 22. This week holds one meeting that
-        # sat and one that was cancelled, on two days.
+        # sat and one that was cancelled, on two days. The week's lead says
+        # no count at all now (F11, the person, 7 October 2026); the script's
+        # count below is the one that leaves the cancelled meeting out.
         lead = re.search(r'<p class="src">([^<]*)</p>', t).group(1)
-        assert lead.startswith("1 sitting on 1 day."), (
-            f"the week's lead counts the cancelled meeting: {lead!r}")
-        assert "One cancelled meeting is shown as well, and not counted." in lead, (
-            f"the lead does not say a cancelled meeting is shown: {lead!r}")
-        assert "covering 0" not in lead, f"the lead reads {lead!r}"
+        assert lead == "", f"a week with a sitting still has a summary over it: {lead!r}"
         node = shutil.which("node") or shutil.which("node.exe")
         if node:
             # THE SCRIPT'S OWN COUNT over the two cards the page carries, one
@@ -41323,8 +41336,10 @@ def _calendar_document_links():
         key = BP.Meet("2026-09-24", "H", "Commerce", "")
         page, _m = BP.cal_days({key.date: [key]}, {key: weeks["2026-W39"][key.date][key]},
                                {}, {}, {}, lambda d: (d, ""), _h.escape, docs=docs)
-        assert f'href="{_h.escape(V)}calendars%5C2026%5CHC%2032.pdf" rel="noopener">' \
-               "House Calendar 32 (PDF)</a>" in page, "the card does not draw its notice's link"
+        # In a new tab and marked as going out (F12, 7 October 2026).
+        assert f'<a class="out" href="{_h.escape(V)}calendars%5C2026%5CHC%2032.pdf" ' \
+               'target="_blank" rel="noopener">House Calendar 32 (PDF)</a>' in page, (
+                   "the card does not draw its notice's link, in a new tab")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("the first notice linked, journals found by number with their "
@@ -41592,7 +41607,7 @@ def _calendar_chambers():
                   "chambers', and not Senate Judiciary's; the picker lists each and picks one")
 
 
-@check("frontend", "a calendar card counts each bill once, however many items it has that day, and so does the week")
+@check("frontend", "a calendar card counts each bill once, however many items it has that day")
 def _calendar_counts_bills():
     """House Housing on 21 January 2025 heard eight bills and voted on five
     of them after, and its card said "(13 bills)" over the eight it listed.
@@ -41606,7 +41621,8 @@ def _calendar_counts_bills():
     way; and the week's lead counted a bill once a day, so HB 511, heard by
     Criminal Justice on the 22nd and voted on the 24th, was two of the bills
     the week "covered" -- 33 of 98 weeks' leads overstated. The rows below
-    are proceedings.csv's own for those days.
+    are proceedings.csv's own for those days. (The week's lead counts
+    nothing since 7 October 2026, F11: the person had the summary removed.)
 
     The items stay as they are -- each in its own slot, HB 60 under the
     hearing and again under the executive session -- and only the count
@@ -41675,14 +41691,12 @@ def _calendar_counts_bills():
         assert card(page, "House Housing") == ("(8 bills)", 13), (
             f"the week page's House Housing is {card(page, 'House Housing')}")
         lead = re.search(r'<p class="src">([^<]*)</p>', page).group(1)
-        assert lead.startswith("4 sittings on 3 days, covering 13 bills."), (
-            f"the week's lead reads {lead!r}: 8, 4 and HB 511 are 13 bills, "
-            "and HB 511 on two days is one of them")
+        assert lead == "", f"a week with sittings still has a summary over it: {lead!r}"
         month = json.loads((site / "calendar" / "data" / "2025-01.json").read_text(encoding="utf-8"))
         assert card(month["days"]["2025-01-21"], "House Housing") == ("(8 bills)", 13), (
             "the month file's House Housing is "
             f"{card(month['days']['2025-01-21'], 'House Housing')}")
-        assert "covering 13 bills" in month["weeks"]["2025-W04"]["lead"], month["weeks"]["2025-W04"]
+        assert month["weeks"]["2025-W04"]["lead"] == "", month["weeks"]["2025-W04"]
         with contextlib.redirect_stdout(io.StringIO()):
             rail = BP.calendar_html(site, today=today, rows=rows)
         assert card(rail, "House Housing") == ("(8 bills)", 13), (
@@ -41719,8 +41733,7 @@ process.stdout.write(JSON.stringify({count: (h.match(/<span class="calcount">([^
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("House Housing on 21 January 2025 says (8 bills) over its thirteen items on the "
-                  "card, the week, the month file, Coming up and a committee page; the week "
-                  "covers HB 511 once")
+                  "card, the week, the month file, Coming up and a committee page")
 
 
 @check("frontend", "every time the Calendar, Coming up and a committee's Upcoming session print reads 9:00 AM, alike in all three renderers")

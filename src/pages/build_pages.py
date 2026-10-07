@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.149
+# GRANITE_VERSION: 2026-09-04.150
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1133,10 +1133,13 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # THE OFFICIAL DOCUMENT, where the caller has one: the calendar
             # that printed the notice, or the journal of a floor sitting.
             # Addresses the record holds, passed in; never built here.
+            # In a new tab and marked as going out, as every calendar and
+            # journal on the Calendar opens (F12, 7 October 2026).
             got = (docs or {}).get(key) or []
             if got:
                 html.append('<p class="calmore caldocs">'
-                            + "".join(f'<a href="{esc(u)}" rel="noopener">'
+                            + "".join(f'<a class="out" href="{esc(u)}" '
+                                      'target="_blank" rel="noopener">'
                                       f'{esc(w)} (PDF)</a>' for w, u in got)
                             + "</p>")
             # A STUDY OR STATUTORY COMMITTEE'S RECORDING, where one is named

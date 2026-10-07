@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.202 */
+/* GRANITE_VERSION: 2026-09-07.203 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3626,6 +3626,9 @@ padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
    be folded. The DOM order is the reading order at every width: heading,
    month, filters, schedule. Every colour is a token, so both themes hold. */
 .calhead h1{font-size:var(--t-title);line-height:1.2;margin:0 0 var(--sp-3)}
+/* A week with sittings has no line under its heading (F11, 7 October 2026);
+   the paragraph stays for the script to say a week could not be loaded. */
+.calhead p.src:empty{display:none}
 /* The heading takes focus when the arrow a reader pressed is no longer there
    ("This week" on this week), so it shows a ring when a keyboard put it there. */
 .calhead h1:focus{outline:none}
@@ -4025,9 +4028,6 @@ font-size:var(--t-ui);line-height:1.4}
 /* What the two kinds of document are, and what is not here: said last and
    quietly, under the links they are about. */
 .cdocs .src,.cdleft{margin:0 0 var(--sp-2);font-size:var(--t-ui);line-height:1.5;color:var(--ink-2)}
-/* Down to the section from the week's name: a busy week is a long scroll. */
-.cdjump{margin:var(--sp-3) 0 0;font-size:var(--t-ui);font-weight:600}
-.cdjump a{display:inline-block;padding:var(--sp-1) 0}
 @media (max-width:700px){
   /* Stacked, each as wide as the column and 44px tall, with the select's
      text at 16px so a phone does not zoom the page on focus. */

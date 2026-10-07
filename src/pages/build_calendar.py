@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.23
+# GRANITE_VERSION: 2026-09-18.24
 """
 The General Court's week, one page per week.
 
@@ -2217,29 +2217,18 @@ def week_facts(key, weeks, today):
     # week script's count, which reads data-cancelled off the card.
     live = {k for k, rows in meets.items() if not BP.is_cancelled(rows)}
     off = len(meets) - len(live)
-    busy = sum(1 for v in days.values() if any(k in live for k in v))
     n = sum(1 for v in days.values() for k in v if k in live)
-    # EACH BILL ONCE IN THE WEEK, as a card counts each bill once in its day.
-    # Keyed on the day as well, a bill heard on Tuesday and voted on Thursday
-    # was two of the bills the week "covered". On the term too, because a
-    # number names a different bill in each biennium and a week can straddle
-    # two of them.
-    bills = len({(r.get("term") or "", r["bill"].strip().upper())
-                 for k in live for r in meets[k] if r["bill"].strip()})
 
-    # "covering 0 bills" was said of thirty weeks that held only study and
-    # statutory committees, which meet on no bill; the clause goes where
-    # there is nothing for it to count.
-    cancelled = (f" {'One' if off == 1 else off} cancelled meeting"
-                 f"{' is' if off == 1 else 's are'} shown as well, and not counted."
-                 if off else "")
+    # NO SUMMARY OVER A WEEK THAT HAS SITTINGS (the person, 7 October 2026,
+    # F11: remove "22 sittings on 5 days, covering 15 bills. A committee
+    # appears once a day ..."). The count is the filter's own line beside the
+    # views, which says it for what is shown; the week's cards say the rest.
+    # What stays is the line for a week with nothing to show -- every meeting
+    # cancelled, or none set -- which says why the days below are empty.
+    # The paragraph is still written, empty, because the script writes "could
+    # not be loaded" into it; app.css draws an empty one as nothing.
     if n:
-        lead = (f"{n} sitting{'' if n == 1 else 's'} on {busy} "
-                f"day{'' if busy == 1 else 's'}"
-                + (f", covering {bills:,} bill{'' if bills == 1 else 's'}"
-                   if bills else "")
-                + ". A committee appears once a day, however many times it "
-                "sat; open one for its items in order." + cancelled)
+        lead = ""
     elif off:
         lead = ("The one meeting set for this week was cancelled."
                 if off == 1 else
@@ -2390,12 +2379,6 @@ BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
             'Reset filters</button></div>')
 
 
-# Where a week's heading links down to the Calendars & Journals section. The
-# link's address is the page's own, and the current week is written at two
-# addresses, so it is put in as each copy is written.
-JUMP_SLOT = "<!--cdjump-->"
-
-
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
               today, sessions=frozenset(), study=False, docs=None, picker=""):
     """Write one week's page. `study` is whether the calendar holds the study
@@ -2404,8 +2387,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
 
     `picker` is the Calendars & Journals section (calendar_documents.
     block_html), the same on every week because a reader may be on any of
-    them; "" where there is no list, and then the page carries no section, no
-    link down to one and no script for one.
+    them; "" where there is no list, and then the page carries no section and
+    no script for one.
 
     NO NOTE OF WHERE THEY COME FROM. The page said under its key that they
     come "from the General Court's own database, as copied on 8 September
@@ -2457,7 +2440,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              '<div class="calhead">'
              f'<h1>The week of {S.E(label)}</h1>'
              f'<p class="src">{lead}</p>'
-             + (JUMP_SLOT if picker else "")
+             # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11): the section is
+             # the last block of the schedule's column, where a reader finds it.
              + f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
              '</div>'
              + side_html()
@@ -2501,8 +2485,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                       jsonld=LD.listing(f"The week of {label}",
                                         f"The General Court's business, {label}.",
                                         base, S.canon(path)))
-        html = html.replace('<div id="results"></div>',
-                            block.replace(JUMP_SLOT, CD.jump_html(S.canon(f))), 1)
+        html = html.replace('<div id="results"></div>', block, 1)
         assert '<div class="wkpage calapp"' in html, f"{f}: the template has no results slot"
         out = site / f.lstrip("/")
         out.parent.mkdir(parents=True, exist_ok=True)
