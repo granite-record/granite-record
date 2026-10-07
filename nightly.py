@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.54
+# GRANITE_VERSION: 2026-09-04.55
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -167,7 +167,13 @@ night's verdict, as state-down brings it, answers one question: has a NEWER
 night built a site fit for production since (NEWEST_FIT, newer_fit)? If one
 has, the older is not deployed over it. A dry run never writes that record,
 and a newer night that did not build, or whose checks kept its build from
-production, does not stand in the way.
+production, does not stand in the way -- nor one whose job failed, which no
+publish job follows: a night that exits non-zero never writes the record,
+and --close puts back the one it replaced when a later step of its job
+failed (FIT_CARRIED; the review of 7 October 2026 found a night that built
+a site fit for production and then failed its job -- the livestreams not
+set up, a preview that did not land -- refusing the waiting night with
+nothing to approve in its place).
 
 THE ONE NIGHT A TERM TURNS OVER: --new-term (30 September 2026)
 
@@ -511,6 +517,11 @@ DRY_ENV = "DRY_RUN"
 # "started", "fingerprint"} -- whether or not production already served it.
 # What newer_fit() reads to keep an older night from being deployed over it.
 NEWEST_FIT = "newest_fit"
+# ... and, in the verdict of a night that made itself that record, the one it
+# replaced (a dict, or None where there was none), which --close puts back
+# when a step of the night's job failed: a failed job has no publish job, so
+# it is no newer night production can get.
+FIT_CARRIED = "newest_fit_carried"
 # What a dry run's verdict and its run's page say of it, in these words.
 DRY_APART = ("This dry run's verdict is kept apart, in archive/last-dry-run.json: the last "
              "real night's verdict, the census and the gate's records are as that night left "
@@ -3759,10 +3770,15 @@ class Night:
                                      "kinds": v["warning_kinds"], "day": self.day}
         if self.a.dry_run:
             v["kept_apart"] = DRY_APART
-        elif v.get("built") and not v.get("blocking"):
+        elif v.get("built") and not v.get("blocking") and code == 0:
             # The newest real night fit for production is tonight's, whether
             # or not production serves it already: an older night waiting for
-            # approval is not deployed over it (newer_fit).
+            # approval is not deployed over it (newer_fit). Only a night that
+            # exits 0: one that does not fails its job, and no publish job
+            # follows it. The record it replaces is kept beside it, for
+            # --close to put back if a later step of the job fails.
+            carried = v.get(NEWEST_FIT)
+            v[FIT_CARRIED] = carried if isinstance(carried, dict) else None
             v[NEWEST_FIT] = {"run_id": str(v.get("run_id") or ""), "day": self.day,
                              "started": v.get("started"), "fingerprint": v.get("fingerprint")}
         write_json(self.path, v)
@@ -4023,6 +4039,15 @@ def close_verdict(a):
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "
                                              + ", ".join(failed))
+        # A FAILED JOB IS NO NEWER NIGHT FIT FOR PRODUCTION (FIT_CARRIED): this
+        # step exits 1, the job fails, and no publish job follows it, so the
+        # record tonight made of itself gives way to the one it replaced, and
+        # a night already waiting for approval stays approvable.
+        own = v.get(NEWEST_FIT)
+        if not a.weekly and not a.dry_run and isinstance(own, dict) and \
+                str(own.get("run_id") or "") == str(rid or v.get("run_id") or ""):
+            carried = v.pop(FIT_CARRIED, None)
+            v[NEWEST_FIT] = carried if isinstance(carried, dict) else None
     v["closed"] = datetime.now().isoformat(timespec="seconds")
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"

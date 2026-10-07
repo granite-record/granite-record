@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.418
+# GRANITE_VERSION: 2026-09-04.419
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35082,8 +35082,25 @@ def _cloud_dry_night(CL, BA, SG):
         assert call(dry, "state-up")[0] == 0 and remote("state/sql-held.json") and \
             remote("state/census.json") == census and remote("state/last-night.json") == night_v
         os.environ.pop(CL.DRY_ENV, None)
-        assert call(dry, "kit-up", "--dry-night", "--hold", "9")[0] == 1, \
-            "a dry night was let hold files for a New term run"
+        # A New term run ticked with Dry run (the box is ticked unless a person
+        # unticks it) is refused by nightly.py, and the workflow still gives its
+        # kit-up --hold: nothing is held, nothing of the kit goes back -- not
+        # even a day file the export served -- and its logs still go up, apart
+        # (the review of 7 October 2026: this failed, and the logs were lost).
+        D3 = D2 + b"2025|0004|HB4|introduced\n"
+        sha3 = hashlib.sha256(D3).hexdigest()
+        (dry / "Docket.txt").write_bytes(D3)
+        (dry / f"nh-archive/store/{sha3}.gz").write_bytes(b"gz of D3")
+        (dry / f"logs/refused-{today}.log").write_bytes(b"the refused New term run's log")
+        code, out = call(dry, "kit-up", "--dry-night", "--hold", "9")
+        assert code == 0 and remote("kit/Docket.txt") == D2 and \
+            remote(f"kit/nh-archive/store/{sha3}.gz") is None and \
+            not (bucket / "nights").exists() and \
+            remote(f"logs/{today}/{CL.DRY_LOGS}/refused-{today}.log") and \
+            remote("state/census.json") == census and \
+            remote("state/last-night.json") == night_v, (
+                "a dry night given --hold held or sent something of the kit, or failed and "
+                "lost its logs", out[-500:])
 
         # The logs it sent are not taken by pull for the night's.
         b = CL.make_bucket(str(bucket), 1)
@@ -48992,6 +49009,32 @@ def _nightly_dry_run_apart(NI, CL):
         NI.tracked_changes = lambda: ([], [])
         assert code == 1 and not g.verdict()["publishable"] and \
             g.verdict()[NI.NEWEST_FIT]["run_id"] == "502", g.verdict().get(NI.NEWEST_FIT)
+        # ... and so do newer nights that built a site fit for production and
+        # then failed their job, which no publish job follows (the review of 7
+        # October 2026): one whose night exited 1 for a problem beside its
+        # build, and one a later step failed, which --close is told of.
+        problems = NI.Night.problems
+        NI.Night.problems = lambda self: ["the study committees' meetings were not taken"]
+        try:
+            g.how["touch"] = 13
+            code, _ = g.night("--runner", "--no-fetch", run_id="506b")
+        finally:
+            NI.Night.problems = problems
+        v = g.verdict()
+        assert code == 1 and v["built"] and not v["blocking"] and \
+            v[NI.NEWEST_FIT]["run_id"] == "502", \
+            ("a night that failed its job made itself the newest fit for production",
+             v.get(NI.NEWEST_FIT))
+        g.how["touch"] = 14
+        code, _ = g.night("--runner", "--no-fetch", run_id="506c")
+        assert code == 0 and g.verdict()[NI.NEWEST_FIT]["run_id"] == "506c" and \
+            g.verdict()[NI.FIT_CARRIED]["run_id"] == "502", g.verdict().get(NI.FIT_CARRIED)
+        code, _ = g.night("--runner", "--close", "--outcome", "night=success",
+                          "--outcome", "preview=failure", run_id="506c")
+        v = g.verdict()
+        assert code == 1 and v[NI.NEWEST_FIT]["run_id"] == "502" and NI.FIT_CARRIED not in v, \
+            ("a night whose job failed after its build stood in the way of the waiting night",
+             v.get(NI.NEWEST_FIT))
         g.how["touch"] = 3
         g.build()                                   # 502's site, as site-down brings it
         g.publish("502")
@@ -57472,6 +57515,55 @@ def _workflows_gate(NI):
 # A DRY RUN IS KEPT APART (7 October 2026): the workflow's one word for it,
 # which every step inherits, and which nightly.py and cloud.py read themselves.
 DRY_RUN_ENV = "  DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}"
+# ... and so preflight inherits it too, when the night runs it first on
+# GitHub's machine. The workflow's words for its own run, which no check's
+# fixture may take for its own: main() takes them out before any check runs.
+WORKFLOW_WORDS = ("DRY_RUN",)
+
+
+def _not_the_runs():
+    """Take the workflow's words for the run preflight is part of (WORKFLOW_WORDS)
+    out of this process's environment, and so out of every child it starts.
+
+    THE REVIEW OF 7 OCTOBER 2026. nightly.py runs preflight --code before it
+    fetches anything, with the workflow's environment, and on a dry run that
+    holds DRY_RUN=true beside GITHUB_ACTIONS=true -- which makes every kit-up,
+    state-up and night a fixture drives a dry run's. Eight checks failed under
+    it (the kit round trip, the R2 adapter, the New term nights, the database
+    fallback among them), so every dry run would have stopped at "preflight
+    failed. Nothing fetched, nothing built." A check that wants a dry run sets
+    the word itself, and puts back what it found."""
+    for k in WORKFLOW_WORDS:
+        os.environ.pop(k, None)
+
+
+@check("workflows", "preflight's checks are not told that the run preflight is part of is a dry "
+       "run, so a dry run on GitHub's machine does not fail its own preflight",
+       needs=("nightly", "cloud"))
+def _preflight_not_the_runs(NI, CL):
+    """THE REVIEW OF 7 OCTOBER 2026 (_not_the_runs says what it found). The
+    word nightly.py and cloud.py read is among the words taken out; taken out,
+    neither reads a dry run from GitHub's environment; and main() takes them
+    out before it runs any check."""
+    import inspect
+    assert NI.DRY_ENV in WORKFLOW_WORDS and CL.DRY_ENV in WORKFLOW_WORDS, \
+        (NI.DRY_ENV, CL.DRY_ENV, WORKFLOW_WORDS)
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS",) + WORKFLOW_WORDS}
+    try:
+        os.environ.update(GITHUB_ACTIONS="true", **{k: "true" for k in WORKFLOW_WORDS})
+        assert NI.dry_by_workflow() and CL.dry_by_workflow()
+        _not_the_runs()
+        assert not NI.dry_by_workflow() and not CL.dry_by_workflow(), \
+            "a dry run's word on GitHub's machine reaches the checks' fixtures"
+    finally:
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    src = inspect.getsource(main)
+    at = src.find("_not_the_runs()")
+    assert at != -1 and at < src.find("for c in CHECKS"), \
+        "preflight's main() runs its checks without first taking out the workflow's words"
+    return "ok", (f"{', '.join(WORKFLOW_WORDS)} is taken out before any check runs, so the "
+                  "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's machine")
 
 
 @check("workflows", "a dry run is one word in nightly.yml that every step inherits and nightly.py "
@@ -68068,6 +68160,9 @@ def main():
     # R2 while this is set, for this process and everything it runs; a folder
     # bucket (--local-bucket) still works.
     os.environ["GRANITE_NO_BUCKET"] = "1"
+    # THE CHECKS ARE NOT THE RUN'S (7 October 2026): the workflow's word that
+    # the run preflight is part of is a dry run is taken out first.
+    _not_the_runs()
     # THE CHECKS BUILD BY THE CLOCK. A day stated for comparing two builds
     # (build_date.py) is not carried into the fixtures, which date a hearing
     # three days from now by the clock and would find it outside a stated

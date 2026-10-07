@@ -97,9 +97,10 @@ environment, so it waits for a person's approval, and
 own verdict, which `cloud.py site-up` sends with the site and `site-down`
 brings back: a dry run's verdict, a site whose fingerprint is not the one
 judged, or a checkout not on `main` is refused, and so is an older night once
-a newer one has built a site fit for production (`newest_fit`). A dry run, or
-a newer night that built nothing for production, can no longer make a night
-waiting for approval unapprovable. The weekly workflow, `weekly.yml`, runs on Sunday
+a newer one has built a site fit for production and finished its job
+(`newest_fit`). A dry run, or a newer night that built nothing for
+production or whose job failed, can no longer make a night waiting for
+approval unapprovable. The weekly workflow, `weekly.yml`, runs on Sunday
 night: the committee rosters, the members who have left and the study
 committees, each fetch whole or not at all. It publishes nothing; Monday's
 night builds what it took.

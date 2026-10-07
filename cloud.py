@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.11
+# GRANITE_VERSION: 2026-09-25.12
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -141,7 +141,10 @@ GitHub's machine whatever a step passes, sends back only what cloud_kit.json's
                       night's verdict (DRY_NEVER)
 
 Nothing is removed from the kit on a dry night, and the rest it changed is
-named as kept back.
+named as kept back. A New term run ticked with Dry run, which nightly.py
+refuses before it asks for anything, is still given --hold by the workflow:
+on a dry night that holds nothing and sends nothing of the kit, only the
+logs and the state above.
 
 BACK TO THE LAPTOP: pull (26 September 2026)
 
@@ -1445,11 +1448,22 @@ def cmd_kit_up(a, root):
     # what it changed is its branch's code's work, and stays out of kit/.
     dry = dry_night(a)
     kept_back, unserved, gone_left = [], [], []
+    held_off = None
     if dry:
         if hold:
-            raise Failed("--hold is a New term run's, and a New term run is never a dry run")
+            # A NEW TERM RUN TICKED WITH DRY RUN -- the Dry run box is ticked
+            # unless a person unticks it -- gets --hold from the workflow, and
+            # nightly.py refuses it before it asks for anything. Nothing is
+            # held, and nothing of the kit goes back for it, not even a day
+            # file: only its logs, apart, and a dry run's state. (Until the
+            # review of 7 October 2026 this failed, and the refused run's logs
+            # never reached the bucket.)
+            held_off, hold = hold, None
+            night, gone = night + waiting, gone + gone_waiting
+            waiting, gone_waiting = [], []
         served = set((kit.get("dry_run") or {}).get("served", []))
-        sendable = [r for r in night if dry_sends(kit, root, r, entries[r]["sha256"])]
+        sendable = [] if held_off else [r for r in night
+                                        if dry_sends(kit, root, r, entries[r]["sha256"])]
         unserved = [r for r in night if r not in sendable and r in served]
         kept_back = [r for r in night if r not in sendable and r not in served]
         night, gone_left, gone = sendable, gone, []
@@ -1484,6 +1498,9 @@ def cmd_kit_up(a, root):
         say("  a dry run: only what it fetched goes back, and its logs go to "
             f"logs/{day}/{DRY_LOGS}/; of the state only "
             + (", ".join((kit.get("dry_run") or {}).get("state", [])) or "nothing"))
+        if held_off:
+            say(f"  --hold {held_off} on a dry run: a New term run ticked with Dry run, which "
+                "nightly.py refuses, so nothing is held and nothing of the kit goes back")
         show("kept back: what the run's own code made, which main's next night would "
              "build from", kept_back, sz)
         show("kept back: day files that are not byte for byte what the export served",
