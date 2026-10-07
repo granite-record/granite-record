@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.3
+# GRANITE_VERSION: 2026-09-10.4
 """
 Whether a recording's captions reach the end of the recording.
 
-    python3 caption_span.py            # every recording whose captions stop short
-    python3 caption_span.py --write    # refresh caption_spans.json from work/
-    python3 caption_span.py --check    # does caption_spans.json agree with work/?
+    python3 src/hearings/caption_span.py            # every recording whose captions stop short
+    python3 src/hearings/caption_span.py --write    # refresh caption_spans.json from work/
+    python3 src/hearings/caption_span.py --check    # does caption_spans.json agree with work/?
 
 No network. Reads work/<video>/ and videos_*.csv; only --write writes, and
 only caption_spans.json.
@@ -219,11 +219,11 @@ def load_summary(path=SUMMARY):
         doc = json.loads(p.read_text(encoding="utf-8"))
     except (ValueError, OSError) as e:
         raise SystemExit(f"{p} will not read ({e}). Rewrite it where the "
-                         f"captions are: python3 caption_span.py --write")
+                         f"captions are: python3 src/hearings/caption_span.py --write")
     rec = doc.get("recordings") if isinstance(doc, dict) else None
     if not isinstance(rec, dict):
         raise SystemExit(f"{p} has no 'recordings' table. Rewrite it where the "
-                         f"captions are: python3 caption_span.py --write")
+                         f"captions are: python3 src/hearings/caption_span.py --write")
     return rec
 
 
@@ -399,7 +399,7 @@ def main():
                   "place(s):")
             for v, what in bad[:20]:
                 print(f"  {v}  {what}")
-            print("Rewrite it here: python3 caption_span.py --write")
+            print("Rewrite it here: python3 src/hearings/caption_span.py --write")
             raise SystemExit(1)
         print(f"{a.summary} agrees with every caption file under {a.work}/: "
               f"{len(spans):,} recordings, and the same ones late read either way")

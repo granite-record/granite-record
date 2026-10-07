@@ -173,7 +173,10 @@ Wherever it goes, a new script:
 `preflight` holds all four -- the third wherever it can see how the script's
 path was made, in the launch itself or in what the file assigns to the
 variable it launches -- and fails on a `python3 -c` written in the code or the
-docs that imports a module of ours before `_paths`. It also holds each
+docs that imports a module of ours before `_paths`, and on a command the code
+or the docs give that names a script under `src/` without its folder
+(`python3 x.py`, or a backticked `x.py --flag` in a document), which typed
+from the root would answer "can't open file". It also holds each
 `src/fetch/` folder to its network: a `refusal.check()` outside `gc_web/`, the
 SQL host outside `gc_db/`, yt-dlp outside `youtube/`, or a request from any
 folder under `src/` outside `fetch/` (but `checks/` asking graniterecord.org)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.404
+# GRANITE_VERSION: 2026-09-04.408
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1406,15 +1406,84 @@ def _dash_c_problems(root=None):
     return bad, len(files)
 
 
-@check("files", "a python -c program the code or the docs write imports _paths before any "
-                "module of this project")
+# A command that names a script without its folder -- `python3 x.py`, or in a
+# document a backticked `x.py --flag` -- is typed from the root, where the
+# script stops being once it moves under src/. Bare names, so that a path
+# (src/parse/x.py, watchers\gc_lane.py) is never read as one.
+_BARE_PY3 = re.compile(r"\bpython3?(?:\.exe)?[ \t]+(?:-[A-Za-z]+[ \t]+)*([A-Za-z0-9_]+\.py)\b")
+_BARE_TICK = re.compile(r"`(?:python3?[ \t]+)?([A-Za-z0-9_]+\.py)[ \t]+-[^`\n]*`")
+
+
+def _bare_command_problems(root=None):
+    """([sentence], files read) for each command the repository writes that
+    names a script under src/ by its bare name: `python3 x.py` in any tracked
+    script, document, workflow or .bat file, and in a document a backticked
+    `x.py --flag`, where x.py is no longer at the root. None without git.
+
+    Tracked files only, outside obsolete/: the laptop's root also holds
+    STATE.md, CLAUDE.local.md and other files git does not carry, and a
+    command in one of those is not the repository's. CLAUDE.md is the
+    person's file and is left out too: its lines are drafted for the person
+    at each stage of the folder move rather than edited. A script's own
+    docstring may name another by its bare name in backticks as a reference
+    (`fetch_sponsors_by_member.py --members` writes it); only a python3 line
+    there is a command."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    try:
+        r = _run(["git", "-C", str(base), "ls-files", "-z"], capture_output=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    rels = sorted(p for p in (r.stdout or "").split("\0")
+                  if p and not p.startswith("obsolete/") and p != "CLAUDE.md"
+                  and (p.endswith((".py", ".md", ".bat"))
+                       or (p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml")))))
+    bad, seen, n = [], set(), 0
+    for rel in rels:
+        f = base / rel
+        if not f.is_file():
+            continue
+        n += 1
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for rx in (_BARE_PY3, _BARE_TICK) if rel.endswith(".md") else (_BARE_PY3,):
+            for m in rx.finditer(text):
+                name = m.group(1)
+                try:
+                    hit = _paths.find(name, root=base)
+                except LookupError:
+                    continue            # two files of one name: _code_names_unique says so
+                line = text.count("\n", 0, m.start()) + 1
+                if hit is None or hit.parent == base or (rel, line, name) in seen:
+                    continue
+                seen.add((rel, line, name))
+                where = hit.relative_to(base).as_posix()
+                bad.append(f"{rel}:{line} gives `{m.group(0).strip('`')[:60]}`, and {name} is "
+                           f"{where} now: python3 {where}")
+    return bad, n
+
+
+@check("files", "a command the code or the docs write still runs from the root once a script "
+                "moves: a python -c program imports _paths before any module of this "
+                "project, and a script named without its folder is at the root")
 def _dash_c_imports_paths():
     """A bare -c puts only the working folder on the path. Run from the root
     that finds a root module today and nothing once the module sits under
     src/: freeze_term's docstring gave the person a -c program importing
     snapshot_gencourt to run at the 2 December switch, and stage 4 moves
     snapshot_gencourt into src/fetch/gc_web/ before then. Importing _paths
-    first puts every code folder on the path, before and after the move."""
+    first puts every code folder on the path, before and after the move.
+
+    The same move breaks a command that names a script without its folder.
+    Stage 2 of the folder move left ARCHITECTURE.md giving
+    `calendar_meetings.py --check` after the script had gone to
+    src/hearings/, where typed from the root it answers "can't open file";
+    the stages' own rule rewrote every `python3 <name>` and held it by grep,
+    which read no backticked one and holds nothing for the stages after. So
+    every tracked command naming a script that is no longer at the root
+    fails here with the path to give (_bare_command_problems). It is part of
+    this check rather than one of its own so that the folder move leaves the
+    site's count of checks as it was."""
     dash = "-c"
     tmp = Path(tempfile.mkdtemp(prefix="gr-dashc-"))
     try:
@@ -1442,7 +1511,50 @@ def _dash_c_imports_paths():
     assert not bad, ("these -c programs import a module of ours before _paths, so they find "
                      "it only while it sits at the root; put `import _paths` first: "
                      + "; ".join(bad))
-    return "ok", f"{n} files read; every -c program that imports a module of ours imports _paths first"
+    said = f"{n} files read; every -c program that imports a module of ours imports _paths first"
+
+    # A script named without its folder, in a tree git tracks: five commands
+    # that would answer "can't open file" from the root, and six that would
+    # not or are not the repository's.
+    mover = "planted_mover.py"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-bare-"))
+    try:
+        if _run(["git", "init", "-q", str(tmp)], capture_output=True, timeout=60).returncode != 0:
+            said += "; git is not here to prove the reader of bare script names on"
+        else:
+            tree = {
+                "_paths.py": "", "planted_still.py": "", f"src/parse/{mover}": "",
+                "README.md": (f"Run `{mover} --check` to see.\n"
+                              f"python3 {mover} --all\n"
+                              f"python3 src/parse/{mover} --all\n"
+                              "`planted_still.py --y`, and python3 planted_still.py\n"
+                              f"`{mover}` alone is a name, and python3 {dash} \"print(1)\" none.\n"),
+                "src/parse/hint.py": (f'print("then: python3 {mover} --all")\n'
+                                      f'"""`{mover} --doc` is a reference here."""\n'),
+                "publish.bat": f"python3 -u {mover} --site site\n",
+                ".github/workflows/w.yml": f"run: python {mover}\n",
+                "CLAUDE.md": f"python3 {mover}\n",
+                "obsolete/README.md": f"python3 {mover}\n"}
+            _plant(tmp, dict(tree, **{"notes.md": f"python3 {mover}\n"}))
+            _run(["git", "-C", str(tmp), "add", "--", *tree], capture_output=True, timeout=60)
+            got = _bare_command_problems(tmp)
+            want = ["README.md:1 gives", "README.md:2 gives", "src/parse/hint.py:1 gives",
+                    "publish.bat:1 gives", ".github/workflows/w.yml:1 gives"]
+            assert got is not None and len(got[0]) == len(want) and all(
+                any(g.startswith(w) for g in got[0]) for w in want), \
+                f"the reader of bare script names found {got} in a tree made to hold five"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = _bare_command_problems()
+    if got is None:
+        return "ok", said + "; not a git checkout, so no command was read for a bare script name"
+    bad, m = got
+    assert m >= 180, f"only {m} tracked files were read for commands; 187 were on 7 October"
+    assert not bad, ("these commands name a script by its bare name, and it is no longer at "
+                     "the root, so typed there they answer \"can't open file\"; give the "
+                     "path: " + "; ".join(bad))
+    return "ok", (said + f"; {m} tracked files read, and every command that names a script "
+                  "without its folder finds it at the root")
 
 
 # THE NETWORK LINES, BY FOLDER (src/fetch/README.md). Read from what a file
@@ -31828,7 +31940,7 @@ def _header_mark():
         assert f.is_file(), (
             f"assets/licensed/ is here without {BP.HEADER_MARK}, so this machine "
             "would build the header with no mark and nothing else would say so. "
-            "On the laptop: python3 build_brand.py draws it from "
+            "On the laptop: python3 src/pages/build_brand.py draws it from "
             "brand/licensed/drawing.png, and cloud.py seed-kit sends it. On "
             "GitHub's machine: the kit was sent before it was drawn")
         data = f.read_bytes()
@@ -31837,7 +31949,7 @@ def _header_mark():
         scale = max(w / BB.MARK_BOX[0], h / BB.MARK_BOX[1])
         assert scale >= 1.98, (
             f"{f.as_posix()} is {w}x{h}, {scale:.2f} times its {BB.MARK_BOX[0]}x"
-            f"{BB.MARK_BOX[1]} box: soft on a 2x screen. Run python3 build_brand.py")
+            f"{BB.MARK_BOX[1]} box: soft on a 2x screen. Run python3 src/pages/build_brand.py")
         said += f"; assets/licensed/{BP.HEADER_MARK} is {w}x{h}, {scale:.1f}x the box"
     else:
         said += "; no assets/licensed/ here, so this machine builds the wordmark alone"
@@ -45151,7 +45263,7 @@ def _running_oneliner():
     # refusal check reads them for that), so a session looking for what is
     # running must see them.
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
-                 "python3 fetch_legislation.py --all", "python3 snapshot_gencourt.py",
+                 "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 snapshot_gencourt.py",
                  r"cmd /c publish.bat", "python3 cloud.py pull",
                  r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
                  "python3 probe_db.py --sample", "python3 resolve_members.py"):
@@ -59417,7 +59529,7 @@ def _caption_summary_data():
     fetched again -- the nightly withholds or publishes differently from the
     laptop, and nothing there could tell. So where both are on one disk they
     must agree recording by recording and name the same recordings late.
-    `python3 caption_span.py --write` brings it up to date, and so does any
+    `python3 src/hearings/caption_span.py --write` brings it up to date, and so does any
     build, whose markers step writes it.
     """
     try:
@@ -59434,7 +59546,7 @@ def _caption_summary_data():
         f"{CS.SUMMARY} disagrees with the captions under work/ in {len(bad):,} "
         "place(s), e.g. " + "; ".join(f"{v} {w}"[:120] for v, w in bad[:2])
         + ". The nightly would check something other than what is here: "
-          "python3 caption_span.py --write")
+          "python3 src/hearings/caption_span.py --write")
     return "ok", (f"{len(CS.load_summary() or {}):,} recordings summarised, each "
                   "agreeing with its caption files, and the same ones late "
                   "read either way")

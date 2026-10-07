@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.10
+# GRANITE_VERSION: 2026-09-07.11
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -58,7 +58,7 @@ another still parses looks exactly like that.
 
 A committee_details.json that has never been fetched can be seeded, without
 asking anybody, from a committees.json that still carries the old merged
-fields: `python3 committee_details.py --from-committees`.
+fields: `python3 src/parse/committee_details.py --from-committees`.
 
 WHAT --probe IS FOR
 

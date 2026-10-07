@@ -25,7 +25,8 @@ file, so the diff is the review; all of them but `parse_districts` take
 Does not belong here: a request (`fetch/other/`), a legislator's record or a
 bill's (`parse/`), the town pages themselves (`pages/`).
 
-Six of the ten moved here in stage 1 (`src/README.md`). The night imports
-`parse_officials`, `parse_town_sites` and `town_boards` (through
-`build_town_pages`), which move in stage 2, and runs `parse_districts`, which
-moves in stage 3; until then they are at the repository root.
+Six of the ten moved here in stage 1 and three in stage 2 (`src/README.md`):
+`parse_officials`, `parse_town_sites` and `town_boards`, which the night
+imports through `build_town_pages` and runs by no name. The night runs
+`parse_districts` as a step, so it moves in stage 3; until then it is at the
+repository root.

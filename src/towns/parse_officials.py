@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.5
+# GRANITE_VERSION: 2026-09-12.6
 """
 Municipal officials, out of the Department of Transportation's directory.
 
-    python3 parse_officials.py --report     # says what it found, writes nothing
-    python3 parse_officials.py              # -> town_officials.json
+    python3 src/towns/parse_officials.py --report     # says what it found, writes nothing
+    python3 src/towns/parse_officials.py              # -> town_officials.json
 
 WHAT THIS IS
 

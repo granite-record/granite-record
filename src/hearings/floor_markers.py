@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Segment a floor session on what the clerk actually says.
 
-    python3 floor_markers.py --transcript housesession_5_14_2026.txt
-    python3 floor_markers.py --transcript t.txt --summary RollCallSummary.txt
+    python3 src/hearings/floor_markers.py --transcript housesession_5_14_2026.txt
+    python3 src/hearings/floor_markers.py --transcript t.txt --summary RollCallSummary.txt
 
 The aligner used everywhere else infers boundaries from where bill numbers
 cluster in a transcript. That works, but it is statistics, which is why its

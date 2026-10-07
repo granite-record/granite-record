@@ -39,9 +39,13 @@ what does not belong there.
 nothing. Stage 1 (7 October 2026) moved the 49 scripts nothing the night
 touches -- the by-hand fetchers and probes, the reference builders, the UNH
 work, the bench and the by-hand reports -- and retired `fetch_testimony.py`
-to `obsolete/`. What the night, the weekly, the laptop's evening job or
-`build_all` runs or imports is still at the root until its stage, 2 to 4.
-Each stage moves a group of files without changing an import, a build step
+to `obsolete/`. Stage 2 (7 October 2026) moved the 41 modules the night
+imports but runs by no name: five of `lib/`'s six, the helpers of `parse/`,
+`towns/`, `hearings/` and `pages/`, and `fetch_legislation.py` and
+`fetch_rollcalls_db.py`, whose parsers night steps import. What `build_all`
+runs as a step's script (stage 3), and what the night, the weekly or the
+laptop's evening job runs by name (stage 4), is still at the root until its
+stage. Each stage moves a group of files without changing an import, a build step
 or a lane line that names them; a command line a person types names the
 path, and changes in the same commit.
 
@@ -96,7 +100,9 @@ read, are made from it.
 runnable script does not start with the bootstrap, when a script finds a
 folder from its own `__file__` rather than `_paths.ROOT` or starts another by
 a path it made rather than through `_paths.script`, when a `python3 -c` in
-the code or the docs imports a module of ours before `_paths`, when a name
+the code or the docs imports a module of ours before `_paths`, when a
+command the code or the docs give names a script under `src/` without its
+folder (`python3 x.py`, or a backticked `x.py --flag` in a document), when a name
 `build_all`, the night, the lane, the evening job, a workflow or `publish.bat`
 uses finds no file or two, when a file sits in the folder of a network it
 does not ask (a `refusal.check()` outside `fetch/gc_web/`, the SQL host

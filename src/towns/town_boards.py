@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.4
+# GRANITE_VERSION: 2026-09-24.5
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.
 
-    python3 town_boards.py --report         # what it decides, writes nothing
-    python3 town_boards.py --show lyme      # one town, with the lines it read
-    python3 town_boards.py                  # -> town_boards.json
+    python3 src/towns/town_boards.py --report         # what it decides, writes nothing
+    python3 src/towns/town_boards.py --show lyme      # one town, with the lines it read
+    python3 src/towns/town_boards.py                  # -> town_boards.json
 
 Reads what town_sites.py saved under town_sites/, through parse_town_sites.py,
 and NHDOT's directory in town_officials.json. Touches no network.

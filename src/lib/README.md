@@ -18,5 +18,6 @@ folder, and a later stage importing an earlier stage's module (`pages/`
 importing `parse/`) does not make it shared. `_paths.py` is not here: it
 stays at the root, where every script's bootstrap looks for it.
 
-The modules move here in stages 2 and 4 (`src/README.md`); until a module's
-stage, it is still at the repository root.
+Five of the six moved here in stage 2 (`src/README.md`). `freeze_term` is
+also the command run at the term switch, so it moves in stage 4, with the
+lines that name it; until then it is at the repository root.

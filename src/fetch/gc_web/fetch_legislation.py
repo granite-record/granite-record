@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.22
+# GRANITE_VERSION: 2026-09-10.23
 """
 The bill itself, from an address that can simply be constructed.
 
-    python3 fetch_legislation.py --plan --from 1989 --to 2024   # no network
-    python3 fetch_legislation.py --all --from 2021 --to 2021 --budget 800
-    python3 fetch_legislation.py --sample 10 --from 1989 --to 2024
-    python3 fetch_legislation.py --parse            # no network; read what is saved
+    python3 src/fetch/gc_web/fetch_legislation.py --plan --from 1989 --to 2024   # no network
+    python3 src/fetch/gc_web/fetch_legislation.py --all --from 2021 --to 2021 --budget 800
+    python3 src/fetch/gc_web/fetch_legislation.py --sample 10 --from 1989 --to 2024
+    python3 src/fetch/gc_web/fetch_legislation.py --parse            # no network; read what is saved
 
 WHY THIS PATH AND NOT THE OTHER ONE
 
@@ -1029,7 +1029,7 @@ def run(a, picked, by_bill, to_ask):
         print("asked and saved nothing. Stopping for a person to look.",
               flush=True)
         return 3
-    print(f"the range is done. -> {OUT}/   then: python3 fetch_legislation.py "
+    print(f"the range is done. -> {OUT}/   then: python3 src/fetch/gc_web/fetch_legislation.py "
           "--parse", flush=True)
     return 0
 

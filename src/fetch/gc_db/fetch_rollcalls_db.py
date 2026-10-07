@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.5
+# GRANITE_VERSION: 2026-09-06.6
 """
 The roll calls for one session year, from the General Court's own database.
 
-    python3 fetch_rollcalls_db.py --check --year 2026   # prove the mapping
-    python3 fetch_rollcalls_db.py --year 2025
+    python3 src/fetch/gc_db/fetch_rollcalls_db.py --check --year 2026   # prove the mapping
+    python3 src/fetch/gc_db/fetch_rollcalls_db.py --year 2025
 
 WHY THIS EXISTS
 

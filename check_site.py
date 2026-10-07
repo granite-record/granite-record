@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Check the site is fit to publish before uploading it.
 
@@ -307,7 +307,7 @@ def main():
                if to_brand else "")
             + ". They are not in the repository (DATA.md says why): the "
             "project's own build takes them from its kit, and a fork brings "
-            "its own -- a mark in brand/ and python3 build_brand.py, or files "
+            "its own -- a mark in brand/ and python3 src/pages/build_brand.py, or files "
             "of those names in assets/ -- and then builds again")
 
     # ---- the bill index, and the search index beside it --------------------

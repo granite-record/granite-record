@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.5
+# GRANITE_VERSION: 2026-10-01.6
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -11,7 +11,7 @@ serves: the list the Calendar page's picker reads.
     CD.list_body(docs, out)          # site/calendar/documents.html
     CD.PICKER_JS                     # the section's script
 
-    python3 calendar_documents.py    # what a build would link, no network
+    python3 src/pages/calendar_documents.py    # what a build would link, no network
 
 WHAT WAS ASKED (1 October 2026). Below the Calendar page's schedule, a way to
 open the House and Senate calendars and journals as PDFs "in a similar way to

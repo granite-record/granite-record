@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.3
+# GRANITE_VERSION: 2026-09-26.4
 """
 What each committee's own page adds to the listing: committee_details.json.
 
-    python3 committee_details.py                     # what is on file, and how it joins
-    python3 committee_details.py --from-committees   # ONCE: seed it from committees.json
+    python3 src/parse/committee_details.py                     # what is on file, and how it joins
+    python3 src/parse/committee_details.py --from-committees   # ONCE: seed it from committees.json
 
 Asks nobody anything. --from-committees reads committees.json on this disk and
 writes committee_details.json beside it; nothing here opens a connection.
@@ -120,7 +120,7 @@ def load(path=FILE, quiet=False, strict=True, writing=False):
             _warn(f"{p} is not here, so the committee pages go without the "
                   "clerk and the purpose unless committees.json still carries "
                   "them. fetch_committee_details.py writes it, and "
-                  "`python3 committee_details.py --from-committees` seeds it "
+                  "`python3 src/parse/committee_details.py --from-committees` seeds it "
                   "from committees.json without asking anybody.")
         return None
     why = ""

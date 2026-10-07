@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.5
+# GRANITE_VERSION: 2026-09-24.6
 """One name per committee: the name it had at the time.
 
     import committee_names as CN
@@ -10,7 +10,7 @@
     CN.official("Dev, Rec, and Envir", "S", "1989-1990")
         -> "Development, Recreation and Environment"
 
-    python3 committee_names.py     # every committee this table knows, by term
+    python3 src/parse/committee_names.py     # every committee this table knows, by term
 
 WHY THIS EXISTS
 
