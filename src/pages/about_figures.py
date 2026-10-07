@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-17.3
+# GRANITE_VERSION: 2026-09-17.4
 """
 The figures about.html states, counted rather than typed.
 
@@ -170,7 +170,7 @@ def fill(text, figs):
             "about.html names figures nothing counted: " + ", ".join(missing)
             + "\n  site/station_census.json comes from build_site_v2.py "
               "(run it first),\n  alignment_score.json from "
-              "`python3 probe_alignment.py --truth "
+              "`python3 src/hearings/probe_alignment.py --truth "
               "--candidate candidate_segments.json --score-out`.")
     return re.sub(r"\[\[(\w+)\]\]", lambda m: str(figs[m.group(1)]), text or "")
 

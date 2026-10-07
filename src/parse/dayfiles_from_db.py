@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.14
+# GRANITE_VERSION: 2026-10-01.15
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
-    python3 dayfiles_from_db.py --check          # the one pair on this disk: the dump of
-                                                 # 8 September against the export of the 6th
-    python3 dayfiles_from_db.py                  # .night/dbday/ against the files installed
-                                                 # here: what would change, and every guard
-    python3 dayfiles_from_db.py --out DIR        # ... and write the seven there, all or none
-    python3 dayfiles_from_db.py --nights 3       # ... the installed files three nights old
+    python3 src/parse/dayfiles_from_db.py --check          # the one pair on this disk: the dump of
+                                                           # 8 September against the export of the 6th
+    python3 src/parse/dayfiles_from_db.py                  # .night/dbday/ against the files installed
+                                                           # here: what would change, and every guard
+    python3 src/parse/dayfiles_from_db.py --out DIR        # ... and write the seven there, all or none
+    python3 src/parse/dayfiles_from_db.py --nights 3       # ... the installed files three nights old
 
 WHY THIS EXISTS
 
@@ -2222,7 +2222,7 @@ def judge(files, installed, facts=None):
         frozen = roster_frozen(".")
     if moved and agrees and not frozen:
         agrees, how = False, (how + "; but the installed term's own roster is not frozen "
-                              "(freeze_term.py --session), and its members would go unnamed")
+                              "(python3 src/lib/freeze_term.py --session), and its members would go unnamed")
     if moved and agrees:
         warnings.append(f"the roster changed: {b:,} members against {a:,} installed, {len(left):,} "
                         f"of them gone; {how}, so it is taken")

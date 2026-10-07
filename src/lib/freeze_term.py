@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.6
+# GRANITE_VERSION: 2026-10-05.7
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
-    python3 freeze_term.py --views     the database's views of the term, out of
-                                       db/, into db/term/<term>/
-    python3 freeze_term.py --session   the day files as installed, into
-                                       frozen/<term>/day/, with Docket_<term>.txt,
-                                       verification_manifest_<term>.csv and the
-                                       roll calls' rollcalls/<file>_<year>.txt
-    python3 freeze_term.py --check     writes nothing: is each freeze whole, and
-                                       is it the files installed?
+    python3 src/lib/freeze_term.py --views     the database's views of the term, out of
+                                               db/, into db/term/<term>/
+    python3 src/lib/freeze_term.py --session   the day files as installed, into
+                                               frozen/<term>/day/, with Docket_<term>.txt,
+                                               verification_manifest_<term>.csv and the
+                                               roll calls' rollcalls/<file>_<year>.txt
+    python3 src/lib/freeze_term.py --check     writes nothing: is each freeze whole, and
+                                               is it the files installed?
 
 The term is the one the installed files describe (proceedings.session_term,
 the newest session year in Docket.txt and LSRs.txt). --term names it, and must
@@ -901,7 +901,7 @@ def ready(root=Path("."), term=None):
     term = term or P.session_term(root)
     if not term:
         return False, "no installed Docket.txt or LSRs.txt says which term they are"
-    how = ("run freeze_term.py --session (and --views, if it says so) on the files "
+    how = ("run python3 src/lib/freeze_term.py --session (and --views, if it says so) on the files "
            "installed, send them with seed-kit, and run this again")
     bad = intact(root, term) + views_intact(root, term)
     if bad:

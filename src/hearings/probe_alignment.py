@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.63
+# GRANITE_VERSION: 2026-09-05.64
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
-    python3 probe_alignment.py --transcript work/housecmte_2_11.txt \
+    python3 src/hearings/probe_alignment.py --transcript work/housecmte_2_11.txt \
         --expect HB1082,HB1520,HB1381 --data data
 
-    python3 probe_alignment.py --work work --manifest verification_manifest.csv \
+    python3 src/hearings/probe_alignment.py --work work --manifest verification_manifest.csv \
         --data data
 
 WHY THIS EXISTS AND WHAT IT REFUSES TO DO
@@ -291,7 +291,7 @@ def suggest(work, manifest):
         print("One of each, ready to paste:\n")
         # One line, because a continuation character is a shell detail and
         # this has already tripped over cmd once.
-        print("python3 probe_alignment.py --data data --context --transcript "
+        print("python3 src/hearings/probe_alignment.py --data data --context --transcript "
               + " ".join(pick))
 
 

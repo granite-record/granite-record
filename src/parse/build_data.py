@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.54
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1670,7 +1670,7 @@ def main():
         if _older:
             sys.exit(f"THE SESSION'S FILES HOLD {', '.join(_older)} BESIDE {sess} ({_name}), "
                      f"and {P.term_of(_older[0])} is not frozen: a turn nobody froze. "
-                     "freeze_term.py --session on the last files of that term, before the switch; "
+                     "python3 src/lib/freeze_term.py --session on the last files of that term, before the switch; "
                      "building on would lose the term or mix the two.")
 
     # ---------------------------------------------------------- counties ---

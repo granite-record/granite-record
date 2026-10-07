@@ -11,13 +11,12 @@ recorded.
 
 **Nothing about timestamps goes on the site until
 `python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`
-has been run and the median has not regressed.** Until `probe_alignment.py`
-moves here (stage 4) the command is `python3 probe_alignment.py ...` from the
-root. Add a phrase to `tests/test_markers.py` only if it was actually spoken.
+has been run and the median has not regressed.** Add a phrase to
+`tests/test_markers.py` only if it was actually spoken.
 
 Asks nobody. Does not belong here: downloading captions or audio
 (`fetch/youtube/`); `proceedings.py`, which every stage reads (`lib/`); the
 bench, `review.py` (`checks/`).
 
-The files move here in stages 1 to 4 (`src/README.md`); until a file's stage,
-it is still at the repository root.
+The files moved here in stages 1 to 4 (`src/README.md`), the last of them
+`probe_alignment`, which the laptop's evening job runs by name, in stage 4.

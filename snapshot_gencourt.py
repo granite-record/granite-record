@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -446,7 +446,7 @@ def judge(fetched, into, allow_shrink=False, allow_turn=False):
                         f"differ -- and {roster['term']}'s own roster is not frozen.",
                         "Organization Day seats the next House before the files show the next "
                         "term; the term's members are named from its frozen roster, so it is "
-                        "frozen first (freeze_term.py --session, sent with seed-kit)."]
+                        "frozen first (python3 src/lib/freeze_term.py --session, sent with seed-kit)."]
         return out
     if held and not allow_shrink:
         out["refused"] = "shrink"

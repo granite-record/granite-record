@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.6
+# GRANITE_VERSION: 2026-09-30.7
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -33,7 +33,7 @@ WHAT IT RUNS, IN ORDER, STOPPING AT THE FIRST THAT FAILS
        without captions is asked again after the new ones, a day later and
        then two, four and eight. The longest evening is about forty minutes
        of this step; livestreams.py says what that is in requests.
-  3. probe_alignment.py --truth --candidate candidate_segments.json
+  3. src/hearings/probe_alignment.py --truth --candidate candidate_segments.json
        CLAUDE.md: nothing about timestamps goes on the site before this has
        been run and the median has not regressed. It is compared with the
        probe of the last times this job sent (or, the first evening, with the

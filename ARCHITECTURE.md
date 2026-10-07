@@ -31,7 +31,7 @@ sentence is wrong, there is a specific rule to fix, and the fix applies to every
 bill that shares the shape. A model would give neither.
 
 **Ground truth exists and is wired to a scorer.** 35 proceedings a person timed
-by hand, and `probe_alignment.py --truth --candidate` scores any method against
+by hand, and `python3 src/hearings/probe_alignment.py --truth --candidate` scores any method against
 them in a second. Nothing about timestamps should ever again be tuned without
 that number moving in the right direction. It is the single most valuable
 artefact in the repository, and it lives in `ground_truth.csv`, which no
@@ -253,8 +253,8 @@ live on every page.
 ### Checking a change
 
     python3 preflight.py
-    python3 probe_alignment.py --truth
-    python3 probe_alignment.py --truth --no-bench
+    python3 src/hearings/probe_alignment.py --truth
+    python3 src/hearings/probe_alignment.py --truth --no-bench
     python3 check_site.py
 
 Those four commands are the check on a change of this kind.

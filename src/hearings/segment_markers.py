@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.40
+# GRANITE_VERSION: 2026-09-05.41
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -8,7 +8,7 @@ Segment a recording on what the chair says, not on where bill numbers cluster.
 
 Then score it against the only ground truth there is:
 
-    python3 probe_alignment.py --truth \\
+    python3 src/hearings/probe_alignment.py --truth \\
         --candidate candidate_segments.json
 
 WHERE THE PATTERNS COME FROM
@@ -1210,7 +1210,7 @@ def main():
               "says so\n  rather than estimating one.")
     print(f"\n-> {a.out}")
     print("\nNothing is on the site until this is scored:\n"
-          "  python3 probe_alignment.py --truth "
+          "  python3 src/hearings/probe_alignment.py --truth "
           f"--candidate {a.out}")
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.413
+# GRANITE_VERSION: 2026-09-04.414
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -67570,7 +67570,7 @@ def main():
         print("\nEverything that can be checked without the network is working.")
         print("What is left needs real data: run inventory.py, then align_all,")
         print("then src/hearings/segment_markers.py --all --data data, and score the result:")
-        print("  probe_alignment.py --truth --candidate candidate_segments.json")
+        print("  src/hearings/probe_alignment.py --truth --candidate candidate_segments.json")
         print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")
         print("clustering path; build_all skips it unless --with-superseded,")
         print("and it overwrites boundaries segment_markers read from the chair.")

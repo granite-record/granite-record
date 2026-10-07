@@ -290,7 +290,7 @@ refusal there is a different problem.
 - **Five files are a person's, and no generator writes them.** `preflight.py`'s
   `HANDMADE` is the list, and a check enforces it.
 - **Nothing about timestamps ships without scoring it first**, with
-  `probe_alignment.py --truth`. The number to watch is the candidate median;
+  `python3 src/hearings/probe_alignment.py --truth`. The number to watch is the candidate median;
   do not let it regress.
 - **A writer of a derived file, run on a subset, destroys the rest.** This has
   happened four times, across three tools — `ARCHITECTURE.md` has the list.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.9
+# GRANITE_VERSION: 2026-09-08.10
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -373,7 +373,7 @@ def main():
                 why = (f"it holds no row of {', '.join(lost)}, which {path} does" if lost else
                        f"it is {short[1]:,} lines against the {short[0]:,} of {path}")
                 print(f"          NOT INSTALLED: {why}, and no db/term/<term>/ holds the term. "
-                      f"Freeze the term first (freeze_term.py --views); what came back is at "
+                      f"Freeze the term first (python3 src/lib/freeze_term.py --views); what came back is at "
                       f"{held}", flush=True)
                 failed += 1
                 continue
