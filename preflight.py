@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.424
+# GRANITE_VERSION: 2026-09-04.425
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43938,6 +43938,59 @@ def _committee_notes_fill():
         "a committee page's \"no day on record\" note is held to the measure")
     return "ok", ("the index's two section notes and a committee page's own fill the width "
                   "they have")
+
+
+@check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")
+def _calendar_month_six_weeks():
+    """"Month view: show the neighbouring months' days, slightly greyed", as a
+    desktop calendar does (the person, 7 October 2026, F10). The month drew
+    only the weeks its own days fall in, so it showed a day or two of the
+    months either side, none at all for a month that begins on a Monday and
+    ends on a Sunday (February 2027), and changed height month to month. The
+    Calendar's own monthRows is run in node over every month from 2025 to
+    2028: six weeks from the Monday on or before the 1st, every day once; and
+    gridHtml draws February 2027 in six rows, its neighbours' days marked
+    cmout (the grey) and none of them disabled inside the calendar's range."""
+    import build_calendar as BC
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH"
+    root = Path(tempfile.mkdtemp(prefix="gr-calmonth-"))
+    try:
+        (root / "week.js").write_text(BC.WEEK_JS, encoding="utf-8")
+        (root / "go.js").write_text(r"""
+const fs = require("fs"), vm = require("vm");
+const ctx = vm.createContext({document: {getElementById: () => null}, URLSearchParams});
+vm.runInContext(fs.readFileSync("./week.js", "utf8"), ctx);
+const C = ctx.GRCAL, out = {bad: [], months: 0};
+for (let y = 2025; y <= 2028; y++) for (let m = 1; m <= 12; m++) {
+  const k = y + "-" + String(m).padStart(2, "0"), rows = C.monthRows(k), flat = [].concat(...rows);
+  const first = k + "-01";
+  const ok = rows.length === 6 && rows.every(r => r.length === 7 && C.weekday(r[0]) === 0)
+    && flat[0] <= first && C.addDays(flat[0], 7) > first
+    && flat.every((d, i) => i === 0 || d === C.addDays(flat[i - 1], 1))
+    && flat.filter(d => d.slice(0, 7) === k).length === new Date(y, m, 0).getDate();
+  if (!ok) out.bad.push(k + ": " + JSON.stringify(rows.map(r => r[0])));
+  out.months++;
+}
+const g = C.gridHtml({view: "2027-02", sel: "2027-02-10", focus: "2027-02-10", today: "2027-02-10",
+  first: "2025-01-06", last: "2028-12-31", days: {}, f: C.defaults()});
+out.rows = (g.match(/<tr class="cmrow/g) || []).length;
+out.out = (g.match(/class="cmday[^"]*cmout[^"]*"/g) || []).length;
+out.off = (g.match(/aria-disabled="true"/g) || []).length;
+process.stdout.write(JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "the Calendar's script would not run: " + (r.stderr or "")[-300:]
+        got = json.loads(r.stdout)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not got["bad"], f"months that are not six whole weeks from a Monday: {got['bad'][:3]}"
+    assert got["rows"] == 6 and got["out"] == 14 and got["off"] == 0, (
+        f"February 2027 is drawn in {got['rows']} rows with {got['out']} days of March greyed "
+        f"and {got['off']} disabled; six rows, the fourteen days of March in grey, none disabled")
+    return "ok", (f"{got['months']} months each six weeks from the Monday on or before the 1st; "
+                  "February 2027 in six rows with March's first fourteen days greyed")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

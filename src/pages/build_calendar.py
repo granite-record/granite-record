@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.22
+# GRANITE_VERSION: 2026-09-18.23
 """
 The General Court's week, one page per week.
 
@@ -588,9 +588,17 @@ WEEK_JS = r"""
   function daysIn(m){ return new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate(); }
   // The rows a month's grid draws: whole weeks, Monday first, so a week is
   // one row and the selected one can be one band.
+  // SIX WEEKS, WHATEVER THE MONTH (the person, 7 October 2026, F10: "show
+  // the neighbouring months' days, slightly greyed", as a desktop calendar
+  // does). The grid drew only the weeks a month's own days fall in, so it
+  // showed a day or two of the months either side and sometimes none --
+  // February 2027 begins on a Monday and ends on a Sunday -- and changed
+  // height from month to month. Six weeks from the Monday on or before the
+  // 1st hold any month, and the days of the months either side fill the rest
+  // in the grey cellHtml gives them (cmout), each a day the reader may choose.
   function monthRows(m){
-    var last=m+"-"+pad(daysIn(m)), d=monday(m+"-01"), rows=[];
-    while(d<=last){
+    var d=monday(m+"-01"), rows=[];
+    for(var w=0;w<6;w++){
       var r=[];
       for(var i=0;i<7;i++){ r.push(d); d=addDays(d,1); }
       rows.push(r);
