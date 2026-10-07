@@ -29,12 +29,13 @@ Three things follow, and they are not negotiable:
    `python3 refusal.py --clear`, or `python3 cloud.py clear-refusal` for the
    copy the nightly keeps in its bucket -- is the maintainer's decision, after
    `python3 netcheck.py` has said what kind of refusal it was.
-3. **Every fetcher that asks the General Court consults it.** Every script
-   that carries a literal `gc.nh.gov` URL and makes a request -- the fetchers
-   among them live in `src/fetch/gc_web/` -- calls `refusal.check()` straight
-   after parsing its arguments, but `netcheck.py`, which is what diagnoses a
-   refusal; and `preflight` fails if one stops. Its refusal check reads every
-   script, so it is the list:
+3. **Every fetcher that asks the General Court consults it.** All 17
+   `fetch_*.py` scripts carrying a literal `gc.nh.gov` URL -- they live in
+   `src/fetch/gc_web/` -- call `refusal.check()` straight after parsing their
+   arguments, and so does every other script that asks it, the probes among
+   them, but `netcheck.py`, which is what diagnoses a refusal. `preflight`
+   fails if one stops, and holds the count in this sentence to the scripts it
+   reads, so it is the list:
 
    ```bash
    python3 preflight.py --code
