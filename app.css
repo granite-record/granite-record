@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.198 */
+/* GRANITE_VERSION: 2026-09-07.199 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3154,8 +3154,16 @@ background:var(--pine-soft);box-shadow:0 0 0 var(--sp-3) var(--pine-soft)}
    own box on a phone rather than pushing the page sideways. */
 .civics .tablewrap{overflow-x:auto;margin:var(--sp-4) 0 var(--sp-3)}
 .numtab{border-collapse:collapse;width:100%;font-size:var(--t-ui)}
-.numtab th,.numtab td{text-align:left;padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--rule);
+.numtab th,.numtab td{text-align:left;padding:var(--sp-3);border-bottom:1px solid var(--rule);
   vertical-align:top}
+/* ONE LINE FOR A TERM. Six columns of counts with their shares fill the
+   column's 560 pixels on a desktop, and the browser broke "1989-1990" at its
+   dash and each "702 (46.0%)" before its bracket, row after row. The share is
+   joined to its count in learn_numbers (_np); the first column -- a term, a
+   year, a bill, a chamber -- stays whole here, unless it is a committee's
+   name, which wraps. On a phone the table scrolls in its own box. */
+.numtab td:first-child{white-space:nowrap}
+.numtab.names td:first-child{white-space:normal}
 .numtab th{font-size:var(--t-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
   font-weight:600}
 .numtab td{font-variant-numeric:tabular-nums}

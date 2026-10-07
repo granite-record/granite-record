@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.417
+# GRANITE_VERSION: 2026-09-04.418
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18398,11 +18398,13 @@ def _numbers_signins(learn_numbers):
        needs=("learn_numbers",))
 def _numbers_consent(learn_numbers):
     """F19, consent calendars: every majority report of the term, credited to
-    the bill's committee in that chamber, a minority report left out; kept
-    when it carried CC and the chamber did not take the bill off, removed when
-    it did, regular when it never went on consent -- and a report the docket
-    prints again with the same committee, recommendation, amendment and tally
-    (the Senate's, after a special order) counts once."""
+    the committee that made it -- a second committee's to the second
+    committee, Finance here, even where the docket carries the first one's name
+    forward, as the passage rates credit it -- a minority report left out;
+    kept when it carried CC and the chamber did not take the bill off, removed
+    when it did, regular when it never went on consent -- and a report the
+    docket prints again with the same committee, recommendation, amendment and
+    tally (the Senate's, after a special order) counts once."""
     ev = _ln_ev
     rep = lambda b, raw, y, n, c="Judiciary", rec="Ought to Pass": ev(
         b, raw, "report", committee=c, recommendation=rec, amendment="", yeas=y, nays=n,
@@ -18413,14 +18415,18 @@ def _numbers_consent(learn_numbers):
                                ev("S", "Removed from Consent (Sen. Able), MA, VV", "consent_off"),
                                rep("S", "Committee Report: Ought to Pass, 03/01/2025, Vote 5-0", "5", "0")]},
             "HB3": {"events": [rep("H", "Committee Report: Inexpedient to Legislate (Vote 10-8; RC)",
-                                   "10", "8", rec="Inexpedient to Legislate")]}}
+                                   "10", "8", rec="Inexpedient to Legislate")]},
+            "HB4": {"events": [rep("H", "Committee Report: Ought to Pass 02/01/2025 (Vote 15-0; CC)", "15", "0"),
+                               ev("H", "Ought to Pass: MA VV; Refer to Finance Rule 47", "floor"),
+                               rep("H", "Committee Report: Ought to Pass 03/17/2025 (Vote 25-0; CC)", "25", "0")]}}
     rows_by = {b: {"committees": ["House Judiciary", "Senate Judiciary"]} for b in narr}
-    by_c, per = learn_numbers.consent(narr, rows_by)
+    by_c, per = learn_numbers.consent(narr, rows_by, "2025-2026")
     got = ({k: list(v) for k, v in by_c.items()}, {k: dict(v) for k, v in per.items()})
-    want = ({"House Judiciary": [2, 1], "Senate Judiciary": [1, 0]},
-            {"H": {"kept": 1, "regular": 1}, "S": {"removed": 1}})
+    want = ({"House Judiciary": [3, 2], "House Finance": [1, 1], "Senate Judiciary": [1, 0]},
+            {"H": {"kept": 3, "regular": 1}, "S": {"removed": 1}})
     assert got == want, f"consent: {got}, want {want}"
-    return "ok", "kept, removed and regular counted; the reprint and the minority report left out"
+    return "ok", ("kept, removed and regular counted; Finance's report to Finance; the reprint "
+                  "and the minority report left out")
 
 
 @check("frontend", "numbers: a committee's passage rate is of the bills it reported on",

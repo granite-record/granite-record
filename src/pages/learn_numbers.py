@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.7
+# GRANITE_VERSION: 2026-09-14.8
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -68,11 +68,17 @@ def _pct(n, d):
 
 
 def _np(n, d):
-    """A count and its share: "1,240 (57.7%)"."""
-    return f"{n:,} ({_pct(n, d)})"
+    """A count and its share: "1,240 (57.7%)", on one line -- in a six-column
+    table the browser otherwise breaks it before the bracket, row by row."""
+    return f"{n:,}&nbsp;({_pct(n, d)})"
 
 
 def _table(head, rows, cls="numtab"):
+    # The first column is a term, a year, a bill or a chamber, and app.css
+    # keeps it on one line ("1989-1990" broke at its dash); a committee's
+    # name is the exception, and wraps.
+    if head and head[0] == "Committee":
+        cls += " names"
     return (f'<div class="tablewrap"><table class="{cls}"><thead><tr>'
             + "".join(f"<th>{h}</th>" for h in head) + "</tr></thead><tbody>"
             + "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in rows)
@@ -98,7 +104,7 @@ def _day(iso):
         d = _date.fromisoformat(iso)
     except (TypeError, ValueError):
         return E(iso)
-    return f"{d.day} {d:%b %Y}"
+    return f"{d.day}&nbsp;{d:%b}&nbsp;{d:%Y}"
 
 
 def _cat(text):
@@ -115,7 +121,9 @@ def _cat(text):
 
 # What a bill is in the figures that count bills: a House or Senate bill,
 # special sessions' included. Resolutions and constitutional amendments are
-# not bills and do not go to the governor.
+# not bills. A joint resolution does go to the governor -- HJR 1 of 2007 was
+# signed -- so the veto table, which counts what reached the governor, says
+# "bills and joint resolutions" and can run a few above the bills here.
 BILL = re.compile(r"^(?:SS)?[HS]B\d+$")
 LAW = frozenset({"Signed into law", "Became law unsigned", "Veto overridden, became law"})
 # A veto whose override vote is still to come, in bill_disposition's words
@@ -313,12 +321,14 @@ def passage(idx, narr_all):
     return out
 
 
-def consent(narr, rows_by):
+def consent(narr, rows_by, term=""):
     """({committee: [recommendations, on consent and kept there]},
          {"H": Counter(kept, regular, removed), "S": ...}).
 
-    Every majority committee report of the term, credited to the bill's
-    committee in that chamber. A report the docket prints a second time -- the
+    Every majority committee report of the term, credited to the committee
+    that made it, as adopted_amendments reads it for the passage rates --
+    the bill's committee in that chamber only where the report names none. A
+    report the docket prints a second time -- the
     Senate reprints one when a bill taken off its consent calendar comes back
     as a special order -- with the same committee, recommendation, amendment
     and tally as the report before it counts once. On consent and kept: the
@@ -338,6 +348,13 @@ def consent(narr, rows_by):
         off = {e.get("body") for e in ev if not e.get("cancelled")
                and (e.get("type") == "consent_off"
                     or narrative.removed_from_consent(e.get("raw")))}
+        # A SECOND COMMITTEE'S REPORT IS THAT COMMITTEE'S. This credited every
+        # report to the committee the bill's page names, so 247 reports of
+        # 2025-2026 that Finance, Ways and Means and the rest made after a
+        # second referral counted to the bill's first committee: House Finance
+        # showed 20 reports here while the passage rates below, on the same
+        # page, showed it reporting on 107 bills. The totals did not move.
+        made_by = {id(e): nm for e, _ch, nm in AA.credited_reports(ev, term, CN.official)}
         prev = {}
         for e in ev:
             if e.get("type") != "report" or (e.get("raw") or "").lower().startswith("minority"):
@@ -349,6 +366,8 @@ def consent(narr, rows_by):
             prev[ch] = key
             word = "House " if ch == "H" else "Senate "
             cm = next((c for c in row.get("committees") or [] if c.startswith(word)), "")
+            if cm and made_by.get(id(e)):
+                cm = word + made_by[id(e)]
             if not cm or reprint or ch not in per:
                 continue
             by_c[cm][0] += 1
@@ -730,7 +749,8 @@ def body(site=Path("site"), root=Path("."), strict=True):
     # 4. The hearings with the most sign-ins.
     tdb = _need(root / "testimony_db.json", "the hearings with the most sign-ins")
     if tdb:
-        si = signins(tdb, narr_all, idx, site, root, strict=strict)
+        # Twenty, and the paragraph says twenty.
+        si = signins(tdb, narr_all, idx, site, root, top=20, strict=strict)
         allh = [h for t in si for h in si[t]]
         sided = [h for h in allh if h["support"] + h["oppose"]]
         lop = sum(1 for h in sided if 10 * max(h["support"], h["oppose"])
@@ -755,7 +775,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                 srows))
         out.append("<h2>The hearings with the most sign-ins</h2><p>Anyone may use the House's "
                    "online form to say they support or oppose a bill, or are neutral on it, at "
-                   "its committee hearing. These are the hearings with the most of those "
+                   "its committee hearing. These are the twenty hearings with the most of those "
                    f"sign-ins in each term since the earliest on record, on {_day(since)}: one "
                    "bill on one House committee date, with the title it had when it was heard. "
                    "A sign-in is a position registered, not a vote and not a person counted: "
@@ -773,7 +793,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     rows = []
     for ch in ("H", "S"):
         d, a, s = st.get(ch, (0, 0, 0))
-        rows.append([NAME[ch], f"{d:,}", f"{a} ({_pct(a, d)})", f"{s} ({_pct(s, d)})"])
+        rows.append([NAME[ch], f"{d:,}", _np(a, d), _np(s, d)])
     out.append(f"<h2>How often the full chamber overrules its committee</h2>"
                f"<p>In the {_t(current)} term, a committee's recommendation "
                "was followed by the chamber far more often than not. Counted here: each bill's "
@@ -790,7 +810,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
 
     # 6. Consent calendar share by committee, with the term's totals above it.
     rows_by = {r.get("id"): r for r in idx if r.get("term") == current}
-    by_c, per_ch = consent(narr, rows_by)
+    by_c, per_ch = consent(narr, rows_by, current)
     kept = sum(c["kept"] for c in per_ch.values())
     regular = sum(c["regular"] for c in per_ch.values())
     removed = sum(c["removed"] for c in per_ch.values())
@@ -806,7 +826,9 @@ def body(site=Path("site"), root=Path("."), strict=True):
                "of ten members in the House, and since April 2026 of two in the Senate. "
                f"For each committee of {_t(current)} with ten reports or more: the share that went "
                "on the consent calendar and stayed there &mdash; a measure of how often the "
-               "committee agreed with itself. A report the docket prints twice counts once.</p>"
+               "committee agreed with itself. A report counts to the committee that made it, so a "
+               "bill sent on to Finance or Ways and Means counts in both, and a report the docket "
+               "prints twice counts once.</p>"
                f"<p>In {_t(current)}, <b>{kept:,} of {total:,}</b> committee recommendations "
                f"({_pct(kept, total)}) were adopted on the consent calendar, and "
                f"<b>{regular + removed:,}</b> went to the regular calendar, {removed:,} of them "
@@ -818,7 +840,10 @@ def body(site=Path("site"), root=Path("."), strict=True):
     crrows = [[E(c), f"{n:,}", _np(p, n), _np(l, n)] for c, (n, p, l) in
               sorted(((c, v) for c, v in cr.items() if v[0] >= 10),
                      key=lambda x: (not x[0].startswith("House"), -x[1][1] / x[1][0], x[0]))]
-    tot_line = "; ".join(f"of the {n:,} {NAME[ch]} bills a {NAME[ch]} committee reported on, "
+    # "Bills", not "House bills": a House committee's count holds the Senate
+    # bills it reported on after the Senate passed them (378 of 1,942 in
+    # 2025-2026), and the paragraph above says why that matters.
+    tot_line = "; ".join(f"of the {n:,} bills a {NAME[ch]} committee reported on, "
                          f"{_pct(p, n)} passed both chambers"
                          for ch, (n, p, _l) in ctot.items() if n)
     out.append(f"<h2>Each committee's passage rate</h2><p>Of the House and Senate bills a "
@@ -940,9 +965,10 @@ def body(site=Path("site"), root=Path("."), strict=True):
     for t in recent:
         reached, vetoed, stood, over, live = vetoes([r for r in idx if r.get("term") == t])
         waiting += live
-        vrows.append([_t(t), f"{reached:,}", f"{vetoed} ({_pct(vetoed, reached)})", str(stood),
+        vrows.append([_t(t), f"{reached:,}", _np(vetoed, reached), str(stood),
                       str(over)])
-    out.append("<h2>Vetoes</h2><p>Of the bills that reached the governor in each of the last ten "
+    out.append("<h2>Vetoes</h2><p>Of the bills and joint resolutions that reached the governor in "
+               "each of the last ten "
                "terms, how many were vetoed, and what became of the veto. A bill that became "
                "law without a signature reached the governor and was not vetoed. A veto stood "
                "when the override failed or no override vote came before the session ended."

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.1
+# GRANITE_VERSION: 2026-10-07.2
 """What a passed bill's docket says was done to its text, and which committees reported on it.
 
     import adopted_amendments as AA
@@ -7,6 +7,8 @@
         per = {"H": {"amended": True, "n": 2}, "S": {"amended": False, "n": 0}}
     AA.reporting_committees(events, term)
         {"H": ["Education", "Finance"], "S": ["Finance"]}
+    AA.credited_reports(events, term)
+        [(report event, "H", "Finance"), ...]
 
 `events` is one bill's history as narratives.json holds it. No network, no
 file read: learn_numbers.py calls both for the Learn page of numbers.
@@ -256,11 +258,15 @@ def _second_name(text):
     return None
 
 
-def reporting_committees(events, term, official=None):
-    """{"H": [committee, ...], "S": [...]}: the committees of each chamber
-    that made a majority report on the bill, in the order they first did.
-    `official(name, chamber, term)` puts a name in the site's spelling."""
-    seen = {"H": [], "S": []}
+def credited_reports(events, term, official=None):
+    """[(event, chamber, committee)]: every committee report in `events`,
+    minority reports included, with the committee it is credited to ("" where
+    none is named) -- a second committee's report to the second committee, as
+    the module's notes say. `official(name, chamber, term)` puts a name in the
+    site's spelling. Both of the Learn page's per-committee tables read
+    reports through this, so that the consent table and the passage rates
+    credit the same report to the same committee."""
+    out = []
     first, sent = {}, {}
     for e in events or []:
         ch = (e.get("body") or "").upper()[:1]
@@ -285,13 +291,26 @@ def reporting_committees(events, term, official=None):
             name = own_nm
         elif sent.get(ch) and name == first.get(ch):
             name = sent[ch]
-        side = (e.get("side") or "").lower()
-        if side.startswith("min") or re.match(r"\s*(?:MIN\b|MINORITY)", raw, re.I):
-            continue
-        if ch not in ("H", "S") or not name:
-            continue
-        if official:
+        if official and ch in ("H", "S") and name:
             name = official(name, ch, term)
+        out.append((e, ch, name))
+    return out
+
+
+def minority(e):
+    """Whether a report is a minority report."""
+    return (e.get("side") or "").lower().startswith("min") or bool(
+        re.match(r"\s*(?:MIN\b|MINORITY)", e.get("raw") or "", re.I))
+
+
+def reporting_committees(events, term, official=None):
+    """{"H": [committee, ...], "S": [...]}: the committees of each chamber
+    that made a majority report on the bill, in the order they first did.
+    `official(name, chamber, term)` puts a name in the site's spelling."""
+    seen = {"H": [], "S": []}
+    for e, ch, name in credited_reports(events, term, official):
+        if minority(e) or ch not in ("H", "S") or not name:
+            continue
         if name not in seen[ch]:
             seen[ch].append(name)
     return seen
