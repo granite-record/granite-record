@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.84
+# GRANITE_VERSION: 2026-09-04.85
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3515,6 +3515,19 @@ NOTICED = defaultdict(list)
 # calendars_senate/ once a term and only where a meeting asks.
 CALENDAR_ROWS = {}
 CALENDAR_KIND = {"hearing": "hearing", "exec": "executive", "worksession": "work session"}
+# THE RULE DOES NOT TURN ITSELF OFF IN SILENCE (the review of decision 58, 7
+# October 2026). Its calendar half read nothing where calendar_meetings could
+# not load a term -- an error swallowed, or no calendar on disk for its years
+# -- and every meeting whose docket half held was then told as held for its
+# unmarked bills, with nothing said: HB 571 and HB 634 of 2015 and SB 92 of
+# 2013 would have gone back to telling 29 October with every check green.
+# CALENDAR_UNREAD says why a (chamber, term) could not be read, and
+# whole_day_meetings() puts in WHOLE_DAY_UNCHECKED each meeting whose docket
+# half held and whose term's calendars gave no row at all. main() stops on the
+# first kind, which is a failure, and says the second, which is a disk
+# without that term's calendars.
+CALENDAR_UNREAD = {}
+WHOLE_DAY_UNCHECKED = []
 
 
 def _meeting_key(e, evs, term):
@@ -3563,14 +3576,38 @@ def _calendar_rows(chamber, term):
             years = [int(y) for y in (term or "").split("-") if y.isdigit()]
             CALENDAR_ROWS[key] = CM.load(chamber, years=range(min(years) - 1, max(years) + 2)) \
                 if years else []
-        except Exception:                           # noqa: BLE001
+        except Exception as exc:                    # noqa: BLE001
             CALENDAR_ROWS[key] = []
+            CALENDAR_UNREAD[key] = f"{type(exc).__name__}: {exc}"
     return CALENDAR_ROWS[key]
 
 
 def _calendar_bill(s):
     m = re.match(r"^\s*([A-Z]+)\s*0*(\d+)", str(s or "").upper())
     return f"{m.group(1)}{m.group(2)}" if m else ""
+
+
+def whole_day_unchecked():
+    """(why the run stops, or None; the line it says, or None) for the
+    meetings whole_day_meetings() could not hold to the calendars
+    (WHOLE_DAY_UNCHECKED): a stop where a term's calendars raised
+    (CALENDAR_UNREAD), a line where none is on this disk for the term."""
+    broke = sorted({(k[1], k[0]) for k in WHOLE_DAY_UNCHECKED} & set(CALENDAR_UNREAD))
+    if broke:
+        return ("narrative.py: the calendars could not be read for "
+                + "; ".join(f"the {'House' if c == 'H' else 'Senate'} of {t} "
+                            f"({CALENDAR_UNREAD[(c, t)]})" for c, t in broke)
+                + ", so the meetings the docket cancels on most of their bills there "
+                  "cannot be held to them (whole_day_meetings)"), None
+    if not WHOLE_DAY_UNCHECKED:
+        return None, None
+    return None, (f"  whole-day rule not applied: {len(WHOLE_DAY_UNCHECKED)} meeting(s) the "
+                  "docket cancels on most of their bills have no calendar on this disk for "
+                  "their term, so the bills whose own notice is unmarked are told as the "
+                  "docket gives them: "
+                  + "; ".join(f"{k[2]} ({'House' if k[1] == 'H' else 'Senate'}), {k[3]}, "
+                              f"{VOIDED_KIND[k[4]]} of {k[0]}"
+                              for k in sorted(WHOLE_DAY_UNCHECKED)))
 
 
 def whole_day_meetings(noticed=None, calendar=None):
@@ -3581,6 +3618,7 @@ def whole_day_meetings(noticed=None, calendar=None):
     noticed = NOTICED if noticed is None else noticed
     calendar = calendar or _calendar_rows
     out = {}
+    WHOLE_DAY_UNCHECKED.clear()
     for k, seen in noticed.items():
         term, chamber, _committee, day, kind, _minute = k
         bills = defaultdict(list)
@@ -3597,7 +3635,11 @@ def whole_day_meetings(noticed=None, calendar=None):
         if not all(instead.values()):
             continue
         since = max(min(o[1] for o in os_) for os_ in instead.values()).date().isoformat()
-        rows = [r for r in calendar(chamber, term)
+        every = calendar(chamber, term)
+        if not every:
+            WHOLE_DAY_UNCHECKED.append(k)
+            continue
+        rows = [r for r in every
                 if since < (r.get("noticed") or "") < day
                 and CALENDAR_KIND[kind] in (r.get("kind") or "").lower()]
         if not rows:
@@ -5407,6 +5449,12 @@ def main():
     # whose notice of it the docket left unmarked are built again.
     WHOLE_DAY = whole_day_meetings()
     NOTICED.clear()
+    # Said, and where the calendars broke, a stop (CALENDAR_UNREAD).
+    stop, said = whole_day_unchecked()
+    if stop:
+        sys.exit(stop)
+    if said:
+        print(said)
     if WHOLE_DAY:
         was = EXPANDED[0]
         again = sorted({(k[0], b) for k, w in WHOLE_DAY.items() for b in w["told"]})

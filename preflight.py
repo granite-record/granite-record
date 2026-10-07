@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.383
+# GRANITE_VERSION: 2026-09-04.384
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3349,6 +3349,101 @@ def _whole_day_cancelled(N):
     assert not bad, "\n".join(bad)
     return "ok", ("a session cancelled on two of three bills and dropped by the calendars is "
                   "cancelled for the third; not where a later calendar prints it, nor with none")
+
+
+@check("narrative", "the whole-day rule says so where it has no calendar to read for a term, and "
+                    "stops where the calendars would not load",
+       needs=("narrative",))
+def _whole_day_not_silent(N):
+    """The review of decision 58: _calendar_rows took any error for "no
+    calendar", and whole_day_meetings passed over a meeting whose term's
+    calendars gave nothing, so a disk without calendars/ or a change that
+    broke calendar_meetings.load would have put HB 571 and HB 634 of 2015's
+    and SB 92 of 2013's 29 October back in their histories with nothing said.
+    Now a meeting whose docket half holds and whose term gave no calendar row
+    is listed (WHOLE_DAY_UNCHECKED) and said, and where loading raised
+    (CALENDAR_UNREAD) narrative.py stops."""
+    import types
+    bad = []
+    tmp = Path(tempfile.mkdtemp(prefix="gr-whole-day-silent-"))
+    saved = (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS, N.WHOLE_DAY,
+             dict(N.CALENDAR_UNREAD), dict(N.CALENDAR_ROWS), list(N.WHOLE_DAY_UNCHECKED))
+    real_cm = sys.modules.get("calendar_meetings")
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_WHOLE_DAY) + "\n", encoding="utf-8")
+        rows = N.parse_docket(str(tmp / "Docket.txt"))
+        N.CORRECTIONS, N.MISFILED, N.INTRODUCTIONS, N.TERM = [], [], {}, "2015-2016"
+        N.WHOLE_DAY = {}
+        N.NOTICED.clear()
+        for b in rows:
+            N.build(b, rows[b])
+        key = ("2015-2016", "H", "Ways and Means", "2015-10-29", "exec", 600)
+        noticed = {k: list(v) for k, v in N.NOTICED.items()}
+        N.CALENDAR_UNREAD.clear()
+        got = N.whole_day_meetings(noticed=noticed, calendar=lambda chamber, term: [])
+        stop, said = N.whole_day_unchecked()
+        if got or N.WHOLE_DAY_UNCHECKED != [key] or stop or "whole-day rule not applied" not in (said or ""):
+            bad.append(f"with no calendar for the term: cancelled {list(got)!r}, unchecked "
+                       f"{N.WHOLE_DAY_UNCHECKED!r}, said {said!r}, stop {stop!r}")
+        N.whole_day_meetings(noticed=noticed, calendar=lambda chamber, term: _WHOLE_DAY_CALENDAR)
+        if N.WHOLE_DAY_UNCHECKED or N.whole_day_unchecked() != (None, None):
+            bad.append(f"with the calendars read, {N.WHOLE_DAY_UNCHECKED!r} is still unchecked")
+        # And a calendar_meetings whose load raises: recorded, and a stop.
+        def _raises(*_a, **_k):
+            raise ValueError("a calendar's text would not parse")
+        sys.modules["calendar_meetings"] = types.SimpleNamespace(load=_raises)
+        N.CALENDAR_ROWS.pop(("H", "2015-2016"), None)
+        N.whole_day_meetings(noticed=noticed)
+        stop, said = N.whole_day_unchecked()
+        if ("H", "2015-2016") not in N.CALENDAR_UNREAD or not stop or "would not parse" not in stop:
+            bad.append(f"a calendar_meetings that raises is not a stop: unread "
+                       f"{N.CALENDAR_UNREAD!r}, stop {stop!r}")
+    finally:
+        if real_cm is not None:
+            sys.modules["calendar_meetings"] = real_cm
+        else:
+            sys.modules.pop("calendar_meetings", None)
+        (N.CORRECTIONS, N.MISFILED, N.TERM, N.INTRODUCTIONS, N.WHOLE_DAY) = saved[:5]
+        N.CALENDAR_UNREAD.clear()
+        N.CALENDAR_UNREAD.update(saved[5])
+        N.CALENDAR_ROWS.clear()
+        N.CALENDAR_ROWS.update(saved[6])
+        N.WHOLE_DAY_UNCHECKED[:] = saved[7]
+        N.NOTICED.clear()
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert not bad, "\n".join(bad)
+    return "ok", ("a meeting with no calendar for its term is said, and a calendar that will "
+                  "not load stops the run")
+
+
+@check("data", "the meetings decision 58 cancels for all their bills are told for none of them")
+def _whole_day_histories():
+    """Decision 58 (_whole_day_cancelled, _whole_day_not_silent): Ways and
+    Means' executive session of 29 October 2015 and Commerce's of 29 October
+    2013 are cancelled for HB 571 and HB 634 of 2015 and SB 92 of 2013, whose
+    own notices of them carry no mark. Nothing but the calendars' half of the
+    rule holds them there, so the histories on disk are read: none tells the
+    day, and each lists it among the meetings no committee sat for."""
+    narr = Path("narratives.json")
+    if not narr.exists():
+        return "skip", "no narratives.json here"
+    data = json.loads(narr.read_text(encoding="utf-8"))
+    want = {("2015-2016", "HB571"): ("2015-10-29", "October 29, 2015"),
+            ("2015-2016", "HB634"): ("2015-10-29", "October 29, 2015"),
+            ("2013-2014", "SB92"): ("2013-10-29", "October 29, 2013")}
+    bad = []
+    for (term, bill), (day, words) in want.items():
+        h = (data.get(term) or {}).get(bill)
+        if not h:
+            bad.append(f"{bill} of {term} has no history")
+            continue
+        if words in (h.get("narrative") or ""):
+            bad.append(f"{bill} of {term} tells {words}")
+        if not any(m[0] == day and m[1] == "H" for m in h.get("voided") or []):
+            bad.append(f"{bill} of {term} draws its committee's meeting of {day}: voided "
+                       f"{h.get('voided')!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", "HB 571 and HB 634 of 2015 and SB 92 of 2013 tell no meeting of 29 October"
 
 
 # Real rows: Docket_db_2009-2010.txt 13721-13727 (HB 1134) and
