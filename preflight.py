@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.421
+# GRANITE_VERSION: 2026-09-04.422
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4753,6 +4753,70 @@ def _clerk_slips_read(N, D):
         bad.append(f"proceedings.csv reads SB 393's sittings as {live!r}")
     assert not bad, "\n".join(bad)
     return "ok", "two slips read on their own rows; SB 393 of 2000 heard on 8 February, as typed on its docket"
+
+
+# Real rows: Docket_db_2011-2012.txt 6972 (SB 57 of 2011), 15630 (HB 1679 of
+# 2012) and 21964 (SB 326 of 2012, whose question names SB 318 and whose roll
+# call, 313 of 2012, is SB 326's); Docket_2015-2016.txt 1980-1983 (HB 122 of
+# 2015); Docket_2017-2018.txt 17637 (SB 365 of 2018) and Docket_2019-2020.txt
+# 9958 (HB 455 of 2019).
+_DOCKET_OVERRIDEN = [
+    ("2011", "11/30/2011 10:48:20 AM", "Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during 1/4/2012 morning veto session]; HJ 76, PG.2302-2305",
+     ("RC", "248", "123", "01/04/2012")),
+    ("2012", "06/27/2012 11:03:13 AM", "Shall HB 1679 Become Law: Veto Overriden, RC 240-118 By Necessary Two-Thirds Vote; HJ 53, PG.2625-2628",
+     ("RC", "240", "118", "06/27/2012")),
+    ("2012", "06/27/2012 04:21:09 PM", "Shall SB 318 Become Law: Veto Overriden, RC 312-18 By Necessary Two-Thirds Vote; HJ 53, PG.2652-2654",
+     ("RC", "312", "18", "06/27/2012")),
+    ("2015", "06/11/2015 11:11:21 AM", "Veto Overriden: RC 236-95 By Required Two-Thirds Vote; HJ 46, PG. 1981-1983",
+     ("RC", "236", "95", "06/11/2015")),
+    ("2018", "9/17/2018 12:00:00 AM", "Veto Overriden 09/13/2018; Chapter 0379; Effective 09/03/2018", None),
+    ("2019", "5/30/2019 12:00:00 AM", "Veto Overriden 05/30/2019: Eff: 05/30/2019; Chapter 42", None),
+]
+_DOCKET_OVERRIDEN_HB122 = [
+    "2015|0254|06/03/2015 04:28:44 PM|HB122|H|Vetoed by the Governor on 6/2/2015; HJ 46, PG. 1981|06/03/2015 04:28:44 PM",
+    "2015|0254|06/11/2015 11:11:21 AM|HB122|H|Veto Overriden: RC 236-95 By Required Two-Thirds Vote; HJ 46, PG. 1981-1983|06/11/2015 11:11:21 AM",
+    "2015|0254|06/24/2015 03:51:36 PM|HB122|S|Notwithstanding the Governor’s Veto, Shall HB 122 Become Law:  RC 18Y-6N, Veto Overridden by required two-thirds vote|06/24/2015 03:51:36 PM",
+    "2015|0254|06/25/2015 11:14:25 AM|HB122|H|Veto Override 06/24/2015; Effective 08/23/2015; Chapter 0157|06/25/2015 11:14:25 AM",
+]
+
+
+@check("narrative", "a House override the clerk spelt \"Overriden\" is read as the override it "
+                    "records, and the docket line keeps the clerk's word",
+       needs=("narrative", "docket_vocab"))
+def _veto_overriden_read(N, V):
+    """Nine House rows of 2011-2015 record an override vote as "Veto
+    Overriden" -- SB 57 of 2011, seven bills on 27 June 2012, HB 122 of 2015
+    -- and the reader typed each no vote at all, so a carried override was
+    missing from the history (docket_era_2007.SLIPS). Read where a roll call
+    follows the word and nowhere else: SB 365 of 2018's and HB 455 of 2019's
+    "Veto Overriden <date>; ... Chapter" rows are the chaptering row, not a
+    vote, and stay as they were. And the list of the era's slips is this one,
+    so a second is a decision with its evidence and not a widening."""
+    import datetime as _dt
+    import docket_era_2007 as E7
+    bad = []
+    if len(getattr(E7, "SLIPS", ())) != 1:
+        bad.append(f"docket_era_2007.SLIPS holds {len(getattr(E7, 'SLIPS', ()))} slips; a new one is a person's "
+                   "decision, with its evidence, and this check is changed with it")
+    for year, at, desc, want in _DOCKET_OVERRIDEN:
+        when = _dt.datetime.strptime(at, "%m/%d/%Y %I:%M:%S %p")
+        ev = V.classify(desc, when, year) or N.classify(desc)
+        got = ((ev.get("vote"), ev.get("y"), ev.get("n"), ev.get("date"))
+               if ev.get("_type") == "veto_override" and ev.get("outcome") == "Overridden" else None)
+        if got != want:
+            bad.append(f"{desc[:60]!r} of {year} is read as {ev.get('_type')} {got!r}, not {want!r}")
+        if "Overriden" not in (ev.get("_raw") or ""):
+            bad.append(f"{desc[:40]!r}'s docket line no longer says what the clerk typed: {ev.get('_raw')!r}")
+    n = _told_from_rows(N, "2015-2016", "HB122", _DOCKET_OVERRIDEN_HB122)
+    said = n.get("narrative") or ""
+    if ("June 11, 2015 the House voted 236–95 to override" not in said
+            or "June 24, 2015 the Senate voted 18–6 to override" not in said):
+        bad.append(f"HB 122 of 2015's history does not tell both overrides: {said!r}")
+    if not any("Overriden" in e["raw"] for e in n["events"]):
+        bad.append("HB 122's docket line does not keep the clerk's \"Overriden\"")
+    assert not bad, "\n".join(bad)
+    return "ok", ("nine override votes spelt \"Overriden\" read as overrides with their roll calls, "
+                  "the two chaptering rows left as they were, and HB 122 of 2015 tells both chambers'")
 
 
 # Real rows: Docket_2015-2016.txt (HB 564 of 2015).
