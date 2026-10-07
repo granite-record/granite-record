@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.170
+# GRANITE_VERSION: 2026-09-05.171
 """
 Generate the faceted site from real General Court data.
 
@@ -8466,8 +8466,11 @@ CANCELLED_NOT_TOLD = ("A cancellation. The history does not tell a meeting the d
 # SESSIONS", HB 321 of 1991). NOT A ROW OF ANOTHER KIND: the same mark on SB 38
 # of 2009's committee report ("=== CANCELLED === Committee Report; Ought to
 # Pass [1/28/09]; SC8", the report's day moved to 4 February) and on HB 1611 of
-# 2020's Senate introduction calls no meeting off, and those two rows stay off
-# the list as they were.
+# 2020's Senate introduction calls no meeting off. Those two are listed too
+# now, like every other cancelled row (the person, 7 October 2026), with
+# CANCELLED_ROW_NOT_TOLD beside them, which does not call them a meeting.
+CANCELLED_ROW_NOT_TOLD = ("A cancellation. The history does not tell a row the docket "
+                          "marked cancelled.")
 CALLED_OFF_KINDS = ("hearing", "exec", "worksession", "conference_meeting", "other")
 
 
@@ -8520,6 +8523,21 @@ def docket_line(e):
     return e.get("line") or e.get("raw") or ""
 
 
+def listed_line(e):
+    """The line as the bill's docket list prints it: docket_line, with the
+    clerk's cancel mark where the line carries one (narrative.marked_line's
+    `said`, the person's item of 7 October 2026). Only the list reads it;
+    everything that reads a line for what it says reads docket_line."""
+    return e.get("line") or e.get("said") or e.get("raw") or ""
+
+
+def marked_cancelled(e):
+    """A row the docket itself cancelled: narrative's "cancelled", and not a
+    notice told as one ("notice"). A meeting's (called_off) or, twice in the
+    record, another kind of row."""
+    return bool(e.get("cancelled")) and not e.get("notice")
+
+
 def docket_lines(narr):
     """The docket's own lines for the bill's page: its events, and the rows
     the docket files under it that belong to another bill, by date. Those
@@ -8539,13 +8557,14 @@ def docket_lines(narr):
 
     AND SO IS A ROW THAT CALLS A MEETING OFF (called_off, 7 October 2026),
     with CANCELLED_NOT_TOLD beside it: the docket keeps it, and only the
-    history leaves it out. A cancelled row of another kind -- a report or an
-    introduction the clerk marked cancelled -- is still not listed."""
+    history leaves it out. AND A CANCELLED ROW OF ANOTHER KIND (the same
+    day): SB 38 of 2009's committee report and HB 1611 of 2020's Senate
+    introduction, the only two, with CANCELLED_ROW_NOT_TOLD. So every row the
+    docket holds is listed, each cancelled one with the clerk's mark
+    (listed_line)."""
     evs = [e for e in (narr or {}).get("events", [])
-           if (not e.get("cancelled") or e.get("notice") or called_off(e))
-           and not e.get("in_line")]
-    away = [e for e in (narr or {}).get("misfiled", [])
-            if not e.get("cancelled") or called_off(e)]
+           if not e.get("in_line")]
+    away = list((narr or {}).get("misfiled", []))
     if not away:
         return evs
     return sorted(evs + away, key=lambda e: e.get("date") or "")
@@ -9143,7 +9162,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # A DATE A PERSON CORRECTED (docket_corrections.json) is shown on
             # the day it happened, beside the clerk's line, which still says
             # the other date -- so the line carries why, in plain words.
-            "events": [{"date": e["date"], "text": docket_line(e),
+            "events": [{"date": e["date"], "text": listed_line(e),
                         "routine": is_routine(docket_line(e)),
                         **({"date_as_recorded": e["date_as_recorded"],
                             "date_note": e.get("date_note") or (
@@ -9158,9 +9177,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                            if any(e is u for u in unenrolled) else {}),
                         # A row that calls a meeting off (called_off), which
                         # the history does not tell, with why; the feeds
-                        # leave it out by the same mark (build_feeds).
-                        **({"row_note": CANCELLED_NOT_TOLD, "called_off": True}
-                           if called_off(e) else {}),
+                        # leave it out by the same mark (build_feeds), as the
+                        # Documents tab does. A cancelled row of another kind
+                        # (marked_cancelled) carries the same mark, so it is
+                        # left out of both in the same way, and its own note.
+                        **({"row_note": CANCELLED_NOT_TOLD if called_off(e)
+                                        else CANCELLED_ROW_NOT_TOLD,
+                            "called_off": True}
+                           if marked_cancelled(e) else {}),
                         # A ROW FILED UNDER THE WRONG BILL (docket_corrections
                         # .json "misfiled") is listed here, with its note, and
                         # nowhere else on the page; the bill it belongs to
@@ -9173,7 +9197,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                         # The sign-ins belong to the hearing's notice, which
                         # carries them; a row calling it off does not repeat
                         # them.
-                        **({} if called_off(e) else hearing_testimony(
+                        **({} if marked_cancelled(e) else hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None)),
                         **_cite(e, sources,
                                 e.get("cite_year") or (e.get("date") or "")[:4])}

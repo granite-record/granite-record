@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.88
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1005,13 +1005,47 @@ except ImportError:                                         # pragma: no cover
     _VOCAB = None
 
 
-def clean(s):
-    # "== BILL KILLED ==" and "=== BILL KILLED ===". Two equals signs were
-    # allowed for and three were not, so 717 floor lines kept a flag in the
-    # middle and no pattern could read them.
-    s = re.sub(r"=={1,}\s*[A-Z][A-Z ]*?\s*=={1,}", " ", s)
+# "== BILL KILLED ==" and "=== BILL KILLED ===". Two equals signs were
+# allowed for and three were not, so 717 floor lines kept a flag in the
+# middle and no pattern could read them.
+FLAG_MARK = re.compile(r"=={1,}\s*[A-Z][A-Z ]*?\s*=={1,}")
+# The clerk's cancel mark among those flags, spelled with one L or two.
+CANCEL_WORD = re.compile(r"CANCELL?ED")
+
+
+def clean(s, keep_cancel=False):
+    """The docket line as every pattern here reads it: the clerk's flags
+    taken out, and a citation at its end. With keep_cancel, a cancel mark
+    stays where the clerk typed it (marked_line)."""
+    s = FLAG_MARK.sub(lambda m: m.group(0) if keep_cancel and CANCEL_WORD.search(m.group(0))
+                      else " ", s)
     s = re.sub(r"\s*(?:HJ|SJ|HC|SC)\s+\d+\b.*$", "", s)
     return re.sub(r"\s{2,}", " ", s).strip(" .;,")
+
+
+def marked_line(desc, raw):
+    """The line as the bill's docket list shows it where the clerk put a
+    cancel mark on it, or "" where the line carries none (the person, 7
+    October 2026: the list "shows the clerk's own cancel mark (for example
+    ==CANCELLED==) on the rows that carry one, as the official docket prints
+    it").
+
+    Every line is read with its flags taken out (clean), which is right for
+    reading it and took the one word a reader of the list most needs off a
+    meeting that never sat: "===CANCELLED=== Public Hearing: 1/15/2013 2:00
+    PM LOB 301" was listed as "Public Hearing: 1/15/2013 2:00 PM LOB 301".
+    `raw` is the line as read; where it is the clerk's line cleaned, the mark
+    goes back where the clerk typed it ("Hearing; === CANCELLED === January
+    22, 2009, ..."), and where an era's reader made the line otherwise, the
+    mark leads it, which is where the clerk typed it on nearly every row."""
+    plain = clean(desc)
+    kept = clean(desc, keep_cancel=True)
+    if kept == plain:
+        return ""
+    if plain == raw:
+        return kept
+    marks = [m.group(0) for m in FLAG_MARK.finditer(desc) if CANCEL_WORD.search(m.group(0))]
+    return " ".join(marks + [raw]) if raw else ""
 
 
 # --------------------------------------------------------------- classify
@@ -4223,6 +4257,9 @@ def build(bill, rows, introduction=None):
         ev["recessed"] = "RECESSED" in r["flags"]
         # The row as the clerk typed it, marks and all, for overtaken().
         ev["_said"] = r["desc"]
+        # And as the bill's docket list shows it, with the clerk's cancel
+        # mark where the line carries one (marked_line).
+        ev["_marked"] = marked_line(r["desc"], ev.get("_raw") or "")
         # A line docket_vocab.join_rows put back together from rows the
         # database cut it into, which read one by one were more than one
         # floor action and which still tells one: how many, where its era
@@ -4279,6 +4316,7 @@ def build(bill, rows, introduction=None):
             elsewhere.append({"date": ev["when"].strftime("%Y-%m-%d"),
                               "type": ev["_type"], "body": ev["body"],
                               "cancelled": ev["cancelled"], "raw": ev["_raw"],
+                              **({"said": ev["_marked"]} if ev.get("_marked") else {}),
                               "cite": ev.get("cite", ""),
                               "cite_page": ev.get("cite_page", ""),
                               "belongs_to": away["belongs_to"],
@@ -5207,6 +5245,10 @@ def build(bill, rows, introduction=None):
                     "body": e["body"],
                     "cancelled": e["cancelled"] or bool(e.get("_void")),
                     "raw": e["_raw"],
+                    # The line with the clerk's cancel mark, where it carries
+                    # one, for the bill's docket list alone (marked_line):
+                    # everything that reads the line reads `raw`.
+                    **({"said": e["_marked"]} if e.get("_marked") else {}),
                     # A withdrawal the row itself says came before the bill
                     # was introduced: "Withdrawn Prior to Introduction".
                     **({"before_introduction": True}

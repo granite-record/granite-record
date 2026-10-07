@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.429
+# GRANITE_VERSION: 2026-09-04.430
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23660,10 +23660,14 @@ def _docket_keeps_called_off_rows(N, B, BF):
     history tells none of them.
 
     The same mark on a row of another kind -- SB 38 of 2009's committee
-    report, HB 1611 of 2020's introduction -- calls no meeting off, and stays
-    off the list. A feed leaves a cancellation out (build_feeds.feed_events):
-    its item could not carry the note, and its line, the clerk's mark
-    stripped as every line's is, reads as the notice it cancels.
+    report, HB 1611 of 2020's introduction -- calls no meeting off; it is
+    listed too since 7 October 2026 (the person: "shown in their docket lists
+    like the other cancelled rows"), with CANCELLED_ROW_NOT_TOLD, which does
+    not call it a meeting. And every row the clerk marked carries the mark as
+    the official docket prints it ("==CANCELLED== Public Hearing: ..."),
+    which narrative.marked_line keeps for the list alone (listed_line). A
+    feed leaves a cancelled row out (build_feeds.feed_events), as the
+    Documents tab does: neither can carry the note.
 
     The dockets above, through narrative.build and docket_lines, and the list
     as the page builds it drawn by app.js under node.
@@ -23680,8 +23684,8 @@ def _docket_keeps_called_off_rows(N, B, BF):
         old, new = out["SB107"], out["HB1001"]
 
         def listed(h):
-            return [(e["date"], B.docket_line(e), e.get("row_note") or "",
-                     B.called_off(e)) for e in B.docket_lines(h)]
+            return [(e["date"], B.listed_line(e), e.get("row_note") or "",
+                     B.called_off(e), B.marked_cancelled(e)) for e in B.docket_lines(h)]
         got = listed(old)
         off = [x for x in got if x[3]]
         assert [x[:2] for x in off] == [("1999-02-17", "Hearing Cancelled Due To Town Meeting Day")], (
@@ -23691,14 +23695,21 @@ def _docket_keeps_called_off_rows(N, B, BF):
             f"the notice of 9 March it calls off left the list, or lost its note: {got}")
         got = listed(new)
         off = [(x[0], x[1]) for x in got if x[3]]
-        assert off == [("2026-01-22", "Public Hearing: 01/22/2026 10:00 am GP 230"),
-                       ("2026-02-04", "Executive Session: 02/04/2026 10:00 am GP 230")], (
-            f"HB 1001's cancelled hearing and executive session are not both listed: {got}")
-        assert not any("Committee Report" in x[1] for x in got), (
-            "a committee report the clerk marked cancelled -- a row of another kind, which "
-            f"calls no meeting off -- was listed: {got}")
-        assert sum(1 for x in got if x[1] == "Public Hearing: 01/22/2026 10:00 am GP 230") == 2, (
+        assert off == [("2026-01-22", "==CANCELLED== Public Hearing: 01/22/2026 10:00 am GP 230"),
+                       ("2026-02-04", "==CANCELLED== Executive Session: 02/04/2026 10:00 am GP 230")], (
+            f"HB 1001's cancelled hearing and executive session are not both listed with the "
+            f"clerk's mark: {got}")
+        report = [x for x in got if "Committee Report" in x[1]]
+        assert len(report) == 1 and report[0][1].startswith("==CANCELLED== Committee Report") \
+            and report[0][4] and not report[0][3], (
+                "a committee report the clerk marked cancelled -- a row of another kind, which "
+                f"calls no meeting off -- is not listed with its mark like the others: {got}")
+        assert [x[1] for x in got if x[1].endswith("Public Hearing: 01/22/2026 10:00 am GP 230")] \
+            == ["Public Hearing: 01/22/2026 10:00 am GP 230",
+                "==CANCELLED== Public Hearing: 01/22/2026 10:00 am GP 230"], (
             f"the notice of 22 January and the row cancelling it are not both listed: {got}")
+        assert not any("==" in x[1] for x in got if not x[4]), (
+            f"a row the clerk did not cancel carries a cancel mark: {got}")
         # The history tells none of them.
         for h, gone, held in ((old, ("March 9", "February 17"), "March 16, 1999"),
                               (new, ("January 22", "February 4", "February 18"),
@@ -23707,15 +23718,18 @@ def _docket_keeps_called_off_rows(N, B, BF):
             assert held in told and not any(g in told for g in gone), (
                 f"{h['bill']}'s history tells a meeting the docket called off, or not the "
                 f"one held: {told!r}")
-        # The feeds leave the row out; the page draws it with its note.
-        rows = [{"date": e["date"], "text": B.docket_line(e),
-                 **({"row_note": B.CANCELLED_NOT_TOLD, "called_off": True}
-                    if B.called_off(e) else {}),
+        # The feeds leave the rows out; the page draws them with their notes,
+        # as build_site_v2 writes them.
+        rows = [{"date": e["date"], "text": B.listed_line(e),
+                 **({"row_note": B.CANCELLED_NOT_TOLD if B.called_off(e)
+                     else B.CANCELLED_ROW_NOT_TOLD, "called_off": True}
+                    if B.marked_cancelled(e) else {}),
                  **({"row_note": e["row_note"]} if e.get("row_note") else {})}
                 for e in B.docket_lines(new)]
         told = [e["text"] for e in BF.feed_events({"events": rows})]
-        assert len(told) == len(rows) - 2 and len(set(told)) == len(told), (
-            f"a feed tells a row that calls a meeting off, as the notice it cancels: {told}")
+        assert len(told) == len(rows) - 3 and len(set(told)) == len(told) \
+            and not any("CANCELLED" in t for t in told), (
+                f"a feed tells a row the docket cancelled, as the notice it cancels: {told}")
         js, stub = Path("app.js"), Path("dom_stub.js")
         if js.exists() and stub.exists() and shutil.which("node"):
             row = {"id": "HB1001", "year": 2026, "term": "2025-2026", "title": "",
@@ -23724,7 +23738,7 @@ def _docket_keeps_called_off_rows(N, B, BF):
             # calling it off both cite names the actions it records: the
             # notice, once, and not a second line that reads as the notice.
             heard = "Public Hearing: 01/22/2026 10:00 am GP 230"
-            d = {**row, "events": [{**e, "cite": "HC 5"} if e["text"] == heard else e
+            d = {**row, "events": [{**e, "cite": "HC 5"} if e["text"].endswith(heard) else e
                                    for e in rows],
                  "documents": [{"label": "HC 5", "kind": "record",
                                 "url": "https://gc.nh.gov/house/calendars_journals/x.pdf"}]}
@@ -23749,14 +23763,17 @@ process.stdout.write("\\n@@" + JSON.stringify([scope.renderDetail(row, d),
             html, docs = json.loads(r.stdout.rsplit("@@", 1)[1])
             docket = html[html.find('class="docket"'):]
             assert docket.count(B.CANCELLED_NOT_TOLD) == 2 and docket.count(
-                    "Executive Session: 02/04/2026") == 1, (
-                "the page does not draw the rows that call a meeting off, each with its note")
-            assert "HC 5" in docs and docs.count(heard) == 1, (
+                    B.CANCELLED_ROW_NOT_TOLD) == 1 and docket.count(
+                    "==CANCELLED== Executive Session: 02/04/2026") == 1 \
+                and docket.count("==CANCELLED==") == 3, (
+                "the page does not draw every row the docket cancelled, each with the clerk's "
+                "mark and its note")
+            assert "HC 5" in docs and docs.count(heard) == 1 and "CANCELLED" not in docs, (
                 "the Documents tab names a row that calls a meeting off among the actions its "
                 "calendar records, where it reads as a second notice of the meeting")
-        return "ok", ("a row that calls a meeting off is on the docket list with its note, in "
-                      "1999's form and 2026's; a cancelled report is not; the history, the "
-                      "feeds and the Documents tab tell none")
+        return "ok", ("every row the docket cancelled is on the docket list with the clerk's "
+                      "mark and its note, in 1999's form and 2026's, a cancelled report too; "
+                      "the history, the feeds and the Documents tab tell none")
     finally:
         N.MISFILED, N.CORRECTIONS, N.TERM = saved
         shutil.rmtree(root, ignore_errors=True)
@@ -44114,6 +44131,71 @@ def _bill_text_opens_whole():
     assert re.search(r'class="vtog sel" data-vmode="[^"]*\|changes"', asked) \
         and "Loading what changed" in asked, "What changed no longer shows the comparison"
     return "ok", "the newest printing, in full text; What changed one press away"
+
+
+@check("session", "a docket line the clerk marked cancelled keeps the mark where the clerk typed it, for the docket list alone",
+       needs=("narrative", "build_site_v2"))
+def _docket_cancel_mark_kept(N, B):
+    """"A bill page's docket list shows the clerk's own cancel mark (for
+    example ==CANCELLED==) on the rows that carry one, as the official docket
+    prints it" (the person, 7 October 2026). Every line is read with the
+    clerk's flags taken out (narrative.clean), and the list printed it that
+    way, so "===CANCELLED=== Public Hearing: 1/15/2013 2:00 PM LOB 301" was
+    listed as the notice of a hearing that never sat.
+
+    narrative.marked_line puts the mark back where the clerk typed it, in
+    each shape the dockets use -- leading the line, inside a Senate hearing's
+    line, spelled with one L, three equals signs -- and gives nothing for a
+    line with no cancel mark or with another flag; a line an era's reader
+    made otherwise is led by the mark. build_site_v2.listed_line prints it
+    and docket_line, which every reader of a line's meaning uses, does not;
+    and the two rows of another kind the clerk marked cancelled, SB 38 of
+    2009's committee report and HB 1611 of 2020's Senate introduction, are
+    on the list (docket_lines) like the rest."""
+    cases = [
+        ("===CANCELLED=== Public Hearing: 1/15/2013 2:00 PM LOB 301",
+         "===CANCELLED=== Public Hearing: 1/15/2013 2:00 PM LOB 301"),
+        ("Hearing; === CANCELLED === January 22, 2009, Room 103, LOB, 9:30 a.m.; SC7",
+         "Hearing; === CANCELLED === January 22, 2009, Room 103, LOB, 9:30 a.m.; SC7"),
+        ("==CANCELED== Executive Session: 2/3/2015 LOB 302",
+         "==CANCELED== Executive Session: 2/3/2015 LOB 302"),
+        ("=== CANCELLED === Committee Report; Ought to Pass [1/28/09]; SC8",
+         "=== CANCELLED === Committee Report; Ought to Pass [1/28/09]; SC8"),
+        ("Public Hearing: 1/15/2013 2:00 PM LOB 301", ""),
+        ("== BILL KILLED == Inexpedient to Legislate: MA VV HJ 12", ""),
+    ]
+    for desc, want in cases:
+        got = N.marked_line(desc, N.clean(desc))
+        assert got == want, f"{desc!r} is listed as {got!r}, not {want!r}"
+        assert N.clean(desc) == N.clean(desc, keep_cancel=False) and "CANCEL" not in N.clean(desc), (
+            f"the line every pattern reads keeps the mark: {N.clean(desc)!r}")
+    assert N.marked_line("==CANCELLED== EXEC SESSION 2/3", "Executive session 2/3") \
+        == "==CANCELLED== Executive session 2/3", (
+            "a line an era's reader made otherwise is not led by the clerk's mark")
+    said = {"date": "2009-01-22", "type": "report", "body": "S", "cancelled": True,
+            "raw": "Committee Report; Ought to Pass [1/28/09]; SC8",
+            "said": "=== CANCELLED === Committee Report; Ought to Pass [1/28/09]; SC8"}
+    intro = {"date": "2020-03-11", "type": "introduced", "body": "S", "cancelled": True,
+             "raw": "Introduced 03/11/2020 and Referred to Judiciary",
+             "said": "==CANCELLED== Introduced 03/11/2020 and Referred to Judiciary"}
+    held = {"date": "2009-01-08", "type": "introduced", "body": "S", "cancelled": False,
+            "raw": "Introduced and Referred to Public and Municipal Affairs"}
+    clause = {"date": "2009-01-08", "type": "floor", "body": "S", "cancelled": False,
+              "raw": "OT3rdg", "in_line": True}
+    lines = B.docket_lines({"events": [held, said, intro, clause]})
+    assert lines == [held, said, intro], (
+        "the docket list leaves out a row of another kind the clerk marked cancelled, or "
+        f"lists a clause of a line: {[B.docket_line(e) for e in lines]}")
+    assert [B.listed_line(e) for e in lines] == [held["raw"], said["said"], intro["said"]] \
+        and B.docket_line(said) == said["raw"], (
+            "the list does not print the clerk's mark, or the line's readers are given it")
+    assert [B.marked_cancelled(e) for e in lines] == [False, True, True] \
+        and not B.called_off(said) and not B.called_off(intro), (
+            "a cancelled report or introduction is read as a meeting called off")
+    assert "meeting" not in B.CANCELLED_ROW_NOT_TOLD, (
+        f"the note beside a cancelled report calls it a meeting: {B.CANCELLED_ROW_NOT_TOLD!r}")
+    return "ok", (f"{len(cases)} lines in the dockets' shapes, the mark where the clerk typed "
+                  "it and nowhere a pattern reads; the cancelled report and introduction listed")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
