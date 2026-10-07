@@ -31,11 +31,18 @@ has to sit down and watch the videos again.
 
 One file holds figures from outside the General Court's record.
 ballot_results.json is the statewide Yes and No vote on each constitutional
-amendment both chambers sent to the voters, taken from Ballotpedia's list of
-New Hampshire ballot measures; each row names the page and the day it was read,
-and says which CACR it is and why. The counts are facts, and no claim is made
-over them; the page they came from is Ballotpedia's and is not reproduced here.
-Like the files above, no script writes it.
+amendment both chambers sent to the voters. Each row names its source, where
+the count is printed and the day it was read, and says which CACR it is and
+why. For every amendment the voters have decided the source is the Secretary
+of State: its results pages on sos.nh.gov from 2016, and before that the
+Department of State's Manual for the General Court, read from NHPR's scans of
+it. Ballotpedia's figures stay on each of those rows as a cross-check. They
+differ on two No counts, CACR 7 of 1992 and CACR 41 of 2006, where the file
+takes the Secretary of State's. The one amendment still to go to the voters,
+CACR 13 of 2025-2026, names Ballotpedia's list of New Hampshire ballot
+measures until its count is in. The pages say whose each count is from the
+row's own source. The counts are facts, and no claim is made over them; no
+source's page is reproduced here. Like the files above, no script writes it.
 
 WHAT EACH PUBLISHED FILE HOLDS
 

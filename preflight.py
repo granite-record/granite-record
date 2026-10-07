@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.418
+# GRANITE_VERSION: 2026-09-04.419
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -284,7 +284,8 @@ def _site_bills(site="site"):
 # reading it once. A check that reads a fixture's site, or one page, still
 # asks site_read itself.
 _RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
-                 "journey", "ballot")
+                 "journey", "ballot",
+                 "status_source")   # whose a CACR's voters' line is (_ballots_shown)
 _RECORD_KEPT = _RECORD_WHOLE + (
     "rollcalls",        # kept as whether the page has any
     "reports")          # kept as each report's cite_url and source
@@ -5253,12 +5254,26 @@ def _nar(*evs, hands=()):
 
 # THE VOTERS' VOTE ON A CONSTITUTIONAL AMENDMENT, as ballot_results.json
 # holds it: CACR 6 of 2024 (the judicial retirement age), CACR 30 of 2006
-# (eminent domain) and CACR 7 of 1992 (the military reserve), with the
-# figures the source gives and the rows their dockets have.
-def _voters_row(term, bill, election, yes, no, label="Question 1"):
+# (eminent domain), CACR 7 of 1992 (the military reserve) and CACR 22 of 1998
+# (a senator's age), with the figures the source gives and the rows their
+# dockets have. Since 7 October 2026 a decided row's source is the Secretary
+# of State -- its sos.nh.gov results from 2016, NHPR's scan of its Manual for
+# the General Court before -- and the one still to come keeps Ballotpedia's
+# list (the person's decision of that day).
+_SOS_2024 = ("https://www.sos.nh.gov/2024-general-election-results",
+             "2024 general election results, sos.nh.gov")
+_MANUAL_1993 = ("https://electiondatabase.nhpr.org/document/690?page=324",
+                "Manual for the General Court 1993, p. 442 (NHPR's scan)")
+_MANUAL_1999 = ("https://electiondatabase.nhpr.org/document/686?page=184",
+                "Manual for the General Court 1999, p. 350 (NHPR's scan)")
+_BALLOTPEDIA = ("https://ballotpedia.org/List_of_New_Hampshire_ballot_measures",
+                "List of New Hampshire ballot measures")
+
+
+def _voters_row(term, bill, election, yes, no, label="Question 1", src=_SOS_2024,
+                read="2026-10-07"):
     return {"term": term, "bill": bill, "election": election, "label": label,
-            "yes": yes, "no": no, "read": "2026-10-05",
-            "source": "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures"}
+            "yes": yes, "no": no, "read": read, "source": src[0], "cite": src[1]}
 
 
 @check("status", "a CACR's voters ratify it only with two thirds of the votes cast",
@@ -5302,8 +5317,7 @@ def _ballot_two_thirds(build_site_v2):
               _ev("S", "Ought to Pass, RC 22Y-1N, MA, by Necessary 3/5; OT3rdg; 03/30/2023 SJ 12",
                   date="2023-03-30"),
               hands=("H:committee", "H:floor", "S:committee", "S:floor"))
-    row6 = _voters_row("2023-2024", "CACR6", "2024-11-05", 452307, 237221,
-                       "Increase Mandatory Judicial Retirement Age Amendment")
+    row6 = _voters_row("2023-2024", "CACR6", "2024-11-05", 452307, 237221, "Question No. 1")
     d = B.bill_disposition({}, "CACR6", st, n6, [], "2023-2024", "2025-2026")
     want("Passed both chambers, went to the voters", d.status, "CACR6 2024 with no ballot row")
     d = B.bill_disposition({}, "CACR6", st, n6, [], "2023-2024", "2025-2026", ballot=row6)
@@ -5316,20 +5330,24 @@ def _ballot_two_thirds(build_site_v2):
     # row does not overrule it (where the two disagree, the data check says so).
     n7 = _nar(*n6["events"], _ev("H", "AMENDMENT FAILED REFERENDUM(249,759-204,475); 1993 RED "
                                  "BOOK,P442", date="1992-11-03"), hands=())
-    row7 = _voters_row("1991-1992", "CACR7", "1992-11-03", 249759, 204457, "Question 4")
+    row7 = _voters_row("1991-1992", "CACR7", "1992-11-03", 249759, 204475, "Question No. 4",
+                       _MANUAL_1993)
     d = B.bill_disposition({}, "CACR7", st, n7, [], "1991-1992", "2025-2026",
                            ballot=_voters_row("1991-1992", "CACR7", "1992-11-03", 9, 1))
     want(B.NOT_RATIFIED, d.status, "CACR7 1992: the docket's referendum line against a row")
     # An election still to come stays to come: CACR 13 of 2026.
-    pending = _voters_row("2025-2026", "CACR13", "2026-11-03", None, None)
+    pending = _voters_row("2025-2026", "CACR13", "2026-11-03", None, None,
+                          "Eliminate Office of Register of Probate Amendment", _BALLOTPEDIA,
+                          "2026-10-05")
     text = ("submitted to the qualified voters of the state at the state general "
             "election to be held in November, 2026.")
     d = B.bill_disposition({}, "CACR13", st, n6, [], "2025-2026", "2025-2026", term_over=True,
                            text=text, today=B._date(2026, 10, 5), ballot=pending)
     want("Passed both chambers, goes to the voters in November 2026", d.status,
          "CACR13 2026, before its election")
-    want({"date": "2026-11-03", "label": "Question 1", "pending": True,
-          "source": pending["source"], "read": "2026-10-05"},
+    want({"date": "2026-11-03", "label": "Eliminate Office of Register of Probate Amendment",
+          "pending": True, "source": _BALLOTPEDIA[0], "read": "2026-10-05",
+          "by": "Ballotpedia", "whose": "Ballotpedia's", "cite": _BALLOTPEDIA[1]},
          B.ballot_card(pending, n6, today=B._date(2026, 10, 5)), "CACR13 2026's card")
     # On the day itself it is still to come; the day after, with no count in
     # the file, it is over and still pending -- the card says the vote was,
@@ -5342,10 +5360,10 @@ def _ballot_two_thirds(build_site_v2):
 
     # The voters' line, the rail's last stop and the list card's copy of it.
     # The line names whose count it is: How it got here is the docket's list,
-    # and this line is Ballotpedia's.
+    # and this line is the row's source's -- the Secretary of State's.
     step = B.ballot_step(row6)
     want(("2024-11-05", "V", "not_ratified", "x",
-          "Not ratified, 452,307–237,221 (Ballotpedia's count)", "not ratified"),
+          "Not ratified, 452,307–237,221 (the Secretary of State's count)", "not ratified"),
          tuple(step[k] for k in ("date", "body", "act", "mark", "text", "short")),
          "CACR6 2024's voters' line")
     intro, steps = B.journey(n6, "CACR6", [], "", "", "2023-2024")
@@ -5357,17 +5375,28 @@ def _ballot_two_thirds(build_site_v2):
          "CACR6 2024's journey against its status")
     jrail = B.journey_rail(intro, steps, rail, "CACR6", B.NOT_RATIFIED)
     want({"stop": "Voters", "mark": "x", "date": "2024-11-05", "short": "not ratified",
-          "say": "Not ratified, 452,307–237,221 (Ballotpedia's count)"},
+          "say": "Not ratified, 452,307–237,221 (the Secretary of State's count)"},
          jrail[-1] if jrail else None, "CACR6 2024's Voters stop")
     want(["Vx", "2024-11-05", "not ratified"], (B.index_rail(jrail) or [None])[-1],
          "CACR6 2024's Voters stop on the list card")
 
     # The card: the counts, the outcome, and the docket's own pair where it is
-    # not the source's -- CACR 7 of 1992's 204,475 against 204,457.
+    # not the source's -- CACR 22 of 1998's 159,439 against the Secretary of
+    # State's 169,439. CACR 7 of 1992's docket says 204,475, which is the
+    # Secretary of State's count too since 7 October 2026 (the file's 204,457
+    # was Ballotpedia's), so its card carries no second pair.
     card = B.ballot_card(row7, n7)
-    want((249759, 204457, False, [249759, 204475]),
+    want((249759, 204475, False, None),
          (card.get("yes"), card.get("no"), card.get("ratified"), card.get("docket")),
          "CACR7 1992's card")
+    n22 = _nar(*n6["events"], _ev("H", "AMENDMENT FAILED REFERENDUM  (119,104 - 159,439);  1998 "
+                                  "RED BOOK, P350", date="1998-11-03"), hands=())
+    row22 = _voters_row("1997-1998", "CACR22", "1998-11-03", 119104, 169439, "Question 1",
+                        _MANUAL_1999)
+    card = B.ballot_card(row22, n22)
+    want((119104, 169439, False, [119104, 159439]),
+         (card.get("yes"), card.get("no"), card.get("ratified"), card.get("docket")),
+         "CACR22 1998's card")
     n23 = _nar(_ev("H", "AMENDMENT ADOPTED BY 2/3 REF(199,229-26,336); 1991 RED BOOK,P294",
                    date="1990-11-06"))
     card = B.ballot_card(_voters_row("1989-1990", "CACR23", "1990-11-06", 199229, 26336), n23)
@@ -5404,6 +5433,211 @@ def _ballot_two_thirds(build_site_v2):
                   "election to come stays to come; the voters' line, the Voters stop and "
                   "the list card's copy carry the day and the outcome; a docket tally that "
                   "is not the source's is kept to be said; a file naming no CACR is refused")
+
+
+def _ballot_file():
+    """ballot_results.json's rows by (term, bill). The file is tracked, the
+    person's own (HANDMADE), and the night's clone carries it, so a check of
+    what it holds runs with the code checks."""
+    f = Path("ballot_results.json")
+    assert f.exists(), "ballot_results.json is not here"
+    return {(r.get("term"), r.get("bill")): r
+            for r in json.loads(f.read_text(encoding="utf-8"))["rows"]}
+
+
+@check("status", "the two No counts the person corrected on 7 October 2026 are the Secretary "
+                 "of State's, and Ballotpedia's are kept beside every decided row")
+def _ballot_corrected_counts():
+    """The person's decision of 7 October 2026 on ballot_results.json, their
+    file: the Secretary of State's count is every decided row's, and the two
+    No counts where Ballotpedia's list -- the file's source until then --
+    differs are the Secretary of State's. CACR 7 of 1992: 204,475, which the
+    Manual for the General Court 1993 prints on p. 442, its town table sums
+    to and the docket's referendum line says, where Ballotpedia has 204,457.
+    CACR 41 of 2006: 100,688, the Manual 2007's p. 335 and its county summary
+    on p. 336, where Ballotpedia has 100,686. Neither changes the outcome.
+
+    Ballotpedia's figures stay on each decided row as the cross-check
+    (`ballotpedia`), and on the other fifteen they are the Secretary of
+    State's to the vote, so a count that moves by itself is caught here too.
+    Fails on either corrected row holding another No, on its cross-check
+    losing Ballotpedia's figure, on a decided row with no cross-check, and on
+    any other decided row whose count is not its cross-check's."""
+    rows = _ballot_file()
+    bad = []
+    for key, no, bp in ((("1991-1992", "CACR7"), 204475, 204457),
+                        (("2005-2006", "CACR41"), 100688, 100686)):
+        r = rows.get(key) or {}
+        cross = r.get("ballotpedia") or {}
+        if r.get("no") != no:
+            bad.append(f"{key[1]} of {key[0]}'s No is {r.get('no')!r}, not the Secretary of "
+                       f"State's {no:,}")
+        if cross.get("no") != bp:
+            bad.append(f"{key[1]} of {key[0]}'s cross-check reads No {cross.get('no')!r}, not "
+                       f"Ballotpedia's {bp:,}")
+    same = 0
+    for key, r in sorted(rows.items()):
+        if r.get("yes") is None or key in (("1991-1992", "CACR7"), ("2005-2006", "CACR41")):
+            continue
+        cross = r.get("ballotpedia")
+        if not isinstance(cross, dict):
+            bad.append(f"{key[1]} of {key[0]} keeps no Ballotpedia figures to cross-check")
+        elif (cross.get("yes"), cross.get("no")) != (r.get("yes"), r.get("no")):
+            bad.append(f"{key[1]} of {key[0]} reads {r.get('yes')!r} to {r.get('no')!r} and "
+                       f"Ballotpedia {cross.get('yes')!r} to {cross.get('no')!r}")
+        else:
+            same += 1
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"CACR 7 of 1992 No 204,475 and CACR 41 of 2006 No 100,688, Ballotpedia's "
+                  f"204,457 and 100,686 kept beside them; the other {same} decided rows equal "
+                  "their cross-check")
+
+
+@check("status", "every amendment the voters decided cites the Secretary of State's count, "
+                 "and the one to come names its own source")
+def _ballot_sources():
+    """Since 7 October 2026 (the person's decision) a row the voters have
+    decided reads its count from the Secretary of State: its results page on
+    sos.nh.gov from 2016, when that site's results begin, and NHPR's scan of
+    the page of the Department of State's Manual for the General Court that
+    prints it before then (electiondatabase.nhpr.org) -- with `cite` saying
+    where, in words a reader can look up. Every decided row named Ballotpedia
+    until then. The election still to come keeps the list that names it
+    (Ballotpedia's) and says so; it needs a source and a label and no more.
+
+    Fails on a decided row whose source is on any other host, or which has
+    no cite; on one still carrying the separate `sos` object the Secretary of
+    State's figures were folded in from; and on a row of either kind naming
+    no source."""
+    rows = _ballot_file()
+    from urllib.parse import urlparse
+    hosts = Counter()
+    bad, to_come = [], []
+    for key, r in sorted(rows.items()):
+        name = f"{key[1]} of {key[0]}"
+        src = str(r.get("source") or "")
+        host = re.sub(r"^www\.", "", urlparse(src).hostname or "")
+        if not src.startswith("https://") or not host:
+            bad.append(f"{name} names no source")
+            continue
+        if r.get("yes") is None:
+            to_come.append(f"{name} ({host})")
+            continue
+        if host not in ("sos.nh.gov", "electiondatabase.nhpr.org"):
+            bad.append(f"{name}'s count is read from {host}, not the Secretary of State")
+        if not (isinstance(r.get("cite"), str) and r["cite"].strip()):
+            bad.append(f"{name} cites nothing")
+        if "sos" in r:
+            bad.append(f"{name} still carries the Secretary of State's figures apart, in sos")
+        hosts[host] += 1
+    assert not bad, "; ".join(bad[:5])
+    assert hosts, "ballot_results.json holds no decided row"
+    return "ok", (f"{sum(hosts.values())} decided rows cite the Secretary of State ("
+                  + ", ".join(f"{k} on {h}" for h, k in hosts.most_common()) + "); to come: "
+                  + (", ".join(to_come) or "none"))
+
+
+@check("frontend", "the voters' card and How it got here name the source their ballot row gives",
+       needs=("build_site_v2",))
+def _ballot_source_named(build_site_v2):
+    """Whose the voters' count is, said from the row's own source
+    (ballot_source.py), never in words of the page's own: the Votes tab card
+    said "Ballotpedia, List of New Hampshire ballot measures" on every CACR
+    and How it got here "(Ballotpedia's count)", and on 7 October 2026 the
+    person made the Secretary of State every decided row's source, keeping
+    Ballotpedia for the election still to come.
+
+    Built here from rows shaped as ballot_results.json's (build_site_v2's
+    ballot_card, ballot_step and docket_count_differs) and drawn in node by
+    app.js. Fails on a decided row's card, history line or differing-docket
+    note naming anyone but the Secretary of State -- sos.nh.gov or NHPR's scan
+    of its Manual alike -- or leaving out where the count is printed; on the
+    row to come naming anyone but Ballotpedia; and on a label in parentheses,
+    the file's description of how the source lists it, quoted as though it
+    were the source's words."""
+    B = build_site_v2
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    import html as _html
+    bad = []
+    row24 = _voters_row("2023-2024", "CACR6", "2024-11-05", 452307, 237221, "Question No. 1")
+    row22 = _voters_row("1997-1998", "CACR22", "1998-11-03", 119104, 169439, "Question 1",
+                        _MANUAL_1999)
+    row00 = _voters_row("1999-2000", "CACR6", "2000-11-07", 202367, 218875,
+                        "(the only question, unnumbered)",
+                        ("https://electiondatabase.nhpr.org/document/689?page=260",
+                         "Manual for the General Court 2001, p. 423 (NHPR's scan)"))
+    pending = _voters_row("2025-2026", "CACR13", "2026-11-03", None, None,
+                          "Eliminate Office of Register of Probate Amendment", _BALLOTPEDIA,
+                          "2026-10-05")
+    n22 = _nar(_ev("H", "AMENDMENT FAILED REFERENDUM  (119,104 - 159,439);  1998 RED BOOK, P350",
+                   date="1998-11-03"))
+    # How it got here: the voters' line, and the docket's where it differs.
+    for row, what in ((row24, "CACR 6 of 2024 (sos.nh.gov)"),
+                      (row22, "CACR 22 of 1998 (NHPR's scan of the Manual)")):
+        t = B.ballot_step(row)["text"]
+        if not t.endswith("(the Secretary of State's count)"):
+            bad.append(f"{what}'s voters' line reads {t!a}")
+    said = B.docket_count_differs(row22)
+    if said != " (the docket's count; the Secretary of State's is 119,104–169,439)":
+        bad.append(f"CACR 22 of 1998's docket line adds {said!a}")
+    recs = {"row24": B.ballot_card(row24, None), "row22": B.ballot_card(row22, n22),
+            "row00": B.ballot_card(row00, None),
+            "pending": B.ballot_card(pending, None, today=B._date(2026, 10, 5))}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "recs.json").write_text(json.dumps(recs), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async u => ({ok: true, status: 200, json: async () => ({H: [], S: []}),
+  text: async () => "{}"});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({renderVotes})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const recs = JSON.parse(fs.readFileSync("./recs.json", "utf8"));
+const out = {};
+for (const [k, v] of Object.entries(recs)) out[k] = s.renderVotes({id: "CACR6"}, {rollcalls: [], ballot: v});
+process.stdout.write("\\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw the voters' card under node: "
+            + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    def card(k):
+        h = got[k]
+        h = h[h.find('<section class="rc ballot">'):]
+        return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", h))).replace(" ,", ",")
+
+    for k, want, other in (
+            ("row24", "Source: Secretary of State, 2024 general election results, sos.nh.gov, "
+                      "read Oct 7, 2026, which lists it as “Question No. 1”.", "Ballotpedia"),
+            ("row22", "Source: Secretary of State, Manual for the General Court 1999, p. 350 "
+                      "(NHPR's scan), read Oct 7, 2026, which lists it as “Question 1”.",
+             "Ballotpedia"),
+            ("row00", "which lists it as the only question, unnumbered.", "Ballotpedia"),
+            ("pending", "Source: Ballotpedia, List of New Hampshire ballot measures, read "
+                        "Oct 5, 2026, which lists it as “Eliminate Office of Register of "
+                        "Probate Amendment”.", "Secretary of State")):
+        text = card(k)
+        if want not in text or other in text:
+            bad.append(f"the {k} card reads {text[-260:]!a}")
+    if "The counts above are the Secretary of State's, and How it got here gives the " \
+            "docket's." not in card("row22"):
+        bad.append(f"CACR 22 of 1998's card does not say whose its counts are: "
+                   f"{card('row22')[-400:]!a}")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("a decided row's card, voters' line and differing-docket note name the "
+                  "Secretary of State with where it is printed; the row to come, Ballotpedia; "
+                  "a label in parentheses said as a description")
 
 
 @check("status", "what the two chambers did with each other's version is read from the docket",
@@ -18566,31 +18800,61 @@ def _numbers_vetoes(learn_numbers):
     return "ok", "8 reached, 4 vetoed: 2 stood, 1 overridden, 1 still to be voted on"
 
 
-@check("frontend", "numbers: an amendment's vote is shown only where the Secretary of State agrees",
-       needs=("learn_numbers",))
+@check("frontend", "numbers: every amendment the voters decided is shown with its source and cite, "
+                   "and one without is named in the build's log", needs=("learn_numbers",))
 def _numbers_ballots(learn_numbers):
-    """F16, the amendments sent to the voters: shown only where the
-    Secretary of State's count on the row (sos, with where it is printed)
-    equals the row's own Yes and No to the vote; a row that differs, or has
-    no count from the Secretary of State, is held off the page; an election
-    still to come is neither. Ratified at two thirds of the votes cast,
+    """F16, the amendments sent to the voters. Until 7 October 2026 a row
+    was shown only where the Secretary of State's count (the row's `sos`)
+    equalled the row's own, which was Ballotpedia's, and the page told the
+    reader that two more "are not shown until two sources agree". That day
+    the person made the Secretary of State every decided row's source and
+    corrected the two that differed, so every decided row is shown with the
+    source and cite it names, and the sentence went.
+
+    A decided row with no source or no cite is still left off -- a figure
+    the page cannot say where to find -- and named in the build's log
+    (learn_numbers.HELD, which build_civics prints), not to the reader. An
+    election still to come is neither. Whose count it is, in the sentence
+    above the table, is the rows' own sources' (ballot_source.py), and the
+    last column is headed Source. Ratified at two thirds of the votes cast,
     exactly two thirds included."""
-    sos = lambda y, n: {"yes": y, "no": n, "cite": "2024 general election results, sos.nh.gov",
-                        "source": "https://www.sos.nh.gov/2024-general-election-results"}
-    rows = [{"term": "2023-2024", "bill": "CACR6", "election": "2024-11-05", "yes": 200000,
-             "no": 100001, "sos": sos(200000, 100001)},
-            {"term": "1989-1990", "bill": "CACR23", "election": "1990-11-06", "yes": 2, "no": 1,
-             "sos": sos(2, 1)},
-            {"term": "1991-1992", "bill": "CACR7", "election": "1992-11-03", "yes": 10, "no": 5,
-             "sos": sos(10, 6)},
-            {"term": "2005-2006", "bill": "CACR41", "election": "2006-11-07", "yes": 10, "no": 5},
-            {"term": "2025-2026", "bill": "CACR13", "election": "2026-11-03", "yes": None, "no": None}]
+    import tempfile as _tf
+    rows = [_voters_row("2023-2024", "CACR6", "2024-11-05", 200000, 100001),
+            _voters_row("1989-1990", "CACR23", "1990-11-06", 2, 1, src=(
+                "https://electiondatabase.nhpr.org/document/692?page=176",
+                "Manual for the General Court 1991, p. 294 (NHPR's scan)")),
+            {**_voters_row("1991-1992", "CACR7", "1992-11-03", 10, 5), "cite": ""},
+            {**_voters_row("2005-2006", "CACR41", "2006-11-07", 10, 5), "source": None},
+            _voters_row("2025-2026", "CACR13", "2026-11-03", None, None, src=_BALLOTPEDIA)]
     shown, held, to_come = learn_numbers.ballots(rows)
     got = ([r["bill"] for r in shown], [r["bill"] for r in held], [r["bill"] for r in to_come])
     assert got == (["CACR23", "CACR6"], ["CACR7", "CACR41"], ["CACR13"]), f"shown, held, to come: {got}"
     assert learn_numbers.ratified(2, 1) and not learn_numbers.ratified(200000, 100001), (
         "two thirds of the votes cast: exactly two thirds ratifies, a vote short does not")
-    return "ok", "2 shown, the disagreeing and the unchecked held, the election to come apart"
+    idx = [{"term": "2025-2026", "id": "HB1", "year": 2026, "status": "Signed into law",
+            "kind": "law", "chip": "Became Law", "sponsor_label": "Rep. Ann Able (R)"}]
+    with _tf.TemporaryDirectory() as tmp:
+        _bill_index_write(tmp, idx)
+        (Path(tmp) / "ballot_results.json").write_text(json.dumps({"rows": rows}),
+                                                       encoding="utf-8")
+        page = learn_numbers.body(Path(tmp), Path(tmp), strict=False)
+        held_said = list(learn_numbers.HELD)
+    sec = page[page.find("Constitutional amendments sent to the voters"):]
+    assert sec, "the amendments' section was not drawn"
+    for want in ("Yes and No are the Secretary of State's statewide count, printed where the "
+                 "Source column says. 1 of the 2 below were ratified.",
+                 "<th>Source</th>",
+                 ">Manual for the General Court 1991, p. 294 (NHPR&#x27;s scan)</a>"):
+        assert want in sec, f"the amendments' section lacks {want!r}: {sec[:700]!a}"
+    for gone in ("two sources", "Secretary of State's count</th>", "bill/1991/cacr7",
+                 "bill/2005/cacr41"):
+        assert gone not in sec, f"the amendments' section still carries {gone!r}"
+    assert held_said == ["CACR7 of 1991-1992: ballot_results.json gives it no cite",
+                         "CACR41 of 2005-2006: ballot_results.json gives it no source"], (
+        f"the rows left off are named in the build's log as {held_said!a}")
+    return "ok", ("2 shown with their source and cite, the Secretary of State's named from the "
+                  "rows; one with no cite and one with no source left off and named in the log; "
+                  "the election to come apart")
 
 
 @check("frontend", "numbers: the unsigned-laws table and the veto table's Awaiting column are gone",
@@ -21116,19 +21380,25 @@ def _ballot_card_drawn():
     css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
     assert re.search(r"\.ballot \.lrow \.c\{[^}]*white-space:nowrap", css), (
         "app.css does not keep a voters' count on one line (.ballot .lrow .c)")
-    src = "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures"
+    # As build_site_v2.ballot_card writes them since 7 October 2026: whose
+    # the count is (by, whose) and where it is printed (cite), from the row.
+    sos = {"by": "Secretary of State", "whose": "the Secretary of State's", "read": "2026-10-07"}
+    bp = {"source": _BALLOTPEDIA[0], "cite": _BALLOTPEDIA[1], "by": "Ballotpedia",
+          "whose": "Ballotpedia's", "read": "2026-10-05"}
     recs = {
-        "lost": {"date": "2024-11-05", "label": "Increase Mandatory Judicial Retirement Age Amendment",
-                 "yes": 452307, "no": 237221, "ratified": False, "source": src, "read": "2026-10-05"},
-        "won": {"date": "2006-11-07", "label": "Question 1", "yes": 316005, "no": 52893,
-                "ratified": True, "source": src, "read": "2026-10-05"},
-        "docket": {"date": "1992-11-03", "label": "Question 4", "yes": 249759, "no": 204457,
-                   "ratified": False, "docket": [249759, 204475], "source": src,
-                   "read": "2026-10-05"},
+        "lost": {"date": "2024-11-05", "label": "Question No. 1",
+                 "yes": 452307, "no": 237221, "ratified": False, "source": _SOS_2024[0],
+                 "cite": _SOS_2024[1], **sos},
+        "won": {"date": "2006-11-07", "label": "Question No. 1", "yes": 316005, "no": 52893,
+                "ratified": True, "source": "https://electiondatabase.nhpr.org/document/685?page=184",
+                "cite": "Manual for the General Court 2007, p. 335 (NHPR's scan)", **sos},
+        "docket": {"date": "1998-11-03", "label": "Question 1", "yes": 119104, "no": 169439,
+                   "ratified": False, "docket": [119104, 159439], "source": _MANUAL_1999[0],
+                   "cite": _MANUAL_1999[1], **sos},
         "pending": {"date": "2026-11-03", "label": "Eliminate Office of Register of Probate Amendment",
-                    "pending": True, "source": src, "read": "2026-10-05"},
+                    "pending": True, **bp},
         "over": {"date": "2026-11-03", "label": "Eliminate Office of Register of Probate Amendment",
-                 "pending": True, "over": True, "source": src, "read": "2026-10-05"},
+                 "pending": True, "over": True, **bp},
     }
     root = Path(tempfile.mkdtemp())
     try:
@@ -21192,7 +21462,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             f"the outcome is not said in words: {text[:200]!a}")
         assert "statewide public vote" in text and "two thirds of the votes cast" in text, (
             f"the voters' card does not say what the vote was or what it needed: {text[:300]!a}")
-        assert "State general election" in text and "Ballotpedia" in text, (
+        assert "State general election" in text and "Source: Secretary of State, " in text, (
             f"the voters' card names no election or no source: {text[:300]!a}")
         # The share in the ring; the counts in the legend, never in the ring.
         ring = html[html.find("<svg"):html.find("</svg>")]
@@ -21213,13 +21483,13 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     for count in ("452,307", "237,221"):
         assert f">{count} · " in lost, f"{count} is not drawn whole in the legend"
     assert "316,005" in won and "52,893" in won, "the 2006 counts are not drawn in full"
-    assert "Increase Mandatory Judicial Retirement Age Amendment" in lost, (
+    assert "Question No. 1" in lost, (
         "the voters' card does not say how the source lists the measure")
     # The docket's differing figure: which side, both numbers, and whose the
     # card's are -- not a second pair for the reader to compare digit by digit.
     dock = flat(voters(got["docket"]))
-    assert "docket records 204,475 votes against, not 204,457. The counts above are " \
-           "Ballotpedia's" in dock.replace("&#39;", "'"), (
+    assert "docket records 159,439 votes against, not 169,439. The counts above are " \
+           "the Secretary of State's" in dock.replace("&#39;", "'"), (
         f"the docket's own differing tally goes unsaid, or unplaced: {dock[:400]!a}")
     assert "docket records" not in flat(lost), "a tally the docket does not print is said to be its"
     # One date style in the card: the head's, every vote card's.
@@ -21227,7 +21497,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     assert "The vote is on Nov 3, 2026." in flat(pend) and "<svg" not in pend \
         and "rcres" not in pend and "atified" not in pend and "This is the statewide" in flat(pend), (
             f"an election still to come is drawn as {flat(pend)[:200]!a}")
-    assert "read Oct 5, 2026" in flat(lost) and "October" not in flat(lost), (
+    assert "read Oct 7, 2026" in flat(lost) and "October" not in flat(lost), (
         f"the voters' card mixes its date styles: {flat(lost)[-200:]!a}")
     # The day after, with no count in the file: past tense, still no outcome.
     over = voters(got["over"])
@@ -21249,9 +21519,10 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     assert "takes a bill's status from" in got["docsPending"], (
         f"a CACR still to go to the voters lost its status page's line: {flat(got['docsPending'])!a}")
     return "ok", ("452,307 and 237,221 whole in the legend, 65.6% in the ring, the mark two "
-                  "thirds round, Not ratified in words; 85.7% Ratified; the docket's 204,475 "
-                  "said against 204,457; Nov 3, 2026 to come, and past with no count; after "
-                  "the chambers', and counted; the status page not credited with the voters")
+                  "thirds round, Not ratified in words; 85.7% Ratified; the docket's 159,439 "
+                  "said against the Secretary of State's 169,439; Nov 3, 2026 to come, and past "
+                  "with no count; after the chambers', and counted; the status page not "
+                  "credited with the voters")
 
 
 # THE RAIL ON A PHONE, MEASURED WITHOUT A BROWSER (the review of 5 October
@@ -21475,7 +21746,15 @@ def _ballot_built(build_site_v2):
     so build_bills could stop attaching the voters' card and every code check
     still passed. Its record must carry the card, its status the two-thirds
     answer and the file it came from, its How it got here end at the voters
-    with whose count it is, and its index row's rail at the Voters stop."""
+    with whose count it is, and its index row's rail at the Voters stop.
+
+    WHOSE, BY THE ROW (7 October 2026): the card carries the row's source's
+    name and cite, and How it got here says "(the Secretary of State's
+    count)" for a row read from sos.nh.gov. A second CACR whose docket prints
+    a referendum count of its own that is not the row's -- CACR 22 of 1998's
+    159,439 against the Manual's 169,439, read through NHPR's scan -- ends
+    with the docket's line, saying it is the docket's and what the
+    Secretary of State's is."""
     here = Path(".").resolve()
     if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py is not here"
@@ -21489,26 +21768,32 @@ def _ballot_built(build_site_v2):
             fn(o)
             p.write_text(json.dumps(o), encoding="utf-8")
 
-        edit("data/bills.json", lambda o: o["2025-2026"].update({"CACR5": {
-            "designation": "CACR 5", "title": "relating to the judiciary",
-            "lsr_num": "0950", "lsr_year": "2026", "subject": "Courts", "chamber": "H",
-            "house_committee": "Judiciary", "senate_committee": "Judiciary",
-            "lsr": "2026-0950"}}))
-        edit("bill_status.json", lambda o: o.update({"CACR5": {
-            "gen_status": "PASSED", "house_status": "PASSED/ADOPTED",
-            "senate_status": "PASSED/ADOPTED", "text_pdf": "", "chapter": "",
-            "lsr": "2026-0950", "body": "H"}}))
-        edit("narratives.json", lambda o: o["2025-2026"].update({"CACR5": {
-            "narrative": "Both chambers passed it.", "notes": [], "unrecognised": [],
-            "stages": [{"hand": h} for h in ("H:committee", "H:floor", "S:committee",
-                                             "S:floor")],
-            "events": [
-                _ev("H", "Ought to Pass : MA RC 321-27 By Necessary Three-Fifths Vote "
+        both = [_ev("H", "Ought to Pass : MA RC 321-27 By Necessary Three-Fifths Vote "
                     "02/12/2026", "floor", "MA", "Ought to Pass", "2026-02-12"),
                 _ev("S", "Ought to Pass, RC 22Y-1N, MA, by Necessary 3/5; OT3rdg; "
-                    "03/26/2026 SJ 7", date="2026-03-26")]}}))
+                    "03/26/2026 SJ 7", date="2026-03-26")]
+        for bid, lsr, extra in (("CACR5", "0950", []),
+                                ("CACR7", "0951", [_ev("H", "AMENDMENT FAILED REFERENDUM  "
+                                                   "(119,104 - 159,439);  1998 RED BOOK, P350",
+                                                   date="2026-11-03")])):
+            edit("data/bills.json", lambda o, bid=bid, lsr=lsr: o["2025-2026"].update({bid: {
+                "designation": bid.replace("CACR", "CACR "), "title": "relating to the judiciary",
+                "lsr_num": lsr, "lsr_year": "2026", "subject": "Courts", "chamber": "H",
+                "house_committee": "Judiciary", "senate_committee": "Judiciary",
+                "lsr": f"2026-{lsr}"}}))
+            edit("bill_status.json", lambda o, bid=bid, lsr=lsr: o.update({bid: {
+                "gen_status": "PASSED", "house_status": "PASSED/ADOPTED",
+                "senate_status": "PASSED/ADOPTED", "text_pdf": "", "chapter": "",
+                "lsr": f"2026-{lsr}", "body": "H"}}))
+            edit("narratives.json", lambda o, bid=bid, extra=extra: o["2025-2026"].update({bid: {
+                "narrative": "Both chambers passed it.", "notes": [], "unrecognised": [],
+                "stages": [{"hand": h} for h in ("H:committee", "H:floor", "S:committee",
+                                                 "S:floor")],
+                "events": both + extra}}))
         (root / "ballot_results.json").write_text(json.dumps({"rows": [
-            _voters_row("2025-2026", "CACR5", "2026-11-03", 452307, 237221)]}),
+            _voters_row("2025-2026", "CACR5", "2026-11-03", 452307, 237221),
+            _voters_row("2025-2026", "CACR7", "2026-11-03", 119104, 169439, "Question 1",
+                        _MANUAL_1999)]}),
             encoding="utf-8")
         r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
                   "--out", "site", "--segments", "work"],
@@ -21520,6 +21805,9 @@ def _ballot_built(build_site_v2):
         f = root / "site" / "bills" / "2026" / "CACR5.json"
         assert f.exists(), "the fixture's CACR has no record"
         rec = json.loads(f.read_text(encoding="utf-8"))
+        f7 = root / "site" / "bills" / "2026" / "CACR7.json"
+        assert f7.exists(), "the fixture's second CACR has no record"
+        rec7 = json.loads(f7.read_text(encoding="utf-8"))
         rows = json.loads((root / "site" / "idx" / "2025-2026.json").read_text(encoding="utf-8"))
         row = next((x for x in rows if x.get("id") == "CACR5"), {})
     finally:
@@ -21527,6 +21815,9 @@ def _ballot_built(build_site_v2):
     card = rec.get("ballot") or {}
     assert (card.get("date"), card.get("yes"), card.get("no"), card.get("ratified")) == (
         "2026-11-03", 452307, 237221, False), f"the CACR's record carries no voters' card: {card!a}"
+    assert (card.get("by"), card.get("cite"), card.get("whose")) == (
+        "Secretary of State", _SOS_2024[1], "the Secretary of State's"), (
+        f"the CACR's card does not name its row's source: {card!a}")
     B = build_site_v2
     assert row.get("status") == B.NOT_RATIFIED, (
         f"65.6% yes reads {row.get('status')!a}, not {B.NOT_RATIFIED!a}")
@@ -21534,13 +21825,23 @@ def _ballot_built(build_site_v2):
         f"the voters' answer is credited to {rec.get('status_source')!a}")
     last = (((rec.get("journey") or {}).get("steps")) or [{}])[-1]
     assert (last.get("body"), last.get("text")) == (
-        "V", "Not ratified, 452,307–237,221 (Ballotpedia's count)"), (
+        "V", "Not ratified, 452,307–237,221 (the Secretary of State's count)"), (
         f"How it got here ends {last!a}")
     assert (row.get("rail") or [None])[-1] == ["Vx", "2026-11-03", "not ratified"], (
         f"the card's rail ends {(row.get('rail') or [None])[-1]!a}")
-    return "ok", ("the record carries the voters' card, the status says not ratified from "
-                  "ballot_results.json, How it got here ends at the voters with Ballotpedia's "
-                  "count, and the card's rail at the Voters stop")
+    card7 = rec7.get("ballot") or {}
+    assert (card7.get("docket"), card7.get("by"), card7.get("whose")) == (
+        [119104, 159439], "Secretary of State", "the Secretary of State's"), (
+        f"the second CACR's card reads {card7!a}")
+    last7 = (((rec7.get("journey") or {}).get("steps")) or [{}])[-1]
+    assert (last7.get("body"), last7.get("text")) == (
+        "V", "Not ratified, 119,104–159,439 (the docket's count; the Secretary of State's is "
+             "119,104–169,439)"), f"the second CACR's How it got here ends {last7!a}"
+    return "ok", ("the record carries the voters' card naming the Secretary of State, the "
+                  "status says not ratified from ballot_results.json, How it got here ends at "
+                  "the voters with the Secretary of State's count, and the card's rail at the "
+                  "Voters stop; a docket's own differing count is the docket's, beside the "
+                  "Secretary of State's")
 
 
 @check("frontend", "a bill's own rail is dated from its journey, and How it got here lists it",
@@ -59723,8 +60024,18 @@ def _ballots_shown(build_site_v2):
     and no outcome. Where the docket records a referendum of its own, its
     answer and the two-thirds answer from the source's figures must be the
     same answer -- and the card says so wherever the docket's figures are
-    not the source's. No page shows a voters' card the file does not have."""
+    not the source's. No page shows a voters' card the file does not have.
+
+    AND WHOSE IT IS, BY THE ROW (7 October 2026): each card names the
+    source its row gives and where the count is printed, and How it got
+    here's voters' line names it too -- "(the Secretary of State's count)",
+    or beside a docket's own differing count "(the docket's count; the
+    Secretary of State's is ...)" -- for the seventeen the voters decided;
+    the election still to come names Ballotpedia."""
     B = build_site_v2
+    names = {"sos.nh.gov": "Secretary of State", "electiondatabase.nhpr.org": "Secretary of State",
+             "ballotpedia.org": "Ballotpedia"}
+    whose = {"Secretary of State": "the Secretary of State's", "Ballotpedia": "Ballotpedia's"}
     f = Path(B.BALLOTS)
     idx = Path("site/idx")
     if not (f.exists() and idx.is_dir() and Path("site/bill").is_dir()):
@@ -59736,7 +60047,7 @@ def _ballots_shown(build_site_v2):
         if p.exists():
             rows.update({(t, r.get("id")): r for r in json.loads(p.read_text(encoding="utf-8"))})
     recs = {(rec.get("term") or "", bid): rec for _y, bid, rec in _site_records()}
-    bad, decided, docket_differs = [], 0, []
+    bad, decided, docket_differs, named_by = [], 0, [], Counter()
     for key, r in sorted(want.items()):
         rec, row = recs.get(key), rows.get(key)
         name = f"{key[0]} {key[1]}"
@@ -59749,11 +60060,30 @@ def _ballots_shown(build_site_v2):
             continue
         status = row.get("status") or ""
         stop = ((rec.get("journey") or {}).get("rail") or [{}])[-1]
+        host = re.sub(r"^https?://(?:www\.)?([^/?#]+).*$", r"\1", r.get("source") or "")
+        by = names.get(host, host)
+        named_by[by] += 1
+        if (card.get("by"), card.get("cite"), card.get("whose")) != (
+                by, r.get("cite"), whose.get(by, f"{by}'s")):
+            bad.append(f"{name}'s card names {card.get('by')!a}, {card.get('cite')!a} where its "
+                       f"row's source is {by!a}, {r.get('cite')!a}")
         if r.get("yes") is None:
             if not card.get("pending") or "ratified" in status or stop.get("stop") != "Voters" \
                     or stop.get("mark") in ("p", "x"):
                 bad.append(f"{name}'s election is to come and reads {status!a}, {stop!a}")
             continue
+        line = next((s_.get("text") or "" for s_ in reversed(
+            (rec.get("journey") or {}).get("steps") or []) if s_.get("body") == "V"), "")
+        # The docket's own referendum line where it has one (the status is
+        # then the docket's), and the row's line where it has none.
+        if card.get("docket"):
+            said = f"(the docket's count; {whose.get(by, by)} is {r['yes']:,}–{r['no']:,})"
+        elif rec.get("status_source") == B.BALLOT_SOURCE:
+            said = f"({whose.get(by, by)} count)"
+        else:
+            said = ""     # the docket's line, and its count is the row's: nothing to name
+        if said and not line.endswith(said):
+            bad.append(f"{name}'s How it got here ends {line!a}, not naming {said!a}")
         decided += 1
         ok = B.ratified(r["yes"], r["no"])
         if (card.get("yes"), card.get("no"), card.get("ratified")) != (r["yes"], r["no"], ok):
@@ -59773,7 +60103,8 @@ def _ballots_shown(build_site_v2):
     return "ok", (f"{decided} CACRs show the voters' vote and the outcome two thirds gives, "
                   f"{len(want) - decided} an election to come; the docket prints other "
                   f"figures for {len(docket_differs)}, and the card says so: "
-                  + (", ".join(docket_differs) or "none"))
+                  + (", ".join(docket_differs) or "none") + "; the cards name "
+                  + ", ".join(f"{b} on {k}" for b, k in named_by.most_common()))
 
 
 # Where the rail and the label disagree because the RAIL is wrong. None: CACR

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.8
+# GRANITE_VERSION: 2026-09-14.9
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -38,6 +38,8 @@ data checks fail on a built page that lacks a section. That is because the build
 site holds none of them and must still build. What does stop the build is a figure whose input
 is here and cannot be finished: a hearing's bill retitled later with no printing on disk to
 give the title it was heard under (strict, the default; preflight's fixtures pass False).
+A constitutional amendment the voters decided whose row of ballot_results.json names no
+source or no cite is left off its table and named in HELD, which build_civics prints too.
 """
 
 import html
@@ -49,6 +51,7 @@ from datetime import date as _date
 from pathlib import Path
 
 import adopted_amendments as AA
+import ballot_source as BS
 import build_date
 import committee_names as CN
 import later_referrals as LR
@@ -596,19 +599,25 @@ def signins(tdb, narr_all, idx, site=Path("site"), root=Path("."), top=20, stric
 def ballots(rows):
     """(shown, held, to come) out of ballot_results.json's rows.
 
-    Shown: a constitutional amendment the voters decided whose Yes and No the
-    Secretary of State's count (the row's `sos`) and the row's own source
-    agree on to the vote. Held: decided, and the two do not agree, or the
-    Secretary of State's count is not on the row. To come: an election not
-    yet held."""
+    Shown: a constitutional amendment the voters decided whose row names
+    where its count was read (`source`) and where it is printed (`cite`).
+    Held: decided, and the row names no source or no cite -- left off the
+    page, and named in the build's log (HELD), never in a sentence to the
+    reader. To come: an election not yet held.
+
+    Until 7 October 2026 a row was shown only where the Secretary of State's
+    count (then the row's `sos`) equalled the row's own, which was
+    Ballotpedia's, and two were held: CACR 7 of 1992 and CACR 41 of 2006,
+    where Ballotpedia's No was 18 and 2 votes off. That day the person made
+    the Secretary of State every decided row's source, corrected those two,
+    and kept Ballotpedia's figures on each row as the cross-check, so the
+    page shows all seventeen."""
     shown, held, to_come = [], [], []
     for r in rows or []:
         if r.get("yes") is None and r.get("no") is None:
             to_come.append(r)
             continue
-        s = r.get("sos") or {}
-        same = (s.get("yes"), s.get("no")) == (r.get("yes"), r.get("no"))
-        (shown if same and s.get("source") and s.get("cite") else held).append(r)
+        (shown if r.get("source") and r.get("cite") else held).append(r)
     key = lambda r: (r.get("election") or "", r.get("bill") or "")
     return sorted(shown, key=key), sorted(held, key=key), sorted(to_come, key=key)
 
@@ -639,6 +648,7 @@ def vetoes(rows):
 # ---------------------------------------------------------------------------
 
 MISSING = []   # [(file, the section left out)] of the last body(); build_civics prints it
+HELD = []      # [what was left off, and why] of the last body(); build_civics prints it
 
 # Every section's heading, as body() writes it (the closest votes' ends in the
 # term). preflight's data check holds the built page to the list, so a section
@@ -667,6 +677,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     idx = SR.bill_index_or_stop(site, "learn_numbers.py")
     root = Path(root)
     del MISSING[:]
+    del HELD[:]
     narr_all = _need(root / "narratives.json", "every committee and floor figure") or {}
     rollcalls = _load(root / "rollcalls.json", {})
     YEAR.update({(r.get("term"), r.get("id")): str(r.get("year") or "") for r in idx})
@@ -982,15 +993,29 @@ def body(site=Path("site"), root=Path("."), strict=True):
     ballot = _need(root / "ballot_results.json", "the amendments sent to the voters")
     if ballot:
         shown, held, to_come = ballots(ballot.get("rows"))
+        # A DECIDED ROW WITH NO SOURCE OR NO CITE is left off and said here,
+        # in the build's log, not to the reader.
+        HELD.extend(f"{r.get('bill')} of {r.get('term')}: ballot_results.json gives it no "
+                    + " and no ".join(k for k in ("source", "cite") if not r.get(k))
+                    for r in held)
         brows = []
         for r in shown:
             y, n = r["yes"], r["no"]
-            s = r["sos"]
             brows.append([f'{_bill_link(r["term"], r["bill"])}<br>{_t(r["term"])}', _day(r["election"]),
                           f"{y:,}", f"{n:,}", _pct(y, y + n),
                           "Ratified" if ratified(y, n) else "Not ratified",
-                          f'<a href="{E(s["source"])}" rel="noopener">{E(s["cite"])}</a>'])
+                          f'<a href="{E(r["source"])}" rel="noopener">{E(r["cite"])}</a>'])
         rat = sum(1 for r in shown if ratified(r["yes"], r["no"]))
+        # WHOSE COUNT, FROM THE ROWS (ballot_source.py): the Secretary of
+        # State for every one since 7 October 2026, and said by the rows, so
+        # that a row with another source makes the sentence say so.
+        whose = Counter(BS.whose(r) for r in shown)
+        if len(whose) == 1:
+            said = (f"Yes and No are {next(iter(whose))} statewide count, printed where the "
+                    "Source column says.")
+        else:
+            said = ("Yes and No are the statewide count printed where the Source column says: "
+                    + ", ".join(f"{name} for {k}" for name, k in whose.most_common()) + ".")
         # An election still to come, in the tense the build's day gives it:
         # once the day has passed and the row has no count yet, the page says
         # the count is not here rather than that the vote is ahead.
@@ -1004,12 +1029,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                    "amendment that passes both chambers by three fifths goes to the voters at the "
                    "next general election, and is ratified only with two thirds of the votes cast "
                    "on it (Part Second, Article 100); a blank ballot is not a vote cast on it. "
-                   "Yes and No are the statewide count the Secretary of State certified, as its "
-                   "election results print it from 2016 and its Manual for the General Court "
-                   "before that. "
-                   f"{rat} of the {len(shown)} shown were ratified."
-                   + (f" {len(held)} more that went to the voters are not shown until two sources "
-                      "agree on their count." if held else "") + coming + "</p>"
+                   + said + f" {rat} of the {len(shown)} below were ratified." + coming + "</p>"
                    + _table(["Amendment", "Election", "Yes", "No", "Yes share", "Result",
-                             "Secretary of State's count"], brows))
+                             "Source"], brows))
     return "".join(out)

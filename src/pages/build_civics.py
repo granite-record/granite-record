@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.32
+# GRANITE_VERSION: 2026-09-08.33
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -952,6 +952,11 @@ def main():
     # that lost testimony_db.json from its kit says so in its log.
     for f, what in learn_numbers.MISSING:
         print(f"  learn/by-the-numbers.html LEAVES OUT {what}: {f} is not here")
+    # And a row it cannot cite: a constitutional amendment the voters decided
+    # whose row of ballot_results.json names no source or no cite is left off
+    # the table, and said here rather than to the reader.
+    for what in learn_numbers.HELD:
+        print(f"  learn/by-the-numbers.html LEAVES OFF {what}")
     p = p.replace('<div id="results"></div>',
                   '<div id="results"><div class="lcols">'
                   '<header class="civhead"><p class="crumb"><a href="learn.html">'

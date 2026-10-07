@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.169
+# GRANITE_VERSION: 2026-09-05.170
 """
 Generate the faceted site from real General Court data.
 
@@ -47,6 +47,7 @@ import member_links as ML
 import names
 import re
 import archive_text as AT
+import ballot_source as BS
 import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
@@ -6915,6 +6916,14 @@ def election_day(year):
 # eighteen, read off the source its rows name: a person's file, which no
 # build_ or fetch_ script writes (preflight's HANDMADE).
 #
+# WHOSE COUNT IT IS IS THE ROW'S OWN SOURCE (ballot_source.py). Since 7
+# October 2026 that is the Secretary of State for every amendment the voters
+# have decided -- its results from 2016, its Manual for the General Court
+# before -- with Ballotpedia's figures kept on each row as the cross-check,
+# and Ballotpedia for the one still to come. The card, How it got here and
+# the note where the docket's own count differs all name it from the row,
+# never in words of their own: they said "Ballotpedia" whatever the row said.
+#
 # THE OUTCOME IS WORKED OUT HERE, NOT READ. An amendment needs two thirds of
 # the votes cast on it (Part II, Article 100), and a majority is not that:
 # CACR 6 of 2024, the judicial retirement age, won 452,307 to 237,221 --
@@ -6977,13 +6986,6 @@ def load_ballots(path, bills):
     return out
 
 
-def ballot_source_name(row):
-    """The name of the place a ballot row's figures were read: "Ballotpedia"
-    for its list of New Hampshire ballot measures, the host otherwise."""
-    host = re.sub(r"^https://(?:www\.)?([^/]+).*$", r"\1", row.get("source") or "")
-    return {"ballotpedia.org": "Ballotpedia"}.get(host, host)
-
-
 # What status_source says of a CACR whose voters' answer is a ballot row's
 # figures against two thirds: the file the answer came from, which names its
 # source on every row.
@@ -6993,25 +6995,44 @@ BALLOT_SOURCE = "ballot_results.json"
 def ballot_step(row):
     """The voters' line of a CACR's journey, from its ballot row: the day of
     the election and its outcome, in the words a docket referendum line
-    gets -- and whose count it is. How it got here is the docket's list, and
-    this line is not the docket's: it stops at the second chamber for every
-    CACR this line is drawn for (the review of 5 October 2026)."""
+    gets -- and whose count it is, by the row's source: "(the Secretary of
+    State's count)". How it got here is the docket's list, and this line is
+    not the docket's: it stops at the second chamber for every CACR this
+    line is drawn for (the review of 5 October 2026)."""
     yes = ratified(row["yes"], row["no"])
     act = "ratified" if yes else "not_ratified"
     return {"date": row["election"], "body": "V", "act": act, "mark": J_MARK[act],
             "text": ("Ratified" if yes else "Not ratified")
-            + f", {row['yes']:,}–{row['no']:,} ({ballot_source_name(row)}'s count)",
+            + f", {row['yes']:,}–{row['no']:,} ({BS.whose(row)} count)",
             "short": "ratified" if yes else "not ratified"}
+
+
+def docket_count_differs(row):
+    """What the voters' line of How it got here adds where it is the docket's
+    referendum line and the docket's count is not the row's: whose the
+    docket's is, and whose the other is, by the row's source. CACR 22 of 1998
+    reads "Not ratified, 119,104–159,439 (the docket's count; the Secretary
+    of State's is 119,104–169,439)": the docket says 159,439, and the Manual
+    it cites prints 169,439."""
+    return f" (the docket's count; {BS.whose(row)} is {row['yes']:,}–{row['no']:,})"
 
 
 def ballot_card(row, narr, today=None):
     """What a CACR's Votes tab draws for the voters: the election, how the
     source lists it, the two counts and the outcome, or only the day where
     the election is still to come. Where the docket prints a referendum
-    tally of its own and it is not the source's -- CACR 7 of 1992 reads
-    "204,475" against the source's 204,457, and CACR 22 of 1998 "159,439"
-    against 169,439 -- the docket's pair goes with it, so the card can say
-    so rather than show one figure and print the other a tab away.
+    tally of its own and it is not the source's -- CACR 22 of 1998 reads
+    "159,439" against the Secretary of State's 169,439 -- the docket's pair
+    goes with it, so the card can say so rather than show one figure and
+    print the other a tab away. (CACR 7 of 1992 did too, until 7 October
+    2026: its 204,475 was the docket's and the Secretary of State's, and the
+    file's 204,457 was Ballotpedia's.)
+
+    WHOSE IT IS, FROM THE ROW (ballot_source.py): `by` begins the card's
+    citation, before the row's `cite` -- "Secretary of State, Manual for the
+    General Court 1993, p. 442 (NHPR's scan)" -- and `whose` says whose the
+    counts above a differing docket's are. app.js named Ballotpedia on every
+    card whatever the row's source was.
 
     AN ELECTION PAST WITH NO COUNT IN THE FILE is `over` as well as pending:
     the status turns to "went to the voters" the day after by itself
@@ -7019,7 +7040,9 @@ def ballot_card(row, narr, today=None):
     a person typed the counts in (the review of 5 October 2026). `today` is
     the build's day (build_date), as it is there."""
     card = {"date": row["election"], "label": row["label"],
-            "source": row["source"], "read": row["read"]}
+            "source": row["source"], "read": row["read"],
+            "by": BS.by(row), "whose": BS.whose(row),
+            **({"cite": row["cite"]} if row.get("cite") else {})}
     if row.get("yes") is None:
         over = (today or build_date.today()) > _date.fromisoformat(row["election"])
         return {**card, "pending": True, **({"over": True} if over else {})}
@@ -8870,13 +8893,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 and not any(s_["body"] == "V" for s_ in jsteps)):
             jsteps.append(ballot_step(ballot))
         # AND WHERE THE DOCKET'S OWN REFERENDUM COUNT IS NOT THE CARD'S, its
-        # line says whose it is: CACR 7 of 1992's How it got here read
-        # "249,759–204,475" a tab away from the Votes card's 204,457, with
-        # nothing to say which was which (the review of 5 October 2026).
+        # line says whose it is, and whose the card's is: CACR 7 of 1992's
+        # How it got here read "249,759–204,475" a tab away from the Votes
+        # card's 204,457, with nothing to say which was which (the review of
+        # 5 October 2026). Now CACR 22 of 1998: the docket's 159,439 against
+        # the Secretary of State's 169,439 (docket_count_differs).
         elif (voters or {}).get("docket"):
             for s_ in jsteps:
                 if s_["body"] == "V":
-                    s_["text"] += " (the docket's count)"
+                    s_["text"] += docket_count_differs(ballot)
         if carried:
             carried = carried_over(dates, intro)
         # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
