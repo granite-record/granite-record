@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.416
+# GRANITE_VERSION: 2026-09-04.417
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18189,7 +18189,7 @@ def _learn_rules(civics, learn_numbers, build_civics):
             build_civics.P.load = real_load
             notice_cache.clear()
             notice_cache.update(saved_cache)
-        nums = learn_numbers.body(tmp, tmp)
+        nums = learn_numbers.body(tmp, tmp, strict=False)
     bad = retracted({"by-the-numbers": nums})
     assert not bad, "; ".join(bad)
     assert fig["veto_pending"] == "", (
@@ -18235,6 +18235,406 @@ def _learn_rules(civics, learn_numbers, build_civics):
                   "thresholds recomputed; veto_pending, the closest votes and the "
                   "hearings-on-video year right on a fixture, an unheard bill of "
                   "the sitting term included")
+
+
+# THE PAGE OF NUMBERS, FIGURE BY FIGURE (7 October 2026). The person's notes
+# F16 to F22 added eight figures to /learn/by-the-numbers.html, each measured
+# first against sources this project did not write, and took two away. Each
+# figure is a function of learn_numbers.py, and each check below runs one on a
+# record small enough to know the answer to, so that what the page's one-line
+# definition says is what the code counts. A check names the definition it
+# holds; a change that breaks one changes what a sentence on a public page
+# means.
+
+def _ln_ev(body, raw, type_="other", date="2025-03-01", **kw):
+    return dict({"body": body, "raw": raw, "type": type_, "date": date, "cancelled": False}, **kw)
+
+
+@check("frontend", "numbers: how each bill ended counts House and Senate bills by their card's word",
+       needs=("learn_numbers",))
+def _numbers_outcomes(learn_numbers):
+    """F22, bills filed and how they ended: every House and Senate bill the
+    term numbered, special sessions' included, by its chip -- Became Law,
+    Died, Interim Study, and anything else (withdrawn, never introduced, or
+    still moving while a session sits) as Other. A resolution and a CACR are
+    not bills and do not count."""
+    t = "2025-2026"
+    rows = [{"term": t, "id": "HB1", "chip": "Became Law"},
+            {"term": t, "id": "HB2", "chip": "Died"},
+            {"term": t, "id": "HB3", "chip": "Interim Study"},
+            {"term": t, "id": "HB4", "chip": "Withdrawn"},
+            {"term": t, "id": "SSHB1", "chip": "Became Law"},
+            {"term": t, "id": "SB1", "chip": "In committee"},
+            {"term": t, "id": "HR1", "chip": "Adopted by the House"},
+            {"term": t, "id": "CACR1", "chip": "Died"}]
+    got = dict(learn_numbers.outcomes(rows)[t])
+    want = {"filed": 6, "Became Law": 2, "Died": 1, "Interim Study": 1, "other": 2}
+    assert got == want, f"bills filed and how they ended: {got}, want {want}"
+    return "ok", "6 bills of 8 measures: 2 Became Law, 1 Died, 1 Interim Study, 2 Other"
+
+
+@check("frontend", "numbers: bills per member count to the chamber the prime sponsor sat in",
+       needs=("learn_numbers",))
+def _numbers_per_member(learn_numbers):
+    """F22, bills filed and passed per member: a House or Senate bill counts
+    to the chamber its prime sponsor sat in -- a senator's House bill to the
+    Senate -- and passed means it became law. A committee's bill counts to
+    nobody, and a resolution is not a bill. The page divides by 400 and 24."""
+    t = "2025-2026"
+    rows = [{"term": t, "id": "HB1", "sponsor_label": "Rep. Ann Able (R)", "status": "Signed into law"},
+            {"term": t, "id": "HB2", "sponsor_label": "Rep. Ben Baker (D)", "status": "Killed"},
+            {"term": t, "id": "SB1", "sponsor_label": "Sen. Cy Cole (R)", "status": "Became law unsigned"},
+            {"term": t, "id": "HB3", "sponsor_label": "Sen. Di Dunn (D)",
+             "status": "Veto overridden, became law"},
+            {"term": t, "id": "SB2", "sponsor_label": "Sen. Cy Cole (R)", "status": "Vetoed, override failed"},
+            {"term": t, "id": "HB4", "sponsor_label": "Judiciary Committee", "status": "Signed into law"},
+            {"term": t, "id": "HR1", "sponsor_label": "Rep. Ann Able (R)", "status": "Adopted by the House"}]
+    got = learn_numbers.per_member(rows)[t]
+    want = {"H": [2, 1], "S": [3, 2]}
+    assert got == want, f"bills per member: {got}, want {want} ([filed, became law] by chamber)"
+    assert learn_numbers.SEATS == {"H": 400, "S": 24}, f"seats: {learn_numbers.SEATS}"
+    return "ok", "a senator's House bill counts to the Senate; a committee's to nobody"
+
+
+@check("frontend", "numbers: a committee's bills are its first referrals and the bills sent on to it",
+       needs=("learn_numbers",))
+def _numbers_referrals(learn_numbers):
+    """F22, the bills each committee received: the first referral is the
+    committee the bill's page names in that chamber, once per bill; sent on is
+    a later committee of the same chamber the docket refers it to -- Finance
+    under House Rule 47 here -- and a motion to refer that failed sends
+    nothing anywhere."""
+    t = "2025-2026"
+    idx = [{"term": t, "id": "HB1", "committees": ["House Judiciary", "Senate Education"]},
+           {"term": t, "id": "HB2", "committees": ["House Judiciary"]}]
+    ev = _ln_ev
+    narr = {"HB1": {"events": [
+        ev("H", "Introduced 01/08/2025 and referred to Judiciary", "introduced"),
+        ev("H", "Ought to Pass with Amendment # 2025-0101h: MA VV; Refer to Finance Rule 47", "floor"),
+        ev("H", "Motion to Refer to Ways and Means: MF RC 150-200", "floor"),
+        ev("S", "Introduced 03/20/2025 and Referred to Education; SJ 9", "introduced")]},
+        "HB2": {"events": [ev("H", "Introduced 01/08/2025 and referred to Judiciary", "introduced")]}}
+    got = {k: list(v) for k, v in learn_numbers.referrals(idx, narr, t).items()}
+    want = {"House Judiciary": [2, 0], "House Finance": [0, 1], "Senate Education": [1, 0]}
+    assert got == want, f"the bills each committee received: {got}, want {want}"
+    return "ok", "first referrals once a bill, Finance's second referral counted, a lost motion not"
+
+
+@check("frontend", "numbers: the most-signed hearings rank hearings, with the title as heard",
+       needs=("learn_numbers",))
+def _numbers_signins(learn_numbers):
+    """F17, the hearings with the most sign-ins: hearings, not bills, are
+    ranked by every support, oppose and neutral sign-in, so a bill heard twice
+    can appear twice; each shows the title the bill had when it was heard --
+    the printing dated on or before the hearing, else its first -- and not its
+    final one; the committee is the one that reported after the hearing; a
+    sitting on a non-germane amendment is marked as one, by the hearing date
+    in the docket's text and not the day the notice was posted; and a past
+    term's bill retitled later, whose printings are not on disk, stops a
+    strict build rather than print the later title as the one heard."""
+    import tempfile as _tf
+    t, ev = "2025-2026", _ln_ev
+    h = lambda d, s, o, n=0: {"date": d, "total": s + o + n, "support": s, "oppose": o, "neutral": n}
+    tdb = {t: {"HB9": {"hearings": [h("2025-01-20", 5, 45), h("2026-02-03", 29, 1)]},
+               "HB8": {"hearings": [h("2025-01-21", 39, 1)]},
+               "HB7": {"hearings": [h("2025-01-22", 9, 1)]}},
+           "2023-2024": {"HB5": {"hearings": [h("2024-01-10", 1, 19)]}}}
+    narr = {t: {"HB9": {"events": [
+        ev("H", "Public Hearing: 01/20/2025 10:00 am LOB 206", "hearing", "2025-01-20"),
+        ev("H", "Majority Committee Report: Ought to Pass 02/01/2025 (Vote 10-5; RC)", "report",
+           "2025-02-01", committee="Judiciary", side="Majority"),
+        ev("H", "Public Hearing on non-germane Amendment # 2026-0422h: 02/03/2026 10:00 am LOB 203",
+           "hearing", "2026-01-30")]}}}
+    idx = [{"term": t, "id": "HB9", "year": 2025, "title": "relative to pears.",
+            "committees": ["House Judiciary"]},
+           {"term": t, "id": "HB8", "year": 2025, "title": "relative to figs.",
+            "committees": ["House Education Funding"]},
+           {"term": "2023-2024", "id": "HB5", "year": 2024, "title": "relative to plums.",
+            "committees": ["House Education"]}]
+    with _tf.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        v = tmp / "versions" / "2025"
+        v.mkdir(parents=True)
+        (v / "HB9.json").write_text(json.dumps({"versions": [
+            {"label": "Introduced", "date": "01/25/2025 10:00:00"},
+            {"label": "As Amended by the House", "date": "03/01/2025 10:00:00"}]}), encoding="utf-8")
+        (v / "HB9.0.txt").write_text("2025 SESSION HOUSE BILL\t9 AN ACT\trelative to apples. "
+                                     "SPONSORS:\tRep. Able", encoding="utf-8")
+        (v / "HB9.1.txt").write_text("2025 SESSION HOUSE BILL\t9 AN ACT\trelative to oranges. "
+                                     "SPONSORS:\tRep. Able", encoding="utf-8")
+        (tmp / "data").mkdir()
+        (tmp / "data" / "bills.json").write_text(json.dumps(
+            {"2023-2024": {"HB5": {"title": "(New Title) relative to plums."}}}), encoding="utf-8")
+        try:
+            learn_numbers.signins(tdb, narr, idx, tmp, tmp, top=3, strict=True)
+            stopped = ""
+        except SystemExit as e:
+            stopped = str(e)
+        assert "HB5" in stopped, (
+            "a bill retitled after its hearing, with no printing on disk, built anyway with "
+            "its later title shown as the one heard")
+        loose = learn_numbers.signins(tdb, narr, idx, tmp, tmp, top=3, strict=False)
+        past = tmp / "db" / "past"
+        past.mkdir(parents=True)
+        (past / "PastLegislationText.jsonl").write_text(json.dumps(
+            {"BillNbr": "HB5", "sessionyear": 2024, "VersionID": 4,
+             "text": "2024 SESSION\r\nHOUSE BILL\t5\r\n\r\nAN ACT\trelative to cherries.\r\n\r\n"
+                     "SPONSORS:\tRep. Cole"}, separators=(",", ":")) + "\n", encoding="utf-8")
+        got = learn_numbers.signins(tdb, narr, idx, tmp, tmp, top=3, strict=True)
+    rows = [(x["bill"], x["date"], x["total"], x["title"], x["committee"], x["on"]) for x in got[t]]
+    want = [("HB9", "2025-01-20", 50, "relative to apples.", "Judiciary", ""),
+            ("HB8", "2025-01-21", 40, "relative to figs.", "Education Funding", ""),
+            ("HB9", "2026-02-03", 30, "relative to oranges.", "Judiciary", "a non-germane amendment")]
+    assert rows == want, f"the most-signed hearings: {rows}, want {want}"
+    assert got["2023-2024"][0]["title"] == "relative to cherries.", (
+        f"a past term's retitled bill: {got['2023-2024'][0]['title']!r}, want the introduced "
+        "title, relative to cherries.")
+    assert loose["2023-2024"][0]["title"] == "relative to plums.", "strict=False should fall back"
+    return "ok", ("3 of 4 hearings ranked, one bill twice, each under the title it was heard by; "
+                  "an amendment's hearing marked; a missing printing stops a strict build")
+
+
+@check("frontend", "numbers: the consent totals count a reprinted report once",
+       needs=("learn_numbers",))
+def _numbers_consent(learn_numbers):
+    """F19, consent calendars: every majority report of the term, credited to
+    the bill's committee in that chamber, a minority report left out; kept
+    when it carried CC and the chamber did not take the bill off, removed when
+    it did, regular when it never went on consent -- and a report the docket
+    prints again with the same committee, recommendation, amendment and tally
+    (the Senate's, after a special order) counts once."""
+    ev = _ln_ev
+    rep = lambda b, raw, y, n, c="Judiciary", rec="Ought to Pass": ev(
+        b, raw, "report", committee=c, recommendation=rec, amendment="", yeas=y, nays=n,
+        side="Majority")
+    narr = {"HB1": {"events": [rep("H", "Committee Report: Ought to Pass 02/01/2025 (Vote 18-0; CC)", "18", "0"),
+                               ev("H", "Minority Committee Report: Inexpedient to Legislate", "report")]},
+            "HB2": {"events": [rep("S", "Committee Report: Ought to Pass, 03/01/2025, Vote 5-0; CC", "5", "0"),
+                               ev("S", "Removed from Consent (Sen. Able), MA, VV", "consent_off"),
+                               rep("S", "Committee Report: Ought to Pass, 03/01/2025, Vote 5-0", "5", "0")]},
+            "HB3": {"events": [rep("H", "Committee Report: Inexpedient to Legislate (Vote 10-8; RC)",
+                                   "10", "8", rec="Inexpedient to Legislate")]}}
+    rows_by = {b: {"committees": ["House Judiciary", "Senate Judiciary"]} for b in narr}
+    by_c, per = learn_numbers.consent(narr, rows_by)
+    got = ({k: list(v) for k, v in by_c.items()}, {k: dict(v) for k, v in per.items()})
+    want = ({"House Judiciary": [2, 1], "Senate Judiciary": [1, 0]},
+            {"H": {"kept": 1, "regular": 1}, "S": {"removed": 1}})
+    assert got == want, f"consent: {got}, want {want}"
+    return "ok", "kept, removed and regular counted; the reprint and the minority report left out"
+
+
+@check("frontend", "numbers: a committee's passage rate is of the bills it reported on",
+       needs=("learn_numbers",))
+def _numbers_committee_rates(learn_numbers):
+    """F18, each committee's passage rate: the House and Senate bills a
+    committee made a majority report on, whatever it recommended, minority
+    reports left out; a second committee's report goes to the second
+    committee even where the docket carries the first one's name forward;
+    the chamber's totals count a bill once, under the first committee."""
+    t, ev = "2025-2026", _ln_ev
+    rep = lambda b, c, side="Majority": ev(b, f"{side} Committee Report: Ought to Pass", "report",
+                                          committee=c, side=side)
+    idx = [{"term": t, "id": "HB1", "status": "Signed into law"},
+           {"term": t, "id": "HB2", "status": "Killed"},
+           {"term": t, "id": "HR1", "status": "Adopted by the House"}]
+    narr = {"HB1": {"events": [rep("H", "Judiciary"), rep("H", "Judiciary", "Minority"),
+                               ev("H", "Ought to Pass: MA VV; PASSED AND REF TO FINANCE", "floor"),
+                               rep("H", "Judiciary"), rep("S", "Judiciary")]},
+            "HB2": {"events": [rep("H", "Judiciary")]},
+            "HR1": {"events": [rep("H", "Judiciary")]}}
+    rows, tot = learn_numbers.committee_rates(idx, narr, t)
+    got = ({k: list(v) for k, v in rows.items()}, tot)
+    want = ({"House Judiciary": [2, 1, 1], "House Finance": [1, 1, 1], "Senate Judiciary": [1, 1, 1]},
+            {"H": [2, 1, 1], "S": [1, 1, 1]})
+    assert got == want, f"committee passage rates: {got}, want {want}"
+    return "ok", "Finance's second report credited to Finance; the chamber counts each bill once"
+
+
+@check("frontend", "numbers: amended means an amendment adopted, not an enrolled-bill correction",
+       needs=("learn_numbers",))
+def _numbers_amended(learn_numbers):
+    """F18, passed as introduced or amended: of the House and Senate bills
+    that reached the governor, amended when either chamber adopted an
+    amendment, or concurred in the other's, or a committee of conference
+    settled them; an enrolled-bill amendment is not one, nor an amendment
+    adopted and then withdrawn; a bill that died is not counted at all."""
+    t, ev = "2025-2026", _ln_ev
+    idx = [{"term": t, "id": "HB1", "status": "Signed into law"},
+           {"term": t, "id": "HB2", "status": "Signed into law"},
+           {"term": t, "id": "HB3", "status": "Killed"},
+           {"term": t, "id": "HB4", "status": "Vetoed, override failed"},
+           {"term": t, "id": "HB5", "status": "Became law unsigned"},
+           {"term": t, "id": "HB6", "status": "Veto overridden, became law"}]
+    narr = {t: {"HB1": {"events": [ev("H", "Amendment # 2025-0101h: AA VV 03/01/2025", "amendment")]},
+                "HB2": {"events": [ev("H", "Enrolled Bill Amendment # 2025-2001e: AA VV", "enrolled")]},
+                "HB3": {"events": [ev("H", "Amendment # 2025-0301h: AA VV", "amendment")]},
+                "HB4": {"events": [ev("H", "Floor Amendment # 2025-0401h: AA VV", "amendment"),
+                                   ev("H", "Floor Amendment # 2025-0401h: Reconsidered and Withdrawn")]},
+                "HB5": {"events": [ev("S", "Conference Committee Report # 2025-2500c: Adopted, VV", "floor")]},
+                "HB6": {"events": [ev("S", "Concur with House Amendment, MA, VV", "floor")]}}}
+    p = learn_numbers.passage(idx, narr)[t]
+    got = (p["passed"], p["amended"], p["conference"])
+    assert got == (5, 3, 1), (
+        f"passed, amended, to conference: {got}, want (5, 3, 1) -- HB1 amended, HB2's "
+        "enrolled-bill amendment and HB4's withdrawn one not, HB5 by conference, HB6 by "
+        "concurrence, HB3 never passed")
+    return "ok", "5 passed: 3 amended (one by conference, one by concurrence), 2 as introduced"
+
+
+@check("frontend", "numbers: amendments are counted by number, and an unnumbered line by what it names",
+       needs=("learn_numbers",))
+def _numbers_amendment_count(learn_numbers):
+    """F18, how many amendments a bill takes: distinct amendments the two
+    chambers adopted, by number where the docket gives one; a line of the
+    1990s that adopts one committee amendment in parts, with no number, is
+    one amendment; a concurrence with no adoption line of the chamber's own
+    counts one; a committee of conference's report counts none; six or more
+    is one column."""
+    ev = _ln_ev
+    idx = [{"term": "2025-2026", "id": f"HB{i}", "status": "Signed into law"} for i in (1, 2, 3)] + \
+          [{"term": "1991-1992", "id": "HB35", "status": "Signed into law"}]
+    narr = {"2025-2026": {
+        "HB1": {"events": [ev("H", "Amendment # 2025-0101h: AA VV", "amendment"),
+                           ev("H", "Floor Amendment # 2025-0102h (Rep. Able): AA DV 200-150", "amendment"),
+                           ev("H", "Amendment # 2025-0101h: AA VV", "amendment"),
+                           ev("S", "Committee Amendment # 2025-1001s, AA, VV", "floor")]},
+        "HB2": {"events": [ev("S", "Concur with House Amendment, MA, VV", "floor"),
+                           ev("S", "Conference Committee Report # 2025-2500c: Adopted, VV", "floor")]},
+        "HB3": {"events": [ev("H", f"Amendment # 2025-{n:04d}h: AA VV", "amendment")
+                           for n in range(201, 209)]}},
+        "1991-1992": {"HB35": {"events": [ev("H", "COMM AM (SEC. 1,IV), AA RC(178-145); "
+                                             "COMM AM (SEC. 1,V,B4), AA VV", "floor", "1991-03-01")]}}}
+    pa = learn_numbers.passage(idx, narr)
+    got = (dict(pa["2025-2026"]["dist"]), dict(pa["1991-1992"]["dist"]))
+    want = ({3: 1, 1: 1, 6: 1}, {1: 1})
+    assert got == want, (f"amendments per passed bill: {got}, want {want} -- two House numbers "
+                         "(one repeated) and a Senate one are 3; a concurrence 1 and the "
+                         "conference none; eight is six or more; a divided question is one")
+    return "ok", "numbers counted once each, a divided question once, eight in the six-or-more column"
+
+
+@check("frontend", "numbers: attendance is the share present on each roll-call day, averaged",
+       needs=("learn_numbers", "build_site_v2"))
+def _numbers_attendance(learn_numbers, build_site_v2):
+    """F22, attendance on roll-call days: for each day a chamber took a roll
+    call, the share of the members on that day's ballots present for at least
+    one of them -- voting, presiding, or declaring a conflict -- averaged
+    over the days; the presiding officer the record leaves unnamed on a day
+    is read as presiding (the member pages' rule); a run of empty ballots
+    ending a member's term is a seat nobody held, and is not an absence."""
+    def b(m, body, n, day, vote):
+        return {"member_id": m, "name": m, "year": "2025", "body": body,
+                "vote_number": str(n), "date": day, "vote": vote}
+    V = [b("A", "H", 1, "1/8/2025", "Yea"), b("B", "H", 1, "1/8/2025", "Not Voting/Excused"),
+         b("C", "H", 1, "1/8/2025", "Nay"), b("D", "H", 1, "1/8/2025", "Presiding"),
+         b("E", "H", 1, "1/8/2025", "Yea"),
+         b("A", "H", 2, "1/8/2025", "Yea"), b("B", "H", 2, "1/8/2025", "Yea"),
+         b("C", "H", 2, "1/8/2025", "Not Voting/Excused"), b("D", "H", 2, "1/8/2025", "Presiding"),
+         b("E", "H", 2, "1/8/2025", ""),
+         b("A", "H", 3, "1/15/2025", "Nay"), b("B", "H", 3, "1/15/2025", "Not Voting/Excused"),
+         b("C", "H", 3, "1/15/2025", "Not Voting/Not Excused"),
+         b("D", "H", 3, "1/15/2025", "Not Voting/Excused"), b("E", "H", 3, "1/15/2025", ""),
+         b("F", "S", 1, "1/8/2025", "Yea"), b("G", "S", 1, "1/8/2025", "Not Voting/Excused")]
+    got = learn_numbers.attendance(V)
+    want = {("2025-2026", "H"): (2, 0.75), ("2025-2026", "S"): (1, 0.5)}
+    assert got == want, (f"attendance: {got}, want {want} -- the House's first day all five "
+                         "present, its second A and the unnamed chair D of four seats held")
+    return "ok", "a day's share present, the unnamed chair present, a vacant seat not absent"
+
+
+@check("frontend", "numbers: a veto stood when no override came, and only a live session waits",
+       needs=("learn_numbers",))
+def _numbers_vetoes(learn_numbers):
+    """F21, the veto table without its Awaiting column: a veto stood when its
+    override failed or no override vote came before the session ended; one
+    the chip still shows as Vetoed -- a session with days left -- is counted
+    as vetoed and in neither of the columns after it, and the paragraph says
+    so; a law without a signature reached the governor."""
+    st = ["Signed into law"] * 3 + ["Became law unsigned", "Vetoed, override failed",
+                                    "Veto overridden, became law"]
+    rows = [{"status": s, "chip": ""} for s in st] + [
+        {"status": "Vetoed", "chip": "Vetoed"}, {"status": "Vetoed", "chip": "Died"}]
+    got = learn_numbers.vetoes(rows)
+    assert got == (8, 4, 2, 1, 1), (
+        f"reached, vetoed, stood, overridden, still to be voted on: {got}, want (8, 4, 2, 1, 1)")
+    return "ok", "8 reached, 4 vetoed: 2 stood, 1 overridden, 1 still to be voted on"
+
+
+@check("frontend", "numbers: an amendment's vote is shown only where the Secretary of State agrees",
+       needs=("learn_numbers",))
+def _numbers_ballots(learn_numbers):
+    """F16, the amendments sent to the voters: shown only where the
+    Secretary of State's count on the row (sos, with where it is printed)
+    equals the row's own Yes and No to the vote; a row that differs, or has
+    no count from the Secretary of State, is held off the page; an election
+    still to come is neither. Ratified at two thirds of the votes cast,
+    exactly two thirds included."""
+    sos = lambda y, n: {"yes": y, "no": n, "cite": "2024 general election results, sos.nh.gov",
+                        "source": "https://www.sos.nh.gov/2024-general-election-results"}
+    rows = [{"term": "2023-2024", "bill": "CACR6", "election": "2024-11-05", "yes": 200000,
+             "no": 100001, "sos": sos(200000, 100001)},
+            {"term": "1989-1990", "bill": "CACR23", "election": "1990-11-06", "yes": 2, "no": 1,
+             "sos": sos(2, 1)},
+            {"term": "1991-1992", "bill": "CACR7", "election": "1992-11-03", "yes": 10, "no": 5,
+             "sos": sos(10, 6)},
+            {"term": "2005-2006", "bill": "CACR41", "election": "2006-11-07", "yes": 10, "no": 5},
+            {"term": "2025-2026", "bill": "CACR13", "election": "2026-11-03", "yes": None, "no": None}]
+    shown, held, to_come = learn_numbers.ballots(rows)
+    got = ([r["bill"] for r in shown], [r["bill"] for r in held], [r["bill"] for r in to_come])
+    assert got == (["CACR23", "CACR6"], ["CACR7", "CACR41"], ["CACR13"]), f"shown, held, to come: {got}"
+    assert learn_numbers.ratified(2, 1) and not learn_numbers.ratified(200000, 100001), (
+        "two thirds of the votes cast: exactly two thirds ratifies, a vote short does not")
+    return "ok", "2 shown, the disagreeing and the unchecked held, the election to come apart"
+
+
+@check("frontend", "numbers: the unsigned-laws table and the veto table's Awaiting column are gone",
+       needs=("learn_numbers",))
+def _numbers_removed(learn_numbers):
+    """F20 and F21: the person asked on 7 October 2026 for "Laws without the
+    governor's signature" and the veto table's "Awaiting" column to go, and
+    the "Still to come" list is now all on the page. Built on a fixture that
+    holds only the bill index, which also shows a missing input leaving its
+    section out and saying so in learn_numbers.MISSING rather than in
+    silence."""
+    import tempfile as _tf
+    rows = [{"term": "2025-2026", "id": "HB1", "year": 2026, "status": "Signed into law",
+             "kind": "law", "chip": "Became Law", "sponsor_label": "Rep. Ann Able (R)"},
+            {"term": "2025-2026", "id": "HB2", "year": 2026, "status": "Became law unsigned",
+             "kind": "law", "chip": "Became Law", "sponsor_label": "Rep. Ann Able (R)"}]
+    with _tf.TemporaryDirectory() as tmp:
+        _bill_index_write(tmp, rows)
+        page = learn_numbers.body(Path(tmp), Path(tmp), strict=False)
+        missing = sorted(Path(f).name for f, _what in learn_numbers.MISSING)
+    for gone in ("without the governor's signature</h2>", "<th>Awaiting</th>", "Still to come"):
+        assert gone not in page, f"the page of numbers still carries {gone!r}"
+    assert "<h2>Vetoes</h2>" in page and "Bills filed, and how they ended" in page, (
+        "the fixture page lost a section it should keep")
+    want = ["ballot_results.json", "member_votes.json", "narratives.json", "testimony_db.json"]
+    assert missing == want, f"the inputs said to be missing: {missing}, want {want}"
+    for h in ("The hearings with the most sign-ins", "Attendance on roll-call days",
+              "Constitutional amendments sent to the voters"):
+        assert h not in page, f"{h!r} was drawn with its input missing"
+    return "ok", "both gone; Vetoes kept; the four missing inputs named and their sections left out"
+
+
+@check("data", "the page of numbers carries every figure it is built to",
+       needs=("learn_numbers",))
+def _numbers_every_section(learn_numbers):
+    """learn_numbers leaves a section out where its input is not on the disk
+    and names it in the build's log (learn_numbers.MISSING), so that the
+    builders' fixture site, which holds none of those inputs, still builds.
+    On the real site every one is here, and a page without a section is a
+    night that lost a file: this says which."""
+    page = Path("site") / "learn" / "by-the-numbers.html"
+    if not page.exists():
+        return "skip", "learn/by-the-numbers.html not built"
+    import html as _html
+    text = _html.unescape(page.read_text(encoding="utf-8", errors="replace"))
+    heads = re.findall(r"<h2[^>]*>(.*?)</h2>", text, re.S)
+    lost = [h for h in learn_numbers.HEADINGS
+            if not any(re.sub(r"<[^>]+>", "", x).strip().startswith(h) for x in heads)]
+    assert not lost, "the page of numbers was built without: " + "; ".join(lost)
+    return "ok", f"all {len(learn_numbers.HEADINGS)} sections"
 
 
 # A LEARN SENTENCE, THE SECTION IT CITES, AND WHAT THAT SECTION SAYS. Each row

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.31
+# GRANITE_VERSION: 2026-09-08.32
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -933,8 +933,9 @@ def main():
                title=S.title_of("The record in numbers", "How New Hampshire works"),
                og_title="The record in numbers",
                description=("Statistics counted from the New Hampshire General Court's own "
-                            "record: vetoes, the closest votes, how votes are taken, and how "
-                            "often a chamber overrules its committee."),
+                            "record: how bills end, committees' workloads and passage rates, "
+                            "amendments, hearings, attendance, vetoes, the closest votes and "
+                            "the amendments sent to the voters."),
                og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the page",
                sr_title="", nav_current="learn.html")
@@ -945,6 +946,12 @@ def main():
     # same two lists the topic pages get. rail() with no `here` marks nothing
     # as current, which is right: this page is not one of the thirteen.
     nbody, nsections = anchored(learn_numbers.body(site))
+    # A SECTION LEFT OUT IS SAID. learn_numbers leaves out a figure whose input
+    # is not on this disk rather than stop every build on it -- the builders'
+    # fixture site holds none of them -- and names each one here, so a night
+    # that lost testimony_db.json from its kit says so in its log.
+    for f, what in learn_numbers.MISSING:
+        print(f"  learn/by-the-numbers.html LEAVES OUT {what}: {f} is not here")
     p = p.replace('<div id="results"></div>',
                   '<div id="results"><div class="lcols">'
                   '<header class="civhead"><p class="crumb"><a href="learn.html">'
