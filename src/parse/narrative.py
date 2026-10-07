@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.88
+# GRANITE_VERSION: 2026-09-04.89
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1021,6 +1021,65 @@ def clean(s):
 
 # "OT3rdg" = ordered to third reading, the procedural step after passage.
 OT_RDG = re.compile(r"\bOT(\d)rdg\b", re.I)
+
+# THE STEP AFTER OUGHT TO PASS, LEFT PENDING BY A TABLING (7 October 2026).
+# The Senate passes a bill by ordering it to a third reading, "Ought to Pass:
+# MA, VV; OT3rdg", or under its Rule 4-5 sends it to Finance first. A tabling
+# moved between the two leaves the docket saying which was interrupted: SB
+# 131 of 2025 has "Ought to Pass: MA, VV", "Sen. Gray Moved Laid on Table,
+# MA, VV" and "Pending Motion OT3rdg", all of 27 March -- Senate Journal 9
+# prints the motion "Adopted." and the tabling, and no "bill ordered to Third
+# Reading" -- and it died under Rule 3-23 in October. Its history said "the
+# Senate voted to pass it", and so did 62 others of the term. SB 476 of 2026
+# was ordered to a third reading and "The Chair rescinded OT3rdg" before the
+# tabling; SB 635 of 2026's "Pending Motion Refer to Finance Rule 4-5" is the
+# same a step earlier. build_site_v2.journey asks this too, so the rail and
+# the history are one reading.
+PASSAGE_PENDING = re.compile(
+    r"(?:^|;)\s*pending\s+motion\W*(?:(?P<third>OT\s?3\s?rd?g\b)|refer\w*\s+to\s+finance\b)",
+    re.I)
+OFF_TABLE = re.compile(r"\b(?:remov\w*|taken|take)\s+(?:\w+\s+){0,2}from\s+(?:the\s+)?table",
+                       re.I)
+# The pending order carried on a later day, with no code: "OT3rdg; 03/21/2024",
+# the day SB 173 of 2024 came off the table (its Ought to Pass was of 3
+# January), and "OT3rdg" on SB 144 of 2015.
+BARE_THIRD = re.compile(r"^\s*OT\s?3\s?r?d?g\s*(?:;\s*\d{1,2}/\d{1,2}/\d{2,4}\s*)?$", re.I)
+# The day a row states at its end. A row no pattern reads is dated by its
+# entry: SB 86 of 2025's "Pending Motion OT3rdg; 03/27/2025" was entered on 4
+# June.
+ROW_DAY = re.compile(r";\s*(\d{1,2}/\d{1,2}/\d{4})\s*$")
+
+
+def row_day(raw, fallback=""):
+    """"2025-03-27" from a row ending "; 03/27/2025", else `fallback`."""
+    m = ROW_DAY.search(raw or "")
+    if m:
+        try:
+            return datetime.strptime(m.group(1), "%m/%d/%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    return fallback or ""
+
+
+def passage_left_pending(rows):
+    """{(body, day): "third" | "finance"}: the sittings at which a chamber
+    tabled the bill with its third reading (or its referral to Finance)
+    pending, and did not take it off the table again later that day. `rows`
+    is [(body, day, raw)] in the docket's order. HB 1601 of 2018 was taken off
+    and ordered to a third reading the same day; HB 726 of 2019's motion to
+    take it off failed, 10-13, and it died on the table."""
+    held = {}
+    for body, day, raw in rows:
+        m = PASSAGE_PENDING.search(raw or "")
+        if m:
+            held[(body, day)] = "third" if m.group("third") else "finance"
+            continue
+        off = OFF_TABLE.search(raw or "") if held.get((body, day)) else None
+        if off and not re.search(r"\b(?:MF|ML)\b|\b(?:failed|lost)\b", raw[off.end():]):
+            if re.search(r"\bMA\b|\badopted\b", raw[off.end():]) or re.match(
+                    r"removed|taken", off.group(0), re.I):
+                held[(body, day)] = ""
+    return {k: v for k, v in held.items() if v}
 
 # "Committee Amendment # 2025-1234s, AA, VV; 03/06/2025"
 # "Amendment # 2025-1234h: AA VV 03/06/2025"
@@ -2651,6 +2710,11 @@ def describe(ev, body, seen_intro=False):
             return f"{who} made no recommendation{vote}."
         return f"{who} reported: {rec}{vote}."
 
+    if t == "ot3rdg":
+        # The order a tabling left pending, carried once the bill came off
+        # the table (build(): PASSAGE_PENDING).
+        return f"On {ev['when'].strftime(MONTH)} the {chamber} ordered it to a third reading."
+
     if t == "floor":
         action, who = split_mover(ev.get("action"))
         mover = f", on a motion by {expand_mover(who)}" if who else ""
@@ -2672,7 +2736,12 @@ def describe(ev, body, seen_intro=False):
         when = fdate(ev["date"]) if ev.get("date") else ""
         tally = (f" {ev['y']}\u2013{ev['n']}" if ev.get("y") and ev.get("n") else "")
 
-        if verb and motion == "adopted":
+        if verb and motion == "adopted" and ev.get("_unpassed"):
+            # Not a passage (PASSAGE_PENDING): the motion carried, and the
+            # step that passes the bill was left pending by a tabling.
+            base = (f"On {when} the {chamber} adopted the motion that it ought to pass"
+                    + (" with an amendment" if "with amendment" in low else ""))
+        elif verb and motion == "adopted":
             base = f"On {when} the {chamber} voted to {verb}"
         elif verb and motion == "failed":
             base = f"On {when} the {chamber} rejected a motion to {verb}"
@@ -2692,7 +2761,10 @@ def describe(ev, body, seen_intro=False):
                          f"{'adopted' if verb else 'approved'} on a {vk}{tally}")
         elif vk:
             base += f" on a {vk}{tally}"
-        if OT_RDG.search(ev.get("_raw", "")):
+        if ev.get("_unpassed"):
+            base += (", but its third reading was left pending" if ev["_unpassed"] == "third"
+                     else ", but its referral to the Finance committee was left pending")
+        elif OT_RDG.search(ev.get("_raw", "")):
             base += " and ordered it to a third reading"
         if ev.get("refer"):
             # "UNDER THE CHAMBER'S RULES" only where they are what sent it: a
@@ -4746,6 +4818,29 @@ def build(bill, rows, introduction=None):
         later = [e for j, e in sent_on if j > i][:1]
         for e in that_day or [e for e in later if 0 < (e["when"].date() - day).days <= 7]:
             e["_rules_suspended"] = True
+
+    # A MOTION TO PASS ADOPTED AND THEN TABLED BEFORE THE STEP THAT PASSES THE
+    # BILL (PASSAGE_PENDING) is told as the motion adopted, not the bill
+    # passed; and a later bare "OT3rdg" of that chamber, the pending order
+    # carried once the bill came off the table, is told as that order.
+    held = passage_left_pending([(e["body"], row_day(e["_raw"], e["when"].strftime("%Y-%m-%d")),
+                                  e["_raw"]) for e in evs if not e["cancelled"]])
+    # The order is read on a sitting that did not itself leave it pending,
+    # as build_site_v2.journey reads it.
+    waiting = {}
+    for e in evs:
+        if e["cancelled"]:
+            continue
+        sitting = (e["body"], row_day(e["_raw"], e["when"].strftime("%Y-%m-%d")))
+        why = held.get(sitting)
+        if (why and e["_type"] == "floor" and (e.get("motion") or "").upper() == "MA"
+                and re.match(r"\s*ought\s+to\s+pass\b", split_mover(e.get("action"))[0], re.I)):
+            e["_unpassed"] = why
+            waiting[e["body"]] = e
+        elif (e["_type"] == "other" and BARE_THIRD.match(e["_raw"]) and sitting not in held
+              and waiting.get(e["body"])):
+            e["_type"] = "ot3rdg"
+            waiting.pop(e["body"])
 
     sentences, notes, unknown = [], [], []
     # A note is said once per bill, however many rows repeat the action.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.169
+# GRANITE_VERSION: 2026-09-05.170
 """
 Generate the faceted site from real General Court data.
 
@@ -5057,6 +5057,14 @@ def _j_rows(evs):
     return out
 
 
+def _j_row_day(e, raw):
+    """The day a row states at its end ("; 03/27/2025"), else its event's.
+    A row no pattern reads is dated by its entry: SB 86 of 2025's "Pending
+    Motion OT3rdg; 03/27/2025" was entered on 4 June."""
+    m = J_ROW_DAY.search(raw or "")
+    return (_j_iso(*m.groups()) if m else "") or (e.get("date") or "")
+
+
 def _j_untold(e, seg, evs):
     """Whether the history tells nothing of the clause a decision was read
     from: the row is one no pattern reads (type "other"), or it is a line
@@ -5122,6 +5130,20 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
     # of the reconsideration, a motion it took up with no vote written beside
     # it or a suspension of the rules it refused.
     pending, voted, moved = {}, set(), {}
+    # A MOTION TO PASS ADOPTED AND THEN TABLED BEFORE THE STEP THAT PASSES THE
+    # BILL (narrative.passage_left_pending, the one reading the history and
+    # the sitting pages ask too). The Senate passes a bill by ordering it to a
+    # third reading -- "Ought to Pass: MA, VV; OT3rdg" -- or under its Rule 4-5
+    # sends it to Finance first; SB 131 of 2025 has "Ought to Pass: MA, VV",
+    # "Sen. Gray Moved Laid on Table, MA, VV" and "Pending Motion OT3rdg", all
+    # of 27 March (Senate Journal 9: the motion "Adopted." and the tabling, and
+    # no "bill ordered to Third Reading"), and died under Rule 3-23. Its rail
+    # read "Passed on a voice vote". The line is kept while the rows are read,
+    # so that a removal from the table, a reconsideration and the order to a
+    # third reading that carries it later each find what they would have, and
+    # is left out after, unless that order came.
+    unpassed = N.passage_left_pending(
+        [((e.get("body") or "").upper()[:1], _j_row_day(e, raw), raw) for e, raw in _j_rows(evs)])
     for e, raw in _j_rows(evs):
         body = (e.get("body") or "").upper()[:1]
         # THE JOURNAL A ROW CITES NAMES THE CHAMBER THAT ACTED. "PASSED VV;
@@ -5191,7 +5213,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 said = _j_outcome(seg, off.start())
                 if said is None:
                     said = bool(re.match(r"removed|taken", off.group(0), re.I))
-                mine = [i for i, s in enumerate(steps) if s["body"] == body]
+                # Not a line left out once the rows are read (`unpassed`):
+                # HB 282 of 2025's Ought to Pass row was entered after the
+                # tabling of 15 May that its removal of 26 June undid.
+                mine = [i for i, s in enumerate(steps)
+                        if s["body"] == body and not s.get("_unpassed")]
                 if said and mine and steps[mine[-1]]["act"] == "tabled":
                     steps.pop(mine[-1])
                 # And what the clause does next: "Sen D'Allesandro Moved
@@ -5238,6 +5264,17 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 continue
             _j_reconsidered(steps, body, date, seg,
                             body not in voted and moved.get(body) != date)
+            # THE PENDING ORDER, CARRIED LATER WITH NO CODE: "OT3rdg;
+            # 03/21/2024", the day SB 173 of 2024 came off the table, its
+            # Ought to Pass of 3 January left pending by the tabling; "OT3rdg"
+            # on SB 144 of 2015. The bill passed then, on the motion it had
+            # adopted.
+            if N.BARE_THIRD.match(raw) and (body, _j_row_day(e, raw)) not in unpassed:
+                waiting = next((s for s in reversed(steps)
+                                if s["body"] == body and s.get("_unpassed")), None)
+                if waiting:
+                    waiting["_unpassed"], waiting["date"] = False, date
+                    continue
             got = _j_decide(seg, bid, rcs, date, body)
             if (got is None or got == "amended") and not J_RECONSIDER.search(seg):
                 # A vote since the chamber's last decision, which a
@@ -5281,6 +5318,8 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 got = {**got, "act": act,
                        "amended": act == "passed" and bool(re.search(r"amend", rec, re.I))}
             st = {"date": date, "body": body, **got, "_untold": _j_untold(e, seg, evs)}
+            if got["act"] == "passed" and (body, _j_row_day(e, raw)) in unpassed:
+                st["_unpassed"] = True
             # A COUNT THAT IS THE CONSENT CALENDAR'S (decision 51,
             # narrative.CONSENT_VOTE): "PASSED WITH AM/CONSENT CAL RC(248-8)"
             # read "Passed with an amendment, 248-8", the calendar's roll call
@@ -5390,6 +5429,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
             steps.append(st)
         if failed >= 0 and rc and failed > rc.start():
             moved[body] = date
+    steps = [s for s in steps if not s.pop("_unpassed", False)]
     # AN AMENDMENT ADOPTED THAT DAY AMENDS THAT DAY'S PASSAGE, whether the
     # clerk entered it before the passage or after: "Sen. Fernald Moved Ought
     # to Pass, RC 22y - 1n, MA" and then "Sen. Francoeur Floor Amendment

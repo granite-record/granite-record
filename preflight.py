@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.417
+# GRANITE_VERSION: 2026-09-04.418
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2105,6 +2105,186 @@ def _whose_amendment(N, B):
     return "ok", ("bare House rows a report names are the committee's or its minority's, "
                   "under the floor's heading; FLAM rows are floor amendments with their movers; "
                   "HB 1336's 1100h, named by no report, stays a floor amendment")
+
+
+# AN OUGHT TO PASS TABLED BEFORE ITS THIRD READING (7 October 2026). Real
+# rows: Docket.txt lines 6758-6760 and 11727 (SB 131 of 2025), 3857, 3927,
+# 4829-4830 and 11707 (SB 17 of 2025), 6460 (SB 210 of 2025), 6481, 6490 and
+# 9687-9688 (SB 86 of 2025), 20836-20839 (SB 476 of 2026), 19099-19102 (SB
+# 635 of 2026), 8985, 9145, 9170, 10618, 10627-10628 and 10652 (HB 282 of
+# 2025); Docket_2017-2018.txt 5272-5276 (HB 1601 of 2018);
+# Docket_2019-2020.txt 13736-13743 (HB 726 of 2019); Docket_2023-2024.txt
+# 17124-17128 (SB 173 of 2024); Docket_2015-2016.txt 16820-16824 (SB 144 of
+# 2015); Docket_db_2011-2012.txt 1159-1168 (HB 187 of 2011).
+_DOCKET_TABLED_BEFORE_THIRD = {
+    ("SB131", "2025-2026"): [
+        "2025|1064|3/27/2025 1:45:29 PM|SB131|S|Ought to Pass: MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:29 PM",
+        "2025|1064|3/27/2025 1:45:49 PM|SB131|S|Sen. Gray Moved Laid on Table, MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:48 PM",
+        "2025|1064|3/27/2025 1:46:11 PM|SB131|S|Pending Motion OT3rdg; 03/27/2025;  SJ 9|3/27/2025 1:46:11 PM",
+        "2025|1064|11/3/2025 1:17:34 PM|SB131|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:17:34 PM"],
+    ("SB17", "2025-2026"): [
+        "2025|0269|3/6/2025 6:10:18 PM|SB17|S|Committee Amendment # 2025-0531s, AA, VV; 03/06/2025;  SJ 6|3/6/2025 6:10:18 PM",
+        "2025|0269|3/6/2025 6:10:33 PM|SB17|S|Ought to Pass with Amendment #2025-0531s, MA, VV; 03/06/2025;  SJ 6|3/6/2025 6:10:33 PM",
+        "2025|0269|3/6/2025 6:10:51 PM|SB17|S|Sen. Birdsell Moved Laid on Table, MA, VV; 03/06/2025;  SJ 6|3/6/2025 6:10:51 PM",
+        "2025|0269|3/6/2025 6:11:14 PM|SB17|S|Pending Motion OT3rdg; 03/06/2025;  SJ 6|3/6/2025 6:11:14 PM",
+        "2025|0269|11/3/2025 1:14:38 PM|SB17|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:14:38 PM"],
+    ("SB210", "2025-2026"): [
+        "2025|0397|3/27/2025 10:31:44 AM|SB210|S|Ought to Pass: MA, VV; OT3rdg; 03/27/2025;  SJ 9|3/27/2025 10:31:44 AM"],
+    ("SB86", "2025-2026"): [
+        "2025|1030|3/27/2025 3:33:15 PM|SB86|S|Committee Amendment # 2025-1101s, AA, VV; 03/27/2025;  SJ 9|3/27/2025 3:33:15 PM",
+        "2025|1030|4/1/2025 11:55:18 AM|SB86|S|Ought to Pass with Amendment #2025-1101s, MA, VV; 03/27/2025;  SJ 9|4/1/2025 11:55:24 AM",
+        "2025|1030|6/4/2025 9:52:44 AM|SB86|S|Sen. Gray Moved Laid on Table, MA, VV; 03/27/2025;  SJ 9|6/4/2025 9:52:44 AM",
+        "2025|1030|6/4/2025 9:53:14 AM|SB86|S|Pending Motion OT3rdg; 03/27/2025;  SJ 9|6/4/2025 9:53:14 AM"],
+    ("SB476", "2025-2026"): [
+        "2026|2035|3/26/2026 1:26:07 PM|SB476|S|Ought to Pass with Amendment #2026-1236s, RC 16Y-8N, MA; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 2:38:48 PM",
+        "2026|2035|3/26/2026 1:26:38 PM|SB476|S|The Chair rescinded OT3rdg, 03/26/2026;  SJ 7|3/26/2026 1:26:51 PM",
+        "2026|2035|3/26/2026 1:26:54 PM|SB476|S|Sen. McGough Moved Laid on Table, MA, VV; 03/26/2026;  SJ 7|3/26/2026 1:27:07 PM",
+        "2026|2035|3/26/2026 1:27:04 PM|SB476|S|Pending Motion OT3rdg; 03/26/2026;  SJ 7|3/26/2026 1:27:17 PM"],
+    ("SB635", "2025-2026"): [
+        "2026|2214|3/5/2026 11:08:09 AM|SB635|S|Committee Amendment # 2026-0832s, AA, VV; 03/05/2026;  SJ 5|3/5/2026 11:43:53 AM",
+        "2026|2214|3/5/2026 11:08:38 AM|SB635|S|Ought to Pass with Amendment #2026-0832s, MA, VV; 03/05/2026;  SJ 5|3/5/2026 11:44:00 AM",
+        "2026|2214|3/5/2026 11:08:55 AM|SB635|S|Sen. Lang Moved Laid on Table, MA, VV; 03/05/2026;  SJ 5|3/5/2026 11:08:55 AM",
+        "2026|2214|3/5/2026 11:09:11 AM|SB635|S|Pending Motion Refer to Finance Rule 4-5; 03/05/2026;  SJ 5|3/5/2026 11:09:11 AM"],
+    ("HB282", "2025-2026"): [
+        "2025|0585|5/15/2025 3:06:14 PM|HB282|S|Pending Motion OT3rdg; 05/15/2025;  SJ 13|5/15/2025 3:59:08 PM",
+        "2025|0585|5/15/2025 3:06:11 PM|HB282|S|Sen. Gray Moved Laid on Table, RC 14Y-9N, MA; 05/15/2025;  SJ 13|5/15/2025 3:59:09 PM",
+        "2025|0585|5/15/2025 3:59:05 PM|HB282|S|Ought to Pass: MA, VV; 05/15/2025;  SJ 13|5/15/2025 3:59:09 PM",
+        "2025|0585|6/26/2025 10:40:42 AM|HB282|S|Sen. Gray Moved to Remove From Table, MA, VV; 06/26/2025;  SJ 17|6/26/2025 10:40:42 AM",
+        "2025|0585|6/26/2025 10:58:50 AM|HB282|S|Sen. Gray Floor Amendment # 2025-2895s, RC 24Y-0N, AA; 06/26/2025;  SJ 17|7/8/2025 8:02:41 AM",
+        "2025|0585|6/26/2025 11:21:28 AM|HB282|S|Ought to Pass with Amendment #2025-2895s, MA, VV; OT3rdg; Read a Third Time and Final Passage in the Early Session; 06/26/2025;  SJ 17|7/8/2025 8:02:39 AM",
+        "2025|0585|6/26/2025 3:23:47 PM|HB282|S|Ought to Pass with Amendments #2025-2895s and #2025-2898s, MA, VV; OT3rdg; 06/26/2025;  SJ 17|7/8/2025 8:02:36 AM"],
+    ("HB1601", "2017-2018"): [
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Ought to Pass : RC 13Y-11N, MA; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Sen. Bradley Moved Laid on Table, MA, VV; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Pending Motion OT3rdg; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Sen. Bradley Moved to Remove From Table, MA, VV; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|OT3rdg; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM"],
+    ("HB726", "2019-2020"): [
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Committee Amendment #2019-1344s , AA, VV; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Sen. Bradley Floor Amendment #2019-1456s , RC 23Y-0N, AA; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Ought to Pass with Amendment s 2019-1344s, and 2019-1456s, MA, VV; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Sen. Feltes Moved Laid on Table, RC 13Y-10N, MA; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Pending Motion OT3rdg; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Sen. Bradley Moved to Remove From Table, RC 10Y-13N, MF; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Pending Motion OT3rdg; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|12/18/2019 12:00:00 AM|HB726|S|Inexpedient to Legislate, Senate Rule 3-23, Adjournment 09/25/2019; SJ 1|12/18/2019 12:00:00 AM"],
+    ("SB173", "2023-2024"): [
+        "2024|0858|1/3/2024 12:00:00 AM|SB173|S|Ought to Pass with Amendment 2024-0049s, MA, VV; 01/03/2024; SJ 1|1/3/2024 12:00:00 AM",
+        "2024|0858|1/3/2024 12:00:00 AM|SB173|S|Sen. Birdsell Moved Laid on Table, MA, VV; 01/03/2024; SJ 1|1/3/2024 12:00:00 AM",
+        "2024|0858|1/3/2024 12:00:00 AM|SB173|S|Pending Motion OT3rdg; 01/03/2024; SJ 1|1/3/2024 12:00:00 AM",
+        "2024|0858|3/21/2024 12:00:00 AM|SB173|S|OT3rdg; 03/21/2024; SJ 7|3/21/2024 12:00:00 AM",
+        "2024|0858|3/21/2024 12:00:00 AM|SB173|S|Sen. Birdsell Moved to Remove From Table, MA, VV; 03/21/2024; SJ 7|3/21/2024 12:00:00 AM"],
+    ("SB144", "2015-2016"): [
+        "2016|0312|2/12/2015 12:00:00 AM|SB144|S|Ought to Pass : MA, VV; SJ 5|2/12/2015 12:00:00 AM",
+        "2016|0312|2/12/2015 12:00:00 AM|SB144|S|Pending Motion OT3rdg; SJ 5|2/12/2015 12:00:00 AM",
+        "2016|0312|2/12/2015 12:00:00 AM|SB144|S|Sen. Sanborn Moved Laid On Table, MA, VV: SJ 5|2/12/2015 12:00:00 AM",
+        "2016|0312|3/26/2015 12:00:00 AM|SB144|S|Sen. Boutin Moved Remove From Table, MA, VV; SJ 10|3/26/2015 12:00:00 AM",
+        "2016|0312|3/26/2015 12:00:00 AM|SB144|S|OT3rdg; SJ 10|3/26/2015 12:00:00 AM"],
+    ("HB187", "2011-2012"): [
+        "2011|0157|04/27/2011 11:14:42 AM|HB187|S|Ought to Pass, MA, VV; Refer to Finance Rule 4-3; SJ 14|04/27/2011 11:14:42 AM",
+        "2011|0157|05/12/2011 01:33:35 PM|HB187|S|Committee Report: Ought to Pass, 5/18/11; SC24|05/12/2011 01:33:35 PM",
+        "2011|0157|05/18/2011 11:46:26 AM|HB187|S|Ought to Pass, MA, VV; OT3rdg; SJ 17, Pg.347|05/18/2011 11:46:26 AM",
+        "2011|0157|05/18/2011 11:59:15 AM|HB187|S|Sen. Bragdon Moved to Rescind OT3rdg; SJ 17, Pg.347|05/18/2011 11:59:15 AM",
+        "2011|0157|05/18/2011 11:59:50 AM|HB187|S|Pending Motion OT3rdg; SJ 17|05/18/2011 11:59:50 AM",
+        "2011|0157|05/18/2011 12:42:24 PM|HB187|S|Sen. Morse Moved Laid on Table, MA, VV; SJ 17, Pg.347|05/18/2011 12:42:24 PM",
+        "2011|0157|06/01/2011 01:20:24 PM|HB187|S|Sen. White Moved Remove From Table, MA, VV; SJ 19, Pg.526|06/01/2011 01:20:24 PM",
+        "2011|0157|06/01/2011 01:25:26 PM|HB187|S|Sen. Sanborn Moved Reconsideration, MA, VV; SJ 19, Pg.526|06/01/2011 01:25:26 PM",
+        "2011|0157|06/01/2011 01:27:15 PM|HB187|S|Sen. Sanborn Floor Amendment #2011-2267s, RC 24Y-0N, AA; SJ 19, Pg.526|06/01/2011 01:27:15 PM",
+        "2011|0157|06/01/2011 01:29:23 PM|HB187|S|Ought to Pass with Amendment 2267s, MA, VV; OT3rdg; SJ 19, Pg.527|06/01/2011 01:29:23 PM"],
+}
+
+
+@check("narrative", "an Ought to Pass the Senate tabled before its third reading is no passage, on "
+                    "the rail, in the history or on the sitting's page",
+       needs=("narrative", "build_site_v2", "session_days"))
+def _tabled_before_third_reading(N, B, SD):
+    """The Senate passes a bill by ordering it to a third reading, "Ought to
+    Pass: MA, VV; OT3rdg", or under its Rule 4-5 sends it to Finance first.
+    "Ought to Pass: MA, VV", a tabling, and "Pending Motion OT3rdg" (or
+    "Pending Motion Refer to Finance Rule 4-5") of the same sitting are the
+    motion adopted and the bill tabled before it passed: Senate Journal 9 of
+    2025 prints SB 131's motion "Adopted." and the tabling, with no "bill
+    ordered to Third Reading". SB 131 read "Passed on a voice vote" on its
+    rail, "the Senate voted to pass it" in its history and "it carried in
+    this chamber" on the sitting's page, and it died on the table under Rule
+    3-23 -- with 65 others of 2025-2026 and 131 bills of 2011-2024.
+    narrative.passage_left_pending is the one reading all three ask. The day
+    is the one the row states: SB 86's pending row was entered on 4 June for
+    27 March. Held both ways: SB 210, with OT3rdg on its own row, and HB 1601
+    of 2018, taken off the table and ordered to a third reading the same day,
+    passed; HB 726 of 2019's removal failed, 10-13; SB 476 of 2026's order
+    was rescinded before the tabling; HB 282 of 2025 passed on 26 June only;
+    SB 173 of 2024 and SB 144 of 2015 passed on the day their pending order
+    was carried, by a bare "OT3rdg"; HB 187 of 2011's April referral is not
+    "reconsidered" on the strength of a passage that never was."""
+    want = {  # (bill, term): the Senate's lines, (date, act)
+        ("SB131", "2025-2026"): [("2025-03-27", "tabled"), ("2025-10-31", "died")],
+        ("SB17", "2025-2026"): [("2025-03-06", "tabled"), ("2025-10-31", "died")],
+        ("SB210", "2025-2026"): [("2025-03-27", "passed")],
+        ("SB86", "2025-2026"): [("2025-03-27", "tabled")],
+        ("SB476", "2025-2026"): [("2026-03-26", "tabled")],
+        ("SB635", "2025-2026"): [("2026-03-05", "tabled")],
+        ("HB282", "2025-2026"): [("2025-06-26", "passed")],
+        ("HB1601", "2017-2018"): [("2018-05-02", "passed")],
+        ("HB726", "2019-2020"): [("2019-04-11", "tabled"), ("2019-09-25", "died")],
+        ("SB173", "2023-2024"): [("2024-03-21", "passed")],
+        ("SB144", "2015-2016"): [("2015-03-26", "passed")],
+        ("HB187", "2011-2012"): [("2011-04-27", "referred"), ("2011-06-01", "passed")],
+    }
+    held = ("SB131", "SB17", "SB86", "SB476", "SB635", "HB726", "SB173", "SB144", "HB187",
+            "HB282")
+    # The sittings that tabled the bill with its third reading (or its
+    # referral to Finance) pending.
+    sittings = {("SB131", "2025-03-27"), ("SB17", "2025-03-06"), ("SB86", "2025-03-27"),
+                ("SB476", "2026-03-26"), ("SB635", "2026-03-05"), ("HB282", "2025-05-15"),
+                ("HB726", "2019-04-11"), ("SB173", "2024-01-03"), ("SB144", "2015-02-12"),
+                ("HB187", "2011-05-18")}
+    bad = []
+    for key, rows in _DOCKET_TABLED_BEFORE_THIRD.items():
+        bill, term = key
+        rec = _narrated(N, term, bill, rows)
+        steps = [s for s in B.journey(rec, bill, term=term)[1] if s["body"] == "S"]
+        got = [(s["date"], s["act"]) for s in steps]
+        if got != want[key]:
+            bad.append(f"{bill} of {term}: the Senate's lines are {got}, not {want[key]}")
+        if any("reconsidered" in (s.get("text") or "") for s in steps):
+            bad.append(f"{bill} of {term}: {[s.get('text') for s in steps]}")
+        if bill == "HB1601" and [s.get("text") for s in steps] != ["Passed, 13–11"]:
+            bad.append(f"HB1601 of 2018: {[s.get('text') for s in steps]}")
+        told = rec.get("narrative") or ""
+        if bill in held and "adopted the motion that it ought to pass" not in told:
+            bad.append(f"{bill} of {term}'s history: {told[-300:]!r}")
+        if bill in ("SB131", "SB17", "SB86", "SB476", "SB635", "HB726") and \
+                "voted to pass it" in told:
+            bad.append(f"{bill} of {term}'s history still says the Senate voted to pass it")
+        if bill in ("SB476", "HB187") and "ordered it to a third reading" in told.split(
+                "left pending")[0]:
+            bad.append(f"{bill} of {term}'s rescinded order still reads as given: {told[-300:]!r}")
+        if bill in ("SB131", "SB86") and "but its third reading was left pending" not in told:
+            bad.append(f"{bill} of {term}'s history: {told[-300:]!r}")
+        if bill == "SB635" and "but its referral to the Finance committee was left pending" \
+                not in told:
+            bad.append(f"SB635 of 2026's history: {told[-300:]!r}")
+        if bill == "SB173" and "On March 21, 2024 the Senate ordered it to a third reading." \
+                not in told:
+            bad.append(f"SB173 of 2024's history does not tell its order of 21 March: "
+                       f"{told[-300:]!r}")
+        if bill in ("SB210", "HB1601") and "adopted the motion that it ought to pass" in told:
+            bad.append(f"{bill} of {term}, which passed, reads {told[-300:]!r}")
+        # The sitting's page: the motion adopted, and nothing said of the bill.
+        for e, it in SD.floor_items(bill, term, rec.get("events") or []):
+            sat = (bill, e.get("date"))
+            if not it.action.lower().startswith("ought to pass") or not (
+                    sat in sittings or bill in ("SB210", "HB1601")):
+                continue
+            if ("carried in this chamber" in it.outcome_words) != (sat not in sittings):
+                bad.append(f"{bill} of {term}'s sitting of {e.get('date')}: "
+                           f"{it.outcome_words!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 131, SB 17, SB 86 and SB 635 of 2025-2026, SB 476's rescinded order and "
+                  "HB 726 of 2019 tabled before their third reading, and not passed; SB 210 "
+                  "and HB 1601 of 2018 passed; HB 282 of 2025, SB 173 of 2024 and SB 144 of 2015 "
+                  "passed on the day the pending order carried")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
