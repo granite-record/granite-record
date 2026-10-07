@@ -1105,8 +1105,8 @@ the years the `docket` table lacks, and the titles and sponsors `Legislation`
 and `sponsors` keep for the current term alone, are on this disk for past
 terms too. `PastCommitteeReports` and `PastAmendments` begin in 2016.
 `past_sponsors.py` matches `PastSponsors` to bills by LSR, `archive_text.py`
-reads `PastLegislationText`, and `python3 fetch_past_db.py --list` says what
-is here.
+reads `PastLegislationText`, and
+`python3 src/fetch/gc_db/fetch_past_db.py --list` says what is here.
 
 ---
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.3
+# GRANITE_VERSION: 2026-09-26.4
 """
 Six views of past sessions in the General Court's public database, onto this
 disk, each whole or not at all.
 
-    python3 fetch_past_db.py --list                 # the plan and what is here; no connection
-    python3 fetch_past_db.py                        # every view not already here
-    python3 fetch_past_db.py --only PastDocket      # one view; a comma list or repeats for more
-    python3 fetch_past_db.py --only PastDocket --refetch
+    python3 src/fetch/gc_db/fetch_past_db.py --list                 # the plan and what is here; no connection
+    python3 src/fetch/gc_db/fetch_past_db.py                        # every view not already here
+    python3 src/fetch/gc_db/fetch_past_db.py --only PastDocket      # one view; a comma list or repeats for more
+    python3 src/fetch/gc_db/fetch_past_db.py --only PastDocket --refetch
 
 WHAT THE VIEWS ARE
 

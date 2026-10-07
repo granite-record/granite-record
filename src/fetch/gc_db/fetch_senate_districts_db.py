@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.3
 """
 Which towns are in each Senate district, from the General Court's database.
 
-    python3 fetch_senate_districts_db.py --dry-run
-    python3 fetch_senate_districts_db.py
+    python3 src/fetch/gc_db/fetch_senate_districts_db.py --dry-run
+    python3 src/fetch/gc_db/fetch_senate_districts_db.py
 
 WHY
 
