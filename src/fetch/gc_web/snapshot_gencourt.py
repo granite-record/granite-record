@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Daily snapshot of the NH General Court bulk data files.
 
-    python3 snapshot_gencourt.py --dir nh-archive              # archive only
-    python3 snapshot_gencourt.py --dir nh-archive --into .     # archive, then install for the build
-    python3 snapshot_gencourt.py --plan                        # what it would ask for; no request
+    python3 src/fetch/gc_web/snapshot_gencourt.py --dir nh-archive              # archive only
+    python3 src/fetch/gc_web/snapshot_gencourt.py --dir nh-archive --into .     # archive, then install for the build
+    python3 src/fetch/gc_web/snapshot_gencourt.py --plan                        # what it would ask for; no request
 
 Docket.txt and its siblings are LIVE views, not archives. Nothing guarantees
 last session's rows will still be there next year. Run this daily and you

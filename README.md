@@ -117,8 +117,8 @@ That is fourteen requests to somebody else's server — read **[Fetching, and th
 one hard rule](#fetching-and-the-one-hard-rule)** before you run it.
 
 ```
-python3 snapshot_gencourt.py --plan                       # what it would ask for; makes no request
-python3 snapshot_gencourt.py --dir nh-archive --into .    # fetch, then install for the build
+python3 src/fetch/gc_web/snapshot_gencourt.py --plan                       # what it would ask for; makes no request
+python3 src/fetch/gc_web/snapshot_gencourt.py --dir nh-archive --into .    # fetch, then install for the build
 ```
 
 ### Then build

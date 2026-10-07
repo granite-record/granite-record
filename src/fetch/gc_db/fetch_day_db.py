@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.5
+# GRANITE_VERSION: 2026-10-01.6
 """
 The day's records from the General Court's database, into .night/dbday/.
 
-    python3 fetch_day_db.py --plan     # the statements it would send; no connection
-    python3 fetch_day_db.py            # ask, then say what the rebuilt day files would
-                                       # change against the files installed here
-    python3 fetch_day_db.py --fetch-only   # ask, and leave the comparison to the caller
+    python3 src/fetch/gc_db/fetch_day_db.py --plan     # the statements it would send; no connection
+    python3 src/fetch/gc_db/fetch_day_db.py            # ask, then say what the rebuilt day files would
+                                                       # change against the files installed here
+    python3 src/fetch/gc_db/fetch_day_db.py --fetch-only   # ask, and leave the comparison to the caller
 
 THIS ASKS THE GENERAL COURT'S SQL HOST. Not the web server that blocked this
 address twice: the host the General Court publishes read-only credentials for

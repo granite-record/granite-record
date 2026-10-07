@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.10
+# GRANITE_VERSION: 2026-09-08.11
 """
 Every view in the General Court's public database, onto this disk.
 
-    python3 fetch_archive_db.py --list          # what it would do, no network
-    python3 fetch_archive_db.py                 # everything not already here
-    python3 fetch_archive_db.py --only NH_RSA   # one view
+    python3 src/fetch/gc_db/fetch_archive_db.py --list          # what it would do, no network
+    python3 src/fetch/gc_db/fetch_archive_db.py                 # everything not already here
+    python3 src/fetch/gc_db/fetch_archive_db.py --only NH_RSA   # one view
 
 WHY THIS EXISTS
 

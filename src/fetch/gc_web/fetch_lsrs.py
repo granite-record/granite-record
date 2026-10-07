@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.6
+# GRANITE_VERSION: 2026-09-18.7
 """
 Next session's bill requests, before any of them is a bill.
 
-    python3 fetch_lsrs.py --probe     # what the page offers, saves nothing
-    python3 fetch_lsrs.py             # fetch the CSV, save it, write lsrs.json
-    python3 fetch_lsrs.py --parse     # re-read what is saved, no network
+    python3 src/fetch/gc_web/fetch_lsrs.py --probe     # what the page offers, saves nothing
+    python3 src/fetch/gc_web/fetch_lsrs.py             # fetch the CSV, save it, write lsrs.json
+    python3 src/fetch/gc_web/fetch_lsrs.py --parse     # re-read what is saved, no network
 
 WHAT AN LSR IS
 

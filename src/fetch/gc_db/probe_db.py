@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.18
+# GRANITE_VERSION: 2026-09-06.19
 """
 What is actually in the General Court's public database.
 
-    python3 probe_db.py              # connect, count, report; writes nothing
-    python3 probe_db.py --raw        # also save the raw output for reading later
-    python3 probe_db.py --hold       # the hold on this host, if one is on file; asks nobody
-    python3 probe_db.py --clear-hold # lift it here: a person's decision
+    python3 src/fetch/gc_db/probe_db.py              # connect, count, report; writes nothing
+    python3 src/fetch/gc_db/probe_db.py --raw        # also save the raw output for reading later
+    python3 src/fetch/gc_db/probe_db.py --hold       # the hold on this host, if one is on file; asks nobody
+    python3 src/fetch/gc_db/probe_db.py --clear-hold # lift it here: a person's decision
 
 WHY THIS EXISTS
 
