@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.206 */
+/* GRANITE_VERSION: 2026-09-07.207 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -945,6 +945,11 @@ white-space:nowrap;max-width:100%}
    to wrap rather than run off the side of the page: a wrapped name is worse
    than an unwrapped one and better than one the reader cannot see. */
 @media (max-width:480px){.mchip{white-space:normal}}
+/* AND WHERE IT WRAPS, BEFORE THE PARTY AND DISTRICT, never inside them: a
+   line ending "Rep. Jason Osborne (R" over one beginning "- Rock 2)" read
+   wrong (the look of 7 October 2026). pchip writes the tag as its own span,
+   in app.js and in build_pages alike. */
+.mchip .mtag{white-space:nowrap}
 /* THE ROLE IS A LABEL. Chair, Vice Chair and Clerk have always been written
    here; the prime sponsor was marked with bold alone, which is not a label,
    does not survive being read aloud, and cannot be told from emphasis. */
@@ -5342,20 +5347,38 @@ grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:start}
 :where(body.pg) .pcol h3,:where(body.pg) .sdiv h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
 /* THE SEAT LIST, ONE COLUMN PER DIVISION (the person, 7 October 2026, F8):
-   five abreast at the page's full width, matching the chamber's five
-   divisions, and fewer where there is less room -- a grid fills in order, so
-   on a tablet divisions 1 to 3 are a row and 4 and 5 the next, and on a phone
-   they stack. A column is about 200px at five, under the 360px the longest
-   chip asks for, so here a name may take two lines inside its chip rather
-   than run past its column (the chip's own rule allows that where there is
-   genuinely not room, and five columns was asked for). */
-:where(body.pg) .seatdivs{display:grid;gap:var(--sp-6) var(--sp-6);
-grid-template-columns:repeat(auto-fit,minmax(190px,1fr));align-items:start}
-:where(body.pg) .seatcols .seatlist{columns:auto}
-:where(body.pg) .seatdivs .seatrow{gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) var(--sp-1)}
-:where(body.pg) .seatdivs .seatrow .sseat{flex:0 0 3.2em}
-:where(body.pg) .seatdivs .mchip{white-space:normal;margin:0}
-:where(body.pg) .seatcols > .sdiv{margin:0 0 var(--sp-6)}
+   five abreast at the page's full width, in the chart's order -- 5, 4, 3, 2,
+   1, as the hall runs left to right -- so each column stands under its own
+   division of the chart.
+
+   WHERE FIVE DO NOT FIT, ONE DIVISION UNDER THE NEXT, each across the width
+   with its own seats balanced into columns (the look of 7 October 2026). A
+   grid that wrapped the five into rows of four or three started the next row
+   under the longest division above it, so at 1024px Division 1 began some
+   7,400px down, under a column that had ended 4,600px earlier, and at 768px
+   two columns stood over blank space. A division is never cut across: its
+   heading, then its seats, then the next.
+
+   A column at five is about 200px, under the 360px the longest chip asks
+   for, and a column of a division under 1180px is 270px and up, so here a
+   chip may wrap -- between the name and its "(R - Rock 2)", which .mtag
+   keeps whole -- rather than run past its column, as the longest names did
+   at 1024px (the chip's own rule allows that where there is genuinely not
+   room, and five columns was asked for). */
+:where(body.pg) .seatcols .sdiv{margin:0 0 var(--sp-8)}
+:where(body.pg) .seatcols .sdiv .seatlist{columns:270px;column-gap:var(--sp-7)}
+:where(body.pg) .seatcols .srost .seatlist{columns:auto}
+:where(body.pg) .seatcols .mchip{white-space:normal}
+@media (min-width:1180px){
+  :where(body.pg) .seatdivs{display:grid;gap:var(--sp-6);
+  grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;
+  margin:0 0 var(--sp-8)}
+  :where(body.pg) .seatdivs > .sdiv{margin:0}
+  :where(body.pg) .seatdivs .sdiv .seatlist{columns:auto}
+  :where(body.pg) .seatdivs .seatrow{gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) var(--sp-1)}
+  :where(body.pg) .seatdivs .seatrow .sseat{flex:0 0 3.2em}
+  :where(body.pg) .seatdivs .mchip{margin:0}
+}
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
 padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);

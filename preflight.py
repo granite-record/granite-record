@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.433
+# GRANITE_VERSION: 2026-09-04.434
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13756,6 +13756,10 @@ def _class_collisions():
         "phead", "pmeta", "cbn", "cbt",
         # the feedback box
         "fbk", "fbknote",
+        # a person chip's "(R - Rock 2)", which pchip writes in app.js and in
+        # build_pages alike, held together by "the person chip is drawn the
+        # same in both" (the look of 7 October 2026)
+        "mtag",
     }
     here = Path(".")
     app_side = ["app.js", "find.js", "bills.html"]
@@ -31687,7 +31691,10 @@ def _former_heading(BL):
             bad.append(f"app.js marks sitting member {mid} as former")
         # The chip is how a roll call, a sponsor list and a roster draw them.
         chip = drawn[mid]["chip"]
-        if "Former" in chip or re.sub(r"^Former ", "", name) not in chip:
+        # Its words, read as a reader reads them: the party and district are a
+        # span of their own (pchip's .mtag, so a chip that wraps keeps them whole).
+        said = re.sub(r"<[^>]+>", "", chip)
+        if "Former" in said or re.sub(r"^Former ", "", name) not in said:
             bad.append(f"the chip for member {mid} reads {chip!r}")
         why = re.findall(r"\b(died|deceased|death|resign\w*|retire\w*|defeat\w*|lost)\b",
                          head, re.I)
@@ -43914,23 +43921,27 @@ def _vacancy_wording():
     return "ok", f"{len(rows)} vacant districts, each \"<County> District <n>\", under the RSA 661:8 sentence"
 
 
-@check("frontend", "the House by seat is one column per division, in order, five abreast where the width allows")
+@check("frontend", "the House by seat is one column per division, in the chart's order, five abreast where the width allows")
 def _seat_list_by_division():
     """"The House seating chart shows 3 columns for 5 sections" (the person, 7
     October 2026, F8). seat_columns is drawn over a House of every division
     and a Speaker, out of order of nothing -- the members come in seat order
-    as the roster sorts them -- and gives five columns headed Division 1 to 5,
-    each holding its own seats and counted, the Speaker above them and no
-    division column for the rostrum; and the stylesheet's grid fits five
-    columns in the page's width and fewer, in order, on a phone."""
+    as the roster sorts them -- and gives five columns headed Division 5 to 1,
+    as the chart above them runs, each holding its own seats and counted, the
+    Speaker above them and no division column for the rostrum; and the
+    stylesheet puts five abreast only where five fit, and below that one
+    division under the next, never a column cut across."""
     import build_pages as BP
     import seating
     seats = [1001, 1043, 2001, 2101, 3050, 4099, 5002, 5043, seating.SPEAKER_SEAT]
     house = [{"seat": str(s), "name": f"Member {s}"} for s in sorted(seats)]
     html = BP.seat_columns(house, lambda m: f'<li class="seatrow" data-seat="{m["seat"]}"></li>')
     heads = re.findall(r"<h3>([^<]*)</h3>", html)
-    assert heads == ["The rostrum", "Division 1 &mdash; 2", "Division 2 &mdash; 2",
-                     "Division 3 &mdash; 1", "Division 4 &mdash; 1", "Division 5 &mdash; 2"], (
+    # IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026): the hall runs
+    # 5, 4, 3, 2, 1 left to right and the chart above draws it so; 1 to 5 made
+    # the list the chart's mirror image.
+    assert heads == ["The rostrum", "Division 5 &mdash; 2", "Division 4 &mdash; 1",
+                     "Division 3 &mdash; 1", "Division 2 &mdash; 2", "Division 1 &mdash; 2"], (
         f"the seat list's columns are headed {heads}")
     cols = re.findall(r'<section class="sdiv"><h3>Division (\d) &mdash; \d+</h3>'
                       r'<ol class="seatlist">(.*?)</ol></section>', html)
@@ -43943,23 +43954,38 @@ def _seat_list_by_division():
     assert html.count('class="seatrow"') == len(seats), "a member is missing from the seat list"
     assert BP.seat_columns([{"name": "x"}], lambda m: "<li></li>").count("No seat on file") == 1
     css = Path("app.css").read_text(encoding="utf-8")
-    m = re.search(r"\.seatdivs\{display:grid;gap:var\(--sp-(\d+)\) var\(--sp-\d+\);\s*"
-                  r"grid-template-columns:repeat\(auto-fit,minmax\((\d+)px,1fr\)\)", css)
-    assert m, "app.css lays the divisions out in no grid of columns"
+    # FIVE ABREAST FROM 1180px, AND BELOW IT ONE DIVISION UNDER THE NEXT (the
+    # look of 7 October 2026). A grid that wrapped five into rows of four or
+    # three started a row under the longest division above it: at 1024px
+    # Division 1 began 7,400px down under a column that had ended 4,600px
+    # earlier. So the five-column grid is only at the width that holds five,
+    # and under it each division takes the width with its seats in columns.
+    m = re.search(r"@media \(min-width:(\d+)px\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
+                  r"gap:var\(--sp-(\d+)\);\s*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)", css)
+    assert m, "app.css lays the divisions out five abreast at no width"
     sp = dict(re.findall(r"--sp-(\d+):(\d+)px", css))
-    gap, least = int(sp[m.group(1)]), int(m.group(2))
-    # The page's full width is .wrap.wide's 1180px less its gutters, as the
-    # legislators page is drawn.
-    room = 1180 - 2 * 24
-    fits = (room + gap) // (least + gap)
-    assert fits >= 5, f"at full width the divisions fit {fits} abreast, not five"
-    assert (343 + gap) // (least + gap) == 1, "on a phone the divisions do not stack"
+    at, gap = int(m.group(1)), int(sp[m.group(2)])
+    assert at >= 1180, f"five divisions abreast from {at}px, where the page has not the room"
+    # The page's full width at 1180px is .wrap.wide's less its gutters.
+    col = ((at - 2 * 24) - 4 * gap) / 5
+    assert col >= 190, f"a division's column at {at}px is {col:.0f}px"
+    assert re.search(r":where\(body\.pg\) \.seatdivs\{display:grid", css[:m.start()]) is None, (
+        "the divisions are a grid below the width that holds five, so a row starts under the "
+        "longest division above it")
+    assert ":where(body.pg) .seatcols .sdiv .seatlist{columns:270px" in css, (
+        "under five abreast a division's seats are not in columns of its own")
+    # A chip that wraps does so before its "(R - Rock 2)", never inside it.
+    assert ".mchip .mtag{white-space:nowrap}" in css and \
+        '<span class="mtag">(D - Hills 6)</span>' in BP.pchip(
+            {"display_full": "Rep. Suzanne Vail (D - Hills 6)", "party": "D", "slug": "s"}), (
+        "a chip's party and district are not one unit, so a chip that wraps breaks inside them")
     shared, _base, _ran, _days = _fixture_site_shared()
     page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
     assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
         not in page, "the built page's seat list is not the columns"
-    return "ok", (f"five columns headed as the chart labels its divisions, the Speaker above, "
-                  f"{fits} abreast at full width and one on a phone")
+    return "ok", (f"five columns headed 5 to 1 as the chart runs, the Speaker above, five "
+                  f"abreast from {at}px at {col:.0f}px each and one division under the next "
+                  "below it")
 
 
 @check("frontend", "a note that stands for a section of the committees' pages takes the width it has")

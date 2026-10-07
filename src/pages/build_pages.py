@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.152
+# GRANITE_VERSION: 2026-09-04.153
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -629,12 +629,20 @@ def seat_columns(house, row):
     was one run of seat numbers balanced into as many columns as fit, three at
     full width, so a column ended partway through a division. Now each of the
     chamber's five divisions is a column of its own, headed as the chart
-    labels it and counted, five abreast where the width allows and fewer on a
-    phone, always in order (app.css, .seatdivs). A seat number decodes as
-    division * 1000 + seat (seating.py). The Speaker, whose seat is on the
-    rostrum and in no division, is above them, and a member with no seat on
-    file, which the roster has not had, after them. Every row is still a
-    .seatrow inside #seatlist, where the seat map's script finds them.
+    labels it and counted, five abreast where the width allows (app.css,
+    .seatdivs). A seat number decodes as division * 1000 + seat (seating.py).
+    The Speaker, whose seat is on the rostrum and in no division, is above
+    them, and a member with no seat on file, which the roster has not had,
+    after them. Every row is still a .seatrow inside #seatlist, where the seat
+    map's script finds them.
+
+    IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026). The divisions
+    run left to right across the hall as 5, 4, 3, 2, 1 (seating.HIGHEST), and
+    the chart directly above draws them so; the columns ran 1 to 5, so the
+    list was the chart's mirror image and Division 1's column stood under
+    Division 5. The markup is in the chart's order, so the reading order, the
+    keyboard's order and what the eye sees agree at every width: five
+    abreast, or one division under the next where five do not fit.
     """
     divs = OrderedDict()
     for m in house:
@@ -648,7 +656,7 @@ def seat_columns(house, row):
     return ((block("The rostrum", rostrum, "sdiv srost") if rostrum else "")
             + ('<div class="seatdivs">' + "".join(
                 block(f"Division {d} &mdash; {len(ms)}", ms)
-                for d, ms in sorted(divs.items())) + "</div>" if divs else "")
+                for d, ms in sorted(divs.items(), reverse=True)) + "</div>" if divs else "")
             + (block("No seat on file", unseated) if unseated else ""))
 
 
@@ -860,10 +868,23 @@ def _cesc(s):
 # the pill's tint won wherever a member chip appeared on a page built here: the
 # roster's chips arrived tinted and unpadded. That was patched by specificity
 # first; this is the real fix.
+#
+# THE PARTY AND DISTRICT ARE ONE UNIT (the look of 7 October 2026). Where a
+# chip has to wrap -- the House by seat in five columns, any chip on a phone --
+# it broke wherever a space fell, so a line ended "Rep. Jason Osborne (R" and
+# the next began "- Rock 2)". The trailing "(R - Rock 2)" is its own span,
+# which app.css keeps on one line, so a chip that wraps does so between the
+# name and the tag. The text is unchanged; app.js's pchip does the same.
+CHIP_TAG = re.compile(r"(.*\S)\s+(\([^()]*\))")
+
+
 def pchip(m, esc=_cesc):
     """One legislator, as the site draws them everywhere else."""
     code = str(m.get("party_code") or m.get("party") or "").upper()[:1] or "X"
-    who = esc(m.get("display_full") or m.get("label") or m.get("name") or "")
+    full = str(m.get("display_full") or m.get("label") or m.get("name") or "")
+    tag = CHIP_TAG.fullmatch(full)
+    who = (f'{esc(tag.group(1))} <span class="mtag">{esc(tag.group(2))}</span>'
+           if tag else esc(full))
     role = m.get("role") if (m.get("role") and m.get("role") != "Member") else (
         "Prime" if m.get("prime") else "")
     slug = m.get("slug") or ""

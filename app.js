@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.151
+// GRANITE_VERSION: 2026-09-07.152
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5645,7 +5645,12 @@ function pagePane(html){
 // records carry "Republican" and the roster carries "R".
 const pchip=m=>{
   const code=String(m.party_code||m.party||"").toUpperCase().slice(0,1)||"X";
-  const who=esc(m.display_full||m.label||m.name||"");
+  // THE PARTY AND DISTRICT ARE ONE UNIT: "(R - Rock 2)" is a span app.css
+  // keeps on one line, so a chip that has to wrap does so before it rather
+  // than inside it (build_pages.CHIP_TAG, which this matches).
+  const full=String(m.display_full||m.label||m.name||"");
+  const tag=full.match(/^(.*\S)\s+(\([^()]*\))$/);
+  const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
   // A LABEL, NOT BOLD. A committee roster has always labelled its Chair, Vice
   // Chair and Clerk through the <i> below, and the prime sponsor was marked
   // with bold alone -- which is not a label, cannot be told from emphasis, and
