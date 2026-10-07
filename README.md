@@ -261,11 +261,13 @@ Clerk's office.
 
 Fetches run one at a time, slowly, and a refusal ends the run rather than being
 retried around: `refusal.py` records it, and `build_all.py` then skips its
-General Court steps for 24 hours. **That machinery does not yet cover every
-fetcher** — twelve of the thirty-two `fetch_*.py` scripts consult it, and the
-rest would walk straight through a recorded refusal if started by hand
-(`grep -l refusal fetch_*.py`). Until that gap is closed, the rule above is the
-thing standing between this project and a third block.
+General Court steps for 24 hours. Every script that asks gc.nh.gov, but
+`netcheck.py`, which diagnoses a refusal, consults it before its first
+request and records a refusal it meets, and `preflight` fails one that does
+not; those scripts live in `src/fetch/gc_web/` as the
+move into `src/` reaches them (`src/README.md`). The machinery stops a run
+that meets a refusal. It does not make starting one safe, so the rule above
+still stands.
 
 The `fetch_*_db.py` scripts read the SQL host the General Court publishes
 credentials for, not the web server that did the blocking. Still ask — but a
