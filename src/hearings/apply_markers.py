@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Reconcile stated boundaries against estimated ones, and adopt the stated ones
 where they hold up.
 
-    python3 apply_markers.py                    # every transcript on disk, report only
-    python3 apply_markers.py --video 5shDhTjyqHU --verbose
-    python3 apply_markers.py --apply            # write the accepted ones into segments.json
+    python3 src/hearings/apply_markers.py                    # every transcript on disk, report only
+    python3 src/hearings/apply_markers.py --video 5shDhTjyqHU --verbose
+    python3 src/hearings/apply_markers.py --apply            # write the accepted ones into segments.json
 
 Nothing is written to segments.json unless --apply is given. The default run
 answers the question first -- do chairs state boundaries, and do the stated ones

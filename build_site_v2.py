@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.167
+# GRANITE_VERSION: 2026-09-05.168
 """
 Generate the faceted site from real General Court data.
 
@@ -9755,7 +9755,7 @@ def main():
         print("build will finish and publish a site with none of them, and no")
         print("error anywhere to say why.")
         print("")
-        print("Run: python3 build_proceedings.py")
+        print("Run: python3 src/hearings/build_proceedings.py")
         print("=" * 74)
         if not a.allow_no_manifest:
             raise SystemExit("Refusing to build without it. Pass "

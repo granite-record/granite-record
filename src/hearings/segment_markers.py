@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.39
+# GRANITE_VERSION: 2026-09-05.40
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
-    python3 segment_markers.py --transcript work/RE4RWUbmVz4
-    python3 segment_markers.py --all --out candidate_segments.json
+    python3 src/hearings/segment_markers.py --transcript work/RE4RWUbmVz4
+    python3 src/hearings/segment_markers.py --all --out candidate_segments.json
 
 Then score it against the only ground truth there is:
 
@@ -981,7 +981,7 @@ def main():
     # was, four separate times, while the two lived in different files.
     prows = P.load()
     if not prows:
-        sys.exit("No proceedings.csv. Run: python3 build_proceedings.py")
+        sys.exit("No proceedings.csv. Run: python3 src/hearings/build_proceedings.py")
     byvid = defaultdict(list)
     for v, rs in P.by_video(prows).items():
         for r in rs:

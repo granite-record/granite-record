@@ -169,7 +169,7 @@ than the General Court, and it takes minutes.
 `--docket` and `--out`, the docket carries the term, and that is the whole of
 term-awareness. Proved rather than argued:
 
-    python3 build_manifest.py --videos "videos_*.csv" \
+    python3 src/hearings/build_manifest.py --videos "videos_*.csv" \
         --docket Docket_2023-2024.txt --out verification_manifest_2023-2024.csv
 
     Wrote verification_manifest_2023-2024.csv: 7,019 rows
@@ -778,7 +778,7 @@ order, not a design.
 > Kept because the rule is only as good as the next writer somebody adds.
 
 `build_manifest.py` overwrote the manifest twice, taking the hand-marked times
-with it. `segment_markers.py --transcript X` wrote a candidate file containing
+with it. `python3 src/hearings/segment_markers.py --transcript X` wrote a candidate file containing
 only X and discarded 842 recordings' results. `build_all.py` re-ran the manifest
 build with a narrower video set and halved it. In every case the tool did
 exactly what it was asked and nothing warned.
@@ -1225,7 +1225,7 @@ Each is described where it belongs; this is the list in one place.
   `verification_manifest*.csv` rather than naming one -- and its own docstring
   says the intermediate goes away once every reader has followed. These
   defaults are the readers that have not.
-- **`build_manifest.py --keep-marks` is not vestigial; its help text is.** Every manifest this
+- **`python3 src/hearings/build_manifest.py --keep-marks` is not vestigial; its help text is.** Every manifest this
   writes carries `observed_start` and `observed_end` -- all nineteen on disk
   have both columns, and `verification_manifest.csv` has 35 rows filled, put
   there from `ground_truth.csv`, which outranks anything in an old manifest

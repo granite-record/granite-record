@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 Fetch captions for every recording that has none, busiest first.
 
@@ -99,7 +99,7 @@ def sources():
     """(counts by video, floor session videos, whole-video recordings)."""
     rows = P.load()
     if not rows:
-        sys.exit("No proceedings.csv. Run: python3 build_proceedings.py")
+        sys.exit("No proceedings.csv. Run: python3 src/hearings/build_proceedings.py")
     counts = Counter()
     for r in rows:
         if r["video_id"]:

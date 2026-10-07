@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
 
-    python3 build_proceedings.py
+    python3 src/hearings/build_proceedings.py
 
 Reads every verification_manifest*.csv -- one per term, from build_manifest.py:
 the committee proceedings read from the docket and, for a term built with

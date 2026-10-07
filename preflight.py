@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.409
+# GRANITE_VERSION: 2026-09-04.410
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34400,14 +34400,17 @@ def _carried_outputs(BA):
             "VID9": {"last": 60.0, "files": {"captions.en.json3": [10, 0]}}}}),
             encoding="utf-8")
         r = run("--local", "--dry-run")
+        # The plan prints each step's line as build_all runs it, by bare name.
+        step = lambda out: any(ln.split()[:2] == ["python3", "segment_markers.py"]
+                               for ln in out.splitlines())
         assert "skipping 'boundaries the chair stated'" in r.stdout \
-            and "python3 segment_markers.py" not in r.stdout, (
+            and not step(r.stdout), (
                 "with the captions elsewhere, the chair's boundaries would be "
                 "read again from nothing")
         (root / "work" / "VID9" / "captions.en.json3").write_text(
             _json3_cues([(1000, "hello")]), encoding="utf-8")
         r = run("--local", "--dry-run")
-        assert "python3 segment_markers.py" in r.stdout, (
+        assert step(r.stdout), (
             "with every caption file here, the chair's boundaries were skipped")
         return "ok", (f"{len(BA.CARRIED)} carried outputs: a kit build without "
                       "one stops before its first step, a laptop's names it and "
@@ -67566,9 +67569,9 @@ def main():
     if not bad:
         print("\nEverything that can be checked without the network is working.")
         print("What is left needs real data: run inventory.py, then align_all,")
-        print("then segment_markers.py --all --data data, and score the result:")
+        print("then src/hearings/segment_markers.py --all --data data, and score the result:")
         print("  probe_alignment.py --truth --candidate candidate_segments.json")
-        print("Do not run apply_markers.py --apply. It is the superseded")
+        print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")
         print("clustering path; build_all skips it unless --with-superseded,")
         print("and it overwrites boundaries segment_markers read from the chair.")
     print("=" * 74)

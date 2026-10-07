@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
-    python3 build_floor_index.py --videos videos_house_2026-01-01_to_2026-06-30.csv \\
+    python3 src/hearings/build_floor_index.py --videos videos_house_2026-01-01_to_2026-06-30.csv \\
         --summary RollCallSummary.txt --narratives narratives.json
 
 Writes floor_index.json, which build_proceedings.py folds into

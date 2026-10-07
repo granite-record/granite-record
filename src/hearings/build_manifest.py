@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -7,7 +7,7 @@ video ID and predicted offset already filled in, so the manual pass is only
 
 Needs docket_parser.py in the same folder.
 
-    python3 build_manifest.py --videos videos_house_2025-01-01_to_2025-03-31.csv
+    python3 src/hearings/build_manifest.py --videos videos_house_2025-01-01_to_2025-03-31.csv
 
 Downloads Docket.txt automatically unless you pass --docket with a local copy.
 Standard library only.
