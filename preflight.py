@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.440
+# GRANITE_VERSION: 2026-09-04.441
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1942,6 +1942,581 @@ def _amend_not_rejected(narrative):
     return "ok", ("an announcement gives way to the row that decides it, however it spells "
                   "the number; no vote is claimed while another row names it; withdrawn, not "
                   "voted on, part of an amendment and codes out of order read as they say")
+
+
+# WHOSE AN AMENDMENT IS (7 October 2026). Real rows: Docket.txt lines
+# 18943-18944 and 19735-19736 (HB 1449 of 2026), 22844-22845 and 23287-23289
+# (SB 557 of 2026), 18776-18777, 20050 and 20052 (HB 1416 of 2026),
+# 18979-18980, 19760 and 19762-19763 (HB 1336 of 2026), 19231 and 19395-19396
+# (HB 1207 of 2026), 4518-4519, 5481-5483 and 5485 (HB 115 of 2025);
+# Docket_2015-2016.txt 9434-9439 (HB 1198 of 2016); Docket_2021-2022.txt 6709,
+# 6712-6717 and 6721-6722 (HB 1598 of 2022).
+_DOCKET_WHOSE_AMENDMENT = {
+    ("HB1449", "2025-2026"): [
+        "2026|2787|3/4/2026 5:31:10 PM|HB1449|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0989h   03/04/2026 (Vote 10-8; RC)  HC 10  P. 50|3/16/2026 10:12:25 AM",
+        "2026|2787|3/4/2026 5:31:22 PM|HB1449|H|Minority Committee Report: Inexpedient to Legislate|3/4/2026 5:31:22 PM",
+        "2026|2787|3/11/2026 5:51:43 PM|HB1449|H|Amendment # 2026-0989h: AA VV 03/11/2026  HJ 7  P. 190|6/23/2026 10:42:27 AM",
+        "2026|2787|3/11/2026 5:52:13 PM|HB1449|H|Ought to Pass with Amendment 2026-0989h: MA RC 172-154 03/11/2026  HJ 7  P. 190|6/23/2026 10:42:37 AM"],
+    ("SB557", "2025-2026"): [
+        "2026|2144|5/7/2026 9:37:23 AM|SB557|H|Majority Committee Report: Ought to Pass with Amendment # 2026-1798h   05/05/2026 (Vote 13-11; RC)  HC 19  P. 24|5/11/2026 11:57:18 AM",
+        "2026|2144|5/7/2026 9:37:38 AM|SB557|H|Minority Committee Report: Ought to Pass|5/7/2026 9:37:38 AM",
+        "2026|2144|5/14/2026 4:29:45 PM|SB557|H|Amendment # 2026-1798h: AF DV 153-180 05/14/2026  HJ 13  P. 97|7/23/2026 3:52:38 PM",
+        "2026|2144|5/14/2026 4:34:00 PM|SB557|H|FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162 05/14/2026  HJ 13  P. 97|7/23/2026 3:52:56 PM",
+        "2026|2144|5/14/2026 4:36:37 PM|SB557|H|Ought to Pass with Amendment 2026-1971h: MA DV 176-157 05/14/2026  HJ 13  P. 100|7/23/2026 3:53:22 PM"],
+    ("HB1416", "2025-2026"): [
+        "2026|3148|3/4/2026 11:48:05 AM|HB1416|H|Majority Committee Report: Inexpedient to Legislate  02/27/2026 (Vote 9-8; RC)  HC 10  P. 100|3/16/2026 11:09:29 AM",
+        "2026|3148|3/4/2026 11:48:39 AM|HB1416|H|Minority Committee Report: Ought to Pass with Amendment # 2026-0916h|3/4/2026 11:48:39 AM",
+        "2026|3148|3/13/2026 11:48:18 AM|HB1416|H|Amendment # 2026-0916h: AA RC 179-161 03/12/2026  HJ 8  P. 92|6/24/2026 3:12:04 PM",
+        "2026|3148|3/13/2026 11:56:20 AM|HB1416|H|Ought to Pass with Amendment 2026-0916h: MA RC 176-163 03/12/2026  HJ 8  P. 96|6/24/2026 3:12:25 PM"],
+    ("HB1336", "2025-2026"): [
+        "2026|2931|3/4/2026 5:49:02 PM|HB1336|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0763h   03/03/2026 (Vote 9-8; RC)  HC 10  P. 54|3/16/2026 10:23:05 AM",
+        "2026|2931|3/4/2026 5:49:15 PM|HB1336|H|Minority Committee Report: Inexpedient to Legislate|3/4/2026 5:49:15 PM",
+        "2026|2931|3/11/2026 7:47:31 PM|HB1336|H|Amendment # 2026-0763h: AA VV 03/11/2026  HJ 7  P. 214|6/23/2026 1:16:07 PM",
+        "2026|2931|3/11/2026 7:51:29 PM|HB1336|H|Amendment # 2026-1100h: AA VV 03/11/2026  HJ 7  P. 218|6/23/2026 1:16:30 PM",
+        "2026|2931|3/11/2026 7:53:31 PM|HB1336|H|Ought to Pass with Amendment 2026-1100h and 2026-0763h: MA VV 03/11/2026  HJ 7  P. 221|6/23/2026 1:17:03 PM"],
+    ("HB1207", "2025-2026"): [
+        "2026|2603|3/5/2026 8:02:57 PM|HB1207|H| Committee Report: Ought to Pass with Amendment #  0922  03/03/2026 (Vote 14-0; CC)  HC 10  P. 6|3/16/2026 9:20:53 AM",
+        "2026|2603|3/11/2026 9:47:13 AM|HB1207|H|Amendment # 2026-0922h: AA VV 03/11/2026  HJ 7  P. 4|6/22/2026 9:52:32 AM",
+        "2026|2603|3/11/2026 9:47:15 AM|HB1207|H|Ought to Pass with Amendment 2026-0922h: MA VV 03/11/2026  HJ 7  P. 4|6/22/2026 9:52:36 AM"],
+    ("HB115", "2025-2026"): [
+        "2025|0061|3/5/2025 2:41:02 PM|HB115|H|Majority Committee Report: Ought to Pass with Amendment # 2025-0651h   03/05/2025 (Vote 10-8; RC)|3/5/2025 2:41:02 PM",
+        "2025|0061|3/5/2025 2:41:27 PM|HB115|H|Minority Committee Report: Inexpedient to Legislate|3/5/2025 2:41:27 PM",
+        "2025|0061|3/13/2025 11:52:40 AM|HB115|H|Amendment # 2025-0651h: AA VV 03/13/2025  HJ 8  P. 37|4/18/2025 12:16:22 PM",
+        "2025|0061|3/13/2025 11:55:03 AM|HB115|H|FLAM # 2025-0916h (Rep. Luneau): AF RC 170-205 03/13/2025  HJ 8  P. 38|4/18/2025 12:16:33 PM",
+        "2025|0061|3/13/2025 11:55:56 AM|HB115|H|FLAM # 2025-0922h (Rep. Ames): AF RC 171-205 03/13/2025  HJ 8  P. 40|4/18/2025 12:16:46 PM",
+        "2025|0061|3/13/2025 12:00:41 PM|HB115|H|Ought to Pass with Amendment 2025-0651h: MA RC 198-180 03/13/2025  HJ 8  P. 42|4/18/2025 12:17:08 PM"],
+    ("HB1198", "2015-2016"): [
+        "2016|2047|3/3/2016 12:00:00 AM|HB1198|H|Majority Committee Report: Ought to Pass with Amendment #2016-0528h for 03/09/2016 (Vote 18-5; RC) HC 14 P. 74|3/3/2016 12:00:00 AM",
+        "2016|2047|3/3/2016 12:00:00 AM|HB1198|H|Minority Committee Report: Ought to Pass with Amendment #2016-0830h [^] HC 14 P. 74|3/3/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|Amendment #2016-0528h : AF RC 151-164 03/10/2016 HJ 25 P. 59|3/10/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|FLAM #2016-0830h (Rep. Almy): AA RC 283-31 03/10/2016 HJ 25 P. 63|3/10/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|FLAM #2016-0956h (Rep. Cooney): AF RC 112-202 03/10/2016 HJ 25 P. 66|3/10/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|Ought to Pass with Amendment 0830h: MA VV 03/10/2016 HJ 25 P. 68|3/10/2016 12:00:00 AM"],
+    ("HB1598", "2021-2022"): [
+        "2022|2787|12/21/2021 12:00:00 AM|HB1598|H|Introduced 01/05/2022 and referred to Criminal Justice and Public Safety|12/21/2021 12:00:00 AM",
+        "2022|2787|2/8/2022 12:00:00 AM|HB1598|H|Committee Report: Ought to Pass with Amendment #2022-0207h (Vote 17-4; RC)|2/8/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|Lay HB 1598-FN on Table (Rep. Abbas): MF DV 114-238 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|Amendment #2022-0207h : AA VV 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|FLAM # 2022-041 7h (Rep. Testerman): AF VV 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|2/16/2022 12:00:00 AM|HB1598|H|Ought to Pass with Amendment : MA DV 235-119 02/16/2022 HJ 3|2/16/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|Referred to Ways and Means 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|3/23/2022 12:00:00 AM|HB1598|H|Majority Committee Report: Ought to Pass with Amendment #2022-1172h (Vote 12-10; RC)|3/23/2022 12:00:00 AM",
+        "2022|2787|3/23/2022 12:00:00 AM|HB1598|H|Minority Committee Report: Refer for Interim Study|3/23/2022 12:00:00 AM"],
+}
+
+
+@check("narrative", "a House amendment its committee's report names is the committee's, and a "
+                    "FLAM row is a floor amendment told with its mover",
+       needs=("narrative", "build_site_v2"))
+def _whose_amendment(N, B):
+    """A bare House row, "Amendment # 2026-0989h: AA VV 03/11/2026" (HB 1449
+    of 2026), is the House voting on the floor on the amendment its
+    committee's report recommends -- House Journal 7 prints it as "Majority
+    Amendment (0989h)" -- and it was told as "A floor amendment", on 601
+    bills of 2025-2026. A member's floor amendment is a "FLAM # 2026-1971h(NT)
+    (Rep. Pauer)" row, which no pattern read: 108 of the term were told
+    nowhere and missing from the amendments list. Whose an amendment is comes
+    from the bill's own report in that chamber (narrative.whose_amendment):
+    the committee's, or its minority's (HB 1416; HB 1198 of 2016's 0830h,
+    offered by Rep. Almy as the minority's). A bare row no report names is a
+    floor amendment, and stays one: HB 1336's 1100h, "Rep. Alexander offered
+    floor amendment (1100h)" in House Journal 7. A report that writes the
+    number without its year still names it (HB 1207's "#  0922"). The vote
+    stays under the floor's heading, where it was taken. And a FLAM row whose
+    number the clerk split, "FLAM # 2022-041 7h" (HB 1598 of 2022), is not
+    read as "2022-041": so read it lost its day and was told inside Ways and
+    Means' stage, after the referral of that day."""
+    want = {  # bill: (sentences under "On the House floor", the amendments list)
+        "HB1449": (["The committee's amendment (2026-0989h) was adopted on a voice vote on "
+                    "March 11, 2026, changing the text of the bill."],
+                   [("2026-0989h", "Committee Amendment", True, "")]),
+        "SB557": (["The committee's amendment (2026-1798h) was rejected on a division vote "
+                   "153–180 on May 14, 2026.",
+                   "A floor amendment (2026-1971h), offered by Rep. Pauer, was adopted on a roll "
+                   "call 171–162 on May 14, 2026, changing the text of the bill."],
+                  [("2026-1798h", "Committee Amendment", False, ""),
+                   ("2026-1971h", "Floor Amendment", True, "Rep. Pauer")]),
+        "HB1416": (["The committee minority's amendment (2026-0916h) was adopted on a roll call "
+                    "179–161 on March 12, 2026, changing the text of the bill."],
+                   [("2026-0916h", "Minority Amendment", True, "")]),
+        "HB1336": (["The committee's amendment (2026-0763h) was adopted on a voice vote on "
+                    "March 11, 2026, changing the text of the bill.",
+                    "A floor amendment (2026-1100h) was adopted on a voice vote on March 11, "
+                    "2026, changing the text of the bill."],
+                   [("2026-0763h", "Committee Amendment", True, ""),
+                    ("2026-1100h", "Amendment", True, "")]),
+        "HB1207": (["The committee's amendment (2026-0922h) was adopted on a voice vote on "
+                    "March 11, 2026, changing the text of the bill."],
+                   [("2026-0922h", "Committee Amendment", True, "")]),
+        "HB115": (["The committee's amendment (2025-0651h) was adopted on a voice vote on "
+                   "March 13, 2025, changing the text of the bill.",
+                   "A floor amendment (2025-0916h), offered by Rep. Luneau, was rejected on a "
+                   "roll call 170–205 on March 13, 2025.",
+                   "A floor amendment (2025-0922h), offered by Rep. Ames, was rejected on a "
+                   "roll call 171–205 on March 13, 2025."],
+                  [("2025-0651h", "Committee Amendment", True, ""),
+                   ("2025-0916h", "Floor Amendment", False, "Rep. Luneau"),
+                   ("2025-0922h", "Floor Amendment", False, "Rep. Ames")]),
+        "HB1198": (["The committee's amendment (2016-0528h) was rejected on a roll call "
+                    "151–164 on March 10, 2016.",
+                    "The committee minority's amendment (2016-0830h), offered by Rep. Almy, was "
+                    "adopted on a roll call 283–31 on March 10, 2016, changing the text of "
+                    "the bill.",
+                    "A floor amendment (2016-0956h), offered by Rep. Cooney, was rejected on a "
+                    "roll call 112–202 on March 10, 2016."],
+                   [("2016-0528h", "Committee Amendment", False, ""),
+                    ("2016-0830h", "Minority Amendment", True, "Rep. Almy"),
+                    ("2016-0956h", "Floor Amendment", False, "Rep. Cooney")]),
+        "HB1598": (["The committee's amendment (2022-0207h) was adopted on a voice vote on "
+                    "February 16, 2022, changing the text of the bill."],
+                   [("2022-0207h", "Committee Amendment", True, "")]),
+    }
+    split = "FLAM # 2022-041 7h"  # HB 1598 of 2022's, unread
+    bad = []
+    keep = N.MEMBERS
+    try:
+        # The movers as the docket writes them, whatever roster is on disk.
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_WHOSE_AMENDMENT.items():
+            rec = _narrated(N, term, bill, rows)
+            told, listed = want[bill]
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the House floor"]
+            for s in told:
+                if not any(s in t for t in floor):
+                    bad.append(f"{bill} of {term} does not say, on the House floor: {s!r}; "
+                               f"it says {floor!r}")
+            got = [(a["num"], a["kind"], a["adopted"], a["mover"])
+                   for a in B.bill_amendments(rec, {}, None)]
+            if got != listed:
+                bad.append(f"{bill} of {term}'s amendments: {got}, not {listed}")
+            flam = [u for u in rec.get("unrecognised") or []
+                    if "FLAM" in str(u) and split not in str(u)]
+            if flam:
+                bad.append(f"{bill} of {term} leaves a FLAM row unread: {flam}")
+            if bill == "HB1598":
+                heads = [st["label"] for st in rec["stages"]]
+                if heads[-1:] != ["In House committee — Ways and Means"] or len(heads) != 3:
+                    bad.append(f"HB1598 of 2022's stages are {heads}")
+                if "2022-041)" in (rec.get("narrative") or ""):
+                    bad.append(f"HB1598 of 2022 tells a split number: {rec.get('narrative')!r}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("bare House rows a report names are the committee's or its minority's, "
+                  "under the floor's heading; FLAM rows are floor amendments with their movers; "
+                  "HB 1336's 1100h, named by no report, stays a floor amendment")
+
+
+# AN OUGHT TO PASS TABLED BEFORE ITS THIRD READING (7 October 2026). Real
+# rows: Docket.txt lines 6758-6760 and 11727 (SB 131 of 2025), 3857, 3927,
+# 4829-4830 and 11707 (SB 17 of 2025), 6460 (SB 210 of 2025), 6481, 6490 and
+# 9687-9688 (SB 86 of 2025), 20836-20839 (SB 476 of 2026), 19099-19102 (SB
+# 635 of 2026), 8985, 9145, 9170, 10618, 10627-10628 and 10652 (HB 282 of
+# 2025); Docket_2017-2018.txt 5272-5276 (HB 1601 of 2018);
+# Docket_2019-2020.txt 13736-13743 (HB 726 of 2019); Docket_2023-2024.txt
+# 17124-17128 (SB 173 of 2024); Docket_2015-2016.txt 16820-16824 (SB 144 of
+# 2015); Docket_db_2011-2012.txt 1159-1168 (HB 187 of 2011).
+_DOCKET_TABLED_BEFORE_THIRD = {
+    ("SB131", "2025-2026"): [
+        "2025|1064|3/27/2025 1:45:29 PM|SB131|S|Ought to Pass: MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:29 PM",
+        "2025|1064|3/27/2025 1:45:49 PM|SB131|S|Sen. Gray Moved Laid on Table, MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:48 PM",
+        "2025|1064|3/27/2025 1:46:11 PM|SB131|S|Pending Motion OT3rdg; 03/27/2025;  SJ 9|3/27/2025 1:46:11 PM",
+        "2025|1064|11/3/2025 1:17:34 PM|SB131|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:17:34 PM"],
+    ("SB17", "2025-2026"): [
+        "2025|0269|3/6/2025 6:10:18 PM|SB17|S|Committee Amendment # 2025-0531s, AA, VV; 03/06/2025;  SJ 6|3/6/2025 6:10:18 PM",
+        "2025|0269|3/6/2025 6:10:33 PM|SB17|S|Ought to Pass with Amendment #2025-0531s, MA, VV; 03/06/2025;  SJ 6|3/6/2025 6:10:33 PM",
+        "2025|0269|3/6/2025 6:10:51 PM|SB17|S|Sen. Birdsell Moved Laid on Table, MA, VV; 03/06/2025;  SJ 6|3/6/2025 6:10:51 PM",
+        "2025|0269|3/6/2025 6:11:14 PM|SB17|S|Pending Motion OT3rdg; 03/06/2025;  SJ 6|3/6/2025 6:11:14 PM",
+        "2025|0269|11/3/2025 1:14:38 PM|SB17|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:14:38 PM"],
+    ("SB210", "2025-2026"): [
+        "2025|0397|3/27/2025 10:31:44 AM|SB210|S|Ought to Pass: MA, VV; OT3rdg; 03/27/2025;  SJ 9|3/27/2025 10:31:44 AM"],
+    ("SB86", "2025-2026"): [
+        "2025|1030|3/27/2025 3:33:15 PM|SB86|S|Committee Amendment # 2025-1101s, AA, VV; 03/27/2025;  SJ 9|3/27/2025 3:33:15 PM",
+        "2025|1030|4/1/2025 11:55:18 AM|SB86|S|Ought to Pass with Amendment #2025-1101s, MA, VV; 03/27/2025;  SJ 9|4/1/2025 11:55:24 AM",
+        "2025|1030|6/4/2025 9:52:44 AM|SB86|S|Sen. Gray Moved Laid on Table, MA, VV; 03/27/2025;  SJ 9|6/4/2025 9:52:44 AM",
+        "2025|1030|6/4/2025 9:53:14 AM|SB86|S|Pending Motion OT3rdg; 03/27/2025;  SJ 9|6/4/2025 9:53:14 AM"],
+    ("SB476", "2025-2026"): [
+        "2026|2035|3/26/2026 1:26:07 PM|SB476|S|Ought to Pass with Amendment #2026-1236s, RC 16Y-8N, MA; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 2:38:48 PM",
+        "2026|2035|3/26/2026 1:26:38 PM|SB476|S|The Chair rescinded OT3rdg, 03/26/2026;  SJ 7|3/26/2026 1:26:51 PM",
+        "2026|2035|3/26/2026 1:26:54 PM|SB476|S|Sen. McGough Moved Laid on Table, MA, VV; 03/26/2026;  SJ 7|3/26/2026 1:27:07 PM",
+        "2026|2035|3/26/2026 1:27:04 PM|SB476|S|Pending Motion OT3rdg; 03/26/2026;  SJ 7|3/26/2026 1:27:17 PM"],
+    ("SB635", "2025-2026"): [
+        "2026|2214|3/5/2026 11:08:09 AM|SB635|S|Committee Amendment # 2026-0832s, AA, VV; 03/05/2026;  SJ 5|3/5/2026 11:43:53 AM",
+        "2026|2214|3/5/2026 11:08:38 AM|SB635|S|Ought to Pass with Amendment #2026-0832s, MA, VV; 03/05/2026;  SJ 5|3/5/2026 11:44:00 AM",
+        "2026|2214|3/5/2026 11:08:55 AM|SB635|S|Sen. Lang Moved Laid on Table, MA, VV; 03/05/2026;  SJ 5|3/5/2026 11:08:55 AM",
+        "2026|2214|3/5/2026 11:09:11 AM|SB635|S|Pending Motion Refer to Finance Rule 4-5; 03/05/2026;  SJ 5|3/5/2026 11:09:11 AM"],
+    ("HB282", "2025-2026"): [
+        "2025|0585|5/15/2025 3:06:14 PM|HB282|S|Pending Motion OT3rdg; 05/15/2025;  SJ 13|5/15/2025 3:59:08 PM",
+        "2025|0585|5/15/2025 3:06:11 PM|HB282|S|Sen. Gray Moved Laid on Table, RC 14Y-9N, MA; 05/15/2025;  SJ 13|5/15/2025 3:59:09 PM",
+        "2025|0585|5/15/2025 3:59:05 PM|HB282|S|Ought to Pass: MA, VV; 05/15/2025;  SJ 13|5/15/2025 3:59:09 PM",
+        "2025|0585|6/26/2025 10:40:42 AM|HB282|S|Sen. Gray Moved to Remove From Table, MA, VV; 06/26/2025;  SJ 17|6/26/2025 10:40:42 AM",
+        "2025|0585|6/26/2025 10:58:50 AM|HB282|S|Sen. Gray Floor Amendment # 2025-2895s, RC 24Y-0N, AA; 06/26/2025;  SJ 17|7/8/2025 8:02:41 AM",
+        "2025|0585|6/26/2025 11:21:28 AM|HB282|S|Ought to Pass with Amendment #2025-2895s, MA, VV; OT3rdg; Read a Third Time and Final Passage in the Early Session; 06/26/2025;  SJ 17|7/8/2025 8:02:39 AM",
+        "2025|0585|6/26/2025 3:23:47 PM|HB282|S|Ought to Pass with Amendments #2025-2895s and #2025-2898s, MA, VV; OT3rdg; 06/26/2025;  SJ 17|7/8/2025 8:02:36 AM"],
+    ("HB1601", "2017-2018"): [
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Ought to Pass : RC 13Y-11N, MA; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Sen. Bradley Moved Laid on Table, MA, VV; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Pending Motion OT3rdg; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|Sen. Bradley Moved to Remove From Table, MA, VV; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM",
+        "2018|2409|5/2/2018 12:00:00 AM|HB1601|S|OT3rdg; 05/02/2018; SJ 15|5/2/2018 12:00:00 AM"],
+    ("HB726", "2019-2020"): [
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Committee Amendment #2019-1344s , AA, VV; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Sen. Bradley Floor Amendment #2019-1456s , RC 23Y-0N, AA; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Ought to Pass with Amendment s 2019-1344s, and 2019-1456s, MA, VV; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Sen. Feltes Moved Laid on Table, RC 13Y-10N, MA; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Pending Motion OT3rdg; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Sen. Bradley Moved to Remove From Table, RC 10Y-13N, MF; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|4/11/2019 12:00:00 AM|HB726|S|Pending Motion OT3rdg; 04/11/2019; SJ 12|4/11/2019 12:00:00 AM",
+        "2019|0113|12/18/2019 12:00:00 AM|HB726|S|Inexpedient to Legislate, Senate Rule 3-23, Adjournment 09/25/2019; SJ 1|12/18/2019 12:00:00 AM"],
+    ("SB173", "2023-2024"): [
+        "2024|0858|1/3/2024 12:00:00 AM|SB173|S|Ought to Pass with Amendment 2024-0049s, MA, VV; 01/03/2024; SJ 1|1/3/2024 12:00:00 AM",
+        "2024|0858|1/3/2024 12:00:00 AM|SB173|S|Sen. Birdsell Moved Laid on Table, MA, VV; 01/03/2024; SJ 1|1/3/2024 12:00:00 AM",
+        "2024|0858|1/3/2024 12:00:00 AM|SB173|S|Pending Motion OT3rdg; 01/03/2024; SJ 1|1/3/2024 12:00:00 AM",
+        "2024|0858|3/21/2024 12:00:00 AM|SB173|S|OT3rdg; 03/21/2024; SJ 7|3/21/2024 12:00:00 AM",
+        "2024|0858|3/21/2024 12:00:00 AM|SB173|S|Sen. Birdsell Moved to Remove From Table, MA, VV; 03/21/2024; SJ 7|3/21/2024 12:00:00 AM"],
+    ("SB144", "2015-2016"): [
+        "2016|0312|2/12/2015 12:00:00 AM|SB144|S|Ought to Pass : MA, VV; SJ 5|2/12/2015 12:00:00 AM",
+        "2016|0312|2/12/2015 12:00:00 AM|SB144|S|Pending Motion OT3rdg; SJ 5|2/12/2015 12:00:00 AM",
+        "2016|0312|2/12/2015 12:00:00 AM|SB144|S|Sen. Sanborn Moved Laid On Table, MA, VV: SJ 5|2/12/2015 12:00:00 AM",
+        "2016|0312|3/26/2015 12:00:00 AM|SB144|S|Sen. Boutin Moved Remove From Table, MA, VV; SJ 10|3/26/2015 12:00:00 AM",
+        "2016|0312|3/26/2015 12:00:00 AM|SB144|S|OT3rdg; SJ 10|3/26/2015 12:00:00 AM"],
+    ("HB187", "2011-2012"): [
+        "2011|0157|04/27/2011 11:14:42 AM|HB187|S|Ought to Pass, MA, VV; Refer to Finance Rule 4-3; SJ 14|04/27/2011 11:14:42 AM",
+        "2011|0157|05/12/2011 01:33:35 PM|HB187|S|Committee Report: Ought to Pass, 5/18/11; SC24|05/12/2011 01:33:35 PM",
+        "2011|0157|05/18/2011 11:46:26 AM|HB187|S|Ought to Pass, MA, VV; OT3rdg; SJ 17, Pg.347|05/18/2011 11:46:26 AM",
+        "2011|0157|05/18/2011 11:59:15 AM|HB187|S|Sen. Bragdon Moved to Rescind OT3rdg; SJ 17, Pg.347|05/18/2011 11:59:15 AM",
+        "2011|0157|05/18/2011 11:59:50 AM|HB187|S|Pending Motion OT3rdg; SJ 17|05/18/2011 11:59:50 AM",
+        "2011|0157|05/18/2011 12:42:24 PM|HB187|S|Sen. Morse Moved Laid on Table, MA, VV; SJ 17, Pg.347|05/18/2011 12:42:24 PM",
+        "2011|0157|06/01/2011 01:20:24 PM|HB187|S|Sen. White Moved Remove From Table, MA, VV; SJ 19, Pg.526|06/01/2011 01:20:24 PM",
+        "2011|0157|06/01/2011 01:25:26 PM|HB187|S|Sen. Sanborn Moved Reconsideration, MA, VV; SJ 19, Pg.526|06/01/2011 01:25:26 PM",
+        "2011|0157|06/01/2011 01:27:15 PM|HB187|S|Sen. Sanborn Floor Amendment #2011-2267s, RC 24Y-0N, AA; SJ 19, Pg.526|06/01/2011 01:27:15 PM",
+        "2011|0157|06/01/2011 01:29:23 PM|HB187|S|Ought to Pass with Amendment 2267s, MA, VV; OT3rdg; SJ 19, Pg.527|06/01/2011 01:29:23 PM"],
+}
+
+
+@check("narrative", "an Ought to Pass the Senate tabled before its third reading is no passage, on "
+                    "the rail, in the history or on the sitting's page",
+       needs=("narrative", "build_site_v2", "session_days"))
+def _tabled_before_third_reading(N, B, SD):
+    """The Senate passes a bill by ordering it to a third reading, "Ought to
+    Pass: MA, VV; OT3rdg", or under its Rule 4-5 sends it to Finance first.
+    "Ought to Pass: MA, VV", a tabling, and "Pending Motion OT3rdg" (or
+    "Pending Motion Refer to Finance Rule 4-5") of the same sitting are the
+    motion adopted and the bill tabled before it passed: Senate Journal 9 of
+    2025 prints SB 131's motion "Adopted." and the tabling, with no "bill
+    ordered to Third Reading". SB 131 read "Passed on a voice vote" on its
+    rail, "the Senate voted to pass it" in its history and "it carried in
+    this chamber" on the sitting's page, and it died on the table under Rule
+    3-23 -- with 65 others of 2025-2026 and 131 bills of 2011-2024.
+    narrative.passage_left_pending is the one reading all three ask. The day
+    is the one the row states: SB 86's pending row was entered on 4 June for
+    27 March. Held both ways: SB 210, with OT3rdg on its own row, and HB 1601
+    of 2018, taken off the table and ordered to a third reading the same day,
+    passed; HB 726 of 2019's removal failed, 10-13; SB 476 of 2026's order
+    was rescinded before the tabling; HB 282 of 2025 passed on 26 June only;
+    SB 173 of 2024 and SB 144 of 2015 passed on the day their pending order
+    was carried, by a bare "OT3rdg"; HB 187 of 2011's April referral is not
+    "reconsidered" on the strength of a passage that never was."""
+    want = {  # (bill, term): the Senate's lines, (date, act)
+        ("SB131", "2025-2026"): [("2025-03-27", "tabled"), ("2025-10-31", "died")],
+        ("SB17", "2025-2026"): [("2025-03-06", "tabled"), ("2025-10-31", "died")],
+        ("SB210", "2025-2026"): [("2025-03-27", "passed")],
+        ("SB86", "2025-2026"): [("2025-03-27", "tabled")],
+        ("SB476", "2025-2026"): [("2026-03-26", "tabled")],
+        ("SB635", "2025-2026"): [("2026-03-05", "tabled")],
+        ("HB282", "2025-2026"): [("2025-06-26", "passed")],
+        ("HB1601", "2017-2018"): [("2018-05-02", "passed")],
+        ("HB726", "2019-2020"): [("2019-04-11", "tabled"), ("2019-09-25", "died")],
+        ("SB173", "2023-2024"): [("2024-03-21", "passed")],
+        ("SB144", "2015-2016"): [("2015-03-26", "passed")],
+        ("HB187", "2011-2012"): [("2011-04-27", "referred"), ("2011-06-01", "passed")],
+    }
+    held = ("SB131", "SB17", "SB86", "SB476", "SB635", "HB726", "SB173", "SB144", "HB187",
+            "HB282")
+    # The sittings that tabled the bill with its third reading (or its
+    # referral to Finance) pending.
+    sittings = {("SB131", "2025-03-27"), ("SB17", "2025-03-06"), ("SB86", "2025-03-27"),
+                ("SB476", "2026-03-26"), ("SB635", "2026-03-05"), ("HB282", "2025-05-15"),
+                ("HB726", "2019-04-11"), ("SB173", "2024-01-03"), ("SB144", "2015-02-12"),
+                ("HB187", "2011-05-18")}
+    bad = []
+    for key, rows in _DOCKET_TABLED_BEFORE_THIRD.items():
+        bill, term = key
+        rec = _narrated(N, term, bill, rows)
+        steps = [s for s in B.journey(rec, bill, term=term)[1] if s["body"] == "S"]
+        got = [(s["date"], s["act"]) for s in steps]
+        if got != want[key]:
+            bad.append(f"{bill} of {term}: the Senate's lines are {got}, not {want[key]}")
+        if any("reconsidered" in (s.get("text") or "") for s in steps):
+            bad.append(f"{bill} of {term}: {[s.get('text') for s in steps]}")
+        if bill == "HB1601" and [s.get("text") for s in steps] != ["Passed, 13–11"]:
+            bad.append(f"HB1601 of 2018: {[s.get('text') for s in steps]}")
+        told = rec.get("narrative") or ""
+        if bill in held and "adopted the motion that it ought to pass" not in told:
+            bad.append(f"{bill} of {term}'s history: {told[-300:]!r}")
+        if bill in ("SB131", "SB17", "SB86", "SB476", "SB635", "HB726") and \
+                "voted to pass it" in told:
+            bad.append(f"{bill} of {term}'s history still says the Senate voted to pass it")
+        if bill in ("SB476", "HB187") and "ordered it to a third reading" in told.split(
+                "left pending")[0]:
+            bad.append(f"{bill} of {term}'s rescinded order still reads as given: {told[-300:]!r}")
+        if bill in ("SB131", "SB86") and "but its third reading was left pending" not in told:
+            bad.append(f"{bill} of {term}'s history: {told[-300:]!r}")
+        if bill == "SB635" and "but its referral to the Finance committee was left pending" \
+                not in told:
+            bad.append(f"SB635 of 2026's history: {told[-300:]!r}")
+        if bill == "SB173" and "On March 21, 2024 the Senate ordered it to a third reading." \
+                not in told:
+            bad.append(f"SB173 of 2024's history does not tell its order of 21 March: "
+                       f"{told[-300:]!r}")
+        if bill in ("SB210", "HB1601") and "adopted the motion that it ought to pass" in told:
+            bad.append(f"{bill} of {term}, which passed, reads {told[-300:]!r}")
+        # The sitting's page: the motion adopted, and nothing said of the bill.
+        for e, it in SD.floor_items(bill, term, rec.get("events") or []):
+            sat = (bill, e.get("date"))
+            if not it.action.lower().startswith("ought to pass") or not (
+                    sat in sittings or bill in ("SB210", "HB1601")):
+                continue
+            if ("carried in this chamber" in it.outcome_words) != (sat not in sittings):
+                bad.append(f"{bill} of {term}'s sitting of {e.get('date')}: "
+                           f"{it.outcome_words!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 131, SB 17, SB 86 and SB 635 of 2025-2026, SB 476's rescinded order and "
+                  "HB 726 of 2019 tabled before their third reading, and not passed; SB 210 "
+                  "and HB 1601 of 2018 passed; HB 282 of 2025, SB 173 of 2024 and SB 144 of 2015 "
+                  "passed on the day the pending order carried")
+
+
+# APPROVED AND SENT ON IS NOT PASSED (7 October 2026). Real rows: Docket.txt
+# lines 688, 2296, 3002, 3881, 4340-4341, 5283, 6584, 7294, 11366, 11559,
+# 11814 and 13083 (HB 547 of 2025); 36, 782, 1143, 2685-2686, 3363,
+# 3651-3652, 4203, 5293, 6561, 7362-7363, 7626-7628, 7704, 7898, 8256 and 8593
+# (HB 66 of 2025); 421, 794, 2204-2205, 2770, 3191-3192, 4614, 4896, 6070,
+# 6332, 6906, 7638, 8782, 9088, 9303-9304, 10084, 10810, 10842 and 11191 (HB
+# 369 of 2025); 104, 2301, 3026, 4028, 4484, 5091-5092, 5105, 5126, 5559, 5641,
+# 6307, 8273, 9000, 9030, 9185-9186, 9192, 9271, 9323, 10100, 10797, 10829 and
+# 11173 (HB 123 of 2025); 12931, 13823, 15199, 16812-16814, 17524-17525,
+# 17527, 17658, 18182, 18696, 20329, 20600, 21495, 22155, 22838, 22984-22985,
+# 23274-23275, 23554-23555, 23684, 23701, 23795 and 24154 (HB 1574 of 2026);
+# 12129, 13911, 14036, 17539, 19075, 19080, 19175, 19833, 19850, 20744-20746,
+# 20902, 21135, 21147, 21472, 21478, 21790-21791, 22150, 22152, 22194, 22742,
+# 24158, 24250, 24335, 24398 and 24727 (SB 482 of 2026).
+_DOCKET_APPROVED_SENT_ON = {
+    ("HB547", "2025-2026"): [
+        "2026|0274|1/14/2025 3:46:55 PM|HB547|H|  Introduced (in recess of) 01/09/2025 and referred to Municipal and County Government  HJ 3  P. 15|2/18/2025 2:49:16 PM",
+        "2026|0274|2/5/2025 2:19:01 PM|HB547|H|Public Hearing: 02/10/2025 09:30 am LOB 301-303|2/5/2025 2:19:01 PM",
+        "2026|0274|2/12/2025 3:14:10 PM|HB547|H|Executive Session: 02/18/2025 01:00 pm LOB 201|2/12/2025 3:14:10 PM",
+        "2026|0274|2/25/2025 11:47:13 AM|HB547|H| Committee Report: Ought to Pass  02/18/2025 (Vote 18-0; CC)  HC 14  P. 12|3/3/2025 2:35:01 PM",
+        "2026|0274|3/6/2025 11:46:42 AM|HB547|H|Ought to Pass: MA VV 03/06/2025  HJ 7  P. 18|4/16/2025 2:30:20 PM",
+        "2026|0274|3/6/2025 11:46:44 AM|HB547|H|Referred to Finance 03/06/2025  HJ 7  P. 18|4/16/2025 2:30:25 PM",
+        "2026|0274|3/12/2025 1:45:14 PM|HB547|H|  Division III Work Session: 03/17/2025 10:00 am LOB 210-211|3/12/2025 1:45:14 PM",
+        "2026|0274|3/26/2025 12:43:46 PM|HB547|H|Executive Session: 04/01/2025 10:00 am LOB 210-211|3/26/2025 12:43:46 PM",
+        "2026|0274|4/2/2025 11:22:53 AM|HB547|H|Retained in Committee|4/2/2025 11:22:53 AM",
+        "2026|0274|9/9/2025 11:09:05 AM|HB547|H|  Division III Work Session: 09/29/2025 10:00 am GP 230|9/9/2025 11:09:05 AM",
+        "2026|0274|10/14/2025 11:42:48 AM|HB547|H|Executive Session: 10/30/2025 10:00 am GP 230|10/14/2025 11:42:48 AM",
+        "2026|0274|11/5/2025 12:47:41 PM|HB547|H| Committee Report: Inexpedient to Legislate  10/30/2025 (Vote 25-0; CC)  HC 51  P. 11|12/19/2025 12:11:31 PM",
+        "2026|0274|1/7/2026 11:18:18 AM|HB547|H|Inexpedient to Legislate: MA VV 01/07/2026  HJ 1  P. 72|3/27/2026 3:02:07 PM"],
+    ("HB66", "2025-2026"): [
+        "2025|0050|12/23/2024 3:26:33 PM|HB66|H|  Introduced 01/08/2025 and referred to Judiciary  HJ 2  P. 4|1/21/2025 1:23:47 PM",
+        "2025|0050|1/15/2025 12:43:48 PM|HB66|H|Public Hearing: 01/22/2025 10:00 am LOB 206-208|1/15/2025 12:43:48 PM",
+        "2025|0050|1/22/2025 1:25:45 PM|HB66|H|Executive Session: 01/30/2025 10:00 am LOB 206-208|1/22/2025 1:25:45 PM",
+        "2025|0050|2/10/2025 11:59:13 AM|HB66|H|Majority Committee Report: Ought to Pass with Amendment # 2025-0110h   01/30/2025 (Vote 13-4; RC)  HC 12  P. 18|2/18/2025 9:30:42 AM",
+        "2025|0050|2/10/2025 11:59:28 AM|HB66|H|Minority Committee Report: Inexpedient to Legislate|2/10/2025 11:59:28 AM",
+        "2025|0050|2/20/2025 2:29:49 PM|HB66|H|Referred to Finance 02/20/2025  HJ 6  P. 45|4/1/2025 1:13:10 PM",
+        "2025|0050|2/20/2025 2:29:09 PM|HB66|H|Amendment # 2025-0110h: AA VV 02/20/2025  HJ 6  P. 45|4/1/2025 1:12:25 PM",
+        "2025|0050|2/20/2025 2:29:47 PM|HB66|H|Ought to Pass with Amendment 2025-0110h: MA DV 321-48 02/20/2025  HJ 6  P. 45|4/1/2025 1:12:31 PM",
+        "2025|0050|2/27/2025 2:49:22 PM|HB66|H|  Division I Work Session: 03/05/2025 01:00 pm LOB 212|2/27/2025 2:49:22 PM",
+        "2025|0050|3/12/2025 1:54:05 PM|HB66|H|  Division I Work Session: 03/14/2025 10:00 am LOB 212|3/12/2025 1:54:05 PM",
+        "2025|0050|3/26/2025 12:40:16 PM|HB66|H|Executive Session: 04/01/2025 10:00 am LOB 210-211|3/26/2025 12:40:16 PM",
+        "2025|0050|4/3/2025 8:29:18 AM|HB66|H|Majority Committee Report: Ought to Pass with Amendment # 2025-1005h   04/02/2025 (Vote 16-9; RC)  HC 19  P. 14|4/7/2025 10:27:20 AM",
+        "2025|0050|4/3/2025 8:29:46 AM|HB66|H|Minority Committee Report: Inexpedient to Legislate|4/3/2025 8:29:46 AM",
+        "2025|0050|4/10/2025 11:09:18 AM|HB66|H|Lay HB66 on Table (Rep. Maggiore): MF RC 179-191 04/10/2025  HJ 12  P. 23|6/10/2025 11:28:44 AM",
+        "2025|0050|4/10/2025 11:09:53 AM|HB66|H|Amendment # 2025-1005h: AA VV 04/10/2025  HJ 12  P. 23|6/10/2025 11:28:55 AM",
+        "2025|0050|4/10/2025 11:21:54 AM|HB66|H|Ought to Pass with Amendment 2025-1005h: MA RC 207-164 04/10/2025  HJ 12  P. 26|6/10/2025 11:29:27 AM",
+        "2025|0050|4/11/2025 3:45:17 PM|HB66|S|  Introduced 03/27/2025 and Referred to Judiciary;  SJ 10|4/11/2025 3:52:36 PM",
+        "2025|0050|4/17/2025 1:31:27 PM|HB66|S| Hearing: 04/24/2025, Room 100, SH, 01:00 pm;  SC 19|4/17/2025 1:31:27 PM",
+        "2025|0050|4/28/2025 9:07:28 AM|HB66|S|Committee Report: Inexpedient to Legislate; Vote 5-0; CC; 05/08/2025;  SC 20|4/28/2025 9:07:28 AM",
+        "2025|0050|5/8/2025 10:49:20 AM|HB66|S|Inexpedient to Legislate, MA, VV === BILL KILLED ===; 05/08/2025;  SJ 12|5/8/2025 10:49:20 AM"],
+    ("HB369", "2025-2026"): [
+        "2025|0419|1/8/2025 2:14:54 PM|HB369|H|  Introduced 01/08/2025 and referred to Judiciary  HJ 2  P. 17|1/21/2025 3:15:29 PM",
+        "2025|0419|1/15/2025 12:47:02 PM|HB369|H|Public Hearing: 01/29/2025 11:00 am LOB 206-208|1/15/2025 12:47:02 PM",
+        "2025|0419|2/4/2025 12:43:35 PM|HB369|H|  Executive Session: 01/29/2025 11:00 am LOB 206-208|2/4/2025 12:43:35 PM",
+        "2025|0419|2/4/2025 12:44:13 PM|HB369|H| Committee Report: Ought to Pass with Amendment # 2025-0167h   02/03/2025 (Vote 11-1; RC)  HC 11  P. 15|2/12/2025 11:41:41 AM",
+        "2025|0419|2/13/2025 2:13:51 PM|HB369|H|Referred to Criminal Justice and Public Safety 02/13/2025  HJ 5  P. 39|3/31/2025 1:04:45 PM",
+        "2025|0419|2/13/2025 2:13:38 PM|HB369|H|Amendment # 2025-0167h: AA VV 02/13/2025  HJ 5  P. 38|3/31/2025 1:04:29 PM",
+        "2025|0419|2/13/2025 2:13:49 PM|HB369|H|Ought to Pass with Amendment 2025-0167h: MA VV 02/13/2025  HJ 5  P. 38|3/31/2025 1:04:34 PM",
+        "2025|0419|3/6/2025 8:57:12 AM|HB369|H|==CANCELLED== Executive Session: 03/14/2025 10:00 am LOB 202-204|3/10/2025 11:51:19 AM",
+        "2025|0419|3/10/2025 11:51:31 AM|HB369|H|  Executive Session: 03/19/2025 10:00 am LOB 202-204|3/10/2025 11:51:31 AM",
+        "2025|0419|3/19/2025 2:24:31 PM|HB369|H| Committee Report: Ought to Pass  03/19/2025 (Vote 14-1; CC)  HC 17  P. 9|3/21/2025 9:40:36 AM",
+        "2025|0419|3/26/2025 10:05:15 AM|HB369|H|Ought to Pass: MA VV 03/26/2025  HJ 10  P. 11|5/13/2025 2:38:49 PM",
+        "2025|0419|3/28/2025 8:06:43 AM|HB369|S|  Introduced 03/27/2025 and Referred to Judiciary;  SJ 10|3/28/2025 8:06:43 AM",
+        "2025|0419|4/10/2025 11:45:17 AM|HB369|S| Hearing: 04/17/2025, Room 100, SH, 01:10 pm;  SC 17|4/10/2025 11:45:17 AM",
+        "2025|0419|5/8/2025 2:13:45 PM|HB369|S| Hearing: 05/13/2025, Room 100, SH, 02:30 pm, on proposed amendment #2025-1875s;  SC 21|5/8/2025 2:13:45 PM",
+        "2025|0419|5/14/2025 1:06:30 PM|HB369|S|Committee Report: Ought to Pass with Amendment # 2025-2168s, 05/22/2025; Vote 3-0; CC;  SC 22|5/14/2025 1:06:36 PM",
+        "2025|0419|5/22/2025 11:42:40 AM|HB369|S|Committee Amendment # 2025-2168s, AA, VV; 05/22/2025;  SJ 14|5/22/2025 11:42:40 AM",
+        "2025|0419|5/22/2025 11:42:53 AM|HB369|S|Ought to Pass with Amendment #2025-2168s, MA, VV; OT3rdg; 05/22/2025;  SJ 14|5/22/2025 11:42:53 AM",
+        "2025|0419|6/12/2025 12:03:21 PM|HB369|H|House Concurs with Senate Amendment 2025-2168s (Rep. Lynn): MA VV 06/12/2025  HJ 17  P. 14|7/15/2025 9:09:34 AM",
+        "2025|0419|7/3/2025 1:01:46 PM|HB369|S|Enrolled Adopted, VV, (In recess 06/26/2025);  SJ 18|11/3/2025 2:45:28 PM",
+        "2025|0419|7/7/2025 12:26:38 PM|HB369|H|Enrolled (in recess of) 06/26/2025  HJ 18  P. 59|10/21/2025 12:21:10 PM",
+        "2025|0419|7/22/2025 1:20:04 PM|HB369|H|Signed by Governor Ayotte 07/15/2025; Chapter 182; eff. 01/01/2026  HJ 18|7/22/2025 1:20:04 PM"],
+    ("HB123", "2025-2026"): [
+        "2025|0100|1/6/2025 8:33:35 AM|HB123|H|  Introduced 01/08/2025 and referred to Municipal and County Government  HJ 2  P. 6|1/21/2025 1:53:38 PM",
+        "2025|0100|2/5/2025 2:19:48 PM|HB123|H|Public Hearing: 02/10/2025 01:00 pm LOB 301-303|2/5/2025 2:19:48 PM",
+        "2025|0100|2/12/2025 3:10:29 PM|HB123|H|  Public Hearing on non-germane Amendment # 2025-0153h: 02/18/2025 09:50 am LOB 201|2/12/2025 3:10:29 PM",
+        "2025|0100|2/27/2025 11:27:27 AM|HB123|H|Executive Session: 03/03/2025 01:00 pm LOB 301-303|2/27/2025 11:27:27 AM",
+        "2025|0100|3/5/2025 12:56:52 PM|HB123|H| Committee Report: Ought to Pass with Amendment # 2025-0654h (NT)  03/03/2025 (Vote 18-0; CC)|3/5/2025 12:58:23 PM",
+        "2025|0100|3/13/2025 5:40:00 PM|HB123|H|Amendment # 2025-0654h (NT): AA VV 03/13/2025  HJ 8  P. 92|4/21/2025 3:46:34 PM",
+        "2025|0100|3/13/2025 5:53:36 PM|HB123|H|Ought to Pass with Amendment 2025-0654h: MA RC 197-158 03/13/2025  HJ 8  P. 95|4/21/2025 3:47:15 PM",
+        "2025|0100|3/11/2025 8:39:53 AM|HB123|H|Removed from Consent (Reps. Kuttab, Popovici-Muller, Boehm, Turcotte, Scully, Perez, D. Kelley, Tom Mannion, Seaworth, Granger) 03/06/2025  HJ 8  P. 2|4/17/2025 10:40:16 AM",
+        "2025|0100|3/13/2025 5:53:38 PM|HB123|H|Referred to Ways and Means 03/13/2025  HJ 8  P. 95|4/21/2025 3:47:19 PM",
+        "2025|0100|3/13/2025 5:39:29 PM|HB123|H|Lay HB123 on Table (Rep. Osborne): MF DV 171-185 03/13/2025  HJ 8  P. 93|4/21/2025 3:46:51 PM",
+        "2025|0100|3/20/2025 10:21:50 AM|HB123|H|Referral Waived by Committee Chair per House Rule 47(f) 03/20/2025  HJ 9  P. 18|6/30/2025 12:50:03 PM",
+        "2025|0100|3/24/2025 12:01:19 PM|HB123|S|  Introduced 03/20/2025 and Referred to Energy and Natural Resources;  SJ 9|3/24/2025 12:01:19 PM",
+        "2025|0100|4/29/2025 1:51:30 PM|HB123|S| Hearing: 05/06/2025, Room 103, SH, 09:00 am;  SC 20|4/29/2025 1:51:30 PM",
+        "2025|0100|5/13/2025 11:43:16 AM|HB123|S|Committee Report: Ought to Pass with Amendment # 2025-2133s, 05/15/2025; Vote 4-1; CC;  SC 21A|5/13/2025 11:43:23 AM",
+        "2025|0100|5/15/2025 3:38:24 PM|HB123|S|Committee Amendment # 2025-2133s, AA, VV; 05/15/2025;  SJ 13|5/15/2025 3:38:24 PM",
+        "2025|0100|5/15/2025 5:21:39 PM|HB123|S|Ought to Pass with Amendment #2025-2133s, MA, VV; 05/15/2025;  SJ 13|5/15/2025 5:21:39 PM",
+        "2025|0100|5/15/2025 5:22:14 PM|HB123|S|Referred to Ways and Means, 05/15/2025;  SJ 13|5/15/2025 7:07:17 PM",
+        "2025|0100|5/15/2025 6:30:02 PM|HB123|S|  Hearing: 05/21/2025, Room 100, SH, 09:00 am, on proposed amendment # 2025-2214s;  SC 22|5/15/2025 6:30:02 PM",
+        "2025|0100|5/21/2025 9:29:04 AM|HB123|S|Committee Report: Ought to Pass, 05/22/2025; Vote 3-0; CC;  SC 22A|5/21/2025 9:29:04 AM",
+        "2025|0100|5/22/2025 10:33:24 AM|HB123|S|Ought to Pass: MA, VV; OT3rdg; 05/22/2025;  SJ 14|5/22/2025 10:33:24 AM",
+        "2025|0100|6/12/2025 12:09:12 PM|HB123|H|House Concurs with Senate Amendment 2025-2133s (Rep. Pauer): MA DV 268-74 06/12/2025  HJ 17  P. 14|7/15/2025 9:10:05 AM",
+        "2025|0100|7/3/2025 1:00:14 PM|HB123|S|Enrolled Adopted, VV, (In recess 06/26/2025);  SJ 18|11/3/2025 2:42:13 PM",
+        "2025|0100|7/7/2025 12:23:53 PM|HB123|H|Enrolled (in recess of) 06/26/2025  HJ 18  P. 59|10/21/2025 12:18:44 PM",
+        "2025|0100|7/22/2025 1:10:17 PM|HB123|H|Signed by Governor Ayotte 07/15/2025; Chapter 164; eff. I. Sec 4 eff 11/01/2027 II. Rem eff 07/01/2025  HJ 18|7/22/2025 1:10:17 PM"],
+    ("HB1574", "2025-2026"): [
+        "2026|2877|12/10/2025 12:51:58 PM|HB1574|H|  Introduced 01/07/2026 and referred to Education Funding  HJ 1  P. 26|3/25/2026 1:36:19 PM",
+        "2026|2877|1/8/2026 3:36:55 PM|HB1574|H|Public Hearing: 01/15/2026 09:30 am GP 232|1/8/2026 3:36:55 PM",
+        "2026|2877|1/28/2026 4:21:16 PM|HB1574|H|==CANCELLED== Executive Session: 02/03/2026 12:45 pm GP 232|2/3/2026 2:31:34 PM",
+        "2026|2877|2/11/2026 1:37:28 PM|HB1574|H|  Executive Session: 02/10/2026 12:45 pm GP 232|2/11/2026 1:37:28 PM",
+        "2026|2877|2/11/2026 1:38:00 PM|HB1574|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0632h (NT)  02/10/2026 (Vote 17-1; RC)  HC 7  P. 26|2/18/2026 10:58:02 AM",
+        "2026|2877|2/11/2026 1:38:47 PM|HB1574|H|Minority Committee Report: Inexpedient to Legislate|2/11/2026 1:38:47 PM",
+        "2026|2877|2/19/2026 11:32:17 AM|HB1574|H|Amendment # 2026-0632h: AA VV 02/19/2026  HJ 5  P. 44|5/12/2026 9:28:17 AM",
+        "2026|2877|2/19/2026 11:32:36 AM|HB1574|H|Ought to Pass with Amendment 2026-0632h: MA VV 02/19/2026  HJ 5  P. 44|5/12/2026 9:28:26 AM",
+        "2026|2877|2/19/2026 11:33:22 AM|HB1574|H|Referred to Finance 02/19/2026  HJ 5  P. 44|5/12/2026 9:28:39 AM",
+        "2026|2877|2/19/2026 3:25:08 PM|HB1574|H|Referral Waived by Committee Chair per House Rule 47(f) 02/19/2026  HJ 5  P. 112|5/12/2026 10:43:48 AM",
+        "2026|2877|2/25/2026 3:33:06 PM|HB1574|S|  Introduced 02/19/2026 and Referred to Education;  SJ 5|2/25/2026 3:33:06 PM",
+        "2026|2877|3/3/2026 2:05:33 PM|HB1574|S| Hearing: 03/10/2026, Room Map Room, SL, 09:30 am;  SC 9|3/3/2026 2:05:33 PM",
+        "2026|2877|3/18/2026 9:28:23 AM|HB1574|S|Committee Report: Ought to Pass, 03/26/2026; Vote 5-0; CC;  SC 11|3/18/2026 3:40:03 PM",
+        "2026|2877|3/24/2026 9:09:25 AM|HB1574|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/26/2026;  SJ 7|3/26/2026 9:27:20 AM",
+        "2026|2877|4/9/2026 10:44:27 AM|HB1574|S|  Hearing: 04/14/2026, Room 103, SH, 01:30 pm, on proposed non-germane amendment # 2026-1330s;  SC 14|4/13/2026 4:28:35 PM",
+        "2026|2877|4/24/2026 9:11:49 AM|HB1574|S|Committee Report: Ought to Pass with Amendment # 2026-1607s, 05/07/2026; Vote 7-0; CC;  SC 17|4/29/2026 2:27:12 PM",
+        "2026|2877|5/7/2026 9:29:47 AM|HB1574|S|HB 1574 was Removed from the Consent Calendar; 05/07/2026;  SJ 11|5/7/2026 9:29:47 AM",
+        "2026|2877|5/7/2026 3:02:41 PM|HB1574|S|Special Order to 05/14/2026, Without Objection, MA; 05/07/2026  SJ 11|5/7/2026 3:02:41 PM",
+        "2026|2877|5/7/2026 3:03:16 PM|HB1574|S|Committee Report: Ought to Pass with Amendment # 2026-1607, 05/14/2026, Vote 7-0;  SJ 11|5/7/2026 3:03:16 PM",
+        "2026|2877|5/14/2026 4:20:26 PM|HB1574|S|Committee Amendment # 2026-1607s, AA, VV; 05/14/2026;  SJ 12|5/14/2026 4:20:26 PM",
+        "2026|2877|5/14/2026 4:20:46 PM|HB1574|S|Ought to Pass with Amendment # 2026-1607s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|6/3/2026 9:01:11 AM",
+        "2026|2877|5/19/2026 1:20:45 PM|HB1574|H|House Non-Concurs with Senate Amendment 2026-1607s and Requests CofC (Rep. Ladd): MA VV 05/14/2026  HJ 13  P. 149|7/24/2026 11:52:21 AM",
+        "2026|2877|5/19/2026 1:21:49 PM|HB1574|H|Speaker Appoints: Reps. Ladd, Erf, Popovici-Muller, Luneau 05/14/2026  HJ 13  P. 149|7/24/2026 11:52:26 AM",
+        "2026|2877|5/20/2026 4:57:42 PM|HB1574|S|Sen. Ward Accedes to House Request for Committee of Conference, MA, VV; (In recess 05/14/2026);  SJ 13|5/26/2026 2:56:50 PM",
+        "2026|2877|5/20/2026 5:03:40 PM|HB1574|S|President Appoints: Senators Gray, Ward, Rosenwald; (In Recess 05/14/2026);  SJ 13|5/20/2026 5:03:40 PM",
+        "2026|2877|5/26/2026 12:00:00 AM|HB1574|H|Conference Committee Meeting: 05/26/2026 11:00 am GP 234|5/21/2026 12:18:23 PM",
+        "2026|2877|6/2/2026 9:36:30 AM|HB1574|S|Conference Committee Report; Not Signed Off;  SJ 14|6/2/2026 9:36:30 AM"],
+    ("SB482", "2025-2026"): [
+        "2026|2043|11/21/2025 4:10:40 PM|SB482|S|  Introduced 01/07/2026 and Referred to Commerce;  SJ 1|1/8/2026 12:45:03 PM",
+        "2026|2043|1/13/2026 12:48:00 PM|SB482|S|==CANCELLED== Hearing: 02/03/2026, Room 100, SH, 10:00 am;  SC 1|1/13/2026 12:48:20 PM",
+        "2026|2043|1/13/2026 12:48:10 PM|SB482|S| ==RESCHEDULED== Hearing: 01/27/2026, Room 100, SH, 09:45 am;  SC 2|1/13/2026 12:50:10 PM",
+        "2026|2043|2/19/2026 11:53:08 AM|SB482|S|Committee Report: Ought to Pass with Amendment # 2026-0787s, 03/05/2026; Vote 4-1; CC;  SC 8|2/20/2026 10:56:10 AM",
+        "2026|2043|3/5/2026 10:20:09 AM|SB482|S|SB 482 was Removed from the Consent Calendar; 03/05/2026;  SJ 5|3/5/2026 10:20:09 AM",
+        "2026|2043|3/5/2026 10:22:26 AM|SB482|S|Special Order to 03/19/2026, Without Objection, MA; 03/05/2026  SJ 5|3/5/2026 10:22:26 AM",
+        "2026|2043|3/5/2026 2:29:36 PM|SB482|S|Committee Report: Ought to Pass with Amendment # 2026-0787s, 03/19/2026, Vote 4-1;  SC 10|3/10/2026 4:22:10 PM",
+        "2026|2043|3/12/2026 10:23:08 AM|SB482|S|Special Order to 03/26/2026, Without Objection, MA; 03/12/2026  SJ 6|3/12/2026 10:23:08 AM",
+        "2026|2043|3/12/2026 10:27:18 AM|SB482|S|Committee Report: Ought to Pass with Amendment # 2026-0787s, 03/26/2026, Vote 4-1;  SC 11|3/12/2026 10:27:17 AM",
+        "2026|2043|3/26/2026 10:00:56 AM|SB482|S|Committee Amendment # 2026-0787s, AA, VV; 03/26/2026;  SJ 7|3/26/2026 10:01:09 AM",
+        "2026|2043|3/26/2026 10:04:16 AM|SB482|S|Sen. Birdsell Floor Amendment # 2026-1172s, AA, VV; 03/26/2026;  SJ 7|3/26/2026 12:32:16 PM",
+        "2026|2043|3/26/2026 10:05:02 AM|SB482|S|Ought to Pass with Amendments #2026-0787s and #2026-1172s, MA, VV; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 12:32:18 PM",
+        "2026|2043|3/27/2026 12:15:43 PM|SB482|H|  Introduced (in recess of) 03/26/2026 and referred to Commerce and Consumer Affairs  HJ 9  P. 54|6/26/2026 10:26:01 AM",
+        "2026|2043|4/1/2026 4:04:56 PM|SB482|H|   Subcommittee Work Session: 04/08/2026 10:00 am GP 229|4/2/2026 9:00:22 AM",
+        "2026|2043|4/2/2026 9:00:19 AM|SB482|H|Public Hearing: 04/07/2026 01:15 pm GP 159|4/2/2026 9:00:22 AM",
+        "2026|2043|4/8/2026 3:35:10 PM|SB482|H|   Subcommittee Work Session: 04/14/2026 10:00 am GP 229|4/8/2026 3:35:10 PM",
+        "2026|2043|4/8/2026 3:57:52 PM|SB482|H|Executive Session: 04/15/2026 10:00 am GP 229|4/8/2026 3:57:52 PM",
+        "2026|2043|4/16/2026 8:30:16 AM|SB482|H|Majority Committee Report: Ought to Pass with Amendment # 2026-1526h   04/15/2026 (Vote 10-8; RC)|4/16/2026 8:30:16 AM",
+        "2026|2043|4/16/2026 8:30:47 AM|SB482|H|Minority Committee Report: Ought to Pass|4/16/2026 8:30:47 AM",
+        "2026|2043|4/23/2026 11:05:24 AM|SB482|H|Amendment # 2026-1526h: AF DV 135-220 04/23/2026  HJ 11  P. 16|7/21/2026 11:30:59 AM",
+        "2026|2043|4/23/2026 11:05:57 AM|SB482|H|Ought to Pass: MA RC 214-140 04/23/2026  HJ 11  P. 18|7/21/2026 11:31:15 AM",
+        "2026|2043|4/23/2026 2:05:22 PM|SB482|H|Referral Waived by Committee Chair per House Rule 47(f) 04/23/2026  HJ 11  P. 27|7/21/2026 11:33:11 AM",
+        "2026|2043|5/6/2026 1:15:25 PM|SB482|H|Referred to Criminal Justice and Public Safety 04/23/2026  HJ 11  P. 24|7/21/2026 11:32:46 AM",
+        "2026|2043|6/2/2026 2:53:40 PM|SB482|H|Enrolled Bill Amendment # 2026-2122e: AA VV (in recess of) 05/21/2026  HJ 14  P. 37|7/27/2026 1:07:39 PM",
+        "2026|2043|6/5/2026 9:40:58 AM|SB482|S|Enrolled Bill Amendment # 2026-2122e Adopted, VV, (In recess of 06/04/2026);  SJ 14|6/5/2026 11:23:24 AM",
+        "2026|2043|6/10/2026 11:53:33 AM|SB482|S|Enrolled Adopted, VV, (In recess 06/04/2026);  SJ 14|6/10/2026 1:44:24 PM",
+        "2026|2043|6/10/2026 1:16:46 PM|SB482|H|Enrolled (in recess of) 06/04/2026  HJ 15  P. 43|8/31/2026 9:49:46 AM",
+        "2026|2043|6/24/2026 8:26:38 AM|SB482|S|Signed by the Governor on 06/19/2026; Chapter 187; Effective 12/16/2026|6/24/2026 8:26:38 AM"],
+}
+
+
+@check("narrative", "a passage the chamber sent on to a second committee on the next row is "
+                    "told as approved, as the rail draws it, unless the referral was waived",
+       needs=("narrative", "build_site_v2"))
+def _approved_and_sent_on(N, B):
+    """Since 2007 the House writes a referral to a second committee on a row
+    of its own, seconds after the vote: "Ought to Pass: MA VV 03/06/2025" and
+    "Referred to Finance 03/06/2025" (HB 547 of 2025). House Journal 7 of 2025
+    prints the report and then "The Speaker referred the bill to the
+    Committee on Finance": the House approved the bill, it did not pass it,
+    and Finance had it killed on 7 January 2026. Its history said "the House
+    voted to pass it" -- on 112 bills of 2025-2026, 24 of them never passed --
+    while the rail, by its own rule, said "Approved and sent to Finance". A
+    referral to any second committee counts (HB 369's Criminal Justice and
+    Public Safety), and so does the Senate's own referral row (HB 123's Ways
+    and Means). A referral its chair waived took the bill nowhere, and the
+    passage is still one: HB 1574 of 2026, waived the same day; SB 482 of
+    2026, the waiver entered before the referral; HB 123's House referral,
+    waived a week later. The referral keeps its own sentence and heading."""
+    want = {  # bill: (must say, must not say)
+        "HB547": (["On March 6, 2025 the House voted to approve it on a voice vote.",
+                   "On March 6, 2025 the bill was referred to the Finance committee."],
+                  ["voted to pass it"]),
+        "HB66": (["On February 20, 2025 the House voted to approve it with changes on a "
+                  "division vote 321–48.",
+                  "On April 10, 2025 the House voted to pass it with changes on a roll call "
+                  "207–164."],
+                 ["On February 20, 2025 the House voted to pass it"]),
+        "HB369": (["On February 13, 2025 the House voted to approve it with changes on a voice "
+                   "vote.",
+                   "On February 13, 2025 the bill was referred to the Criminal Justice and Public "
+                   "Safety committee.",
+                   "On March 26, 2025 the House voted to pass it on a voice vote."],
+                  ["On February 13, 2025 the House voted to pass it"]),
+        "HB123": (["On May 15, 2025 the Senate voted to approve it with changes on a voice vote.",
+                   "On May 22, 2025 the Senate voted to pass it on a voice vote and ordered it to "
+                   "a third reading.",
+                   "On March 13, 2025 the House voted to pass it with changes on a roll call "
+                   "197–158."],
+                  ["On May 15, 2025 the Senate voted to pass it", "House voted to approve it"]),
+        "HB1574": (["On February 19, 2026 the House voted to pass it with changes on a voice "
+                    "vote.",
+                    "whose chair waived the referral under House Rule 47(f)"],
+                   ["voted to approve it"]),
+        "SB482": (["On April 23, 2026 the House voted to pass it on a roll call 214–140."],
+                  ["voted to approve it"]),
+    }
+    from datetime import datetime as _dt
+    approved = re.compile(r"On (\w+ \d{1,2}, \d{4}) the (House|Senate) voted to approve it")
+    bad = []
+    for (bill, term), rows in _DOCKET_APPROVED_SENT_ON.items():
+        rec = _narrated(N, term, bill, rows)
+        told = rec.get("narrative") or ""
+        said, unsaid = want[bill]
+        bad += [f"{bill} of {term} does not say {s!r}" for s in said if s not in told]
+        bad += [f"{bill} of {term} says {s!r}" for s in unsaid if s in told]
+        # The history and the rail say the same of the same day.
+        rail = {(s["date"], s["body"]) for s in B.journey(rec, bill, term=term)[1]
+                if s["act"] == "referred"}
+        for when, chamber in approved.findall(told):
+            day = _dt.strptime(when, "%B %d, %Y").strftime("%Y-%m-%d")
+            if (day, chamber[0]) not in rail:
+                bad.append(f"{bill} of {term}: approved on {day} in the history, and the rail "
+                           f"has no referral that day: {sorted(rail)}")
+        if bill == "HB547":
+            heads = [st["label"] for st in rec["stages"]]
+            if heads != ["In House committee — Municipal and County Government",
+                         "On the House floor", "In House committee — Finance",
+                         "On the House floor"]:
+                bad.append(f"HB547 of 2025's stages are {heads}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 547, HB 66, HB 369 and HB 123's Senate passage approved and sent on, as "
+                  "the rail draws them; HB 1574, SB 482 and HB 123's House passage, whose "
+                  "referrals were waived, passed")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
@@ -51151,6 +51726,228 @@ _TURN_LEGISLATION = [
     "legislationID"]
 
 
+# ---- the sponsors who have left, built on a fixture --------------------------------
+#
+# Real rows, cut on 7 October 2026 from the files on disk (the export of 24
+# September and the database dump of 8 September), for four bills of 2026:
+#
+#   HB 1449   LsrsOnly.txt lists eight sitting members, Rep. McGrath the prime;
+#             LsrSponsors.txt lists them and Rep. Morton, who has left
+#   HB 1036   LsrsOnly.txt lists four and marks none prime; LsrSponsors.txt
+#             flags Rep. Vose, who has left
+#   HB 171    in LsrSponsors.txt alone, a 2025 request retained into 2026:
+#             Rep. Germana the prime and two others sitting, Rep. Haskins,
+#             who left during the term, and Reps. Rochefort and Massimilla,
+#             who left before it began -- the bill's own text names Germana,
+#             Potenza, Haskins and King
+#   CACR 30   in LsrSponsors.txt alone, its one sponsor Rep. Oppel, who has
+#             left, and whom the status page names with no id
+#
+# with each bill's record in LSRs.txt and its first docket row; the fifteen
+# sitting members from legislators.txt, their address columns left empty and
+# their e-mail addresses made up, so that none a scraper could use is in the
+# repository; the six who have left as former_members.json,
+# past_members.json and db/Legislators.psv (its first eleven columns) hold
+# them; and one ballot of each: the first roll call of 2026 for the four who
+# left during the term (RollCallHistory.txt) and the first of 2024 for the
+# two who left before it (rollcalls/RollCallHistory_2024.txt).
+_SPONSORS_WHO_LEFT = {
+    "LsrsOnly.txt": [
+        f"26-2787|{m}|1995|2026|{r}|HB1449|H|(New Title) limiting times vaccine clinics may "
+        "operate at schools, with certain exceptions."
+        for m, r in (("9866", "Sponsor"), ("9940", "Sponsor"), ("10694", "Sponsor"),
+                     ("10913", "Sponsor"), ("11401", "Sponsor"), ("11420", "Sponsor"),
+                     ("11421", "Prime"), ("11424", "Sponsor"))] + [
+        f"26-2797|{m}|2005|2026|Sponsor|HB1036|H|relative to the maximum duration of term alimony."
+        for m in ("570", "9895", "9937", "10695")],
+    "LsrSponsors.txt": [
+        "2026|2797|2|570|0", "2026|149|7|746|0", "2026|2797|1|909|1", "2026|2787|9|9866|0",
+        "2026|2797|3|9895|0", "2026|2797|6|9937|0", "2026|2787|4|9940|0", "2026|149|6|10610|0",
+        "2026|149|3|10614|0", "2026|2787|7|10694|0", "2026|2797|4|10695|0", "2026|149|4|10726|0",
+        "2026|149|1|10748|1", "2026|149|5|10855|0", "2026|2787|5|10913|0", "2026|2674|1|11182|1",
+        "2026|2787|6|11371|0", "2026|2787|3|11401|0", "2026|2787|8|11420|0", "2026|2787|1|11421|1",
+        "2026|2787|2|11424|0"],
+    "RollCallHistory.txt": [
+        "2026|H|1|377272|909||Yea|", "2026|H|1|409107|10855||Not Voting/Not Excused|",
+        "2026|H|1|409281|11182||Yea|", "2026|H|1|409274|11371||Yea|"],
+    "RollCallHistory_2024.txt": ["2024|H|1|377141|746||Yea|", "2024|H|1|409162|10614||Yea|"],
+    "LSRs.txt": [
+        "2026|0149|establishing a moratorium on the issuance of permits for new landfills.|H|1|0|0|"
+        "0|25-0149|HB  0171|HB171||ENA|H06|H06|1/8/2025 12:00:00 AM|11||3/20/2025 12:00:00 AM|"
+        "3/20/2025 12:00:00 AM|0|S38|S38|3/20/2025 12:00:00 AM|09|01/07/2026||1/7/2026 12:00:00 AM|"
+        "0|03|S38|4/15/2025 9:00:00 AM|SH Room 103||||0|0|",
+        "2026|2674|relating to the public utilities commissioners.Providing that the public "
+        "utilities commissioners are elected.|H|3|0|0|0|26-2674|CACR0030|CACR30||ELE|H36|H36|"
+        "1/7/2026 12:00:00 AM|09||3/5/2026 12:00:00 AM|3/5/2026 12:00:00 AM|0||||||||0|02|H36|"
+        "2/17/2026 10:00:00 AM|GP Room 158||||0|0|",
+        "2026|2787|(New Title) limiting times vaccine clinics may operate at schools, with certain "
+        "exceptions.|H|1|0|0|0|26-2787|HB  1449|HB1449||EDG|H09|H09|1/7/2026 12:00:00 AM|13||"
+        "3/5/2026 12:00:00 AM|5/21/2026 12:00:00 AM|0|S26|S26|3/12/2026 12:00:00 AM|11|04/16/2026||"
+        "4/16/2026 12:00:00 AM|0|02|H09|4/2/2026 2:00:00 PM|SH Room 103||||0|0|",
+        "2026|2797|relative to the maximum duration of term alimony.|H|1|0|0|0|26-2797|HB  1036|"
+        "HB1036||DOM|H37|H37|1/7/2026 12:00:00 AM|09||3/5/2026 12:00:00 AM|3/5/2026 12:00:00 AM|0||"
+        "||||||0|02|H37|2/3/2026 10:00:00 AM|GP Room 230||||0|0|"],
+    "Docket.txt": [
+        "2026|0149|1/6/2025 8:54:53 AM|HB171|H|  Introduced 01/08/2025 and referred to Environment "
+        "and Agriculture  HJ 2  P. 8|1/21/2025 2:02:04 PM",
+        "2026|2797|11/7/2025 11:38:24 AM|HB1036|H|  Introduced 01/07/2026 and referred to Children "
+        "and Family Law  HJ 1  P. 3|3/24/2026 2:03:43 PM",
+        "2026|2787|12/4/2025 10:49:24 AM|HB1449|H|  Introduced 01/07/2026 and referred to Health, "
+        "Human Services and Elderly Affairs  HJ 1  P. 22|3/25/2026 12:14:29 PM",
+        "2026|2674|12/18/2025 3:29:23 PM|CACR30|H|  Introduced 01/07/2026 and referred to Election "
+        "Law  HJ 1  P. 41|3/27/2026 1:42:46 PM"],
+    # legislators.txt's first nine columns: id, last, first, middle, chamber,
+    # seat, county, district, party.
+    "legislators.txt": [
+        "11421|McGrath|Linda||H|3093|8|40|R", "11424|DeRoy|Susan|G|H|1030|9|3|R",
+        "11401|DeVito|Sayra|Lynn|H|3019|8|8|R", "9940|Litchfield|Melissa|A.|H|3117|8|32|R",
+        "10913|McFarlane|Donald|S|H|2093|5|18|R", "10694|Perez|Kristine||H|2071|8|16|R",
+        "11420|Sabourin dit Choinière|Matt|R|H|3028|8|30|R", "9866|Terry|Paul|A|H|1012|1|7|R",
+        "570|DeSimone|Debra|L|H|1001|8|18|R", "9895|Kofalt|Jim|A|H|2101|6|32|R",
+        "10695|Kuttab|Katelyn|T|H|3064|8|17|R", "9937|Lynn|Bob|J.|H|2090|8|17|R",
+        "10748|Germana|Nicholas|A|H|4004|3|15|D", "10726|Potenza|Kelley|L|H|3023|9|19|R",
+        "10610|King|Seth||H|2081|4|4|R"],
+    "Counties.txt": ["01|Belknap|Belk.", "02|Carroll|Carr.", "03|Cheshire|Ches.", "04|Coos|Coos",
+                     "05|Grafton|Graf.", "06|Hillsborough|Hills.", "07|Merrimack|Merr.",
+                     "08|Rockingham|Rock.", "09|Strafford|Straf.", "10|Sullivan|Sull."],
+    "Committees.txt": ["H06|Environment and Agriculture|E&A",
+                       "H09|Health, Human Services and Elderly Affairs|HHS&EA",
+                       "H36|Election Law|ELEC LAW", "H37|Children and Family Law|CHILD&FAMI",
+                       "S26|Health and Human Services|HHS", "S38|Energy and Natural Resources|ENR"],
+    "SubjectCodes.txt": ["16|DOM|Domestic Relations", "18|EDG|Education - General",
+                         "21|ELE|Elections", "26|ENA|Environment - Administration"],
+    # db/Legislators.psv's first eleven columns: PersonID, LastName,
+    # FirstName, Employeeno, MiddleName, LegislativeBody, Active, seatno,
+    # countycode, District, party.
+    "Legislators.psv": [
+        "11371|Morton|Jonathan|409274||H|False||06|39|R", "909|Vose|Michael|377272||H|False||08|05|R",
+        "11182|Oppel|Thomas|409281||H|False||05|09|D",
+        "10614|Rochefort|David|409162||H|False|2019|05|01|r",
+        "10855|Haskins|Linda|409107|J|H|False||08|11|D",
+        "746|Massimilla|Linda|377141|A.|H|False|5002|05|01|d"],
+    "former_members.json": {
+        "11371": {"county": "Hillsborough", "district": "39", "name": "Morton, Jonathan",
+                  "party": "Republican"},
+        "909": {"county": "Rockingham", "district": "05", "name": "Vose, Michael",
+                "party": "Republican"},
+        "11182": {"county": "Grafton", "district": "09", "name": "Oppel, Thomas",
+                  "party": "Democrat"},
+        "10614": {"county": "Grafton", "district": "01", "name": "Rochefort, David",
+                  "party": "Republican"},
+        "10855": {"county": "Rockingham", "district": "11", "name": "Haskins, Linda",
+                  "party": "Democrat"},
+        "746": {"county": "Grafton", "district": "01", "name": "Massimilla, Linda",
+                "party": "Democrat"}},
+    "past_members.json": {"409281": "Rep. Oppel, Thomas(Graf. 09)"},
+    "bill_status.json": {"2025-2026": {"CACR30": {
+        "title": "relating to the public utilities commissioners. Providing that the public "
+                 "utilities commissioners are elected.",
+        "lsr": "2674", "body": "H",
+        "sponsors": [{"name": "Thomas Oppel", "party": "D", "web_member_id": "",
+                      "senate_district": "", "chamber": "", "url": "",
+                      "no_member_page": True}]}}},
+}
+
+
+@check("build", "a sponsor who has left is on the bill from LsrSponsors.txt, once, named with "
+       "the chamber they sat in, built on real rows")
+def _sponsors_who_left():
+    """LsrsOnly.txt lists sitting members only (dayfiles_from_db asks for
+    Active), and build_data read a bill's sponsors from it and asked
+    LsrSponsors.txt only for a prime LsrsOnly left unmarked; on a bill only
+    LsrSponsors.txt covers, it dropped a member off the roster as unknown. So
+    168 sponsorships of 2025-2026 on 157 bills, by 20 members who had left,
+    were on no page: HB 1449's Rep. Morton among them. A departed prime was
+    put back, but as "Vose, Michael" with no chamber, under "Chamber not on
+    file" on 34 bills; and where every sponsor had left, the status page filled
+    the bill by name first, so CACR 30 listed Rep. Oppel twice, once by his
+    PersonID and once by the employee number past_members.json gives him.
+
+    build_data.py, on these four bills' real rows: every LsrSponsors.txt row
+    of a member who sat in the term is on its bill, once; LsrsOnly's prime
+    and order stand, and a departed prime it left unmarked is the prime; a
+    bill only LsrSponsors.txt covers keeps its sequence; each member who has
+    left is labelled as a sitting member is, with the chamber
+    db/Legislators.psv gives them; and a member whose last ballot was before
+    the term is on no bill of it, as HB 171's own text names neither Rep.
+    Rochefort nor Rep. Massimilla, whose request it carries."""
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sponsors-left-"))
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
+               HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
+    fx = _SPONSORS_WHO_LEFT
+    try:
+        files = _turn_files([], fx["Docket.txt"], fx["LSRs.txt"], fx["LsrsOnly.txt"],
+                            fx["LsrSponsors.txt"], [], fx["RollCallHistory.txt"])
+        files["legislators.txt"] = _turn_day([f"{r}||||NH||rep{r.split('|')[0]}@example.gov"
+                                              for r in fx["legislators.txt"]])
+        for name in ("Counties.txt", "Committees.txt", "SubjectCodes.txt"):
+            files[name] = _turn_day(fx[name])
+        for n, b in files.items():
+            (tmp / n).write_bytes(b)
+        (tmp / "rollcalls").mkdir()
+        (tmp / "rollcalls" / "RollCallHistory_2024.txt").write_bytes(
+            _turn_day(fx["RollCallHistory_2024.txt"]))
+        db = tmp / "db"
+        db.mkdir()
+        cols = ["PersonID", "LastName", "FirstName", "Employeeno", "MiddleName", "LegislativeBody",
+                "Active", "seatno", "countycode", "District", "party", "Expr1", "Address",
+                "address2", "city", "Zipcode", "Expr2", "EMailAddress", "GenderCode",
+                "SecretaryID", "database"]
+        (db / "_columns.json").write_text(json.dumps({"Legislators": cols}), encoding="utf-8")
+        (db / "Legislators.psv").write_text(
+            "".join(r + "|" * (len(cols) - 11) + "\r\n" for r in fx["Legislators.psv"]),
+            encoding="utf-8")
+        for name in ("former_members.json", "past_members.json", "bill_status.json"):
+            (tmp / name).write_text(json.dumps(fx[name]), encoding="utf-8")
+        shutil.copy2(here / "member_corrections.json", tmp / "member_corrections.json")
+        (tmp / "verification_manifest.csv").write_text("bill,sched_date\n", encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_data.py"), "--dir", ".", "--out", "data"],
+                 cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                 env=env, timeout=300)
+        out = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode == 0, f"build_data on the fixture: {out[-600:]}"
+        sp = json.loads((tmp / "data" / "sponsors.json").read_text(encoding="utf-8"))
+        sp = sp.get("2025-2026") or {}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    def seen(bill):
+        return [(x["member_id"], x["chamber"], x["label"], bool(x.get("prime")))
+                for x in sp.get(bill) or []]
+    want = {
+        "HB1449": [("11421", "H", "Rep. Linda McGrath (R - Rock 40)", True),
+                   ("11424", "H", "Rep. Susan DeRoy (R - Straf 3)", False),
+                   ("11401", "H", "Rep. Sayra DeVito (R - Rock 8)", False),
+                   ("9940", "H", "Rep. Melissa Litchfield (R - Rock 32)", False),
+                   ("10913", "H", "Rep. Donald McFarlane (R - Graf 18)", False),
+                   ("11371", "H", "Rep. Jonathan Morton (R - Hills 39)", False),
+                   ("10694", "H", "Rep. Kristine Perez (R - Rock 16)", False),
+                   ("11420", "H", "Rep. Matt Sabourin dit Choinière (R - Rock 30)", False),
+                   ("9866", "H", "Rep. Paul Terry (R - Belk 7)", False)],
+        "HB1036": [("909", "H", "Rep. Michael Vose (R - Rock 5)", True),
+                   ("570", "H", "Rep. Debra DeSimone (R - Rock 18)", False),
+                   ("9895", "H", "Rep. Jim Kofalt (R - Hills 32)", False),
+                   ("10695", "H", "Rep. Katelyn Kuttab (R - Rock 17)", False),
+                   ("9937", "H", "Rep. Bob Lynn (R - Rock 17)", False)],
+        # Not Reps. Rochefort (10614) and Massimilla (746): their last ballot
+        # was of 2024, and HB 171's own text does not name them.
+        "HB171": [("10748", "H", "Rep. Nicholas Germana (D - Ches 15)", True),
+                  ("10726", "H", "Rep. Kelley Potenza (R - Straf 19)", False),
+                  ("10855", "H", "Rep. Linda Haskins (D - Rock 11)", False),
+                  ("10610", "H", "Rep. Seth King (R - Coos 4)", False)],
+        "CACR30": [("11182", "H", "Rep. Thomas Oppel (D - Graf 9)", True)],
+    }
+    bad = [f"{b}: {seen(b)}, not {w}" for b, w in want.items() if seen(b) != w]
+    assert not bad, "the sponsors of the fixture's bills are not the record's:\n  " + \
+        "\n  ".join(bad)
+    return "ok", ("HB 1449 keeps Rep. Morton beside LsrsOnly's eight, HB 1036's prime is "
+                  "Rep. Vose, HB 171 keeps Rep. Haskins, who left during the term, in sequence "
+                  "and not the two who left before it, and CACR 30 lists Rep. Oppel once; each "
+                  "who has left labelled as a sitting member is, with the chamber "
+                  "db/Legislators.psv gives them")
+
+
 @check("build", "no fact of 2025-2026 reaches a 2027 bill by its number: the sign-ins are the "
        "database's by term, the Legislation fill keeps to the bill's own term, and titles are "
        "read by term", needs=("build_data", "build_site_v2", "build_all", "testimony_from_db"))
@@ -62262,6 +63059,115 @@ def _sponsors_by_term():
     census = ", ".join(f"{t} {len(v):,}/{len(bills.get(t, {})):,}"
                        for t, v in sorted(sponsors.items()))
     return "ok", f"sponsors by term: {census}"
+
+
+@check("data", "every sponsor LsrSponsors.txt gives the session's bills who sat in its term is "
+       "on the bill, once, and a member the database knows has a chamber")
+def _sponsors_on_record():
+    """The data side of _sponsors_who_left. LsrSponsors.txt is the General
+    Court's every sponsor of the session's requests, sitting or not; LsrsOnly
+    .txt holds the sitting only. Read from the second, 168 sponsorships of
+    2025-2026 by 20 members who had left were on no page -- LsrSponsors.txt:
+    7674, "2026|2787|6|11371|0", is Rep. Morton on HB 1449 -- 7 bills listed
+    their only sponsor twice, by PersonID and by employee number (CACR 30's
+    Rep. Oppel, 11182 and 409281; HB 728's Rep. Doucette, 893 and 377220),
+    and 34 primes who had left had no chamber (HB 1036's Rep. Vose).
+
+    For the newest term: every LsrSponsors.txt row of its years, on the bill
+    its request is (bills.json's lsr_year and lsr_num), is among that bill's
+    sponsors -- unless its member is neither sitting (legislators.txt) nor
+    cast a ballot in the term, and then it is not: HB 171 carries the request
+    of Reps. Rochefort and Massimilla, who left before the term began, and
+    its own text does not name them; no bill lists one person twice, an employee number counted as
+    the PersonID db/Legislators.psv gives it; and every sponsor whose id is a
+    PersonID there has a chamber. Two people of one name are two ids: HB 583's
+    Patrick Long (409256) and Pat Long (218767)."""
+    sp, bl, ls = Path("data/sponsors.json"), Path("data/bills.json"), Path("LsrSponsors.txt")
+    if not (sp.exists() and bl.exists() and ls.exists()):
+        return "skip", "data/sponsors.json, data/bills.json or LsrSponsors.txt not here"
+    sponsors = json.loads(sp.read_text(encoding="utf-8"))
+    bills = json.loads(bl.read_text(encoding="utf-8"))
+    if not all(re.match(r"^\d{4}-\d{4}$", k) for k in sponsors):
+        return "skip", "data/sponsors.json is not keyed on the term yet"
+    newest = max(bills)
+    years = set(newest.split("-"))
+    mine = sponsors.get(newest) or {}
+    by_lsr = {(str(r.get("lsr_year") or ""), str(r.get("lsr_num") or "").zfill(4)): b
+              for b, r in (bills.get(newest) or {}).items()}
+    pid = {}        # Employeeno -> PersonID
+    people = set()  # PersonID
+    lp, lc = Path("db/Legislators.psv"), Path("db/_columns.json")
+    if lp.exists() and lc.exists():
+        cols = json.loads(lc.read_text(encoding="utf-8")).get("Legislators") or []
+        if "PersonID" in cols and "Employeeno" in cols:
+            ip, ie = cols.index("PersonID"), cols.index("Employeeno")
+            for line in lp.read_text(encoding="utf-8", errors="replace").splitlines():
+                f = [x.strip() for x in line.split("|")]
+                if len(f) == len(cols) and f[ip]:
+                    people.add(f[ip])
+                    if f[ie]:
+                        pid[f[ie]] = f[ip]
+
+    def who(x):
+        m = str(x.get("member_id") or "")
+        return pid.get(m, m)
+    # A member who is not sitting and cast no ballot in the term never sat in
+    # it, and is on none of its bills: HB 171's Reps. Rochefort and
+    # Massimilla, whose request it carries and whose names its text does not.
+    sitting = set()
+    lt = Path("legislators.txt")
+    if lt.exists():
+        sitting = {ln.split("|")[0].strip().lstrip("﻿")
+                   for ln in lt.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+                   if ln.strip()}
+    sat = set()
+    for f in [Path("RollCallHistory.txt"),
+              *(Path("rollcalls") / f"RollCallHistory_{y}.txt" for y in sorted(years))]:
+        if f.exists():
+            for ln in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+                p = ln.split("|")
+                if len(p) == 8 and p[0].strip() in years and p[4].strip():
+                    sat.add(p[4].strip())
+    missing, extra, rows, outside = [], [], 0, 0
+    for line in ls.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+        f = [x.strip() for x in line.split("|")]
+        if len(f) != 5 or f[0] not in years:
+            continue
+        bill = by_lsr.get((f[0], f[1].zfill(4)))
+        if not bill:
+            continue        # a request with no bill: build_data leaves it out, and says so
+        rows += 1
+        on = f[3] in {who(x) for x in mine.get(bill) or []}
+        if f[3] not in sitting and f[3] not in sat:
+            outside += 1
+            if on:
+                extra.append((bill, f[3]))
+        elif not on:
+            missing.append((bill, f[3]))
+    twice = sorted(b for b, v in mine.items()
+                   if any(n > 1 for i, n in Counter(who(x) for x in v).items() if i))
+    nochamber = sorted({b for b, v in mine.items() for x in v
+                        if str(x.get("member_id") or "") in people
+                        and x.get("chamber") not in ("H", "S")})
+    assert rows, f"no row of LsrSponsors.txt names a bill of {newest}"
+    bad = []
+    if missing:
+        bad.append(f"{len(missing):,} LsrSponsors.txt row(s) on {len({b for b, _ in missing}):,} "
+                   f"bill(s) are not on the bill: "
+                   + ", ".join(f"{b} {m}" for b, m in sorted(missing)[:6]))
+    if extra:
+        bad.append(f"{len(extra):,} sponsor(s) who never sat in {newest} are on its bills: "
+                   + ", ".join(f"{b} {m}" for b, m in sorted(extra)[:6]))
+    if twice:
+        bad.append(f"{len(twice)} bill(s) list one person twice: {', '.join(twice[:8])}")
+    if nochamber:
+        bad.append(f"{len(nochamber)} bill(s) have a sponsor the database knows with no chamber: "
+                   + ", ".join(nochamber[:8]))
+    assert not bad, f"{newest}'s sponsors: " + "; ".join(bad)
+    return "ok", (f"{newest}: all {rows - outside:,} LsrSponsors.txt rows of members who sat in it "
+                  f"on their bills and none of the {outside} of members who did not, nobody listed "
+                  f"twice, and every sponsor the database knows has a chamber"
+                  + ("" if people else " (db/Legislators.psv not here, so ids not joined)"))
 
 
 @check("data", "every voter in the record is one person, with a party")
