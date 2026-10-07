@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.148
+// GRANITE_VERSION: 2026-09-07.149
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5430,10 +5430,13 @@ function datedRail(b,d){
       ?`<small>${esc(day)}</small>`:""}</span>`;
   });
   // The same facts as a sentence, for a reader who hears the page: every
-  // date in full -- the Law stop's words carry one of their own, "in effect
-  // 11 Jan 2026" -- and a tally read "16 to 8" rather than a dash.
+  // date in full and a tally read "16 to 8" rather than a dash. The Law
+  // stop's day is the day the law took effect (F13, 7 October 2026), said
+  // as that -- "in effect 11 January 2026" -- and not a second time where
+  // its words already say it.
   const said=st.map(s=>{
     const when=s.date?railDay(s.date,true,true):"";
+    const lawDay=s.stop==="Law"&&s.mark==="p";
     // From the index, before the record is here, the mark's word and the
     // stop's own: "House: passed, voice vote, 13 February 2025". The
     // governor's, the law's and the voters' own words already say how it
@@ -5446,9 +5449,10 @@ function datedRail(b,d){
         (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`)
       .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
         (_m,mo,y)=>`${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
+    const tail=!when?"":!lawDay?`, ${when}`:/in effect/.test(what)?"":`, in effect ${when}`;
     return s.stop==="Introduced"
       ?`Introduced${when?` ${when}`:""}`
-      :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${when?`, ${when}`:""}`;
+      :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${tail}`;
   }).join("; ");
   return `<span class="rail dated" role="img" aria-label="${esc(said)}"
     title="${esc(said)}">${cells.join("")}</span>`;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.169
+# GRANITE_VERSION: 2026-09-05.170
 """
 Generate the faceted site from real General Court data.
 
@@ -5500,10 +5500,13 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
         # states none, or several, is left saying none.
         if eff and db_effective and eff != db_effective:
             eff = db_effective
+        # `effective` is the day the rail's Law stop is dated by (F13); the
+        # line itself stays undated, so How it got here does not print the
+        # day twice beside words that already say it.
         steps.append({"date": "", "body": "L", "act": "law",
                       "text": f"Chapter {chapter}" + (
                           f", in effect {_j_prose_date(eff)}" if eff else ""),
-                      "short": f"Chapter {chapter}"})
+                      "short": f"Chapter {chapter}", "effective": eff or ""})
     for e in evs:
         m = REFERENDUM.search(e.get("raw") or "")
         if m:
@@ -5929,12 +5932,34 @@ def journey_rail(intro, steps, rail, bid, status=""):
                   "date": g["date"] if g and gm in ("p", "x") else "",
                   "short": g["short"] if g and gm in ("p", "x") else "",
                   "say": g["text"] if g and gm in ("p", "x") else RAIL_SAY.get(gm, "")})
-    stops.append({"stop": "Law", "mark": lm, "date": "",
+    stops.append({"stop": "Law", "mark": lm, "date": law_day(lm, law, stops, steps),
                   "short": law["short"] if law and lm == "p" else "",
                   "say": (law["text"] if law and lm == "p"
                           else "Did not become law" if lm == "x"
                           else RAIL_SAY.get(lm, ""))})
     return stops
+
+
+def law_day(mark, law, stops, steps):
+    """The day under the rail's last stop, Law (the person, 7 October 2026,
+    F13): "under Law, the effective date when it became law; when killed, the
+    day it was killed under that last stop". The Law stop was the one stop
+    reached that carried no day.
+
+    A law: the day it took effect, where its lines state one day
+    (_j_effective) -- a law in effect on several dates, by section, states
+    none, and neither does its stop. A bill that did not become law: the day
+    it was stopped, which is the latest day of a decision that ended it, on
+    a stop or in the journey (a kill, a veto sustained, a conference report
+    rejected). A Law stop not reached -- a bill still moving, or held for
+    interim study -- has no day, as no stop not reached has."""
+    if mark == "p":
+        return (law or {}).get("effective", "") if law else ""
+    if mark != "x":
+        return ""
+    days = [s.get("date") or "" for s in stops if s.get("mark") == "x"]
+    days += [s.get("date") or "" for s in steps if s.get("mark") == "x"]
+    return max((d for d in days if d), default="")
 
 
 # What a stop says when no line of the journey fills it -- the same words the
@@ -8933,6 +8958,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             j_current.append(f"{bid}: {why}")
         for s_ in jsteps:
             s_.pop("short", None)
+            # The Law stop has taken its day (law_day); the line keeps its words.
+            s_.pop("effective", None)
         # NOR DO THE RECORD'S STOPS (RAIL_CODE): the rail draws a day and no
         # words, and the page says each stop in its own `say`. The index row
         # keeps its copy, the only one a card has to say before the record.

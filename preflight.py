@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.426
+# GRANITE_VERSION: 2026-09-04.427
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20164,6 +20164,7 @@ def _journey_bills(B):
         jrail = B.journey_rail(intro, steps, rail, bid, status)
         for s in steps:
             s.pop("short", None)
+            s.pop("effective", None)
         row = {"id": bid, "n": re.sub(r"(\d)", r" \1", bid, count=1), "title": "a bill",
                "year": 2025, "term": "2025-2026", "kind": kind, "status": status,
                "passage": rail, "committees": [], "sponsor": "",
@@ -21219,8 +21220,10 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     # messages below print with !a: a check or a cross is not in the Windows
     # console's code page, and a failure that cannot be printed stops the run.
     want = {
+        # The Law stop's day: the day the law took effect, and the day a bill
+        # was killed under a Law it never reached (F13, 7 October 2026).
         "HB57": ("✓ Introduced 8 Jan 2025 ✓ House 13 Feb ✓ Senate 22 May ✓ Governor 15 Jul "
-                 "✓ Law",
+                 "✓ Law 11 Jan 2026",
                  ["✓ House Passed on a voice vote 13 Feb 2025",
                   "✓ Senate Passed with an amendment, 16–8 22 May 2025",
                   "✓ House Agreed to the Senate's amendment, 192–153 12 Jun 2025",
@@ -21229,7 +21232,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
                  "Introduced 8 January 2025; House: passed on a voice vote, 13 February 2025; "
                  "Senate: passed with an amendment, 16 to 8, 22 May 2025; Governor: signed, "
                  "15 July 2025; Law: chapter 160, in effect 11 January 2026"),
-        "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar ✕ Senate 7 Jan 2026 Governor ✕ Law",
+        "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar ✕ Senate 7 Jan 2026 Governor ✕ Law 7 Jan",
                  ["✓ House Passed with an amendment, 217–156 20 Mar 2025",
                   "↺ Senate Sent back to committee on a voice vote 1 May 2025",
                   "✕ Senate Killed on a voice vote 7 Jan 2026"], None),
@@ -21294,7 +21297,8 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     # with the rest.
     for bid, said in (("HB57", "Introduced 8 January 2025; House: passed, voice vote, 13 "
                                "February 2025; Senate: passed, 16 to 8, amended, 22 May 2025; "
-                               "Governor: signed, 15 July 2025; Law: chapter 160"),
+                               "Governor: signed, 15 July 2025; Law: chapter 160, in effect "
+                               "11 January 2026"),
                       ("CACR13", "Introduced 7 January 2026; House: passed, 325 to 15, 5 "
                                  "February 2026; Senate: passed, 23 to 1, 26 March 2026; "
                                  "Voters: is here now, November 2026")):
@@ -44004,6 +44008,46 @@ process.stdout.write(JSON.stringify(out));
         f"and {got['off']} disabled; six rows, the fourteen days of March in grey, none disabled")
     return "ok", (f"{got['months']} months each six weeks from the Monday on or before the 1st; "
                   "February 2027 in six rows with March's first fourteen days greyed")
+
+
+@check("status", "the rail's last stop carries a day: the day a law took effect, or the day the bill was killed",
+       needs=("build_site_v2",))
+def _rail_law_stop_dated(build_site_v2):
+    """"Rail: under Law, the effective date when it became law; when killed,
+    the day it was killed under that last stop" (the person, 7 October 2026,
+    F13). The Law stop was the one stop reached that carried no day.
+
+    HB 57 of 2025, signed on 15 July and "eff. 01/11/2026", dates its Law
+    stop 11 January 2026, on the list card's row and on the bill's own rail
+    alike; HB 68, killed in the Senate on 7 January 2026, dates its Law stop
+    that day. law_day itself: a law in effect on several dates states none,
+    a stop not reached has none, and a bill stopped by a veto sustained after
+    a chamber's kill takes the later day. The day under a stop is all a rail
+    draws (_rail_drawn), and what it says aloud of a law says "in effect"
+    once (_rail_dated holds the sentence)."""
+    B = build_site_v2
+    rows = {row["id"]: (row, rec) for row, rec in _journey_bills(B)}
+    for bid, want in (("HB57", "2026-01-11"), ("HB68", "2026-01-07")):
+        row, rec = rows[bid]
+        card = row["rail"][-1]
+        own = rec["journey"]["rail"][-1]
+        assert card[0][0] == "L" and (card + [""])[1] == want, (
+            f"{bid}'s list card dates its Law stop {card}, not {want}")
+        assert own["stop"] == "Law" and own["date"] == want, (
+            f"{bid}'s own rail dates its Law stop {own}, not {want}")
+    stops = [{"stop": "House", "mark": "x", "date": "2025-03-01"},
+             {"stop": "Governor", "mark": "x", "date": "2025-07-10"}]
+    steps = [{"body": "H", "mark": "x", "date": "2025-03-01"},
+             {"body": "S", "mark": "x", "date": "2025-09-16"}]
+    assert B.law_day("x", None, stops, steps) == "2025-09-16", (
+        "a bill stopped twice is dated by the earlier stop, not the day that ended it")
+    assert B.law_day("p", {"effective": ""}, [], []) == "" and B.law_day("p", None, [], []) == "", (
+        "a law in effect on several dates, or with no line, is given a day")
+    assert B.law_day("-", None, stops, steps) == "" and B.law_day("h", None, stops, steps) == "", (
+        "a Law stop not reached is given a day")
+    assert B.law_day("x", None, [], []) == "", "a kill with no day on record is given one"
+    return "ok", ("HB 57's Law stop on 11 January 2026, when it took effect, and HB 68's on "
+                  "7 January 2026, when it was killed, on the card and the page alike")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
