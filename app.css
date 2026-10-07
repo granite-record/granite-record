@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.201 */
+/* GRANITE_VERSION: 2026-09-07.202 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1072,6 +1072,13 @@ justify-content:space-between;font-size:var(--t-sm)}
    of this file keeps undoing: a card or a table fills its box, a sentence
    does not. */
 .src,.lead{max-width:var(--measure)}
+/* EXCEPT A NOTE THAT STANDS FOR A SECTION (the person, 7 October 2026, F9).
+   On the committees index "No bills or sessions on record" and "Not on the
+   General Court's list today" are each a heading and a paragraph over cards
+   that fill the page, and the paragraph held to 560px sat in the left half
+   of it, as did a committee page's own "not on the list" and "no day on
+   record" notes. Those take the width they have. */
+.src.fill{max-width:none}
 
 /* STATUTE'S TYPE, WHERE IT HAD ONLY HALF LANDED.
    Direction 2 sets brand, hero, title, lead and reading in Source Serif 4 and

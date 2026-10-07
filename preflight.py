@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.423
+# GRANITE_VERSION: 2026-09-04.424
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13738,6 +13738,10 @@ def _class_collisions():
         "attrib", "fcol", "fcolhead", "fcols", "footdata", "lic", "flinks",
         "logocredit",
         "out", "note", "src", "count", "caret", "chev",
+        # .src.fill, a source note that takes the width it has: the
+        # committees index (build_committees) and a committee page (app.js)
+        # both draw it, for the same component (F9, 7 October 2026)
+        "fill",
         # the header search panel: find.js mounts it everywhere, and
         # build_pages draws the same row on /search -- the bills' row too,
         # for the current term's count under every term's (24 September)
@@ -43895,6 +43899,45 @@ def _seat_list_by_division():
         not in page, "the built page's seat list is not the columns"
     return "ok", (f"five columns headed as the chart labels its divisions, the Speaker above, "
                   f"{fits} abreast at full width and one on a phone")
+
+
+@check("frontend", "a note that stands for a section of the committees' pages takes the width it has")
+def _committee_notes_fill():
+    """"'Not on the General Court's list today' and 'No bills or sessions on
+    record' sit in the left half" (the person, 7 October 2026, F9). Each is a
+    heading and a paragraph over cards that fill the page, and the paragraph
+    was held to the 560px measure every source note keeps. Those two on the
+    committees index, and a committee page's own "not on the list" and "no
+    day on record" notes, are .src.fill, which app.css lets fill the width in
+    the region both stylesheets take. Drawn from build_committees' source and
+    from app.js in node."""
+    import inspect
+    import build_committees as BCM
+    src = inspect.getsource(BCM)
+    for head in ("<h2>No bills or sessions on record</h2>",
+                 "<h2 id=\"archived\">Not on the General Court&rsquo;s list today</h2>"):
+        at = src.index(head)
+        assert "'<p class=\"src fill\">" in src[at:at + 200], (
+            f"the note under {head} is held to the measure")
+    css = Path("app.css").read_text(encoding="utf-8")
+    assert ".src.fill{max-width:none}" in css and css.index(".src.fill{max-width:none}") \
+        < css.index("/* SHARED:END") and css.index(".src.fill{max-width:none}") \
+        > css.index(".src,.lead{max-width:var(--measure)}"), (
+            "app.css does not let a .src.fill note take its width, after the measure, in the "
+            "shared region")
+    got = _app_js('[scope.renderCommitteeHead({name:"House Old Committee", chamber:"H",'
+                  ' archived:{years:"1999-2004"}}),'
+                  ' scope.renderCommitteeSessions({sessions:[]})]',
+                  names=("renderCommitteeHead", "renderCommitteeSessions"))
+    if got is None:
+        return "ok", "the index's two notes fill; node is not here to draw a committee page"
+    head, sess = got
+    assert re.search(r'<p class="src fill">Not on the General Court&rsquo;s list of committees', head), (
+        "a committee page's \"not on the list\" note is held to the measure")
+    assert '<p class="src fill">No day of this committee is' in sess, (
+        "a committee page's \"no day on record\" note is held to the measure")
+    return "ok", ("the index's two section notes and a committee page's own fill the width "
+                  "they have")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

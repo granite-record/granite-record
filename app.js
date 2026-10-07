@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.147
+// GRANITE_VERSION: 2026-09-07.148
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -6091,7 +6091,7 @@ function renderCommitteeHead(c){
   return `<div class="phead">
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
-    ${c.archived?`<p class="src">Not on the General Court&rsquo;s list of committees today.
+    ${c.archived?`<p class="src fill">Not on the General Court&rsquo;s list of committees today.
       Its bills and sitting days on this record run ${esc(c.archived.years||"")}; the
       records do not say whether it was renamed, divided, merged or ended.</p>`:""}
     ${/* The names it carried before, so a reader who followed an older name
@@ -6133,7 +6133,8 @@ const cmteSessions=c=>(c.sessions||[])
 
 function renderCommitteeBills(c){
   const rows=cmteBills(c),t=pageTerm();
-  if(!rows.length)return `<p class="src">No bills were referred to this
+  // .fill on the notes that stand in for an empty pane: the width it has (F9).
+  if(!rows.length)return `<p class="src fill">No bills were referred to this
     committee in the ${esc(t)} term.</p>`;
   return billPane(rows,n=>`${n.toLocaleString()} bill${n===1?"":"s"} referred to
     this committee in ${esc(t)}.`);
@@ -6210,10 +6211,10 @@ function sessionHtml(s,si){
 
 function renderCommitteeSessions(c){
   const ss=cmteSessions(c),t=pageTerm();
-  if(!(c.sessions||[]).length)return `<p class="src">No day of this committee is
+  if(!(c.sessions||[]).length)return `<p class="src fill">No day of this committee is
     on record. Committees that no longer meet keep their page so the bills they
     handled still have somewhere to point.</p>`;
-  if(!ss.length)return `<p class="src">No day of this committee is on record in
+  if(!ss.length)return `<p class="src fill">No day of this committee is on record in
     the ${esc(t)} term.</p>`;
   return `<p class="src">${ss.length.toLocaleString()} day${ss.length===1?"":"s"}
       this committee met in ${esc(t)}, newest first. Each is the day's recording
