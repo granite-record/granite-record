@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.428
+# GRANITE_VERSION: 2026-09-04.429
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5342,11 +5342,30 @@ _DOCKET_SENATE_INTRODUCTION = [
     ("SB393", "Insurance", [
         "2000|2307|01/05/2000 09:45:06 AM|SB393|S|Introduced and Ref. Insurance; SJ Convening Day, Pg.12|01/05/2000 09:45:06 AM",
         "2000|2307|01/06/2000 04:12:07 PM|SB393|S|Hearning, Feb. 15, Room 103, SH, 10:40 a.m.; SC1, Pg.8|01/06/2000 04:12:07 PM"]),
+    # The review of 7 October 2026: Docket_db_1999-2000.txt 7125-7126 and
+    # 7434-7436 (SB 27, and LSR 0881's introduction filed under SB 27 among
+    # SB 26's rows), 7874-7877 (SB 69, a vacate over two rows) and 3807,
+    # 3809-3810 (HB 707, "Moved Vacate to").
+    ("SB27", "Banks", [
+        "1999|0858|01/07/1999 04:21:20 PM|SB27|S|Introduction and referring to Banks:  SJ 2, P 27|01/07/1999 04:21:20 PM",
+        "1999|0858|02/17/1999 01:50:06 PM|SB27|S|Hearing, 3/10/99, Room 103, LOB, 9:30 a.m.|02/17/1999 01:50:06 PM",
+        "1999|0881|01/07/1999 04:23:15 PM|SB27|S|Introduction and referring to Judiciary:  SJ 2, P 27|01/07/1999 04:23:15 PM",
+        "1999|0881|02/03/1999 03:37:40 PM|SB26|S|Hearing, 2/17/99, Room 102, LOB, 10:30 a.m.|02/03/1999 03:37:40 PM",
+        "1999|0881|03/03/1999 11:32:04 AM|SB26|S|Committee Report, Ought to Pass, March 4|03/03/1999 11:32:04 AM"]),
+    ("SB69", "Public Institutions, Health and Human Services", [
+        "1999|0924|01/28/1999 10:19:52 AM|SB69|S|Introduction and referring to Executive Departments and Administration;   SJ 3,  P 33|01/28/1999 10:19:52 AM",
+        "1999|0924|02/11/1999 11:15:50 AM|SB69|S|Sen. Cohen motion to Vacate from Executive Departments and Administration|02/11/1999 11:15:50 AM",
+        "1999|0924|02/11/1999 11:23:26 AM|SB69|S|to the Public Institutions, Health and Human Services Committee.  MA, VV.|02/11/1999 11:23:26 AM",
+        "1999|0924|02/25/1999 08:51:28 AM|SB69|S|Hearing, 3/30/99, Room 102, LOB, 1:45 p.m.|02/25/1999 08:51:28 AM"]),
+    ("HB707", "Judiciary", [
+        "1999|0473|06/29/1999 03:11:11 PM|HB707|S|Introduction and referring to Finance;  SJ 26, P 718.|06/29/1999 03:11:11 PM",
+        "1999|0473|07/01/1999 03:47:29 PM|HB707|S|Sen. Hollingworth Moved Vacate to Judiciary, MA, VV; SJ 742-743|07/01/1999 03:47:29 PM",
+        "1999|0473|08/18/1999 08:40:09 AM|HB707|S|Hearing, 9/8/99, Room 102, LOB, 10:30 a.m.|08/18/1999 08:40:09 AM"]),
 ]
 
 
 @check("build", "a Senate hearing of 1999-2006 names the committee the Senate's own words "
-                "introduced the bill to", needs=("docket_parser",))
+                "introduced the bill to, or vacated it to, and never another bill's", needs=("docket_parser",))
 def _senate_introduction_committee(D):
     """The Senate of 1999 wrote "Introduction and referring to Education" (615
     rows of the 1999-2000 docket), "Introducing and referred to", "Introduced
@@ -5354,7 +5373,14 @@ def _senate_introduction_committee(D):
     referral patterns read none of them, so 645 of the 998 Senate rows of the
     1999-2000 manifest named no committee and reached no committee's page.
     They are read as the bill's committee row reads them (referrals), the
-    date after the name dropped: "referring to Banks 1/28/99" is Banks."""
+    date after the name dropped: "referring to Banks 1/28/99" is Banks.
+
+    AND AS IT READS THEM IN FULL (the review of 7 October 2026). Read alone,
+    the introduction put six hearings under a committee the bill's own row
+    does not name: SB 27's three under Judiciary, from LSR 0881's
+    introduction of SB 26 filed under SB 27's number, and SB 69's and HB
+    707's under the committee the Senate had vacated them from. Only the
+    bill's own LSR's row, and the vacate after it, one row or two."""
     bad = []
     for bill, want, lines in _DOCKET_SENATE_INTRODUCTION:
         tmp = Path(tempfile.mkdtemp(prefix="gr-senate-intro-"))
@@ -5364,12 +5390,12 @@ def _senate_introduction_committee(D):
             procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
-        got = [p.committee for p in procs]
+        got = [p.committee for p in procs if p.bill == bill]
         if got != [want]:
             bad.append(f"{bill}'s Senate hearing is filed under {got!r}, not {want!r}")
     assert not bad, "\n".join(bad)
     return "ok", (f"{len(_DOCKET_SENATE_INTRODUCTION)} Senate hearings of 1999-2000 name the "
-                  "committee their introduction gave")
+                  "committee their introduction, or the vacate after it, gave")
 
 
 @check("data", "the 1999-2000 manifest's Senate rows name a committee, but for the bills whose "
@@ -5379,15 +5405,24 @@ def _senate_introduction_committee_on_disk():
     rows named no committee. What is left are bills the Senate's docket gives
     no introduction for, or gives one in words no reader of this project
     takes (the scratch notes of 7 October 2026 list them); a manifest built
-    before reads hundreds."""
+    before reads hundreds. And the six hearings the introduction alone put
+    under the wrong committee (_senate_introduction_committee) are their
+    own committee's."""
     f = Path("verification_manifest_1999-2000.csv")
     if not f.exists():
         return "skip", f"no {f.name} here"
     with f.open(encoding="utf-8", newline="") as fh:
         sen = [r for r in csv.DictReader(fh) if r["body"].upper() == "S"]
     none = sorted({r["bill"] for r in sen if not r["committee"]})
-    assert len(none) <= 14, (f"{len(none)} Senate bills of 1999-2000 have a manifest row with no "
+    assert len(none) <= 13, (f"{len(none)} Senate bills of 1999-2000 have a manifest row with no "
                              f"committee: {', '.join(none[:12])}")
+    want = {("SB27", "1999-03-10"): "Banks", ("SB27", "1999-03-17"): "Banks",
+            ("SB27", "1999-03-24"): "Banks", ("CACR16", "1999-02-17"): "Education",
+            ("SB69", "1999-03-30"): "Public Institutions, Health and Human Services",
+            ("HB707", "1999-09-08"): "Judiciary"}
+    got = {(r["bill"], r["sched_date"]): r["committee"] for r in sen
+           if (r["bill"], r["sched_date"]) in want}
+    assert got == want, f"{f.name} files {sorted(set(got.items()) - set(want.items()))}"
     return "ok", (f"{sum(1 for r in sen if not r['committee'])} of {len(sen)} Senate rows name no "
                   f"committee, on {len(none)} bills whose docket names none it can read")
 
