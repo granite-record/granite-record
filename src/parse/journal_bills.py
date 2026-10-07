@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.6
+# GRANITE_VERSION: 2026-09-30.7
 """
 The bills the House withdrew, read from the House Journal itself.
 
     python3 src/parse/journal_bills.py            # writes journal_bills.json
     python3 src/parse/journal_bills.py --check    # every introduction the journals print,
-                                        #   against Docket.txt, data/bills.json
-                                        #   and data/sponsors.json; writes nothing
+                                                  #   against Docket.txt, data/bills.json
+                                                  #   and data/sponsors.json; writes nothing
 
 No network. The standard library, journal_days.py for a sitting's heading and
 dateline, and text_sponsors.py to read a sponsor line in --check.
