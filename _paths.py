@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.2
+# GRANITE_VERSION: 2026-10-06.3
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -13,8 +13,10 @@ Where the code lives, so that every script and module is found by its bare name.
 THE FOLDERS. Code lives at the root (what people, workflows and schedulers run
 by name), under src/ (everything those call: src/README.md says which folder
 holds what and where a new file goes), in watchers/ (the General Court lane)
-and in tests/. CODE_DIRS lists them. A new folder under src/ goes on that list
-in the same commit, and preflight fails until it does.
+and in tests/. SRC_DIRS lists the folders under src/; CODE_DIRS (every code
+folder) and SCRIPT_DIRS (the root and src/, which the guards that read every
+script read) are made from it. A new folder under src/ goes on SRC_DIRS in
+the same commit, and preflight fails until it does.
 
 NAMES ARE UNIQUE ACROSS THEM, and every import and every launch is by bare
 name. So moving a file from one code folder to another changes no import, no
@@ -66,13 +68,16 @@ ROOT = Path(__file__).resolve().parent
 # Every folder that holds code, relative to the root, which is "". Order does
 # not decide anything -- names are unique -- but it is the order a person
 # reads them in: what is run by name, then src/ as src/README.md lists it,
-# then the lane and the tests.
+# then the lane and the tests. A new folder under src/ goes on SRC_DIRS, and
+# CODE_DIRS and SCRIPT_DIRS follow; a folder put on CODE_DIRS alone would be
+# importable and yet unread by every guard that reads SCRIPT_DIRS.
 SRC_DIRS = (
     "src/fetch/gc_web",
     "src/fetch/gc_db",
     "src/fetch/youtube",
     "src/fetch/other",
     "src/parse",
+    "src/towns",
     "src/hearings",
     "src/pages",
     "src/checks",

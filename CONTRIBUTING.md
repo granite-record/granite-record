@@ -143,11 +143,12 @@ this. The short one:
   `gc_web/` for gc.nh.gov (it calls `refusal.check()` straight after its
   arguments), `gc_db/` for the General Court's SQL host, `youtube/`, and
   `other/` for everyone else. The folder is decided by whose server it asks.
-- **`src/parse/`** if it decides a fact from what is on disk, **`src/hearings/`**
-  if it is about a proceeding or its recording, **`src/pages/`** if it writes
-  what a reader gets in `site/`, **`src/checks/`** if it only looks and
-  reports, and **`src/lib/`** only for a module several folders import that
-  belongs to none of them.
+- **`src/parse/`** if it decides a fact from what is on disk, **`src/towns/`**
+  if that fact is about a town, a district, a county or their officials,
+  **`src/hearings/`** if it is about a proceeding or its recording,
+  **`src/pages/`** if it writes what a reader gets in `site/`,
+  **`src/checks/`** if it only looks and reports, and **`src/lib/`** only for
+  a module several folders import that belongs to none of them.
 - **`functions/api/`** for a request handler on graniterecord.org, and
   **`workers/<name>/`** for a Cloudflare Worker deployed on its own.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.396
+# GRANITE_VERSION: 2026-09-04.397
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -862,9 +862,10 @@ def _code_name_clashes(root=None):
 
 def _code_dirs_unlisted(root=None):
     """Folders under src/ that hold a file other than a README and are not on
-    _paths.CODE_DIRS: what is in one is on nobody's import path."""
+    _paths.SRC_DIRS: what is in one is on nobody's import path, and no guard
+    that reads every script (SCRIPT_DIRS) reads it."""
     base = Path(root).resolve() if root is not None else _paths.ROOT
-    listed = {(base / d).resolve() for d in _paths.CODE_DIRS}
+    listed = {(base / d).resolve() for d in _paths.SRC_DIRS}
     src = base / "src"
     if not src.is_dir():
         return []
@@ -873,6 +874,15 @@ def _code_dirs_unlisted(root=None):
             if d.resolve() not in listed
             and any(f.is_file() and f.name != "README.md" and f.suffix != ".pyc"
                     for f in d.iterdir())]
+
+
+def _src_dirs_off_list(code_dirs, src_dirs):
+    """The folders under src/ on CODE_DIRS that are not on SRC_DIRS. Such a
+    folder is on the import path and yet unread by the refusal, hand-made-file
+    and merge-not-replace guards, which read SCRIPT_DIRS, the root and
+    SRC_DIRS: put a fetcher there and nothing asks whether it calls
+    refusal.check()."""
+    return [d for d in code_dirs if d.startswith("src/") and d not in src_dirs]
 
 
 def _plant(root, files):
@@ -885,14 +895,16 @@ def _plant(root, files):
 
 
 @check("files", "a bare name finds one file: no two code files share a name, and every "
-                "folder under src/ that holds code is on _paths.CODE_DIRS")
+                "folder under src/ that holds code is on _paths.SRC_DIRS")
 def _code_names_unique():
     """Every import and every launch here is by bare name, and _paths puts
     every code folder on the path, so two files of one name would be one
     import shadowing the other in whichever order the folders happen to be
     read -- and _paths.script refuses to choose. A README.md in each folder
     is the one name allowed to repeat. A folder under src/ that is not on
-    _paths.CODE_DIRS is on nobody's path: its files would not import."""
+    _paths.SRC_DIRS is on nobody's path, and its files would not import; one
+    put on CODE_DIRS by hand rather than through SRC_DIRS would import and be
+    read by none of the guards that read SCRIPT_DIRS."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-names-"))
     try:
         _plant(tmp, {"_paths.py": "", "a.py": "", "src/parse/a.py": "", "src/parse/README.md": "",
@@ -903,16 +915,22 @@ def _code_names_unique():
         assert got == {"a.py": ["a.py", "src/parse/a.py"], "c.py": ["watchers/c.py", "tests/c.py"]}, \
             f"the reader of names found {got} in a tree made to share two"
         assert _code_dirs_unlisted(tmp) == ["src/extra"], _code_dirs_unlisted(tmp)
+        off = _src_dirs_off_list(("", "src/parse", "src/extra", "watchers"), ("src/parse",))
+        assert off == ["src/extra"], f"the reader of the lists found {off}"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     clashes = _code_name_clashes()
     assert not clashes, ("these names are used by more than one code file, so a bare name "
                          "finds two: " + "; ".join(f"{n} ({', '.join(ps)})"
                                                     for n, ps in clashes.items()))
+    off = _src_dirs_off_list(_paths.CODE_DIRS, _paths.SRC_DIRS)
+    assert not off, ("these folders under src/ are on _paths.CODE_DIRS and not SRC_DIRS, so "
+                     "they import and no guard that reads every script reads them: "
+                     + ", ".join(off) + ". Put each on SRC_DIRS, which CODE_DIRS is made from.")
     unlisted = _code_dirs_unlisted()
     assert not unlisted, ("these folders under src/ hold code and are not on "
-                          "_paths.CODE_DIRS, so nothing can import what is in them: "
-                          + ", ".join(unlisted))
+                          "_paths.SRC_DIRS, so nothing can import what is in them: "
+                          + ", ".join(unlisted) + ". Add each to SRC_DIRS.")
     n = len(_paths.code_files("*.py"))
     assert n >= 160, f"only {n} scripts were read in the code folders; there were 165 on 6 October"
     return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"

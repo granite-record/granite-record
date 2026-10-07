@@ -14,6 +14,7 @@ src/
     youtube/      YouTube
     other/        anyone else
   parse/          decides the record from what is already on disk
+  towns/          towns, districts, counties and their officials
   hearings/       proceedings, their recordings, timestamps and the scorer
   pages/          writes what a reader gets in site/
   checks/         looks at something and reports
@@ -27,10 +28,12 @@ obsolete/         retired code, kept for its reasoning
 
 `fetch/` asks other servers (one folder per whose server, because that
 decides what can go wrong); `parse/` decides the record from what is on
-disk; `hearings/` finds and times proceedings in their recordings; `pages/`
-writes what a reader gets in `site/`; `checks/` looks and reports; `lib/`
-holds the few modules every stage shares. Each folder's README says what is
-in it, what runs it, and what does not belong there.
+disk; `towns/` builds the reference files for the places members are
+elected from and the officials who govern them; `hearings/` finds and times
+proceedings in their recordings; `pages/` writes what a reader gets in
+`site/`; `checks/` looks and reports; `lib/` holds the few modules every
+stage shares. Each folder's README says what is in it, what runs it, and
+what does not belong there.
 
 **The move is in stages.** Stage 0 made the code able to live here and moved
 nothing, so for now most of these folders hold only their README and the
@@ -60,7 +63,8 @@ name it -- a workflow, Task Scheduler, a scheduled task, `publish.bat`, the
 session's first commands -- or the person chose it. Everything else goes here:
 
 - **A data source.** Its fetcher goes in `fetch/<whose server>/` and saves raw
-  files; its reader goes in `parse/`. It gets one `Step()` in
+  files; its reader goes in `parse/`, or in `towns/` if it is about a town,
+  a district or a county. It gets one `Step()` in
   `build_all.plan()`, and a `cloud_kit.json` entry if the night needs what it
   saved. If it asks gc.nh.gov it calls `refusal.check()` straight after its
   arguments.
@@ -77,7 +81,9 @@ session's first commands -- or the person chose it. Everything else goes here:
 Copy the bootstrap from any runnable script, give the file a name no other
 code file has, and give it a version stamp and a line in `versions.json` under
 its bare name, as the root's scripts have. A new folder under `src/` goes on
-`_paths.CODE_DIRS` in the same commit.
+`_paths.SRC_DIRS` in the same commit: `CODE_DIRS`, which puts it on the
+import path, and `SCRIPT_DIRS`, which the guards that read every script
+read, are made from it.
 
 ## What preflight holds this to
 
