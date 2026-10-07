@@ -22,15 +22,19 @@ Three things follow, and they are not negotiable:
    one-liner that lists every fetch process on the machine. Look before you
    start anything.
 2. **A refusal ends the run.** `refusal.py` records one in
-   `archive/refused.json`. A fetcher that consults it stops for 24 hours and
-   then resumes on its own; `build_all.py` tests only whether the file exists,
-   so its General Court steps stay skipped for as long as it is on disk.
-   Clearing it (`python3 refusal.py --clear`) is the maintainer's decision,
-   after `netcheck.py` has said what kind of refusal it was.
-3. **Every fetcher that asks the General Court consults it.** All 17
-   `fetch_*.py` scripts carrying a literal `gc.nh.gov` URL call
-   `refusal.check()` straight after parsing their arguments, and `preflight`
-   fails if one stops:
+   `archive/refused.json`. A fetch started by hand that consults it stops for
+   24 hours and then resumes on its own; the lane, `build_all.py`'s General
+   Court steps and the nightly test only whether a refusal is on file, so they
+   stay stopped for as long as it is. Clearing it --
+   `python3 refusal.py --clear`, or `python3 cloud.py clear-refusal` for the
+   copy the nightly keeps in its bucket -- is the maintainer's decision, after
+   `python3 netcheck.py` has said what kind of refusal it was.
+3. **Every fetcher that asks the General Court consults it.** Every script
+   that carries a literal `gc.nh.gov` URL and makes a request -- the fetchers
+   among them live in `src/fetch/gc_web/` -- calls `refusal.check()` straight
+   after parsing its arguments, but `netcheck.py`, which is what diagnoses a
+   refusal; and `preflight` fails if one stops. Its refusal check reads every
+   script, so it is the list:
 
    ```bash
    python3 preflight.py --code
@@ -38,8 +42,9 @@ Three things follow, and they are not negotiable:
 
    Ten of them did not until 18 September, and any of the ten, started by
    hand, would have walked straight through a standing refusal.
-   `fetch_town_clerks.py` is deliberately outside the set: it asks
-   app.sos.nh.gov, the Secretary of State, and names gc.nh.gov only to say so.
+   `fetch_town_clerks.py` is deliberately outside the set, in
+   `src/fetch/other/`: it asks app.sos.nh.gov, the Secretary of State, and
+   names gc.nh.gov only to say so.
 
    And each records a refusal it meets. One refusal, a second dropped
    connection, or the firewall's block page served as a 200 -- as
@@ -49,11 +54,11 @@ Three things follow, and they are not negotiable:
    `preflight` fails a script that calls `refusal.check()` and never
    `refusal.note()`.
 
-The eight `fetch_*_db.py` scripts are the exception worth knowing: they read
-the SQL host the General Court publishes credentials for at gc.nh.gov/downloads,
-not the web server that did the blocking. Still ask — it is still somebody
-else's server — but a refusal there is a different problem with a different
-cause.
+The `fetch_*_db.py` scripts in `src/fetch/gc_db/` are the exception worth
+knowing: they read the SQL host the General Court publishes credentials for at
+gc.nh.gov/downloads, not the web server that did the blocking. Still ask — it
+is still somebody else's server — but a refusal there is a different problem
+with a different cause.
 
 ## Branches: work goes to `dev`, `main` is what is live
 
@@ -62,9 +67,8 @@ from it, so `main` holds exactly what graniterecord.org runs, and a commit that
 reaches it goes live with the next night's build. Work happens on `dev`: open
 pull requests against `dev`, not `main`.
 
-A release is `dev` merged into `main` once the whole of it has been checked --
-`preflight.py`, a full `build_all.py --local`, `check_site.py`, and
-`probe_alignment.py` wherever a timestamp moved -- and the night after it lands
+A release is `dev` merged into `main` once the whole of it has been proven,
+as *How a change is proven* below says, and the night after it lands
 publishes it. Releases are batched on purpose: fewer, complete updates rather
 than one per fix.
 
@@ -77,11 +81,12 @@ pip install numpy
 python3 preflight.py --code
 ```
 
-On a fresh clone that prints `114 passed, 0 failed, 8 skipped`. The eight read
-the real built `site/`, which a clone does not have. That is the expected first
-run.
+On a fresh clone the summary ends `0 failed`, with a few skipped: those read
+the real built `site/` or the record, which a clone does not have, and say so
+one by one. That is the expected first run. Take the counts from the summary;
+they move as checks are added.
 
-A clone is about 125 MB and has the code but not the live record —
+A clone has the code but not the live record —
 `README.md` explains what is tracked and what is not, and why.
 
 **Optional dependencies are imported lazily**, inside the functions that need
@@ -90,12 +95,12 @@ project:
 
 | package | wanted by |
 |---|---|
-| `numpy` | `topic_model.py` (the only top-level third-party import) |
-| `openpyxl` | `build_manifest.py`, `ground_truth.py`, `probe_alignment.py` |
+| `numpy` | `src/parse/topic_model.py` (the only top-level third-party import) |
+| `openpyxl` | `src/hearings/build_manifest.py`, `src/hearings/ground_truth.py`, `src/hearings/probe_alignment.py` |
 | `pdfplumber` | calendar and PDF text extraction |
 | `pypdf` | PDF page handling |
-| `PIL` (Pillow) | `build_brand.py` (drawing your own icons and link-card images; the project's are not in the repository) |
-| `faster_whisper` | `transcribe_and_align.py` (transcribing a recording that has no captions) |
+| `PIL` (Pillow) | `src/pages/build_brand.py` (drawing your own icons and link-card images; the project's are not in the repository) |
+| `faster_whisper` | `src/fetch/youtube/transcribe_and_align.py` (transcribing a recording that has no captions) |
 | `boto3` | `cloud.py` (the nightly's kit and the backup in the project's R2 bucket; `--local-bucket` needs nothing) |
 
 Please keep them lazy. Tidying them to the top of the file turns seven optional
@@ -103,9 +108,10 @@ packages into seven hard requirements.
 
 ## How work is done here
 
-**Run `preflight.py` before and after.** It is 161 checks, 122 of which need no
-data on disk, and it builds the whole site on a fixture. It is the test suite.
-Trust it over anything written in prose, including this file.
+**Run `preflight.py` before and after.** It is several hundred checks --
+`--code` runs the ones that need no data on disk -- and it builds the whole
+site on a fixture. It is the test suite. Trust it over anything written in
+prose, including this file.
 
 **Bump the version stamp in the same edit.** Every script carries
 `# GRANITE_VERSION: YYYY-MM-DD.N` and `versions.json` lists what each should
@@ -131,17 +137,50 @@ ships before that has been run and the median has not regressed.**
 **Silence is not success.** A step that can produce nothing and still exit zero
 needs a guard that says so. This has bitten the project at least five times.
 
+## How a change is proven
+
+Three steps, each catching what the one before cannot.
+
+1. **`python3 preflight.py`**, before and after. `--code` alone needs no data
+   on disk and takes a few minutes; with no flag it adds the checks that read
+   the record and the built site. The summary must end `0 failed`.
+2. **A date-fixed build, compared file by file.** The day a build is made is
+   in every page, so two builds made on different days differ everywhere.
+   `GRANITE_BUILD_DATE=2026-10-02` (or a moment, `2026-10-02T01:22:13`) states
+   the day for every builder, and `build_all.py` records it in
+   `site/build.json`. For a change meant to leave the site alone, build before
+   and after with the same date, keeping the first build's `site/` aside, and
+   compare a sha256 of every file; build the baseline twice first, under
+   different `PYTHONHASHSEED` values, to prove the output is deterministic
+   rather than assume it. For a change meant to move the site, the same diff
+   says exactly which files moved. Then `python3 src/checks/check_site.py` on the result,
+   and `python3 src/hearings/probe_alignment.py --truth` wherever a timestamp
+   moved. `ARCHITECTURE.md` (*Comparing two builds*) has the detail.
+3. **A dry run of the nightly on `dev`.** In GitHub's Actions tab, "nightly",
+   "Run workflow", choose `dev` and leave "Dry run" ticked: the same night
+   GitHub runs on `main`, on an empty machine with the kit from R2, built and
+   checked by the same gates, and nothing goes to production. "Take the
+   day's data" is unticked by default, so it builds from the kit and asks the
+   General Court nothing; tick it only when the change is to the fetch. **Never start one while a night is waiting for approval:**
+   the dry run's verdict becomes the newest, and production refuses to deploy
+   any night but the newest, so the waiting night's deploy is refused.
+
+The first runs on a bare clone. The second needs the record on disk and the
+third the repository's own secrets, so for a pull request from outside they
+are the maintainer's to run; say in the request what you expect the second to
+show.
+
 ## Where new code goes
 
-The code is moving out of the root into `src/`, in stages; `src/README.md`
-has the tree, says what each folder is for, and is the longer version of
-this. The short one:
+The code moved out of the root into `src/` in stages that ended on
+7 October 2026; `src/README.md` has the tree, says what each folder is for,
+and is the longer version of this. The short one:
 
 - **The root** holds what something outside the repository runs by name -- a
   workflow, Task Scheduler, `publish.bat`, the session's first commands
-  (`inventory`, `preflight`, `handoff`) -- and the files the person chose to
-  keep there, with the config, the docs and all the data. A new script goes
-  at the root only for one of those reasons.
+  (`inventory`, `preflight`, `handoff`) -- and the few the maintainer chose to
+  keep there, with the front end, the config, the docs and all the data. A
+  new script goes at the root only for one of those reasons.
 - **`src/fetch/<whose server>/`** for anything that asks another server:
   `gc_web/` for gc.nh.gov (it calls `refusal.check()` straight after its
   arguments, and `refusal.note()` on a refusal it meets), `gc_db/` for the
@@ -182,10 +221,10 @@ SQL host outside `gc_db/`, yt-dlp outside `youtube/`, or a request from any
 folder under `src/` outside `fetch/` (but `checks/` asking graniterecord.org)
 fails it.
 
-## Five files no generator may write
+## Files no generator may write
 
 These are a person's work, and `preflight` fails if any `build_*` or `fetch_*`
-script opens one for writing:
+script opens one for writing. Among them:
 
 | file | what it is |
 |---|---|
@@ -194,17 +233,22 @@ script opens one for writing:
 | `bill_notes.json` | what a recurring bill number means |
 | `officials.json` | offices filled by hand from official sources |
 | `member_corrections.json` | a name or party a generator got wrong, with the evidence |
+| `docket_corrections.json` | dates the docket states wrongly and rows it files under the wrong bill, with the evidence |
+| `place_corrections.json` | values the Secretary of State's clerk-and-polling list states wrongly, with the second source |
+| `ballot_results.json` | the statewide vote on each constitutional amendment, copied by hand from the source each row names |
 
 `preflight.py`'s `HANDMADE` is the authoritative list. Read it there rather
 than here — the same list in `CLAUDE.md` spent a day saying four after the
-fifth file was added, because it was a copy.
+fifth file was added, because it was a copy, and this table said five while
+the list held nine.
 
 ## What not to do
 
 - **Do not run `publish`.** It deploys to the live site.
 - **Do not edit `STATE.md`.** It is generated by `handoff.py`.
-- **Do not add anything under `functions/`.** One endpoint is a deliberate
-  exception on a site that is static on purpose; two is a different project.
+- **Do not add an endpoint under `functions/` without asking first.** The one
+  there is a deliberate exception on a site that is static on purpose, and
+  each one more is a server to keep up.
 - **Do not reformat a file you are not otherwise changing.** A reformat hides
   the real diff, and this repository is read by people trying to work out why
   something is the way it is.
