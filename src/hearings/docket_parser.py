@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -1134,6 +1134,20 @@ def build_referral_timeline(rows):
             eff = _parse_date(intro.group("date"))
             timeline[(r["bill"], r["body"])].append(
                 (eff, normalize_committee(m_ref.group("committee")), "introduced"))
+        # THE SENATE OF 1999-2006'S INTRODUCTION, IN ITS OWN WORDS (7 October
+        # 2026). "Introduction and referring to Education;  SJ 2, P 29" (SB 49
+        # of 1999) is how the Senate of 1999 wrote 615 of them, and
+        # "Introducing and referred to", "Introduction and referral to",
+        # "Introduced And Ref. to", "Introduced and Ref. Insurance" and
+        # "Introduced and Refered to" the rest; neither pattern above reads
+        # the verb, so 645 of the 998 Senate rows of the 1999-2000 manifest
+        # named no committee and reached no committee's page. Read as the
+        # bill's committee row reads them (_senate_introduction), dated by
+        # the row as an undated introduction is.
+        elif not intro and (named := _senate_introduction(r)):
+            eff = _parse_date((r.get("created") or "").split(" ")[0]) or date.min
+            timeline[(r["bill"], r["body"])].append(
+                (eff, normalize_committee(named), "introduced"))
         # THE SECOND REFERRAL, since 13 September. Only introductions and
         # vacates were read, so "Referred to Finance 03/13/2025" was not on the
         # timeline and a Finance executive session was filed under the policy
@@ -1167,6 +1181,25 @@ def build_referral_timeline(rows):
         # date, and among themselves keep the docket's row order.
         timeline[b].sort(key=lambda t: (t[0], 0 if t[2] == "introduced" else 1))
     return timeline
+
+
+def _senate_introduction(r):
+    """The committee a Senate introduction of 1999-2006 names, read as
+    referrals reads the bill's committee row from it (referrals.INTRO,
+    referrals.committee), where the patterns build_referral_timeline tries
+    first do not read it; else "". The Senate's, and of those years, because
+    that is where the clerk's words are the era's: a House row or another
+    term's this does not read is the reach of a separate change."""
+    head = (r.get("lsr") or "").split("-")[0]
+    if (r.get("body") or "") != "S" or not head.isdigit() \
+            or not RESCHEDULED_YEARS[0] <= int(head) <= RESCHEDULED_YEARS[1]:
+        return ""
+    try:
+        import referrals
+    except ImportError:
+        return ""
+    desc = r.get("desc") or ""
+    return referrals.committee(desc) if referrals.INTRO.match(desc) else ""
 
 
 def committee_on(timeline, bill, when, body):

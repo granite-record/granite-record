@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.424
+# GRANITE_VERSION: 2026-09-04.425
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5239,7 +5239,7 @@ def _manifest_lower_case_chamber(BM):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     want = [("HB506", "H", "1999-03-02", "Elec Law"),
-            ("SB31", "S", "1999-02-12", ""), ("SB31", "S", "1999-04-09", "")]
+            ("SB31", "S", "1999-02-12", "Ways and Means"), ("SB31", "S", "1999-04-09", "Ways and Means")]
     assert got == want, f"the manifest holds {got!r}, not {want!r}"
     return "ok", "SB 31's hearing of 9 April 1999 and HB 506's of 2 March 1999 are in the manifest"
 
@@ -5259,6 +5259,78 @@ def _manifest_lower_case_chamber_on_disk():
             ("SB30", "S", "1999-06-23"), ("HB346", "S", "1999-11-30")}
     assert want <= have, f"{f.name} has no row for {sorted(want - have)}"
     return "ok", "SB 31, HB 506, SB 30 and HB 346 have their meetings in the 1999-2000 manifest"
+
+
+# Real rows: Docket_db_1999-2000.txt 8644-8645 (SB 49), 2044-2045 (SB 12),
+# 8137-8138 (SB 48), 16092-16093 (HB 1471 in the Senate), 12195-12196 (SB 79)
+# and 15318-15319 (SB 393, "Hearning" read by SENATE_SCHED_RE's kind).
+_DOCKET_SENATE_INTRODUCTION = [
+    ("SB49", "Education", [
+        "1999|1007|01/07/1999 03:58:12 PM|SB49|S|Introduction and referring to Education;  SJ 2, P 29|01/07/1999 03:58:12 PM",
+        "1999|1007|01/28/1999 03:58:48 PM|SB49|S|Hearing, 2/3/99, Room 105-A, SH, 8:30 a.m.|01/28/1999 03:58:48 PM"]),
+    ("SB12", "Public Affairs", [
+        "1999|0253|01/07/1999 09:45:37 AM|SB12|S|Introducing and referred to Public Affairs; SJ 2, P 26|01/07/1999 09:45:37 AM",
+        "1999|0253|01/28/1999 02:51:58 PM|SB12|S|Hearing, Feb. 17, 1:00 p.m., Room 104, LOB|01/28/1999 02:51:58 PM"]),
+    ("SB48", "Education", [
+        "1999|0948|01/07/1999 03:54:54 PM|SB48|S|Introduction and referred to Education; SJ 2, P 29|01/07/1999 03:54:54 PM",
+        "1999|0948|01/28/1999 03:55:24 PM|SB48|S|Hearing, 2/4/99, Room 105-A, SH, 8:30 a.m.|01/28/1999 03:55:24 PM"]),
+    ("HB1471", "Capital Budget", [
+        "2000|2397|02/03/2000 12:48:47 PM|HB1471|S|Introduced And Ref. to Capital Budget; SJ 2, Pg.86|02/03/2000 12:48:47 PM",
+        "2000|2397|03/01/2000 02:22:26 PM|HB1471|S|Hearing March 10, Room 103, SH, 1:00 p.m.; SC14, Pg.3|03/01/2000 02:22:26 PM"]),
+    ("SB79", "Banks", [
+        "2000|0923|01/28/1999 10:39:54 AM|SB79|S|Introduction and referring to Banks 1/28/99;  SJ 3, P 34|01/28/1999 10:39:54 AM",
+        "2000|0923|03/05/1999 09:33:07 AM|SB79|S|Hearing, 3/17/99, Room 103, LOB, 9:00 a.m.|03/05/1999 09:33:07 AM"]),
+    ("SB393", "Insurance", [
+        "2000|2307|01/05/2000 09:45:06 AM|SB393|S|Introduced and Ref. Insurance; SJ Convening Day, Pg.12|01/05/2000 09:45:06 AM",
+        "2000|2307|01/06/2000 04:12:07 PM|SB393|S|Hearning, Feb. 15, Room 103, SH, 10:40 a.m.; SC1, Pg.8|01/06/2000 04:12:07 PM"]),
+]
+
+
+@check("build", "a Senate hearing of 1999-2006 names the committee the Senate's own words "
+                "introduced the bill to", needs=("docket_parser",))
+def _senate_introduction_committee(D):
+    """The Senate of 1999 wrote "Introduction and referring to Education" (615
+    rows of the 1999-2000 docket), "Introducing and referred to", "Introduced
+    And Ref. to", "Introduced and Ref. Insurance", and docket_parser's
+    referral patterns read none of them, so 645 of the 998 Senate rows of the
+    1999-2000 manifest named no committee and reached no committee's page.
+    They are read as the bill's committee row reads them (referrals), the
+    date after the name dropped: "referring to Banks 1/28/99" is Banks."""
+    bad = []
+    for bill, want, lines in _DOCKET_SENATE_INTRODUCTION:
+        tmp = Path(tempfile.mkdtemp(prefix="gr-senate-intro-"))
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = D.parse_rows(str(tmp / "Docket.txt"))
+            procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        got = [p.committee for p in procs]
+        if got != [want]:
+            bad.append(f"{bill}'s Senate hearing is filed under {got!r}, not {want!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_SENATE_INTRODUCTION)} Senate hearings of 1999-2000 name the "
+                  "committee their introduction gave")
+
+
+@check("data", "the 1999-2000 manifest's Senate rows name a committee, but for the bills whose "
+               "docket names none")
+def _senate_introduction_committee_on_disk():
+    """_senate_introduction_committee, in the file on disk: 645 of 998 Senate
+    rows named no committee. What is left are bills the Senate's docket gives
+    no introduction for, or gives one in words no reader of this project
+    takes (the scratch notes of 7 October 2026 list them); a manifest built
+    before reads hundreds."""
+    f = Path("verification_manifest_1999-2000.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        sen = [r for r in csv.DictReader(fh) if r["body"].upper() == "S"]
+    none = sorted({r["bill"] for r in sen if not r["committee"]})
+    assert len(none) <= 14, (f"{len(none)} Senate bills of 1999-2000 have a manifest row with no "
+                             f"committee: {', '.join(none[:12])}")
+    return "ok", (f"{sum(1 for r in sen if not r['committee'])} of {len(sen)} Senate rows name no "
+                  f"committee, on {len(none)} bills whose docket names none it can read")
 
 
 # Real rows: Docket_db_1999-2000.txt 2716-2717 (SB 39 of 1999) and 9481-9482
