@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Fetch captions for every recording that has none, busiest first.
 
-    python3 fetch_captions.py --floor-first        # the 95 floor sessions first
-    python3 fetch_captions.py --limit 4            # try a few
-    python3 fetch_captions.py --list missing_captions.txt
+    python3 src/fetch/youtube/fetch_captions.py --floor-first        # the 95 floor sessions first
+    python3 src/fetch/youtube/fetch_captions.py --limit 4            # try a few
+    python3 src/fetch/youtube/fetch_captions.py --list missing_captions.txt
 
 Calls transcribe_and_align.py once per video. It does the work; this decides
 the order, skips what is already there, keeps going when one fails, and stops

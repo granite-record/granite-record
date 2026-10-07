@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Transcribe one hearing video and work out where each docketed bill sits in it.
 
@@ -23,7 +23,7 @@ Setup (one time):
     ffmpeg must be on PATH -- https://ffmpeg.org/download.html
 
 Run:
-    python3 transcribe_and_align.py --video VIDEOID --manifest verification_manifest.csv
+    python3 src/fetch/youtube/transcribe_and_align.py --video VIDEOID --manifest verification_manifest.csv
 
 Each stage caches to disk, so rerunning only redoes what is missing. Alignment
 is cheap to re-run once the transcript exists -- use --realign to skip straight

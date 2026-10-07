@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 Captions for the recordings the proceedings table has never heard of.
 
-    python3 fetch_archive_captions.py --check          # what is missing, no network
-    python3 fetch_archive_captions.py --limit 50
-    python3 fetch_archive_captions.py --year 2024
+    python3 src/fetch/youtube/fetch_archive_captions.py --check          # what is missing, no network
+    python3 src/fetch/youtube/fetch_archive_captions.py --limit 50
+    python3 src/fetch/youtube/fetch_archive_captions.py --year 2024
 
 Writes work/<video_id>/captions.en.json3, the same layout everything else
 already reads.

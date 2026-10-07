@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Align every video the manifest references, skipping those already done.
 
-    python3 align_all.py --dry-run          # what would run, and roughly how long
-    python3 align_all.py --chamber S        # Senate only
-    python3 align_all.py                    # everything outstanding
+    python3 src/fetch/youtube/align_all.py --dry-run          # what would run, and roughly how long
+    python3 src/fetch/youtube/align_all.py --chamber S        # Senate only
+    python3 src/fetch/youtube/align_all.py                    # everything outstanding
 
 Alignment is per video and each one is independent, so this is a loop rather
 than anything clever. What it adds over a batch file is knowing which videos
