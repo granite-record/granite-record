@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.151
+# GRANITE_VERSION: 2026-09-04.152
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2287,13 +2287,16 @@ function townRow(t){
   // A town without wards is a link straight to its page. A city cannot be:
   // there is no town/concord.html, only concord-ward-1 through 10. So it
   // opens its wards, one chip each, and the chip is the link.
+  // A city opened is one block with its wards, so the list's columns
+  // (the Towns tab's whole list) never put the wards at the head of the next.
   if(t.wards.length>1)
-    return `<button type="button" class="lmrow${picked===t.town?" sel":""}"
+    return (picked===t.town?`<div class="lmgrp">`:"")
+      + `<button type="button" class="lmrow${picked===t.town?" sel":""}"
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${t.wards.length} wards</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
           `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
-            >Ward ${esc(w)}</a>`).join("") + `</div>` : "");
+            >Ward ${esc(w)}</a>`).join("") + `</div></div>` : "");
   return `<a class="lmrow" href="town/${esc(t.slug)}.html"
     ><b>${esc(t.town)}</b></a>`;
 }
@@ -2335,6 +2338,10 @@ function render(){
   // Python string, where a backslash belongs to whichever one reads it
   // first. Python read one, dropped it, and left the JavaScript with an
   // unterminated string and the whole page with no script.
+  // THE WHOLE LIST, WHILE NOTHING IS TYPED, is the Towns tab's content (the
+  // look of 7 October 2026): every town A to Z, in columns down the page, not
+  // a 260px window over six of them. Typed, it is a ranked answer, one column.
+  out.classList.toggle("all",!n&&!mem.length);
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
@@ -3299,9 +3306,13 @@ the House does.</p>
     # heading; with it the strip shows, a panel's id is its address
     # (/legislators#legislators), and Back leaves the page.
     from build_town_pages import TABS_JS as TOWN_TABS_JS
+    # THE LEAD IS THE PAGE'S, AND THE INSTRUCTION IS THE TOWNS TAB'S (the look
+    # of 7 October 2026): "Type a town ... or a name" sat over both tabs and
+    # described only the box in the first, so it moved into that panel, over
+    # the box it is about.
     leg_body = f"""<h1>Legislators</h1>
-<p class="lead">{len(legs)} sitting members. Type a town to see who represents
-it, or a name, county, party or committee to find a member.</p>
+<p class="lead">{len(legs)} sitting members of the New Hampshire House and
+Senate.</p>
 <div class="twntabs" role="tablist" aria-label="Towns and legislators" hidden>
 <button type="button" role="tab" id="tab-towns" data-pane="towns"
   aria-controls="towns" aria-selected="true" tabindex="0">Towns</button>
@@ -3310,6 +3321,8 @@ it, or a name, county, party or committee to find a member.</p>
 </div>
 <div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">
 <h2 class="twnph">Towns</h2>
+<p class="src fill">Type a town to see who represents it, or a name, county,
+party or committee to find a member.</p>
 <div class="lfind">
   <label for="lq" class="sr">Your town, or a legislator&rsquo;s name</label>
   <input id="lq" type="search" autocomplete="off"

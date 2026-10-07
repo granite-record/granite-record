@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.432
+# GRANITE_VERSION: 2026-09-04.433
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43855,7 +43855,23 @@ def _legislators_page_tabs():
     assert tabs_js in page and page.index(tabs_js) > b, (
         "the town pages' switching script is not after the panels")
     assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
+    # THE INSTRUCTION IS THE TOWNS TAB'S (the look of 7 October 2026): "Type a
+    # town ... or a name" describes the box, and it sat over both tabs.
+    lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
+    assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
+        "the finder's instruction is not in the Towns panel, over its box")
+    # The whole list of towns is the tab's content while nothing is typed: the
+    # finder marks it .all, and the panel's rules lift the 260px window.
+    assert 'out.classList.toggle("all"' in page, "the Towns list is never marked as the whole list"
     css = (site / "style.css").read_text(encoding="utf-8")
+    for rule in (":where(body.pg) #towns .lmatch{max-height:none;overflow:visible}",
+                 ":where(body.pg) #towns .lmatch.all{columns:"):
+        assert rule in css, f"style.css has no {rule}: the Towns tab is a window over six towns"
+    # And the roster's three arrangements are a view switch, not a second row
+    # of underlined tabs under the page's own.
+    assert re.search(r"\.rtabs \[role=tab\]\{[^}]*border:1px solid var\(--edge\)", css) \
+        and re.search(r"\.rtabs \[role=tab\]\[aria-selected=true\]\{[^}]*background:var\(--pine\)",
+                      css), "By last name / By county / By seat is drawn as a second tab strip"
     for rule in (".twntabs{display:flex", ".twntabs[hidden]{display:none}",
                  ".twnpane[hidden]{display:none}",
                  ".twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute"):

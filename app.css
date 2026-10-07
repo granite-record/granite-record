@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.205 */
+/* GRANITE_VERSION: 2026-09-07.206 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1182,7 +1182,8 @@ line-height:1.1}
      rule that sets type in --on-pine to this list or to the one above. */
   .stop.s-p b,.stop.s-x b,.fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
-  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup{
+  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
+  .rtabs [role=tab][aria-selected=true]{
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
@@ -4769,6 +4770,18 @@ text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
 text-transform:uppercase;color:var(--ink-2);padding:var(--sp-4) var(--sp-5) var(--sp-2);
 background:var(--paper);border-bottom:1px solid var(--rule)}
 :where(body.pg) .lmnone{font-size:var(--t-ui);color:var(--ink-2);padding:var(--sp-5) var(--sp-5)}
+/* THE TOWNS TAB IS THE TOWNS (F5, the look of 7 October 2026). The window
+   above was made for a finder sitting over the roster; as the whole of its
+   own tab it was a box and six towns over an empty page. There the list is
+   as long as it is, and while nothing is typed (.all) every town runs A to Z
+   down one column and on down the next, as the roster's alphabetical view
+   does, filling the width. A city opened with its wards is one block, so its
+   chips never start the next column. */
+:where(body.pg) #towns .lmatch{max-height:none;overflow:visible}
+:where(body.pg) #towns .lmatch.all{columns:200px;column-gap:0;column-rule:1px solid var(--rule)}
+:where(body.pg) #towns .lmatch.all .lmrow,:where(body.pg) #towns .lmatch .lmgrp{break-inside:avoid}
+/* Two on a phone, where one ran 11,000px; a long name takes two lines. */
+@media (max-width:480px){:where(body.pg) #towns .lmatch.all{columns:2}}
 /* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
    406 members in ten counties is a page nobody reads in order, and the
    counties were ten headings with everything under all of them open. Each
@@ -5188,23 +5201,32 @@ color:var(--ink);margin:0 0 var(--sp-4);text-align:center}
 
 /* THREE WAYS TO ARRANGE THE CHAMBER. Tabs rather than a dropdown, because
    the choice is the point of the section and a reader should see all three
-   without opening anything. Underlined rather than boxed: they sit directly
-   above the list they reorder, and a row of filled boxes there competed with
-   the roster beneath it. */
-:where(body.pg) .rtabs{display:flex;justify-content:center;
-border-bottom:1px solid var(--rule);margin:var(--sp-7) 0 var(--sp-6)}
+   without opening anything.
+
+   A VIEW SWITCH, NOT A SECOND ROW OF TABS (the look of 7 October 2026). Once
+   the page itself became two tabs, Towns and Legislators (F5), these three
+   sat directly under that strip drawn the same way -- underlined, on a rule
+   -- so on a phone the two strips were twins and nothing said which one
+   changed the page and which one only rearranged the list. They are drawn
+   as the Calendar's List / Week / Month switch is (.calviews): one edged
+   group, the chosen one filled. The page's tabs stay the underlined kind. */
+:where(body.pg) .rtabs{display:flex;justify-content:center;margin:var(--sp-7) 0 var(--sp-6)}
 /* Even thirds, centred on the page: asked for in those words, and it suits
    three choices of equal standing better than a left-aligned row where the
    first reads as the important one. Capped so they do not stretch into three
    enormous targets on a wide screen. */
 :where(body.pg) .rtabs [role=tab]{flex:1 1 0;max-width:230px;text-align:center;
-background:none;border:0;cursor:pointer;
-font:inherit;font-size:var(--t-ui);font-weight:600;color:var(--ink-2);
-padding:var(--sp-3) var(--sp-4);margin-bottom:-1px;
-border-bottom:2px solid transparent;min-height:44px}
-:where(body.pg) .rtabs [role=tab]:hover{color:var(--ink)}
-:where(body.pg) .rtabs [role=tab][aria-selected=true]{color:var(--ink);
-border-bottom-color:var(--pine)}
+cursor:pointer;font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
+color:var(--ink-2);background:var(--surface);border:1px solid var(--edge);
+padding:var(--sp-3) var(--sp-4);min-height:44px}
+:where(body.pg) .rtabs [role=tab] + [role=tab]{border-left-color:var(--rule-2);margin-left:-1px}
+:where(body.pg) .rtabs [role=tab]:first-child{border-radius:var(--r-in) 0 0 var(--r-in)}
+:where(body.pg) .rtabs [role=tab]:last-child{border-radius:0 var(--r-in) var(--r-in) 0}
+:where(body.pg) .rtabs [role=tab]:hover{color:var(--ink);background:var(--wash)}
+:where(body.pg) .rtabs [role=tab][aria-selected=true]{color:var(--on-pine);
+background:var(--pine);border-color:var(--pine)}
+:where(body.pg) .rtabs [role=tab]:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+:where(body.pg) .rtabs [role=tab][aria-selected=true]:focus-visible{outline-color:var(--on-pine)}
 :where(body.pg) .rpane[hidden]{display:none}
 
 /* The way out of Latest activity. Five rows and then the bill search, which
