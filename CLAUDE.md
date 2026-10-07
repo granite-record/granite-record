@@ -120,7 +120,7 @@ holds whatever the bench has added since — `python3 src/checks/review.py`
 serves one sample at a time and appends a judgment. Any timestamp method is scored with:
 
 ```
-python3 probe_alignment.py --truth --candidate candidate_segments.json
+python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json
 ```
 
 The candidate median is **0m 01s**, against 1m 27s for the clustering model and
@@ -196,7 +196,7 @@ where neither fires. The page says which by what it does *not* qualify: a
 stated boundary is shown plainly, and an inferred one carries one word,
 *approximate*.
 
-**Marker patterns.** `segment_markers.py --all --gaps` prints what the chair
+**Marker patterns.** `python3 src/hearings/segment_markers.py --all --gaps` prints what the chair
 says where no boundary was found; `--phrases` counts those across every
 recording so a shared convention appears as a number rather than a hunch. Add
 a phrase to `tests/test_markers.py` **only if it was actually spoken** — the
@@ -210,7 +210,7 @@ claim; the recording is the evidence.
 
 **The calendars are the independent check**, and the only source for a
 hearing the docket never recorded. The House and Senate calendar PDFs are on
-disk with text, and `calendar_meetings.py --check` reads the bill-days out of
+disk with text, and `python3 src/hearings/calendar_meetings.py --check` reads the bill-days out of
 them at no cost. Run it rather than quoting a count.
 
 **A constructible archive path.**
@@ -227,7 +227,7 @@ and enacted chapter texts, documents that name none.
 
 **The bench.** `review.py` serves one sample at a time on the loopback
 address, takes a verdict and a note, and appends to `review/checked.jsonl`.
-`probe_alignment.py --truth` reads the timed ones alongside
+`python3 src/hearings/probe_alignment.py --truth` reads the timed ones alongside
 `ground_truth.csv`'s 35, and `--no-bench` gives the number comparable with
 anything recorded before the bench existed. **Take the counts from the
 command's own header**, not from a document.
@@ -238,7 +238,7 @@ is `{term: {bill: ...}}` and `preflight` refuses the old shape.
 
 The deploy's file count is still worth watching before anything adds a file
 per record: Cloudflare Pages Pro allows 100,000, and `check_site` warns at
-90,000. Run `python3 check_site.py` rather than quoting a count.
+90,000. Run `python3 src/checks/check_site.py` rather than quoting a count.
 
 ---
 
