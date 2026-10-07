@@ -40,9 +40,10 @@ it. Ballotpedia's figures stay on each of those rows as a cross-check. They
 differ on two No counts, CACR 7 of 1992 and CACR 41 of 2006, where the file
 takes the Secretary of State's. The one amendment still to go to the voters,
 CACR 13 of 2025-2026, names Ballotpedia's list of New Hampshire ballot
-measures until its count is in. The pages say whose each count is from the
-row's own source. The counts are facts, and no claim is made over them; no
-source's page is reproduced here. Like the files above, no script writes it.
+measures until its count is in. Every page that shows one of these counts
+names whose it is from that row's own source. The counts are facts, and no
+claim is made over them; no source's page is reproduced here. Like the files
+above, no script writes it.
 
 WHAT EACH PUBLISHED FILE HOLDS
 

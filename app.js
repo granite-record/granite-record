@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.147
+// GRANITE_VERSION: 2026-09-07.148
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3680,15 +3680,18 @@ const votesDrawn=d=>(d.rollcalls||[]).length+(d.ballot&&!d.ballot.pending?1:0);
 // amendment the voters have decided -- "Secretary of State, Manual for the
 // General Court 1993, p. 442 (NHPR's scan)" -- keeping Ballotpedia for the
 // one still to come. A label in parentheses is the file's description of
-// how the source lists it, "(the only question, unnumbered)", not its words,
-// and is said without quotation marks.
+// how the source lists it, "(the only question; unnumbered)" as the reading
+// of 7 October 2026 wrote it, not its words, and is said in the card's own
+// sentence, without quotation marks and with a comma for its semicolon:
+// "which lists it as the only question, unnumbered".
 function ballotCard(d){
   const v=d.ballot;
   if(!v)return "";
   const head=res=>`<div class="rchead"><h2 class="rcq">The voters</h2>
       <span class="rcd">${esc(fdate(v.date))} · State general election</span>${res}</div>`;
   const lab=String(v.label||"");
-  const listed=/^\(.*\)$/.test(lab)?esc(lab.slice(1,-1)):`&ldquo;${esc(lab)}&rdquo;`;
+  const listed=/^\(.*\)$/.test(lab)?esc(lab.slice(1,-1).replace(/;\s*/g,", "))
+    :`&ldquo;${esc(lab)}&rdquo;`;
   const cited=[v.by,v.cite].filter(Boolean).join(", ")||v.source;
   const src=`<p class="src">Source: <a href="${esc(v.source)}" target="_blank"
       rel="noopener">${esc(cited)}</a>, read

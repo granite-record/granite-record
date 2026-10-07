@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.419
+# GRANITE_VERSION: 2026-09-04.420
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5435,6 +5435,12 @@ def _ballot_two_thirds(build_site_v2):
                   "is not the source's is kept to be said; a file naming no CACR is refused")
 
 
+# The day the person made the Secretary of State the source and kept
+# Ballotpedia's figures beside every row the voters had decided by then: an
+# election after it is a row that never had Ballotpedia as its source.
+_BALLOT_CROSS_CHECKED = "2026-10-07"
+
+
 def _ballot_file():
     """ballot_results.json's rows by (term, bill). The file is tracked, the
     person's own (HANDMADE), and the night's clone carries it, so a check of
@@ -5446,7 +5452,7 @@ def _ballot_file():
 
 
 @check("status", "the two No counts the person corrected on 7 October 2026 are the Secretary "
-                 "of State's, and Ballotpedia's are kept beside every decided row")
+                 "of State's, and Ballotpedia's are kept beside every row decided by then")
 def _ballot_corrected_counts():
     """The person's decision of 7 October 2026 on ballot_results.json, their
     file: the Secretary of State's count is every decided row's, and the two
@@ -5461,8 +5467,16 @@ def _ballot_corrected_counts():
     (`ballotpedia`), and on the other fifteen they are the Secretary of
     State's to the vote, so a count that moves by itself is caught here too.
     Fails on either corrected row holding another No, on its cross-check
-    losing Ballotpedia's figure, on a decided row with no cross-check, and on
-    any other decided row whose count is not its cross-check's."""
+    losing Ballotpedia's figure, on a row decided by 7 October 2026 with no
+    cross-check, and on any other decided row whose count is not its
+    cross-check's.
+
+    A ROW DECIDED AFTER THAT DAY NEEDS NO CROSS-CHECK. CACR 13 of 2025-2026
+    goes to the voters on 3 November 2026, and its note says it then takes
+    the Secretary of State's count like the others; this check asked every
+    decided row for Ballotpedia's figures too, so the person's November entry
+    would have failed preflight until somebody went and read Ballotpedia (the
+    review of 7 October 2026). It is compared only where it has them."""
     rows = _ballot_file()
     bad = []
     for key, no, bp in ((("1991-1992", "CACR7"), 204475, 204457),
@@ -5475,11 +5489,14 @@ def _ballot_corrected_counts():
         if cross.get("no") != bp:
             bad.append(f"{key[1]} of {key[0]}'s cross-check reads No {cross.get('no')!r}, not "
                        f"Ballotpedia's {bp:,}")
-    same = 0
+    same, later = 0, 0
     for key, r in sorted(rows.items()):
         if r.get("yes") is None or key in (("1991-1992", "CACR7"), ("2005-2006", "CACR41")):
             continue
         cross = r.get("ballotpedia")
+        if not isinstance(cross, dict) and str(r.get("election") or "") > _BALLOT_CROSS_CHECKED:
+            later += 1
+            continue
         if not isinstance(cross, dict):
             bad.append(f"{key[1]} of {key[0]} keeps no Ballotpedia figures to cross-check")
         elif (cross.get("yes"), cross.get("no")) != (r.get("yes"), r.get("no")):
@@ -5490,7 +5507,8 @@ def _ballot_corrected_counts():
     assert not bad, "; ".join(bad[:5])
     return "ok", (f"CACR 7 of 1992 No 204,475 and CACR 41 of 2006 No 100,688, Ballotpedia's "
                   f"204,457 and 100,686 kept beside them; the other {same} decided rows equal "
-                  "their cross-check")
+                  "their cross-check" + (f"; {later} decided after 7 October 2026 carry none, "
+                                          "and need none" if later else ""))
 
 
 @check("status", "every amendment the voters decided cites the Secretary of State's count, "
@@ -5550,11 +5568,12 @@ def _ballot_source_named(build_site_v2):
     Built here from rows shaped as ballot_results.json's (build_site_v2's
     ballot_card, ballot_step and docket_count_differs) and drawn in node by
     app.js. Fails on a decided row's card, history line or differing-docket
-    note naming anyone but the Secretary of State -- sos.nh.gov or NHPR's scan
-    of its Manual alike -- or leaving out where the count is printed; on the
-    row to come naming anyone but Ballotpedia; and on a label in parentheses,
-    the file's description of how the source lists it, quoted as though it
-    were the source's words."""
+    note naming anyone but the source its row gives -- the Secretary of State
+    for sos.nh.gov and NHPR's scan of its Manual alike, Ballotpedia for its
+    list, and a host ballot_source.py does not list by that host -- or
+    leaving out where the count is printed; on the row to come naming anyone
+    but Ballotpedia; and on a label in parentheses, the file's description of
+    how the source lists it, quoted as though it were the source's words."""
     B = build_site_v2
     js, stub = Path("app.js"), Path("dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
@@ -5566,25 +5585,42 @@ def _ballot_source_named(build_site_v2):
     row22 = _voters_row("1997-1998", "CACR22", "1998-11-03", 119104, 169439, "Question 1",
                         _MANUAL_1999)
     row00 = _voters_row("1999-2000", "CACR6", "2000-11-07", 202367, 218875,
-                        "(the only question, unnumbered)",
+                        "(the only question; unnumbered)",
                         ("https://electiondatabase.nhpr.org/document/689?page=260",
                          "Manual for the General Court 2001, p. 423 (NHPR's scan)"))
     pending = _voters_row("2025-2026", "CACR13", "2026-11-03", None, None,
                           "Eliminate Office of Register of Probate Amendment", _BALLOTPEDIA,
                           "2026-10-05")
+    # DECIDED ROWS FROM ANOTHER SOURCE (the review of 7 October 2026). Every
+    # decided row above is the Secretary of State's, and the only Ballotpedia
+    # row is still to come, with no voters' line and no docket note -- so a
+    # page that wrote "the Secretary of State's" in words of its own passed
+    # here. CACR 22 of 1998 as the file held it until that day, Ballotpedia's
+    # with the docket's 159,439 beside it, and a row from a host
+    # ballot_source.py does not list, which is named by its host.
+    rowbp = _voters_row("1997-1998", "CACR22", "1998-11-03", 119104, 169439, "Question 1",
+                        _BALLOTPEDIA, "2026-10-05")
+    rowx = _voters_row("2023-2024", "CACR6", "2024-11-05", 452307, 237221, "Question No. 1",
+                       ("https://results.example.org/2024", "2024 general election results"))
     n22 = _nar(_ev("H", "AMENDMENT FAILED REFERENDUM  (119,104 - 159,439);  1998 RED BOOK, P350",
                    date="1998-11-03"))
     # How it got here: the voters' line, and the docket's where it differs.
-    for row, what in ((row24, "CACR 6 of 2024 (sos.nh.gov)"),
-                      (row22, "CACR 22 of 1998 (NHPR's scan of the Manual)")):
+    for row, what, whose in ((row24, "CACR 6 of 2024 (sos.nh.gov)", "the Secretary of State's"),
+                             (row22, "CACR 22 of 1998 (NHPR's scan of the Manual)",
+                              "the Secretary of State's"),
+                             (rowbp, "CACR 22 of 1998 (Ballotpedia's)", "Ballotpedia's"),
+                             (rowx, "CACR 6 of 2024 (results.example.org)",
+                              "results.example.org's")):
         t = B.ballot_step(row)["text"]
-        if not t.endswith("(the Secretary of State's count)"):
+        if not t.endswith(f"({whose} count)"):
             bad.append(f"{what}'s voters' line reads {t!a}")
-    said = B.docket_count_differs(row22)
-    if said != " (the docket's count; the Secretary of State's is 119,104–169,439)":
-        bad.append(f"CACR 22 of 1998's docket line adds {said!a}")
+    for row, whose in ((row22, "the Secretary of State's"), (rowbp, "Ballotpedia's")):
+        said = B.docket_count_differs(row)
+        if said != f" (the docket's count; {whose} is 119,104–169,439)":
+            bad.append(f"CACR 22 of 1998's docket line, its row {whose}, adds {said!a}")
     recs = {"row24": B.ballot_card(row24, None), "row22": B.ballot_card(row22, n22),
-            "row00": B.ballot_card(row00, None),
+            "row00": B.ballot_card(row00, None), "rowbp": B.ballot_card(rowbp, n22),
+            "rowx": B.ballot_card(rowx, None),
             "pending": B.ballot_card(pending, None, today=B._date(2026, 10, 5))}
     root = Path(tempfile.mkdtemp())
     try:
@@ -5624,19 +5660,27 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
                       "(NHPR's scan), read Oct 7, 2026, which lists it as “Question 1”.",
              "Ballotpedia"),
             ("row00", "which lists it as the only question, unnumbered.", "Ballotpedia"),
+            ("rowbp", "Source: Ballotpedia, List of New Hampshire ballot measures, read "
+                      "Oct 5, 2026, which lists it as “Question 1”.", "Secretary of State"),
+            ("rowx", "Source: results.example.org, 2024 general election results, read "
+                     "Oct 7, 2026, which lists it as “Question No. 1”.", "Secretary of State"),
             ("pending", "Source: Ballotpedia, List of New Hampshire ballot measures, read "
                         "Oct 5, 2026, which lists it as “Eliminate Office of Register of "
                         "Probate Amendment”.", "Secretary of State")):
         text = card(k)
         if want not in text or other in text:
             bad.append(f"the {k} card reads {text[-260:]!a}")
-    if "The counts above are the Secretary of State's, and How it got here gives the " \
-            "docket's." not in card("row22"):
-        bad.append(f"CACR 22 of 1998's card does not say whose its counts are: "
-                   f"{card('row22')[-400:]!a}")
+    if "Ballotpedia" in card("rowx"):
+        bad.append(f"a row from a host of its own is credited to Ballotpedia: {card('rowx')!a}")
+    for k, whose in (("row22", "the Secretary of State's"), ("rowbp", "Ballotpedia's")):
+        if f"The counts above are {whose}, and How it got here gives the docket's." \
+                not in card(k):
+            bad.append(f"CACR 22 of 1998's card, its row {whose}, does not say whose its counts "
+                       f"are: {card(k)[-400:]!a}")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("a decided row's card, voters' line and differing-docket note name the "
-                  "Secretary of State with where it is printed; the row to come, Ballotpedia; "
+                  "source its row gives -- the Secretary of State with where it is printed, "
+                  "Ballotpedia, or a host of its own -- and the row to come, Ballotpedia; "
                   "a label in parentheses said as a description")
 
 
@@ -18833,12 +18877,31 @@ def _numbers_ballots(learn_numbers):
         "two thirds of the votes cast: exactly two thirds ratifies, a vote short does not")
     idx = [{"term": "2025-2026", "id": "HB1", "year": 2026, "status": "Signed into law",
             "kind": "law", "chip": "Became Law", "sponsor_label": "Rep. Ann Able (R)"}]
-    with _tf.TemporaryDirectory() as tmp:
-        _bill_index_write(tmp, idx)
-        (Path(tmp) / "ballot_results.json").write_text(json.dumps({"rows": rows}),
-                                                       encoding="utf-8")
-        page = learn_numbers.body(Path(tmp), Path(tmp), strict=False)
-        held_said = list(learn_numbers.HELD)
+
+    def drawn(rows):
+        with _tf.TemporaryDirectory() as tmp:
+            _bill_index_write(tmp, idx)
+            (Path(tmp) / "ballot_results.json").write_text(json.dumps({"rows": rows}),
+                                                           encoding="utf-8")
+            page = learn_numbers.body(Path(tmp), Path(tmp), strict=False)
+            return page, list(learn_numbers.HELD)
+
+    page, held_said = drawn(rows)
+    # WHOSE COUNT, FROM THE ROWS, WHEN IT IS NOT THE SECRETARY OF STATE'S (the
+    # review of 7 October 2026): every row above is, so a sentence that said
+    # "the Secretary of State's" in words of its own passed. A decided row of
+    # Ballotpedia's beside two of the Secretary of State's, and one alone.
+    bp22 = _voters_row("1997-1998", "CACR22", "1998-11-03", 119104, 169439, src=_BALLOTPEDIA,
+                       read="2026-10-05")
+    for got_rows, want in (
+            ([rows[0], rows[1], bp22],
+             "Yes and No are the statewide count printed where the Source column says: the "
+             "Secretary of State's for 2, Ballotpedia's for 1. 1 of the 3 below were ratified."),
+            ([bp22], "Yes and No are Ballotpedia's statewide count, printed where the Source "
+                     "column says. 0 of the 1 below were ratified.")):
+        sec = drawn(got_rows)[0]
+        sec = sec[sec.find("Constitutional amendments sent to the voters"):]
+        assert want in sec, f"the amendments' section does not say {want!r}: {sec[:700]!a}"
     sec = page[page.find("Constitutional amendments sent to the voters"):]
     assert sec, "the amendments' section was not drawn"
     for want in ("Yes and No are the Secretary of State's statewide count, printed where the "
@@ -18853,8 +18916,8 @@ def _numbers_ballots(learn_numbers):
                          "CACR41 of 2005-2006: ballot_results.json gives it no source"], (
         f"the rows left off are named in the build's log as {held_said!a}")
     return "ok", ("2 shown with their source and cite, the Secretary of State's named from the "
-                  "rows; one with no cite and one with no source left off and named in the log; "
-                  "the election to come apart")
+                  "rows, and Ballotpedia's where a row gives it; one with no cite and one with "
+                  "no source left off and named in the log; the election to come apart")
 
 
 @check("frontend", "numbers: the unsigned-laws table and the veto table's Awaiting column are gone",
@@ -21842,6 +21905,148 @@ def _ballot_built(build_site_v2):
                   "the voters with the Secretary of State's count, and the card's rail at the "
                   "Voters stop; a docket's own differing count is the docket's, beside the "
                   "Secretary of State's")
+
+
+# Rows shaped as ballot_results.json's, of three sources and one left off, for
+# the two checks below: the Secretary of State's with Ballotpedia's figures
+# beside it, Ballotpedia's as the file held every row until 7 October 2026,
+# one with no cite, and the election still to come.
+def _ballot_mixed_rows():
+    sos = {**_voters_row("2023-2024", "CACR6", "2024-11-05", 452307, 237221, "Question No. 1"),
+           "ballotpedia": {"yes": 452307, "no": 237221, "label": "Question 1",
+                           "source": _BALLOTPEDIA[0], "read": "2026-10-05"}}
+    bp = _voters_row("1997-1998", "CACR22", "1998-11-03", 119104, 169439, "Question 1",
+                     _BALLOTPEDIA, "2026-10-05")
+    uncited = {**_voters_row("1991-1992", "CACR7", "1992-11-03", 249759, 204475,
+                             "Question No. 4", _MANUAL_1993), "cite": ""}
+    pending = _voters_row("2025-2026", "CACR13", "2026-11-03", None, None,
+                          "Eliminate Office of Register of Probate Amendment", _BALLOTPEDIA,
+                          "2026-10-05")
+    return sos, bp, uncited, pending
+
+
+@check("frontend", "the data page says whose the voters' counts are from ballot_results.json's "
+                   "own rows", needs=("build_exports",))
+def _ballot_words(build_exports):
+    """The data page's sentence on ballot_results.json said "from
+    Ballotpedia's list of New Hampshire ballot measures" in words of its own
+    until 7 October 2026, when the person made the Secretary of State every
+    decided row's source; since then build_exports.ballot_words writes it
+    from the rows (ballot_source.py), and no check read it (the review of
+    that day). Fails on the sentence naming anyone the rows do not: the
+    Secretary of State for the decided rows of the real file, with
+    Ballotpedia's figures as the cross-check and Ballotpedia's listing for
+    the one to come; both, counted, where the decided rows have two sources;
+    Ballotpedia alone where a row is Ballotpedia's alone; Ballotpedia's
+    figures said to be beside each row where some rows have none; and
+    anything at all where the file is not there."""
+    X = build_exports
+    sos, bp, _uncited, pending = _ballot_mixed_rows()
+    sos2 = {**sos, "bill": "CACR5", "term": "2005-2006"}
+    cases = (
+        ([sos, sos2, pending],
+         "the Secretary of State's count of the statewide Yes and No votes on each of the 2 the "
+         "voters have decided, with where it is printed and the day it was read, and "
+         "Ballotpedia's figures beside each as a cross-check; for the one still to go to the "
+         "voters, Ballotpedia's listing of the question"),
+        ([sos, bp, sos2],
+         "the statewide Yes and No votes on each of the 3 the voters have decided, with where "
+         "each count is printed and the day it was read: the Secretary of State's for 2, "
+         "Ballotpedia's for 1, and Ballotpedia's figures beside 2 of them as a cross-check"),
+        # A row decided after 7 October 2026 carries no cross-check, and the
+        # sentence does not say every row has one.
+        ([sos, {k: v for k, v in sos2.items() if k != "ballotpedia"}],
+         "the Secretary of State's count of the statewide Yes and No votes on each of the 2 the "
+         "voters have decided, with where it is printed and the day it was read, and "
+         "Ballotpedia's figures beside 1 of them as a cross-check"),
+        ([bp], "Ballotpedia's count of the statewide Yes and No votes on the one the voters have "
+               "decided, with where it is printed and the day it was read"))
+    bad = []
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "ballot_results.json"
+        for rows, want in cases:
+            f.write_text(json.dumps({"rows": rows}), encoding="utf-8")
+            got = X.ballot_words(f)
+            if got != want:
+                bad.append(f"{len(rows)} rows: wanted {want!a}, got {got!a}")
+        got = X.ballot_words(Path(tmp) / "absent.json")
+        if got is not None:
+            bad.append(f"no file: wanted None, got {got!a}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Secretary of State's where the decided rows are, with Ballotpedia's "
+                  "figures beside as many as carry them and its listing for the one to come; "
+                  "both, counted, where the rows have both; Ballotpedia alone where it is the "
+                  "only source")
+
+
+@check("build", "the page of numbers' log names an amendment it leaves off, and the Learn and "
+                "data pages say whose the voters' counts are, built from the file")
+def _ballot_said_built():
+    """build_civics and build_exports run over the fixture site with a
+    ballot_results.json of three sources and a decided row with no cite (the
+    review of 7 October 2026). learn_numbers leaves that row off its table
+    and names it in learn_numbers.HELD, and build_civics prints it -- a line
+    nothing held to being printed, so taking the loop out failed no check.
+    And the two sentences that say whose the counts are, the page of numbers'
+    and the data page's, were held to their rows only by calling the
+    functions behind them, where a page that wrote a name of its own in
+    place of the function's answer passed.
+
+    Fails on build_civics leaving out the LEAVES OFF line, on the page of
+    numbers not saying both sources with their counts, on the data page not
+    saying what ballot_words says of the same rows, and on either page
+    showing the row with no cite."""
+    for s in ("build_civics.py", "build_exports.py"):
+        if not _paths.locate(s).exists():
+            return "skip", f"{s} is not here"
+    import html as _html
+    root = Path(tempfile.mkdtemp(prefix="gr-ballot-said-"))
+    try:
+        base, _ran = _fixture_site_whole(root)
+        sos, bp, uncited, pending = _ballot_mixed_rows()
+        (root / "ballot_results.json").write_text(
+            json.dumps({"rows": [sos, bp, uncited, pending]}), encoding="utf-8")
+        said = {}
+        for s in ("build_civics.py", "build_exports.py"):
+            r = _run([sys.executable, _paths.script(s), "--site", "site", "--base", base],
+                     cwd=root, capture_output=True, text=True, timeout=180)
+            assert r.returncode == 0, f"{s} failed: " + (r.stderr or r.stdout or "")[-400:]
+            said[s] = r.stdout or ""
+
+        def text(p):
+            h = (root / "site" / p).read_text(encoding="utf-8")
+            return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", h)))
+
+        numbers, data = text("learn/by-the-numbers.html"), text("data.html")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    left = ("learn/by-the-numbers.html LEAVES OFF CACR7 of 1991-1992: ballot_results.json "
+            "gives it no cite")
+    if left not in said["build_civics.py"]:
+        bad.append("build_civics does not log the row it leaves off: "
+                   + said["build_civics.py"][-300:])
+    # The table runs by election, and so does the count of whose: 1998's
+    # Ballotpedia row before 2024's.
+    want = ("Yes and No are the statewide count printed where the Source column says: "
+            "Ballotpedia's for 1, the Secretary of State's for 1. 0 of the 2 below were ratified.")
+    if want not in numbers:
+        i = numbers.find("Constitutional amendments sent to the voters")
+        bad.append(f"the page of numbers says {numbers[i:i + 600]!a}")
+    if "CACR 7" in numbers[numbers.find("Constitutional amendments sent to the voters"):]:
+        bad.append("the page of numbers shows the row with no cite")
+    words = ("the statewide Yes and No votes on each of the 3 the voters have decided, with "
+             "where each count is printed and the day it was read: the Secretary of State's "
+             "for 2, Ballotpedia's for 1, and Ballotpedia's figures beside 1 of them as a "
+             "cross-check; "
+             "for the one still to go to the voters, Ballotpedia's listing of the question")
+    if f"no script writes: {words}." not in data:
+        i = data.find("no script writes")
+        bad.append(f"the data page says {data[i:i + 500]!a}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("build_civics logs the row with no cite it leaves off; the page of numbers "
+                  "and the data page name the Secretary of State and Ballotpedia, each counted, "
+                  "from the rows")
 
 
 @check("frontend", "a bill's own rail is dated from its journey, and How it got here lists it",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.36
+# GRANITE_VERSION: 2026-09-10.37
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -567,11 +567,17 @@ def ballot_words(path=Path("ballot_results.json")):
             out = (f"the statewide Yes and No votes on {each}, with where each count is "
                    "printed and the day it was read: "
                    + ", ".join(f"{w} for {k}" for w, k in whose.most_common()))
+        # BESIDE EACH ONLY WHERE EACH HAS ONE. A row the voters decide after
+        # 7 October 2026 takes the Secretary of State's count with no
+        # Ballotpedia figures beside it (preflight's _ballot_corrected_counts
+        # asks for none), and "beside each" would then be wrong of it.
         also = Counter(BS.whose(r["ballotpedia"]) for r in done
                        if isinstance(r.get("ballotpedia"), dict))
         if also:
-            out += (", and " + " and ".join(also) + " figures beside "
-                    + n_(len(done), "it", "each") + " as a cross-check")
+            out += (", and " + " and ".join(
+                f"{w} figures beside "
+                + (n_(len(done), "it", "each") if k == len(done) else f"{k} of them")
+                for w, k in also.most_common()) + " as a cross-check")
     if to_come:
         whose = Counter(BS.whose(r) for r in to_come)
         out += ("; for " + ("the one still to go to the voters" if len(to_come) == 1
