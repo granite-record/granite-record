@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.148
+# GRANITE_VERSION: 2026-09-04.149
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -618,6 +618,38 @@ VACANCY_NOTE = ("Seats fall vacant during a term when members resign or die. "
                 "or city asks the Governor and Executive Council to call one, "
                 "so some stay vacant until the next general election. A "
                 "Senate seat is filled as the state constitution provides.")
+
+
+def seat_columns(house, row):
+    """The House by seat, one column per division, as markup; `house` the
+    members in seat order and `row(m)` the row that draws one.
+
+    ONE COLUMN PER DIVISION (the person, 7 October 2026, F8: "the House
+    seating chart shows 3 columns for 5 sections"). The list under the chart
+    was one run of seat numbers balanced into as many columns as fit, three at
+    full width, so a column ended partway through a division. Now each of the
+    chamber's five divisions is a column of its own, headed as the chart
+    labels it and counted, five abreast where the width allows and fewer on a
+    phone, always in order (app.css, .seatdivs). A seat number decodes as
+    division * 1000 + seat (seating.py). The Speaker, whose seat is on the
+    rostrum and in no division, is above them, and a member with no seat on
+    file, which the roster has not had, after them. Every row is still a
+    .seatrow inside #seatlist, where the seat map's script finds them.
+    """
+    divs = OrderedDict()
+    for m in house:
+        divs.setdefault(int(m["seat"]) // 1000 if m.get("seat") else 0, []).append(m)
+    rostrum = divs.pop(seating.SPEAKER_SEAT // 1000, [])
+    unseated = divs.pop(0, [])
+
+    def block(heading, ms, cls="sdiv"):
+        return (f'<section class="{cls}"><h3>{heading}</h3><ol class="seatlist">'
+                + "".join(row(m) for m in ms) + "</ol></section>")
+    return ((block("The rostrum", rostrum, "sdiv srost") if rostrum else "")
+            + ('<div class="seatdivs">' + "".join(
+                block(f"Division {d} &mdash; {len(ms)}", ms)
+                for d, ms in sorted(divs.items())) + "</div>" if divs else "")
+            + (block("No seat on file", unseated) if unseated else ""))
 
 
 def home_towns(out):
@@ -3164,8 +3196,8 @@ def main():
             return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
                     '<div class="partycols">' + "".join(cols) + "</div>")
         by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
-        by_seat_rows = "".join(
-            li(m, seating.plate(m["seat"]) if m.get("seat") else "") for m in H)
+        by_seat_rows = seat_columns(
+            H, lambda m: li(m, seating.plate(m["seat"]) if m.get("seat") else ""))
         senate_rows = "".join(li(m, f'District {m.get("district")}') for m in S)
 
         return f"""<section class="roster" id="roster">
@@ -3217,7 +3249,7 @@ The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
   <div class="seatwrap">{seating.svg(by_seat)}</div>
   <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
 </div>
-<ol class="seatlist" id="seatlist">{by_seat_rows}</ol>
+<div class="seatcols" id="seatlist">{by_seat_rows}</div>
 <h2>The Senate</h2>
 <p class="src">The Senate has no seating chart: its 24 members are elected
 from numbered districts and the chamber does not assign numbered seats the way

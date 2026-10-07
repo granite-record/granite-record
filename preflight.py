@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.422
+# GRANITE_VERSION: 2026-09-04.423
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43847,6 +43847,54 @@ def _vacancy_wording():
     assert rows and all(re.fullmatch(r"\S.* District \d+( — \d+ seats)?", r) for r in rows), (
         f"the vacant districts read {rows[:4]}")
     return "ok", f"{len(rows)} vacant districts, each \"<County> District <n>\", under the RSA 661:8 sentence"
+
+
+@check("frontend", "the House by seat is one column per division, in order, five abreast where the width allows")
+def _seat_list_by_division():
+    """"The House seating chart shows 3 columns for 5 sections" (the person, 7
+    October 2026, F8). seat_columns is drawn over a House of every division
+    and a Speaker, out of order of nothing -- the members come in seat order
+    as the roster sorts them -- and gives five columns headed Division 1 to 5,
+    each holding its own seats and counted, the Speaker above them and no
+    division column for the rostrum; and the stylesheet's grid fits five
+    columns in the page's width and fewer, in order, on a phone."""
+    import build_pages as BP
+    import seating
+    seats = [1001, 1043, 2001, 2101, 3050, 4099, 5002, 5043, seating.SPEAKER_SEAT]
+    house = [{"seat": str(s), "name": f"Member {s}"} for s in sorted(seats)]
+    html = BP.seat_columns(house, lambda m: f'<li class="seatrow" data-seat="{m["seat"]}"></li>')
+    heads = re.findall(r"<h3>([^<]*)</h3>", html)
+    assert heads == ["The rostrum", "Division 1 &mdash; 2", "Division 2 &mdash; 2",
+                     "Division 3 &mdash; 1", "Division 4 &mdash; 1", "Division 5 &mdash; 2"], (
+        f"the seat list's columns are headed {heads}")
+    cols = re.findall(r'<section class="sdiv"><h3>Division (\d) &mdash; \d+</h3>'
+                      r'<ol class="seatlist">(.*?)</ol></section>', html)
+    for d, body in cols:
+        got = re.findall(r'data-seat="(\d+)"', body)
+        assert got and all(int(s) // 1000 == int(d) for s in got), (
+            f"Division {d}'s column holds seats {got}")
+    assert html.index("The rostrum") < html.index('<div class="seatdivs">'), (
+        "the Speaker is not above the five columns")
+    assert html.count('class="seatrow"') == len(seats), "a member is missing from the seat list"
+    assert BP.seat_columns([{"name": "x"}], lambda m: "<li></li>").count("No seat on file") == 1
+    css = Path("app.css").read_text(encoding="utf-8")
+    m = re.search(r"\.seatdivs\{display:grid;gap:var\(--sp-(\d+)\) var\(--sp-\d+\);\s*"
+                  r"grid-template-columns:repeat\(auto-fit,minmax\((\d+)px,1fr\)\)", css)
+    assert m, "app.css lays the divisions out in no grid of columns"
+    sp = dict(re.findall(r"--sp-(\d+):(\d+)px", css))
+    gap, least = int(sp[m.group(1)]), int(m.group(2))
+    # The page's full width is .wrap.wide's 1180px less its gutters, as the
+    # legislators page is drawn.
+    room = 1180 - 2 * 24
+    fits = (room + gap) // (least + gap)
+    assert fits >= 5, f"at full width the divisions fit {fits} abreast, not five"
+    assert (343 + gap) // (least + gap) == 1, "on a phone the divisions do not stack"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
+        not in page, "the built page's seat list is not the columns"
+    return "ok", (f"five columns headed as the chart labels its divisions, the Speaker above, "
+                  f"{fits} abreast at full width and one on a phone")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

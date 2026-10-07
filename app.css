@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.200 */
+/* GRANITE_VERSION: 2026-09-07.201 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5291,8 +5291,23 @@ columns:270px;column-gap:var(--sp-7)}
 :where(body.pg) .partycols{display:grid;gap:var(--sp-5) var(--sp-7);
 grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:start}
 :where(body.pg) .partycols .seatlist{columns:auto}
-:where(body.pg) .pcol h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
+:where(body.pg) .pcol h3,:where(body.pg) .sdiv h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
+/* THE SEAT LIST, ONE COLUMN PER DIVISION (the person, 7 October 2026, F8):
+   five abreast at the page's full width, matching the chamber's five
+   divisions, and fewer where there is less room -- a grid fills in order, so
+   on a tablet divisions 1 to 3 are a row and 4 and 5 the next, and on a phone
+   they stack. A column is about 200px at five, under the 360px the longest
+   chip asks for, so here a name may take two lines inside its chip rather
+   than run past its column (the chip's own rule allows that where there is
+   genuinely not room, and five columns was asked for). */
+:where(body.pg) .seatdivs{display:grid;gap:var(--sp-6) var(--sp-6);
+grid-template-columns:repeat(auto-fit,minmax(190px,1fr));align-items:start}
+:where(body.pg) .seatcols .seatlist{columns:auto}
+:where(body.pg) .seatdivs .seatrow{gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) var(--sp-1)}
+:where(body.pg) .seatdivs .seatrow .sseat{flex:0 0 3.2em}
+:where(body.pg) .seatdivs .mchip{white-space:normal;margin:0}
+:where(body.pg) .seatcols > .sdiv{margin:0 0 var(--sp-6)}
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
 padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);
