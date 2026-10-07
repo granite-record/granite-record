@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -26,7 +26,7 @@ wrong about a third of the time.
 RollCallHistory already contains every member's vote, so no page scraping is
 needed. fetch_rollcall_details.py is obsolete.
 
-    python3 build_data.py --dir . --out data
+    python3 src/parse/build_data.py --dir . --out data
 
 Standard library only.
 """
@@ -361,7 +361,7 @@ def add_journal_bills(by_term, path=JOURNAL_BILLS, skip=()):
         print(f"NO {p}. The bills the House withdrew in 2025-2026 are in none of")
         print("the General Court's current files, and this is where they come")
         print("from: without it they are not on the site, and nothing else says")
-        print("so. Run: python3 journal_bills.py")
+        print("so. Run: python3 src/parse/journal_bills.py")
         print("=" * 70)
         return {}
     try:
@@ -1472,7 +1472,7 @@ def finished_builds(d, out):
             rec, bills, sponsors = None, None, None
         if not isinstance(rec, dict) or rec.get("built_from") != frozen_record(d, t) or not bills:
             sys.exit(f"THE FROZEN TERM {t} HAS NOT BEEN BUILT from the freeze on disk ({base}). "
-                     "Run build_data.py --frozen-terms first -- build_all.py does, in the step "
+                     "Run python3 src/parse/build_data.py --frozen-terms first -- build_all.py does, in the step "
                      f"before this one. Without it {t} would leave the site.")
         got[t] = (bills, sponsors)
     return got

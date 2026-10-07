@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.408
+# GRANITE_VERSION: 2026-09-04.409
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10863,7 +10863,7 @@ def _rollcall_outcomes_data(rollcall_outcomes):
     assert not missing, (
         f"{missing:,} of {len(rolls):,} roll calls carry no outcome_source: "
         "rollcalls.json predates the recorded outcome. Rebuild it with "
-        "python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json")
+        "python3 src/parse/rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json")
     fresh = [dict(r) for r in rolls]
     RO.apply(fresh, root=".")
     moved = [f'{r["year"]}-{r["body"]}-{r["number"]}' for r, f in zip(rolls, fresh)
@@ -37987,7 +37987,7 @@ def _veto_step_not_skipped(BA):
                         env={"GITHUB_ACTIONS": ""})
         lines = r.stdout.splitlines()
         at_veto = next((i for i, ln in enumerate(lines)
-                        if ln.strip() == "python3 extract_vetoes.py"), None)
+                        if ln.split() == ["python3", "extract_vetoes.py"]), None)
         assert r.returncode == 0 and at_veto is not None and at_veto + 1 < len(lines), (
             f"the kit's dry run did not list the veto step: {r.stdout[-300:]}")
         assert "would fail, the kit's build may not skip it: missing calendars" \
@@ -61258,7 +61258,7 @@ def _sponsor_rows_data():
            or re.search(r"\d", r.get("name") or "") or seatish.match((r.get("name") or "").strip())
            or SPONSOR_HONORIFIC.search(r.get("name") or "")]
     assert not bad, (f"{len(bad)} sponsor rows are not a person, e.g. {bad[:6]}: rebuild "
-                     "with python3 text_sponsors.py --apply")
+                     "with python3 src/parse/text_sponsors.py --apply")
     five = [("2001-2002", "HB428", "Boyce", "209042"), ("2003-2004", "HB1360", "Boyce", "209042"),
             ("2001-2002", "SB84", "O'Neil", "209046"), ("2001-2002", "HB1301", "Johnson", "205015"),
             ("2003-2004", "HB1242", "Kenney", "209049")]
@@ -61285,7 +61285,7 @@ def _past_sponsors_data():
     whom the site named H. Robert Menear until member_corrections.json said otherwise."""
     p = Path("past_sponsors.json")
     if not p.exists():
-        return "skip", "no past_sponsors.json here (python3 past_sponsors.py --apply)"
+        return "skip", "no past_sponsors.json here (python3 src/parse/past_sponsors.py --apply)"
     t = json.loads(p.read_text(encoding="utf-8")).get("2023-2024") or {}
     for bid in ("HB32", "HB1713"):
         pub = (t.get(bid) or {}).get("publish") or []
@@ -61314,7 +61314,8 @@ def _past_sponsors_data():
     assert carey, (
         "2024 HB 1429 does not link employee 377080, printed Rep. Carey, Merr. 1: she is Rep. "
         "Lorrie J. Carey (member_corrections.json). If data/member_votes.json predates that "
-        "correction, run build_data.py and then past_sponsors.py --apply")
+        "correction, run python3 src/parse/build_data.py and then python3 "
+        "src/parse/past_sponsors.py --apply")
     n = Counter(e.get("page") for e in t.values())
     return "ok", (f"HB 32 and HB 1713 prime Shurtleff; Shurtleff on {restored['376628']} "
                   f"published lists, Abare on {restored['409060']}, Carey on "
@@ -61364,7 +61365,7 @@ def _past_sponsors_chamber():
     assert n, "no published 2023-2024 row carries a member id with a ballot that term"
     assert not bad, (f"{len(bad)} published 2023-2024 sponsor row(s) sit in a chamber their "
                      f"member did not vote in that term, e.g. {bad[:6]}: rebuild with python3 "
-                     "past_sponsors.py --apply")
+                     "src/parse/past_sponsors.py --apply")
     return "ok", (f"{n:,} published rows with a member id, each in the chamber of that "
                   f"member's {term} ballots"
                   + (f"; {unvoted:,} under a member with no ballot that term" if unvoted else ""))
@@ -64369,7 +64370,7 @@ def _withdrawn_on_record():
     if not jp.exists():
         assert not (J and J.years()), (
             "the House Journals from 2025 are here and journal_bills.json is not, so "
-            "build_data added no withdrawn bill: run python3 journal_bills.py, then "
+            "build_data added no withdrawn bill: run python3 src/parse/journal_bills.py, then "
             "build_data.py")
         return "skip", ("no journal_bills.json and no journals/ from 2025 here; "
                         "journal_bills.py writes it from them before build_data reads it")

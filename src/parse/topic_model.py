@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.6
+# GRANITE_VERSION: 2026-09-16.7
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
-    python3 topic_model.py --apply              # write topics_assigned.json
-    python3 topic_model.py --bill 1995-1996 HB101   # explain one answer
+    python3 src/parse/topic_model.py --apply              # write topics_assigned.json
+    python3 src/parse/topic_model.py --bill 1995-1996 HB101   # explain one answer
 
 THIS SITS BESIDE topics.py, IT DOES NOT REPLACE IT. It imports that module for
 its stop list, its singular(), its committee canonicalisation and its loaders,

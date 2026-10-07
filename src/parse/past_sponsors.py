@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.5
+# GRANITE_VERSION: 2026-09-26.6
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
-    python3 past_sponsors.py            # what the record gives, term by term; writes nothing
-    python3 past_sponsors.py --check    # 2023-2024 against the saved pages, every exception named
-    python3 past_sponsors.py --apply    # writes past_sponsors.json
+    python3 src/parse/past_sponsors.py            # what the record gives, term by term; writes nothing
+    python3 src/parse/past_sponsors.py --check    # 2023-2024 against the saved pages, every exception named
+    python3 src/parse/past_sponsors.py --apply    # writes past_sponsors.json
 
 No network. It reads the PastSponsors and PastLegislation views fetch_past_db.py dumped into
 db/past/, the legislators table in db/Legislators.psv, data/bills.json, and -- for the check

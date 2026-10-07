@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.5
+# GRANITE_VERSION: 2026-09-26.6
 """
 A House committee report printed under another bill, caught against the
 report the committee filed.
 
-    python3 report_check.py            # what it finds; writes nothing
-    python3 report_check.py --apply    # writes report_corrections.json
+    python3 src/parse/report_check.py            # what it finds; writes nothing
+    python3 src/parse/report_check.py --apply    # writes report_corrections.json
 
 No network. It reads committee_reports.json -- the House Calendar printings
 fetch_committee_reports.py reads -- data/bills.json for each bill's billText

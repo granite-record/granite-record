@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -180,7 +180,7 @@ def narrative_bills(path):
     data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     if data and not narrative.is_term_keyed(data):
         raise SystemExit(f"{path} is keyed on bill number, not on term. Rebuild it: "
-                         f"python3 narrative.py --docket Docket.txt --all --out {path}")
+                         f"python3 src/parse/narrative.py --docket Docket.txt --all --out {path}")
     for term in sorted(data):
         if term >= FIRST_TERM:
             for bill, rec in data[term].items():

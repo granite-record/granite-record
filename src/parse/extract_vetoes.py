@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.17
+# GRANITE_VERSION: 2026-09-07.18
 """
 The governor's veto messages, from the House calendars already on disk.
 
-    python3 extract_vetoes.py --probe          # print what it finds, write nothing
-    python3 extract_vetoes.py                  # write veto_messages.json
-    python3 extract_vetoes.py --gaps           # once the site is built: the
+    python3 src/parse/extract_vetoes.py --probe          # print what it finds, write nothing
+    python3 src/parse/extract_vetoes.py                  # write veto_messages.json
+    python3 src/parse/extract_vetoes.py --gaps           # once the site is built: the
                                                #   vetoed bills with no message
 
 NO NETWORK. calendars/2025 and calendars/2026 were fetched for the committee

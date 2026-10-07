@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.11
+# GRANITE_VERSION: 2026-09-07.12
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -332,7 +332,7 @@ def main():
     if refused:
         print(f"  {refused} of those were refusals -- the address was told no")
     print("\nSame seven columns as Docket.txt, so narrative.py reads it with "
-          "no change:\n  python3 narrative.py --docket "
+          "no change:\n  python3 src/parse/narrative.py --docket "
           f"{out_path} --all --out narratives_{a.term}.json "
           "--members data/legislators.json")
     return 0

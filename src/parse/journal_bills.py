@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.5
+# GRANITE_VERSION: 2026-09-30.6
 """
 The bills the House withdrew, read from the House Journal itself.
 
-    python3 journal_bills.py            # writes journal_bills.json
-    python3 journal_bills.py --check    # every introduction the journals print,
+    python3 src/parse/journal_bills.py            # writes journal_bills.json
+    python3 src/parse/journal_bills.py --check    # every introduction the journals print,
                                         #   against Docket.txt, data/bills.json
                                         #   and data/sponsors.json; writes nothing
 

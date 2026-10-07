@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.86
+# GRANITE_VERSION: 2026-09-04.87
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -8,8 +8,8 @@ HJ 8" means the House voted to pass the bill on a voice vote, with no record of
 who voted which way. This renders that in a sentence a person can read, and says
 so when no individual votes exist.
 
-    python3 narrative.py --docket Docket.txt --bill HB84 --session 2025
-    python3 narrative.py --docket Docket.txt --all --out narratives.json
+    python3 src/parse/narrative.py --docket Docket.txt --bill HB84 --session 2025
+    python3 src/parse/narrative.py --docket Docket.txt --all --out narratives.json
 
 Glossary sourced from the Citizens Count key to the NH Legislature website and
 the NH General Court legislative handbook. Anything unrecognised is shown
@@ -1508,7 +1508,7 @@ def load_narratives(path, term=None):
         return {}
     if not is_term_keyed(data):
         sys.exit(f"{path} is keyed on bill number, not on term. Rebuild it: "
-                 f"python3 narrative.py --docket Docket.txt --all --out {path}")
+                 f"python3 src/parse/narrative.py --docket Docket.txt --all --out {path}")
     return data.get(term or max(data), {})
 
 

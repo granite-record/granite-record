@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.11
+# GRANITE_VERSION: 2026-09-09.12
 """
 Every version of a bill, in order, and what each amendment changed.
 
-    python3 build_bill_versions.py --check     # report only, writes nothing
-    python3 build_bill_versions.py --site site
+    python3 src/parse/build_bill_versions.py --check     # report only, writes nothing
+    python3 src/parse/build_bill_versions.py --site site
 
 Writes site/versions/<year>/<BILL>.json for every bill with more than one
 version. No network: it reads db/LegislationText.psv, db/Legislation.psv and

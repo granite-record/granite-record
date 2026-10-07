@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -35,8 +35,8 @@ Two things this handles that a naive parser gets wrong:
    the TERM, not the year, because one bill is voted on in both years of its
    biennium -- HB56 was filed in 2025 and voted on in 2026.
 
-    python3 rollcall_parser.py --file RollCallSummary.txt --bill HB1442
-    python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json
+    python3 src/parse/rollcall_parser.py --file RollCallSummary.txt --bill HB1442
+    python3 src/parse/rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.

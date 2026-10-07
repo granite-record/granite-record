@@ -464,7 +464,7 @@ October both followed `index.json`'s order, which was `data/bills.json`'s:
 
 The governor's veto messages are read before the site data, which puts each
 on its bill's page, so the report of the vetoed bills with no message is a
-step of its own after it (`extract_vetoes.py --gaps`): at the end of the
+step of its own after it (`python3 src/parse/extract_vetoes.py --gaps`): at the end of the
 writing run it read the previous build's index, and on GitHub's machine
 nothing at all.
 
@@ -879,7 +879,7 @@ have given 2027's bills 2025-2026's sign-ins.
 the turn they stop holding the last one. `freeze_term.py` keeps its inputs --
 the day files as installed in `frozen/<term>/`, the database's views in
 `db/term/<term>/`, `Docket_<term>.txt` and `verification_manifest_<term>.csv`,
-the roll calls in `rollcalls/` -- and `build_data.py --frozen-terms` builds the
+the roll calls in `rollcalls/` -- and `python3 src/parse/build_data.py --frozen-terms` builds the
 term from them every night once the session's files are the next term's,
 whole, marked archived. Rows of a finished term that turn up in new files are
 counted and left out, never merged, in every reader that would otherwise

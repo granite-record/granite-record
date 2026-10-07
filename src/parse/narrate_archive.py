@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.10
+# GRANITE_VERSION: 2026-09-11.11
 """
 Plain-language histories for every archived term whose docket is on disk.
 
-    python3 narrate_archive.py                 # every archived docket
-    python3 narrate_archive.py --list          # say what would run
+    python3 src/parse/narrate_archive.py                 # every archived docket
+    python3 src/parse/narrate_archive.py --list          # say what would run
 
 narrative.py takes one docket at a time and MERGES into narratives.json,
 which is right: the current term's step and the archived ones must not

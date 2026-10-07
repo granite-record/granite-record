@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.6
+# GRANITE_VERSION: 2026-09-14.7
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
-    python3 text_sponsors.py            # what the saved pages give, term by term; writes nothing
-    python3 text_sponsors.py --score    # measured against the terms the database does cover
-    python3 text_sponsors.py --apply    # writes text_sponsors.json
+    python3 src/parse/text_sponsors.py            # what the saved pages give, term by term; writes nothing
+    python3 src/parse/text_sponsors.py --score    # measured against the terms the database does cover
+    python3 src/parse/text_sponsors.py --apply    # writes text_sponsors.json
 
 No network. It reads what fetch_legislation.py has saved under legislation/<year>/, so it
 fills in as the lane goes: a build after a night's pages reads that night's pages.

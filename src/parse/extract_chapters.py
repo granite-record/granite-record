@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.10
+# GRANITE_VERSION: 2026-09-11.11
 """
 The chapter of the session laws each bill became, read out of the docket.
 
-    python3 extract_chapters.py            # writes chapters.json
-    python3 extract_chapters.py --check    # the measurements; writes nothing
+    python3 src/parse/extract_chapters.py            # writes chapters.json
+    python3 src/parse/extract_chapters.py --check    # the measurements; writes nothing
 
 No network. Reads every docket on this disk and nothing else: db/Docket.psv
 (1989-2016 and 2025-2026), the fetched Docket_YYYY-YYYY.txt (2015-2024) and

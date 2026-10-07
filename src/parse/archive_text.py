@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.6
+# GRANITE_VERSION: 2026-09-16.7
 """
 The text of every archived bill, read off the pages already on this disk.
 
-    python3 archive_text.py            # what is there, term by term; writes nothing
-    python3 archive_text.py --apply    # writes archive_text.json
+    python3 src/parse/archive_text.py            # what is there, term by term; writes nothing
+    python3 src/parse/archive_text.py --apply    # writes archive_text.json
 
 No network. It reads what fetch_legislation.py has saved under
 legislation/<year>/, so it fills in as the lane goes.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.166
+# GRANITE_VERSION: 2026-09-05.167
 """
 Generate the faceted site from real General Court data.
 
@@ -2928,7 +2928,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             for rows in votes_by_member.values() for v in rows):
         print("  WARNING: no ballot is flagged as a declared conflict of interest; "
               "data/member_votes.json predates rollcall_parser.ballot and counts each "
-              "as an absence. Rebuild it: python3 build_data.py")
+              "as an absence. Rebuild it: python3 src/parse/build_data.py")
     # ONE CODE PATH FOR BOTH POPULATIONS. The former members go through the
     # same member_labels, the same member_slug and the same per-member JSON as
     # the sitting roster, so every check that guards how a member is named --
@@ -9532,7 +9532,7 @@ def main():
     # Read flat and the loop would run over term names instead of bills.
     if bills and not P.term_keyed(bills):
         sys.exit(f"{D / 'bills.json'} is keyed on bill number, not on term. "
-                 "Rebuild it: python3 build_data.py --dir . --out data")
+                 "Rebuild it: python3 src/parse/build_data.py --dir . --out data")
     merge_guessed_topics(bills)
     # LAST, so it catches the General Court's labels and the model's alike.
     unify_vocabulary(bills)
@@ -9604,7 +9604,7 @@ def main():
     # with a term lookup finds nothing for every bill and still exits zero.
     if narratives and not N.is_term_keyed(narratives):
         sys.exit(f"{a.narratives} is keyed on bill number, not on term. "
-                 "Rebuild it: python3 narrative.py --docket Docket.txt --all "
+                 "Rebuild it: python3 src/parse/narrative.py --docket Docket.txt --all "
                  f"--out {a.narratives}")
     # Hand-written, and in the same class as ground_truth.csv: no generator
     # writes it and preflight fails if one opens it for writing.
@@ -9617,7 +9617,7 @@ def main():
     # shape of silence this project keeps getting caught by. So it is checked.
     if rollcalls and not all(isinstance(v, dict) for v in rollcalls.values()):
         sys.exit(f"{a.rollcalls} is keyed on bill number, not on term. Rebuild "
-                 "it: python3 rollcall_parser.py --all --out rollcalls.json")
+                 "it: python3 src/parse/rollcall_parser.py --all --out rollcalls.json")
     reports = load(a.reports, {})
     # The Senate's committee reports, with their reasoning, from the General
     # Court's database -- the half the House Calendar PDFs cannot cover. Kept

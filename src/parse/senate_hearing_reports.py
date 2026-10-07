@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.4
+# GRANITE_VERSION: 2026-09-24.5
 """
 The Senate committees' own hearing reports, read out of the database dump
 already on this disk.
 
-    python3 senate_hearing_reports.py                  # parse all, write
-    python3 senate_hearing_reports.py --show SB4       # one bill, as parsed
-    python3 senate_hearing_reports.py --fallbacks      # the ones not split
+    python3 src/parse/senate_hearing_reports.py                  # parse all, write
+    python3 src/parse/senate_hearing_reports.py --show SB4       # one bill, as parsed
+    python3 src/parse/senate_hearing_reports.py --fallbacks      # the ones not split
 
 WHAT A HEARING REPORT IS
 

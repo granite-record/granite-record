@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 The bill-version vocabulary, reshaped out of the database dump already on disk.
 
-    python3 document_versions_from_db.py
+    python3 src/parse/document_versions_from_db.py
 
 Reads db/DocumentVersion.psv and writes db/document_versions.json: every
 version label the General Court uses, with the chambers that use it, the
