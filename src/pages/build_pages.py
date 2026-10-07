@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.146
+# GRANITE_VERSION: 2026-09-04.147
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3229,9 +3229,32 @@ the House does.</p>
     # by side where there is room, because they are alternatives rather than
     # steps: a reader should see both at once and pick. One heading and one
     # sentence instead of two of each.
+    #
+    # TWO TABS, TOWNS AND LEGISLATORS (the person, 7 October 2026, F5): "divide
+    # into a Towns section and a Legislators section", as tabs like the town
+    # pages', because an interactive map of the state's districts is to come
+    # and belongs with the towns. The finder is the Towns tab; the roster in
+    # its three arrangements, who holds the seats and the vacancies are the
+    # Legislators tab. The finder still matches a member's name as well as a
+    # town, because the home page's box sends either here.
+    #
+    # The strip, the panels and the script are the town pages' own
+    # (build_town_pages.TABS_JS, the .twntabs rules in app.css's shared
+    # region): without JavaScript both panels are shown, each under its
+    # heading; with it the strip shows, a panel's id is its address
+    # (/legislators#legislators), and Back leaves the page.
+    from build_town_pages import TABS_JS as TOWN_TABS_JS
     leg_body = f"""<h1>Legislators</h1>
 <p class="lead">{len(legs)} sitting members. Type a town to see who represents
 it, or a name, county, party or committee to find a member.</p>
+<div class="twntabs" role="tablist" aria-label="Towns and legislators" hidden>
+<button type="button" role="tab" id="tab-towns" data-pane="towns"
+  aria-controls="towns" aria-selected="true" tabindex="0">Towns</button>
+<button type="button" role="tab" id="tab-legislators" data-pane="legislators"
+  aria-controls="legislators" aria-selected="false" tabindex="-1">Legislators</button>
+</div>
+<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">
+<h2 class="twnph">Towns</h2>
 <div class="lfind">
   <label for="lq" class="sr">Your town, or a legislator&rsquo;s name</label>
   <input id="lq" type="search" autocomplete="off"
@@ -3247,9 +3270,14 @@ it, or a name, county, party or committee to find a member.</p>
      pane a reader opened by clicking By county stayed empty. Two elements with
      one id is valid HTML that no validator complains about and no test caught,
      because both halves of it looked like they worked. -->
+</div>
+<div class="twnpane" id="legislators" role="tabpanel" aria-labelledby="tab-legislators">
+<h2 class="twnph">Legislators</h2>
 {roster_section(legs)}
 {('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
-  + static_bar("H") + vacancies + "</div>") if C else ""}"""
+  + static_bar("H") + vacancies + "</div>") if C else ""}
+</div>
+{TOWN_TABS_JS}"""
     (out / "legislators.html").write_text(
         shell("Legislators | Granite Record", "legislators.html", leg_body,
               desc="Every member of the New Hampshire House and Senate: their "

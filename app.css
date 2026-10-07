@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.199 */
+/* GRANITE_VERSION: 2026-09-07.200 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1179,6 +1179,46 @@ line-height:1.1}
    would say nothing a reader can use, so none is drawn on the container
    itself; the first thing inside it that takes the focus draws its own. */
 :is(#results,#main)[tabindex="-1"]:focus{outline:none}
+
+/* IN THE SHARED REGION SINCE 7 OCTOBER 2026, because the legislators page
+   (style.css) took the same two-tab strip for Towns and Legislators (F5),
+   and one strip drawn by two copies of its rules is how the two would come
+   to differ. */
+/* A TOWN PAGE IN TABS (the person, 24 September 2026: the sections "just
+   read as very cluttered and indistinct"). Representatives, Town officials
+   and How to vote are three questions, and each is a tab; the answer to the
+   first -- the county and the districts -- is the line above them.
+
+   The strip is the legislators page's (.rtabs): underlined, not boxed,
+   because it sits directly on what it switches. It scrolls inside itself
+   rather than letting the page scroll sideways, so a sixth tab on a 360px
+   phone costs the strip a swipe and never the page its width; below 480px
+   the tabs share the width and a two-word label may wrap to two lines first.
+   The underline is an inset shadow and not a border pulled down over the
+   strip's rule, because a scrolling strip clips anything that hangs out of
+   it. Written `hidden` and shown by the script: without JavaScript every
+   panel is on the page under its own heading and a strip of buttons that did
+   nothing would only be in the way. */
+.twntabs{display:flex;border-bottom:1px solid var(--rule);
+  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto}
+.twntabs[hidden]{display:none}
+.twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
+  font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
+  color:var(--ink-2);padding:var(--sp-3) var(--sp-7);min-height:44px;
+  text-align:center}
+.twntabs [role=tab]:hover{color:var(--ink)}
+.twntabs [role=tab][aria-selected=true]{color:var(--ink);
+  box-shadow:inset 0 -2px 0 var(--pine)}
+.twntabs [role=tab]:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+@media (max-width:480px){.twntabs [role=tab]{flex:1 1 auto;padding:var(--sp-3) var(--sp-4)}}
+.twnpane[hidden]{display:none}
+/* A panel's own heading, which is the page's outline with or without the
+   script. Without it, each panel is a part of one long page and says which;
+   with it, the tab above already says so, and the heading is kept for a
+   screen reader walking the headings. */
+.twnph{font-size:var(--t-title);line-height:1.25;margin:var(--sp-9) 0 var(--sp-5)}
+.twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute;width:1px;height:1px;
+  padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* SHARED:END ------------------------------------------------------------ */
 
@@ -2837,41 +2877,6 @@ margin-top:var(--sp-1)}
 .offtitle{font-size:var(--t-hero);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
 .officials .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-7)}
 
-/* A TOWN PAGE IN TABS (the person, 24 September 2026: the sections "just
-   read as very cluttered and indistinct"). Representatives, Town officials
-   and How to vote are three questions, and each is a tab; the answer to the
-   first -- the county and the districts -- is the line above them.
-
-   The strip is the legislators page's (.rtabs): underlined, not boxed,
-   because it sits directly on what it switches. It scrolls inside itself
-   rather than letting the page scroll sideways, so a sixth tab on a 360px
-   phone costs the strip a swipe and never the page its width; below 480px
-   the tabs share the width and a two-word label may wrap to two lines first.
-   The underline is an inset shadow and not a border pulled down over the
-   strip's rule, because a scrolling strip clips anything that hangs out of
-   it. Written `hidden` and shown by the script: without JavaScript every
-   panel is on the page under its own heading and a strip of buttons that did
-   nothing would only be in the way. */
-.twntabs{display:flex;border-bottom:1px solid var(--rule);
-  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto}
-.twntabs[hidden]{display:none}
-.twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
-  font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
-  color:var(--ink-2);padding:var(--sp-3) var(--sp-7);min-height:44px;
-  text-align:center}
-.twntabs [role=tab]:hover{color:var(--ink)}
-.twntabs [role=tab][aria-selected=true]{color:var(--ink);
-  box-shadow:inset 0 -2px 0 var(--pine)}
-.twntabs [role=tab]:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
-@media (max-width:480px){.twntabs [role=tab]{flex:1 1 auto;padding:var(--sp-3) var(--sp-4)}}
-.twnpane[hidden]{display:none}
-/* A panel's own heading, which is the page's outline with or without the
-   script. Without it, each panel is a part of one long page and says which;
-   with it, the tab above already says so, and the heading is kept for a
-   screen reader walking the headings. */
-.twnph{font-size:var(--t-title);line-height:1.25;margin:var(--sp-9) 0 var(--sp-5)}
-.twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute;width:1px;height:1px;
-  padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* A PANEL IS CARDS. Each section is a card with the heading at its top, so
    where one ends and the next begins is an edge and not a guess -- the same
    card as a bill's facts and a calendar's meeting. Two abreast from 1100px,

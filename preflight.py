@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.420
+# GRANITE_VERSION: 2026-09-04.421
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43763,6 +43763,61 @@ def _home_finder_suggests_towns():
                "the box keeps about 230px and its placeholder is cut off")
     return "ok", (f"all {len(towns)} of the fixture's towns offered under the box, and the "
                   "button on a line of its own under 480px")
+
+
+@check("frontend", "the legislators page is two tabs, Towns and Legislators, drawn as the town pages' tabs are")
+def _legislators_page_tabs():
+    """"Divide into a Towns section and a Legislators section" -- as two
+    tabs, like the town pages (the person, 7 October 2026, F5), because an
+    interactive map of the districts is to come and belongs with the towns.
+
+    Read off the fixture's built page: one strip, written hidden for the
+    script to show, with Towns first and Legislators second; the finder in
+    the Towns panel and the roster, who holds the seats and the vacancies in
+    the Legislators panel, each panel under its own heading; the town pages'
+    switching script after them; and the strip's rules in the region of
+    app.css that style.css takes, so this page draws it as a town page does."""
+    import build_town_pages as BT
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "legislators.html").read_text(encoding="utf-8")
+    strips = re.findall(r'<div class="twntabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
+    assert len(strips) == 1, f"the legislators page has {len(strips)} Towns/Legislators strips"
+    assert re.search(r'<div class="twntabs" role="tablist" aria-label="[^"]+" hidden>', page), (
+        "the strip is not written hidden for the script to show")
+    tabs = re.findall(r'role="tab" id="tab-([a-z]+)" data-pane="([a-z]+)"[^>]*>([^<]+)</button>',
+                      strips[0])
+    assert [(t, p, n) for t, p, n in tabs] == [("towns", "towns", "Towns"),
+                                               ("legislators", "legislators", "Legislators")], (
+        f"the strip's tabs are {tabs}")
+    a = page.index('<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">')
+    b = page.index('<div class="twnpane" id="legislators" role="tabpanel" '
+                   'aria-labelledby="tab-legislators">')
+    towns, legs = page[a:b], page[b:]
+    assert '<h2 class="twnph">Towns</h2>' in towns and 'id="lq"' in towns \
+        and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
+            "the Towns panel is not the finder under its own heading")
+    assert '<h2 class="twnph">Legislators</h2>' in legs and 'id="roster"' in legs \
+        and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
+    if 'class="comp-wrap"' in page:
+        assert page.index('class="comp-wrap"') > b, (
+            "who holds the seats is outside the Legislators panel")
+    tabs_js = BT.TABS_JS
+    assert tabs_js in page and page.index(tabs_js) > b, (
+        "the town pages' switching script is not after the panels")
+    assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
+    css = (site / "style.css").read_text(encoding="utf-8")
+    for rule in (".twntabs{display:flex", ".twntabs[hidden]{display:none}",
+                 ".twnpane[hidden]{display:none}",
+                 ".twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute"):
+        assert rule in css, (f"style.css has no {rule}: the strip's rules are not in the "
+                             "region both stylesheets take")
+    app = Path("app.css").read_text(encoding="utf-8")
+    assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
+    assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
+        "the strip's rules are not in app.css's shared region")
+    return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
+                  "the town pages' script and drawn by the same rules in both stylesheets")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
