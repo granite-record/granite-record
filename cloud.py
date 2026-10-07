@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.13
+# GRANITE_VERSION: 2026-09-25.14
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -139,11 +139,16 @@ person's decision of 7 October 2026) -- sends back only what cloud_kit.json's
   the state           a refusal and a hold on the SQL host, which are facts
                       about another server and stop the next night's asking
                       whoever met them, and its own verdict
-                      (state/last-dry-run.json); never the census or the
-                      night's verdict (DRY_NEVER)
+                      (state/last-dry-run.json, or a dry weekly's
+                      state/last-dry-weekly.json); never the census, the
+                      night's verdict or the week's (DRY_NEVER)
 
 Nothing is removed from the kit on a dry night, and the rest it changed is
-named as kept back. A New term run ticked with Dry run, which nightly.py
+named as kept back. The weekly's dry run -- every run of it off main, since 7
+October 2026 -- is the same command and the same rule: it fetches no day
+file, so none of the lists it took goes back, only its logs, a refusal or a
+hold, and its verdict, apart. A dev weekly proves the weekly's code and keeps
+nothing it fetched. A New term run ticked with Dry run, which nightly.py
 refuses before it asks for anything, is still given --hold by the workflow:
 on a dry night that holds nothing and sends nothing of the kit, only the
 logs and the state above.
@@ -180,12 +185,14 @@ deletes nothing there, and preflight holds its code to that.
                           a clash like a kit file's. The days start the day
                           before the last pull's, because a night's folder is
                           named for the day it started in Eastern time.
-  the verdicts            state/last-night.json, last-dry-run.json and
-                          last-weekly.json to archive/cloud/ -- NOT archive/,
-                          where state-down's record would take them for this
-                          machine's own. A night's from before yesterday is
-                          called STALE; a dry run's is said to be one, kept
-                          apart from the night's (nightly.DRY_VERDICT).
+  the verdicts            state/last-night.json, last-dry-run.json,
+                          last-weekly.json and last-dry-weekly.json to
+                          archive/cloud/ -- NOT archive/, where state-down's
+                          record would take them for this machine's own. A
+                          night's from before yesterday is called STALE; a dry
+                          run's is said to be one, kept apart from the night's
+                          or the week's (nightly.DRY_VERDICT,
+                          WEEKLY_DRY_VERDICT).
   the refusal             state/refused.json comes down as archive/refused.json
                           when the laptop has none (a refusal the night met
                           stops this laptop's fetches too); where both hold
@@ -257,7 +264,12 @@ UNSENT = f"{LOCAL}/refusal-unsent.json"
 SET_ASIDE = f"{LOCAL}/set-aside"
 VERDICTS = {"last-night.json": f"{LOCAL}/last-night.json",
             "last-dry-run.json": f"{LOCAL}/last-dry-run.json",
-            "last-weekly.json": f"{LOCAL}/last-weekly.json"}
+            "last-weekly.json": f"{LOCAL}/last-weekly.json",
+            "last-dry-weekly.json": f"{LOCAL}/last-dry-weekly.json"}
+# ... and how pull names a dry run's verdict, which is never the night's or
+# the week's (nightly.DRY_VERDICT, nightly.WEEKLY_DRY_VERDICT).
+DRY_VERDICTS = {"last-dry-run.json": "a dry run, kept apart from the night's,",
+                "last-dry-weekly.json": "a dry run of the weekly, kept apart from the week's,"}
 # THE PUBLISH JOB DEPLOYS A RUN'S OWN BUILD BY ITS OWN VERDICT (7 October
 # 2026). site-up sends the night's verdict, from where nightly.py writes it
 # (nightly.VERDICT), inside nights/<run>/site.json, and site-down writes it
@@ -280,8 +292,10 @@ MAIN_REF = "refs/heads/main"
 # Where a dry night's logs go, under logs/<day>/: a folder pull does not read.
 DRY_LOGS = "dry-run"
 # The state a dry night never sends, whatever cloud_kit.json's "dry_run" says:
-# what the next real night is gated against and the night's own verdict.
-DRY_NEVER = ("census.json", "last-night.json")
+# what the next real night is gated against, the night's own verdict, and the
+# week's, which a dry weekly -- every weekly off main -- keeps apart too (7
+# October 2026).
+DRY_NEVER = ("census.json", "last-night.json", "last-weekly.json")
 PULL_DAYS = 7
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
@@ -1635,7 +1649,7 @@ def cmd_state_up(a, root):
     if only is not None:
         here = [s for s in here if s["key"] in only]
         say("state-up: a dry run, so only " + (", ".join(only) or "nothing")
-            + " may go; never the census or the night's verdict")
+            + " may go; never the census, the night's verdict or the week's")
     bucket = open_bucket(a)
     if a.dry_run:
         say(f"--dry-run: nothing sent. {len(here)} state files here would be "
@@ -2566,15 +2580,17 @@ def pull_livestream_state(bucket, root, kit, dry):
 
 
 def pull_verdicts(bucket, root, dry, today):
-    """state/last-night.json, last-dry-run.json and last-weekly.json to
-    archive/cloud/. ([lines], taken).
+    """state/last-night.json, last-dry-run.json, last-weekly.json and
+    last-dry-weekly.json to archive/cloud/. ([lines], taken).
 
     A night's verdict from before yesterday is STALE: the morning triage
     reading "CLEAN" off it would be reading about a night that is not the
     last one, because the nightly on GitHub has not sent a verdict since. A
     dry run's is kept apart from the night's (nightly.DRY_VERDICT) and said to
     be one, so that it is never read as the night's; it is never stale, since
-    dry runs are started by hand, when there is something to try."""
+    dry runs are started by hand, when there is something to try. A dry
+    weekly's -- a run of the weekly off main -- is kept apart from the week's
+    the same way, and said to be one (DRY_VERDICTS)."""
     from datetime import timedelta
     lines, taken = [], 0
     yesterday = (today - timedelta(days=1)).isoformat()
@@ -2590,8 +2606,7 @@ def pull_verdicts(bucket, root, dry, today):
             write_whole(dst, data)
         taken += 0 if same else 1
         stale = key == "last-night.json" and str(v.get("day") or "") < yesterday
-        kind = ("a dry run, kept apart from the night's," if key == "last-dry-run.json"
-                else v.get("kind") or "?")
+        kind = DRY_VERDICTS.get(key) or v.get("kind") or "?"
         lines.append(("STALE -- the newest night's verdict is from before yesterday, so the "
                       "nightly on GitHub has not sent one since (its Actions tab says why): "
                       if stale else "")

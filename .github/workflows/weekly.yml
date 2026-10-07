@@ -13,10 +13,17 @@
 # push to main. 04:17 UTC on Monday is 12:17 a.m. Eastern in summer (EDT) and
 # 11:17 p.m. on Sunday in winter (EST); refusal.NIGHT_WINDOWS keeps the
 # laptop's fetches clear of it from 04:00 to 06:30 UTC.
+#
+# A run of any branch but main ("Use workflow from") is a dry run (7 October
+# 2026; DRY_RUN, below), and its title says so: it proves the weekly's code
+# and keeps nothing it fetched.
 
 name: weekly
 run-name: >-
   weekly ${{ github.event_name == 'schedule' && '(scheduled)'
+  || (github.ref != 'refs/heads/main'
+  && (inputs.new_term && '(dry run: not main, new term: refused)'
+  || (inputs.fetch && '(dry run: not main, fetching)' || '(dry run: not main, no fetch)')))
   || (inputs.fetch && (inputs.new_term && '(by hand, fetching, new term)' || '(by hand, fetching)')
   || (inputs.new_term && '(by hand, new term without the fetch: refused)' || '(by hand, no fetch)')) }}
 
@@ -50,6 +57,19 @@ env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: utf-8
   FETCH: ${{ github.event_name == 'schedule' || inputs.fetch }}
+  # A RUN OFF MAIN IS A DRY RUN (7 October 2026, the person's decision). This
+  # job has no Dry run box, and a run of it by hand on dev sent every list it
+  # took back to the kit (kit-up) and its verdict to state/last-weekly.json
+  # (state-up), and main's next night built from them -- dev's code reaching
+  # production a night later. Under this word, which every step inherits and
+  # nightly.py and cloud.py read themselves (and the ref besides, so an edit
+  # here cannot reopen it), the run fetches and checks as any week, and keeps
+  # nothing it fetched: its verdict goes to archive/last-dry-weekly.json, and
+  # kit-up and state-up send back only its logs, under logs/<day>/dry-run/,
+  # that verdict, and a refusal or a hold on the SQL host, which hold every
+  # lane whichever branch met them. A dev weekly is for proving code.
+  # A scheduled week is always main's. preflight holds this line.
+  DRY_RUN: ${{ github.ref != 'refs/heads/main' }}
   # Only ever from the box, on a run by hand: never on a scheduled week.
   NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
 
@@ -127,6 +147,7 @@ jobs:
         run: |
           $flags = @('--runner', '--weekly')
           if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
+          if ($env:DRY_RUN -eq 'true') { $flags += '--dry-run' }
           if ($env:NEW_TERM -eq 'true') { $flags += '--new-term' }
           python nightly.py @flags
           exit $LASTEXITCODE
@@ -143,6 +164,9 @@ jobs:
           python cloud.py state-up
           exit $LASTEXITCODE
 
+      # On a dry run (DRY_RUN, above, which cloud.py reads itself) none of the
+      # lists it took goes back: only its logs, under logs/<day>/dry-run/,
+      # where pull does not take them for the week's (cloud.py --dry-night).
       - name: Send what changed, and the logs, back to R2
         id: kitup
         if: always() && steps.kitdown.outcome == 'success'
@@ -178,9 +202,13 @@ jobs:
 
       # Healthchecks' check expects the nightly each day, so the weekly job
       # tells it only when it fails; a success here would stand in for a
-      # night that never ran.
+      # night that never ran. A dry run -- every run off main -- tells it
+      # nothing at all (7 October 2026): its failure is the code it is
+      # proving, not the week's, and the check watches only the runs whose
+      # outcome is the site's -- the scheduled night, a real run by hand of
+      # main, and a real week's failure. preflight holds this step.
       - name: Tell Healthchecks the weekly job failed
-        if: failure()
+        if: failure() && env.DRY_RUN == 'false'
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
         run: |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.420
+# GRANITE_VERSION: 2026-09-04.421
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34950,8 +34950,13 @@ def _cloud_dry_night(CL, BA, SG):
         d.get("store") == "nh-archive/store", (
             f"{CL.KIT_FILE}'s dry_run does not send the day's files, and only them, by the "
             f"archive's store: {sorted(d.get('served', []))} against {sorted(day_files)}")
-    assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json"}, \
-        d.get("state")
+    # A refusal, a hold, and a dry run's own verdict -- the night's or, since a
+    # weekly off main is one too, the week's -- and never the census, the
+    # night's verdict or the week's (7 October 2026).
+    assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json",
+                                       "last-dry-weekly.json"} and \
+        set(CL.DRY_NEVER) == {"census.json", "last-night.json", "last-weekly.json"}, \
+        (d.get("state"), CL.DRY_NEVER)
     # Every night file a dry night sends is one of those, or the archive of them.
     store_sha = "0" * 64
     samples = [p for e in real["kit"] if e["owner"] == "night" for p in e.get("paths", [])]
@@ -35148,6 +35153,184 @@ def _cloud_dry_night(CL, BA, SG):
                   "them, their archive but not from-db/, its logs under dry-run/, a refusal, a "
                   "hold and its own verdict; a carried output, the bill requests, a removal, the "
                   "census and the night's verdict stay, and the next night takes down main's")
+
+
+@check("cloud", "a weekly off main sends back none of the lists it took -- only its logs, apart, "
+                "a refusal or a hold and its own verdict, never the week's -- and pull says its "
+                "verdict is a dry run's", needs=("cloud", "nightly"))
+def _cloud_dry_weekly(CL, NI):
+    """7 OCTOBER 2026. A run of the weekly by hand on dev -- one ran that
+    day, fetching -- sent every list it took back to the kit with kit-up (the
+    committee rosters, the members who have left, the committee list, the
+    study committees' views) and its verdict to state/last-weekly.json with
+    state-up, and main's next night took them down and built from them. The
+    weekly has no Dry run box. Every run of it off main is now a dry run (the
+    person's decision), and cloud.py's dry night is the weekly's too:
+
+      - the real kit's: each file the weekly takes is a night's file that a
+        dry night keeps back; its verdict, archive/last-dry-weekly.json, is
+        in the state list and among what a dry night sends, the week's own
+        is never sent by one (DRY_NEVER), and pull brings it to
+        archive/cloud/
+      - driven on a folder bucket, on GitHub's machine for a run of dev with
+        no DRY_RUN at all: the lists it took stay out of kit/; its log and its
+        change list go to logs/<day>/dry-run/, which pull does not take; a
+        refusal and a hold on the SQL host go up, since they hold every lane
+        whichever branch met them; its own verdict goes up, while the week's
+        and the census stay as the last real runs left them; the workflow's
+        word alone does the same; pull says the verdict is a dry run of the
+        weekly's; and the same week on main sends its lists and its verdict
+        as it always did
+    """
+    import contextlib
+    import io
+    from datetime import date, datetime
+    real = CL.load_kit(".")
+    d = real.get("dry_run") or {}
+    state = {s["key"]: s["path"] for s in real.get("state", [])}
+    assert state.get("last-dry-weekly.json") == NI.WEEKLY_DRY_VERDICT.as_posix() and \
+        state.get("last-weekly.json") == NI.WEEKLY_VERDICT.as_posix() and \
+        "last-dry-weekly.json" in d.get("state", []) and "last-weekly.json" in CL.DRY_NEVER and \
+        CL.VERDICTS.get("last-dry-weekly.json") == f"{CL.LOCAL}/last-dry-weekly.json", (
+            "a dry weekly's verdict is not carried to the bucket and back beside the week's, or "
+            "the week's is not one a dry night never sends", state, d.get("state"), CL.DRY_NEVER)
+    weekly_files = (["data/committee_members.json", "former_members.json", "committees.json",
+                     "db/_manifest.json"] + [f"db/{x}.psv" for x in NI.STUDY_WEEKLY])
+    sent = [r for r in weekly_files if CL.owner_of(real, r) != "night"
+            or CL.dry_sends(real, Path("."), r, "0" * 64)]
+    assert not sent, ("a dry night would send back a list the weekly takes, or the weekly takes "
+                      "a file the kit does not give the night", sent)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dryweek-"))
+    saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV, CL.REF_ENV)}
+    try:
+        for k in saved_env:
+            os.environ.pop(k, None)
+        bucket = tmp / "bucket"
+        keys = ("census.json", "refused.json", "sql-held.json", "last-night.json",
+                "last-weekly.json", "last-dry-run.json", "last-dry-weekly.json")
+        lists = ["data/committee_members.json", "committees.json", "former_members.json",
+                 "db/StatStudMembers.psv"]
+        kit = {"kit": [
+            {"what": "day", "owner": "night", "paths": ["Docket.txt"]},
+            {"what": "weekly", "owner": "night", "paths": lists},
+            {"what": "archive", "owner": "night", "held": False, "globs": ["nh-archive/**"]}],
+            "state": [{"path": f"archive/{k}", "key": k, "what": "x"} for k in keys],
+            "logs": {"globs": ["logs/*", "reports/gc-changes-*.md"]},
+            "dry_run": {"served": ["Docket.txt"], "store": "nh-archive/store",
+                        "globs": ["nh-archive/index.json", "nh-archive/snapshots/**",
+                                  "nh-archive/store/*"],
+                        "state": ["refused.json", "sql-held.json", "last-dry-run.json",
+                                  "last-dry-weekly.json"]},
+            "backup": real["backup"], "never": real["never"]}
+
+        def put(root, files):
+            for rel, body in files.items():
+                f = root.joinpath(*rel.split("/"))
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(body if isinstance(body, bytes) else body.encode("utf-8"))
+
+        def machine(name, files=None):
+            root = tmp / name
+            root.mkdir()
+            (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+            put(root, files or {})
+            return root
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
+
+        def remote(key):
+            f = bucket.joinpath(*key.split("/"))
+            return f.read_bytes() if f.is_file() else None
+
+        mains = {"data/committee_members.json": b"{\"H01\": [1, 2, 3]}",
+                 "committees.json": b"{\"H\": [1]}", "former_members.json": b"{\"1\": {}}",
+                 "db/StatStudMembers.psv": b"a|1\n"}
+        laptop = machine("laptop", dict(mains, **{
+            "Docket.txt": "2025|0001|HB1|introduced\n", "nh-archive/index.json": "{}",
+            "archive/census.json": "{\"census\": {\"bills\": 100}}",
+            "archive/last-weekly.json": "{\"run_id\": \"800\", \"kind\": \"weekly\"}"}))
+        assert call(laptop, "seed-kit")[0] == 0 and call(laptop, "state-up")[0] == 0
+        census, week_v = remote("state/census.json"), remote("state/last-weekly.json")
+        assert census and week_v
+
+        # Sunday's fetches on dev: GitHub's machine and the ref, and nothing else.
+        day = f"{datetime.now():%Y-%m-%d}"
+        wk = machine("week")
+        assert call(wk, "state-down")[0] == 0 and call(wk, "kit-down")[0] == 0
+        dry_v = json.dumps({"run_id": "801", "kind": "weekly", "day": day, "clean": True,
+                            "asked": {"dry_run": True}}).encode("utf-8")
+        put(wk, {"data/committee_members.json": "{\"H01\": [1, 2, 3, 99]}",
+                 "committees.json": "{\"H\": [1, 2]}",
+                 "former_members.json": "{\"1\": {}, \"777\": {}}",
+                 "db/StatStudMembers.psv": "a|1\nb|2\n",
+                 f"logs/weekly-{day}.log": "the dev weekly's log",
+                 f"reports/gc-changes-weekly-{day}.md": "what the dev weekly saw",
+                 "archive/last-dry-weekly.json": dry_v,
+                 "archive/last-weekly.json": "{\"run_id\": \"801\"}",
+                 "archive/census.json": "{\"census\": {\"bills\": 1}}",
+                 "archive/refused.json": "{\"where\": \"fetch_committees\"}",
+                 "archive/sql-held.json": "{\"held\": true}"})
+        os.environ.update(GITHUB_ACTIONS="true", **{CL.REF_ENV: "refs/heads/dev"})
+        code, out = call(wk, "kit-up")
+        assert code == 0, out[-400:]
+        assert all(remote(f"kit/{r}") == body for r, body in mains.items()), (
+            "a weekly of dev sent back a list it took, which main's next night would build from",
+            {r: remote(f"kit/{r}") for r in mains})
+        assert remote(f"logs/{day}/{CL.DRY_LOGS}/weekly-{day}.log") and \
+            remote(f"logs/{day}/{CL.DRY_LOGS}/gc-changes-weekly-{day}.md") and \
+            remote(f"logs/{day}/weekly-{day}.log") is None, \
+            "a weekly of dev's logs went where pull takes the week's, or did not go"
+        assert remote("state/refused.json") and remote("state/sql-held.json"), \
+            "a refusal or a hold a weekly of dev met did not go up, so would not hold the next night"
+        assert remote("state/last-dry-weekly.json") == dry_v and \
+            remote("state/last-weekly.json") == week_v and remote("state/census.json") == census, \
+            "a weekly of dev sent the week's verdict or the census, or kept back its own"
+        # The workflow's word alone (weekly.yml sets it on dev) does the same.
+        os.environ.pop(CL.REF_ENV, None)
+        os.environ[CL.DRY_ENV] = "true"
+        put(wk, {"committees.json": "{\"H\": [1, 2, 3]}"})
+        code, out = call(wk, "state-up")
+        assert code == 0 and remote("state/last-weekly.json") == week_v, out[-300:]
+        code, out = call(wk, "kit-up")
+        assert code == 0 and remote("kit/committees.json") == mains["committees.json"], out[-300:]
+        os.environ.pop(CL.DRY_ENV, None)
+
+        # The laptop's pull: the dry weekly's verdict, apart and said to be
+        # one; the week's as it was; its logs left in the bucket.
+        b = CL.make_bucket(str(bucket), 1)
+        with contextlib.redirect_stdout(io.StringIO()):
+            said, _ = CL.pull_verdicts(b, laptop, False, date.today())
+            taken = CL.pull_logs(b, laptop, CL.load_kit(laptop), [day], False, {}, set(), True,
+                                 day)[0]
+        assert any(ln.startswith("last-dry-weekly.json: a dry run of the weekly, kept apart from "
+                                 "the week's, of ") for ln in said) and \
+            (laptop / CL.LOCAL / "last-dry-weekly.json").read_bytes() == dry_v and \
+            (laptop / CL.LOCAL / "last-weekly.json").read_bytes() == week_v, (
+                "pull did not bring a dry weekly's verdict apart from the week's, said to be one",
+                said)
+        assert not taken, f"pull took a dry weekly's logs for the week's: {sorted(taken)}"
+
+        # The same week on main sends its lists and its verdict, as it did.
+        os.environ.update(GITHUB_ACTIONS="true", **{CL.REF_ENV: CL.MAIN_REF})
+        real_week = machine("main-week")
+        assert call(real_week, "state-down")[0] == 0 and call(real_week, "kit-down")[0] == 0
+        put(real_week, {"committees.json": "{\"H\": [5]}",
+                        "archive/last-weekly.json": "{\"run_id\": \"802\"}"})
+        code, out = call(real_week, "kit-up")
+        assert code == 0 and remote("kit/committees.json") == b"{\"H\": [5]}" and \
+            remote("state/last-weekly.json") == b"{\"run_id\": \"802\"}", (
+                "a weekly of main no longer sends what it took, or its verdict", out[-300:])
+    finally:
+        for k, val in saved_env.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"each of the {len(weekly_files)} files the weekly takes is kept back by a dry "
+                  "night; a weekly of dev, by its ref or by the workflow's word, sends its logs "
+                  "under dry-run/, a refusal, a hold and its own verdict, and none of its lists, "
+                  "the week's verdict or the census; pull says the verdict is a dry run's and "
+                  "leaves its logs; a weekly of main sends as before")
 
 
 def _fake_s3():
@@ -37063,6 +37246,8 @@ def _pull_fixture(root, kit_src):
     kit["state"] += [{"path": "archive/last-night.json", "key": "last-night.json", "what": "x"},
                      {"path": "archive/last-dry-run.json", "key": "last-dry-run.json", "what": "x"},
                      {"path": "archive/last-weekly.json", "key": "last-weekly.json", "what": "x"},
+                     {"path": "archive/last-dry-weekly.json", "key": "last-dry-weekly.json",
+                      "what": "x"},
                      {"path": "archive/livestreams.json", "key": "livestreams.json", "what": "x"}]
     kit["logs"] = {"globs": ["logs/*", "reports/gc-changes-*.md"]}
     (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
@@ -37282,6 +37467,10 @@ def _cloud_pull(CL, R):
         (night / "archive/last-dry-run.json").write_text(json.dumps(
             {"kind": "nightly", "day": today, "started": f"{today}T11:02:00",
              "clean": True, "asked": {"dry_run": True}}), encoding="utf-8")
+        # ... and a dry weekly's, kept apart from the week's (7 October 2026).
+        (night / "archive/last-dry-weekly.json").write_text(json.dumps(
+            {"kind": "weekly", "day": today, "clean": False, "not_clean": ["committees: x"],
+             "asked": {"dry_run": True}}), encoding="utf-8")
         (night / "archive/livestreams.json").write_text(json.dumps(
             {"version": 1, "videos": {}, "last_run": {"at": f"{today}T08:45:00Z"}}),
             encoding="utf-8")
@@ -37334,6 +37523,11 @@ def _cloud_pull(CL, R):
             not (laptop / "archive/last-dry-run.json").exists() and \
             "last-dry-run.json: a dry run, kept apart from the night's, of" in out, \
             "a dry run's verdict did not come down beside the night's, kept apart and said to be one"
+        assert text(laptop, "archive/cloud/last-dry-weekly.json") == \
+            text(night, "archive/last-dry-weekly.json") and \
+            not (laptop / "archive/last-dry-weekly.json").exists() and \
+            "last-dry-weekly.json: a dry run of the weekly, kept apart from the week's, of" in out, \
+            "a dry weekly's verdict did not come down beside the week's, kept apart and said to be one"
         assert text(laptop, "archive/livestreams.json") == text(night, "archive/livestreams.json"), \
             "the night's livestream state did not reach archive/livestreams.json, where the " \
             "laptop's caption catch-up reads it"
@@ -49264,6 +49458,197 @@ def _nightly_weekly(NI):
                   "recorded and honoured; the report names what changed")
 
 
+@check("build", "a weekly off main is a dry run: it fetches and checks as any week, keeps its "
+       "verdict apart in archive/last-dry-weekly.json, leaves the week's as it was, says why on "
+       "its page, and a New term week there takes nothing", needs=("nightly",))
+def _nightly_weekly_dry(NI):
+    """7 OCTOBER 2026, THE PERSON'S DECISION: every GitHub run on a branch
+    other than main is a dry run. A weekly by hand on dev wrote
+    archive/last-weekly.json -- the verdict the morning reads as the week's,
+    which state-up sent to the bucket -- and its lists went back to the kit
+    (_cloud_dry_weekly holds that half). Driven through nightly.main() with
+    every fetch faked:
+
+      - a week on GitHub's machine for a run of dev, with no flag and no
+        DRY_RUN, fetches and checks as any week -- it is how the weekly's
+        code is proved -- and writes its verdict to WEEKLY_DRY_VERDICT,
+        saying it is kept apart (WEEKLY_DRY_APART) and which branch made it a
+        dry run, on its page too; archive/last-weekly.json is left byte for
+        byte
+      - its --close finishes that verdict, and one that never started is
+        said there, the week's again untouched
+      - New term ticked there takes nothing, and its page says to run it from
+        main (WEEKLY_NEW_TERM_NOT_MAIN)
+      - --dry-run alone does the same off GitHub's machine, with no branch to
+        name; and a week of main is what it always was, its verdict the week's
+    """
+    import contextlib
+    import io
+    import types
+    import refusal
+    assert NI.WEEKLY_DRY_VERDICT.as_posix() == "archive/last-dry-weekly.json" and \
+        len({NI.WEEKLY_DRY_VERDICT, NI.WEEKLY_VERDICT, NI.DRY_VERDICT, NI.VERDICT}) == 4, \
+        NI.WEEKLY_DRY_VERDICT
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekly-dry-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+                "GITHUB_SHA", "DRY_RUN", "GITHUB_REF")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    calls = []
+
+    def member(i):
+        return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": True}
+
+    def fake(args, label, cwd=None):
+        name = Path(args[0]).name
+        calls.append(name)
+        NI.say(f"\n--- {label} ---")
+        out = Path(args[args.index("--out") + 1]) if "--out" in args else None
+        if name == "fetch_committee_members_db.py":
+            out.write_text(json.dumps({"H01": [member(i) for i in range(1, 11)] + [member(99)],
+                                       "S01": [member(i) for i in range(20, 25)]}),
+                           encoding="utf-8")
+        elif name == "fetch_members_db.py":
+            got = json.loads(out.read_text(encoding="utf-8"))
+            got["777"] = {"name": "Newly, Gone", "party": "Democrat"}
+            out.write_text(json.dumps(got), encoding="utf-8")
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd, {})
+        elif name == "fetch_committees.py":
+            out.write_text(json.dumps(
+                {"S": [{"code": f"S{i}", "name": f"S {i}", "chair": "A"} for i in range(14)],
+                 "H": [{"code": f"H{i}", "name": f"H {i}", "chair": "B"} for i in range(27)]}),
+                encoding="utf-8")
+        NI.say("  (0s, exit 0)")
+        return 0
+
+    def installed():
+        Path("data").mkdir(exist_ok=True)
+        Path("db").mkdir(exist_ok=True)
+        Path("data/committee_members.json").write_text(json.dumps(
+            {"H01": [member(i) for i in range(1, 11)], "S01": [member(i) for i in range(20, 25)]}),
+            encoding="utf-8")
+        Path("former_members.json").write_text(json.dumps({"1": {"name": "Old, One"}}),
+                                               encoding="utf-8")
+        Path("committees.json").write_text(json.dumps(
+            {"S": [{"code": f"S{i}", "name": f"S {i}", "chair": "A"} for i in range(14)],
+             "H": [{"code": f"H{i}", "name": f"H {i}", "chair": "C"} for i in range(27)]}),
+            encoding="utf-8")
+        for v in NI.STUDY_WEEKLY:
+            (Path("db") / f"{v}.psv").write_text("".join(f"{v}|{i}\n" for i in range(30)),
+                                                 encoding="utf-8")
+
+    def week(*extra, run_id, github=True, ref="refs/heads/dev"):
+        NI.LOG = []
+        del calls[:]
+        os.environ["GITHUB_RUN_ID"] = run_id
+        summary = tmp / "summary.md"
+        summary.write_text("", encoding="utf-8")
+        os.environ["GITHUB_STEP_SUMMARY"] = str(summary)
+        if github:
+            os.environ["GITHUB_ACTIONS"] = "true"
+            os.environ["GITHUB_REF"] = ref
+        sys.argv = ["nightly.py", "--runner", "--weekly", *extra]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = NI.main()
+                except SystemExit as e:
+                    code = e.code
+        finally:
+            for k in ("GITHUB_ACTIONS", "GITHUB_REF"):
+                os.environ.pop(k, None)
+        return code, summary.read_text(encoding="utf-8").splitlines()
+
+    def dry():
+        return NI.load_json(NI.WEEKLY_DRY_VERDICT) or {}
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        installed()
+        week_v = b"{\"run_id\": \"800\", \"kind\": \"weekly\", \"clean\": true}\n"
+        NI.WEEKLY_VERDICT.write_bytes(week_v)
+        dev = NI.off_main_line("refs/heads/dev")
+
+        # A week of dev, no flag and no DRY_RUN: it fetches and checks, and
+        # keeps its verdict apart.
+        code, page = week(run_id="801")
+        v = dry()
+        assert code == 0 and v.get("run_id") == "801" and v.get("clean") and (v.get("asked") or {}).get("dry_run") and \
+            v.get("kept_apart") == NI.WEEKLY_DRY_APART and v.get("off_main") == "refs/heads/dev", \
+            ("a weekly of dev was not a dry run", v.get("asked"), v.get("off_main"))
+        assert NI.WEEKLY_VERDICT.read_bytes() == week_v, \
+            "a weekly of dev wrote the week's verdict, which the morning reads as the week's"
+        assert "fetch_committee_members_db.py" in calls and "fetch_committees.py" in calls and \
+            len(json.loads(Path("former_members.json").read_text(encoding="utf-8"))) == 2, \
+            "a weekly of dev did not fetch and check as any week, which is how its code is proved"
+        assert f"- {NI.WEEKLY_DRY_APART}" in page and f"- {dev}" in page, \
+            f"a weekly of dev's page does not say it is a dry run, and why: {page}"
+
+        # Its close finishes its own verdict; one that never started is said
+        # there, and the week's stands.
+        code, page = week("--close", "--outcome", "weekly=success", run_id="801")
+        assert code == 0 and dry().get("steps") == {"weekly": "success"} and \
+            NI.WEEKLY_VERDICT.read_bytes() == week_v, ("a weekly of dev's close wrote the week's",
+                                                       dry().get("steps"))
+        code, page = week("--close", "--outcome", "kit-down=failure", run_id="802")
+        v = dry()
+        assert code == 1 and v.get("run_id") == "802" and v.get("kept_apart") == NI.WEEKLY_DRY_APART \
+            and v.get("off_main") == "refs/heads/dev" and NI.WEEKLY_VERDICT.read_bytes() == week_v \
+            and f"- {NI.WEEKLY_DRY_APART}" in page, \
+            ("a weekly of dev that never started was not said, apart from the week's", v)
+
+        # New term ticked there takes nothing, and says to run it from main.
+        installed()
+        before = {p: Path(p).read_bytes() for p in
+                  ("data/committee_members.json", "committees.json", "former_members.json")}
+        code, page = week("--new-term", run_id="803")
+        v = dry()
+        assert code == 1 and v.get("new_term") == {"refused": NI.REFUSED_NOT_MAIN} and not calls and \
+            all(Path(p).read_bytes() == b for p, b in before.items()) and \
+            NI.plain_why(v, True) == NI.WEEKLY_NEW_TERM_NOT_MAIN and \
+            f"- {NI.NEW_TERM_BOX}: {NI.WEEKLY_NEW_TERM_NOT_MAIN}" in page and \
+            NI.WEEKLY_VERDICT.read_bytes() == week_v, \
+            ("a New term week of dev took something, or did not say to run it from main",
+             v.get("new_term"), calls)
+        assert all(x in NI.WEEKLY_NEW_TERM_NOT_MAIN for x in (
+            NI.NEW_TERM_BOX, f'"{NI.WEEKLY_FETCH_BOX}" ticked', f"from {NI.REPO_BRANCH}")), \
+            NI.WEEKLY_NEW_TERM_NOT_MAIN
+
+        # --dry-run alone, off GitHub's machine: apart, with no branch to name.
+        code, page = week("--dry-run", run_id="804", github=False)
+        v = dry()
+        assert code == 0 and v.get("run_id") == "804" and "off_main" not in v and \
+            v.get("kept_apart") == NI.WEEKLY_DRY_APART and NI.WEEKLY_VERDICT.read_bytes() == week_v, v
+
+        # A week of main is what it always was: its verdict the week's.
+        installed()
+        code, page = week(run_id="805", ref=NI.MAIN_REF)
+        v = json.loads(NI.WEEKLY_VERDICT.read_text(encoding="utf-8"))
+        assert code == 0 and v["run_id"] == "805" and v["asked"]["dry_run"] is False and \
+            "kept_apart" not in v and "off_main" not in v and dry().get("run_id") == "804" and \
+            not any(NI.WEEKLY_DRY_APART in ln for ln in page), \
+            ("a weekly of main was not the week's", v.get("asked"), v.get("kept_apart"))
+    finally:
+        os.chdir(here)
+        NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK = saved
+        for k, val in saved_env.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a weekly of dev fetches and checks, keeps its verdict apart in "
+                  "archive/last-dry-weekly.json and says why on its page; its close is its own; "
+                  "the week's verdict stands byte for byte; New term there takes nothing and "
+                  "says to run it from main; a weekly of main is the week's")
+
+
 # ---- a finished term's inputs, frozen --------------------------------------------
 #
 # private/NEW_TERM_DESIGN.md (5 October 2026): at the turn the General Court's
@@ -57640,6 +58025,24 @@ WF_RUNS = {
         ("workflow_dispatch", MAIN_REF, dict(_HAND, fetch=True, new_term=True), True,
          "nightly (by hand, new term: refused, its page says which boxes)"),
     ],
+    # The weekly has no Dry run box: only its branch makes a run of it a dry run.
+    "weekly.yml": [
+        ("schedule", MAIN_REF, {}, False, "weekly (scheduled)"),
+        ("workflow_dispatch", MAIN_REF, {"fetch": True, "new_term": False}, False,
+         "weekly (by hand, fetching)"),
+        ("workflow_dispatch", MAIN_REF, {"fetch": False, "new_term": False}, False,
+         "weekly (by hand, no fetch)"),
+        ("workflow_dispatch", MAIN_REF, {"fetch": True, "new_term": True}, False,
+         "weekly (by hand, fetching, new term)"),
+        ("workflow_dispatch", MAIN_REF, {"fetch": False, "new_term": True}, False,
+         "weekly (by hand, new term without the fetch: refused)"),
+        ("workflow_dispatch", "refs/heads/dev", {"fetch": True, "new_term": False}, True,
+         "weekly (dry run: not main, fetching)"),
+        ("workflow_dispatch", "refs/heads/dev", {"fetch": False, "new_term": False}, True,
+         "weekly (dry run: not main, no fetch)"),
+        ("workflow_dispatch", "refs/heads/dev", {"fetch": True, "new_term": True}, True,
+         "weekly (dry run: not main, new term: refused)"),
+    ],
 }
 
 _GH_TOKEN = re.compile(r"\s*(?:(\|\||&&|==|!=|!|\(|\))|('(?:[^']|'')*')|([A-Za-z_][\w.\-]*)"
@@ -57938,10 +58341,12 @@ def _workflows_dry_run(NI, CL):
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
     src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     main = src[src.find("def main("):src.find("def current_branch(")]
-    at = main.find("if not a.dry_run and not a.weekly and dry_by_workflow():")
+    # ... for the night and, since the weekly is a dry run off main too, the week.
+    at = main.find("if not a.dry_run and dry_by_workflow():")
     assert at != -1 and at < main.find("on_the_runner()") and \
         "a.dry_run = True" in main[at:at + 120], \
-        "nightly.py does not take a dry run from the workflow's word before the runner starts"
+        ("nightly.py does not take a dry run from the workflow's word, for the night and the "
+         "week, before the runner starts")
     return "ok", (f"DRY_RUN is set once, from the box on a run by hand or a ref other than main; "
                   f"{len(WF_RUNS['nightly.yml'])} kinds of run read as GitHub reads them; "
                   "nightly.py and cloud.py read the word and the ref on GitHub's machine whatever "
@@ -57949,8 +58354,77 @@ def _workflows_dry_run(NI, CL):
                   "runs only for main and never for a dry run")
 
 
-# The workflows whose every kind of run (WF_RUNS) Healthchecks is held to.
-WF_PINGS = ("nightly.yml",)
+# The workflows whose every kind of run (WF_RUNS) Healthchecks is held to:
+# every workflow that names HEALTHCHECKS_URL, which the check holds too.
+WF_PINGS = ("nightly.yml", "weekly.yml")
+
+
+# EVERY RUN OF THE WEEKLY OFF MAIN IS A DRY RUN (7 October 2026). It has no
+# Dry run box, so the ref is all of the word; the week is told it as the
+# night is.
+WEEKLY_DRY_RUN_ENV = "  DRY_RUN: ${{ github.ref != 'refs/heads/main' }}"
+DRY_RUN_FLAG = "          if ($env:DRY_RUN -eq 'true') { $flags += '--dry-run' }"
+
+
+@check("workflows", "every run of the weekly on a branch other than main is a dry run: one word "
+       "in weekly.yml that every step inherits, handed to the week, said in its title, and "
+       "read by nightly.py and cloud.py themselves", needs=("nightly", "cloud"))
+def _workflows_weekly_dry_run(NI, CL):
+    """THE PERSON'S DECISION OF 7 OCTOBER 2026: every GitHub run on a branch
+    other than main is a dry run. The weekly had no such word at all: a run
+    of it by hand on dev -- one ran on 7 October, fetching -- sent every list
+    it took back to the kit and its verdict to state/last-weekly.json, and
+    main's next night built from them. So weekly.yml says it once, in its
+    top-level env, from the ref alone (it has no box); no step says it again;
+    the week's own step passes --dry-run under it, as the night's does; each
+    kind of run in WF_RUNS reads, as GitHub would read the lines, as the dry
+    run it is or is not, with a title that says "not main"; and nightly.py
+    takes the week, as the night, as a dry run's from the word or the ref
+    whatever a step passed (cloud.py's kit-up and state-up the same,
+    _workflows_dry_run). It publishes nothing either way."""
+    wf = WORKFLOW_DIR / "weekly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/weekly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    code = _wf_code(lines)
+    assert WEEKLY_DRY_RUN_ENV in _wf_block(lines, "env"), (
+        "weekly.yml does not set DRY_RUN in its top-level env from the ref, so a run of it on a "
+        "branch other than main keeps what it fetched")
+    sets = [ln.strip() for ln in code if re.match(r"^\s*DRY_RUN\s*:", ln)]
+    assert sets == [WEEKLY_DRY_RUN_ENV.strip()], \
+        f"weekly.yml sets DRY_RUN more than once, and a step's own would hide the run's: {sets}"
+    body = "\n".join(code)
+    assert "cloud.py site-up" not in body and "--deploy-to" not in body, \
+        "weekly.yml publishes something, which it never did"
+    weeks = [st for jl in _wf_jobs(text).values() for st in _wf_steps(_wf_code(jl))
+             if any("nightly.py @flags" in ln for ln in st)]
+    assert len(weeks) == 1 and DRY_RUN_FLAG in weeks[0] and \
+        "\n".join(weeks[0]).count("--dry-run") == 1, \
+        "weekly.yml's week is not told --dry-run when DRY_RUN says so"
+    dry_line, title = _wf_value(lines, "DRY_RUN"), _wf_value(lines, "run-name")
+    wrong = []
+    for event, ref, boxes, dry, want in WF_RUNS["weekly.yml"]:
+        ctx = _wf_run_ctx(event, ref, boxes)
+        said, named = _gh_render(dry_line, ctx), _gh_render(title or "", ctx)
+        if said != ("true" if dry else "false") or named != want:
+            wrong.append(f"{event} of {ref} with {boxes or 'no boxes'}: DRY_RUN={said}, titled "
+                         f"{named!r} (want DRY_RUN={str(dry).lower()} and {want!r})")
+    assert not wrong, "weekly.yml, as GitHub would read it: " + "; ".join(wrong)
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV, NI.REF_ENV)}
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        os.environ.update(GITHUB_ACTIONS="true", **{NI.REF_ENV: "refs/heads/dev"})
+        assert NI.dry_by_workflow() and CL.dry_by_workflow(), \
+            "a run of dev on GitHub's machine, with no DRY_RUN at all, is not read as a dry run"
+    finally:
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"DRY_RUN is set once, from the ref; the week is told --dry-run under it; "
+                  f"{len(WF_RUNS['weekly.yml'])} kinds of run read as GitHub reads them, every "
+                  "run off main a dry run titled so; nightly.py and cloud.py read the ref "
+                  "themselves")
 
 
 def _gh_unwrap(cond):
@@ -57971,10 +58445,16 @@ def _workflows_healthchecks():
     function is success() and its if, as GitHub reads it): it pings for no
     dry run at all, by the box or by the branch, and for every run that is
     not one -- a scheduled night, a run by hand of main with Dry run
-    unticked -- in the outcome it is there for, as before."""
+    unticked -- in the outcome it is there for, as before. The weekly's ping,
+    which tells Healthchecks only of a week that failed, likewise: never for
+    a week off main. Every workflow that names HEALTHCHECKS_URL is held."""
     files = {f.name: f for f in _workflows()}
     if not files:
         return "skip", "no .github/workflows here"
+    naming = sorted(n for n, f in files.items() if "secrets.HEALTHCHECKS_URL" in
+                    "\n".join(_wf_code(f.read_text(encoding="utf-8").splitlines())))
+    assert set(naming) <= set(WF_PINGS), \
+        f"{sorted(set(naming) - set(WF_PINGS))} ping Healthchecks and are not held to the dry-run rule"
     held = []
     for name in WF_PINGS:
         assert name in files, f"{name} is not among the workflows"

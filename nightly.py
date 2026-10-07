@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.56
+# GRANITE_VERSION: 2026-09-04.57
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -130,6 +130,20 @@ committee rosters, the members who have left and the study committees'
 members and bills, one fetch at a time, each whole or not at all, with a
 report of what changed in reports/gc-changes-weekly-<date>.md, beside the
 night's own what-changed reports.
+
+A WEEKLY OFF MAIN IS A DRY RUN TOO (7 October 2026). The weekly has no Dry
+run box, and a run of it by hand on dev sent every list it took back to the
+kit and its verdict to state/last-weekly.json, and main's next night built
+from them. Now a run of any branch but main (weekly.yml's DRY_RUN, which
+reads the ref, or not_main here) proves the weekly's code -- it fetches and
+checks as any week -- and keeps nothing it fetched: its verdict goes to
+archive/last-dry-weekly.json (WEEKLY_DRY_VERDICT; R2's
+state/last-dry-weekly.json, brought to archive/cloud/ by pull and said to be
+a dry run's), never archive/last-weekly.json, which the morning reads as the
+week's; cloud.py's dry night sends back none of its lists, its logs under
+logs/<day>/dry-run/, and a refusal or a hold on the SQL host, which hold
+every lane whichever branch met them. A New term week there is refused, and
+says to run it from main.
 
 A DRY RUN IS KEPT APART (7 October 2026)
 
@@ -513,6 +527,11 @@ WEEKLY_VERDICT = Path("archive/last-weekly.json")
 # is this file and never VERDICT; cloud_kit.json's state list carries it as
 # state/last-dry-run.json, and cloud.py pull brings it to archive/cloud/.
 DRY_VERDICT = Path("archive/last-dry-run.json")
+# ... and a dry weekly's -- every run of the weekly off main -- is this, and
+# never WEEKLY_VERDICT, which the morning reads as the week's (7 October 2026;
+# cloud_kit.json carries it as state/last-dry-weekly.json, and pull brings it
+# to archive/cloud/ and says it is a dry run's).
+WEEKLY_DRY_VERDICT = Path("archive/last-dry-weekly.json")
 # The publish job's: the verdict of the run whose site it deploys, which
 # cloud.py site-down brings down with that site (cloud.SITE_VERDICT, which
 # preflight holds to this). --deploy-to production reads nothing else for it.
@@ -548,6 +567,13 @@ DRY_APART = ("This dry run's verdict is kept apart, in archive/last-dry-run.json
              "real night's verdict, the census and the gate's records are as that night left "
              "them, and a night waiting for approval can still be approved. It sends back only "
              "what it fetched, and its logs.")
+# ... and a dry weekly's, which keeps nothing it fetched at all: a dev weekly
+# is for proving the weekly's code.
+WEEKLY_DRY_APART = ("This dry run's verdict is kept apart, in archive/last-dry-weekly.json: the "
+                    "week's verdict is as the last real weekly left it, and none of the lists it "
+                    "took goes back to the kit for the next night to build from. It proves the "
+                    "weekly's code and keeps nothing it fetched; its logs go back, and a refusal "
+                    "or a hold on the SQL host, which hold every lane whichever run met them.")
 
 # Scratch space for a fetch that must arrive whole before it replaces anything.
 # Inside the working folder, so a swap is a rename on the same disk.
@@ -1204,8 +1230,10 @@ def main():
         # A DRY RUN IS KNOWN BY THE WORKFLOW'S WORD (7 October 2026) as well as
         # by the flag: every step of a run inherits DRY_RUN, so a step that
         # forgets --dry-run still keeps its verdict apart. And by the ref: a
-        # run of a branch other than main is one, whatever DRY_RUN says.
-        if not a.dry_run and not a.weekly and dry_by_workflow():
+        # run of a branch other than main is one, whatever DRY_RUN says --
+        # the weekly's too, which has no box (A WEEKLY OFF MAIN IS A DRY RUN
+        # TOO, in the docstring).
+        if not a.dry_run and dry_by_workflow():
             a.dry_run = True
         if a.new_term and (a.deploy_to or a.close):
             ap.error("--new-term is for the night or the weekly job: a deploy and the "
@@ -1827,11 +1855,25 @@ NEW_TERM_FREEZE = (f"{NEW_TERM_BOX} was ticked, and the term the installed files
 # Each refusal's sentence, on the run's page and in its log.
 NEW_TERM_REFUSED = {REFUSED_DRY: NEW_TERM_DRY, REFUSED_NO_FETCH: NEW_TERM_NO_FETCH,
                     REFUSED_NOT_MAIN: NEW_TERM_NOT_MAIN, REFUSED_FREEZE: NEW_TERM_FREEZE}
-# The weekly job's own two sentences: it has no Dry run box and publishes nothing.
+# The weekly job's own sentences: it has no Dry run box and publishes nothing.
 WEEKLY_NEW_TERM_HINT = ("The General Court's committee lists are much smaller: a new term? Run "
                         f'the weekly by hand with {NEW_TERM_BOX} and "{WEEKLY_FETCH_BOX}" ticked.')
 WEEKLY_NEW_TERM_NO_FETCH = (f'{NEW_TERM_BOX} was ticked without "{WEEKLY_FETCH_BOX}", so nothing '
                             "was taken. Run the weekly by hand again with both ticked.")
+# ... and, since 7 October 2026, a New term week of a branch other than main,
+# which is a dry run and keeps nothing it takes; or one told --dry-run by
+# hand, which the workflow never does on main.
+WEEKLY_NEW_TERM_NOT_MAIN = (f"{NEW_TERM_BOX} was ticked on a run of a branch other than "
+                            f"{REPO_BRANCH}, which is a dry run and keeps nothing it takes, so "
+                            f"nothing was taken. Run the weekly by hand from {REPO_BRANCH} (\"Use "
+                            f"workflow from\") with {NEW_TERM_BOX} and \"{WEEKLY_FETCH_BOX}\" "
+                            "ticked.")
+WEEKLY_NEW_TERM_DRY = (f"{NEW_TERM_BOX} was ticked on a dry run, which keeps nothing it takes, so "
+                       f"nothing was taken. Run the weekly by hand from {REPO_BRANCH} with "
+                       f"{NEW_TERM_BOX} and \"{WEEKLY_FETCH_BOX}\" ticked.")
+WEEKLY_NEW_TERM_REFUSED = {REFUSED_NO_FETCH: WEEKLY_NEW_TERM_NO_FETCH,
+                           REFUSED_NOT_MAIN: WEEKLY_NEW_TERM_NOT_MAIN,
+                           REFUSED_DRY: WEEKLY_NEW_TERM_DRY}
 
 # What take_views and take_json say of a result kept out for being much smaller
 # than the copy installed -- and of nothing else they keep out.
@@ -1852,7 +1894,7 @@ def plain_why(v, weekly=False):
     new_term = v.get("new_term") if isinstance(v.get("new_term"), dict) else {}
     if weekly:
         if new_term.get("refused"):
-            return WEEKLY_NEW_TERM_NO_FETCH
+            return WEEKLY_NEW_TERM_REFUSED.get(new_term["refused"], WEEKLY_NEW_TERM_NO_FETCH)
         # The members who have left are a merge: one that came back smaller
         # is a failed fetch in any week, and says nothing about a term.
         if not step and kept_smaller({k: r for k, r in (v.get("results") or {}).items()
@@ -4059,9 +4101,13 @@ def close_verdict(a):
     A night that was not clean puts plain_why()'s sentence at the top of the
     run's page on GitHub: an error when the job fails, a warning otherwise.
     A dry run's is its own verdict, kept apart (DRY_VERDICT): one that never
-    started is said there, and the last real night's stands as it was.
+    started is said there, and the last real night's stands as it was. A dry
+    weekly's likewise (WEEKLY_DRY_VERDICT), and the last real week's stands.
     """
-    path = WEEKLY_VERDICT if a.weekly else DRY_VERDICT if a.dry_run else VERDICT
+    if a.weekly:
+        path, apart = (WEEKLY_DRY_VERDICT, WEEKLY_DRY_APART) if a.dry_run else (WEEKLY_VERDICT, "")
+    else:
+        path, apart = (DRY_VERDICT, DRY_APART) if a.dry_run else (VERDICT, "")
     v = load_json(path)
     rid = github("GITHUB_RUN_ID")
     steps = {}
@@ -4097,10 +4143,10 @@ def close_verdict(a):
                     v[k] = older[k]
         if a.dry_run:
             v["asked"] = {"dry_run": True}
-            v["kept_apart"] = DRY_APART
+            v["kept_apart"] = apart
             if not_main():
                 v["off_main"] = not_main()
-            gh_summary([f"- {DRY_APART}"]
+            gh_summary([f"- {apart}"]
                        + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else []))
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
@@ -4177,13 +4223,24 @@ def weekly(a):
     taken however much smaller, though never empty, for this one run. The
     members who have left are a merge, which is never smaller, and keep their
     guard. Ticked without the fetch it does nothing, and says so.
+
+    A dry run -- every run of a branch other than main (A WEEKLY OFF MAIN IS
+    A DRY RUN TOO, in the docstring) -- fetches and checks as any week, and
+    its verdict is WEEKLY_DRY_VERDICT, never WEEKLY_VERDICT; cloud.py sends
+    none of what it took back to the kit. A New term week there does nothing,
+    and says to run it from main.
     """
     started = datetime.now()
     day = f"{started:%Y-%m-%d}"
     v = {"kind": "weekly", "day": day, "started": started.isoformat(timespec="seconds"),
          "run_id": github("GITHUB_RUN_ID"), "sha": github("GITHUB_SHA"),
-         "asked": {"fetch": not a.no_fetch, "new_term": a.new_term}, "results": {},
-         "clean": False}
+         "asked": {"fetch": not a.no_fetch, "new_term": a.new_term, "dry_run": a.dry_run},
+         "results": {}, "clean": False}
+    if a.dry_run:
+        v["kept_apart"] = WEEKLY_DRY_APART
+    if not_main():
+        v["off_main"] = not_main()
+    path = WEEKLY_DRY_VERDICT if a.dry_run else WEEKLY_VERDICT
     shrink = NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK
     code = 1
     lock = Path(".nightly.lock")
@@ -4193,19 +4250,27 @@ def weekly(a):
     say("=" * 74)
     say(f"on GitHub's machine: commit {v['sha'][:12] or '(not on GitHub)'}; "
         f"the refusal record is {refusal.MARK}"
+        + (f"; a dry run: it keeps nothing it takes, and its verdict is kept apart in "
+           f"{WEEKLY_DRY_VERDICT.as_posix()}" if a.dry_run else "")
         + (f"; {NEW_TERM_BOX}: smaller committee lists accepted, once" if a.new_term else ""))
+    if v.get("off_main"):
+        say(f"  {off_main_line(v['off_main'])}")
     before = {"committee_members": load_json("data/committee_members.json") or {},
               "former_members": load_json("former_members.json") or {},
               "committees": load_json("committees.json") or {},
               "study": {x: count_lines(Path("db") / f"{x}.psv")
                         for x in STUDY_WEEKLY if (Path("db") / f"{x}.psv").exists()}}
     try:
-        if a.new_term and a.no_fetch:
+        if a.new_term and (a.dry_run or a.no_fetch):
             # Clean, and having taken nothing, its page used to say the lists
-            # "were taken however much smaller".
-            say("\nSTOPPED: " + WEEKLY_NEW_TERM_NO_FETCH)
-            v["new_term"] = {"refused": REFUSED_NO_FETCH}
-            v["not_clean"] = [f"{NEW_TERM_BOX} was {REFUSED_NO_FETCH}: nothing was taken"]
+            # "were taken however much smaller". And a dry run keeps nothing it
+            # takes -- on a branch other than main, whatever its boxes say --
+            # so the switch to a new term's lists is never one (7 October 2026).
+            refused = (REFUSED_NOT_MAIN if v.get("off_main") else
+                       REFUSED_DRY if a.dry_run else REFUSED_NO_FETCH)
+            say("\nSTOPPED: " + WEEKLY_NEW_TERM_REFUSED[refused])
+            v["new_term"] = {"refused": refused}
+            v["not_clean"] = [f"{NEW_TERM_BOX} was {refused}: nothing was taken"]
             return 1
         if run(["preflight.py", "--code"], "preflight") != 0:
             say("\nSTOPPED: preflight failed. Nothing fetched.")
@@ -4257,13 +4322,19 @@ def weekly(a):
         lock.unlink(missing_ok=True)
         shutil.rmtree(SCRATCH, ignore_errors=True)
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code)
-        write_json(WEEKLY_VERDICT, v)
-        say(f"\nverdict: {'CLEAN' if v.get('clean') else 'NOT CLEAN'} -> {WEEKLY_VERDICT}")
+        write_json(path, v)
+        say(f"\nverdict: {'CLEAN' if v.get('clean') else 'NOT CLEAN'} -> {path.as_posix()}")
+        if a.dry_run:
+            say(f"  {WEEKLY_DRY_APART}")
         gh_output(clean=bool(v.get("clean")), day=day)
         took = sum(1 for r in v["results"].values() if str(r).startswith("installed"))
+        refused = (v.get("new_term") or {}).get("refused")
         gh_summary([f"### Weekly {day}: {'clean' if v.get('clean') else 'not clean'}"]
-                   + ([f"- {NEW_TERM_BOX}: {WEEKLY_NEW_TERM_NO_FETCH}"]
-                      if (v.get("new_term") or {}).get("refused") else
+                   + ([f"- {WEEKLY_DRY_APART}"] if a.dry_run else [])
+                   + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else [])
+                   + ([f"- {NEW_TERM_BOX}: "
+                       + WEEKLY_NEW_TERM_REFUSED.get(refused, WEEKLY_NEW_TERM_NO_FETCH)]
+                      if refused else
                       [f"- {NEW_TERM_BOX}: for this run only, a committee list could come back "
                        f"any amount smaller, though never empty; {took} of the "
                        f"{len(v['results'])} below were taken"] if a.new_term else [])

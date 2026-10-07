@@ -5,7 +5,7 @@
     "owner says who writes a file. A 'night' file is the nightly's own: the laptop sends it once, with seed-kit, and never over the night's copy after that. A 'laptop' file is made by the laptop's jobs: the night reads it and never sends it back. One writer per file, because two is how the older copy wins.",
     "held is for the one night a term turns over. A New term run's kit-up (--hold) keeps the night's changed files out of kit/, under nights/<run>/kit/, until that run's build has been published and kit-release moves them in: until then the next night takes down the kit as it was, and still refuses the General Court's smaller files. An entry that says \"held\": false goes to kit/ all the same, because nothing the build or a guard reads comes from it, or because its state travels in state/ whatever happens. Only a night's entry may say it.",
     "state is the handful of small files a night must remember. On a machine they live under archive/, the project's one place for small state (refused.json, census.json); in the bucket they live under state/. backup is the laptop's copy of everything git does not hold, less what it leaves out and why. never is what no command sends anywhere.",
-    "dry_run is what a dry run sends back: only what it fetched -- the day's files as the General Court's export served them, and their archive -- with its logs apart, a refusal or a hold, and its own verdict. Its entry says why."
+    "dry_run is what a dry run sends back -- the nightly's or the weekly's, and every run on a branch other than main is one: only what it fetched -- the day's files as the General Court's export served them, and their archive -- with its logs apart, a refusal or a hold, and its own verdict. Its entry says why."
   ],
   "kit": [
     {
@@ -178,7 +178,9 @@
     {"path": "archive/last-dry-run.json", "key": "last-dry-run.json",
      "what": "A dry run's verdict, kept apart from the night's (nightly.DRY_VERDICT, since 7 October 2026), so that a dry run started while a night waits for approval leaves that night, the census and the gate's records as they were. No night reads it."},
     {"path": "archive/last-weekly.json", "key": "last-weekly.json",
-     "what": "The Sunday job's verdict."},
+     "what": "The Sunday job's verdict, for the morning: the last real weekly's, never a dry run's."},
+    {"path": "archive/last-dry-weekly.json", "key": "last-dry-weekly.json",
+     "what": "A dry weekly's verdict -- every run of the weekly on a branch other than main, since 7 October 2026 (nightly.WEEKLY_DRY_VERDICT) -- kept apart from the week's, which the morning reads. No night reads it."},
     {"path": "archive/livestreams.json", "key": "livestreams.json",
      "what": "What livestreams.py has seen and waits for, and what it read off recordings the laptop has not yet read. The night writes it; the laptop's --catch-up only reads it."},
     {"path": "archive/sql-held.json", "key": "sql-held.json",
@@ -191,13 +193,13 @@
     "globs": ["logs/*", "reports/gc-changes-*.md"]
   },
   "dry_run": {
-    "what": "What a dry run's kit-up and state-up send back (cloud.py --dry-night, which the workflow's DRY_RUN implies on GitHub's machine; since 7 October 2026): only what the run fetched. A dry run tries code not yet on main, and everything else a night changes is that code's work -- the outputs a build carries, the one file of the site a build reads, the study views, the bill requests, the list of calendars, the livestream index -- which main's next night would take down and build from. served: the day's files, each sent only where the store holds it byte for byte as the export served it (a database night's are rebuilt by the run's own code, and stay). globs: the archive of what was served, and not the database nights' copies under nh-archive/from-db/. state: a refusal and a hold on the SQL host, facts about another server, and the run's own verdict; never census.json or last-night.json. Its logs go to logs/<date>/dry-run/, which pull does not read, and it removes nothing from the kit.",
+    "what": "What a dry run's kit-up and state-up send back (cloud.py --dry-night, which the workflow's DRY_RUN implies on GitHub's machine; since 7 October 2026): only what the run fetched. A dry run tries code not yet on main, and everything else a night changes is that code's work -- the outputs a build carries, the one file of the site a build reads, the study views, the bill requests, the list of calendars, the livestream index -- which main's next night would take down and build from. served: the day's files, each sent only where the store holds it byte for byte as the export served it (a database night's are rebuilt by the run's own code, and stay). globs: the archive of what was served, and not the database nights' copies under nh-archive/from-db/. state: a refusal and a hold on the SQL host, facts about another server, and the run's own verdict; never census.json, last-night.json or last-weekly.json. Its logs go to logs/<date>/dry-run/, which pull does not read, and it removes nothing from the kit. Every run on a branch other than main is a dry run, whatever its boxes say (7 October 2026), the weekly's included: a dry weekly fetches no day file, so it sends back none of the lists it took -- it proves the weekly's code and keeps nothing it fetched -- and its verdict goes to state/last-dry-weekly.json.",
     "served": ["Docket.txt", "LSRs.txt", "LsrsOnly.txt", "LsrSponsors.txt", "legislators.txt", "Members.txt",
                "RollCallSummary.txt", "RollCallHistory.txt", "Committees.txt", "SubjectCodes.txt",
                "HouseDistricts.txt", "Counties.txt"],
     "store": "nh-archive/store",
     "globs": ["nh-archive/index.json", "nh-archive/snapshots/**", "nh-archive/store/*"],
-    "state": ["refused.json", "sql-held.json", "last-dry-run.json"]
+    "state": ["refused.json", "sql-held.json", "last-dry-run.json", "last-dry-weekly.json"]
   },
   "backup": {
     "what": "Everything in the working folder that git does not track, except these.",
