@@ -12,6 +12,180 @@ the work was done in -- is kept privately rather than in this repository.
 
 ---
 
+## Where the code lives
+
+The repository root holds only what something outside the repository runs by
+name: the pipeline (`build_all.py`), the night (`nightly.py`), the kit
+(`cloud.py`), the livestream index (`livestreams.py`), the laptop's evening
+job (`laptop_evening.py`), the pull of reader reports (`compile_reports.py`),
+the first commands of a working session (`inventory.py`, `preflight.py`,
+`handoff.py`) and the refusal tools (`refusal.py`, `netcheck.py`); beside
+them `_paths.py`, the front end, the config and the data. Everything else is
+under `src/`, one folder per job. `src/README.md` has the tree and the rule
+for where a new file goes, and each folder's own README says what it holds:
+
+    src/fetch/gc_web/    asks gc.nh.gov's web server
+    src/fetch/gc_db/     asks the General Court's SQL host
+    src/fetch/youtube/   asks YouTube
+    src/fetch/other/     asks anyone else
+    src/parse/           decides the record from what is already on disk
+    src/towns/           towns, districts, counties and their officials
+    src/hearings/        proceedings, their recordings, timestamps and the scorer
+    src/pages/           writes what a reader gets in site/
+    src/checks/          looks at something and reports
+    src/lib/             the few modules every stage shares
+
+**The network boundary is a folder.** A fetcher sits in the folder of whose
+server it asks, because that is what decides what can go wrong, and
+`preflight` holds the line from what each file does rather than from its
+name: a `refusal.check()` outside `fetch/gc_web/`, the SQL host outside
+`fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, or a request from any folder
+under `src/` outside `fetch/` -- `checks/` asking graniterecord.org is the one
+exception -- fails it. So `parse/`, `towns/`, `hearings/`, `pages/` and `lib/`
+ask nobody anything and are free to run. The entry points at the root that do
+ask -- `nightly.py`, `livestreams.py`, `netcheck.py` and `cloud.py` -- stay
+outside the folders, and every script that carries a gc.nh.gov address,
+wherever it sits, is held to `refusal.check()` but `netcheck.py`, which is what
+a person runs to diagnose a refusal.
+
+**Names are bare and unique.** Every import and every launch is by bare name:
+`_paths.py` puts each code folder on the import path, and whatever starts a
+script as a process -- `build_all.py`'s steps, `nightly.py`, the evening job,
+the lane -- finds it through `_paths.script`. So a file can move between
+folders without anything that names it changing. A command a person types
+gives the path from the root --
+`python3 src/hearings/probe_alignment.py --truth` -- and `preflight` fails a
+tracked command that names a script under `src/` without its folder, which
+typed from the root answers "can't open file".
+
+## How it runs
+
+The site is built and published by a night on GitHub's machines and fed by
+the maintainer's laptop, and the two meet in a private Cloudflare R2 bucket
+rather than on either machine. `nightly.py`'s docstring is the long version
+of the first four parts below, `cloud.py`'s of the morning and the kit, and
+`laptop_evening.py`'s of the evening.
+
+**The night, on GitHub.** `.github/workflows/nightly.yml` runs every night at
+08:17 UTC on an empty Windows machine, from the commit of the branch it was
+started on -- `main` on a schedule. Its first job brings the small state
+files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
+looks for new livestreams (`livestreams.py --since-state`), and runs
+`nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
+refusal is on file; the rebuild, `build_all.py --local --no-captions`, since
+that machine holds no caption files; and the gates -- `preflight.py --code`,
+`src/checks/check_site.py`, a census of the build against the last good
+build's counts (`archive/census.json`), and a ceiling of 95,000 files
+(`FILE_CEILING`) that nothing lifts. A build that passes goes to a preview
+address and, when the night judged it fit for production, to the bucket as
+one archive for the second job; what the night changed goes back to the kit
+(`cloud.py kit-up`); and the night's verdict -- what it did,
+whether it was clean, its warnings and its errors -- is written to
+`archive/last-night.json` and kept in the bucket as `state/last-night.json`.
+The second job deploys to production. It sits behind GitHub's `production`
+environment, so it waits for a person's approval, and
+`nightly.py --deploy-to production` deploys only the newest night's build: a verdict from
+another run, a site whose fingerprint is not the one judged, or a checkout
+not on `main` is refused. The weekly workflow, `weekly.yml`, runs on Sunday
+night: the committee rosters, the members who have left and the study
+committees, each fetch whole or not at all. It publishes nothing; Monday's
+night builds what it took.
+
+**When the export comes back empty.** The General Court's export has come back
+empty on whole nights. When it does and nothing else is wrong, the night
+turns at once to the SQL host the General Court publishes credentials for:
+`src/fetch/gc_db/fetch_day_db.py` asks six views and five lookups,
+`src/parse/dayfiles_from_db.py` rebuilds the seven day files that change and
+guards them against the installed ones, and they go in through
+`snapshot_gencourt.install()`, shrink rule and all -- every one of them or
+none. It does not happen with a refusal on file, with a hold on the SQL host
+(`archive/sql-held.json`), without installed files to take the years and the
+row order from, or on a New term run. When the database cannot be used the
+export is asked once more, half an hour later. The verdict says where the
+installed files came from (`files_from`, `day_files`), a warning leads the
+run's page, and seven such nights in a row (`DB_NIGHTS_MOST`) is an error
+there, though the build still goes out.
+
+**The term turnover.** The General Court's files describe the current term
+only, so before they turn over, the finished term's inputs are frozen:
+`src/lib/freeze_term.py --views` copies the database's views of the term into
+`db/term/<term>/`, and `--session` the day files as installed into
+`frozen/<term>/`, with the term's docket and manifest under the archived
+terms' names (`Docket_<term>.txt`, `verification_manifest_<term>.csv`) and
+its roll calls in `rollcalls/`. After the turn,
+`python3 src/parse/build_data.py --frozen-terms` builds that term
+from them every night, so a correction still reaches it. An ordinary night
+refuses files that name a newer term than the installed ones, whatever their
+size (`snapshot_gencourt.judge`). Only the *New term* run takes them: a box
+on the nightly and the weekly, ticked by hand and never on a schedule, never
+a dry run, and refused until the term it would leave is frozen as installed
+(`freeze_term.ready`). For that run alone the smaller files are installed, the
+feeds may be pruned (`build_all.py --allow-prune`) and the census lets the
+feeds fall, and nothing it accepted is kept until its build is published: what
+it changed waits in the bucket under `nights/<run>/kit/`
+(`cloud.py kit-up --hold`), and its counts become the baseline only when the production deploy
+has landed, when `cloud.py kit-release` moves the files into the kit. Until
+then the next scheduled night meets the smaller files again, refuses them,
+and says why. Item 3 under *What is structurally wrong* says how a frozen
+term is read.
+
+**The release gate, in shadow.** Every night that builds records in its
+verdict whether it could have gone to production without a person
+(`review`: `needed` and `why`), and the run's page says in one line what the
+gate would have done. It would hold a New term run; the first night after a
+release; a night that changed far more than a data night does -- a finished
+term's bill list rewritten, or more than `REVIEW_ROWS_MOST` of the current
+term's rows; and a night with a kind of warning that neither the build
+production serves nor a night published in the last fourteen days carried.
+The day's files coming from the database, and an error on the run's page,
+hold nothing: both stay on the page and in the verdict for the morning. The
+workflow's `REVIEW_GATE` is `shadow`, so every night still waits for approval
+in `production` and the gate decides nothing yet. Switching it to `on` is a
+later step: a cleared night would then deploy through `production` with no
+reviewer, and a held one, and every New term run, through
+`production-review`, which keeps one. `preflight` holds the workflow's
+setting and its environment line together.
+
+**The morning triage.** On the maintainer's laptop,
+`cloud.py pull --changes-only` brings down what the triage reads and nothing else: the
+refusal record, the night's and the week's verdicts (into `archive/cloud/`,
+where a verdict from before yesterday is called stale) and the change lists
+`src/checks/gc_changes.py` wrote (`reports/gc-changes-<day>.md`). A full
+`cloud.py pull` also brings back the night's kit files and logs, and never
+`site/`. Reader reports are not pulled on GitHub's machine:
+`compile_reports.py` reads them from the report database on the laptop,
+screens every one without a model, and writes the triage file read in the
+morning, holding back the words of any report the screen stops.
+
+**The evening caption job.** YouTube refuses captions to GitHub's machines
+and answers the laptop, so the exact start of a recording comes from there.
+`laptop_evening.py`, which Windows' Task Scheduler runs each evening, stops at
+the first step that fails: `cloud.py pull`, for the night's list of
+recordings waiting for captions; `livestreams.py --catch-up`, which captions
+up to twenty of them, oldest first, and reads the chair's boundaries out of
+them;
+`src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`,
+and nothing is sent if the median got worse; and
+`cloud.py seed-kit --only` with the caption results and nothing else. The
+next night publishes the times. Until then a recording is on its bill's page
+with a start taken from the schedule, marked approximate.
+
+**The kit.** `cloud_kit.json` lists everything the build reads that git does
+not hold -- the day files, the saved bill pages, the database dump, the
+frozen terms, the caption results, the logo and the icons -- and `cloud.py`
+moves it: `kit-down` onto an empty machine, `kit-up` with what a night
+changed, `seed-kit` from the laptop. Each file has one owner, the night or
+the laptop, and neither sends over the other's copy. Nothing in the bucket is
+overwritten or deleted outright: the old copy goes to `replaced/<date>/`,
+which the bucket keeps for 30 days. Every file is checked against its size
+and sha256 on the way down, and the list's `never` entries -- secrets, and
+what readers typed -- are applied to every command. The small state the night
+must remember (`refused.json`, `census.json`, the verdicts) lives under
+`state/`, so a refusal the night meets outlives its machine and stops the
+laptop's fetches too.
+
+---
+
 ## What is sound
 
 **The data comes from bulk files.** Docket, roll calls, sponsors, members: one
@@ -71,7 +245,7 @@ Each learned by getting it wrong.
 **The record travels inside the bill's page, so `build_bill_pages.py` must run
 after `build_site_v2.py`.** All but a few hundred of the 33,683 records are
 embedded in the page rather than fetched; only those over `INLINE_CAP`
-(100 KB, `build_bill_pages.py:141`) keep a file, and the step prints the split
+(100 KB, in `src/pages/build_bill_pages.py`) keep a file, and the step prints the split
 when it runs. The split moves with the data, so read it off the run rather
 than off this line. So rebuilding the
 site alone leaves every bill page carrying the record as it was, and the change
@@ -231,7 +405,8 @@ It now prints the fetch command and exits.
 
 The contract has exceptions. `probe_archive_shape.py`, `probe_calendars.py`,
 `probe_schema.py`, `resolve_members.py`, `snapshot_gencourt.py` and
-`check_civics_links.py` ask the General Court too (`probe_archive.py` and
+`check_civics_links.py` ask the General Court too, and sit beside its
+fetchers in `src/fetch/gc_web/` (`probe_archive.py` and
 `probe_legacy.py` did, and are in `obsolete/` since 6 October 2026), and
 each calls `refusal.check()` before its first request;
 `preflight._every_fetcher_checks_refusal` finds every script that
@@ -240,7 +415,13 @@ asks, whatever its name, and fails one that does not check; and
 records a refusal it meets with `refusal.note()`. `netcheck.py`
 asks gc.nh.gov and skips the check on purpose, because it is what a person
 runs to diagnose a refusal. `probe_db.py` queries the General Court's SQL
-host, the one the `fetch_*_db.py` scripts read.
+host, the one the `fetch_*_db.py` scripts read, and sits with them in
+`src/fetch/gc_db/`.
+
+Since the move into `src/` the contract no longer rests on a name alone: a
+script that asks a server sits under `src/fetch/`, in the folder of whose
+server it asks, and `preflight` fails a request made from anywhere else
+under `src/` (*Where the code lives*, above).
 
 ### Downstream
 
@@ -1238,7 +1419,6 @@ Each is described where it belongs; this is the list in one place.
 - Item 6's primitive was never written -- `find_in_transcript` appears nowhere
   but in the paragraph proposing it, so every other matcher still builds its
   own window.
-- `testimony.json` is flat to this day, 565 bills under bare numbers (item 3).
 - The site stores one party per person, not per term, and a comment in
   `resolve_members.py` still says 675; both are under *Members the record
   cannot name*.
