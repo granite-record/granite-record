@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.5
+# GRANITE_VERSION: 2026-09-06.6
 """
 Senate committee reports, with their reasoning, from the General Court's
 own database.
 
-    python3 fetch_reports_db.py --sample 5    # read a few, write nothing
-    python3 fetch_reports_db.py
+    python3 src/fetch/gc_db/fetch_reports_db.py --sample 5    # read a few, write nothing
+    python3 src/fetch/gc_db/fetch_reports_db.py
 
 WHY THIS EXISTS
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.6
+# GRANITE_VERSION: 2026-09-06.7
 """
 How many people signed in for and against a bill, per hearing.
 
-    python3 fetch_testimony_db.py --dry-run
-    python3 fetch_testimony_db.py
+    python3 src/fetch/gc_db/fetch_testimony_db.py --dry-run
+    python3 src/fetch/gc_db/fetch_testimony_db.py
 
 WHY THIS EXISTS
 

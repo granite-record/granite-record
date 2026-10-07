@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.412
+# GRANITE_VERSION: 2026-09-04.413
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9078,7 +9078,7 @@ def _a_dump_holds_the_terms_it_fills():
                 f"no database dump holds {term}, and {len(blank):,} of its measures have a "
                 f"status page that states nothing (e.g. {', '.join(sorted(blank)[:4])}): each "
                 "reads whatever the docket alone gives it. The dump is db/Legislation.psv "
-                f"(python3 fetch_status_db.py, a person's to start) or db/term/{term}/"
+                f"(python3 src/fetch/gc_db/fetch_status_db.py, a person's to start) or db/term/{term}/"
                 "Legislation.psv, the copy frozen at the term's end")
     assert not problems, "\n".join(problems)
     return "ok", "; ".join(said)

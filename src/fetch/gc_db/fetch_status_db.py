@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.3
+# GRANITE_VERSION: 2026-09-06.4
 """
 Fill in what the bill status pages did not say, from the General Court's
 own database.
 
-    python3 fetch_status_db.py --dry-run
-    python3 fetch_status_db.py
+    python3 src/fetch/gc_db/fetch_status_db.py --dry-run
+    python3 src/fetch/gc_db/fetch_status_db.py
 
 WHY THIS EXISTS
 
