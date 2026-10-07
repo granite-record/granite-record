@@ -47,11 +47,20 @@ SITE_ORIGIN = "https://graniterecord.org"
 MAIL_FROM = ""
 # The feedback form linked in the footer of every page of the site.
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
-# At most this many emails a run. A run is one Worker invocation, and every
-# email is a request out of it: the free Workers plan allows fifty, and the
-# sender also reads up to nine changes files. A larger list is finished by
-# the next hour's run. Raise it on a paid plan.
+# A run is one Worker invocation, and two limits bound it; the sender stops
+# taking readers before it would pass either, and the next hour's run carries
+# on. Both figures below are the Workers Free plan's as remembered when this
+# was written -- check Cloudflare's limits pages on the day (README.md).
+#
+# SEND_LIMIT: emails a run. Every email is a request out of the Worker (Free
+# allows fifty), and the sender also reads up to nine changes files.
 SEND_LIMIT = "40"
+# D1_QUERIES_PER_RUN: database statements a run, counted one by one, a
+# batch's included (D1 allows fifty an invocation on Free, a thousand on
+# Paid). A reader costs at most five, so on Free a run serves about eight
+# readers and twelve hourly runs about a hundred a day -- which is also
+# Resend's free daily cap. Raise both on a paid plan.
+D1_QUERIES_PER_RUN = "50"
 # Milliseconds between emails, under Resend's default rate of two a second.
 SEND_GAP_MS = "600"
 
@@ -73,4 +82,5 @@ SITE_ORIGIN = "https://FILL-IN.graniterecord.pages.dev"
 MAIL_FROM = ""
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "40"
+D1_QUERIES_PER_RUN = "50"
 SEND_GAP_MS = "600"

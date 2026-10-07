@@ -47,8 +47,16 @@ export async function sendMail(env, { to, subject, text, html, headers }, idempo
 // The token goes after "#": a browser does not send that part to the server,
 // so it is in no request address and no log. The one exception is the
 // List-Unsubscribe header, which RFC 8058 has the mail provider POST to with a
-// fixed body, so its token must be in the address; it is an unsubscribe token,
-// good for nothing but deleting, and spent by the request that carries it.
+// fixed body, so its token must be in the address -- and so it is in the
+// request log of every request made to that address (wrangler tail, Workers
+// Logs). It is the unsubscribe token, good for nothing but deleting the
+// address; it opens no page that shows what is followed. A POST of the
+// one-click body spends it, by deleting the address; a GET of it (a client
+// that opens it in a browser) only shows the button, and the token stays
+// current until the reader asks for a new link.
+//
+// Every email to one reader carries the same two links (address.js linksFor),
+// until the reader asks for a new one.
 export const manageLink = (origin, t) => `${origin}/api/follow/manage#t=${t}`;
 export const unsubscribeLink = (origin, u) => `${origin}/api/follow/unsubscribe#u=${u}`;
 export const confirmLink = (origin, t) => `${origin}/api/follow/confirm#t=${t}`;
@@ -107,18 +115,19 @@ function footer(origin, feedbackUrl, manage, unsub, gone) {
     `<p style="${P};font-size:14px;color:#444">${esc(NIGHTLY)}</p>`];
   if (gone) {
     const s = "That was the last thing you followed, so your address has been deleted " +
-      "with it. To follow something again, use Follow on its page.";
+      "from our database with it. To follow something again, use Follow on its page.";
     lines.push(s, "");
     html.push(`<p style="${P};font-size:14px;color:#444">${esc(s)}</p>`);
   } else {
     lines.push("Change what you follow, or whether it comes daily or weekly:",
       manageLink(origin, manage), "",
-      "Unsubscribe, deleting your address and everything you follow at once:",
+      "Unsubscribe, deleting your address and everything you follow from our database at once:",
       unsubscribeLink(origin, unsub), "");
     html.push(`<p style="${P};font-size:14px">${a(manageLink(origin, manage),
       "Change what you follow, or daily or weekly")}</p>`,
       `<p style="${P};font-size:14px">${a(unsubscribeLink(origin, unsub),
-        "Unsubscribe")} — deletes your address and everything you follow, at once.</p>`);
+        "Unsubscribe")} — deletes your address and everything you follow from our ` +
+        `database, at once.</p>`);
   }
   lines.push(NO_REPLY + (fb ? `, or the feedback form: ${fb}` : ".") );
   html.push(`<p style="${P};font-size:13px;color:#555">${esc(NO_REPLY)}` +
@@ -190,6 +199,16 @@ const STUDY = {
 const ENDED_TAIL = "This follow has ended: a record that has finished has nothing " +
   "more to report. Its full history stays on its page.";
 
+// The fixed sentence, then the record's own words if they say something else.
+// A summary that only repeats the fixed sentence (CHANGES_FORMAT.md's example
+// once did) is not printed twice.
+function studyLine(study) {
+  const fixed = STUDY[String(study.recommends)];
+  const own = oneLine(study.summary || "");
+  const norm = t => t.toLowerCase().replace(/[\s.]+$/, "").replace(/\s+/g, " ");
+  return own && norm(own) !== norm(fixed) ? `${fixed} ${own}` : fixed;
+}
+
 function upcomingLine(u) {
   return [longDate(u.date), clockTime(u.time), u.what, u.committee, u.venue]
     .filter(Boolean).join(", ");
@@ -233,9 +252,7 @@ export function digestEmail({ origin, frequency, date, sections, manage, unsub,
       html += "</ul>";
     }
     const more = s.more ? `…and ${s.more} more on its page.` : "";
-    const lines = [more,
-      s.study ? STUDY[String(s.study.recommends)] +
-        (s.study.summary ? ` ${s.study.summary}` : "") : "",
+    const lines = [more, s.study ? studyLine(s.study) : "",
       weekLine(s.week),
       ...(s.upcoming || []).map(u => `Coming up: ${upcomingLine(u)}.`)].filter(Boolean);
     for (const l of lines) {

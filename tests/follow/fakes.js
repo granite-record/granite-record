@@ -122,12 +122,20 @@ export function makeWorld({ now = "2026-10-06T15:00:00Z", fixtures = true } = {}
   w.at = iso => { w.now = new Date(iso); };
   w.later = hours => { w.now = new Date(w.now.getTime() + hours * 3600000); };
   w.address = name => { const a = `${name}@example.com`; w.addresses.add(a); return a; };
-  // Call a Function and keep what it answered.
+  // Call a Function and keep what it answered. What it hands to waitUntil
+  // runs after the answer, as on Cloudflare, and is finished before call()
+  // returns; beforeAnswer records what had been asked of the network and the
+  // database at the moment the answer was given.
   w.call = async (handler, request) => {
-    const res = await handler({ request, env: w.env, waitUntil() {} });
+    const later = [];
+    const askedFrom = net.asked.length, preparedFrom = d1.prepared.length;
+    const res = await handler({ request, env: w.env, waitUntil(p) { later.push(p); } });
+    const beforeAnswer = { asked: net.asked.slice(askedFrom),
+                           prepared: d1.prepared.slice(preparedFrom) };
     const body = res.body ? await res.clone().text() : "";
     const rec = { url: request.url, method: request.method, status: res.status,
-                  headers: Object.fromEntries(res.headers), body };
+                  headers: Object.fromEntries(res.headers), body, beforeAnswer };
+    await Promise.all(later);
     w.responses.push(rec);
     return rec;
   };

@@ -112,7 +112,7 @@ dropped by the sender and refused at sign-up.
          "seen": "2026-10-08T09:02:40Z"}
       ],
       "study": {"recommends": true,
-                "summary": "The interim study committee recommended future legislation.",
+                "summary": "Interim Study Report: Recommended for Future Legislation 10/07/2026",
                 "date": "2026-10-07", "guid": "2025-2026:HB1442:study-report",
                 "seen": "2026-10-08T09:02:40Z"},
       "ended": {"how": "law", "summary": "HB 1442 was signed into law.",
@@ -142,9 +142,13 @@ night. Each value may have:
 - `items`: what is new, in the order the build gives them (the sender sorts
   by `date`, newest first). Each item has:
   - `guid` -- the item's id, at most 300 characters, **the same guid the
-    record's feed gives the same item** where it has one. An item appears in
-    at most one night of any eight-night window, and the sender also drops a
-    guid it has already put in the same email.
+    record's feed gives the same item** where it has one. **A record's item
+    appears in at most one night of the files published at any one time**
+    (one guid may appear under two records, as a roll call under its bill and
+    under the bill's topic). The sender keeps no memory of guids from one
+    email to the next -- it drops a repeat only within one email -- so an
+    item in two nights reaches a reader twice; `check_changes.js` fails on
+    one.
   - `date` -- the record's own date for what happened, `YYYY-MM-DD`.
   - `kind` -- one of `action` (a docket entry), `hearing` (a hearing held),
     `scheduled` (a proceeding newly scheduled), `exec` (an executive
@@ -163,21 +167,31 @@ night. Each value may have:
 - `study` (bills referred for interim study): the study committee's report,
   once it exists. `recommends` is `true` (recommended future legislation),
   `false` (did not) or `null` (the report does not say). `summary`, `date`,
-  `guid` and, under `first-seen`, `seen`, as for an item.
+  `guid` and, under `first-seen`, `seen`, as for an item. The email prints
+  its own sentence for `recommends` first ("The interim study committee
+  recommended future legislation."), so `summary` is **the record's own
+  words** for the report -- the feed item's title -- and not that sentence
+  again; a summary that only repeats it is printed once.
 - `ended`: the record has finished. For a bill, the night it concludes --
   signed, vetoed and settled, killed, died, or its term ended -- with `how`
   (the index's own word: `law`, `veto`, `done`, `adopted`, `dead`,
   `withdrawn`, `term-ended`, or another word of the record's), a one-line
   `summary` of how it ended, `date` and `guid`, the closing item's guid in
   the bill's feed (`<term>:<id>:closed:<kind>`). The sender sends it once and
-  then **ends every follow of that record**. A member, committee or topic
-  may carry one too (a member who no longer sits); the sender treats it the
-  same way.
+  then **ends every follow of that record**. A member or committee carries
+  one the same way when it leaves -- a member who no longer sits, a committee
+  that no longer sits, most of them at the turn of a term -- with `how` a word
+  of the build's (`left`, `term-ended`) and a `summary` that names them.
 
-  A bill key that `current.json` listed the night before and does not list
-  tonight must carry an `ended` tonight. The sender has a fallback for one
-  that does not -- it tells the follower the bill is no longer moving and ends
-  the follow -- but the record's own words are better than its fallback.
+  **A bill, member or committee key that `current.json` listed the night
+  before and does not list tonight must carry an `ended` tonight.** The
+  sender has a fallback for one that does not -- it tells the follower the
+  record is no longer moving, or no longer among the sitting legislators or
+  committees, and ends the follow -- but the record's own words are better
+  than its fallback, and its fallback names a member only as "Legislator no.
+  736". A **topic** needs no `ended`: it leaves `followable` when no bill of
+  the sitting term carries it, as at the turn of a term before the new bills
+  are filed, and comes back when one does, so its follows are kept.
 
 ## What "new" means: two ways, one format
 
@@ -188,11 +202,17 @@ The build may decide "new" either way, and this format serves both:
   that night, each with `seen`. Late arrivals -- a docket row entered days
   after the day it records -- go out the next morning, dated by the record
   but filed under the night they appeared.
-- **`record-date`.** No ledger: a night's file holds the items whose record
-  `date` is that night's date (or the day before it, for a build that runs
-  after midnight), and no item carries `seen`. Simpler, and an item that
-  arrives late lands in a night already sent, so a daily reader never hears
-  of it.
+- **`record-date`.** No ledger, and one exact rule: **the night named D
+  holds exactly the items whose record `date` is D - 1, the day before it**
+  (New Hampshire's calendar, which is the record's). The build runs in the
+  small hours of D, so D - 1 is the last whole day; an item dated D itself
+  waits for night D + 1. So every item belongs to one night and only one,
+  and a build that rewrites the last eight nights writes each item into the
+  same night again. A `study` follows the same rule by its `date`. No item
+  carries `seen`. Simpler, and an item that arrives late -- entered after the
+  night its date points to was published -- lands in a night already sent,
+  so a daily reader never hears of it. `check_changes.js` fails on an item
+  dated anything but D - 1 under `record-date`.
 
 The sender keeps, for each subscriber, the `date` and `built` of the newest
 night it has sent them (its cursor), and on the next send reads:
@@ -214,10 +234,28 @@ rules above, and refuses a file whose `format`, `date` or `refs` is wrong.
 It sends at most 20 items for one record and 200 in one email, saying how
 many more there are. The files carry no HTML and nothing about readers.
 
+## What `check_changes.js` holds across files
+
+Each file alone is checked against the rules above with the sender's own
+code. The rules that only a folder can break are checked too:
+
+- every file has the same `new_by`;
+- the newest night is `current.json`'s `date`, the nights run without a
+  gap, and there are at least eight;
+- a record's item, its study report and its ending are each in one night
+  only;
+- under `record-date`, night D holds only items dated D - 1;
+- a bill, member or committee that some night names and `current.json` no
+  longer lists has an `ended` in some night.
+
+The full rule for an ending -- a key in last night's `current.json` and not
+tonight's carries an `ended` tonight -- needs last night's `current.json`,
+which a folder does not hold; preflight holds that one against two builds.
+
 ## Fixtures
 
-`tests/follow/fixtures/changes/` holds one week of nights (5-10 October 2026)
-and a `current.json`. **Every record in them is invented**: HB 9901-9903,
+`tests/follow/fixtures/changes/` holds eight nights (3-10 October 2026; the
+3rd and 4th are empty) and a `current.json`. **Every record in them is invented**: HB 9901-9903,
 member 990001 and committee H90 do not exist, and the summaries are written
 in the shape of real feed items, not copied from any. The tests run the
 sender against them, and `check_changes.js` holds them to this contract.

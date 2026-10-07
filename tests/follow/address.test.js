@@ -83,3 +83,50 @@ test("secrets are compared in constant time, whole", () => {
   assert.equal(sameText("abc", "abc"), true);
   assert.equal(sameText("abc", "abd"), false);
 });
+
+test("one inbox is one mailbox: +tags, capitals, and Gmail's dots and second name", async () => {
+  const { mailboxOf, mailboxHash } = await import("../../workers/follow/address.js");
+  assert.equal(mailboxOf("Pat+news@Example.com"), "pat@example.com");
+  assert.equal(mailboxOf("pat+1+2@example.com"), "pat@example.com");
+  assert.equal(mailboxOf("p.a.t+x@gmail.com"), "pat@gmail.com");
+  assert.equal(mailboxOf("P.A.T@googlemail.com"), "pat@gmail.com");
+  assert.equal(mailboxOf("p.a.t@example.com"), "p.a.t@example.com", "dots count outside Gmail");
+  assert.equal(mailboxOf("+x@example.com"), "+x@example.com", "a local part that is only a tag is kept");
+  const env = makeKeys();
+  assert.equal(await mailboxHash(env, "pat+1@example.com"), await mailboxHash(env, "PAT+2@example.com"));
+  assert.notEqual(await mailboxHash(env, "pat@example.com"), await lookupHash(env, "pat@example.com"),
+    "the mailbox hash is not the address's lookup hash");
+});
+
+test("what is followed is sealed to its reader, and its hash differs from reader to reader", async () => {
+  const { followHash, openFollow, sealFollow } = await import("../../workers/follow/address.js");
+  const env = makeKeys();
+  const a = await lookupHash(env, "one@example.com"), b = await lookupHash(env, "two@example.com");
+  const sealed = await sealFollow(env, "bill:2026/HB9901", a);
+  assert.ok(!sealed.includes("HB9901") && !sealed.includes("bill"));
+  assert.equal(await openFollow(env, sealed, a), "bill:2026/HB9901");
+  await assert.rejects(openFollow(env, sealed, b), "another reader's row will not open it");
+  await assert.rejects(openAddress(env, sealed, a), "nor will it open as an address");
+  const ha = await followHash(env, a, "bill:2026/HB9901");
+  assert.match(ha, /^[0-9a-f]{64}$/);
+  assert.equal(await followHash(env, a, "bill:2026/HB9901"), ha);
+  assert.notEqual(await followHash(env, b, "bill:2026/HB9901"), ha,
+    "two readers of one record show two unrelated hashes");
+});
+
+test("a reader's links are the same every time for one generation, and only their hashes are kept", async () => {
+  const { linksFor } = await import("../../workers/follow/address.js");
+  const env = makeKeys();
+  const h = await lookupHash(env, "links@example.com");
+  const one = await linksFor(env, h, 0), again = await linksFor(env, h, 0);
+  assert.deepEqual(one, again);
+  assert.match(one.manage, TOKEN);
+  assert.match(one.unsub, TOKEN);
+  assert.notEqual(one.manage, one.unsub);
+  assert.equal(one.manageHash, await hashToken(one.manage));
+  const next = await linksFor(env, h, 1);
+  assert.notEqual(next.manage, one.manage);
+  assert.notDeepEqual(await linksFor({ ...env, FOLLOW_ADDRESS_KEY: makeKeys().FOLLOW_ADDRESS_KEY }, h, 0), one,
+    "under another key, other links");
+  await assert.rejects(linksFor({ ...env, FOLLOW_ADDRESS_KEY: "" }, h, 0), ConfigError);
+});

@@ -13,10 +13,10 @@ up to last night's build. Nothing here implies real time.
 
 | File | What it does |
 |---|---|
-| `schema.sql` | The D1 tables: `subscribers`, `pending`, `follows`, `links`, `sends`, `signup_days`. |
-| `address.js` | Sealing an address (AES-GCM), its keyed lookup hash (HMAC-SHA-256), random tokens and their hashes, constant-time comparison. |
+| `schema.sql` | The D1 tables: `subscribers`, `pending`, `follows`, `sends`, `signup_days`. |
+| `address.js` | Sealing an address and what it follows (AES-GCM), the keyed hashes (HMAC-SHA-256) of an address, its inbox and its follows, the derived manage and unsubscribe links, random tokens and their hashes, constant-time comparison. |
 | `common.js` | What a follow is, the log (`note`), the site's own names, headers, escaping, New Hampshire's clock. |
-| `store.js` | Database calls more than one endpoint makes: forgetting an address, links, the purge, the count, the day's ceiling. |
+| `store.js` | Database calls more than one endpoint makes: forgetting an address, finding the reader a link belongs to, the purge, the count, the day's ceiling. |
 | `changes.js` | Reading the site's `/changes/` files and holding them to `CHANGES_FORMAT.md`. |
 | `mail.js` | The one call to Resend, and the confirmation, new-link, daily and weekly emails, in plain text and simple HTML. |
 | `page.js` | The HTML of the confirm, manage and unsubscribe pages. |
@@ -43,25 +43,49 @@ deployment, so a deployment without the database has no follow endpoints.
 - **The address** is stored only sealed with AES-GCM under
   `FOLLOW_ADDRESS_KEY`, beside an HMAC-SHA-256 of it under
   `FOLLOW_LOOKUP_KEY`. The hash finds a second request from the same address
-  without opening anything. These two columns, in `subscribers` and
-  `pending`, are the only ones about a reader.
-- **Links are tokens**: 32 random bytes, of which only the SHA-256 is stored.
-  A token travels after `#` in every link, which a browser does not send to
-  a server, so no request address -- and so no Cloudflare log -- carries one.
-  The page's script reads it and posts it in the body. The one exception is
-  the `List-Unsubscribe` header, whose address the mail provider POSTs to; it
-  carries an unsubscribe token, good only for deleting, and spent by that
-  request.
-- **Each email carries fresh links.** A link cannot be rebuilt from its hash,
-  so the sender makes a manage link and an unsubscribe link for every email.
-  A manage link lasts 60 days and an unsubscribe link 180, and an address's
-  newest link always works. "Send me a new link" deletes every link the
-  address has and emails one new pair.
-- **Nothing is kept longer than it is needed.** A request not confirmed in 48
+  without opening anything. In `pending` only, a second keyed hash of the
+  inbox the address reaches (its `+tag` and Gmail's dots removed) counts
+  requests, so one inbox gets at most three confirmations however its
+  address is spelled.
+- **What is followed is sealed too.** A followed record's key is sealed under
+  the same key, bound to its reader, beside a keyed hash of reader and
+  record. Read without the keys -- in the D1 dashboard, or by anyone or any
+  session holding this account's wrangler login -- no table shows a follow
+  list, or that two readers follow one record. Days are kept where a moment
+  is not needed (a confirmation, a follow).
+- **The same two links in every email.** The manage and unsubscribe links
+  are an HMAC of the reader and a generation number under a key derived
+  from `FOLLOW_ADDRESS_KEY` (HKDF), so the sender makes the same links for
+  every email without storing them; only their SHA-256 is kept, to find the
+  reader. They do not expire. "Send me a new link" moves the generation on
+  in one statement, which changes both, and every earlier link -- in every
+  earlier email, unsubscribe links included -- matches nothing; pressed twice
+  at once, it sends one email. A confirmation link is 32 random bytes, kept
+  as its hash, and works once for 48 hours.
+- **Where a token can be seen.** A token travels after `#` in every link in
+  an email's body, which a browser does not send to a server, so those
+  requests' addresses carry none; the page's script reads it, posts it in the
+  body, and takes it out of the address bar and the history. **The one
+  exception is the `List-Unsubscribe` header**, whose address the mail
+  provider POSTs to: its unsubscribe token is in the query string, and so in
+  Cloudflare's request log for that request (`wrangler tail`, Workers Logs).
+  That token can do nothing but delete the address. The provider's one-click
+  POST spends it by deleting the address; a GET of it (a client that opens
+  it in a browser) shows the button and leaves the token current until the
+  reader asks for a new link.
+- **Deleting, and what it does not reach.** A request not confirmed in 48
   hours is deleted. Unsubscribing, a bounce or a complaint deletes the
-  subscriber, its follows, links and waiting requests at once. A bill that
-  concludes gets one last update saying how it ended, and its follow ends;
-  an address whose last follow ends is deleted with it, and that email says so.
+  subscriber, its follows and its waiting requests from the database at once.
+  Two copies are not deleted at once, and the pages say so rather than "for
+  good": **D1's Time Travel** keeps point-in-time backups that cannot be
+  turned off (30 days on Workers Paid, 7 on Free, as remembered -- check on
+  the day; the pages say "at most 30 days"), and **Resend** keeps each email
+  it has sent -- recipient and content -- for its plan's retention period. A
+  Time Travel restore would bring back every address deleted since its point
+  in time, so a restore of this database is never a routine repair. A record
+  that concludes gets one last update saying how it ended, and its follow
+  ends; an address whose last follow ends is deleted with it, and that email
+  says so.
 - **The log is codes and counts.** Every line is `follow <code>` or
   `follow <code> <n>`, written by `common.note` and nowhere else. An error is
   logged by its name only, never its message: Resend's error messages name
@@ -119,22 +143,43 @@ on its own:
    put <NAME> --config workers/follow/wrangler.toml` (add `--env preview`).
    Both read the value from standard input when it is piped.
 
-   **The two keys** are made by a command, so that nobody types or reads one.
-   In `cmd`, for production, where one copy goes into a password manager:
+   **The two keys** are made by a command, so that nobody types or reads one,
+   and they do not go through the clipboard: any program running at that
+   moment can read it, a concurrent Claude session included, and Windows'
+   clipboard history (Win+V) and "sync across your devices" keep copies
+   outside the one password-manager copy. With the address key and this
+   account's D1 access, every address opens. So, first: **close every Claude
+   session on this machine**, and check Settings > System > Clipboard that
+   clipboard history and sync are off.
 
-       node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64'))" | clip
+   Then, in PowerShell (type `powershell` at the `cmd` prompt), in the
+   repository folder, for production -- the key lives in a variable and is
+   never printed:
 
-   paste it into the password manager, then hand the same clipboard to both
-   places that need it and clear it:
+       $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); $k = [Convert]::ToBase64String($b); $b = $null
+       $k | npx wrangler pages secret put FOLLOW_ADDRESS_KEY --project-name graniterecord
+       $k | npx wrangler secret put FOLLOW_ADDRESS_KEY --config workers/follow/wrangler.toml
 
-       powershell -NoProfile -Command "Get-Clipboard" | npx wrangler pages secret put FOLLOW_ADDRESS_KEY --project-name graniterecord
-       powershell -NoProfile -Command "Get-Clipboard" | npx wrangler secret put FOLLOW_ADDRESS_KEY --config workers/follow/wrangler.toml
-       echo.| clip
+   The password manager's copy: if it has a command-line tool, pipe `$k` to
+   it. If not, `Set-Clipboard -Value $k`, paste it into the manager, and at
+   once `Set-Clipboard -Value " "` -- only with history and sync confirmed
+   off. Then `$k = $null`, the same again for `FOLLOW_LOOKUP_KEY` (the Pages
+   project only), and close the window.
 
-   and once more for `FOLLOW_LOOKUP_KEY`, which only the Pages project gets.
    The preview's keys are separate, and need no copy. A key cannot be read
    back out of Cloudflare: without the copy, moving the sender to a new
-   account means every subscriber signs up again.
+   account means every subscriber signs up again. The links in emails are
+   derived from `FOLLOW_ADDRESS_KEY`, so a new address key also changes
+   every reader's links.
+
+6. **The plan's limits**, from Cloudflare's and Resend's own pages on the
+   day, because the figures here are remembered, not checked: D1's
+   statements per Worker invocation (50 on Workers Free, 1,000 on Paid) goes
+   in `D1_QUERIES_PER_RUN`, the subrequests per invocation bound
+   `SEND_LIMIT`, and Resend's daily cap (100 on its free plan) is shared by
+   confirmations and updates. D1 Time Travel's window and Resend's retention
+   of sent emails are what the About page and the pages' "at most 30 days"
+   must agree with.
 
 ### The root `wrangler.toml`, at go-live
 
@@ -158,6 +203,37 @@ sender has them. The site's names come from `REPORT_ORIGINS`, which each
 environment already sets; `FOLLOW_ORIGINS` overrides it for following alone.
 `SIGNUP_DAILY_CEILING` (default 50) caps confirmation emails a day.
 
+## What reads this database, and what must not
+
+Nothing but the Functions and the sender. Applying `schema.sql` is the one
+`wrangler d1 execute` ever run against `graniterecord-follow`: no script, no
+report and no Claude session queries it, although this machine's wrangler
+login (the one `publish` and `compile_reports.py` use) could. Sealing means
+such a query shows hashes and ciphertext, not addresses or follow lists, but
+a query is still a look, and the person's line is that nobody looks.
+`preflight_checks_to_add.md` (in the assistant's scratchpad) has the check
+that no tracked file runs one.
+
+## Before go-live: the person's decisions
+
+These need the person, not code:
+
+- **Resend's dashboard shows each email.** Every email goes to Resend with
+  its recipient and its content -- what the reader follows, by name -- and
+  Resend's Emails view keeps both for its plan's retention period, readable
+  by anyone logged into that account, links included. Sealing the database
+  cannot reach that copy. Either the About page says plainly that the mail
+  service holds each email for a limited time, or the Resend login is kept
+  out of day-to-day use, or both; the About draft's "nobody here ... sees
+  what you follow" should not go up as it is.
+- **The About page's words for deleting** must match the pages': deleted
+  from our database at once; the database's backups age out within at most
+  30 days; the mail service's copies of sent emails age out on its schedule.
+- **One link per reader**, as FOLLOW.md designed it: every email carries the
+  same manage link until the reader asks for a new one, so a forwarded email
+  opens the reader's manage page (their follow list, never their address)
+  until they do. The manage page says so.
+
 ### One thing to check on the first preview deploy
 
 The Functions import this folder by a relative path out of `functions/`.
@@ -180,12 +256,12 @@ answers:
 
 | Status | Body | Means |
 |---|---|---|
-| 202 | `{"ok":true}` | A confirmation is on its way -- whatever the address. |
+| 202 | `{"ok":true}` | Accepted -- whatever the address. The request is kept and the email sent after the answer, so the answer takes as long for every address; if the inbox already has three waiting, or Resend refuses, nothing arrives and the log says which. The box should say "if this address can take it, a confirmation is on its way". |
 | 400 | `{"ok":false,"why":"invalid"}` | Not an address, or not a record key. |
 | 400 | `{"ok":false,"why":"check"}` | Turnstile said no; try again. |
 | 400 | `{"ok":false,"why":"not-followable"}` | Not followable tonight. |
-| 429 | `{"ok":false,"why":"busy"}` | The day's confirmations are used up. |
-| 503 | `{"ok":false,"why":"unavailable"}` | Something failed on our side. |
+| 429 | `{"ok":false,"why":"busy"}` | The day's confirmation emails are used up. |
+| 503 | `{"ok":false,"why":"unavailable"}` | The changes file, the database or a secret failed on our side. |
 
 ## Reading the log
 
@@ -201,8 +277,13 @@ nothing a person could read a name in:
 | `follow sender.tonight-missing-sending-anyway 40` | Noon, and still no file: sent what earlier nights had. |
 | `follow sender.nights-missing 2` | Nights in the window with no file. |
 | `follow sender.entries-dropped-or-mended 1` | The changes files broke their format somewhere; `tests/follow/check_changes.js` says where. |
-| `follow sender.resend-refused.429 1` | Resend refused, with its status; the rest wait for the next run. |
+| `follow sender.resend-refused.429 1` | Resend refused, with its status; the rest wait for the next run, and the refused go first tomorrow. |
+| `follow sender.query-budget-reached 6` | The run's D1 statements are spent; these readers wait for the next hour. |
+| `follow sender.after-send-failed.Error 1` | An email went, and the cursor or ended follows could not be written twice over; tomorrow's email repeats its news. |
 | `follow sender.error.ConfigError 1` | A secret or `MAIL_FROM` is missing. |
 | `follow signup.sent 1`, `follow confirm.confirmed 1` | One confirmation emailed; one confirmed. |
+| `follow signup.waiting-enough`, `follow signup.day-full` | A request not sent: its inbox has three waiting, or the day's ceiling is reached. |
+| `follow unsubscribe.one-click-matched-nothing` | A provider's one-click carried a link that is no longer current; nothing was deleted. |
+| `follow manage.new-link-already-moving` | "Send me a new link" pressed twice at once; one email went. |
 | `follow bounce.forgot 1`, `follow complaint.forgot 1` | Addresses deleted by Resend's webhook. |
 | `follow bounce.unsigned` | A post to the webhook that was not Resend's. |

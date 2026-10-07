@@ -6,7 +6,9 @@
  * itself. Each page's first answer is therefore a shell with a few lines of
  * script that read the token from there and put it into the page's form,
  * which posts it in the body; the token is never in a request address. The
- * script runs under a per-answer nonce, and no other script can.
+ * script then takes the "#" part out of the address bar (history.replaceState),
+ * so a shared computer's history does not keep a working link. It runs under
+ * a per-answer nonce, and no other script can.
  *
  * Every value written into a page goes through esc() (common.js).
  */
@@ -64,6 +66,7 @@ export function page(status, { title, body, fill = "", submit = "" }) {
   const n = fill ? nonce() : "";
   const script = fill ? `(function(){
 var h=new URLSearchParams(location.hash.slice(1)),v=h.get(${JSON.stringify(fill)})||"";
+if(location.hash){try{history.replaceState(null,"",location.pathname);}catch(e){}}
 var fs=document.querySelectorAll('input[name=${JSON.stringify(fill)}]');
 for(var i=0;i<fs.length;i++)fs[i].value=v;
 if(!v||!/^[A-Za-z0-9_-]{43}$/.test(v)){document.getElementById("missing").hidden=false;
@@ -90,4 +93,23 @@ ${body}
 export function message(status, title, ...paragraphs) {
   return page(status, { title,
     body: `<h1>${esc(title)}</h1>` + paragraphs.map(p => `<p>${esc(p)}</p>`).join("\n") });
+}
+
+// WHAT DELETING MEANS, said one way everywhere. The rows go from the database
+// at once. Two copies do not, and the reader is told so rather than told
+// "for good": D1 keeps point-in-time backups (Time Travel) that cannot be
+// turned off and age out by themselves, and the mail service keeps a copy of
+// each email it has sent for its own retention period. README.md has the
+// figures to check on the day.
+export const DELETES = "Deletes your address and everything you follow from our " +
+  "database, at once, and nothing more is sent.";
+export const AFTERWARDS = "Two copies age out on their own rather than at once: the " +
+  "database's automatic backups, kept for at most 30 days, and the copy of each email " +
+  "already sent that our mail service keeps for a limited time.";
+
+export function deleted() {
+  return message(200, "Your address has been deleted",
+    "Your address and everything you followed have been deleted from our database, " +
+    "and nothing more will be sent. To follow something again, use Follow on its page.",
+    AFTERWARDS);
 }

@@ -1,5 +1,7 @@
 // functions/api/follow/signup.js: the answer never depends on the address,
-// the request is kept sealed, and nothing is followed until confirmed.
+// in what it says or in what it asked first; the request is kept sealed; an
+// inbox gets at most three confirmations however it is spelled; and nothing
+// is followed until confirmed.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -8,6 +10,17 @@ import { get, leaks, makeWorld, postJson, SITE, tokensIn } from "./fakes.js";
 import { handlers, join, signUp, snapshot } from "./flows.js";
 
 const same = r => JSON.stringify({ status: r.status, headers: r.headers, body: r.body });
+const RESEND = "https://api.resend.com/emails";
+
+// Resend answering after a short wait, as a real network call does, so that
+// requests made at once overlap.
+function slowResend(w, ms = 15) {
+  const inner = w.net.handle.bind(w.net);
+  w.net.handle = async req => {
+    if (new URL(req.url).host === "api.resend.com") await new Promise(r => setTimeout(r, ms));
+    return inner(req);
+  };
+}
 
 test("sign-up says the same thing whether or not the address is already subscribed", async () => {
   const w = makeWorld();
@@ -31,6 +44,65 @@ test("sign-up says the same thing whether or not the address is already subscrib
   } finally { w.close(); }
 });
 
+test("every accepted request has its answer before anything about its address is asked", async () => {
+  const w = makeWorld();
+  try {
+    const watched = w.address("watched");
+    const first = await signUp(w, watched);
+    for (let i = 0; i < 2; i++) await signUp(w, watched);
+    const fourth = await signUp(w, watched);                        // sends nothing
+    const fresh = await signUp(w, w.address("someone.new"));        // sends
+    for (const r of [first, fourth, fresh]) {
+      assert.equal(r.status, 202);
+      assert.ok(!r.beforeAnswer.asked.includes(RESEND), "no email went before the answer");
+      assert.ok(!r.beforeAnswer.prepared.some(s => /pending/i.test(s)),
+        "no request was counted or kept before the answer");
+    }
+    assert.deepEqual(fourth.beforeAnswer, fresh.beforeAnswer,
+      "a request that will send nothing asked exactly what one that will send asked");
+    assert.equal(w.net.outbox.length, 4, "three to the watched inbox, one to the new one");
+    assert.ok(w.logs.lines.includes("follow signup.waiting-enough"));
+  } finally { w.close(); }
+});
+
+test("one inbox gets three confirmations however its address is spelled", async () => {
+  const w = makeWorld();
+  try {
+    for (let i = 1; i <= 20; i++) await signUp(w, `victim+${i}@example.com`);
+    for (const a of ["v.i.c.t.i.m@gmail.com", "Victim+x@googlemail.com", "victim@gmail.com",
+                     "vic.tim+y@gmail.com"])
+      await signUp(w, a);
+    const to = box => w.net.outbox.filter(m => m.to[0].toLowerCase().endsWith(box)).length;
+    assert.equal(to("@example.com"), 3, "tags are one inbox");
+    assert.equal(to("@gmail.com") + to("@googlemail.com"), 3, "so are Gmail's dots and its other name");
+    assert.equal(w.d1.rows("pending").length, 6);
+  } finally { w.close(); }
+});
+
+test("a dozen requests at once for one address send three, not twelve", async () => {
+  const w = makeWorld();
+  try {
+    slowResend(w);
+    const rs = await Promise.all(Array.from({ length: 12 }, () => signUp(w, "same.victim@example.com")));
+    assert.ok(rs.every(r => r.status === 202));
+    assert.equal(w.net.outbox.length, 3);
+    assert.equal(w.d1.rows("pending").length, 3);
+  } finally { w.close(); }
+});
+
+test("requests that send nothing do not use up the day for everyone else", async () => {
+  const w = makeWorld();
+  try {
+    for (let i = 0; i < 50; i++) await signUp(w, "one.target@example.com");
+    assert.equal(w.net.outbox.length, 3, "only three were mailed");
+    assert.deepEqual(w.d1.rows("signup_days").map(r => r.n), [3], "and only three counted");
+    const real = w.address("real.reader");
+    const r = await signUp(w, real);
+    assert.equal(r.status, 202);
+    assert.equal(w.net.outbox.filter(m => m.to[0] === real).length, 1);
+  } finally { w.close(); }
+});
+
 test("sign-up never even asks whether the address is subscribed", async () => {
   const w = makeWorld();
   try {
@@ -40,7 +112,7 @@ test("sign-up never even asks whether the address is subscribed", async () => {
   } finally { w.close(); }
 });
 
-test("a request is kept sealed, with its token's hash and never the token", async () => {
+test("a request is kept sealed, with its token's hash and never the token or the record", async () => {
   const w = makeWorld();
   try {
     const a = w.address("sealed.request");
@@ -48,12 +120,14 @@ test("a request is kept sealed, with its token's hash and never the token", asyn
     const [row] = w.d1.rows("pending");
     const t = tokensIn(w.net.outbox[0]).confirm;
     assert.match(row.email_hmac, /^[0-9a-f]{64}$/);
+    assert.match(row.mailbox_hmac, /^[0-9a-f]{64}$/);
     assert.match(row.email_enc, /^v1\./);
+    assert.match(row.follow_enc, /^v1\./);
     assert.equal(row.confirm_token_hash, await hashToken(t));
-    assert.deepEqual([row.follow_kind, row.follow_ref], ["committee", "H90"]);
     for (const cell of w.d1.everyCell()) {
       assert.ok(!cell.toLowerCase().includes("sealed.request"), "no address in any cell");
       assert.ok(!cell.includes(t), "no token in any cell");
+      assert.ok(!/H90|committee/.test(cell), "no record in any cell");
     }
     assert.equal(w.d1.rows("subscribers").length, 0, "nothing is followed before the confirmation");
     const m = w.net.outbox[0];
@@ -124,23 +198,43 @@ test("the day's ceiling answers 429 for everyone alike", async () => {
   } finally { w.close(); }
 });
 
-test("a refused email or a failing database answers 503, keeps nothing, and logs only a code", async () => {
+test("a refused email or a failing database after the answer keeps nothing, and logs only a code", async () => {
   const w = makeWorld();
   try {
     const a = w.address("refused.here");
     w.net.resendStatus = 422;          // and Resend's message names the address
     let r = await signUp(w, a);
-    assert.equal(r.status, 503);
+    assert.equal(r.status, 202, "the answer had gone before Resend was asked");
     assert.equal(w.d1.rows("pending").length, 0, "the request is not kept without its email");
     w.net.resendStatus = 200;
     // A database error whose message carries the address and a token.
     w.d1.failWhen = sql => /INSERT INTO pending/.test(sql)
       ? new Error(`UNIQUE constraint failed: pending.email ${a} token`) : null;
     r = await signUp(w, a);
-    assert.equal(r.status, 503);
-    assert.deepEqual(JSON.parse(r.body), { ok: false, why: "unavailable" });
+    assert.equal(r.status, 202);
+    assert.equal(w.net.outbox.length, 0);
     assert.deepEqual(w.logs.lines, ["follow signup.resend-refused.422", "follow signup.error.Error"]);
     assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a missing secret or database answers 503 before anything is kept", async () => {
+  const w = makeWorld();
+  try {
+    for (const gap of [{ RESEND_API_KEY: "" }, { MAIL_FROM: "" }, { FOLLOW_LOOKUP_KEY: "" },
+                       { FOLLOW_ADDRESS_KEY: "c2hvcnQ=" }]) {
+      const saved = { ...w.env };
+      Object.assign(w.env, gap);
+      const r = await signUp(w, w.address("too.soon"));
+      Object.assign(w.env, saved);
+      assert.equal(r.status, 503, JSON.stringify(Object.keys(gap)));
+      assert.deepEqual(JSON.parse(r.body), { ok: false, why: "unavailable" });
+    }
+    w.d1.failWhen = sql => /signup_days/.test(sql) ? new Error("D1_ERROR") : null;
+    assert.equal((await signUp(w, w.address("too.soon"))).status, 503);
+    assert.equal(w.net.outbox.length, 0);
+    assert.equal(w.d1.rows("pending").length, 0);
+    assert.ok(w.logs.lines.every(l => /^follow signup\.error\.(ConfigError|Error)$/.test(l)));
   } finally { w.close(); }
 });
 

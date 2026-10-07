@@ -100,10 +100,22 @@ export function rightPlace(request, env, path) {
 // A state-changing post from a browser carries an Origin, and on this site it
 // must be the site's own. Sec-Fetch-Site, where the browser sends it, must say
 // the same. A post with no Origin is not a browser's form and is refused.
+//
+// One exception, and only with the browser's own word for it: a page whose
+// referrer policy withholds its origin makes the browser send "Origin: null"
+// on that page's own form posts (the Fetch standard's "serialize a request
+// origin"). These pages are served with "same-origin" so that it does not
+// happen, but a reader's browser or an extension may tighten the policy, and
+// a confirmation must not fail for that. So "null" passes when, and only
+// when, Sec-Fetch-Site says the post came from this origin -- a header no
+// page can set, and one a sandboxed frame on another site sends as
+// "cross-site".
 export function sameSite(request, env) {
   const site = request.headers.get("Sec-Fetch-Site");
   if (site && site !== "same-origin") return false;
-  return hostAllowed(request.headers.get("Origin"), env);
+  const origin = request.headers.get("Origin");
+  if (origin === "null") return site === "same-origin";
+  return hostAllowed(origin, env);
 }
 
 // ---- time ------------------------------------------------------------------
@@ -161,13 +173,19 @@ export async function readForm(request, max = 4096) {
 }
 
 // ---- answering ---------------------------------------------------------------
-// Nothing here is cached, indexed, framed or sent on as a referrer: a page
-// that carries a private link in its forms must not hand it to the next site
-// a reader clicks through to.
+// Nothing here is cached, indexed or framed, and no other site is told where
+// a reader came from. The referrer policy is "same-origin", NOT "no-referrer":
+// under "no-referrer" a browser sends "Origin: null" on the page's own form
+// posts, which the same-site rule above exists to read, and every confirm,
+// manage and unsubscribe button stopped working in a real browser while every
+// test passed. Nothing is lost by it: a Referer never carries the part after
+// "#", where a token travels, and the address of a page answered to a post
+// holds no token.
+export const REFERRER_POLICY = "same-origin";
 const BASE = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer",
+  "Referrer-Policy": REFERRER_POLICY,
   "X-Robots-Tag": "noindex",
 };
 

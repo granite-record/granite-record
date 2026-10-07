@@ -1,13 +1,13 @@
 /*
  * /api/follow/manage -- a reader's own page: what they follow, how often,
- * a new link, and unsubscribe. A private link, not a login.
+ * a new link, and unsubscribe. A private link, not a login, and the same
+ * link at the foot of every email until the reader asks for a new one.
  *
  * GET answers a shell whose script reads the token from after "#" and posts
  * it straight back (action=view), so the token travels in a body and never in
- * an address. Every POST must come from this site's own page: an Origin of
- * the site's own names, and Sec-Fetch-Site same-origin where the browser
- * sends it. A post from anywhere else changes nothing, and there are no
- * cookies here for another site to borrow.
+ * an address. Every POST must come from this site's own page (common.sameSite).
+ * A post from anywhere else changes nothing, and there are no cookies here for
+ * another site to borrow.
  *
  * WHAT THE PAGE SHOWS. What the link's holder follows and how often. Never
  * the address: a link forwarded with an email must not hand the address on.
@@ -16,18 +16,20 @@
  *   view                    the page
  *   frequency value=daily|weekly
  *   remove    follow=<kind>:<ref>   -- removing the last one deletes the address
- *   newlink                 every link of this address stops working, and one
- *                           new one is emailed to the address, not shown here
+ *   newlink                 the links move to a new generation in one statement,
+ *                           and the new ones are emailed to the address, not
+ *                           shown here; every earlier link stops working
  *   unsubscribe             the address and everything it follows, deleted
  */
 
-import { TOKEN, hashToken, openAddress } from "../../../workers/follow/address.js";
-import { clock, errName, esc, fallbackLabel, note, notHere, parseKey, plain,
+import { TOKEN, followHash, linksFor, openAddress, openFollow }
+  from "../../../workers/follow/address.js";
+import { errName, esc, fallbackLabel, keyOf, note, notHere, parseKey, plain,
          readForm, redirect, rightPlace, sameSite, siteUrl } from "../../../workers/follow/common.js";
 import { readCurrent } from "../../../workers/follow/changes.js";
 import { newLinkEmail, sendMail } from "../../../workers/follow/mail.js";
-import { message, page } from "../../../workers/follow/page.js";
-import { forget, linkStatement, subscriberFor } from "../../../workers/follow/store.js";
+import { DELETES, deleted, message, page } from "../../../workers/follow/page.js";
+import { forget, subscriberFor } from "../../../workers/follow/store.js";
 
 const PATH = "/api/follow/manage";
 
@@ -49,23 +51,42 @@ const SHELL = () => page(200, {
 });
 
 const STALE = () => message(400, "This link is no longer current",
-  "Links in our emails stop working after a while, and all of them stop when a new " +
-  "link is asked for. Use the link in your most recent email from Granite Record.");
+  "Every link in our emails stops working when a new link is asked for, and the " +
+  "address may since have been deleted. Use the link in your most recent email " +
+  "from Granite Record.");
 
-const GONE = () => message(200, "Your address has been deleted",
-  "Your address and everything you followed are deleted, at once and for good. " +
-  "Nothing more will be sent. To follow something again, use Follow on its page.");
+const ON_ITS_WAY = () => message(200, "A new link is on its way",
+  "We have emailed a new link to your address. This link, and every link in " +
+  "earlier emails, no longer works.");
 
 function hidden(t, action, extra = "") {
   return `<input type="hidden" name="t" value="${esc(t)}">` +
     `<input type="hidden" name="action" value="${esc(action)}">${extra}`;
 }
 
+// What the reader follows, opened: [{ key, since }], or a follow that will
+// not open is left out and counted.
+async function followed(env, db, sub) {
+  const rows = (await db.prepare(
+    "SELECT follow_enc, since FROM follows WHERE subscriber_id = ?1").bind(sub.id).all())
+    .results || [];
+  const out = [];
+  let bad = 0;
+  for (const r of rows) {
+    try {
+      const key = await openFollow(env, r.follow_enc, sub.email_hmac);
+      if (parseKey(key)) out.push({ key, since: r.since }); else bad++;
+    } catch { bad++; }
+  }
+  if (bad) note("manage.unreadable-follow", bad);
+  return out.sort((a, b) => a.since.localeCompare(b.since) || a.key.localeCompare(b.key));
+}
+
 function render(origin, t, sub, follows, current, notice) {
-  const list = follows.map(f => {
-    const key = `${f.kind}:${f.ref}`;
+  const list = follows.map(({ key }) => {
+    const { kind, ref } = parseKey(key);
     const meta = current?.followable.get(key);
-    const label = meta?.label || fallbackLabel(f.kind, f.ref);
+    const label = meta?.label || fallbackLabel(kind, ref);
     const what = meta?.url
       ? `<a href="${esc(siteUrl(origin, meta.url))}">${esc(label)}</a>` : esc(label);
     const title = meta?.title ? `<span class="title">${esc(meta.title)}</span>` : "";
@@ -92,16 +113,57 @@ the night before, not what is happening now.</p>
 ${follows.length ? `<ul class="follows">${list}</ul>` : "<p>Nothing at the moment.</p>"}
 <p class="quiet">To follow something else, use Follow on its page.</p>
 <h2>A new link</h2>
-<p>If you forwarded one of these emails, or think someone else has this link, ask for
-a new one. It is sent to your address, and every link in earlier emails stops working,
-their unsubscribe links included.</p>
+<p>This page's link is the same in every email we send you. If you forwarded one
+of them, or think someone else has this link, ask for a new one. It is sent to
+your address, and every link in earlier emails stops working, their unsubscribe
+links included.</p>
 <form method="post" action="${PATH}">${hidden(t, "newlink")}
 <button type="submit" class="plain">Send me a new link</button></form>
 <h2>Unsubscribe</h2>
-<p>Deletes your address and everything you follow, at once. Nothing is kept.</p>
+<p>${esc(DELETES)}</p>
 <form method="post" action="${PATH}">${hidden(t, "unsubscribe")}
 <button type="submit" class="danger">Unsubscribe and delete my address</button></form>`;
   return page(200, { title: "Your email updates", body });
+}
+
+// "SEND ME A NEW LINK". The links move to the next generation in ONE
+// statement that names the link that asked: of two presses at once (a
+// double-click), one moves them and the other finds its link no longer
+// current and sends nothing, so one email goes and its links work. The email
+// goes after the move; if it cannot be sent, the move is undone by a second
+// statement that names the new link, so the reader keeps the links they had.
+async function newLink(env, db, sub, origin) {
+  const next = await linksFor(env, sub.email_hmac, sub.link_gen + 1);
+  const moved = await db.prepare(
+    "UPDATE subscribers SET link_gen = ?1, manage_hash = ?2, unsub_hash = ?3 " +
+    "WHERE id = ?4 AND manage_hash = ?5")
+    .bind(sub.link_gen + 1, next.manageHash, next.unsubHash, sub.id, sub.manage_hash).run();
+  if (!moved?.meta?.changes) {
+    note("manage.new-link-already-moving");
+    return ON_ITS_WAY();
+  }
+  const undo = () => db.prepare(
+    "UPDATE subscribers SET link_gen = ?1, manage_hash = ?2, unsub_hash = ?3 " +
+    "WHERE id = ?4 AND manage_hash = ?5")
+    .bind(sub.link_gen, sub.manage_hash, sub.unsub_hash, sub.id, next.manageHash).run();
+  let sent;
+  try {
+    const mail = newLinkEmail({ origin, manage: next.manage, unsub: next.unsub,
+                                feedbackUrl: env.FEEDBACK_URL });
+    sent = await sendMail(env, { to: await openAddress(env, sub.email_enc, sub.email_hmac),
+                                 ...mail });
+  } catch (e) {
+    await undo();
+    throw e;
+  }
+  if (!sent.ok) {
+    await undo();
+    note(`manage.resend-refused.${sent.status}`);
+    return message(503, "The new link could not be sent",
+      "Nothing has changed: this link still works. Please try again later.");
+  }
+  note("manage.new-link", 1);
+  return ON_ITS_WAY();
 }
 
 export async function onRequest({ request, env }) {
@@ -114,8 +176,7 @@ export async function onRequest({ request, env }) {
     const t = form && form.get("t");
     if (!t || !TOKEN.test(t)) return STALE();
     const db = env.FOLLOW_DB;
-    const now = clock(env);
-    const sub = await subscriberFor(db, t, "manage", now);
+    const sub = await subscriberFor(db, t, "manage");
     if (!sub) return STALE();
     const origin = new URL(request.url).origin;
     const action = form.get("action") || "view";
@@ -130,61 +191,30 @@ export async function onRequest({ request, env }) {
     if (action === "remove") {
       const k = parseKey(form.get("follow"));
       if (!k) return back("");
+      const fh = await followHash(env, sub.email_hmac, keyOf(k.kind, k.ref));
       const n = await db.prepare("SELECT COUNT(*) AS n FROM follows WHERE subscriber_id = ?1")
         .bind(sub.id).first("n");
       const mine = await db.prepare("SELECT 1 AS y FROM follows WHERE subscriber_id = ?1 " +
-        "AND kind = ?2 AND ref = ?3").bind(sub.id, k.kind, k.ref).first();
+        "AND follow_hmac = ?2").bind(sub.id, fh).first();
       if (!mine) return back("");
       if (Number(n) <= 1) {
         await forget(db, { id: sub.id });
         note("manage.forgot", 1);
-        return GONE();
+        return deleted();
       }
-      await db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND kind = ?2 AND ref = ?3")
-        .bind(sub.id, k.kind, k.ref).run();
+      await db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac = ?2")
+        .bind(sub.id, fh).run();
       return back("removed");
     }
     if (action === "unsubscribe") {
       await forget(db, { id: sub.id });
       note("manage.forgot", 1);
-      return GONE();
+      return deleted();
     }
-    if (action === "newlink") {
-      // The new links first, the email, and only then the old links go: an
-      // email that fails leaves the reader with the links they had.
-      const [m, ms] = await linkStatement(db, sub.id, "manage", now);
-      const [u, us] = await linkStatement(db, sub.id, "unsubscribe", now);
-      const keep = [await hashToken(m), await hashToken(u)];
-      const unmake = () => db.batch(keep.map(h =>
-        db.prepare("DELETE FROM links WHERE token_hash = ?1").bind(h)));
-      await db.batch([ms, us]);
-      let sent;
-      try {
-        const mail = newLinkEmail({ origin, manage: m, unsub: u, feedbackUrl: env.FEEDBACK_URL });
-        sent = await sendMail(env, { to: await openAddress(env, sub.email_enc, sub.email_hmac),
-                                     ...mail });
-      } catch (e) {
-        await unmake();
-        throw e;
-      }
-      if (!sent.ok) {
-        await unmake();
-        note(`manage.resend-refused.${sent.status}`);
-        return message(503, "The new link could not be sent",
-          "Nothing has changed: this link still works. Please try again later.");
-      }
-      await db.prepare("DELETE FROM links WHERE subscriber_id = ?1 AND token_hash NOT IN (?2, ?3)")
-        .bind(sub.id, keep[0], keep[1]).run();
-      note("manage.new-link", 1);
-      return message(200, "A new link is on its way",
-        "We have emailed a new link to your address. This link, and every link in " +
-        "earlier emails, no longer works.");
-    }
+    if (action === "newlink") return await newLink(env, db, sub, origin);
 
     // view
-    const follows = (await db.prepare(
-      "SELECT kind, ref FROM follows WHERE subscriber_id = ?1 ORDER BY since, kind, ref")
-      .bind(sub.id).all()).results || [];
+    const follows = await followed(env, db, sub);
     const cur = await readCurrent(p => env.ASSETS.fetch(new URL(p, request.url)));
     if (!cur.value) note("manage.current-unreadable");
     return render(origin, t, sub, follows, cur.value, form.get("notice") || "");

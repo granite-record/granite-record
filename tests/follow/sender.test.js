@@ -5,9 +5,12 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lookupHash, sealAddress, hashToken } from "../../workers/follow/address.js";
+import { hashToken } from "../../workers/follow/address.js";
+import { digestEmail } from "../../workers/follow/mail.js";
 import { due, nhClock, run } from "../../workers/follow/sender.js";
-import { leaks, loadFixtures, makeWorld } from "./fakes.js";
+import { leaks, loadFixtures, makeWorld, SITE, tokensIn } from "./fakes.js";
+import { handlers, view } from "./flows.js";
+import { followKeys, insertSubscriber } from "./rows.js";
 
 const FX = loadFixtures();
 const CURRENT = FX.get("/changes/current.json");
@@ -33,22 +36,15 @@ function siteAsOf(w, date, { extra = {} } = {}) {
 // sender would have left them, cursor and all.
 async function subscribe(w, name, follows, { frequency = "daily", cursor = "2026-10-04" } = {}) {
   const address = w.address(name);
-  const h = await lookupHash(w.env, address);
-  const id = await w.d1.prepare("INSERT INTO subscribers (email_hmac, email_enc, frequency, " +
-    "confirmed_at, last_sent_on, sent_date, sent_built) VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6) RETURNING id")
-    .bind(h, await sealAddress(w.env, address, h), frequency, "2026-09-30T12:00:00Z",
-          cursor, FX.get(`/changes/${cursor}.json`)?.built ?? `${cursor}T09:00:00Z`).first("id");
-  for (const k of follows) {
-    const i = k.indexOf(":");
-    await w.d1.prepare("INSERT INTO follows VALUES (?1, ?2, ?3, '2026-09-30T12:00:00Z')")
-      .bind(id, k.slice(0, i), k.slice(i + 1)).run();
-  }
-  return { id, address };
+  const { id, links } = await insertSubscriber(w.d1, w.env, address, { frequency, follows,
+    lastSentOn: cursor, sentDate: cursor,
+    sentBuilt: FX.get(`/changes/${cursor}.json`)?.built ?? `${cursor}T09:00:00Z` });
+  return { id, address, links };
 }
 
 const mailsTo = (w, address) => w.net.outbox.filter(m => m.to.includes(address));
-const followsOf = (w, id) => w.d1.rows("follows").filter(f => f.subscriber_id === id)
-  .map(f => `${f.kind}:${f.ref}`).sort();
+const followsOf = async (w, id) => (await followKeys(w.d1, w.env))
+  .filter(k => k.startsWith(`${id} `)).map(k => k.slice(String(id).length + 1));
 
 // ---- when -----------------------------------------------------------------------------
 test("New Hampshire's clock, either side of both daylight-saving changes", () => {
@@ -178,7 +174,7 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     m = await morning("2026-10-07");
     assert.match(m[0].text, /HB 9902 was signed into law\. This follow has ended/);
     assert.match(m[0].text, /Executive Session: 10\/06\/2026/);
-    assert.deepEqual(followsOf(w, s.id), ["bill:2026/HB9901", "bill:2026/HB9903",
+    assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "bill:2026/HB9903",
       "committee:H90", "member:990001", "topic:housing"], "the ended bill's follow is gone");
 
     m = await morning("2026-10-08");
@@ -250,10 +246,10 @@ test("every update carries a manage link, an unsubscribe link and the RFC 8058 h
     assert.equal(m.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
     assert.ok(!("reply_to" in m) && !("replyTo" in m), "no reply address");
     assert.match(m.text, /takes no replies[\s\S]*Report a problem with this page[\s\S]*feedback form/);
-    const links = w.d1.rows("links");
-    assert.ok(links.some(l => l.purpose === "manage" && l.token_hash !== manage));
-    const hashes = new Set(links.map(l => l.token_hash));
-    assert.ok(hashes.has(await hashToken(manage)) && hashes.has(await hashToken(unsub)));
+    const [row] = w.d1.rows("subscribers");
+    assert.equal(row.manage_hash, await hashToken(manage));
+    assert.equal(row.unsub_hash, await hashToken(unsub));
+    assert.deepEqual([manage, unsub], [s.links.manage, s.links.unsub], "the reader's own links");
     assert.ok(!w.d1.everyCell().some(c => c.includes(manage) || c.includes(unsub)),
       "the database holds the tokens' hashes, never the tokens");
     assert.deepEqual(leaks(w), []);
@@ -273,7 +269,7 @@ test("when every follow ends, the address goes with them and the email says so",
     assert.doesNotMatch(m.text, /manage#t=|unsubscribe#u=/, "no link that would not work");
     assert.equal(m.headers, undefined);
     assert.equal(w.d1.rows("subscribers").length, 0);
-    assert.equal(w.d1.rows("links").length, 0);
+    assert.equal(w.d1.rows("follows").length, 0);
     assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
@@ -288,14 +284,14 @@ test("a followed bill that drops off the list with no ending is told as stopped,
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
     assert.match(m.text, /HB 9905 \(2026\) is no longer moving on the record\. This follow has ended/);
-    assert.deepEqual(followsOf(w, s.id), ["bill:2026/HB9901"]);
+    assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901"]);
     // But an empty list is a broken build, not every bill ending at once.
     const v = await subscribe(w, "reader.emptylist", ["bill:2026/HB9906"], { cursor: "2026-10-09" });
     siteAsOf(w, "2026-10-10", { extra: { followable: { "committee:H90": { label: "House Example Committee" } } } });
     w.now = new Date("2026-10-10T12:00:00Z");
     await run(w.env, w.now);
     assert.equal(mailsTo(w, v.address).length, 0);
-    assert.deepEqual(followsOf(w, v.id), ["bill:2026/HB9906"]);
+    assert.deepEqual(await followsOf(w, v.id), ["bill:2026/HB9906"]);
     assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
@@ -391,7 +387,7 @@ test("under record-date, the same week reads the same, with no seen at all", asy
   } finally { w.close(); }
 });
 
-test("a refused send is given back, its links removed, and tried again next hour", async () => {
+test("a refused send is given back and tried again next hour", async () => {
   const w = makeWorld();
   try {
     siteAsOf(w, "2026-10-05");
@@ -400,8 +396,8 @@ test("a refused send is given back, its links removed, and tried again next hour
     w.now = new Date("2026-10-05T12:00:00Z");
     const r = await run(w.env, w.now);
     assert.equal(r.failed, 1);
-    assert.equal(w.d1.rows("links").length, 0, "the links made for it are gone");
     assert.equal(w.d1.rows("subscribers")[0].last_sent_on, "2026-10-04", "the day is given back");
+    assert.equal(w.d1.rows("subscribers")[0].sent_date, "2026-10-04", "and the cursor stays");
     assert.ok(w.logs.lines.includes("follow sender.resend-refused.422 1"));
     w.net.resendStatus = 200;
     w.now = new Date("2026-10-05T13:00:00Z");
@@ -428,6 +424,145 @@ test("Resend's rate limit stops the run, and the rest go next hour", async () =>
     await run(w.env, w.now);
     assert.equal(mailsTo(w, a.address).length + mailsTo(w, b.address).length, 2);
   } finally { w.close(); }
+});
+
+test("a daily cap that lasts serves every reader in turn, not the same ones every day", async () => {
+  const w = makeWorld();
+  try {
+    fortnight(w, "2026-10-12", "2026-10-16", ["bill:2026/HB9901"]);
+    // Resend's daily cap, at two a day; three readers with news every night.
+    const perDay = new Map();
+    const inner = w.net.handle.bind(w.net);
+    w.net.handle = async req => {
+      if (new URL(req.url).host === "api.resend.com") {
+        const day = w.now.toISOString().slice(0, 10);
+        w.net.resendStatus = (perDay.get(day) || 0) >= 2 ? 429 : 200;
+        const r = await inner(req);
+        if (r.status === 200) perDay.set(day, (perDay.get(day) || 0) + 1);
+        return r;
+      }
+      return inner(req);
+    };
+    const subs = [];
+    for (const n of ["one", "two", "three"])
+      subs.push(await subscribe(w, `turn.${n}`, ["bill:2026/HB9901"], { cursor: "2026-10-12" }));
+    await everyHour(w, "2026-10-13T00:00:00Z", "2026-10-17T00:00:00Z");
+    const days = subs.map(s => mailsTo(w, s.address).map(m => m.at.slice(0, 10)));
+    for (const [i, d] of days.entries()) assert.ok(d.length >= 2, `turn.${i}: ${d.join(" ")}`);
+    assert.equal(days.flat().length, 8, "two a day for four days");
+    // And nothing was lost by waiting: the one refused on a day has that day's
+    // news in its next email.
+    const third = mailsTo(w, subs[2].address)[0];
+    assert.match(third.text, /Something new on 2026-10-13/);
+  } finally { w.close(); }
+});
+
+test("an email that went is not given back when a write after it fails", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const s = await subscribe(w, "reader.after", ["bill:2026/HB9901"]);
+    let fail = 1;
+    w.d1.failWhen = sql => (fail > 0 && /^UPDATE subscribers SET sent_date/.test(sql))
+      ? (fail--, new Error("D1_ERROR: transient")) : null;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r1 = await run(w.env, w.now);
+    assert.deepEqual([r1.sent, r1.failed], [1, 0], "counted as sent");
+    const [m] = mailsTo(w, s.address);
+    const t = tokensIn(m);
+    assert.equal(w.d1.rows("subscribers")[0].sent_date, "2026-10-05", "the cursor moved on the second try");
+    assert.equal((await view(w, t.manage)).status, 200, "the delivered email's manage link works");
+    w.now = new Date("2026-10-05T13:00:00Z");
+    await run(w.env, w.now);
+    assert.equal(mailsTo(w, s.address).length, 1, "and it is not sent again");
+    // When both tries fail: logged, still sent, still not sent twice today.
+    const v = await subscribe(w, "reader.after2", ["bill:2026/HB9901"]);
+    w.d1.failWhen = sql => /^UPDATE subscribers SET sent_date/.test(sql) ? new Error("D1_ERROR") : null;
+    await run(w.env, w.now);
+    w.now = new Date("2026-10-05T14:00:00Z");
+    await run(w.env, w.now);
+    assert.equal(mailsTo(w, v.address).length, 1);
+    assert.ok(w.logs.lines.includes("follow sender.after-send-failed.Error 1"));
+    const one = await w.call(handlers.unsubscribe, new Request(
+      `${SITE}/api/follow/unsubscribe?u=${tokensIn(mailsTo(w, v.address)[0]).header}`,
+      { method: "POST", body: "List-Unsubscribe=One-Click",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" } }));
+    assert.equal(one.status, 200);
+    assert.equal(w.d1.rows("subscribers").length, 1, "its one-click unsubscribe deleted the reader");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("every email carries the same manage link, until a new one is asked for", async () => {
+  const w = makeWorld();
+  try {
+    fortnight(w, "2026-10-12", "2026-11-12", ["bill:2026/HB9901"]);
+    const s = await subscribe(w, "reader.samelink", ["bill:2026/HB9901"], { cursor: "2026-10-12" });
+    for (let d = Date.parse("2026-10-13T13:00:00Z"); d < Date.parse("2026-11-12T00:00:00Z"); d += 86400000) {
+      w.now = new Date(d);
+      await run(w.env, w.now);
+    }
+    const mails = mailsTo(w, s.address);
+    assert.equal(mails.length, 30);
+    assert.equal(new Set(mails.map(m => tokensIn(m).manage)).size, 1, "one manage link in thirty emails");
+    assert.equal(new Set(mails.map(m => tokensIn(m).unsub)).size, 1, "and one unsubscribe link");
+    assert.equal(tokensIn(mails[0]).manage, s.links.manage);
+  } finally { w.close(); }
+});
+
+test("a run stops taking readers before it would pass the D1 statement limit", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const subs = [];
+    for (let i = 0; i < 20; i++)
+      subs.push(await subscribe(w, `budget.${i}`, ["bill:2026/HB9901"]));
+    let statements = 0;
+    const inner = w.d1.failWhen;
+    w.d1.failWhen = (sql, args) => { statements++; return inner ? inner(sql, args) : null; };
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r = await run(w.env, w.now);           // D1_QUERIES_PER_RUN unset: 50
+    assert.ok(statements <= 50, `${statements} statements in one run`);
+    assert.equal(r.queries, statements, "the run counts what it ran");
+    assert.ok(r.sent >= 8 && r.sent < 20, `sent ${r.sent}`);
+    assert.ok(w.logs.lines.some(l => /^follow sender\.query-budget-reached \d+$/.test(l)));
+    for (let h = 13; h < 16; h++) {
+      statements = 0;
+      w.now = new Date(`2026-10-05T${h}:00:00Z`);
+      await run(w.env, w.now);
+      assert.ok(statements <= 50, `${statements} statements at ${h}:00`);
+    }
+    for (const s of subs) assert.equal(mailsTo(w, s.address).length, 1, s.address);
+  } finally { w.close(); }
+});
+
+test("a member or committee that leaves the list is told as stopped; a topic is kept", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-09");
+    const s = await subscribe(w, "reader.turnover", ["member:990009", "committee:H99",
+      "topic:fisheries", "bill:2026/HB9901"], { cursor: "2026-10-08" });
+    w.now = new Date("2026-10-09T12:00:00Z");
+    await run(w.env, w.now);
+    const [m] = mailsTo(w, s.address);
+    assert.match(m.text, /Legislator no\. 990009 is no longer among the sitting legislators on the record\. This follow has ended/);
+    assert.match(m.text, /Committee H99 is no longer among the committees on the record\. This follow has ended/);
+    assert.doesNotMatch(m.text, /Fisheries/, "a topic out of the list for now is not ended");
+    assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "topic:fisheries"]);
+  } finally { w.close(); }
+});
+
+test("an interim study's sentence is said once, and the record's own words after it", () => {
+  const base = { origin: "https://graniterecord.org", frequency: "daily", date: "2026-10-08",
+    manage: "M".repeat(43), unsub: "U".repeat(43) };
+  const section = study => ({ key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901",
+    label: "HB 9901", title: "", url: "", items: [], more: 0, study, ended: null, week: null, upcoming: [] });
+  const echo = digestEmail({ ...base, sections: [section({ recommends: true,
+    summary: "The interim study committee recommended future legislation." })] });
+  assert.equal((echo.text.match(/recommended future legislation/g) || []).length, 1);
+  const own = digestEmail({ ...base, sections: [section({ recommends: true,
+    summary: "Interim Study Report: Recommended for Future Legislation 10/07/2026" })] });
+  assert.match(own.text, /The interim study committee recommended future legislation\. Interim Study Report: Recommended for Future Legislation 10\/07\/2026/);
 });
 
 test("at most SEND_LIMIT emails a run; the next hour finishes the list", async () => {

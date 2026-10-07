@@ -104,10 +104,17 @@ test("every page refuses framing, other scripts and other forms' targets", async
       assert.match(csp, /form-action 'self'/);
       assert.match(csp, /script-src ('none'|'nonce-[A-Za-z0-9_-]{22}')/);
       assert.equal(p.headers["x-frame-options"], "DENY");
-      assert.equal(p.headers["referrer-policy"], "no-referrer");
+      // Not "no-referrer": under it a browser posts the page's own forms with
+      // Origin null, and every button of these pages failed in a real browser.
+      assert.equal(p.headers["referrer-policy"], "same-origin");
       clean(p.body);
       const scripts = p.body.match(/<script[^>]*>/g) || [];
       for (const tag of scripts) assert.match(tag, /^<script nonce="[A-Za-z0-9_-]{22}">$/);
+      // A page that reads a link from after "#" takes it out of the address bar.
+      if (/location\.hash/.test(p.body))
+        assert.match(p.body, /history\.replaceState\(null,"",location\.pathname\)/);
     }
+    assert.equal(pages.filter(p => /location\.hash/.test(p.body)).length, 3,
+      "the confirm, manage and unsubscribe shells all read one");
   } finally { w.close(); }
 });

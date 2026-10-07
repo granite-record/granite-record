@@ -71,10 +71,38 @@ test("a whole life of a subscription leaves no address, token or follow list whe
       for (const addr of w.addresses) assert.ok(!cell.toLowerCase().includes(addr.toLowerCase()));
       for (const t of tokens) assert.ok(!cell.includes(t));
     }
-    // And everything is gone: both addresses, all follows, all links, all requests.
-    for (const t of ["subscribers", "follows", "links", "pending"])
+    // And everything is gone: both addresses, all follows, all requests.
+    for (const t of ["subscribers", "follows", "pending"])
       assert.equal(w.d1.rows(t).length, 0, t);
     assert.ok(w.d1.rows("sends").length > 0, "what is left is counts");
+  } finally { w.close(); }
+});
+
+test("read without the keys, no cell of the database shows what anyone follows", async () => {
+  // As the D1 dashboard, or a session holding the account's wrangler login,
+  // would see it: every table, every cell.
+  const w = makeWorld();
+  try {
+    const one = await join(w, "plain.follows", "bill", "2026/HB9901");
+    await signUp(w, one.address, "member", "990001");
+    await confirmLatest(w, one.address);
+    await signUp(w, one.address, "topic", "housing");        // left waiting
+    const two = await join(w, "same.record", "bill", "2026/HB9901");
+    await signUp(w, two.address, "committee", "H90");          // left waiting
+    assert.equal(w.d1.rows("follows").length, 3);
+    assert.equal(w.d1.rows("pending").length, 2);
+    for (const cell of w.d1.everyCell()) {
+      // A sealed value is random base64url, where three letters can turn up
+      // by chance; only the longer words are looked for in one.
+      const sealed = /^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(cell);
+      for (const word of ["HB9901", "990001", "housing", "H90", "bill", "member", "topic", "committee"])
+        if (!(sealed && word.length < 4)) assert.ok(!cell.includes(word), `a cell shows "${word}"`);
+    }
+    const hashes = w.d1.rows("follows").map(f => f.follow_hmac);
+    assert.equal(new Set(hashes).size, 3, "two readers of HB 9901 show two unrelated hashes");
+    // Days, not moments, where only a day is needed.
+    for (const f of w.d1.rows("follows")) assert.match(f.since, /^\d{4}-\d{2}-\d{2}$/);
+    for (const s of w.d1.rows("subscribers")) assert.match(s.confirmed_on, /^\d{4}-\d{2}-\d{2}$/);
   } finally { w.close(); }
 });
 

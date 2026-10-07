@@ -1,52 +1,49 @@
 // store.js and the schema: the purge, forgetting, links, the count, the
 // ceiling -- and that no column can hold anything about a reader but the
-// sealed address and its keyed hash.
+// sealed address, its keyed hashes and what they follow, sealed.
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lookupHash, sealAddress } from "../../workers/follow/address.js";
-import { countConfirmed, forget, issueLink, purge, subscriberFor, underCeiling }
+import { linksFor, lookupHash, mailboxHash, sealAddress, sealFollow }
+  from "../../workers/follow/address.js";
+import { countConfirmed, dayFull, forget, purge, subscriberFor, underCeiling }
   from "../../workers/follow/store.js";
 import { FakeD1 } from "./fake_d1.js";
 import { makeKeys } from "./fakes.js";
+import { insertSubscriber } from "./rows.js";
 
 const T0 = new Date("2026-10-06T15:00:00Z");
 const at = h => new Date(T0.getTime() + h * 3600000);
 
-async function subscriber(db, env, address, follows = [["bill", "2026/HB9901"]]) {
-  const h = await lookupHash(env, address);
-  const id = await db.prepare("INSERT INTO subscribers (email_hmac, email_enc, frequency, " +
-    "confirmed_at) VALUES (?1, ?2, 'daily', ?3) RETURNING id")
-    .bind(h, await sealAddress(env, address, h), T0.toISOString()).first("id");
-  for (const [k, r] of follows)
-    await db.prepare("INSERT INTO follows VALUES (?1, ?2, ?3, ?4)").bind(id, k, r, "x").run();
-  return { id, h };
-}
+const subscriber = (db, env, address, follows = ["bill:2026/HB9901"]) =>
+  insertSubscriber(db, env, address, { follows, confirmedOn: "2026-10-06" });
 
 async function pending(db, env, address, when) {
   const h = await lookupHash(env, address);
-  await db.prepare("INSERT INTO pending (email_hmac, email_enc, follow_kind, follow_ref, " +
-    "confirm_token_hash, created_at) VALUES (?1, ?2, 'bill', '2026/HB9901', ?3, ?4)")
-    .bind(h, await sealAddress(env, address, h), crypto.randomUUID(),
+  await db.prepare("INSERT INTO pending (email_hmac, email_enc, mailbox_hmac, follow_enc, " +
+    "confirm_token_hash, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
+    .bind(h, await sealAddress(env, address, h), await mailboxHash(env, address),
+          await sealFollow(env, "bill:2026/HB9901", h), crypto.randomUUID(),
           when.toISOString().replace(/\.\d+Z$/, "Z")).run();
 }
 
-test("the schema has no column about a reader but the sealed address and its keyed hash", () => {
+test("the schema has no column about a reader but the sealed address and its keyed hashes", () => {
   const db = new FakeD1();
   const cols = Object.fromEntries(db.tables().map(t => [t, db.columns(t)]));
   assert.deepEqual(cols, {
-    follows: ["subscriber_id", "kind", "ref", "since"],
-    links: ["token_hash", "subscriber_id", "purpose", "created_at"],
-    pending: ["id", "email_hmac", "email_enc", "follow_kind", "follow_ref",
+    follows: ["subscriber_id", "follow_hmac", "follow_enc", "since"],
+    pending: ["id", "email_hmac", "email_enc", "mailbox_hmac", "follow_enc",
               "confirm_token_hash", "created_at"],
     sends: ["date", "frequency", "emails_sent", "items", "failed", "ended"],
     signup_days: ["day", "n"],
-    subscribers: ["id", "email_hmac", "email_enc", "frequency", "confirmed_at",
-                  "last_sent_on", "sent_date", "sent_built"],
+    subscribers: ["id", "email_hmac", "email_enc", "frequency", "confirmed_on", "link_gen",
+                  "manage_hash", "unsub_hash", "last_sent_on", "sent_date", "sent_built"],
   });
   const all = Object.values(cols).flat().join(" ");
   assert.doesNotMatch(all, /\b(ip|email|address|name|cookie|agent|referr?er|session)\b/i,
     "no column for an IP, a name, a cookie, a browser or a referrer");
+  assert.doesNotMatch(all, /\b(kind|ref|follow_kind|follow_ref)\b/,
+    "no column that holds what is followed in the clear");
 });
 
 test("an unconfirmed request is kept 48 hours and purged after", async () => {
@@ -61,18 +58,14 @@ test("an unconfirmed request is kept 48 hours and purged after", async () => {
   assert.equal(db.rows("pending").length, 0, "gone at 49 hours");
 });
 
-test("forgetting an address takes the subscriber, every follow, link and pending request", async () => {
+test("forgetting an address takes the subscriber, every follow and pending request", async () => {
   const db = new FakeD1(), env = makeKeys();
-  const a = await subscriber(db, env, "gone@example.com", [["bill", "2026/HB9901"], ["topic", "housing"]]);
+  const a = await subscriber(db, env, "gone@example.com", ["bill:2026/HB9901", "topic:housing"]);
   const b = await subscriber(db, env, "stays@example.com");
-  await issueLink(db, a.id, "manage", T0);
-  await issueLink(db, a.id, "unsubscribe", T0);
-  await issueLink(db, b.id, "manage", T0);
   await pending(db, env, "gone@example.com", T0);
   assert.equal(await forget(db, { id: a.id }), 1);
   assert.deepEqual(db.rows("subscribers").map(r => r.id), [b.id]);
   assert.ok(db.rows("follows").every(r => r.subscriber_id === b.id));
-  assert.ok(db.rows("links").every(r => r.subscriber_id === b.id));
   assert.equal(db.rows("pending").length, 0);
   // and by the hash alone, as a bounce does
   await pending(db, env, "stays@example.com", T0);
@@ -81,22 +74,24 @@ test("forgetting an address takes the subscriber, every follow, link and pending
     assert.equal(db.rows(t).length, 0, t);
 });
 
-test("a link is good for its age, and an address's newest link always is", async () => {
+test("a link finds its reader for as long as it is current, and only for its purpose", async () => {
   const db = new FakeD1(), env = makeKeys();
   const a = await subscriber(db, env, "links@example.com");
-  const old = await issueLink(db, a.id, "manage", T0);
-  const day = 24;
-  assert.equal((await subscriberFor(db, old, "manage", at(59 * day)))?.id, a.id);
-  assert.equal((await subscriberFor(db, old, "manage", at(400 * day)))?.id, a.id,
-    "the newest manage link works whatever its age");
-  const newer = await issueLink(db, a.id, "manage", at(10 * day));
-  assert.equal(await subscriberFor(db, old, "manage", at(61 * day)), null, "past 60 days, and not the newest");
-  assert.equal((await subscriberFor(db, newer, "manage", at(61 * day)))?.id, a.id);
-  assert.equal(await subscriberFor(db, newer, "unsubscribe", at(11 * day)), null,
+  assert.equal((await subscriberFor(db, a.links.manage, "manage"))?.id, a.id);
+  assert.equal((await subscriberFor(db, a.links.unsub, "unsubscribe"))?.id, a.id);
+  assert.equal(await subscriberFor(db, a.links.manage, "unsubscribe"), null,
     "a manage link is not an unsubscribe link");
-  await purge(db, at(61 * day));
-  assert.equal(db.rows("links").length, 1, "the purge takes the expired one and keeps the newest");
-  assert.equal(await subscriberFor(db, "not a token", "manage", T0), null);
+  assert.equal(await subscriberFor(db, a.links.unsub, "manage"), null,
+    "and an unsubscribe link opens no manage page");
+  assert.equal(await subscriberFor(db, a.links.manage, "manage_hash"), null, "no other column");
+  assert.equal(await subscriberFor(db, "not a token", "manage"), null);
+  // The same reader and generation make the same links; the next generation others.
+  assert.deepEqual(await linksFor(env, a.h, 0), a.links);
+  const next = await linksFor(env, a.h, 1);
+  assert.notEqual(next.manage, a.links.manage);
+  assert.notEqual(next.unsub, a.links.unsub);
+  assert.ok(!db.everyCell().some(c => c.includes(a.links.manage) || c.includes(a.links.unsub)),
+    "the database holds the links' hashes, never the links");
 });
 
 test("the count is confirmed subscribers only, as one integer", async () => {
@@ -108,21 +103,22 @@ test("the count is confirmed subscribers only, as one integer", async () => {
   assert.equal(await countConfirmed(db), 2);
 });
 
-test("the day's ceiling is raised and checked in one statement", async () => {
+test("the day's ceiling is raised and checked in one statement, and read without raising", async () => {
   const db = new FakeD1();
+  assert.equal(await dayFull(db, "2026-10-06", 3), false);
   for (let i = 1; i <= 3; i++) assert.equal(await underCeiling(db, "2026-10-06", 3), i);
+  assert.equal(await dayFull(db, "2026-10-06", 3), true);
   assert.equal(await underCeiling(db, "2026-10-06", 3), null);
   assert.equal(await underCeiling(db, "2026-10-07", 3), 1, "a new day starts again");
+  assert.deepEqual(db.rows("signup_days").map(r => r.n), [3, 1], "reading raised nothing");
 });
 
-test("an address left following nothing is deleted a day on", async () => {
+test("an address left following nothing is deleted a day or two on", async () => {
   const db = new FakeD1(), env = makeKeys();
-  const a = await subscriber(db, env, "orphan@example.com", []);
-  await issueLink(db, a.id, "manage", T0);
+  await subscriber(db, env, "orphan@example.com", []);
   await purge(db, at(2));
   assert.equal(db.rows("subscribers").length, 1, "not within the day");
-  const r = await purge(db, at(25));
+  const r = await purge(db, at(48));
   assert.equal(r.orphans, 1);
   assert.equal(db.rows("subscribers").length, 0);
-  assert.equal(db.rows("links").length, 0);
 });

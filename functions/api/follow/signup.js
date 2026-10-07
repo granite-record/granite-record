@@ -2,37 +2,43 @@
  * POST /api/follow/signup -- a reader asks for email updates on one record.
  *
  * Nothing is followed here. This keeps the request -- the address sealed,
- * its lookup hash, the record, and the hash of a confirmation token -- and
- * emails the address a link to confirm it. Only the confirmation makes a
- * subscriber (confirm.js), and a request not confirmed within 48 hours is
- * deleted.
+ * its lookup hash, its inbox's hash, the record sealed, and the hash of a
+ * confirmation token -- and emails the address a link to confirm it. Only
+ * the confirmation makes a subscriber (confirm.js), and a request not
+ * confirmed within 48 hours is deleted.
  *
- * THE ANSWER DOES NOT DEPEND ON THE ADDRESS. A new address, one already
- * subscribed, one already following this very record, one with requests
- * already waiting: every one is answered 202 {"ok":true}, and this file never
- * asks whether the address is subscribed at all, so it could not answer
- * differently if it tried. Even an existing subscriber gets a confirmation
- * email, because only the inbox can say the request is theirs. The other
- * answers depend only on what was sent or on the day:
+ * THE ANSWER DOES NOT DEPEND ON THE ADDRESS, in what it says or in how long
+ * it takes. Everything this file does with the address happens after the
+ * answer has gone, in the request's waitUntil: a new address, one already
+ * subscribed, one following this very record, an inbox with requests already
+ * waiting -- each is answered 202 {"ok":true} at the same point, having asked
+ * the same things. This file never asks whether the address is subscribed at
+ * all. Even an existing subscriber gets a confirmation email, because only
+ * the inbox can say the request is theirs. The other answers depend only on
+ * what was sent or on the day:
  *   400 {"why":"invalid"}         not an address, not a record, not JSON
  *   400 {"why":"check"}           Turnstile said no
  *   400 {"why":"not-followable"}  not followable tonight (current.json)
- *   429 {"why":"busy"}            the day's ceiling on confirmations
- *   503 {"why":"unavailable"}     the changes file, the database or Resend failed
+ *   429 {"why":"busy"}            the day's confirmation emails are used up
+ *   503 {"why":"unavailable"}     the changes file, the database or a secret is missing
+ * A refusal by Resend after the answer is logged by its status alone, and the
+ * request deleted: the reader sees no email and can ask again.
  *
  * Volume: Turnstile on the form, a Cloudflare rate rule on this path (it
- * needs no address and keeps none), the day's ceiling, and at most three
- * waiting requests per address -- a fourth sends nothing and is answered as
- * the first was.
+ * needs no address and keeps none), the day's ceiling -- raised only when an
+ * email is about to go, so requests that send nothing cannot fill it -- and at
+ * most three waiting requests per inbox, counted and kept in one statement:
+ * "pat+1@" and "pat+2@" are one inbox, and so are Gmail's dotted spellings.
  */
 
-import { cleanAddress, hashToken, lookupHash, newToken, sealAddress, ConfigError }
-  from "../../../workers/follow/address.js";
+import { cleanAddress, hashToken, keysReady, lookupHash, mailboxHash, newToken,
+         sealAddress, sealFollow, ConfigError } from "../../../workers/follow/address.js";
 import { clock, errName, hostAllowed, isoSeconds, json, keyOf, note, notHere, plain,
          readCapped, refOk, rightPlace } from "../../../workers/follow/common.js";
 import { readCurrent } from "../../../workers/follow/changes.js";
 import { confirmationEmail, sendMail } from "../../../workers/follow/mail.js";
-import { PENDING_PER_ADDRESS, purgePending, underCeiling } from "../../../workers/follow/store.js";
+import { PENDING_PER_MAILBOX, dayFull, purgePending, underCeiling }
+  from "../../../workers/follow/store.js";
 
 const PATH = "/api/follow/signup";
 const MAX_BODY = 4096;
@@ -54,7 +60,46 @@ async function turnstileOk(env, token) {
   return !!(j && j.success === true);
 }
 
-export async function onRequest({ request, env }) {
+// AFTER THE ANSWER: keep the request if its inbox has room, raise the day's
+// count, send. Every outcome is a log line of a code, and nothing is
+// answered, so nothing here can be timed from outside.
+async function keepAndSend(env, now, { address, key, meta, origin, ceiling }) {
+  const db = env.FOLLOW_DB;
+  try {
+    await purgePending(db, now);
+    const hmac = await lookupHash(env, address);
+    const token = newToken();
+    // Counted and kept in one statement: D1 runs one statement at a time, so
+    // a dozen requests at once cannot all read "two waiting" and all go in.
+    const id = await db.prepare(
+      "INSERT INTO pending (email_hmac, email_enc, mailbox_hmac, follow_enc, " +
+      "confirm_token_hash, created_at) SELECT ?1, ?2, ?3, ?4, ?5, ?6 " +
+      "WHERE (SELECT COUNT(*) FROM pending WHERE mailbox_hmac = ?3) < ?7 RETURNING id")
+      .bind(hmac, await sealAddress(env, address, hmac), await mailboxHash(env, address),
+            await sealFollow(env, key, hmac), await hashToken(token), isoSeconds(now),
+            PENDING_PER_MAILBOX).first("id");
+    if (id === null || id === undefined) { note("signup.waiting-enough"); return; }
+    const drop = () => db.prepare("DELETE FROM pending WHERE id = ?1").bind(id).run();
+    if ((await underCeiling(db, isoSeconds(now).slice(0, 10), ceiling)) === null) {
+      await drop();
+      note("signup.day-full");
+      return;
+    }
+    const mail = confirmationEmail({ origin, label: meta.label, title: meta.title, token });
+    const sent = await sendMail(env, { to: address, ...mail });
+    if (!sent.ok) {
+      await drop();
+      note(`signup.resend-refused.${sent.status}`);
+      return;
+    }
+    note("signup.sent", 1);
+  } catch (e) {
+    note(`signup.error.${errName(e)}`);
+  }
+}
+
+export async function onRequest(context) {
+  const { request, env } = context;
   // Not open until the database is bound: a deployment without it has no
   // follow endpoints at all.
   if (!env.FOLLOW_DB || !rightPlace(request, env, PATH)) return notHere();
@@ -77,39 +122,26 @@ export async function onRequest({ request, env }) {
 
     const cur = await readCurrent(p => env.ASSETS.fetch(new URL(p, request.url)));
     if (!cur.value) { note("signup.current-unreadable"); return DOWN(); }
-    const meta = cur.value.followable.get(keyOf(kind, ref));
+    const key = keyOf(kind, ref);
+    const meta = cur.value.followable.get(key);
     if (!meta) return NO("not-followable");
 
-    const db = env.FOLLOW_DB;
+    // What every accepted request asks before its answer, whatever the address.
+    await keysReady(env);
+    if (!env.RESEND_API_KEY || !String(env.MAIL_FROM || "").trim()) throw new ConfigError();
     const now = clock(env);
-    await purgePending(db, now);
     const ceiling = Math.max(1, Number(env.SIGNUP_DAILY_CEILING) || DAILY_CEILING);
-    if ((await underCeiling(db, isoSeconds(now).slice(0, 10), ceiling)) === null) {
+    if (await dayFull(env.FOLLOW_DB, isoSeconds(now).slice(0, 10), ceiling)) {
       note("signup.day-full");
       return json(429, { ok: false, why: "busy" });
     }
-    const hmac = await lookupHash(env, address);
-    const waiting = await db.prepare("SELECT COUNT(*) AS n FROM pending WHERE email_hmac = ?1")
-      .bind(hmac).first("n");
-    if (Number(waiting) >= PENDING_PER_ADDRESS) {
-      note("signup.waiting-enough");
-      return SENT();
-    }
-    const token = newToken();
-    const id = await db.prepare(
-      "INSERT INTO pending (email_hmac, email_enc, follow_kind, follow_ref, " +
-      "confirm_token_hash, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING id")
-      .bind(hmac, await sealAddress(env, address, hmac), kind, ref,
-            await hashToken(token), isoSeconds(now)).first("id");
-    const mail = confirmationEmail({ origin: new URL(request.url).origin,
-      label: meta.label, title: meta.title, token });
-    const sent = await sendMail(env, { to: address, ...mail });
-    if (!sent.ok) {
-      await db.prepare("DELETE FROM pending WHERE id = ?1").bind(id).run();
-      note(`signup.resend-refused.${sent.status}`);
-      return DOWN();
-    }
-    note("signup.sent", 1);
+    // Started on the next turn, not now: an async function runs up to its
+    // first await at once, and nothing about the address may happen before
+    // the answer has been handed back.
+    const job = new Promise(r => setTimeout(r, 0)).then(() => keepAndSend(env, now,
+      { address, key, meta, origin: new URL(request.url).origin, ceiling }));
+    if (typeof context.waitUntil === "function") context.waitUntil(job);
+    else await job;
     return SENT();
   } catch (e) {
     note(`signup.error.${errName(e)}`);

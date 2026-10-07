@@ -5,14 +5,25 @@
  * and New Hampshire moves between UTC-4 and UTC-5, so no fixed UTC hour is
  * 8:00 there all year. Each run asks what time it is in New Hampshire
  * instead (nhClock), and:
- *   - every run purges requests older than 48 hours and links past their age;
+ *   - every run purges requests older than 48 hours and addresses left
+ *     following nothing;
  *   - from 8:00 to 20:00 New Hampshire time, it sends the daily to each daily
  *     subscriber not yet sent that day, and on Saturdays the weekly to each
  *     weekly subscriber not yet sent that day.
  * A subscriber is taken once per New Hampshire day, by an update that marks
- * the row before the email goes and is undone if it fails. So the email comes
- * at the first run at or after 8:00 -- 12:00 UTC in summer, 13:00 in winter --
- * and a later run that day sends only what an earlier one could not.
+ * the row before the email goes, and is given back only if the email did not
+ * go. So the email comes at the first run at or after 8:00 -- 12:00 UTC in
+ * summer, 13:00 in winter -- and a later run that day sends only what an
+ * earlier one could not.
+ *
+ * WHO FIRST. The reader served least recently, then by id: a refusal (Resend's
+ * daily cap, its rate limit) gives the day back, so a reader refused today is
+ * first tomorrow, and no reader is left behind for ever by a lasting cap.
+ *
+ * HOW MUCH A RUN DOES. At most SEND_LIMIT emails (each is a request out of the
+ * Worker), and at most D1_QUERIES_PER_RUN database statements, counted one by
+ * one, a batch's included: a run stops taking readers before the next could
+ * pass either, and the next hour's run carries on.
  *
  * WHAT. It reads the changes files the build publishes (CHANGES_FORMAT.md):
  * tonight's file, the nights since each subscriber's cursor, at most eight,
@@ -24,11 +35,11 @@
  * number (common.note). No recipient, no record, no follow list.
  */
 
-import { ConfigError, hashToken, openAddress } from "./address.js";
-import { addDays, errName, fallbackLabel, keyOf, nhClock, note } from "./common.js";
+import { ConfigError, linksFor, openAddress, openFollow } from "./address.js";
+import { addDays, errName, fallbackLabel, keyOf, nhClock, note, parseKey } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
 import { digestEmail, sendMail } from "./mail.js";
-import { forget, linkStatement, purge } from "./store.js";
+import { forget, purge } from "./store.js";
 
 export { nhClock };
 export const SEND_FROM_HOUR = 8;      // New Hampshire time
@@ -38,6 +49,17 @@ export const NIGHTS_READ = 8;
 const PER_RECORD = 20;
 const PER_EMAIL = 200;
 
+// D1's limit on statements one Worker invocation may run. 50 on the Workers
+// Free plan and 1,000 on Workers Paid, as remembered when this was written:
+// check Cloudflare's D1 limits page on the day and set D1_QUERIES_PER_RUN to
+// match (README.md). The most one reader costs is PER_READER: taking the
+// row, reading its follows, and then the cursor and the ended follows, or the
+// address's deletion when its last follow ends. RESERVE is the sends rows.
+export const D1_QUERIES = 50;
+export const PER_READER = 5;
+const RESERVE = 2;
+const IN_CHUNK = 90;                  // D1 binds at most 100 values a statement
+
 // What a run at this moment may send, by New Hampshire's clock (common.js).
 export function due(now) {
   const c = nhClock(now);
@@ -45,13 +67,47 @@ export function due(now) {
   return { ...c, daily: open, weekly: open && c.weekday === "Sat" };
 }
 
+// A D1 binding that counts every statement it runs, a batch's one by one.
+export function counting(db) {
+  const count = { n: 0 };
+  const wrap = st => ({
+    bind: (...a) => wrap(st.bind(...a)),
+    first: (...a) => { count.n++; return st.first(...a); },
+    all: () => { count.n++; return st.all(); },
+    run: () => { count.n++; return st.run(); },
+    raw: () => { count.n++; return st.raw(); },
+    statement: st,
+  });
+  return {
+    count,
+    prepare: sql => wrap(db.prepare(sql)),
+    batch: stmts => { count.n += stmts.length; return db.batch(stmts.map(s => s.statement)); },
+  };
+}
+
 // ---- what one subscriber is told -------------------------------------------------------
+// A followed record no longer listed as followable, with no ending in any
+// night read: the build should have said how it ended, and did not, or the
+// night that said it is older than the nights read. The follower is told the
+// record has stopped, rather than followed in silence for ever -- but only
+// while the list names some record of that kind, because an empty list is a
+// broken build, not every bill or member ending at once. A topic is not
+// ended this way: it leaves the list when no bill of the sitting term
+// carries it (at the turn of a term, before the new bills are in), and comes
+// back when one does, so its follow is kept.
+const STOPPED = {
+  bill: "is no longer moving on the record.",
+  member: "is no longer among the sitting legislators on the record.",
+  committee: "is no longer among the committees on the record.",
+};
+
 // nights: the nights read, oldest first. cursor: { date, built } of the newest
-// night already sent to this subscriber. Returns one section per followed
-// record with something to say (mail.digestEmail's input).
+// night already sent to this subscriber. follows: [{ kind, ref, fh }].
+// Returns one section per followed record with something to say
+// (mail.digestEmail's input).
 export function collect({ follows, nights, cursor, current, frequency, today }) {
   const sections = [];
-  const billsListed = [...current.followable.keys()].some(k => k.startsWith("bill:"));
+  const listed = new Set([...current.followable.keys()].map(k => k.slice(0, k.indexOf(":"))));
   const after = t => !!t && !!cursor.built && Date.parse(t) > Date.parse(cursor.built);
   let room = PER_EMAIL;
   for (const f of follows) {
@@ -79,15 +135,8 @@ export function collect({ follows, nights, cursor, current, frequency, today }) 
       if (r.study && fresh(r.study)) study = r.study;
       if (r.ended) ended = r.ended;
     }
-    // A bill no longer listed as followable, with no ending in any night
-    // read: the build should have said how it ended, and did not, or the
-    // night that said it is older than the nights read. Tell the follower
-    // the bill has stopped, rather than following it in silence for ever.
-    // Only while the list names some bill: an empty list is a broken build,
-    // not every bill ending at once.
-    if (!ended && f.kind === "bill" && billsListed && !meta)
-      ended = { how: "gone", summary: `${label} is no longer moving on the record.`,
-                fallback: true };
+    if (!ended && !meta && Object.hasOwn(STOPPED, f.kind) && listed.has(f.kind))
+      ended = { how: "gone", summary: `${label} ${STOPPED[f.kind]}`, fallback: true };
     items.sort((a, b) => b.date.localeCompare(a.date));
     const shown = items.slice(0, Math.min(PER_RECORD, room));
     room -= shown.length;
@@ -98,7 +147,7 @@ export function collect({ follows, nights, cursor, current, frequency, today }) 
     const upcoming = frequency === "weekly"
       ? (current.upcoming.get(key) || []).filter(u => u.date >= today).slice(0, 5) : [];
     if (!items.length && !study && !ended && !upcoming.length) continue;
-    sections.push({ key, kind: f.kind, ref: f.ref, label, title: meta?.title || "",
+    sections.push({ key, kind: f.kind, ref: f.ref, fh: f.fh, label, title: meta?.title || "",
       url: meta?.url || "", items: shown, more: items.length - shown.length,
       study, ended, week, upcoming });
   }
@@ -114,11 +163,31 @@ function siteOrigin(env) {
     /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o) ? o : "";
 }
 
+// A reader's follows, opened. One that will not open is left out and counted.
+async function followsOf(env, db, s) {
+  const rows = (await db.prepare(
+    "SELECT follow_hmac, follow_enc FROM follows WHERE subscriber_id = ?1").bind(s.id).all())
+    .results || [];
+  const out = [];
+  for (const r of rows) {
+    try {
+      const k = parseKey(await openFollow(env, r.follow_enc, s.email_hmac));
+      if (k) out.push({ ...k, fh: r.follow_hmac });
+    } catch { /* counted below */ }
+  }
+  if (out.length < rows.length) note("sender.unreadable-follow", rows.length - out.length);
+  out.sort((a, b) => keyOf(a.kind, a.ref).localeCompare(keyOf(b.kind, b.ref)));
+  return { follows: out, held: rows.length };
+}
+
 export async function run(env, now = new Date()) {
-  const out = { purged: 0, sent: 0, failed: 0, ended: 0, waiting: 0, skipped: 0 };
-  const db = env.FOLLOW_DB;
+  const out = { purged: 0, sent: 0, failed: 0, ended: 0, waiting: 0, skipped: 0, queries: 0 };
   const origin = siteOrigin(env);
-  if (!db || !origin) { note("sender.config"); return out; }
+  if (!env.FOLLOW_DB || !origin) { note("sender.config"); return out; }
+  const db = counting(env.FOLLOW_DB);
+  const budget = Math.max(PER_READER + RESERVE + 5,
+    Number(env.D1_QUERIES_PER_RUN) || D1_QUERIES);
+  const done = () => { out.queries = db.count.n; return out; };
 
   try {
     const p = await purge(db, now);
@@ -129,15 +198,16 @@ export async function run(env, now = new Date()) {
   }
 
   const when = due(now);
-  if (!when.daily) return out;
+  if (!when.daily) return done();
   const freqs = when.weekly ? ["daily", "weekly"] : ["daily"];
   const limit = Math.max(1, Math.min(1000, Number(env.SEND_LIMIT) || 40));
   const subs = (await db.prepare(
-    "SELECT id, email_hmac, email_enc, frequency, last_sent_on, sent_date, sent_built " +
+    "SELECT id, email_hmac, email_enc, frequency, link_gen, last_sent_on, sent_date, sent_built " +
     `FROM subscribers WHERE frequency IN (${freqs.map((_, i) => `?${i + 3}`).join(", ")}) ` +
-    "AND (last_sent_on IS NULL OR last_sent_on < ?1) ORDER BY id LIMIT ?2")
+    "AND (last_sent_on IS NULL OR last_sent_on < ?1) " +
+    "ORDER BY last_sent_on IS NOT NULL, last_sent_on, id LIMIT ?2")
     .bind(when.date, limit, ...freqs).all()).results || [];
-  if (!subs.length) return out;
+  if (!subs.length) return done();
 
   // The site, asked afresh each run: a night's file is new each morning.
   const get = path => fetch(`${origin}${path}?run=${now.getTime()}`,
@@ -146,7 +216,7 @@ export async function run(env, now = new Date()) {
   if (!cur.value) {
     note(cur.missing ? "sender.current-missing" : "sender.current-unreadable", subs.length);
     out.waiting = subs.length;
-    return out;
+    return done();
   }
   let mended = cur.notes || 0;
 
@@ -160,7 +230,7 @@ export async function run(env, now = new Date()) {
     if (when.hour < WAIT_UNTIL_HOUR) {
       note("sender.waiting-for-tonight", subs.length);
       out.waiting = subs.length;
-      return out;
+      return done();
     }
     note("sender.tonight-missing-sending-anyway", subs.length);
   }
@@ -183,8 +253,12 @@ export async function run(env, now = new Date()) {
   const gap = Math.max(0, Number(env.SEND_GAP_MS ?? 600) || 0);
   let stop = false;
 
-  for (const s of subs) {
+  for (const [i, s] of subs.entries()) {
     if (stop) break;
+    if (db.count.n + PER_READER + RESERVE > budget) {
+      note("sender.query-budget-reached", subs.length - i);
+      break;
+    }
     // Take the row for today, once: a run that overlaps this one finds it taken.
     const took = await db.prepare(
       "UPDATE subscribers SET last_sent_on = ?1 WHERE id = ?2 " +
@@ -196,61 +270,72 @@ export async function run(env, now = new Date()) {
       ? db.prepare("UPDATE subscribers SET sent_date = ?1, sent_built = ?2 WHERE id = ?3")
           .bind(newest.date, newest.built, s.id)
       : null;
-    let made = [];
+
+    // ---- before the email: anything that fails gives the day back --------------------
+    let sections, ending, gone;
     try {
-      const follows = (await db.prepare(
-        "SELECT kind, ref FROM follows WHERE subscriber_id = ?1 ORDER BY kind, ref")
-        .bind(s.id).all()).results || [];
-      const sections = collect({ follows, nights: ordered,
+      const { follows, held } = await followsOf(env, db, s);
+      sections = collect({ follows, nights: ordered,
         cursor: { date: s.sent_date || "", built: s.sent_built || "" },
         current: cur.value, frequency: s.frequency, today: when.date });
       if (!sections.length) {
         if (moveCursor) await moveCursor.run();
         continue;
       }
-      const ending = sections.filter(x => x.ended);
+      ending = sections.filter(x => x.ended);
       // Every follow ends in this email: the address goes with them, and the
       // email says so rather than carrying links that will not work.
-      const gone = ending.length > 0 && ending.length === follows.length;
-      let manage = "", unsub = "";
-      if (!gone) {
-        const [m, ms] = await linkStatement(db, s.id, "manage", now);
-        const [u, us] = await linkStatement(db, s.id, "unsubscribe", now);
-        await db.batch([ms, us]);
-        manage = m; unsub = u;
-        made = [m, u];
-      }
+      gone = ending.length > 0 && ending.length === held;
+      const links = gone ? { manage: "", unsub: "" } : await linksFor(env, s.email_hmac, s.link_gen);
       const to = await openAddress(env, s.email_enc, s.email_hmac);
       const mail = digestEmail({ origin, frequency: s.frequency, date: when.date, sections,
-        manage, unsub, feedbackUrl: env.FEEDBACK_URL, gone });
+        manage: links.manage, unsub: links.unsub, feedbackUrl: env.FEEDBACK_URL, gone });
       const r = await sendMail(env, { to, ...mail });
       if (!r.ok) {
         tally[s.frequency].failed++;
         out.failed++;
         await giveBack();
-        if (made.length) await forgetLinks(db, made);
         note(`sender.resend-refused.${r.status}`, 1);
         // Resend's rate limit or daily cap: the rest wait for the next run.
         if (r.status === 429) stop = true;
         continue;
       }
-      const after = moveCursor ? [moveCursor] : [];
-      for (const x of ending)
-        after.push(db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND kind = ?2 " +
-          "AND ref = ?3").bind(s.id, x.kind, x.ref));
-      if (after.length) await db.batch(after);
-      if (gone) await forget(db, { id: s.id });
-      const t = tally[s.frequency];
-      t.sent++; t.ended += ending.length;
-      t.items += sections.reduce((n, x) => n + x.items.length + x.more, 0);
-      out.sent++; out.ended += ending.length;
     } catch (e) {
       out.failed++;
       tally[s.frequency].failed++;
       note(`sender.error.${errName(e)}`, 1);
-      try { await giveBack(); if (made.length) await forgetLinks(db, made); } catch { /* counted */ }
+      try { await giveBack(); } catch { /* counted */ }
       if (e instanceof ConfigError) stop = true;
       continue;
+    }
+
+    // ---- the email has gone ---------------------------------------------------------------
+    // Nothing from here gives the day back: the reader has the email, and its
+    // links are their links. What is left is bookkeeping -- the cursor, and the
+    // follows that ended -- tried twice; if both fail, the log says so, today
+    // is still taken, and tomorrow's email carries this one's news again
+    // rather than none.
+    const t = tally[s.frequency];
+    t.sent++; t.ended += ending.length;
+    t.items += sections.reduce((n, x) => n + x.items.length + x.more, 0);
+    out.sent++; out.ended += ending.length;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        if (gone) {
+          await forget(db, { id: s.id });
+        } else {
+          const writes = moveCursor ? [moveCursor] : [];
+          for (let j = 0; j < ending.length; j += IN_CHUNK) {
+            const part = ending.slice(j, j + IN_CHUNK);
+            writes.push(db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac IN (" +
+              part.map((_, k) => `?${k + 2}`).join(", ") + ")").bind(s.id, ...part.map(x => x.fh)));
+          }
+          if (writes.length) await db.batch(writes);
+        }
+        break;
+      } catch (e) {
+        if (attempt === 2) note(`sender.after-send-failed.${errName(e)}`, 1);
+      }
     }
     if (gap) await sleep(gap);
   }
@@ -267,12 +352,7 @@ export async function run(env, now = new Date()) {
   if (out.sent) note("sender.sent", out.sent);
   if (out.failed) note("sender.failed", out.failed);
   if (out.ended) note("sender.follows-ended", out.ended);
-  return out;
-}
-
-async function forgetLinks(db, tokens) {
-  const hashes = await Promise.all(tokens.map(hashToken));
-  await db.batch(hashes.map(h => db.prepare("DELETE FROM links WHERE token_hash = ?1").bind(h)));
+  return done();
 }
 
 export default {
