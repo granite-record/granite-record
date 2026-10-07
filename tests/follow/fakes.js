@@ -89,7 +89,7 @@ export class FakeNet {
 
   // A Pages Function's env.ASSETS.
   binding() {
-    return { fetch: req => this.asset(new URL(typeof req === "string" ? req : req.url).pathname) };
+    return { fetch: req => this.asset(new URL(req instanceof Request ? req.url : String(req)).pathname) };
   }
 }
 

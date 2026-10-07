@@ -18,9 +18,17 @@ const LINK_DAYS = { manage: 60, unsubscribe: 180 };
 
 const ago = (now, ms) => isoSeconds(new Date(now.getTime() - ms));
 
-// THE PURGE, run every hour by the sender and on every sign-up: requests
-// older than 48 hours, links past their age (but never an address's newest
-// link of a purpose), and ceiling rows older than a fortnight.
+// Requests older than 48 hours. Sign-up runs this alone, so that nothing it
+// does touches the subscribers table: its answer cannot depend on it.
+export async function purgePending(db, now) {
+  const r = await db.prepare("DELETE FROM pending WHERE created_at < ?1")
+    .bind(ago(now, PENDING_HOURS * 3600000)).run();
+  return r?.meta?.changes ?? 0;
+}
+
+// THE PURGE, run every hour by the sender: requests older than 48 hours,
+// links past their age (but never an address's newest link of a purpose),
+// ceiling rows older than a fortnight, and addresses left following nothing.
 export async function purge(db, now) {
   const r = await db.batch([
     db.prepare("DELETE FROM pending WHERE created_at < ?1")
