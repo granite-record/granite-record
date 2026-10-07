@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.422
+# GRANITE_VERSION: 2026-09-04.423
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -30356,9 +30356,12 @@ def _changes_on_fixture(FC):
     copy of it for three more nights, each at a stated moment: 7 March 2026,
     the day after the fixture's roll call, with no ledger; the 8th with the
     ledger the 7th left, kept as nightly.py keeps an accepted night's; the
-    9th, with nothing new, twice, under PYTHONHASHSEED 1 and 2. Every folder
-    goes through follow_changes.check() and, where it is here,
-    check_changes.js; last night's keys that tonight lacks carry an ending."""
+    9th, with nothing new, twice, under PYTHONHASHSEED 1 and 2; and the 10th,
+    after the bill is signed, the member leaves and the topic's other bill
+    becomes an older term's. Every folder goes through follow_changes.check()
+    and, where it is here, check_changes.js; last night's keys that tonight
+    lacks carry an ending, a hearing is filed under the committee that will
+    sit, and a topic carries its sitting term's items alone."""
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -30409,10 +30412,66 @@ def _changes_on_fixture(FC):
         assert FC.ended_owed(f8["current.json"], f9["current.json"], f9["2026-03-09.json"]) == []
         differ = sorted(k for k in set(one) | set(two) if one.get(k) != two.get(k))
         assert not differ, f"under PYTHONHASHSEED 1 and 2 these came out different: {differ[:5]}"
+        # What build_feeds hands over, read off the files (the review of 7
+        # October 2026: every check above held with these three broken). The
+        # hearing of the committee that will sit is filed under it, by
+        # chamber and name...
+        assert f7["current.json"]["upcoming"] == {"committee:H43": [{
+            "date": "2026-10-10", "what": "subcommittee work session", "time": "09:30",
+            "committee": "House Commerce", "venue": "LOB 302"}]}, \
+            ("a hearing was not filed under the committee that will sit",
+             f7["current.json"]["upcoming"])
+        # ... and on the 10th the record moves on: the bill is signed, the
+        # member leaves, and one bill is an older term's, under a topic no
+        # bill of the sitting term carries. Each record that left is told in
+        # its record's own words that night, and a topic is followable, with
+        # its sitting term's items alone, only where a bill of that term
+        # carries it.
+        sd = root / "site"
+        meta = json.loads((sd / "meta.json").read_text(encoding="utf-8"))
+        rows = json.loads((sd / "idx" / "2025-2026.json").read_text(encoding="utf-8"))
+        for r in rows:
+            r["kind"] = "law" if r["id"] == "HB1442" else r["kind"]
+        older = [dict(r, term="2023-2024", topic="Taxation") for r in rows if r["id"] == "SB900"]
+        assert older and "Taxation" not in {r.get("topic") for r in rows}, older
+        (sd / "idx" / "2025-2026.json").write_text(
+            json.dumps([r for r in rows if r["id"] != "SB900"]), encoding="utf-8")
+        (sd / "idx" / "2023-2024.json").write_text(json.dumps(older), encoding="utf-8")
+        (sd / "meta.json").write_text(json.dumps(dict(meta, terms=meta["terms"] + ["2023-2024"])),
+                                      encoding="utf-8")
+        roster = json.loads((sd / "legislators.json").read_text(encoding="utf-8"))
+        (sd / "legislators.json").write_text(json.dumps(
+            [dict(m, former=True) if str(m.get("id")) == "377204" else m for m in roster]),
+            encoding="utf-8")
+        _, _, f10 = feeds("2026-03-10T09:00:00")
+        refs = f10["2026-03-10.json"]["refs"]
+        # The topic's one item tonight is the bill's report dated the 10th,
+        # its bill's news on the 8th and the topic's once its day has come.
+        assert {k: r for k, r in refs.items() if k != "topic:insurance"} == {
+            "bill:2026/HB1442": {"ended": {
+                "how": "law", "summary": "HB 1442 was signed into law.", "date": "2026-03-10",
+                "guid": "2025-2026:HB1442:closed:law"}},
+            "member:377204": {"ended": {
+                "how": "left", "date": "2026-03-10", "guid": "member:377204:ended:left",
+                "summary": "Rep. Jodi Nelson (R - Rock 13) is no longer among the sitting "
+                           "legislators."}}} and \
+            [x["date"] for x in refs.get("topic:insurance", {}).get("items", [])] == ["2026-03-10"], \
+            ("the 10th did not tell the signed bill and the member who left in their own "
+             "words, or told something else", refs)
+        assert FC.ended_owed(f9["current.json"], f10["current.json"], f10["2026-03-10.json"]) == []
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        misc = led["carried"]["2026-03-10"].get("topic:miscellaneous") or []
+        assert "topic:miscellaneous" in f10["current.json"]["followable"] and misc and \
+            all(g.startswith("2025-2026:") for g in misc) and \
+            "topic:taxation" not in f10["current.json"]["followable"], \
+            ("a topic carried an older term's items, or one only an older term's bill carries "
+             "was offered", misc, sorted(f10["current.json"]["followable"]))
         js = "" if _changes_node(ch) is not None else \
             "; check_changes.js is not on this branch, so the Python rules held alone"
         return "ok", (f"9 files on the fixture by record-date, then first-seen; the 9th empty; "
-                      f"{len(one):,} feeds, files and ledger the same under two seeds" + js)
+                      f"{len(one):,} feeds, files and ledger the same under two seeds; a hearing "
+                      "under the committee that sits; a signed bill and a member who left told "
+                      "so on the 10th; a topic of its own term's items" + js)
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
