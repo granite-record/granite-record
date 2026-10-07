@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.88
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1029,14 +1029,22 @@ OT_RDG = re.compile(r"\bOT(\d)rdg\b", re.I)
 # Senate puts the member who offered it in front, and the anchor meant 22 of
 # these were not read as amendments at all. The name is captured rather than
 # skipped, because who moved an amendment is worth a clause.
+# "FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162 05/14/2026" -- the
+# House's floor amendment, with its mover in brackets. No pattern read it,
+# and all 108 of 2025-2026 were told nowhere (classify gives "Floor
+# Amendment" and the mover).
 AMEND_RE = re.compile(
     # The name must not swallow the kind: "Sen. Birdsell Floor Amendment" is
     # a floor amendment offered by Birdsell, not an amendment by "Birdsell
     # Floor".
     r"^(?:(?P<mover>(?:Rep|Sen)\.\s+"
     r"(?:(?!Enrolled\b|Committee\b|Floor\b|Amendment\b)[A-Z][\w'\u2019.\-]*\s+){1,3}))?"
-    r"(?P<what>(?:Enrolled Bill |Committee |Floor )?Amendment)\s*#?\s*"
-    r"(?P<num>\d{4}-\d+[a-z]*)\s*[,:]?\s*"
+    r"(?P<what>(?:Enrolled Bill |Committee |Floor )?Amendment|FLAM\b)\s*#?\s*"
+    # Not a number the clerk split with a space, "FLAM # 2022-041 7h (Rep.
+    # Testerman): AF VV 02/16/2022" (HB 1598 of 2022): read as "2022-041", it
+    # lost its day and was told after the bill's referral of that day, inside
+    # Ways and Means' stage. It stays unread, as it was before FLAM was read.
+    r"(?P<num>\d{4}-\d+[a-z]*)(?![\da-z])(?!\s\d+[a-z]\b)\s*[,:]?\s*"
     # The motion, the vote kind and the tally, in whatever order and
     # punctuation the chamber uses, each at most once:
     #
@@ -1066,7 +1074,7 @@ AMEND_RE = re.compile(
     # rather than captured -- this pattern is read for what the chamber
     # DID, and a title change is not that.
     r"(?:(?:\(?(?:NT|New Title)\)?|-?EBA)[,;:]?\s*"
-    r"|\((?:Reps?|Sens?)\.?[^)]*\)[,;:]?\s*){0,3}"
+    r"|\((?P<by>(?:Reps?|Sens?)\.?[^)]*)\)[,;:]?\s*){0,3}"
     # DIV is the House's other spelling of a division, and "Failed" is the
     # spelled-out form of AF. The docket writes the outcome either way and
     # this had the abbreviation of both and the word for only one -- the
@@ -1174,6 +1182,32 @@ def same_amendment(a, b):
     the year and letter wherever both are written."""
     return a[1] == b[1] and all(x == z or not x or not z
                                 for x, z in ((a[0], b[0]), (a[2], b[2])))
+
+
+# WHOSE AMENDMENT AN AMENDMENT ROW MOVES, where the row's own word does not
+# say. The House adopts its committee's amendment on a bare row --
+# "Amendment # 2026-0989h: AA VV 03/11/2026" (HB 1449 of 2026), which House
+# Journal 7 prints as "Majority Amendment (0989h)" under the report -- and
+# enters an amendment a member offers as "FLAM # 2026-1971h(NT) (Rep.
+# Pauer)". A number one of the bill's own reports in that chamber names is
+# that report's amendment, the committee's or its minority's, whoever moved
+# it; any other is one offered on the floor.
+WHOSE_KIND = {"committee": "Committee Amendment", "minority": "Minority Amendment"}
+
+
+def whose_amendment(evs):
+    reported = [(k, report_side(e.get("side")), e["body"]) for e in evs
+                if e["_type"] == "report" and not e.get("cancelled")
+                for k in amend_keys(e.get("_raw"))]
+    for e in evs:
+        if e["_type"] != "amendment" or (e.get("what") or "").strip().lower() not in (
+                "amendment", "floor amendment"):
+            continue
+        mine = amend_keys(e.get("num"))[:1]
+        side = next((s for k, s, b in reported if mine and b == e["body"]
+                     and same_amendment(k, mine[0])), None)
+        if side is not None:
+            e["_whose"] = "minority" if side == "Minority" else "committee"
 
 
 # "Enrolled Adopted, VV, (In recess 06/26/2025)" / "Enrolled (in recess of) 06/26/2025"
@@ -1476,6 +1510,14 @@ def classify(desc):
             d = m.groupdict()
             if name == "report":
                 d.update(report_fields(d.pop("rest", "")))
+            if name == "amendment":
+                # "FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162" is the
+                # House's floor amendment, and who offered it is in brackets.
+                by = (d.pop("by", None) or "").strip()
+                if (d.get("what") or "").upper() == "FLAM":
+                    d["what"] = "Floor Amendment"
+                    if by and not d.get("mover"):
+                        d["mover"] = re.sub(r",\s*(?=[^,]+$)", " and ", by)
             d["_type"] = name
             d["_raw"] = c
             return d
@@ -2170,14 +2212,17 @@ def stage_of(ev):
         # An amendment's stage is not its type, and the fall-through below put
         # every one of them in committee.
         #
-        # A committee's own amendment is recorded inside the report line --
-        # "Committee Report: Ought to Pass with Amendment # 2026-0503h (Vote
-        # 10-0; CC)" -- so a standalone Amendment line with no other word in
-        # front of it is one offered on the floor. The dates say the same
-        # thing: a bare amendment line carries the floor vote's date, weeks
-        # after the executive session it was being filed beside. The House
-        # says it aloud the same way, announcing "floor amendment 1970H"
-        # against the clerk's "the majority committee amendment".
+        # A bare House amendment row is a vote ON THE FLOOR -- it carries the
+        # floor vote's date and journal page -- but it is not a floor
+        # amendment: it is how the House adopts or rejects the amendment its
+        # committee's report recommends, "Amendment # 2026-0989h: AA VV" (HB
+        # 1449 of 2026, "Majority Amendment (0989h)" in House Journal 7). A
+        # member's amendment is a FLAM row (2015 on) or a "Floor Amendment"
+        # row (2007-2014). Whose it is, is whose_amendment()'s to say; where
+        # it is told is here, and for a bare row that is the floor. This
+        # comment once read a bare row as a floor amendment, and 633 House
+        # committee amendments of 2025-2026 were told as floor amendments
+        # while the 108 FLAM rows were read by nothing.
         #
         # An enrolled bill amendment comes after both chambers have passed the
         # bill and belongs with enrolling, which is already staged with the
@@ -2701,17 +2746,17 @@ def describe(ev, body, seen_intro=False):
             return (f"An enrolled bill amendment ({num}) was "
                     f"{'adopted' if adopted else 'considered'}{how}{when}. These correct "
                     "technical errors found after passage.")
-        # THE SAME TEST stage_of USES, so the sentence and the heading over
-        # it cannot disagree. A bare "Amendment" line is one offered on the
-        # floor -- a committee's own amendment is recorded inside its report
-        # line -- and stage_of has filed them under "On the House floor" since
-        # it was written, while the sentence went on calling them "An
-        # amendment". The heading was already making the claim; this says it
-        # in the sentence too rather than leaving the reader to notice.
+        # WHOSE AMENDMENT IT IS, from the bill's own reports where the row's
+        # word does not say (whose_amendment): a bare House row, or a FLAM
+        # row, whose number a report of that chamber names is the committee's
+        # or its minority's; any other is one offered on the floor. A bare
+        # row was called "a floor amendment" here on the word of stage_of,
+        # and on 601 bills of 2025-2026 that was the committee's own.
         # And an amendment the committee's minority wrote is neither the
         # committee's nor any member's: the 1999-2006 reader's "Min Am{1208}"
         # (docket_era_1999.MINORITY_AMENDMENT), offered on the floor against
         # the majority's.
+        kind = WHOSE_KIND.get(ev.get("_whose")) or kind
         who = ("The committee's amendment" if "committee" in kind.lower()
                else "The committee minority's amendment"
                if kind.lower() == "minority amendment"
@@ -4291,6 +4336,7 @@ def build(bill, rows, introduction=None):
     other_chambers_row(evs)
     evs.sort(key=day_order)
     hold_in_order(evs)
+    whose_amendment(evs)
 
     # A BILL WITHDRAWN BEFORE THE DAY IT WAS TO BE INTRODUCED WAS NOT
     # INTRODUCED, AND WHAT WAS SCHEDULED FOR AFTER IT DID NOT HAPPEN. The
@@ -5273,7 +5319,8 @@ def build(bill, rows, introduction=None):
                        # which amendment a vote was on, and in what order they
                        # were taken up.
                        {"amendment": (e.get("num") or "").strip(),
-                        "amend_kind": (e.get("what") or "").strip(),
+                        "amend_kind": (WHOSE_KIND.get(e.get("_whose"))
+                                       or (e.get("what") or "").strip()),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
                         "mover": (e.get("mover") or "").strip(),

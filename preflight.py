@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.416
+# GRANITE_VERSION: 2026-09-04.417
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1942,6 +1942,169 @@ def _amend_not_rejected(narrative):
     return "ok", ("an announcement gives way to the row that decides it, however it spells "
                   "the number; no vote is claimed while another row names it; withdrawn, not "
                   "voted on, part of an amendment and codes out of order read as they say")
+
+
+# WHOSE AN AMENDMENT IS (7 October 2026). Real rows: Docket.txt lines
+# 18943-18944 and 19735-19736 (HB 1449 of 2026), 22844-22845 and 23287-23289
+# (SB 557 of 2026), 18776-18777, 20050 and 20052 (HB 1416 of 2026),
+# 18979-18980, 19760 and 19762-19763 (HB 1336 of 2026), 19231 and 19395-19396
+# (HB 1207 of 2026), 4518-4519, 5481-5483 and 5485 (HB 115 of 2025);
+# Docket_2015-2016.txt 9434-9439 (HB 1198 of 2016); Docket_2021-2022.txt 6709,
+# 6712-6717 and 6721-6722 (HB 1598 of 2022).
+_DOCKET_WHOSE_AMENDMENT = {
+    ("HB1449", "2025-2026"): [
+        "2026|2787|3/4/2026 5:31:10 PM|HB1449|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0989h   03/04/2026 (Vote 10-8; RC)  HC 10  P. 50|3/16/2026 10:12:25 AM",
+        "2026|2787|3/4/2026 5:31:22 PM|HB1449|H|Minority Committee Report: Inexpedient to Legislate|3/4/2026 5:31:22 PM",
+        "2026|2787|3/11/2026 5:51:43 PM|HB1449|H|Amendment # 2026-0989h: AA VV 03/11/2026  HJ 7  P. 190|6/23/2026 10:42:27 AM",
+        "2026|2787|3/11/2026 5:52:13 PM|HB1449|H|Ought to Pass with Amendment 2026-0989h: MA RC 172-154 03/11/2026  HJ 7  P. 190|6/23/2026 10:42:37 AM"],
+    ("SB557", "2025-2026"): [
+        "2026|2144|5/7/2026 9:37:23 AM|SB557|H|Majority Committee Report: Ought to Pass with Amendment # 2026-1798h   05/05/2026 (Vote 13-11; RC)  HC 19  P. 24|5/11/2026 11:57:18 AM",
+        "2026|2144|5/7/2026 9:37:38 AM|SB557|H|Minority Committee Report: Ought to Pass|5/7/2026 9:37:38 AM",
+        "2026|2144|5/14/2026 4:29:45 PM|SB557|H|Amendment # 2026-1798h: AF DV 153-180 05/14/2026  HJ 13  P. 97|7/23/2026 3:52:38 PM",
+        "2026|2144|5/14/2026 4:34:00 PM|SB557|H|FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162 05/14/2026  HJ 13  P. 97|7/23/2026 3:52:56 PM",
+        "2026|2144|5/14/2026 4:36:37 PM|SB557|H|Ought to Pass with Amendment 2026-1971h: MA DV 176-157 05/14/2026  HJ 13  P. 100|7/23/2026 3:53:22 PM"],
+    ("HB1416", "2025-2026"): [
+        "2026|3148|3/4/2026 11:48:05 AM|HB1416|H|Majority Committee Report: Inexpedient to Legislate  02/27/2026 (Vote 9-8; RC)  HC 10  P. 100|3/16/2026 11:09:29 AM",
+        "2026|3148|3/4/2026 11:48:39 AM|HB1416|H|Minority Committee Report: Ought to Pass with Amendment # 2026-0916h|3/4/2026 11:48:39 AM",
+        "2026|3148|3/13/2026 11:48:18 AM|HB1416|H|Amendment # 2026-0916h: AA RC 179-161 03/12/2026  HJ 8  P. 92|6/24/2026 3:12:04 PM",
+        "2026|3148|3/13/2026 11:56:20 AM|HB1416|H|Ought to Pass with Amendment 2026-0916h: MA RC 176-163 03/12/2026  HJ 8  P. 96|6/24/2026 3:12:25 PM"],
+    ("HB1336", "2025-2026"): [
+        "2026|2931|3/4/2026 5:49:02 PM|HB1336|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0763h   03/03/2026 (Vote 9-8; RC)  HC 10  P. 54|3/16/2026 10:23:05 AM",
+        "2026|2931|3/4/2026 5:49:15 PM|HB1336|H|Minority Committee Report: Inexpedient to Legislate|3/4/2026 5:49:15 PM",
+        "2026|2931|3/11/2026 7:47:31 PM|HB1336|H|Amendment # 2026-0763h: AA VV 03/11/2026  HJ 7  P. 214|6/23/2026 1:16:07 PM",
+        "2026|2931|3/11/2026 7:51:29 PM|HB1336|H|Amendment # 2026-1100h: AA VV 03/11/2026  HJ 7  P. 218|6/23/2026 1:16:30 PM",
+        "2026|2931|3/11/2026 7:53:31 PM|HB1336|H|Ought to Pass with Amendment 2026-1100h and 2026-0763h: MA VV 03/11/2026  HJ 7  P. 221|6/23/2026 1:17:03 PM"],
+    ("HB1207", "2025-2026"): [
+        "2026|2603|3/5/2026 8:02:57 PM|HB1207|H| Committee Report: Ought to Pass with Amendment #  0922  03/03/2026 (Vote 14-0; CC)  HC 10  P. 6|3/16/2026 9:20:53 AM",
+        "2026|2603|3/11/2026 9:47:13 AM|HB1207|H|Amendment # 2026-0922h: AA VV 03/11/2026  HJ 7  P. 4|6/22/2026 9:52:32 AM",
+        "2026|2603|3/11/2026 9:47:15 AM|HB1207|H|Ought to Pass with Amendment 2026-0922h: MA VV 03/11/2026  HJ 7  P. 4|6/22/2026 9:52:36 AM"],
+    ("HB115", "2025-2026"): [
+        "2025|0061|3/5/2025 2:41:02 PM|HB115|H|Majority Committee Report: Ought to Pass with Amendment # 2025-0651h   03/05/2025 (Vote 10-8; RC)|3/5/2025 2:41:02 PM",
+        "2025|0061|3/5/2025 2:41:27 PM|HB115|H|Minority Committee Report: Inexpedient to Legislate|3/5/2025 2:41:27 PM",
+        "2025|0061|3/13/2025 11:52:40 AM|HB115|H|Amendment # 2025-0651h: AA VV 03/13/2025  HJ 8  P. 37|4/18/2025 12:16:22 PM",
+        "2025|0061|3/13/2025 11:55:03 AM|HB115|H|FLAM # 2025-0916h (Rep. Luneau): AF RC 170-205 03/13/2025  HJ 8  P. 38|4/18/2025 12:16:33 PM",
+        "2025|0061|3/13/2025 11:55:56 AM|HB115|H|FLAM # 2025-0922h (Rep. Ames): AF RC 171-205 03/13/2025  HJ 8  P. 40|4/18/2025 12:16:46 PM",
+        "2025|0061|3/13/2025 12:00:41 PM|HB115|H|Ought to Pass with Amendment 2025-0651h: MA RC 198-180 03/13/2025  HJ 8  P. 42|4/18/2025 12:17:08 PM"],
+    ("HB1198", "2015-2016"): [
+        "2016|2047|3/3/2016 12:00:00 AM|HB1198|H|Majority Committee Report: Ought to Pass with Amendment #2016-0528h for 03/09/2016 (Vote 18-5; RC) HC 14 P. 74|3/3/2016 12:00:00 AM",
+        "2016|2047|3/3/2016 12:00:00 AM|HB1198|H|Minority Committee Report: Ought to Pass with Amendment #2016-0830h [^] HC 14 P. 74|3/3/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|Amendment #2016-0528h : AF RC 151-164 03/10/2016 HJ 25 P. 59|3/10/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|FLAM #2016-0830h (Rep. Almy): AA RC 283-31 03/10/2016 HJ 25 P. 63|3/10/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|FLAM #2016-0956h (Rep. Cooney): AF RC 112-202 03/10/2016 HJ 25 P. 66|3/10/2016 12:00:00 AM",
+        "2016|2047|3/10/2016 12:00:00 AM|HB1198|H|Ought to Pass with Amendment 0830h: MA VV 03/10/2016 HJ 25 P. 68|3/10/2016 12:00:00 AM"],
+    ("HB1598", "2021-2022"): [
+        "2022|2787|12/21/2021 12:00:00 AM|HB1598|H|Introduced 01/05/2022 and referred to Criminal Justice and Public Safety|12/21/2021 12:00:00 AM",
+        "2022|2787|2/8/2022 12:00:00 AM|HB1598|H|Committee Report: Ought to Pass with Amendment #2022-0207h (Vote 17-4; RC)|2/8/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|Lay HB 1598-FN on Table (Rep. Abbas): MF DV 114-238 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|Amendment #2022-0207h : AA VV 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|FLAM # 2022-041 7h (Rep. Testerman): AF VV 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|2/16/2022 12:00:00 AM|HB1598|H|Ought to Pass with Amendment : MA DV 235-119 02/16/2022 HJ 3|2/16/2022 12:00:00 AM",
+        "2022|2787|2/22/2022 12:00:00 AM|HB1598|H|Referred to Ways and Means 02/16/2022 HJ 3|2/22/2022 12:00:00 AM",
+        "2022|2787|3/23/2022 12:00:00 AM|HB1598|H|Majority Committee Report: Ought to Pass with Amendment #2022-1172h (Vote 12-10; RC)|3/23/2022 12:00:00 AM",
+        "2022|2787|3/23/2022 12:00:00 AM|HB1598|H|Minority Committee Report: Refer for Interim Study|3/23/2022 12:00:00 AM"],
+}
+
+
+@check("narrative", "a House amendment its committee's report names is the committee's, and a "
+                    "FLAM row is a floor amendment told with its mover",
+       needs=("narrative", "build_site_v2"))
+def _whose_amendment(N, B):
+    """A bare House row, "Amendment # 2026-0989h: AA VV 03/11/2026" (HB 1449
+    of 2026), is the House voting on the floor on the amendment its
+    committee's report recommends -- House Journal 7 prints it as "Majority
+    Amendment (0989h)" -- and it was told as "A floor amendment", on 601
+    bills of 2025-2026. A member's floor amendment is a "FLAM # 2026-1971h(NT)
+    (Rep. Pauer)" row, which no pattern read: 108 of the term were told
+    nowhere and missing from the amendments list. Whose an amendment is comes
+    from the bill's own report in that chamber (narrative.whose_amendment):
+    the committee's, or its minority's (HB 1416; HB 1198 of 2016's 0830h,
+    offered by Rep. Almy as the minority's). A bare row no report names is a
+    floor amendment, and stays one: HB 1336's 1100h, "Rep. Alexander offered
+    floor amendment (1100h)" in House Journal 7. A report that writes the
+    number without its year still names it (HB 1207's "#  0922"). The vote
+    stays under the floor's heading, where it was taken. And a FLAM row whose
+    number the clerk split, "FLAM # 2022-041 7h" (HB 1598 of 2022), is not
+    read as "2022-041": so read it lost its day and was told inside Ways and
+    Means' stage, after the referral of that day."""
+    want = {  # bill: (sentences under "On the House floor", the amendments list)
+        "HB1449": (["The committee's amendment (2026-0989h) was adopted on a voice vote on "
+                    "March 11, 2026, changing the text of the bill."],
+                   [("2026-0989h", "Committee Amendment", True, "")]),
+        "SB557": (["The committee's amendment (2026-1798h) was rejected on a division vote "
+                   "153–180 on May 14, 2026.",
+                   "A floor amendment (2026-1971h), offered by Rep. Pauer, was adopted on a roll "
+                   "call 171–162 on May 14, 2026, changing the text of the bill."],
+                  [("2026-1798h", "Committee Amendment", False, ""),
+                   ("2026-1971h", "Floor Amendment", True, "Rep. Pauer")]),
+        "HB1416": (["The committee minority's amendment (2026-0916h) was adopted on a roll call "
+                    "179–161 on March 12, 2026, changing the text of the bill."],
+                   [("2026-0916h", "Minority Amendment", True, "")]),
+        "HB1336": (["The committee's amendment (2026-0763h) was adopted on a voice vote on "
+                    "March 11, 2026, changing the text of the bill.",
+                    "A floor amendment (2026-1100h) was adopted on a voice vote on March 11, "
+                    "2026, changing the text of the bill."],
+                   [("2026-0763h", "Committee Amendment", True, ""),
+                    ("2026-1100h", "Amendment", True, "")]),
+        "HB1207": (["The committee's amendment (2026-0922h) was adopted on a voice vote on "
+                    "March 11, 2026, changing the text of the bill."],
+                   [("2026-0922h", "Committee Amendment", True, "")]),
+        "HB115": (["The committee's amendment (2025-0651h) was adopted on a voice vote on "
+                   "March 13, 2025, changing the text of the bill.",
+                   "A floor amendment (2025-0916h), offered by Rep. Luneau, was rejected on a "
+                   "roll call 170–205 on March 13, 2025.",
+                   "A floor amendment (2025-0922h), offered by Rep. Ames, was rejected on a "
+                   "roll call 171–205 on March 13, 2025."],
+                  [("2025-0651h", "Committee Amendment", True, ""),
+                   ("2025-0916h", "Floor Amendment", False, "Rep. Luneau"),
+                   ("2025-0922h", "Floor Amendment", False, "Rep. Ames")]),
+        "HB1198": (["The committee's amendment (2016-0528h) was rejected on a roll call "
+                    "151–164 on March 10, 2016.",
+                    "The committee minority's amendment (2016-0830h), offered by Rep. Almy, was "
+                    "adopted on a roll call 283–31 on March 10, 2016, changing the text of "
+                    "the bill.",
+                    "A floor amendment (2016-0956h), offered by Rep. Cooney, was rejected on a "
+                    "roll call 112–202 on March 10, 2016."],
+                   [("2016-0528h", "Committee Amendment", False, ""),
+                    ("2016-0830h", "Minority Amendment", True, "Rep. Almy"),
+                    ("2016-0956h", "Floor Amendment", False, "Rep. Cooney")]),
+        "HB1598": (["The committee's amendment (2022-0207h) was adopted on a voice vote on "
+                    "February 16, 2022, changing the text of the bill."],
+                   [("2022-0207h", "Committee Amendment", True, "")]),
+    }
+    split = "FLAM # 2022-041 7h"  # HB 1598 of 2022's, unread
+    bad = []
+    keep = N.MEMBERS
+    try:
+        # The movers as the docket writes them, whatever roster is on disk.
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_WHOSE_AMENDMENT.items():
+            rec = _narrated(N, term, bill, rows)
+            told, listed = want[bill]
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the House floor"]
+            for s in told:
+                if not any(s in t for t in floor):
+                    bad.append(f"{bill} of {term} does not say, on the House floor: {s!r}; "
+                               f"it says {floor!r}")
+            got = [(a["num"], a["kind"], a["adopted"], a["mover"])
+                   for a in B.bill_amendments(rec, {}, None)]
+            if got != listed:
+                bad.append(f"{bill} of {term}'s amendments: {got}, not {listed}")
+            flam = [u for u in rec.get("unrecognised") or []
+                    if "FLAM" in str(u) and split not in str(u)]
+            if flam:
+                bad.append(f"{bill} of {term} leaves a FLAM row unread: {flam}")
+            if bill == "HB1598":
+                heads = [st["label"] for st in rec["stages"]]
+                if heads[-1:] != ["In House committee — Ways and Means"] or len(heads) != 3:
+                    bad.append(f"HB1598 of 2022's stages are {heads}")
+                if "2022-041)" in (rec.get("narrative") or ""):
+                    bad.append(f"HB1598 of 2022 tells a split number: {rec.get('narrative')!r}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("bare House rows a report names are the committee's or its minority's, "
+                  "under the floor's heading; FLAM rows are floor amendments with their movers; "
+                  "HB 1336's 1100h, named by no report, stays a floor amendment")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
