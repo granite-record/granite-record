@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.8
+# GRANITE_VERSION: 2026-10-05.9
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -1081,6 +1081,9 @@ def main():
     if not a.guards:
         note(v.get("built") and v.get("publishable"), "NT: built, and publishable behind approval",
              v.get("not_clean"))
+        # The publish job deploys by the verdict that came down with the site
+        # (cloud.py site-down writes it to nightly.RUN_VERDICT): NT's own.
+        NI.write_json(NI.RUN_VERDICT, NI.load_json(NI.VERDICT))
         code, _, _ = N.night("NT-publish", "--runner", "--deploy-to", "production", run_id="910")
         c = NI.load_json(NI.CENSUS) or {}
         note(code == 0 and c.get("new_term") and c.get("run_id") == "910",
