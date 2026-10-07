@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.152
+// GRANITE_VERSION: 2026-09-07.153
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -6104,7 +6104,9 @@ function renderCommitteeHead(c){
   const rule=c.purpose||null;
   const dl=(cls,rows)=>rows.length?`<dl class="${cls}">${rows.map(
     ([k,v])=>`<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl>`:"";
-  return `<div class="phead">
+  // .cmtehead says "a committee's page" to app.css, with or without a roster
+  // (a retired committee has none, and its notes were left at 560px, F9).
+  return `<div class="phead cmtehead">
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
     ${c.archived?`<p class="src fill">Not on the General Court&rsquo;s list of committees today.

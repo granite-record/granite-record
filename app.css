@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.207 */
+/* GRANITE_VERSION: 2026-09-07.208 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2768,24 +2768,31 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
    sat at 560 under a full-width tab strip, which is the same left-confinement
    one block up.
 
-   :has(.croster) SCOPES THIS TO A COMMITTEE PAGE and nothing else. .src is
+   :has(.cmtehead) SCOPES THIS TO A COMMITTEE PAGE and nothing else. .src is
    used all over the site and .pane is shared with the bill card and the
-   legislator page, neither of which was asked about and neither of which has
-   a committee roster in it. A selector that reached them would be the same
+   legislator page, neither of which was asked about and neither of which
+   draws a committee's head. A selector that reached them would be the same
    over-reach as compacting the bill page's play stubs. */
 .cpurpose .src,.cday .src,.cday .note{max-width:none}
 /* A sitting's page is the same case: its cards run the full width and the
    journal line under the heading and the notes in each section stopped at
    560px beside them (the review of 2 October 2026). */
 .sesspage > .src,.sesspage .sday > .note{max-width:none}
-main:has(.croster) .pane > .src,
-main:has(.croster) .cal .note,
-main:has(.croster) .cal p,
+/* BY THE COMMITTEE'S HEAD, NOT ITS ROSTER (F9, the look of 7 October
+   2026). A committee no longer on the General Court's list has no roster, so
+   :has(.croster) missed every retired committee's page and its "Nothing is
+   scheduled" note and its count of bills stayed at 560px. .cmtehead is the
+   head every committee page draws (renderCommitteeHead) and no other page
+   does. */
+main:has(.cmtehead) .phead > .src,
+main:has(.cmtehead) .pane > .src,
+main:has(.cmtehead) .cal .note,
+main:has(.cmtehead) .cal p,
 /* And the day's timeline. .tl li caps at the measure, which is right on a
    bill -- there the list sits in a 560px pane beside the facts panel. Here
    320 of them sat at 560 inside a 1,132px row, so a bill's title wrapped
    halfway across a line that had nothing in the other half. */
-main:has(.croster) .cday .tl li{max-width:none}
+main:has(.cmtehead) .cday .tl li{max-width:none}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:var(--sp-6) 0 0}
 

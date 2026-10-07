@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.434
+# GRANITE_VERSION: 2026-09-04.435
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44012,6 +44012,13 @@ def _committee_notes_fill():
         > css.index(".src,.lead{max-width:var(--measure)}"), (
             "app.css does not let a .src.fill note take its width, after the measure, in the "
             "shared region")
+    # A COMMITTEE PAGE BY ITS HEAD, NOT ITS ROSTER (the look of 7 October
+    # 2026): a retired committee has no roster, so :has(.croster) left its
+    # "Nothing is scheduled" note and its count of bills at 560px.
+    for sel in ("main:has(.cmtehead) .cal .note", "main:has(.cmtehead) .pane > .src"):
+        assert sel in css, f"app.css has no {sel}: a committee without a roster keeps the measure"
+    assert "main:has(.croster)" not in css, (
+        "a committee page's widths still hang on its roster, which a retired committee lacks")
     got = _app_js('[scope.renderCommitteeHead({name:"House Old Committee", chamber:"H",'
                   ' archived:{years:"1999-2004"}}),'
                   ' scope.renderCommitteeSessions({sessions:[]})]',
@@ -44019,6 +44026,8 @@ def _committee_notes_fill():
     if got is None:
         return "ok", "the index's two notes fill; node is not here to draw a committee page"
     head, sess = got
+    assert '<div class="phead cmtehead">' in head, (
+        "a committee page's head does not say it is one, so app.css cannot widen its notes")
     assert re.search(r'<p class="src fill">Not on the General Court&rsquo;s list of committees', head), (
         "a committee page's \"not on the list\" note is held to the measure")
     assert '<p class="src fill">No day of this committee is' in sess, (
