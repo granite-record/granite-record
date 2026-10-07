@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.437
+# GRANITE_VERSION: 2026-09-04.438
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32518,6 +32518,13 @@ def _calendar_documents():
                                            and re.search(r'class="(?:[^"]* )?out\b', a))]
         assert not bare, (f"{len(bare)} of {len(to_docs)} links to a calendar or journal open "
                           f"in the same tab or carry no outside-link mark: {bare[:2]}")
+        # A session day's page links its own journal the same way.
+        sp = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
+        jl = re.search(r'<a class="jpdf[^"]*"[^>]*>', sp)
+        assert jl and 'target="_blank"' in jl.group(0) and 'rel="noopener"' in jl.group(0) \
+            and re.search(r'class="(?:[^"]* )?out\b', jl.group(0)), (
+            "a session day's journal PDF opens in the same tab or carries no outside-link "
+            f"mark: {jl.group(0) if jl else 'no jpdf link'}")
         for sid, label, url in (("hc", "HC 33", rows[0][4]),
                                 ("hj", "HJ 16 August 19, 2026", rows[8][4]),
                                 ("sc", f"SC 29 {dash} 3 September 2026", rows[9][4]),
@@ -43733,7 +43740,13 @@ def _hearing_note_wording():
         assert not any("for or against" in n for n in cmte), "app.js keeps the old sentence"
         drew = "and app.js's calendarBlock prints it too"
     assert not any("for or against" in n for n in home), "Coming up keeps the old sentence"
-    return "ok", f"Coming up says it word for word, {drew}"
+    # The upcoming-hearings feed carries the same note in each item's text,
+    # written there as adjacent string literals: joined here before reading.
+    feeds = _paths.locate("build_feeds.py").read_text(encoding="utf-8")
+    flat = " ".join(re.sub(r'"\s*\n\s*"', "", feeds).split())
+    assert want in flat, "the upcoming-hearings feed does not say the note word for word"
+    assert "sign in for or against" not in flat, "the upcoming-hearings feed keeps the old sentence"
+    return "ok", f"Coming up and the hearings feed say it word for word, {drew}"
 
 
 @check("frontend", "each floor session on the home page is titled \"House Session (August 19th, 2026)\"")
