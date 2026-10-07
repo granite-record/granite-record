@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 Turn repaired journal text into rows: one per member, per vote. No network.
 
@@ -51,15 +51,19 @@ rather than guessed:
   gets none.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import bisect
 import csv
 import json
 import re
-import sys
 from collections import Counter
 from datetime import datetime
-from pathlib import Path
 
 import unh_measure as M
 import unh_repair as R

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.4
+# GRANITE_VERSION: 2026-09-30.5
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -107,12 +107,16 @@ reader was measured: its record carries "decided" where the nine carry
 "withdrawn".
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import journal_days as JD
 

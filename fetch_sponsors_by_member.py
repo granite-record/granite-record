@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.4
+# GRANITE_VERSION: 2026-09-10.5
 """Who sponsored what, asked one legislator at a time instead of one bill at a time.
 
     python3 fetch_sponsors_by_member.py --plan        # no network at all
@@ -96,6 +96,12 @@ can be wrong as often as it likes without costing a request. This address has
 been blocked twice.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import gzip
 import html as _html
@@ -103,13 +109,11 @@ import json
 import os
 import random
 import re
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import child  # noqa: F401  (kept so the module list stays uniform)
 import refusal

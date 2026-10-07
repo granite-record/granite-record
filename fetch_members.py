@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Pull each member's own page on gencourt: photo, district, towns, contact,
 committees and the position they hold on each.
@@ -57,18 +57,22 @@ that does not parse is reported rather than guessed at, and the count of those
 is the first thing to look at in the output.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import random
 import re
 import refusal
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
-from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}

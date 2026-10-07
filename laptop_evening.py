@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.3
+# GRANITE_VERSION: 2026-09-30.4
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -70,14 +70,18 @@ fifty waiting, which is two or three evenings -- replayed for the weeks of
 3 February 2026 and 12 February 2025.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import os
 import re
 import subprocess
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 STATE = Path("archive/livestreams.json")

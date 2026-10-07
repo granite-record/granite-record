@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Fetch captions for every recording that has none, busiest first.
 
@@ -29,16 +29,20 @@ recordings that matter most. --floor-first puts every floor session ahead of
 every committee one regardless of count.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import proceedings as P
 import json
 import re
 import subprocess
-import sys
 import time
 import child
 from collections import Counter, defaultdict
-from pathlib import Path
 
 CAPTION_FILES = ["captions.en.json3", "captions.en-orig.json3", "transcript.json"]
 

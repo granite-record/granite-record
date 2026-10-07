@@ -8,7 +8,12 @@ calendar drain met two 403s eight hours into an unbroken one. The label is
 ignored; it is there so the lane, which runs each queue line once, can be
 given the same pause more than once.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import time
 
 secs = int(sys.argv[1]) if len(sys.argv) > 1 else 3600

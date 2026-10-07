@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -63,6 +63,12 @@ Senate roll calls in RollCallSummary.txt carry a date but a midnight time, so
 Senate floor debates get the recording and no offset.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
@@ -72,7 +78,6 @@ import re
 import rollcall_parser as RP
 from collections import defaultdict
 from datetime import datetime
-from pathlib import Path
 
 
 # "Committee of Conference on SB 534 (05/22/2026)" and similar. When a title

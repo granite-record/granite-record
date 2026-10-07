@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Check the site is fit to publish before uploading it.
 
@@ -19,13 +19,17 @@ Exit code is non-zero if anything would be broken for a visitor, so it can gate
 an upload in a script.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
-import sys
 from collections import Counter
 from datetime import datetime, timezone
-from pathlib import Path
 
 # The logo and the icons, by name: the one list, kept where the build places
 # them. They are not in the repository, so a site built from a bare clone has

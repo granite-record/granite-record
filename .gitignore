@@ -166,8 +166,11 @@ docket_pages/
 Docket_*.txt
 
 # Patch scripts are copied in from the scratchpad, run, and deleted. One
-# survived a failed run and was committed.
+# survived a failed run and was committed. _paths.py is the exception: it is
+# the code, the module every script's bootstrap imports, and preflight fails
+# if any tracked code path is caught by a line here.
 _*.py
+!_paths.py
 
 # ---- the database, dumped whole by fetch_archive_db.py -------------------
 # 2.8 million rows and about 400 MB. Re-fetchable in one run, and it changes

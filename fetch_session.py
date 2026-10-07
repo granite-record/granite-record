@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Fetch a whole past session from the legacy docket pages.
 
@@ -25,18 +25,22 @@ nothing and touches no network.
 Writes archive/<session>/pages/*.html and archive/<session>/parsed/bills.json.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 import refusal
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
 from html.parser import HTMLParser
-from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency archive; "

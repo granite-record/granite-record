@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.4
+# GRANITE_VERSION: 2026-10-05.5
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -150,16 +150,20 @@ WHAT READS IT
   preflight                        --check's verdict, where a freeze is on disk
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import hashlib
 import json
 import os
 import re
 import shutil
-import sys
 from collections import Counter
 from datetime import datetime
-from pathlib import Path
 
 import proceedings as P
 

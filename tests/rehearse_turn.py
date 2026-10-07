@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.5
+# GRANITE_VERSION: 2026-10-05.6
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -122,6 +122,12 @@ Its record is DIR/rehearsal.json; it exits 0 when every expectation held.
 private/TURNOVER_REHEARSAL.md says what it proved on 5 October 2026.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import contextlib
 import hashlib
@@ -132,13 +138,11 @@ import re
 import shutil
 import socket
 import subprocess
-import sys
 import tarfile
 import time
 import types
 import urllib.request
 from datetime import datetime
-from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 TERM, NEW = "2025-2026", "2027-2028"

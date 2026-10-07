@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Every standing committee, from the two pages that list them.
 
@@ -40,16 +40,20 @@ Senate's cc=1715 -- so the patterns allow for both, and --probe reports what it
 managed rather than assuming it worked.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html as _html
 import json
 import re
 import refusal
-import sys
 import time
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.5
+# GRANITE_VERSION: 2026-09-14.6
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -74,13 +74,17 @@ sponsors.json names nobody for it, so the two covered terms keep their own, apar
 bills of 2023-2024 the database names nobody for.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
-import sys
 import unicodedata
 from collections import Counter, defaultdict
-from pathlib import Path
 
 from member_links import COUNTIES, SHORT, seat as label_seat
 

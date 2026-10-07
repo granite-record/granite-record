@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.6
+# GRANITE_VERSION: 2026-09-12.7
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -90,6 +90,12 @@ finding was re-run by a separate verifier. Verified and fixed here:
     words sat in plain text where a search would find them.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import base64
 import datetime as dt
@@ -99,12 +105,10 @@ import re
 import secrets
 import shutil
 import subprocess
-import sys
 import time
 import unicodedata
 import urllib.parse
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import site_read
 

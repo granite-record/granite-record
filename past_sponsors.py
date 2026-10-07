@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.4
+# GRANITE_VERSION: 2026-09-26.5
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
@@ -94,12 +94,16 @@ guess in member_party.json -- until member_corrections.json named her Rep. Lorri
 of Merrimack 1 on 26 September. Her rows now pair by name and link to her own page.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import member_links as ML
 import names

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Read the calendar list instead of guessing at it.
 
@@ -105,14 +105,18 @@ them, then one per calendar to fetch it. No probing, nothing asked for that
 does not exist.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html
 import re
-import sys
 import urllib.parse
 import urllib.request
 import refusal
-from pathlib import Path
 
 BASE = "https://gc.nh.gov/{chamber}/calendars_journals/"
 # Kept as the default so anything importing URL still works. The Senate

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.6
+# GRANITE_VERSION: 2026-09-19.7
 """
 Let the book correct itself. No network.
 
@@ -162,14 +162,18 @@ Every substitution is printed by --vocab, because a repair pass that silently
 rewrites names is the exact thing this project should not have.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import difflib
 import json
 import re
-import sys
 from collections import Counter
-from pathlib import Path
 
 import unh_measure as M
 

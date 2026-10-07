@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.29
+# GRANITE_VERSION: 2026-09-08.30
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -24,13 +24,18 @@ nothing else; the hub, the footers and the sitemap all read it, so there is
 one place to reorder the section.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html
 import json
 import re
 import unicodedata
 from collections import Counter
-from pathlib import Path
 
 import civics
 import learn_numbers

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 Captions for the recordings the proceedings table has never heard of.
 
@@ -37,13 +37,17 @@ A video with no auto-captions published is recorded as such and never asked
 for again, which is the difference between a gap and a fault.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import subprocess
-import sys
 import time
 from collections import Counter
-from pathlib import Path
 
 INDEX = Path("channel_index_full.json")
 WORK = Path("work")

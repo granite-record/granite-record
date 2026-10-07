@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.4
+# GRANITE_VERSION: 2026-10-01.5
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -84,13 +84,18 @@ importing it changes nothing about where a builder stands. The two readers
 of the documents' own dates are imported when a date is wanted, not before.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import csv
 import datetime
 import html
 import json
 import re
 from collections import Counter, OrderedDict, defaultdict, namedtuple
-from pathlib import Path
 
 import build_date
 

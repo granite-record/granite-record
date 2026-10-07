@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Write STATE.md from what is actually on disk.
 
@@ -43,6 +43,12 @@ only while the data files are as that run read them (data_state): git
 ignores nearly all of them, so the tree's digest cannot see one rebuilt.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import hashlib
@@ -50,11 +56,9 @@ import json
 import os
 import re
 import subprocess
-import sys
 import child
 import site_read
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 
 TERM_RE = re.compile(r"^\d{4}-\d{4}$")

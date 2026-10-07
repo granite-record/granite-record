@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 The Senate's calendars, for the veto messages the House's do not carry.
 
@@ -42,15 +42,19 @@ what extract_vetoes.py reads. Nothing else is touched, and a calendar already
 on disk is never asked for again.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 import shutil
-import sys
 import time
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
 import os
 import random

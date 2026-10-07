@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Turn the Senate and Executive Council district lists into a town lookup.
 
@@ -24,11 +24,16 @@ These are redistricted every ten years. Editing the text files and re-running
 is the whole update.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 from collections import defaultdict
-from pathlib import Path
 
 HEAD = re.compile(r"^\s*District\s+(\d+)\s*$", re.I)
 

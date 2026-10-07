@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 """
 Municipal officials, out of the Department of Transportation's directory.
 
@@ -67,12 +67,17 @@ character at a time -- Sutton's administrator's address came out "t.t
 o4wnadmin@sutton-nh.org". `restream` reads such a row again in the PDF's own
 order, and `--report` prints every row it changed.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
 import pathlib
 import re
-import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PDF = ROOT / "sources" / "nh-municipal-officials-2025-09-01.pdf"

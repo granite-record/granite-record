@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Align every video the manifest references, skipping those already done.
 
@@ -20,15 +20,19 @@ A video is skipped when work/<id>/segments.json already exists, so an
 interrupted run picks up where it stopped.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
 import subprocess
-import sys
 import time
 import child
 from collections import Counter
-from pathlib import Path
 
 
 def chamber_of(row):

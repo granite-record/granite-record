@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.53
+# GRANITE_VERSION: 2026-09-05.54
 """
 Run the whole pipeline in the right order.
 
@@ -30,17 +30,21 @@ Transcription is excluded by default: it is per-video and slow even with
 captions. Run transcribe_and_align.py separately, then rebuild.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import os
 import subprocess
-import sys
 import threading
 import time
 import build_date
 import child
 from datetime import datetime
-from pathlib import Path
 
 
 BUILD_LOCK = Path(".build.lock")

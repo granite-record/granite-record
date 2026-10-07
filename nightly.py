@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.51
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -373,6 +373,12 @@ page says what the gate WOULD have done, and nothing about what is published,
 when, or behind which environment changes. THE GATE, below, has the detail.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import gzip
 import hashlib
@@ -381,12 +387,10 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.request
 from datetime import date, datetime
-from pathlib import Path
 
 import child
 import refusal

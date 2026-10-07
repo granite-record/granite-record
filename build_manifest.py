@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.16
+# GRANITE_VERSION: 2026-09-05.17
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -13,13 +13,17 @@ Downloads Docket.txt automatically unless you pass --docket with a local copy.
 Standard library only.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import re
-import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
 try:
     import docket_parser

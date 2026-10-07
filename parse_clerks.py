@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.5
+# GRANITE_VERSION: 2026-09-12.6
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
@@ -88,13 +88,18 @@ Mc, Mac, O', hyphens, the Roman-numeral suffixes, and that a single letter
 after an apostrophe is a possessive rather than the start of a name -- which
 it did not, until twenty-two places had gone out as "Dix'S Grant".
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import bisect
 import collections
 import json
 import pathlib
 import re
-import sys
 
 # The other directory decides two things here: its properly spaced names settle
 # the joins this PDF leaves ambiguous, and its `web_address` decides what counts

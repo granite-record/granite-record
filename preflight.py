@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.386
+# GRANITE_VERSION: 2026-09-04.387
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -41,6 +41,12 @@ what the manifest's venue values look like, how many docket rows the proceeding
 parser drops on the floor.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import ast
 import csv
@@ -50,11 +56,9 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import traceback
 from collections import Counter
-from pathlib import Path
 
 import child
 
@@ -20743,8 +20747,8 @@ def _site_fixture(root):
     # build_all does, from the two sources the fixture just wrote.
     import subprocess, sys
     for f in PROCEEDINGS_MODULES:
-        if Path(f).exists():
-            shutil.copy(f, root / f)
+        if _paths.locate(f).exists():
+            shutil.copy(_paths.locate(f), root / f)
     r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
@@ -20752,8 +20756,11 @@ def _site_fixture(root):
 
 # What build_proceedings.py needs beside it to run in a folder of its own: the
 # table's reader, and committee_names.py with the two modules it reads, since
-# every committee row's name is settled there before the table is written.
-PROCEEDINGS_MODULES = ("build_proceedings.py", "proceedings.py",
+# every committee row's name is settled there before the table is written;
+# and _paths.py, which its bootstrap looks for above it. Each is copied from
+# whichever code folder holds it, flat: in the fixture's folder every one is
+# found by its bare name, as in the repository.
+PROCEEDINGS_MODULES = ("_paths.py", "build_proceedings.py", "proceedings.py",
                        "committee_names.py", "referrals.py", "names.py")
 
 
@@ -20865,7 +20872,7 @@ def _proceedings_table():
     root = Path(tempfile.mkdtemp(prefix="gr-proc-"))
     try:
         for f in PROCEEDINGS_MODULES:
-            shutil.copy(f, root / f)
+            shutil.copy(_paths.locate(f), root / f)
         cols = ["bill","body","committee","proceeding","sched_date","sched_time",
                 "venue","tier","bills_in_slot","match","video_id","video_title",
                 "stream_start","predicted_offset","watch_url","candidates",
@@ -20919,16 +20926,15 @@ def _proceedings_term_shrink():
     refused, naming that term and no other, and left as it was.
     --allow-shrink lets it through.
     """
-    here = Path(".").resolve()
     need = PROCEEDINGS_MODULES
-    absent = [f for f in need if not (here / f).exists()]
+    absent = [f for f in need if not _paths.locate(f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     import importlib.util
     root = Path(tempfile.mkdtemp(prefix="gr-termshrink-"))
     try:
         for f in need:
-            shutil.copy(here / f, root / f)
+            shutil.copy(_paths.locate(f), root / f)
         # The copy's own write(), under a name of its own, so no later check
         # that imports proceedings is handed a module from a deleted folder.
         spec = importlib.util.spec_from_file_location(
@@ -43600,7 +43606,10 @@ def _lane_daily():
     root = Path(tempfile.mkdtemp(prefix="gr-lane-"))
     seal = _Seal()
     try:
-        shutil.copy(here / "refusal.py", root / "refusal.py")
+        # The refusal.py its steps import, and the _paths.py that one's
+        # bootstrap looks for above it.
+        for f in ("refusal.py", "_paths.py"):
+            shutil.copy(_paths.locate(f), root / f)
         (root / "watchers").mkdir()
         (root / "archive").mkdir()
         # A step GitHub's window stops part way: its own clock moves into the
@@ -51656,7 +51665,7 @@ def _fetch_day_db(FD, DF, P, NI):
         imported = {a.name for n in ast.walk(tree_) if isinstance(n, ast.Import) for a in n.names} \
             | {n.module for n in ast.walk(tree_) if isinstance(n, ast.ImportFrom) and n.module}
         assert imported <= {"argparse", "json", "shutil", "sys", "time", "datetime", "pathlib",
-                            "dayfiles_from_db", "probe_db", "refusal"}, \
+                            "_paths", "dayfiles_from_db", "probe_db", "refusal"}, \
             f"fetch_day_db.py imports {sorted(imported)}"
         bridges = {n.func.attr for n in ast.walk(tree_) if isinstance(n, ast.Call)
                    and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)

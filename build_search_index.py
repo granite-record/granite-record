@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.5
+# GRANITE_VERSION: 2026-10-01.6
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -239,15 +239,19 @@ written beside itself and renamed. Until 2 October the failing run had
 already overwritten all twenty.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import bisect
 import gzip
 import json
 import math
 import re
-import sys
 from collections import Counter
-from pathlib import Path
 
 VERSION = 1
 

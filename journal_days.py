@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.10
+# GRANITE_VERSION: 2026-09-19.11
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -42,12 +42,17 @@ of those is printed by --coverage, because a parser that quietly assigned them
 would be wrong 22% of the time in the direction that matters most.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import bisect
 import collections
 import json
 import re
-from pathlib import Path
 
 HOUSE = Path("journals")
 

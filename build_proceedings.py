@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -33,13 +33,17 @@ recover_terms for where a missing term is found and what happens to a row
 that has none to find.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import proceedings as P
 

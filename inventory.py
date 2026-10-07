@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -21,11 +21,16 @@ a bug reported as unfixed because the fix was sitting in the downloads folder.
 Nothing here writes or changes anything.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 from datetime import datetime
-from pathlib import Path
 
 # Every script carries a version stamp on its second line:
 #

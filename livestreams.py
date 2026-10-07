@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.6
+# GRANITE_VERSION: 2026-09-25.7
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and left where the build
@@ -254,6 +254,12 @@ and DIR/<video>/ERROR.txt stands for what yt-dlp would have said. preflight
 runs the step on fixtures that way.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import hashlib
@@ -264,14 +270,12 @@ import random
 import re
 import shutil
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 # The index's own parser and channel list. One reader of a title: a row made
 # here has to be the row fetch_channel_index.py would have written. Importing

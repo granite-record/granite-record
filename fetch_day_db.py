@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.4
+# GRANITE_VERSION: 2026-10-01.5
 """
 The day's records from the General Court's database, into .night/dbday/.
 
@@ -75,13 +75,17 @@ SELECT only. It never writes to the database, and does not test whether it
 could.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import shutil
-import sys
 import time
 from datetime import datetime
-from pathlib import Path
 
 import dayfiles_from_db as DF
 import probe_db as P

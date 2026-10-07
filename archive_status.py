@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 How much of the record is on this disk, and what is still missing.
 
@@ -20,11 +20,16 @@ and reports each source as held over wanted. A source whose denominator is
 unknown says so rather than reporting a percentage of nothing.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
 from collections import Counter, defaultdict
-from pathlib import Path
 
 
 def _json(path):

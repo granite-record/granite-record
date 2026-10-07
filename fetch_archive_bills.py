@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.4
+# GRANITE_VERSION: 2026-09-06.5
 """
 Every bill of an archived session year, from the General Court's own search.
 
@@ -45,16 +45,20 @@ archive_<year>.html, or by obsolete/probe_legacy.py --raw, which is how the
 parser below was written and checked -- and makes no request.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html as _html
 import json
 import re
 import refusal
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
 import proceedings as P
 

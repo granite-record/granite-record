@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.3
+# GRANITE_VERSION: 2026-09-13.4
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -58,11 +58,15 @@ A candidate that meets 1-3 and fails anything after is reported with the
 reason and is not joined. Nothing here reads the network or writes a file.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import json
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 
 COUNTIES = {
     "belknap": "Belknap", "belk": "Belknap", "carroll": "Carroll", "carr": "Carroll",
