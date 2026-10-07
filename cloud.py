@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.12
+# GRANITE_VERSION: 2026-09-25.13
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -77,7 +77,9 @@ THE BUCKET
     replaced/<date>/...    what a command would otherwise have overwritten or removed
     logs/<date>/<file>     the night's logs
     nights/<run>/          the night's built site, one archive, and site.json, which
-                           carries the night's own verdict, for the publish job;
+                           carries the night's own verdict, for the publish job,
+                           with first-seen.json, the ledger its build left
+                           (FIRST_SEEN_NEXT), which a New term run's deploy keeps;
                            and under kit/, with kit.json, what a New term run's
                            night changed, waiting for its build to be published
     state/<file>           refused.json, census.json and the rest (cloud_kit.json);
@@ -137,8 +139,8 @@ GitHub's machine whatever a step passes, sends back only what cloud_kit.json's
   the state           a refusal and a hold on the SQL host, which are facts
                       about another server and stop the next night's asking
                       whoever met them, and its own verdict
-                      (state/last-dry-run.json); never the census or the
-                      night's verdict (DRY_NEVER)
+                      (state/last-dry-run.json); never the census, the
+                      night's verdict or the first-seen ledger (DRY_NEVER)
 
 Nothing is removed from the kit on a dry night, and the rest it changed is
 named as kept back. A New term run ticked with Dry run, which nightly.py
@@ -271,8 +273,16 @@ DRY_ENV = "DRY_RUN"
 # Where a dry night's logs go, under logs/<day>/: a folder pull does not read.
 DRY_LOGS = "dry-run"
 # The state a dry night never sends, whatever cloud_kit.json's "dry_run" says:
-# what the next real night is gated against and the night's own verdict.
-DRY_NEVER = ("census.json", "last-night.json")
+# what the next real night is gated against, the night's own verdict, and the
+# first-seen ledger, which says what the email sender has been told is new
+# (src/pages/follow_changes.py): a dry run reads the night's and sends none.
+DRY_NEVER = ("census.json", "last-night.json", "first-seen.json")
+# The first-seen ledger a build leaves, beside the one it read
+# (follow_changes.CANDIDATE; preflight holds the two names together). nightly.py
+# keeps it for a build it accepts, and a New term run's only once its build is
+# published -- on the publish job's machine, so site-up sends it with the site
+# and site-down brings it back here, as the run's verdict travels.
+FIRST_SEEN_NEXT = "archive/first-seen.next.json"
 PULL_DAYS = 7
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
@@ -1944,6 +1954,11 @@ def _night_keys(run):
     return f"nights/{run}/site.tar.gz", f"nights/{run}/site.json"
 
 
+def _first_seen_key(run):
+    """Where a night's first-seen ledger (FIRST_SEEN_NEXT) waits beside its site."""
+    return f"nights/{run}/first-seen.json"
+
+
 def _held_keys(run):
     """(prefix, record) for what a New term run's kit-up --hold keeps waiting:
     nights/<run>/kit/<path> for each file, nights/<run>/kit.json listing them."""
@@ -2118,8 +2133,11 @@ def cmd_site_up(a, root):
         raise Failed(f"no built site in {a.site}/ to send")
     verdict = _night_verdict(root, a.run)
     total = sum(p.stat().st_size for _, p in files)
+    ledger = local(root, FIRST_SEEN_NEXT)
+    ledger = ledger.read_bytes() if ledger.is_file() else None
     say(f"site-up: {a.site}/ holds {len(files):,} files, {human(total)}, and run {a.run}'s "
-        f"verdict goes with them")
+        f"verdict goes with them"
+        + (f", and the first-seen ledger its build left ({FIRST_SEEN_NEXT})" if ledger else ""))
     if a.dry_run:
         say(f"--dry-run: nothing sent. They would go as one archive to {key}.")
         return
@@ -2133,17 +2151,21 @@ def cmd_site_up(a, root):
         size, sha = tmp.stat().st_size, sha256_of(tmp)
         remote = bucket.list(f"nights/{a.run}/")
         rep = Replacer(bucket, f"{datetime.now():%Y-%m-%d}")
-        for k in (key, meta_key):
+        for k in (key, meta_key, _first_seen_key(a.run)):
             if k in remote:
                 rep.keep(k)
         bucket.put_file(tmp, key, {"sha256": sha, "files": str(len(files))})
         got = bucket.list(f"nights/{a.run}/").get(key)
         if got != size:
             raise Failed(f"{key} arrived as {got} bytes, not {size:,}")
+        if ledger is not None:
+            bucket.put_bytes(_first_seen_key(a.run), ledger)
         bucket.put_bytes(meta_key, json.dumps({
             "run": a.run, "files": len(files), "bytes": total, "size": size,
             "sha256": sha, "written": datetime.now().isoformat(timespec="seconds"),
             "verdict": verdict,
+            "first_seen": ({"size": len(ledger), "sha256": hashlib.sha256(ledger).hexdigest()}
+                           if ledger is not None else None),
         }, indent=1).encode("utf-8"))
     finally:
         tmp.unlink(missing_ok=True)
@@ -2193,6 +2215,21 @@ def cmd_site_down(a, root):
     if len(files) != meta["files"] or total != meta["bytes"]:
         raise Failed(f"the site unpacked as {len(files):,} files, {human(total)}; "
                      f"{meta_key} says {meta['files']:,}, {human(meta['bytes'])}")
+    # The first-seen ledger the night's build left, where nightly.py keeps it
+    # once a New term run's deploy has landed; whole, or not at all.
+    led = meta.get("first_seen")
+    if isinstance(led, dict):
+        raw = bucket.get_bytes(_first_seen_key(a.run))
+        if raw is None or len(raw) != led.get("size") or \
+                hashlib.sha256(raw).hexdigest() != led.get("sha256"):
+            raise Failed(f"{_first_seen_key(a.run)} is missing or not the ledger {meta_key} "
+                         "names")
+        dst = local(root, FIRST_SEEN_NEXT)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        part = dst.with_name(dst.name + ".part")
+        part.write_bytes(raw)
+        os.replace(part, dst)
+        say(f"site-down: the first-seen ledger its build left, at {FIRST_SEEN_NEXT}")
     # Its own night's verdict, where --deploy-to production reads it: written
     # last, once the site is whole, so a verdict here always has its site.
     dst = local(root, SITE_VERDICT)
