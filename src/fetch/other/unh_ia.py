@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 The same volumes, from the people who scanned them.
 
-    python3 unh_ia.py --find "journal of the house"   # search, cached
-    python3 unh_ia.py --meta <identifier>             # what files an item has
-    python3 unh_ia.py --files <identifier>            # the file list, readable
+    python3 src/fetch/other/unh_ia.py --find "journal of the house"   # search, cached
+    python3 src/fetch/other/unh_ia.py --meta <identifier>             # what files an item has
+    python3 src/fetch/other/unh_ia.py --files <identifier>            # the file list, readable
 
 WHY LOOK HERE AT ALL
 

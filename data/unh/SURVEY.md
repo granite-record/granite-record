@@ -161,7 +161,7 @@ It also no longer matters much, for the reason in the next section.
 The scanning note points at the Internet Archive, and the volumes are there,
 sponsored and contributed by the University of New Hampshire Library:
 
-    python3 unh_ia.py --find '"New Hampshire" AND (title:("journal of the house") OR title:("journal of the senate")) AND year:[1988 TO 2000]'
+    python3 src/fetch/other/unh_ia.py --find '"New Hampshire" AND (title:("journal of the house") OR title:("journal of the senate")) AND year:[1988 TO 2000]'
 
 **36 items for 1988-2000**, identifiers of the form `journalofhouseof1997newh`
 and `journalofsenateo1994newh`. archive.org's robots.txt disallows only
@@ -171,7 +171,7 @@ intended for this.
 
 Each item carries derivatives beside the scan. For `journalofhouseof1997newh`:
 
-    python3 unh_ia.py --files journalofhouseof1997newh
+    python3 src/fetch/other/unh_ia.py --files journalofhouseof1997newh
 
 | bytes | what |
 |-------|------|
@@ -419,7 +419,7 @@ of them touches a name on the roll.
 
 ## 7. What the extraction actually produced
 
-    python3 unh_fetch.py --gap          # the volumes, one at a time
+    python3 src/fetch/other/unh_fetch.py --gap          # the volumes, one at a time
     python3 unh_rollcalls.py --reflow <id>
     python3 unh_roster.py <id>
     python3 unh_repair.py <id>
@@ -543,7 +543,7 @@ by 2, then by 5 -- because it is written by hand and the fetching went on
 after it. So it no longer states one. The log does, and the log has been
 right every time:
 
-    python3 unh_survey.py --log
+    python3 src/fetch/other/unh_survey.py --log
 
 Everything asked of scholars.unh.edu was asked on 18 September, before the
 403; nothing has been asked of it since. Everything after that is the

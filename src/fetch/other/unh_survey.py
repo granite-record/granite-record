@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.3
+# GRANITE_VERSION: 2026-09-18.4
 """
 Find out what the UNH scans of the pre-digital General Court actually are.
 
-    python3 unh_survey.py --recon           # robots, sitemap, the series page
-    python3 unh_survey.py --get <url>       # one page, cached, paced
-    python3 unh_survey.py --head <url>      # size and type only, no body
-    python3 unh_survey.py --show <url>      # print what is cached, no network
-    python3 unh_survey.py --log             # every request this project made
+    python3 src/fetch/other/unh_survey.py --recon           # robots, sitemap, the series page
+    python3 src/fetch/other/unh_survey.py --get <url>       # one page, cached, paced
+    python3 src/fetch/other/unh_survey.py --head <url>      # size and type only, no body
+    python3 src/fetch/other/unh_survey.py --show <url>      # print what is cached, no network
+    python3 src/fetch/other/unh_survey.py --log             # every request this project made
 
 WHAT THIS IS FOR
 
@@ -171,7 +171,7 @@ def note_refusal(url, why):
         "host": urllib.parse.urlsplit(url).netloc,
         "url": url,
         "why": why,
-        "clear": f"python3 unh_survey.py --clear {urllib.parse.urlsplit(url).netloc}, "
+        "clear": f"python3 src/fetch/other/unh_survey.py --clear {urllib.parse.urlsplit(url).netloc}, "
                  f"once a person has decided",
     }, indent=1), encoding="utf-8")
 

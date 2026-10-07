@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.10
+# GRANITE_VERSION: 2026-09-20.11
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
-    python3 town_sites.py --status              # what is on disk, no network
-    python3 town_sites.py --home                # each municipality's home page
-    python3 town_sites.py --links               # candidates found, no network
-    python3 town_sites.py --officials           # fetch those candidates
-    python3 town_sites.py --home --only lyme hancock --limit 5
-    python3 town_sites.py --home --retry-refused --agent browser
+    python3 src/fetch/other/town_sites.py --status              # what is on disk, no network
+    python3 src/fetch/other/town_sites.py --home                # each municipality's home page
+    python3 src/fetch/other/town_sites.py --links               # candidates found, no network
+    python3 src/fetch/other/town_sites.py --officials           # fetch those candidates
+    python3 src/fetch/other/town_sites.py --home --only lyme hancock --limit 5
+    python3 src/fetch/other/town_sites.py --home --retry-refused --agent browser
 
 WHY THIS EXISTS. `town_officials.json` is NHDOT's administrative contact
 directory, and on elected officials it is close to empty: about twelve town

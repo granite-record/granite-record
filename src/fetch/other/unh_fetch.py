@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 Fetch the word geometry for a run of volumes, one at a time.
 
-    python3 unh_fetch.py --plan            # what it would ask for, no network
-    python3 unh_fetch.py --gap             # every 1989-1998 volume not yet here
-    python3 unh_fetch.py --only journalofsenateo1994newh
+    python3 src/fetch/other/unh_fetch.py --plan            # what it would ask for, no network
+    python3 src/fetch/other/unh_fetch.py --gap             # every 1989-1998 volume not yet here
+    python3 src/fetch/other/unh_fetch.py --only journalofsenateo1994newh
 
 WHAT IT FETCHES AND WHY ONLY THAT
 

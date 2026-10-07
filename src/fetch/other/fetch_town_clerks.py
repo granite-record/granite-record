@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 """
 The town clerk and the polling place for every town and ward, in one request.
 
-    python3 fetch_town_clerks.py --probe     # what the page answers, saves nothing
-    python3 fetch_town_clerks.py             # fetch, parse, write town_clerks.json
-    python3 fetch_town_clerks.py --parse     # re-parse what is already saved
+    python3 src/fetch/other/fetch_town_clerks.py --probe     # what the page answers, saves nothing
+    python3 src/fetch/other/fetch_town_clerks.py             # fetch, parse, write town_clerks.json
+    python3 src/fetch/other/fetch_town_clerks.py --parse     # re-parse what is already saved
 
 NOT THE GENERAL COURT. This asks app.sos.nh.gov, the Secretary of State's
 election lookup, and not gc.nh.gov -- so the lane's lock and the 24-hour
