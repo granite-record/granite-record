@@ -10,5 +10,5 @@ YouTube; its reader goes in `parse/`, or in `towns/` if it is about a town,
 a district or a county. graniterecord.org is not a source: `check_live` is
 in `checks/`.
 
-The scripts move here in stage 1 (`src/README.md`); until then they are
-still at the repository root.
+All five moved here in the folder move's stage 1 (`src/README.md`). Run
+each from the repository root: `python3 src/fetch/other/town_sites.py --status`.

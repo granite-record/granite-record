@@ -36,9 +36,14 @@ stage shares. Each folder's README says what is in it, what runs it, and
 what does not belong there.
 
 **The move is in stages.** Stage 0 made the code able to live here and moved
-nothing, so for now most of these folders hold only their README and the
-scripts they describe are still at the root. Each later stage moves a group
-of files without changing a line that names them.
+nothing. Stage 1 (7 October 2026) moved the 49 scripts nothing the night
+touches -- the by-hand fetchers and probes, the reference builders, the UNH
+work, the bench and the by-hand reports -- and retired `fetch_testimony.py`
+to `obsolete/`. What the night, the weekly, the laptop's evening job or
+`build_all` runs or imports is still at the root until its stage, 2 to 4.
+Each stage moves a group of files without changing an import, a build step
+or a lane line that names them; a command line a person types names the
+path, and changes in the same commit.
 
 ## How a script here is run, and imports
 

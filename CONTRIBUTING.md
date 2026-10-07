@@ -27,7 +27,7 @@ Three things follow, and they are not negotiable:
    so its General Court steps stay skipped for as long as it is on disk.
    Clearing it (`python3 refusal.py --clear`) is the maintainer's decision,
    after `netcheck.py` has said what kind of refusal it was.
-3. **Every fetcher that asks the General Court consults it.** All 18
+3. **Every fetcher that asks the General Court consults it.** All 17
    `fetch_*.py` scripts carrying a literal `gc.nh.gov` URL call
    `refusal.check()` straight after parsing their arguments, and `preflight`
    fails if one stops:
