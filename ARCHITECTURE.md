@@ -143,7 +143,7 @@ histories.
 
 **The calendars stay the second source, and the only one for what a docket
 does not carry.** All 1,580 House calendar PDFs for 1997-2026 are on disk
-with text extracted, 100%. `calendar_meetings.py --check` reads the
+with text extracted, 100%. `python3 src/hearings/calendar_meetings.py --check` reads the
 (bill, day) pairs out of them at no cost -- 61,767 across 2,107 committees on
 10 September, 61,543 across 1,058 on the 17th after committee-name variants
 were merged, so run it rather than quoting either. Senate calendars: 1,604

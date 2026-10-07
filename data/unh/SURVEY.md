@@ -137,7 +137,7 @@ Downloads are directly constructible:
 
 The `+999` is held as a fact, not a guess: it agrees on **all 145** pairs
 printed on the two listing pages, and volume 78's own citation metadata names
-`article=1077` independently. `unh_parse.py --catalogue` reports the count of
+`article=1077` independently. `python3 src/parse/unh_parse.py --catalogue` reports the count of
 agreeing pairs on every run.
 
 ### scholars.unh.edu answered 403, and that is on file
@@ -459,7 +459,7 @@ identifier minted here** — `NHA-H-CLEMONS-JANE` — in a namespace that cannot
 be mistaken for a six-digit employee number, because a collision would
 quietly attribute an archived vote to a modern legislator.
 
-`unh_extract.py --suspect` ranks the minted people by votes and separates two
+`python3 src/parse/unh_extract.py --suspect` ranks the minted people by votes and separates two
 causes, because they need different work:
 
 * **the General Court lists the name a member goes by**, not the one the
