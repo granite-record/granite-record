@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Align every video the manifest references, skipping those already done.
 
@@ -116,7 +116,7 @@ def main():
               f"{d['n']} proceedings  {d['committee'][:34]}", flush=True)
         time.sleep(a.delay)
         r = child.run(
-            [sys.executable, "transcribe_and_align.py", "--video", vid,
+            [sys.executable, _paths.script("transcribe_and_align.py"), "--video", vid,
              "--source", "captions", "--workdir", a.workdir]
             + (["--realign"] if a.redo else []),
             capture_output=True, text=True)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.54
+# GRANITE_VERSION: 2026-09-05.55
 """
 Run the whole pipeline in the right order.
 
@@ -1015,7 +1015,13 @@ def main():
         strict = kit_build()
         for i, s in enumerate(steps, 1):
             miss = s.missing()
-            flag = ((("would fail, the kit's build may not skip it: missing "
+            try:
+                _paths.script(s.args[0])
+                lost = ""
+            except LookupError as e:
+                lost = str(e)
+            flag = (f"WOULD FAIL: {lost}" if lost else
+                    (("would fail, the kit's build may not skip it: missing "
                       if strict and s.kit_required else "SKIP, missing ")
                      + ", ".join(miss)) if miss else
                     f"{NOT_NEEDED}: {IDLE}" if second_run_idle(steps, i - 1) else "run")
@@ -1066,7 +1072,16 @@ def _run_steps(steps, a):
         print(f"[{i}/{len(steps)}] {s.name}", flush=True)
         st = time.time()
         started.add(i - 1)
-        r = child.run([sys.executable] + s.args, capture_output=True, text=True)
+        # THE STEP'S SCRIPT IS FOUND BY ITS BARE NAME (_paths.script), in
+        # whichever code folder holds it, so the plan's names -- and the
+        # dry-run's -- stay the same when a file moves under src/. One that
+        # cannot be found, or is found twice, fails its step in those words.
+        try:
+            cmd = [sys.executable, _paths.script(s.args[0])] + s.args[1:]
+        except LookupError as e:
+            r = subprocess.CompletedProcess(s.args, 1, "", str(e))
+        else:
+            r = child.run(cmd, capture_output=True, text=True)
         secs = round(time.time() - st, 1)
         if r.returncode == 0:
             tail = [l for l in r.stdout.strip().splitlines() if l.strip()][-3:]

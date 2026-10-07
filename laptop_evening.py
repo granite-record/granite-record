@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.4
+# GRANITE_VERSION: 2026-09-30.5
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -95,9 +95,16 @@ CANDIDATE = re.compile(r"A CANDIDATE: candidate_segments\.json\s+\((\d+) of (\d+
 
 
 def run_step(argv, log):
-    """(exit code, what it printed) of one of this folder's scripts, its output
-    written into the evening's log."""
-    p = subprocess.run([sys.executable, str(HERE / argv[0]), *argv[1:]], cwd=HERE,
+    """(exit code, what it printed) of one of this project's scripts, found by
+    its bare name in whichever code folder holds it (_paths.script), its
+    output written into the evening's log. One that is not there fails the
+    step in the log's own words, as a missing file would."""
+    try:
+        script = _paths.script(argv[0])
+    except LookupError as e:
+        log(f"$ python3 {' '.join(argv)}\n{e}\n(exit 1)")
+        return 1, str(e)
+    p = subprocess.run([sys.executable, script, *argv[1:]], cwd=HERE,
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     out = (p.stdout or "") + (p.stderr or "")
     log(f"$ python3 {' '.join(argv)}\n{out.rstrip()}\n(exit {p.returncode})")

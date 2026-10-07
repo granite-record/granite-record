@@ -101,6 +101,11 @@ line per step (what would follow `python3`), and records each finished line
 in `logs/gc_lane.done` so a restarted lane picks up where it was. Lines can be
 added while it runs; an empty queue is waited on for twelve hours.
 
+The lane finds each line's script through `_paths.script`, by its bare name
+in whichever code folder holds it, so a line never changes when a script
+moves under `src/` -- and must not: the lane matches finished lines by their
+exact text, so a rewritten line would run again.
+
 It holds `archive/.lock` for its whole life and touches it every minute, and
 the fetchers check with `refusal.hold()` that their parent is the lane that
 holds it -- because several fetchers never looked at the lock, and

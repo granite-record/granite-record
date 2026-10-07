@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.7
+# GRANITE_VERSION: 2026-09-25.8
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and left where the build
@@ -282,7 +282,6 @@ from datetime import datetime, timedelta, timezone
 # it asks nothing; its main() is never called.
 import fetch_channel_index as FCI
 
-HERE = Path(__file__).resolve().parent
 STATE = Path("archive/livestreams.json")
 LOCK = Path("archive/livestreams.lock")
 # The laptop's own record of YouTube refusing it, under archive/ with the
@@ -1819,7 +1818,7 @@ def write_summary():
               "refresh")
         return 0
     import child
-    r = child.run([sys.executable, str(HERE / "caption_span.py"), "--write"])
+    r = child.run([sys.executable, _paths.script("caption_span.py"), "--write"])
     return 0 if r.returncode == 0 else 1
 
 
@@ -1886,7 +1885,7 @@ def read_markers(vids):
               "run this after build_all's data step, as its own step does.")
         return 1
     import child
-    r = child.run([sys.executable, str(HERE / "segment_markers.py"),
+    r = child.run([sys.executable, _paths.script("segment_markers.py"),
                    "--transcript", *folders, "--data", "data", "--quiet"])
     return 0 if r.returncode == 0 else 1
 

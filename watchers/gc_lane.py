@@ -268,10 +268,21 @@ def run_child(args, log):
     WINDOW_STOP.unlink(missing_ok=True)
     t0 = time.time()
     with log.open("w", encoding="utf-8") as fh:
-        rc = subprocess.call([sys.executable, *args], cwd=str(ROOT),
-                             stdout=fh, stderr=subprocess.STDOUT,
-                             env={**os.environ, "PYTHONUNBUFFERED": "1",
-                                  refusal.WINDOW_STOP_ENV: str(WINDOW_STOP)})
+        # The line's script by its bare name, in whichever code folder of the
+        # root the lane runs in holds it (_paths.script), so a queue line never
+        # has to be rewritten when a file moves -- and rewriting one would run
+        # it again. One that is not there ends the step with its reason in the
+        # step's log.
+        try:
+            script = _paths.script(args[0], root=ROOT)
+        except LookupError as e:
+            fh.write(f"{e}\n")
+            rc = 1
+        else:
+            rc = subprocess.call([sys.executable, script, *args[1:]], cwd=str(ROOT),
+                                 stdout=fh, stderr=subprocess.STDOUT,
+                                 env={**os.environ, "PYTHONUNBUFFERED": "1",
+                                      refusal.WINDOW_STOP_ENV: str(WINDOW_STOP)})
     tail = [ln for ln in log.read_text(encoding="utf-8", errors="replace").splitlines()
             if ln.strip()][-3:]
     cut = ""

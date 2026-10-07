@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.6
+# GRANITE_VERSION: 2026-10-05.7
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -168,8 +168,10 @@ def env(seed="2"):
 
 
 def sh(cmd, cwd, log=None, seed="2"):
-    """A script in the copy, its output to `log`."""
+    """A script in the copy, found by its bare name in the copy's code folders
+    (_paths.script), its output to `log`."""
     t = time.time()
+    cmd = [_paths.script(cmd[0], root=cwd)] + list(cmd[1:])
     with (open(log, "w", encoding="utf-8") if log else contextlib.nullcontext()) as fh:
         r = subprocess.run([sys.executable] + cmd, cwd=cwd, env=env(seed),
                            stdout=fh or subprocess.PIPE, stderr=subprocess.STDOUT,

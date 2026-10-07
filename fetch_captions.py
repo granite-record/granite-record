@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Fetch captions for every recording that has none, busiest first.
 
@@ -138,9 +138,9 @@ def main():
     if a.timeout is None:
         a.timeout = 900 if a.source == "captions" else 8 * 3600
 
-    tool = Path("transcribe_and_align.py")
-    if not tool.exists():
-        sys.exit("transcribe_and_align.py is not in this folder.")
+    tool = _paths.find("transcribe_and_align.py")
+    if tool is None:
+        sys.exit("transcribe_and_align.py is in none of the code folders (_paths.py).")
 
     # transcribe_and_align.py wants manifest rows for the video it is given.
     # Floor sessions have none, so it refuses them before it ever asks YouTube

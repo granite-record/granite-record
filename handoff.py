@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Write STATE.md from what is actually on disk.
 
@@ -445,7 +445,7 @@ def section_checks(out):
         out.append("")
         return
     print(f"Running preflight.py --code: {why_not}.", flush=True)
-    r = child.run([sys.executable, "preflight.py", "--code"],
+    r = child.run([sys.executable, _paths.script("preflight.py"), "--code"],
                        capture_output=True, text=True)
     lines = [l for l in r.stdout.splitlines() if "passed," in l]
     # A preflight that crashed and one that printed in an unexpected format

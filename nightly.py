@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.51
+# GRANITE_VERSION: 2026-09-04.52
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -865,6 +865,15 @@ def run(args, label, cwd=None):
     say(f"\n--- {label} ---")
     t0 = time.time()
     mark = len(LOG)
+    # The script by its bare name, in whichever code folder holds it
+    # (_paths.script): "fetch_lsrs.py" finds src/fetch/gc_web/fetch_lsrs.py
+    # as it found ./fetch_lsrs.py, from any working directory.
+    try:
+        args = [_paths.script(args[0])] + list(args[1:])
+    except LookupError as e:
+        say(f"  {e}")
+        say("  (0s, exit 1)")
+        return 1
     proc = child.popen([sys.executable, "-u"] + args,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
@@ -2813,8 +2822,7 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
     scratch = SCRATCH / "views"
     shutil.rmtree(scratch, ignore_errors=True)
     scratch.mkdir(parents=True)
-    script = str(Path("fetch_archive_db.py").resolve())
-    rc = run([script, "--refetch"] + [x for v in views for x in ("--only", v)],
+    rc = run(["fetch_archive_db.py", "--refetch"] + [x for v in views for x in ("--only", v)],
              label, cwd=scratch)
     man = load_json(scratch / "db" / "_manifest.json") or {}
     installed_man = load_json(Path("db") / "_manifest.json") or {}

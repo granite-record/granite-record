@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.9
+# GRANITE_VERSION: 2026-09-11.10
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -128,7 +128,7 @@ def main():
         frozen_roster = Path(a.bills).parent / "frozen" / term / "legislators.json"
         members = str(frozen_roster) if frozen_roster.exists() else a.members
         r = subprocess.run(
-            [sys.executable, "narrative.py", "--docket", path, "--all",
+            [sys.executable, _paths.script("narrative.py"), "--docket", path, "--all",
              "--out", a.out, "--members", members, "--bills", a.bills] + extra,
             capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:

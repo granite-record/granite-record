@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.387
+# GRANITE_VERSION: 2026-09-04.388
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9650,7 +9650,7 @@ def _rollcall_typed_bill(RP):
         assert rows[("2025", "H", 1)]["procedural"] and rows[("2025", "H", 1)]["bill"] == "HRULE64", (
             "a vote on a House rule was taken for a bill")
         # Keyed as the page looks the bill up, through the CLI the build runs.
-        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
                   "RollCallSummary.txt", "--dir", "none", "--all", "--out", "rc.json"],
                  cwd=d, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
@@ -9724,7 +9724,7 @@ def _rollcall_measure_kinds(RP):
         assert flags == {"HA1": False, "HCO1": False, "SSHR1": False, "SR1 (2009)": False,
                          "SSSB1": False, "DRAFT": True, "SSHB1": False, "SSHCR1": False,
                          "SSRULES": True}, f"bills and procedural flags as parsed: {flags}"
-        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
                   "RollCallSummary.txt", "--dir", "none", "--all", "--out", "rc.json"],
                  cwd=d, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
@@ -10002,7 +10002,7 @@ def _tally_match():
         lines.append("0:03:00 197 in the affirmative, 151 in the negative")
         lines.append("0:03:30 the committee report is adopted")
         (d / "t.txt").write_text("\n".join(lines), encoding="utf-8")
-        r = _run([sys.executable, "floor_markers.py",
+        r = _run([sys.executable, _paths.script("floor_markers.py"),
                             "--transcript", str(d / "t.txt"),
                             "--summary", str(d / "RollCallSummary.txt")],
                            capture_output=True, text=True, timeout=120)
@@ -10085,7 +10085,7 @@ def _fixture(root):
 
 def _run_markers(root, *flags):
     return _run(
-        [sys.executable, "apply_markers.py", "--workdir", str(root / "work"),
+        [sys.executable, _paths.script("apply_markers.py"), "--workdir", str(root / "work"),
          "--manifest", str(root / "manifest.csv"), *flags],
         capture_output=True, text=True, timeout=180)
 
@@ -10240,7 +10240,7 @@ def _markers_fallback():
         if not Path("verify_batch.py").exists():
             return "skip", ("apply_markers passed; verify_batch.py is not here, so its "
                             "bands were not read")
-        r = _run([sys.executable, "verify_batch.py",
+        r = _run([sys.executable, _paths.script("verify_batch.py"),
                   "--work", str(root / "work"),
                   "--manifest", str(root / "manifest.csv")],
                  capture_output=True, text=True, timeout=120)
@@ -10327,7 +10327,7 @@ def _markers_merge_siblings():
         (root / "candidate_segments.json").write_text(json.dumps(prior),
                                                       encoding="utf-8")
         env = dict(os.environ, GRANITE_PROCEEDINGS=str(root / "proceedings.csv"))
-        r = _run([sys.executable, str(Path("segment_markers.py").resolve()),
+        r = _run([sys.executable, _paths.script("segment_markers.py"),
                   "--transcript", "work/PFFLOOR", "work/PFCOMM", "--data", "data",
                   "--quiet", "--cache", "cache.json"],
                  cwd=str(root), env=env, capture_output=True, text=True,
@@ -10517,7 +10517,7 @@ def _ls_fixture(root, livestreams):
 def _ls_run(root, *extra):
     # Sealed (_Seal): it replays the Data API's answers and a caption source,
     # and a regression that asked YouTube instead fails here, not quietly.
-    return _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+    return _sealed_run([sys.executable, _paths.script("livestreams.py"),
                         "--since-state", "--replay", "api", "--captions-from", "src",
                         "--origin", "runner", *extra],
                        cwd=str(root), env=_ls_env(), capture_output=True, text=True,
@@ -10642,7 +10642,7 @@ def _ls_nights(livestreams, build_manifest):
         env = {k: v for k, v in _ls_env().items() if k != "GRANITE_PROCEEDINGS"}
 
         def markers():
-            r = _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+            r = _sealed_run([sys.executable, _paths.script("livestreams.py"),
                              "--markers", "--origin", "runner"], cwd=str(root), env=env,
                             capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
@@ -12017,7 +12017,7 @@ def _ls_state(livestreams):
         # not a key's shape: the check above rightly fails on one of those.
         key = "preflight-sentinel-" + "k" * 21
         env = dict(_ls_env(), YOUTUBE_API_KEY=key)
-        r = _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+        r = _sealed_run([sys.executable, _paths.script("livestreams.py"),
                          "--since-state", "--replay", "api", "--captions-from", "src",
                          "--now", "2026-09-25T06:30:00Z"], cwd=str(root), env=env,
                         capture_output=True, text=True, timeout=120)
@@ -15908,7 +15908,7 @@ def _index_json_retired():
         (root / "site" / "idx").mkdir(exist_ok=True)
         stale = root / "site" / "idx" / "1987-1988.json"
         stale.write_text('[{"term": "1987-1988", "id": "HB1"}]', encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
                   "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -17830,7 +17830,7 @@ def _marker_cases():
     a fixture that was then thrown away. Running them here is what makes the
     tenth revision safe."""
     import subprocess, sys
-    f = Path("tests/test_markers.py")
+    f = _paths.locate("tests/test_markers.py")
     if not f.exists():
         return "skip", "tests/test_markers.py not here"
     r = _run([sys.executable, str(f)], capture_output=True, text=True)
@@ -20174,7 +20174,7 @@ def _ballot_built(build_site_v2):
         (root / "ballot_results.json").write_text(json.dumps({"rows": [
             _voters_row("2025-2026", "CACR5", "2026-11-03", 452307, 237221)]}),
             encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
                   "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, ("build_site_v2 failed on the fixture with a ballot row: "
@@ -21197,9 +21197,9 @@ def _built_site(here, root, brand=True, env=None):
     ]
     ran = 0
     for script, args, produces in steps:
-        if not (here / script).exists():
+        if not _paths.locate(script).exists():
             continue
-        r = _run([sys.executable, str(here / script), *args],
+        r = _run([sys.executable, _paths.script(script), *args],
                  cwd=root, capture_output=True, text=True, timeout=180, env=env)
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()
@@ -21262,7 +21262,7 @@ def _fixture_site_v2(root):
         here = Path(".").resolve()
         shared = _shared_root("gr-fixture-v2-")
         _site_fixture(shared)
-        return shared, _run([sys.executable, str(here / "build_site_v2.py"),
+        return shared, _run([sys.executable, _paths.script("build_site_v2.py"),
                              "--data", "data", "--out", "site", "--segments", "work"],
                             cwd=shared, capture_output=True, text=True, timeout=180)
     shared, r = _once_a_run("build_site_v2.py over the fixture", build)
@@ -21607,7 +21607,7 @@ def _chain():
             f"{len(unnamed)} navs with no name: " + "; ".join(unnamed[:4]))
         assert n_tab and not headless, (
             f"{len(headless)} tables with no header cell: " + "; ".join(headless[:4]))
-        r = _run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, _paths.script("check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -21777,7 +21777,7 @@ def _build_date_stated(build_all, build_date, shell):
         assert (site / "calendar" / f"{BC.week_key(day)}.html").exists(), (
             f"the calendar's current week is not the stated day's, {BC.week_key(day)}")
         # A date that is not one stops the builder, and it says which variable.
-        r = _run([sys.executable, str(here / "build_bill_pages.py"), "--site", "site"],
+        r = _run([sys.executable, _paths.script("build_bill_pages.py"), "--site", "site"],
                  cwd=root, capture_output=True, text=True, timeout=120,
                  env={build_date.ENV: "next tuesday"})
         assert r.returncode != 0 and build_date.ENV in (r.stderr or "") + (r.stdout or ""), (
@@ -21966,7 +21966,7 @@ def _links_resolve():
                 "page")
 
         def pages_again():
-            r = _run([sys.executable, str(here / "build_pages.py"), "--out", "site"],
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             assert r.returncode == 0, (
                 "build_pages.py: " + ((r.stderr or r.stdout).strip().splitlines()
@@ -21988,7 +21988,7 @@ def _links_resolve():
             assert want in said[0], (
                 f"the build's one message about a missing logo does not say "
                 f"{want!r}: {said[0][:200]}")
-        r = _run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, _paths.script("check_site.py"),
                   "--site", "site", "--base", base],
                  cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -22018,7 +22018,7 @@ def _links_resolve():
         for css in ("style.css", "app.css"):
             assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (
                 f"with the header mark placed, {css} does not draw it")
-        r = _run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, _paths.script("check_site.py"),
                   "--site", "site", "--base", base],
                  cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -22817,7 +22817,7 @@ def _narrative_own_lsr(N):
             encoding="utf-8")
         (tmp / "Docket.txt").write_text(
             "\n".join(DOCKETS_OWN_LSR["2011-2012"]) + "\n", encoding="utf-8")
-        r = _run([sys.executable, str(Path("narrative.py").resolve()), "--docket",
+        r = _run([sys.executable, _paths.script("narrative.py"), "--docket",
                   "Docket.txt", "--all", "--out", "cur.json"],
                  cwd=tmp, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "narrative.py failed: " + (r.stderr or r.stdout)[-300:]
@@ -22830,12 +22830,9 @@ def _narrative_own_lsr(N):
         # colon into the line the archive's total is read from.
         (tmp / "Docket.txt").unlink()
         (tmp / "data" / "bills.json").rename(tmp / "lsrs.json")
-        shutil.copy("narrative.py", tmp / "narrative.py")
-        env = {**os.environ, "PYTHONPATH": os.pathsep.join(
-            [str(Path(".").resolve())] + [x for x in [os.environ.get("PYTHONPATH")] if x])}
-        r = _run([sys.executable, str(Path("narrate_archive.py").resolve()),
+        r = _run([sys.executable, _paths.script("narrate_archive.py"),
                   "--out", "arch.json", "--bills", str((tmp / "lsrs.json").resolve())],
-                 cwd=tmp, env=env, capture_output=True, text=True, timeout=300)
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "narrate_archive.py failed: " + (r.stderr or r.stdout)[-300:]
         arch = json.loads((tmp / "arch.json").read_text(encoding="utf-8"))
         scr2 = arch["1989-1990"]["SCR2"]
@@ -25759,7 +25756,7 @@ def _organization_day_votes(P, BD, SD, BSP):
         if left:
             bad.append(f"Organization Day's roll call is counted as a row left out: {dict(left)}")
         # rollcall_parser keys each roll call by its term, as rollcalls.json is.
-        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
                   "RollCallSummary.txt", "--dir", "rollcalls", "--all", "--out", "rollcalls.json"],
                  cwd=str(tmp), capture_output=True)
         got = json.loads((tmp / "rollcalls.json").read_text(encoding="utf-8")) \
@@ -27025,7 +27022,7 @@ def _session_recess_and_rule_days(SD, BSP):
             '<?xml version="1.0"?><urlset>\n' + "".join(
                 f"<url><loc>{base}/session/H/{d}.html</loc></url>\n" for d in gone)
             + "</urlset>", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_session_pages.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_session_pages.py"), "--site", "site",
                   "--base", base, "--body", "H"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, "build_session_pages: " + (r.stderr or r.stdout)[-300:]
@@ -27266,7 +27263,7 @@ def _session_pages_pruned(BSP):
                       for d in stale + ["2026-02-19"]) + "</urlset>", encoding="utf-8")
 
         def run(*extra):
-            return _run([sys.executable, str(here / "build_session_pages.py"),
+            return _run([sys.executable, _paths.script("build_session_pages.py"),
                          "--site", "site", "--base", base, "--body", "S", *extra],
                         cwd=root, capture_output=True, text=True, timeout=180)
         r = run()
@@ -27676,7 +27673,7 @@ def _addresses_have_slash():
             f"<url><loc>{u}</loc></url>\n" for u in stale + [other]) + "</urlset>"),
             encoding="utf-8")
         for script, args in (("build_session_pages.py", []), ("build_calendar.py", [])):
-            r = _run([sys.executable, str(here / script), "--site", "site",
+            r = _run([sys.executable, _paths.script(script), "--site", "site",
                       "--base", base, *args],
                      cwd=root, capture_output=True, text=True, timeout=180)
             assert r.returncode == 0, f"{script} rerun: " + (r.stderr or r.stdout)[-200:]
@@ -28686,7 +28683,7 @@ def _feed_needs_a_year():
             (site / "bill" / "2026" / f"{r['id'].lower()}.html").write_text(
                 '<script type="application/json" id="gr-data">'
                 + json.dumps(d) + "</script>", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_feeds.py"),
+        r = _run([sys.executable, _paths.script("build_feeds.py"),
                             "--site", "site", "--base", "https://x.test"],
                            cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
@@ -28745,7 +28742,7 @@ def _feeds_keyed_and_current():
             p.write_text("<rss/>", encoding="utf-8")
 
         def build(*extra):
-            r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+            r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site",
                       "--base", "https://x.test", *extra],
                      cwd=root, capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -28820,7 +28817,7 @@ def _legislator_feed_dates():
             ("12/2/2025", "Inexpedient to Legislate", "Yea"))]
         (site / "legislators" / "10004.json").write_text(
             json.dumps({"votes": votes}), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site",
                   "--base", "https://x.test"],
                  cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -28910,7 +28907,7 @@ def _member_feed_links():
         (site / "legislators" / "300.json").write_text(json.dumps({"votes": []}),
                                                          encoding="utf-8")
         for script in ("build_legislator_pages.py", "build_feeds.py"):
-            r = _run([sys.executable, str(here / script), "--site", "site",
+            r = _run([sys.executable, _paths.script(script), "--site", "site",
                       "--base", "https://x.test"],
                      cwd=root, capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, f"{script}: " + (r.stderr or r.stdout).strip()[-200:]
@@ -29013,7 +29010,7 @@ def _directory_pages():
             (site / "town" / f"{slug}.html").write_text("<p>town</p>", encoding="utf-8")
         shutil.copy(here / "bills.html", site / "bills.html")
         (site / "sitemap.xml").write_text("<urlset>\n</urlset>\n", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_indexes.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_indexes.py"), "--site", "site",
                   "--base", "https://x.test"], cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
         bills = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
@@ -29310,7 +29307,7 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
                 path.unlink(missing_ok=True)
             else:
                 path.write_text(json.dumps(narr), encoding="utf-8")
-            r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
+            r = _run([sys.executable, _paths.script("build_committees.py"), "--site", "site",
                       "--data", "data", "--base", "https://graniterecord.org"],
                      cwd=root, capture_output=True, text=True, timeout=180,
                      env={"GRANITE_PROCEEDINGS": ""})
@@ -29557,7 +29554,7 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
         CD.write_details(book, root / "committee_details.json")
 
         def build(stops=False):
-            r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
+            r = _run([sys.executable, _paths.script("build_committees.py"), "--site", "site",
                       "--data", "data", "--base", "https://graniterecord.org"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             out = (r.stdout or "") + (r.stderr or "")
@@ -30508,7 +30505,7 @@ def _former_heading(BL):
         shutil.copy2(here / "bills.html", site / "bills.html")
         (site / "legislators.json").write_text(json.dumps(M["sitting"]), encoding="utf-8")
         (site / "former.json").write_text(json.dumps(M["former"]), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_legislator_pages.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_legislator_pages.py"), "--site", "site",
                   "--base", "https://x.test"], cwd=root, capture_output=True, text=True,
                  timeout=120)
         assert r.returncode == 0, "build_legislator_pages.py: " + (r.stderr or r.stdout).strip()[-200:]
@@ -32573,7 +32570,7 @@ def _reports_old_shape():
             nested = json.loads((root / name).read_text(encoding="utf-8"))
             flat = {b: r for byb in nested.values() for b, r in byb.items()}
             (root / name).write_text(json.dumps(flat), encoding="utf-8")
-            r = _run([sys.executable, str(here / "build_site_v2.py"),
+            r = _run([sys.executable, _paths.script("build_site_v2.py"),
                                 "--data", "data", "--out", "site",
                                 "--segments", "work"],
                                cwd=root, capture_output=True, text=True,
@@ -32615,7 +32612,7 @@ def _bills_by_term():
                     "title": "an entirely different bill of the same number"})
         bills["2023-2024"] = {"HB1442": old}
         (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
@@ -32692,7 +32689,7 @@ def _termed_status_and_text():
                         "Be it Enacted by the Senate and House"}},
         }), encoding="utf-8")
 
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -32742,7 +32739,7 @@ def _narratives_old_shape():
         nested = json.loads((root / "narratives.json").read_text(encoding="utf-8"))
         flat = {b: r for byb in nested.values() for b, r in byb.items()}
         (root / "narratives.json").write_text(json.dumps(flat), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode != 0, ("the build accepted a narratives.json keyed "
@@ -32906,7 +32903,7 @@ def _rollcalls_old_shape():
             for bill, votes in byterm.items():
                 flat.setdefault(bill, []).extend(votes)
         (root / "rollcalls.json").write_text(json.dumps(flat), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode != 0, ("the build accepted a rollcalls.json keyed on "
@@ -33104,7 +33101,7 @@ def _late_captions_fixture():
             wr.writerow(["video_id", "title", "duration_iso"])
             wr.writerow(["VID1", "House Commerce", "PT15M30S"])
             wr.writerow(["VID4", "House Commerce", "PT2H"])
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                   "--data", "data", "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -33177,7 +33174,7 @@ def _caption_summary_fixture():
             wr.writerow(["video_id", "title", "duration_iso"])
             wr.writerow(["VID1", "House Commerce", "PT15M30S"])
             wr.writerow(["VID4", "House Commerce", "PT2H"])
-        r = _run([sys.executable, str(here / "caption_span.py"), "--write"],
+        r = _run([sys.executable, _paths.script("caption_span.py"), "--write"],
                  cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
         summary = root / "caption_spans.json"
@@ -33189,7 +33186,7 @@ def _caption_summary_fixture():
             (root / "work" / v / "captions.en.json3").unlink()
         # And a second --write where the captions are not must keep what the
         # first one read, not replace it with nothing.
-        r = _run([sys.executable, str(here / "caption_span.py"), "--write"],
+        r = _run([sys.executable, _paths.script("caption_span.py"), "--write"],
                  cwd=root, capture_output=True, text=True, timeout=120)
         again = json.loads(summary.read_text(encoding="utf-8"))["recordings"]
         assert again == doc["recordings"], (
@@ -33197,7 +33194,7 @@ def _caption_summary_fixture():
             "the entries made where they were")
 
         def build():
-            r = _run([sys.executable, str(here / "build_site_v2.py"),
+            r = _run([sys.executable, _paths.script("build_site_v2.py"),
                       "--data", "data", "--out", "site", "--segments", "work"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             if r.returncode != 0:
@@ -33277,7 +33274,7 @@ def _carried_outputs(BA):
     def run(*args, env=None):
         # Sealed: --local skips the network steps, and a regression that ran
         # one would meet the seal's raiser, not the General Court.
-        return _sealed_run([sys.executable, str(here / "build_all.py"), *args],
+        return _sealed_run([sys.executable, _paths.script("build_all.py"), *args],
                            cwd=root, capture_output=True, text=True, timeout=120,
                            env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
     try:
@@ -34799,7 +34796,7 @@ def _documents_night(NI, CA, CL):
     wrap = (
         "import json, os, sys, types, urllib.error, urllib.parse\n"
         "from datetime import date\n"
-        f"sys.path.insert(0, {str(here)!r})\n"
+        f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
         "import refusal\n"
         "import fetch_calendar_archive as CA\n"
         "cfg = json.load(open('pages.json', encoding='utf-8'))\n"
@@ -35219,7 +35216,7 @@ def _second_pass_only_after_network(BA):
 
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-second-pass-"))
-    saved = BA.child
+    saved = BA.child, BA._paths
     ran = []
 
     def build(plan):
@@ -35232,6 +35229,7 @@ def _second_pass_only_after_network(BA):
     try:
         os.chdir(tmp)
         Path("site").mkdir()
+        BA._paths = types.SimpleNamespace(script=lambda name, root=None: name)
         BA.child = types.SimpleNamespace(run=lambda cmd, **kw: (
             ran.append(cmd[1]),
             types.SimpleNamespace(returncode=1 if cmd[1] == "fetch.py" else 0, stdout="ok\n",
@@ -35253,7 +35251,7 @@ def _second_pass_only_after_network(BA):
             "the first pass was skipped for a missing input, and the second was skipped too", ran)
     finally:
         os.chdir(here)
-        BA.child = saved
+        BA.child, BA._paths = saved
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("skipped on a --local plan and wherever no network step started since the "
                   f"first pass; run after any that did; {len(between)} network steps sit between "
@@ -35291,7 +35289,7 @@ def _handoff_reads_this_run(H):
     """
     import types
     from datetime import datetime, timedelta, timezone
-    r = _run([sys.executable, "preflight.py", "--code", "--data"], capture_output=True,
+    r = _run([sys.executable, _paths.script("preflight.py"), "--code", "--data"], capture_output=True,
              text=True, timeout=300)
     assert r.returncode == 2 and "run nothing" in (r.stderr or ""), (
         "preflight.py --code --data ran, and the two together run no check: it exited "
@@ -35309,7 +35307,10 @@ def _handoff_reads_this_run(H):
     started = []
 
     def run(cmd, **kw):
-        if len(cmd) > 1 and str(cmd[1]) == "preflight.py":
+        # Answered by name: handoff gives the path _paths.script found. A
+        # command this does not answer reaches a real child, and a real
+        # preflight started here would run this check again.
+        if len(cmd) > 1 and Path(str(cmd[1])).name == "preflight.py":
             started.append(list(cmd))
             return types.SimpleNamespace(returncode=0, stderr="", stdout=(
                 "  [ FAIL ] a check that fails\n7 passed, 1 failed, 2 skipped\n"))
@@ -35356,7 +35357,8 @@ def _handoff_reads_this_run(H):
                 "a record of the tree before an edit was taken for a run of the code here now",
                 H.last_run()[1])
         said = section()
-        assert len(started) == 1 and started[0][1:] == ["preflight.py", "--code"] and \
+        assert len(started) == 1 and [Path(started[0][1]).name] + started[0][2:] == [
+            "preflight.py", "--code"] and \
             "7 passed, 1 failed, 2 skipped" in said and "Run by `handoff.py` just now: the " \
             "working tree has changed since the last preflight run" in said, (started, said)
         H.record_run("code", results, edited, 1.0)
@@ -36589,7 +36591,7 @@ def _journal_withdrawals(J):
             (bad / "journals" / "2025").mkdir(parents=True)
             (bad / "journals" / "2025" / "HJ 04 February 6, 2025.txt").write_text(
                 "\n".join(_JB_FEB6) + "\n", encoding="utf-8")
-            r = _run([sys.executable, "journal_bills.py", "--root", str(bad / "journals"),
+            r = _run([sys.executable, _paths.script("journal_bills.py"), "--root", str(bad / "journals"),
                       "--out", str(out)], capture_output=True, text=True, timeout=120)
             assert r.returncode != 0 and not out.exists(), (
                 f"a year of sittings with no introduction read was written "
@@ -36604,7 +36606,7 @@ def _journal_withdrawals(J):
                 "              HOUSE JOURNAL NO. 1\n\n"
                 "                          Wednesday, December 2, 2026\n\n"
                 "The House assembled at 10:00 a.m.\n", encoding="utf-8")
-            r = _run([sys.executable, "journal_bills.py", "--root", str(bad / "journals"),
+            r = _run([sys.executable, _paths.script("journal_bills.py"), "--root", str(bad / "journals"),
                       "--out", str(out)], capture_output=True, text=True, timeout=120)
             assert r.returncode == 0 and out.exists(), (r.stdout + r.stderr)[-300:]
             assert sorted(json.loads(out.read_text(encoding="utf-8"))["2025-2026"]) == [
@@ -36851,7 +36853,7 @@ def _journal_step_not_skipped(BA):
     root = Path(tempfile.mkdtemp(prefix="gr-journal-step-"))
 
     def run(*args, env=None):
-        return _sealed_run([sys.executable, str(here / "build_all.py"), *args],
+        return _sealed_run([sys.executable, _paths.script("build_all.py"), *args],
                            cwd=root, capture_output=True, text=True, timeout=120,
                            env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
     try:
@@ -36907,7 +36909,7 @@ def _veto_step_not_skipped(BA):
         for p, _, _ in BA.CARRIED:
             (root / p).write_text('{"recordings": {}}' if p == "caption_spans.json"
                                   else "{}", encoding="utf-8")
-        r = _sealed_run([sys.executable, str(here / "build_all.py"), "--local", "--dry-run"],
+        r = _sealed_run([sys.executable, _paths.script("build_all.py"), "--local", "--dry-run"],
                         cwd=root, capture_output=True, text=True, timeout=120,
                         env={"GITHUB_ACTIONS": ""})
         lines = r.stdout.splitlines()
@@ -39292,7 +39294,7 @@ def _fetch_writes_its_term():
             "</td></tr></table></body></html>", encoding="utf-8")
 
         r = _sealed_run(
-            [sys.executable, str(here / "fetch_bill_status.py"),
+            [sys.executable, _paths.script("fetch_bill_status.py"),
              "--reparse", "--term", "2023-2024", "--data", "data",
              "--out", "bill_status.json", "--cache", "status_pages"],
             cwd=root, capture_output=True, text=True, timeout=120)
@@ -39330,7 +39332,7 @@ def _manifest_out():
         return "skip", "build_manifest.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        r = _run([sys.executable, str(here / "build_manifest.py"),
+        r = _run([sys.executable, _paths.script("build_manifest.py"),
                   "--docket", "Docket_2019-2020.txt", "--videos", "none.csv"],
                  cwd=root, capture_output=True, text=True, timeout=60)
         said = (r.stdout or "") + (r.stderr or "")
@@ -39738,7 +39740,7 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
         (root / "data" / "bills.json").write_text(json.dumps({"2025-2026": {}}),
                                                   encoding="utf-8")
         r = _run([sys.executable, "-c",
-                  f"import sys; sys.path.insert(0, {str(here)!r}); "
+                  f"import sys; sys.path.insert(0, {str(here)!r}); import _paths; "
                   "from pathlib import Path; import build_exports as E; "
                   "E.bills(Path('out'), Path('site')); "
                   "E.sponsors(Path('out'), 'data')"],
@@ -42565,7 +42567,7 @@ def _docket_fetch_stops():
                 for i in range(4)}}), encoding="utf-8")
             (root / "wrap.py").write_text(
                 "import sys, urllib.error\n"
-                f"sys.path.insert(0, {str(here)!r})\n"
+                f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
                 "import fetch_archive_docket as D\n"
                 f"answers = [{', '.join(answers)}]\n"
                 "def get(url, timeout):\n"
@@ -42606,7 +42608,7 @@ def _docket_fetch_stops():
                 for i in range(4)}}), encoding="utf-8")
             (root / "wrap.py").write_text(
                 "import sys\n"
-                f"sys.path.insert(0, {str(here)!r})\n"
+                f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
                 "import fetch_archive_docket as D\n"
                 f"answers = [{repr(good)}] * 4\n"
                 "asked = []\n"
@@ -42834,7 +42836,7 @@ def _offline_modes_ask_nobody():
         env = dict(os.environ, GRANITE_CLOCK_UTC="2026-09-29T09:00:00Z", GITHUB_ACTIONS="")
         for script, offline, online in runs:
             for args, stopped in ((offline, False), (online, True)):
-                r = seal.run([sys.executable, str(here / script), *args], cwd=tmp,
+                r = seal.run([sys.executable, _paths.script(script), *args], cwd=tmp,
                              capture_output=True, text=True, timeout=120, env=env)
                 said = (r.stdout or "") + (r.stderr or "")
                 # Stopped by the refusal, by GitHub's night, or -- for a fetcher GitHub
@@ -43600,7 +43602,7 @@ def _lane_daily():
     """
     import time as _time
     here = Path(".").resolve()
-    lane = here / "watchers" / "gc_lane.py"
+    lane = _paths.locate("watchers/gc_lane.py")
     if not lane.exists():
         return "skip", "watchers/gc_lane.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-lane-"))
@@ -44671,7 +44673,7 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
         (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
         (root / "rollcalls.json").write_text("{}", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_exports.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_exports.py"), "--site", "site",
                   "--data", "data"], cwd=root, capture_output=True, text=True,
                  timeout=120, env={**os.environ, "GRANITE_PROCEEDINGS": ""})
         assert r.returncode == 0, "build_exports on the fixture: " + (r.stderr or r.stdout)[-300:]
@@ -47679,7 +47681,7 @@ def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
                HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
 
     def run(script, *args):
-        r = _run([sys.executable, str(here / script), *args], cwd=tmp, capture_output=True,
+        r = _run([sys.executable, _paths.script(script), *args], cwd=tmp, capture_output=True,
                  text=True, encoding="utf-8", errors="replace", env=env, timeout=300)
         return r.returncode, (r.stdout or "") + (r.stderr or "")
 
@@ -47902,7 +47904,7 @@ def _manifest_with_no_proceeding(BM):
         (tmp / "Docket.txt").write_text(
             "2027|0001|12/2/2026 10:44:26 AM|HR1|H|Introduced and Adopted, VV; 12/02/2026 HJ 1|"
             "12/2/2026 10:44:26 AM\n", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_manifest.py"), "--videos", "v.csv",
+        r = _run([sys.executable, _paths.script("build_manifest.py"), "--videos", "v.csv",
                   "--docket", "Docket.txt", "--out", "vm.csv"], cwd=tmp, capture_output=True,
                  text=True, timeout=120, env=dict(os.environ, PYTHONPATH=str(here)))
         assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
@@ -49621,7 +49623,7 @@ def _dayfiles_rebuild(DF):
         # a guard fires -- a bill gone from the docket -- it writes none.
         out = tmp / "out"
         with _Seal() as seal:
-            r = seal.run([sys.executable, str(here / "dayfiles_from_db.py"), "--views", str(views),
+            r = seal.run([sys.executable, _paths.script("dayfiles_from_db.py"), "--views", str(views),
                           "--installed", str(root), "--out", str(out)],
                          capture_output=True, text=True, timeout=300, cwd=str(tmp))
             assert r.returncode == 0 and "every guard passed" in r.stdout, (r.stdout + r.stderr)[-400:]
@@ -49631,7 +49633,7 @@ def _dayfiles_rebuild(DF):
                 "the command wrote other bytes than rebuild() makes"
             shutil.rmtree(out)
             _dbday_views(DF, views, {"Docket": [r for r in _DBDAY_VIEWS["Docket"] if "SB416" not in r]})
-            r = seal.run([sys.executable, str(here / "dayfiles_from_db.py"), "--views", str(views),
+            r = seal.run([sys.executable, _paths.script("dayfiles_from_db.py"), "--views", str(views),
                           "--installed", str(root), "--out", str(out)],
                          capture_output=True, text=True, timeout=300, cwd=str(tmp))
             assert r.returncode == 1 and "STOP:" in r.stdout and not out.exists(), (
@@ -57204,7 +57206,7 @@ def _chapters():
         bills["2009-2010"]["HB1400"]["lsr_num"] = "2003"
         (root / "data" / "bills.json").write_text(json.dumps(bills),
                                                   encoding="utf-8")
-        r = _run([sys.executable, str(here / "extract_chapters.py")],
+        r = _run([sys.executable, _paths.script("extract_chapters.py")],
                  cwd=root, capture_output=True, text=True, timeout=60,
                  env={**os.environ, "PYTHONPATH": str(here)})
         assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
@@ -57277,7 +57279,7 @@ def _chapters_database():
                 ("1995", "12", "0102"), ("1995", "13", "0077")]
         (root / "db" / "past" / "PastLegislation.psv").write_text(
             "".join("|".join(r) + "\n" for r in past), encoding="utf-8")
-        r = _run([sys.executable, str(here / "extract_chapters.py")],
+        r = _run([sys.executable, _paths.script("extract_chapters.py")],
                  cwd=root, capture_output=True, text=True, timeout=60,
                  env={**os.environ, "PYTHONPATH": str(here)})
         assert r.returncode == 0, (r.stdout + r.stderr).strip()[-400:]
@@ -57369,7 +57371,7 @@ def _chapters_rare():
             yy = int(y) - (1 - int(y) % 2)
             bills.setdefault(f"{yy}-{yy + 1}", {})[b] = {"bill": b, "lsr_num": l}
         (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-        r = _run([sys.executable, str(here / "extract_chapters.py")],
+        r = _run([sys.executable, _paths.script("extract_chapters.py")],
                  cwd=root, capture_output=True, text=True, timeout=60,
                  env={**os.environ, "PYTHONPATH": str(here)})
         assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
@@ -59350,7 +59352,7 @@ def _sponsors_csv_seat(text_sponsors):
                                    "county": "Carroll", "district": "8",
                                    "as_printed": "Rep. McConkey, Carr. 8"}]}})
         r = _run([sys.executable, "-c",
-                  "import sys; sys.path.insert(0, sys.argv[1]); "
+                  "import sys; sys.path.insert(0, sys.argv[1]); import _paths; "
                   "from pathlib import Path; import build_exports as BE; "
                   "BE.sponsors(Path('out'), 'data')", str(here)],
                  cwd=root, capture_output=True, text=True, timeout=60)
@@ -60742,7 +60744,7 @@ def _nothing_stranded():
     if not sheets:
         return "skip", ("no built site here, and the builders are not here to build "
                         "the fixture's; run build_all.py --local first")
-    node = str(Path("audit_css.py"))
+    node = _paths.script("audit_css.py")
     where = []
     for what, site in sheets:
         r = subprocess.run([sys.executable, node, "--site", str(site)],
