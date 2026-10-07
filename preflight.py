@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.421
+# GRANITE_VERSION: 2026-09-04.422
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35104,9 +35104,18 @@ def _cloud_dry_night(CL, BA, SG):
             and "a dry run" in out, (
                 "a kit-up on GitHub's machine for a run of dev with Dry run unticked sent back "
                 "what dev's code made, the census or the night's verdict", out[-400:])
+        # ... with a built site here and its night's verdict beside it, so
+        # that only the ref can be what refuses it. (THE REVIEW OF 7 OCTOBER
+        # 2026: with no site here, "no built site" refused it whatever
+        # site-up made of the ref.)
+        (dry / "site").mkdir()
+        (dry / "site" / "index.html").write_bytes(b"<p>dev's build</p>")
         code, out = call(dry, "site-up", "--run", "702")
-        assert code == 1 and not (bucket / "nights").exists(), \
-            "a run of a branch other than main sent its site for production"
+        assert code == 1 and "sends no site for production" in out and \
+            not (bucket / "nights").exists(), (
+                "a run of a branch other than main sent its site for production, or was refused "
+                "for something else", out[-300:])
+        shutil.rmtree(dry / "site")
         os.environ.pop(CL.REF_ENV, None)
         # A New term run ticked with Dry run (the box is ticked unless a person
         # unticks it) is refused by nightly.py, and the workflow still gives its
@@ -49161,6 +49170,19 @@ def _nightly_dry_run_apart(NI, CL):
             return g.deployed(a, site, target, base)
         NI.upload_and_check = deployed
 
+        def refused_production(run_id, why):
+            """--deploy-to production of `run_id`'s verdict on GitHub's machine,
+            with the site in this folder the very build that verdict judged --
+            so that only `why` can refuse it. (THE REVIEW OF 7 OCTOBER 2026:
+            the site here was another run's, and the fingerprint refused the
+            deploy whether or not the dry run was seen.)"""
+            NI.write_json(NI.RUN_VERDICT, dict(g.kept[run_id],
+                                               fingerprint=NI.fingerprint(Path("site"))))
+            del sent[:]
+            code, out = g.night("--runner", "--deploy-to", "production", run_id=run_id,
+                                github=True)
+            return code == 1 and not sent and why in out
+
         g.night("--runner", "--no-fetch", run_id="501")             # the baseline
         g.how["touch"] = 3
         code, _ = g.night("--runner", "--no-fetch", run_id="502")   # waits for approval
@@ -49204,10 +49226,9 @@ def _nightly_dry_run_apart(NI, CL):
                 dd.get("kept_apart") == NI.DRY_APART and NI.VERDICT.read_bytes() == night_v and \
                 f"- {NI.DRY_APART}" in g.summary.splitlines(), \
                 ("a dry run that never started was not said, apart from the night", dd)
-            del sent[:]
-            NI.write_json(NI.RUN_VERDICT, g.kept["502"])
-            code, _ = g.night("--runner", "--deploy-to", "production", run_id="502", github=True)
-            assert code == 1 and not sent, "a run the workflow calls a dry run deployed production"
+            assert refused_production("502", "a dry run sends nothing to production"), \
+                ("a run the workflow calls a dry run deployed production, or was refused for "
+                 "something else", sent)
         finally:
             os.environ.pop("DRY_RUN", None)
 
@@ -49237,10 +49258,10 @@ def _nightly_dry_run_apart(NI, CL):
                               github=True)
             assert code == 0 and g.dry_verdict()["steps"] == {"night": "success"} and \
                 NI.VERDICT.read_bytes() == night_v, "a run of dev's --close wrote the night's verdict"
+            assert refused_production("502", "a dry run sends nothing to production"), \
+                ("a run of a branch other than main deployed production, or was refused for "
+                 "something else", sent)
             del sent[:]
-            NI.write_json(NI.RUN_VERDICT, g.kept["502"])
-            code, _ = g.night("--runner", "--deploy-to", "production", run_id="502", github=True)
-            assert code == 1 and not sent, "a run of a branch other than main deployed production"
             # ... and a run of main is what it always was: a real night.
             os.environ["GITHUB_REF"] = MAIN_REF
             assert g.night("--runner", "--deploy-to", "preview", run_id="502", github=True)[0] == 0 \
