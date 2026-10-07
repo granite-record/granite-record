@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.6
+# GRANITE_VERSION: 2026-10-01.7
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -587,7 +587,8 @@ def block_html(docs, left_out, esc=html.escape):
 
     latest = "".join(
         f'<li><span class="cdset">{esc(ONE[sid])}</span> '
-        f'<a href="{esc(ds[0].url)}" rel="noopener">{esc(ds[0].label)} (PDF)</a></li>'
+        f'<a class="out" href="{esc(ds[0].url)}" target="_blank" rel="noopener">'
+        f'{esc(ds[0].label)} (PDF)</a></li>'
         for sid, years in sets.items() if years
         for ds in [next(iter(years.values()))])
     years_nav = "".join(
@@ -629,7 +630,11 @@ def block_html(docs, left_out, esc=html.escape):
             # own font, about 167 of the 4,320 names are wider than it has
             # room for at 1024px, and about 15 at its widest.
             f'<p class="cdnow" id="cdnow">{esc(chosen_name(ONE[first], d0.label))}</p>'
-            f'<a class="cdopen" id="cdopen" href="{esc(d0.url)}" rel="noopener" '
+            # A NEW TAB, MARKED AS GOING OUT (the person, 7 October 2026,
+            # F12), as every link to a calendar or journal is: the reader
+            # keeps the Calendar where they left it.
+            f'<a class="cdopen out" id="cdopen" href="{esc(d0.url)}" '
+            'target="_blank" rel="noopener" '
             f'aria-label="{esc(open_name(ONE[first], d0.label))}">Open the PDF</a>'
             '</form>'
             # Outside the form, so it can still speak when the list will not
@@ -666,18 +671,6 @@ def chosen_name(one, label):
 def open_name(one, label):
     """The button's accessible name, which begins with the words it shows."""
     return f"Open the PDF: {chosen_name(one, label)}, at the General Court"
-
-
-def jump_html(here, esc=html.escape):
-    """One link from the week's heading down to the section: on a busy week
-    it is a long way under the schedule. `here` is the page's own address,
-    because every page carries <base href="/"> and a bare fragment would go
-    to the home page.
-
-    NOT "(PDF)": on this site that ends a link which opens a PDF, and this
-    one goes to a section of the page."""
-    return (f'<p class="cdjump"><a href="{esc(here)}#{ANCHOR}" id="cdjump">'
-            'Calendars &amp; Journals, as PDFs</a></p>')
 
 
 def _canon(path):
@@ -766,7 +759,8 @@ def list_body(docs, left_out, esc=html.escape):
             body.append(f'<details class="cdyear" id="{sid}-{y}"{" open" if i == 0 else ""}>'
                         f'<summary>{y} <span class="cdn">{len(ds)}</span></summary>'
                         '<ul class="cdlist">'
-                        + "".join(f'<li><a href="{esc(d.url)}" rel="noopener">'
+                        + "".join(f'<li><a class="out" href="{esc(d.url)}" '
+                                  'target="_blank" rel="noopener">'
                                   f'{esc(d.label)} (PDF)</a></li>' for d in ds)
                         + "</ul></details>")
     if left_out:
@@ -853,8 +847,7 @@ PICKER_JS = r"""
   if(!sec||!sec.querySelector) return;
   function $(id){ return document.getElementById(id); }
   var form=$("cdpick"), selSet=$("cdset"), selYear=$("cdyear"), selDoc=$("cddoc"),
-      open=$("cdopen"), stat=$("cdstat"), now=$("cdnow"), years=$("cdyears"), head=$("cdhead"),
-      jump=$("cdjump");
+      open=$("cdopen"), stat=$("cdstat"), now=$("cdnow"), years=$("cdyears");
   if(!form||!selSet||!selYear||!selDoc||!open) return;
   var IX=null, LOADING=false, FAILED=false, ASKED=false;
 
@@ -940,18 +933,6 @@ PICKER_JS = r"""
   function reach(e){ load(form.contains(e.target)); }
   sec.addEventListener("focusin",reach);
   sec.addEventListener("pointerdown",reach);
-
-  // The link from the week's heading: its address is the page's own with the
-  // section's name, which is right without script; with it the Calendar keeps
-  // the reader on /calendar with the week in the query, and following the
-  // link would load the page again. So it scrolls, and the heading takes focus.
-  if(jump) jump.addEventListener("click",function(e){
-    if(e.defaultPrevented||e.button>0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey) return;
-    e.preventDefault();
-    load(true);
-    sec.scrollIntoView({block:"start"});
-    if(head){ head.tabIndex=-1; head.focus({preventScroll:true}); }
-  });
 })();
 """
 

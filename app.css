@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.198 */
+/* GRANITE_VERSION: 2026-09-07.210 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -945,6 +945,11 @@ white-space:nowrap;max-width:100%}
    to wrap rather than run off the side of the page: a wrapped name is worse
    than an unwrapped one and better than one the reader cannot see. */
 @media (max-width:480px){.mchip{white-space:normal}}
+/* AND WHERE IT WRAPS, BEFORE THE PARTY AND DISTRICT, never inside them: a
+   line ending "Rep. Jason Osborne (R" over one beginning "- Rock 2)" read
+   wrong (the look of 7 October 2026). pchip writes the tag as its own span,
+   in app.js and in build_pages alike. */
+.mchip .mtag{white-space:nowrap}
 /* THE ROLE IS A LABEL. Chair, Vice Chair and Clerk have always been written
    here; the prime sponsor was marked with bold alone, which is not a label,
    does not survive being read aloud, and cannot be told from emphasis. */
@@ -1032,6 +1037,11 @@ font-size:var(--t-ui);line-height:1.6}
 /* The artist's credit, which her licence asks for in the footer of every
    page (and on About): a line under the attribution, in its voice. */
 footer .logocredit{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* WHO MAKES IT, one quiet line under the attribution (the person, 7 October
+   2026): the logo credit's size and grey, and above it, because it is the
+   site's own and the logo's is a credit within it. */
+footer .footby{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+footer .footby + .logocredit{margin-top:var(--sp-2)}
 footer .attrib b{color:var(--ink);font-weight:600}
 /* AN EXTERNAL LINK SAYS SO. Settled in the footer artifact and wanted
    generally; it was never implemented, so "Source on GitHub" and the feedback
@@ -1072,6 +1082,13 @@ justify-content:space-between;font-size:var(--t-sm)}
    of this file keeps undoing: a card or a table fills its box, a sentence
    does not. */
 .src,.lead{max-width:var(--measure)}
+/* EXCEPT A NOTE THAT STANDS FOR A SECTION (the person, 7 October 2026, F9).
+   On the committees index "No bills or sessions on record" and "Not on the
+   General Court's list today" are each a heading and a paragraph over cards
+   that fill the page, and the paragraph held to 560px sat in the left half
+   of it, as did a committee page's own "not on the list" and "no day on
+   record" notes. Those take the width they have. */
+.src.fill{max-width:none}
 
 /* STATUTE'S TYPE, WHERE IT HAD ONLY HALF LANDED.
    Direction 2 sets brand, hero, title, lead and reading in Source Serif 4 and
@@ -1170,7 +1187,8 @@ line-height:1.1}
      rule that sets type in --on-pine to this list or to the one above. */
   .stop.s-p b,.stop.s-x b,.fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
-  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup{
+  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
+  .rtabs [role=tab][aria-selected=true]{
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
@@ -1179,6 +1197,46 @@ line-height:1.1}
    would say nothing a reader can use, so none is drawn on the container
    itself; the first thing inside it that takes the focus draws its own. */
 :is(#results,#main)[tabindex="-1"]:focus{outline:none}
+
+/* IN THE SHARED REGION SINCE 7 OCTOBER 2026, because the legislators page
+   (style.css) took the same two-tab strip for Towns and Legislators (F5),
+   and one strip drawn by two copies of its rules is how the two would come
+   to differ. */
+/* A TOWN PAGE IN TABS (the person, 24 September 2026: the sections "just
+   read as very cluttered and indistinct"). Representatives, Town officials
+   and How to vote are three questions, and each is a tab; the answer to the
+   first -- the county and the districts -- is the line above them.
+
+   The strip is the legislators page's (.rtabs): underlined, not boxed,
+   because it sits directly on what it switches. It scrolls inside itself
+   rather than letting the page scroll sideways, so a sixth tab on a 360px
+   phone costs the strip a swipe and never the page its width; below 480px
+   the tabs share the width and a two-word label may wrap to two lines first.
+   The underline is an inset shadow and not a border pulled down over the
+   strip's rule, because a scrolling strip clips anything that hangs out of
+   it. Written `hidden` and shown by the script: without JavaScript every
+   panel is on the page under its own heading and a strip of buttons that did
+   nothing would only be in the way. */
+.twntabs{display:flex;border-bottom:1px solid var(--rule);
+  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto}
+.twntabs[hidden]{display:none}
+.twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
+  font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
+  color:var(--ink-2);padding:var(--sp-3) var(--sp-7);min-height:44px;
+  text-align:center}
+.twntabs [role=tab]:hover{color:var(--ink)}
+.twntabs [role=tab][aria-selected=true]{color:var(--ink);
+  box-shadow:inset 0 -2px 0 var(--pine)}
+.twntabs [role=tab]:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+@media (max-width:480px){.twntabs [role=tab]{flex:1 1 auto;padding:var(--sp-3) var(--sp-4)}}
+.twnpane[hidden]{display:none}
+/* A panel's own heading, which is the page's outline with or without the
+   script. Without it, each panel is a part of one long page and says which;
+   with it, the tab above already says so, and the heading is kept for a
+   screen reader walking the headings. */
+.twnph{font-size:var(--t-title);line-height:1.25;margin:var(--sp-9) 0 var(--sp-5)}
+.twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute;width:1px;height:1px;
+  padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* SHARED:END ------------------------------------------------------------ */
 
@@ -2710,24 +2768,31 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
    sat at 560 under a full-width tab strip, which is the same left-confinement
    one block up.
 
-   :has(.croster) SCOPES THIS TO A COMMITTEE PAGE and nothing else. .src is
+   :has(.cmtehead) SCOPES THIS TO A COMMITTEE PAGE and nothing else. .src is
    used all over the site and .pane is shared with the bill card and the
-   legislator page, neither of which was asked about and neither of which has
-   a committee roster in it. A selector that reached them would be the same
+   legislator page, neither of which was asked about and neither of which
+   draws a committee's head. A selector that reached them would be the same
    over-reach as compacting the bill page's play stubs. */
 .cpurpose .src,.cday .src,.cday .note{max-width:none}
 /* A sitting's page is the same case: its cards run the full width and the
    journal line under the heading and the notes in each section stopped at
    560px beside them (the review of 2 October 2026). */
 .sesspage > .src,.sesspage .sday > .note{max-width:none}
-main:has(.croster) .pane > .src,
-main:has(.croster) .cal .note,
-main:has(.croster) .cal p,
+/* BY THE COMMITTEE'S HEAD, NOT ITS ROSTER (F9, the look of 7 October
+   2026). A committee no longer on the General Court's list has no roster, so
+   :has(.croster) missed every retired committee's page and its "Nothing is
+   scheduled" note and its count of bills stayed at 560px. .cmtehead is the
+   head every committee page draws (renderCommitteeHead) and no other page
+   does. */
+main:has(.cmtehead) .phead > .src,
+main:has(.cmtehead) .pane > .src,
+main:has(.cmtehead) .cal .note,
+main:has(.cmtehead) .cal p,
 /* And the day's timeline. .tl li caps at the measure, which is right on a
    bill -- there the list sits in a 560px pane beside the facts panel. Here
    320 of them sat at 560 inside a 1,132px row, so a bill's title wrapped
    halfway across a line that had nothing in the other half. */
-main:has(.croster) .cday .tl li{max-width:none}
+main:has(.cmtehead) .cday .tl li{max-width:none}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:var(--sp-6) 0 0}
 
@@ -2837,41 +2902,6 @@ margin-top:var(--sp-1)}
 .offtitle{font-size:var(--t-hero);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
 .officials .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-7)}
 
-/* A TOWN PAGE IN TABS (the person, 24 September 2026: the sections "just
-   read as very cluttered and indistinct"). Representatives, Town officials
-   and How to vote are three questions, and each is a tab; the answer to the
-   first -- the county and the districts -- is the line above them.
-
-   The strip is the legislators page's (.rtabs): underlined, not boxed,
-   because it sits directly on what it switches. It scrolls inside itself
-   rather than letting the page scroll sideways, so a sixth tab on a 360px
-   phone costs the strip a swipe and never the page its width; below 480px
-   the tabs share the width and a two-word label may wrap to two lines first.
-   The underline is an inset shadow and not a border pulled down over the
-   strip's rule, because a scrolling strip clips anything that hangs out of
-   it. Written `hidden` and shown by the script: without JavaScript every
-   panel is on the page under its own heading and a strip of buttons that did
-   nothing would only be in the way. */
-.twntabs{display:flex;border-bottom:1px solid var(--rule);
-  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto}
-.twntabs[hidden]{display:none}
-.twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
-  font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
-  color:var(--ink-2);padding:var(--sp-3) var(--sp-7);min-height:44px;
-  text-align:center}
-.twntabs [role=tab]:hover{color:var(--ink)}
-.twntabs [role=tab][aria-selected=true]{color:var(--ink);
-  box-shadow:inset 0 -2px 0 var(--pine)}
-.twntabs [role=tab]:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
-@media (max-width:480px){.twntabs [role=tab]{flex:1 1 auto;padding:var(--sp-3) var(--sp-4)}}
-.twnpane[hidden]{display:none}
-/* A panel's own heading, which is the page's outline with or without the
-   script. Without it, each panel is a part of one long page and says which;
-   with it, the tab above already says so, and the heading is kept for a
-   screen reader walking the headings. */
-.twnph{font-size:var(--t-title);line-height:1.25;margin:var(--sp-9) 0 var(--sp-5)}
-.twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute;width:1px;height:1px;
-  padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* A PANEL IS CARDS. Each section is a card with the heading at its top, so
    where one ends and the next begins is an edge and not a guess -- the same
    card as a bill's facts and a calendar's meeting. Two abreast from 1100px,
@@ -3614,6 +3644,9 @@ padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
    be folded. The DOM order is the reading order at every width: heading,
    month, filters, schedule. Every colour is a token, so both themes hold. */
 .calhead h1{font-size:var(--t-title);line-height:1.2;margin:0 0 var(--sp-3)}
+/* A week with sittings has no line under its heading (F11, 7 October 2026);
+   the paragraph stays for the script to say a week could not be loaded. */
+.calhead p.src:empty{display:none}
 /* The heading takes focus when the arrow a reader pressed is no longer there
    ("This week" on this week), so it shows a ring when a keyboard put it there. */
 .calhead h1:focus{outline:none}
@@ -3664,7 +3697,17 @@ border-collapse:separate;border-spacing:2px}
 .cmgrid th{padding:var(--sp-2) 0;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);
 text-align:center}
 .cmgrid td{height:46px;padding:var(--sp-2) 0 0;text-align:center;vertical-align:top;
-border-radius:var(--r-in);cursor:pointer;color:var(--ink)}
+border-radius:var(--r-in);cursor:pointer;color:var(--ink);background:var(--surface)}
+/* THE MONTH IS A BLOCK OF TILES, AND THE MONTHS EITHER SIDE ARE NOT (F10,
+   the look of 7 October 2026). The days of the months either side were
+   greyed exactly as the month's own past days are, so 28 to 30 September
+   read as part of October and a past month could not be told from its
+   neighbours at all. Their numbers cannot go fainter -- --ink-2 is the
+   lightest grey that is still 4.5:1 text (S11, below) -- so the month's own
+   days sit on the card's surface and theirs on the page itself, which is how
+   a desktop calendar greys the days of another month. The selected week's
+   band, the hover and the chosen day are written after this and still win. */
+.cmgrid td.cmout{background:none}
 /* PROPORTIONAL FIGURES, NOT TABULAR. Each day's number is centred in a cell
    of its own, so there is no column of digits to line up, and Public Sans's
    tabular "1" carries a foot that set the whole month in what read as a
@@ -4013,9 +4056,6 @@ font-size:var(--t-ui);line-height:1.4}
 /* What the two kinds of document are, and what is not here: said last and
    quietly, under the links they are about. */
 .cdocs .src,.cdleft{margin:0 0 var(--sp-2);font-size:var(--t-ui);line-height:1.5;color:var(--ink-2)}
-/* Down to the section from the week's name: a busy week is a long scroll. */
-.cdjump{margin:var(--sp-3) 0 0;font-size:var(--t-ui);font-weight:600}
-.cdjump a{display:inline-block;padding:var(--sp-1) 0}
 @media (max-width:700px){
   /* Stacked, each as wide as the column and 44px tall, with the select's
      text at 16px so a phone does not zoom the page on focus. */
@@ -4261,6 +4301,9 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vblk-head,.vblk-legend{font-family:var(--sans);font-size:var(--t-sm);
   color:var(--ink-2);line-height:1.5}
 .vblk-item{margin-left:var(--sp-7)}
+/* A rule the document draws in characters (U+2500 box-drawing, "- - -", "____"): one
+   line, cut at the column's edge, never wrapped into three (app.js, VRULE). */
+.vblk.vrule{white-space:nowrap;overflow:hidden}
 /* NO HIGHLIGHT BEHIND IT. Bold italic is what the Court prints and what the
    bill's own legend tells the reader to look for; a coloured wash on top
    would be this site's convention laid over the Court's, and the comment
@@ -4752,6 +4795,18 @@ text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
 text-transform:uppercase;color:var(--ink-2);padding:var(--sp-4) var(--sp-5) var(--sp-2);
 background:var(--paper);border-bottom:1px solid var(--rule)}
 :where(body.pg) .lmnone{font-size:var(--t-ui);color:var(--ink-2);padding:var(--sp-5) var(--sp-5)}
+/* THE TOWNS TAB IS THE TOWNS (F5, the look of 7 October 2026). The window
+   above was made for a finder sitting over the roster; as the whole of its
+   own tab it was a box and six towns over an empty page. There the list is
+   as long as it is, and while nothing is typed (.all) every town runs A to Z
+   down one column and on down the next, as the roster's alphabetical view
+   does, filling the width. A city opened with its wards is one block, so its
+   chips never start the next column. */
+:where(body.pg) #towns .lmatch{max-height:none;overflow:visible}
+:where(body.pg) #towns .lmatch.all{columns:200px;column-gap:0;column-rule:1px solid var(--rule)}
+:where(body.pg) #towns .lmatch.all .lmrow,:where(body.pg) #towns .lmatch .lmgrp{break-inside:avoid}
+/* Two on a phone, where one ran 11,000px; a long name takes two lines. */
+@media (max-width:480px){:where(body.pg) #towns .lmatch.all{columns:2}}
 /* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
    406 members in ten counties is a page nobody reads in order, and the
    counties were ten headings with everything under all of them open. Each
@@ -5019,8 +5074,10 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
 /* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
    legislators.html produces exactly the ?town= and ?q= those two boxes read,
    so it works with JavaScript off, the browser remembers what was typed, and
-   the Enter key needs no handler. The type-ahead with all 259 towns stays on
-   the legislators page, where the data it needs is already being fetched. */:where(body.pg) .hfind{background:var(--surface);border:1px solid var(--rule-2);
+   the Enter key needs no handler. The towns it suggests as the reader types
+   are a datalist written into the page (F4, 7 October 2026), so the
+   browser's own dropdown offers them and nothing is fetched; the ranked
+   type-ahead with members and wards stays on the legislators page. */:where(body.pg) .hfind{background:var(--surface);border:1px solid var(--rule-2);
   border-radius:var(--r-out);padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-7)}
 :where(body.pg) .hfind h2{margin:0 0 var(--sp-2);font-size:var(--t-sm);font-weight:600;letter-spacing:.05em;
   text-transform:uppercase;color:var(--ink-2)}
@@ -5033,6 +5090,32 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
   border:1px solid var(--edge);border-radius:var(--r-in);padding:0 var(--sp-4);
   font-size:var(--t-ui);min-height:42px;min-width:62px}
 :where(body.pg) .hfrow button:hover{border-color:var(--pine);color:var(--pine)}
+/* THE PLACEHOLDER WHOLE ON A PHONE (the person, 7 October 2026, F4: "text cut
+   off"). Beside its button the field was about 230px at 375px, and "Your
+   town, or a legislator's name" was cut after "legislator". Under 480px the
+   button takes a line of its own under the field, so the field has the full
+   width of the panel; the panel's padding gives a little back for the same
+   reason.
+   AND IN THE THREE COLUMNS (the look of 7 October 2026). From 1180px the
+   finder is in the right-hand column, 290px at most, and beside its button
+   the field was 170px: "Your town, or a leg". The same arrangement there,
+   for the same reason. Between the two the finder runs the page's width and
+   the button stays beside the field.
+   That alone left it at "Your town, or a legislator's na": Chrome keeps room
+   at the right of a search box for its clear button and as much again for a
+   datalist's arrow, even while the box is empty. Neither does anything then
+   -- there is nothing to clear, and the towns are offered as the reader
+   types -- so neither takes the room while the placeholder shows, and the
+   field's own padding gives back a little more in these two layouts. */
+:where(body.pg) #hq2::-webkit-calendar-picker-indicator{display:none !important}
+:where(body.pg) #hq2:placeholder-shown::-webkit-search-cancel-button{display:none}
+@media (max-width:480px),(min-width:1180px){
+  :where(body.pg) .hfind{padding:var(--sp-5) var(--sp-4)}
+  :where(body.pg) .hfrow{flex-wrap:wrap}
+  :where(body.pg) .hfrow input{flex:1 1 100%}
+  :where(body.pg) .hfrow button{flex:1 1 100%}
+  :where(body.pg) .hfrow input{padding-left:var(--sp-4);padding-right:var(--sp-4)}
+}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
    380px, and each is fixed by reflowing rather than by horizontal scrolling,
@@ -5143,23 +5226,32 @@ color:var(--ink);margin:0 0 var(--sp-4);text-align:center}
 
 /* THREE WAYS TO ARRANGE THE CHAMBER. Tabs rather than a dropdown, because
    the choice is the point of the section and a reader should see all three
-   without opening anything. Underlined rather than boxed: they sit directly
-   above the list they reorder, and a row of filled boxes there competed with
-   the roster beneath it. */
-:where(body.pg) .rtabs{display:flex;justify-content:center;
-border-bottom:1px solid var(--rule);margin:var(--sp-7) 0 var(--sp-6)}
+   without opening anything.
+
+   A VIEW SWITCH, NOT A SECOND ROW OF TABS (the look of 7 October 2026). Once
+   the page itself became two tabs, Towns and Legislators (F5), these three
+   sat directly under that strip drawn the same way -- underlined, on a rule
+   -- so on a phone the two strips were twins and nothing said which one
+   changed the page and which one only rearranged the list. They are drawn
+   as the Calendar's List / Week / Month switch is (.calviews): one edged
+   group, the chosen one filled. The page's tabs stay the underlined kind. */
+:where(body.pg) .rtabs{display:flex;justify-content:center;margin:var(--sp-7) 0 var(--sp-6)}
 /* Even thirds, centred on the page: asked for in those words, and it suits
    three choices of equal standing better than a left-aligned row where the
    first reads as the important one. Capped so they do not stretch into three
    enormous targets on a wide screen. */
 :where(body.pg) .rtabs [role=tab]{flex:1 1 0;max-width:230px;text-align:center;
-background:none;border:0;cursor:pointer;
-font:inherit;font-size:var(--t-ui);font-weight:600;color:var(--ink-2);
-padding:var(--sp-3) var(--sp-4);margin-bottom:-1px;
-border-bottom:2px solid transparent;min-height:44px}
-:where(body.pg) .rtabs [role=tab]:hover{color:var(--ink)}
-:where(body.pg) .rtabs [role=tab][aria-selected=true]{color:var(--ink);
-border-bottom-color:var(--pine)}
+cursor:pointer;font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
+color:var(--ink-2);background:var(--surface);border:1px solid var(--edge);
+padding:var(--sp-3) var(--sp-4);min-height:44px}
+:where(body.pg) .rtabs [role=tab] + [role=tab]{border-left-color:var(--rule-2);margin-left:-1px}
+:where(body.pg) .rtabs [role=tab]:first-child{border-radius:var(--r-in) 0 0 var(--r-in)}
+:where(body.pg) .rtabs [role=tab]:last-child{border-radius:0 var(--r-in) var(--r-in) 0}
+:where(body.pg) .rtabs [role=tab]:hover{color:var(--ink);background:var(--wash)}
+:where(body.pg) .rtabs [role=tab][aria-selected=true]{color:var(--on-pine);
+background:var(--pine);border-color:var(--pine)}
+:where(body.pg) .rtabs [role=tab]:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+:where(body.pg) .rtabs [role=tab][aria-selected=true]:focus-visible{outline-color:var(--on-pine)}
 :where(body.pg) .rpane[hidden]{display:none}
 
 /* The way out of Latest activity. Five rows and then the bill search, which
@@ -5272,8 +5364,41 @@ columns:270px;column-gap:var(--sp-7)}
 :where(body.pg) .partycols{display:grid;gap:var(--sp-5) var(--sp-7);
 grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:start}
 :where(body.pg) .partycols .seatlist{columns:auto}
-:where(body.pg) .pcol h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
+:where(body.pg) .pcol h3,:where(body.pg) .sdiv h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
+/* THE SEAT LIST, ONE COLUMN PER DIVISION (the person, 7 October 2026, F8):
+   five abreast at the page's full width, in the chart's order -- 5, 4, 3, 2,
+   1, as the hall runs left to right -- so each column stands under its own
+   division of the chart.
+
+   WHERE FIVE DO NOT FIT, ONE DIVISION UNDER THE NEXT, each across the width
+   with its own seats balanced into columns (the look of 7 October 2026). A
+   grid that wrapped the five into rows of four or three started the next row
+   under the longest division above it, so at 1024px Division 1 began some
+   7,400px down, under a column that had ended 4,600px earlier, and at 768px
+   two columns stood over blank space. A division is never cut across: its
+   heading, then its seats, then the next.
+
+   A column at five is about 200px, under the 360px the longest chip asks
+   for, and a column of a division under 1180px is 270px and up, so here a
+   chip may wrap -- between the name and its "(R - Rock 2)", which .mtag
+   keeps whole -- rather than run past its column, as the longest names did
+   at 1024px (the chip's own rule allows that where there is genuinely not
+   room, and five columns was asked for). */
+:where(body.pg) .seatcols .sdiv{margin:0 0 var(--sp-8)}
+:where(body.pg) .seatcols .sdiv .seatlist{columns:270px;column-gap:var(--sp-7)}
+:where(body.pg) .seatcols .srost .seatlist{columns:auto}
+:where(body.pg) .seatcols .mchip{white-space:normal}
+@media (min-width:1180px){
+  :where(body.pg) .seatdivs{display:grid;gap:var(--sp-6);
+  grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;
+  margin:0 0 var(--sp-8)}
+  :where(body.pg) .seatdivs > .sdiv{margin:0}
+  :where(body.pg) .seatdivs .sdiv .seatlist{columns:auto}
+  :where(body.pg) .seatdivs .seatrow{gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) var(--sp-1)}
+  :where(body.pg) .seatdivs .seatrow .sseat{flex:0 0 3.2em}
+  :where(body.pg) .seatdivs .mchip{margin:0}
+}
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
 padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);

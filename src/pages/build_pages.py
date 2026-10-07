@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.142
+# GRANITE_VERSION: 2026-09-04.153
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -613,6 +613,87 @@ def committee_codes(site):
 # one, HOME_JS's _meetline, and the clock block that counted the days off
 # the total. meeting_key() stays: the calendar groups by it.
 
+VACANCY_NOTE = ("Seats fall vacant during a term when members resign or die. "
+                "A House seat is filled by special election only if the town "
+                "or city asks the Governor and Executive Council to call one, "
+                "so some stay vacant until the next general election. A "
+                "Senate seat is filled as the state constitution provides.")
+
+
+def seat_columns(house, row):
+    """The House by seat, one column per division, as markup; `house` the
+    members in seat order and `row(m)` the row that draws one.
+
+    ONE COLUMN PER DIVISION (the person, 7 October 2026, F8: "the House
+    seating chart shows 3 columns for 5 sections"). The list under the chart
+    was one run of seat numbers balanced into as many columns as fit, three at
+    full width, so a column ended partway through a division. Now each of the
+    chamber's five divisions is a column of its own, headed as the chart
+    labels it and counted, five abreast where the width allows (app.css,
+    .seatdivs). A seat number decodes as division * 1000 + seat (seating.py).
+    The Speaker, whose seat is on the rostrum and in no division, is above
+    them, and a member with no seat on file, which the roster has not had,
+    after them. Every row is still a .seatrow inside #seatlist, where the seat
+    map's script finds them.
+
+    IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026). The divisions
+    run left to right across the hall as 5, 4, 3, 2, 1 (seating.HIGHEST), and
+    the chart directly above draws them so; the columns ran 1 to 5, so the
+    list was the chart's mirror image and Division 1's column stood under
+    Division 5. The markup is in the chart's order, so the reading order, the
+    keyboard's order and what the eye sees agree at every width: five
+    abreast, or one division under the next where five do not fit.
+    """
+    divs = OrderedDict()
+    for m in house:
+        divs.setdefault(int(m["seat"]) // 1000 if m.get("seat") else 0, []).append(m)
+    rostrum = divs.pop(seating.SPEAKER_SEAT // 1000, [])
+    unseated = divs.pop(0, [])
+
+    def block(heading, ms, cls="sdiv"):
+        return (f'<section class="{cls}"><h3>{heading}</h3><ol class="seatlist">'
+                + "".join(row(m) for m in ms) + "</ol></section>")
+    return ((block("The rostrum", rostrum, "sdiv srost") if rostrum else "")
+            + ('<div class="seatdivs">' + "".join(
+                block(f"Division {d} &mdash; {len(ms)}", ms)
+                for d, ms in sorted(divs.items(), reverse=True)) + "</div>" if divs else "")
+            + (block("No seat on file", unseated) if unseated else ""))
+
+
+def home_towns(out):
+    """Every town and city in site/districts.json, A to Z, for the home
+    page's finder to suggest; [] where the file is not there, and the box is
+    then a plain box that still works."""
+    try:
+        d = json.loads((Path(out) / "districts.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print("  home: no site/districts.json to read, so the finder suggests "
+              "no towns")
+        return []
+    return sorted((t for t in d if str(t).strip()), key=str.lower)
+
+
+def home_week(week):
+    """A week's days as the home page's Coming up holds them: without the
+    special study and statutory committees.
+
+    "Study committee meetings should not be in 'Coming up'" (the person, 7
+    October 2026, F1), and later the same day which ones: a special committee
+    set up by a bill to study something -- "Committee to Study Siting and
+    Maintenance Rules Regarding Certain Intellectual and Developmental
+    Disability (IDD) and Acquired Brain Disorder (ABD) Community Residences" --
+    is left off, while a standing committee's interim study sessions stay,
+    because those are the chamber's own committees at work on its own bills.
+    meeting_who already draws that line for the Calendar page's filters, so
+    the rail asks it rather than drawing a second one. They stay on the
+    Calendar, where the Study Committee filter shows them.
+    """
+    from collections import OrderedDict
+    return {d: OrderedDict((k, rs) for k, rs in day.items()
+                           if meeting_who(k.name, rs) != "study")
+            for d, day in (week or {}).items()}
+
+
 def calendar_html(out, today=None, rows=None):
     """What is left of this week, by day and then by meeting.
 
@@ -646,11 +727,11 @@ def calendar_html(out, today=None, rows=None):
     today = today or build_date.today()
     weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
     sunday = BC.monday(today) + _dt.timedelta(days=6)
-    week = weeks.get(BC.week_key(today)) or {}
+    week = home_week(weeks.get(BC.week_key(today)))
     dates = sorted(d for d in week
                    if today.isoformat() <= d <= sunday.isoformat() and week[d])
     nxt = BC.week_key(sunday + _dt.timedelta(days=1))
-    n_next = sum(len(v) for v in (weeks.get(nxt) or {}).values())
+    n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
@@ -787,10 +868,23 @@ def _cesc(s):
 # the pill's tint won wherever a member chip appeared on a page built here: the
 # roster's chips arrived tinted and unpadded. That was patched by specificity
 # first; this is the real fix.
+#
+# THE PARTY AND DISTRICT ARE ONE UNIT (the look of 7 October 2026). Where a
+# chip has to wrap -- the House by seat in five columns, any chip on a phone --
+# it broke wherever a space fell, so a line ended "Rep. Jason Osborne (R" and
+# the next began "- Rock 2)". The trailing "(R - Rock 2)" is its own span,
+# which app.css keeps on one line, so a chip that wraps does so between the
+# name and the tag. The text is unchanged; app.js's pchip does the same.
+CHIP_TAG = re.compile(r"(.*\S)\s+(\([^()]*\))")
+
+
 def pchip(m, esc=_cesc):
     """One legislator, as the site draws them everywhere else."""
     code = str(m.get("party_code") or m.get("party") or "").upper()[:1] or "X"
-    who = esc(m.get("display_full") or m.get("label") or m.get("name") or "")
+    full = str(m.get("display_full") or m.get("label") or m.get("name") or "")
+    tag = CHIP_TAG.fullmatch(full)
+    who = (f'{esc(tag.group(1))} <span class="mtag">{esc(tag.group(2))}</span>'
+           if tag else esc(full))
     role = m.get("role") if (m.get("role") and m.get("role") != "Member") else (
         "Prime" if m.get("prime") else "")
     slug = m.get("slug") or ""
@@ -1060,10 +1154,13 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # THE OFFICIAL DOCUMENT, where the caller has one: the calendar
             # that printed the notice, or the journal of a floor sitting.
             # Addresses the record holds, passed in; never built here.
+            # In a new tab and marked as going out, as every calendar and
+            # journal on the Calendar opens (F12, 7 October 2026).
             got = (docs or {}).get(key) or []
             if got:
                 html.append('<p class="calmore caldocs">'
-                            + "".join(f'<a href="{esc(u)}" rel="noopener">'
+                            + "".join(f'<a class="out" href="{esc(u)}" '
+                                      'target="_blank" rel="noopener">'
                                       f'{esc(w)} (PDF)</a>' for w, u in got)
                             + "</p>")
             # A STUDY OR STATUTORY COMMITTEE'S RECORDING, where one is named
@@ -1096,6 +1193,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
     return "".join(html), missing
 
 
+HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
+                "also sign in online to register a position and submit "
+                "written testimony.")
+
+
 def cal_notes(up, missing, esc):
     """The note under the calendar: what a hearing is."""
     html = []
@@ -1107,8 +1209,12 @@ def cal_notes(up, missing, esc):
     # links to it.
     # A public hearing is the one a reader can speak at; an executive session
     # is the one where the committee votes. Worth saying once.
-    html.append('<p class="note">Anyone may attend and speak at a public '
-                'hearing, or sign in for or against without speaking. An '
+    # THE FIRST TWO SENTENCES ARE THE PERSON'S, word for word (7 October
+    # 2026, F2): speaking at a hearing is asked for rather than assumed, and
+    # the online sign-in both registers a position and takes written
+    # testimony. HEARING_NOTE is the one copy; app.js's calendarBlock prints
+    # the same words, and preflight holds the two to them.
+    html.append(f'<p class="note">{HEARING_NOTE} An '
                 'executive session is where the committee votes on what to '
                 'recommend; it is open to watch but not to testify.</p>'
                 "</section>")
@@ -1221,6 +1327,7 @@ def shell(title, current, body, wide=False, script="", desc="",
 General Court</b>. Not affiliated with the General Court, and not a substitute
 for it &mdash; where this site and the Court&rsquo;s own record disagree, the
 Court is right and we want to know.</p>
+<p class="footby">An independent project by Alice Wade &middot; <a href="about.html">About</a></p>
 <p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
 &middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
 </div>
@@ -1528,6 +1635,12 @@ deleted after a week.</p>
 <h2>Corrections</h2>
 <p>If something here misrepresents the record, it should be corrected. The official
 record at gc.nh.gov always takes precedence over anything shown here.</p>
+
+<h2 id="who">Who makes Granite Record</h2>
+<p>Granite Record is built and maintained by Alice Wade, independently.</p>
+<!-- WHO MAKES IT: the person is writing the fuller description of who makes
+     the site and why (7 October 2026). It goes here, under this sentence, and
+     nothing else is to be written in its place. -->
 
 <h2>Independence</h2>
 <p>This site is not affiliated with or endorsed by the New Hampshire General Court.
@@ -2195,13 +2308,16 @@ function townRow(t){
   // A town without wards is a link straight to its page. A city cannot be:
   // there is no town/concord.html, only concord-ward-1 through 10. So it
   // opens its wards, one chip each, and the chip is the link.
+  // A city opened is one block with its wards, so the list's columns
+  // (the Towns tab's whole list) never put the wards at the head of the next.
   if(t.wards.length>1)
-    return `<button type="button" class="lmrow${picked===t.town?" sel":""}"
+    return (picked===t.town?`<div class="lmgrp">`:"")
+      + `<button type="button" class="lmrow${picked===t.town?" sel":""}"
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${t.wards.length} wards</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
           `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
-            >Ward ${esc(w)}</a>`).join("") + `</div>` : "");
+            >Ward ${esc(w)}</a>`).join("") + `</div></div>` : "");
   return `<a class="lmrow" href="town/${esc(t.slug)}.html"
     ><b>${esc(t.town)}</b></a>`;
 }
@@ -2243,6 +2359,10 @@ function render(){
   // Python string, where a backslash belongs to whichever one reads it
   // first. Python read one, dropped it, and left the JavaScript with an
   // unterminated string and the whole page with no script.
+  // THE WHOLE LIST, WHILE NOTHING IS TYPED, is the Towns tab's content (the
+  // look of 7 October 2026): every town A to Z, in columns down the page, not
+  // a 260px window over six of them. Typed, it is a ranked answer, one column.
+  out.classList.toggle("all",!n&&!mem.length);
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
@@ -2363,6 +2483,13 @@ const fd=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
 // ambiguous. The server-rendered copy below writes the same form.
 const fdy=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
   return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
+// THE FLOOR SESSION'S OWN TITLE, "House Session (August 19th, 2026)": the
+// person's pattern (7 October 2026, F3), the month in full and the day as an
+// ordinal. 11th, 12th and 13th are the exceptions to 1st, 2nd and 3rd.
+const ordinal=n=>n+((n%100>=11&&n%100<=13)?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th"));
+const fdo=d=>{if(!d)return"";const[y,m,dd]=d.split("-").map(Number);
+  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"long"})
+    +" "+ordinal(dd)+", "+y;};
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -2596,12 +2723,14 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const built=(sess.dataset.days||"").split(" ");
   const dayLink=v=>{
     const key=(v.chamber==="Senate"?"S":"H")+"/"+v.date;
-    return built.includes(key)?`<a href="/session/${esc(key)}">${fd(v.date)}</a>`:fd(v.date);
+    return built.includes(key)?`<a href="/session/${esc(key)}">${fdo(v.date)}</a>`:fdo(v.date);
   };
+  // "House Session (August 19th, 2026)", with the date the way to that
+  // sitting's page where one is built.
   sess.innerHTML=ls.length
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
-      `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
-        <span class="statemeta">${dayLink(v)}</span></p>
+      `<div><p class="sesstitle" style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")} Session</b>
+        (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
           data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
           aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
@@ -2962,13 +3091,19 @@ def main():
     vacancies = ""
     if C.get("vacancies"):
         v = C["vacancies"]
+        # HOW A SEAT IS FILLED, FROM THE STATUTE (the person, 7 October 2026,
+        # F7). The sentence said every vacancy is filled by special election,
+        # and RSA 661:8, II says a House seat is only if the town or city asks
+        # the Governor and Council to call one. VACANCY_NOTE is the wording
+        # agreed in private/FRONTEND_FEEDBACK.md. And "District" takes its
+        # capital, as a district's name does everywhere else on the site
+        # ("Grafton District 6", F6).
         vacancies = (
             f'<details class="vac"><summary>{sum(x["vacant"] for x in v)} vacant '
             f'House seats across {len(v)} districts</summary>'
-            '<p class="note" style="margin-top:8px">Seats fall vacant through the '
-            'term as members resign or pass away, and are filled by special '
-            'election.</p><div class="grid">' + "".join(
-                f'<div class="mem">{esc(x["county"])} district {esc(x["district"])}'
+            f'<p class="note" style="margin-top:8px">{VACANCY_NOTE}</p>'
+            '<div class="grid">' + "".join(
+                f'<div class="mem">{esc(x["county"])} District {esc(x["district"])}'
                 f'{f" — {x['vacant']} seats" if x["vacant"] > 1 else ""}</div>'
                 for x in v) + "</div></details>")
 
@@ -3099,8 +3234,8 @@ def main():
             return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
                     '<div class="partycols">' + "".join(cols) + "</div>")
         by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
-        by_seat_rows = "".join(
-            li(m, seating.plate(m["seat"]) if m.get("seat") else "") for m in H)
+        by_seat_rows = seat_columns(
+            H, lambda m: li(m, seating.plate(m["seat"]) if m.get("seat") else ""))
         senate_rows = "".join(li(m, f'District {m.get("district")}') for m in S)
 
         return f"""<section class="roster" id="roster">
@@ -3152,7 +3287,7 @@ The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
   <div class="seatwrap">{seating.svg(by_seat)}</div>
   <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
 </div>
-<ol class="seatlist" id="seatlist">{by_seat_rows}</ol>
+<div class="seatcols" id="seatlist">{by_seat_rows}</div>
 <h2>The Senate</h2>
 <p class="src">The Senate has no seating chart: its 24 members are elected
 from numbered districts and the chamber does not assign numbered seats the way
@@ -3177,9 +3312,38 @@ the House does.</p>
     # by side where there is room, because they are alternatives rather than
     # steps: a reader should see both at once and pick. One heading and one
     # sentence instead of two of each.
+    #
+    # TWO TABS, TOWNS AND LEGISLATORS (the person, 7 October 2026, F5): "divide
+    # into a Towns section and a Legislators section", as tabs like the town
+    # pages', because an interactive map of the state's districts is to come
+    # and belongs with the towns. The finder is the Towns tab; the roster in
+    # its three arrangements, who holds the seats and the vacancies are the
+    # Legislators tab. The finder still matches a member's name as well as a
+    # town, because the home page's box sends either here.
+    #
+    # The strip, the panels and the script are the town pages' own
+    # (build_town_pages.TABS_JS, the .twntabs rules in app.css's shared
+    # region): without JavaScript both panels are shown, each under its
+    # heading; with it the strip shows, a panel's id is its address
+    # (/legislators#legislators), and Back leaves the page.
+    from build_town_pages import TABS_JS as TOWN_TABS_JS
+    # THE LEAD IS THE PAGE'S, AND THE INSTRUCTION IS THE TOWNS TAB'S (the look
+    # of 7 October 2026): "Type a town ... or a name" sat over both tabs and
+    # described only the box in the first, so it moved into that panel, over
+    # the box it is about.
     leg_body = f"""<h1>Legislators</h1>
-<p class="lead">{len(legs)} sitting members. Type a town to see who represents
-it, or a name, county, party or committee to find a member.</p>
+<p class="lead">{len(legs)} sitting members of the New Hampshire House and
+Senate.</p>
+<div class="twntabs" role="tablist" aria-label="Towns and legislators" hidden>
+<button type="button" role="tab" id="tab-towns" data-pane="towns"
+  aria-controls="towns" aria-selected="true" tabindex="0">Towns</button>
+<button type="button" role="tab" id="tab-legislators" data-pane="legislators"
+  aria-controls="legislators" aria-selected="false" tabindex="-1">Legislators</button>
+</div>
+<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">
+<h2 class="twnph">Towns</h2>
+<p class="src fill">Type a town to see who represents it, or a name, county,
+party or committee to find a member.</p>
 <div class="lfind">
   <label for="lq" class="sr">Your town, or a legislator&rsquo;s name</label>
   <input id="lq" type="search" autocomplete="off"
@@ -3195,9 +3359,14 @@ it, or a name, county, party or committee to find a member.</p>
      pane a reader opened by clicking By county stayed empty. Two elements with
      one id is valid HTML that no validator complains about and no test caught,
      because both halves of it looked like they worked. -->
+</div>
+<div class="twnpane" id="legislators" role="tabpanel" aria-labelledby="tab-legislators">
+<h2 class="twnph">Legislators</h2>
 {roster_section(legs)}
 {('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
-  + static_bar("H") + vacancies + "</div>") if C else ""}"""
+  + static_bar("H") + vacancies + "</div>") if C else ""}
+</div>
+{TOWN_TABS_JS}"""
     (out / "legislators.html").write_text(
         shell("Legislators | Granite Record", "legislators.html", leg_body,
               desc="Every member of the New Hampshire House and Senate: their "
@@ -3229,6 +3398,12 @@ it, or a name, county, party or committee to find a member.</p>
     latest_days = [f"{b}/{v.get('date')}" for v in (H.get("latest_sessions") or [])
                    for b in ("S" if v.get("chamber") == "Senate" else "H",)
                    if (b, v.get("date")) in sits]
+
+    town_names = home_towns(out)
+    town_list_attr = ' list="hq2towns"' if town_names else ""
+    town_list = ('\n  <datalist id="hq2towns">'
+                 + "".join(f'<option value="{esc(t)}">' for t in town_names)
+                 + "</datalist>") if town_names else ""
 
     static_recent = ""
     if H.get("recent"):
@@ -3305,12 +3480,17 @@ today.</p>
        committee. So the split asked the reader to classify what they were
        typing before they typed it, to no end. Asked for on 20 September.
        The parameter is q, which is what that page's own box submits. -->
+  <!-- THE TOWNS AS THE READER TYPES (the person, 7 October 2026, F4: "no
+       dropdown"). A datalist of every town in districts.json, so the browser
+       offers the matching ones under the box and they are chosen with the
+       arrow keys and Enter or with a tap, with no script and nothing fetched.
+       A name still goes through: the list only suggests. -->
   <form class="hfrow" action="legislators.html" method="get">
     <label for="hq2" class="sr">Your town, or a legislator's name</label>
-    <input id="hq2" name="q" type="search"
+    <input id="hq2" name="q" type="search" autocomplete="off"{town_list_attr}
       placeholder="Your town, or a legislator&rsquo;s name">
     <button type="submit">Find</button>
-  </form>
+  </form>{town_list}
 </div>
 <div id="session" data-days="{esc(" ".join(latest_days))}"></div>
 </section>

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.146
+// GRANITE_VERSION: 2026-09-07.154
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3380,7 +3380,6 @@ function journeyList(b,d){
 }
 
 function factsTable(b,d){
-  const f=d.facts||{};
   const rows=[];
   const add=(k,v,wide)=>{ if(v) rows.push([k,v,wide]); };
 
@@ -3450,8 +3449,10 @@ function factsTable(b,d){
   // says.
   if(!(d.subject==="Miscellaneous"&&d.subject_source==="granite record"))
     add("Subject", esc(d.subject||""));
-  add("Introduced", esc(f.date_introduced||""));
-  add("LSR", esc(f.lsr||""));
+  // NO INTRODUCED AND NO LSR ROW (the person, 7 October 2026, F14). The rail
+  // above dates the introduction and How it got here begins with it, so the
+  // row said a third time what the panel says twice; the LSR number is the
+  // drafting office's reference, on the bill's own text and its LSR page.
   if(!rows.length) return "";
   return `<section class="facts"><h2>On the record</h2>
     <table class="facttab"><tbody>${rows.map(([k,v,wide])=>wide
@@ -4616,6 +4617,12 @@ const VERS = {};                       // bill -> the index, once fetched
 const VTEXT = {};                      // url -> text, once fetched
 const VPICK = {};                      // bill -> which version is showing
 const VMODE = {};                      // bill -> "text" or "changes"
+// THE TAB OPENS ON THE FULL TEXT (the person, 7 October 2026, F15): the
+// current version, whole, as the Court printed it. What changed is one press
+// away; it opened on that, which answered a question before the reader had
+// read the bill it was about. One default, read by both the pane and what it
+// fetches, so the two cannot ask for different views.
+const VMODE_FIRST = "text";
 
 function verKey(b){ return `${b.year||yearOf(b.id)}/${b.id}`; }
 
@@ -4648,6 +4655,16 @@ function hasVersionIndex(d){
 // make a passage that is added-by-the-bill and removed-by-an-amendment
 // unreadable, so this view reads the block's plain text and ignores the
 // per-run roles.
+// A RULE IS DRAWN AS A RULE (the look of 7 October 2026). The Court's
+// documents draw their horizontal rules in characters -- a run of "─", "-",
+// "_" or ". . .", 40 to 160 of them -- and with Full text now the first view
+// (F15), a phone showed the rule under a bill's sponsors wrapped onto three
+// lines. Such a paragraph keeps its characters, which are the document's, and
+// stays on one line, cut at the column's edge (app.css, .vrule).
+const VRULE=/^[\s\-─_.=]+$/;
+const vblkClass=(bl,t)=>`vblk vblk-${esc(bl.k||"ln")}${
+  VRULE.test(t)&&t.replace(/\s/g,"").length>=8?" vrule":""}`;
+
 function vmarked(bs,ms){
   const by={};
   ms.forEach(m=>{(by[m[0]]=by[m[0]]||[]).push(m);});
@@ -4676,7 +4693,7 @@ function vmarked(bs,ms){
         at=Math.max(at,e);}
     });
     html+=esc(t.slice(at));
-    out.push(`<p class="vblk vblk-${esc(bl.k||"ln")}">${html}</p>`);
+    out.push(`<p class="${vblkClass(bl,t)}">${html}</p>`);
   });
   gap();
   return `<div class="vdoc">${out.join("")}</div>`;
@@ -4695,7 +4712,7 @@ function renderVersions(b,d){
   const vs=ix.versions||[], amds=ix.amendments||[];
   // THE CURRENT VERSION BY DEFAULT, which is the last one the record has.
   if(VPICK[key]===undefined)VPICK[key]=vs.length?vs.length-1:0;
-  const mode=VMODE[key]||"changes";
+  const mode=VMODE[key]||VMODE_FIRST;
   const i=Math.min(VPICK[key],Math.max(0,vs.length-1));
 
   // A group of toggle buttons, not a tablist: it declared role="tablist" with
@@ -4784,7 +4801,7 @@ function renderVersions(b,d){
     const isBlocks=Array.isArray(got)&&got.length&&got[0]&&got[0].runs;
     body=got===undefined?`<p class="spin">Loading the text…</p>`
       :isBlocks?`<div class="vdoc">${got.map(bl=>
-          `<p class="vblk vblk-${esc(bl.k||"ln")}">${(bl.runs||[]).map(
+          `<p class="${vblkClass(bl,(bl.runs||[]).map(r=>r[1]).join(""))}">${(bl.runs||[]).map(
             ([role,t])=>role==="add"?`<ins class="vins">${esc(t)}</ins>`
               :role==="cut"?`<del class="vdel">${esc(t)}</del>`
               :esc(t)).join("")}</p>`).join("")}</div>`
@@ -4836,7 +4853,7 @@ function wantVersionBody(b){
   const key=verKey(b), ix=VERS[key];
   if(!ix||ix._error)return;
   const i=VPICK[key]===undefined?(ix.versions||[]).length-1:VPICK[key];
-  const mode=VMODE[key]||"changes";
+  const mode=VMODE[key]||VMODE_FIRST;
   const step=(ix.steps||[]).find(s=>s.to===i);
   // THE BLOCKS FILE WHERE THERE IS ONE, and the plain text where there is not.
   // build_bill_versions writes blocks_url BESIDE text_url rather than in place
@@ -5430,10 +5447,13 @@ function datedRail(b,d){
       ?`<small>${esc(day)}</small>`:""}</span>`;
   });
   // The same facts as a sentence, for a reader who hears the page: every
-  // date in full -- the Law stop's words carry one of their own, "in effect
-  // 11 Jan 2026" -- and a tally read "16 to 8" rather than a dash.
+  // date in full and a tally read "16 to 8" rather than a dash. The Law
+  // stop's day is the day the law took effect (F13, 7 October 2026), said
+  // as that -- "in effect 11 January 2026" -- and not a second time where
+  // its words already say it.
   const said=st.map(s=>{
     const when=s.date?railDay(s.date,true,true):"";
+    const lawDay=s.stop==="Law"&&s.mark==="p";
     // From the index, before the record is here, the mark's word and the
     // stop's own: "House: passed, voice vote, 13 February 2025". The
     // governor's, the law's and the voters' own words already say how it
@@ -5446,9 +5466,10 @@ function datedRail(b,d){
         (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`)
       .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
         (_m,mo,y)=>`${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
+    const tail=!when?"":!lawDay?`, ${when}`:/in effect/.test(what)?"":`, in effect ${when}`;
     return s.stop==="Introduced"
       ?`Introduced${when?` ${when}`:""}`
-      :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${when?`, ${when}`:""}`;
+      :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${tail}`;
   }).join("; ");
   return `<span class="rail dated" role="img" aria-label="${esc(said)}"
     title="${esc(said)}">${cells.join("")}</span>`;
@@ -5634,7 +5655,12 @@ function pagePane(html){
 // records carry "Republican" and the roster carries "R".
 const pchip=m=>{
   const code=String(m.party_code||m.party||"").toUpperCase().slice(0,1)||"X";
-  const who=esc(m.display_full||m.label||m.name||"");
+  // THE PARTY AND DISTRICT ARE ONE UNIT: "(R - Rock 2)" is a span app.css
+  // keeps on one line, so a chip that has to wrap does so before it rather
+  // than inside it (build_pages.CHIP_TAG, which this matches).
+  const full=String(m.display_full||m.label||m.name||"");
+  const tag=full.match(/^(.*\S)\s+(\([^()]*\))$/);
+  const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
   // A LABEL, NOT BOLD. A committee roster has always labelled its Chair, Vice
   // Chair and Clerk through the <i> below, and the prime sponsor was marked
   // with bold alone -- which is not a label, cannot be told from emphasis, and
@@ -6088,10 +6114,12 @@ function renderCommitteeHead(c){
   const rule=c.purpose||null;
   const dl=(cls,rows)=>rows.length?`<dl class="${cls}">${rows.map(
     ([k,v])=>`<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl>`:"";
-  return `<div class="phead">
+  // .cmtehead says "a committee's page" to app.css, with or without a roster
+  // (a retired committee has none, and its notes were left at 560px, F9).
+  return `<div class="phead cmtehead">
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
-    ${c.archived?`<p class="src">Not on the General Court&rsquo;s list of committees today.
+    ${c.archived?`<p class="src fill">Not on the General Court&rsquo;s list of committees today.
       Its bills and sitting days on this record run ${esc(c.archived.years||"")}; the
       records do not say whether it was renamed, divided, merged or ended.</p>`:""}
     ${/* The names it carried before, so a reader who followed an older name
@@ -6133,7 +6161,8 @@ const cmteSessions=c=>(c.sessions||[])
 
 function renderCommitteeBills(c){
   const rows=cmteBills(c),t=pageTerm();
-  if(!rows.length)return `<p class="src">No bills were referred to this
+  // .fill on the notes that stand in for an empty pane: the width it has (F9).
+  if(!rows.length)return `<p class="src fill">No bills were referred to this
     committee in the ${esc(t)} term.</p>`;
   return billPane(rows,n=>`${n.toLocaleString()} bill${n===1?"":"s"} referred to
     this committee in ${esc(t)}.`);
@@ -6210,10 +6239,10 @@ function sessionHtml(s,si){
 
 function renderCommitteeSessions(c){
   const ss=cmteSessions(c),t=pageTerm();
-  if(!(c.sessions||[]).length)return `<p class="src">No day of this committee is
+  if(!(c.sessions||[]).length)return `<p class="src fill">No day of this committee is
     on record. Committees that no longer meet keep their page so the bills they
     handled still have somewhere to point.</p>`;
-  if(!ss.length)return `<p class="src">No day of this committee is on record in
+  if(!ss.length)return `<p class="src fill">No day of this committee is on record in
     the ${esc(t)} term.</p>`;
   return `<p class="src">${ss.length.toLocaleString()} day${ss.length===1?"":"s"}
       this committee met in ${esc(t)}, newest first. Each is the day's recording
@@ -6430,10 +6459,12 @@ function calendarBlock(rows,heading){
     });
     out.push(`</div>`);
   });
-  out.push(`<p class="note">Anyone may attend and speak at a public hearing,
-    or sign in for or against without speaking. An executive session is where
-    the committee votes on what to recommend; it is open to watch but not to
-    testify.</p></section>`);
+  // The first two sentences are build_pages.HEARING_NOTE, word for word: the
+  // person's own (7 October 2026), and preflight holds the two copies to it.
+  out.push(`<p class="note">Anyone may attend a public hearing and ask to
+    speak. You can also sign in online to register a position and submit
+    written testimony. An executive session is where the committee votes on
+    what to recommend; it is open to watch but not to testify.</p></section>`);
   return out.join("");
 }
 

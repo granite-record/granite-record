@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -558,8 +558,11 @@ def main():
                 f"{(b or {}).get('title','')}\n\n"
                 f"{u.get('committee','')} {u.get('what','')}"
                 + (f", {u['venue']}" if u.get("venue") else "")
-                + "\n\nAnyone may attend and speak, or sign in for or against "
-                  "without speaking.",
+                # build_pages.HEARING_NOTE, word for word (the person, 7 October
+                # 2026, F2); preflight's _hearing_note_wording holds the two equal.
+                + "\n\nAnyone may attend a public hearing and ask to speak. You can "
+                  "also sign in online to register a position and submit written "
+                  "testimony.",
                 when, f"hearing:{u.get('bill')}:{when}:{u.get('time','')}"))
         nhear = len(items)
         (fd / "hearings.xml").write_text(
