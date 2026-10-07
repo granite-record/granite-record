@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.12
+# GRANITE_VERSION: 2026-09-18.13
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
-    python3 seating.py --check      # the layout's own arithmetic
-    python3 seating.py --svg out.svg
+    python3 src/pages/seating.py --check      # the layout's own arithmetic
+    python3 src/pages/seating.py --svg out.svg
 
 THE NUMBERING IS THE RECORD; THE GEOMETRY IS A DIAGRAM.
 

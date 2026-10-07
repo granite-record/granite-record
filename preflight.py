@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.405
+# GRANITE_VERSION: 2026-09-04.406
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31828,7 +31828,7 @@ def _header_mark():
         assert f.is_file(), (
             f"assets/licensed/ is here without {BP.HEADER_MARK}, so this machine "
             "would build the header with no mark and nothing else would say so. "
-            "On the laptop: python3 build_brand.py draws it from "
+            "On the laptop: python3 src/pages/build_brand.py draws it from "
             "brand/licensed/drawing.png, and cloud.py seed-kit sends it. On "
             "GitHub's machine: the kit was sent before it was drawn")
         data = f.read_bytes()
@@ -31837,7 +31837,7 @@ def _header_mark():
         scale = max(w / BB.MARK_BOX[0], h / BB.MARK_BOX[1])
         assert scale >= 1.98, (
             f"{f.as_posix()} is {w}x{h}, {scale:.2f} times its {BB.MARK_BOX[0]}x"
-            f"{BB.MARK_BOX[1]} box: soft on a 2x screen. Run python3 build_brand.py")
+            f"{BB.MARK_BOX[1]} box: soft on a 2x screen. Run python3 src/pages/build_brand.py")
         said += f"; assets/licensed/{BP.HEADER_MARK} is {w}x{h}, {scale:.1f}x the box"
     else:
         said += "; no assets/licensed/ here, so this machine builds the wordmark alone"

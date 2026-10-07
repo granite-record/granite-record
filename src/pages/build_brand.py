@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.13
+# GRANITE_VERSION: 2026-09-12.14
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
-    python3 build_brand.py            # reads brand/, writes assets/
-    python3 build_brand.py --check    # says what is missing, writes nothing
+    python3 src/pages/build_brand.py            # reads brand/, writes assets/
+    python3 src/pages/build_brand.py --check    # says what is missing, writes nothing
 
 WHY THIS EXISTS AS A BUILD STEP
 
