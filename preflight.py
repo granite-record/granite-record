@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.420
+# GRANITE_VERSION: 2026-09-04.421
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -49889,17 +49889,21 @@ _TURN_LEGISLATION = [
 #   HB 1036   LsrsOnly.txt lists four and marks none prime; LsrSponsors.txt
 #             flags Rep. Vose, who has left
 #   HB 171    in LsrSponsors.txt alone, a 2025 request retained into 2026:
-#             Rep. Germana the prime and two others sitting, and Reps.
-#             Rochefort, Haskins and Massimilla, who have left
+#             Rep. Germana the prime and two others sitting, Rep. Haskins,
+#             who left during the term, and Reps. Rochefort and Massimilla,
+#             who left before it began -- the bill's own text names Germana,
+#             Potenza, Haskins and King
 #   CACR 30   in LsrSponsors.txt alone, its one sponsor Rep. Oppel, who has
 #             left, and whom the status page names with no id
 #
 # with each bill's record in LSRs.txt and its first docket row; the fifteen
 # sitting members from legislators.txt, their address columns left empty and
 # their e-mail addresses made up, so that none a scraper could use is in the
-# repository; and the six who have left as former_members.json,
+# repository; the six who have left as former_members.json,
 # past_members.json and db/Legislators.psv (its first eleven columns) hold
-# them.
+# them; and one ballot of each: the first roll call of 2026 for the four who
+# left during the term (RollCallHistory.txt) and the first of 2024 for the
+# two who left before it (rollcalls/RollCallHistory_2024.txt).
 _SPONSORS_WHO_LEFT = {
     "LsrsOnly.txt": [
         f"26-2787|{m}|1995|2026|{r}|HB1449|H|(New Title) limiting times vaccine clinics may "
@@ -49916,6 +49920,10 @@ _SPONSORS_WHO_LEFT = {
         "2026|149|1|10748|1", "2026|149|5|10855|0", "2026|2787|5|10913|0", "2026|2674|1|11182|1",
         "2026|2787|6|11371|0", "2026|2787|3|11401|0", "2026|2787|8|11420|0", "2026|2787|1|11421|1",
         "2026|2787|2|11424|0"],
+    "RollCallHistory.txt": [
+        "2026|H|1|377272|909||Yea|", "2026|H|1|409107|10855||Not Voting/Not Excused|",
+        "2026|H|1|409281|11182||Yea|", "2026|H|1|409274|11371||Yea|"],
+    "RollCallHistory_2024.txt": ["2024|H|1|377141|746||Yea|", "2024|H|1|409162|10614||Yea|"],
     "LSRs.txt": [
         "2026|0149|establishing a moratorium on the issuance of permits for new landfills.|H|1|0|0|"
         "0|25-0149|HB  0171|HB171||ENA|H06|H06|1/8/2025 12:00:00 AM|11||3/20/2025 12:00:00 AM|"
@@ -50009,10 +50017,13 @@ def _sponsors_who_left():
     PersonID and once by the employee number past_members.json gives him.
 
     build_data.py, on these four bills' real rows: every LsrSponsors.txt row
-    is on its bill, once; LsrsOnly's prime and order stand, and a departed
-    prime it left unmarked is the prime; a bill only LsrSponsors.txt covers
-    keeps its sequence; and each member who has left is labelled as a sitting
-    member is, with the chamber db/Legislators.psv gives them."""
+    of a member who sat in the term is on its bill, once; LsrsOnly's prime
+    and order stand, and a departed prime it left unmarked is the prime; a
+    bill only LsrSponsors.txt covers keeps its sequence; each member who has
+    left is labelled as a sitting member is, with the chamber
+    db/Legislators.psv gives them; and a member whose last ballot was before
+    the term is on no bill of it, as HB 171's own text names neither Rep.
+    Rochefort nor Rep. Massimilla, whose request it carries."""
     here = Path(".").resolve()
     tmp = Path(tempfile.mkdtemp(prefix="gr-sponsors-left-"))
     env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
@@ -50020,13 +50031,16 @@ def _sponsors_who_left():
     fx = _SPONSORS_WHO_LEFT
     try:
         files = _turn_files([], fx["Docket.txt"], fx["LSRs.txt"], fx["LsrsOnly.txt"],
-                            fx["LsrSponsors.txt"], [], [])
+                            fx["LsrSponsors.txt"], [], fx["RollCallHistory.txt"])
         files["legislators.txt"] = _turn_day([f"{r}||||NH||rep{r.split('|')[0]}@example.gov"
                                               for r in fx["legislators.txt"]])
         for name in ("Counties.txt", "Committees.txt", "SubjectCodes.txt"):
             files[name] = _turn_day(fx[name])
         for n, b in files.items():
             (tmp / n).write_bytes(b)
+        (tmp / "rollcalls").mkdir()
+        (tmp / "rollcalls" / "RollCallHistory_2024.txt").write_bytes(
+            _turn_day(fx["RollCallHistory_2024.txt"]))
         db = tmp / "db"
         db.mkdir()
         cols = ["PersonID", "LastName", "FirstName", "Employeeno", "MiddleName", "LegislativeBody",
@@ -50069,21 +50083,22 @@ def _sponsors_who_left():
                    ("9895", "H", "Rep. Jim Kofalt (R - Hills 32)", False),
                    ("10695", "H", "Rep. Katelyn Kuttab (R - Rock 17)", False),
                    ("9937", "H", "Rep. Bob Lynn (R - Rock 17)", False)],
+        # Not Reps. Rochefort (10614) and Massimilla (746): their last ballot
+        # was of 2024, and HB 171's own text does not name them.
         "HB171": [("10748", "H", "Rep. Nicholas Germana (D - Ches 15)", True),
-                  ("10614", "H", "Rep. David Rochefort (R - Graf 1)", False),
                   ("10726", "H", "Rep. Kelley Potenza (R - Straf 19)", False),
                   ("10855", "H", "Rep. Linda Haskins (D - Rock 11)", False),
-                  ("10610", "H", "Rep. Seth King (R - Coos 4)", False),
-                  ("746", "H", "Rep. Linda Massimilla (D - Graf 1)", False)],
+                  ("10610", "H", "Rep. Seth King (R - Coos 4)", False)],
         "CACR30": [("11182", "H", "Rep. Thomas Oppel (D - Graf 9)", True)],
     }
     bad = [f"{b}: {seen(b)}, not {w}" for b, w in want.items() if seen(b) != w]
     assert not bad, "the sponsors of the fixture's bills are not the record's:\n  " + \
         "\n  ".join(bad)
     return "ok", ("HB 1449 keeps Rep. Morton beside LsrsOnly's eight, HB 1036's prime is "
-                  "Rep. Vose, HB 171 keeps its three who have left in sequence, and CACR 30 "
-                  "lists Rep. Oppel once; each who has left labelled as a sitting member is, "
-                  "with the chamber db/Legislators.psv gives them")
+                  "Rep. Vose, HB 171 keeps Rep. Haskins, who left during the term, in sequence "
+                  "and not the two who left before it, and CACR 30 lists Rep. Oppel once; each "
+                  "who has left labelled as a sitting member is, with the chamber "
+                  "db/Legislators.psv gives them")
 
 
 @check("build", "no fact of 2025-2026 reaches a 2027 bill by its number: the sign-ins are the "
@@ -60468,8 +60483,8 @@ def _sponsors_by_term():
     return "ok", f"sponsors by term: {census}"
 
 
-@check("data", "every sponsor LsrSponsors.txt gives the session's bills is on the bill, once, "
-       "and a member the database knows has a chamber")
+@check("data", "every sponsor LsrSponsors.txt gives the session's bills who sat in its term is "
+       "on the bill, once, and a member the database knows has a chamber")
 def _sponsors_on_record():
     """The data side of _sponsors_who_left. LsrSponsors.txt is the General
     Court's every sponsor of the session's requests, sitting or not; LsrsOnly
@@ -60482,7 +60497,10 @@ def _sponsors_on_record():
 
     For the newest term: every LsrSponsors.txt row of its years, on the bill
     its request is (bills.json's lsr_year and lsr_num), is among that bill's
-    sponsors; no bill lists one person twice, an employee number counted as
+    sponsors -- unless its member is neither sitting (legislators.txt) nor
+    cast a ballot in the term, and then it is not: HB 171 carries the request
+    of Reps. Rochefort and Massimilla, who left before the term began, and
+    its own text does not name them; no bill lists one person twice, an employee number counted as
     the PersonID db/Legislators.psv gives it; and every sponsor whose id is a
     PersonID there has a chamber. Two people of one name are two ids: HB 583's
     Patrick Long (409256) and Pat Long (218767)."""
@@ -60515,7 +60533,24 @@ def _sponsors_on_record():
     def who(x):
         m = str(x.get("member_id") or "")
         return pid.get(m, m)
-    missing, rows = [], 0
+    # A member who is not sitting and cast no ballot in the term never sat in
+    # it, and is on none of its bills: HB 171's Reps. Rochefort and
+    # Massimilla, whose request it carries and whose names its text does not.
+    sitting = set()
+    lt = Path("legislators.txt")
+    if lt.exists():
+        sitting = {ln.split("|")[0].strip().lstrip("﻿")
+                   for ln in lt.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+                   if ln.strip()}
+    sat = set()
+    for f in [Path("RollCallHistory.txt"),
+              *(Path("rollcalls") / f"RollCallHistory_{y}.txt" for y in sorted(years))]:
+        if f.exists():
+            for ln in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+                p = ln.split("|")
+                if len(p) == 8 and p[0].strip() in years and p[4].strip():
+                    sat.add(p[4].strip())
+    missing, extra, rows, outside = [], [], 0, 0
     for line in ls.read_text(encoding="utf-8-sig", errors="replace").splitlines():
         f = [x.strip() for x in line.split("|")]
         if len(f) != 5 or f[0] not in years:
@@ -60524,7 +60559,12 @@ def _sponsors_on_record():
         if not bill:
             continue        # a request with no bill: build_data leaves it out, and says so
         rows += 1
-        if f[3] not in {who(x) for x in mine.get(bill) or []}:
+        on = f[3] in {who(x) for x in mine.get(bill) or []}
+        if f[3] not in sitting and f[3] not in sat:
+            outside += 1
+            if on:
+                extra.append((bill, f[3]))
+        elif not on:
             missing.append((bill, f[3]))
     twice = sorted(b for b, v in mine.items()
                    if any(n > 1 for i, n in Counter(who(x) for x in v).items() if i))
@@ -60537,13 +60577,17 @@ def _sponsors_on_record():
         bad.append(f"{len(missing):,} LsrSponsors.txt row(s) on {len({b for b, _ in missing}):,} "
                    f"bill(s) are not on the bill: "
                    + ", ".join(f"{b} {m}" for b, m in sorted(missing)[:6]))
+    if extra:
+        bad.append(f"{len(extra):,} sponsor(s) who never sat in {newest} are on its bills: "
+                   + ", ".join(f"{b} {m}" for b, m in sorted(extra)[:6]))
     if twice:
         bad.append(f"{len(twice)} bill(s) list one person twice: {', '.join(twice[:8])}")
     if nochamber:
         bad.append(f"{len(nochamber)} bill(s) have a sponsor the database knows with no chamber: "
                    + ", ".join(nochamber[:8]))
     assert not bad, f"{newest}'s sponsors: " + "; ".join(bad)
-    return "ok", (f"{newest}: all {rows:,} LsrSponsors.txt rows on their bills, nobody listed "
+    return "ok", (f"{newest}: all {rows - outside:,} LsrSponsors.txt rows of members who sat in it "
+                  f"on their bills and none of the {outside} of members who did not, nobody listed "
                   f"twice, and every sponsor the database knows has a chamber"
                   + ("" if people else " (db/Legislators.psv not here, so ids not joined)"))
 

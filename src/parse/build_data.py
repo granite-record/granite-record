@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.55
+# GRANITE_VERSION: 2026-09-04.56
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2076,6 +2076,23 @@ def main():
                   if not any(x.get("prime") for x in v)}
     departed = []   # (bill, row) of members the roster does not hold, named below
     flags, cross, missing_lsr = Counter(), Counter(), 0
+    # BUT NOT A MEMBER WHO NEVER SAT IN THE TERM. LsrSponsors.txt keeps every
+    # name on a request, and a request filed before the term began can carry a
+    # member who left before it did: HB 171 of 2025, retained into 2026, has
+    # Rep. Rochefort and Rep. Massimilla of Grafton 1 on its LSR, and its own
+    # text names Reps. Germana, Potenza, Haskins and King; HB 109's Rep. Stone
+    # is the same. All three cast their last ballot in 2024 (Rep. Rochefort
+    # sits in the Senate now). Every one of the 17 who left during 2025-2026
+    # voted in it, and their 165 sponsorships are on their bills' own text. So
+    # a member the roster does not hold is a sponsor of the term's bills only
+    # if they cast a ballot in the term (RollCallHistory, the session's file
+    # and rollcalls/ for its years); before the term's first roll call that
+    # is nobody, as it was before 7 October 2026.
+    _years = freeze_term.term_years(sess) if sess else set()
+    sat = {r[4] for f in [sd / "RollCallHistory.txt",
+                          *(d / "rollcalls" / f"RollCallHistory_{y}.txt" for y in sorted(_years))]
+           if f.exists() for r in rows(f, 8) if r[0] in _years and r[4]}
+    never_sat = Counter()
     # LsrsOnly.txt does not cover every bill -- HB197 and HB104 came back with
     # no sponsors at all. So fall back to LsrSponsors.txt per bill rather than
     # picking one file for everything.
@@ -2086,6 +2103,9 @@ def main():
         bill = by_lsr.get((r[0], r[1].zfill(4)))
         if not bill:
             missing_lsr += 1
+            continue
+        if r[3] not in term_legs and r[3] not in sat:
+            never_sat[r[3]] += 1
             continue
         if bill in lo_bills:
             # Covered, and better, by LsrsOnly -- for the SITTING members it
@@ -2228,6 +2248,10 @@ def main():
                       "sponsor was not first in sequence")
     if missing_lsr:
         report.append(f"sponsor rows dropped: {missing_lsr} unknown LSR")
+    if never_sat:
+        print(f"  {sum(never_sat.values()):,} LsrSponsors.txt row(s) of {len(never_sat):,} "
+              f"member(s) who cast no ballot in {sess or 'the term'} left out: "
+              + ", ".join(sorted(never_sat)[:8]))
 
     # ------------------------------------------------------- roll calls ---
     # Names for members who left mid-term, from resolve_members.py.
