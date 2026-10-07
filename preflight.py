@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.401
+# GRANITE_VERSION: 2026-09-04.402
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1140,7 +1140,11 @@ def _bootstrap_first():
     # one to watch: the bootstrap appends it behind site-packages, where an
     # installed package of a root module's name would win, and _paths must
     # bring it forward.
-    tmp = Path(tempfile.mkdtemp(prefix="gr-boot-"))
+    # Resolved, because _paths resolves every root it is given: GitHub's machine
+    # names its temporary folder C:\Users\RUNNER~1\..., which resolves to
+    # C:\Users\runneradmin\..., and comparing the one with the other raised a
+    # ValueError on the dry run of 7 October 2026 that no laptop could show.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-boot-")).resolve()
     try:
         shutil.copy2(_paths.ROOT / "_paths.py", tmp / "_paths.py")
         show = ('import json, os\nprint(json.dumps({"path": sys.path, '
