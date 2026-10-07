@@ -39,9 +39,13 @@ what does not belong there.
 nothing. Stage 1 (7 October 2026) moved the 49 scripts nothing the night
 touches -- the by-hand fetchers and probes, the reference builders, the UNH
 work, the bench and the by-hand reports -- and retired `fetch_testimony.py`
-to `obsolete/`. What the night, the weekly, the laptop's evening job or
-`build_all` runs or imports is still at the root until its stage, 2 to 4.
-Each stage moves a group of files without changing an import, a build step
+to `obsolete/`. Stage 2 (7 October 2026) moved the 41 modules the night
+imports but runs by no name: five of `lib/`'s six, the helpers of `parse/`,
+`towns/`, `hearings/` and `pages/`, and `fetch_legislation.py` and
+`fetch_rollcalls_db.py`, whose parsers night steps import. What `build_all`
+runs as a step's script (stage 3), and what the night, the weekly or the
+laptop's evening job runs by name (stage 4), is still at the root until its
+stage. Each stage moves a group of files without changing an import, a build step
 or a lane line that names them; a command line a person types names the
 path, and changes in the same commit.
 
