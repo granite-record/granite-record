@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.210 */
+/* GRANITE_VERSION: 2026-09-07.211 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5367,9 +5367,10 @@ grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:start}
 :where(body.pg) .pcol h3,:where(body.pg) .sdiv h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
 /* THE SEAT LIST, ONE COLUMN PER DIVISION (the person, 7 October 2026, F8):
-   five abreast at the page's full width, in the chart's order -- 5, 4, 3, 2,
-   1, as the hall runs left to right -- so each column stands under its own
-   division of the chart.
+   five abreast at the page's full width, in the chart's order -- 1, 2, 3, 4,
+   5 from left to right, the chart being the Clerk's plan turned so the
+   rostrum is at the top -- so each column stands under its own division of
+   the chart.
 
    WHERE FIVE DO NOT FIT, ONE DIVISION UNDER THE NEXT, each across the width
    with its own seats balanced into columns (the look of 7 October 2026). A

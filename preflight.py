@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.440
+# GRANITE_VERSION: 2026-09-04.441
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44475,7 +44475,7 @@ def _seat_list_by_division():
     """"The House seating chart shows 3 columns for 5 sections" (the person, 7
     October 2026, F8). seat_columns is drawn over a House of every division
     and a Speaker, out of order of nothing -- the members come in seat order
-    as the roster sorts them -- and gives five columns headed Division 5 to 1,
+    as the roster sorts them -- and gives five columns headed Division 1 to 5,
     as the chart above them runs, each holding its own seats and counted, the
     Speaker above them and no division column for the rostrum; and the
     stylesheet puts five abreast only where five fit, and below that one
@@ -44486,11 +44486,14 @@ def _seat_list_by_division():
     house = [{"seat": str(s), "name": f"Member {s}"} for s in sorted(seats)]
     html = BP.seat_columns(house, lambda m: f'<li class="seatrow" data-seat="{m["seat"]}"></li>')
     heads = re.findall(r"<h3>([^<]*)</h3>", html)
-    # IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026): the hall runs
-    # 5, 4, 3, 2, 1 left to right and the chart above draws it so; 1 to 5 made
-    # the list the chart's mirror image.
-    assert heads == ["The rostrum", "Division 5 &mdash; 2", "Division 4 &mdash; 1",
-                     "Division 3 &mdash; 1", "Division 2 &mdash; 2", "Division 1 &mdash; 2"], (
+    # IN THE CHART'S ORDER, 1 TO 5 (the person, 7 October 2026: "rotated 180
+    # degrees so that the divisions can be listed in ascending order left to
+    # right"). The chart is the plan turned, Division 1 on the left, and the
+    # list follows it; it ran 5 to 1 while the chart was drawn as the plan is.
+    assert seating.LEFT_TO_RIGHT == [1, 2, 3, 4, 5], (
+        f"the chart runs its divisions {seating.LEFT_TO_RIGHT} from left to right")
+    assert heads == ["The rostrum", "Division 1 &mdash; 2", "Division 2 &mdash; 2",
+                     "Division 3 &mdash; 1", "Division 4 &mdash; 1", "Division 5 &mdash; 2"], (
         f"the seat list's columns are headed {heads}")
     cols = re.findall(r'<section class="sdiv"><h3>Division (\d) &mdash; \d+</h3>'
                       r'<ol class="seatlist">(.*?)</ol></section>', html)
@@ -44532,9 +44535,76 @@ def _seat_list_by_division():
     page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
     assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
         not in page, "the built page's seat list is not the columns"
-    return "ok", (f"five columns headed 5 to 1 as the chart runs, the Speaker above, five "
+    return "ok", (f"five columns headed 1 to 5 as the chart runs, the Speaker above, five "
                   f"abreast from {at}px at {col:.0f}px each and one division under the next "
                   "below it")
+
+
+@check("frontend", "the House seating chart is drawn with the rostrum at the top and Division 1 to 5 from left to right, every word upright")
+def _seat_chart_turned():
+    """"Maybe the seating chart diagram can be rotated 180 degrees so that the
+    divisions can be listed in ascending order left to right since descending
+    order is a bit confusing" (the person, 7 October 2026). seating.py reads
+    the Clerk's plan, which puts the rostrum at the foot and runs the
+    divisions 5 to 1, and turns every place it draws half a circle about the
+    Speaker (_point).
+
+    Held on the chart seating.svg draws and on the fixture's built page: the
+    Speaker above every seat on the floor; each division's seats, on average,
+    to the right of the one before, 1 to 5 -- on average, because the blocks
+    overlap sideways; the seats written in the order of their numbers, which
+    is the order the arrow keys walk, so Right goes on toward Division 5; and
+    every caption laid on an arc centred on the Speaker, run left to right
+    and swept under it, so its word stands the right way up rather than being
+    turned with the chart -- and "Speaker" above its seat, inside the
+    drawing."""
+    import seating
+    pos = seating.layout()
+    sy = pos[seating.SPEAKER_SEAT][1]
+    floor = {s: p for s, p in pos.items() if s != seating.SPEAKER_SEAT}
+    low = [s for s, (_x, y) in floor.items() if y <= sy]
+    assert not low, f"seats {sorted(low)[:5]} are drawn level with or above the Speaker"
+    mean = {d: sum(x for s, (x, _y) in floor.items() if s // 1000 == d)
+            / sum(1 for s in floor if s // 1000 == d) for d in sorted(seating.HIGHEST)}
+    order = sorted(mean, key=mean.get)
+    assert order == [1, 2, 3, 4, 5], (
+        f"the divisions run {order} from left to right on the chart")
+    who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
+           for s in seating.all_seats() + [seating.SPEAKER_SEAT]}
+    drawn = seating.svg(who)
+
+    def upright(svg):
+        bad = []
+        cx, cy = [float(v) for v in re.search(
+            r'<circle class="seat rostrum[^"]*" cx="([\d.]+)" cy="([\d.]+)"', svg).groups()]
+        for d, path in re.findall(r'<path id="divarc(\d)" d="([^"]+)"', svg):
+            x1, y1, r, _r, _rot, _big, sweep, x2, y2 = [
+                float(v) for v in re.findall(r"-?[\d.]+", path)]
+            # An arc about the Speaker, run left to right and swept below
+            # the rostrum: a letter stands on its path's left, which is up.
+            if not (x1 < x2 and sweep == 0 and abs(math.hypot(x1 - cx, y1 - cy) - r) < 1.5
+                    and min(y1, y2) > cy):
+                bad.append(f"Division {d}'s caption runs {path}")
+        sp = re.search(r'<text class="rostrumtext" x="[\d.]+" y="([\d.]+)"', svg)
+        if not (sp and 0 < float(sp.group(1)) < cy):
+            bad.append(f"\"Speaker\" is not above its seat at y={cy}")
+        return bad
+    bad = upright(drawn)
+    assert not bad, "; ".join(bad)
+    seen = [int(s) for s in re.findall(r'<circle class="seat[^"]*" [^>]*data-seat="(\d+)"', drawn)]
+    assert seen == sorted(seen) == seating.all_seats(), (
+        "the chart does not write its seats in the order of their numbers, which is the order "
+        "the arrow keys walk")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    svg = re.search(r'<svg viewBox="[^"]+" class="seatmap".*?</svg>', page, re.S)
+    assert svg, "the fixture's legislators page draws no seating chart"
+    bad = upright(svg.group(0))
+    assert not bad, "on the built page: " + "; ".join(bad)
+    return "ok", ("the rostrum at the top, Division 1 to 5 from left to right at mean x "
+                  + ", ".join(f"{mean[d]:.0f}" for d in order)
+                  + ", the seats in number order for the arrow keys, five captions and "
+                    "\"Speaker\" upright, on the chart and on the built page")
 
 
 @check("frontend", "a note that stands for a section of the committees' pages takes the width it has")

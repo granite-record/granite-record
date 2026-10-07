@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.153
+# GRANITE_VERSION: 2026-09-04.154
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -636,19 +636,24 @@ def seat_columns(house, row):
     after them. Every row is still a .seatrow inside #seatlist, where the seat
     map's script finds them.
 
-    IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026). The divisions
-    run left to right across the hall as 5, 4, 3, 2, 1 (seating.HIGHEST), and
-    the chart directly above draws them so; the columns ran 1 to 5, so the
-    list was the chart's mirror image and Division 1's column stood under
-    Division 5. The markup is in the chart's order, so the reading order, the
-    keyboard's order and what the eye sees agree at every width: five
-    abreast, or one division under the next where five do not fit.
+    IN THE CHART'S ORDER, 1 TO 5 (the person, 7 October 2026: "rotated 180
+    degrees so that the divisions can be listed in ascending order left to
+    right since descending order is a bit confusing"). The chart above is the
+    Clerk's plan turned half a circle, the rostrum at the top and Division 1
+    on the left (seating.LEFT_TO_RIGHT), and the columns are taken from that
+    order rather than written out again, so each stands under its own
+    division and the two cannot come to disagree. It ran 5 to 1 while the
+    chart was drawn as the plan is. The markup is in the chart's
+    order, so the reading order, the keyboard's order and what the eye sees
+    agree at every width: five abreast, or one division under the next where
+    five do not fit.
     """
     divs = OrderedDict()
     for m in house:
         divs.setdefault(int(m["seat"]) // 1000 if m.get("seat") else 0, []).append(m)
     rostrum = divs.pop(seating.SPEAKER_SEAT // 1000, [])
     unseated = divs.pop(0, [])
+    across = {d: i for i, d in enumerate(seating.LEFT_TO_RIGHT)}
 
     def block(heading, ms, cls="sdiv"):
         return (f'<section class="{cls}"><h3>{heading}</h3><ol class="seatlist">'
@@ -656,7 +661,9 @@ def seat_columns(house, row):
     return ((block("The rostrum", rostrum, "sdiv srost") if rostrum else "")
             + ('<div class="seatdivs">' + "".join(
                 block(f"Division {d} &mdash; {len(ms)}", ms)
-                for d, ms in sorted(divs.items(), reverse=True)) + "</div>" if divs else "")
+                for d, ms in sorted(divs.items(),
+                                    key=lambda kv: (across.get(kv[0], len(across)), kv[0])))
+               + "</div>" if divs else "")
             + (block("No seat on file", unseated) if unseated else ""))
 
 
@@ -1888,8 +1895,10 @@ SEATING_JS = """
        2 October 2026, M22). seating.py writes every seat out of the Tab
        order now; this makes one of them the stop -- the first, until a seat
        is chosen or reached -- and the arrow keys walk the seats in the order
-       of their numbers, Home and End to the first and the last. Focus on a
-       seat names its member under the chart, as the pointer over it does. */
+       of their numbers, Home and End to the first and the last. That order
+       runs the way the chart is drawn: Division 1 on the left to Division 5
+       on the right, so Right goes on toward 5 (seating.LEFT_TO_RIGHT). Focus
+       on a seat names its member under the chart, as the pointer over it does. */
     var seats=[].slice.call(svg.querySelectorAll("[data-slug]"))
       .filter(function(c){return c.getAttribute("data-slug");});
     var stopAt=function(c){
