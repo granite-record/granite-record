@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.393
+# GRANITE_VERSION: 2026-09-04.394
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1187,7 +1187,7 @@ def _calls_refusal_check(tree):
                and n.func.value.id == "refusal" for n in ast.walk(tree))
 
 
-def _boundary_problems(root=None):
+def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
     """[sentence] for each file under src/ (and watchers/, tests/) on the
     wrong side of a network line:
       - every file in src/fetch/gc_web/ calls refusal.check(), and no other
@@ -1197,11 +1197,15 @@ def _boundary_problems(root=None):
         probe_db;
       - only src/fetch/youtube/ (and livestreams.py at the root) use yt-dlp
         or the YouTube API;
-      - nothing in src/parse, hearings, pages or lib makes a request, and
-        src/checks asks only graniterecord.org."""
+      - src/checks asks only graniterecord.org, and every other folder under
+        src/ that is not in src/fetch/ asks nobody.
+    The last is by default, not by a list of folders, so that a folder added
+    to _paths.SRC_DIRS is held to it the day it is listed: a list here would
+    have let a request from the new folder through until somebody remembered
+    to add it."""
     base = Path(root).resolve() if root is not None else _paths.ROOT
     bad = []
-    for f in _paths.code_files("*.py", root=base):
+    for f in _paths.code_files("*.py", root=base, dirs=dirs):
         rel = f.relative_to(base).as_posix()
         folder = rel.rsplit("/", 1)[0] if "/" in rel else ""
         if not folder:
@@ -1222,7 +1226,8 @@ def _boundary_problems(root=None):
             bad.append(f"{rel} opens the General Court's SQL host: it belongs in src/fetch/gc_db/")
         if _YOUTUBE.search(src) and folder != "src/fetch/youtube":
             bad.append(f"{rel} uses yt-dlp or the YouTube API: it belongs in src/fetch/youtube/")
-        if folder in ("src/parse", "src/hearings", "src/pages", "src/lib") and _ASKS.search(src):
+        if folder.startswith("src/") and not folder.startswith("src/fetch/") \
+                and folder != "src/checks" and _ASKS.search(src):
             bad.append(f"{rel} makes a request, and {folder}/ asks nobody")
         if folder == "src/checks" and _ASKS.search(src):
             hosts = {u for u in _URL.findall(src)
@@ -1235,8 +1240,8 @@ def _boundary_problems(root=None):
 
 
 @check("files", "each network has its folder: gc.nh.gov's fetchers in src/fetch/gc_web/ and "
-                "nowhere else, the SQL host's in gc_db/, YouTube's in youtube/, and parse, "
-                "hearings, pages and lib ask nobody")
+                "nowhere else, the SQL host's in gc_db/, YouTube's in youtube/, and every "
+                "folder under src/ outside fetch/ and checks/ asks nobody")
 def _network_boundaries():
     """The folders under src/fetch/ are by whose server a script asks, because
     that decides what can go wrong: gc.nh.gov's web server has blocked this
@@ -1245,7 +1250,8 @@ def _network_boundaries():
     the wrong folder is a request nobody expects from it. So each line is
     read from what a file does -- refusal.check(), probe_db, yt-dlp, a
     request -- and held against where it sits, which is why it needs no edit
-    as files move."""
+    as files move. Asking nobody is the default for a folder under src/
+    outside fetch/, so a folder listed later is held to it from the start."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-lines-"))
     try:
         ask = "import urllib.request\nurllib.request.urlopen(U)\n"
@@ -1260,13 +1266,17 @@ def _network_boundaries():
             "src/pages/asks.py": 'U = "https://example.org"\n' + ask,
             "src/checks/live.py": 'U = "https://graniterecord.org"\n' + ask,
             "src/checks/away.py": 'U = "https://example.org"\n' + ask,
+            "src/fetch/other/sos.py": 'U = "https://app.sos.nh.gov"\n' + ask,
+            "src/later/new.py": 'U = "https://app.sos.nh.gov"\n' + ask,
             "nightly.py": "import probe_db\nimport yt_dlp\n"})
-        got = _boundary_problems(tmp)
+        # src/later stands for a folder listed after this check was written.
+        got = _boundary_problems(tmp, dirs=_paths.CODE_DIRS + ("src/later",))
         want = ["unchecked.py is in src/fetch/gc_web/ and never calls",
                 "checked.py calls refusal.check()", "sql.py opens", "yt.py uses yt-dlp",
-                "asks.py makes a request", "away.py asks https://example.org"]
+                "asks.py makes a request", "away.py asks https://example.org",
+                "new.py makes a request, and src/later/ asks nobody"]
         assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
-            f"the reader of the network lines found {got} in a tree made to cross six"
+            f"the reader of the network lines found {got} in a tree made to cross seven"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     bad = _boundary_problems()

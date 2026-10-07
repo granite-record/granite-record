@@ -86,5 +86,7 @@ runnable script does not start with the bootstrap, when a name `build_all`,
 the night, the lane, the evening job, a workflow or `publish.bat` uses finds
 no file or two, when a file sits in the folder of a network it does not ask
 (a `refusal.check()` outside `fetch/gc_web/`, the SQL host outside
-`fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, a request from `parse/`,
-`hearings/`, `pages/` or `lib/`), and when git cannot see a file of code.
+`fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, a request from any folder
+outside `fetch/` but one from `checks/` to graniterecord.org), and when git
+cannot see a file of code. Asking nobody is the default: a new folder outside
+`fetch/` is held to it the day it is listed.

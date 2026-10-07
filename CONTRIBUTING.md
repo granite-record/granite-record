@@ -167,8 +167,8 @@ Wherever it goes, a new script:
 
 `preflight` holds all four, and holds each `src/fetch/` folder to its
 network: a `refusal.check()` outside `gc_web/`, the SQL host outside
-`gc_db/`, yt-dlp outside `youtube/`, or a request from `parse/`,
-`hearings/`, `pages/` or `lib/` fails it.
+`gc_db/`, yt-dlp outside `youtube/`, or a request from any folder under
+`src/` outside `fetch/` (but `checks/` asking graniterecord.org) fails it.
 
 ## Five files no generator may write
 
