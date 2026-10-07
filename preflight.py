@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.435
+# GRANITE_VERSION: 2026-09-04.436
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44085,8 +44085,22 @@ process.stdout.write(JSON.stringify(out));
     assert got["rows"] == 6 and got["out"] == 14 and got["off"] == 0, (
         f"February 2027 is drawn in {got['rows']} rows with {got['out']} days of March greyed "
         f"and {got['off']} disabled; six rows, the fourteen days of March in grey, none disabled")
+    # AND THE GREY SAYS "ANOTHER MONTH" (the look of 7 October 2026). The
+    # neighbours' days took the same grey as the month's own past days, so a
+    # past month could not be told from them. The month's own days are tiles
+    # on the card's surface and the neighbours' are on the page; the band, the
+    # hover and the chosen day are written after the neighbours' rule, at the
+    # same weight, so they still win.
+    css = Path("app.css").read_text(encoding="utf-8")
+    tile = re.search(r"\.cmgrid td\{[^}]*background:var\(--surface\)\}", css)
+    out = css.find(".cmgrid td.cmout{background:none}")
+    assert tile and out > tile.start(), (
+        "the month's own days and its neighbours' are drawn on the same ground")
+    for later in (".cmgrid td:hover{", ".cmrow.cmsel td{", ".cmgrid td.cmpick{"):
+        assert css.find(later) > out, f"{later} is written before the neighbours' ground, which beats it"
     return "ok", (f"{got['months']} months each six weeks from the Monday on or before the 1st; "
-                  "February 2027 in six rows with March's first fourteen days greyed")
+                  "February 2027 in six rows with March's first fourteen days greyed, off the "
+                  "month's tiles")
 
 
 @check("status", "the rail's last stop carries a day: the day a law took effect, or the day the bill was killed",
