@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.5
 """
 Who sits on each committee, from the General Court's own database.
 
-    python3 fetch_committee_members_db.py --dry-run
-    python3 fetch_committee_members_db.py
+    python3 src/fetch/gc_db/fetch_committee_members_db.py --dry-run
+    python3 src/fetch/gc_db/fetch_committee_members_db.py
 
 WHY NOT THE WEB PAGES
 

@@ -11,5 +11,7 @@ Which folder a fetcher goes in is decided by whose server it asks, not by its
 name or its subject: that is what decides what can go wrong. preflight holds
 the line both ways (`src/README.md`).
 
-The move into these folders is in stages (`src/README.md`); until a file's
-stage, it is still at the repository root.
+Every fetcher moved into these folders in stages 1 to 4 (`src/README.md`).
+The entry points that ask too -- `nightly.py`, `livestreams.py`,
+`netcheck.py`, `cloud.py` -- stay at the root, because a workflow, a
+scheduler or the person names them there.

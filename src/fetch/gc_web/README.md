@@ -20,6 +20,7 @@ Does not belong here: a script that only writes a gc.nh.gov link into a page
 (`pages/`), or one that reads what was saved (`parse/`). `netcheck.py` and
 `refusal.py` stay at the root.
 
-The scripts move here in stages 1 to 4 (`src/README.md`); until a script's
-stage, it is still at the repository root, and the rules above hold for it
-there.
+The scripts moved here in stages 1 to 4 (`src/README.md`): the by-hand
+fetchers and probes in stage 1, `fetch_legislation` in stage 2, `build_all`'s
+network steps in stage 3, and what the night and the weekly run by name in
+stage 4.

@@ -13,5 +13,7 @@ network steps, and a person.
 Does not belong here: anything that reshapes what is already in `db/`. The
 `*_from_db.py` scripts ask nobody and live in `parse/`.
 
-The scripts move here in stages 1 to 4 (`src/README.md`); until a script's
-stage, it is still at the repository root.
+The scripts moved here in stages 1 to 4 (`src/README.md`): the by-hand
+fetchers in stage 1, `fetch_rollcalls_db` in stage 2, `build_all`'s network
+steps in stage 3, and what the night and the weekly run by name, with
+`probe_db`, in stage 4.

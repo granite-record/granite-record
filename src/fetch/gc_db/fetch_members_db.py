@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.3
+# GRANITE_VERSION: 2026-09-07.4
 """
 Members who have left, from the General Court's own database.
 
-    python3 fetch_members_db.py --dry-run
-    python3 fetch_members_db.py
+    python3 src/fetch/gc_db/fetch_members_db.py --dry-run
+    python3 src/fetch/gc_db/fetch_members_db.py
 
 WHY THIS EXISTS
 

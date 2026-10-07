@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Every standing committee, from the two pages that list them.
 
-    python3 fetch_committees.py --probe    # print what it finds, write nothing
-    python3 fetch_committees.py            # write committees.json
+    python3 src/fetch/gc_web/fetch_committees.py --probe    # print what it finds, write nothing
+    python3 src/fetch/gc_web/fetch_committees.py            # write committees.json
 
 Two requests. Nothing else is touched.
 
