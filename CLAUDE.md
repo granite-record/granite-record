@@ -116,8 +116,8 @@ description, open the file.
 
 **Measure against something you did not generate.** `ground_truth.csv` holds 35
 proceedings a person timed by watching the video, and `review/checked.jsonl`
-holds whatever the bench has added since — `python3 review.py` serves one
-sample at a time and appends a judgment. Any timestamp method is scored with:
+holds whatever the bench has added since — `python3 src/checks/review.py`
+serves one sample at a time and appends a judgment. Any timestamp method is scored with:
 
 ```
 python3 probe_alignment.py --truth --candidate candidate_segments.json
