@@ -266,3 +266,27 @@ parser was written against.
 **It asks the General Court, on the one path their IT office asked this
 project to go lightly on.** Do not run it; `fetch_archive_bills.py --year`
 is the same two requests.
+
+## `fetch_testimony.py`
+
+Collected the House's online testimony sign-ins -- how many signed in for
+and against each bill, and how many gave a New Hampshire address -- by
+reading an ASP.NET page the way a browser does: fetch it, take
+`__VIEWSTATE` and `__EVENTVALIDATION` out of the HTML, post them back with
+the committee, date and bill chosen, and read the grid that comes back. That
+reading of the form is why it is kept.
+
+It was retired on 5 October 2026, at the person's word and on their
+condition that the counts stay retrievable another way. They do: the
+database's own record (`fetch_testimony_db.py`, `testimony_db.json`) held all
+565 of its bills and 1,454 more, so the site never showed a count from here,
+and `testimony_from_db.py` rebuilds those 2,019 bills from the dump, every
+count and hearing equal. Its `testimony.json` was keyed on the bill number
+alone, so from the turn it would have given 2027's bills 2025-2026's
+sign-ins. `build_all` stopped running it that day, and nothing has run it
+since. It came here on 7 October 2026, in the folder move's first stage,
+rather than into `src/fetch/gc_web/`; `--manifest`, which it declared and
+never read, went with it.
+
+**It asks the General Court, a request per bill**: it calls
+`refusal.check()` and `refusal.note()`, and is here to be read, not run.

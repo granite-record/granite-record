@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.401
+# GRANITE_VERSION: 2026-09-04.402
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18609,10 +18609,11 @@ def _record_untouched():
     # A FLOOR: the build_ and fetch_ scripts this read on 6 October 2026,
     # before any file moved. Read from the root alone after a move, it would
     # read none and pass. A script retired on purpose lowers it, in the same
-    # commit.
-    if len(scanned) < 57:
-        said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 57 were "
-                    "on 6 October: the code folders are not being read (_paths.code_files)")
+    # commit: 57 then, 56 since fetch_testimony.py went to obsolete/ on
+    # 7 October.
+    if len(scanned) < 56:
+        said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 56 were "
+                    "on 7 October: the code folders are not being read (_paths.code_files)")
     assert not said, "; and ".join(said)
     present = [n for n in HANDMADE if Path(n).exists()]
     return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
@@ -30937,10 +30938,11 @@ def _committee_details_one_writer():
     assert not bad, (f"these write committee_details.json, which is "
                      f"fetch_committee_details.py's alone: {', '.join(bad)}")
     # A floor, as the hand-made files' guard has: 57 build_ and fetch_ scripts
-    # and the night were read on 6 October, before any file moved.
-    assert len(scanned) >= 58, (
+    # and the night were read on 6 October, before any file moved, and one
+    # fewer since fetch_testimony.py went to obsolete/ on 7 October.
+    assert len(scanned) >= 57, (
         f"only {len(scanned)} scripts were read for writers of committee_details.json, "
-        "and 58 were on 6 October: the code folders are not being read")
+        "and 57 were on 7 October: the code folders are not being read")
     src = mine.read_text(encoding="utf-8")
     assert re.search(r"\bCD\.write_details\s*\(", src), (
         "fetch_committee_details.py no longer writes committee_details.json "
@@ -43627,8 +43629,9 @@ def _video_starts_on_the_right_clock(fetch_channel_index):
     return "ok", f"{n:,} recordings' Eastern starts agree with their UTC starts"
 
 
-# How many scripts asked gc.nh.gov on 6 October 2026, before any file moved.
-_ASKS_GC_FLOOR = 25
+# How many scripts asked gc.nh.gov on 6 October 2026, before any file moved
+# (25), less fetch_testimony.py, which went to obsolete/ on 7 October.
+_ASKS_GC_FLOOR = 24
 
 
 @check("build", "every fetcher that asks gc.nh.gov consults refusal.py first")
@@ -43742,10 +43745,11 @@ def _every_fetcher_checks_refusal():
     # FLOORS: the scripts this read on 6 October 2026, before any file moved,
     # and the ones that asked gc.nh.gov. Read from the root alone after a
     # move, it would find no fetcher left there and pass. A script retired on
-    # purpose lowers them, in the same commit.
-    assert len(scanned) >= 161 and len(asks) >= _ASKS_GC_FLOOR, (
-        f"{len(scanned)} scripts were read and {len(asks)} ask gc.nh.gov; on 6 October "
-        f"161 were read and {_ASKS_GC_FLOOR} asked: the code folders are not being read")
+    # purpose lowers them, in the same commit: 161 and 25 then, 160 and 24
+    # since fetch_testimony.py went to obsolete/ on 7 October.
+    assert len(scanned) >= 160 and len(asks) >= _ASKS_GC_FLOOR, (
+        f"{len(scanned)} scripts were read and {len(asks)} ask gc.nh.gov; on 7 October "
+        f"160 were read and {_ASKS_GC_FLOOR} asked: the code folders are not being read")
     assert all(n in asks for n in NAMED if _paths.locate(n).exists()), "a named fetcher was not read"
     assert not _paths.locate("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
         "check_civics_links.py, which asks the addresses civics.py holds, was not read"
@@ -43782,12 +43786,13 @@ def _every_fetcher_notes_refusal():
     above reads refusal.check() -- so a new fetcher is held by it the day it is
     written. A note in a comment or a string is not one.
 
-    AND WHAT IT DOES, for the fifteen: each is driven through its main() in a
+    AND WHAT IT DOES, for the fifteen (fourteen since fetch_testimony went to
+    obsolete/ on 7 October): each is driven through its main() in a
     temp folder on fake answers -- a 403, the block page served as a 200, and
     two dropped connections where one does not end the run -- and must stop
     with status 2, the refusal on file, after the one request that met it.
-    Nothing reaches the network: urlopen, urlretrieve and the opener
-    fetch_testimony keeps are fakes for the drive, and a socket opened past
+    Nothing reaches the network: urlopen, urlretrieve and an opener a script
+    keeps as _OPENER are fakes for the drive, and a socket opened past
     them raises. refusal.MARK is the temp folder's, so no refusal is written
     here and none is sent to the bucket (refusal._governing reads the folder
     beside MARK).
@@ -43908,7 +43913,6 @@ def _every_fetcher_notes_refusal():
         "fetch_schedule": ([], None, {"403": 1, "block": 1}),
         "fetch_session": (["--year", "2020", "--max-lsr", "3", "--delay", "0"], None,
                           {"403": 1, "block": 1, "drop": 2}),
-        "fetch_testimony": ([], None, {"403": 1, "block": 1}),
         "resolve_members": (["--session", "2026", "--delay", "0"], files(**{
             "data/legislators.json": [], "RollCallHistory.txt": "2026|H|1|99||x|Yea|x\n",
             "RollCallSummary.txt": "2026|H|1|x|HB1\n", "Docket.txt": "x|0123|x|HB1|x\n"}),
@@ -57462,10 +57466,11 @@ def _writers_merge():
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
     # A floor: the scripts of the root and src/ read on 6 October 2026, before
-    # any file moved.
-    assert len(scanned) >= 161, (
-        f"only {len(scanned)} scripts were read for writers of the shared files, and 161 "
-        "were on 6 October: the code folders are not being read")
+    # any file moved (161), less fetch_testimony.py, which went to obsolete/
+    # on 7 October.
+    assert len(scanned) >= 160, (
+        f"only {len(scanned)} scripts were read for writers of the shared files, and 160 "
+        "were on 7 October: the code folders are not being read")
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
 
 

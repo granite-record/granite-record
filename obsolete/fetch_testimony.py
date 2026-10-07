@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
 """
 Collect House online testimony sign-ins: who registered support or opposition
 on each bill, and who filed written testimony.
