@@ -190,6 +190,12 @@ jobs:
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
         run: |
+          # Main is refs/heads/main exactly (nightly.MAIN_REF): GitHub's if
+          # above compares without case, and takes a branch named Main for main.
+          if ($env:GITHUB_REF -cne 'refs/heads/main') {
+            Write-Output "A run of $env:GITHUB_REF, not refs/heads/main, is a dry run: no ping."
+            exit 0
+          }
           if (-not $env:HC_URL) {
             Write-Output "No HEALTHCHECKS_URL secret, so no ping."
             exit 0
@@ -412,6 +418,12 @@ jobs:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
           ENDED: ${{ job.status }}
         run: |
+          # Main is refs/heads/main exactly (nightly.MAIN_REF): GitHub's if
+          # above compares without case, and takes a branch named Main for main.
+          if ($env:GITHUB_REF -cne 'refs/heads/main') {
+            Write-Output "A run of $env:GITHUB_REF, not refs/heads/main, is a dry run: no ping."
+            exit 0
+          }
           if (-not $env:HC_URL) {
             Write-Output "No HEALTHCHECKS_URL secret, so no ping."
             exit 0

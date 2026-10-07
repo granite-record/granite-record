@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.423
+# GRANITE_VERSION: 2026-09-04.424
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35116,7 +35116,7 @@ def _cloud_dry_night(CL, BA, SG):
                 "a run of a branch other than main sent its site for production, or was refused "
                 "for something else", out[-300:])
         shutil.rmtree(dry / "site")
-        os.environ.pop(CL.REF_ENV, None)
+        os.environ[CL.REF_ENV] = CL.MAIN_REF
         # A New term run ticked with Dry run (the box is ticked unless a person
         # unticks it) is refused by nightly.py, and the workflow still gives its
         # kit-up --hold: nothing is held, nothing of the kit goes back -- not
@@ -35297,7 +35297,7 @@ def _cloud_dry_weekly(CL, NI):
             remote("state/last-weekly.json") == week_v and remote("state/census.json") == census, \
             "a weekly of dev sent the week's verdict or the census, or kept back its own"
         # The workflow's word alone (weekly.yml sets it on dev) does the same.
-        os.environ.pop(CL.REF_ENV, None)
+        os.environ[CL.REF_ENV] = CL.MAIN_REF
         os.environ[CL.DRY_ENV] = "true"
         put(wk, {"committees.json": "{\"H\": [1, 2, 3]}"})
         code, out = call(wk, "state-up")
@@ -48136,6 +48136,9 @@ class _GateNights:
         os.chdir(self.tmp)
         for k in self.ENV:
             os.environ.pop(k, None)
+        # A night on GitHub's machine here is main's unless a check names
+        # another ref: a missing one is not main's (CHECKS_REF).
+        os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
         refusal.MARK, refusal.LOCK = self.tmp / "archive" / "refused.json", self.tmp / "archive" / ".lock"
         Path("archive").mkdir()
         Path("prod").mkdir()
@@ -49188,6 +49191,8 @@ def _nightly_dry_run_apart(NI, CL):
         code, _ = g.night("--runner", "--no-fetch", run_id="502")   # waits for approval
         v = g.verdict()
         assert code == 0 and v["publishable"] and v[NI.NEWEST_FIT]["run_id"] == "502", v
+        assert g.output.get("publishable") == "true", \
+            ("a real night fit for production did not tell the workflow so", g.output)
         night_v, census = NI.VERDICT.read_bytes(), NI.CENSUS.read_bytes()
 
         # A dry run on dev: another build, dev's commit. Nothing the night left moves.
@@ -49196,6 +49201,12 @@ def _nightly_dry_run_apart(NI, CL):
         d = g.dry_verdict()
         assert code == 0 and d["run_id"] == "503" and d["built"] and d["publishable"] and \
             d.get("kept_apart") == NI.DRY_APART and d["asked"]["dry_run"], d
+        # ... and tells the workflow its build is not for production, whatever
+        # the build was: the pack step and the publish job read that, and a
+        # branch GitHub's expressions take for main is a dry run's all the
+        # same (MAIN IS MAIN_REF EXACTLY, the review of 7 October 2026).
+        assert g.output.get("publishable") == "false" and g.output.get("built") == "true", \
+            ("a dry run told the workflow its build was for production", g.output)
         assert NI.VERDICT.read_bytes() == night_v and NI.CENSUS.read_bytes() == census, (
             "a dry run rewrote the night's verdict or the census, which the next real night "
             "and the waiting night's deploy read")
@@ -49260,6 +49271,8 @@ def _nightly_dry_run_apart(NI, CL):
             assert f"- {NI.off_main_line('refs/heads/dev')}" in g.summary.splitlines() and \
                 "dev, not main" in NI.off_main_line("refs/heads/dev"), \
                 f"the page of a run of dev does not say why it is a dry run: {g.summary}"
+            assert g.output.get("publishable") == "false", \
+                ("a run of dev told the workflow its build was for production", g.output)
             del sent[:]
             code, _ = g.night("--runner", "--deploy-to", "preview", run_id="504b", github=True)
             assert code == 0 and sent == [NI.DRY_PREVIEW_BRANCH] and \
@@ -49273,6 +49286,29 @@ def _nightly_dry_run_apart(NI, CL):
             assert refused_production("502", "a dry run sends nothing to production"), \
                 ("a run of a branch other than main deployed production, or was refused for "
                  "something else", sent)
+            # MAIN IS MAIN_REF EXACTLY (the review of 7 October 2026): a branch
+            # named Main, which the workflow's expressions take for main, and a
+            # run on GitHub's machine that names no ref are dry runs here, say
+            # so, and tell the workflow nothing is for production -- so the
+            # pack step and the publish job, which the workflow alone would
+            # have run for Main, do not -- and are refused production.
+            for ref, rid, said in (("refs/heads/Main", "504c", "Main, not main (a branch's"),
+                                   (None, "504d", "GitHub named no branch")):
+                os.environ.pop("GITHUB_REF", None) if ref is None else \
+                    os.environ.__setitem__("GITHUB_REF", ref)
+                code, _ = g.night("--runner", "--no-fetch", run_id=rid, sha=GATE_SHA[1],
+                                  github=True)
+                d = g.dry_verdict()
+                assert code == 0 and d["run_id"] == rid and d["asked"]["dry_run"] and \
+                    d.get("off_main") == (ref or NI.NO_REF) and \
+                    g.output.get("publishable") == "false" and \
+                    NI.VERDICT.read_bytes() == night_v and NI.CENSUS.read_bytes() == census and \
+                    any(said in ln for ln in g.summary.splitlines()), (
+                        f"a run of {ref or 'no ref'} on GitHub's machine was not a dry run's, did "
+                        "not say why, or told the workflow its build was for production",
+                        d.get("off_main"), g.output)
+                assert refused_production("502", "a dry run sends nothing to production"), \
+                    (f"a run of {ref or 'no ref'} on GitHub's machine deployed production", sent)
             del sent[:]
             # ... and a run of main is what it always was: a real night.
             os.environ["GITHUB_REF"] = MAIN_REF
@@ -49280,7 +49316,7 @@ def _nightly_dry_run_apart(NI, CL):
                 and sent == [NI.PREVIEW_BRANCH] and g.verdict()["preview"]["landed"], \
                 ("a run of main was not a real night's", sent)
         finally:
-            os.environ.pop("GITHUB_REF", None)
+            os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
         del sent[:]
 
         # A dry run's verdict never goes to production, even handed to the
@@ -50629,6 +50665,7 @@ def _nightly_new_term(NI, SG, BA):
         os.chdir(tmp)
         for k in env_keys:
             os.environ.pop(k, None)
+        os.environ[CHECKS_REF[0]] = CHECKS_REF[1]   # main's, unless a night names another
         refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
         Path("archive").mkdir()
         Path("db").mkdir()
@@ -50798,7 +50835,7 @@ def _nightly_new_term(NI, SG, BA):
             assert page_note(out) == NI.NEW_TERM_NOT_MAIN + " Nothing was published.", \
                 page_note(out)
         finally:
-            os.environ.pop("GITHUB_REF", None)
+            os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
         assert all(x in NI.NEW_TERM_NOT_MAIN for x in (
             NI.NEW_TERM_BOX, f'"{NI.FETCH_BOX}" ticked', f"{NI.DRY_BOX} unticked",
             f"from {NI.REPO_BRANCH}")), NI.NEW_TERM_NOT_MAIN
@@ -58033,7 +58070,11 @@ MAIN_REF = "refs/heads/main"
 # fixture may take for its own: main() takes them out before any check runs.
 # GITHUB_REF is GitHub's own, and on dev it makes nightly.py and cloud.py take
 # every fixture's night, kit-up and state-up for a dry run's, as DRY_RUN did.
+# Taken out is not enough for it: a missing ref is not main's either (nightly's
+# MAIN IS MAIN_REF EXACTLY), so main() then names main, and a fixture on
+# GitHub's machine is a run of main unless its check names another ref.
 WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME")
+CHECKS_REF = ("GITHUB_REF", MAIN_REF)
 
 # EVERY KIND OF RUN, AND WHAT EACH MUST BE (7 October 2026). For each
 # workflow: the run's event, its ref, the boxes as given (an input left out is
@@ -58239,9 +58280,13 @@ def _not_the_runs():
     And since every run of a branch other than main is a dry run (7 October
     2026), GitHub's own GITHUB_REF says it too, on every run of dev: it is
     taken out with GITHUB_REF_NAME, and a check that wants a run of a branch
-    sets the ref itself."""
+    sets the ref itself. Since a missing ref is not main's either (nightly's
+    MAIN IS MAIN_REF EXACTLY), the ref is then put back as main's (CHECKS_REF),
+    on the laptop and on GitHub's machine alike, and a check that changes it
+    puts main's back."""
     for k in WORKFLOW_WORDS:
         os.environ.pop(k, None)
+    os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
 
 
 @check("workflows", "preflight's checks are not told that the run preflight is part of is a dry "
@@ -58259,18 +58304,25 @@ def _preflight_not_the_runs(NI, CL):
     assert NI.REF_ENV in WORKFLOW_WORDS and CL.REF_ENV in WORKFLOW_WORDS, \
         ("the ref nightly.py and cloud.py read a dry run from is not taken out of the checks' "
          "environment", NI.REF_ENV, CL.REF_ENV, WORKFLOW_WORDS)
+    assert CHECKS_REF == (NI.REF_ENV, NI.MAIN_REF) == (CL.REF_ENV, CL.MAIN_REF), \
+        ("the checks' fixtures are not put back as runs of main", CHECKS_REF)
     saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS",) + WORKFLOW_WORDS}
     try:
-        # A dry run by the box, and a run of dev with the box unticked, as
-        # GitHub's machine hands each to preflight.
+        # A dry run by the box, a run of dev with the box unticked, and a run
+        # whose ref is missing -- not main's either -- as GitHub's machine
+        # hands each to preflight.
         for env in ({k: "true" for k in WORKFLOW_WORDS},
-                    {"DRY_RUN": "false", "GITHUB_REF": "refs/heads/dev", "GITHUB_REF_NAME": "dev"}):
+                    {"DRY_RUN": "false", "GITHUB_REF": "refs/heads/dev", "GITHUB_REF_NAME": "dev"},
+                    {"DRY_RUN": "false"}):
+            for k in WORKFLOW_WORDS:
+                os.environ.pop(k, None)
             os.environ.update(GITHUB_ACTIONS="true", **env)
             assert NI.dry_by_workflow() and CL.dry_by_workflow(), env
             _not_the_runs()
-            assert not NI.dry_by_workflow() and not CL.dry_by_workflow(), (
-                "a dry run's word, or a ref other than main, on GitHub's machine reaches the "
-                "checks' fixtures", env)
+            assert not NI.dry_by_workflow() and not CL.dry_by_workflow() and \
+                os.environ.get("GITHUB_REF") == MAIN_REF, (
+                    "a dry run's word, or a ref other than main's, on GitHub's machine reaches "
+                    "the checks' fixtures", env)
     finally:
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
@@ -58377,22 +58429,37 @@ def _workflows_dry_run(NI, CL):
             f"nightly.yml's night job names {said} for a {event} of {ref} with "
             f"{boxes or 'no boxes'}, and nightly.py deploys that run's preview to {branch}")
 
-    # The two read the word themselves, and the ref, and on GitHub's machine only.
+    # The two read the word themselves, and the ref, and on GitHub's machine
+    # only. MAIN IS MAIN_REF EXACTLY (the review of 7 October 2026): a missing
+    # or empty ref is not main's -- the workflow's test reads it as a dry run's
+    # (below), and these read it as main's until then -- and neither is a case
+    # variant, which GitHub's expressions cannot tell from main.
+    for ref in ("", "refs/heads/dev"):
+        ctx = _wf_run_ctx("workflow_dispatch", ref, dict(_HAND, dry_run=False))
+        assert _gh_render(dry_line, ctx) == "true", (ref, _gh_render(dry_line, ctx))
+    case = _wf_run_ctx("workflow_dispatch", "refs/heads/Main", dict(_HAND, dry_run=False))
+    assert _gh_render(dry_line, case) == "false" and \
+        _gh_eval(cond.group(1), dict(case, **{"needs.night.outputs.publishable": "true"})), \
+        ("GitHub's expressions now tell refs/heads/Main from main, and this check's account of "
+         "why nightly.py's step output and the Healthchecks steps' own test are needed is stale")
     saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV, NI.REF_ENV)}
     try:
         for actions, dry, ref, want in (
                 ("true", "true", MAIN_REF, True), ("true", "false", MAIN_REF, False),
                 (None, "true", None, False), ("true", "false", "refs/heads/dev", True),
                 ("true", None, "refs/heads/dev", True), (None, "false", "refs/heads/dev", False),
-                ("true", "false", None, False), ("true", "true", "refs/heads/dev", True)):
+                ("true", "false", None, True), ("true", "false", "", True),
+                ("true", None, None, True), ("true", "false", "refs/heads/Main", True),
+                ("true", "false", "refs/heads/main2", True), (None, None, None, False),
+                ("true", "true", "refs/heads/dev", True)):
             for k, val in (("GITHUB_ACTIONS", actions), (NI.DRY_ENV, dry), (NI.REF_ENV, ref)):
                 os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
             assert NI.dry_by_workflow() is want and CL.dry_by_workflow() is want, (
                 "nightly.py or cloud.py reads a dry run otherwise than the workflow: GITHUB_ACTIONS="
                 f"{actions}, DRY_RUN={dry}, GITHUB_REF={ref}; nightly says {NI.dry_by_workflow()}, "
                 f"cloud says {CL.dry_by_workflow()}, and it is {want}")
-            assert NI.not_main() == (ref if want and ref and ref != MAIN_REF else ""), \
-                (ref, NI.not_main())
+            off = "" if actions != "true" or ref == MAIN_REF else ref or NI.NO_REF
+            assert NI.not_main() == off, (ref, NI.not_main(), off)
     finally:
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
@@ -58484,6 +58551,11 @@ def _workflows_weekly_dry_run(NI, CL):
                   "themselves")
 
 
+# The first thing a Healthchecks step's script does: compare the ref with
+# main's exactly, which no if can (MAIN IS MAIN_REF EXACTLY, in nightly.py).
+HC_REF_GUARD = "          if ($env:GITHUB_REF -cne 'refs/heads/main') {"
+
+
 def _gh_unwrap(cond):
     cond = cond.strip()
     return cond[3:-2].strip() if cond.startswith("${{") and cond.endswith("}}") else cond
@@ -58504,7 +58576,11 @@ def _workflows_healthchecks():
     not one -- a scheduled night, a run by hand of main with Dry run
     unticked -- in the outcome it is there for, as before. The weekly's ping,
     which tells Healthchecks only of a week that failed, likewise: never for
-    a week off main. Every workflow that names HEALTHCHECKS_URL is held."""
+    a week off main. Every workflow that names HEALTHCHECKS_URL is held. And
+    since no if can tell refs/heads/Main from main -- GitHub compares strings
+    without case, and nightly.py does not (the review of 7 October 2026) --
+    each such step's script compares the ref exactly before it pings
+    (HC_REF_GUARD)."""
     files = {f.name: f for f in _workflows()}
     if not files:
         return "skip", "no .github/workflows here"
@@ -58528,7 +58604,18 @@ def _workflows_healthchecks():
                 cond = _gh_unwrap(m.group(1)) if m else "true"
                 if not re.search(r"\b(?:always|success|failure)\(\)", cond):
                     cond = f"success() && ({cond})"
-                pings.append((re.sub(r"^\s*- name:\s*", "", st[0]).strip(), cond))
+                step = re.sub(r"^\s*- name:\s*", "", st[0]).strip()
+                # MAIN IS MAIN_REF EXACTLY (the review of 7 October 2026): the
+                # if cannot tell refs/heads/Main from main, so the script
+                # compares the ref itself, exactly, before it pings.
+                guard = [i for i, ln in enumerate(st) if ln.rstrip() == HC_REF_GUARD]
+                curl = [i for i, ln in enumerate(st) if "curl" in ln]
+                assert guard and curl and guard[0] < curl[0] and \
+                    any(ln.strip() == "exit 0" for ln in st[guard[0] + 1:guard[0] + 4]), (
+                        f"{name}: {step!r} pings Healthchecks without first comparing the ref "
+                        "with main's exactly, so a branch named Main, which its if takes for "
+                        "main, pings for a run nightly.py calls a dry run")
+                pings.append((step, cond))
         assert pings, f"{name} pings Healthchecks from no step"
         wrong = []
         for event, ref, boxes, dry, _title in WF_RUNS[name]:

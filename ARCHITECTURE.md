@@ -96,7 +96,10 @@ to `nightly.graniterecord.pages.dev`, where a night waiting for approval is
 looked at before it is approved.
 Every run of a branch other than `main`, the nightly's or the weekly's, is a
 dry run whatever its boxes say (since 7 October 2026): `DRY_RUN` reads the
-ref and `nightly.py` and `cloud.py` read `GITHUB_REF` themselves, its title
+ref and `nightly.py` and `cloud.py` read `GITHUB_REF` themselves -- comparing
+it with `refs/heads/main` exactly, so that a run naming no ref, or a branch
+named `Main`, which GitHub's case-blind expressions take for main, is a dry
+run too, sends nothing to production and pings nothing -- its title
 says "not main", the publish job runs only for `main`, a New term run there
 is refused, a dry weekly keeps its verdict apart in
 `archive/last-dry-weekly.json` and sends back none of the lists it took, and

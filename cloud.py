@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.14
+# GRANITE_VERSION: 2026-09-25.15
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -286,7 +286,8 @@ DRY_ENV = "DRY_RUN"
 # (7 October 2026, the person's decision): GitHub names the run's branch in
 # GITHUB_REF, read here again so that an edit to the workflow's DRY_RUN line
 # cannot reopen what it closes (nightly.REF_ENV and MAIN_REF, which preflight
-# holds these to).
+# holds these to). Main is MAIN_REF exactly: a missing ref is not, and nor is
+# refs/heads/Main, which the workflow's expressions cannot tell from it.
 REF_ENV = "GITHUB_REF"
 MAIN_REF = "refs/heads/main"
 # Where a dry night's logs go, under logs/<day>/: a folder pull does not read.
@@ -2104,13 +2105,14 @@ def _site_files(site):
 
 
 def dry_by_workflow():
-    """Whether the workflow says this run is a dry run (DRY_ENV), or it is a
-    run of a branch other than main (REF_ENV is set and is not MAIN_REF), on
-    GitHub's machine -- nightly.dry_by_workflow()'s rule."""
+    """Whether the workflow says this run is a dry run (DRY_ENV), or it is not
+    a run of main (REF_ENV is not MAIN_REF exactly: another branch, a case
+    variant of main, or no ref at all), on GitHub's machine --
+    nightly.dry_by_workflow()'s rule, and nightly.py says why missing is not
+    main (MAIN IS MAIN_REF EXACTLY)."""
     if os.environ.get("GITHUB_ACTIONS") != "true":
         return False
-    ref = os.environ.get(REF_ENV) or ""
-    return os.environ.get(DRY_ENV) == "true" or bool(ref and ref != MAIN_REF)
+    return os.environ.get(DRY_ENV) == "true" or os.environ.get(REF_ENV) != MAIN_REF
 
 
 def _night_verdict(root, run):

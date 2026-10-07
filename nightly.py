@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.58
+# GRANITE_VERSION: 2026-09-04.59
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -179,7 +179,11 @@ of this may depend on remembering not to start one:
                       by-hand run on dev with Dry run unticked -- which wrote
                       the night's verdict, the census and the kit like a real
                       night -- keeps apart too, and its page says why. A
-                      scheduled night is always main's
+                      scheduled night is always main's. Main is
+                      refs/heads/main exactly: no ref, or refs/heads/Main,
+                      which GitHub's expressions take for main, is a dry run
+                      here (MAIN IS MAIN_REF EXACTLY), and its step output
+                      sends nothing to production
   what it sends back  only what it fetched: cloud.py's --dry-night, which the
                       same DRY_RUN implies, says what (its docstring)
 
@@ -559,10 +563,24 @@ DRY_ENV = "DRY_RUN"
 # reached main's next night through the bucket, and it could make a night
 # waiting for approval unapprovable. The workflow's DRY_RUN says the same;
 # this reads the ref again, so that an edit to that line cannot reopen it.
-# cloud.REF_ENV and cloud.MAIN_REF are the same; preflight takes REF_ENV out
-# for its own checks, as it does DRY_ENV.
+# cloud.REF_ENV and cloud.MAIN_REF are the same; preflight sets REF_ENV to
+# MAIN_REF for its own checks, and takes DRY_ENV out.
+#
+# MAIN IS MAIN_REF EXACTLY (the review of 7 October 2026). A ref that is
+# missing or empty on GitHub's machine is not main's: the workflow's own test
+# (github.ref != 'refs/heads/main') reads an empty ref as a dry run's, and
+# this read it as main's -- the two disagreed, and the disagreement was open.
+# Nor is refs/heads/Main: GitHub compares strings in a workflow's expressions
+# without regard to case, so its DRY_RUN, its Healthchecks steps and its
+# publish job all take a branch named Main for main, and only this, which
+# compares exactly, sees otherwise. So a dry run's step output says its
+# build is not for production (gh_output, in the verdict below), which
+# keeps the pack step and the publish job from running for one, and the
+# workflow's Healthchecks steps compare the ref exactly themselves.
 REF_ENV = "GITHUB_REF"
 MAIN_REF = f"refs/heads/{REPO_BRANCH}"
+# What not_main() says of a run on GitHub's machine whose ref is missing or empty.
+NO_REF = "(no ref)"
 # In a real night's verdict, carried from night to night: the newest real
 # night whose build its checks found fit for production -- {"run_id", "day",
 # "started", "fingerprint"} -- whether or not production already served it.
@@ -1716,19 +1734,27 @@ def github(name, default=""):
 
 
 def not_main():
-    """The ref of a run on GitHub's machine of a branch other than REPO_BRANCH
-    ("refs/heads/dev", say), or "": for a run of main, off GitHub's machine,
-    or where GitHub names no ref (the workflow's DRY_RUN, which reads the ref
-    itself, still holds that one)."""
+    """The ref of a run on GitHub's machine that is not MAIN_REF exactly
+    ("refs/heads/dev", say, or "refs/heads/Main"), NO_REF where GitHub names
+    none, or "": for a run of main, and off GitHub's machine. Missing is not
+    main (MAIN IS MAIN_REF EXACTLY), as the workflow's own test reads it."""
+    if github("GITHUB_ACTIONS") != "true":
+        return ""
     ref = github(REF_ENV)
-    return ref if github("GITHUB_ACTIONS") == "true" and ref and ref != MAIN_REF else ""
+    return "" if ref == MAIN_REF else ref or NO_REF
 
 
 def off_main_line(ref):
     """What a run off main says of itself, on its page and in its log."""
+    if ref == NO_REF:
+        return (f"GitHub named no branch for this run ({REF_ENV} is empty), so it is not a run "
+                f"of {REPO_BRANCH}: every run of a branch other than {REPO_BRANCH} is a dry "
+                "run, whatever its boxes say.")
     name = ref[len("refs/heads/"):] if ref.startswith("refs/heads/") else ref
-    return (f"This run is of {name}, not {REPO_BRANCH}: every run of a branch other than "
-            f"{REPO_BRANCH} is a dry run, whatever its boxes say.")
+    return (f"This run is of {name}, not {REPO_BRANCH}"
+            + (" (a branch's name is compared exactly)" if name.lower() == REPO_BRANCH else "")
+            + f": every run of a branch other than {REPO_BRANCH} is a dry run, whatever its "
+            "boxes say.")
 
 
 def dry_by_workflow():
@@ -3912,7 +3938,12 @@ class Night:
             say(f"\nthe gate: {line}")
         # "review" is true wherever the gate did not clear the night, a night
         # that did not build included: the safe side for anything that reads it.
-        gh_output(built=bool(v.get("built")), publishable=bool(v.get("publishable")),
+        # "publishable" is false for a dry run whatever its build was (the
+        # verdict still says): the step and the job that send a build to
+        # production read it, and a branch GitHub's expressions take for main
+        # (MAIN IS MAIN_REF EXACTLY) is a dry run's all the same.
+        gh_output(built=bool(v.get("built")),
+                  publishable=bool(v.get("publishable")) and not self.a.dry_run,
                   clean=bool(v["clean"]), day=self.day,
                   review=bool((v.get("review") or {"needed": True})["needed"]))
         tries = int(v.get("fetch_tries") or 1)
