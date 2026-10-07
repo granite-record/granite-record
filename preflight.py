@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.397
+# GRANITE_VERSION: 2026-09-04.398
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1187,7 +1187,7 @@ def _bootstrap_first():
 
 
 # THE OTHER TWO RULES FOR A SCRIPT (CONTRIBUTING.md, "Where new code goes").
-# The bootstrap check holds the first two, a unique name and the bootstrap.
+# The first two, a unique name and the bootstrap, have checks of their own above.
 # These hold the last two: a path is found from _paths.ROOT, and a script is
 # started through _paths.script. Each was a trap the plan counted -- keys.py's
 # secrets.json, repo_facts' sentence on data.html, the laptop's evening probe
@@ -1291,13 +1291,13 @@ def _root_and_launch_problems(root=None):
                 "through _paths.script, never from its own file's folder")
 def _root_and_launch_rules():
     """CONTRIBUTING.md gives a new script four rules and says preflight holds
-    them. The bootstrap check holds the first two; this holds the third and
-    the fourth, read from what each file does so that they hold wherever it
-    sits. Path(__file__).parent was the root while every script sat there,
-    and is src/parse/ once one moves: keys.py would have looked for
-    secrets.json there, and build_exports would have counted no checks for
-    data.html. A launch of "narrative.py", or of HERE / "narrative.py", finds
-    the file only while it sits beside the working folder or HERE."""
+    them. The name and bootstrap checks hold the first two; this holds the
+    third and the fourth, read from what each file does so that they hold
+    wherever it sits. Path(__file__).parent was the root while every script
+    sat there, and is src/parse/ once one moves: keys.py would have looked
+    for secrets.json there, and build_exports would have counted no checks
+    for data.html. A launch of "narrative.py", or of HERE / "narrative.py",
+    finds the file only while it sits beside the working folder or HERE."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-rules-"))
     try:
         launch = "import subprocess, sys\nrun = subprocess.run\n"
