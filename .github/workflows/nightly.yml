@@ -333,7 +333,12 @@ jobs:
       # nights/<run>/kit/ and kit/ keeps the copies it had, so that the next
       # night still meets the smaller files and refuses them until this run's
       # build is published. The logs, the day's archive copy and the state go
-      # up as on any night.
+      # up as on any night. On a dry run (DRY_RUN, above, which cloud.py reads
+      # itself) only what the run fetched goes back -- the day's files as the
+      # export served them and their archive -- with its logs under
+      # logs/<day>/dry-run/, a refusal or a hold, and its own verdict: nothing
+      # its branch's code made, which main's next night would build from
+      # (cloud.py's docstring, --dry-night). Both state-up steps likewise.
       - name: Send what changed, and the logs, back to R2
         id: kitup
         if: always() && steps.kitdown.outcome == 'success'

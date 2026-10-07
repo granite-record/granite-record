@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.10
+# GRANITE_VERSION: 2026-09-25.11
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -10,6 +10,8 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                with the night's logs and state
     python3 cloud.py kit-up --hold RUN         a New term run's: what it changed waits
                                                under nights/RUN/kit/, out of kit/
+    python3 cloud.py kit-up --dry-night        a dry run's: only what it fetched goes
+                                               back, and its logs, apart (state-up too)
     python3 cloud.py kit-release --run RUN     ... and goes into kit/, once that
                                                run's build has been published
     python3 cloud.py state-down | state-up     the small state files only
@@ -108,6 +110,38 @@ waiting file is copied into kit/ over the copy the night took down -- all of
 them or none, and none if kit/ has changed underneath since -- and the
 manifest follows. A run never published is never released, and nights/ is
 deleted by the bucket's lifecycle rule a few days on.
+
+A DRY RUN SENDS BACK ONLY WHAT IT FETCHED: --dry-night (7 October 2026)
+
+A dry run is how code not yet on main is tried, on dev, and until this its
+kit-up sent back every file of the night's it had changed, and its state-up
+every state file: the outputs a build carries (text_sponsors.json,
+narratives.json, proceedings.csv and the rest), the one file of the site a
+build reads, the study views, the bill requests, the list of calendars, the
+livestream index, the census and the night's verdict -- every one of them
+written by that branch's code, and every one taken down and read by main's
+next night. So a dry run's code reached production a night later, without a
+merge. --dry-night, which the workflow's DRY_RUN (DRY_ENV) implies on
+GitHub's machine whatever a step passes, sends back only what cloud_kit.json's
+"dry_run" names:
+
+  the day's files     each only where it is byte for byte a file the General
+                      Court's export served: the archive's store holds one by
+                      its sha256 (a database night's are rebuilt by the run's
+                      own code, and stay where they are)
+  their archive       nh-archive's index, snapshots and store; not the
+                      database nights' copies under nh-archive/from-db/
+  its logs            under logs/<day>/dry-run/, apart from the night's, so
+                      that pull, which takes logs/<day>/<name> alone, never
+                      takes a dry run's log or change list for the night's
+  the state           a refusal and a hold on the SQL host, which are facts
+                      about another server and stop the next night's asking
+                      whoever met them, and its own verdict
+                      (state/last-dry-run.json); never the census or the
+                      night's verdict (DRY_NEVER)
+
+Nothing is removed from the kit on a dry night, and the rest it changed is
+named as kept back.
 
 BACK TO THE LAPTOP: pull (26 September 2026)
 
@@ -231,6 +265,11 @@ SITE_VERDICT = "archive/run-verdict.json"
 # night's whatever they were told (--dry-night), and keeps site-up from
 # sending a dry run's site for production.
 DRY_ENV = "DRY_RUN"
+# Where a dry night's logs go, under logs/<day>/: a folder pull does not read.
+DRY_LOGS = "dry-run"
+# The state a dry night never sends, whatever cloud_kit.json's "dry_run" says:
+# what the next real night is gated against and the night's own verdict.
+DRY_NEVER = ("census.json", "last-night.json")
 PULL_DAYS = 7
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
@@ -381,7 +420,37 @@ def load_kit(root):
         check_rel(s["path"])
         if not s.get("key") or "/" in s["key"]:
             raise Failed(f"{KIT_FILE}: state key {s.get('key')!r} is not a plain name")
+    # What a dry night sends back: only the night's own files, and of the
+    # state never what the next real night is gated against.
+    d = kit.get("dry_run") or {}
+    keys = {s["key"] for s in kit.get("state", [])}
+    for x in list(d.get("served", [])) + list(d.get("globs", [])) + [d.get("store") or "x"]:
+        check_rel(x)
+    for x in list(d.get("served", [])) + [re.sub(r"\*+", "x", g) for g in d.get("globs", [])]:
+        if owner_of(kit, x) != "night":
+            raise Failed(f"{KIT_FILE}: \"dry_run\" names {x}, which is not a night's kit file")
+    bad = [k for k in d.get("state", []) if k not in keys or k in DRY_NEVER]
+    if bad:
+        raise Failed(f"{KIT_FILE}: \"dry_run\" sends state {bad}, which is not in the state list "
+                     f"or is one a dry night never sends ({', '.join(DRY_NEVER)})")
     return kit
+
+
+def dry_night(a):
+    """Whether kit-up or state-up is a dry run's: --dry-night, or the
+    workflow's word on GitHub's machine (dry_by_workflow), whatever a step
+    passed."""
+    return bool(getattr(a, "dry_night", False)) or dry_by_workflow()
+
+
+def dry_sends(kit, root, rel, sha256):
+    """Whether a dry night sends this night's file back: a day's file only
+    when the archive's store holds it, byte for byte, as the export served
+    it; the archive by its globs; nothing else."""
+    d = kit.get("dry_run") or {}
+    if rel in d.get("served", []):
+        return bool(d.get("store")) and local(root, f"{d['store']}/{sha256}.gz").is_file()
+    return any(glob_re(g).match(rel) for g in d.get("globs", []))
 
 
 def never_rx(kit):
@@ -1209,12 +1278,14 @@ def log_files(root, kit, since):
     return sorted(out)
 
 
-def put_logs(bucket, root, logs, day):
+def put_logs(bucket, root, logs, day, sub=None):
+    """The logs to logs/<day>/, or a dry night's to logs/<day>/<sub>/."""
     sent, bad = [], []
-    existing = bucket.list(f"logs/{day}/")
+    folder = f"logs/{day}/{sub}/" if sub else f"logs/{day}/"
+    existing = bucket.list(folder)
     stamp = datetime.now().strftime("%H%M%S")
     for rel in logs:
-        key = f"logs/{day}/{rel.rsplit('/', 1)[-1]}"
+        key = f"{folder}{rel.rsplit('/', 1)[-1]}"
         if key in existing:
             key = f"{key}~{stamp}"
         try:
@@ -1253,8 +1324,9 @@ def save_state_record(root, rec):
     os.replace(tmp, p)
 
 
-def state_up(bucket, root, kit, rep, day):
+def state_up(bucket, root, kit, rep, day, only=None):
     """Send each state file this machine changed, and nothing it merely holds.
+    `only`, a dry night's: the keys it may send, and no other is even read.
 
     ONE WRITER, AGAIN. Both machines hold these files, and a copy taken down
     last night is not news: sent back, it would put last night's census over
@@ -1275,6 +1347,8 @@ def state_up(bucket, root, kit, rep, day):
     notes, bad = [], []
     for s in state_present(root, kit):
         key, obj = s["key"], f"state/{s['key']}"
+        if only is not None and key not in only:
+            continue
         try:
             data = local(root, s["path"]).read_bytes()
             mine = _sha(data)
@@ -1367,6 +1441,18 @@ def cmd_kit_up(a, root):
         night = [r for r in night if r not in waiting]
         gone_waiting = [r for r in gone if held_back(kit, r)]
         gone = [r for r in gone if r not in gone_waiting]
+    # A DRY RUN SENDS BACK ONLY WHAT IT FETCHED (the docstring): the rest of
+    # what it changed is its branch's code's work, and stays out of kit/.
+    dry = dry_night(a)
+    kept_back, unserved, gone_left = [], [], []
+    if dry:
+        if hold:
+            raise Failed("--hold is a New term run's, and a New term run is never a dry run")
+        served = set((kit.get("dry_run") or {}).get("served", []))
+        sendable = [r for r in night if dry_sends(kit, root, r, entries[r]["sha256"])]
+        unserved = [r for r in night if r not in sendable and r in served]
+        kept_back = [r for r in night if r not in sendable and r not in served]
+        night, gone_left, gone = sendable, gone, []
     man, _ = read_manifest(bucket, "kit")
     cur = (man or {}).get("files", {})
     # The bucket's copy must still be the one this machine took down -- or
@@ -1394,7 +1480,17 @@ def cmd_kit_up(a, root):
         show(f"the night's, to wait under {hprefix}/", waiting, sz)
         show("the night's, gone since kit-down; the removal waits too", gone_waiting,
              {r: before[r][0] for r in gone_waiting})
-    say(f"  logs for logs/{day}/: {len(logs):,} files, "
+    if dry:
+        say("  a dry run: only what it fetched goes back, and its logs go to "
+            f"logs/{day}/{DRY_LOGS}/; of the state only "
+            + (", ".join((kit.get("dry_run") or {}).get("state", [])) or "nothing"))
+        show("kept back: what the run's own code made, which main's next night would "
+             "build from", kept_back, sz)
+        show("kept back: day files that are not byte for byte what the export served",
+             unserved, sz)
+        show("gone since kit-down, and left in kit/: a dry run removes nothing", gone_left,
+             {r: before[r][0] for r in gone_left})
+    say(f"  logs for logs/{day}/{DRY_LOGS + '/' if dry else ''}: {len(logs):,} files, "
         f"{human(sum(local(root, r).stat().st_size for r in logs))}; state files "
         f"here: {len(here_state)}")
     if not removal_ok(len(gone) + len(gone_waiting), len(before), a.allow_removals):
@@ -1468,11 +1564,13 @@ def cmd_kit_up(a, root):
         before.pop(r, None)
     rec["files"] = before
     rec_path.write_text(json.dumps(rec), encoding="utf-8")
-    lsent, lfail = put_logs(bucket, root, logs, day)
+    lsent, lfail = put_logs(bucket, root, logs, day, DRY_LOGS if dry else None)
     if not lfail:
         rec["logs_sent"] = time.time()
         rec_path.write_text(json.dumps(rec), encoding="utf-8")
-    sn, sbytes, ssame, snotes, sfail = state_up(bucket, root, kit, rep, day)
+    sn, sbytes, ssame, snotes, sfail = state_up(
+        bucket, root, kit, rep, day,
+        only=(kit.get("dry_run") or {}).get("state", []) if dry else None)
     fails += lfail + sfail
     for note in snotes:
         say(f"  state: {note}")
@@ -1483,6 +1581,9 @@ def cmd_kit_up(a, root):
         f"files sent, {ssame} unchanged, {human(sbytes)}; {rep.n:,} older copies "
         f"kept under replaced/{day}/")
     say(f"  {MANIFEST.format('kit')}: {doc['count']:,} files, {human(doc['bytes'])}")
+    if dry:
+        say(f"  a dry run: {len(kept_back) + len(unserved):,} changed files kept back, "
+            f"{len(gone_left):,} gone and left in kit/")
     if hold:
         say(f"  held for run {hold}: " + (
             f"{len(held['files']):,} files, "
@@ -1503,6 +1604,12 @@ def cmd_kit_up(a, root):
 def cmd_state_up(a, root):
     kit = load_kit(root)
     here = state_present(root, kit)
+    # A dry night's: only a refusal, a hold and its own verdict (the docstring).
+    only = (kit.get("dry_run") or {}).get("state", []) if dry_night(a) else None
+    if only is not None:
+        here = [s for s in here if s["key"] in only]
+        say("state-up: a dry run, so only " + (", ".join(only) or "nothing")
+            + " may go; never the census or the night's verdict")
     bucket = open_bucket(a)
     if a.dry_run:
         say(f"--dry-run: nothing sent. {len(here)} state files here would be "
@@ -1511,7 +1618,7 @@ def cmd_state_up(a, root):
         return
     day = f"{datetime.now():%Y-%m-%d}"
     rep = Replacer(bucket, day)
-    n, size, same, notes, bad = state_up(bucket, root, kit, rep, day)
+    n, size, same, notes, bad = state_up(bucket, root, kit, rep, day, only=only)
     for note in notes:
         say(f"  {note}")
     unsent = unsent_after(bucket, root)
@@ -2928,6 +3035,10 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--run", help="site-up, site-down, kit-release: the night's run id "
                                   "(GitHub's run id), which names nights/<run>/")
+    ap.add_argument("--dry-night", action="store_true",
+                    help="kit-up, state-up: a dry run's night -- only what it fetched, its "
+                         "logs apart and a refusal, a hold and its own verdict go back; on "
+                         "GitHub's machine the workflow's DRY_RUN says so whatever is passed")
     ap.add_argument("--hold", metavar="RUN",
                     help="kit-up, on a New term run: what the night changed waits under "
                          "nights/RUN/kit/ and stays out of kit/ until kit-release --run RUN")

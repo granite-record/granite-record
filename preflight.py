@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.417
+# GRANITE_VERSION: 2026-09-04.418
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34908,6 +34908,208 @@ def _cloud_state_and_site(CL):
                       "up and comes down as one archive, byte for byte")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("cloud", "a dry run sends back only what it fetched -- the day's files as the export "
+                "served them, their archive, its logs apart, a refusal or a hold and its own "
+                "verdict -- so nothing its branch's code made reaches main's next night",
+       needs=("cloud", "build_all", "snapshot_gencourt"))
+def _cloud_dry_night(CL, BA, SG):
+    """7 October 2026. A dry run is how code not yet on main is tried, and
+    until then its kit-up sent back every file of the night's it had changed
+    and its state-up every state file: the outputs a build carries forward,
+    the one file of the site a build reads, the study views, the bill
+    requests, the list of calendars, the livestream index, the census and the
+    night's verdict -- all written by that branch's code, and all taken down
+    and read by main's next night. So dev's code reached production a night
+    later with no merge. Now a dry night (--dry-night, or the workflow's
+    DRY_RUN on GitHub's machine whatever a step passes) sends back only what
+    the run fetched, as cloud_kit.json's "dry_run" names it:
+
+      - the real kit's: the day's files, and only those, as "served"; the
+        archive of them, never the database nights' copies; and of the state
+        a refusal, a hold on the SQL host and its own verdict, never the
+        census or the night's verdict -- and no night file else
+      - driven on a folder bucket: a day file the store holds byte for byte
+        goes up, and one it does not (a database night's) stays; the archive
+        goes up but not from-db/; a carried output, the bill requests and a
+        removal stay as they were; the logs go to logs/<day>/dry-run/, which
+        pull does not take; the census and the night's verdict stay as they
+        were while a refusal and the dry run's own verdict go up; and the
+        next real night takes down main's outputs, not the dry run's
+    """
+    import contextlib
+    import hashlib
+    import io
+    real = CL.load_kit(".")
+    d = real.get("dry_run") or {}
+    day_files = [f for f in list(SG.FILES) + [n for _, n in SG.EXTRA] if CL.owner_of(real, f)]
+    assert d and sorted(d.get("served", [])) == sorted(day_files) and \
+        d.get("store") == "nh-archive/store", (
+            f"{CL.KIT_FILE}'s dry_run does not send the day's files, and only them, by the "
+            f"archive's store: {sorted(d.get('served', []))} against {sorted(day_files)}")
+    assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json"}, \
+        d.get("state")
+    # Every night file a dry night sends is one of those, or the archive of them.
+    store_sha = "0" * 64
+    samples = [p for e in real["kit"] if e["owner"] == "night" for p in e.get("paths", [])]
+    samples += [re.sub(r"\*+", "x", g) for e in real["kit"] if e["owner"] == "night"
+                for g in e.get("globs", [])]
+    samples += [c[0] for c in BA.CARRIED] + ["nh-archive/from-db/2026-10-07/Docket.txt.gz",
+                                              "nh-archive/from-db/2026-10-07/source.json",
+                                              "nh-archive/snapshots/2026-10-07/manifest.json",
+                                              "nh-archive/store/" + store_sha + ".gz",
+                                              "nh-archive/index.json"]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-drynight-"))
+    try:
+        (tmp / "nh-archive/store").mkdir(parents=True)
+        (tmp / f"nh-archive/store/{store_sha}.gz").write_bytes(b"x")
+        sent = sorted(r for r in set(samples) if CL.owner_of(real, r) == "night"
+                      and CL.dry_sends(real, tmp, r, store_sha))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    stray = [r for r in sent if r not in day_files and not re.match(
+        r"^nh-archive/(?:index\.json|snapshots/.+|store/[^/]+)$", r)]
+    assert not stray and set(day_files) <= set(sent) and \
+        not any(r.startswith("nh-archive/from-db/") for r in sent), (
+            "a dry night would send a night file its branch's code made, or not the day's files",
+            stray, sorted(set(day_files) - set(sent)))
+    must_stay = [c[0] for c in BA.CARRIED if CL.owner_of(real, c[0]) == "night"] + [
+        "site/committees.json", "lsrs.json", "archive/queue.csv", "db/StatStudMeetings.psv",
+        "db/_manifest.json", "videos_house_livestreams.csv", "committees.json"]
+    assert {"narratives.json", "proceedings.csv"} <= set(must_stay) and \
+        not [r for r in must_stay if r in sent], [r for r in must_stay if r in sent]
+
+    # Driven, on a folder bucket. The workflow's word alone makes it a dry night.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-drynight-"))
+    saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV)}
+    try:
+        bucket = tmp / "bucket"
+        kit = {"kit": [
+            {"what": "day", "owner": "night", "paths": ["Docket.txt"]},
+            {"what": "outputs", "owner": "night", "paths": ["narratives.json", "lsrs.json"]},
+            {"what": "archive", "owner": "night", "held": False, "globs": ["nh-archive/**"]},
+            {"what": "pages", "owner": "laptop", "globs": ["legislation/**"]}],
+            "state": [{"path": f"archive/{k}", "key": k, "what": "x"} for k in
+                      ("census.json", "refused.json", "sql-held.json", "last-night.json",
+                       "last-dry-run.json")],
+            "logs": {"globs": ["logs/*", "reports/gc-changes-*.md"]},
+            "dry_run": {"served": ["Docket.txt"], "store": "nh-archive/store",
+                        "globs": ["nh-archive/index.json", "nh-archive/snapshots/**",
+                                  "nh-archive/store/*"],
+                        "state": ["refused.json", "sql-held.json", "last-dry-run.json"]},
+            "backup": real["backup"], "never": real["never"]}
+
+        def machine(name, files=None):
+            root = tmp / name
+            root.mkdir()
+            (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+            for rel, body in (files or {}).items():
+                f = root.joinpath(*rel.split("/"))
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(body if isinstance(body, bytes) else body.encode("utf-8"))
+            return root
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
+
+        def remote(key):
+            f = bucket.joinpath(*key.split("/"))
+            return f.read_bytes() if f.is_file() else None
+
+        D1 = b"2025|0001|HB1|introduced\n"
+        laptop = machine("laptop", {
+            "Docket.txt": D1, "narratives.json": "{\"main\": 1}", "lsrs.json": "[]",
+            "nh-archive/index.json": "{}", "legislation/2026/HB1.html": "<p>1</p>",
+            "archive/census.json": "{\"census\": {\"bills\": 100}}",
+            "archive/last-night.json": "{\"run_id\": \"700\", \"kind\": \"nightly\"}"})
+        assert call(laptop, "seed-kit")[0] == 0 and call(laptop, "state-up")[0] == 0
+        census, night_v = remote("state/census.json"), remote("state/last-night.json")
+        assert census and night_v
+
+        # A dry run that fetched: the export's docket, archived and installed;
+        # and everything its own code made or changed beside it.
+        dry = machine("dry")
+        assert call(dry, "state-down")[0] == 0 and call(dry, "kit-down")[0] == 0
+        D2 = D1 + b"2025|0002|HB2|introduced\n"
+        sha2 = hashlib.sha256(D2).hexdigest()
+        today = f"{__import__('datetime').datetime.now():%Y-%m-%d}"
+        for rel, body in (("Docket.txt", D2), (f"nh-archive/store/{sha2}.gz", b"gz of D2"),
+                          (f"nh-archive/snapshots/{today}/manifest.json", b"{}"),
+                          (f"nh-archive/from-db/{today}/Docket.txt.gz", b"dev's rebuild"),
+                          ("narratives.json", b"{\"dev\": 1}"), ("lsrs.json", b"[1]"),
+                          (f"logs/nightly-{today}.log", b"the dry run's log"),
+                          (f"reports/gc-changes-{today}.md", b"what the dry run saw"),
+                          ("archive/census.json", b"{\"census\": {\"bills\": 1}}"),
+                          ("archive/last-night.json", b"{\"run_id\": \"701\"}"),
+                          ("archive/last-dry-run.json", b"{\"run_id\": \"701\"}"),
+                          ("archive/refused.json", b"{\"where\": \"docket\"}")):
+            f = dry.joinpath(*rel.split("/"))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(body)
+        (dry / "nh-archive/index.json").unlink()            # a removal, which stays undone
+        os.environ.update(GITHUB_ACTIONS="true", **{CL.DRY_ENV: "true"})
+        code, out = call(dry, "kit-up")
+        assert code == 0, out[-400:]
+        assert remote("kit/Docket.txt") == D2 and remote(f"kit/nh-archive/store/{sha2}.gz") and \
+            remote(f"kit/nh-archive/snapshots/{today}/manifest.json"), \
+            "a dry run's fetch -- the export's docket and its archive -- did not go back"
+        assert remote("kit/narratives.json") == b"{\"main\": 1}" and \
+            remote("kit/lsrs.json") == b"[]" and \
+            remote(f"kit/nh-archive/from-db/{today}/Docket.txt.gz") is None and \
+            remote("kit/nh-archive/index.json") == b"{}", (
+                "a dry run sent back what its own code made, or removed a kit file: main's next "
+                "night would build from it")
+        assert remote(f"logs/{today}/{CL.DRY_LOGS}/nightly-{today}.log") and \
+            remote(f"logs/{today}/{CL.DRY_LOGS}/gc-changes-{today}.md") and \
+            remote(f"logs/{today}/nightly-{today}.log") is None, \
+            "a dry run's logs went where pull takes the night's"
+        assert remote("state/census.json") == census and \
+            remote("state/last-night.json") == night_v and \
+            remote("state/last-dry-run.json") == b"{\"run_id\": \"701\"}" and \
+            remote("state/refused.json"), (
+                "a dry run's state-up sent the census or the night's verdict, or kept back its "
+                "own verdict or a refusal")
+        assert "kept back" in out and "narratives.json" in out, out[-600:]
+
+        # A database night's docket: not as the export served it, so it stays.
+        (dry / "Docket.txt").write_bytes(D2 + b"2025|0003|HB3|from the database\n")
+        code, out = call(dry, "kit-up")
+        assert code == 0 and remote("kit/Docket.txt") == D2, \
+            "a dry run sent back day files its own code rebuilt from the database"
+        # ... and state-up alone, under the word, sends the same and no more.
+        (dry / "archive/sql-held.json").write_bytes(b"{\"held\": true}")
+        assert call(dry, "state-up")[0] == 0 and remote("state/sql-held.json") and \
+            remote("state/census.json") == census and remote("state/last-night.json") == night_v
+        os.environ.pop(CL.DRY_ENV, None)
+        assert call(dry, "kit-up", "--dry-night", "--hold", "9")[0] == 1, \
+            "a dry night was let hold files for a New term run"
+
+        # The logs it sent are not taken by pull for the night's.
+        b = CL.make_bucket(str(bucket), 1)
+        with contextlib.redirect_stdout(io.StringIO()):
+            taken = CL.pull_logs(b, laptop, CL.load_kit(laptop), [today], False, {}, set(), True,
+                                 today)[0]
+        assert not taken, f"pull took a dry run's logs for the night's: {sorted(taken)}"
+
+        # The next real night takes down main's outputs, and the dry run's fetch.
+        os.environ.pop("GITHUB_ACTIONS", None)
+        nxt = machine("next")
+        assert call(nxt, "kit-down")[0] == 0
+        assert (nxt / "narratives.json").read_bytes() == b"{\"main\": 1}" and \
+            (nxt / "Docket.txt").read_bytes() == D2, \
+            "main's next night took down a dry run's outputs, or lost what it fetched"
+        # A real night's kit-up still sends what its night changed.
+        (nxt / "narratives.json").write_bytes(b"{\"main\": 2}")
+        assert call(nxt, "kit-up")[0] == 0 and remote("kit/narratives.json") == b"{\"main\": 2}"
+    finally:
+        for k, val in saved_env.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"a dry night sends the {len(day_files)} day files only as the export served "
+                  "them, their archive but not from-db/, its logs under dry-run/, a refusal, a "
+                  "hold and its own verdict; a carried output, the bill requests, a removal, the "
+                  "census and the night's verdict stay, and the next night takes down main's")
 
 
 def _fake_s3():
