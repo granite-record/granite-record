@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.408
+# GRANITE_VERSION: 2026-09-04.416
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1412,13 +1412,23 @@ def _dash_c_problems(root=None):
 # (src/parse/x.py, watchers\gc_lane.py) is never read as one.
 _BARE_PY3 = re.compile(r"\bpython3?(?:\.exe)?[ \t]+(?:-[A-Za-z]+[ \t]+)*([A-Za-z0-9_]+\.py)\b")
 _BARE_TICK = re.compile(r"`(?:python3?[ \t]+)?([A-Za-z0-9_]+\.py)[ \t]+-[^`\n]*`")
+# The other tracked kinds a person reads a command off: a fixture's _about, a
+# page's or a script's comment, a config file's note. Stage 3 left
+# tests/search_cases.json telling the reader to run `python3
+# build_search_index.py --fixture`, which a reader of .py, .md, .bat and the
+# workflows alone did not see. Not the data tables (.txt, .csv, .pdf), which
+# are the General Court's or a build's; not the bench's append-only .jsonl;
+# and not the lane's queue, whose lines name each script bare on purpose and
+# whose text never changes.
+_BARE_ALSO = (".json", ".js", ".html", ".css", ".toml", ".sql", ".webmanifest")
 
 
 def _bare_command_problems(root=None):
     """([sentence], files read) for each command the repository writes that
     names a script under src/ by its bare name: `python3 x.py` in any tracked
-    script, document, workflow or .bat file, and in a document a backticked
-    `x.py --flag`, where x.py is no longer at the root. None without git.
+    script, document, workflow, .bat file or file of _BARE_ALSO's kinds, and
+    in a document a backticked `x.py --flag`, where x.py is no longer at the
+    root. None without git.
 
     Tracked files only, outside obsolete/: the laptop's root also holds
     STATE.md, CLAUDE.local.md and other files git does not carry, and a
@@ -1437,7 +1447,7 @@ def _bare_command_problems(root=None):
         return None
     rels = sorted(p for p in (r.stdout or "").split("\0")
                   if p and not p.startswith("obsolete/") and p != "CLAUDE.md"
-                  and (p.endswith((".py", ".md", ".bat"))
+                  and (p.endswith((".py", ".md", ".bat") + _BARE_ALSO)
                        or (p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml")))))
     bad, seen, n = [], set(), 0
     for rel in rels:
@@ -1513,9 +1523,9 @@ def _dash_c_imports_paths():
                      + "; ".join(bad))
     said = f"{n} files read; every -c program that imports a module of ours imports _paths first"
 
-    # A script named without its folder, in a tree git tracks: five commands
-    # that would answer "can't open file" from the root, and six that would
-    # not or are not the repository's.
+    # A script named without its folder, in a tree git tracks: six commands
+    # that would answer "can't open file" from the root, and eight that would
+    # not or are not read: the repository's, a data table's, the lane's.
     mover = "planted_mover.py"
     tmp = Path(tempfile.mkdtemp(prefix="gr-bare-"))
     try:
@@ -1533,23 +1543,28 @@ def _dash_c_imports_paths():
                                       f'"""`{mover} --doc` is a reference here."""\n'),
                 "publish.bat": f"python3 -u {mover} --site site\n",
                 ".github/workflows/w.yml": f"run: python {mover}\n",
+                "tests/cases.json": f'{{"_about": ["python3 {mover} --fixture tests/cases.json"]}}\n',
+                "Docket.txt": f"python3 {mover}\n",
+                "watchers/gc_lane.queue": f"# python3 {mover} --all\n{mover} --all\n",
                 "CLAUDE.md": f"python3 {mover}\n",
                 "obsolete/README.md": f"python3 {mover}\n"}
             _plant(tmp, dict(tree, **{"notes.md": f"python3 {mover}\n"}))
             _run(["git", "-C", str(tmp), "add", "--", *tree], capture_output=True, timeout=60)
             got = _bare_command_problems(tmp)
             want = ["README.md:1 gives", "README.md:2 gives", "src/parse/hint.py:1 gives",
-                    "publish.bat:1 gives", ".github/workflows/w.yml:1 gives"]
+                    "publish.bat:1 gives", ".github/workflows/w.yml:1 gives",
+                    "tests/cases.json:1 gives"]
             assert got is not None and len(got[0]) == len(want) and all(
                 any(g.startswith(w) for g in got[0]) for w in want), \
-                f"the reader of bare script names found {got} in a tree made to hold five"
+                f"the reader of bare script names found {got} in a tree made to hold six"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     got = _bare_command_problems()
     if got is None:
         return "ok", said + "; not a git checkout, so no command was read for a bare script name"
     bad, m = got
-    assert m >= 180, f"only {m} tracked files were read for commands; 187 were on 7 October"
+    assert m >= 220, (f"only {m} tracked files were read for commands; 227 were on 7 October, "
+                      "the JSON, JavaScript, HTML and config files among them")
     assert not bad, ("these commands name a script by its bare name, and it is no longer at "
                      "the root, so typed there they answer \"can't open file\"; give the "
                      "path: " + "; ".join(bad))
@@ -9078,7 +9093,7 @@ def _a_dump_holds_the_terms_it_fills():
                 f"no database dump holds {term}, and {len(blank):,} of its measures have a "
                 f"status page that states nothing (e.g. {', '.join(sorted(blank)[:4])}): each "
                 "reads whatever the docket alone gives it. The dump is db/Legislation.psv "
-                f"(python3 fetch_status_db.py, a person's to start) or db/term/{term}/"
+                f"(python3 src/fetch/gc_db/fetch_status_db.py, a person's to start) or db/term/{term}/"
                 "Legislation.psv, the copy frozen at the term's end")
     assert not problems, "\n".join(problems)
     return "ok", "; ".join(said)
@@ -10863,7 +10878,7 @@ def _rollcall_outcomes_data(rollcall_outcomes):
     assert not missing, (
         f"{missing:,} of {len(rolls):,} roll calls carry no outcome_source: "
         "rollcalls.json predates the recorded outcome. Rebuild it with "
-        "python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json")
+        "python3 src/parse/rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json")
     fresh = [dict(r) for r in rolls]
     RO.apply(fresh, root=".")
     moved = [f'{r["year"]}-{r["body"]}-{r["number"]}' for r, f in zip(rolls, fresh)
@@ -15517,7 +15532,7 @@ def _search_cases(BP):
     # only a bill's own text answers would stop being checked, quietly.
     assert Path("tests/search_index.json").exists(), (
         "tests/search_cases.json is here and tests/search_index.json is not: "
-        "the cases cannot be run. python3 build_search_index.py --fixture "
+        "the cases cannot be run. python3 src/pages/build_search_index.py --fixture "
         "tests/search_cases.json writes it")
     got = _search_cases_node(BP)
     assert not got["fails"], "search: " + _search_cases_said(got["fails"])
@@ -15677,7 +15692,7 @@ def _search_index_builds(BP, SI):
             if not Path(f).exists()]
     assert not lost, (
         f"tests/search_cases.json is here and {', '.join(lost)} is not: "
-        "python3 build_search_index.py --fixture tests/search_cases.json "
+        "python3 src/pages/build_search_index.py --fixture tests/search_cases.json "
         "writes them")
     app = Path("app.js").read_text(encoding="utf-8")
     fx = json.loads(texts_f.read_text(encoding="utf-8"))
@@ -34400,14 +34415,17 @@ def _carried_outputs(BA):
             "VID9": {"last": 60.0, "files": {"captions.en.json3": [10, 0]}}}}),
             encoding="utf-8")
         r = run("--local", "--dry-run")
+        # The plan prints each step's line as build_all runs it, by bare name.
+        step = lambda out: any(ln.split()[:2] == ["python3", "segment_markers.py"]
+                               for ln in out.splitlines())
         assert "skipping 'boundaries the chair stated'" in r.stdout \
-            and "python3 segment_markers.py" not in r.stdout, (
+            and not step(r.stdout), (
                 "with the captions elsewhere, the chair's boundaries would be "
                 "read again from nothing")
         (root / "work" / "VID9" / "captions.en.json3").write_text(
             _json3_cues([(1000, "hello")]), encoding="utf-8")
         r = run("--local", "--dry-run")
-        assert "python3 segment_markers.py" in r.stdout, (
+        assert step(r.stdout), (
             "with every caption file here, the chair's boundaries were skipped")
         return "ok", (f"{len(BA.CARRIED)} carried outputs: a kit build without "
                       "one stops before its first step, a laptop's names it and "
@@ -37987,7 +38005,7 @@ def _veto_step_not_skipped(BA):
                         env={"GITHUB_ACTIONS": ""})
         lines = r.stdout.splitlines()
         at_veto = next((i for i, ln in enumerate(lines)
-                        if ln.strip() == "python3 extract_vetoes.py"), None)
+                        if ln.split() == ["python3", "extract_vetoes.py"]), None)
         assert r.returncode == 0 and at_veto is not None and at_veto + 1 < len(lines), (
             f"the kit's dry run did not list the veto step: {r.stdout[-300:]}")
         assert "would fail, the kit's build may not skip it: missing calendars" \
@@ -45263,10 +45281,10 @@ def _running_oneliner():
     # refusal check reads them for that), so a session looking for what is
     # running must see them.
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
-                 "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 snapshot_gencourt.py",
+                 "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 src/fetch/gc_web/snapshot_gencourt.py",
                  r"cmd /c publish.bat", "python3 cloud.py pull",
                  r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
-                 "python3 probe_db.py --sample", "python3 resolve_members.py"):
+                 "python3 src/fetch/gc_db/probe_db.py --sample", "python3 src/fetch/gc_web/resolve_members.py"):
         assert pattern.search(want), f"the one-liner would not list: {want}"
     assert not pattern.search("msedgewebview2.exe --gpu-watchdog-timeout-seconds=60 "
                               "--enable-features=RendererHangWatcher"), \
@@ -61258,7 +61276,7 @@ def _sponsor_rows_data():
            or re.search(r"\d", r.get("name") or "") or seatish.match((r.get("name") or "").strip())
            or SPONSOR_HONORIFIC.search(r.get("name") or "")]
     assert not bad, (f"{len(bad)} sponsor rows are not a person, e.g. {bad[:6]}: rebuild "
-                     "with python3 text_sponsors.py --apply")
+                     "with python3 src/parse/text_sponsors.py --apply")
     five = [("2001-2002", "HB428", "Boyce", "209042"), ("2003-2004", "HB1360", "Boyce", "209042"),
             ("2001-2002", "SB84", "O'Neil", "209046"), ("2001-2002", "HB1301", "Johnson", "205015"),
             ("2003-2004", "HB1242", "Kenney", "209049")]
@@ -61285,7 +61303,7 @@ def _past_sponsors_data():
     whom the site named H. Robert Menear until member_corrections.json said otherwise."""
     p = Path("past_sponsors.json")
     if not p.exists():
-        return "skip", "no past_sponsors.json here (python3 past_sponsors.py --apply)"
+        return "skip", "no past_sponsors.json here (python3 src/parse/past_sponsors.py --apply)"
     t = json.loads(p.read_text(encoding="utf-8")).get("2023-2024") or {}
     for bid in ("HB32", "HB1713"):
         pub = (t.get(bid) or {}).get("publish") or []
@@ -61314,7 +61332,8 @@ def _past_sponsors_data():
     assert carey, (
         "2024 HB 1429 does not link employee 377080, printed Rep. Carey, Merr. 1: she is Rep. "
         "Lorrie J. Carey (member_corrections.json). If data/member_votes.json predates that "
-        "correction, run build_data.py and then past_sponsors.py --apply")
+        "correction, run python3 src/parse/build_data.py and then python3 "
+        "src/parse/past_sponsors.py --apply")
     n = Counter(e.get("page") for e in t.values())
     return "ok", (f"HB 32 and HB 1713 prime Shurtleff; Shurtleff on {restored['376628']} "
                   f"published lists, Abare on {restored['409060']}, Carey on "
@@ -61364,7 +61383,7 @@ def _past_sponsors_chamber():
     assert n, "no published 2023-2024 row carries a member id with a ballot that term"
     assert not bad, (f"{len(bad)} published 2023-2024 sponsor row(s) sit in a chamber their "
                      f"member did not vote in that term, e.g. {bad[:6]}: rebuild with python3 "
-                     "past_sponsors.py --apply")
+                     "src/parse/past_sponsors.py --apply")
     return "ok", (f"{n:,} published rows with a member id, each in the chamber of that "
                   f"member's {term} ballots"
                   + (f"; {unvoted:,} under a member with no ballot that term" if unvoted else ""))
@@ -64369,7 +64388,7 @@ def _withdrawn_on_record():
     if not jp.exists():
         assert not (J and J.years()), (
             "the House Journals from 2025 are here and journal_bills.json is not, so "
-            "build_data added no withdrawn bill: run python3 journal_bills.py, then "
+            "build_data added no withdrawn bill: run python3 src/parse/journal_bills.py, then "
             "build_data.py")
         return "skip", ("no journal_bills.json and no journals/ from 2025 here; "
                         "journal_bills.py writes it from them before build_data reads it")
@@ -67565,9 +67584,9 @@ def main():
     if not bad:
         print("\nEverything that can be checked without the network is working.")
         print("What is left needs real data: run inventory.py, then align_all,")
-        print("then segment_markers.py --all --data data, and score the result:")
-        print("  probe_alignment.py --truth --candidate candidate_segments.json")
-        print("Do not run apply_markers.py --apply. It is the superseded")
+        print("then src/hearings/segment_markers.py --all --data data, and score the result:")
+        print("  src/hearings/probe_alignment.py --truth --candidate candidate_segments.json")
+        print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")
         print("clustering path; build_all skips it unless --with-superseded,")
         print("and it overwrites boundaries segment_markers read from the chair.")
     print("=" * 74)

@@ -122,7 +122,7 @@ came from opening real data first and scoring against a hand-made reference.
 `ground_truth.csv` holds 35 proceedings someone timed with a stopwatch, and:
 
 ```bash
-python3 probe_alignment.py --truth --candidate candidate_segments.json
+python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json
 ```
 
 is the gate every timestamp method has to pass. **Nothing about timestamps

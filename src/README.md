@@ -42,12 +42,20 @@ work, the bench and the by-hand reports -- and retired `fetch_testimony.py`
 to `obsolete/`. Stage 2 (7 October 2026) moved the 41 modules the night
 imports but runs by no name: five of `lib/`'s six, the helpers of `parse/`,
 `towns/`, `hearings/` and `pages/`, and `fetch_legislation.py` and
-`fetch_rollcalls_db.py`, whose parsers night steps import. What `build_all`
-runs as a step's script (stage 3), and what the night, the weekly or the
-laptop's evening job runs by name (stage 4), is still at the root until its
-stage. Each stage moves a group of files without changing an import, a build step
-or a lane line that names them; a command line a person types names the
-path, and changes in the same commit.
+`fetch_rollcalls_db.py`, whose parsers night steps import. Stage 3 (7 October
+2026) moved the 43 scripts `build_all` runs as steps: 15 to `parse/`,
+`parse_districts` to `towns/`, 5 to `hearings/`, 14 to `pages/`, and its
+network steps to `fetch/` (4 to `gc_web/`, 3 to `gc_db/` and
+`fetch_channel_index` to `youtube/`). Stage 4 (7 October 2026) moved the 15
+that the night, the weekly or the laptop's evening job runs by name:
+`freeze_term` to `lib/`, `dayfiles_from_db` to `parse/`, `probe_alignment`
+to `hearings/`, the night's and the weekly's fetchers to `fetch/gc_web/` and
+`fetch/gc_db/` with `probe_db`, and `check_site`, `check_live` and
+`gc_changes` to `checks/`, with `publish.bat`'s two lines. What is left at
+the root is what something outside the repository names (below). Each stage
+moved a group of files without changing an import, a build step or a lane
+line that names them; a command line a person types names the path, and
+changed in the same commit.
 
 ## How a script here is run, and imports
 

@@ -27,6 +27,5 @@ bill's (`parse/`), the town pages themselves (`pages/`).
 
 Six of the ten moved here in stage 1 and three in stage 2 (`src/README.md`):
 `parse_officials`, `parse_town_sites` and `town_boards`, which the night
-imports through `build_town_pages` and runs by no name. The night runs
-`parse_districts` as a step, so it moves in stage 3; until then it is at the
-repository root.
+imports through `build_town_pages` and runs by no name. The tenth,
+`parse_districts`, which the night runs as a step, moved here in stage 3.

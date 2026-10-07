@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.16
 """
 Write STATE.md from what is actually on disk.
 
@@ -292,7 +292,7 @@ def section_data(out):
                    f"terms {', '.join(terms)}")
     else:
         out.append("- `proceedings.csv`: **MISSING**. Run "
-                   "`python3 build_proceedings.py` -- every tool refuses "
+                   "`python3 src/hearings/build_proceedings.py` -- every tool refuses "
                    "without it.")
 
     gt = rows("ground_truth.csv")
@@ -349,7 +349,7 @@ def section_timestamps(out):
     cs = jload("candidate_segments.json", {})
     if not cs:
         out.append("No `candidate_segments.json`. Run "
-                   "`python3 segment_markers.py --all --data data`.\n")
+                   "`python3 src/hearings/segment_markers.py --all --data data`.\n")
         return
     absent = cs.get("_absent", {})
     # _absent and _sequence are maps keyed on recording, beside the
@@ -372,7 +372,7 @@ def section_timestamps(out):
         out.append(f"- {n(sum(len(v) for v in absent.values()))} bills never "
                    "named on their recording (consent calendar; not a gap)")
     out.append("\nScore it before publishing:\n\n```\npython3 "
-               "probe_alignment.py --truth --candidate candidate_segments.json"
+               "src/hearings/probe_alignment.py --truth --candidate candidate_segments.json"
                "\n```\n\nThe number to watch is the candidate median. It was "
                "**0m 01s** on 5 September\nagainst 1m 27s for the clustering "
                "model and 17m 05s for the schedule alone.\nIf it moves off "

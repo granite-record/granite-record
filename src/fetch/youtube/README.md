@@ -11,5 +11,5 @@ Does not belong here: reading captions already in `work/` (`hearings/`).
 `livestreams.py` stays at the root, because the nightly workflow tests for
 it by that path.
 
-The scripts move here in stages 1 and 4 (`src/README.md`); until a script's
-stage, it is still at the repository root.
+The by-hand tools moved here in stage 1 (`src/README.md`), and
+`fetch_channel_index`, a `build_all` network step, in stage 3.

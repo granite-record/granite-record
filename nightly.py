@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1647,7 +1647,7 @@ NEW_TERM_HINT = (f"The General Court's files are much smaller: a new term, or a 
 # brings only resolutions, and that it keeps their approval.
 NEW_TERM_TURN = (f"The General Court's files show a new term, which only a run by hand with "
                  f"{NEW_TERM_BOX} ticked may take, once the term being left is frozen "
-                 "(freeze_term.py --session, sent with seed-kit).")
+                 "(python3 src/lib/freeze_term.py --session, sent with seed-kit).")
 # ... and when tonight's roster is another House's and the installed term's own
 # roster is not frozen (snapshot_gencourt.roster_moved, the review of 5
 # October 2026): Organization Day can seat the next House before the files
@@ -1655,7 +1655,7 @@ NEW_TERM_TURN = (f"The General Court's files show a new term, which only a run b
 # roster. No box takes it; a freeze lets the next night take it.
 NEW_TERM_ROSTER = ("The General Court's roster is a new House, and the term the site holds has "
                    "no frozen roster of its own to name its members by, so nothing was "
-                   "installed. Freeze it (freeze_term.py --session, sent with seed-kit, while "
+                   "installed. Freeze it (python3 src/lib/freeze_term.py --session, sent with seed-kit, while "
                    "the installed roster is still the term's) and the next night takes the files.")
 # The other boxes that run needs, by the words each one starts with on GitHub's
 # "Run workflow" form: a run by hand has Dry run ticked and the fetch unticked
@@ -1683,7 +1683,7 @@ REFUSED_NO_FETCH = "ticked without the fetch"
 REFUSED_FREEZE = "stopped before any request: the term it would leave is not frozen as installed"
 NEW_TERM_FREEZE = (f"{NEW_TERM_BOX} was ticked, and the term the installed files hold is not "
                    "frozen as they are, so nothing was asked for: installing a new term would "
-                   "lose what of the old one is not frozen. Freeze it (freeze_term.py --session, "
+                   "lose what of the old one is not frozen. Freeze it (python3 src/lib/freeze_term.py --session, "
                    f"sent with seed-kit) and run the nightly by hand with {NEW_TERM_BOX} ticked "
                    "again.")
 # The weekly job's own two sentences: it has no Dry run box and publishes nothing.

@@ -23,5 +23,5 @@ Does not belong here: a request (`fetch/`), a proceeding's recording or
 timing (`hearings/`), shaping a decided fact for display (`pages/`), and the
 towns, districts and counties and their officials (`towns/`).
 
-The files move here in stages 1 to 4 (`src/README.md`); until a file's stage,
-it is still at the repository root.
+The files moved here in stages 1 to 4 (`src/README.md`), the last of them
+`dayfiles_from_db`, the night's database fallback, in stage 4.

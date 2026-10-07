@@ -19,5 +19,5 @@ importing `parse/`) does not make it shared. `_paths.py` is not here: it
 stays at the root, where every script's bootstrap looks for it.
 
 Five of the six moved here in stage 2 (`src/README.md`). `freeze_term` is
-also the command run at the term switch, so it moves in stage 4, with the
-lines that name it; until then it is at the repository root.
+also the command run at the term switch, so it moved in stage 4, with the
+lines that name it: `python3 src/lib/freeze_term.py --session`.

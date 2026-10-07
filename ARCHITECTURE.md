@@ -31,7 +31,7 @@ sentence is wrong, there is a specific rule to fix, and the fix applies to every
 bill that shares the shape. A model would give neither.
 
 **Ground truth exists and is wired to a scorer.** 35 proceedings a person timed
-by hand, and `probe_alignment.py --truth --candidate` scores any method against
+by hand, and `python3 src/hearings/probe_alignment.py --truth --candidate` scores any method against
 them in a second. Nothing about timestamps should ever again be tuned without
 that number moving in the right direction. It is the single most valuable
 artefact in the repository, and it lives in `ground_truth.csv`, which no
@@ -169,7 +169,7 @@ than the General Court, and it takes minutes.
 `--docket` and `--out`, the docket carries the term, and that is the whole of
 term-awareness. Proved rather than argued:
 
-    python3 build_manifest.py --videos "videos_*.csv" \
+    python3 src/hearings/build_manifest.py --videos "videos_*.csv" \
         --docket Docket_2023-2024.txt --out verification_manifest_2023-2024.csv
 
     Wrote verification_manifest_2023-2024.csv: 7,019 rows
@@ -253,9 +253,9 @@ live on every page.
 ### Checking a change
 
     python3 preflight.py
-    python3 probe_alignment.py --truth
-    python3 probe_alignment.py --truth --no-bench
-    python3 check_site.py
+    python3 src/hearings/probe_alignment.py --truth
+    python3 src/hearings/probe_alignment.py --truth --no-bench
+    python3 src/checks/check_site.py
 
 Those four commands are the check on a change of this kind.
 
@@ -413,7 +413,7 @@ index is missing or has an earlier term without text.
 
 `tests/search_cases.json` holds real searches against real bills, with
 `tests/search_index.json` cut from the real index for them;
-`python3 build_search_index.py --fixture tests/search_cases.json` refreshes
+`python3 src/pages/build_search_index.py --fixture tests/search_cases.json` refreshes
 both from the record. Its `across` list is searches held to bills of other
 terms, which only the built site can answer. `matchScore()` is the one place
 a bill's score is added up, for `/bills`, the header, `/search` and those
@@ -437,7 +437,7 @@ on. The nightly's census counts it, its fingerprint hashes the files
 `meta.json` names, and `check_site` refuses a site whose index does not hold
 together. `build_site_v2.py` deletes a term's file it did not write this time,
 which an earlier build on the laptop's never-emptied `site/` could leave and
-the reader would refuse. Once a deploy is up, `check_live.py --gate` reads the
+the reader would refuse. Once a deploy is up, `python3 src/checks/check_live.py --gate` reads the
 served `meta.json` and the newest term's file: a `meta.json` naming no term or
 other terms than the build's, or a term file empty, not JSON or a web page in
 its place, fails it as a deploy that did not land; a file too large for it to
@@ -464,7 +464,7 @@ October both followed `index.json`'s order, which was `data/bills.json`'s:
 
 The governor's veto messages are read before the site data, which puts each
 on its bill's page, so the report of the vetoed bills with no message is a
-step of its own after it (`extract_vetoes.py --gaps`): at the end of the
+step of its own after it (`python3 src/parse/extract_vetoes.py --gaps`): at the end of the
 writing run it read the previous build's index, and on GitHub's machine
 nothing at all.
 
@@ -778,7 +778,7 @@ order, not a design.
 > Kept because the rule is only as good as the next writer somebody adds.
 
 `build_manifest.py` overwrote the manifest twice, taking the hand-marked times
-with it. `segment_markers.py --transcript X` wrote a candidate file containing
+with it. `python3 src/hearings/segment_markers.py --transcript X` wrote a candidate file containing
 only X and discarded 842 recordings' results. `build_all.py` re-ran the manifest
 build with a narrower video set and halved it. In every case the tool did
 exactly what it was asked and nothing warned.
@@ -879,7 +879,7 @@ have given 2027's bills 2025-2026's sign-ins.
 the turn they stop holding the last one. `freeze_term.py` keeps its inputs --
 the day files as installed in `frozen/<term>/`, the database's views in
 `db/term/<term>/`, `Docket_<term>.txt` and `verification_manifest_<term>.csv`,
-the roll calls in `rollcalls/` -- and `build_data.py --frozen-terms` builds the
+the roll calls in `rollcalls/` -- and `python3 src/parse/build_data.py --frozen-terms` builds the
 term from them every night once the session's files are the next term's,
 whole, marked archived. Rows of a finished term that turn up in new files are
 counted and left out, never merged, in every reader that would otherwise
@@ -932,7 +932,7 @@ people have reported the 20,000 limit still enforced after upgrading the
 latter.
 
 `check_site.py` warns once the site passes 90,000 files, and the nightly will
-not deploy past 95,000. Run `python3 check_site.py` for the count rather than
+not deploy past 95,000. Run `python3 src/checks/check_site.py` for the count rather than
 quoting one.
 
 ### 5. Long functions where declaration order is load-bearing
@@ -1225,7 +1225,7 @@ Each is described where it belongs; this is the list in one place.
   `verification_manifest*.csv` rather than naming one -- and its own docstring
   says the intermediate goes away once every reader has followed. These
   defaults are the readers that have not.
-- **`build_manifest.py --keep-marks` is not vestigial; its help text is.** Every manifest this
+- **`python3 src/hearings/build_manifest.py --keep-marks` is not vestigial; its help text is.** Every manifest this
   writes carries `observed_start` and `observed_end` -- all nineteen on disk
   have both columns, and `verification_manifest.csv` has 35 rows filled, put
   there from `ground_truth.csv`, which outranks anything in an old manifest

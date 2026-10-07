@@ -1,0 +1,832 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-14.7
+"""
+Sponsors read off each bill's own text, for the bills the database names none for.
+
+    python3 src/parse/text_sponsors.py            # what the saved pages give, term by term; writes nothing
+    python3 src/parse/text_sponsors.py --score    # measured against the terms the database does cover
+    python3 src/parse/text_sponsors.py --apply    # writes text_sponsors.json
+
+No network. It reads what fetch_legislation.py has saved under legislation/<year>/, so it
+fills in as the lane goes: a build after a night's pages reads that night's pages.
+
+WHAT IS MISSING
+
+data/sponsors.json names sponsors for 2023-2024 and 2025-2026, from the General Court's
+database, its sponsor files and its bill status pages. The seventeen terms before -- 29,453
+bills, 1989 to 2022 -- had none: "No sponsors on file" on every page, and a search for a
+member found nothing they sponsored before 2023. The person pointed out on 14 September that
+the bill text the lane is fetching carries them.
+
+WHAT THE PAGE SAYS
+
+The text opens with one line naming who introduced it, in the chamber's shorthand. Read off
+3,555 saved pages, not assumed:
+
+    1989   Rep. Millard of Merrimack Dist. 4; Sen. Preston of Dist. 23
+    1994   Rep. Guay, Coos 6; Sen. Shaheen, Dist 21
+    2017   Rep. Itse, Rock. 10; Rep. K. Rice, Hills. 37; Sen. Reagan, Dist 17
+
+A surname -- with an initial or a first name where two members share it, "Rep. W. Riley",
+"Rep. Marshall Quandt" -- and a county and House district, or a Senate district. Written
+"Barnes, Jr." and once "Muns, C"; "Fuller Clark" and "Fuller-Clark"; with a curly apostrophe
+in D'Allesandro on some pages and a straight one on others. The comments in split() say which.
+
+WHO THAT IS
+
+A surname is not a person. It is matched only among the members who cast a roll call in that
+chamber in that term, and only when exactly one fits the surname and any initial. Where two
+do, the House county and then the district decide it, or nothing does. The roll call record
+keeps one seat per member rather than one per term, so its county can refuse a match (see
+Sat.resolve) and never prove one.
+
+Where nobody fits, the sponsor stays as the page prints them -- "Rep. C. Brown (Graf 14)",
+no party, no link. That is every sponsor before 1999, when the record of roll calls begins,
+and a few after. Rep. Shurtleff has no ballot under his name in any term on disk. Rep. Cote
+has none in 2023-2024. Belanger, Homola, Littlefield and Moran match nobody in 2021-2022,
+where four House numbers vote as "Member #". Whether those are the same people is not
+known.
+
+WHAT IT IS WORTH, measured against sources this did not produce (14 September)
+
+    2023-2024, 1,831 saved pages against the database's sponsors:
+        8,652 sponsors both name     8,650 placed on the member the database names
+                                         0 placed on anybody else
+                                         2 not placed (Rep. Cote)
+    2025-2026, 2,220 pages in bill_text/ against the sponsor files:
+        12,784 sponsors both name   12,783 placed on the member the files name
+                                         1 on another of the name: "Rep. K. Murray" was
+                                           placed on Kate Murray, where the file lists Megan
+                                           Murray. Whether the page and the file disagree or
+                                           the placement is wrong is not settled.
+
+THE FIRST NAME ON THE LINE IS THE PRIME SPONSOR on 1,133 of the 1,134 current bills whose
+sponsor file marks one, so the first is recorded as prime, and marked prime_inferred.
+
+THE TEXT CAN NAME MORE PEOPLE THAN THE DATABASE. 2023 CACR 1 prints Moffett, Adjutant,
+Schultz and Kenney, and the database lists Moffett and Schultz: 1,297 such names in
+2023-2024, 235 in 2025-2026. Why is not known -- a cosponsor who later withdrew is one guess,
+and it is only a guess. So these are the sponsors named on the bill's text, and the page says
+that is where they come from, rather than presenting them as the General Court's list.
+
+NEVER OVER THE DATABASE. merge_into() gives a bill its text's sponsors only when data/
+sponsors.json names nobody for it, so the two covered terms keep their own, apart from the 107
+bills of 2023-2024 the database names nobody for.
+"""
+
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import argparse
+import json
+import re
+import unicodedata
+from collections import Counter, defaultdict
+
+from member_links import COUNTIES, SHORT, seat as label_seat
+
+PAGES = Path("legislation")
+CURRENT_TEXT = Path("bill_text")      # 2025-2026 from billText.aspx; read by --score only
+VOTES = Path("data/member_votes.json")
+SPONSORS = Path("data/sponsors.json")
+BILLS = Path("data/bills.json")
+OUT = Path("text_sponsors.json")
+SOURCE = "bill text"
+
+ABBR = {"Belknap": "Belk", "Carroll": "Carr", "Cheshire": "Ches", "Coos": "Coos",
+        "Grafton": "Graf", "Hillsborough": "Hills", "Merrimack": "Merr",
+        "Rockingham": "Rock", "Strafford": "Straf", "Sullivan": "Sull"}
+SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
+
+HONORIFIC = re.compile(r"^(Rep|Sen)s?\b\.?\s*", re.I)
+# ONE SPONSOR ENDS AT A SEMICOLON, OR AT A COMMA THE NEXT "Rep." OR "Sen." FOLLOWS. 1999
+# HB 398 prints "Rep. G. Katsakiores, Rock 13, Rep. R. Nowe, Rock 3", and read as one
+# sponsor it lost Rep. Ronald Nowe; 1997 HB 726 "Rep. J. Bradley; Carr 8, Rep.
+# MacGillivray, Hills 21" and 1999 SB 468 "Sen. Squires, Sen. Larsen, Dist. 15" are the
+# same slip.
+PIECES = re.compile(r"\s*;\s*|\s*,\s*(?=(?:Rep|Sen)s?\b\.?\s)", re.I)
+# ", Coos 6"   ", Graf. 14"   ", Dist 21"   " of Merrimack Dist. 4"   " of Dist. 23"
+# The first seat in the piece ends it: one 2022 line ran on into the page's next heading,
+# "Sen. Watters, Dist 4 commission: Resources, Recreation and Development".
+#
+# AND AS THE PAGES ACTUALLY TYPE IT, which is not always with a comma: "Rep. Mock Carr 3",
+# "Rep. Dickinson. Carr 4", "Sen. Bond Dist. 1", "Rep. Burnham,Ches 8", "Rep. Turner, Belk,
+# 7", "Rep. Hall of Hillsborough, Dist. 16", "Rep. Skinner of Rockingham of Dist. 21". A
+# seat the old pattern missed stayed in the name, and the page showed a sponsor called
+# "Hill 18 McGough" or "Torr Strafford Dist. 6". A seat after a space alone must name its
+# county or say Dist, so a bare number is never taken for one.
+SEAT = re.compile(r"(?P<sep>,\s*|\s+of\s+|\.?\s+)"
+                  r"(?:(?P<place>[A-Za-z]+)\.?(?:\s*,\s*|\s+of\s+|\s+))?"
+                  r"(?:(?P<dist>Dist(?:rict)?|Dsit|Dit)\b\.?\s*)?"
+                  r"(?P<num>\d{1,3})(?!\d)")
+# A piece that is only a seat: "Rep. Putnam; Rock 15", "Sen. Hollingworth, Dist; 23". No
+# honorific, and a county or "Dist" -- never both, and never a word merely near a county:
+# "Sen. Gray, Dist 6" is Sen. James Gray, and "Gray" is one letter from "Graf".
+SEAT_ONLY = re.compile(r"^(?:(?P<place>[A-Za-z]+)\.?\s*,?\s*|(?P<dist>Dist(?:rict)?|Dsit|Dit)\b\.?\s*)?"
+                       r"(?P<num>\d{1,3})\.?$")
+# "Dist", and the two ways the pages mistype it: "Sen. Francoeur, Dsit 14", "Sen. Wheeler,
+# Dit 21".
+DIST_WORDS = {"dist", "district", "dsit", "dit"}
+# Page headings the sponsor capture can run into when the line itself is blank: 1991
+# HCR 13 and HR 19 print "INTRODUCED BY: REFERRED TO:" with nothing after either.
+LABEL = re.compile(r"(?:REFERRED\s+TO|COMMITTEE|SPONSORS?|INTRODUCED\s+BY)\s*:?")
+NOTE = re.compile(r"\s*\(([^)]*)\)\s*$")
+
+
+def _near(a, b):
+    """One letter added, dropped, changed or swapped -- or, between two words of eight
+    letters or more, the same first five: "Hillsbororough". Eight, so that "Merrill" is
+    not Merrimack."""
+    if len(a) >= 8 and len(b) >= 8 and a[:5] == b[:5]:
+        return True
+    if abs(len(a) - len(b)) > 1:
+        return False
+    prev, row = None, list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i] + [0] * len(b)
+        for j, cb in enumerate(b, 1):
+            cur[j] = min(row[j] + 1, cur[j - 1] + 1, row[j - 1] + (ca != cb))
+            if prev and i > 1 and j > 1 and ca == b[j - 2] and a[i - 2] == cb:
+                cur[j] = min(cur[j], prev[j - 2] + 1)
+        prev, row = row, cur
+    return row[-1] <= 1
+
+
+def county_of(place):
+    """The county a seat's place word names, as the pages spell it and misspell it:
+    "Hill 18", "Staf 11", "Graft 9", "Chest 10", "Rcok 26", "Straff. 4", "Merimack",
+    "Hillborough", "Hillsbororough". A word near no county, or near two, is none."""
+    k = letters(place)
+    if k in COUNTIES:
+        return COUNTIES[k]
+    if len(k) < 3:
+        return ""
+    near = {c for key, c in COUNTIES.items() if _near(k, key)}
+    return near.pop() if len(near) == 1 else ""
+
+
+def _seat(s):
+    """(match, county, kind) for the first seat in s, or (None, "", "").
+
+    kind is "county" for a House seat, "district" for one printed as a Senate district --
+    a bare "Dist N" -- and "number" for a number after a comma and nothing else."""
+    pos = 0
+    while True:
+        m = SEAT.search(s, pos)
+        if not m:
+            return None, "", ""
+        pos = m.start() + 1
+        place, spaced = m.group("place") or "", not m.group("sep").strip(" .")
+        if place and letters(place) in DIST_WORDS:
+            return m, "", "district"
+        if place:
+            county = county_of(place)
+            if county:
+                return m, county, "county"
+            continue                    # "Jr. 3" is not a seat; look further along
+        if m.group("dist"):
+            return m, "", "district"
+        if not spaced:
+            return m, "", "number"
+
+
+def letters(s):
+    """Only the letters, unaccented: "Côté" and "Cote", "D'Allesandro" and "DAllesandro",
+    "Fuller-Clark" and "Fuller Clark" are each one key."""
+    s = unicodedata.normalize("NFKD", s or "")
+    return re.sub(r"[^a-z]", "", "".join(ch for ch in s if not unicodedata.combining(ch)).lower())
+
+
+def term_of(year):
+    y = int(year)
+    t = y if y % 2 else y - 1
+    return f"{t}-{t + 1}"
+
+
+# ------------------------------------------------------------------ reading the line
+
+def split(field, dropped=None):
+    """[{chamber, words, suffix, county, district, seat, note, printed}] from a sponsor line.
+
+    Every entry is a person or a committee, never a seat or a heading. A seat printed as a
+    piece of its own ("Rep. Putnam; Rock 15") is the seat of the nearer of the two sponsors
+    before it that has none, and is otherwise dropped; so is a heading the capture ran into
+    ("REFERRED TO") and a piece with no surname left in it. Each dropped piece is appended
+    to `dropped`, when a list is given, so a caller can count them."""
+    out = []
+    drop = dropped.append if dropped is not None else (lambda _x: None)
+    for raw in PIECES.split(field or ""):
+        s = raw.strip(" .,")
+        if not s:
+            continue
+        if LABEL.fullmatch(s):
+            drop(s)
+            continue
+        printed, note = s, ""
+        m = NOTE.search(s)
+        if m:
+            note, s = m.group(1).strip(), s[:m.start()]
+        h = HONORIFIC.match(s)
+        chamber = {"rep": "H", "sen": "S"}[h.group(1).lower()] if h else ""
+        lead = h.end() if h else 0
+        s = s[lead:]
+        # AN HONORIFIC TYPED TWICE IS ONE: 2005 HB 64 prints "Rep. Rep. A. Tilton, Ches 6",
+        # and the second "Rep." was kept as the first word of a sponsor called "Rep. A.
+        # Tilton". The first one gives the chamber.
+        again = HONORIFIC.match(s) if h else None
+        while again and again.end():
+            lead, s = lead + again.end(), s[again.end():]
+            again = HONORIFIC.match(s)
+        only = None if h else SEAT_ONLY.match(s.strip(" .,"))
+        if only and not (only.group("place") and letters(only.group("place")) not in DIST_WORDS
+                         and letters(only.group("place")) not in COUNTIES):
+            place = only.group("place") or ""
+            county = "" if letters(place) in DIST_WORDS else COUNTIES.get(letters(place), "")
+            kind = "county" if county else ("district" if place or only.group("dist")
+                                            else "number")
+            # The sponsor just before, or the one before that: where a comma stood for a
+            # semicolon the first sponsor's seat was typed after the second's -- "Sen.
+            # Squires, Sen. Larsen, Dist. 15; Dist 12" and "Rep. J. Tilton, Rep. Shurtleff,
+            # Merr 10; Merr 6", and Squires sat for 12 and Tilton for Merrimack 6 on every
+            # other bill of those terms.
+            prev = next((p for p in reversed(out[-2:]) if not p["district"]), None)
+            if (prev and not prev["district"]
+                    and not (prev["chamber"] == "H" and kind == "district")
+                    and not (prev["chamber"] == "S" and kind == "county")):
+                prev.update({"county": county, "district": str(int(only.group("num"))),
+                             "seat": kind, "printed": f"{prev['printed']}; {printed}"})
+                if not prev["chamber"]:
+                    prev["chamber"] = "H" if county else "S"
+            else:
+                drop(printed)
+            continue
+        county = district = kind = ""
+        m, county, kind = _seat(s)
+        if m:
+            district = str(int(m.group("num")))
+            if s[m.end():].strip(" .,"):
+                printed = printed[:lead + m.end()]
+            name_part = s[:m.start()]
+            # "Rep. J. Carr 5": the county word was the surname.
+            if (m.group("place") and kind == "county" and not m.group("sep").strip(" .")
+                    and not any(len(letters(w)) > 1 for w in re.split(r"[\s,.]+", name_part))):
+                name_part, county, kind = f"{name_part} {m.group('place')}", "", "number"
+            s = name_part
+            if not chamber:
+                chamber = "H" if county else "S"
+        # "Barnes, Jr." is a surname and a suffix; "Muns, C" is a surname and an initial,
+        # the other way round from "C. Muns". A part with a figure in it, or the word Dist,
+        # is what is left of a seat, not a name: "Sen. Hollingworth, Dist; 23".
+        parts = [p.strip() for p in s.split(",") if p.strip()]
+        parts = parts[:1] + [p for p in parts[1:]
+                             if not re.search(r"\d", p) and letters(p) not in DIST_WORDS]
+        suffix = [p for p in parts[1:] if letters(p) in SUFFIXES]
+        given = [p for p in parts[1:] if letters(p) not in SUFFIXES]
+        words = [w for w in " ".join(given + parts[:1]).split() if not re.search(r"\d", w)]
+        while len(words) > 1 and letters(words[-1]) in SUFFIXES:
+            suffix.insert(0, words.pop())
+        if not any(len(letters(w)) > 1 for w in words):
+            drop(printed)
+            continue
+        suffix = [x if x.endswith(".") or letters(x) in ("ii", "iii", "iv") else x + "."
+                  for x in suffix]
+        out.append({"chamber": chamber, "words": words, "suffix": " ".join(suffix),
+                    "county": county, "district": district, "seat": kind, "note": note,
+                    "printed": printed})
+    return out
+
+
+# ------------------------------------------------------------------ who that is
+
+def vote_name(raw):
+    """("Barnes", "John", "Jr.") from "Barnes, Jr., John"; None for "Member #377204"."""
+    raw = (raw or "").strip()
+    if not raw or raw.lower().startswith(("member #", "(unknown", "former member")):
+        return None
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    if len(parts) < 2:
+        return None
+    last, rest = parts[0], parts[1:]
+    suffix = [p for p in rest if letters(p) in SUFFIXES]
+    rest = [p for p in rest if letters(p) not in SUFFIXES]
+    lw = last.split()
+    if len(lw) > 1 and letters(lw[-1]) in SUFFIXES:
+        suffix.append(lw[-1])
+        last = " ".join(lw[:-1])
+    return last, (rest[-1] if rest else ""), " ".join(suffix)
+
+
+def given_fits(given, first):
+    """Does an initial or a first name on the page fit a member's first name?"""
+    if not given:
+        return True
+    g = letters(given[0])
+    names = [letters(w) for w in re.findall(r"[A-Za-z']+", first or "")]
+    names = [w for w in names if w]
+    if not g or not names:
+        return False
+    if len(g) == 1:
+        return any(w.startswith(g) for w in names)
+    for w in names:
+        short, full = sorted((g, w), key=len)
+        if g == w or (len(short) >= 3 and full.startswith(short)):
+            return True
+        if SHORT.get(g) == w or SHORT.get(w) == g:
+            return True
+    return False
+
+
+class Sat:
+    """Everyone who cast a roll call, by term and chamber, from data/member_votes.json.
+
+    The roll call record keeps ONE label per member -- the seat they held last, not the
+    seat they held that term -- so a seat read from it can break a tie between two
+    members and cannot, on its own, prove or disprove one.
+    """
+
+    def __init__(self, rows):
+        seen = {}
+        for v in rows:
+            y = str(v.get("year") or "")
+            if not y.isdigit() or v.get("body") not in ("H", "S"):
+                continue
+            key = (term_of(y), v["body"], str(v.get("member_id") or ""))
+            m = seen.get(key)
+            if m is None:
+                nm = vote_name(v.get("name"))
+                if not nm or not key[2]:
+                    seen[key] = False
+                    continue
+                county, number = label_seat(v.get("label"))
+                m = seen[key] = {"id": key[2], "last": nm[0], "first": nm[1], "suffix": nm[2],
+                                 "county": county or "", "number": number,
+                                 "parties": Counter()}
+            if m:
+                m["parties"][(v.get("party") or "").strip()[:1].upper()] += 1
+        self.pool = defaultdict(lambda: defaultdict(list))
+        for (term, body, _id), m in seen.items():
+            if m:
+                p = [k for k, _n in m["parties"].most_common() if k]
+                m["party"] = p[0] if p else ""
+                self.pool[(term, body)][letters(m["last"])].append(m)
+
+    @classmethod
+    def load(cls, path=VOTES):
+        return cls(json.loads(Path(path).read_text(encoding="utf-8")))
+
+    def terms(self):
+        return {t for t, _b in self.pool}
+
+    def resolve(self, term, sp):
+        """(member or None, why)."""
+        pool = self.pool.get((term, sp["chamber"]))
+        if not pool:
+            return None, "no roll call on record for that chamber and term"
+        words, cands = sp["words"], []
+        for k in range(len(words)):
+            cands = [m for m in pool.get(letters("".join(words[k:])), [])
+                     if given_fits(words[:k], m["first"])]
+            if cands:
+                break
+        if not cands:
+            return None, "nobody of that name cast a roll call in that chamber and term"
+        # A HOUSE MEMBER WHOSE LABEL NAMES ANOTHER COUNTY IS NOT PLACED. The label is one
+        # seat per member and not always right -- Rep. Wendy Chase's reads Belknap 5 and her
+        # bills print Strafford 18 -- so a county that agrees proves nothing. One that
+        # disagrees may be that error or may be a second member of the name who cast no
+        # roll call; a sponsor left as the page prints them is incomplete, and the wrong
+        # member's name on a bill would be false.
+        if sp["chamber"] == "H" and sp["county"]:
+            cands = [m for m in cands if not m["county"] or m["county"] == sp["county"]]
+            if not cands:
+                return None, "a member of that name sat for another county"
+        if len(cands) == 1:
+            return cands[0], "the only member of that name"
+        narrowed = cands
+        if sp["district"]:
+            narrowed = [m for m in cands if str(m["number"] or "") == sp["district"]]
+        if len(narrowed) == 1:
+            return narrowed[0], "one of several of that name, by district"
+        return None, f"{len(cands)} members of that name, and the seat does not settle it"
+
+    def senator(self, term, sp, live, seats):
+        """(member or None, why) for a "Rep." printed with a bare Senate district.
+
+        A HOUSE SEAT IS ALWAYS PRINTED WITH ITS COUNTY; "Dist 4" alone is the Senate's. 2001
+        HB 428 prints "Rep. Boyce, Dist 4" for Sen. Robert Boyce, and read as a Rep. it went
+        to Rep. Laurie Boyce -- as 2001 SB 84's O'Neil, 2002 HB 1301's Johnson and 2003
+        HB 1242's Kenney went to representatives of those names. So such a piece is never
+        placed in the House. It is placed on a senator only where the General Court's
+        sponsor record (past_sponsors.py) lists them live on the bill's LSR and the district
+        printed is theirs that term: one printed beside their name on that term's other
+        bills (`seats`, {(term, id): {district}}), or their roll-call label's. Where the
+        record names no such senator -- it lacks many of 1999-2000's -- it stays as printed.
+        """
+        pool = self.pool.get((term, "S"))
+        if not pool:
+            return None, "no roll call on record for that chamber and term"
+        if not live:
+            return None, "printed as Rep. with a Senate district, and no sponsor record to name them"
+        words, cands = sp["words"], []
+        for k in range(len(words)):
+            cands = [m for m in pool.get(letters("".join(words[k:])), [])
+                     if given_fits(words[:k], m["first"]) and m["id"] in live]
+            if cands:
+                break
+        cands = [m for m in cands
+                 if sp["district"] in (seats.get((term, m["id"])) or set()) | {str(m["number"] or "")}]
+        if len(cands) == 1:
+            return cands[0], "a senator printed as Rep., named by the sponsor record at that district"
+        return None, "printed as Rep. with a Senate district, and the sponsor record names no senator of it"
+
+
+def record(i, sp, m):
+    """One sponsor in the shape data/sponsors.json carries them."""
+    ch = sp["chamber"]
+    if m:
+        name = " ".join(x for x in (m["first"], m["last"], m["suffix"]) if x)
+        party = m.get("party", "")
+    else:
+        name = " ".join(sp["words"] + ([sp["suffix"]] if sp["suffix"] else []))
+        party = ""
+    hon = {"H": "Rep.", "S": "Sen."}.get(ch, "")
+    tag = (f"SD{sp['district']}" if ch == "S" and sp["district"]
+           else f"{ABBR.get(sp['county'], '')} {sp['district']}".strip()
+           if sp["county"] and sp["district"] else "")
+    inside = " - ".join(x for x in (party, tag) if x)
+    return {"member_id": m["id"] if m else "", "name": name, "party": party, "chamber": ch,
+            "county": sp["county"] if ch == "H" else "", "district": sp["district"],
+            "label": f"{hon} {name}".strip() + (f" ({inside})" if inside else ""),
+            "sequence": i, "prime": i == 0, "source": SOURCE, "prime_inferred": True,
+            "as_printed": sp["printed"]}
+
+
+# ------------------------------------------------------------------ the pages
+
+def saved_pages(bills):
+    """(term, bill, path) for every saved page whose bill is in data/bills.json."""
+    import fetch_legislation as FL
+    out, strays = [], []
+    for f in sorted(PAGES.glob("[0-9][0-9][0-9][0-9]/*.htm*")):
+        m = FL.PAD.match(f.stem.upper())
+        if not m:
+            continue
+        term, bid = term_of(f.parent.name), f"{m.group(1)}{int(m.group(2))}"
+        rec = (bills.get(term) or {}).get(bid)
+        year = str((rec or {}).get("year") or (rec or {}).get("lsr_year") or "")[:4]
+        if rec is None or year != f.parent.name:
+            strays.append(f"{f.parent.name}/{f.name}")
+            continue
+        out.append((term, bid, f))
+    return out, strays
+
+
+def read_line(path):
+    import fetch_legislation as FL
+    return FL.parse(FL.decode(Path(path).read_bytes())).get("sponsors") or ""
+
+
+def unprinted(term, rows, people, sat, source):
+    """The sponsors the General Court's record gives a bill whose printed line names nobody
+    -- 1991 HCR 13 and HR 19 print "INTRODUCED BY: REFERRED TO:" and no name -- marked
+    `unprinted` and with the record as their source, so the page can say where they came
+    from. Placed on a member only where that member cast a roll call in the chamber that
+    term, which no member before 1999 did."""
+    out = []
+    live = sorted((r for r in rows if not r["withdrawn"]),
+                  key=lambda r: (not r["prime"], r["sequence"]))
+    for i, r in enumerate(live):
+        emp = r["employee"]
+        ch = people.chamber(emp, term)
+        vid = people.vid(emp)
+        m = next((x for xs in (sat.pool.get((term, ch)) or {}).values() for x in xs
+                  if x["id"] == vid), None)
+        name = (" ".join(x for x in (m["first"], m["last"], m["suffix"]) if x) if m
+                else people.site_name(emp))
+        party = (m or {}).get("party", "")
+        hon = {"H": "Rep.", "S": "Sen."}.get(ch, "")
+        out.append({"member_id": m["id"] if m else "", "name": name, "party": party,
+                    "chamber": ch, "county": "", "district": "",
+                    "label": f"{hon} {name}".strip() + (f" ({party})" if party else ""),
+                    "sequence": i, "prime": bool(r["prime"]), "source": source,
+                    "prime_inferred": False, "as_printed": "", "unprinted": True,
+                    "employee": emp})
+    return out
+
+
+def build(bills, sat, only_missing=None, sponsor_record=None, lines=None):
+    """{term: {bill: [records]}}, and a tally of how each sponsor was or was not placed.
+
+    `sponsor_record` is (joined, people) from past_sponsors.load_record(), or None where
+    the dump is not on disk. It is evidence, never a list of names to add: it decides
+    between a representative and a senator of one surname where the page prints "Rep."
+    with a Senate district (Sat.senator), and it names the sponsors of a bill whose
+    printed line names nobody (unprinted). Every other sponsor is the page's.
+
+    `lines`, [(term, bill, sponsor line)], stands in for the saved pages (preflight's
+    fixtures); by default every saved page is read."""
+    import past_sponsors as PSP
+    if lines is None:
+        pages, strays = saved_pages(bills)
+        lines = ((term, bid, read_line(f)) for term, bid, f in pages)
+    else:
+        strays = []
+    got, tally = defaultdict(dict), Counter()
+    joined, people = sponsor_record or ({}, None)
+    live = {}
+    if people is not None:
+        live = {(term, bid): {people.vid(r["employee"]) for r in v["rows"] if not r["withdrawn"]}
+                for term, recs in joined.items() for bid, v in recs.items()}
+    read = []
+    for term, bid, line in lines:
+        if only_missing is not None and (only_missing.get(term) or {}).get(bid):
+            tally["bills the database already names sponsors for"] += 1
+            continue
+        dropped = []
+        read.append((term, bid, line, split(line, dropped)))
+        tally["pieces of a line that were a seat or a heading, not a sponsor"] += len(dropped)
+    # The Senate district each senator is printed with, term by term, on the bills the
+    # record says are theirs: Sen. Carl Johnson is "Dist 3" on 2001-2002's bills and "Dist 2"
+    # after, and his roll-call label says 2 throughout.
+    seats = defaultdict(set)
+    for term, bid, _line, printed in read:
+        ids = live.get((term, bid))
+        for sp in printed if ids else ():
+            if sp["chamber"] == "S" and sp["district"]:
+                m, _why = sat.resolve(term, sp)
+                if m and m["id"] in ids:
+                    seats[(term, m["id"])].add(sp["district"])
+    for term, bid, line, printed in read:
+        if not printed:
+            rows = ((joined.get(term) or {}).get(bid) or {}).get("rows") or []
+            if line.strip() and any(not r["withdrawn"] for r in rows):
+                got[term][bid] = unprinted(term, rows, people, sat, PSP.SOURCE)
+                tally["pages whose line names nobody, named from the sponsor record"] += 1
+            else:
+                tally["pages with no sponsor line"] += 1
+            continue
+        recs = []
+        for i, sp in enumerate(printed):
+            if sp["chamber"] == "H" and sp.get("seat") == "district":
+                m, why = sat.senator(term, sp, live.get((term, bid)), seats)
+                if m:
+                    sp = {**sp, "chamber": "S"}
+            elif sp["chamber"]:
+                m, why = sat.resolve(term, sp)
+            else:
+                m, why = None, "no chamber on the line"
+            tally[why] += 1
+            recs.append(record(i, sp, m))
+        got[term][bid] = recs
+    return dict(got), tally, strays
+
+
+def merge_into(sponsors, path=OUT):
+    """Give every bill `sponsors` names nobody for the sponsors its own text names.
+
+    NEVER OVER THE DATABASE. A bill that already has a sponsor record keeps it, whatever the
+    text says, so 2023-2024 and 2025-2026 are untouched. Returns how many bills gained them.
+    Absent the file, nothing happens.
+    """
+    p = Path(path)
+    if not p.exists():
+        return 0
+    try:
+        extra = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return 0
+    n = 0
+    for term, rows in extra.items():
+        have = sponsors.setdefault(term, {})
+        for bid, recs in rows.items():
+            if recs and not have.get(bid):
+                have[bid] = recs
+                n += 1
+    return n
+
+
+def seat_into(sponsors, path=OUT, current=None):
+    """Date the seat on a database sponsor from the bill's own text.
+
+    A LABEL STATES THE SEAT HELD WHEN THE RECORD WAS MADE. The database's
+    sponsor rows for 2023-2024 carry no county and no district at all, so the
+    site filled both from `data/legislators.json` -- the roster of the House
+    and Senate sitting TODAY. 7,455 of that term's 8,890 sponsor lines were
+    labelled with a seat their member holds now, and 167 of the 6,815 that
+    can be checked against the bill's own printed line were provably a
+    different seat: Matthew Wilhelm sponsored 36 bills from Hills. 40 and the
+    site said Hills 21; Nicholas Germana 29 from Ches. 1, printed Ches 15.
+
+    Worse, the database's own `chamber` reads H for six senators across 878
+    rows, so 2023 CACR 10 printed "Rep. Donna Soucy" and "Rep. Jeb Bradley" --
+    Bradley was the Senate President. The bill prints "Sen. Soucy, Dist 18".
+
+    The bill's text is the contemporaneous source: it printed the seat as it
+    was on the day it was filed. So where a saved page names the same sponsor
+    the database does, the chamber, county and district come from the page and
+    the record keeps everything else -- its name, its party, its sequence, and
+    its `source`, because the sponsor is still the database's and only the
+    seat is being dated.
+
+    NOT THE CURRENT TERM. `current` names the term whose roster is itself
+    contemporaneous, and it is left alone: the 2025-2026 LSR file pairs a
+    HOUSE county and number with chamber "S" on 6,405 rows, so the text would
+    be overruling the roster with something worse. Mark McConkey comes through
+    it as Carr 8 -> SD08 against his real SD3.
+
+    Returns how many sponsor rows were given a dated seat.
+    """
+    p = Path(path)
+    if not p.exists():
+        return 0
+    try:
+        text = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return 0
+    n = 0
+    for term, rows in text.items():
+        if term == current:
+            continue
+        have = sponsors.get(term) or {}
+        for bid, printed in rows.items():
+            db = have.get(bid)
+            if not db or not printed:
+                continue
+            for rec in db:
+                if rec.get("source") == SOURCE:
+                    continue            # already the text's own row
+                key = _db_name(rec.get("name"))[0]
+                # One page sponsor, and only one, whose surname this name ends
+                # with. Two of a surname on one bill is a pair this cannot tell
+                # apart, and a seat put on the wrong brother is worse than a
+                # seat that is merely out of date.
+                fits = [s for s in printed
+                        if s.get("chamber") and _page_key_of(s)
+                        and key.endswith(_page_key_of(s))]
+                if len(fits) != 1:
+                    continue
+                s = fits[0]
+                if (rec.get("chamber") == s.get("chamber")
+                        and rec.get("county") == s.get("county")
+                        and rec.get("district") == s.get("district")):
+                    continue
+                rec["chamber"] = s["chamber"]
+                rec["county"] = s.get("county") or ""
+                rec["district"] = s.get("district") or ""
+                rec["seat_source"] = SOURCE
+                rec["as_printed"] = s.get("as_printed") or rec.get("as_printed")
+                n += 1
+    return n
+
+
+def _page_key_of(rec):
+    """The surname letters of a record written by record(): see _page_key."""
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", rec.get("name") or "").strip()
+    words = [w for w in name.split() if letters(w) not in SUFFIXES]
+    return letters(words[-1]) if words else ""
+
+
+# ------------------------------------------------------------------ measuring it
+
+def _db_name(raw):
+    """Letters of a database name, first name first, without a suffix; and its first word."""
+    raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw or "").strip()
+    if "," in raw:
+        parts = [p.strip() for p in raw.split(",") if p.strip()]
+        parts = [p for p in parts if letters(p) not in SUFFIXES]
+        raw = " ".join(parts[1:] + parts[:1])
+    words = [w for w in raw.split() if letters(w) not in SUFFIXES]
+    return letters("".join(words)), (words[0] if words else "")
+
+
+def _page_key(sp):
+    return letters("".join(w for w in sp["words"] if len(letters(w)) > 1))
+
+
+def score(bills, sat, sponsors):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sets = []
+    pages, _ = saved_pages(bills)
+    sets.append(("legislation/ pages of 2023-2024, against its database sponsors",
+                 [(t, b, f) for t, b, f in pages if (sponsors.get(t) or {}).get(b)]))
+    cur = [("2025-2026", f.stem.upper(), f) for f in sorted(CURRENT_TEXT.glob("*.html"))]
+    sets.append(("bill_text/ pages of 2025-2026, against its sponsor files",
+                 [(t, b, f) for t, b, f in cur if (sponsors.get(t) or {}).get(b)]))
+    for title, rows in sets:
+        c, wrong, missed, order_ex = Counter(), [], [], []
+        for term, bid, f in rows:
+            db = sponsors[term][bid]
+            page = split(read_line(f))
+            c["bills"] += 1
+            c["sponsors in the database"] += len(db)
+            c["sponsors on the page"] += len(page)
+            dbk = [_db_name(s.get("name")) for s in db]
+            pk = [_page_key(s) for s in page]
+            fits = lambda a, b: bool(b) and a.endswith(b)
+            if len(page) == len(db):
+                c["bills with the same number of sponsors"] += 1
+                if all(fits(d[0], p) for d, p in zip(dbk, pk)):
+                    c["bills with the same sponsors in the same order"] += 1
+                elif sorted(pk) and all(any(fits(d[0], p) for d in dbk) for p in pk):
+                    c["bills with the same sponsors in another order"] += 1
+                    if len(order_ex) < 4:
+                        order_ex.append(f"{bid}: page {pk[:4]} db {[d[0] for d in dbk[:4]]}")
+            prime = next((s for s in db if (s.get("role") or "").lower() == "prime"), None)
+            if prime and page:
+                c["bills whose sponsor file marks a prime"] += 1
+                c["... and the page lists that prime first"] += fits(_db_name(prime["name"])[0], pk[0])
+            for sp in page:
+                if not sp["chamber"]:
+                    c["page sponsors with no chamber"] += 1
+                    continue
+                m, why = sat.resolve(term, sp)
+                same = [d for d in dbk if fits(d[0], _page_key(sp))]
+                if not same:
+                    # On the text and not in the database's list: a source difference,
+                    # not a reading of the page to be scored.
+                    c["page sponsors the database does not list"] += 1
+                    c["... of those, placed on a member"] += bool(m)
+                    continue
+                c["page sponsors the database also lists"] += 1
+                if not m:
+                    c["... not placed"] += 1
+                    if len(missed) < 8:
+                        missed.append(f"{term} {bid} {sp['printed']!r}: {why}")
+                    continue
+                full = letters(m["first"] + m["last"])
+                ok = any(d[0] == full or (d[0].endswith(letters(m["last"])) and
+                                          given_fits([d[1]], m["first"])) for d in same)
+                if ok:
+                    c["... placed on the member the database names"] += 1
+                else:
+                    c["... placed on somebody else of that name"] += 1
+                    if len(wrong) < 12:
+                        wrong.append(f"{term} {bid} {sp['printed']!r} -> {m['first']} {m['last']} "
+                                     f"[{m['id']}] ({why}); database: "
+                                     + "; ".join(s.get('name', '') for s in db
+                                                 if fits(_db_name(s.get('name'))[0], _page_key(sp))))
+        print(f"\n{title}")
+        for k, v in c.items():
+            print(f"  {k:58} {v:>7,}")
+        for label, xs in (("placed on somebody else", wrong), ("not placed, though the database names them", missed),
+                          ("another order", order_ex)):
+            if xs:
+                print(f"  {label}:")
+                for x in xs:
+                    print(f"    {x}")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--score", action="store_true")
+    ap.add_argument("--apply", action="store_true")
+    a = ap.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    bills = json.loads(BILLS.read_text(encoding="utf-8"))
+    sponsors = json.loads(SPONSORS.read_text(encoding="utf-8")) if SPONSORS.exists() else {}
+    sat = Sat.load()
+    if a.score:
+        return score(bills, sat, sponsors)
+    # EVERY BILL WITH A SAVED PAGE, not only the ones the database misses.
+    # It used to stop at those, because filling a gap was all this file did.
+    # The seat a bill PRINTS is wanted for the bills the database does cover
+    # as well -- that is the only contemporaneous record of where a sponsor
+    # sat -- and merge_into still refuses to put these names over the
+    # database's, so reading more pages adds nothing to a covered bill except
+    # the seat seat_into takes from it.
+    import past_sponsors as PSP
+    record_ = PSP.load_record(bills)
+    if record_ is None:
+        # Not a failure -- every sponsor is still read off the page -- but not silent
+        # either: without it a "Rep." printed with a Senate district is left as printed
+        # and a line that names nobody names nobody.
+        print(f"the General Court's sponsor record is not on disk ({PSP.PAST}/, "
+              f"{PSP.LEGISLATORS}): no senator printed as Rep. is placed, and no bill whose "
+              "line names nobody is named from it")
+    got, tally, strays = build(bills, sat, only_missing=None, sponsor_record=record_)
+    covered = sum(1 for t, rows in got.items() for b in rows
+                  if (sponsors.get(t) or {}).get(b))
+    print(f"{sum(len(v) for v in got.values()):,} bills have sponsors in their own text; "
+          f"{covered:,} of them are also in the database, for the seat alone:")
+    for term in sorted(got):
+        n_recs = sum(len(v) for v in got[term].values())
+        placed = sum(1 for v in got[term].values() for r in v if r["member_id"])
+        print(f"  {term}: {len(got[term]):>5,} of {len(bills.get(term) or {}):>5,} bills, "
+              f"{n_recs:>6,} sponsors, {placed:>6,} placed on a member who cast a roll call")
+    print("\nhow each sponsor was placed, or why not:")
+    for why, n in tally.most_common():
+        print(f"  {n:>7,}  {why}")
+    if strays:
+        print(f"\n{len(strays)} saved pages match no bill of that year in data/bills.json, "
+              f"e.g. {', '.join(strays[:5])}")
+    if a.apply:
+        OUT.write_text(json.dumps(got, indent=1), encoding="utf-8")
+        print(f"\nwritten {OUT}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

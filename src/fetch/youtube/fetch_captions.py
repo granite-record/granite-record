@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.16
 """
 Fetch captions for every recording that has none, busiest first.
 
@@ -99,7 +99,7 @@ def sources():
     """(counts by video, floor session videos, whole-video recordings)."""
     rows = P.load()
     if not rows:
-        sys.exit("No proceedings.csv. Run: python3 build_proceedings.py")
+        sys.exit("No proceedings.csv. Run: python3 src/hearings/build_proceedings.py")
     counts = Counter()
     for r in rows:
         if r["video_id"]:
@@ -110,7 +110,7 @@ def sources():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", help="a file of video ids, one per line "
-                                   "(from probe_alignment.py --missing)")
+                                   "(from src/hearings/probe_alignment.py --missing)")
     ap.add_argument("--workdir", default="work")
 
     ap.add_argument("--floor-first", action="store_true",
@@ -320,7 +320,7 @@ def _report(ok, misses, t0, stopped):
                   "hours per\n  recording. Worth doing for a floor session "
                   "carrying two hundred\n  bills; probably not for a hearing "
                   "carrying three.")
-    print("\nThen: python3 probe_alignment.py --suggest")
+    print("\nThen: python3 src/hearings/probe_alignment.py --suggest")
 
 
 if __name__ == "__main__":
