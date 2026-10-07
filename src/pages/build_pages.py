@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.144
+# GRANITE_VERSION: 2026-09-04.145
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2393,6 +2393,13 @@ const fd=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
 // ambiguous. The server-rendered copy below writes the same form.
 const fdy=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
   return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
+// THE FLOOR SESSION'S OWN TITLE, "House Session (August 19th, 2026)": the
+// person's pattern (7 October 2026, F3), the month in full and the day as an
+// ordinal. 11th, 12th and 13th are the exceptions to 1st, 2nd and 3rd.
+const ordinal=n=>n+((n%100>=11&&n%100<=13)?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th"));
+const fdo=d=>{if(!d)return"";const[y,m,dd]=d.split("-").map(Number);
+  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"long"})
+    +" "+ordinal(dd)+", "+y;};
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -2626,12 +2633,14 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const built=(sess.dataset.days||"").split(" ");
   const dayLink=v=>{
     const key=(v.chamber==="Senate"?"S":"H")+"/"+v.date;
-    return built.includes(key)?`<a href="/session/${esc(key)}">${fd(v.date)}</a>`:fd(v.date);
+    return built.includes(key)?`<a href="/session/${esc(key)}">${fdo(v.date)}</a>`:fdo(v.date);
   };
+  // "House Session (August 19th, 2026)", with the date the way to that
+  // sitting's page where one is built.
   sess.innerHTML=ls.length
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
-      `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
-        <span class="statemeta">${dayLink(v)}</span></p>
+      `<div><p class="sesstitle" style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")} Session</b>
+        (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
           data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
           aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">

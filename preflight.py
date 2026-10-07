@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.418
+# GRANITE_VERSION: 2026-09-04.419
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43689,6 +43689,44 @@ def _hearing_note_wording():
         drew = "and app.js's calendarBlock prints it too"
     assert not any("for or against" in n for n in home), "Coming up keeps the old sentence"
     return "ok", f"Coming up says it word for word, {drew}"
+
+
+@check("frontend", "each floor session on the home page is titled \"House Session (August 19th, 2026)\"")
+def _floor_session_titles():
+    """The person's pattern (7 October 2026, F3): the chamber, "Session", and
+    the day in brackets with the month in full and the day as an ordinal.
+    HOME_JS's own ordinal and date functions are run in node over the days
+    whose endings differ -- 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st, 22nd,
+    23rd, 31st -- and the block that draws the two players is held to the
+    pattern, the date still the way to the sitting's page where one is built."""
+    import build_pages as BP
+    js = BP.HOME_JS
+    o = re.search(r"const ordinal=.*?;\n", js)
+    f = re.search(r"const fdo=.*?\n.*?\n.*?;};\n", js)
+    assert o and f, "HOME_JS has no ordinal() or fdo() for the floor sessions' titles"
+    assert '${esc(v.chamber||"")} Session</b>' in js and "(${dayLink(v)})" in js \
+        and "fdo(v.date)" in js, (
+            "the floor session's title is not \"<chamber> Session (<day>)\" with the day "
+            "the link to the sitting")
+    cases = {"2026-08-19": "August 19th, 2026", "2026-01-01": "January 1st, 2026",
+             "2026-03-02": "March 2nd, 2026", "2026-05-03": "May 3rd, 2026",
+             "2026-06-04": "June 4th, 2026", "2025-02-11": "February 11th, 2025",
+             "2025-04-12": "April 12th, 2025", "2025-06-13": "June 13th, 2025",
+             "2026-01-21": "January 21st, 2026", "2026-05-22": "May 22nd, 2026",
+             "2026-04-23": "April 23rd, 2026", "2026-03-31": "March 31st, 2026"}
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "the block names the pattern; node is not here to run fdo()"
+    prog = (o.group(0) + f.group(0)
+            + "process.stdout.write(JSON.stringify(" + json.dumps(list(cases))
+            + ".map(fdo)));")
+    r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "fdo() would not run: " + (r.stderr or "")[-300:]
+    got = dict(zip(cases, json.loads(r.stdout)))
+    bad = {d: g for d, g in got.items() if g != cases[d]}
+    assert not bad, f"the session titles' days read {bad}"
+    return "ok", (f"{len(cases)} days written as the person's pattern, "
+                  "\"House Session (August 19th, 2026)\"")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
