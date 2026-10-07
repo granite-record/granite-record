@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.10
+# GRANITE_VERSION: 2026-09-11.13
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -238,7 +238,11 @@ HEARING = re.compile(
     # Jan 9" (SB 102 of 2002, passed by the House and sent to Public Works).
     r"Pub(?:lic)?\s+W(?:or)?ks|"
     r"Full\s+Comm(?:ittee)?|Re-?Ref(?:er)?|Int(?:erim)?\s+Study)\s+){0,2}"
-    r"(?P<kind>Public\s+Hearing|Hearing)"
+    # "Hearings, Feb 16, Room 102, LOB, 2:20 p.m." (SB 19, SB 28 and SB 36 of
+    # 1999): the Senate's notice in the plural, with its comma and nothing in
+    # front of it, which read as nothing left SB 36 no hearing told once its
+    # Finance hearing of 2 April was called off (cancelled_notice).
+    r"(?P<kind>Public\s+Hearing|(?<![A-Za-z]\s)Hearings(?=\s*,)|Hearing)"
     r"(?:\s+on\s+(?:the\s+)?(?:Prop(?:osed)?\.?\s+(?:Comm\s+)?Am(?:endment|end)?\.?|Amendment)"
     r"(?:\s*\{\d+\w?\})?)?(?:\s+(?:and|&)\s+Exec(?:utive)?\.?\s+Sess(?:ion)?)?"
     r"\s*[;,:]?\s*(?:=\s*)*(?:RESCHEDULED\s*=*\s*)?"
@@ -446,9 +450,20 @@ MONTHS = {m: i for i, m in enumerate(
 # or room change on the same day ("==TIME CHANGE== Jan. 25", "==NEW TIME==
 # Feb.10"), and not a recessed hearing's new day ("==RECESSED== NEW DATE==
 # Feb.9", "Hearing == RE-CONVINED = May 3"), which sat and went on.
+#
+# And the notice the Senate entered once a hearing it had put off "TO A DATE
+# UNDETERMINED" had its day (decision 59b): "==HEARING== April 24, Room 102,
+# LOB, 2:00 p.m.; SC21, Pg.13" (HB 618 of 2000, after "Hearing; RESCHEDULED TO
+# A DATE UNDETERMINED" over its hearing of 28 March), which Senate Calendars
+# 21 to 24 print on 24 April. Read as nothing, the bill's one Senate hearing
+# told was the one called off. The only row of its kind on disk.
 RESCHEDULED_TO = re.compile(
     r"^\W*(?:"
-    r"(?:Hearing\s*)?=+\s*(?:CANCELL?ED\s+AND\s+)?RESCHEDULED\s*=+\s*,?\s*(?:Hearing\s*)?"
+    r"(?:Hearing\s*)?=+\s*(?:CANCELL?ED\s+AND\s+)?(?:RESCHEDULED|HEARING)\s*=+\s*,?\s*(?:Hearing\s*)?"
+    # "Hearing; === RESCHEDULED === RECESSED === May 4, 2005" (HB 505 of
+    # 2005, decision 59g): the new day's notice, marked again when the
+    # hearing that sat on it recessed to 11 May.
+    r"|Hearing\s*;\s*=+\s*RESCHEDULED\s*=+\s*RECESSED\s*=+\s*"
     r"|\(\s*RESCHEDULED\s*\)\s*"
     r"|New\s+Date\s*,\s*"
     r"|(?:Hearing\s+Rescheduled|Rescheduled\s+Hearings?)\s*,\s*"
@@ -463,6 +478,7 @@ RESCHEDULED_TO_CANCEL = re.compile(r"\bcancel", re.I)
 def rescheduled_notice(desc, created):
     """The hearing notice a row that gives a hearing's new day is
     (RESCHEDULED_TO), as {"_type": "hearing", "kind", "date"}, or None."""
+    desc = mend(desc)
     m = RESCHEDULED_TO.match(desc or "")
     if not m or created is None:
         return None
@@ -477,6 +493,121 @@ def rescheduled_notice(desc, created):
     if not day:
         return None
     return {"_type": "hearing", "kind": "Hearing", "date": day, "_era": "1999:rescheduled"}
+
+
+# TWO SLIPS OF THE CLERK'S, READ AS WHAT THEY PLAINLY MEAN (decision 59f, and
+# the person's rule of 18 September 2026 for a source typo: our own reading
+# ruled out first, and only where nothing else explains it). SB 393 of 2000's
+# Senate hearing was noticed "Hearning, Feb. 15, Room 103, SH, 10:40 a.m.;
+# SC1, Pg.8" (Docket_db_1999-2000.txt line 15319) and moved by "=RESCHEDULED=
+# Fed. 8, Room 103, SH, 10:30 a.m. SC9, Pg. 2" (line 15321), and read as
+# typed the history told no Senate hearing of the bill at all. Senate
+# Calendar 10 of 2000 prints SB 393 under Tuesday 8 February at 10:30,
+# "RESCHEDULED FROM FEBRUARY 15TH", and under the 15th, at the 10:40 the first
+# row gives, among "THE FOLLOWING HEARINGS HAVE BEEN RESCHEDULED FOR FEBRUARY
+# 8TH". "Hearning" is no word and "Fed" no month; the two rows are the only
+# ones of either spelling on disk. Each is read where it stands and nowhere
+# else -- the patterns match those rows' own words -- and the docket line
+# keeps what the clerk typed (docket_vocab.classify). A third slip is a new
+# entry here, with its evidence, and preflight holds the list to these two.
+SLIPS = [
+    (re.compile(r"^Hearning(?=,\s*Feb\.\s*15,)"), "Hearing"),
+    (re.compile(r"^(=RESCHEDULED=\s*)Fed\.(?=\s*8,\s*Room\s+103,\s*SH,\s*10:30\s+a\.m\.)"), r"\1Feb."),
+]
+
+
+def mend(desc):
+    """The row with a slip in SLIPS read as what it means; else the row."""
+    for pat, rep in SLIPS:
+        desc = pat.sub(rep, desc or "")
+    return desc
+
+
+# A ROW THAT SAYS ONLY THAT A HEARING WAS CALLED OFF (decision 59b, 7 October
+# 2026). The Senate of 1999 typed the cancellation as a row of its own and
+# named no meeting: "Hearing Cancelled" and "Hearing cancelled" (SB 12, SB 36,
+# SB 37, SB 45 and SB 131, entered on 16 March over their Finance hearings of
+# 2 April, which Senate Calendar 15 prints "CANCELLED"), "Hearing Cancelled
+# Due To Town Meeting Day" (SB 55, SB 58, SB 107, SB 114 and SCR 2, over their
+# hearings of 9 March, Town Meeting Day), or with the day: "3/8/99 Hearing
+# Cancelled" (SB 24), "Hearing, 3/10/99 Cancelled" (SB 66). And 2002's
+# "Hearing === CANCELLED === TO BE RESCHEDULED AT A LATER DATE ===; SC3" (SB
+# 344, over its hearing of 16 January) and 2000's "Hearing; RESCHEDULED TO A
+# DATE UNDETERMINED" (HB 618, over its hearing of 28 March, which Senate
+# Calendar 19 no longer prints). The era's patterns refuse a row that says
+# "cancel" (NOCANCEL) and read these as nothing, so the history told the
+# hearing each one called off. Each is a hearing called off: on the day it
+# names, or, naming none, the bill's hearing it was entered over
+# (narrative._cancelled_by).
+CANCELLED_ONLY = re.compile(
+    r"^\W*(?:(?P<before>" + DTXT + r")\s+)?Hearing\s*"
+    r"(?:,\s*(?P<after>" + DTXT + r")\s*)?"
+    r"(?:=+\s*)?Cancell?ed\b\s*=*\s*"
+    r"(?:Due\s+To\s+[A-Za-z ]{3,30}?|TO\s+BE\s+RESCHEDULED(?:\s+AT\s+A\s+LATER\s+DATE)?\s*=*)?"
+    r"\s*(?:;\s*SC\s*\d+[A-Za-z]?(?:\s*,\s*P(?:g)?\.?\s*\d+)?)?\s*$"
+    r"|^\W*Hearing\s*;\s*RESCHEDULED\s+TO\s+A\s+DATE\s+UNDETERMINED\s*$", re.I)
+
+
+def cancelled_notice(desc, created):
+    """A row that says only that a hearing was called off (CANCELLED_ONLY), as
+    {"_type": "hearing", "date", "_cancels": True}, with "_cancels_next" where
+    it names no day; or None."""
+    m = CANCELLED_ONLY.match(desc or "")
+    if not m or created is None:
+        return None
+    said = m.group("before") or m.group("after")
+    day = full_date(said, created, forward=True) if said else None
+    if said and not day:
+        return None
+    got = {"_type": "hearing", "kind": "Hearing", "_era": "1999:cancelled", "_cancels": True}
+    if day:
+        got["date"] = day
+    else:
+        got["_cancels_next"] = True
+    return got
+
+
+# A ROW THAT GIVES THE DAY A RECESSED HEARING WENT ON (decision 59g, 7 October
+# 2026). The Senate of 1999-2006 noticed the hearing's next sitting under a run
+# of marks, and clean() takes off only the first pair, so the era's patterns
+# read nothing and the history never told the day the hearing reconvened:
+#   "Hearing; === RECESSED === RECONVENE === April 17, 2002, ..."  (HB 1218)
+#   "Hearing ==RECESSED March 28== RECONVENE == April 11 2001, ..." (SB 189)
+#   "=== RECESSED=== 01/30/01,  ===RECONVINED=== February 13, 2001" (SB 29)
+#   "Hearing; === RECESSED === RECONVENED== 30 min. After Session [06/05/01]"
+#   "Hearing; === RECONVENE === ROOM CHANGE === May 7, 2003, ..."   (HB 752)
+#   "Hearing; === RECESSED === RECONVENED === Hearing: January 25, 2005" (SB 44)
+#   "==RECESSED== NEW DATE== Feb.9, Room 101 , LOB, 2:30 p.m."      (SB 370)
+#   "== RECESSED == Re-Opened  April 13, Room 103, LOB, 3:00 p.m."   (HB 1149)
+#   "==RECESSED AND WILL BE CONTINUED==, Feb.7, Room 103, SH"        (SB 300)
+# Each is a sitting of the hearing on the day it names -- a continuation, not
+# a move, so nothing reads it as the earlier day called off
+# (narrative.GOES_ON) -- and is told as a day of the hearing, as the
+# reconvened days the era's patterns do read are ("Hearing; === RECONVENE ===
+# April 9, 2003").
+_MARK_RUN = (r"(?:\s*=*\s*(?:RECESSED(?:\s+AND\s+WILL\s+BE\s+CONTINUED)?"
+             r"(?:\s*=*\s*\(?\s*(?:" + DTXT + r")\s*\)?\s*,?)?"
+             r"|RECONVEN\w*|RECONVIN\w*|RE-?\s*CONVIN\w*|RE-?\s*OPENED|NEW\s+DATE"
+             r"|ROOM\s+CHANGE|TIME\s+CHANGE)\s*=*\s*\)?\s*,?)+")
+RECONVENED_TO = re.compile(
+    r"^\W*(?:Hearing\s*;?)?" + _MARK_RUN +
+    r"\s*(?:Hearing\s*[;:]\s*)?(?:30\s+min\.?\s+After\s+Session\s*\[\s*)?"
+    r"(?P<date>" + DTXT + r")", re.I)
+GOES_ON_WORDS = re.compile(r"RECONVEN|RECONVIN|RE-?\s*CONVIN|RE-?\s*OPENED|NEW\s+DATE"
+                           r"|WILL\s+BE\s+CONTINUED", re.I)
+
+
+def reconvened_notice(desc, created):
+    """The sitting a row giving the day a recessed hearing went on names
+    (RECONVENED_TO), as {"_type": "hearing", "kind", "date"}, or None."""
+    m = RECONVENED_TO.match(desc or "")
+    if not m or created is None or not GOES_ON_WORDS.search(desc[:m.start("date")]):
+        return None
+    if re.search(r"\bcancel", desc or "", re.I):
+        return None
+    day = full_date(m.group("date"), created, forward=True)
+    return {"_type": "hearing", "kind": "Hearing", "date": day,
+            "_era": "1999:reconvened"} if day else None
 
 
 def full_date(txt, created, forward=False):

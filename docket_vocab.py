@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.14
+# GRANITE_VERSION: 2026-09-11.18
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -127,6 +127,7 @@ AS_OF = re.compile(
     r"|^\s*<(?P<c>\d{1,2}/\d{1,2}/\d{2,4})>", re.I)
 AS_OF_NOT = re.compile(r"special order|deadline|reporting date|extended to|"
                        r"rept date", re.I)
+DONE_DURING = re.compile(r"\[\s*done\s+during\s+\d{1,2}/\d{1,2}/\d{2,4}", re.I)
 AS_OF_DAYS = 90
 
 
@@ -171,6 +172,21 @@ def _ensure_date(d, created, session=None, desc=None):
     here, or already by the era's normalise() -- unless the clerk wrote the
     date it was done as of (as_of, above).
     """
+    # A ROW THE READER TYPES NOTHING THAT SAYS WHEN IT WAS DONE (decision 59h):
+    # "Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during
+    # 1/4/2012 morning veto session]" (SB 57 of 2011), entered on 30 November
+    # 2011 and read as no vote for its spelling, was dated by its stamp, and
+    # the sitting page of 30 November drew the override the House took on 4
+    # January 2012, the day of its roll call 270. The clerk's "done during" is
+    # the day, as it is on the floor rows below; a bare date in brackets on
+    # such a row is not read.
+    if d.get("_type") == "other" and created is not None and DONE_DURING.search(
+            desc if desc is not None else d.get("_raw") or ""):
+        stated = as_of(desc if desc is not None else d.get("_raw"), created, session)
+        if stated:
+            d["_stamp_date"] = created.strftime("%m/%d/%Y")
+            d["date"] = stated.strftime("%m/%d/%Y")
+        return d
     if d.get("_type") not in _PRINTS_A_DATE:
         return d
     if not _DATE_OK.match(str(d.get("date") or "")):
@@ -291,6 +307,15 @@ def classify(desc, created=None, session=None):
     if era is None:
         return None
     mod, first, after, routine = era
+    # A slip of the clerk's the era reads as what it plainly means
+    # (docket_era_1999.SLIPS): read as mended, and the docket line keeps the
+    # words the clerk typed.
+    mend = getattr(mod, "mend", None)
+    if mend is not None and mend(desc) != desc:
+        ev = classify(mend(desc), created, session)
+        if ev:
+            ev["_raw"] = narrative.clean(desc)
+        return ev
     clean = narrative.clean(desc)
     for pid, typ, pat, fixed in first:
         m = pat.search(clean)
@@ -320,10 +345,24 @@ def classify(desc, created=None, session=None):
     got = moved(desc, created) if moved is not None else None
     if got:
         return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
+    # And a row that says only that a hearing was called off
+    # (docket_era_1999.cancelled_notice): a cancelled hearing, which
+    # narrative.build carries as one.
+    off = getattr(mod, "cancelled_notice", None)
+    got = off(desc, created) if off is not None else None
+    if got:
+        return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
+    # And a row that gives the day a recessed hearing went on
+    # (docket_era_1999.reconvened_notice): a sitting of the hearing that day.
+    on = getattr(mod, "reconvened_notice", None)
+    got = on(desc, created) if on is not None else None
+    if got:
+        return _expand_committees(_ensure_date({**got, "_raw": clean}, created, session, desc))
     for name, pat in routine:
         if pat.search(clean):
-            return {"_type": "other", "_raw": clean, "_era": "routine:" + name}
-    return ev
+            return _ensure_date({"_type": "other", "_raw": clean, "_era": "routine:" + name},
+                                created, session, desc)
+    return _ensure_date(ev, created, session, desc) if ev.get("_type") == "other" else ev
 
 
 def join_rows(rows, session=None):

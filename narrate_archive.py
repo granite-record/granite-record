@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.7
+# GRANITE_VERSION: 2026-09-11.8
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -112,6 +112,10 @@ def main():
     if CHAPTERS.exists():
         extra += ["--chapters", str(CHAPTERS)]
     past = [0, 0, []]
+    # A meeting narrative.py could not hold to the calendars (its whole-day
+    # rule): said once more after the count, where build_all's summary of
+    # this step shows it, and not only among thirty-six lines it does not.
+    unchecked = []
     for term, path in found.items():
         # A FROZEN TERM IS TOLD WITH ITS OWN ROSTER (5 October 2026): the one
         # build_data --frozen-terms wrote beside the term's build, so a motion
@@ -138,6 +142,9 @@ def main():
         for line in (r.stdout or "").splitlines():
             if "docket_corrections.json" in line or "rows by LSR" in line:
                 print("    " + line.strip())
+            if "whole-day rule not applied" in line:
+                print("    " + line.strip())
+                unchecked.append(f"{term}: {line.strip()}")
             said = LSR_SAID.search(line)
             if said:
                 lsr = [x + int(y.replace(",", "")) for x, y in
@@ -170,6 +177,8 @@ def main():
               f"histories as another measure's; {lsr[2]:,} given to the {lsr[3]:,} "
               f"bill(s) whose LSR they carry, from {lsr[4]:,} key(s) no bill carries")
     print(f"\n{bills:,} bills narrated into {a.out}")
+    for line in unchecked:
+        print(line)
     # Silence is not success: a run that narrated nothing looks exactly like
     # a term with no docket.
     if not bills:
