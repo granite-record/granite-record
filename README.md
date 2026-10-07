@@ -133,9 +133,9 @@ python3 inventory.py                # what is on disk, and which scripts are sta
 python3 handoff.py                  # writes STATE.md with the counts as measured
 ```
 
-`--local` takes the better part of twenty minutes on the full record, most of
-it in three steps; every run records its own per-step timings in
-`site/build.json`, which is the figure to believe. `handoff.py --print`
+`--local` takes the better part of an hour on the full record; every run
+records its total and its per-step timings in `site/build.json`, which is the
+figure to believe. `handoff.py --print`
 prints instead of writing `STATE.md`.
 
 `site/` is then a complete static site:
@@ -152,8 +152,9 @@ python3 -m http.server 8787 --directory site
 outside the repository runs by name — `build_all.py`, `nightly.py`,
 `cloud.py`, `livestreams.py`, `laptop_evening.py`, `compile_reports.py`, the
 session's first commands (`inventory.py`, `preflight.py`, `handoff.py`) and
-the refusal tools (`refusal.py`, `netcheck.py`) — with `_paths.py`, the
-front end (`bills.html`, `app.js`, `find.js`, `app.css`), the config, the
+the refusal tools (`refusal.py`, `netcheck.py`), and `publish.bat` — with
+`_paths.py`, the front end (`bills.html`, `app.js`, `find.js`, `app.css`) and
+the `dom_stub.js` that `preflight` loads it against, the config, the
 documents and the data. Everything else is under `src/`, in one folder per
 job: `fetch/` (one folder per whose server it asks), `parse/`,
 `towns/`, `hearings/`, `pages/`, `checks/` and `lib/`.

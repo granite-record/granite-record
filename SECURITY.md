@@ -73,8 +73,9 @@ Worth saying in advance, so you do not spend an evening on them:
 - A way to get the project's fetching to hammer the General Court. Their
   firewall has blocked this address twice already, and the cost of a third
   block falls on a Clerk's office as much as on us. Every script that asks
-  gc.nh.gov consults `refusal.py`'s record before its first request and
-  records a refusal it meets, and the fetch lane, the pipeline's General
+  gc.nh.gov, but `netcheck.py`, which a person runs to diagnose a refusal,
+  consults `refusal.py`'s record before its first request and records a
+  refusal it meets, and the fetch lane, the pipeline's General
   Court steps and the nightly do not ask while one is on file; a way past
   that, or a way to make two fetches run at once, is a real finding.
 - A credential or key findable in the repository or its history. `preflight.py`

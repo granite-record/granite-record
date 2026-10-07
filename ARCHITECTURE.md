@@ -19,8 +19,9 @@ name: the pipeline (`build_all.py`), the night (`nightly.py`), the kit
 (`cloud.py`), the livestream index (`livestreams.py`), the laptop's evening
 job (`laptop_evening.py`), the pull of reader reports (`compile_reports.py`),
 the first commands of a working session (`inventory.py`, `preflight.py`,
-`handoff.py`) and the refusal tools (`refusal.py`, `netcheck.py`); beside
-them `_paths.py`, the front end, the config and the data. Everything else is
+`handoff.py`), the refusal tools (`refusal.py`, `netcheck.py`) and the
+deploy (`publish.bat`); beside them `_paths.py`, the front end with the
+`dom_stub.js` that `preflight` loads it against, the config and the data. Everything else is
 under `src/`, one folder per job. `src/README.md` has the tree and the rule
 for where a new file goes, and each folder's own README says what it holds:
 
@@ -140,10 +141,9 @@ production serves nor a night published in the last fourteen days carried.
 The day's files coming from the database, and an error on the run's page,
 hold nothing: both stay on the page and in the verdict for the morning. The
 workflow's `REVIEW_GATE` is `shadow`, so every night still waits for approval
-in `production` and the gate decides nothing yet. Switching it to `on` is a
-later step: a cleared night would then deploy through `production` with no
-reviewer, and a held one, and every New term run, through
-`production-review`, which keeps one. `preflight` holds the workflow's
+in `production` and the gate decides nothing. Set to `on`, a cleared night
+would deploy through `production` with no reviewer, and a held one, and every
+New term run, through `production-review`, which keeps one. `preflight` holds the workflow's
 setting and its environment line together.
 
 **The morning triage.** On the maintainer's laptop,
@@ -153,8 +153,8 @@ where a verdict from before yesterday is called stale) and the change lists
 `src/checks/gc_changes.py` wrote (`reports/gc-changes-<day>.md`). A full
 `cloud.py pull` also brings back the night's kit files and logs, and never
 `site/`. Reader reports are not pulled on GitHub's machine:
-`compile_reports.py` reads them from the report database on the laptop,
-screens every one without a model, and writes the triage file read in the
+`compile_reports.py`, run on the laptop, reads them from the D1 database
+`functions/api/report.js` writes them to, screens every one without a model, and writes the triage file read in the
 morning, holding back the words of any report the screen stops.
 
 **The evening caption job.** YouTube refuses captions to GitHub's machines

@@ -173,9 +173,9 @@ show.
 
 ## Where new code goes
 
-The code moved out of the root into `src/` in stages that ended on
-7 October 2026; `src/README.md` has the tree, says what each folder is for,
-and is the longer version of this. The short one:
+Code that is not an entry point lives under `src/`; `src/README.md` has the
+tree, says what each folder is for, and is the longer version of this. The
+short one:
 
 - **The root** holds what something outside the repository runs by name -- a
   workflow, Task Scheduler, `publish.bat`, the session's first commands
