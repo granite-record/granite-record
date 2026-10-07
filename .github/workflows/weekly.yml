@@ -53,6 +53,22 @@ on:
 permissions:
   contents: read
 
+# ONE DRY RUN AT A TIME, IN LINE BEHIND THE NIGHT (7 October 2026). The
+# night's job waits in gc-night with every night and weekly job, and GitHub
+# keeps one waiting run per group: a newer one cancels the one already
+# waiting. So a dry run started while another held gc-night cancelled a
+# scheduled night waiting behind it. Every dry run -- every run off main --
+# waits here first, one at a time, the nightly's dry runs with it, so that
+# no more than one is ever in gc-night or waiting for it, and a newer dry
+# run replaces only a dry run waiting here; a run that is not a dry run has
+# a group of its own, its run's id, and never waits here. Still open: a dry
+# run started while a real run of main holds gc-night and the scheduled
+# night waits behind it cancels that night, which the dead-man's switch then
+# reports. preflight holds this line beside DRY_RUN.
+concurrency:
+  group: ${{ github.ref != 'refs/heads/main' && 'dry-runs' || github.run_id }}
+  cancel-in-progress: false
+
 env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: utf-8

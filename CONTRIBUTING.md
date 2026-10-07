@@ -175,7 +175,10 @@ Three steps, each catching what the one before cannot.
    "Dry run" on `dev` changes nothing, a weekly run on `dev` proves the
    weekly's code and keeps nothing it fetched, a New term run there is
    refused, and no dry run pings Healthchecks -- so only a run of `main` can
-   publish, or keep what it took for the next night.
+   publish, or keep what it took for the next night. Dry runs wait for each
+   other: one started while another is running waits behind it (and replaces
+   any dry run already waiting there), so that it cannot cancel a scheduled
+   night waiting for the running one to finish.
 
 The first runs on a bare clone. The second needs the record on disk and the
 third the repository's own secrets, so for a pull request from outside they

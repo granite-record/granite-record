@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.426
+# GRANITE_VERSION: 2026-09-04.427
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -58719,6 +58719,61 @@ def _workflows_healthchecks():
         held.append(f"{name} ({len(pings)} step{'s' if len(pings) > 1 else ''})")
     return "ok", (f"{', '.join(held)}: each ping evaluated for every kind of run; none for a dry "
                   "run, by the box or by the branch, and each for every run that is not one")
+
+
+# ONE DRY RUN AT A TIME (the review of 7 October 2026): the group every dry
+# run waits in, at its workflow's level, before its job joins gc-night.
+DRY_RUNS_GROUP = "dry-runs"
+
+
+@check("workflows", "a dry run, by its box or its branch, waits behind any other dry run before "
+       "its job joins gc-night, so a second dry run cannot cancel a scheduled night waiting "
+       "there, and a run that is not a dry run never waits for one")
+def _workflows_dry_runs_wait():
+    """THE REVIEW OF 7 OCTOBER 2026. Every night and weekly job waits in the
+    gc-night group (_workflows_production), and GitHub keeps one waiting run
+    per group: a run queued while another waits cancels the one waiting. A
+    dry run held gc-night, the scheduled night queued behind it, and a second
+    dry run, started by hand, cancelled the scheduled night -- and every run
+    of dev is a dry run now, which may be started while a night waits. So
+    each workflow with a gc-night job puts every dry run first in a group of
+    the workflow's own level, DRY_RUNS_GROUP, shared by both workflows and
+    never cancelling, from the same words as its DRY_RUN; and a run that is
+    not a dry run gets a group of its own, its run's id, so the scheduled
+    night and a real run of main never wait there. Evaluated for every kind
+    of run in WF_RUNS, as GitHub would. (A dry run started while a real run of
+    main holds gc-night can still cancel a night waiting behind that: GitHub
+    has no queue longer than one, and the dead-man's switch reports it.)"""
+    files = {f.name: f for f in _workflows()}
+    if not files:
+        return "skip", "no .github/workflows here"
+    gated = sorted(n for n, f in files.items()
+                   if re.search(r"^      group: gc-night\s*$", f.read_text(encoding="utf-8"), re.M))
+    assert gated and set(gated) <= set(WF_RUNS), \
+        f"{sorted(set(gated) - set(WF_RUNS))} wait in gc-night and are not held to this"
+    held = []
+    for name in gated:
+        lines = files[name].read_text(encoding="utf-8").splitlines()
+        block = _wf_code(_wf_block(lines, "concurrency"))
+        group = next((m.group(1) for ln in block
+                      for m in [re.match(r"^  group:\s*(.+?)\s*$", ln)] if m), None)
+        assert group and "  cancel-in-progress: false" in block, (
+            f"{name} puts no dry run in line behind the others before gc-night, or cancels the "
+            "one running")
+        dry_line = _wf_value(lines, "DRY_RUN")
+        wrong = []
+        for event, ref, boxes, dry, _title in WF_RUNS[name]:
+            ctx = _wf_run_ctx(event, ref, boxes)
+            ids = {_gh_render(group, dict(ctx, **{"github.run_id": rid})) for rid in ("101", "102")}
+            said = _gh_render(dry_line, ctx) == "true"
+            if dry != said or (dry and ids != {DRY_RUNS_GROUP}) or \
+                    (not dry and (len(ids) != 2 or DRY_RUNS_GROUP in ids or "gc-night" in ids)):
+                wrong.append(f"{event} of {ref} with {boxes or 'no boxes'}: waits in "
+                             f"{sorted(ids)}, and is {'a' if dry else 'not a'} dry run")
+        assert not wrong, f"{name}: " + "; ".join(wrong)
+        held.append(name)
+    return "ok", (f"{', '.join(held)}: every dry run waits in {DRY_RUNS_GROUP!r}, one at a time, "
+                  "before gc-night, and every other run in a group of its own")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")

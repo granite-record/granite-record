@@ -106,7 +106,11 @@ says "not main", the publish job runs only for `main`, a New term run there
 is refused, a dry weekly keeps its verdict apart in
 `archive/last-dry-weekly.json` and sends back none of the lists it took, and
 no dry run pings Healthchecks, whose check watches only the scheduled night,
-a real run by hand of `main` and a real week that failed.
+a real run by hand of `main` and a real week that failed. Every dry run of
+either workflow waits behind any other in a group of the workflows' own
+level, `dry-runs`, before its job joins `gc-night`, because GitHub keeps one
+waiting run per group and a second dry run queued there cancelled a
+scheduled night waiting behind the first.
 The second job deploys to production. It sits behind GitHub's `production`
 environment, so it waits for a person's approval, and
 `nightly.py --deploy-to production` deploys a run's own build by that night's
