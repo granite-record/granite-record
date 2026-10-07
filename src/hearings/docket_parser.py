@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -759,6 +759,15 @@ def _parse_date(s, written=None):
     s = re.sub(r"\s+", " ", (s or "").strip())
     if not s:
         return None
+    # A DOTTED MONTH (7 October 2026). The Senate of 1999-2000 abbreviates
+    # with a period -- "Hearing, Feb. 17, Room 104, LOB, 2:15 p.m." (SB 39),
+    # "Hearing, Feb.23, Room 105 A, SH" (HB 273) -- and so does 2010 twice,
+    # "Hearing:==RECONVENE==Mar. 3, 2010" (SB 483, SB 497). SENATE_SCHED_RE
+    # reads them; strptime's %b does not take the dot, so all 174 rows (172
+    # Jan. and Feb. of 1999-2000, 2 Mar. of 2010) came back None here and
+    # their hearings had no proceedings row. The dot is dropped and nothing
+    # else: a month the clerk misspelt stays unread.
+    s = re.sub(r"^([A-Za-z]{3,9})\.\s*", r"\1 ", s)
     for fmt in ("%m/%d/%Y", "%m/%d/%y", "%B %d, %Y", "%b %d, %Y",
                 "%B %d %Y", "%b %d %Y"):
         try:

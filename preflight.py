@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.419
+# GRANITE_VERSION: 2026-09-04.420
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4584,9 +4584,10 @@ _DOCKET_RECONVENED = {
 }
 _RECONVENED_TOLD = {("SB370", "1999-2000"): ["2000-01-19", "2000-02-09"],
                     ("SB189", "2001-2002"): ["2001-03-28", "2001-04-11"]}
-# What proceedings.csv reads of them: SB 370's notice "Hearing, Jan. 19" is a
-# date docket_parser does not read (the month with a full stop), as before.
-_RECONVENED_SITTINGS = {("SB370", "1999-2000"): ["2000-02-09"],
+# What proceedings.csv reads of them: both days the history tells. SB 370's
+# notice "Hearing, Jan. 19" was a date docket_parser did not read, the month
+# with a full stop, until _docket_dotted_month.
+_RECONVENED_SITTINGS = {("SB370", "1999-2000"): ["2000-01-19", "2000-02-09"],
                         ("SB189", "2001-2002"): ["2001-03-28", "2001-04-11"]}
 
 
@@ -4972,8 +4973,8 @@ _DOCKET_NEW_TIME = [
 
 @check("build", "a Senate hearing's new day takes the hour a later row gave it and the committee "
                 "the bill was vacated to, and --merge --refresh replaces the one row it names",
-       needs=("docket_parser", "build_manifest"))
-def _rescheduled_row_new_time(D, M):
+       needs=("docket_parser", "build_manifest", "narrative", "proceedings"))
+def _rescheduled_row_new_time(D, M, N, P):
     """The review of decision 60: SB 411 of 2000's row merged into the
     1999-2000 manifest put its Senate hearing of 10 February at 9:00 before
     Ways and Means, the hour and committee of "==RESCHEDULED== Feb.10, Room
@@ -4985,7 +4986,13 @@ def _rescheduled_row_new_time(D, M):
     Senate Ways and Means' page, which said the committee met that day for a
     hearing on SB 411, took both from the row. --merge keeps a row it has byte
     for byte, so --refresh replaces the row of a meeting --only names by day,
-    and refuses a row with a hand-marked time or an --only without a day."""
+    and refuses a row with a hand-marked time or an --only without a day.
+
+    The notice of 4 February, "Hearing, Feb. 4", is the docket's and the table
+    holds it since _docket_dotted_month reads the dotted month; the history
+    voids it, cancelled by the row "==CANCELLED==; SC2, Pg.17", so
+    proceedings.notice_only leaves it off every page and the one sitting
+    drawn is the 10th's."""
     bad = []
     tmp = Path(tempfile.mkdtemp(prefix="gr-new-time-"))
     try:
@@ -4995,9 +5002,16 @@ def _rescheduled_row_new_time(D, M):
         D.build_sittings(procs)
         live = [(p.sched_date, p.sched_time, p.committee) for p in procs
                 if p.confidence != "X-cancelled"]
-        if live != [("2000-02-10", "13:00", "Environment")]:
-            bad.append(f"SB 411's sittings are read as {live!r}, not Environment's hearing at 1:00 "
-                       "on 10 February")
+        if live != [("2000-02-04", "10:00", "Environment"), ("2000-02-10", "13:00", "Environment")]:
+            bad.append(f"SB 411's sittings are read as {live!r}, not the notice of 4 February at "
+                       "10:00 and Environment's hearing at 1:00 on 10 February")
+        narr = _told_from_rows(N, "1999-2000", "SB411", _DOCKET_NEW_TIME)
+        drawn = [(p.sched_date, p.sched_time) for p in procs if p.confidence != "X-cancelled"
+                 and not P.notice_only({"date": p.sched_date, "kind": p.kind, "body": p.body,
+                                        "time": p.sched_time or ""}, narr)]
+        if drawn != [("2000-02-10", "13:00")]:
+            bad.append(f"SB 411's history leaves {drawn!r} drawn, not the hearing of 10 February "
+                       f"alone (voided {narr.get('voided')!r})")
         cols = M.MANIFEST_COLUMNS
         line = lambda b, c, d, t, mark="": (",".join([b, "S", c, "hearing", d, t, "LOB 104",
                                                       "A-unique-slot", "1", "no video found"]
@@ -5056,6 +5070,69 @@ def _sb411_manifest_row():
     assert got == [("Environment", "13:00")], (
         f"{f.name} has SB 411's Senate rows of 10 February 2000 as {got!r}")
     return "ok", "SB 411 of 2000 heard by Environment at 1:00 on 10 February"
+
+
+# Real rows: Docket_db_1999-2000.txt 2716-2717 (SB 39 of 1999) and 9481-9482
+# (HB 273 of 2000); Docket_db_2009-2010.txt 21776 and 21779 (SB 483 of 2010).
+_DOCKET_DOTTED_MONTH = [
+    '1999|0331|01/07/1999 11:18:50 AM|SB39|S|Introduction and referring to Public Affairs:  SJ 2, P 28|01/07/1999 11:18:50 AM',
+    '1999|0331|01/28/1999 03:59:04 PM|SB39|S|Hearing, Feb. 17, Room 104, LOB, 2:15 p.m.|01/28/1999 03:59:04 PM',
+    '2000|0122|01/13/2000 09:24:18 AM|HB273|S|Introduced and Ref. to Education ; SJ 1, Pg.35|01/13/2000 09:24:18 AM',
+    '2000|0122|02/16/2000 04:03:48 PM|HB273|S|Hearing, Feb.23, Room 105 A, SH, 9:10 a.m ; SC12, Pg.9|02/16/2000 04:03:48 PM',
+    '2010|2791|01/21/2010 10:52:51 AM|SB483|S|Introduced and Referred to Ways & Means; SJ 3, Pg.46|01/21/2010 10:52:51 AM',
+    '2010|2791|02/25/2010 09:59:02 AM|SB483|S|Hearing:==RECONVENE==Mar. 3, 2010, Rm 100, SH, 1:30 p.m. or immediately following session, SC9|02/25/2010 09:59:02 AM',
+]
+
+
+@check("build", "a Senate hearing whose month the clerk dotted (\"Feb. 17\", \"Feb.23\", \"Mar. 3, "
+                "2010\") is a proceeding on that day", needs=("docket_parser",))
+def _docket_dotted_month(D):
+    """The Senate of 1999-2000 wrote "Hearing, Feb. 17, Room 104, LOB, 2:15
+    p.m." and 2010 twice "Hearing:==RECONVENE==Mar. 3, 2010". SENATE_SCHED_RE
+    read the line and _parse_date did not read the date, because strptime's
+    %b takes no dot, so the row was dropped and 174 hearings had no
+    proceedings row: SB 39's of 17 February 1999, HB 273's of 23 February
+    2000, SB 483's reconvened sitting of 3 March 2010."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dotted-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_DOTTED_MONTH) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = sorted((p.bill, p.sched_date, p.sched_time, p.venue) for p in procs)
+    want = [("HB273", "2000-02-23", "09:10", "SH 105 A"),
+            ("SB39", "1999-02-17", "14:15", "LOB 104"),
+            ("SB483", "2010-03-03", "13:30", "SH 100")]
+    assert got == want, f"the dotted months' hearings are read as {got!r}, not {want!r}"
+    return "ok", "SB 39 on 17 February 1999, HB 273 on 23 February 2000, SB 483 on 3 March 2010"
+
+
+@check("data", "no Senate meeting line on disk whose month the clerk dotted is left without a day")
+def _docket_dotted_month_on_disk():
+    """_docket_dotted_month over every docket on this disk: a Senate line
+    SENATE_SCHED_RE reads whose date opens with a dotted month ("Jan. 11",
+    "Feb.23", "Mar. 3, 2010") must give _parse_date a day. 174 did not, 172
+    of 1999-2000 and 2 of 2009-2010."""
+    D = imp("docket_parser")
+    if D is None:
+        return "skip", "docket_parser.py will not import"
+    files = sorted(Path(".").glob("Docket_db_*.txt")) + sorted(Path(".").glob("Docket_[0-9]*.txt"))
+    if not files:
+        return "skip", "no docket on this disk"
+    seen, bad = 0, []
+    for f in files:
+        for r in D.parse_rows(str(f)):
+            if (r["body"] or "").strip().upper() != "S":
+                continue
+            m = D.SENATE_SCHED_RE.search(D.extract_flags(r["desc"])[1])
+            if not m or not re.match(r"[A-Za-z]{3,9}\.", m.group("date")):
+                continue
+            seen += 1
+            if D._parse_date(m.group("date"), D._created(r)) is None:
+                bad.append(f"{f.name}:{r['lineno']} {r['bill']} {m.group('date')!r}")
+    assert not bad, f"{len(bad)} dotted Senate dates read as no day: " + "; ".join(bad[:6])
+    return "ok", f"{seen:,} Senate meeting lines with a dotted month, every one dated"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "
