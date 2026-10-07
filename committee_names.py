@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.4
+# GRANITE_VERSION: 2026-09-24.5
 """One name per committee: the name it had at the time.
 
     import committee_names as CN
@@ -102,8 +102,13 @@ an entry needs a witness, and preflight fails if any alias could turn the name
 of a different committee of the same chamber and term into its own.
 """
 
-import re
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import re
 
 import names
 import referrals

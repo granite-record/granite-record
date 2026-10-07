@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Collect House online testimony sign-ins: who registered support or opposition
 on each bill, and who filed written testimony.
@@ -48,6 +48,12 @@ chose to register a position, which is a measure of who mobilised. Advocacy
 groups on all sides organise them. It is not a poll.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
@@ -60,7 +66,6 @@ import urllib.request
 import http.cookiejar
 from collections import Counter, defaultdict
 from html.parser import HTMLParser
-from pathlib import Path
 
 BASE = "https://gc.nh.gov/house/committees/remotetestimony/"
 PAGE = BASE + "submitted_testimony.aspx"

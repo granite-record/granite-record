@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.4
+# GRANITE_VERSION: 2026-09-16.6
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 topic_model.py --apply              # write topics_assigned.json
@@ -109,20 +109,22 @@ NUMPY. This module needs numpy; topics.py does not. Importing it costs about
 cannot feel it.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
 import os
 import re
-import sys
 import time
-from pathlib import Path
 
 import numpy as np
 
-REPO = Path(__file__).resolve().parent
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
+REPO = _paths.ROOT
 # topics.py and build_data.py address their files relative to the working
 # folder, so this module has to be standing in the repository to read them.
 # build_all.py already runs its steps from there; this is for a run that is not.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.17
+# GRANITE_VERSION: 2026-09-06.18
 """
 What is actually in the General Court's public database.
 
@@ -44,6 +44,12 @@ nothing added, so that is what this shells out to. The PDF notes the instance
 name may not be needed, so both forms are tried, plainest first.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import base64
 import decimal
@@ -52,11 +58,9 @@ import json
 import os
 import re
 import subprocess
-import sys
 import time
 import child
 import refusal
-from pathlib import Path
 
 # From gc.nh.gov/downloads/ODBC and Data Table Structure.pdf, which publishes
 # these for public use. Read-only account.

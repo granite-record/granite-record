@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -53,6 +53,12 @@ the fetched page mentions any, so that question gets answered in the same run
 rather than in another one.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html
 import json
@@ -61,10 +67,8 @@ import random
 import re
 from collections import Counter
 import refusal
-import sys
 import time
 import urllib.request
-from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}

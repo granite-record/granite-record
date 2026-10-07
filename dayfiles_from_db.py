@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.13
+# GRANITE_VERSION: 2026-10-01.14
 """
 The day's seven changing files, rebuilt from the database's views. No network.
 
@@ -377,6 +377,12 @@ term's. fetch_day_db.py asks for those years and later, so a newer year in
 the views is seen, left out, and said (a warning, not a stop).
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import contextlib
@@ -388,10 +394,8 @@ import json
 import os
 import re
 import shutil
-import sys
 import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import rollcalls_from_db as RC
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 The bill-version vocabulary, reshaped out of the database dump already on disk.
 
@@ -45,8 +45,13 @@ sessions are collected rather than one of them chosen, which is why those two
 fields are lists.
 """
 
-import json
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
 from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import json
 
 DB = Path("db")
 SRC = DB / "DocumentVersion.psv"

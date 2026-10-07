@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.9
+# GRANITE_VERSION: 2026-09-07.10
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -42,18 +42,22 @@ address has been blocked twice, and both times something kept going after the
 first refusal.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html
 import json
 import re
 import refusal
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
-from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "

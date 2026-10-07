@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 Fetch the word geometry for a run of volumes, one at a time.
 
@@ -32,9 +32,14 @@ volumes is a lot to ask of a host in one afternoon and the point at which it
 stops being welcome is the point to stop.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import re
-import sys
 import time
 
 import unh_survey as S

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.8
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -29,10 +29,12 @@ Two rules for adding to it:
   bills in one breath and produced six false openings before anyone noticed.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
 from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import segment_markers as S  # noqa: E402
 
 

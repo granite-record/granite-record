@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -39,14 +39,18 @@ Two things this handles that a naive parser gets wrong:
     python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import proceedings as P
 import rollcall_outcomes as RO
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 from datetime import datetime
 
 SEATS = {"H": 400, "S": 24}

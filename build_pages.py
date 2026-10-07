@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.140
+# GRANITE_VERSION: 2026-09-04.141
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -14,6 +14,12 @@ Writes a shared style.css these pages link to. index.html keeps its own inline
 styles and is untouched.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import about_figures
 import bill_order as BO
@@ -25,7 +31,6 @@ import json
 import re
 import shutil
 from collections import OrderedDict, defaultdict, namedtuple
-from pathlib import Path
 
 # The palette is app.css's, read at build time rather than copied. The copy
 # that used to live here had already drifted: --st-veto was #7C2D3A in one

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.8
+# GRANITE_VERSION: 2026-09-20.10
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -52,20 +52,26 @@ content type, the length and a sha256. A parser reads those files and touches
 no network, which is the rule here and the reason is that a parser has to be
 free to be wrong without costing a request.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import hashlib
 import html
 import json
-import pathlib
 import re
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 STORE = ROOT / "town_sites"
 
 # WHO THIS SAYS IT IS, AND WHY THERE ARE TWO ANSWERS.

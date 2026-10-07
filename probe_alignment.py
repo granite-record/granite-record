@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.62
+# GRANITE_VERSION: 2026-09-05.63
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -52,6 +52,12 @@ FOUR QUESTIONS, EACH ANSWERED WITHOUT GROUND TRUTH
      only accuracy measurement available before hand-marking.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import proceedings as P
 import site_read as SR
@@ -59,7 +65,6 @@ import csv
 import json
 import re
 from collections import Counter, defaultdict
-from pathlib import Path
 
 LINE = re.compile(
     r"^(?:(\d+):)?(\d{1,2}):(\d{2})"

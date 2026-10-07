@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.11
+# GRANITE_VERSION: 2026-09-18.12
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -35,6 +35,12 @@ A sixth "division" holds one seat, 6002, and it is not on the floor at all: it
 is the Speaker's chair on the rostrum. It is drawn where the plan draws the
 Speaker, and it is a seat like the other 400 rather than a label.
 """
+
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
 
 import argparse
 import math

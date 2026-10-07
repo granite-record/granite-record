@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.3
 """
 One canonical list of New Hampshire places, and what each source says about it.
 
@@ -85,17 +85,23 @@ their provenance is recorded as unknown rather than as today's date. Fixing
 that means checking them against the Secretary of State's published
 definitions, which is outstanding work and not this script's job.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import datetime
 import json
-import pathlib
 import re
-import sys
 
 import parse_districts
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 OUT = ROOT / "places.json"
 
 DISTRICT_FILES = ("congress", "council", "senate", "house")

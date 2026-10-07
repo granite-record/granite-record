@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.3
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
@@ -50,17 +50,24 @@ correction whose `source_says` no longer matches the export is reported and
 NOT applied, because that means the row has changed and the correction is
 the stale thing.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
 import pathlib
 import re
-import sys
 
 import parse_clerks
 import parse_officials
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 CSV_IN = ROOT / "sources" / "sos-clerks-and-polling-places-2026-09-20.csv"
 OUT = ROOT / "town_clerks.json"
 CORRECTIONS = ROOT / "place_corrections.json"

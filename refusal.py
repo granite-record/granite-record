@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.14
+# GRANITE_VERSION: 2026-09-09.15
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -86,13 +86,17 @@ address saying no. Waiting for the other machine's turn is the stand-down's
 arrangement, so it takes the stand-down's status.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import os
 import re
-import sys
 import time
-from pathlib import Path
 
 MARK = Path("archive/refused.json")
 QUIET_HOURS = 24

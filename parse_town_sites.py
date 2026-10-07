@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.8
+# GRANITE_VERSION: 2026-09-20.10
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -69,17 +69,23 @@ an office proves nothing about how it was filled. The flag is set only where
 the page says so: a page whose own title is "Elected Officials", or a person
 the page marks appointed. Everything else leaves it unset.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import datetime
 import html
 import json
 import os
-import pathlib
 import re
-import sys
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 STORE = ROOT / "town_sites"
 OUT = ROOT / "town_officials_web.json"
 

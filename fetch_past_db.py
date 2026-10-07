@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.2
+# GRANITE_VERSION: 2026-09-26.3
 """
 Six views of past sessions in the General Court's public database, onto this
 disk, each whole or not at all.
@@ -103,14 +103,18 @@ Feed the site. Nothing reads db/past/ yet. Turning these into site data is a
 separate step, so that a parser can be rewritten without another round trip.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import hashlib
 import json
 import os
 import re
-import sys
 import time
-from pathlib import Path
 
 import fetch_archive_db as FA
 import probe_db as P

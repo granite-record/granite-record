@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.7
+# GRANITE_VERSION: 2026-09-12.8
 """
 What changed at the General Court between two copies of its bulk files.
 
@@ -82,14 +82,18 @@ newest day the archive fetched those bytes is read from its snapshots
 (fetched_until), and the heading says both days.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import gzip
 import json
 import re
-import sys
 from collections import Counter, defaultdict
 from datetime import date
-from pathlib import Path
 
 ARCHIVE = Path("nh-archive")
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -28,6 +28,12 @@ learns on Tuesday that a hearing is on Thursday can turn up and testify; the
 same person reading about it afterwards cannot.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import build_date
 import json
@@ -37,7 +43,6 @@ import shell as S
 import site_read as SR
 from collections import Counter
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from xml.sax.saxutils import escape
 
 TODAY = build_date.utcnow().strftime("%Y-%m-%d")

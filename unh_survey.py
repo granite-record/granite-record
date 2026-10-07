@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 Find out what the UNH scans of the pre-digital General Court actually are.
 
@@ -59,17 +59,21 @@ and a redirect to a login or block page comes back looking like a 200. A 3xx
 is reported here with its Location and goes no further.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import hashlib
 import json
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import urllib.robotparser
 from datetime import datetime, timezone
-from pathlib import Path
 
 HOST = "scholars.unh.edu"
 BASE = f"https://{HOST}"

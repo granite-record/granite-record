@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.6
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -21,11 +21,16 @@ a bug reported as unfixed because the fix was sitting in the downloads folder.
 Nothing here writes or changes anything.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 from datetime import datetime
-from pathlib import Path
 
 # Every script carries a version stamp on its second line:
 #
@@ -123,10 +128,13 @@ def main():
         print("  versions.json not found - versions are listed but not checked.")
         print("  Download it alongside the scripts to get the comparison.\n")
 
+    # Every script wherever it sits: the root's and src/'s by their bare names,
+    # as versions.json lists them, so a script moved under src/ is still found
+    # and one nobody listed is still noticed (_paths.SCRIPT_DIRS).
     old, absent, unstamped = [], [], []
-    for name in sorted(set(expected) | {p.name for p in root.glob("*.py")}
-                       | {"bills.html"}):
-        f = root / name
+    scripts = {p.name for p in _paths.code_files("*.py", root=root, dirs=_paths.SCRIPT_DIRS)}
+    for name in sorted(set(expected) | scripts | {"bills.html"}):
+        f = _paths.locate(name, root=root)
         if not f.exists():
             # The search page lives in site/, not beside the scripts.
             alt = root / "site" / name if name.endswith(".html") else None

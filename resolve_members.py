@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Put names to the members who voted but are missing from legislators.txt.
 
@@ -20,6 +20,12 @@ name. Roughly a dozen requests, not a scrape.
 Writes former_members.json, which build_data.py picks up automatically.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
@@ -31,7 +37,6 @@ import urllib.request
 import refusal
 from collections import defaultdict
 from html.parser import HTMLParser
-from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Roll_calls/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "

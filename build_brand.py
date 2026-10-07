@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.11
+# GRANITE_VERSION: 2026-09-12.13
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -75,12 +75,18 @@ under the arrival names (and Icon.png) sat at the root of the person's own
 folder, untracked, until the prune of 6 October 2026 listed them to be moved
 aside; nothing read them. This script reads brand/ only.
 """
-import argparse
-import pathlib
-import re
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
 
-ROOT = pathlib.Path(__file__).resolve().parent
+import argparse
+import re
+
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 BRAND = ROOT / "brand"
 OUT = ROOT / "assets"
 

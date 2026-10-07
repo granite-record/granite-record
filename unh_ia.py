@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 The same volumes, from the people who scanned them.
 
@@ -40,9 +40,14 @@ comparing a 1997 volume against journals/1997/, which this site already holds
 from the General Court, is for.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
-import sys
 import urllib.parse
 
 import unh_survey as S

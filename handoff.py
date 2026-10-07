@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.14
 """
 Write STATE.md from what is actually on disk.
 
@@ -43,6 +43,12 @@ only while the data files are as that run read them (data_state): git
 ignores nearly all of them, so the tree's digest cannot see one rebuilt.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import hashlib
@@ -50,11 +56,9 @@ import json
 import os
 import re
 import subprocess
-import sys
 import child
 import site_read
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 
 TERM_RE = re.compile(r"^\d{4}-\d{4}$")
@@ -411,7 +415,7 @@ def section_site(out):
 
 def section_checks(out):
     out.append("## Checks\n")
-    if not Path("preflight.py").exists():
+    if not _paths.locate("preflight.py").exists():
         out.append("`preflight.py` is not here.\n")
         return
     # THE RUN THAT JUST HAPPENED, where it was a run of this code. Otherwise
@@ -441,7 +445,7 @@ def section_checks(out):
         out.append("")
         return
     print(f"Running preflight.py --code: {why_not}.", flush=True)
-    r = child.run([sys.executable, "preflight.py", "--code"],
+    r = child.run([sys.executable, _paths.script("preflight.py"), "--code"],
                        capture_output=True, text=True)
     lines = [l for l in r.stdout.splitlines() if "passed," in l]
     # A preflight that crashed and one that printed in an unexpected format

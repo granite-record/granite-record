@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -27,19 +27,23 @@ the same member ids the roll call pages use, so a sponsor from an earlier
 session can be tied to a person rather than left as a name.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import proceedings as P
 import re
 import refusal
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
 from html.parser import HTMLParser
-from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "

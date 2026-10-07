@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.9
+# GRANITE_VERSION: 2026-09-11.10
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -82,14 +82,18 @@ override failed -- "OVERRIDE GOV VETO, ML <FAILED 2/3> RC(14-10)", "Veto
 Sustained, RC 165-175" -- is kept as override_failed on a bill with no
 number, and build_site_v2 reads it the way it reads the signature line.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import glob
 import html
 import json
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import proceedings as P
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.3
 """
 The Secretary of State's own district table, and what it says about ours.
 
@@ -95,16 +95,22 @@ Gt" joined to the row above spells Atk. & Gil. Academy Grant, and joined to
 the row below spells nothing. Where the line is a warded city's header the
 next line is a ward, which settles it before the rule runs.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
-import pathlib
 import re
-import sys
 
 import parse_districts
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 PDF = ROOT / "sources" / "sos-towns-and-wards-districted-2023-04-26.pdf"
 OUT = ROOT / "sos_districts.json"
 

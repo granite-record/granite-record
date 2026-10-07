@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 """A topic for the 29,449 bills the General Court never gave one.
 
     python3 topics.py --score              # measure it; no files written
@@ -80,14 +80,18 @@ it is meant to be argued with from the bench: review.py serves these as the
 "topic" kind, and the person's verdicts are what should move it.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import hashlib
 import json
 import math
 import re
-import sys
-from pathlib import Path
 
 BILLS = Path("data/bills.json")
 SUBJECTS = Path("data/subjects.json")

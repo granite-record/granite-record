@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.12
+# GRANITE_VERSION: 2026-09-08.13
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -79,13 +79,17 @@ Three things, all measured across the 172 House files:
         ("Concord,N.H.  Friday,January9,2026"), which is the notice date.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import names
 import re
-import sys
 from collections import Counter, defaultdict
-from pathlib import Path
 
 # ---------------------------------------------------------------- the sources
 CHAMBERS = {

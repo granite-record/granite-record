@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-22.1
+# GRANITE_VERSION: 2026-09-22.3
 """
 New Hampshire's elected county officers, out of the Secretary of State's roster.
 
@@ -49,14 +49,20 @@ begins, and a town can be two words (Gilmanton Iron Works) just as a name
 can. Each page's own header row gives the column edges, and every word is
 assigned by where it sits.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
-import pathlib
 import re
-import sys
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 PDF = ROOT / "sources" / "sos-county-roster-2025-2026.pdf"
 OUT = ROOT / "county_officials.json"
 

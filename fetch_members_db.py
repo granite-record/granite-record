@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.3
 """
 Members who have left, from the General Court's own database.
 
@@ -43,10 +43,14 @@ credentials for, at gc.nh.gov/downloads. Nothing here touches gc.nh.gov, and
 every statement is a SELECT.
 """
 
-import argparse
-import json
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
 from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import argparse
+import json
 
 import probe_db
 import refusal

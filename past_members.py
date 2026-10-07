@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.1
+# GRANITE_VERSION: 2026-09-10.2
 """The 2,614 people the General Court's own list names, past and present.
 
     python3 past_members.py            # what it holds, and what it would name
@@ -34,10 +34,14 @@ WHERE THE FILE COMES FROM
 generated, and gitignored the way `former_members.json` is.
 """
 
-import json
-import re
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
 from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import json
+import re
 
 SRC = Path("past_members.json")
 

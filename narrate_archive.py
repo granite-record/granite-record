@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.8
+# GRANITE_VERSION: 2026-09-11.10
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -40,12 +40,16 @@ the docket numbers as another bill's is told with the number extract_chapters
 settled: this step runs after that one in a build.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import glob
 import re
 import subprocess
-import sys
-from pathlib import Path
 
 TERM = re.compile(r"^Docket(?:_db)?_(\d{4}-\d{4})\.txt$")
 # narrative.py's own account of which rows the LSRs took off a bill or gave to
@@ -124,7 +128,7 @@ def main():
         frozen_roster = Path(a.bills).parent / "frozen" / term / "legislators.json"
         members = str(frozen_roster) if frozen_roster.exists() else a.members
         r = subprocess.run(
-            [sys.executable, "narrative.py", "--docket", path, "--all",
+            [sys.executable, _paths.script("narrative.py"), "--docket", path, "--all",
              "--out", a.out, "--members", members, "--bills", a.bills] + extra,
             capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:

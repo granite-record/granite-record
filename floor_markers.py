@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Segment a floor session on what the clerk actually says.
 
@@ -29,10 +29,15 @@ RollCallSummary.txt, which confirms which bill a segment belongs to rather than
 assuming the docket order held.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
-from pathlib import Path
 
 # YouTube's copy-paste format runs the timestamp together with a verbose repeat
 # and then the text: "1:07:45" + "1 hour, 7 minutes, 45 seconds" + text.

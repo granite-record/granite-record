@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.386
+# GRANITE_VERSION: 2026-09-04.398
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -41,6 +41,12 @@ what the manifest's venue values look like, how many docket rows the proceeding
 parser drops on the floor.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import ast
 import csv
@@ -50,11 +56,9 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import traceback
 from collections import Counter
-from pathlib import Path
 
 import child
 
@@ -423,7 +427,7 @@ def _upcoming_shape():
     import shutil, subprocess, sys, tempfile
     here = Path(".").resolve()
     need = ["build_site_v2.py", "proceedings.py", "build_proceedings.py"]
-    absent = [x for x in need if not (here / x).exists()]
+    absent = [x for x in need if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp(prefix="gr-upcoming-"))
@@ -725,14 +729,14 @@ def _parse_all():
              if n.endswith(".py")]
     bad = []
     for n in names:
-        p = Path(n)
+        p = _paths.locate(n)
         if not p.exists():
             continue
         try:
             _parsed(p)
         except SyntaxError as e:
             bad.append(f"{n}:{e.lineno} {e.msg}")
-    present = sum(1 for n in names if Path(n).exists())
+    present = sum(1 for n in names if _paths.locate(n).exists())
     assert not bad, "; ".join(bad)
     return "ok", f"{present} of {len(names)} present, all parse"
 
@@ -781,8 +785,8 @@ def _import_all():
         "this was written, so the runners are not being read")
     bad = [f"{n}: {src} names {n}.py and it is not here" for n, src in sorted(gone.items())]
     for m in mods + sorted(set(runs) - set(mods)):
-        if not Path(m + ".py").exists():
-            bad.append(f"{m}: a check needs it and {m}.py is not here")
+        if _paths.find(m + ".py") is None:
+            bad.append(f"{m}: a check needs it and {m}.py is in no code folder")
             continue
         try:
             __import__(m)
@@ -812,18 +816,806 @@ def _scripts_run():
     the script doing the asking."""
     here, gone = {}, {}
     for src in _RUNNERS:
-        f = Path(src)
+        f = _paths.locate(src)
         if not f.exists():
             continue
         text = f.read_text(encoding="utf-8", errors="replace")
         code = src.endswith(".py")
         pat = r"""["']([A-Za-z_]\w*)\.py["']""" if code else r"(?<![\w/.-])([A-Za-z_]\w*)\.py\b"
         for n in sorted(set(re.findall(pat, text)) - {"preflight"}):
-            if Path(n + ".py").exists():
+            if _paths.find(n + ".py") is not None:
                 here.setdefault(n, src)
             elif code:
                 gone.setdefault(n, src)
     return here, gone
+
+
+# ====================================================== files: where the code lives ==
+#
+# THE CODE IS MOVING INTO src/ (6 October 2026; src/README.md, and the stages
+# of the folder map). Every import, build_all step, lane line and launch finds
+# a file by its bare name through _paths.py, so a file can move between code
+# folders without anything that names it changing. What keeps that true while
+# files move is below: a name two folders share, a script that does not
+# bootstrap, a name a runner uses that finds no file, a file in the folder of
+# a network it does not ask (or asking one its folder does not allow), and a
+# code path git cannot see. Each reads the folders rather than a list of
+# files, so it holds before, during and after the move. The guards that read
+# every script -- refusal, the hand-made files, committee_details, the shared
+# files -- carry floors of their own: what they read on 6 October, before any
+# file moved, so that one reading only the root after a move fails rather
+# than passing on nothing.
+
+def _code_name_clashes(root=None):
+    """{bare name: [its paths]} for every name two code files share: any
+    file under src/ but a README.md, and every .py of the root, watchers/ and
+    tests/ (which also hold data, whose names are not the question)."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    seen = {}
+    for d in _paths.code_dirs(base):
+        in_src = d != base and d.relative_to(base).parts[0] == "src"
+        for f in sorted(d.iterdir()):
+            if f.is_file() and f.name != "README.md" and (in_src or f.suffix == ".py"):
+                seen.setdefault(f.name, []).append(f.relative_to(base).as_posix())
+    return {n: ps for n, ps in sorted(seen.items()) if len(ps) > 1}
+
+
+def _code_dirs_unlisted(root=None):
+    """Folders under src/ that hold a file other than a README and are not on
+    _paths.SRC_DIRS: what is in one is on nobody's import path, and no guard
+    that reads every script (SCRIPT_DIRS) reads it."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    listed = {(base / d).resolve() for d in _paths.SRC_DIRS}
+    src = base / "src"
+    if not src.is_dir():
+        return []
+    return [d.relative_to(base).as_posix()
+            for d in sorted(p for p in src.rglob("*") if p.is_dir() and p.name != "__pycache__")
+            if d.resolve() not in listed
+            and any(f.is_file() and f.name != "README.md" and f.suffix != ".pyc"
+                    for f in d.iterdir())]
+
+
+def _src_dirs_off_list(code_dirs, src_dirs):
+    """The folders under src/ on CODE_DIRS that are not on SRC_DIRS. Such a
+    folder is on the import path and yet unread by the refusal, hand-made-file
+    and merge-not-replace guards, which read SCRIPT_DIRS, the root and
+    SRC_DIRS: put a fetcher there and nothing asks whether it calls
+    refusal.check()."""
+    return [d for d in code_dirs if d.startswith("src/") and d not in src_dirs]
+
+
+def _plant(root, files):
+    """A tree for a reader to be proved on: {relative path: text}."""
+    for rel, text in files.items():
+        p = Path(root) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    return Path(root)
+
+
+@check("files", "a bare name finds one file: no two code files share a name, and every "
+                "folder under src/ that holds code is on _paths.SRC_DIRS")
+def _code_names_unique():
+    """Every import and every launch here is by bare name, and _paths puts
+    every code folder on the path, so two files of one name would be one
+    import shadowing the other in whichever order the folders happen to be
+    read -- and _paths.script refuses to choose. A README.md in each folder
+    is the one name allowed to repeat. A folder under src/ that is not on
+    _paths.SRC_DIRS is on nobody's path, and its files would not import; one
+    put on CODE_DIRS by hand rather than through SRC_DIRS would import and be
+    read by none of the guards that read SCRIPT_DIRS."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-names-"))
+    try:
+        _plant(tmp, {"_paths.py": "", "a.py": "", "src/parse/a.py": "", "src/parse/README.md": "",
+                     "src/pages/README.md": "", "src/pages/b.js": "", "tests/b.js": "",
+                     "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
+                     "tests/notes.json": "", "src/extra/d.py": ""})
+        got = _code_name_clashes(tmp)
+        assert got == {"a.py": ["a.py", "src/parse/a.py"], "c.py": ["watchers/c.py", "tests/c.py"]}, \
+            f"the reader of names found {got} in a tree made to share two"
+        assert _code_dirs_unlisted(tmp) == ["src/extra"], _code_dirs_unlisted(tmp)
+        off = _src_dirs_off_list(("", "src/parse", "src/extra", "watchers"), ("src/parse",))
+        assert off == ["src/extra"], f"the reader of the lists found {off}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    clashes = _code_name_clashes()
+    assert not clashes, ("these names are used by more than one code file, so a bare name "
+                         "finds two: " + "; ".join(f"{n} ({', '.join(ps)})"
+                                                    for n, ps in clashes.items()))
+    off = _src_dirs_off_list(_paths.CODE_DIRS, _paths.SRC_DIRS)
+    assert not off, ("these folders under src/ are on _paths.CODE_DIRS and not SRC_DIRS, so "
+                     "they import and no guard that reads every script reads them: "
+                     + ", ".join(off) + ". Put each on SRC_DIRS, which CODE_DIRS is made from.")
+    unlisted = _code_dirs_unlisted()
+    assert not unlisted, ("these folders under src/ hold code and are not on "
+                          "_paths.SRC_DIRS, so nothing can import what is in them: "
+                          + ", ".join(unlisted) + ". Add each to SRC_DIRS.")
+    n = len(_paths.code_files("*.py"))
+    assert n >= 160, f"only {n} scripts were read in the code folders; there were 165 on 6 October"
+    return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"
+
+
+def _first_script(node):
+    """The script a launch's argument list starts with: ["x.py", ...] or
+    ["x.py", ...] + more. None for any other node."""
+    if isinstance(node, ast.BinOp):
+        return _first_script(node.left)
+    if isinstance(node, ast.List) and node.elts and isinstance(node.elts[0], ast.Constant) \
+            and isinstance(node.elts[0].value, str) \
+            and re.fullmatch(r"[\w./\\-]+\.py", node.elts[0].value):
+        return node.elts[0].value
+    return None
+
+
+_RUN_BY_PATH = re.compile(r"(?:\bpython3?|\bpy)\s+([\w./\\-]+\.py)\b|Test-Path\s+([\w./\\-]+\.py)\b")
+
+
+def _runner_names(root=None):
+    """{runner: [(script name, run by its path)]}: every script that
+    build_all's steps, nightly, the laptop's evening job, the lane's queue,
+    the workflows and publish.bat start, as each writes it. The first four
+    find theirs through _paths.script; the workflows and publish.bat run a
+    path, which must be there as written."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    out = {}
+
+    def code(rel, also=None):
+        f = _paths.locate(rel, root=base)
+        if not f.exists():
+            return
+        names = []
+        for n in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+            if also and isinstance(n, ast.Call) and getattr(n.func, "id", None) == also \
+                    and len(n.args) > 1:
+                hit = _first_script(n.args[1])
+            elif not also and isinstance(n, (ast.List, ast.BinOp)):
+                hit = _first_script(n)
+            else:
+                continue
+            if hit:
+                names.append((hit, False))
+        out[rel] = sorted(set(names))
+    code("build_all.py", also="Step")
+    code("nightly.py")
+    code("laptop_evening.py")
+    queue = _paths.locate("watchers/gc_lane.queue", root=base)
+    if queue.exists():
+        lines = []
+        for ln in queue.read_text(encoding="utf-8").splitlines():
+            ln = ln.strip()
+            if not ln or ln.startswith("#"):
+                continue
+            ln = re.sub(r"^daily\s+\S+\s+", "", ln)
+            ln = re.sub(r"^handover\s+", "", ln)
+            lines.append((ln.split()[0], False))
+        out["watchers/gc_lane.queue"] = sorted(set(lines))
+    for f in sorted((base / ".github" / "workflows").glob("*.y*ml")) + [base / "publish.bat"]:
+        if not f.exists():
+            continue
+        found = set()
+        for ln in f.read_text(encoding="utf-8").splitlines():
+            bare = ln.strip()
+            if bare.startswith(("#", "::")) or bare.upper().startswith("REM"):
+                continue
+            for m in _RUN_BY_PATH.finditer(ln):
+                found.add(((m.group(1) or m.group(2)).replace("\\", "/"), True))
+        out[f.relative_to(base).as_posix()] = sorted(found)
+    return out
+
+
+def _runner_problems(root=None):
+    """What a runner names that does not resolve: [sentence]."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    bad = []
+    for runner, names in _runner_names(base).items():
+        for name, by_path in names:
+            try:
+                hit = _paths.find(name, root=base)
+            except LookupError as e:
+                bad.append(f"{runner} names {name}, and {e}")
+                continue
+            if hit is None:
+                bad.append(f"{runner} names {name}, and no code folder holds it")
+            elif by_path and not (base / name).is_file():
+                bad.append(f"{runner} runs {name} by its path, and it is not there: it is "
+                           f"{hit.relative_to(base).as_posix()}")
+    return bad
+
+
+# Most of what each runner named on 6 October 2026, before any file moved
+# (47, 14, 3, 5, 3, 2 and 3): a runner read as naming fewer has stopped being
+# read, not stopped running things. The slack is for a step retired on
+# purpose.
+_RUNNER_FLOORS = {"build_all.py": 40, "nightly.py": 12, "laptop_evening.py": 3,
+                  "watchers/gc_lane.queue": 3, ".github/workflows/nightly.yml": 2,
+                  ".github/workflows/weekly.yml": 1, "publish.bat": 2}
+
+
+@check("files", "every script build_all, the night, the laptop's evening, the lane, the "
+                "workflows and publish.bat start resolves to exactly one file")
+def _runner_names_resolve():
+    """The four runners that start scripts by bare name -- build_all's steps,
+    nightly.run, laptop_evening.run_step and the lane -- find each through
+    _paths.script, which fails at four in the morning on a name that finds no
+    file or finds two. So each name is resolved here, now. The workflows and
+    publish.bat run a script by its path, from the root: those must be where
+    they are written, which is why livestreams.py stays at the root -- the
+    nightly's `Test-Path livestreams.py` would otherwise skip its step without
+    a word."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-runners-"))
+    try:
+        _plant(tmp, {
+            "_paths.py": "",
+            "build_all.py": 'Step("a", ["moved.py", "--x"])\nStep("b", ["gone.py"] + more)\n',
+            "nightly.py": 'run(["twice.py"], "t")\nx = ["moved.py", "y"]\n',
+            "watchers/gc_lane.queue": "# c\ndaily 06:00 moved.py --a\nhandover gone.py\n",
+            ".github/workflows/nightly.yml": "run: python livestreams.py\n# python old.py\n",
+            "publish.bat": "REM python3 old.py\npython3 checks.py --site site\n",
+            "src/parse/moved.py": "", "src/checks/checks.py": "", "src/pages/livestreams.py": "",
+            "src/parse/twice.py": "", "src/pages/twice.py": ""})
+        got = _runner_problems(tmp)
+        want = ["build_all.py names gone.py", "nightly.py names twice.py",
+                "watchers/gc_lane.queue names gone.py", "nightly.yml runs livestreams.py",
+                "publish.bat runs checks.py"]
+        assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
+            f"the reader of runners found {got} in a tree made to break five ways"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    names = _runner_names()
+    thin = [f"{r} ({len(names.get(r, []))}, was {n})" for r, n in _RUNNER_FLOORS.items()
+            if len(names.get(r, [])) < n]
+    assert not thin, ("these runners were read as naming fewer scripts than they named on "
+                      "6 October, so they are not being read: " + ", ".join(thin))
+    bad = _runner_problems()
+    assert not bad, "; ".join(bad)
+    total = sum(len(v) for v in names.values())
+    return "ok", (f"{total} names in {len(names)} runners, each finds one file; the "
+                  "workflows' and publish.bat's are where they say")
+
+
+def _project_modules(root=None):
+    """The bare module names of every script and module in the code folders."""
+    return {f.stem for f in _paths.code_files("*.py", root=root)}
+
+
+def _bootstrap_problem(src, project):
+    """What is wrong with a runnable script's start, or "": it carries
+    _paths.BOOTSTRAP word for word, and imports _paths before any module of
+    this project, at the top level or inside a statement there."""
+    text = src.replace("\r\n", "\n")
+    if _paths.BOOTSTRAP not in text:
+        return "does not carry the bootstrap (_paths.BOOTSTRAP)"
+    for node in ast.parse(text).body:
+        names = [a.name for a in node.names] if isinstance(node, ast.Import) else []
+        if "_paths" in names:
+            return ""
+        for n in ast.walk(node):
+            mods = ([a.name for a in n.names] if isinstance(n, ast.Import) else
+                    [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level
+                    else [])
+            hit = sorted(m.split(".")[0] for m in mods if m.split(".")[0] in project - {"_paths"})
+            if hit:
+                return f"imports {hit[0]} before _paths"
+    return "never imports _paths"
+
+
+def _runnable(tree):
+    """Whether a parsed module is run as a script: a top-level
+    `if __name__ == "__main__":`."""
+    return any(isinstance(n, ast.If) and "__name__" in ast.unparse(n.test)
+               and "__main__" in ast.unparse(n.test) for n in tree.body)
+
+
+@check("files", "every runnable script imports _paths, found above its own file, before "
+                "any module of this project")
+def _bootstrap_first():
+    """A script imports its neighbours by bare name. At the root that worked
+    because the root was the script's own folder; under src/parse/ the script's
+    folder is src/parse/, and `import proceedings` would fail unless something
+    had put src/lib/ on the path first. That something is the bootstrap at the
+    top of every runnable script (_paths.BOOTSTRAP): it walks up from the
+    script's own file to the folder holding _paths.py and imports it, so a
+    script one folder deep and one three deep start the same way, from any
+    working directory. A script is runnable when it has a __main__ block or a
+    runner starts it (watchers/rest.py has no block and the lane runs it).
+    The bootstrap is also run, under src/ and at the root of a scratch tree,
+    to see every code folder come out on the path once and ahead of the
+    standard library, the root included."""
+    project = _project_modules()
+    good = _paths.BOOTSTRAP
+    probes = {
+        "a script with no bootstrap": ("import json\nimport narrative\n", "does not carry"),
+        "a project module imported first": ("import narrative\n" + good, "imports narrative"),
+        "one imported inside a try first": ("try:\n    import child\nexcept Exception:\n"
+                                            "    pass\n" + good, "imports child"),
+        "the bootstrap, then the rest": ('"""Doc."""\n' + good + "\nimport narrative\n", ""),
+    }
+    for what, (src, want) in probes.items():
+        got = _bootstrap_problem(src, project | {"narrative", "child"})
+        assert (want in got if want else got == ""), f"the reader got {what} wrong: {got!r}"
+    # What the bootstrap does, run from a script two folders down and one at
+    # the root of a tree holding this _paths.py: every code folder on the path
+    # once, ahead of the standard library and site-packages. The root is the
+    # one to watch: the bootstrap appends it behind site-packages, where an
+    # installed package of a root module's name would win, and _paths must
+    # bring it forward.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-boot-"))
+    try:
+        shutil.copy2(_paths.ROOT / "_paths.py", tmp / "_paths.py")
+        show = ('import json, os\nprint(json.dumps({"path": sys.path, '
+                '"lib": os.path.dirname(os.__file__)}))\n')
+        _plant(tmp, {"src/parse/deep.py": '"""Doc."""\n' + good + show,
+                     "top.py": '"""Doc."""\n' + good + show,
+                     "src/lib/README.md": "", "tests/README.md": ""})
+
+        def norm(p):
+            return os.path.normcase(str(Path(p).resolve())) if p else ""
+        for script in ("src/parse/deep.py", "top.py"):
+            r = _run([sys.executable, "-B", str(tmp / script)], cwd=str(tmp),
+                     capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, f"{script} would not start: {(r.stderr or r.stdout)[-300:]}"
+            got = json.loads(r.stdout)
+            keys = [norm(p) for p in got["path"]]
+            lib = keys.index(norm(got["lib"]))
+            for d in _paths.code_dirs(tmp):
+                n, where = keys.count(norm(d)), d.relative_to(tmp).as_posix()
+                where = "the root" if where == "." else where
+                assert n == 1 and keys.index(norm(d)) < lib, (
+                    f"run as {script}, the bootstrap left {where} on sys.path {n} times"
+                    + (f", behind the standard library (at {keys.index(norm(d))}, the "
+                       f"library at {lib})" if n and keys.index(norm(d)) > lib else "")
+                    + ", where it should be once and ahead of it")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    started = {Path(n).name for names in _runner_names().values() for n, _ in names}
+    bad, n = [], 0
+    for f in _paths.code_files("*.py"):
+        if f.name == "_paths.py":
+            continue
+        src = f.read_text(encoding="utf-8")
+        if not (f.name in started or _runnable(_parsed(f))):
+            continue
+        n += 1
+        why = _bootstrap_problem(src, project)
+        if why:
+            bad.append(f"{f.relative_to(_paths.ROOT).as_posix()} {why}")
+    assert n >= 145, f"only {n} runnable scripts were read; there were 147 on 6 October"
+    assert not bad, ("these scripts would not find their imports once they, or what they "
+                     "import, sit under src/: " + "; ".join(bad))
+    return "ok", f"{n} runnable scripts start with the bootstrap, before any import of ours"
+
+
+# THE OTHER TWO RULES FOR A SCRIPT (CONTRIBUTING.md, "Where new code goes").
+# The first two, a unique name and the bootstrap, have checks of their own above.
+# These hold the last two: a path is found from _paths.ROOT, and a script is
+# started through _paths.script. Each was a trap the plan counted -- keys.py's
+# secrets.json, repo_facts' sentence on data.html, the laptop's evening probe
+# path -- and each comes back without a word in a new or edited file: the
+# file works at the root and loses its way the day it moves.
+_FROM_OWN_FILE = ("parent", "parents", "with_name", "with_stem", "with_suffix")
+
+
+def _launch_target(lst):
+    """The element of a launch list that names the script -- [sys.executable
+    (or "python3"), its flags, the script, ...] -- or None for any other list,
+    and for a -m or -c run."""
+    if not lst.elts:
+        return None
+    head = lst.elts[0]
+    if ast.unparse(head) != "sys.executable" and not (
+            isinstance(head, ast.Constant) and head.value in ("python", "python3", "py")):
+        return None
+    for el in lst.elts[1:]:
+        if isinstance(el, ast.Constant) and isinstance(el.value, str) and el.value.startswith("-"):
+            if el.value in ("-m", "-c"):
+                return None
+            continue
+        return None if isinstance(el, ast.Starred) else el
+    return None
+
+
+def _hand_made(node):
+    """Whether an expression makes a script's path by hand: it names a .py
+    file or joins a path (with / or os.path.join), and goes through neither
+    _paths.script, find or locate nor the file's own __file__."""
+    said = ast.unparse(node)
+    if "__file__" in said or re.search(r"_paths\.(?:script|find|locate)\(", said):
+        return False
+    return any((isinstance(c, ast.Constant) and isinstance(c.value, str) and c.value.endswith(".py"))
+               or (isinstance(c, ast.BinOp) and isinstance(c.op, ast.Div))
+               or (isinstance(c, ast.Call) and ast.unparse(c.func).endswith("path.join"))
+               for c in ast.walk(node))
+
+
+def _root_and_launch_problems(root=None):
+    """([sentence], files read): every place a code file finds a folder from
+    a file's own path -- `.parent`, `.parents` or a sibling (`with_name`) of
+    something built from __file__, or `os.path.dirname` of it -- outside
+    _paths.py, which is the one place that may; and every launch whose script
+    is a name relative to the working folder or a path made by hand rather
+    than by _paths.script, _paths.find or _paths.locate, read in the launch
+    itself or, for a script held in a variable, in what the file assigns to
+    it. A script launching its own __file__ is itself wherever it sits, and
+    passes; a variable filled some other way (an argument, a loop) cannot be
+    read here, and passes too. preflight is held to the first rule and not
+    the second: the scripts it starts by a bare name are copies it wrote into
+    a fixture folder and runs there, and a repository script it started by a
+    stale path would fail preflight itself, at once."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    found, files = {}, _paths.code_files("*.py", root=base)
+    blank = "\n" * _paths.BOOTSTRAP.count("\n")
+    for f in files:
+        if f.name == "_paths.py":
+            continue
+        rel = f.relative_to(base).as_posix()
+        text = f.read_text(encoding="utf-8").replace("\r\n", "\n").replace(_paths.BOOTSTRAP, blank)
+        tree = ast.parse(text)
+        given = {}
+        for a in ast.walk(tree):
+            if isinstance(a, (ast.Assign, ast.AnnAssign)) and a.value is not None:
+                for t in (a.targets if isinstance(a, ast.Assign) else [a.target]):
+                    if isinstance(t, ast.Name):
+                        given.setdefault(t.id, []).append(a.value)
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Attribute) and n.attr in _FROM_OWN_FILE \
+                    and "__file__" in ast.unparse(n.value):
+                found.setdefault((rel, n.lineno), (
+                    f"{rel}:{n.lineno} finds a folder from __file__ ({ast.unparse(n)}), the "
+                    "root only while the file sits there: use _paths.ROOT"))
+            elif isinstance(n, ast.Call) and ast.unparse(n.func).split(".")[-1] in ("dirname", "split") \
+                    and any("__file__" in ast.unparse(a) for a in n.args):
+                found.setdefault((rel, n.lineno), (
+                    f"{rel}:{n.lineno} finds a folder from __file__ ({ast.unparse(n)}), the "
+                    "root only while the file sits there: use _paths.ROOT"))
+            elif f.name != "preflight.py" and isinstance(n, ast.List):
+                target = _launch_target(n)
+                if target is None:
+                    continue
+                said = ast.unparse(target)
+                if "__file__" in said or re.search(r"_paths\.(?:script|find|locate)\(", said):
+                    continue
+                made = [said] if _hand_made(target) else [
+                    f"{v.id} = {ast.unparse(x)}" for v in ast.walk(target)
+                    if isinstance(v, ast.Name) for x in given.get(v.id, ()) if _hand_made(x)]
+                if made:
+                    how = f" ({made[0]})" if made[0] != said else ""
+                    found.setdefault((rel, n.lineno), (
+                        f"{rel}:{n.lineno} starts {said} by a path of its own making{how}, "
+                        "which finds it only while it sits there: start it through "
+                        "_paths.script"))
+    return [found[k] for k in sorted(found)], len(files)
+
+
+@check("files", "a script finds the repository through _paths.ROOT and starts another "
+                "through _paths.script, never from its own file's folder")
+def _root_and_launch_rules():
+    """CONTRIBUTING.md gives a new script four rules and says preflight holds
+    them. The name and bootstrap checks hold the first two; this holds the
+    third and the fourth, read from what each file does so that they hold
+    wherever it sits. Path(__file__).parent was the root while every script
+    sat there, and is src/parse/ once one moves: keys.py would have looked
+    for secrets.json there, and build_exports would have counted no checks
+    for data.html. A launch of "narrative.py", or of HERE / "narrative.py",
+    finds the file only while it sits beside the working folder or HERE."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-rules-"))
+    try:
+        launch = "import subprocess, sys\nrun = subprocess.run\n"
+        _plant(tmp, {
+            "_paths.py": "HERE = Path(__file__).resolve().parent\n",
+            "src/parse/hand.py": (launch + "HERE = Path(__file__).resolve().parent\n"
+                                  'run([sys.executable, str(HERE / "other.py")])\n'),
+            "src/parse/bare.py": launch + 'run([sys.executable, "-u", "other.py", "--x"])\n',
+            "src/parse/up.py": "import os\nD = os.path.dirname(os.path.abspath(__file__))\n",
+            "src/lib/beside.py": 'K = Path(__file__).with_name("secrets.json")\n',
+            "src/pages/py.py": launch + 'run(["python3", "other.py"])\n',
+            "src/parse/held.py": launch + 'tool = Path("other.py")\nrun([sys.executable, str(tool)])\n',
+            "src/parse/joined.py": (launch + "HERE = _paths.ROOT\n"
+                                    "run([sys.executable, str(HERE / argv[0]), *argv[1:]])\n"),
+            "src/parse/fine.py": (_paths.BOOTSTRAP + launch +
+                                  'run([sys.executable, _paths.script("other.py"), "--x"])\n'
+                                  'run([sys.executable, __file__, "--child"])\n'
+                                  'run([sys.executable, "-m", "yt_dlp", "x.py"])\n'
+                                  'run([sys.executable, "-c", "print(1)"])\n'
+                                  "script = _paths.script(argv[0])\n"
+                                  "run([sys.executable, script])\n"
+                                  "run([sys.executable] + args)\n"
+                                  "for g in given:\n    run([sys.executable, str(g)])\n"
+                                  'SRC = Path(__file__).resolve().read_text()\n'
+                                  'K = _paths.ROOT / "secrets.json"\n'),
+            "preflight.py": launch + 'run([sys.executable, "copy.py"], cwd=tmp)\n'})
+        got, _ = _root_and_launch_problems(tmp)
+        want = ["src/parse/hand.py:3 finds", "src/parse/hand.py:4 starts", "src/parse/bare.py:3",
+                "src/parse/up.py:2", "src/lib/beside.py:1", "src/pages/py.py:3",
+                "src/parse/held.py:4", "src/parse/joined.py:4"]
+        assert len(got) == len(want) and all(any(g.startswith(w) for g in got) for w in want), \
+            f"the reader of paths and launches found {got} in a tree made to break eight ways"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad, n = _root_and_launch_problems()
+    assert n >= 160, f"only {n} scripts were read; there were 165 on 6 October"
+    assert not bad, ("these find the repository or start a script from where the file sits "
+                     "today, which stops being true when it moves: " + "; ".join(bad))
+    return "ok", (f"{n} scripts read: none finds a folder from its own file but _paths.py, and "
+                  "every launch whose script can be read goes through _paths")
+
+
+# A `python3 -c` program, written in a docstring for a person to type or in a
+# list for a check to run, starts with only the working folder on its path:
+# the root while every module sits there, and none of src/ once they move.
+_DASH_C = re.compile(r"""-c\s+(["'])(.+?)\1""")
+
+
+def _dash_c_problem(code, project):
+    """What is wrong with a -c program, or "": it imports _paths before any
+    module of this project."""
+    for stmt in re.split(r"[;\n]", code):
+        stmt = stmt.strip()
+        if stmt.startswith("import "):
+            mods = [p.split()[0].split(".")[0] for p in stmt[7:].split(",") if p.strip()]
+        elif stmt.startswith("from ") and " import " in stmt:
+            mods = [stmt[5:].split()[0].split(".")[0]]
+        else:
+            continue
+        for m in mods:
+            if m == "_paths":
+                return ""
+            if m in project:
+                return f"imports {m} before _paths"
+    return ""
+
+
+def _dash_c_programs(f):
+    """(line, program) for every -c program a file writes: after a -c and a
+    space in prose, a docstring or a shell line, and, in Python, as the string
+    that follows a "-c" in a list (an f-string's fields read as X)."""
+    text = f.read_text(encoding="utf-8", errors="replace")
+    out = [(text.count("\n", 0, m.start()) + 1, m.group(2)) for m in _DASH_C.finditer(text)]
+    if f.suffix == ".py":
+        for n in ast.walk(ast.parse(text)):
+            if not isinstance(n, ast.List):
+                continue
+            for a, b in zip(n.elts, n.elts[1:]):
+                if not (isinstance(a, ast.Constant) and a.value == "-c"):
+                    continue
+                if isinstance(b, ast.Constant) and isinstance(b.value, str):
+                    out.append((b.lineno, b.value))
+                elif isinstance(b, ast.JoinedStr):
+                    out.append((b.lineno, "".join(v.value if isinstance(v, ast.Constant) else "X"
+                                                  for v in b.values)))
+    return out
+
+
+def _dash_c_problems(root=None):
+    """[sentence] for each -c program in the code, its READMEs and docs, the
+    workflows and the .bat files that imports a module of ours before _paths."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    project = _project_modules(base)
+    files = (_paths.code_files("*.py", root=base) + _paths.code_files("*.md", root=base)
+             + sorted((base / ".github" / "workflows").glob("*.y*ml")) + sorted(base.glob("*.bat")))
+    bad = []
+    for f in files:
+        for line, code in _dash_c_programs(f):
+            why = _dash_c_problem(code, project)
+            if why:
+                bad.append(f"{f.relative_to(base).as_posix()}:{line} runs a -c program that {why}")
+    return bad, len(files)
+
+
+@check("files", "a python -c program the code or the docs write imports _paths before any "
+                "module of this project")
+def _dash_c_imports_paths():
+    """A bare -c puts only the working folder on the path. Run from the root
+    that finds a root module today and nothing once the module sits under
+    src/: freeze_term's docstring gave the person a -c program importing
+    snapshot_gencourt to run at the 2 December switch, and stage 4 moves
+    snapshot_gencourt into src/fetch/gc_web/ before then. Importing _paths
+    first puts every code folder on the path, before and after the move."""
+    dash = "-c"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dashc-"))
+    try:
+        _plant(tmp, {
+            "_paths.py": "", "other.py": "",
+            "README.md": (f'python3 {dash} "import other; other.go()"\n'
+                          f'python3 {dash} "import _paths, other as O; O.go()"\n'
+                          f"python3 {dash} 'import json; print(1)'\n"),
+            "src/parse/runs.py": (f'R = [sys.executable, "{dash}", "from other import go; go()"]\n'
+                                  f'S = [sys.executable, "{dash}", f"import sys; '
+                                  f'sys.path.insert(0, {{h!r}}); import _paths; import other"]\n'
+                                  f'G = ["git", "{dash}", "user.name=x"]\n'),
+            "src/parse/README.md": f'Run `python3 {dash} "import json, other"`.\n',
+            ".github/workflows/w.yml": f'run: python {dash} "import other"\n',
+            "publish.bat": f'python3 {dash} "import _paths; import other"\n'})
+        got, _ = _dash_c_problems(tmp)
+        want = ["README.md:1 runs", "src/parse/runs.py:1 runs", "src/parse/README.md:1 runs",
+                ".github/workflows/w.yml:1 runs"]
+        assert len(got) == len(want) and all(any(g.startswith(w) for g in got) for w in want), \
+            f"the reader of -c programs found {got} in a tree made to hold four"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad, n = _dash_c_problems()
+    assert n >= 160, f"only {n} files were read for -c programs"
+    assert not bad, ("these -c programs import a module of ours before _paths, so they find "
+                     "it only while it sits at the root; put `import _paths` first: "
+                     + "; ".join(bad))
+    return "ok", f"{n} files read; every -c program that imports a module of ours imports _paths first"
+
+
+# THE NETWORK LINES, BY FOLDER (src/fetch/README.md). Read from what a file
+# does, so that they hold wherever it sits. The root is allowed all of them:
+# it holds the entry points that ask (nightly, livestreams, netcheck, cloud)
+# and, until each moves, the files the move has not reached yet; the
+# refusal guard holds every script there to refusal.check() all the same.
+_GC_HOST = re.compile(r"""["']https?://gc\.nh\.gov""")
+_SQL = re.compile(r"^\s*(?:import probe_db\b|from probe_db import)", re.M)
+_YOUTUBE = re.compile(r"yt_dlp|googleapis\.com/youtube|youtube/v3")
+_ASKS = re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
+                   r"|http\.client")
+_URL = re.compile(r"""["'](https?://[^/"'\s]+)""")
+
+
+def _calls_refusal_check(tree):
+    return any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+               and n.func.attr == "check" and isinstance(n.func.value, ast.Name)
+               and n.func.value.id == "refusal" for n in ast.walk(tree))
+
+
+def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
+    """[sentence] for each file under src/ (and watchers/, tests/) on the
+    wrong side of a network line:
+      - every file in src/fetch/gc_web/ calls refusal.check(), and no other
+        file under src/ does;
+      - only src/fetch/gc_db/ (and, at the root, nightly and preflight; and
+        tests/rehearse_turn.py) open the General Court's SQL host, through
+        probe_db;
+      - only src/fetch/youtube/ (and livestreams.py at the root) use yt-dlp
+        or the YouTube API;
+      - src/checks asks only graniterecord.org, and every other folder under
+        src/ that is not in src/fetch/ asks nobody.
+    The last is by default, not by a list of folders, so that a folder added
+    to _paths.SRC_DIRS is held to it the day it is listed: a list here would
+    have let a request from the new folder through until somebody remembered
+    to add it."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    bad = []
+    for f in _paths.code_files("*.py", root=base, dirs=dirs):
+        rel = f.relative_to(base).as_posix()
+        folder = rel.rsplit("/", 1)[0] if "/" in rel else ""
+        if not folder:
+            continue
+        src = f.read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(src)
+        checks = _calls_refusal_check(tree)
+        if folder == "src/fetch/gc_web" and not checks:
+            bad.append(f"{rel} is in src/fetch/gc_web/ and never calls refusal.check()")
+        if folder.startswith("src/") and folder != "src/fetch/gc_web" and checks:
+            bad.append(f"{rel} calls refusal.check(), so it asks gc.nh.gov: it belongs in "
+                       "src/fetch/gc_web/")
+        if folder.startswith("src/") and folder != "src/fetch/gc_web" and _GC_HOST.search(src) \
+                and _ASKS.search(src):
+            bad.append(f"{rel} asks a gc.nh.gov address: it belongs in src/fetch/gc_web/")
+        if (_SQL.search(src) or f.name == "probe_db.py") and folder != "src/fetch/gc_db" \
+                and rel != "tests/rehearse_turn.py":
+            bad.append(f"{rel} opens the General Court's SQL host: it belongs in src/fetch/gc_db/")
+        if _YOUTUBE.search(src) and folder != "src/fetch/youtube":
+            bad.append(f"{rel} uses yt-dlp or the YouTube API: it belongs in src/fetch/youtube/")
+        if folder.startswith("src/") and not folder.startswith("src/fetch/") \
+                and folder != "src/checks" and _ASKS.search(src):
+            bad.append(f"{rel} makes a request, and {folder}/ asks nobody")
+        if folder == "src/checks" and _ASKS.search(src):
+            hosts = {u for u in _URL.findall(src)
+                     if not re.match(r"https?://(?:www\.)?graniterecord\.org$|https?://"
+                                     r"(?:127\.0\.0\.1|localhost)(?::\d+)?$", u)}
+            if hosts:
+                bad.append(f"{rel} asks {', '.join(sorted(hosts))}, and src/checks/ asks only "
+                           "graniterecord.org")
+    return bad
+
+
+@check("files", "each network has its folder: gc.nh.gov's fetchers in src/fetch/gc_web/ and "
+                "nowhere else, the SQL host's in gc_db/, YouTube's in youtube/, and every "
+                "folder under src/ outside fetch/ and checks/ asks nobody")
+def _network_boundaries():
+    """The folders under src/fetch/ are by whose server a script asks, because
+    that decides what can go wrong: gc.nh.gov's web server has blocked this
+    address twice, its SQL host is somebody else's server too, and YouTube
+    refuses GitHub's machines and has refused the laptop. A fetcher filed in
+    the wrong folder is a request nobody expects from it. So each line is
+    read from what a file does -- refusal.check(), probe_db, yt-dlp, a
+    request -- and held against where it sits, which is why it needs no edit
+    as files move. Asking nobody is the default for a folder under src/
+    outside fetch/, so a folder listed later is held to it from the start."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lines-"))
+    try:
+        ask = "import urllib.request\nurllib.request.urlopen(U)\n"
+        _plant(tmp, {
+            "_paths.py": "",
+            "src/fetch/gc_web/fine.py": "import refusal\nrefusal.check('x')\n",
+            "src/fetch/gc_web/unchecked.py": 'U = "https://gc.nh.gov/x"\n' + ask,
+            "src/parse/checked.py": "import refusal\nrefusal.check('x')\n",
+            "src/fetch/other/sql.py": "import probe_db\n",
+            "src/fetch/gc_db/fine_sql.py": "import probe_db\n",
+            "src/hearings/yt.py": "import yt_dlp\n",
+            "src/pages/asks.py": 'U = "https://example.org"\n' + ask,
+            "src/checks/live.py": 'U = "https://graniterecord.org"\n' + ask,
+            "src/checks/away.py": 'U = "https://example.org"\n' + ask,
+            "src/fetch/other/sos.py": 'U = "https://app.sos.nh.gov"\n' + ask,
+            "src/later/new.py": 'U = "https://app.sos.nh.gov"\n' + ask,
+            "nightly.py": "import probe_db\nimport yt_dlp\n"})
+        # src/later stands for a folder listed after this check was written.
+        got = _boundary_problems(tmp, dirs=_paths.CODE_DIRS + ("src/later",))
+        want = ["unchecked.py is in src/fetch/gc_web/ and never calls",
+                "checked.py calls refusal.check()", "sql.py opens", "yt.py uses yt-dlp",
+                "asks.py makes a request", "away.py asks https://example.org",
+                "new.py makes a request, and src/later/ asks nobody"]
+        assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
+            f"the reader of the network lines found {got} in a tree made to cross seven"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad = _boundary_problems()
+    assert not bad, "; ".join(bad)
+    placed = sum(1 for f in _paths.code_files("*.py", dirs=_paths.SRC_DIRS))
+    return "ok", (f"{placed} scripts under src/, each on its side of the network lines; the "
+                  "root's are held by the refusal guard")
+
+
+def _git_hidden(root=None):
+    """(tracked code paths a .gitignore line matches, files under src/ git
+    does not track), or None without git. Code is anything under src/,
+    watchers/, tests/, functions/ or workers/, and every .py, .js, .css,
+    .html, .bat, .toml and .yml file. __pycache__ is not code."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    try:
+        caught = _run(["git", "-C", str(base), "ls-files", "-ci", "--exclude-standard", "-z"],
+                      capture_output=True, timeout=60)
+        loose = _run(["git", "-C", str(base), "ls-files", "-o", "-z", "--", "src"],
+                     capture_output=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if caught.returncode != 0 or loose.returncode != 0:
+        return None
+    code = re.compile(r"^(?:src|watchers|tests|functions|workers)/|"
+                      r"\.(?:py|js|mjs|css|html|bat|cmd|ps1|toml|ya?ml)$")
+    hidden = [p for p in caught.stdout.split("\0") if p and code.search(p)]
+    untracked = [p for p in loose.stdout.split("\0")
+                 if p and "__pycache__/" not in p and not p.endswith(".pyc")]
+    return hidden, untracked
+
+
+@check("files", "git sees all the code: no tracked code path is caught by .gitignore, and "
+                "nothing under src/ is untracked")
+def _code_not_ignored():
+    """`.gitignore` line 19 is `site/`, which matches a folder named site at
+    any depth: a page builder under src/site/ would have been left out of
+    every commit without a word, which is why the pages' folder is
+    src/pages/. And `_*.py`, there for patch scripts, caught _paths.py itself
+    the day it was written. So a code path git ignores fails here, and so
+    does any file under src/ git does not track -- it would be on the laptop
+    and nowhere else."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-ignored-"))
+    try:
+        if _run(["git", "init", "-q", str(tmp)], capture_output=True, timeout=60).returncode != 0:
+            return "skip", "git is not here to make a repository with"
+        _plant(tmp, {".gitignore": "site/\n_*.py\n", "src/site/page.py": "",
+                     "src/pages/ok.py": "", "src/pages/new.py": "", "_paths.py": ""})
+        g = ["git", "-C", str(tmp), "-c", "user.name=preflight",
+             "-c", "user.email=preflight@example.invalid"]
+        _run(g + ["add", "-f", "src/site/page.py", "src/pages/ok.py", "_paths.py"],
+             capture_output=True, timeout=60)
+        got = _git_hidden(tmp)
+        assert got == (["_paths.py", "src/site/page.py"], ["src/pages/new.py"]), \
+            f"the reader of what git does not see found {got}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = _git_hidden()
+    if got is None:
+        return "skip", "not a git repository"
+    hidden, untracked = got
+    assert not hidden, ("these tracked code files match a .gitignore line, so a copy of "
+                        "them made new would not be committed: " + ", ".join(hidden))
+    assert not untracked, ("these files under src/ are not in git, so the night and every "
+                           "clone run without them: " + ", ".join(untracked))
+    return "ok", "every tracked code path is outside .gitignore, and src/ holds nothing untracked"
 
 
 # ============================================================ code: narrative ==
@@ -8084,7 +8876,7 @@ def _the_new_terms_first_night(N, B):
         if B.session_over_in(day, current) != want:
             bad.append(f"session_over {day!r} in {current or 'no term'}: "
                        f"{B.session_over_in(day, current)!r}, not {want!r}")
-    src = Path("build_site_v2.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     if "session_over = session_over_in(session_over, current)" not in src:
         bad.append("build_bills no longer takes session_over through session_over_in")
     # What the day does to a bill that has passed its own chamber: SB 12 of
@@ -9646,7 +10438,7 @@ def _rollcall_typed_bill(RP):
         assert rows[("2025", "H", 1)]["procedural"] and rows[("2025", "H", 1)]["bill"] == "HRULE64", (
             "a vote on a House rule was taken for a bill")
         # Keyed as the page looks the bill up, through the CLI the build runs.
-        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
                   "RollCallSummary.txt", "--dir", "none", "--all", "--out", "rc.json"],
                  cwd=d, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
@@ -9659,7 +10451,7 @@ def _rollcall_typed_bill(RP):
             f"roll calls keyed {[(t, sorted(b)) for t, b in keyed.items()]}")
         # build_data keys each member's ballot by the summary's bill, and only
         # a rebuild would show it reverting -- the nightly runs --code alone.
-        src = Path("build_data.py").read_text(encoding="utf-8")
+        src = _paths.locate("build_data.py").read_text(encoding="utf-8")
         assert '"bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper()' in src, (
             "build_data.py no longer keys the roll-call summary's bill through "
             "rollcall_parser.roll_call_bill, so no ballot on \"SB 406\" reaches SB 406's page")
@@ -9720,7 +10512,7 @@ def _rollcall_measure_kinds(RP):
         assert flags == {"HA1": False, "HCO1": False, "SSHR1": False, "SR1 (2009)": False,
                          "SSSB1": False, "DRAFT": True, "SSHB1": False, "SSHCR1": False,
                          "SSRULES": True}, f"bills and procedural flags as parsed: {flags}"
-        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
                   "RollCallSummary.txt", "--dir", "none", "--all", "--out", "rc.json"],
                  cwd=d, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
@@ -9985,7 +10777,7 @@ def _rollcall_outcomes_data(rollcall_outcomes):
 
 @check("rollcalls", "floor_markers matches a spoken tally to the record")
 def _tally_match():
-    if not Path("floor_markers.py").exists():
+    if not _paths.locate("floor_markers.py").exists():
         return "skip", "floor_markers.py not here"
     d = Path(tempfile.mkdtemp())
     try:
@@ -9998,7 +10790,7 @@ def _tally_match():
         lines.append("0:03:00 197 in the affirmative, 151 in the negative")
         lines.append("0:03:30 the committee report is adopted")
         (d / "t.txt").write_text("\n".join(lines), encoding="utf-8")
-        r = _run([sys.executable, "floor_markers.py",
+        r = _run([sys.executable, _paths.script("floor_markers.py"),
                             "--transcript", str(d / "t.txt"),
                             "--summary", str(d / "RollCallSummary.txt")],
                            capture_output=True, text=True, timeout=120)
@@ -10081,7 +10873,7 @@ def _fixture(root):
 
 def _run_markers(root, *flags):
     return _run(
-        [sys.executable, "apply_markers.py", "--workdir", str(root / "work"),
+        [sys.executable, _paths.script("apply_markers.py"), "--workdir", str(root / "work"),
          "--manifest", str(root / "manifest.csv"), *flags],
         capture_output=True, text=True, timeout=180)
 
@@ -10194,7 +10986,7 @@ def _markers_fallback():
     verify_batch.py absent skips the check, as its own check did, rather than
     passing on the first two parts alone.
     """
-    if not Path("apply_markers.py").exists():
+    if not _paths.locate("apply_markers.py").exists():
         return "skip", "apply_markers.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -10233,10 +11025,10 @@ def _markers_fallback():
             "the stated close should narrow the start's tolerance"
 
         # 3. verify_batch over the applied tree prints a sub-minute band.
-        if not Path("verify_batch.py").exists():
+        if not _paths.locate("verify_batch.py").exists():
             return "skip", ("apply_markers passed; verify_batch.py is not here, so its "
                             "bands were not read")
-        r = _run([sys.executable, "verify_batch.py",
+        r = _run([sys.executable, _paths.script("verify_batch.py"),
                   "--work", str(root / "work"),
                   "--manifest", str(root / "manifest.csv")],
                  capture_output=True, text=True, timeout=120)
@@ -10278,7 +11070,7 @@ def _markers_merge_siblings():
     subset on every run. The phrases below were spoken: the clerk's reading
     is segment_markers' own quotation, the chair's is in tests/test_markers.
     """
-    if not Path("segment_markers.py").exists():
+    if not _paths.locate("segment_markers.py").exists():
         return "skip", "segment_markers.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -10323,7 +11115,7 @@ def _markers_merge_siblings():
         (root / "candidate_segments.json").write_text(json.dumps(prior),
                                                       encoding="utf-8")
         env = dict(os.environ, GRANITE_PROCEEDINGS=str(root / "proceedings.csv"))
-        r = _run([sys.executable, str(Path("segment_markers.py").resolve()),
+        r = _run([sys.executable, _paths.script("segment_markers.py"),
                   "--transcript", "work/PFFLOOR", "work/PFCOMM", "--data", "data",
                   "--quiet", "--cache", "cache.json"],
                  cwd=str(root), env=env, capture_output=True, text=True,
@@ -10513,7 +11305,7 @@ def _ls_fixture(root, livestreams):
 def _ls_run(root, *extra):
     # Sealed (_Seal): it replays the Data API's answers and a caption source,
     # and a regression that asked YouTube instead fails here, not quietly.
-    return _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+    return _sealed_run([sys.executable, _paths.script("livestreams.py"),
                         "--since-state", "--replay", "api", "--captions-from", "src",
                         "--origin", "runner", *extra],
                        cwd=str(root), env=_ls_env(), capture_output=True, text=True,
@@ -10540,7 +11332,7 @@ def _ls_nights(livestreams, build_manifest):
     a committed file, and build_manifest takes the aired row over the
     committed one written before the stream.
     """
-    if not Path("livestreams.py").exists():
+    if not _paths.locate("livestreams.py").exists():
         return "skip", "livestreams.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -10638,7 +11430,7 @@ def _ls_nights(livestreams, build_manifest):
         env = {k: v for k, v in _ls_env().items() if k != "GRANITE_PROCEEDINGS"}
 
         def markers():
-            r = _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+            r = _sealed_run([sys.executable, _paths.script("livestreams.py"),
                              "--markers", "--origin", "runner"], cwd=str(root), env=env,
                             capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
@@ -11866,7 +12658,7 @@ def _ls_laptop_read(livestreams, nightly):
     candidate_segments.json, is adopted on night two and leaves the count
     behind the nightly's warning.
     """
-    if not Path("livestreams.py").exists():
+    if not _paths.locate("livestreams.py").exists():
         return "skip", "livestreams.py not here"
     from datetime import datetime, timedelta, timezone
     L = livestreams
@@ -11958,7 +12750,7 @@ def _ls_rows(livestreams):
     The older eleven-column files are left out: they predate the corrected
     daylight-time rule and the bill-title fallback, which is why they differ.
     """
-    src = Path("fetch_channel_index.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_channel_index.py").read_text(encoding="utf-8")
     m = re.search(r"cols = (\[[^\]]*\])", src)
     assert m, "no cols list in fetch_channel_index.main"
     assert ast.literal_eval(m.group(1)) == livestreams.COLS, \
@@ -12013,7 +12805,7 @@ def _ls_state(livestreams):
         # not a key's shape: the check above rightly fails on one of those.
         key = "preflight-sentinel-" + "k" * 21
         env = dict(_ls_env(), YOUTUBE_API_KEY=key)
-        r = _sealed_run([sys.executable, str(Path("livestreams.py").resolve()),
+        r = _sealed_run([sys.executable, _paths.script("livestreams.py"),
                          "--since-state", "--replay", "api", "--captions-from", "src",
                          "--now", "2026-09-25T06:30:00Z"], cwd=str(root), env=env,
                         capture_output=True, text=True, timeout=120)
@@ -12569,7 +13361,7 @@ def _text_cache_by_term(fetch_bill_text):
             "a term's own folder is not preferred to the flat file"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    src = Path("fetch_bill_text.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_bill_text.py").read_text(encoding="utf-8")
     assert "f = cache_path(cache, term, bid)" in src and 'cache / f"{bid}.html"' not in src, \
         "fetch_bill_text reads or writes its cache by the bill number alone again"
     return "ok", "2027's HB1 is not 2025's; the flat pages answer for 2025-2026 only"
@@ -12599,7 +13391,7 @@ def _status_own_term(build_data):
     assert SFS(flat, new) == (flat, []), "a flat file is the current session's"
     assert not hasattr(build_data.P, "for_term"), (
         "proceedings.for_term is back: its newest-term default is the fault this check is about")
-    src = Path("build_data.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
     assert "status_for_session(raw, bills)" in src, \
         "build_data no longer reads bill_status.json through status_for_session"
     return "ok", "2027 bills take nothing from 2025-2026, and their own slice once it exists"
@@ -12808,7 +13600,6 @@ def _class_collisions():
     every citation ran past its box and made the page scroll sideways. .cite
     was already the third name in this docstring's first line.
     """
-    import glob as _glob
     SHARED = {
         # the header and the footer, written once in bills.html for the record
         # pages and again in build_pages.shell() for the static ones
@@ -12833,14 +13624,14 @@ def _class_collisions():
     }
     here = Path(".")
     app_side = ["app.js", "find.js", "bills.html"]
-    bld_side = sorted(_glob.glob("build_*.py")) + ["shell.py"]
-    if not all((here / f).exists() for f in app_side + ["shell.py"]) or not bld_side:
+    bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py"]
+    if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
 
     def drawn(paths):
         found = {}
         for f in paths:
-            txt = (here / f).read_text(encoding="utf-8", errors="replace")
+            txt = _paths.locate(f).read_text(encoding="utf-8", errors="replace")
             for m in re.finditer(r'class="([^"${}]+)"', txt):
                 for c in m.group(1).split():
                     if re.fullmatch(r"[a-z][a-z0-9-]*", c):
@@ -13080,7 +13871,7 @@ def _find_all_results():
     Both halves are read from source rather than from a build, so this runs
     under --code with nothing on disk.
     """
-    js, bp = Path("find.js"), Path("build_pages.py")
+    js, bp = Path("find.js"), _paths.locate("build_pages.py")
     if not js.exists() or not bp.exists():
         return "skip", "find.js or build_pages.py not in this directory"
     t = js.read_text(encoding="utf-8")
@@ -15390,8 +16181,9 @@ def _search_index_main(SI, CS):
 
         def build(*args, fewest=50, to=None):
             # main() itself, in a process of its own, with the floor on the
-            # vocabulary lowered to what eight bills can reach.
-            code = ("import sys, build_search_index as SI\n"
+            # vocabulary lowered to what eight bills can reach. _paths first,
+            # for every code folder on the path: the root is the -c's own.
+            code = ("import sys, _paths, build_search_index as SI\n"
                     f"SI.WORDS_FEWEST = {fewest}\n"
                     "sys.argv = ['build_search_index.py'] + sys.argv[1:]\n"
                     "SI.main()\n")
@@ -15904,7 +16696,7 @@ def _index_json_retired():
         (root / "site" / "idx").mkdir(exist_ok=True)
         stale = root / "site" / "idx" / "1987-1988.json"
         stale.write_text('[{"term": "1987-1988", "id": "HB1"}]', encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
                   "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -16708,7 +17500,7 @@ def _audit_minor(BSP, seating, BP):
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
         bad.append("a speaker line's names are not each one item with its comma: " + row[:160])
-    page = Path("build_session_pages.py").read_text(encoding="utf-8")
+    page = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
     if re.search(r'", "\.join\(member_html', page):
         bad.append("build_session_pages.py joins members with a bare comma again, which a "
                    "flex row draws as an item of its own with a gap before it")
@@ -16752,7 +17544,7 @@ def _built_stylesheets():
     """
     here = Path(".").resolve()
     sheets = []
-    if not [x for x in CHAIN_NEEDS if not (here / x).exists()]:
+    if not [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
         sheets.append(("the fixture's style.css", _fixture_site_shared()[0] / "site"))
     if Path("site/style.css").exists():
         sheets.append(("site/style.css", Path("site")))
@@ -17555,8 +18347,8 @@ def _plan(build_all):
     # scraped page's step and its flat testimony.json are retired.
     assert "fetch_testimony_db.py" in scripts and "fetch_testimony.py" not in scripts, \
         "the sign-in counts' step is not the database's alone"
-    missing = [x for x in scripts if not Path(x).exists()]
-    assert not missing, "steps reference scripts that are not here: " + \
+    missing = [x for x in scripts if _paths.find(x) is None]
+    assert not missing, "steps reference scripts that are in no code folder: " + \
                         ", ".join(missing)
     return "ok", f"{len(steps)} steps, order correct, every script present"
 
@@ -17704,7 +18496,7 @@ def _stamps():
     want = json.loads(vp.read_text(encoding="utf-8")).get("files", {})
     bad, unstamped, seen = [], [], 0
     for name, ver in want.items():
-        f = Path(name)
+        f = _paths.locate(name)
         if not f.exists():
             continue
         seen += 1
@@ -17723,9 +18515,12 @@ def _stamps():
     # listed.
     r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat"],
              capture_output=True, text=True)
+    # versions.json lists a script by its bare name wherever it sits, and git
+    # by its path: src/parse/narrative.py is the line "narrative.py".
+    listed = {_paths.locate(n).resolve() for n in want}
     unlisted = []
     for name in (r.stdout or "").split():
-        if name.startswith("obsolete/") or name in want:
+        if name.startswith("obsolete/") or name in want or Path(name).resolve() in listed:
             continue
         head = Path(name).read_text(encoding="utf-8", errors="replace")[:3000] \
             if Path(name).exists() else ""
@@ -17775,8 +18570,8 @@ def _record_untouched():
                 "place_corrections.json", "launch_register.json",
                 "docket_corrections.json", "ballot_results.json"]
     bad, names = [], []
-    for f in (sorted(Path(".").glob("build_*.py"))
-              + sorted(Path(".").glob("fetch_*.py"))):
+    scanned = _paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
+    for f in scanned:
         src = f.read_text(encoding="utf-8", errors="replace")
         if "checked.jsonl" in src:
             names.append(f.name)
@@ -17799,7 +18594,7 @@ def _record_untouched():
     if bad:
         said.append("these write a hand-made file: " + "; ".join(bad))
 
-    rv = Path("review.py")
+    rv = _paths.locate("review.py")
     if rv.exists():
         src = rv.read_text(encoding="utf-8", errors="replace")
         # The BIND, not the file: the first version of this check read the
@@ -17811,6 +18606,13 @@ def _record_untouched():
         elif not all(b.startswith("127.") for b in binds):
             said.append("review.py binds " + ", ".join(binds)
                         + "; it must stay on the loopback address")
+    # A FLOOR: the build_ and fetch_ scripts this read on 6 October 2026,
+    # before any file moved. Read from the root alone after a move, it would
+    # read none and pass. A script retired on purpose lowers it, in the same
+    # commit.
+    if len(scanned) < 57:
+        said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 57 were "
+                    "on 6 October: the code folders are not being read (_paths.code_files)")
     assert not said, "; and ".join(said)
     present = [n for n in HANDMADE if Path(n).exists()]
     return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
@@ -17826,7 +18628,7 @@ def _marker_cases():
     a fixture that was then thrown away. Running them here is what makes the
     tenth revision safe."""
     import subprocess, sys
-    f = Path("tests/test_markers.py")
+    f = _paths.locate("tests/test_markers.py")
     if not f.exists():
         return "skip", "tests/test_markers.py not here"
     r = _run([sys.executable, str(f)], capture_output=True, text=True)
@@ -18794,7 +19596,7 @@ def _states_covered():
     Two halves, because either alone would have missed it: the states must be
     covered, and the chain must be a single chain.
     """
-    b = Path("build_site_v2.py")
+    b = _paths.locate("build_site_v2.py")
     page, h = page_source()
     if not (b.exists() and h):
         return "skip", "build_site_v2.py or bills.html not here"
@@ -20137,7 +20939,7 @@ def _ballot_built(build_site_v2):
     answer and the file it came from, its How it got here end at the voters
     with whose count it is, and its index row's rail at the Voters stop."""
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-ballot-"))
     try:
@@ -20170,7 +20972,7 @@ def _ballot_built(build_site_v2):
         (root / "ballot_results.json").write_text(json.dumps({"rows": [
             _voters_row("2025-2026", "CACR5", "2026-11-03", 452307, 237221)]}),
             encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"), "--data", "data",
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
                   "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, ("build_site_v2 failed on the fixture with a ballot row: "
@@ -20743,8 +21545,8 @@ def _site_fixture(root):
     # build_all does, from the two sources the fixture just wrote.
     import subprocess, sys
     for f in PROCEEDINGS_MODULES:
-        if Path(f).exists():
-            shutil.copy(f, root / f)
+        if _paths.locate(f).exists():
+            shutil.copy(_paths.locate(f), root / f)
     r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
@@ -20752,8 +21554,11 @@ def _site_fixture(root):
 
 # What build_proceedings.py needs beside it to run in a folder of its own: the
 # table's reader, and committee_names.py with the two modules it reads, since
-# every committee row's name is settled there before the table is written.
-PROCEEDINGS_MODULES = ("build_proceedings.py", "proceedings.py",
+# every committee row's name is settled there before the table is written;
+# and _paths.py, which its bootstrap looks for above it. Each is copied from
+# whichever code folder holds it, flat: in the fixture's folder every one is
+# found by its bare name, as in the repository.
+PROCEEDINGS_MODULES = ("_paths.py", "build_proceedings.py", "proceedings.py",
                        "committee_names.py", "referrals.py", "names.py")
 
 
@@ -20865,7 +21670,7 @@ def _proceedings_table():
     root = Path(tempfile.mkdtemp(prefix="gr-proc-"))
     try:
         for f in PROCEEDINGS_MODULES:
-            shutil.copy(f, root / f)
+            shutil.copy(_paths.locate(f), root / f)
         cols = ["bill","body","committee","proceeding","sched_date","sched_time",
                 "venue","tier","bills_in_slot","match","video_id","video_title",
                 "stream_start","predicted_offset","watch_url","candidates",
@@ -20919,16 +21724,15 @@ def _proceedings_term_shrink():
     refused, naming that term and no other, and left as it was.
     --allow-shrink lets it through.
     """
-    here = Path(".").resolve()
     need = PROCEEDINGS_MODULES
-    absent = [f for f in need if not (here / f).exists()]
+    absent = [f for f in need if not _paths.locate(f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     import importlib.util
     root = Path(tempfile.mkdtemp(prefix="gr-termshrink-"))
     try:
         for f in need:
-            shutil.copy(here / f, root / f)
+            shutil.copy(_paths.locate(f), root / f)
         # The copy's own write(), under a name of its own, so no later check
         # that imports proceedings is handed a module from a deleted folder.
         spec = importlib.util.spec_from_file_location(
@@ -21191,9 +21995,9 @@ def _built_site(here, root, brand=True, env=None):
     ]
     ran = 0
     for script, args, produces in steps:
-        if not (here / script).exists():
+        if not _paths.locate(script).exists():
             continue
-        r = _run([sys.executable, str(here / script), *args],
+        r = _run([sys.executable, _paths.script(script), *args],
                  cwd=root, capture_output=True, text=True, timeout=180, env=env)
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()
@@ -21256,7 +22060,7 @@ def _fixture_site_v2(root):
         here = Path(".").resolve()
         shared = _shared_root("gr-fixture-v2-")
         _site_fixture(shared)
-        return shared, _run([sys.executable, str(here / "build_site_v2.py"),
+        return shared, _run([sys.executable, _paths.script("build_site_v2.py"),
                              "--data", "data", "--out", "site", "--segments", "work"],
                             cwd=shared, capture_output=True, text=True, timeout=180)
     shared, r = _once_a_run("build_site_v2.py over the fixture", build)
@@ -21314,7 +22118,7 @@ def _chain():
     file. All ten run.
     """
     here = Path(".").resolve()
-    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
@@ -21601,7 +22405,7 @@ def _chain():
             f"{len(unnamed)} navs with no name: " + "; ".join(unnamed[:4]))
         assert n_tab and not headless, (
             f"{len(headless)} tables with no header cell: " + "; ".join(headless[:4]))
-        r = _run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, _paths.script("check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -21665,7 +22469,7 @@ def _build_date_stated(build_all, build_date, shell):
 
     def imported(f):
         out = set()
-        for n in ast.walk(_parsed(f)):
+        for n in ast.walk(_parsed(_paths.locate(f))):
             if isinstance(n, ast.Import):
                 out |= {a.name.split(".")[0] for a in n.names}
             elif isinstance(n, ast.ImportFrom) and n.module:
@@ -21673,7 +22477,7 @@ def _build_date_stated(build_all, build_date, shell):
             elif isinstance(n, ast.Call) and getattr(n.func, "id", "") == "__import__" \
                     and n.args and isinstance(n.args[0], ast.Constant):
                 out.add(str(n.args[0].value).split(".")[0])
-        return {m + ".py" for m in out if Path(m + ".py").exists()}
+        return {m + ".py" for m in out if _paths.find(m + ".py") is not None}
 
     def clock(tree):
         """The places in a parsed script that ask the clock what day it is:
@@ -21709,10 +22513,10 @@ def _build_date_stated(build_all, build_date, shell):
     seen, todo = set(), list(steps)
     while todo:
         f = todo.pop()
-        if f not in seen and Path(f).exists():
+        if f not in seen and _paths.locate(f).exists():
             seen.add(f)
             todo += sorted(imported(f))
-    own = {f: clock(_parsed(f)) for f in sorted(seen)}
+    own = {f: clock(_parsed(_paths.locate(f))) for f in sorted(seen)}
     stray = [f"{f} ({'; '.join(c[:3])})" for f, c in own.items()
              if c and f not in CLOCK_OF_THEIR_OWN]
     assert not stray, (
@@ -21724,14 +22528,15 @@ def _build_date_stated(build_all, build_date, shell):
     assert not stale, ("CLOCK_OF_THEIR_OWN names modules that no longer read the clock: "
                        + ", ".join(stale))
     readers = sorted(f for f in seen if f != "build_date.py"
-                     and build_date.ENV in Path(f).read_text(encoding="utf-8", errors="replace"))
+                     and build_date.ENV in _paths.locate(f).read_text(encoding="utf-8",
+                                                                     errors="replace"))
     assert not readers, (f"{build_date.ENV} is read in one place, build_date.py, and "
                          f"{', '.join(readers)} name it too")
     assert build_date.stated() is None and build_date.today() == date.today(), (
         "with no day stated, build_date.today() is not the clock's")
 
     here = Path(".").resolve()
-    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
                       "itself; the stated day was not built with: not here, "
@@ -21771,7 +22576,7 @@ def _build_date_stated(build_all, build_date, shell):
         assert (site / "calendar" / f"{BC.week_key(day)}.html").exists(), (
             f"the calendar's current week is not the stated day's, {BC.week_key(day)}")
         # A date that is not one stops the builder, and it says which variable.
-        r = _run([sys.executable, str(here / "build_bill_pages.py"), "--site", "site"],
+        r = _run([sys.executable, _paths.script("build_bill_pages.py"), "--site", "site"],
                  cwd=root, capture_output=True, text=True, timeout=120,
                  env={build_date.ENV: "next tuesday"})
         assert r.returncode != 0 and build_date.ENV in (r.stderr or "") + (r.stdout or ""), (
@@ -21887,7 +22692,7 @@ def _links_resolve():
     """
     from urllib.parse import urldefrag, urljoin
     here = Path(".").resolve()
-    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
@@ -21960,7 +22765,7 @@ def _links_resolve():
                 "page")
 
         def pages_again():
-            r = _run([sys.executable, str(here / "build_pages.py"), "--out", "site"],
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             assert r.returncode == 0, (
                 "build_pages.py: " + ((r.stderr or r.stdout).strip().splitlines()
@@ -21982,7 +22787,7 @@ def _links_resolve():
             assert want in said[0], (
                 f"the build's one message about a missing logo does not say "
                 f"{want!r}: {said[0][:200]}")
-        r = _run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, _paths.script("check_site.py"),
                   "--site", "site", "--base", base],
                  cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -22012,7 +22817,7 @@ def _links_resolve():
         for css in ("style.css", "app.css"):
             assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (
                 f"with the header mark placed, {css} does not draw it")
-        r = _run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, _paths.script("check_site.py"),
                   "--site", "site", "--base", base],
                  cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -22811,7 +23616,7 @@ def _narrative_own_lsr(N):
             encoding="utf-8")
         (tmp / "Docket.txt").write_text(
             "\n".join(DOCKETS_OWN_LSR["2011-2012"]) + "\n", encoding="utf-8")
-        r = _run([sys.executable, str(Path("narrative.py").resolve()), "--docket",
+        r = _run([sys.executable, _paths.script("narrative.py"), "--docket",
                   "Docket.txt", "--all", "--out", "cur.json"],
                  cwd=tmp, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "narrative.py failed: " + (r.stderr or r.stdout)[-300:]
@@ -22824,12 +23629,9 @@ def _narrative_own_lsr(N):
         # colon into the line the archive's total is read from.
         (tmp / "Docket.txt").unlink()
         (tmp / "data" / "bills.json").rename(tmp / "lsrs.json")
-        shutil.copy("narrative.py", tmp / "narrative.py")
-        env = {**os.environ, "PYTHONPATH": os.pathsep.join(
-            [str(Path(".").resolve())] + [x for x in [os.environ.get("PYTHONPATH")] if x])}
-        r = _run([sys.executable, str(Path("narrate_archive.py").resolve()),
+        r = _run([sys.executable, _paths.script("narrate_archive.py"),
                   "--out", "arch.json", "--bills", str((tmp / "lsrs.json").resolve())],
-                 cwd=tmp, env=env, capture_output=True, text=True, timeout=300)
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "narrate_archive.py failed: " + (r.stderr or r.stdout)[-300:]
         arch = json.loads((tmp / "arch.json").read_text(encoding="utf-8"))
         scr2 = arch["1989-1990"]["SCR2"]
@@ -25753,7 +26555,7 @@ def _organization_day_votes(P, BD, SD, BSP):
         if left:
             bad.append(f"Organization Day's roll call is counted as a row left out: {dict(left)}")
         # rollcall_parser keys each roll call by its term, as rollcalls.json is.
-        r = _run([sys.executable, str(Path("rollcall_parser.py").resolve()), "--file",
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
                   "RollCallSummary.txt", "--dir", "rollcalls", "--all", "--out", "rollcalls.json"],
                  cwd=str(tmp), capture_output=True)
         got = json.loads((tmp / "rollcalls.json").read_text(encoding="utf-8")) \
@@ -27019,7 +27821,7 @@ def _session_recess_and_rule_days(SD, BSP):
             '<?xml version="1.0"?><urlset>\n' + "".join(
                 f"<url><loc>{base}/session/H/{d}.html</loc></url>\n" for d in gone)
             + "</urlset>", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_session_pages.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_session_pages.py"), "--site", "site",
                   "--base", base, "--body", "H"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, "build_session_pages: " + (r.stderr or r.stdout)[-300:]
@@ -27260,7 +28062,7 @@ def _session_pages_pruned(BSP):
                       for d in stale + ["2026-02-19"]) + "</urlset>", encoding="utf-8")
 
         def run(*extra):
-            return _run([sys.executable, str(here / "build_session_pages.py"),
+            return _run([sys.executable, _paths.script("build_session_pages.py"),
                          "--site", "site", "--base", base, "--body", "S", *extra],
                         cwd=root, capture_output=True, text=True, timeout=180)
         r = run()
@@ -27595,7 +28397,7 @@ def _addresses_have_slash():
     import html as _html
     here = Path(".").resolve()
     absent = [x for x in CHAIN_NEEDS + ["build_calendar.py", "shell.py"]
-              if not (here / x).exists()]
+              if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     sys.path.insert(0, str(here))
@@ -27670,7 +28472,7 @@ def _addresses_have_slash():
             f"<url><loc>{u}</loc></url>\n" for u in stale + [other]) + "</urlset>"),
             encoding="utf-8")
         for script, args in (("build_session_pages.py", []), ("build_calendar.py", [])):
-            r = _run([sys.executable, str(here / script), "--site", "site",
+            r = _run([sys.executable, _paths.script(script), "--site", "site",
                       "--base", base, *args],
                      cwd=root, capture_output=True, text=True, timeout=180)
             assert r.returncode == 0, f"{script} rerun: " + (r.stderr or r.stdout)[-200:]
@@ -28287,7 +29089,7 @@ def _misprinted_report():
     assert "HB999" not in reports["2021-2022"], "a record that was another bill's stayed"
     for src, want in (("build_site_v2.py", "RC.apply(reports"),
                       ("build_committees.py", "RC.apply(house")):
-        assert want in Path(src).read_text(encoding="utf-8"), (
+        assert want in _paths.locate(src).read_text(encoding="utf-8"), (
             f"{src} no longer applies report_check's corrections")
     return "ok", (f"{n} corrected in the fixture: HB 365's text from its filed copy, "
                   "a record that was another bill's dropped")
@@ -28652,7 +29454,7 @@ def _feed_needs_a_year():
     was still standing in for a bill.
     """
     here = Path(".").resolve()
-    if not (here / "build_feeds.py").exists():
+    if not _paths.locate("build_feeds.py").exists():
         return "skip", "build_feeds.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -28680,7 +29482,7 @@ def _feed_needs_a_year():
             (site / "bill" / "2026" / f"{r['id'].lower()}.html").write_text(
                 '<script type="application/json" id="gr-data">'
                 + json.dumps(d) + "</script>", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_feeds.py"),
+        r = _run([sys.executable, _paths.script("build_feeds.py"),
                             "--site", "site", "--base", "https://x.test"],
                            cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
@@ -28710,7 +29512,7 @@ def _feeds_keyed_and_current():
     a failed run would otherwise unpublish every feed and call it housekeeping.
     """
     here = Path(".").resolve()
-    if not (here / "build_feeds.py").exists():
+    if not _paths.locate("build_feeds.py").exists():
         return "skip", "build_feeds.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -28739,7 +29541,7 @@ def _feeds_keyed_and_current():
             p.write_text("<rss/>", encoding="utf-8")
 
         def build(*extra):
-            r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+            r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site",
                       "--base", "https://x.test", *extra],
                      cwd=root, capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -28784,7 +29586,7 @@ def _legislator_feed_dates():
     """
     from datetime import datetime
     here = Path(".").resolve()
-    if not (here / "build_feeds.py").exists():
+    if not _paths.locate("build_feeds.py").exists():
         return "skip", "build_feeds.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-legfeed-"))
     try:
@@ -28814,7 +29616,7 @@ def _legislator_feed_dates():
             ("12/2/2025", "Inexpedient to Legislate", "Yea"))]
         (site / "legislators" / "10004.json").write_text(
             json.dumps({"votes": votes}), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site",
                   "--base", "https://x.test"],
                  cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -28876,7 +29678,7 @@ def _member_feed_links():
     """
     here = Path(".").resolve()
     need = ("build_legislator_pages.py", "build_feeds.py", "bills.html")
-    absent = [f for f in need if not (here / f).exists()]
+    absent = [f for f in need if not _paths.locate(f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp(prefix="gr-memberfeed-"))
@@ -28904,7 +29706,7 @@ def _member_feed_links():
         (site / "legislators" / "300.json").write_text(json.dumps({"votes": []}),
                                                          encoding="utf-8")
         for script in ("build_legislator_pages.py", "build_feeds.py"):
-            r = _run([sys.executable, str(here / script), "--site", "site",
+            r = _run([sys.executable, _paths.script(script), "--site", "site",
                       "--base", "https://x.test"],
                      cwd=root, capture_output=True, text=True, timeout=120)
             assert r.returncode == 0, f"{script}: " + (r.stderr or r.stdout).strip()[-200:]
@@ -28973,7 +29775,7 @@ def _directory_pages():
     four homepage links and nothing else, the 406 legislator pages from the town
     pages only, and the town pages from nothing."""
     here = Path(".").resolve()
-    if not (here / "build_indexes.py").exists():
+    if not _paths.locate("build_indexes.py").exists():
         return "skip", "build_indexes.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -29007,7 +29809,7 @@ def _directory_pages():
             (site / "town" / f"{slug}.html").write_text("<p>town</p>", encoding="utf-8")
         shutil.copy(here / "bills.html", site / "bills.html")
         (site / "sitemap.xml").write_text("<urlset>\n</urlset>\n", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_indexes.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_indexes.py"), "--site", "site",
                   "--base", "https://x.test"], cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
         bills = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
@@ -29055,7 +29857,7 @@ def _directory_pages():
         assert 'href="data.html"' in foot, (
             "the footer does not link the Data page, which is now the route "
             "to the directory and so to every record")
-        exports = (here / "build_exports.py").read_text(encoding="utf-8")
+        exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
         assert 'href="directory.html"' in exports, (
             "the Data page does not link the directory, so nothing static "
             "reaches the per-record lists and a crawler sees no bills")
@@ -29270,7 +30072,7 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
 
     # Through main().
     here = Path(".").resolve()
-    if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
+    if not _paths.locate("build_committees.py").exists() or not (here / "bills.html").exists():
         return "skip", "build_committees.py or bills.html not here"
     root = Path(tempfile.mkdtemp(prefix="gr-cmte-notice-"))
     try:
@@ -29304,7 +30106,7 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
                 path.unlink(missing_ok=True)
             else:
                 path.write_text(json.dumps(narr), encoding="utf-8")
-            r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
+            r = _run([sys.executable, _paths.script("build_committees.py"), "--site", "site",
                       "--data", "data", "--base", "https://graniterecord.org"],
                      cwd=root, capture_output=True, text=True, timeout=180,
                      env={"GRANITE_PROCEEDINGS": ""})
@@ -29460,7 +30262,7 @@ def _committees_archived(BC):
         "1989 to 1992, 1997 to 1998 and 2011 to 2012"
     # And the committee's own page says it, since a reader from a search never
     # sees the listing.
-    src = Path("build_committees.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
     assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
     head = Path("app.js").read_text(encoding="utf-8")
@@ -29518,7 +30320,7 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
     sentence saying what to do, rather than building every page without them.
     """
     here = Path(".").resolve()
-    if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
+    if not _paths.locate("build_committees.py").exists() or not (here / "bills.html").exists():
         return "skip", "build_committees.py or bills.html not here"
     rows = FC.parse(_CMTE_LISTING, "H")
     assert len(rows) == 1 and rows[0]["chair"] == "Jane Doe", (
@@ -29551,7 +30353,7 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
         CD.write_details(book, root / "committee_details.json")
 
         def build(stops=False):
-            r = _run([sys.executable, str(here / "build_committees.py"), "--site", "site",
+            r = _run([sys.executable, _paths.script("build_committees.py"), "--site", "site",
                       "--data", "data", "--base", "https://graniterecord.org"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             out = (r.stdout or "") + (r.stderr or "")
@@ -29967,13 +30769,14 @@ def _committee_details_one_writer():
     the night; fetch_committee_details.py no longer writes the committees it
     reads; and the kit gives the two files the owners they have.
     """
-    mine = Path("fetch_committee_details.py")
-    if not mine.exists() or not Path("committee_details.py").exists():
+    mine = _paths.locate("fetch_committee_details.py")
+    if not mine.exists() or not _paths.locate("committee_details.py").exists():
         return "skip", "fetch_committee_details.py or committee_details.py not here"
     stem = re.escape("committee_details.json")
     bad = []
-    for f in (sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py"))
-              + [Path("nightly.py")]):
+    scanned = (_paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
+            + [_paths.locate("nightly.py")])
+    for f in scanned:
         if f.name == mine.name or not f.exists():
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
@@ -29984,6 +30787,11 @@ def _committee_details_one_writer():
             bad.append(f.name)
     assert not bad, (f"these write committee_details.json, which is "
                      f"fetch_committee_details.py's alone: {', '.join(bad)}")
+    # A floor, as the hand-made files' guard has: 57 build_ and fetch_ scripts
+    # and the night were read on 6 October, before any file moved.
+    assert len(scanned) >= 58, (
+        f"only {len(scanned)} scripts were read for writers of committee_details.json, "
+        "and 58 were on 6 October: the code folders are not being read")
     src = mine.read_text(encoding="utf-8")
     assert re.search(r"\bCD\.write_details\s*\(", src), (
         "fetch_committee_details.py no longer writes committee_details.json "
@@ -30486,7 +31294,7 @@ def _former_heading(BL):
     """
     here = Path(".").resolve()
     need = ("build_legislator_pages.py", "bills.html", "app.js", "dom_stub.js")
-    absent = [f for f in need if not (here / f).exists()]
+    absent = [f for f in need if not _paths.locate(f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     M = _FORMER_HEADING_MEMBERS
@@ -30502,7 +31310,7 @@ def _former_heading(BL):
         shutil.copy2(here / "bills.html", site / "bills.html")
         (site / "legislators.json").write_text(json.dumps(M["sitting"]), encoding="utf-8")
         (site / "former.json").write_text(json.dumps(M["former"]), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_legislator_pages.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_legislator_pages.py"), "--site", "site",
                   "--base", "https://x.test"], cwd=root, capture_output=True, text=True,
                  timeout=120)
         assert r.returncode == 0, "build_legislator_pages.py: " + (r.stderr or r.stdout).strip()[-200:]
@@ -30593,7 +31401,7 @@ def _feed_promises():
     reader who went looking would have found nothing on the page to click."""
     for f, stale in (("build_pages.py", "Every bill has its own feed"),
                      ("civics.py", "Every bill, member and committee has an RSS feed")):
-        assert stale not in Path(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
+        assert stale not in _paths.locate(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
     return "ok", "home and Learn say only bills still moving have feeds"
 
 
@@ -30620,11 +31428,11 @@ def _logo_licence():
     text and MIT like the code."""
     import subprocess
     for f in ("bills.html", "build_pages.py"):
-        src = Path(f).read_text(encoding="utf-8")
+        src = _paths.locate(f).read_text(encoding="utf-8")
         assert src.count('class="logocredit"') == 1, f"{f}: the footer's logo credit is missing or doubled"
         assert "Debra Caplan" in src and "https://www.linescapesnh.com/" in src, \
             f"{f}: the footer credit no longer names Debra Caplan and links linescapesnh.com"
-    about = Path("build_pages.py").read_text(encoding="utf-8")
+    about = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     about = about[about.index('ABOUT = """'):]
     about = about[:about.index('"""', 12)]
     assert "<h2>The logo</h2>" in about and "Debra Caplan" in about \
@@ -30692,7 +31500,7 @@ def _brand_files():
 
     def code(path):
         # A script's own words about a file are not a page asking for it.
-        text = Path(path).read_text(encoding="utf-8")
+        text = _paths.locate(path).read_text(encoding="utf-8")
         if path.endswith(".py"):
             text = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
             text = re.sub(r"BRAND_FILES = \(.*?\)\n", "", text, flags=re.S)
@@ -30708,8 +31516,8 @@ def _brand_files():
         "the two head-writers link different icons: bills.html "
         f"{sorted(heads['bills.html'])}, build_pages.py {sorted(heads['build_pages.py'])}")
     card = re.compile(r"\bog(?:-[a-z]+)?\.png")
-    for f in sorted(str(x) for x in Path(".").glob("build_*.py")) + ["shell.py", "bills.html"]:
-        if f == "build_brand.py" or not Path(f).exists():
+    for f in [x.name for x in _paths.code_files("build_*.py")] + ["shell.py", "bills.html"]:
+        if f == "build_brand.py" or not _paths.locate(f).exists():
             continue        # it draws them; it does not ask for them
         for g in set(card.findall(code(f))):
             named.setdefault(g, f)
@@ -31618,7 +32426,7 @@ def _one_stylesheet():
     style.css is now written from app.css's palette, its SHARED region and that
     one, so this fails if build_pages.py grows rules of its own again.
     """
-    src = Path("build_pages.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     app = Path("app.css").read_text(encoding="utf-8")
     i = src.find('CSS = """')
     assert i > 0, "build_pages.py has no CSS template"
@@ -31656,7 +32464,7 @@ def _status_box_parity():
     person set what it should read, and the Python copy had no last floor
     session, no count of hearings and no date -- so it could not say a stale
     summary was stale."""
-    src = Path("build_pages.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     py = src[src.find("static_state = \"\""):][:3200]
     js = src[src.find("else if(_state)_state.innerHTML="):][:2400]
     # SINCE 16 SEPTEMBER THE SERVER'S COPY WINS. Both are still written -- the
@@ -32311,13 +33119,13 @@ def _review_of_audit_fixes(BP):
         bad.append("the home page's activity list has its bullets and indent again below 1180px")
 
     # ---- read: the pages' own markup -----------------------------------
-    pages = Path("build_pages.py").read_text(encoding="utf-8")
+    pages = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     if '<p class="sr" id="lsay" role="status"></p>' not in pages \
             or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
             or "say.textContent=text" not in BP.LEGFIND_JS:
         bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
                    "and the script that writes the count into it")
-    exports = Path("build_exports.py").read_text(encoding="utf-8")
+    exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
     cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
     if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
             or "aria-label=" not in cov.group(1) or "tabindex" in cov.group(1):
@@ -32558,7 +33366,7 @@ def _reports_old_shape():
     reasoning -- and the build exits zero.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     for name in ("committee_reports.json", "senate_reports.json"):
         root = Path(tempfile.mkdtemp())
@@ -32567,7 +33375,7 @@ def _reports_old_shape():
             nested = json.loads((root / name).read_text(encoding="utf-8"))
             flat = {b: r for byb in nested.values() for b, r in byb.items()}
             (root / name).write_text(json.dumps(flat), encoding="utf-8")
-            r = _run([sys.executable, str(here / "build_site_v2.py"),
+            r = _run([sys.executable, _paths.script("build_site_v2.py"),
                                 "--data", "data", "--out", "site",
                                 "--segments", "work"],
                                cwd=root, capture_output=True, text=True,
@@ -32597,7 +33405,7 @@ def _bills_by_term():
     check below this one covers what an archived bill reads OUT of them.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32609,7 +33417,7 @@ def _bills_by_term():
                     "title": "an entirely different bill of the same number"})
         bills["2023-2024"] = {"HB1442": old}
         (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
@@ -32650,7 +33458,7 @@ def _termed_status_and_text():
     half by accident: it hands back whatever record the flat file had.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32686,7 +33494,7 @@ def _termed_status_and_text():
                         "Be it Enacted by the Senate and House"}},
         }), encoding="utf-8")
 
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -32728,7 +33536,7 @@ def _narratives_old_shape():
     succeeds.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32736,7 +33544,7 @@ def _narratives_old_shape():
         nested = json.loads((root / "narratives.json").read_text(encoding="utf-8"))
         flat = {b: r for byb in nested.values() for b, r in byb.items()}
         (root / "narratives.json").write_text(json.dumps(flat), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode != 0, ("the build accepted a narratives.json keyed "
@@ -32764,7 +33572,7 @@ def _disposed_beats_stale_status():
     House adopted 197-156, 195-149 and 204-163 came to read "Killed".
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32801,7 +33609,7 @@ def _senate_reports():
     both chambers say.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32851,7 +33659,7 @@ def _rollcalls_by_term():
     visible here rather than in two years' time.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32889,7 +33697,7 @@ def _rollcalls_old_shape():
     tallies. Five instances of exactly that in a week is why this is a check.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32900,7 +33708,7 @@ def _rollcalls_old_shape():
             for bill, votes in byterm.items():
                 flat.setdefault(bill, []).extend(votes)
         (root / "rollcalls.json").write_text(json.dumps(flat), encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode != 0, ("the build accepted a rollcalls.json keyed on "
@@ -32915,7 +33723,7 @@ def _rollcalls_old_shape():
 @check("build", "the built site says what it should")
 def _chain_output():
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -33070,8 +33878,8 @@ def _late_captions_fixture():
     withholding what it has no reason to doubt.
     """
     here = Path(".").resolve()
-    if not ((here / "build_site_v2.py").exists()
-            and (here / "caption_span.py").exists()):
+    if not (_paths.locate("build_site_v2.py").exists()
+            and _paths.locate("caption_span.py").exists()):
         return "skip", "build_site_v2.py or caption_span.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-late-"))
     try:
@@ -33098,7 +33906,7 @@ def _late_captions_fixture():
             wr.writerow(["video_id", "title", "duration_iso"])
             wr.writerow(["VID1", "House Commerce", "PT15M30S"])
             wr.writerow(["VID4", "House Commerce", "PT2H"])
-        r = _run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, _paths.script("build_site_v2.py"),
                   "--data", "data", "--out", "site", "--segments", "work"],
                  cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -33153,8 +33961,8 @@ def _caption_summary_fixture():
     than be passed over.
     """
     here = Path(".").resolve()
-    if not ((here / "build_site_v2.py").exists()
-            and (here / "caption_span.py").exists()):
+    if not (_paths.locate("build_site_v2.py").exists()
+            and _paths.locate("caption_span.py").exists()):
         return "skip", "build_site_v2.py or caption_span.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-spans-"))
     try:
@@ -33171,7 +33979,7 @@ def _caption_summary_fixture():
             wr.writerow(["video_id", "title", "duration_iso"])
             wr.writerow(["VID1", "House Commerce", "PT15M30S"])
             wr.writerow(["VID4", "House Commerce", "PT2H"])
-        r = _run([sys.executable, str(here / "caption_span.py"), "--write"],
+        r = _run([sys.executable, _paths.script("caption_span.py"), "--write"],
                  cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
         summary = root / "caption_spans.json"
@@ -33183,7 +33991,7 @@ def _caption_summary_fixture():
             (root / "work" / v / "captions.en.json3").unlink()
         # And a second --write where the captions are not must keep what the
         # first one read, not replace it with nothing.
-        r = _run([sys.executable, str(here / "caption_span.py"), "--write"],
+        r = _run([sys.executable, _paths.script("caption_span.py"), "--write"],
                  cwd=root, capture_output=True, text=True, timeout=120)
         again = json.loads(summary.read_text(encoding="utf-8"))["recordings"]
         assert again == doc["recordings"], (
@@ -33191,7 +33999,7 @@ def _caption_summary_fixture():
             "the entries made where they were")
 
         def build():
-            r = _run([sys.executable, str(here / "build_site_v2.py"),
+            r = _run([sys.executable, _paths.script("build_site_v2.py"),
                       "--data", "data", "--out", "site", "--segments", "work"],
                      cwd=root, capture_output=True, text=True, timeout=180)
             if r.returncode != 0:
@@ -33271,7 +34079,7 @@ def _carried_outputs(BA):
     def run(*args, env=None):
         # Sealed: --local skips the network steps, and a regression that ran
         # one would meet the seal's raiser, not the General Court.
-        return _sealed_run([sys.executable, str(here / "build_all.py"), *args],
+        return _sealed_run([sys.executable, _paths.script("build_all.py"), *args],
                            cwd=root, capture_output=True, text=True, timeout=120,
                            env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
     try:
@@ -34793,7 +35601,7 @@ def _documents_night(NI, CA, CL):
     wrap = (
         "import json, os, sys, types, urllib.error, urllib.parse\n"
         "from datetime import date\n"
-        f"sys.path.insert(0, {str(here)!r})\n"
+        f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
         "import refusal\n"
         "import fetch_calendar_archive as CA\n"
         "cfg = json.load(open('pages.json', encoding='utf-8'))\n"
@@ -35213,7 +36021,7 @@ def _second_pass_only_after_network(BA):
 
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-second-pass-"))
-    saved = BA.child
+    saved = BA.child, BA._paths
     ran = []
 
     def build(plan):
@@ -35226,6 +36034,7 @@ def _second_pass_only_after_network(BA):
     try:
         os.chdir(tmp)
         Path("site").mkdir()
+        BA._paths = types.SimpleNamespace(script=lambda name, root=None: name)
         BA.child = types.SimpleNamespace(run=lambda cmd, **kw: (
             ran.append(cmd[1]),
             types.SimpleNamespace(returncode=1 if cmd[1] == "fetch.py" else 0, stdout="ok\n",
@@ -35247,7 +36056,7 @@ def _second_pass_only_after_network(BA):
             "the first pass was skipped for a missing input, and the second was skipped too", ran)
     finally:
         os.chdir(here)
-        BA.child = saved
+        BA.child, BA._paths = saved
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("skipped on a --local plan and wherever no network step started since the "
                   f"first pass; run after any that did; {len(between)} network steps sit between "
@@ -35285,7 +36094,7 @@ def _handoff_reads_this_run(H):
     """
     import types
     from datetime import datetime, timedelta, timezone
-    r = _run([sys.executable, "preflight.py", "--code", "--data"], capture_output=True,
+    r = _run([sys.executable, _paths.script("preflight.py"), "--code", "--data"], capture_output=True,
              text=True, timeout=300)
     assert r.returncode == 2 and "run nothing" in (r.stderr or ""), (
         "preflight.py --code --data ran, and the two together run no check: it exited "
@@ -35303,7 +36112,10 @@ def _handoff_reads_this_run(H):
     started = []
 
     def run(cmd, **kw):
-        if len(cmd) > 1 and str(cmd[1]) == "preflight.py":
+        # Answered by name: handoff gives the path _paths.script found. A
+        # command this does not answer reaches a real child, and a real
+        # preflight started here would run this check again.
+        if len(cmd) > 1 and Path(str(cmd[1])).name == "preflight.py":
             started.append(list(cmd))
             return types.SimpleNamespace(returncode=0, stderr="", stdout=(
                 "  [ FAIL ] a check that fails\n7 passed, 1 failed, 2 skipped\n"))
@@ -35350,7 +36162,8 @@ def _handoff_reads_this_run(H):
                 "a record of the tree before an edit was taken for a run of the code here now",
                 H.last_run()[1])
         said = section()
-        assert len(started) == 1 and started[0][1:] == ["preflight.py", "--code"] and \
+        assert len(started) == 1 and [Path(started[0][1]).name] + started[0][2:] == [
+            "preflight.py", "--code"] and \
             "7 passed, 1 failed, 2 skipped" in said and "Run by `handoff.py` just now: the " \
             "working tree has changed since the last preflight run" in said, (started, said)
         H.record_run("code", results, edited, 1.0)
@@ -36131,7 +36944,8 @@ def _cloud_pull(CL, R):
             CL.make_bucket = saved[6]
         assert os.environ.get(CL.NO_BUCKET) == "1", "GRANITE_NO_BUCKET was lifted"
         # home() is the checkout that HOLDS secrets.json: keys.PATH names the
-        # file beside keys.py whether it is there or not.
+        # file at the checkout's root, wherever keys.py sits, whether it is
+        # there or not.
         import keys
         kept_path, homeless = keys.PATH, tmp / "homeless"
         homeless.mkdir()
@@ -36583,7 +37397,7 @@ def _journal_withdrawals(J):
             (bad / "journals" / "2025").mkdir(parents=True)
             (bad / "journals" / "2025" / "HJ 04 February 6, 2025.txt").write_text(
                 "\n".join(_JB_FEB6) + "\n", encoding="utf-8")
-            r = _run([sys.executable, "journal_bills.py", "--root", str(bad / "journals"),
+            r = _run([sys.executable, _paths.script("journal_bills.py"), "--root", str(bad / "journals"),
                       "--out", str(out)], capture_output=True, text=True, timeout=120)
             assert r.returncode != 0 and not out.exists(), (
                 f"a year of sittings with no introduction read was written "
@@ -36598,7 +37412,7 @@ def _journal_withdrawals(J):
                 "              HOUSE JOURNAL NO. 1\n\n"
                 "                          Wednesday, December 2, 2026\n\n"
                 "The House assembled at 10:00 a.m.\n", encoding="utf-8")
-            r = _run([sys.executable, "journal_bills.py", "--root", str(bad / "journals"),
+            r = _run([sys.executable, _paths.script("journal_bills.py"), "--root", str(bad / "journals"),
                       "--out", str(out)], capture_output=True, text=True, timeout=120)
             assert r.returncode == 0 and out.exists(), (r.stdout + r.stderr)[-300:]
             assert sorted(json.loads(out.read_text(encoding="utf-8"))["2025-2026"]) == [
@@ -36845,7 +37659,7 @@ def _journal_step_not_skipped(BA):
     root = Path(tempfile.mkdtemp(prefix="gr-journal-step-"))
 
     def run(*args, env=None):
-        return _sealed_run([sys.executable, str(here / "build_all.py"), *args],
+        return _sealed_run([sys.executable, _paths.script("build_all.py"), *args],
                            cwd=root, capture_output=True, text=True, timeout=120,
                            env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
     try:
@@ -36901,7 +37715,7 @@ def _veto_step_not_skipped(BA):
         for p, _, _ in BA.CARRIED:
             (root / p).write_text('{"recordings": {}}' if p == "caption_spans.json"
                                   else "{}", encoding="utf-8")
-        r = _sealed_run([sys.executable, str(here / "build_all.py"), "--local", "--dry-run"],
+        r = _sealed_run([sys.executable, _paths.script("build_all.py"), "--local", "--dry-run"],
                         cwd=root, capture_output=True, text=True, timeout=120,
                         env={"GITHUB_ACTIONS": ""})
         lines = r.stdout.splitlines()
@@ -37177,7 +37991,7 @@ def _venues():
 
 @check("data", "the proceeding parser is not dropping scheduling rows")
 def _dropped():
-    if not (Path("Docket.txt").exists() and Path("docket_parser.py").exists()):
+    if not (Path("Docket.txt").exists() and _paths.locate("docket_parser.py").exists()):
         return "skip", "Docket.txt or docket_parser.py not here"
     dp = imp("docket_parser")
     assert dp, "docket_parser.py will not import"
@@ -37476,7 +38290,7 @@ def _house_conference_notice(docket_parser):
 
 @check("data", "a committee report line gives up its recommendation and nothing else")
 def _report_rec():
-    if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
+    if not (Path("Docket.txt").exists() and _paths.locate("narrative.py").exists()):
         return "skip", "Docket.txt or narrative.py not here"
     nv = imp("narrative")
     assert nv, "narrative.py will not import"
@@ -39141,7 +39955,7 @@ def _hearing_is_the_bills_own():
 
 @check("data", "a bill the governor signed says so")
 def _signed():
-    if not (Path("narratives.json").exists() and Path("build_site_v2.py").exists()):
+    if not (Path("narratives.json").exists() and _paths.locate("build_site_v2.py").exists()):
         return "skip", "narratives.json or build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
@@ -39179,7 +39993,7 @@ def _signed():
 
 @check("data", "a sponsor is named the same way whether or not they still serve")
 def _sponsor_names():
-    if not Path("build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
@@ -39207,7 +40021,7 @@ def _sponsor_names():
 
 @check("data", "the volume a docket line cites is kept, not cleaned away")
 def _cite_survives():
-    if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
+    if not (Path("Docket.txt").exists() and _paths.locate("narrative.py").exists()):
         return "skip", "Docket.txt or narrative.py not here"
     nv = imp("narrative")
     assert nv, "narrative.py will not import"
@@ -39258,7 +40072,7 @@ def _fetch_writes_its_term():
     there beside it.
     """
     here = Path(".").resolve()
-    if not (here / "fetch_bill_status.py").exists():
+    if not _paths.locate("fetch_bill_status.py").exists():
         return "skip", "fetch_bill_status.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -39286,7 +40100,7 @@ def _fetch_writes_its_term():
             "</td></tr></table></body></html>", encoding="utf-8")
 
         r = _sealed_run(
-            [sys.executable, str(here / "fetch_bill_status.py"),
+            [sys.executable, _paths.script("fetch_bill_status.py"),
              "--reparse", "--term", "2023-2024", "--data", "data",
              "--out", "bill_status.json", "--cache", "status_pages"],
             cwd=root, capture_output=True, text=True, timeout=120)
@@ -39320,11 +40134,11 @@ def _manifest_out():
     with the archived term's: the current term gone from proceedings.csv, the
     other in it twice. It is refused before anything is read."""
     here = Path(".").resolve()
-    if not (here / "build_manifest.py").exists():
+    if not _paths.locate("build_manifest.py").exists():
         return "skip", "build_manifest.py not here"
     root = Path(tempfile.mkdtemp())
     try:
-        r = _run([sys.executable, str(here / "build_manifest.py"),
+        r = _run([sys.executable, _paths.script("build_manifest.py"),
                   "--docket", "Docket_2019-2020.txt", "--videos", "none.csv"],
                  cwd=root, capture_output=True, text=True, timeout=60)
         said = (r.stdout or "") + (r.stderr or "")
@@ -39388,7 +40202,7 @@ def _plate_agrees():
     if not node:
         return "skip", "node is not on PATH, so the JavaScript copies cannot be run"
     js = Path("app.js").read_text(encoding="utf-8", errors="replace")
-    bp = Path("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    bp = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
     grab = lambda src, name: re.search(
         r"function plate\(\w+\)\{.*?\n(?:\s*)\}", src, re.S)
     got = {}
@@ -39430,7 +40244,7 @@ def _meet_kind_agrees():
     left behind shows "Executive session" on one page and "executive
     session", uncoloured, on another -- for the same meeting.
     """
-    py = Path("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    py = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
     js = Path("app.js").read_text(encoding="utf-8", errors="replace")
     m = re.search(r"^MEET_KIND = (\{[^}]*\})", py, re.M)
     assert m, "build_pages.py has no MEET_KIND"
@@ -39732,7 +40546,7 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
         (root / "data" / "bills.json").write_text(json.dumps({"2025-2026": {}}),
                                                   encoding="utf-8")
         r = _run([sys.executable, "-c",
-                  f"import sys; sys.path.insert(0, {str(here)!r}); "
+                  f"import sys; sys.path.insert(0, {str(here)!r}); import _paths; "
                   "from pathlib import Path; import build_exports as E; "
                   "E.bills(Path('out'), Path('site')); "
                   "E.sponsors(Path('out'), 'data')"],
@@ -42498,7 +43312,7 @@ def _deploy_branch():
         "publish.bat deploys without checking which branch the folder is on"
     assert guard < bat.find("call npx wrangler pages deploy"), \
         "publish.bat checks the branch only after uploading"
-    night = Path("nightly.py").read_text(encoding="utf-8", errors="replace")
+    night = _paths.locate("nightly.py").read_text(encoding="utf-8", errors="replace")
     n = re.search(r'^PRODUCTION_BRANCH = "([^"]+)"', night, re.M)
     assert n, "nightly.py does not set PRODUCTION_BRANCH"
     assert n.group(1) == m.group(1), (
@@ -42537,7 +43351,7 @@ def _docket_fetch_stops():
     would have gone on into the next step. A fake server stands in: each
     case runs the real main() in a subprocess in a temp directory."""
     here = Path(".").resolve()
-    if not (here / "fetch_archive_docket.py").exists():
+    if not _paths.locate("fetch_archive_docket.py").exists():
         return "skip", "fetch_archive_docket.py not here"
     good = ('<tr><td>01/05/2016</td><td>H</td><td>Introduced and referred to '
             'Education</td></tr>' * 3)
@@ -42559,7 +43373,7 @@ def _docket_fetch_stops():
                 for i in range(4)}}), encoding="utf-8")
             (root / "wrap.py").write_text(
                 "import sys, urllib.error\n"
-                f"sys.path.insert(0, {str(here)!r})\n"
+                f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
                 "import fetch_archive_docket as D\n"
                 f"answers = [{', '.join(answers)}]\n"
                 "def get(url, timeout):\n"
@@ -42600,7 +43414,7 @@ def _docket_fetch_stops():
                 for i in range(4)}}), encoding="utf-8")
             (root / "wrap.py").write_text(
                 "import sys\n"
-                f"sys.path.insert(0, {str(here)!r})\n"
+                f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
                 "import fetch_archive_docket as D\n"
                 f"answers = [{repr(good)}] * 4\n"
                 "asked = []\n"
@@ -42662,6 +43476,10 @@ def _video_starts_on_the_right_clock(fetch_channel_index):
     assert not bad, (f"{len(bad)} recordings start on the wrong clock: "
                      + "; ".join(bad[:4]))
     return "ok", f"{n:,} recordings' Eastern starts agree with their UTC starts"
+
+
+# How many scripts asked gc.nh.gov on 6 October 2026, before any file moved.
+_ASKS_GC_FLOOR = 25
 
 
 @check("build", "every fetcher that asks gc.nh.gov consults refusal.py first")
@@ -42755,7 +43573,8 @@ def _every_fetcher_checks_refusal():
     for what, (src, want) in probes.items():
         assert read("probe.py", src) == want, f"the reader got {what} wrong: {read('probe.py', src)}"
     asks, missing = [], []
-    for p in sorted(Path(".").glob("*.py")):
+    scanned = _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS)
+    for p in scanned:
         if p.name in ("netcheck.py", "preflight.py"):
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
@@ -42771,8 +43590,15 @@ def _every_fetcher_checks_refusal():
             missing.append(p.name)
 
     assert asks, "no fetcher holds a gc.nh.gov URL, which cannot be right"
-    assert all(n in asks for n in NAMED if Path(n).exists()), "a named fetcher was not read"
-    assert not Path("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
+    # FLOORS: the scripts this read on 6 October 2026, before any file moved,
+    # and the ones that asked gc.nh.gov. Read from the root alone after a
+    # move, it would find no fetcher left there and pass. A script retired on
+    # purpose lowers them, in the same commit.
+    assert len(scanned) >= 161 and len(asks) >= _ASKS_GC_FLOOR, (
+        f"{len(scanned)} scripts were read and {len(asks)} ask gc.nh.gov; on 6 October "
+        f"161 were read and {_ASKS_GC_FLOOR} asked: the code folders are not being read")
+    assert all(n in asks for n in NAMED if _paths.locate(n).exists()), "a named fetcher was not read"
+    assert not _paths.locate("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
         "check_civics_links.py, which asks the addresses civics.py holds, was not read"
     assert not missing, (
         "these ask gc.nh.gov and never call refusal.check(), so neither a standing "
@@ -42812,7 +43638,7 @@ def _offline_modes_ask_nobody():
             ("probe_archive_shape.py", ["--report"], []),
             ("check_civics_links.py", ["--list"], ["--delay", "0"]),
             ("fetch_committee_reports.py", ["--year", "2020", "--offline"], ["--year", "2020"])]
-    runs = [r for r in runs if (here / r[0]).exists()]
+    runs = [r for r in runs if _paths.locate(r[0]).exists()]
     if not runs:
         return "skip", "none of the six scripts is here"
     tmp = Path(tempfile.mkdtemp(prefix="gr-offline-"))
@@ -42828,7 +43654,7 @@ def _offline_modes_ask_nobody():
         env = dict(os.environ, GRANITE_CLOCK_UTC="2026-09-29T09:00:00Z", GITHUB_ACTIONS="")
         for script, offline, online in runs:
             for args, stopped in ((offline, False), (online, True)):
-                r = seal.run([sys.executable, str(here / script), *args], cwd=tmp,
+                r = seal.run([sys.executable, _paths.script(script), *args], cwd=tmp,
                              capture_output=True, text=True, timeout=120, env=env)
                 said = (r.stdout or "") + (r.stderr or "")
                 # Stopped by the refusal, by GitHub's night, or -- for a fetcher GitHub
@@ -43452,7 +44278,7 @@ def _senate_calendars(SC):
 
         # The pace is the lane's, not the 2.5 seconds this ran at when it met
         # the 403.
-        src = (here / "fetch_senate_calendars.py").read_text(encoding="utf-8")
+        src = _paths.locate("fetch_senate_calendars.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay".*?default=([\d.]+)', src, re.S)
         assert m and float(m.group(1)) >= 15, (
             "the Senate calendar delay is back under 15 seconds: " + str(m and m.group(1)))
@@ -43594,13 +44420,16 @@ def _lane_daily():
     """
     import time as _time
     here = Path(".").resolve()
-    lane = here / "watchers" / "gc_lane.py"
+    lane = _paths.locate("watchers/gc_lane.py")
     if not lane.exists():
         return "skip", "watchers/gc_lane.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-lane-"))
     seal = _Seal()
     try:
-        shutil.copy(here / "refusal.py", root / "refusal.py")
+        # The refusal.py its steps import, and the _paths.py that one's
+        # bootstrap looks for above it.
+        for f in ("refusal.py", "_paths.py"):
+            shutil.copy(_paths.locate(f), root / f)
         (root / "watchers").mkdir()
         (root / "archive").mkdir()
         # A step GitHub's window stops part way: its own clock moves into the
@@ -43931,7 +44760,7 @@ def _calendar_drain(CA):
         # A broken page twice stops the run non-zero, so the lane stops too.
         rc, rows, asked = run([b"<html>Server Error in '/'</html>"] * 2)
         assert rc == 1 and not refusal.MARK.exists(), rc
-        src = Path("fetch_calendar_archive.py").read_text(encoding="utf-8")
+        src = _paths.locate("fetch_calendar_archive.py").read_text(encoding="utf-8")
         assert "LOCK.unlink" not in src and "LOCK.write_text" not in src, \
             "fetch_calendar_archive manages archive/.lock by hand again"
         return "ok", ("runs under the lane's lock and leaves it; one 403, the "
@@ -44556,7 +45385,7 @@ def _about_reports():
     feedback through a Google form, a day after the report box went live, and
     nothing deleted a report at all. The promise is held to the code now: the
     box named as app.js labels it, and the week as compile_reports deletes."""
-    bp, app, cr = Path("build_pages.py"), Path("app.js"), Path("compile_reports.py")
+    bp, app, cr = _paths.locate("build_pages.py"), Path("app.js"), _paths.locate("compile_reports.py")
     absent = [str(p) for p in (bp, app, cr) if not p.exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -44662,7 +45491,7 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
         (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
         (root / "rollcalls.json").write_text("{}", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_exports.py"), "--site", "site",
+        r = _run([sys.executable, _paths.script("build_exports.py"), "--site", "site",
                   "--data", "data"], cwd=root, capture_output=True, text=True,
                  timeout=120, env={**os.environ, "GRANITE_PROCEEDINGS": ""})
         assert r.returncode == 0, "build_exports on the fixture: " + (r.stderr or r.stdout)[-300:]
@@ -45122,7 +45951,7 @@ def _snapshot_stops(SG):
             "a page slow to answer counted as a refusal, or kept the files from being taken"
         page[0] = healthy
         assert SG.page_said(healthy) == "", "a page with no error was read as reporting one"
-        src = Path("snapshot_gencourt.py").read_text(encoding="utf-8")
+        src = _paths.locate("snapshot_gencourt.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
         assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
         return "ok", ("the page first, its error kept and the files still taken; one 403 stops it, "
@@ -45170,14 +45999,14 @@ def _nightly_guards(NI):
     stop, _, _ = NI.gated(before, dict(before, files=NI.FILE_CEILING), force=True)
     assert stop, "--force carried a deploy past the file ceiling"
 
-    tree = ast.parse(Path("nightly.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_paths.locate("nightly.py").read_text(encoding="utf-8"))
     withs = [w for w in ast.walk(tree) if isinstance(w, ast.With)
              and any("hold" in ast.unparse(i.context_expr) for i in w.items)]
     assert withs, "the nightly takes no refusal.hold() for its fetch"
     inside = " ".join(ast.unparse(w) for w in withs)
     assert "snapshot_gencourt.py" in inside, "the snapshot does not run under the nightly's lock"
     assert "build_all.py" not in inside, "the nightly holds the General Court's lock through the build"
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     assert '"build_all.py", "--local"' in src, "the nightly's build is not --local"
     assert re.search(r"if a\.deploy and not stop and changed:", src), "a deploy is not gated on --deploy"
     assert "tree_clean()" in src, "a deploy does not require a committed tree"
@@ -47670,7 +48499,7 @@ def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
                HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
 
     def run(script, *args):
-        r = _run([sys.executable, str(here / script), *args], cwd=tmp, capture_output=True,
+        r = _run([sys.executable, _paths.script(script), *args], cwd=tmp, capture_output=True,
                  text=True, encoding="utf-8", errors="replace", env=env, timeout=300)
         return r.returncode, (r.stdout or "") + (r.stderr or "")
 
@@ -47893,7 +48722,7 @@ def _manifest_with_no_proceeding(BM):
         (tmp / "Docket.txt").write_text(
             "2027|0001|12/2/2026 10:44:26 AM|HR1|H|Introduced and Adopted, VV; 12/02/2026 HJ 1|"
             "12/2/2026 10:44:26 AM\n", encoding="utf-8")
-        r = _run([sys.executable, str(here / "build_manifest.py"), "--videos", "v.csv",
+        r = _run([sys.executable, _paths.script("build_manifest.py"), "--videos", "v.csv",
                   "--docket", "Docket.txt", "--out", "vm.csv"], cwd=tmp, capture_output=True,
                  text=True, timeout=120, env=dict(os.environ, PYTHONPATH=str(here)))
         assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
@@ -48095,7 +48924,7 @@ def _nightly_new_term(NI, SG, BA):
     assert feeds(type("B", (A,), {"allow_prune": True})())[-1] == "--allow-prune", \
         "build_all.py --allow-prune does not reach build_feeds.py"
     assert re.search(r'ap\.add_argument\("--allow-prune", action="store_true"',
-                     Path("build_all.py").read_text(encoding="utf-8")), \
+                     _paths.locate("build_all.py").read_text(encoding="utf-8")), \
         "build_all.py takes no --allow-prune for the New term night to pass"
 
     here = os.getcwd()
@@ -49612,7 +50441,7 @@ def _dayfiles_rebuild(DF):
         # a guard fires -- a bill gone from the docket -- it writes none.
         out = tmp / "out"
         with _Seal() as seal:
-            r = seal.run([sys.executable, str(here / "dayfiles_from_db.py"), "--views", str(views),
+            r = seal.run([sys.executable, _paths.script("dayfiles_from_db.py"), "--views", str(views),
                           "--installed", str(root), "--out", str(out)],
                          capture_output=True, text=True, timeout=300, cwd=str(tmp))
             assert r.returncode == 0 and "every guard passed" in r.stdout, (r.stdout + r.stderr)[-400:]
@@ -49622,14 +50451,14 @@ def _dayfiles_rebuild(DF):
                 "the command wrote other bytes than rebuild() makes"
             shutil.rmtree(out)
             _dbday_views(DF, views, {"Docket": [r for r in _DBDAY_VIEWS["Docket"] if "SB416" not in r]})
-            r = seal.run([sys.executable, str(here / "dayfiles_from_db.py"), "--views", str(views),
+            r = seal.run([sys.executable, _paths.script("dayfiles_from_db.py"), "--views", str(views),
                           "--installed", str(root), "--out", str(out)],
                          capture_output=True, text=True, timeout=300, cwd=str(tmp))
             assert r.returncode == 1 and "STOP:" in r.stdout and not out.exists(), (
                 "a guard fired and the command wrote files, or did not say so: "
                 + (r.stdout + r.stderr)[-400:])
         assert not list(tmp.rglob("*.part")), "a half-written file was left behind"
-        src = (here / "dayfiles_from_db.py").read_text(encoding="utf-8")
+        src = _paths.locate("dayfiles_from_db.py").read_text(encoding="utf-8")
         assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|probe_db|"
                              r"refusal|child)\b", src, re.M), \
             "dayfiles_from_db.py imports something that could ask the network"
@@ -51652,11 +52481,11 @@ def _fetch_day_db(FD, DF, P, NI):
         assert code == 1 and said.startswith("NOT ASKED"), (code, said[:200])
 
         # It reaches the database through probe_db only.
-        tree_ = ast.parse((Path(here) / "fetch_day_db.py").read_text(encoding="utf-8"))
+        tree_ = ast.parse(_paths.locate("fetch_day_db.py").read_text(encoding="utf-8"))
         imported = {a.name for n in ast.walk(tree_) if isinstance(n, ast.Import) for a in n.names} \
             | {n.module for n in ast.walk(tree_) if isinstance(n, ast.ImportFrom) and n.module}
         assert imported <= {"argparse", "json", "shutil", "sys", "time", "datetime", "pathlib",
-                            "dayfiles_from_db", "probe_db", "refusal"}, \
+                            "_paths", "dayfiles_from_db", "probe_db", "refusal"}, \
             f"fetch_day_db.py imports {sorted(imported)}"
         bridges = {n.func.attr for n in ast.walk(tree_) if isinstance(n, ast.Call)
                    and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
@@ -52981,7 +53810,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
              "run, a refusal on file and no installed files")
         # ... and the script it starts says the same of when it is started:
         # its docstring said "on its last try" for a day after the order changed.
-        said = (Path(NI.__file__).parent / "fetch_day_db.py").read_text(encoding="utf-8")
+        said = _paths.locate("fetch_day_db.py").read_text(encoding="utf-8")
         assert "(nightly.DB_AFTER_TRIES)" in said and "empty on its last try" not in said, \
             "fetch_day_db.py's docstring does not say which try of the export sends the night to it"
         # THE LONGEST RUN FITS THE JOB AND THE WINDOW. Nothing tied the two
@@ -54131,7 +54960,7 @@ def _past_select_only(FP):
             pass
 
     # The script itself: nothing reaches the database but through probe_db.
-    src = Path("fetch_past_db.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_past_db.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     imported = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import)
                 for a in n.names} | {n.module.split(".")[0] for n in ast.walk(tree)
@@ -54719,7 +55548,7 @@ def _night_window(R, PD):
         shutil.rmtree(tmp, ignore_errors=True)
 
     # The lane asks before every step, in run_daily and in main's queue loop.
-    tree = ast.parse(Path("watchers/gc_lane.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_paths.locate("watchers/gc_lane.py").read_text(encoding="utf-8"))
     fns = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
     for name in ("run_daily", "main"):
         body = ast.unparse(fns[name])
@@ -55090,7 +55919,7 @@ def _workflows_production(NI):
                     f"{f.name}: job {j} runs a night outside the gc-night group, or cancels one"
     assert prod, "no job deploys production, which cannot be right for the nightly"
     assert len(nights) >= 2, f"the night and the weekly job are not both found: {nights}"
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     body = src[src.find("def runner_deploy("):src.find("def upload_and_check(")]
     assert body.find("if branch != REPO_BRANCH:") != -1 and \
         body.find("if branch != REPO_BRANCH:") < body.find("upload_and_check("), \
@@ -55371,11 +56200,11 @@ def _workflows_new_term(NI):
     assert "nightly.yml" in boxed and "weekly.yml" in boxed, \
         f"the New term box is on {boxed or 'no workflow'}; the nightly and the weekly both need it"
     assert reviewed, "no workflow with the New term box deploys production, so its note was never read"
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     assert re.search(r'ap\.add_argument\("--new-term", action="store_true"', src), \
         "nightly.py takes no --new-term for the box to pass"
     assert re.search(r'ap\.add_argument\("--hold", metavar="RUN"',
-                     Path("cloud.py").read_text(encoding="utf-8")), \
+                     _paths.locate("cloud.py").read_text(encoding="utf-8")), \
         "cloud.py takes no --hold for the night's kit-up to pass"
     return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
                   f"only to the night or the week; {', '.join(reviewed)} holds what the run "
@@ -56145,7 +56974,8 @@ def _writers_merge():
     shared = ("former_members.json", "bill_status.json", "bill_text.json",
               "testimony_db.json", "narratives.json", "rollcalls.json")
     bad = []
-    for f in sorted(Path(".").glob("*.py")):
+    scanned = _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS)
+    for f in scanned:
         if f.name.startswith(("probe_", "test_")):
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
@@ -56161,6 +56991,11 @@ def _writers_merge():
             if writes and not reads:
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
+    # A floor: the scripts of the root and src/ read on 6 October 2026, before
+    # any file moved.
+    assert len(scanned) >= 161, (
+        f"only {len(scanned)} scripts were read for writers of the shared files, and 161 "
+        "were on 6 October: the code folders are not being read")
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
 
 
@@ -57143,7 +57978,7 @@ def _chapters():
     withheld; a special session and a January signature number on their
     own; and a row under another bill's LSR is not read."""
     here = Path(".").resolve()
-    if not (here / "extract_chapters.py").exists():
+    if not _paths.locate("extract_chapters.py").exists():
         return "skip", "extract_chapters.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -57195,7 +58030,7 @@ def _chapters():
         bills["2009-2010"]["HB1400"]["lsr_num"] = "2003"
         (root / "data" / "bills.json").write_text(json.dumps(bills),
                                                   encoding="utf-8")
-        r = _run([sys.executable, str(here / "extract_chapters.py")],
+        r = _run([sys.executable, _paths.script("extract_chapters.py")],
                  cwd=root, capture_output=True, text=True, timeout=60,
                  env={**os.environ, "PYTHONPATH": str(here)})
         assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
@@ -57234,7 +58069,7 @@ def _chapters_database():
     join is the stored LSR, so a bill of the same number under another LSR
     takes nothing."""
     here = Path(".").resolve()
-    if not (here / "extract_chapters.py").exists():
+    if not _paths.locate("extract_chapters.py").exists():
         return "skip", "extract_chapters.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -57268,7 +58103,7 @@ def _chapters_database():
                 ("1995", "12", "0102"), ("1995", "13", "0077")]
         (root / "db" / "past" / "PastLegislation.psv").write_text(
             "".join("|".join(r) + "\n" for r in past), encoding="utf-8")
-        r = _run([sys.executable, str(here / "extract_chapters.py")],
+        r = _run([sys.executable, _paths.script("extract_chapters.py")],
                  cwd=root, capture_output=True, text=True, timeout=60,
                  env={**os.environ, "PYTHONPATH": str(here)})
         assert r.returncode == 0, (r.stdout + r.stderr).strip()[-400:]
@@ -57319,7 +58154,7 @@ def _chapters_rare():
     names no other bill, and each of those refusals is exercised here, on the
     real lines."""
     here = Path(".").resolve()
-    if not (here / "extract_chapters.py").exists():
+    if not _paths.locate("extract_chapters.py").exists():
         return "skip", "extract_chapters.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -57360,7 +58195,7 @@ def _chapters_rare():
             yy = int(y) - (1 - int(y) % 2)
             bills.setdefault(f"{yy}-{yy + 1}", {})[b] = {"bill": b, "lsr_num": l}
         (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-        r = _run([sys.executable, str(here / "extract_chapters.py")],
+        r = _run([sys.executable, _paths.script("extract_chapters.py")],
                  cwd=root, capture_output=True, text=True, timeout=60,
                  env={**os.environ, "PYTHONPATH": str(here)})
         assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
@@ -58730,7 +59565,7 @@ def _ballot_conflict(rollcall_parser):
     assert got["5"] == got[" 5 "] == {"vote": RP.NO_VOTE, "conflict": True}, got
     assert got["7"] == {"vote": RP.NO_VOTE} and got[""] == {"vote": ""} \
         and got["Yea"] == {"vote": "Yea"}, f"only code 5 is a conflict: {got}"
-    src = Path("build_data.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
     assert "**RP.ballot(r[6])" in src, (
         "build_data.py no longer puts rollcall_parser.ballot's fields on each member vote "
         "row, so no conflict reaches attendance")
@@ -58885,7 +59720,7 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
         "a term that lost most of its bills is no longer refused"
     assert FR.merge_terms(prev, {"2025-2026": {"SB1": []}})[0] == {"2025-2026": {"SB1": []}}, \
         "a term this run read must replace its own slice"
-    src = Path("fetch_reports_db.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_reports_db.py").read_text(encoding="utf-8")
     assert "merged, kept = merge_terms(prev, out)" in src and "shrunk(prev, out)" in src, \
         "fetch_reports_db no longer writes through merge_terms and shrunk"
     saved = SH.parse_all
@@ -58900,7 +59735,7 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
         SH.parse_all = saved
     assert out == {"2027-2028": {"SB1": ["current"]}, "2025-2026": {"SB9": ["frozen"]}}, out
     assert said == [(Path("db/term/2025-2026/x"), {"2025-2026": 1})], said
-    src = Path("senate_hearing_reports.py").read_text(encoding="utf-8")
+    src = _paths.locate("senate_hearing_reports.py").read_text(encoding="utf-8")
     assert "with_frozen(out, frozen_sources())" in src, \
         "senate_hearing_reports no longer reads the frozen terms"
     kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
@@ -58989,7 +59824,7 @@ def _request_became_bill(build_lsrs):
                    "LSR 2027-0003": ("Introduced as SB 7", False, "SB 7")}, got
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Filed as a request" and "introduced" not in rows[0], rows[0]
-    src = Path("build_lsrs.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_lsrs.py").read_text(encoding="utf-8")
     assert "rows_from(lsrs, roster(site), became)" in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
@@ -59312,7 +60147,7 @@ def _sponsors_csv_seat(text_sponsors):
     (see build_exports.sponsors), still say House on the page and here."""
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
         if not src:
             return "skip", f"{f} not here"
         for step in ("TS.merge_into(", "TS.seat_into("):
@@ -59341,7 +60176,7 @@ def _sponsors_csv_seat(text_sponsors):
                                    "county": "Carroll", "district": "8",
                                    "as_printed": "Rep. McConkey, Carr. 8"}]}})
         r = _run([sys.executable, "-c",
-                  "import sys; sys.path.insert(0, sys.argv[1]); "
+                  "import sys; sys.path.insert(0, sys.argv[1]); import _paths; "
                   "from pathlib import Path; import build_exports as BE; "
                   "BE.sponsors(Path('out'), 'data')", str(here)],
                  cwd=root, capture_output=True, text=True, timeout=60)
@@ -59594,7 +60429,7 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
         "wanted Rep. Lorrie J. Carey's page")
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
         assert not src or "PSP.merge_into(" in src, (
             f"{f} does not call past_sponsors.merge_into, so its 2023-2024 sponsors are not "
             "the ones the other builder publishes")
@@ -60222,7 +61057,7 @@ def _probate_after_the_vote():
     vote = _dt.date(2026, 11, 3)
     due = vote + _dt.timedelta(days=1)
     on = f"{vote.day} {vote:%B %Y}"
-    src = Path("civics.py").read_text(encoding="utf-8").splitlines()
+    src = _paths.locate("civics.py").read_text(encoding="utf-8").splitlines()
 
     def at(text):
         n = next((i for i, s in enumerate(src, 1) if text in s), None)
@@ -60733,7 +61568,7 @@ def _nothing_stranded():
     if not sheets:
         return "skip", ("no built site here, and the builders are not here to build "
                         "the fixture's; run build_all.py --local first")
-    node = str(Path("audit_css.py"))
+    node = _paths.script("audit_css.py")
     where = []
     for what, site in sheets:
         r = subprocess.run([sys.executable, node, "--site", str(site)],
@@ -61209,7 +62044,7 @@ def _town_mailto(B):
         "address, and a note published as a mailto is a link to nowhere")
 
     # Nothing on these pages may write a mailto except through maillink().
-    src = Path("build_town_pages.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_town_pages.py").read_text(encoding="utf-8")
     sites = src.count('href="mailto:')
     assert sites == 1, (
         f"build_town_pages.py writes a mailto href in {sites} places. Every "
@@ -64684,7 +65519,7 @@ def _past_sponsors_fill(text_sponsors, B):
         "Rep. Sherman Packard (R - Rock 16)")
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
         if src:
             a, b = src.find("TS.merge_into("), src.find("PSP.merge_into(")
             assert 0 <= a < b, (f"{f} merges the sponsor record before the bills' own "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Reconcile stated boundaries against estimated ones, and adopt the stated ones
 where they hold up.
@@ -85,12 +85,17 @@ recomputes from the original numbers rather than from its own output, and
 `--apply` is safe to run repeatedly.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
 import shutil
 import statistics
-from pathlib import Path
 
 import floor_markers
 

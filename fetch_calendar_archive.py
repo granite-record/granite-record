@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.10
+# GRANITE_VERSION: 2026-09-08.11
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -136,6 +136,12 @@ the laptop has fetched comes to be marked held in the file the build reads.
 A machine that has not stood down keeps one file, as before.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import html
@@ -144,14 +150,12 @@ import os
 import random
 import re
 import refusal
-import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
 from datetime import date
-from pathlib import Path
 
 from fetch_committee_reports import (DOCNUM_RE, OPTION_RE, SEL_DOC, SEL_KIND,
                                      SEL_YEAR, SELECT_RE, UA, _hidden, _options)

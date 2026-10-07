@@ -128,6 +128,53 @@ ships before that has been run and the median has not regressed.**
 **Silence is not success.** A step that can produce nothing and still exit zero
 needs a guard that says so. This has bitten the project at least five times.
 
+## Where new code goes
+
+The code is moving out of the root into `src/`, in stages; `src/README.md`
+has the tree, says what each folder is for, and is the longer version of
+this. The short one:
+
+- **The root** holds what something outside the repository runs by name -- a
+  workflow, Task Scheduler, `publish.bat`, the session's first commands
+  (`inventory`, `preflight`, `handoff`) -- and the files the person chose to
+  keep there, with the config, the docs and all the data. A new script goes
+  at the root only for one of those reasons.
+- **`src/fetch/<whose server>/`** for anything that asks another server:
+  `gc_web/` for gc.nh.gov (it calls `refusal.check()` straight after its
+  arguments), `gc_db/` for the General Court's SQL host, `youtube/`, and
+  `other/` for everyone else. The folder is decided by whose server it asks.
+- **`src/parse/`** if it decides a fact from what is on disk, **`src/towns/`**
+  if that fact is about a town, a district, a county or their officials,
+  **`src/hearings/`** if it is about a proceeding or its recording,
+  **`src/pages/`** if it writes what a reader gets in `site/`,
+  **`src/checks/`** if it only looks and reports, and **`src/lib/`** only for
+  a module several folders import that belongs to none of them.
+- **`functions/api/`** for a request handler on graniterecord.org, and
+  **`workers/<name>/`** for a Cloudflare Worker deployed on its own.
+
+Wherever it goes, a new script:
+
+1. **Has a name no other code file has.** Every import and every launch is by
+   bare name, and `_paths.py` puts every code folder on the import path, so a
+   file can move between folders without anything that names it changing.
+2. **Starts with the bootstrap** -- the five lines after the docstring of any
+   runnable script, `_paths.BOOTSTRAP` -- before it imports anything of this
+   project's.
+3. **Is started by its bare name.** A build step is a `Step()` in
+   `build_all.plan()` naming `"your_script.py"`; anything else that starts a
+   script as a process does it through `_paths.script("your_script.py")`.
+4. **Finds the repository through `_paths.ROOT`**, never through
+   `Path(__file__).parent`, which is the root only while the file sits there.
+
+`preflight` holds all four -- the third wherever it can see how the script's
+path was made, in the launch itself or in what the file assigns to the
+variable it launches -- and fails on a `python3 -c` written in the code or the
+docs that imports a module of ours before `_paths`. It also holds each
+`src/fetch/` folder to its network: a `refusal.check()` outside `gc_web/`, the
+SQL host outside `gc_db/`, yt-dlp outside `youtube/`, or a request from any
+folder under `src/` outside `fetch/` (but `checks/` asking graniterecord.org)
+fails it.
+
 ## Five files no generator may write
 
 These are a person's work, and `preflight` fails if any `build_*` or `fetch_*`

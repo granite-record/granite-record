@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.3
+# GRANITE_VERSION: 2026-09-09.4
 """
 One way to write a name, so the same committee reads the same in every term.
 
@@ -27,6 +27,12 @@ It does not translate. "NO COMMITTEE ASSIGNMENT" becomes "No Committee
 Assignment" and not "none", because deciding that a bill has no committee is a
 judgment about the record and this only decides how letters are cased.
 """
+
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
 
 import re
 

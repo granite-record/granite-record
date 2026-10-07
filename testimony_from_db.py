@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.3
+# GRANITE_VERSION: 2026-09-11.4
 """
 Sign-in counts for an archived term's hearings, from the database dump on disk.
 
@@ -43,12 +43,16 @@ writing the current term from it would put older counts over newer ones.
 rebuilding the current term from the dump and comparing it bill by bill.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
 import re
-import sys
-from pathlib import Path
 
 import proceedings as P
 

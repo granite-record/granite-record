@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.3
 """
 Which components are stranded, and which rules are dead.
 
@@ -35,11 +35,16 @@ classes are read out of app.js as well as out of the HTML; anything it composes
 from a variable rather than a literal is invisible here and is listed as such.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
 import re
-from pathlib import Path
 
 # A class in markup: class="a b c" in HTML, and the same inside a JS template.
 CLASS_ATTR = re.compile(r'class\s*=\s*["\']([^"\'<>{}$]+)["\']')
@@ -154,7 +159,7 @@ def main():
         p = Path(js)
         if p.exists():
             everything |= classes_in(p.read_text(encoding="utf-8", errors="replace"))
-    for py in Path(".").glob("build_*.py"):
+    for py in _paths.code_files("build_*.py"):
         everything |= classes_in(py.read_text(encoding="utf-8", errors="replace"))
 
     dead = sorted(c for c in styled_app

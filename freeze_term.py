@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.4
+# GRANITE_VERSION: 2026-10-05.6
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -90,7 +90,7 @@ WHAT IT REFUSES
               the files frozen anew. With none, if the roster turned before
               the docket did -- Organization Day is 2 December 2026 -- put the
               last roster of the old term back first, from nh-archive:
-                  python3 -c "import snapshot_gencourt as S; S.restore('nh-archive', 'DAY', 'legislators.txt', 'legislators.txt')"
+                  python3 -c "import _paths, snapshot_gencourt as S; S.restore('nh-archive', 'DAY', 'legislators.txt', 'legislators.txt')"
               and the same for Members.txt, where DAY is the last snapshot
               before Organization Day, so 2025-2026's chips keep the seat each
               member held then
@@ -150,16 +150,20 @@ WHAT READS IT
   preflight                        --check's verdict, where a freeze is on disk
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import hashlib
 import json
 import os
 import re
 import shutil
-import sys
 from collections import Counter
 from datetime import datetime
-from pathlib import Path
 
 import proceedings as P
 

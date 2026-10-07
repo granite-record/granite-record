@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.1
+# GRANITE_VERSION: 2026-09-05.2
 """
 The hand-marked proceedings, in a file that no generator writes.
 
@@ -20,11 +20,15 @@ Columns: video_id, bill, kind, observed_start, observed_end, notes, marked_on.
 Times are seconds into the recording, the same unit the site uses.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
-import sys
 from datetime import date
-from pathlib import Path
 
 TRUTH = Path("ground_truth.csv")
 COLS = ["video_id", "bill", "kind", "observed_start", "observed_end", "notes",

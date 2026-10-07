@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.85
+# GRANITE_VERSION: 2026-09-04.86
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -17,16 +17,20 @@ verbatim rather than dropped -- an unexplained action is far better than a
 missing one.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import build_date
 import committee_names as CN
 import json
 import proceedings as P
 import re
-import sys
 from collections import defaultdict, OrderedDict
 from datetime import date, datetime
-from pathlib import Path
 
 # CHAPTERS A PERSON HAS CONFIRMED over the docket's own number. The facts table
 # prints extract_chapters' confirmed number, so the history beside it must

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.5
+# GRANITE_VERSION: 2026-10-05.8
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -122,6 +122,12 @@ Its record is DIR/rehearsal.json; it exits 0 when every expectation held.
 private/TURNOVER_REHEARSAL.md says what it proved on 5 October 2026.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import contextlib
 import hashlib
@@ -132,15 +138,13 @@ import re
 import shutil
 import socket
 import subprocess
-import sys
 import tarfile
 import time
 import types
 import urllib.request
 from datetime import datetime
-from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = _paths.ROOT
 TERM, NEW = "2025-2026", "2027-2028"
 BOM = b"\xef\xbb\xbf"
 DAY = "2026-10-05"                     # the stated day of every build here
@@ -164,8 +168,10 @@ def env(seed="2"):
 
 
 def sh(cmd, cwd, log=None, seed="2"):
-    """A script in the copy, its output to `log`."""
+    """A script in the copy, found by its bare name in the copy's code folders
+    (_paths.script), its output to `log`."""
     t = time.time()
+    cmd = [_paths.script(cmd[0], root=cwd)] + list(cmd[1:])
     with (open(log, "w", encoding="utf-8") if log else contextlib.nullcontext()) as fh:
         r = subprocess.run([sys.executable] + cmd, cwd=cwd, env=env(seed),
                            stdout=fh or subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -174,6 +180,12 @@ def sh(cmd, cwd, log=None, seed="2"):
 
 
 # ---- the copy ------------------------------------------------------------------------
+
+def copy_on_path(root):
+    """The copy's code folders in front of the import path, so a module
+    imported from here on is the copy's, wherever under it the module sits."""
+    sys.path[:0] = [str(d) for d in _paths.code_dirs(root)]
+
 
 def make_copy(dest):
     """The committed code and the kit's data, at `dest`."""
@@ -188,7 +200,6 @@ def make_copy(dest):
     with tarfile.open(tar) as t:
         t.extractall(dest, filter="data")
     tar.unlink()
-    sys.path.insert(0, str(REPO))
     import cloud
     files, missing, _ = cloud.kit_files(REPO, cloud.load_kit(REPO))
     if missing:
@@ -433,7 +444,7 @@ class Nights:
     def __init__(self, root, logs):
         self.root, self.logs = root, logs
         os.chdir(root)
-        sys.path.insert(0, str(root))
+        copy_on_path(root)
         sys.dont_write_bytecode = True
         os.environ.update(env())
         for k in ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS", "GITHUB_SHA"):
@@ -743,7 +754,7 @@ def compare_term(root, pre, label, finished=True, other_day=None):
     # it is too large to travel inside its page, else inside the page itself
     # (build_bill_pages.embedded) -- so all of the term's bills, and not the
     # few files the per-bill folder keeps.
-    sys.path.insert(0, str(root))
+    copy_on_path(root)
     import build_bill_pages as BBP
 
     def record(site, yr, bid):
@@ -865,7 +876,7 @@ def check_new_term(root, batches, label):
     # site/bills/2027/*.json, which the build does not write for records this
     # small -- they travel inside their pages -- so they examined nothing and
     # passed. A record is read as compare_term reads one, and none read fails.
-    sys.path.insert(0, str(root))
+    copy_on_path(root)
     import build_bill_pages as BBP
 
     def record(bid):

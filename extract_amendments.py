@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.9
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -45,14 +45,18 @@ in the lines narrative.py reads, so the join happens there and no guess is made
 here. An amendment nobody cites is still recorded; it simply goes unused.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import difflib
 import json
 import narrative
 import re
-import sys
 from collections import Counter
-from pathlib import Path
 
 # "2025-3111h)" -- the marker that opens an amendment in the calendar.
 #
@@ -367,7 +371,6 @@ def main():
     if not pdfs:
         sys.exit(f"No PDFs under {a.calendars}/ or below it.")
 
-    sys.path.insert(0, ".")
     from fetch_committee_reports import extract_text
 
     print(f"reading {len(pdfs)} calendars, no network\n")

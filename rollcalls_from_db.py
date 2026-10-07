@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.1
+# GRANITE_VERSION: 2026-09-10.2
 """db/RollCall*.psv -> the per-year files the parsers already read. No network.
 
     python3 rollcalls_from_db.py --check 2023   # prove it against the live fetch
@@ -44,11 +44,15 @@ THE DIFFERENCES THE DUMP HAS, MEASURED
   site uses PersonID, and db/Legislators.psv carries both.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
-import sys
 from datetime import datetime
-from pathlib import Path
 
 from fetch_rollcalls_db import VOTE_WORD
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -22,6 +22,12 @@ Text extraction, best first:
     pypdf               (pip install pypdf; last resort, columns may interleave)
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import difflib
 import json
@@ -30,14 +36,12 @@ import re
 import refusal
 import shutil
 import subprocess
-import sys
 import time
 import urllib.parse
 import urllib.error
 import urllib.request
 import child
 from collections import defaultdict
-from pathlib import Path
 
 INDEX = "https://gc.nh.gov/house/calendars_journals/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "

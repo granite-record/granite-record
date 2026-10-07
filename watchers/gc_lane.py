@@ -98,18 +98,22 @@ code without killing it halfway through a request. It stops only between
 steps, so a step already running finishes first.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import os
 import pathlib
 import re
 import subprocess
-import sys
 import threading
 import time
 
 ROOT = pathlib.Path.cwd()
 if not (ROOT / "refusal.py").exists():
     sys.exit(f"run this from the repository root; {ROOT} is not it")
-sys.path.insert(0, str(ROOT))
 try:
     import refusal
 except Exception as e:                                          # noqa: BLE001
@@ -263,10 +267,21 @@ def run_child(args, log):
     WINDOW_STOP.unlink(missing_ok=True)
     t0 = time.time()
     with log.open("w", encoding="utf-8") as fh:
-        rc = subprocess.call([sys.executable, *args], cwd=str(ROOT),
-                             stdout=fh, stderr=subprocess.STDOUT,
-                             env={**os.environ, "PYTHONUNBUFFERED": "1",
-                                  refusal.WINDOW_STOP_ENV: str(WINDOW_STOP)})
+        # The line's script by its bare name, in whichever code folder of the
+        # root the lane runs in holds it (_paths.script), so a queue line never
+        # has to be rewritten when a file moves -- and rewriting one would run
+        # it again. One that is not there ends the step with its reason in the
+        # step's log.
+        try:
+            script = _paths.script(args[0], root=ROOT)
+        except LookupError as e:
+            fh.write(f"{e}\n")
+            rc = 1
+        else:
+            rc = subprocess.call([sys.executable, script, *args[1:]], cwd=str(ROOT),
+                                 stdout=fh, stderr=subprocess.STDOUT,
+                                 env={**os.environ, "PYTHONUNBUFFERED": "1",
+                                      refusal.WINDOW_STOP_ENV: str(WINDOW_STOP)})
     tail = [ln for ln in log.read_text(encoding="utf-8", errors="replace").splitlines()
             if ln.strip()][-3:]
     cut = ""

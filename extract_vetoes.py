@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.16
+# GRANITE_VERSION: 2026-09-07.17
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -54,13 +54,17 @@ in the corpus are printed, because a garbled quotation with a citation on it is
 worse than no quotation.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import csv
 import json
 import re
-import sys
-from pathlib import Path
 
 import proceedings as P
 

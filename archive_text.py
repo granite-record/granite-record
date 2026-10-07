@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.5
+# GRANITE_VERSION: 2026-09-16.6
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -44,13 +44,17 @@ GitHub's nightly is not given it (cloud_kit.json), so a build there keeps the
 page's text for those bills and says so.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import difflib
 import json
 import re
-import sys
 from collections import Counter
-from pathlib import Path
 
 import fetch_legislation as FL
 import text_sponsors as TS

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 Write READINESS.md: how far the site is from the five conditions for launch.
 
@@ -31,12 +31,17 @@ ends" into a list that gets shorter.
 NO NETWORK, and it writes nothing but READINESS.md.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 import subprocess
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
 
 CONDITIONS = [

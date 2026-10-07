@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.3
 """
 NH GRANIT's district geometry, and whether it carries the districts we publish.
 
@@ -75,18 +75,24 @@ boundaries rather than anybody transcribing a list -- and the three agree on
 all 203 districts. That is about as much corroboration as this kind of data
 admits of.
 """
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import json
-import pathlib
 import re
 import struct
-import sys
 import zipfile
 
 import parse_districts
 
-ROOT = pathlib.Path(__file__).resolve().parent
+# The repository root, wherever this file sits (_paths.py): the data it
+# reads is the root's.
+ROOT = _paths.ROOT
 GIS = ROOT / "sources" / "gis"
 OUT = ROOT / "granit_layers.json"
 

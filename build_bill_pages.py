@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.61
+# GRANITE_VERSION: 2026-09-04.62
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -41,11 +41,16 @@ The <noscript> block says so and links the General Court directly.
 Writes site/bill/<year>/<id>.html, plus sitemap.xml and robots.txt.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import html
 import json
 import re
-from pathlib import Path
 
 import build_date
 import shell as S

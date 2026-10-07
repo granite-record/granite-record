@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.4
+# GRANITE_VERSION: 2026-09-06.5
 """
 The roll calls for one session year, from the General Court's own database.
 
@@ -60,10 +60,14 @@ credentials for, at gc.nh.gov/downloads. Nothing here touches gc.nh.gov, and
 nothing here writes: every statement is a SELECT.
 """
 
-import argparse
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
-import tempfile
 from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import argparse
+import tempfile
 
 import probe_db
 

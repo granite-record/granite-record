@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -25,11 +25,16 @@ Writes site/legislator/<slug>.html and appends them to sitemap.xml. Each page
 names the member's feed in its head, on the test build_feeds writes it on.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import json
 import re
 import unicodedata
-from pathlib import Path
 
 import shell as S
 import structured as LD

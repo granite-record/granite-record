@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.3
+# GRANITE_VERSION: 2026-09-24.4
 """
 The Senate committees' own hearing reports, read out of the database dump
 already on this disk.
@@ -76,13 +76,17 @@ build_site_v2 attaches to the bill's Senate public-hearing station by the
 hearing date. Standard library only; no network.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import json
 import re
-import sys
 from html.parser import HTMLParser
-from pathlib import Path
 
 import proceedings as P
 

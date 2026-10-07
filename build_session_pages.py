@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.21
+# GRANITE_VERSION: 2026-09-19.22
 """
 A page for every day the House sat.
 
@@ -46,12 +46,17 @@ would carry four thousand names, and they are already on each bill's own page,
 which this links to.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import collections
 import datetime
 import json
 import re
-from pathlib import Path
 
 import bill_order as BO
 import build_date

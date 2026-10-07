@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.16
+# GRANITE_VERSION: 2026-09-09.17
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -37,6 +37,12 @@ Each kind knows how to pick an item nobody has judged, how to show it, and
 what to ask. Adding one is a dict in KINDS; nothing else changes.
 """
 
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
 import argparse
 import csv
 import html
@@ -44,13 +50,11 @@ import json
 import random
 import re
 import subprocess
-import sys
 import threading
 import time
 import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 
 import site_read as SR
 
