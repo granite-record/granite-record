@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.1
+# GRANITE_VERSION: 2026-10-06.2
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -34,11 +34,14 @@ docstring and before it imports anything of this project's:
 
 It walks up from the script's own file to the nearest folder holding this one,
 so a script at the root and one three folders down under src/ start the same
-way, from any working directory. It appends rather than inserts, so a folder
-already on the path keeps its place; the import below then puts the code
-folders in front. Where no _paths.py is above the file, nothing is added and
-`import _paths` fails by name, which is the error to see. preflight holds
-every runnable script to BOOTSTRAP, word for word.
+way, from any working directory. It appends, so the root lands behind the
+standard library and what is installed; the import below then puts every
+code folder, the root among them, ahead of both, each once (_on_path). A
+module imported later runs its own bootstrap and appends the root again,
+behind everything, where it decides nothing. Where no _paths.py is above the
+file, nothing is added and `import _paths` fails by name, which is the error
+to see. preflight holds every runnable script to BOOTSTRAP, word for word,
+and runs it from a folder under src/ to see the root come out in front.
 
 LAUNCHING A SCRIPT. Anything that starts another of this project's scripts as
 a process goes through script(): build_all's steps, nightly.run, the laptop's
@@ -152,10 +155,29 @@ def locate(name, root=None):
 
 
 def _on_path():
-    """Every code folder on sys.path, in front, each once. A folder already
-    there keeps its place: the script's own, or a fixture's a check put first."""
-    have = {os.path.normcase(str(Path(p).resolve())) for p in sys.path if p}
-    sys.path[:0] = [str(d) for d in code_dirs() if os.path.normcase(str(d)) not in have]
+    """Every code folder on sys.path ahead of the standard library and what is
+    installed, each once, so that a module of ours is never shadowed by an
+    installed one of the same name.
+
+    A code folder already ahead of them keeps its place: the script's own,
+    which Python puts first, or one a check put first for a fixture. A copy
+    behind them goes, and a code folder found only there is put in front with
+    the rest. That is the root, for a script under src/: the bootstrap
+    appends it, behind site-packages. For a script at the root it is the
+    root's second copy, which goes."""
+    def key(p):
+        return os.path.normcase(str(Path(p).resolve()))
+    homes = {key(p) for p in (sys.base_prefix, sys.prefix, sys.base_exec_prefix, sys.exec_prefix)}
+    keys = [key(p) if p else "" for p in sys.path]
+    # Where the interpreter's own entries start: its standard library's zip,
+    # then the library, then site-packages, all inside the folder it was
+    # installed in (or the virtual environment's).
+    start = next((i for i, k in enumerate(keys) if k and any(
+        k == h or k.startswith(h.rstrip(os.sep) + os.sep) for h in homes)), len(keys))
+    ours = {key(d): str(d) for d in code_dirs()}
+    ahead = {k for k in keys[:start] if k}
+    kept = [p for i, (p, k) in enumerate(zip(sys.path, keys)) if i < start or k not in ours]
+    sys.path[:] = [d for k, d in ours.items() if k not in ahead] + kept
 
 
 _on_path()

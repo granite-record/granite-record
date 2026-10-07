@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.392
+# GRANITE_VERSION: 2026-09-04.393
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1100,7 +1100,10 @@ def _bootstrap_first():
     script's own file to the folder holding _paths.py and imports it, so a
     script one folder deep and one three deep start the same way, from any
     working directory. A script is runnable when it has a __main__ block or a
-    runner starts it (watchers/rest.py has no block and the lane runs it)."""
+    runner starts it (watchers/rest.py has no block and the lane runs it).
+    The bootstrap is also run, under src/ and at the root of a scratch tree,
+    to see every code folder come out on the path once and ahead of the
+    standard library, the root included."""
     project = _project_modules()
     good = _paths.BOOTSTRAP
     probes = {
@@ -1113,6 +1116,40 @@ def _bootstrap_first():
     for what, (src, want) in probes.items():
         got = _bootstrap_problem(src, project | {"narrative", "child"})
         assert (want in got if want else got == ""), f"the reader got {what} wrong: {got!r}"
+    # What the bootstrap does, run from a script two folders down and one at
+    # the root of a tree holding this _paths.py: every code folder on the path
+    # once, ahead of the standard library and site-packages. The root is the
+    # one to watch: the bootstrap appends it behind site-packages, where an
+    # installed package of a root module's name would win, and _paths must
+    # bring it forward.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-boot-"))
+    try:
+        shutil.copy2(_paths.ROOT / "_paths.py", tmp / "_paths.py")
+        show = ('import json, os\nprint(json.dumps({"path": sys.path, '
+                '"lib": os.path.dirname(os.__file__)}))\n')
+        _plant(tmp, {"src/parse/deep.py": '"""Doc."""\n' + good + show,
+                     "top.py": '"""Doc."""\n' + good + show,
+                     "src/lib/README.md": "", "tests/README.md": ""})
+
+        def norm(p):
+            return os.path.normcase(str(Path(p).resolve())) if p else ""
+        for script in ("src/parse/deep.py", "top.py"):
+            r = _run([sys.executable, "-B", str(tmp / script)], cwd=str(tmp),
+                     capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, f"{script} would not start: {(r.stderr or r.stdout)[-300:]}"
+            got = json.loads(r.stdout)
+            keys = [norm(p) for p in got["path"]]
+            lib = keys.index(norm(got["lib"]))
+            for d in _paths.code_dirs(tmp):
+                n, where = keys.count(norm(d)), d.relative_to(tmp).as_posix()
+                where = "the root" if where == "." else where
+                assert n == 1 and keys.index(norm(d)) < lib, (
+                    f"run as {script}, the bootstrap left {where} on sys.path {n} times"
+                    + (f", behind the standard library (at {keys.index(norm(d))}, the "
+                       f"library at {lib})" if n and keys.index(norm(d)) > lib else "")
+                    + ", where it should be once and ahead of it")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     started = {Path(n).name for names in _runner_names().values() for n, _ in names}
     bad, n = [], 0
     for f in _paths.code_files("*.py"):
