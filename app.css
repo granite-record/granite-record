@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.198 */
+/* GRANITE_VERSION: 2026-09-07.199 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5019,8 +5019,10 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
 /* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
    legislators.html produces exactly the ?town= and ?q= those two boxes read,
    so it works with JavaScript off, the browser remembers what was typed, and
-   the Enter key needs no handler. The type-ahead with all 259 towns stays on
-   the legislators page, where the data it needs is already being fetched. */:where(body.pg) .hfind{background:var(--surface);border:1px solid var(--rule-2);
+   the Enter key needs no handler. The towns it suggests as the reader types
+   are a datalist written into the page (F4, 7 October 2026), so the
+   browser's own dropdown offers them and nothing is fetched; the ranked
+   type-ahead with members and wards stays on the legislators page. */:where(body.pg) .hfind{background:var(--surface);border:1px solid var(--rule-2);
   border-radius:var(--r-out);padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-7)}
 :where(body.pg) .hfind h2{margin:0 0 var(--sp-2);font-size:var(--t-sm);font-weight:600;letter-spacing:.05em;
   text-transform:uppercase;color:var(--ink-2)}
@@ -5033,6 +5035,18 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
   border:1px solid var(--edge);border-radius:var(--r-in);padding:0 var(--sp-4);
   font-size:var(--t-ui);min-height:42px;min-width:62px}
 :where(body.pg) .hfrow button:hover{border-color:var(--pine);color:var(--pine)}
+/* THE PLACEHOLDER WHOLE ON A PHONE (the person, 7 October 2026, F4: "text cut
+   off"). Beside its button the field was about 230px at 375px, and "Your
+   town, or a legislator's name" was cut after "legislator". Under 480px the
+   button takes a line of its own under the field, so the field has the full
+   width of the panel; the panel's padding gives a little back for the same
+   reason. */
+@media (max-width:480px){
+  :where(body.pg) .hfind{padding:var(--sp-5) var(--sp-4)}
+  :where(body.pg) .hfrow{flex-wrap:wrap}
+  :where(body.pg) .hfrow input{flex:1 1 100%}
+  :where(body.pg) .hfrow button{flex:1 1 100%}
+}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
    380px, and each is fixed by reflowing rather than by horizontal scrolling,

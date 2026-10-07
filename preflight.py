@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.419
+# GRANITE_VERSION: 2026-09-04.420
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43727,6 +43727,42 @@ def _floor_session_titles():
     assert not bad, f"the session titles' days read {bad}"
     return "ok", (f"{len(cases)} days written as the person's pattern, "
                   "\"House Session (August 19th, 2026)\"")
+
+
+@check("frontend", "the home page's finder suggests every town as the reader types, and its box is whole on a phone")
+def _home_finder_suggests_towns():
+    """"Find-your-legislators box: text cut off, no dropdown" (the person, 7
+    October 2026, F4). The box is a datalist of every town in districts.json,
+    which the browser offers under it as the reader types and which is chosen
+    with the arrow keys and Enter or with a tap; no script and nothing
+    fetched. And under 480px its button takes a line of its own, so the box
+    has the panel's width and "Your town, or a legislator's name" is not cut
+    off after "legislator". Read off the fixture's built home page and
+    stylesheet."""
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "index.html").read_text(encoding="utf-8")
+    towns = sorted(json.loads((site / "districts.json").read_text(encoding="utf-8")), key=str.lower)
+    box = re.search(r'<input id="hq2"[^>]*>', page)
+    assert box and 'list="hq2towns"' in box.group(0) and 'autocomplete="off"' in box.group(0), (
+        f"the finder's box offers no towns: {box.group(0) if box else 'no box'}")
+    dl = re.search(r'<datalist id="hq2towns">(.*?)</datalist>', page, re.S)
+    assert dl, "the home page has no list of towns for its finder"
+    offered = re.findall(r'<option value="([^"]*)">', dl.group(1))
+    assert offered == towns, f"the finder offers {offered}, where districts.json has {towns}"
+    assert page.index('<input id="hq2"') < page.index('<datalist id="hq2towns">') \
+        < page.index('<div id="session"'), "the list of towns is not beside its box"
+    assert BP.home_towns(shared / "nowhere") == [], "a site with no districts.json suggests towns"
+    css = (site / "style.css").read_text(encoding="utf-8")
+    m = re.search(r"@media \(max-width:480px\)\{\s*:where\(body\.pg\) \.hfind\{[^}]*\}\s*"
+                  r":where\(body\.pg\) \.hfrow\{flex-wrap:wrap\}\s*"
+                  r":where\(body\.pg\) \.hfrow input\{flex:1 1 100%\}\s*"
+                  r":where\(body\.pg\) \.hfrow button\{flex:1 1 100%\}", css)
+    assert m, ("style.css does not put the finder's button under its box on a phone, so "
+               "the box keeps about 230px and its placeholder is cut off")
+    return "ok", (f"all {len(towns)} of the fixture's towns offered under the box, and the "
+                  "button on a line of its own under 480px")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

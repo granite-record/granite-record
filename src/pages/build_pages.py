@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.145
+# GRANITE_VERSION: 2026-09-04.146
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -612,6 +612,19 @@ def committee_codes(site):
 # by bill. Three renderers wrote it and all three are gone with it: this
 # one, HOME_JS's _meetline, and the clock block that counted the days off
 # the total. meeting_key() stays: the calendar groups by it.
+
+def home_towns(out):
+    """Every town and city in site/districts.json, A to Z, for the home
+    page's finder to suggest; [] where the file is not there, and the box is
+    then a plain box that still works."""
+    try:
+        d = json.loads((Path(out) / "districts.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print("  home: no site/districts.json to read, so the finder suggests "
+              "no towns")
+        return []
+    return sorted((t for t in d if str(t).strip()), key=str.lower)
+
 
 def home_week(week):
     """A week's days as the home page's Coming up holds them: without the
@@ -3269,6 +3282,12 @@ it, or a name, county, party or committee to find a member.</p>
                    for b in ("S" if v.get("chamber") == "Senate" else "H",)
                    if (b, v.get("date")) in sits]
 
+    town_names = home_towns(out)
+    town_list_attr = ' list="hq2towns"' if town_names else ""
+    town_list = ('\n  <datalist id="hq2towns">'
+                 + "".join(f'<option value="{esc(t)}">' for t in town_names)
+                 + "</datalist>") if town_names else ""
+
     static_recent = ""
     if H.get("recent"):
         # A LIST, NOT A TABLE. It was a two-column table with no header cell
@@ -3344,12 +3363,17 @@ today.</p>
        committee. So the split asked the reader to classify what they were
        typing before they typed it, to no end. Asked for on 20 September.
        The parameter is q, which is what that page's own box submits. -->
+  <!-- THE TOWNS AS THE READER TYPES (the person, 7 October 2026, F4: "no
+       dropdown"). A datalist of every town in districts.json, so the browser
+       offers the matching ones under the box and they are chosen with the
+       arrow keys and Enter or with a tap, with no script and nothing fetched.
+       A name still goes through: the list only suggests. -->
   <form class="hfrow" action="legislators.html" method="get">
     <label for="hq2" class="sr">Your town, or a legislator's name</label>
-    <input id="hq2" name="q" type="search"
+    <input id="hq2" name="q" type="search" autocomplete="off"{town_list_attr}
       placeholder="Your town, or a legislator&rsquo;s name">
     <button type="submit">Find</button>
-  </form>
+  </form>{town_list}
 </div>
 <div id="session" data-days="{esc(" ".join(latest_days))}"></div>
 </section>
