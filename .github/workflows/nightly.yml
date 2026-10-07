@@ -31,18 +31,24 @@
 # refusal.NIGHT_WINDOWS, which keeps the laptop's fetches clear of the
 # night, moves with the cron line.
 #
-# By hand: the Actions tab, "nightly", "Run workflow". A run by hand does what
-# its four boxes say; a scheduled night fetches, deploys a preview, and asks
-# for approval to publish. The fourth box, New term, is for the one night a
-# term turns over, and the note above it says what it lets through, and that
-# nothing it lets through is kept until its build is published.
+# By hand: the Actions tab, "nightly", "Run workflow". A run by hand of main
+# does what its four boxes say; a scheduled night fetches, deploys a preview,
+# and asks for approval to publish. A run of any other branch ("Use workflow
+# from") is a dry run whatever its boxes say, and its title says so -- "(dry
+# run: not main)" where the box was unticked (the person's decision of 7
+# October 2026; DRY_RUN, below). The fourth box, New term, is for the one
+# night a term turns over, and the note above it says what it lets through,
+# and that nothing it lets through is kept until its build is published.
 
 name: nightly
 run-name: >-
   nightly ${{ github.event_name == 'schedule' && '(scheduled)'
-  || (inputs.new_term && ((inputs.dry_run || !inputs.fetch)
-  && '(by hand, new term: refused, its page says which boxes)' || '(by hand, new term)')
-  || (inputs.dry_run && '(dry run)' || '(by hand, may publish)')) }}
+  || (inputs.new_term && (github.ref != 'refs/heads/main'
+  && '(by hand, new term: refused, not main)'
+  || ((inputs.dry_run || !inputs.fetch)
+  && '(by hand, new term: refused, its page says which boxes)' || '(by hand, new term)'))
+  || (inputs.dry_run && '(dry run)'
+  || (github.ref != 'refs/heads/main' && '(dry run: not main)' || '(by hand, may publish)'))) }}
 
 on:
   workflow_dispatch:
@@ -56,7 +62,7 @@ on:
         type: boolean
         default: false
       preview:
-        description: "Deploy the build to nightly.graniterecord.pages.dev (needs the Pages token)"
+        description: "Deploy the build to a preview address: nightly.graniterecord.pages.dev, or a dry run's to dry-run.graniterecord.pages.dev (needs the Pages token)"
         type: boolean
         default: true
       # NEW TERM (30 September 2026): the night the General Court's files first
@@ -108,6 +114,22 @@ on:
 permissions:
   contents: read
 
+# ONE DRY RUN AT A TIME, IN LINE BEHIND THE NIGHT (7 October 2026). The
+# night's job waits in gc-night with every night and weekly job, and GitHub
+# keeps one waiting run per group: a newer one cancels the one already
+# waiting. So a dry run started while another held gc-night cancelled a
+# scheduled night waiting behind it. Every dry run -- by the box or by the
+# branch -- waits here first, one at a time, so that no more than one is
+# ever in gc-night or waiting for it, and a newer dry run replaces only a dry
+# run waiting here; a run that is not a dry run has a group of its own, its
+# run's id, and never waits here. Still open: a dry run started while a real
+# run of main holds gc-night and the scheduled night waits behind it cancels
+# that night, which the dead-man's switch then reports. preflight holds this
+# line beside DRY_RUN.
+concurrency:
+  group: ${{ ((github.event_name != 'schedule' && inputs.dry_run) || github.ref != 'refs/heads/main') && 'dry-runs' || github.run_id }}
+  cancel-in-progress: false
+
 env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: utf-8
@@ -122,7 +144,14 @@ env:
   # the run fetched, and nothing goes to production -- whether or not a step
   # passes --dry-run. So a dry run on dev, started while a night waits for
   # approval, leaves that night approvable. preflight holds this line.
-  DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}
+  # EVERY RUN OFF MAIN IS ONE (7 October 2026, the person's decision), Dry run
+  # ticked or not: a run by hand on dev with the box unticked counted as a
+  # real night, wrote the census, the night's verdict and the kit, so dev's
+  # code reached main's next night through the bucket, and it could make a
+  # waiting night unapprovable. nightly.py and cloud.py read the ref too
+  # (GITHUB_REF), so an edit to this line does not reopen that. A scheduled
+  # night is always main's, and it and a run by hand of main are as before.
+  DRY_RUN: ${{ (github.event_name != 'schedule' && inputs.dry_run) || github.ref != 'refs/heads/main' }}
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
   # Only ever from the box, on a run by hand: never on a scheduled night.
   NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
@@ -144,10 +173,14 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 300
     # The preview's Pages token can live in this environment rather than in the
-    # repository's secrets; see the operator checklist.
+    # repository's secrets; see the operator checklist. A DRY RUN'S PREVIEW IS
+    # ITS OWN (7 October 2026; nightly.DRY_PREVIEW_BRANCH): the night's address
+    # is where a night waiting for approval is looked at, and a dry run -- every
+    # run of dev -- deployed its build over it. The url names the address this
+    # run deployed to; preflight holds the two together.
     environment:
       name: preview
-      url: https://nightly.graniterecord.pages.dev
+      url: ${{ env.DRY_RUN == 'true' && 'https://dry-run.graniterecord.pages.dev' || 'https://nightly.graniterecord.pages.dev' }}
     # One night at a time, and never beside the weekly job: a second start
     # waits for the first rather than running beside it.
     concurrency:
@@ -162,10 +195,23 @@ jobs:
       # "production". The routing that reads it is a person's change to make.
       review: ${{ steps.night.outputs.review }}
     steps:
+      # HEALTHCHECKS HEARS ONLY FROM A REAL RUN (7 October 2026). Its check is
+      # the dead-man's switch for a night that never ran: a scheduled night,
+      # or a run by hand of main that is not a dry run, pings it. A dry run --
+      # by the box, or by its branch -- pings nothing, at the start or the
+      # end: its success on a day the scheduled night failed to start would
+      # stand in for that night and hide it. preflight holds both steps.
       - name: Tell Healthchecks the night has started
+        if: env.DRY_RUN == 'false'
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
         run: |
+          # Main is refs/heads/main exactly (nightly.MAIN_REF): GitHub's if
+          # above compares without case, and takes a branch named Main for main.
+          if ($env:GITHUB_REF -cne 'refs/heads/main') {
+            Write-Output "A run of $env:GITHUB_REF, not refs/heads/main, is a dry run: no ping."
+            exit 0
+          }
           if (-not $env:HC_URL) {
             Write-Output "No HEALTHCHECKS_URL secret, so no ping."
             exit 0
@@ -299,6 +345,9 @@ jobs:
           python cloud.py state-up
           exit $LASTEXITCODE
 
+      # A dry run's to its own address, dry-run.graniterecord.pages.dev, and
+      # never to the night's, which a night waiting for approval is approved
+      # from (nightly.py reads the dry run itself).
       - name: Deploy to the preview address
         id: preview
         if: always() && steps.night.outputs.built == 'true' && env.PREVIEW == 'true'
@@ -334,11 +383,13 @@ jobs:
       # night still meets the smaller files and refuses them until this run's
       # build is published. The logs, the day's archive copy and the state go
       # up as on any night. On a dry run (DRY_RUN, above, which cloud.py reads
-      # itself) only what the run fetched goes back -- the day's files as the
-      # export served them and their archive -- with its logs under
-      # logs/<day>/dry-run/, a refusal or a hold, and its own verdict: nothing
-      # its branch's code made, which main's next night would build from
-      # (cloud.py's docstring, --dry-night). Both state-up steps likewise.
+      # itself) only what the run fetched goes back -- the archive's copy of
+      # each file the export served tonight, read against its name -- with its
+      # logs under logs/<day>/dry-run/, a refusal or a hold, and its own
+      # verdict: nothing its branch's code made or chose, not even the day's
+      # files it installed or the archive's index, which main's next night
+      # would build from (cloud.py's docstring, --dry-night). Both state-up
+      # steps likewise.
       - name: Send what changed, and the logs, back to R2
         id: kitup
         if: always() && steps.kitdown.outcome == 'success'
@@ -378,12 +429,19 @@ jobs:
           python cloud.py state-up
           exit $LASTEXITCODE
 
+      # Never for a dry run (the note above the first step).
       - name: Tell Healthchecks how the night ended
-        if: always()
+        if: always() && env.DRY_RUN == 'false'
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
           ENDED: ${{ job.status }}
         run: |
+          # Main is refs/heads/main exactly (nightly.MAIN_REF): GitHub's if
+          # above compares without case, and takes a branch named Main for main.
+          if ($env:GITHUB_REF -cne 'refs/heads/main') {
+            Write-Output "A run of $env:GITHUB_REF, not refs/heads/main, is a dry run: no ping."
+            exit 0
+          }
           if (-not $env:HC_URL) {
             Write-Output "No HEALTHCHECKS_URL secret, so no ping."
             exit 0
@@ -402,11 +460,13 @@ jobs:
   # only once a newer night has built a site fit for production. A dry run,
   # or a newer night that built nothing for production, never makes a night
   # waiting here unapprovable (7 October 2026). A New term run's last step
-  # here is what lets later nights keep what it accepted.
+  # here is what lets later nights keep what it accepted. A run of a branch
+  # other than main is a dry run whatever its boxes say, and this job never
+  # runs for one (a job's if cannot read env, so it names the ref itself).
   publish:
     name: publish to production
     needs: night
-    if: needs.night.outputs.publishable == 'true' && (github.event_name == 'schedule' || inputs.dry_run == false)
+    if: needs.night.outputs.publishable == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.dry_run == false)
     runs-on: windows-2022
     timeout-minutes: 60
     environment:

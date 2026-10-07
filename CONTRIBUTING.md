@@ -166,9 +166,19 @@ Three steps, each catching what the one before cannot.
    can be started at any time, a night waiting for approval included: its
    verdict is kept apart, in `archive/last-dry-run.json`, and the waiting
    night stays approvable (until 7 October 2026 a dry run's verdict became
-   the newest and that night's deploy was refused). It sends back to the
+   the newest and that night's deploy was refused), and its preview goes to
+   `dry-run.graniterecord.pages.dev`, never to the night's preview that a
+   waiting night is approved from. It sends back to the
    bucket only what it fetched and its logs, so nothing `dev`'s code made is
-   built from by `main`'s next night.
+   built from by `main`'s next night. Since 7 October 2026 every run of a
+   branch other than `main` is a dry run whatever its boxes say -- unticking
+   "Dry run" on `dev` changes nothing, a weekly run on `dev` proves the
+   weekly's code and keeps nothing it fetched, a New term run there is
+   refused, and no dry run pings Healthchecks -- so only a run of `main` can
+   publish, or keep what it took for the next night. Dry runs wait for each
+   other: one started while another is running waits behind it (and replaces
+   any dry run already waiting there), so that it cannot cancel a scheduled
+   night waiting for the running one to finish.
 
 The first runs on a bare clone. The second needs the record on disk and the
 third the repository's own secrets, so for a pull request from outside they

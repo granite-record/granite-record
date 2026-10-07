@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.12
+# GRANITE_VERSION: 2026-09-25.16
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -122,14 +122,30 @@ livestream index, the census and the night's verdict -- every one of them
 written by that branch's code, and every one taken down and read by main's
 next night. So a dry run's code reached production a night later, without a
 merge. --dry-night, which the workflow's DRY_RUN (DRY_ENV) implies on
-GitHub's machine whatever a step passes, sends back only what cloud_kit.json's
+GitHub's machine whatever a step passes -- and so does a run of any branch
+but main (REF_ENV, MAIN_REF), which is a dry run whatever its boxes say (the
+person's decision of 7 October 2026) -- sends back only what cloud_kit.json's
 "dry_run" names:
 
-  the day's files     each only where it is byte for byte a file the General
-                      Court's export served: the archive's store holds one by
-                      its sha256 (a database night's are rebuilt by the run's
-                      own code, and stay where they are)
-  their archive       nh-archive's index, snapshots and store; not the
+  what it fetched     the archive's copy of each file the General Court's
+                      export served tonight: a blob of nh-archive/store that
+                      kit-down did not bring, sent only where its bytes,
+                      unpacked, are the sha256 its name says (dry_sends,
+                      blob_holds). The General Court's bytes, which no code
+                      shapes; nothing is lost of what the run fetched
+  not what it chose   THE REVIEW OF 7 OCTOBER 2026. This sent the day's files
+                      as the run installed them too, where the store held
+                      their bytes, and the archive's index.json and its
+                      snapshots/<day>/ records. Those are the branch's code's
+                      work: its index, in whatever shape it writes, is what
+                      main's next snapshot opens and appends to and what
+                      installed_day and gc_changes read; its install.json is
+                      its own judging; and "the store holds it" is true of
+                      every file the export ever served, so a branch that put
+                      an older docket back sent that to kit/ for main's next
+                      night to install. None of them goes back now: the kit's
+                      day files, index and day records stay main's, and the
+                      next real night fetches and indexes its own. Nor the
                       database nights' copies under nh-archive/from-db/
   its logs            under logs/<day>/dry-run/, apart from the night's, so
                       that pull, which takes logs/<day>/<name> alone, never
@@ -137,11 +153,16 @@ GitHub's machine whatever a step passes, sends back only what cloud_kit.json's
   the state           a refusal and a hold on the SQL host, which are facts
                       about another server and stop the next night's asking
                       whoever met them, and its own verdict
-                      (state/last-dry-run.json); never the census or the
-                      night's verdict (DRY_NEVER)
+                      (state/last-dry-run.json, or a dry weekly's
+                      state/last-dry-weekly.json); never the census, the
+                      night's verdict or the week's (DRY_NEVER)
 
 Nothing is removed from the kit on a dry night, and the rest it changed is
-named as kept back. A New term run ticked with Dry run, which nightly.py
+named as kept back. The weekly's dry run -- every run of it off main, since 7
+October 2026 -- is the same command and the same rule: it archives nothing
+in the store, so none of the lists it took goes back, only its logs, a refusal or a
+hold, and its verdict, apart. A dev weekly proves the weekly's code and keeps
+nothing it fetched. A New term run ticked with Dry run, which nightly.py
 refuses before it asks for anything, is still given --hold by the workflow:
 on a dry night that holds nothing and sends nothing of the kit, only the
 logs and the state above.
@@ -178,12 +199,14 @@ deletes nothing there, and preflight holds its code to that.
                           a clash like a kit file's. The days start the day
                           before the last pull's, because a night's folder is
                           named for the day it started in Eastern time.
-  the verdicts            state/last-night.json, last-dry-run.json and
-                          last-weekly.json to archive/cloud/ -- NOT archive/,
-                          where state-down's record would take them for this
-                          machine's own. A night's from before yesterday is
-                          called STALE; a dry run's is said to be one, kept
-                          apart from the night's (nightly.DRY_VERDICT).
+  the verdicts            state/last-night.json, last-dry-run.json,
+                          last-weekly.json and last-dry-weekly.json to
+                          archive/cloud/ -- NOT archive/, where state-down's
+                          record would take them for this machine's own. A
+                          night's from before yesterday is called STALE; a dry
+                          run's is said to be one, kept apart from the night's
+                          or the week's (nightly.DRY_VERDICT,
+                          WEEKLY_DRY_VERDICT).
   the refusal             state/refused.json comes down as archive/refused.json
                           when the laptop has none (a refusal the night met
                           stops this laptop's fetches too); where both hold
@@ -255,7 +278,12 @@ UNSENT = f"{LOCAL}/refusal-unsent.json"
 SET_ASIDE = f"{LOCAL}/set-aside"
 VERDICTS = {"last-night.json": f"{LOCAL}/last-night.json",
             "last-dry-run.json": f"{LOCAL}/last-dry-run.json",
-            "last-weekly.json": f"{LOCAL}/last-weekly.json"}
+            "last-weekly.json": f"{LOCAL}/last-weekly.json",
+            "last-dry-weekly.json": f"{LOCAL}/last-dry-weekly.json"}
+# ... and how pull names a dry run's verdict, which is never the night's or
+# the week's (nightly.DRY_VERDICT, nightly.WEEKLY_DRY_VERDICT).
+DRY_VERDICTS = {"last-dry-run.json": "a dry run, kept apart from the night's,",
+                "last-dry-weekly.json": "a dry run of the weekly, kept apart from the week's,"}
 # THE PUBLISH JOB DEPLOYS A RUN'S OWN BUILD BY ITS OWN VERDICT (7 October
 # 2026). site-up sends the night's verdict, from where nightly.py writes it
 # (nightly.VERDICT), inside nights/<run>/site.json, and site-down writes it
@@ -268,11 +296,21 @@ SITE_VERDICT = "archive/run-verdict.json"
 # night's whatever they were told (--dry-night), and keeps site-up from
 # sending a dry run's site for production.
 DRY_ENV = "DRY_RUN"
+# ... and every run of a branch other than main is one, whatever DRY_RUN says
+# (7 October 2026, the person's decision): GitHub names the run's branch in
+# GITHUB_REF, read here again so that an edit to the workflow's DRY_RUN line
+# cannot reopen what it closes (nightly.REF_ENV and MAIN_REF, which preflight
+# holds these to). Main is MAIN_REF exactly: a missing ref is not, and nor is
+# refs/heads/Main, which the workflow's expressions cannot tell from it.
+REF_ENV = "GITHUB_REF"
+MAIN_REF = "refs/heads/main"
 # Where a dry night's logs go, under logs/<day>/: a folder pull does not read.
 DRY_LOGS = "dry-run"
 # The state a dry night never sends, whatever cloud_kit.json's "dry_run" says:
-# what the next real night is gated against and the night's own verdict.
-DRY_NEVER = ("census.json", "last-night.json")
+# what the next real night is gated against, the night's own verdict, and the
+# week's, which a dry weekly -- every weekly off main -- keeps apart too (7
+# October 2026).
+DRY_NEVER = ("census.json", "last-night.json", "last-weekly.json")
 PULL_DAYS = 7
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
@@ -427,11 +465,14 @@ def load_kit(root):
     # state never what the next real night is gated against.
     d = kit.get("dry_run") or {}
     keys = {s["key"] for s in kit.get("state", [])}
-    for x in list(d.get("served", [])) + list(d.get("globs", [])) + [d.get("store") or "x"]:
+    for x in list(d.get("globs", [])) + [d.get("store") or "x"]:
         check_rel(x)
-    for x in list(d.get("served", [])) + [re.sub(r"\*+", "x", g) for g in d.get("globs", [])]:
+    for x in [re.sub(r"\*+", "x", g) for g in d.get("globs", [])]:
         if owner_of(kit, x) != "night":
             raise Failed(f"{KIT_FILE}: \"dry_run\" names {x}, which is not a night's kit file")
+    if "served" in d:
+        raise Failed(f"{KIT_FILE}: \"dry_run\" names day files to send, and a dry night sends none "
+                     "since the review of 7 October 2026: what it installed is its code's choice")
     bad = [k for k in d.get("state", []) if k not in keys or k in DRY_NEVER]
     if bad:
         raise Failed(f"{KIT_FILE}: \"dry_run\" sends state {bad}, which is not in the state list "
@@ -446,14 +487,33 @@ def dry_night(a):
     return bool(getattr(a, "dry_night", False)) or dry_by_workflow()
 
 
-def dry_sends(kit, root, rel, sha256):
-    """Whether a dry night sends this night's file back: a day's file only
-    when the archive's store holds it, byte for byte, as the export served
-    it; the archive by its globs; nothing else."""
+def dry_sends(kit, root, rel, before):
+    """Whether a dry night sends this night's file back: only the archive's
+    copy of something the export served tonight -- a blob of "dry_run"'s
+    store, matched by its globs, that kit-down did not bring (`before`, the
+    record of what it did) and whose bytes unpacked are the sha256 its name
+    says. Nothing else: not a day's file, whatever its bytes, nor the
+    archive's index or its day records (the docstring says why)."""
     d = kit.get("dry_run") or {}
-    if rel in d.get("served", []):
-        return bool(d.get("store")) and local(root, f"{d['store']}/{sha256}.gz").is_file()
-    return any(glob_re(g).match(rel) for g in d.get("globs", []))
+    store = d.get("store")
+    if not store or rel in before or not any(glob_re(g).match(rel) for g in d.get("globs", [])):
+        return False
+    m = re.fullmatch(re.escape(store) + r"/([0-9a-f]{64})\.gz", rel)
+    return bool(m) and blob_holds(local(root, rel), m.group(1))
+
+
+def blob_holds(path, sha256):
+    """Whether the archive's blob at `path` unpacks to bytes whose sha256 is
+    `sha256`: what the store's names promise, read rather than trusted."""
+    import gzip
+    h = hashlib.sha256()
+    try:
+        with gzip.open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+    except (OSError, EOFError, ValueError):
+        return False
+    return h.hexdigest() == sha256
 
 
 def never_rx(kit):
@@ -1461,11 +1521,10 @@ def cmd_kit_up(a, root):
             held_off, hold = hold, None
             night, gone = night + waiting, gone + gone_waiting
             waiting, gone_waiting = [], []
-        served = set((kit.get("dry_run") or {}).get("served", []))
-        sendable = [] if held_off else [r for r in night
-                                        if dry_sends(kit, root, r, entries[r]["sha256"])]
-        unserved = [r for r in night if r not in sendable and r in served]
-        kept_back = [r for r in night if r not in sendable and r not in served]
+        archived = [glob_re(g) for g in (kit.get("dry_run") or {}).get("globs", [])]
+        sendable = [] if held_off else [r for r in night if dry_sends(kit, root, r, before)]
+        unserved = [r for r in night if r not in sendable and any(x.match(r) for x in archived)]
+        kept_back = [r for r in night if r not in sendable and r not in unserved]
         night, gone_left, gone = sendable, gone, []
     man, _ = read_manifest(bucket, "kit")
     cur = (man or {}).get("files", {})
@@ -1495,16 +1554,18 @@ def cmd_kit_up(a, root):
         show("the night's, gone since kit-down; the removal waits too", gone_waiting,
              {r: before[r][0] for r in gone_waiting})
     if dry:
-        say("  a dry run: only what it fetched goes back, and its logs go to "
+        say("  a dry run: only what it fetched goes back -- the archive's copies of what the "
+            f"export served tonight, each read against its name -- and its logs go to "
             f"logs/{day}/{DRY_LOGS}/; of the state only "
             + (", ".join((kit.get("dry_run") or {}).get("state", [])) or "nothing"))
         if held_off:
             say(f"  --hold {held_off} on a dry run: a New term run ticked with Dry run, which "
                 "nightly.py refuses, so nothing is held and nothing of the kit goes back")
-        show("kept back: what the run's own code made, which main's next night would "
-             "build from", kept_back, sz)
-        show("kept back: day files that are not byte for byte what the export served",
-             unserved, sz)
+        show("kept back: what the run's own code made or chose -- the day's files it "
+             "installed, the archive's index and day records, the outputs a build carries -- "
+             "which main's next night would read", kept_back, sz)
+        show("kept back: archive copies kit-down brought, or whose bytes are not what their "
+             "names say", unserved, sz)
         show("gone since kit-down, and left in kit/: a dry run removes nothing", gone_left,
              {r: before[r][0] for r in gone_left})
     say(f"  logs for logs/{day}/{DRY_LOGS + '/' if dry else ''}: {len(logs):,} files, "
@@ -1626,7 +1687,7 @@ def cmd_state_up(a, root):
     if only is not None:
         here = [s for s in here if s["key"] in only]
         say("state-up: a dry run, so only " + (", ".join(only) or "nothing")
-            + " may go; never the census or the night's verdict")
+            + " may go; never the census, the night's verdict or the week's")
     bucket = open_bucket(a)
     if a.dry_run:
         say(f"--dry-run: nothing sent. {len(here)} state files here would be "
@@ -2081,9 +2142,14 @@ def _site_files(site):
 
 
 def dry_by_workflow():
-    """Whether the workflow says this run is a dry run (DRY_ENV), on GitHub's
-    machine -- nightly.dry_by_workflow()'s rule."""
-    return os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get(DRY_ENV) == "true"
+    """Whether the workflow says this run is a dry run (DRY_ENV), or it is not
+    a run of main (REF_ENV is not MAIN_REF exactly: another branch, a case
+    variant of main, or no ref at all), on GitHub's machine --
+    nightly.dry_by_workflow()'s rule, and nightly.py says why missing is not
+    main (MAIN IS MAIN_REF EXACTLY)."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return False
+    return os.environ.get(DRY_ENV) == "true" or os.environ.get(REF_ENV) != MAIN_REF
 
 
 def _night_verdict(root, run):
@@ -2553,15 +2619,17 @@ def pull_livestream_state(bucket, root, kit, dry):
 
 
 def pull_verdicts(bucket, root, dry, today):
-    """state/last-night.json, last-dry-run.json and last-weekly.json to
-    archive/cloud/. ([lines], taken).
+    """state/last-night.json, last-dry-run.json, last-weekly.json and
+    last-dry-weekly.json to archive/cloud/. ([lines], taken).
 
     A night's verdict from before yesterday is STALE: the morning triage
     reading "CLEAN" off it would be reading about a night that is not the
     last one, because the nightly on GitHub has not sent a verdict since. A
     dry run's is kept apart from the night's (nightly.DRY_VERDICT) and said to
     be one, so that it is never read as the night's; it is never stale, since
-    dry runs are started by hand, when there is something to try."""
+    dry runs are started by hand, when there is something to try. A dry
+    weekly's -- a run of the weekly off main -- is kept apart from the week's
+    the same way, and said to be one (DRY_VERDICTS)."""
     from datetime import timedelta
     lines, taken = [], 0
     yesterday = (today - timedelta(days=1)).isoformat()
@@ -2577,8 +2645,7 @@ def pull_verdicts(bucket, root, dry, today):
             write_whole(dst, data)
         taken += 0 if same else 1
         stale = key == "last-night.json" and str(v.get("day") or "") < yesterday
-        kind = ("a dry run, kept apart from the night's," if key == "last-dry-run.json"
-                else v.get("kind") or "?")
+        kind = DRY_VERDICTS.get(key) or v.get("kind") or "?"
         lines.append(("STALE -- the newest night's verdict is from before yesterday, so the "
                       "nightly on GitHub has not sent one since (its Actions tab says why): "
                       if stale else "")
@@ -3055,7 +3122,8 @@ def main(argv=None):
     ap.add_argument("--dry-night", action="store_true",
                     help="kit-up, state-up: a dry run's night -- only what it fetched, its "
                          "logs apart and a refusal, a hold and its own verdict go back; on "
-                         "GitHub's machine the workflow's DRY_RUN says so whatever is passed")
+                         "GitHub's machine the workflow's DRY_RUN, or a run of a branch "
+                         "other than main, says so whatever is passed")
     ap.add_argument("--hold", metavar="RUN",
                     help="kit-up, on a New term run: what the night changed waits under "
                          "nights/RUN/kit/ and stays out of kit/ until kit-release --run RUN")
