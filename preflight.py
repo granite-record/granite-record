@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.406
+# GRANITE_VERSION: 2026-09-04.407
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45151,7 +45151,7 @@ def _running_oneliner():
     # refusal check reads them for that), so a session looking for what is
     # running must see them.
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
-                 "python3 fetch_legislation.py --all", "python3 snapshot_gencourt.py",
+                 "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 snapshot_gencourt.py",
                  r"cmd /c publish.bat", "python3 cloud.py pull",
                  r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
                  "python3 probe_db.py --sample", "python3 resolve_members.py"):
