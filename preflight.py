@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.390
+# GRANITE_VERSION: 2026-09-04.391
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -828,6 +828,474 @@ def _scripts_run():
             elif code:
                 gone.setdefault(n, src)
     return here, gone
+
+
+# ====================================================== files: where the code lives ==
+#
+# THE CODE IS MOVING INTO src/ (6 October 2026; src/README.md, and the stages
+# of the folder map). Every import, build_all step, lane line and launch finds
+# a file by its bare name through _paths.py, so a file can move between code
+# folders without anything that names it changing. What keeps that true while
+# files move is below: a name two folders share, a script that does not
+# bootstrap, a name a runner uses that finds no file, a file in the folder of
+# a network it does not ask (or asking one its folder does not allow), and a
+# code path git cannot see. Each reads the folders rather than a list of
+# files, so it holds before, during and after the move. The guards that read
+# every script -- refusal, the hand-made files, committee_details, the shared
+# files -- carry floors of their own: what they read on 6 October, before any
+# file moved, so that one reading only the root after a move fails rather
+# than passing on nothing.
+
+def _code_name_clashes(root=None):
+    """{bare name: [its paths]} for every name two code files share: any
+    file under src/ but a README.md, and every .py of the root, watchers/ and
+    tests/ (which also hold data, whose names are not the question)."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    seen = {}
+    for d in _paths.code_dirs(base):
+        in_src = d != base and d.relative_to(base).parts[0] == "src"
+        for f in sorted(d.iterdir()):
+            if f.is_file() and f.name != "README.md" and (in_src or f.suffix == ".py"):
+                seen.setdefault(f.name, []).append(f.relative_to(base).as_posix())
+    return {n: ps for n, ps in sorted(seen.items()) if len(ps) > 1}
+
+
+def _code_dirs_unlisted(root=None):
+    """Folders under src/ that hold a file other than a README and are not on
+    _paths.CODE_DIRS: what is in one is on nobody's import path."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    listed = {(base / d).resolve() for d in _paths.CODE_DIRS}
+    src = base / "src"
+    if not src.is_dir():
+        return []
+    return [d.relative_to(base).as_posix()
+            for d in sorted(p for p in src.rglob("*") if p.is_dir() and p.name != "__pycache__")
+            if d.resolve() not in listed
+            and any(f.is_file() and f.name != "README.md" and f.suffix != ".pyc"
+                    for f in d.iterdir())]
+
+
+def _plant(root, files):
+    """A tree for a reader to be proved on: {relative path: text}."""
+    for rel, text in files.items():
+        p = Path(root) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    return Path(root)
+
+
+@check("files", "a bare name finds one file: no two code files share a name, and every "
+                "folder under src/ that holds code is on _paths.CODE_DIRS")
+def _code_names_unique():
+    """Every import and every launch here is by bare name, and _paths puts
+    every code folder on the path, so two files of one name would be one
+    import shadowing the other in whichever order the folders happen to be
+    read -- and _paths.script refuses to choose. A README.md in each folder
+    is the one name allowed to repeat. A folder under src/ that is not on
+    _paths.CODE_DIRS is on nobody's path: its files would not import."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-names-"))
+    try:
+        _plant(tmp, {"_paths.py": "", "a.py": "", "src/parse/a.py": "", "src/parse/README.md": "",
+                     "src/pages/README.md": "", "src/pages/b.js": "", "tests/b.js": "",
+                     "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
+                     "tests/notes.json": "", "src/extra/d.py": ""})
+        got = _code_name_clashes(tmp)
+        assert got == {"a.py": ["a.py", "src/parse/a.py"], "c.py": ["watchers/c.py", "tests/c.py"]}, \
+            f"the reader of names found {got} in a tree made to share two"
+        assert _code_dirs_unlisted(tmp) == ["src/extra"], _code_dirs_unlisted(tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    clashes = _code_name_clashes()
+    assert not clashes, ("these names are used by more than one code file, so a bare name "
+                         "finds two: " + "; ".join(f"{n} ({', '.join(ps)})"
+                                                    for n, ps in clashes.items()))
+    unlisted = _code_dirs_unlisted()
+    assert not unlisted, ("these folders under src/ hold code and are not on "
+                          "_paths.CODE_DIRS, so nothing can import what is in them: "
+                          + ", ".join(unlisted))
+    n = len(_paths.code_files("*.py"))
+    assert n >= 160, f"only {n} scripts were read in the code folders; there were 165 on 6 October"
+    return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"
+
+
+def _first_script(node):
+    """The script a launch's argument list starts with: ["x.py", ...] or
+    ["x.py", ...] + more. None for any other node."""
+    if isinstance(node, ast.BinOp):
+        return _first_script(node.left)
+    if isinstance(node, ast.List) and node.elts and isinstance(node.elts[0], ast.Constant) \
+            and isinstance(node.elts[0].value, str) \
+            and re.fullmatch(r"[\w./\\-]+\.py", node.elts[0].value):
+        return node.elts[0].value
+    return None
+
+
+_RUN_BY_PATH = re.compile(r"(?:\bpython3?|\bpy)\s+([\w./\\-]+\.py)\b|Test-Path\s+([\w./\\-]+\.py)\b")
+
+
+def _runner_names(root=None):
+    """{runner: [(script name, run by its path)]}: every script that
+    build_all's steps, nightly, the laptop's evening job, the lane's queue,
+    the workflows and publish.bat start, as each writes it. The first four
+    find theirs through _paths.script; the workflows and publish.bat run a
+    path, which must be there as written."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    out = {}
+
+    def code(rel, also=None):
+        f = _paths.locate(rel, root=base)
+        if not f.exists():
+            return
+        names = []
+        for n in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+            if also and isinstance(n, ast.Call) and getattr(n.func, "id", None) == also \
+                    and len(n.args) > 1:
+                hit = _first_script(n.args[1])
+            elif not also and isinstance(n, (ast.List, ast.BinOp)):
+                hit = _first_script(n)
+            else:
+                continue
+            if hit:
+                names.append((hit, False))
+        out[rel] = sorted(set(names))
+    code("build_all.py", also="Step")
+    code("nightly.py")
+    code("laptop_evening.py")
+    queue = _paths.locate("watchers/gc_lane.queue", root=base)
+    if queue.exists():
+        lines = []
+        for ln in queue.read_text(encoding="utf-8").splitlines():
+            ln = ln.strip()
+            if not ln or ln.startswith("#"):
+                continue
+            ln = re.sub(r"^daily\s+\S+\s+", "", ln)
+            ln = re.sub(r"^handover\s+", "", ln)
+            lines.append((ln.split()[0], False))
+        out["watchers/gc_lane.queue"] = sorted(set(lines))
+    for f in sorted((base / ".github" / "workflows").glob("*.y*ml")) + [base / "publish.bat"]:
+        if not f.exists():
+            continue
+        found = set()
+        for ln in f.read_text(encoding="utf-8").splitlines():
+            bare = ln.strip()
+            if bare.startswith(("#", "::")) or bare.upper().startswith("REM"):
+                continue
+            for m in _RUN_BY_PATH.finditer(ln):
+                found.add(((m.group(1) or m.group(2)).replace("\\", "/"), True))
+        out[f.relative_to(base).as_posix()] = sorted(found)
+    return out
+
+
+def _runner_problems(root=None):
+    """What a runner names that does not resolve: [sentence]."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    bad = []
+    for runner, names in _runner_names(base).items():
+        for name, by_path in names:
+            try:
+                hit = _paths.find(name, root=base)
+            except LookupError as e:
+                bad.append(f"{runner} names {name}, and {e}")
+                continue
+            if hit is None:
+                bad.append(f"{runner} names {name}, and no code folder holds it")
+            elif by_path and not (base / name).is_file():
+                bad.append(f"{runner} runs {name} by its path, and it is not there: it is "
+                           f"{hit.relative_to(base).as_posix()}")
+    return bad
+
+
+# Most of what each runner named on 6 October 2026, before any file moved
+# (47, 14, 3, 5, 3, 2 and 3): a runner read as naming fewer has stopped being
+# read, not stopped running things. The slack is for a step retired on
+# purpose.
+_RUNNER_FLOORS = {"build_all.py": 40, "nightly.py": 12, "laptop_evening.py": 3,
+                  "watchers/gc_lane.queue": 3, ".github/workflows/nightly.yml": 2,
+                  ".github/workflows/weekly.yml": 1, "publish.bat": 2}
+
+
+@check("files", "every script build_all, the night, the laptop's evening, the lane, the "
+                "workflows and publish.bat start resolves to exactly one file")
+def _runner_names_resolve():
+    """The four runners that start scripts by bare name -- build_all's steps,
+    nightly.run, laptop_evening.run_step and the lane -- find each through
+    _paths.script, which fails at four in the morning on a name that finds no
+    file or finds two. So each name is resolved here, now. The workflows and
+    publish.bat run a script by its path, from the root: those must be where
+    they are written, which is why livestreams.py stays at the root -- the
+    nightly's `Test-Path livestreams.py` would otherwise skip its step without
+    a word."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-runners-"))
+    try:
+        _plant(tmp, {
+            "_paths.py": "",
+            "build_all.py": 'Step("a", ["moved.py", "--x"])\nStep("b", ["gone.py"] + more)\n',
+            "nightly.py": 'run(["twice.py"], "t")\nx = ["moved.py", "y"]\n',
+            "watchers/gc_lane.queue": "# c\ndaily 06:00 moved.py --a\nhandover gone.py\n",
+            ".github/workflows/nightly.yml": "run: python livestreams.py\n# python old.py\n",
+            "publish.bat": "REM python3 old.py\npython3 checks.py --site site\n",
+            "src/parse/moved.py": "", "src/checks/checks.py": "", "src/pages/livestreams.py": "",
+            "src/parse/twice.py": "", "src/pages/twice.py": ""})
+        got = _runner_problems(tmp)
+        want = ["build_all.py names gone.py", "nightly.py names twice.py",
+                "watchers/gc_lane.queue names gone.py", "nightly.yml runs livestreams.py",
+                "publish.bat runs checks.py"]
+        assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
+            f"the reader of runners found {got} in a tree made to break five ways"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    names = _runner_names()
+    thin = [f"{r} ({len(names.get(r, []))}, was {n})" for r, n in _RUNNER_FLOORS.items()
+            if len(names.get(r, [])) < n]
+    assert not thin, ("these runners were read as naming fewer scripts than they named on "
+                      "6 October, so they are not being read: " + ", ".join(thin))
+    bad = _runner_problems()
+    assert not bad, "; ".join(bad)
+    total = sum(len(v) for v in names.values())
+    return "ok", (f"{total} names in {len(names)} runners, each finds one file; the "
+                  "workflows' and publish.bat's are where they say")
+
+
+def _project_modules(root=None):
+    """The bare module names of every script and module in the code folders."""
+    return {f.stem for f in _paths.code_files("*.py", root=root)}
+
+
+def _bootstrap_problem(src, project):
+    """What is wrong with a runnable script's start, or "": it carries
+    _paths.BOOTSTRAP word for word, and imports _paths before any module of
+    this project, at the top level or inside a statement there."""
+    text = src.replace("\r\n", "\n")
+    if _paths.BOOTSTRAP not in text:
+        return "does not carry the bootstrap (_paths.BOOTSTRAP)"
+    for node in ast.parse(text).body:
+        names = [a.name for a in node.names] if isinstance(node, ast.Import) else []
+        if "_paths" in names:
+            return ""
+        for n in ast.walk(node):
+            mods = ([a.name for a in n.names] if isinstance(n, ast.Import) else
+                    [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level
+                    else [])
+            hit = sorted(m.split(".")[0] for m in mods if m.split(".")[0] in project - {"_paths"})
+            if hit:
+                return f"imports {hit[0]} before _paths"
+    return "never imports _paths"
+
+
+def _runnable(tree):
+    """Whether a parsed module is run as a script: a top-level
+    `if __name__ == "__main__":`."""
+    return any(isinstance(n, ast.If) and "__name__" in ast.unparse(n.test)
+               and "__main__" in ast.unparse(n.test) for n in tree.body)
+
+
+@check("files", "every runnable script imports _paths, found above its own file, before "
+                "any module of this project")
+def _bootstrap_first():
+    """A script imports its neighbours by bare name. At the root that worked
+    because the root was the script's own folder; under src/parse/ the script's
+    folder is src/parse/, and `import proceedings` would fail unless something
+    had put src/lib/ on the path first. That something is the bootstrap at the
+    top of every runnable script (_paths.BOOTSTRAP): it walks up from the
+    script's own file to the folder holding _paths.py and imports it, so a
+    script one folder deep and one three deep start the same way, from any
+    working directory. A script is runnable when it has a __main__ block or a
+    runner starts it (watchers/rest.py has no block and the lane runs it)."""
+    project = _project_modules()
+    good = _paths.BOOTSTRAP
+    probes = {
+        "a script with no bootstrap": ("import json\nimport narrative\n", "does not carry"),
+        "a project module imported first": ("import narrative\n" + good, "imports narrative"),
+        "one imported inside a try first": ("try:\n    import child\nexcept Exception:\n"
+                                            "    pass\n" + good, "imports child"),
+        "the bootstrap, then the rest": ('"""Doc."""\n' + good + "\nimport narrative\n", ""),
+    }
+    for what, (src, want) in probes.items():
+        got = _bootstrap_problem(src, project | {"narrative", "child"})
+        assert (want in got if want else got == ""), f"the reader got {what} wrong: {got!r}"
+    started = {Path(n).name for names in _runner_names().values() for n, _ in names}
+    bad, n = [], 0
+    for f in _paths.code_files("*.py"):
+        if f.name == "_paths.py":
+            continue
+        src = f.read_text(encoding="utf-8")
+        if not (f.name in started or _runnable(_parsed(f))):
+            continue
+        n += 1
+        why = _bootstrap_problem(src, project)
+        if why:
+            bad.append(f"{f.relative_to(_paths.ROOT).as_posix()} {why}")
+    assert n >= 145, f"only {n} runnable scripts were read; there were 147 on 6 October"
+    assert not bad, ("these scripts would not find their imports once they, or what they "
+                     "import, sit under src/: " + "; ".join(bad))
+    return "ok", f"{n} runnable scripts start with the bootstrap, before any import of ours"
+
+
+# THE NETWORK LINES, BY FOLDER (src/fetch/README.md). Read from what a file
+# does, so that they hold wherever it sits. The root is allowed all of them:
+# it holds the entry points that ask (nightly, livestreams, netcheck, cloud)
+# and, until each moves, the files the move has not reached yet; the
+# refusal guard holds every script there to refusal.check() all the same.
+_GC_HOST = re.compile(r"""["']https?://gc\.nh\.gov""")
+_SQL = re.compile(r"^\s*(?:import probe_db\b|from probe_db import)", re.M)
+_YOUTUBE = re.compile(r"yt_dlp|googleapis\.com/youtube|youtube/v3")
+_ASKS = re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
+                   r"|http\.client")
+_URL = re.compile(r"""["'](https?://[^/"'\s]+)""")
+
+
+def _calls_refusal_check(tree):
+    return any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+               and n.func.attr == "check" and isinstance(n.func.value, ast.Name)
+               and n.func.value.id == "refusal" for n in ast.walk(tree))
+
+
+def _boundary_problems(root=None):
+    """[sentence] for each file under src/ (and watchers/, tests/) on the
+    wrong side of a network line:
+      - every file in src/fetch/gc_web/ calls refusal.check(), and no other
+        file under src/ does;
+      - only src/fetch/gc_db/ (and, at the root, nightly and preflight; and
+        tests/rehearse_turn.py) open the General Court's SQL host, through
+        probe_db;
+      - only src/fetch/youtube/ (and livestreams.py at the root) use yt-dlp
+        or the YouTube API;
+      - nothing in src/parse, hearings, pages or lib makes a request, and
+        src/checks asks only graniterecord.org."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    bad = []
+    for f in _paths.code_files("*.py", root=base):
+        rel = f.relative_to(base).as_posix()
+        folder = rel.rsplit("/", 1)[0] if "/" in rel else ""
+        if not folder:
+            continue
+        src = f.read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(src)
+        checks = _calls_refusal_check(tree)
+        if folder == "src/fetch/gc_web" and not checks:
+            bad.append(f"{rel} is in src/fetch/gc_web/ and never calls refusal.check()")
+        if folder.startswith("src/") and folder != "src/fetch/gc_web" and checks:
+            bad.append(f"{rel} calls refusal.check(), so it asks gc.nh.gov: it belongs in "
+                       "src/fetch/gc_web/")
+        if folder.startswith("src/") and folder != "src/fetch/gc_web" and _GC_HOST.search(src) \
+                and _ASKS.search(src):
+            bad.append(f"{rel} asks a gc.nh.gov address: it belongs in src/fetch/gc_web/")
+        if (_SQL.search(src) or f.name == "probe_db.py") and folder != "src/fetch/gc_db" \
+                and rel != "tests/rehearse_turn.py":
+            bad.append(f"{rel} opens the General Court's SQL host: it belongs in src/fetch/gc_db/")
+        if _YOUTUBE.search(src) and folder != "src/fetch/youtube":
+            bad.append(f"{rel} uses yt-dlp or the YouTube API: it belongs in src/fetch/youtube/")
+        if folder in ("src/parse", "src/hearings", "src/pages", "src/lib") and _ASKS.search(src):
+            bad.append(f"{rel} makes a request, and {folder}/ asks nobody")
+        if folder == "src/checks" and _ASKS.search(src):
+            hosts = {u for u in _URL.findall(src)
+                     if not re.match(r"https?://(?:www\.)?graniterecord\.org$|https?://"
+                                     r"(?:127\.0\.0\.1|localhost)(?::\d+)?$", u)}
+            if hosts:
+                bad.append(f"{rel} asks {', '.join(sorted(hosts))}, and src/checks/ asks only "
+                           "graniterecord.org")
+    return bad
+
+
+@check("files", "each network has its folder: gc.nh.gov's fetchers in src/fetch/gc_web/ and "
+                "nowhere else, the SQL host's in gc_db/, YouTube's in youtube/, and parse, "
+                "hearings, pages and lib ask nobody")
+def _network_boundaries():
+    """The folders under src/fetch/ are by whose server a script asks, because
+    that decides what can go wrong: gc.nh.gov's web server has blocked this
+    address twice, its SQL host is somebody else's server too, and YouTube
+    refuses GitHub's machines and has refused the laptop. A fetcher filed in
+    the wrong folder is a request nobody expects from it. So each line is
+    read from what a file does -- refusal.check(), probe_db, yt-dlp, a
+    request -- and held against where it sits, which is why it needs no edit
+    as files move."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lines-"))
+    try:
+        ask = "import urllib.request\nurllib.request.urlopen(U)\n"
+        _plant(tmp, {
+            "_paths.py": "",
+            "src/fetch/gc_web/fine.py": "import refusal\nrefusal.check('x')\n",
+            "src/fetch/gc_web/unchecked.py": 'U = "https://gc.nh.gov/x"\n' + ask,
+            "src/parse/checked.py": "import refusal\nrefusal.check('x')\n",
+            "src/fetch/other/sql.py": "import probe_db\n",
+            "src/fetch/gc_db/fine_sql.py": "import probe_db\n",
+            "src/hearings/yt.py": "import yt_dlp\n",
+            "src/pages/asks.py": 'U = "https://example.org"\n' + ask,
+            "src/checks/live.py": 'U = "https://graniterecord.org"\n' + ask,
+            "src/checks/away.py": 'U = "https://example.org"\n' + ask,
+            "nightly.py": "import probe_db\nimport yt_dlp\n"})
+        got = _boundary_problems(tmp)
+        want = ["unchecked.py is in src/fetch/gc_web/ and never calls",
+                "checked.py calls refusal.check()", "sql.py opens", "yt.py uses yt-dlp",
+                "asks.py makes a request", "away.py asks https://example.org"]
+        assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
+            f"the reader of the network lines found {got} in a tree made to cross six"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad = _boundary_problems()
+    assert not bad, "; ".join(bad)
+    placed = sum(1 for f in _paths.code_files("*.py", dirs=_paths.SRC_DIRS))
+    return "ok", (f"{placed} scripts under src/, each on its side of the network lines; the "
+                  "root's are held by the refusal guard")
+
+
+def _git_hidden(root=None):
+    """(tracked code paths a .gitignore line matches, files under src/ git
+    does not track), or None without git. Code is anything under src/,
+    watchers/, tests/, functions/ or workers/, and every .py, .js, .css,
+    .html, .bat, .toml and .yml file. __pycache__ is not code."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    try:
+        caught = _run(["git", "-C", str(base), "ls-files", "-ci", "--exclude-standard", "-z"],
+                      capture_output=True, timeout=60)
+        loose = _run(["git", "-C", str(base), "ls-files", "-o", "-z", "--", "src"],
+                     capture_output=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if caught.returncode != 0 or loose.returncode != 0:
+        return None
+    code = re.compile(r"^(?:src|watchers|tests|functions|workers)/|"
+                      r"\.(?:py|js|mjs|css|html|bat|cmd|ps1|toml|ya?ml)$")
+    hidden = [p for p in caught.stdout.split("\0") if p and code.search(p)]
+    untracked = [p for p in loose.stdout.split("\0")
+                 if p and "__pycache__/" not in p and not p.endswith(".pyc")]
+    return hidden, untracked
+
+
+@check("files", "git sees all the code: no tracked code path is caught by .gitignore, and "
+                "nothing under src/ is untracked")
+def _code_not_ignored():
+    """`.gitignore` line 19 is `site/`, which matches a folder named site at
+    any depth: a page builder under src/site/ would have been left out of
+    every commit without a word, which is why the pages' folder is
+    src/pages/. And `_*.py`, there for patch scripts, caught _paths.py itself
+    the day it was written. So a code path git ignores fails here, and so
+    does any file under src/ git does not track -- it would be on the laptop
+    and nowhere else."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-ignored-"))
+    try:
+        if _run(["git", "init", "-q", str(tmp)], capture_output=True, timeout=60).returncode != 0:
+            return "skip", "git is not here to make a repository with"
+        _plant(tmp, {".gitignore": "site/\n_*.py\n", "src/site/page.py": "",
+                     "src/pages/ok.py": "", "src/pages/new.py": "", "_paths.py": ""})
+        g = ["git", "-C", str(tmp), "-c", "user.name=preflight",
+             "-c", "user.email=preflight@example.invalid"]
+        _run(g + ["add", "-f", "src/site/page.py", "src/pages/ok.py", "_paths.py"],
+             capture_output=True, timeout=60)
+        got = _git_hidden(tmp)
+        assert got == (["_paths.py", "src/site/page.py"], ["src/pages/new.py"]), \
+            f"the reader of what git does not see found {got}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = _git_hidden()
+    if got is None:
+        return "skip", "not a git repository"
+    hidden, untracked = got
+    assert not hidden, ("these tracked code files match a .gitignore line, so a copy of "
+                        "them made new would not be committed: " + ", ".join(hidden))
+    assert not untracked, ("these files under src/ are not in git, so the night and every "
+                           "clone run without them: " + ", ".join(untracked))
+    return "ok", "every tracked code path is outside .gitignore, and src/ holds nothing untracked"
 
 
 # ============================================================ code: narrative ==
@@ -17814,6 +18282,13 @@ def _record_untouched():
         elif not all(b.startswith("127.") for b in binds):
             said.append("review.py binds " + ", ".join(binds)
                         + "; it must stay on the loopback address")
+    # A FLOOR: the build_ and fetch_ scripts this read on 6 October 2026,
+    # before any file moved. Read from the root alone after a move, it would
+    # read none and pass. A script retired on purpose lowers it, in the same
+    # commit.
+    if len(scanned) < 57:
+        said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 57 were "
+                    "on 6 October: the code folders are not being read (_paths.code_files)")
     assert not said, "; and ".join(said)
     present = [n for n in HANDMADE if Path(n).exists()]
     return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
@@ -29988,6 +30463,11 @@ def _committee_details_one_writer():
             bad.append(f.name)
     assert not bad, (f"these write committee_details.json, which is "
                      f"fetch_committee_details.py's alone: {', '.join(bad)}")
+    # A floor, as the hand-made files' guard has: 57 build_ and fetch_ scripts
+    # and the night were read on 6 October, before any file moved.
+    assert len(scanned) >= 58, (
+        f"only {len(scanned)} scripts were read for writers of committee_details.json, "
+        "and 58 were on 6 October: the code folders are not being read")
     src = mine.read_text(encoding="utf-8")
     assert re.search(r"\bCD\.write_details\s*\(", src), (
         "fetch_committee_details.py no longer writes committee_details.json "
@@ -42674,6 +43154,10 @@ def _video_starts_on_the_right_clock(fetch_channel_index):
     return "ok", f"{n:,} recordings' Eastern starts agree with their UTC starts"
 
 
+# How many scripts asked gc.nh.gov on 6 October 2026, before any file moved.
+_ASKS_GC_FLOOR = 25
+
+
 @check("build", "every fetcher that asks gc.nh.gov consults refusal.py first")
 def _every_fetcher_checks_refusal():
     """A refusal is a fact about the address, not about the run that found it.
@@ -42782,6 +43266,13 @@ def _every_fetcher_checks_refusal():
             missing.append(p.name)
 
     assert asks, "no fetcher holds a gc.nh.gov URL, which cannot be right"
+    # FLOORS: the scripts this read on 6 October 2026, before any file moved,
+    # and the ones that asked gc.nh.gov. Read from the root alone after a
+    # move, it would find no fetcher left there and pass. A script retired on
+    # purpose lowers them, in the same commit.
+    assert len(scanned) >= 161 and len(asks) >= _ASKS_GC_FLOOR, (
+        f"{len(scanned)} scripts were read and {len(asks)} ask gc.nh.gov; on 6 October "
+        f"161 were read and {_ASKS_GC_FLOOR} asked: the code folders are not being read")
     assert all(n in asks for n in NAMED if _paths.locate(n).exists()), "a named fetcher was not read"
     assert not _paths.locate("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
         "check_civics_links.py, which asks the addresses civics.py holds, was not read"
@@ -56176,6 +56667,11 @@ def _writers_merge():
             if writes and not reads:
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
+    # A floor: the scripts of the root and src/ read on 6 October 2026, before
+    # any file moved.
+    assert len(scanned) >= 161, (
+        f"only {len(scanned)} scripts were read for writers of the shared files, and 161 "
+        "were on 6 October: the code folders are not being read")
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
 
 
