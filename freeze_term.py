@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.5
+# GRANITE_VERSION: 2026-10-05.6
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -90,7 +90,7 @@ WHAT IT REFUSES
               the files frozen anew. With none, if the roster turned before
               the docket did -- Organization Day is 2 December 2026 -- put the
               last roster of the old term back first, from nh-archive:
-                  python3 -c "import snapshot_gencourt as S; S.restore('nh-archive', 'DAY', 'legislators.txt', 'legislators.txt')"
+                  python3 -c "import _paths, snapshot_gencourt as S; S.restore('nh-archive', 'DAY', 'legislators.txt', 'legislators.txt')"
               and the same for Members.txt, where DAY is the last snapshot
               before Organization Day, so 2025-2026's chips keep the seat each
               member held then

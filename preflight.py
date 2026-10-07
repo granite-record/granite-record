@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.394
+# GRANITE_VERSION: 2026-09-04.395
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1166,6 +1166,107 @@ def _bootstrap_first():
     assert not bad, ("these scripts would not find their imports once they, or what they "
                      "import, sit under src/: " + "; ".join(bad))
     return "ok", f"{n} runnable scripts start with the bootstrap, before any import of ours"
+
+
+# A `python3 -c` program, written in a docstring for a person to type or in a
+# list for a check to run, starts with only the working folder on its path:
+# the root while every module sits there, and none of src/ once they move.
+_DASH_C = re.compile(r"""-c\s+(["'])(.+?)\1""")
+
+
+def _dash_c_problem(code, project):
+    """What is wrong with a -c program, or "": it imports _paths before any
+    module of this project."""
+    for stmt in re.split(r"[;\n]", code):
+        stmt = stmt.strip()
+        if stmt.startswith("import "):
+            mods = [p.split()[0].split(".")[0] for p in stmt[7:].split(",") if p.strip()]
+        elif stmt.startswith("from ") and " import " in stmt:
+            mods = [stmt[5:].split()[0].split(".")[0]]
+        else:
+            continue
+        for m in mods:
+            if m == "_paths":
+                return ""
+            if m in project:
+                return f"imports {m} before _paths"
+    return ""
+
+
+def _dash_c_programs(f):
+    """(line, program) for every -c program a file writes: after a -c and a
+    space in prose, a docstring or a shell line, and, in Python, as the string
+    that follows a "-c" in a list (an f-string's fields read as X)."""
+    text = f.read_text(encoding="utf-8", errors="replace")
+    out = [(text.count("\n", 0, m.start()) + 1, m.group(2)) for m in _DASH_C.finditer(text)]
+    if f.suffix == ".py":
+        for n in ast.walk(ast.parse(text)):
+            if not isinstance(n, ast.List):
+                continue
+            for a, b in zip(n.elts, n.elts[1:]):
+                if not (isinstance(a, ast.Constant) and a.value == "-c"):
+                    continue
+                if isinstance(b, ast.Constant) and isinstance(b.value, str):
+                    out.append((b.lineno, b.value))
+                elif isinstance(b, ast.JoinedStr):
+                    out.append((b.lineno, "".join(v.value if isinstance(v, ast.Constant) else "X"
+                                                  for v in b.values)))
+    return out
+
+
+def _dash_c_problems(root=None):
+    """[sentence] for each -c program in the code, its READMEs and docs, the
+    workflows and the .bat files that imports a module of ours before _paths."""
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    project = _project_modules(base)
+    files = (_paths.code_files("*.py", root=base) + _paths.code_files("*.md", root=base)
+             + sorted((base / ".github" / "workflows").glob("*.y*ml")) + sorted(base.glob("*.bat")))
+    bad = []
+    for f in files:
+        for line, code in _dash_c_programs(f):
+            why = _dash_c_problem(code, project)
+            if why:
+                bad.append(f"{f.relative_to(base).as_posix()}:{line} runs a -c program that {why}")
+    return bad, len(files)
+
+
+@check("files", "a python -c program the code or the docs write imports _paths before any "
+                "module of this project")
+def _dash_c_imports_paths():
+    """A bare -c puts only the working folder on the path. Run from the root
+    that finds a root module today and nothing once the module sits under
+    src/: freeze_term's docstring gave the person a -c program importing
+    snapshot_gencourt to run at the 2 December switch, and stage 4 moves
+    snapshot_gencourt into src/fetch/gc_web/ before then. Importing _paths
+    first puts every code folder on the path, before and after the move."""
+    dash = "-c"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dashc-"))
+    try:
+        _plant(tmp, {
+            "_paths.py": "", "other.py": "",
+            "README.md": (f'python3 {dash} "import other; other.go()"\n'
+                          f'python3 {dash} "import _paths, other as O; O.go()"\n'
+                          f"python3 {dash} 'import json; print(1)'\n"),
+            "src/parse/runs.py": (f'R = [sys.executable, "{dash}", "from other import go; go()"]\n'
+                                  f'S = [sys.executable, "{dash}", f"import sys; '
+                                  f'sys.path.insert(0, {{h!r}}); import _paths; import other"]\n'
+                                  f'G = ["git", "{dash}", "user.name=x"]\n'),
+            "src/parse/README.md": f'Run `python3 {dash} "import json, other"`.\n',
+            ".github/workflows/w.yml": f'run: python {dash} "import other"\n',
+            "publish.bat": f'python3 {dash} "import _paths; import other"\n'})
+        got, _ = _dash_c_problems(tmp)
+        want = ["README.md:1 runs", "src/parse/runs.py:1 runs", "src/parse/README.md:1 runs",
+                ".github/workflows/w.yml:1 runs"]
+        assert len(got) == len(want) and all(any(g.startswith(w) for g in got) for w in want), \
+            f"the reader of -c programs found {got} in a tree made to hold four"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad, n = _dash_c_problems()
+    assert n >= 160, f"only {n} files were read for -c programs"
+    assert not bad, ("these -c programs import a module of ours before _paths, so they find "
+                     "it only while it sits at the root; put `import _paths` first: "
+                     + "; ".join(bad))
+    return "ok", f"{n} files read; every -c program that imports a module of ours imports _paths first"
 
 
 # THE NETWORK LINES, BY FOLDER (src/fetch/README.md). Read from what a file
