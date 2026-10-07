@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.416
+# GRANITE_VERSION: 2026-09-04.417
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43559,6 +43559,91 @@ def _coming_up_scrolls():
     return "ok", ("45 sittings, all inside one named, focusable box, with the "
                   "heading above and next week below; capped at every width, "
                   "dates kept in view, a fade while more follows, padded for the keyboard")
+
+
+@check("frontend", "the home page's Coming up leaves the special study committees to the Calendar and keeps a standing committee's interim study")
+def _coming_up_without_study_committees():
+    """"Study committee meetings should not be in 'Coming up'" (the person,
+    7 October 2026, F1), and the same day which: a special committee a bill
+    set up to study something -- "Committee to Study Siting and Maintenance
+    Rules Regarding Certain Intellectual and Developmental Disability (IDD)
+    and Acquired Brain Disorder (ABD) Community Residences" -- is left off;
+    a standing committee's interim study sessions stay.
+
+    The rail is drawn for a Monday out of rows written here: a statutory
+    committee's meeting as the database copy gives it, a study committee's
+    sitting on a bill as the docket files it, and a standing committee's
+    work session on a bill held for interim study, this week and next. The
+    rail holds the standing committee alone and counts next week's sittings
+    without the study committees; a week of study committees alone is an
+    empty week on the rail; and the Calendar's own week still holds them all.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_pages as BP
+    import build_calendar as BC
+    monday = _dt.date(2026, 9, 21)
+
+    def study(d, name):
+        return {"study": True, "bill": "", "kind": "study committee", "date": d,
+                "time": "10:00", "committee": name, "venue": "LOB 205",
+                "body": "", "term": "", "note": "Regular meeting."}
+
+    def docket_study(d, bill):
+        return {"term": "2025-2026", "bill": bill, "body": "H", "kind": "study committee",
+                "date": d, "time": "", "committee": f"Committee to Study {bill}", "venue": ""}
+
+    def interim(d, bill):
+        return {"term": "2025-2026", "bill": bill, "body": "H",
+                "kind": "full committee work session", "date": d, "time": "10:00",
+                "committee": "Education Funding", "venue": "GP 232"}
+
+    long_name = ("Committee to Study Siting and Maintenance Rules Regarding Certain "
+                 "Intellectual and Developmental Disability (IDD) and Acquired Brain "
+                 "Disorder (ABD) Community Residences")
+    rows = [study("2026-09-23", long_name), docket_study("2026-09-24", "HB1099"),
+            interim("2026-09-23", "HB1288"),
+            # Next week: one standing sitting and two study committees.
+            interim("2026-09-29", "HB1579"), study("2026-09-30", long_name),
+            study("2026-10-01", "Commission on Aging")]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-comingup-study-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=monday, rows=rows)
+        assert "Committee to Study" not in page and 'data-who="study"' not in page \
+            and "Commission on Aging" not in page, (
+                "Coming up still draws a special study or statutory committee: "
+                + ", ".join(re.findall(r'class="calcmte">([^<]*)<', page)))
+        cards = re.findall(r'<details class="calmeet"[^>]*? data-cmte="([^"]*)"', page)
+        assert cards == ["house education funding"], (
+            f"Coming up's cards are {cards}: a standing committee's interim study "
+            "session belongs on it")
+        line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
+        assert line and line.group(1).startswith("1 more sitting next week"), (
+            "the line under Coming up counts next week's study committees: "
+            + (line.group(1) if line else "no line"))
+        # A WEEK OF STUDY COMMITTEES ALONE is a week with nothing on the rail.
+        with contextlib.redirect_stdout(io.StringIO()):
+            empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
+                                                              or r["kind"] == "study committee"])
+        assert "calday" not in empty and "rest of this week" in empty \
+            and "Nothing is on the calendar for next week" in empty, (
+                "a week of study committees alone still draws a day in Coming up: "
+                + empty[:300])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    # They stay on the Calendar: the week it draws holds all three of this week's.
+    week = BC.weeks_from(rows, names={}).get(BC.week_key(monday)) or {}
+    held = sorted(BP.meeting_who(k.name, rs) for day in week.values() for k, rs in day.items())
+    assert held == ["standing", "study", "study"], (
+        f"the Calendar's week holds {held}: the study committees left Coming up only")
+    assert BP.home_week(week) and all(
+        BP.meeting_who(k.name, rs) != "study" for day in BP.home_week(week).values()
+        for k, rs in day.items()), "home_week keeps a study committee"
+    return "ok", ("a statutory committee and a docket's study committee off the rail, a "
+                  "standing committee's interim study on it, next week counted without them, "
+                  "and all three still on the Calendar's week")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.142
+# GRANITE_VERSION: 2026-09-04.143
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -613,6 +613,27 @@ def committee_codes(site):
 # one, HOME_JS's _meetline, and the clock block that counted the days off
 # the total. meeting_key() stays: the calendar groups by it.
 
+def home_week(week):
+    """A week's days as the home page's Coming up holds them: without the
+    special study and statutory committees.
+
+    "Study committee meetings should not be in 'Coming up'" (the person, 7
+    October 2026, F1), and later the same day which ones: a special committee
+    set up by a bill to study something -- "Committee to Study Siting and
+    Maintenance Rules Regarding Certain Intellectual and Developmental
+    Disability (IDD) and Acquired Brain Disorder (ABD) Community Residences" --
+    is left off, while a standing committee's interim study sessions stay,
+    because those are the chamber's own committees at work on its own bills.
+    meeting_who already draws that line for the Calendar page's filters, so
+    the rail asks it rather than drawing a second one. They stay on the
+    Calendar, where the Study Committee filter shows them.
+    """
+    from collections import OrderedDict
+    return {d: OrderedDict((k, rs) for k, rs in day.items()
+                           if meeting_who(k.name, rs) != "study")
+            for d, day in (week or {}).items()}
+
+
 def calendar_html(out, today=None, rows=None):
     """What is left of this week, by day and then by meeting.
 
@@ -646,11 +667,11 @@ def calendar_html(out, today=None, rows=None):
     today = today or build_date.today()
     weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
     sunday = BC.monday(today) + _dt.timedelta(days=6)
-    week = weeks.get(BC.week_key(today)) or {}
+    week = home_week(weeks.get(BC.week_key(today)))
     dates = sorted(d for d in week
                    if today.isoformat() <= d <= sunday.isoformat() and week[d])
     nxt = BC.week_key(sunday + _dt.timedelta(days=1))
-    n_next = sum(len(v) for v in (weeks.get(nxt) or {}).values())
+    n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
