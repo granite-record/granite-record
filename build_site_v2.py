@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.165
+# GRANITE_VERSION: 2026-09-05.166
 """
 Generate the faceted site from real General Court data.
 
@@ -2474,7 +2474,7 @@ def withhold_late_captions(segs, marks, work, summary=caption_span.SUMMARY):
             f"{len(vids):,} recordings with times, and {len(unknown):,} have "
             f"neither an entry there nor a caption file under {work}/. That is "
             "the wrong summary or an empty one. Rewrite it where the captions "
-            "are: python3 caption_span.py --write")
+            "are: python3 src/hearings/caption_span.py --write")
 
     def read_off(vs):
         return (sum(len(c) for v in vs for c in (marks.get(v) or {}).values()),

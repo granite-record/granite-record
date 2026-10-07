@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.404
+# GRANITE_VERSION: 2026-09-04.405
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -59417,7 +59417,7 @@ def _caption_summary_data():
     fetched again -- the nightly withholds or publishes differently from the
     laptop, and nothing there could tell. So where both are on one disk they
     must agree recording by recording and name the same recordings late.
-    `python3 caption_span.py --write` brings it up to date, and so does any
+    `python3 src/hearings/caption_span.py --write` brings it up to date, and so does any
     build, whose markers step writes it.
     """
     try:
@@ -59434,7 +59434,7 @@ def _caption_summary_data():
         f"{CS.SUMMARY} disagrees with the captions under work/ in {len(bad):,} "
         "place(s), e.g. " + "; ".join(f"{v} {w}"[:120] for v, w in bad[:2])
         + ". The nightly would check something other than what is here: "
-          "python3 caption_span.py --write")
+          "python3 src/hearings/caption_span.py --write")
     return "ok", (f"{len(CS.load_summary() or {}):,} recordings summarised, each "
                   "agreeing with its caption files, and the same ones late "
                   "read either way")

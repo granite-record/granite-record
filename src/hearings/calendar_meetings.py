@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.13
+# GRANITE_VERSION: 2026-09-08.14
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
-    python3 calendar_meetings.py --check          # parse and score, write nothing
-    python3 calendar_meetings.py --check --term 2009-2010
+    python3 src/hearings/calendar_meetings.py --check          # parse and score, write nothing
+    python3 src/hearings/calendar_meetings.py --check --term 2009-2010
                                                   # one term against its own docket
-    python3 calendar_meetings.py --show 2         # print two files' meetings
-    python3 calendar_meetings.py --out meetings.json
+    python3 src/hearings/calendar_meetings.py --show 2         # print two files' meetings
+    python3 src/hearings/calendar_meetings.py --out meetings.json
 
 No network. Reads calendars/ and calendars_senate/ only.
 
