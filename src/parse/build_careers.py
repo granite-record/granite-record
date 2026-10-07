@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.3
+# GRANITE_VERSION: 2026-09-09.4
 """
 One record per person, across every term they served.
 
     python3 src/parse/build_careers.py            # writes careers.json
     python3 src/parse/build_careers.py --check    # report only, writes nothing
 
-No network. Reads db/Legislators.psv and db/RollCallHistory.psv, both already
-on this disk.
+No network. Reads db/Legislators.psv, db/RollCallHistory.psv and
+db/RollCallSummary.psv (the day each roll call was taken), all on this disk.
 
 WHY A PERSON IS NOT AN EMPLOYEE NUMBER
 
@@ -62,6 +62,8 @@ import argparse
 import collections
 import json
 
+import proceedings as P
+
 DB = Path("db")
 OUT = Path("careers.json")
 
@@ -92,7 +94,34 @@ def main():
     a = ap.parse_args()
 
     C = columns()
-    lc, rc = C["Legislators"], C["RollCallHistory"]
+    lc, rc, sc = C["Legislators"], C["RollCallHistory"], C["RollCallSummary"]
+
+    # ---- the day each roll call was taken --------------------------------
+    # A BALLOT CARRIES NO DATE, AND ITS SESSION YEAR IS NOT ITS TERM (7 October
+    # 2026). Organization Day -- 2 December 2026 next -- is the next General
+    # Court's (proceedings.vote_term), and a roll call of that day filed under
+    # 2026 would have put every member of the next House in 2025-2026. The
+    # roll call's own VoteDate decides, as it does everywhere else a term is
+    # asked of a vote. A ballot is that vote's by (year, chamber, number), so
+    # the key must name one vote: were December's numbered from 1 again under
+    # 2026, (2026, H, 1) would be January's call of the roll and December's
+    # first vote at once, and its ballots could not say which. That stops the
+    # build, naming the keys, rather than filing them under either.
+    taken, clash = {}, {}
+    iy_s, ib_s, iv_s, id_s = (sc.index("SessionYear"), sc.index("LegislativeBody"),
+                              sc.index("VoteSequenceNumber"), sc.index("VoteDate"))
+    for f in rows("RollCallSummary", sc):
+        k = (f[iy_s].strip(), f[ib_s].strip(), f[iv_s].strip())
+        d = f[id_s].strip()
+        if k in taken and P.vote_term(k[0], taken[k]) != P.vote_term(k[0], d):
+            clash.setdefault(k, {taken[k]}).add(d)
+        taken.setdefault(k, d)
+    if clash:
+        raise SystemExit(
+            f"{len(clash)} roll call key(s) name votes of two terms, so their ballots "
+            "cannot say which they are: " + "; ".join(
+                f"{y} {b} {n} ({', '.join(sorted(ds))})" for (y, b, n), ds in sorted(clash.items())[:6])
+            + ". Join the ballots by something that tells them apart before building careers.json.")
 
     # ---- who each number is, where the roster knows ----------------------
     who = {}
@@ -113,13 +142,17 @@ def main():
     years = collections.defaultdict(set)
     votes = collections.Counter()
     chambers = collections.defaultdict(set)
-    ie, iy, ib = (rc.index("EmployeeNumber"), rc.index("SessionYear"),
-                  rc.index("LegislativeBody"))
+    ie, iy, ib, iv = (rc.index("EmployeeNumber"), rc.index("SessionYear"),
+                      rc.index("LegislativeBody"), rc.index("VoteSequenceNumber"))
     for f in rows("RollCallHistory", rc):
         emp = f[ie].strip()
         if not emp:
             continue
-        years[emp].add(int(f[iy]))
+        # The year of the term the vote belongs to: its session year, or the
+        # next term's first where it was taken on or after Organization Day.
+        year = f[iy].strip()
+        t = P.vote_term(year, taken.get((year, f[ib].strip(), f[iv].strip()), ""))
+        years[emp].add(int(year) if t == term_of(year) else int(t[:4]))
         votes[emp] += 1
         b = f[ib].strip()
         if b:

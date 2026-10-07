@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.426
+# GRANITE_VERSION: 2026-09-04.427
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27256,7 +27256,14 @@ def _organization_day_votes(P, BD, SD, BSP):
     its ballots tallied with that term's members and linked to its bills. No
     roll call file holds one yet (0 of 9,565), so this holds the rule on a
     fixture: proceedings.vote_term, rollcall_parser's terms, the frozen term's
-    files, and a sitting page drawn for a vote on no bill."""
+    files, and a sitting page drawn for a vote on no bill.
+
+    AND careers.json (7 October 2026): build_careers credited a ballot to
+    its session year, so a member whose first vote was the Speaker's election
+    of 2 December 2026, filed under 2026, would have served in 2025-2026. It
+    reads the roll call's VoteDate now, and stops on a (year, chamber, number)
+    that names votes of two terms -- December's numbered from 1 again under
+    2026 -- whose ballots could not say which vote they are."""
     import datetime as _dt
     import html as _html
     bad = []
@@ -27339,6 +27346,49 @@ def _organization_day_votes(P, BD, SD, BSP):
                 bad.append(f"Organization Day's roll call is in 2025-2026's record of {name}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    # careers.json, from the database's roll calls: the day's ballot is the
+    # next term's service, and a key that names two terms' votes stops it.
+    careers_cols = {
+        "Legislators": ["Employeeno", "FirstName", "LastName", "party", "LegislativeBody",
+                        "countycode", "PersonID"],
+        "RollCallHistory": ["EmployeeNumber", "SessionYear", "LegislativeBody",
+                            "VoteSequenceNumber", "CondensedBillNo", "Vote", "UserName",
+                            "DateModified", "CalendarItemID"],
+        "RollCallSummary": ["SessionYear", "LegislativeBody", "VoteSequenceNumber", "VoteDate",
+                            "CondensedBillNo", "Yeas", "Nays", "Present", "Absent",
+                            "AbbreviatedTitle1", "AbbreviatedTitle2", "Question_Motion", "Title1",
+                            "Title2", "UserName", "DateModified", "Verified", "CalendarItemID"]}
+    summary_rows = ["2026|H|300|08/19/2026 14:58:41|SB434|165|140|0|95|||Override|||x|x|True|",
+                    "2026|H|400|12/02/2026 10:31:07||210|180|0|10|||Election of Speaker|||x|x|True|"]
+    for clashing in (False, True):
+        tmp = Path(tempfile.mkdtemp(prefix="gr-orgday-careers-"))
+        try:
+            (tmp / "db").mkdir()
+            (tmp / "db" / "_columns.json").write_text(json.dumps(careers_cols), encoding="utf-8")
+            (tmp / "db" / "Legislators.psv").write_text(
+                "111111|Pat|Old|R|H|06|1\n222222|Sam|New|D|H|06|2\n", encoding="utf-8")
+            (tmp / "db" / "RollCallSummary.psv").write_text("\n".join(summary_rows + (
+                ["2026|H|1|01/07/2026 10:15:33||321|2|34|38|||Call of the Roll|||x|x|True|",
+                 "2026|H|1|12/02/2026 10:05:00||390|0|0|10|||Call of the Roll|||x|x|True|"]
+                if clashing else [])) + "\n", encoding="utf-8")
+            (tmp / "db" / "RollCallHistory.psv").write_text(
+                "111111|2026|H|300|SB434|1|x|x|\n111111|2026|H|400||1|x|x|\n"
+                "222222|2026|H|400||1|x|x|\n", encoding="utf-8")
+            r = _run([sys.executable, _paths.script("build_careers.py"), "--out", "careers.json"],
+                     cwd=str(tmp), capture_output=True, text=True, timeout=120)
+            said = (r.stdout or "") + (r.stderr or "")
+            if clashing:
+                if r.returncode == 0 or "2026 H 1" not in said:
+                    bad.append("build_careers built careers.json over two terms' votes under one key "
+                               f"(2026 H 1): exit {r.returncode}, {said.strip()[-200:]!r}")
+            else:
+                got = json.loads((tmp / "careers.json").read_text(encoding="utf-8")) \
+                    if (tmp / "careers.json").exists() else {}
+                terms = {k: v.get("terms") for k, v in got.items()}
+                if terms != {"111111": ["2025-2026", "2027-2028"], "222222": ["2027-2028"]}:
+                    bad.append(f"careers.json gives the terms {terms} ({said.strip()[-200:]!r})")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     # A sitting of the day, for the next term's resolution and a vote on no bill.
     narr = {"2027-2028": {"HR1": [{"type": "floor", "date": "2026-12-02", "body": "H",
                                    "raw": "Ought to Pass: MA VV 12/02/2026  HJ 1",
@@ -27365,7 +27415,8 @@ def _organization_day_votes(P, BD, SD, BSP):
     assert not bad, "\n".join(bad)
     return "ok", ("Organization Day's roll calls are the next term's, filed under either year: "
                   "kept beside the frozen term's files and out of its record, keyed 2027-2028 "
-                  "in rollcalls.json, and drawn with a vote on no bill on the day's sitting")
+                  "in rollcalls.json and careers.json, and drawn with a vote on no bill on the "
+                  "day's sitting; a key naming two terms' votes stops careers.json")
 
 
 @check("session", "a veto override the other chamber carried too says the bill became law, on "
