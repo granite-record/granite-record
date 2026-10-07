@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -684,8 +684,10 @@ def embed_check(url, timeout=120):
     ASP.NET handlers do -- one GET is made and abandoned after a kilobyte.
     """
     print(f"asking about {url}\n")
+    drops = 0
 
     def ask(u, method):
+        nonlocal drops
         t0 = time.time()
         req = urllib.request.Request(u, headers=UA, method=method)
         try:
@@ -693,10 +695,17 @@ def embed_check(url, timeout=120):
                 body = b"" if method == "HEAD" else r.read(2048)
                 got = r.status, r.headers, body, time.time() - t0
         except Exception as e:
-            # A refusal is recorded and ends the check; anything else is the
-            # failure the callers below explain.
-            if refusal.classify(e) == "refused":
+            # A refusal is recorded and ends the check, and so does a second
+            # dropped connection, as every fetcher reads them: the callers
+            # below go on to the next of their three requests after a failure,
+            # and went on after two dropped ones, recording nothing. Anything
+            # else is the failure they explain.
+            kind = refusal.classify(e)
+            if kind == "refused":
                 stop(f"{type(e).__name__}: {e} on {u}")
+            drops += kind == "dropped"
+            if drops >= 2:
+                stop(f"two dropped connections, the last {type(e).__name__}: {e} on {u}")
             raise
         if refusal.classify(body=body.decode("utf-8", "replace")) == "refused":
             stop(f"the firewall's block page, with a 200, on {u}")

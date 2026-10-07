@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.400
+# GRANITE_VERSION: 2026-09-04.401
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43791,6 +43791,20 @@ def _every_fetcher_notes_refusal():
     them raises. refusal.MARK is the temp folder's, so no refusal is written
     here and none is sent to the bucket (refusal._governing reads the folder
     beside MARK).
+
+    EVERY PATH THAT NOTES, NOT ONLY THE FIRST REQUEST (the review of 7
+    October 2026). Driven at its first request alone, fetch_schedule's event
+    pages and fetch_committee_reports' calendar PDFs -- the loops that make
+    nearly all their requests -- could lose their note() and pass, and
+    check_civics_links and fetch_bill_text's --embed-check each went on past
+    a second dropped connection. So a script's later loop is driven too, its
+    first requests answered with a page that leads there (`served`), and so
+    are the one-request modes that note (--bill, --probe, --embed-check).
+
+    AND NOTHING IT DID NOT MEET. Answered 404 everywhere, no script may
+    record a refusal; nor may one that stops at its first failure record a
+    single dropped connection, which is not one; nor check_civics_links a 403
+    from nh.gov, which is that server's.
     """
     import contextlib
     import http.client
@@ -43899,8 +43913,10 @@ def _every_fetcher_notes_refusal():
             "data/legislators.json": [], "RollCallHistory.txt": "2026|H|1|99||x|Yea|x\n",
             "RollCallSummary.txt": "2026|H|1|x|HB1\n", "Docket.txt": "x|0123|x|HB1|x\n"}),
             {"403": 1, "block": 1, "drop": 2}),
-        # HEAD then GET for a dropped connection, so two links ask four times.
-        "check_civics_links": (["--delay", "0"], None, {"403": 1, "drop": 4}),
+        # A HEAD that drops is asked again as a GET, and the two are the two
+        # dropped connections that end it, on its first link. (A HEAD answered
+        # with the block page has no page to read; a GET's is read.)
+        "check_civics_links": (["--delay", "0"], None, {"403": 1, "drop": 2}),
         "probe_archive_shape": (["--delay", "0"], files(**{"archive_sample_ids.json": {
             "2016": [{"bill": "HB1", "lsr": "1"}, {"bill": "HB2", "lsr": "2"}]}}),
             {"403": 1, "block": 1, "drop": 2}),
@@ -43909,7 +43925,7 @@ def _every_fetcher_notes_refusal():
     }
 
     class Page:
-        """An answer with a 200: the block page."""
+        """An answer with a 200: the block page, or a page served first."""
         def __init__(self, body):
             self.body, self.status, self.headers = body.encode(), 200, http.client.HTTPMessage()
 
@@ -43925,9 +43941,9 @@ def _every_fetcher_notes_refusal():
             return False
 
     def answer(how, url):
-        if how == "403":
-            raise urllib.error.HTTPError(url, 403, "Forbidden", http.client.HTTPMessage(),
-                                         io.BytesIO(b""))
+        if how in ("403", "404"):
+            raise urllib.error.HTTPError(url, int(how), "Forbidden" if how == "403" else "Not Found",
+                                         http.client.HTTPMessage(), io.BytesIO(b""))
         if how == "drop":
             raise http.client.RemoteDisconnected("Remote end closed connection without response")
         return Page(_BLOCK_PAGE)
@@ -43940,24 +43956,62 @@ def _every_fetcher_notes_refusal():
              socket.socket.connect, _time.sleep, refusal.MARK, refusal.LOCK, sys.argv)
     present = {n: v for n, v in drives.items() if _paths.locate(f"{n}.py").exists()}
     mods = {n: importlib.import_module(n) for n in present}
-    wrong, runs = [], 0
+    # Each drive: (script, which path, arguments, fixture, {answer: requests made
+    # before it stops}, pages served before the answer, the links
+    # check_civics_links is given). The first requests first, then the later
+    # loops and the one-request modes that note too.
+    plan = [(n, "", argv, fx, hows, (), None) for n, (argv, fx, hows) in present.items()]
+    if "fetch_schedule" in present:
+        # The schedule's list of events, answered, leads to the event pages.
+        listing = json.dumps({"d": [{"title": f"HOUSE EDUCATION : GP 23{k}",
+                                     "url": f"eventDetails.aspx?event={k}",
+                                     "start": "2026-01-13T10:00:00"} for k in (1, 2)]})
+        plan.append(("fetch_schedule", "its event pages", [], None,
+                     {"403": 2, "block": 2, "drop": 3}, (listing,), None))
+    if "fetch_committee_reports" in present:
+        # The calendar list, answered with two of the year's, leads to the PDFs.
+        index = (f'<select name="{mods["fetch_committee_reports"].SEL_DOC}">'
+                 '<option value="HC1.pdf">No 1 January 2 2026</option>'
+                 '<option value="HC2.pdf">No 2 January 9 2026</option></select>')
+        plan.append(("fetch_committee_reports", "its calendar PDFs", ["--year", "2026"], None,
+                     {"403": 2, "block": 2, "drop": 3}, (index,), None))
+    for name, what, argv, hows in (
+            ("fetch_bill_status", "--bill", ["--bill", "HB1"], {"403": 1, "block": 1}),
+            ("fetch_bill_text", "--probe", ["--probe", "HB1"], {"403": 1, "block": 1}),
+            ("fetch_bill_text", "--embed-check", ["--embed-check", "--probe", "HB1"],
+             {"403": 1, "block": 1, "drop": 2}),
+            ("fetch_members", "--probe", ["--probe", "1"], {"403": 1, "block": 1}),
+            ("fetch_session", "--probe", ["--year", "2020", "--probe"], {"403": 1, "block": 1})):
+        if name in present:
+            plan.append((name, what, argv, present[name][1], hows, (), None))
+    nh_links = [("a", "https://www.nh.gov/a", "s"), ("b", "https://www.nh.gov/b", "s")]
+    if "check_civics_links" in present:
+        # nh.gov's refusals are that server's: nothing to record, only quiet answers.
+        plan.append(("check_civics_links", "nh.gov's links", ["--delay", "0"], None, {}, (),
+                     nh_links))
+    wrong, runs, quiet_runs = [], 0, 0
     try:
         socket.create_connection, socket.socket.connect = no_socket, no_socket
         _time.sleep = lambda s: None
-        for name, (argv, fixture, hows) in present.items():
+        for name, what, argv, fixture, hows, served, links in plan:
             M = mods[name]
-            for how, want in hows.items():
+            # What must NOT be recorded: a 404 everywhere; one dropped
+            # connection, where the run stops at its first failure; and for
+            # nh.gov's links, a 403 or two dropped connections too.
+            quiet = ["404"] + ([] if "drop" in hows else ["drop"]) + (["403"] if links else [])
+            for how, want in [*hows.items(), *((q, None) for q in quiet)]:
                 tmp = Path(tempfile.mkdtemp(prefix=f"gr-note-{name}-"))
                 asked = []
 
                 def fake_open(req, *a, **k):
                     url = getattr(req, "full_url", req)
                     asked.append(url)
+                    if len(asked) <= len(served):
+                        return Page(served[len(asked) - 1])
                     return answer(how, url)
 
                 def fake_retrieve(url, filename=None, *a, **k):
-                    asked.append(url)
-                    page = answer(how, url)
+                    page = fake_open(url)
                     Path(filename).write_bytes(page.read())
                     return filename, page.headers
                 try:
@@ -43971,7 +44025,8 @@ def _every_fetcher_notes_refusal():
                     if hasattr(M, "_OPENER"):
                         patched["_OPENER"] = types.SimpleNamespace(open=fake_open)
                     if name == "check_civics_links":
-                        patched["links"] = lambda: list(gc_links)
+                        given = list(links or gc_links)
+                        patched["links"] = lambda: list(given)
                     old = {k: getattr(M, k) for k in patched}
                     for k, v in patched.items():
                         setattr(M, k, v)
@@ -43982,14 +44037,28 @@ def _every_fetcher_notes_refusal():
                             rc = M.main()
                     except SystemExit as e:
                         rc = e.code
+                    except Exception as e:                      # noqa: BLE001
+                        # A run a failure ends by raising: that is its status.
+                        rc = f"{type(e).__name__}: {e}"[:80]
                     finally:
                         for k, v in old.items():
                             setattr(M, k, v)
                     runs += 1
                     noted = refusal.MARK.exists()
-                    if not (rc == 2 and noted and len(asked) == want):
-                        wrong.append(f"{name} on {'two dropped connections' if how == 'drop' else how}: "
-                                     f"exit {rc!r}, {len(asked)} request(s) where {want} stop it, "
+                    said = {"403": "a 403", "404": "a 404 everywhere", "block": "the block page",
+                            "drop": ("two dropped connections" if want is not None
+                                     else "a dropped connection")}[how]
+                    if links and how in ("403", "drop"):
+                        said = f"nh.gov's {'403s' if how == '403' else 'dropped connections'}"
+                    label = f"{name}{f' ({what})' if what else ''} on {said}"
+                    if want is None:
+                        quiet_runs += 1
+                        if noted:
+                            wrong.append(f"{label}: RECORDED A REFUSAL IT DID NOT MEET "
+                                         f"-- {out.getvalue().strip()[-160:]!r}")
+                    elif not (rc == 2 and noted and len(asked) == want):
+                        wrong.append(f"{label}: exit {rc!r}, {len(asked)} request(s) where "
+                                     f"{want} stop it, "
                                      f"{'refusal recorded' if noted else 'NO REFUSAL RECORDED'} "
                                      f"-- {out.getvalue().strip()[-160:]!r}")
                 finally:
@@ -44000,11 +44069,13 @@ def _every_fetcher_notes_refusal():
         os.chdir(here)
         (urllib.request.urlopen, urllib.request.urlretrieve, socket.create_connection,
          socket.socket.connect, _time.sleep, refusal.MARK, refusal.LOCK, sys.argv) = saved
-    assert not wrong, ("a fetcher did not record a refusal it met and stop:\n    "
-                       + "\n    ".join(wrong))
+    assert not wrong, ("a fetcher did not record a refusal it met and stop, or recorded one "
+                       "it did not meet:\n    " + "\n    ".join(wrong))
     return "ok", (f"all {len(checkers)} scripts that call refusal.check() call refusal.note(); "
-                  f"{len(present)} driven on a 403, the block page and dropped connections "
-                  f"({runs} runs) record it and stop after the request that met it")
+                  f"{len(present)} driven down {len(plan)} paths on a 403, the block page and "
+                  f"dropped connections ({runs - quiet_runs} runs) record it and stop after the "
+                  f"request that met it, and record nothing on a 404, a single dropped "
+                  f"connection or nh.gov's 403 ({quiet_runs} runs)")
 
 
 @check("build", "a fetcher's offline mode is not stopped by a refusal or by GitHub's night, "
