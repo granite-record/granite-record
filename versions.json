@@ -98,7 +98,7 @@
     "freeze_term.py": "2026-10-05.6",
     "functions/api/report.js": "2026-09-12.6",
     "gc_changes.py": "2026-09-12.8",
-    "ground_truth.py": "2026-09-05.2",
+    "ground_truth.py": "2026-09-05.3",
     "handoff.py": "2026-09-05.14",
     "inventory.py": "2026-09-04.6",
     "journal_bills.py": "2026-09-30.5",
@@ -168,7 +168,7 @@
     "unh_rollcalls.py": "2026-09-19.7",
     "unh_roster.py": "2026-09-19.4",
     "unh_survey.py": "2026-09-18.4",
-    "verify_batch.py": "2026-09-04.5",
+    "verify_batch.py": "2026-09-04.6",
     "wrangler.toml": "2026-09-12.2",
     "bill_blocks.py": "2026-09-20.6",
     "_paths.py": "2026-10-06.3"

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Check alignment across every video processed, without needing hand-marked times.
 
-    python3 verify_batch.py --work work --manifest verification_manifest.csv
-    python3 verify_batch.py --sample 20        # draw spot-checks to eyeball
+    python3 src/hearings/verify_batch.py --work work --manifest verification_manifest.csv
+    python3 src/hearings/verify_batch.py --sample 20        # draw spot-checks to eyeball
 
 Two kinds of checking, because at this scale you cannot verify everything.
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.2
+# GRANITE_VERSION: 2026-09-05.3
 """
 The hand-marked proceedings, in a file that no generator writes.
 
-    python3 ground_truth.py --extract      # once: pull the marks out of the manifest
-    python3 ground_truth.py --check        # does the manifest still agree with them
-    python3 ground_truth.py                # show them
+    python3 src/hearings/ground_truth.py --extract      # once: pull the marks out of the manifest
+    python3 src/hearings/ground_truth.py --check        # does the manifest still agree with them
+    python3 src/hearings/ground_truth.py                # show them
 
 ground_truth.csv is the only measurement of this system that a person made:
 35 proceedings timed by watching the video. Every timestamp method is scored
@@ -171,7 +171,7 @@ def main():
 
     rows = read_truth()
     if not rows:
-        print(f"{TRUTH} does not exist yet. Run: python3 ground_truth.py --extract")
+        print(f"{TRUTH} does not exist yet. Run: python3 src/hearings/ground_truth.py --extract")
         return
     print(f"{len(rows)} proceedings a person timed by hand, in {TRUTH}\n")
     for r in rows:
