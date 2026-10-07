@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.424
+# GRANITE_VERSION: 2026-09-04.425
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -58259,6 +58259,47 @@ def _wf_value(lines, key):
     return first
 
 
+def _wf_dry_run_sets(text):
+    """Every place a workflow sets DRY_RUN, as one list: the top-level env's
+    line where that is the only one; otherwise each place, named.
+
+    THE REVIEW OF 7 OCTOBER 2026. The checks read a setting only in block
+    style, "DRY_RUN:" at the start of a line, and a job's flow-style env --
+    env: {DRY_RUN: "false"} -- which GitHub lets override the workflow's for
+    every step of the job and for env.DRY_RUN in their ifs, passed all three
+    of them. So a key named DRY_RUN is found wherever it is and however it is
+    written: in any mapping of the parsed file (PyYAML, where installed), and
+    in any line that is not a comment, block or flow style, quoted or not;
+    and so is a script's assignment of it ("DRY_RUN=..." for GITHUB_ENV, or
+    $env:DRY_RUN = ...), which would change it for the steps after."""
+    lines = _wf_code(text.splitlines())
+    keys = [ln.strip() for ln in lines
+            if re.search(r"""(?<![\w$.:-])["']?DRY_RUN["']?\s*:(?!:)""", ln)]
+    sets = [ln.strip() for ln in lines if re.search(r"""DRY_RUN["']?\s*=(?!=)""", ln)]
+    try:
+        import yaml
+    except ImportError:
+        yaml = None
+    where = []
+    if yaml is not None:
+        def walk(node, path):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    if k == "DRY_RUN":
+                        where.append("/".join(path + ["DRY_RUN"]))
+                    walk(v, path + [str(k)])
+            elif isinstance(node, list):
+                for i, v in enumerate(node):
+                    walk(v, path + [str(i)])
+        walk(yaml.safe_load(text), [])
+    top = [ln for ln in _wf_block(text.splitlines(), "env") if re.match(r"^  DRY_RUN:", ln)]
+    if len(keys) == 1 and not sets and where in ([], ["env/DRY_RUN"]) and \
+            [ln.strip() for ln in top] == keys:
+        return keys
+    return keys + [f"sets it in a script: {s}" for s in sets] + \
+        [f"parsed at {w}" for w in where if w != "env/DRY_RUN"]
+
+
 def _wf_run_ctx(event, ref, boxes):
     return {"github.event_name": event, "github.ref": ref,
             **{f"inputs.{k}": v for k, v in boxes.items()}}
@@ -58375,9 +58416,9 @@ def _workflows_dry_run(NI, CL):
     assert DRY_RUN_ENV in _wf_block(lines, "env"), (
         "nightly.yml does not set DRY_RUN in its top-level env from the Dry run box on a run by "
         "hand, and from the ref on a run of any branch but main")
-    sets = [ln.strip() for ln in code if re.match(r"^\s*DRY_RUN\s*:", ln)]
+    sets = _wf_dry_run_sets(text)
     assert sets == [DRY_RUN_ENV.strip()], \
-        f"nightly.yml sets DRY_RUN more than once, and a step's own would hide the run's: {sets}"
+        f"nightly.yml sets DRY_RUN more than once, and a job's or step's own would hide the run's: {sets}"
     assert NI.DRY_ENV == CL.DRY_ENV == "DRY_RUN", (NI.DRY_ENV, CL.DRY_ENV)
     assert NI.REF_ENV == CL.REF_ENV == "GITHUB_REF" and NI.MAIN_REF == CL.MAIN_REF == MAIN_REF \
         and NI.MAIN_REF == f"refs/heads/{NI.REPO_BRANCH}", (NI.REF_ENV, CL.REF_ENV, NI.MAIN_REF,
@@ -58515,9 +58556,9 @@ def _workflows_weekly_dry_run(NI, CL):
     assert WEEKLY_DRY_RUN_ENV in _wf_block(lines, "env"), (
         "weekly.yml does not set DRY_RUN in its top-level env from the ref, so a run of it on a "
         "branch other than main keeps what it fetched")
-    sets = [ln.strip() for ln in code if re.match(r"^\s*DRY_RUN\s*:", ln)]
+    sets = _wf_dry_run_sets(text)
     assert sets == [WEEKLY_DRY_RUN_ENV.strip()], \
-        f"weekly.yml sets DRY_RUN more than once, and a step's own would hide the run's: {sets}"
+        f"weekly.yml sets DRY_RUN more than once, and a job's or step's own would hide the run's: {sets}"
     body = "\n".join(code)
     assert "cloud.py site-up" not in body and "--deploy-to" not in body, \
         "weekly.yml publishes something, which it never did"
@@ -58594,6 +58635,11 @@ def _workflows_healthchecks():
         lines = files[name].read_text(encoding="utf-8").splitlines()
         dry_line = _wf_value(lines, "DRY_RUN")
         assert dry_line, f"{name} sets no DRY_RUN in its top-level env, so no step can tell a dry run"
+        # ... and nowhere else: a job's or step's own, in any style, would be
+        # what these steps' ifs read, not the line evaluated below.
+        sets = _wf_dry_run_sets("\n".join(lines))
+        assert len(sets) == 1, \
+            f"{name} sets DRY_RUN outside its top-level env, which its pings would read: {sets}"
         pings = []
         for jl in _wf_jobs("\n".join(lines)).values():
             for st in _wf_steps(_wf_code(jl)):
