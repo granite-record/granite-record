@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.382
+# GRANITE_VERSION: 2026-09-04.383
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56164,9 +56164,12 @@ HOUSE_COUNT_NOT_THE_JOURNALS = {
                    "the docket 30 March; no journal of a 31 March sitting is read"),
     "2006-02-15": (16, 11, "five roll calls the roll-call file dates 16 February and "
                    "the docket 15 February, citing House Journal 19a"),
-    "2011-11-30": (6, 10, "the four veto votes of the morning of 4 January 2012, in "
+    # Five since decision 59h dated SB 57's House override, "Veto Overriden: RC
+    # 248-123 ..., [done during 1/4/2012 morning veto session]", by its own
+    # words and roll call 270 rather than the 30 November it was entered.
+    "2011-11-30": (5, 10, "the five veto votes of the morning of 4 January 2012, in "
                    "this sitting's recess, are drawn on 4 January"),
-    "2012-01-04": (14, 10, _RECESS + " (30 November 2011)"),
+    "2012-01-04": (15, 10, _RECESS + " (30 November 2011)"),
     "2014-01-08": (18, 15, _RECESS + " (26 June 2013)"),
     "2022-01-05": (20, 14, _RECESS + " (24 June 2021)"),
     "2019-09-19": (8, 6, "HB 226's and HB 315's veto votes: the docket says 19 "
@@ -65739,6 +65742,14 @@ def _introductions_against_journal(J, BD):
             or (e.get("notice") and e.get("overtaken") in ("cancelled", "moved")
                 and e.get("date") == r["date"]
                 and "A later row of the docket" in (e.get("row_note") or ""))
+            # A meeting the docket cancels on most of its bills and the
+            # calendars stopped printing, for a bill whose own notice of it
+            # carries no mark (decision 58: HB 571 and HB 634 of 2015, SB 92
+            # of 2013, on 29 October).
+            or (e.get("notice") and e.get("overtaken") == "cancelled"
+                and e.get("date") == r["date"]
+                and "The docket cancels this meeting for most of the bills it was set for"
+                in (e.get("row_note") or ""))
             or (e.get("notice") and e.get("date") == r["date"]
                 and "The committee reported the bill before the day it names"
                 in (e.get("row_note") or ""))
