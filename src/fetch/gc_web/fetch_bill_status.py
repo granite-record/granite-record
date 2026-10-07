@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
-    python3 fetch_bill_status.py --data data --limit 5 --debug 2
-    python3 fetch_bill_status.py --data data
-    python3 fetch_bill_status.py --data data --reparse   # cached pages only
+    python3 src/fetch/gc_web/fetch_bill_status.py --data data --limit 5 --debug 2
+    python3 src/fetch/gc_web/fetch_bill_status.py --data data
+    python3 src/fetch/gc_web/fetch_bill_status.py --data data --reparse   # cached pages only
 
 Replaces fetch_bill_titles.py, which read the wrong page. bill_docket.aspx
 lists ACTIONS, so extracting sponsors from it meant sifting member names out of

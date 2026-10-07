@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.411
+# GRANITE_VERSION: 2026-09-04.412
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45269,7 +45269,7 @@ def _running_oneliner():
                  "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 snapshot_gencourt.py",
                  r"cmd /c publish.bat", "python3 cloud.py pull",
                  r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
-                 "python3 probe_db.py --sample", "python3 resolve_members.py"):
+                 "python3 probe_db.py --sample", "python3 src/fetch/gc_web/resolve_members.py"):
         assert pattern.search(want), f"the one-liner would not list: {want}"
     assert not pattern.search("msedgewebview2.exe --gpu-watchdog-timeout-seconds=60 "
                               "--enable-features=RendererHangWatcher"), \

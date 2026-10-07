@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Put names to the members who voted but are missing from legislators.txt.
 
@@ -15,7 +15,7 @@ pages can: each row links the member by id and prints the name beside it.
 So: find one roll call each unknown member voted in, fetch that page, read the
 name. Roughly a dozen requests, not a scrape.
 
-    python3 resolve_members.py --data data --session 2026
+    python3 src/fetch/gc_web/resolve_members.py --data data --session 2026
 
 Writes former_members.json, which build_data.py picks up automatically.
 """

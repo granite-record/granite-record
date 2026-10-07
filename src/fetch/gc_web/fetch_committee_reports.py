@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -13,8 +13,8 @@ and it is currently locked in PDFs that nobody indexes.
 The docket gives the join key. A House committee report entry ends with
 "HC 17", meaning House Calendar edition 17.
 
-    python3 fetch_committee_reports.py --year 2025
-    python3 fetch_committee_reports.py --year 2025 --pdf "No16 March 14 2025.PDF"
+    python3 src/fetch/gc_web/fetch_committee_reports.py --year 2025
+    python3 src/fetch/gc_web/fetch_committee_reports.py --year 2025 --pdf "No16 March 14 2025.PDF"
 
 Text extraction, best first:
     pdftotext -layout   (poppler; much the best on two-column calendars)

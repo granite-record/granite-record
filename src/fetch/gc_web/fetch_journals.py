@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -9,7 +9,7 @@ comes round every session, so a key without a year makes 2025's HJ 7 and
 repoint one year's citations at the other's documents. The bare key is
 written too, so nothing that already depends on it breaks.
 
-    python3 fetch_journals.py --year 2026
+    python3 src/fetch/gc_web/fetch_journals.py --year 2026
 
 Almost every docket action ends in a citation: "HJ 7 P. 55", "SC 11", "HC 10".
 Those name the House or Senate Journal, or the Calendar, and the page within it
