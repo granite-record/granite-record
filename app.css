@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.211 */
+/* GRANITE_VERSION: 2026-09-07.212 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4795,18 +4795,15 @@ text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
 text-transform:uppercase;color:var(--ink-2);padding:var(--sp-4) var(--sp-5) var(--sp-2);
 background:var(--paper);border-bottom:1px solid var(--rule)}
 :where(body.pg) .lmnone{font-size:var(--t-ui);color:var(--ink-2);padding:var(--sp-5) var(--sp-5)}
-/* THE TOWNS TAB IS THE TOWNS (F5, the look of 7 October 2026). The window
-   above was made for a finder sitting over the roster; as the whole of its
-   own tab it was a box and six towns over an empty page. There the list is
-   as long as it is, and while nothing is typed (.all) every town runs A to Z
-   down one column and on down the next, as the roster's alphabetical view
-   does, filling the width. A city opened with its wards is one block, so its
-   chips never start the next column. */
-:where(body.pg) #towns .lmatch{max-height:none;overflow:visible}
-:where(body.pg) #towns .lmatch.all{columns:200px;column-gap:0;column-rule:1px solid var(--rule)}
-:where(body.pg) #towns .lmatch.all .lmrow,:where(body.pg) #towns .lmatch .lmgrp{break-inside:avoid}
-/* Two on a phone, where one ran 11,000px; a long name takes two lines. */
-@media (max-width:480px){:where(body.pg) #towns .lmatch.all{columns:2}}
+/* THE TOWNS TAB IS THIS WINDOW, AS IT IS ON THE LIVE SITE (the person, 7
+   October 2026: "I didn't want the change to the town ordering to also make
+   it 5 columns wide"). For an afternoon the tab lifted the window and ran
+   every town A to Z in columns down the page, five abreast at full width;
+   asked how the towns should be listed instead, the person chose the live
+   site's way -- the box, and under it the 260px window above, one column --
+   with nothing below it, where the district map is to come. So nothing here
+   widens the window, lifts its height or sets it in columns, in the tab or
+   anywhere else. */
 /* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
    406 members in ten counties is a page nobody reads in order, and the
    counties were ten headings with everything under all of them open. Each

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.441
+# GRANITE_VERSION: 2026-09-04.442
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44416,13 +44416,30 @@ def _legislators_page_tabs():
     lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
     assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
         "the finder's instruction is not in the Towns panel, over its box")
-    # The whole list of towns is the tab's content while nothing is typed: the
-    # finder marks it .all, and the panel's rules lift the 260px window.
-    assert 'out.classList.toggle("all"' in page, "the Towns list is never marked as the whole list"
+    # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
+    # didn't want the change to the town ordering to also make it 5 columns
+    # wide", and asked how it should list them, "Like the live site"): the
+    # box, and under it the list in its 260px window, one column, scrolling
+    # inside itself -- and nothing below the finder, where the district map is
+    # to come. For an afternoon the tab ran every town down the page in
+    # columns; nothing in the script or either stylesheet does that now.
+    rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
+    assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
+                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*</div>\s*', rest), (
+        "the Towns panel holds something after the finder and its list")
+    assert '.classList.toggle("all"' not in page, (
+        "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "style.css").read_text(encoding="utf-8")
-    for rule in (":where(body.pg) #towns .lmatch{max-height:none;overflow:visible}",
-                 ":where(body.pg) #towns .lmatch.all{columns:"):
-        assert rule in css, f"style.css has no {rule}: the Towns tab is a window over six towns"
+    for sheet, text in (("style.css", css), ("app.css", Path("app.css").read_text(encoding="utf-8"))):
+        rules = [(sel.strip(), body) for sel, body in re.findall(
+            r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
+        win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
+        assert len(win) == 1 and "max-height:260px" in win[0] and "overflow-y:auto" in win[0], (
+            f"{sheet} does not hold the finder's list in its 260px window")
+        lifted = [sel for sel, body in rules if ".lmatch" in sel
+                  and sel != ":where(body.pg) .lmatch"
+                  and re.search(r"max-height|overflow|columns", body)]
+        assert not lifted, f"{sheet} lifts or widens the finder's window: {lifted}"
     # And the roster's three arrangements are a view switch, not a second row
     # of underlined tabs under the page's own.
     assert re.search(r"\.rtabs \[role=tab\]\{[^}]*border:1px solid var\(--edge\)", css) \
@@ -44438,7 +44455,8 @@ def _legislators_page_tabs():
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
     return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
-                  "the town pages' script and drawn by the same rules in both stylesheets")
+                  "the town pages' script and drawn by the same rules in both stylesheets; "
+                  "the Towns tab the finder over its 260px window and nothing below it")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")

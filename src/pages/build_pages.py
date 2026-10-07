@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.154
+# GRANITE_VERSION: 2026-09-04.155
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2317,16 +2317,13 @@ function townRow(t){
   // A town without wards is a link straight to its page. A city cannot be:
   // there is no town/concord.html, only concord-ward-1 through 10. So it
   // opens its wards, one chip each, and the chip is the link.
-  // A city opened is one block with its wards, so the list's columns
-  // (the Towns tab's whole list) never put the wards at the head of the next.
   if(t.wards.length>1)
-    return (picked===t.town?`<div class="lmgrp">`:"")
-      + `<button type="button" class="lmrow${picked===t.town?" sel":""}"
+    return `<button type="button" class="lmrow${picked===t.town?" sel":""}"
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${t.wards.length} wards</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
           `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
-            >Ward ${esc(w)}</a>`).join("") + `</div></div>` : "");
+            >Ward ${esc(w)}</a>`).join("") + `</div>` : "");
   return `<a class="lmrow" href="town/${esc(t.slug)}.html"
     ><b>${esc(t.town)}</b></a>`;
 }
@@ -2368,10 +2365,6 @@ function render(){
   // Python string, where a backslash belongs to whichever one reads it
   // first. Python read one, dropped it, and left the JavaScript with an
   // unterminated string and the whole page with no script.
-  // THE WHOLE LIST, WHILE NOTHING IS TYPED, is the Towns tab's content (the
-  // look of 7 October 2026): every town A to Z, in columns down the page, not
-  // a 260px window over six of them. Typed, it is a ranked answer, one column.
-  out.classList.toggle("all",!n&&!mem.length);
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
