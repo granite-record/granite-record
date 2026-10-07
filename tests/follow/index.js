@@ -3,3 +3,6 @@
 // index.js, so the folder is the command, as the task and preflight name it.
 
 import "./changes.test.js";
+import "./address.test.js";
+import "./store.test.js";
+import "./sender.test.js";

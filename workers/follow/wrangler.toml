@@ -1,0 +1,76 @@
+# The email sender: a Worker of its own, deployed by a person, never by
+# `publish` or the nightly:
+#
+#   npx wrangler deploy --config workers/follow/wrangler.toml                  (production)
+#   npx wrangler deploy --config workers/follow/wrangler.toml --env preview    (previews)
+#
+# It has no address: it runs on the cron below and answers no request. It
+# reads the follow database and the site's published /changes/ files, and
+# sends through Resend.
+#
+# NO SECRET IS IN THIS FILE. Two are set on Cloudflare by the person with
+# `wrangler secret put` (README.md says how): RESEND_API_KEY, and
+# FOLLOW_ADDRESS_KEY, the same address key the Pages project holds. The
+# sender never looks an address up, so it is not given the lookup key.
+#
+# THE DATABASE IDS ARE PLACEHOLDERS, filled in by the person from the output of
+# `npx wrangler d1 create graniterecord-follow` (and -preview). An id is not a
+# secret -- it names a database, and using one needs this account's
+# credentials -- but these are not real ones yet, and a deploy with the zeros
+# fails rather than writing anywhere.
+
+name = "graniterecord-follow-sender"
+main = "sender.js"
+compatibility_date = "2026-09-04"
+workers_dev = false
+
+# Every hour, on the hour, UTC. Cron has no time zone and New Hampshire moves
+# between UTC-4 and UTC-5, so the sender asks New Hampshire's clock itself and
+# sends from the first run at or after 8:00 there: 12:00 UTC in summer, 13:00
+# in winter, and on Saturdays the weekly too. Every run purges unconfirmed
+# requests older than 48 hours.
+[triggers]
+crons = ["0 * * * *"]
+
+[[d1_databases]]
+binding = "FOLLOW_DB"
+database_name = "graniterecord-follow"
+database_id = "00000000-0000-0000-0000-000000000000"   # FILL IN: wrangler d1 create graniterecord-follow
+
+[vars]
+# Where the changes files are read from, and the origin of every link in an
+# email. The site's own name, and nothing else.
+SITE_ORIGIN = "https://graniterecord.org"
+# The sending address on the domain verified with Resend, as
+# "Granite Record <name@your-verified-domain>". Left empty, nothing is sent
+# and the log says "follow sender.error.ConfigError".
+MAIL_FROM = ""
+# The feedback form linked in the footer of every page of the site.
+FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
+# At most this many emails a run. A run is one Worker invocation, and every
+# email is a request out of it: the free Workers plan allows fifty, and the
+# sender also reads up to nine changes files. A larger list is finished by
+# the next hour's run. Raise it on a paid plan.
+SEND_LIMIT = "40"
+# Milliseconds between emails, under Resend's default rate of two a second.
+SEND_GAP_MS = "600"
+
+[env.preview]
+name = "graniterecord-follow-sender-preview"
+workers_dev = false
+
+[env.preview.triggers]
+crons = ["0 * * * *"]
+
+[[env.preview.d1_databases]]
+binding = "FOLLOW_DB"
+database_name = "graniterecord-follow-preview"
+database_id = "00000000-0000-0000-0000-000000000000"   # FILL IN: wrangler d1 create graniterecord-follow-preview
+
+[env.preview.vars]
+# The preview deployment's own address, the branch alias Pages gives it.
+SITE_ORIGIN = "https://FILL-IN.graniterecord.pages.dev"
+MAIL_FROM = ""
+FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
+SEND_LIMIT = "40"
+SEND_GAP_MS = "600"
