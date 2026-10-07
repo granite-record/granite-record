@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.402
+# GRANITE_VERSION: 2026-09-04.403
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43724,7 +43724,7 @@ def _every_fetcher_checks_refusal():
     }
     for what, (src, want) in probes.items():
         assert read("probe.py", src) == want, f"the reader got {what} wrong: {read('probe.py', src)}"
-    asks, missing = [], []
+    asks, missing, literal = [], [], []
     scanned = _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS)
     for p in scanned:
         if p.name in ("netcheck.py", "preflight.py"):
@@ -43738,6 +43738,8 @@ def _every_fetcher_checks_refusal():
         if not ask:
             continue
         asks.append(p.name)
+        if p.name.startswith("fetch_") and URL.search(src):
+            literal.append(p.name)
         if not checks:
             missing.append(p.name)
 
@@ -43758,7 +43760,23 @@ def _every_fetcher_checks_refusal():
         "refusal nor GitHub's night window would stop them:\n    " + "\n    ".join(missing)
         + "\n  Add `import refusal` and `refusal.check(\"...\")` straight "
           "after the arguments are parsed (after an offline branch that asks nobody).")
-    return "ok", f"{len(asks)} scripts ask gc.nh.gov; all call refusal.check()"
+    # CONTRIBUTING.md'S COUNT (7 October 2026). It tells a contributor how
+    # many fetch_*.py scripts carry a literal gc.nh.gov URL and call check(),
+    # and it still said 18 after fetch_testimony.py went to obsolete/ and
+    # seventeen were left. The number is the one this reads, so it is held to
+    # it: a script retired or added changes the sentence in the same commit.
+    contrib = _paths.ROOT / "CONTRIBUTING.md"
+    if contrib.exists():
+        said = _re.search(r"All (\d+)\s+`fetch_\*\.py` scripts carrying a literal\s+"
+                          r"`gc\.nh\.gov` URL", contrib.read_text(encoding="utf-8"))
+        assert said, ("CONTRIBUTING.md no longer says \"All N `fetch_*.py` scripts carrying a "
+                      "literal `gc.nh.gov` URL\", which this holds to the count it reads: "
+                      "change this check with the sentence")
+        assert int(said.group(1)) == len(literal), (
+            f"CONTRIBUTING.md says {said.group(1)} fetch_*.py scripts carry a literal "
+            f"gc.nh.gov URL, and {len(literal)} do: " + ", ".join(literal))
+    return "ok", (f"{len(asks)} scripts ask gc.nh.gov; all call refusal.check(), and "
+                  f"CONTRIBUTING.md's {len(literal)} fetch_*.py with a literal URL agree")
 
 
 # The page the General Court's firewall serves in place of the one asked for,
@@ -43865,7 +43883,7 @@ def _every_fetcher_notes_refusal():
     # The floor is the check above's: every script that asks gc.nh.gov calls
     # refusal.check(), so as many call it as ask. Fewer is a code folder not read.
     assert len(checkers) >= _ASKS_GC_FLOOR, (
-        f"{len(checkers)} scripts call refusal.check(); on 6 October {_ASKS_GC_FLOOR} did: "
+        f"{len(checkers)} scripts call refusal.check(); on 7 October {_ASKS_GC_FLOOR} did: "
         "the code folders are not being read")
     assert not missing, (
         "these call refusal.check() and never refusal.note(), so a refusal they meet "
@@ -43875,7 +43893,7 @@ def _every_fetcher_notes_refusal():
           "\"dropped\") call\n  refusal.note(\"<script>\", why) and stop with status 2, as "
           "fetch_committees.py does.")
 
-    # ---- the fifteen, driven ------------------------------------------------
+    # ---- the fourteen, driven -----------------------------------------------
     def files(**named):
         def write(root):
             for rel, text in named.items():

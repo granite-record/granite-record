@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.16
+# GRANITE_VERSION: 2026-09-09.17
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -9,7 +9,8 @@ since 7 October 2026 every one that calls check() also calls note() on a
 refusal it meets -- one, a second dropped connection, or the firewall's block
 page served as a 200, as classify() reads them -- and stops with status 2
 (_every_fetcher_notes_refusal, which reads that from the code and drives the
-fifteen that did not on fake answers). build_all.py and watchers/gc_lane.py
+fifteen that did not on fake answers, fourteen since fetch_testimony.py went
+to obsolete/). build_all.py and watchers/gc_lane.py
 honour it too, which is what makes the scheduled path safe.
 
     import refusal
