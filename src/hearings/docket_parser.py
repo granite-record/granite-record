@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -978,8 +978,15 @@ def reconvened_to(r):
 # TO 1:00 P.M." and the hearing at 1:00. The row merged for it said 9:00. A
 # later row of the same bill and chamber marked "NEW TIME" or "TIME CHANGE"
 # that names the same day gives the hour, the last such row entered winning.
-# Only for the rows rescheduled_proceeding reads; a notice SENATE_SCHED_RE
-# reads keeps the hour it states, as it did.
+#
+# AND A NOTICE SENATE_SCHED_RE READS, for the Senate of 1999-2006 (7 October
+# 2026). It kept the hour it stated: SB 139 of 2005's "Hearing; February 22,
+# 2005, Room 105-A, SH 1:30 p.m.; SC7" and then "Hearing; === TIME CHANGE ===
+# February 22, 2005, ... 2:00 p.m.; SC8" were two rows of one hearing, and
+# build_proceedings, folding them into one sitting, kept the first notice's
+# 1:30; SB 312 of 2000's "===TIME CHANGE=== Feb.23, ... 1:45 p.m." is a row
+# SENATE_SCHED_RE does not read at all, and the hearing kept 1:00. The later
+# row's hour is the meeting's.
 TIME_CHANGED_ROW = re.compile(r"\bTIME\s+CHANGE\b|\bNEW\s+TIME\b", re.I)
 
 
@@ -1429,6 +1436,18 @@ def parse_proceedings(rows, timeline):
             else:
                 _ht = m.group("time") if m.groupdict().get("time") else None
             t = _parse_time(_ht) if _ht else None
+            # The hour a later row marked TIME CHANGE or NEW TIME gave this
+            # notice's day, for the Senate of 1999-2006 (TIME_CHANGED_ROW).
+            head = (r.get("lsr") or "").split("-")[0]
+            if (senate and m.re is SENATE_SCHED_RE and head.isdigit()
+                    and RESCHEDULED_YEARS[0] <= int(head) <= RESCHEDULED_YEARS[1]):
+                if by_bill is None:
+                    by_bill = defaultdict(list)
+                    for o in rows:
+                        by_bill[(o["bill"], (o["body"] or "").strip().upper())].append(o)
+                moved = _time_changed_to(r, d, by_bill.get((r["bill"], "S")))
+                if moved:
+                    t = datetime.strptime(moved, "%H:%M").time()
 
         # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
         # -- which is a better answer than the referral timeline, because that

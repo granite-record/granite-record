@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.420
+# GRANITE_VERSION: 2026-09-04.421
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5133,6 +5133,84 @@ def _docket_dotted_month_on_disk():
                 bad.append(f"{f.name}:{r['lineno']} {r['bill']} {m.group('date')!r}")
     assert not bad, f"{len(bad)} dotted Senate dates read as no day: " + "; ".join(bad[:6])
     return "ok", f"{seen:,} Senate meeting lines with a dotted month, every one dated"
+
+
+# Real rows: Docket_db_2005-2006.txt 2119-2121 (SB 139 of 2005) and
+# Docket_db_1999-2000.txt 18606-18608 (SB 312 of 2000) and 13072-13075 (SB 387
+# of 2000).
+_DOCKET_TIME_CHANGE = [
+    '2005|0330|01/06/2005 11:02:19 AM|SB139|S|Introduced and Referred to Judiciary; SJ 2, Pg.29|01/06/2005 11:02:19 AM',
+    '2005|0330|02/10/2005 02:03:07 PM|SB139|S|Hearing; February 22, 2005, Room 105-A, SH 1:30 p.m.; SC7|02/10/2005 02:03:07 PM',
+    '2005|0330|02/16/2005 02:34:11 PM|SB139|S|Hearing; === TIME CHANGE === February 22, 2005, Room 105-A, SH, 2:00 p.m.; SC8|02/16/2005 02:34:11 PM',
+    '2000|2641|01/05/2000 10:25:17 AM|SB312|S|Introduced and Ref. to Public Affairs; SJ Convening Day, Pg.7|01/05/2000 10:25:17 AM',
+    '2000|2641|01/06/2000 04:13:15 PM|SB312|S|Hearing, 2/23/00, Room 104, LOB, 1:00 p.m.; SC1, Pg.9|01/06/2000 04:13:15 PM',
+    '2000|2641|02/16/2000 03:43:03 PM|SB312|S|===TIME CHANGE=== Feb.23, Room 104, LOB, 1:45 p.m.; SC 12, Pg.9|02/16/2000 03:43:03 PM',
+    '2000|2068|01/05/2000 09:25:22 AM|SB387|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 11|01/05/2000 09:25:22 AM',
+    '2000|2068|01/06/2000 01:40:01 PM|SB387|S|Hearing, Jan. 25 , Room 104 , LOB ,3:40 p.m.;SC1, Pg.6|01/06/2000 01:40:01 PM',
+    '2000|2068|01/19/2000 03:50:53 PM|SB387|S|==TIME CHANGE== Jan. 25, Room 104, LOB, 3:25 p.m.; SC 5, Pg.3|01/19/2000 03:50:53 PM',
+    '2000|2068|01/26/2000 04:05:34 PM|SB387|S|==RESCHEDULED==Feb.15,Room 104,LOB,3:30 p.m.; SC 6,Pg.6|01/26/2000 04:05:34 PM',
+]
+
+
+@check("build", "a Senate hearing of 1999-2006 sits at the hour a later TIME CHANGE row gave its "
+                "day, not the first notice's, and a history that voids it voids that hour",
+       needs=("docket_parser", "narrative", "proceedings"))
+def _senate_time_change(D, N, P):
+    """SB 139 of 2005 was noticed for 1:30 on 22 February and moved to 2:00 by
+    "Hearing; === TIME CHANGE === February 22, 2005"; SB 312 of 2000 for 1:00
+    on 23 February and moved to 1:45 by "===TIME CHANGE=== Feb.23". A notice
+    SENATE_SCHED_RE read kept the hour it stated, so proceedings.csv, which
+    folds the two rows of one hearing into the one with the earlier hour, gave
+    91 Senate sittings of 1999-2006 the first notice's hour. Every row of each
+    hearing now carries the later hour.
+
+    And SB 387 of 2000's hearing of 25 January, noticed for 3:40 and set for
+    3:25 by "==TIME CHANGE== Jan. 25", was moved to 15 February: its history
+    voided it at 3:40 alone, so the table's row, at 3:25, would have been drawn
+    as a hearing that never sat (narrative._time_changed_clock)."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-time-change-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_TIME_CHANGE) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad = []
+    got = sorted((p.bill, p.sched_date, p.sched_time) for p in procs)
+    want = [("SB139", "2005-02-22", "14:00"), ("SB139", "2005-02-22", "14:00"),
+            ("SB312", "2000-02-23", "13:45"),
+            ("SB387", "2000-01-25", "15:25"), ("SB387", "2000-02-15", "15:30")]
+    if got != want:
+        bad.append(f"the hearings are read as {got!r}, not {want!r}")
+    narr = _told_from_rows(N, "1999-2000", "SB387",
+                           [x for x in _DOCKET_TIME_CHANGE if "|SB387|" in x])
+    drawn = [(p.sched_date, p.sched_time) for p in procs if p.bill == "SB387"
+             and not P.notice_only({"date": p.sched_date, "kind": p.kind, "body": p.body,
+                                    "time": p.sched_time or ""}, narr)]
+    if drawn != [("2000-02-15", "15:30")]:
+        bad.append(f"SB 387 of 2000 has {drawn!r} drawn, not its hearing of 15 February alone "
+                   f"(voided {narr.get('voided')!r})")
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 139 of 2005 at 2:00 on 22 February, SB 312 of 2000 at 1:45 on 23 February; "
+                  "SB 387 of 2000's hearing of 25 January, at 3:25, left off as moved")
+
+
+@check("data", "SB 139 of 2005 and SB 312 of 2000 sit in proceedings.csv at the hour their TIME "
+               "CHANGE row gave them")
+def _senate_time_change_table():
+    """_senate_time_change, in the table on disk: a proceedings.csv built
+    before it, or from a manifest that was, gives these two hearings 1:30 and
+    1:00."""
+    f = Path("proceedings.csv")
+    if not f.exists():
+        return "skip", "no proceedings.csv here"
+    want = {("2005-2006", "SB139", "2005-02-22"): "14:00", ("1999-2000", "SB312", "2000-02-23"): "13:45"}
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = {(r["term"], r["bill"], r["date"]): r["time"] for r in csv.DictReader(fh)
+               if (r["term"], r["bill"], r["date"]) in want and r["body"] == "S"
+               and r["kind"] == "hearing"}
+    assert got == want, f"proceedings.csv gives {got!r}, not {want!r}"
+    return "ok", "2:00 on 22 February 2005 and 1:45 on 23 February 2000"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "

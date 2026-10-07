@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.88
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3457,22 +3457,56 @@ def _session_of_kind(ev):
     return ""
 
 
+def _time_changed_clock(e, evs):
+    """The hour, "HH:MM", that the last row of the bill in e's chamber entered
+    after it and marked TIME CHANGE or NEW TIME gives e's day; else "".
+
+    THE TABLE'S ROW CARRIES THAT HOUR (7 October 2026): docket_parser gives a
+    Senate notice of 1999-2006 the hour such a row gives its day
+    (TIME_CHANGED_ROW there), so a meeting this history voids is that hour in
+    proceedings.csv. SB 387 of 2000's hearing of 25 January, noticed for 3:40,
+    set for 3:25 by "==TIME CHANGE== Jan. 25", and moved to 15 February, is
+    voided at both. The day the row names is read as docket_parser reads it
+    (docket_era_1999.DTXT, full_date)."""
+    E = getattr(_VOCAB, "E1999", None)
+    if E is None:
+        return ""
+    day, best = e["_unheld_day"], None
+    for x in evs:
+        said = x.get("_said") or ""
+        if (x is e or x["body"] != e["body"] or not TIME_CHANGED.search(said)
+                or not _entered_before(e, x.get("_entered"))):
+            continue
+        m = re.search(E.DTXT, said, re.I)
+        named = E.full_date(m.group(0), x["_entered"], forward=True) if m else None
+        if not named or datetime.strptime(named, "%m/%d/%Y").date() != day:
+            continue
+        at = _clock({"_said": said[m.end():], "when": x["_entered"]})
+        if at and (best is None or x["_entered"] >= best[0]):
+            best = (x["_entered"], at)
+    return best[1] if best else ""
+
+
 def voided_meetings(evs):
     """[[day, chamber, kind, "HH:MM" or ""]], each meeting a later row of the
     docket cancelled or moved (overtaken) whose row in the table could be no
-    meeting the history tells (above), for proceedings.notice_only."""
+    meeting the history tells (above), for proceedings.notice_only -- at the
+    hour its notice states, and at the hour a later TIME CHANGE row gave it
+    (_time_changed_clock), which is the one the table's row carries."""
     told = [e for e in evs
             if not e["cancelled"] and not e.get("_void") and e["_type"] in ROW_MEETINGS]
     out = set()
     for e in evs:
         if not e.get("_unheld_day") or e["_type"] not in VOIDED_KIND:
             continue
-        day, at = e["_unheld_day"], _clock(e)
-        if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
-               and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
-               for t in told):
-            continue
-        out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
+        day, said = e["_unheld_day"], _clock(e)
+        moved = _time_changed_clock(e, evs) if said else ""
+        for at in [said] + ([moved] if moved and moved != said else []):
+            if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
+                   and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
+                   for t in told):
+                continue
+            out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
     return [list(x) for x in sorted(out)]
 
 
