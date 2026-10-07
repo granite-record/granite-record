@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.417
+# GRANITE_VERSION: 2026-09-04.418
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43644,6 +43644,51 @@ def _coming_up_without_study_committees():
     return "ok", ("a statutory committee and a docket's study committee off the rail, a "
                   "standing committee's interim study on it, next week counted without them, "
                   "and all three still on the Calendar's week")
+
+
+@check("frontend", "the note under Coming up and a committee's Upcoming session says what a reader may do at a hearing, in the person's words")
+def _hearing_note_wording():
+    """"Anyone may attend a public hearing and ask to speak. You can also sign
+    in online to register a position and submit written testimony." -- the
+    person's wording, exactly (7 October 2026, F2), for the note that said
+    anyone may attend and speak, or sign in for or against without speaking.
+    Two renderers print it, build_pages for the home page's Coming up and
+    app.js's calendarBlock for a committee's Upcoming session, so both are
+    drawn here and both must carry the two sentences and not the old one."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_pages as BP
+    want = ("Anyone may attend a public hearing and ask to speak. You can also sign in "
+            "online to register a position and submit written testimony.")
+    assert BP.HEARING_NOTE == want, f"build_pages.HEARING_NOTE reads {BP.HEARING_NOTE!r}"
+
+    def said(html):
+        notes = re.findall(r'<p class="note">(.*?)</p>', html, re.S)
+        return [" ".join(n.split()) for n in notes]
+    today = _dt.date(2026, 9, 21)
+    rows = [{"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+             "date": "2026-09-22", "time": "10:00", "committee": "Judiciary", "venue": "LOB 206"}]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-hearnote-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            home = said(BP.calendar_html(tmp, today=today, rows=rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert any(n.startswith(want) for n in home), f"Coming up's note reads {home}"
+    up = [{"date": "2026-09-22", "time": "10:00", "bill": "HB1", "term": "2025-2026",
+           "committee": "Judiciary", "what": "public hearing", "venue": "LOB 206"}]
+    got = _app_js('scope.calendarBlock(' + json.dumps(up) + ', "Upcoming session")',
+                  names=("calendarBlock",))
+    drew = "node is not here to run app.js"
+    if got is not None:
+        cmte = said(got)
+        assert any(n.startswith(want) for n in cmte), (
+            f"a committee's Upcoming session note reads {cmte}")
+        assert not any("for or against" in n for n in cmte), "app.js keeps the old sentence"
+        drew = "and app.js's calendarBlock prints it too"
+    assert not any("for or against" in n for n in home), "Coming up keeps the old sentence"
+    return "ok", f"Coming up says it word for word, {drew}"
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

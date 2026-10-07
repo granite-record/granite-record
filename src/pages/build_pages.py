@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.143
+# GRANITE_VERSION: 2026-09-04.144
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1117,6 +1117,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
     return "".join(html), missing
 
 
+HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
+                "also sign in online to register a position and submit "
+                "written testimony.")
+
+
 def cal_notes(up, missing, esc):
     """The note under the calendar: what a hearing is."""
     html = []
@@ -1128,8 +1133,12 @@ def cal_notes(up, missing, esc):
     # links to it.
     # A public hearing is the one a reader can speak at; an executive session
     # is the one where the committee votes. Worth saying once.
-    html.append('<p class="note">Anyone may attend and speak at a public '
-                'hearing, or sign in for or against without speaking. An '
+    # THE FIRST TWO SENTENCES ARE THE PERSON'S, word for word (7 October
+    # 2026, F2): speaking at a hearing is asked for rather than assumed, and
+    # the online sign-in both registers a position and takes written
+    # testimony. HEARING_NOTE is the one copy; app.js's calendarBlock prints
+    # the same words, and preflight holds the two to them.
+    html.append(f'<p class="note">{HEARING_NOTE} An '
                 'executive session is where the committee votes on what to '
                 'recommend; it is open to watch but not to testify.</p>'
                 "</section>")

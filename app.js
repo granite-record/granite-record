@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.146
+// GRANITE_VERSION: 2026-09-07.147
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -6430,10 +6430,12 @@ function calendarBlock(rows,heading){
     });
     out.push(`</div>`);
   });
-  out.push(`<p class="note">Anyone may attend and speak at a public hearing,
-    or sign in for or against without speaking. An executive session is where
-    the committee votes on what to recommend; it is open to watch but not to
-    testify.</p></section>`);
+  // The first two sentences are build_pages.HEARING_NOTE, word for word: the
+  // person's own (7 October 2026), and preflight holds the two copies to it.
+  out.push(`<p class="note">Anyone may attend a public hearing and ask to
+    speak. You can also sign in online to register a position and submit
+    written testimony. An executive session is where the committee votes on
+    what to recommend; it is open to watch but not to testify.</p></section>`);
   return out.join("");
 }
 
