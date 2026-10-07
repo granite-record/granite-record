@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.89
+# GRANITE_VERSION: 2026-09-04.90
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2741,6 +2741,10 @@ def describe(ev, body, seen_intro=False):
             # step that passes the bill was left pending by a tabling.
             base = (f"On {when} the {chamber} adopted the motion that it ought to pass"
                     + (" with an amendment" if "with amendment" in low else ""))
+        elif verb and motion == "adopted" and ev.get("_sent_on") and verb.startswith("pass it"):
+            # Approved, not passed: the bill went on to a second committee
+            # (build(), `_sent_on`), and its passage, if it came, came after.
+            base = f"On {when} the {chamber} voted to approve it{verb[len('pass it'):]}"
         elif verb and motion == "adopted":
             base = f"On {when} the {chamber} voted to {verb}"
         elif verb and motion == "failed":
@@ -4791,6 +4795,32 @@ def build(bill, rows, introduction=None):
         w["_waives"] = ("sent", r, f"The {CHAMBER.get(b, 'House')} referred the bill to the {to}")
         r["refer"] = ""
         r["_unsent"] = True
+
+    # APPROVED AND SENT ON IS NOT PASSED (7 October 2026). The House since 2007
+    # writes the referral to a second committee on a row of its own, seconds
+    # after the vote: "Ought to Pass: MA VV 03/06/2025" and "Referred to
+    # Finance 03/06/2025" (HB 547 of 2025). The House had adopted the
+    # committee's report and the Speaker referred the bill to Finance (House
+    # Journal 7 of 2025); Finance had it killed on 7 January 2026, and the
+    # history said "the House voted to pass it". Where a passage's next row of
+    # that chamber, the same day, is a referral no waiver took back, the
+    # passage is told as approved (describe, `_sent_on`), as the rail already
+    # draws it ("Approved and sent to Finance"); the referral keeps its own
+    # sentence and heading, and nothing else moves. A passage whose own row
+    # carries the referral (`refer`) is left as it was.
+    for i, ev in enumerate(evs):
+        if (ev["cancelled"] or ev["_type"] != "floor" or ev.get("refer") or ev.get("_unsent")
+                or (ev.get("motion") or "").upper() != "MA"
+                or not PASSAGE.match(split_mover(ev.get("action"))[0])):
+            continue
+        nxt = next((e for e in evs[i + 1:] if not e["cancelled"] and e["body"] == ev["body"]), None)
+        if (nxt is None or nxt.get("_waived_by") or nxt.get("_unsent")
+                or nxt["when"].date() != ev["when"].date()):
+            continue
+        sent = sends_to(nxt, term)
+        if ((nxt["_type"] == "rereferred" and (nxt.get("committee") or "").strip())
+                or (sent and sent[2] and sent[0] in ("referred", "rereferred"))):
+            ev["_sent_on"] = True
 
     # "UNDER THE CHAMBER'S RULES" IS NOT SAID OF A REFERRAL MADE BY SUSPENDING
     # THEM, on whichever row the suspension stands. describe() reads the

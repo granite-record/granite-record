@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.418
+# GRANITE_VERSION: 2026-09-04.419
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2285,6 +2285,238 @@ def _tabled_before_third_reading(N, B, SD):
                   "HB 726 of 2019 tabled before their third reading, and not passed; SB 210 "
                   "and HB 1601 of 2018 passed; HB 282 of 2025, SB 173 of 2024 and SB 144 of 2015 "
                   "passed on the day the pending order carried")
+
+
+# APPROVED AND SENT ON IS NOT PASSED (7 October 2026). Real rows: Docket.txt
+# lines 688, 2296, 3002, 3881, 4340-4341, 5283, 6584, 7294, 11366, 11559,
+# 11814 and 13083 (HB 547 of 2025); 36, 782, 1143, 2685-2686, 3363,
+# 3651-3652, 4203, 5293, 6561, 7362-7363, 7626-7628, 7704, 7898, 8256 and 8593
+# (HB 66 of 2025); 421, 794, 2204-2205, 2770, 3191-3192, 4614, 4896, 6070,
+# 6332, 6906, 7638, 8782, 9088, 9303-9304, 10084, 10810, 10842 and 11191 (HB
+# 369 of 2025); 104, 2301, 3026, 4028, 4484, 5091-5092, 5105, 5126, 5559, 5641,
+# 6307, 8273, 9000, 9030, 9185-9186, 9192, 9271, 9323, 10100, 10797, 10829 and
+# 11173 (HB 123 of 2025); 12931, 13823, 15199, 16812-16814, 17524-17525,
+# 17527, 17658, 18182, 18696, 20329, 20600, 21495, 22155, 22838, 22984-22985,
+# 23274-23275, 23554-23555, 23684, 23701, 23795 and 24154 (HB 1574 of 2026);
+# 12129, 13911, 14036, 17539, 19075, 19080, 19175, 19833, 19850, 20744-20746,
+# 20902, 21135, 21147, 21472, 21478, 21790-21791, 22150, 22152, 22194, 22742,
+# 24158, 24250, 24335, 24398 and 24727 (SB 482 of 2026).
+_DOCKET_APPROVED_SENT_ON = {
+    ("HB547", "2025-2026"): [
+        "2026|0274|1/14/2025 3:46:55 PM|HB547|H|  Introduced (in recess of) 01/09/2025 and referred to Municipal and County Government  HJ 3  P. 15|2/18/2025 2:49:16 PM",
+        "2026|0274|2/5/2025 2:19:01 PM|HB547|H|Public Hearing: 02/10/2025 09:30 am LOB 301-303|2/5/2025 2:19:01 PM",
+        "2026|0274|2/12/2025 3:14:10 PM|HB547|H|Executive Session: 02/18/2025 01:00 pm LOB 201|2/12/2025 3:14:10 PM",
+        "2026|0274|2/25/2025 11:47:13 AM|HB547|H| Committee Report: Ought to Pass  02/18/2025 (Vote 18-0; CC)  HC 14  P. 12|3/3/2025 2:35:01 PM",
+        "2026|0274|3/6/2025 11:46:42 AM|HB547|H|Ought to Pass: MA VV 03/06/2025  HJ 7  P. 18|4/16/2025 2:30:20 PM",
+        "2026|0274|3/6/2025 11:46:44 AM|HB547|H|Referred to Finance 03/06/2025  HJ 7  P. 18|4/16/2025 2:30:25 PM",
+        "2026|0274|3/12/2025 1:45:14 PM|HB547|H|  Division III Work Session: 03/17/2025 10:00 am LOB 210-211|3/12/2025 1:45:14 PM",
+        "2026|0274|3/26/2025 12:43:46 PM|HB547|H|Executive Session: 04/01/2025 10:00 am LOB 210-211|3/26/2025 12:43:46 PM",
+        "2026|0274|4/2/2025 11:22:53 AM|HB547|H|Retained in Committee|4/2/2025 11:22:53 AM",
+        "2026|0274|9/9/2025 11:09:05 AM|HB547|H|  Division III Work Session: 09/29/2025 10:00 am GP 230|9/9/2025 11:09:05 AM",
+        "2026|0274|10/14/2025 11:42:48 AM|HB547|H|Executive Session: 10/30/2025 10:00 am GP 230|10/14/2025 11:42:48 AM",
+        "2026|0274|11/5/2025 12:47:41 PM|HB547|H| Committee Report: Inexpedient to Legislate  10/30/2025 (Vote 25-0; CC)  HC 51  P. 11|12/19/2025 12:11:31 PM",
+        "2026|0274|1/7/2026 11:18:18 AM|HB547|H|Inexpedient to Legislate: MA VV 01/07/2026  HJ 1  P. 72|3/27/2026 3:02:07 PM"],
+    ("HB66", "2025-2026"): [
+        "2025|0050|12/23/2024 3:26:33 PM|HB66|H|  Introduced 01/08/2025 and referred to Judiciary  HJ 2  P. 4|1/21/2025 1:23:47 PM",
+        "2025|0050|1/15/2025 12:43:48 PM|HB66|H|Public Hearing: 01/22/2025 10:00 am LOB 206-208|1/15/2025 12:43:48 PM",
+        "2025|0050|1/22/2025 1:25:45 PM|HB66|H|Executive Session: 01/30/2025 10:00 am LOB 206-208|1/22/2025 1:25:45 PM",
+        "2025|0050|2/10/2025 11:59:13 AM|HB66|H|Majority Committee Report: Ought to Pass with Amendment # 2025-0110h   01/30/2025 (Vote 13-4; RC)  HC 12  P. 18|2/18/2025 9:30:42 AM",
+        "2025|0050|2/10/2025 11:59:28 AM|HB66|H|Minority Committee Report: Inexpedient to Legislate|2/10/2025 11:59:28 AM",
+        "2025|0050|2/20/2025 2:29:49 PM|HB66|H|Referred to Finance 02/20/2025  HJ 6  P. 45|4/1/2025 1:13:10 PM",
+        "2025|0050|2/20/2025 2:29:09 PM|HB66|H|Amendment # 2025-0110h: AA VV 02/20/2025  HJ 6  P. 45|4/1/2025 1:12:25 PM",
+        "2025|0050|2/20/2025 2:29:47 PM|HB66|H|Ought to Pass with Amendment 2025-0110h: MA DV 321-48 02/20/2025  HJ 6  P. 45|4/1/2025 1:12:31 PM",
+        "2025|0050|2/27/2025 2:49:22 PM|HB66|H|  Division I Work Session: 03/05/2025 01:00 pm LOB 212|2/27/2025 2:49:22 PM",
+        "2025|0050|3/12/2025 1:54:05 PM|HB66|H|  Division I Work Session: 03/14/2025 10:00 am LOB 212|3/12/2025 1:54:05 PM",
+        "2025|0050|3/26/2025 12:40:16 PM|HB66|H|Executive Session: 04/01/2025 10:00 am LOB 210-211|3/26/2025 12:40:16 PM",
+        "2025|0050|4/3/2025 8:29:18 AM|HB66|H|Majority Committee Report: Ought to Pass with Amendment # 2025-1005h   04/02/2025 (Vote 16-9; RC)  HC 19  P. 14|4/7/2025 10:27:20 AM",
+        "2025|0050|4/3/2025 8:29:46 AM|HB66|H|Minority Committee Report: Inexpedient to Legislate|4/3/2025 8:29:46 AM",
+        "2025|0050|4/10/2025 11:09:18 AM|HB66|H|Lay HB66 on Table (Rep. Maggiore): MF RC 179-191 04/10/2025  HJ 12  P. 23|6/10/2025 11:28:44 AM",
+        "2025|0050|4/10/2025 11:09:53 AM|HB66|H|Amendment # 2025-1005h: AA VV 04/10/2025  HJ 12  P. 23|6/10/2025 11:28:55 AM",
+        "2025|0050|4/10/2025 11:21:54 AM|HB66|H|Ought to Pass with Amendment 2025-1005h: MA RC 207-164 04/10/2025  HJ 12  P. 26|6/10/2025 11:29:27 AM",
+        "2025|0050|4/11/2025 3:45:17 PM|HB66|S|  Introduced 03/27/2025 and Referred to Judiciary;  SJ 10|4/11/2025 3:52:36 PM",
+        "2025|0050|4/17/2025 1:31:27 PM|HB66|S| Hearing: 04/24/2025, Room 100, SH, 01:00 pm;  SC 19|4/17/2025 1:31:27 PM",
+        "2025|0050|4/28/2025 9:07:28 AM|HB66|S|Committee Report: Inexpedient to Legislate; Vote 5-0; CC; 05/08/2025;  SC 20|4/28/2025 9:07:28 AM",
+        "2025|0050|5/8/2025 10:49:20 AM|HB66|S|Inexpedient to Legislate, MA, VV === BILL KILLED ===; 05/08/2025;  SJ 12|5/8/2025 10:49:20 AM"],
+    ("HB369", "2025-2026"): [
+        "2025|0419|1/8/2025 2:14:54 PM|HB369|H|  Introduced 01/08/2025 and referred to Judiciary  HJ 2  P. 17|1/21/2025 3:15:29 PM",
+        "2025|0419|1/15/2025 12:47:02 PM|HB369|H|Public Hearing: 01/29/2025 11:00 am LOB 206-208|1/15/2025 12:47:02 PM",
+        "2025|0419|2/4/2025 12:43:35 PM|HB369|H|  Executive Session: 01/29/2025 11:00 am LOB 206-208|2/4/2025 12:43:35 PM",
+        "2025|0419|2/4/2025 12:44:13 PM|HB369|H| Committee Report: Ought to Pass with Amendment # 2025-0167h   02/03/2025 (Vote 11-1; RC)  HC 11  P. 15|2/12/2025 11:41:41 AM",
+        "2025|0419|2/13/2025 2:13:51 PM|HB369|H|Referred to Criminal Justice and Public Safety 02/13/2025  HJ 5  P. 39|3/31/2025 1:04:45 PM",
+        "2025|0419|2/13/2025 2:13:38 PM|HB369|H|Amendment # 2025-0167h: AA VV 02/13/2025  HJ 5  P. 38|3/31/2025 1:04:29 PM",
+        "2025|0419|2/13/2025 2:13:49 PM|HB369|H|Ought to Pass with Amendment 2025-0167h: MA VV 02/13/2025  HJ 5  P. 38|3/31/2025 1:04:34 PM",
+        "2025|0419|3/6/2025 8:57:12 AM|HB369|H|==CANCELLED== Executive Session: 03/14/2025 10:00 am LOB 202-204|3/10/2025 11:51:19 AM",
+        "2025|0419|3/10/2025 11:51:31 AM|HB369|H|  Executive Session: 03/19/2025 10:00 am LOB 202-204|3/10/2025 11:51:31 AM",
+        "2025|0419|3/19/2025 2:24:31 PM|HB369|H| Committee Report: Ought to Pass  03/19/2025 (Vote 14-1; CC)  HC 17  P. 9|3/21/2025 9:40:36 AM",
+        "2025|0419|3/26/2025 10:05:15 AM|HB369|H|Ought to Pass: MA VV 03/26/2025  HJ 10  P. 11|5/13/2025 2:38:49 PM",
+        "2025|0419|3/28/2025 8:06:43 AM|HB369|S|  Introduced 03/27/2025 and Referred to Judiciary;  SJ 10|3/28/2025 8:06:43 AM",
+        "2025|0419|4/10/2025 11:45:17 AM|HB369|S| Hearing: 04/17/2025, Room 100, SH, 01:10 pm;  SC 17|4/10/2025 11:45:17 AM",
+        "2025|0419|5/8/2025 2:13:45 PM|HB369|S| Hearing: 05/13/2025, Room 100, SH, 02:30 pm, on proposed amendment #2025-1875s;  SC 21|5/8/2025 2:13:45 PM",
+        "2025|0419|5/14/2025 1:06:30 PM|HB369|S|Committee Report: Ought to Pass with Amendment # 2025-2168s, 05/22/2025; Vote 3-0; CC;  SC 22|5/14/2025 1:06:36 PM",
+        "2025|0419|5/22/2025 11:42:40 AM|HB369|S|Committee Amendment # 2025-2168s, AA, VV; 05/22/2025;  SJ 14|5/22/2025 11:42:40 AM",
+        "2025|0419|5/22/2025 11:42:53 AM|HB369|S|Ought to Pass with Amendment #2025-2168s, MA, VV; OT3rdg; 05/22/2025;  SJ 14|5/22/2025 11:42:53 AM",
+        "2025|0419|6/12/2025 12:03:21 PM|HB369|H|House Concurs with Senate Amendment 2025-2168s (Rep. Lynn): MA VV 06/12/2025  HJ 17  P. 14|7/15/2025 9:09:34 AM",
+        "2025|0419|7/3/2025 1:01:46 PM|HB369|S|Enrolled Adopted, VV, (In recess 06/26/2025);  SJ 18|11/3/2025 2:45:28 PM",
+        "2025|0419|7/7/2025 12:26:38 PM|HB369|H|Enrolled (in recess of) 06/26/2025  HJ 18  P. 59|10/21/2025 12:21:10 PM",
+        "2025|0419|7/22/2025 1:20:04 PM|HB369|H|Signed by Governor Ayotte 07/15/2025; Chapter 182; eff. 01/01/2026  HJ 18|7/22/2025 1:20:04 PM"],
+    ("HB123", "2025-2026"): [
+        "2025|0100|1/6/2025 8:33:35 AM|HB123|H|  Introduced 01/08/2025 and referred to Municipal and County Government  HJ 2  P. 6|1/21/2025 1:53:38 PM",
+        "2025|0100|2/5/2025 2:19:48 PM|HB123|H|Public Hearing: 02/10/2025 01:00 pm LOB 301-303|2/5/2025 2:19:48 PM",
+        "2025|0100|2/12/2025 3:10:29 PM|HB123|H|  Public Hearing on non-germane Amendment # 2025-0153h: 02/18/2025 09:50 am LOB 201|2/12/2025 3:10:29 PM",
+        "2025|0100|2/27/2025 11:27:27 AM|HB123|H|Executive Session: 03/03/2025 01:00 pm LOB 301-303|2/27/2025 11:27:27 AM",
+        "2025|0100|3/5/2025 12:56:52 PM|HB123|H| Committee Report: Ought to Pass with Amendment # 2025-0654h (NT)  03/03/2025 (Vote 18-0; CC)|3/5/2025 12:58:23 PM",
+        "2025|0100|3/13/2025 5:40:00 PM|HB123|H|Amendment # 2025-0654h (NT): AA VV 03/13/2025  HJ 8  P. 92|4/21/2025 3:46:34 PM",
+        "2025|0100|3/13/2025 5:53:36 PM|HB123|H|Ought to Pass with Amendment 2025-0654h: MA RC 197-158 03/13/2025  HJ 8  P. 95|4/21/2025 3:47:15 PM",
+        "2025|0100|3/11/2025 8:39:53 AM|HB123|H|Removed from Consent (Reps. Kuttab, Popovici-Muller, Boehm, Turcotte, Scully, Perez, D. Kelley, Tom Mannion, Seaworth, Granger) 03/06/2025  HJ 8  P. 2|4/17/2025 10:40:16 AM",
+        "2025|0100|3/13/2025 5:53:38 PM|HB123|H|Referred to Ways and Means 03/13/2025  HJ 8  P. 95|4/21/2025 3:47:19 PM",
+        "2025|0100|3/13/2025 5:39:29 PM|HB123|H|Lay HB123 on Table (Rep. Osborne): MF DV 171-185 03/13/2025  HJ 8  P. 93|4/21/2025 3:46:51 PM",
+        "2025|0100|3/20/2025 10:21:50 AM|HB123|H|Referral Waived by Committee Chair per House Rule 47(f) 03/20/2025  HJ 9  P. 18|6/30/2025 12:50:03 PM",
+        "2025|0100|3/24/2025 12:01:19 PM|HB123|S|  Introduced 03/20/2025 and Referred to Energy and Natural Resources;  SJ 9|3/24/2025 12:01:19 PM",
+        "2025|0100|4/29/2025 1:51:30 PM|HB123|S| Hearing: 05/06/2025, Room 103, SH, 09:00 am;  SC 20|4/29/2025 1:51:30 PM",
+        "2025|0100|5/13/2025 11:43:16 AM|HB123|S|Committee Report: Ought to Pass with Amendment # 2025-2133s, 05/15/2025; Vote 4-1; CC;  SC 21A|5/13/2025 11:43:23 AM",
+        "2025|0100|5/15/2025 3:38:24 PM|HB123|S|Committee Amendment # 2025-2133s, AA, VV; 05/15/2025;  SJ 13|5/15/2025 3:38:24 PM",
+        "2025|0100|5/15/2025 5:21:39 PM|HB123|S|Ought to Pass with Amendment #2025-2133s, MA, VV; 05/15/2025;  SJ 13|5/15/2025 5:21:39 PM",
+        "2025|0100|5/15/2025 5:22:14 PM|HB123|S|Referred to Ways and Means, 05/15/2025;  SJ 13|5/15/2025 7:07:17 PM",
+        "2025|0100|5/15/2025 6:30:02 PM|HB123|S|  Hearing: 05/21/2025, Room 100, SH, 09:00 am, on proposed amendment # 2025-2214s;  SC 22|5/15/2025 6:30:02 PM",
+        "2025|0100|5/21/2025 9:29:04 AM|HB123|S|Committee Report: Ought to Pass, 05/22/2025; Vote 3-0; CC;  SC 22A|5/21/2025 9:29:04 AM",
+        "2025|0100|5/22/2025 10:33:24 AM|HB123|S|Ought to Pass: MA, VV; OT3rdg; 05/22/2025;  SJ 14|5/22/2025 10:33:24 AM",
+        "2025|0100|6/12/2025 12:09:12 PM|HB123|H|House Concurs with Senate Amendment 2025-2133s (Rep. Pauer): MA DV 268-74 06/12/2025  HJ 17  P. 14|7/15/2025 9:10:05 AM",
+        "2025|0100|7/3/2025 1:00:14 PM|HB123|S|Enrolled Adopted, VV, (In recess 06/26/2025);  SJ 18|11/3/2025 2:42:13 PM",
+        "2025|0100|7/7/2025 12:23:53 PM|HB123|H|Enrolled (in recess of) 06/26/2025  HJ 18  P. 59|10/21/2025 12:18:44 PM",
+        "2025|0100|7/22/2025 1:10:17 PM|HB123|H|Signed by Governor Ayotte 07/15/2025; Chapter 164; eff. I. Sec 4 eff 11/01/2027 II. Rem eff 07/01/2025  HJ 18|7/22/2025 1:10:17 PM"],
+    ("HB1574", "2025-2026"): [
+        "2026|2877|12/10/2025 12:51:58 PM|HB1574|H|  Introduced 01/07/2026 and referred to Education Funding  HJ 1  P. 26|3/25/2026 1:36:19 PM",
+        "2026|2877|1/8/2026 3:36:55 PM|HB1574|H|Public Hearing: 01/15/2026 09:30 am GP 232|1/8/2026 3:36:55 PM",
+        "2026|2877|1/28/2026 4:21:16 PM|HB1574|H|==CANCELLED== Executive Session: 02/03/2026 12:45 pm GP 232|2/3/2026 2:31:34 PM",
+        "2026|2877|2/11/2026 1:37:28 PM|HB1574|H|  Executive Session: 02/10/2026 12:45 pm GP 232|2/11/2026 1:37:28 PM",
+        "2026|2877|2/11/2026 1:38:00 PM|HB1574|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0632h (NT)  02/10/2026 (Vote 17-1; RC)  HC 7  P. 26|2/18/2026 10:58:02 AM",
+        "2026|2877|2/11/2026 1:38:47 PM|HB1574|H|Minority Committee Report: Inexpedient to Legislate|2/11/2026 1:38:47 PM",
+        "2026|2877|2/19/2026 11:32:17 AM|HB1574|H|Amendment # 2026-0632h: AA VV 02/19/2026  HJ 5  P. 44|5/12/2026 9:28:17 AM",
+        "2026|2877|2/19/2026 11:32:36 AM|HB1574|H|Ought to Pass with Amendment 2026-0632h: MA VV 02/19/2026  HJ 5  P. 44|5/12/2026 9:28:26 AM",
+        "2026|2877|2/19/2026 11:33:22 AM|HB1574|H|Referred to Finance 02/19/2026  HJ 5  P. 44|5/12/2026 9:28:39 AM",
+        "2026|2877|2/19/2026 3:25:08 PM|HB1574|H|Referral Waived by Committee Chair per House Rule 47(f) 02/19/2026  HJ 5  P. 112|5/12/2026 10:43:48 AM",
+        "2026|2877|2/25/2026 3:33:06 PM|HB1574|S|  Introduced 02/19/2026 and Referred to Education;  SJ 5|2/25/2026 3:33:06 PM",
+        "2026|2877|3/3/2026 2:05:33 PM|HB1574|S| Hearing: 03/10/2026, Room Map Room, SL, 09:30 am;  SC 9|3/3/2026 2:05:33 PM",
+        "2026|2877|3/18/2026 9:28:23 AM|HB1574|S|Committee Report: Ought to Pass, 03/26/2026; Vote 5-0; CC;  SC 11|3/18/2026 3:40:03 PM",
+        "2026|2877|3/24/2026 9:09:25 AM|HB1574|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/26/2026;  SJ 7|3/26/2026 9:27:20 AM",
+        "2026|2877|4/9/2026 10:44:27 AM|HB1574|S|  Hearing: 04/14/2026, Room 103, SH, 01:30 pm, on proposed non-germane amendment # 2026-1330s;  SC 14|4/13/2026 4:28:35 PM",
+        "2026|2877|4/24/2026 9:11:49 AM|HB1574|S|Committee Report: Ought to Pass with Amendment # 2026-1607s, 05/07/2026; Vote 7-0; CC;  SC 17|4/29/2026 2:27:12 PM",
+        "2026|2877|5/7/2026 9:29:47 AM|HB1574|S|HB 1574 was Removed from the Consent Calendar; 05/07/2026;  SJ 11|5/7/2026 9:29:47 AM",
+        "2026|2877|5/7/2026 3:02:41 PM|HB1574|S|Special Order to 05/14/2026, Without Objection, MA; 05/07/2026  SJ 11|5/7/2026 3:02:41 PM",
+        "2026|2877|5/7/2026 3:03:16 PM|HB1574|S|Committee Report: Ought to Pass with Amendment # 2026-1607, 05/14/2026, Vote 7-0;  SJ 11|5/7/2026 3:03:16 PM",
+        "2026|2877|5/14/2026 4:20:26 PM|HB1574|S|Committee Amendment # 2026-1607s, AA, VV; 05/14/2026;  SJ 12|5/14/2026 4:20:26 PM",
+        "2026|2877|5/14/2026 4:20:46 PM|HB1574|S|Ought to Pass with Amendment # 2026-1607s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|6/3/2026 9:01:11 AM",
+        "2026|2877|5/19/2026 1:20:45 PM|HB1574|H|House Non-Concurs with Senate Amendment 2026-1607s and Requests CofC (Rep. Ladd): MA VV 05/14/2026  HJ 13  P. 149|7/24/2026 11:52:21 AM",
+        "2026|2877|5/19/2026 1:21:49 PM|HB1574|H|Speaker Appoints: Reps. Ladd, Erf, Popovici-Muller, Luneau 05/14/2026  HJ 13  P. 149|7/24/2026 11:52:26 AM",
+        "2026|2877|5/20/2026 4:57:42 PM|HB1574|S|Sen. Ward Accedes to House Request for Committee of Conference, MA, VV; (In recess 05/14/2026);  SJ 13|5/26/2026 2:56:50 PM",
+        "2026|2877|5/20/2026 5:03:40 PM|HB1574|S|President Appoints: Senators Gray, Ward, Rosenwald; (In Recess 05/14/2026);  SJ 13|5/20/2026 5:03:40 PM",
+        "2026|2877|5/26/2026 12:00:00 AM|HB1574|H|Conference Committee Meeting: 05/26/2026 11:00 am GP 234|5/21/2026 12:18:23 PM",
+        "2026|2877|6/2/2026 9:36:30 AM|HB1574|S|Conference Committee Report; Not Signed Off;  SJ 14|6/2/2026 9:36:30 AM"],
+    ("SB482", "2025-2026"): [
+        "2026|2043|11/21/2025 4:10:40 PM|SB482|S|  Introduced 01/07/2026 and Referred to Commerce;  SJ 1|1/8/2026 12:45:03 PM",
+        "2026|2043|1/13/2026 12:48:00 PM|SB482|S|==CANCELLED== Hearing: 02/03/2026, Room 100, SH, 10:00 am;  SC 1|1/13/2026 12:48:20 PM",
+        "2026|2043|1/13/2026 12:48:10 PM|SB482|S| ==RESCHEDULED== Hearing: 01/27/2026, Room 100, SH, 09:45 am;  SC 2|1/13/2026 12:50:10 PM",
+        "2026|2043|2/19/2026 11:53:08 AM|SB482|S|Committee Report: Ought to Pass with Amendment # 2026-0787s, 03/05/2026; Vote 4-1; CC;  SC 8|2/20/2026 10:56:10 AM",
+        "2026|2043|3/5/2026 10:20:09 AM|SB482|S|SB 482 was Removed from the Consent Calendar; 03/05/2026;  SJ 5|3/5/2026 10:20:09 AM",
+        "2026|2043|3/5/2026 10:22:26 AM|SB482|S|Special Order to 03/19/2026, Without Objection, MA; 03/05/2026  SJ 5|3/5/2026 10:22:26 AM",
+        "2026|2043|3/5/2026 2:29:36 PM|SB482|S|Committee Report: Ought to Pass with Amendment # 2026-0787s, 03/19/2026, Vote 4-1;  SC 10|3/10/2026 4:22:10 PM",
+        "2026|2043|3/12/2026 10:23:08 AM|SB482|S|Special Order to 03/26/2026, Without Objection, MA; 03/12/2026  SJ 6|3/12/2026 10:23:08 AM",
+        "2026|2043|3/12/2026 10:27:18 AM|SB482|S|Committee Report: Ought to Pass with Amendment # 2026-0787s, 03/26/2026, Vote 4-1;  SC 11|3/12/2026 10:27:17 AM",
+        "2026|2043|3/26/2026 10:00:56 AM|SB482|S|Committee Amendment # 2026-0787s, AA, VV; 03/26/2026;  SJ 7|3/26/2026 10:01:09 AM",
+        "2026|2043|3/26/2026 10:04:16 AM|SB482|S|Sen. Birdsell Floor Amendment # 2026-1172s, AA, VV; 03/26/2026;  SJ 7|3/26/2026 12:32:16 PM",
+        "2026|2043|3/26/2026 10:05:02 AM|SB482|S|Ought to Pass with Amendments #2026-0787s and #2026-1172s, MA, VV; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 12:32:18 PM",
+        "2026|2043|3/27/2026 12:15:43 PM|SB482|H|  Introduced (in recess of) 03/26/2026 and referred to Commerce and Consumer Affairs  HJ 9  P. 54|6/26/2026 10:26:01 AM",
+        "2026|2043|4/1/2026 4:04:56 PM|SB482|H|   Subcommittee Work Session: 04/08/2026 10:00 am GP 229|4/2/2026 9:00:22 AM",
+        "2026|2043|4/2/2026 9:00:19 AM|SB482|H|Public Hearing: 04/07/2026 01:15 pm GP 159|4/2/2026 9:00:22 AM",
+        "2026|2043|4/8/2026 3:35:10 PM|SB482|H|   Subcommittee Work Session: 04/14/2026 10:00 am GP 229|4/8/2026 3:35:10 PM",
+        "2026|2043|4/8/2026 3:57:52 PM|SB482|H|Executive Session: 04/15/2026 10:00 am GP 229|4/8/2026 3:57:52 PM",
+        "2026|2043|4/16/2026 8:30:16 AM|SB482|H|Majority Committee Report: Ought to Pass with Amendment # 2026-1526h   04/15/2026 (Vote 10-8; RC)|4/16/2026 8:30:16 AM",
+        "2026|2043|4/16/2026 8:30:47 AM|SB482|H|Minority Committee Report: Ought to Pass|4/16/2026 8:30:47 AM",
+        "2026|2043|4/23/2026 11:05:24 AM|SB482|H|Amendment # 2026-1526h: AF DV 135-220 04/23/2026  HJ 11  P. 16|7/21/2026 11:30:59 AM",
+        "2026|2043|4/23/2026 11:05:57 AM|SB482|H|Ought to Pass: MA RC 214-140 04/23/2026  HJ 11  P. 18|7/21/2026 11:31:15 AM",
+        "2026|2043|4/23/2026 2:05:22 PM|SB482|H|Referral Waived by Committee Chair per House Rule 47(f) 04/23/2026  HJ 11  P. 27|7/21/2026 11:33:11 AM",
+        "2026|2043|5/6/2026 1:15:25 PM|SB482|H|Referred to Criminal Justice and Public Safety 04/23/2026  HJ 11  P. 24|7/21/2026 11:32:46 AM",
+        "2026|2043|6/2/2026 2:53:40 PM|SB482|H|Enrolled Bill Amendment # 2026-2122e: AA VV (in recess of) 05/21/2026  HJ 14  P. 37|7/27/2026 1:07:39 PM",
+        "2026|2043|6/5/2026 9:40:58 AM|SB482|S|Enrolled Bill Amendment # 2026-2122e Adopted, VV, (In recess of 06/04/2026);  SJ 14|6/5/2026 11:23:24 AM",
+        "2026|2043|6/10/2026 11:53:33 AM|SB482|S|Enrolled Adopted, VV, (In recess 06/04/2026);  SJ 14|6/10/2026 1:44:24 PM",
+        "2026|2043|6/10/2026 1:16:46 PM|SB482|H|Enrolled (in recess of) 06/04/2026  HJ 15  P. 43|8/31/2026 9:49:46 AM",
+        "2026|2043|6/24/2026 8:26:38 AM|SB482|S|Signed by the Governor on 06/19/2026; Chapter 187; Effective 12/16/2026|6/24/2026 8:26:38 AM"],
+}
+
+
+@check("narrative", "a passage the chamber sent on to a second committee on the next row is "
+                    "told as approved, as the rail draws it, unless the referral was waived",
+       needs=("narrative", "build_site_v2"))
+def _approved_and_sent_on(N, B):
+    """Since 2007 the House writes a referral to a second committee on a row
+    of its own, seconds after the vote: "Ought to Pass: MA VV 03/06/2025" and
+    "Referred to Finance 03/06/2025" (HB 547 of 2025). House Journal 7 of 2025
+    prints the report and then "The Speaker referred the bill to the
+    Committee on Finance": the House approved the bill, it did not pass it,
+    and Finance had it killed on 7 January 2026. Its history said "the House
+    voted to pass it" -- on 112 bills of 2025-2026, 24 of them never passed --
+    while the rail, by its own rule, said "Approved and sent to Finance". A
+    referral to any second committee counts (HB 369's Criminal Justice and
+    Public Safety), and so does the Senate's own referral row (HB 123's Ways
+    and Means). A referral its chair waived took the bill nowhere, and the
+    passage is still one: HB 1574 of 2026, waived the same day; SB 482 of
+    2026, the waiver entered before the referral; HB 123's House referral,
+    waived a week later. The referral keeps its own sentence and heading."""
+    want = {  # bill: (must say, must not say)
+        "HB547": (["On March 6, 2025 the House voted to approve it on a voice vote.",
+                   "On March 6, 2025 the bill was referred to the Finance committee."],
+                  ["voted to pass it"]),
+        "HB66": (["On February 20, 2025 the House voted to approve it with changes on a "
+                  "division vote 321–48.",
+                  "On April 10, 2025 the House voted to pass it with changes on a roll call "
+                  "207–164."],
+                 ["On February 20, 2025 the House voted to pass it"]),
+        "HB369": (["On February 13, 2025 the House voted to approve it with changes on a voice "
+                   "vote.",
+                   "On February 13, 2025 the bill was referred to the Criminal Justice and Public "
+                   "Safety committee.",
+                   "On March 26, 2025 the House voted to pass it on a voice vote."],
+                  ["On February 13, 2025 the House voted to pass it"]),
+        "HB123": (["On May 15, 2025 the Senate voted to approve it with changes on a voice vote.",
+                   "On May 22, 2025 the Senate voted to pass it on a voice vote and ordered it to "
+                   "a third reading.",
+                   "On March 13, 2025 the House voted to pass it with changes on a roll call "
+                   "197–158."],
+                  ["On May 15, 2025 the Senate voted to pass it", "House voted to approve it"]),
+        "HB1574": (["On February 19, 2026 the House voted to pass it with changes on a voice "
+                    "vote.",
+                    "whose chair waived the referral under House Rule 47(f)"],
+                   ["voted to approve it"]),
+        "SB482": (["On April 23, 2026 the House voted to pass it on a roll call 214–140."],
+                  ["voted to approve it"]),
+    }
+    from datetime import datetime as _dt
+    approved = re.compile(r"On (\w+ \d{1,2}, \d{4}) the (House|Senate) voted to approve it")
+    bad = []
+    for (bill, term), rows in _DOCKET_APPROVED_SENT_ON.items():
+        rec = _narrated(N, term, bill, rows)
+        told = rec.get("narrative") or ""
+        said, unsaid = want[bill]
+        bad += [f"{bill} of {term} does not say {s!r}" for s in said if s not in told]
+        bad += [f"{bill} of {term} says {s!r}" for s in unsaid if s in told]
+        # The history and the rail say the same of the same day.
+        rail = {(s["date"], s["body"]) for s in B.journey(rec, bill, term=term)[1]
+                if s["act"] == "referred"}
+        for when, chamber in approved.findall(told):
+            day = _dt.strptime(when, "%B %d, %Y").strftime("%Y-%m-%d")
+            if (day, chamber[0]) not in rail:
+                bad.append(f"{bill} of {term}: approved on {day} in the history, and the rail "
+                           f"has no referral that day: {sorted(rail)}")
+        if bill == "HB547":
+            heads = [st["label"] for st in rec["stages"]]
+            if heads != ["In House committee — Municipal and County Government",
+                         "On the House floor", "In House committee — Finance",
+                         "On the House floor"]:
+                bad.append(f"HB547 of 2025's stages are {heads}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 547, HB 66, HB 369 and HB 123's Senate passage approved and sent on, as "
+                  "the rail draws them; HB 1574, SB 482 and HB 123's House passage, whose "
+                  "referrals were waived, passed")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
