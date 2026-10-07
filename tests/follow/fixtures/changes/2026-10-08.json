@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "date": "2026-10-08",
+  "built": "2026-10-08T09:03:17Z",
+  "sitting_term": "2025-2026",
+  "new_by": "first-seen",
+  "refs": {
+    "bill:2026/HB9901": {
+      "study": {"recommends": true,
+                "summary": "Interim Study Report: Recommended for Future Legislation 10/07/2026",
+                "date": "2026-10-07", "guid": "2025-2026:HB9901:study-report",
+                "seen": "2026-10-08T09:03:17Z"}
+    },
+    "bill:2026/HB9903": {
+      "items": [
+        {"guid": "2025-2026:HB9903:2026-10-07:roll-call-ought-to-pass-11-9",
+         "date": "2026-10-07", "kind": "vote",
+         "summary": "HB 9903-FN — Committee roll call: Ought to Pass, 11-9",
+         "url": "/bill/2026/hb9903", "term": "2025-2026", "seen": "2026-10-08T09:03:17Z"}
+      ]
+    },
+    "member:990001": {
+      "items": [
+        {"guid": "vote:990001:2026-H-9001", "date": "2026-10-07", "kind": "vote",
+         "summary": "HB 9903-FN — yes on Ought to Pass",
+         "url": "/bill/2026/hb9903", "term": "2025-2026", "seen": "2026-10-08T09:03:17Z"}
+      ]
+    },
+    "topic:housing": {
+      "items": [
+        {"guid": "2025-2026:HB9903:2026-10-07:roll-call-ought-to-pass-11-9",
+         "date": "2026-10-07", "kind": "vote",
+         "summary": "HB 9903-FN — Committee roll call: Ought to Pass, 11-9",
+         "url": "/bill/2026/hb9903", "term": "2025-2026", "seen": "2026-10-08T09:03:17Z"},
+        {"guid": "2023-2024:HB9904:2024-05-02:inexpedient-to-legislate",
+         "date": "2024-05-02", "kind": "action",
+         "summary": "HB 9904 — Inexpedient to Legislate: MA VV 05/02/2024",
+         "url": "/bill/2024/hb9904", "term": "2023-2024", "seen": "2026-10-08T09:03:17Z"}
+      ]
+    }
+  }
+}

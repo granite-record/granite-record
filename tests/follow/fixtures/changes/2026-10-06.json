@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "date": "2026-10-06",
+  "built": "2026-10-06T09:02:58Z",
+  "sitting_term": "2025-2026",
+  "new_by": "first-seen",
+  "refs": {
+    "member:990001": {
+      "items": [
+        {"guid": "sponsor:990001:HB9903", "date": "2026-10-05", "kind": "sponsor",
+         "summary": "HB 9903-FN — prime sponsor",
+         "url": "/bill/2026/hb9903", "term": "2025-2026", "seen": "2026-10-06T09:02:58Z"}
+      ]
+    },
+    "committee:H90": {
+      "items": [
+        {"guid": "committee:H90:2026-10-05", "date": "2026-10-05", "kind": "sitting",
+         "summary": "House Example Committee — 5 October 2026",
+         "url": "/committee/H90", "term": "2025-2026", "seen": "2026-10-06T09:02:58Z"}
+      ]
+    }
+  }
+}
