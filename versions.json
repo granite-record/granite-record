@@ -67,7 +67,7 @@
     "fetch_bill_text.py": "2026-09-04.29",
     "fetch_calendar_archive.py": "2026-09-08.11",
     "fetch_captions.py": "2026-09-05.15",
-    "fetch_channel_index.py": "2026-09-04.3",
+    "fetch_channel_index.py": "2026-09-04.4",
     "fetch_committee_details.py": "2026-09-07.11",
     "fetch_committee_members_db.py": "2026-09-07.4",
     "fetch_committee_reports.py": "2026-09-04.34",

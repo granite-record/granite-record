@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Step 1 of verification: pull the NH House/Senate YouTube video index.
 
@@ -10,8 +10,8 @@ Answers, without watching any video:
   - Does one video ever appear to cover two committees?
 
 Usage:
-    python fetch_channel_index.py --key YOUR_API_KEY --chamber house
-    python fetch_channel_index.py --key YOUR_API_KEY --chamber senate --start 2025-01-01 --end 2025-06-30
+    python src/fetch/youtube/fetch_channel_index.py --key YOUR_API_KEY --chamber house
+    python src/fetch/youtube/fetch_channel_index.py --key YOUR_API_KEY --chamber senate --start 2025-01-01 --end 2025-06-30
 
 Uses only the Python standard library. Nothing to install.
 """
