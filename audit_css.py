@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 Which components are stranded, and which rules are dead.
 
@@ -159,7 +159,7 @@ def main():
         p = Path(js)
         if p.exists():
             everything |= classes_in(p.read_text(encoding="utf-8", errors="replace"))
-    for py in Path(".").glob("build_*.py"):
+    for py in _paths.code_files("build_*.py"):
         everything |= classes_in(py.read_text(encoding="utf-8", errors="replace"))
 
     dead = sorted(c for c in styled_app

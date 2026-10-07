@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.389
+# GRANITE_VERSION: 2026-09-04.390
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -427,7 +427,7 @@ def _upcoming_shape():
     import shutil, subprocess, sys, tempfile
     here = Path(".").resolve()
     need = ["build_site_v2.py", "proceedings.py", "build_proceedings.py"]
-    absent = [x for x in need if not (here / x).exists()]
+    absent = [x for x in need if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp(prefix="gr-upcoming-"))
@@ -729,14 +729,14 @@ def _parse_all():
              if n.endswith(".py")]
     bad = []
     for n in names:
-        p = Path(n)
+        p = _paths.locate(n)
         if not p.exists():
             continue
         try:
             _parsed(p)
         except SyntaxError as e:
             bad.append(f"{n}:{e.lineno} {e.msg}")
-    present = sum(1 for n in names if Path(n).exists())
+    present = sum(1 for n in names if _paths.locate(n).exists())
     assert not bad, "; ".join(bad)
     return "ok", f"{present} of {len(names)} present, all parse"
 
@@ -785,8 +785,8 @@ def _import_all():
         "this was written, so the runners are not being read")
     bad = [f"{n}: {src} names {n}.py and it is not here" for n, src in sorted(gone.items())]
     for m in mods + sorted(set(runs) - set(mods)):
-        if not Path(m + ".py").exists():
-            bad.append(f"{m}: a check needs it and {m}.py is not here")
+        if _paths.find(m + ".py") is None:
+            bad.append(f"{m}: a check needs it and {m}.py is in no code folder")
             continue
         try:
             __import__(m)
@@ -816,14 +816,14 @@ def _scripts_run():
     the script doing the asking."""
     here, gone = {}, {}
     for src in _RUNNERS:
-        f = Path(src)
+        f = _paths.locate(src)
         if not f.exists():
             continue
         text = f.read_text(encoding="utf-8", errors="replace")
         code = src.endswith(".py")
         pat = r"""["']([A-Za-z_]\w*)\.py["']""" if code else r"(?<![\w/.-])([A-Za-z_]\w*)\.py\b"
         for n in sorted(set(re.findall(pat, text)) - {"preflight"}):
-            if Path(n + ".py").exists():
+            if _paths.find(n + ".py") is not None:
                 here.setdefault(n, src)
             elif code:
                 gone.setdefault(n, src)
@@ -8088,7 +8088,7 @@ def _the_new_terms_first_night(N, B):
         if B.session_over_in(day, current) != want:
             bad.append(f"session_over {day!r} in {current or 'no term'}: "
                        f"{B.session_over_in(day, current)!r}, not {want!r}")
-    src = Path("build_site_v2.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     if "session_over = session_over_in(session_over, current)" not in src:
         bad.append("build_bills no longer takes session_over through session_over_in")
     # What the day does to a bill that has passed its own chamber: SB 12 of
@@ -9663,7 +9663,7 @@ def _rollcall_typed_bill(RP):
             f"roll calls keyed {[(t, sorted(b)) for t, b in keyed.items()]}")
         # build_data keys each member's ballot by the summary's bill, and only
         # a rebuild would show it reverting -- the nightly runs --code alone.
-        src = Path("build_data.py").read_text(encoding="utf-8")
+        src = _paths.locate("build_data.py").read_text(encoding="utf-8")
         assert '"bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper()' in src, (
             "build_data.py no longer keys the roll-call summary's bill through "
             "rollcall_parser.roll_call_bill, so no ballot on \"SB 406\" reaches SB 406's page")
@@ -9989,7 +9989,7 @@ def _rollcall_outcomes_data(rollcall_outcomes):
 
 @check("rollcalls", "floor_markers matches a spoken tally to the record")
 def _tally_match():
-    if not Path("floor_markers.py").exists():
+    if not _paths.locate("floor_markers.py").exists():
         return "skip", "floor_markers.py not here"
     d = Path(tempfile.mkdtemp())
     try:
@@ -10198,7 +10198,7 @@ def _markers_fallback():
     verify_batch.py absent skips the check, as its own check did, rather than
     passing on the first two parts alone.
     """
-    if not Path("apply_markers.py").exists():
+    if not _paths.locate("apply_markers.py").exists():
         return "skip", "apply_markers.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -10237,7 +10237,7 @@ def _markers_fallback():
             "the stated close should narrow the start's tolerance"
 
         # 3. verify_batch over the applied tree prints a sub-minute band.
-        if not Path("verify_batch.py").exists():
+        if not _paths.locate("verify_batch.py").exists():
             return "skip", ("apply_markers passed; verify_batch.py is not here, so its "
                             "bands were not read")
         r = _run([sys.executable, _paths.script("verify_batch.py"),
@@ -10282,7 +10282,7 @@ def _markers_merge_siblings():
     subset on every run. The phrases below were spoken: the clerk's reading
     is segment_markers' own quotation, the chair's is in tests/test_markers.
     """
-    if not Path("segment_markers.py").exists():
+    if not _paths.locate("segment_markers.py").exists():
         return "skip", "segment_markers.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -10544,7 +10544,7 @@ def _ls_nights(livestreams, build_manifest):
     a committed file, and build_manifest takes the aired row over the
     committed one written before the stream.
     """
-    if not Path("livestreams.py").exists():
+    if not _paths.locate("livestreams.py").exists():
         return "skip", "livestreams.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -11870,7 +11870,7 @@ def _ls_laptop_read(livestreams, nightly):
     candidate_segments.json, is adopted on night two and leaves the count
     behind the nightly's warning.
     """
-    if not Path("livestreams.py").exists():
+    if not _paths.locate("livestreams.py").exists():
         return "skip", "livestreams.py not here"
     from datetime import datetime, timedelta, timezone
     L = livestreams
@@ -11962,7 +11962,7 @@ def _ls_rows(livestreams):
     The older eleven-column files are left out: they predate the corrected
     daylight-time rule and the bill-title fallback, which is why they differ.
     """
-    src = Path("fetch_channel_index.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_channel_index.py").read_text(encoding="utf-8")
     m = re.search(r"cols = (\[[^\]]*\])", src)
     assert m, "no cols list in fetch_channel_index.main"
     assert ast.literal_eval(m.group(1)) == livestreams.COLS, \
@@ -12573,7 +12573,7 @@ def _text_cache_by_term(fetch_bill_text):
             "a term's own folder is not preferred to the flat file"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    src = Path("fetch_bill_text.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_bill_text.py").read_text(encoding="utf-8")
     assert "f = cache_path(cache, term, bid)" in src and 'cache / f"{bid}.html"' not in src, \
         "fetch_bill_text reads or writes its cache by the bill number alone again"
     return "ok", "2027's HB1 is not 2025's; the flat pages answer for 2025-2026 only"
@@ -12603,7 +12603,7 @@ def _status_own_term(build_data):
     assert SFS(flat, new) == (flat, []), "a flat file is the current session's"
     assert not hasattr(build_data.P, "for_term"), (
         "proceedings.for_term is back: its newest-term default is the fault this check is about")
-    src = Path("build_data.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
     assert "status_for_session(raw, bills)" in src, \
         "build_data no longer reads bill_status.json through status_for_session"
     return "ok", "2027 bills take nothing from 2025-2026, and their own slice once it exists"
@@ -12812,7 +12812,6 @@ def _class_collisions():
     every citation ran past its box and made the page scroll sideways. .cite
     was already the third name in this docstring's first line.
     """
-    import glob as _glob
     SHARED = {
         # the header and the footer, written once in bills.html for the record
         # pages and again in build_pages.shell() for the static ones
@@ -12837,14 +12836,14 @@ def _class_collisions():
     }
     here = Path(".")
     app_side = ["app.js", "find.js", "bills.html"]
-    bld_side = sorted(_glob.glob("build_*.py")) + ["shell.py"]
-    if not all((here / f).exists() for f in app_side + ["shell.py"]) or not bld_side:
+    bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py"]
+    if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
 
     def drawn(paths):
         found = {}
         for f in paths:
-            txt = (here / f).read_text(encoding="utf-8", errors="replace")
+            txt = _paths.locate(f).read_text(encoding="utf-8", errors="replace")
             for m in re.finditer(r'class="([^"${}]+)"', txt):
                 for c in m.group(1).split():
                     if re.fullmatch(r"[a-z][a-z0-9-]*", c):
@@ -13084,7 +13083,7 @@ def _find_all_results():
     Both halves are read from source rather than from a build, so this runs
     under --code with nothing on disk.
     """
-    js, bp = Path("find.js"), Path("build_pages.py")
+    js, bp = Path("find.js"), _paths.locate("build_pages.py")
     if not js.exists() or not bp.exists():
         return "skip", "find.js or build_pages.py not in this directory"
     t = js.read_text(encoding="utf-8")
@@ -16712,7 +16711,7 @@ def _audit_minor(BSP, seating, BP):
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
         bad.append("a speaker line's names are not each one item with its comma: " + row[:160])
-    page = Path("build_session_pages.py").read_text(encoding="utf-8")
+    page = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
     if re.search(r'", "\.join\(member_html', page):
         bad.append("build_session_pages.py joins members with a bare comma again, which a "
                    "flex row draws as an item of its own with a gap before it")
@@ -16756,7 +16755,7 @@ def _built_stylesheets():
     """
     here = Path(".").resolve()
     sheets = []
-    if not [x for x in CHAIN_NEEDS if not (here / x).exists()]:
+    if not [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
         sheets.append(("the fixture's style.css", _fixture_site_shared()[0] / "site"))
     if Path("site/style.css").exists():
         sheets.append(("site/style.css", Path("site")))
@@ -17559,8 +17558,8 @@ def _plan(build_all):
     # scraped page's step and its flat testimony.json are retired.
     assert "fetch_testimony_db.py" in scripts and "fetch_testimony.py" not in scripts, \
         "the sign-in counts' step is not the database's alone"
-    missing = [x for x in scripts if not Path(x).exists()]
-    assert not missing, "steps reference scripts that are not here: " + \
+    missing = [x for x in scripts if _paths.find(x) is None]
+    assert not missing, "steps reference scripts that are in no code folder: " + \
                         ", ".join(missing)
     return "ok", f"{len(steps)} steps, order correct, every script present"
 
@@ -17708,7 +17707,7 @@ def _stamps():
     want = json.loads(vp.read_text(encoding="utf-8")).get("files", {})
     bad, unstamped, seen = [], [], 0
     for name, ver in want.items():
-        f = Path(name)
+        f = _paths.locate(name)
         if not f.exists():
             continue
         seen += 1
@@ -17779,8 +17778,8 @@ def _record_untouched():
                 "place_corrections.json", "launch_register.json",
                 "docket_corrections.json", "ballot_results.json"]
     bad, names = [], []
-    for f in (sorted(Path(".").glob("build_*.py"))
-              + sorted(Path(".").glob("fetch_*.py"))):
+    scanned = _paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
+    for f in scanned:
         src = f.read_text(encoding="utf-8", errors="replace")
         if "checked.jsonl" in src:
             names.append(f.name)
@@ -17803,7 +17802,7 @@ def _record_untouched():
     if bad:
         said.append("these write a hand-made file: " + "; ".join(bad))
 
-    rv = Path("review.py")
+    rv = _paths.locate("review.py")
     if rv.exists():
         src = rv.read_text(encoding="utf-8", errors="replace")
         # The BIND, not the file: the first version of this check read the
@@ -18798,7 +18797,7 @@ def _states_covered():
     Two halves, because either alone would have missed it: the states must be
     covered, and the chain must be a single chain.
     """
-    b = Path("build_site_v2.py")
+    b = _paths.locate("build_site_v2.py")
     page, h = page_source()
     if not (b.exists() and h):
         return "skip", "build_site_v2.py or bills.html not here"
@@ -20141,7 +20140,7 @@ def _ballot_built(build_site_v2):
     answer and the file it came from, its How it got here end at the voters
     with whose count it is, and its index row's rail at the Voters stop."""
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-ballot-"))
     try:
@@ -21320,7 +21319,7 @@ def _chain():
     file. All ten run.
     """
     here = Path(".").resolve()
-    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
@@ -21671,7 +21670,7 @@ def _build_date_stated(build_all, build_date, shell):
 
     def imported(f):
         out = set()
-        for n in ast.walk(_parsed(f)):
+        for n in ast.walk(_parsed(_paths.locate(f))):
             if isinstance(n, ast.Import):
                 out |= {a.name.split(".")[0] for a in n.names}
             elif isinstance(n, ast.ImportFrom) and n.module:
@@ -21679,7 +21678,7 @@ def _build_date_stated(build_all, build_date, shell):
             elif isinstance(n, ast.Call) and getattr(n.func, "id", "") == "__import__" \
                     and n.args and isinstance(n.args[0], ast.Constant):
                 out.add(str(n.args[0].value).split(".")[0])
-        return {m + ".py" for m in out if Path(m + ".py").exists()}
+        return {m + ".py" for m in out if _paths.find(m + ".py") is not None}
 
     def clock(tree):
         """The places in a parsed script that ask the clock what day it is:
@@ -21715,10 +21714,10 @@ def _build_date_stated(build_all, build_date, shell):
     seen, todo = set(), list(steps)
     while todo:
         f = todo.pop()
-        if f not in seen and Path(f).exists():
+        if f not in seen and _paths.locate(f).exists():
             seen.add(f)
             todo += sorted(imported(f))
-    own = {f: clock(_parsed(f)) for f in sorted(seen)}
+    own = {f: clock(_parsed(_paths.locate(f))) for f in sorted(seen)}
     stray = [f"{f} ({'; '.join(c[:3])})" for f, c in own.items()
              if c and f not in CLOCK_OF_THEIR_OWN]
     assert not stray, (
@@ -21730,14 +21729,15 @@ def _build_date_stated(build_all, build_date, shell):
     assert not stale, ("CLOCK_OF_THEIR_OWN names modules that no longer read the clock: "
                        + ", ".join(stale))
     readers = sorted(f for f in seen if f != "build_date.py"
-                     and build_date.ENV in Path(f).read_text(encoding="utf-8", errors="replace"))
+                     and build_date.ENV in _paths.locate(f).read_text(encoding="utf-8",
+                                                                     errors="replace"))
     assert not readers, (f"{build_date.ENV} is read in one place, build_date.py, and "
                          f"{', '.join(readers)} name it too")
     assert build_date.stated() is None and build_date.today() == date.today(), (
         "with no day stated, build_date.today() is not the clock's")
 
     here = Path(".").resolve()
-    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
                       "itself; the stated day was not built with: not here, "
@@ -21893,7 +21893,7 @@ def _links_resolve():
     """
     from urllib.parse import urldefrag, urljoin
     here = Path(".").resolve()
-    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
@@ -27598,7 +27598,7 @@ def _addresses_have_slash():
     import html as _html
     here = Path(".").resolve()
     absent = [x for x in CHAIN_NEEDS + ["build_calendar.py", "shell.py"]
-              if not (here / x).exists()]
+              if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     sys.path.insert(0, str(here))
@@ -28290,7 +28290,7 @@ def _misprinted_report():
     assert "HB999" not in reports["2021-2022"], "a record that was another bill's stayed"
     for src, want in (("build_site_v2.py", "RC.apply(reports"),
                       ("build_committees.py", "RC.apply(house")):
-        assert want in Path(src).read_text(encoding="utf-8"), (
+        assert want in _paths.locate(src).read_text(encoding="utf-8"), (
             f"{src} no longer applies report_check's corrections")
     return "ok", (f"{n} corrected in the fixture: HB 365's text from its filed copy, "
                   "a record that was another bill's dropped")
@@ -28655,7 +28655,7 @@ def _feed_needs_a_year():
     was still standing in for a bill.
     """
     here = Path(".").resolve()
-    if not (here / "build_feeds.py").exists():
+    if not _paths.locate("build_feeds.py").exists():
         return "skip", "build_feeds.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -28713,7 +28713,7 @@ def _feeds_keyed_and_current():
     a failed run would otherwise unpublish every feed and call it housekeeping.
     """
     here = Path(".").resolve()
-    if not (here / "build_feeds.py").exists():
+    if not _paths.locate("build_feeds.py").exists():
         return "skip", "build_feeds.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -28787,7 +28787,7 @@ def _legislator_feed_dates():
     """
     from datetime import datetime
     here = Path(".").resolve()
-    if not (here / "build_feeds.py").exists():
+    if not _paths.locate("build_feeds.py").exists():
         return "skip", "build_feeds.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-legfeed-"))
     try:
@@ -28879,7 +28879,7 @@ def _member_feed_links():
     """
     here = Path(".").resolve()
     need = ("build_legislator_pages.py", "build_feeds.py", "bills.html")
-    absent = [f for f in need if not (here / f).exists()]
+    absent = [f for f in need if not _paths.locate(f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp(prefix="gr-memberfeed-"))
@@ -28976,7 +28976,7 @@ def _directory_pages():
     four homepage links and nothing else, the 406 legislator pages from the town
     pages only, and the town pages from nothing."""
     here = Path(".").resolve()
-    if not (here / "build_indexes.py").exists():
+    if not _paths.locate("build_indexes.py").exists():
         return "skip", "build_indexes.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -29058,7 +29058,7 @@ def _directory_pages():
         assert 'href="data.html"' in foot, (
             "the footer does not link the Data page, which is now the route "
             "to the directory and so to every record")
-        exports = (here / "build_exports.py").read_text(encoding="utf-8")
+        exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
         assert 'href="directory.html"' in exports, (
             "the Data page does not link the directory, so nothing static "
             "reaches the per-record lists and a crawler sees no bills")
@@ -29273,7 +29273,7 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
 
     # Through main().
     here = Path(".").resolve()
-    if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
+    if not _paths.locate("build_committees.py").exists() or not (here / "bills.html").exists():
         return "skip", "build_committees.py or bills.html not here"
     root = Path(tempfile.mkdtemp(prefix="gr-cmte-notice-"))
     try:
@@ -29463,7 +29463,7 @@ def _committees_archived(BC):
         "1989 to 1992, 1997 to 1998 and 2011 to 2012"
     # And the committee's own page says it, since a reader from a search never
     # sees the listing.
-    src = Path("build_committees.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
     assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
     head = Path("app.js").read_text(encoding="utf-8")
@@ -29521,7 +29521,7 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
     sentence saying what to do, rather than building every page without them.
     """
     here = Path(".").resolve()
-    if not (here / "build_committees.py").exists() or not (here / "bills.html").exists():
+    if not _paths.locate("build_committees.py").exists() or not (here / "bills.html").exists():
         return "skip", "build_committees.py or bills.html not here"
     rows = FC.parse(_CMTE_LISTING, "H")
     assert len(rows) == 1 and rows[0]["chair"] == "Jane Doe", (
@@ -29970,13 +29970,14 @@ def _committee_details_one_writer():
     the night; fetch_committee_details.py no longer writes the committees it
     reads; and the kit gives the two files the owners they have.
     """
-    mine = Path("fetch_committee_details.py")
-    if not mine.exists() or not Path("committee_details.py").exists():
+    mine = _paths.locate("fetch_committee_details.py")
+    if not mine.exists() or not _paths.locate("committee_details.py").exists():
         return "skip", "fetch_committee_details.py or committee_details.py not here"
     stem = re.escape("committee_details.json")
     bad = []
-    for f in (sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py"))
-              + [Path("nightly.py")]):
+    scanned = (_paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
+            + [_paths.locate("nightly.py")])
+    for f in scanned:
         if f.name == mine.name or not f.exists():
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
@@ -30489,7 +30490,7 @@ def _former_heading(BL):
     """
     here = Path(".").resolve()
     need = ("build_legislator_pages.py", "bills.html", "app.js", "dom_stub.js")
-    absent = [f for f in need if not (here / f).exists()]
+    absent = [f for f in need if not _paths.locate(f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     M = _FORMER_HEADING_MEMBERS
@@ -30596,7 +30597,7 @@ def _feed_promises():
     reader who went looking would have found nothing on the page to click."""
     for f, stale in (("build_pages.py", "Every bill has its own feed"),
                      ("civics.py", "Every bill, member and committee has an RSS feed")):
-        assert stale not in Path(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
+        assert stale not in _paths.locate(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
     return "ok", "home and Learn say only bills still moving have feeds"
 
 
@@ -30623,11 +30624,11 @@ def _logo_licence():
     text and MIT like the code."""
     import subprocess
     for f in ("bills.html", "build_pages.py"):
-        src = Path(f).read_text(encoding="utf-8")
+        src = _paths.locate(f).read_text(encoding="utf-8")
         assert src.count('class="logocredit"') == 1, f"{f}: the footer's logo credit is missing or doubled"
         assert "Debra Caplan" in src and "https://www.linescapesnh.com/" in src, \
             f"{f}: the footer credit no longer names Debra Caplan and links linescapesnh.com"
-    about = Path("build_pages.py").read_text(encoding="utf-8")
+    about = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     about = about[about.index('ABOUT = """'):]
     about = about[:about.index('"""', 12)]
     assert "<h2>The logo</h2>" in about and "Debra Caplan" in about \
@@ -30695,7 +30696,7 @@ def _brand_files():
 
     def code(path):
         # A script's own words about a file are not a page asking for it.
-        text = Path(path).read_text(encoding="utf-8")
+        text = _paths.locate(path).read_text(encoding="utf-8")
         if path.endswith(".py"):
             text = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
             text = re.sub(r"BRAND_FILES = \(.*?\)\n", "", text, flags=re.S)
@@ -30711,8 +30712,8 @@ def _brand_files():
         "the two head-writers link different icons: bills.html "
         f"{sorted(heads['bills.html'])}, build_pages.py {sorted(heads['build_pages.py'])}")
     card = re.compile(r"\bog(?:-[a-z]+)?\.png")
-    for f in sorted(str(x) for x in Path(".").glob("build_*.py")) + ["shell.py", "bills.html"]:
-        if f == "build_brand.py" or not Path(f).exists():
+    for f in [x.name for x in _paths.code_files("build_*.py")] + ["shell.py", "bills.html"]:
+        if f == "build_brand.py" or not _paths.locate(f).exists():
             continue        # it draws them; it does not ask for them
         for g in set(card.findall(code(f))):
             named.setdefault(g, f)
@@ -31621,7 +31622,7 @@ def _one_stylesheet():
     style.css is now written from app.css's palette, its SHARED region and that
     one, so this fails if build_pages.py grows rules of its own again.
     """
-    src = Path("build_pages.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     app = Path("app.css").read_text(encoding="utf-8")
     i = src.find('CSS = """')
     assert i > 0, "build_pages.py has no CSS template"
@@ -31659,7 +31660,7 @@ def _status_box_parity():
     person set what it should read, and the Python copy had no last floor
     session, no count of hearings and no date -- so it could not say a stale
     summary was stale."""
-    src = Path("build_pages.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     py = src[src.find("static_state = \"\""):][:3200]
     js = src[src.find("else if(_state)_state.innerHTML="):][:2400]
     # SINCE 16 SEPTEMBER THE SERVER'S COPY WINS. Both are still written -- the
@@ -32314,13 +32315,13 @@ def _review_of_audit_fixes(BP):
         bad.append("the home page's activity list has its bullets and indent again below 1180px")
 
     # ---- read: the pages' own markup -----------------------------------
-    pages = Path("build_pages.py").read_text(encoding="utf-8")
+    pages = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     if '<p class="sr" id="lsay" role="status"></p>' not in pages \
             or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
             or "say.textContent=text" not in BP.LEGFIND_JS:
         bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
                    "and the script that writes the count into it")
-    exports = Path("build_exports.py").read_text(encoding="utf-8")
+    exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
     cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
     if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
             or "aria-label=" not in cov.group(1) or "tabindex" in cov.group(1):
@@ -32561,7 +32562,7 @@ def _reports_old_shape():
     reasoning -- and the build exits zero.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     for name in ("committee_reports.json", "senate_reports.json"):
         root = Path(tempfile.mkdtemp())
@@ -32600,7 +32601,7 @@ def _bills_by_term():
     check below this one covers what an archived bill reads OUT of them.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32653,7 +32654,7 @@ def _termed_status_and_text():
     half by accident: it hands back whatever record the flat file had.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32731,7 +32732,7 @@ def _narratives_old_shape():
     succeeds.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32767,7 +32768,7 @@ def _disposed_beats_stale_status():
     House adopted 197-156, 195-149 and 204-163 came to read "Killed".
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32804,7 +32805,7 @@ def _senate_reports():
     both chambers say.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32854,7 +32855,7 @@ def _rollcalls_by_term():
     visible here rather than in two years' time.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32892,7 +32893,7 @@ def _rollcalls_old_shape():
     tallies. Five instances of exactly that in a week is why this is a check.
     """
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -32918,7 +32919,7 @@ def _rollcalls_old_shape():
 @check("build", "the built site says what it should")
 def _chain_output():
     here = Path(".").resolve()
-    if not (here / "build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -33073,8 +33074,8 @@ def _late_captions_fixture():
     withholding what it has no reason to doubt.
     """
     here = Path(".").resolve()
-    if not ((here / "build_site_v2.py").exists()
-            and (here / "caption_span.py").exists()):
+    if not (_paths.locate("build_site_v2.py").exists()
+            and _paths.locate("caption_span.py").exists()):
         return "skip", "build_site_v2.py or caption_span.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-late-"))
     try:
@@ -33156,8 +33157,8 @@ def _caption_summary_fixture():
     than be passed over.
     """
     here = Path(".").resolve()
-    if not ((here / "build_site_v2.py").exists()
-            and (here / "caption_span.py").exists()):
+    if not (_paths.locate("build_site_v2.py").exists()
+            and _paths.locate("caption_span.py").exists()):
         return "skip", "build_site_v2.py or caption_span.py not here"
     root = Path(tempfile.mkdtemp(prefix="gr-spans-"))
     try:
@@ -37186,7 +37187,7 @@ def _venues():
 
 @check("data", "the proceeding parser is not dropping scheduling rows")
 def _dropped():
-    if not (Path("Docket.txt").exists() and Path("docket_parser.py").exists()):
+    if not (Path("Docket.txt").exists() and _paths.locate("docket_parser.py").exists()):
         return "skip", "Docket.txt or docket_parser.py not here"
     dp = imp("docket_parser")
     assert dp, "docket_parser.py will not import"
@@ -37485,7 +37486,7 @@ def _house_conference_notice(docket_parser):
 
 @check("data", "a committee report line gives up its recommendation and nothing else")
 def _report_rec():
-    if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
+    if not (Path("Docket.txt").exists() and _paths.locate("narrative.py").exists()):
         return "skip", "Docket.txt or narrative.py not here"
     nv = imp("narrative")
     assert nv, "narrative.py will not import"
@@ -39150,7 +39151,7 @@ def _hearing_is_the_bills_own():
 
 @check("data", "a bill the governor signed says so")
 def _signed():
-    if not (Path("narratives.json").exists() and Path("build_site_v2.py").exists()):
+    if not (Path("narratives.json").exists() and _paths.locate("build_site_v2.py").exists()):
         return "skip", "narratives.json or build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
@@ -39188,7 +39189,7 @@ def _signed():
 
 @check("data", "a sponsor is named the same way whether or not they still serve")
 def _sponsor_names():
-    if not Path("build_site_v2.py").exists():
+    if not _paths.locate("build_site_v2.py").exists():
         return "skip", "build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
@@ -39216,7 +39217,7 @@ def _sponsor_names():
 
 @check("data", "the volume a docket line cites is kept, not cleaned away")
 def _cite_survives():
-    if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
+    if not (Path("Docket.txt").exists() and _paths.locate("narrative.py").exists()):
         return "skip", "Docket.txt or narrative.py not here"
     nv = imp("narrative")
     assert nv, "narrative.py will not import"
@@ -39267,7 +39268,7 @@ def _fetch_writes_its_term():
     there beside it.
     """
     here = Path(".").resolve()
-    if not (here / "fetch_bill_status.py").exists():
+    if not _paths.locate("fetch_bill_status.py").exists():
         return "skip", "fetch_bill_status.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -39329,7 +39330,7 @@ def _manifest_out():
     with the archived term's: the current term gone from proceedings.csv, the
     other in it twice. It is refused before anything is read."""
     here = Path(".").resolve()
-    if not (here / "build_manifest.py").exists():
+    if not _paths.locate("build_manifest.py").exists():
         return "skip", "build_manifest.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -39397,7 +39398,7 @@ def _plate_agrees():
     if not node:
         return "skip", "node is not on PATH, so the JavaScript copies cannot be run"
     js = Path("app.js").read_text(encoding="utf-8", errors="replace")
-    bp = Path("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    bp = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
     grab = lambda src, name: re.search(
         r"function plate\(\w+\)\{.*?\n(?:\s*)\}", src, re.S)
     got = {}
@@ -39439,7 +39440,7 @@ def _meet_kind_agrees():
     left behind shows "Executive session" on one page and "executive
     session", uncoloured, on another -- for the same meeting.
     """
-    py = Path("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    py = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
     js = Path("app.js").read_text(encoding="utf-8", errors="replace")
     m = re.search(r"^MEET_KIND = (\{[^}]*\})", py, re.M)
     assert m, "build_pages.py has no MEET_KIND"
@@ -42507,7 +42508,7 @@ def _deploy_branch():
         "publish.bat deploys without checking which branch the folder is on"
     assert guard < bat.find("call npx wrangler pages deploy"), \
         "publish.bat checks the branch only after uploading"
-    night = Path("nightly.py").read_text(encoding="utf-8", errors="replace")
+    night = _paths.locate("nightly.py").read_text(encoding="utf-8", errors="replace")
     n = re.search(r'^PRODUCTION_BRANCH = "([^"]+)"', night, re.M)
     assert n, "nightly.py does not set PRODUCTION_BRANCH"
     assert n.group(1) == m.group(1), (
@@ -42546,7 +42547,7 @@ def _docket_fetch_stops():
     would have gone on into the next step. A fake server stands in: each
     case runs the real main() in a subprocess in a temp directory."""
     here = Path(".").resolve()
-    if not (here / "fetch_archive_docket.py").exists():
+    if not _paths.locate("fetch_archive_docket.py").exists():
         return "skip", "fetch_archive_docket.py not here"
     good = ('<tr><td>01/05/2016</td><td>H</td><td>Introduced and referred to '
             'Education</td></tr>' * 3)
@@ -42764,7 +42765,8 @@ def _every_fetcher_checks_refusal():
     for what, (src, want) in probes.items():
         assert read("probe.py", src) == want, f"the reader got {what} wrong: {read('probe.py', src)}"
     asks, missing = [], []
-    for p in sorted(Path(".").glob("*.py")):
+    scanned = _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS)
+    for p in scanned:
         if p.name in ("netcheck.py", "preflight.py"):
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
@@ -42780,8 +42782,8 @@ def _every_fetcher_checks_refusal():
             missing.append(p.name)
 
     assert asks, "no fetcher holds a gc.nh.gov URL, which cannot be right"
-    assert all(n in asks for n in NAMED if Path(n).exists()), "a named fetcher was not read"
-    assert not Path("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
+    assert all(n in asks for n in NAMED if _paths.locate(n).exists()), "a named fetcher was not read"
+    assert not _paths.locate("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
         "check_civics_links.py, which asks the addresses civics.py holds, was not read"
     assert not missing, (
         "these ask gc.nh.gov and never call refusal.check(), so neither a standing "
@@ -42821,7 +42823,7 @@ def _offline_modes_ask_nobody():
             ("probe_archive_shape.py", ["--report"], []),
             ("check_civics_links.py", ["--list"], ["--delay", "0"]),
             ("fetch_committee_reports.py", ["--year", "2020", "--offline"], ["--year", "2020"])]
-    runs = [r for r in runs if (here / r[0]).exists()]
+    runs = [r for r in runs if _paths.locate(r[0]).exists()]
     if not runs:
         return "skip", "none of the six scripts is here"
     tmp = Path(tempfile.mkdtemp(prefix="gr-offline-"))
@@ -43461,7 +43463,7 @@ def _senate_calendars(SC):
 
         # The pace is the lane's, not the 2.5 seconds this ran at when it met
         # the 403.
-        src = (here / "fetch_senate_calendars.py").read_text(encoding="utf-8")
+        src = _paths.locate("fetch_senate_calendars.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay".*?default=([\d.]+)', src, re.S)
         assert m and float(m.group(1)) >= 15, (
             "the Senate calendar delay is back under 15 seconds: " + str(m and m.group(1)))
@@ -43943,7 +43945,7 @@ def _calendar_drain(CA):
         # A broken page twice stops the run non-zero, so the lane stops too.
         rc, rows, asked = run([b"<html>Server Error in '/'</html>"] * 2)
         assert rc == 1 and not refusal.MARK.exists(), rc
-        src = Path("fetch_calendar_archive.py").read_text(encoding="utf-8")
+        src = _paths.locate("fetch_calendar_archive.py").read_text(encoding="utf-8")
         assert "LOCK.unlink" not in src and "LOCK.write_text" not in src, \
             "fetch_calendar_archive manages archive/.lock by hand again"
         return "ok", ("runs under the lane's lock and leaves it; one 403, the "
@@ -44568,7 +44570,7 @@ def _about_reports():
     feedback through a Google form, a day after the report box went live, and
     nothing deleted a report at all. The promise is held to the code now: the
     box named as app.js labels it, and the week as compile_reports deletes."""
-    bp, app, cr = Path("build_pages.py"), Path("app.js"), Path("compile_reports.py")
+    bp, app, cr = _paths.locate("build_pages.py"), Path("app.js"), _paths.locate("compile_reports.py")
     absent = [str(p) for p in (bp, app, cr) if not p.exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -45134,7 +45136,7 @@ def _snapshot_stops(SG):
             "a page slow to answer counted as a refusal, or kept the files from being taken"
         page[0] = healthy
         assert SG.page_said(healthy) == "", "a page with no error was read as reporting one"
-        src = Path("snapshot_gencourt.py").read_text(encoding="utf-8")
+        src = _paths.locate("snapshot_gencourt.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
         assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
         return "ok", ("the page first, its error kept and the files still taken; one 403 stops it, "
@@ -45182,14 +45184,14 @@ def _nightly_guards(NI):
     stop, _, _ = NI.gated(before, dict(before, files=NI.FILE_CEILING), force=True)
     assert stop, "--force carried a deploy past the file ceiling"
 
-    tree = ast.parse(Path("nightly.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_paths.locate("nightly.py").read_text(encoding="utf-8"))
     withs = [w for w in ast.walk(tree) if isinstance(w, ast.With)
              and any("hold" in ast.unparse(i.context_expr) for i in w.items)]
     assert withs, "the nightly takes no refusal.hold() for its fetch"
     inside = " ".join(ast.unparse(w) for w in withs)
     assert "snapshot_gencourt.py" in inside, "the snapshot does not run under the nightly's lock"
     assert "build_all.py" not in inside, "the nightly holds the General Court's lock through the build"
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     assert '"build_all.py", "--local"' in src, "the nightly's build is not --local"
     assert re.search(r"if a\.deploy and not stop and changed:", src), "a deploy is not gated on --deploy"
     assert "tree_clean()" in src, "a deploy does not require a committed tree"
@@ -48107,7 +48109,7 @@ def _nightly_new_term(NI, SG, BA):
     assert feeds(type("B", (A,), {"allow_prune": True})())[-1] == "--allow-prune", \
         "build_all.py --allow-prune does not reach build_feeds.py"
     assert re.search(r'ap\.add_argument\("--allow-prune", action="store_true"',
-                     Path("build_all.py").read_text(encoding="utf-8")), \
+                     _paths.locate("build_all.py").read_text(encoding="utf-8")), \
         "build_all.py takes no --allow-prune for the New term night to pass"
 
     here = os.getcwd()
@@ -49641,7 +49643,7 @@ def _dayfiles_rebuild(DF):
                 "a guard fired and the command wrote files, or did not say so: "
                 + (r.stdout + r.stderr)[-400:])
         assert not list(tmp.rglob("*.part")), "a half-written file was left behind"
-        src = (here / "dayfiles_from_db.py").read_text(encoding="utf-8")
+        src = _paths.locate("dayfiles_from_db.py").read_text(encoding="utf-8")
         assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|probe_db|"
                              r"refusal|child)\b", src, re.M), \
             "dayfiles_from_db.py imports something that could ask the network"
@@ -51664,7 +51666,7 @@ def _fetch_day_db(FD, DF, P, NI):
         assert code == 1 and said.startswith("NOT ASKED"), (code, said[:200])
 
         # It reaches the database through probe_db only.
-        tree_ = ast.parse((Path(here) / "fetch_day_db.py").read_text(encoding="utf-8"))
+        tree_ = ast.parse(_paths.locate("fetch_day_db.py").read_text(encoding="utf-8"))
         imported = {a.name for n in ast.walk(tree_) if isinstance(n, ast.Import) for a in n.names} \
             | {n.module for n in ast.walk(tree_) if isinstance(n, ast.ImportFrom) and n.module}
         assert imported <= {"argparse", "json", "shutil", "sys", "time", "datetime", "pathlib",
@@ -52993,7 +52995,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
              "run, a refusal on file and no installed files")
         # ... and the script it starts says the same of when it is started:
         # its docstring said "on its last try" for a day after the order changed.
-        said = (Path(NI.__file__).parent / "fetch_day_db.py").read_text(encoding="utf-8")
+        said = _paths.locate("fetch_day_db.py").read_text(encoding="utf-8")
         assert "(nightly.DB_AFTER_TRIES)" in said and "empty on its last try" not in said, \
             "fetch_day_db.py's docstring does not say which try of the export sends the night to it"
         # THE LONGEST RUN FITS THE JOB AND THE WINDOW. Nothing tied the two
@@ -54143,7 +54145,7 @@ def _past_select_only(FP):
             pass
 
     # The script itself: nothing reaches the database but through probe_db.
-    src = Path("fetch_past_db.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_past_db.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     imported = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import)
                 for a in n.names} | {n.module.split(".")[0] for n in ast.walk(tree)
@@ -54731,7 +54733,7 @@ def _night_window(R, PD):
         shutil.rmtree(tmp, ignore_errors=True)
 
     # The lane asks before every step, in run_daily and in main's queue loop.
-    tree = ast.parse(Path("watchers/gc_lane.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_paths.locate("watchers/gc_lane.py").read_text(encoding="utf-8"))
     fns = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
     for name in ("run_daily", "main"):
         body = ast.unparse(fns[name])
@@ -55102,7 +55104,7 @@ def _workflows_production(NI):
                     f"{f.name}: job {j} runs a night outside the gc-night group, or cancels one"
     assert prod, "no job deploys production, which cannot be right for the nightly"
     assert len(nights) >= 2, f"the night and the weekly job are not both found: {nights}"
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     body = src[src.find("def runner_deploy("):src.find("def upload_and_check(")]
     assert body.find("if branch != REPO_BRANCH:") != -1 and \
         body.find("if branch != REPO_BRANCH:") < body.find("upload_and_check("), \
@@ -55383,11 +55385,11 @@ def _workflows_new_term(NI):
     assert "nightly.yml" in boxed and "weekly.yml" in boxed, \
         f"the New term box is on {boxed or 'no workflow'}; the nightly and the weekly both need it"
     assert reviewed, "no workflow with the New term box deploys production, so its note was never read"
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
     assert re.search(r'ap\.add_argument\("--new-term", action="store_true"', src), \
         "nightly.py takes no --new-term for the box to pass"
     assert re.search(r'ap\.add_argument\("--hold", metavar="RUN"',
-                     Path("cloud.py").read_text(encoding="utf-8")), \
+                     _paths.locate("cloud.py").read_text(encoding="utf-8")), \
         "cloud.py takes no --hold for the night's kit-up to pass"
     return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
                   f"only to the night or the week; {', '.join(reviewed)} holds what the run "
@@ -56157,7 +56159,8 @@ def _writers_merge():
     shared = ("former_members.json", "bill_status.json", "bill_text.json",
               "testimony_db.json", "narratives.json", "rollcalls.json")
     bad = []
-    for f in sorted(Path(".").glob("*.py")):
+    scanned = _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS)
+    for f in scanned:
         if f.name.startswith(("probe_", "test_")):
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
@@ -57155,7 +57158,7 @@ def _chapters():
     withheld; a special session and a January signature number on their
     own; and a row under another bill's LSR is not read."""
     here = Path(".").resolve()
-    if not (here / "extract_chapters.py").exists():
+    if not _paths.locate("extract_chapters.py").exists():
         return "skip", "extract_chapters.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -57246,7 +57249,7 @@ def _chapters_database():
     join is the stored LSR, so a bill of the same number under another LSR
     takes nothing."""
     here = Path(".").resolve()
-    if not (here / "extract_chapters.py").exists():
+    if not _paths.locate("extract_chapters.py").exists():
         return "skip", "extract_chapters.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -57331,7 +57334,7 @@ def _chapters_rare():
     names no other bill, and each of those refusals is exercised here, on the
     real lines."""
     here = Path(".").resolve()
-    if not (here / "extract_chapters.py").exists():
+    if not _paths.locate("extract_chapters.py").exists():
         return "skip", "extract_chapters.py not here"
     root = Path(tempfile.mkdtemp())
     try:
@@ -58742,7 +58745,7 @@ def _ballot_conflict(rollcall_parser):
     assert got["5"] == got[" 5 "] == {"vote": RP.NO_VOTE, "conflict": True}, got
     assert got["7"] == {"vote": RP.NO_VOTE} and got[""] == {"vote": ""} \
         and got["Yea"] == {"vote": "Yea"}, f"only code 5 is a conflict: {got}"
-    src = Path("build_data.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
     assert "**RP.ballot(r[6])" in src, (
         "build_data.py no longer puts rollcall_parser.ballot's fields on each member vote "
         "row, so no conflict reaches attendance")
@@ -58897,7 +58900,7 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
         "a term that lost most of its bills is no longer refused"
     assert FR.merge_terms(prev, {"2025-2026": {"SB1": []}})[0] == {"2025-2026": {"SB1": []}}, \
         "a term this run read must replace its own slice"
-    src = Path("fetch_reports_db.py").read_text(encoding="utf-8")
+    src = _paths.locate("fetch_reports_db.py").read_text(encoding="utf-8")
     assert "merged, kept = merge_terms(prev, out)" in src and "shrunk(prev, out)" in src, \
         "fetch_reports_db no longer writes through merge_terms and shrunk"
     saved = SH.parse_all
@@ -58912,7 +58915,7 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
         SH.parse_all = saved
     assert out == {"2027-2028": {"SB1": ["current"]}, "2025-2026": {"SB9": ["frozen"]}}, out
     assert said == [(Path("db/term/2025-2026/x"), {"2025-2026": 1})], said
-    src = Path("senate_hearing_reports.py").read_text(encoding="utf-8")
+    src = _paths.locate("senate_hearing_reports.py").read_text(encoding="utf-8")
     assert "with_frozen(out, frozen_sources())" in src, \
         "senate_hearing_reports no longer reads the frozen terms"
     kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
@@ -59001,7 +59004,7 @@ def _request_became_bill(build_lsrs):
                    "LSR 2027-0003": ("Introduced as SB 7", False, "SB 7")}, got
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Filed as a request" and "introduced" not in rows[0], rows[0]
-    src = Path("build_lsrs.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_lsrs.py").read_text(encoding="utf-8")
     assert "rows_from(lsrs, roster(site), became)" in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
@@ -59324,7 +59327,7 @@ def _sponsors_csv_seat(text_sponsors):
     (see build_exports.sponsors), still say House on the page and here."""
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
         if not src:
             return "skip", f"{f} not here"
         for step in ("TS.merge_into(", "TS.seat_into("):
@@ -59606,7 +59609,7 @@ def _past_sponsors_2023(text_sponsors, build_site_v2):
         "wanted Rep. Lorrie J. Carey's page")
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
         assert not src or "PSP.merge_into(" in src, (
             f"{f} does not call past_sponsors.merge_into, so its 2023-2024 sponsors are not "
             "the ones the other builder publishes")
@@ -60234,7 +60237,7 @@ def _probate_after_the_vote():
     vote = _dt.date(2026, 11, 3)
     due = vote + _dt.timedelta(days=1)
     on = f"{vote.day} {vote:%B %Y}"
-    src = Path("civics.py").read_text(encoding="utf-8").splitlines()
+    src = _paths.locate("civics.py").read_text(encoding="utf-8").splitlines()
 
     def at(text):
         n = next((i for i, s in enumerate(src, 1) if text in s), None)
@@ -61221,7 +61224,7 @@ def _town_mailto(B):
         "address, and a note published as a mailto is a link to nowhere")
 
     # Nothing on these pages may write a mailto except through maillink().
-    src = Path("build_town_pages.py").read_text(encoding="utf-8")
+    src = _paths.locate("build_town_pages.py").read_text(encoding="utf-8")
     sites = src.count('href="mailto:')
     assert sites == 1, (
         f"build_town_pages.py writes a mailto href in {sites} places. Every "
@@ -64696,7 +64699,7 @@ def _past_sponsors_fill(text_sponsors, B):
         "Rep. Sherman Packard (R - Rock 16)")
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
         if src:
             a, b = src.find("TS.merge_into("), src.find("PSP.merge_into(")
             assert 0 <= a < b, (f"{f} merges the sponsor record before the bills' own "

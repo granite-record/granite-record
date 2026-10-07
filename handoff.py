@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Write STATE.md from what is actually on disk.
 
@@ -415,7 +415,7 @@ def section_site(out):
 
 def section_checks(out):
     out.append("## Checks\n")
-    if not Path("preflight.py").exists():
+    if not _paths.locate("preflight.py").exists():
         out.append("`preflight.py` is not here.\n")
         return
     # THE RUN THAT JUST HAPPENED, where it was a run of this code. Otherwise
