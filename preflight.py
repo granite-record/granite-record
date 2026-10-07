@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.421
+# GRANITE_VERSION: 2026-09-04.422
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43818,6 +43818,35 @@ def _legislators_page_tabs():
         "the strip's rules are not in app.css's shared region")
     return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
                   "the town pages' script and drawn by the same rules in both stylesheets")
+
+
+@check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
+def _vacancy_wording():
+    """"Vacant districts: 'Grafton District 6'" and "the vacancy sentence
+    assumes every seat is filled by special election" (the person, 7 October
+    2026, F6 and F7). A district's name takes its capital as it does
+    everywhere else on the site, and the sentence is the agreed wording from
+    RSA 661:8, II: a House seat is filled by special election only if the town
+    or city asks for one. Read off the fixture's built legislators page, whose
+    roster leaves five districts vacant."""
+    import build_pages as BP
+    want = ("Seats fall vacant during a term when members resign or die. A House seat is "
+            "filled by special election only if the town or city asks the Governor and "
+            "Executive Council to call one, so some stay vacant until the next general "
+            "election. A Senate seat is filled as the state constitution provides.")
+    assert BP.VACANCY_NOTE == want, f"build_pages.VACANCY_NOTE reads {BP.VACANCY_NOTE!r}"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    vac = re.search(r'<details class="vac">(.*?)</details>', page, re.S)
+    assert vac, "the fixture's legislators page lists no vacant seats to check"
+    assert f'<p class="note" style="margin-top:8px">{want}</p>' in vac.group(1), (
+        "the vacancy list does not carry the agreed sentence")
+    assert "filled by special\nelection." not in page and "are filled by special election" not in page, (
+        "the old sentence is still on the page")
+    rows = re.findall(r'<div class="mem">([^<]*)</div>', vac.group(1))
+    assert rows and all(re.fullmatch(r"\S.* District \d+( — \d+ seats)?", r) for r in rows), (
+        f"the vacant districts read {rows[:4]}")
+    return "ok", f"{len(rows)} vacant districts, each \"<County> District <n>\", under the RSA 661:8 sentence"
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

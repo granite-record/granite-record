@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.147
+# GRANITE_VERSION: 2026-09-04.148
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -612,6 +612,13 @@ def committee_codes(site):
 # by bill. Three renderers wrote it and all three are gone with it: this
 # one, HOME_JS's _meetline, and the clock block that counted the days off
 # the total. meeting_key() stays: the calendar groups by it.
+
+VACANCY_NOTE = ("Seats fall vacant during a term when members resign or die. "
+                "A House seat is filled by special election only if the town "
+                "or city asks the Governor and Executive Council to call one, "
+                "so some stay vacant until the next general election. A "
+                "Senate seat is filled as the state constitution provides.")
+
 
 def home_towns(out):
     """Every town and city in site/districts.json, A to Z, for the home
@@ -3014,13 +3021,19 @@ def main():
     vacancies = ""
     if C.get("vacancies"):
         v = C["vacancies"]
+        # HOW A SEAT IS FILLED, FROM THE STATUTE (the person, 7 October 2026,
+        # F7). The sentence said every vacancy is filled by special election,
+        # and RSA 661:8, II says a House seat is only if the town or city asks
+        # the Governor and Council to call one. VACANCY_NOTE is the wording
+        # agreed in private/FRONTEND_FEEDBACK.md. And "District" takes its
+        # capital, as a district's name does everywhere else on the site
+        # ("Grafton District 6", F6).
         vacancies = (
             f'<details class="vac"><summary>{sum(x["vacant"] for x in v)} vacant '
             f'House seats across {len(v)} districts</summary>'
-            '<p class="note" style="margin-top:8px">Seats fall vacant through the '
-            'term as members resign or pass away, and are filled by special '
-            'election.</p><div class="grid">' + "".join(
-                f'<div class="mem">{esc(x["county"])} district {esc(x["district"])}'
+            f'<p class="note" style="margin-top:8px">{VACANCY_NOTE}</p>'
+            '<div class="grid">' + "".join(
+                f'<div class="mem">{esc(x["county"])} District {esc(x["district"])}'
                 f'{f" — {x['vacant']} seats" if x["vacant"] > 1 else ""}</div>'
                 for x in v) + "</div></details>")
 
