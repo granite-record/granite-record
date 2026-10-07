@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.204 */
+/* GRANITE_VERSION: 2026-09-07.205 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5057,12 +5057,26 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
    town, or a legislator's name" was cut after "legislator". Under 480px the
    button takes a line of its own under the field, so the field has the full
    width of the panel; the panel's padding gives a little back for the same
-   reason. */
-@media (max-width:480px){
+   reason.
+   AND IN THE THREE COLUMNS (the look of 7 October 2026). From 1180px the
+   finder is in the right-hand column, 290px at most, and beside its button
+   the field was 170px: "Your town, or a leg". The same arrangement there,
+   for the same reason. Between the two the finder runs the page's width and
+   the button stays beside the field.
+   That alone left it at "Your town, or a legislator's na": Chrome keeps room
+   at the right of a search box for its clear button and as much again for a
+   datalist's arrow, even while the box is empty. Neither does anything then
+   -- there is nothing to clear, and the towns are offered as the reader
+   types -- so neither takes the room while the placeholder shows, and the
+   field's own padding gives back a little more in these two layouts. */
+:where(body.pg) #hq2::-webkit-calendar-picker-indicator{display:none !important}
+:where(body.pg) #hq2:placeholder-shown::-webkit-search-cancel-button{display:none}
+@media (max-width:480px),(min-width:1180px){
   :where(body.pg) .hfind{padding:var(--sp-5) var(--sp-4)}
   :where(body.pg) .hfrow{flex-wrap:wrap}
   :where(body.pg) .hfrow input{flex:1 1 100%}
   :where(body.pg) .hfrow button{flex:1 1 100%}
+  :where(body.pg) .hfrow input{padding-left:var(--sp-4);padding-right:var(--sp-4)}
 }
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at

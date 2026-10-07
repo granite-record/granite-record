@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.431
+# GRANITE_VERSION: 2026-09-04.432
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43793,14 +43793,25 @@ def _home_finder_suggests_towns():
         < page.index('<div id="session"'), "the list of towns is not beside its box"
     assert BP.home_towns(shared / "nowhere") == [], "a site with no districts.json suggests towns"
     css = (site / "style.css").read_text(encoding="utf-8")
-    m = re.search(r"@media \(max-width:480px\)\{\s*:where\(body\.pg\) \.hfind\{[^}]*\}\s*"
+    # AND IN THE THREE COLUMNS (the look of 7 October 2026): from 1180px the
+    # finder is a 290px column, where beside its button the box was 170px
+    # and read "Your town, or a leg". The same media block covers both.
+    m = re.search(r"@media \(max-width:480px\),\(min-width:1180px\)\{\s*"
+                  r":where\(body\.pg\) \.hfind\{[^}]*\}\s*"
                   r":where\(body\.pg\) \.hfrow\{flex-wrap:wrap\}\s*"
                   r":where\(body\.pg\) \.hfrow input\{flex:1 1 100%\}\s*"
                   r":where\(body\.pg\) \.hfrow button\{flex:1 1 100%\}", css)
-    assert m, ("style.css does not put the finder's button under its box on a phone, so "
-               "the box keeps about 230px and its placeholder is cut off")
+    assert m, ("style.css does not put the finder's button under its box on a phone and "
+               "in the three columns, so the box keeps about 170-230px and its placeholder "
+               "is cut off")
+    # Chrome keeps room in an empty search box for its clear button and a
+    # datalist's arrow; measured in the browser, the placeholder was still cut
+    # at "legislator's na" until neither took it.
+    for rule in (":where(body.pg) #hq2::-webkit-calendar-picker-indicator{display:none !important}",
+                 ":where(body.pg) #hq2:placeholder-shown::-webkit-search-cancel-button{display:none}"):
+        assert rule in css, f"style.css has no {rule}, so the empty box keeps room for nothing"
     return "ok", (f"all {len(towns)} of the fixture's towns offered under the box, and the "
-                  "button on a line of its own under 480px")
+                  "button on a line of its own under 480px and in the three columns")
 
 
 @check("frontend", "the legislators page is two tabs, Towns and Legislators, drawn as the town pages' tabs are")
