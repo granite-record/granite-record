@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.149
+// GRANITE_VERSION: 2026-09-07.150
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3380,7 +3380,6 @@ function journeyList(b,d){
 }
 
 function factsTable(b,d){
-  const f=d.facts||{};
   const rows=[];
   const add=(k,v,wide)=>{ if(v) rows.push([k,v,wide]); };
 
@@ -3450,8 +3449,10 @@ function factsTable(b,d){
   // says.
   if(!(d.subject==="Miscellaneous"&&d.subject_source==="granite record"))
     add("Subject", esc(d.subject||""));
-  add("Introduced", esc(f.date_introduced||""));
-  add("LSR", esc(f.lsr||""));
+  // NO INTRODUCED AND NO LSR ROW (the person, 7 October 2026, F14). The rail
+  // above dates the introduction and How it got here begins with it, so the
+  // row said a third time what the panel says twice; the LSR number is the
+  // drafting office's reference, on the bill's own text and its LSR page.
   if(!rows.length) return "";
   return `<section class="facts"><h2>On the record</h2>
     <table class="facttab"><tbody>${rows.map(([k,v,wide])=>wide

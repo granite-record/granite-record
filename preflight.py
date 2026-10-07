@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.427
+# GRANITE_VERSION: 2026-09-04.428
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44048,6 +44048,31 @@ def _rail_law_stop_dated(build_site_v2):
     assert B.law_day("x", None, [], []) == "", "a kill with no day on record is given one"
     return "ok", ("HB 57's Law stop on 11 January 2026, when it took effect, and HB 68's on "
                   "7 January 2026, when it was killed, on the card and the page alike")
+
+
+@check("frontend", "On the record carries no Introduced row and no LSR row")
+def _on_the_record_rows():
+    """"Remove the LSR number and the Introduced date from On the record" (the
+    person, 7 October 2026, F14): the rail and How it got here carry the
+    introduction, and the LSR number is the drafting office's reference.
+    app.js's factsTable is drawn in node for a bill whose record carries both
+    facts, and the panel holds its other rows and neither of those."""
+    d = {"facts": {"date_introduced": "01/08/2025", "lsr": "2025-0123"},
+         "subject": "Criminal Justice", "subject_source": "general court",
+         "chapter": "160", "year": "2025", "house_committee": "Judiciary",
+         "journey": {"steps": [{"date": "2025-02-13", "body": "H", "act": "passed",
+                                "mark": "p", "text": "Passed on a voice vote"}]}}
+    b = {"id": "HB57", "term": "2025-2026", "year": 2025, "status": "Signed into law"}
+    got = _app_js("scope.factsTable(" + json.dumps(b) + ", " + json.dumps(d) + ")",
+                  names=("factsTable",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    heads = re.findall(r'<th scope="(?:row|colgroup)"[^>]*>([^<]*)</th>', got)
+    assert heads and "Bill Status" in heads and "Subject" in heads, (
+        f"On the record lost rows it keeps: {heads}")
+    assert "Introduced" not in heads and "LSR" not in heads and "2025-0123" not in got, (
+        f"On the record still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
+    return "ok", f"On the record holds {', '.join(heads)}, and no Introduced or LSR row"
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
