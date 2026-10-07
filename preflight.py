@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.410
+# GRANITE_VERSION: 2026-09-04.411
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -15517,7 +15517,7 @@ def _search_cases(BP):
     # only a bill's own text answers would stop being checked, quietly.
     assert Path("tests/search_index.json").exists(), (
         "tests/search_cases.json is here and tests/search_index.json is not: "
-        "the cases cannot be run. python3 build_search_index.py --fixture "
+        "the cases cannot be run. python3 src/pages/build_search_index.py --fixture "
         "tests/search_cases.json writes it")
     got = _search_cases_node(BP)
     assert not got["fails"], "search: " + _search_cases_said(got["fails"])
@@ -15677,7 +15677,7 @@ def _search_index_builds(BP, SI):
             if not Path(f).exists()]
     assert not lost, (
         f"tests/search_cases.json is here and {', '.join(lost)} is not: "
-        "python3 build_search_index.py --fixture tests/search_cases.json "
+        "python3 src/pages/build_search_index.py --fixture tests/search_cases.json "
         "writes them")
     app = Path("app.js").read_text(encoding="utf-8")
     fx = json.loads(texts_f.read_text(encoding="utf-8"))

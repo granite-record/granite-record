@@ -13,5 +13,6 @@ Asks nobody. Does not belong here: deciding a fact (`parse/`). This folder is
 the code; `site/` at the root is what it writes. (Not `src/site/`: the
 `site/` line of `.gitignore` would hide a folder of that name at any depth.)
 
-The files move here in stages 2 and 3 (`src/README.md`); until a file's
-stage, it is still at the repository root.
+The files moved here in stages 2 and 3 (`src/README.md`): the helpers the
+page builders import in stage 2, and the fourteen builders `build_all` runs
+as steps in stage 3.

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.34
+# GRANITE_VERSION: 2026-09-10.35
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
-    python3 build_exports.py --site site
+    python3 src/pages/build_exports.py --site site
 
 WHY
 

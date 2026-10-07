@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.22
+# GRANITE_VERSION: 2026-09-19.23
 """
 A page for every day the House sat.
 
-    python3 build_session_pages.py --site site --base https://graniterecord.org
+    python3 src/pages/build_session_pages.py --site site --base https://graniterecord.org
 
 WHAT IS ON ONE
 

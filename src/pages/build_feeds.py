@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Write RSS feeds so people can follow bills without a login.
 
-    python3 build_feeds.py --site site --base https://graniterecord.org
+    python3 src/pages/build_feeds.py --site site --base https://graniterecord.org
 
 Following a bill normally needs an account, a server and an email list. RSS
 needs none of that: the reader does the polling, nobody has to store an address,

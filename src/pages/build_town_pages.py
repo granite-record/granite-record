@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.21
+# GRANITE_VERSION: 2026-09-09.22
 """
 A page per town and ward: everyone who represents the people who live there.
 
-    python3 build_town_pages.py --site site --base https://graniterecord.org
+    python3 src/pages/build_town_pages.py --site site --base https://graniterecord.org
 
 Writes site/town/<slug>.html for each of the 320 town-wards, and adds them to
 sitemap.xml.

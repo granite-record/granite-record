@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
-    python3 build_legislator_pages.py --site site
+    python3 src/pages/build_legislator_pages.py --site site
 
 /legislator/joseph-guthrie-rock-15.html is this site's search page with one
 member open -- the same app.js, the same cards, the same roll call table as a

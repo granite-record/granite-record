@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.44
+# GRANITE_VERSION: 2026-09-07.45
 """
 A page's worth of data for every committee.
 
-    python3 build_committees.py --site site --data data
+    python3 src/pages/build_committees.py --site site --data data
 
 WHAT A COMMITTEE PAGE ANSWERS
 
@@ -740,7 +740,7 @@ def main():
                          "notice for a bill withdrawn or never introduced is told "
                          "apart from a sitting by the bill's history, and without it "
                          "every notice would be filed as a day the committee sat. "
-                         "Run narrative.py --all first.")
+                         "Run python3 src/parse/narrative.py --all first.")
     rows, left_off = P.sittings(rows, histories)
     del histories
     notices = [f"{r.get('bill')} {r.get('kind')} {r.get('date')}"

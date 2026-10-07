@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.10
+# GRANITE_VERSION: 2026-09-13.11
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
 
-    python3 build_indexes.py --site site --base https://graniterecord.org
+    python3 src/pages/build_indexes.py --site site --base https://graniterecord.org
 
 WHY
 

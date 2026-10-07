@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.3
+# GRANITE_VERSION: 2026-09-18.4
 """
 The 2027 bill requests, as a term the bill search can open.
 
-    python3 build_lsrs.py --site site
+    python3 src/pages/build_lsrs.py --site site
 
 WHAT AN LSR IS
 

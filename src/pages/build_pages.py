@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.141
+# GRANITE_VERSION: 2026-09-04.142
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
 
-    python3 build_pages.py --out site
+    python3 src/pages/build_pages.py --out site
 
 Reads site/legislators.json and site/towns.json, already written by
 build_site_v2.py. Kept separate from that script so a change here cannot break

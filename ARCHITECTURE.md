@@ -413,7 +413,7 @@ index is missing or has an earlier term without text.
 
 `tests/search_cases.json` holds real searches against real bills, with
 `tests/search_index.json` cut from the real index for them;
-`python3 build_search_index.py --fixture tests/search_cases.json` refreshes
+`python3 src/pages/build_search_index.py --fixture tests/search_cases.json` refreshes
 both from the record. Its `across` list is searches held to bills of other
 terms, which only the built site can answer. `matchScore()` is the one place
 a bill's score is added up, for `/bills`, the header, `/search` and those

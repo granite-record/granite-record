@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.30
+# GRANITE_VERSION: 2026-09-08.31
 """
 The civics section: a hub and one page per topic, in order.
 
-    python3 build_civics.py --site site --base https://graniterecord.org
+    python3 src/pages/build_civics.py --site site --base https://graniterecord.org
 
 Writes site/learn.html (the hub) and site/learn/<slug>.html (the topics).
 No network. Reads civics.py for the writing and shell.py for the page frame.

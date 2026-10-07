@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.168
+# GRANITE_VERSION: 2026-09-05.169
 """
 Generate the faceted site from real General Court data.
 
-    python3 build_site_v2.py --data data --out site
+    python3 src/pages/build_site_v2.py --data data --out site
 
 Reads (all optional except data/):
     data/*.json              from build_data.py
@@ -9568,7 +9568,8 @@ def main():
         # Not silent: the dump is here and the file made from it is not, so 2023-2024
         # is being built from the status page the record corrects.
         print("  sponsors: past_sponsors.json is missing though db/past/ is here, so "
-              "2023-2024 keeps the bill status page's list. Run past_sponsors.py --apply.")
+              "2023-2024 keeps the bill status page's list. Run python3 "
+              "src/parse/past_sponsors.py --apply.")
     # And the seat on a sponsor the database DOES name, dated from the same
     # pages: the database's rows for 2023-2024 carry no county and no
     # district, so the site was taking both from the roster of the House and

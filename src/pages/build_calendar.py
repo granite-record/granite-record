@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.21
+# GRANITE_VERSION: 2026-09-18.22
 """
 The General Court's week, one page per week.
 
-    python3 build_calendar.py --site site --base https://graniterecord.org
+    python3 src/pages/build_calendar.py --site site --base https://graniterecord.org
 
 WHY PAGES AND NOT A FETCH
 

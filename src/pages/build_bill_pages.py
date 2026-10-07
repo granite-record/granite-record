@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.62
+# GRANITE_VERSION: 2026-09-04.63
 """
 Write a real address for every bill, and the sitemap that points at them.
 
-    python3 build_bill_pages.py --site site
+    python3 src/pages/build_bill_pages.py --site site
 
 WHAT THESE PAGES ARE
 

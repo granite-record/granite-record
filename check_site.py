@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Check the site is fit to publish before uploading it.
 
@@ -355,7 +355,7 @@ def main():
         wrong_base = [u for u in locs if not u.startswith(root[:-1])]
         if wrong_base:
             errors.append(f"{len(wrong_base)} sitemap URLs use a different base "
-                          f"than {a.base} - rerun build_bill_pages.py --base")
+                          f"than {a.base} - rerun python3 src/pages/build_bill_pages.py --base")
     else:
         warnings.append("no sitemap.xml - search engines will find less")
 

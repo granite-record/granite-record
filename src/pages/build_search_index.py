@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.6
+# GRANITE_VERSION: 2026-10-01.7
 """
 What each bill is about, in its own words, as a file the search can ask.
 
-    python3 build_search_index.py                       # every term; writes site/sidx/
-    python3 build_search_index.py --terms 2025-2026     # that term's file only
-    python3 build_search_index.py --idx D:/nh/site/idx --bill-text D:/nh/bill_text.json \\
+    python3 src/pages/build_search_index.py                       # every term; writes site/sidx/
+    python3 src/pages/build_search_index.py --terms 2025-2026     # that term's file only
+    python3 src/pages/build_search_index.py --idx D:/nh/site/idx --bill-text D:/nh/bill_text.json \\
         --archive-text D:/nh/archive_text.json --app app.js --out scratch/sidx
-    python3 build_search_index.py --fixture tests/search_cases.json   # preflight's copy
+    python3 src/pages/build_search_index.py --fixture tests/search_cases.json   # preflight's copy
 
 No network. Standard library only. It reads the index build_site_v2 wrote
 (site/idx/<term>.json), the text of the bills (bill_text.json for the current
