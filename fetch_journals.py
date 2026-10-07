@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -110,6 +110,11 @@ def _options(page, name):
     return []
 
 
+class Refused(Exception):
+    """The General Court refused a request. It is on file (refusal.note) by the
+    time this is raised, and nothing more is asked."""
+
+
 def journal_urls(chamber, letter, year, delay=2.0):
     """{number: url} for one chamber's journals in one year, from the index."""
     index = BASE.format(chamber=chamber)
@@ -120,8 +125,22 @@ def journal_urls(chamber, letter, year, delay=2.0):
             headers=dict(UA, **({"Content-Type":
                                  "application/x-www-form-urlencoded"} if data
                                 else {})))
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode("utf-8", errors="replace")
+        # A REFUSAL IS RECORDED (7 October 2026), the one reading every
+        # fetcher shares. A 403 on the House list was printed, and the Senate's
+        # was asked for next; the block page served as a 200 read as a year
+        # with no journals.
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                page = r.read().decode("utf-8", errors="replace")
+        except Exception as e:
+            if refusal.classify(e) == "refused":
+                refusal.note("fetch_journals", f"{type(e).__name__}: {e} on {index}")
+                raise Refused(f"{type(e).__name__}: {e}") from None
+            raise
+        if refusal.classify(body=page) == "refused":
+            refusal.note("fetch_journals", f"the firewall's block page, with a 200, on {index}")
+            raise Refused("the firewall's block page, with a 200")
+        return page
 
     print(f"  reading the {chamber} journal list for {year}")
     page = fetch()
@@ -212,13 +231,31 @@ def main():
         print(f"{len(found)} already known in {a.out}")
 
     failed, counts = [], {}
+    refused, drops = False, 0
     for body, chamber, letter in (("H", "house", "H"), ("S", "senate", "S")):
         try:
             urls = journal_urls(chamber, letter, a.year, a.delay)
+        except Refused as e:
+            print(f"  {chamber}: REFUSED: {e}. Nothing more is asked, and refusal.py "
+                  "now holds one for 24 hours;\n  python3 netcheck.py says what kind "
+                  "it is without making it worse.")
+            failed.append(chamber)
+            refused = True
+            break
         except Exception as e:
             print(f"  {chamber}: could not read the list: "
                   f"{type(e).__name__}: {e}")
             failed.append(chamber)
+            # A second dropped connection is a refusal, as it is to every
+            # fetcher (refusal.classify).
+            drops += refusal.classify(e) == "dropped"
+            if drops >= 2:
+                refusal.note("fetch_journals", f"two dropped connections, the last "
+                                               f"{type(e).__name__}: {e}")
+                print("  Two dropped connections: a refusal. Nothing more is asked, "
+                      "and refusal.py now holds one.")
+                refused = True
+                break
             continue
         counts[chamber] = len(urls)
         for num, url in sorted(urls.items(), key=lambda x: str(x[0])):
@@ -249,7 +286,7 @@ def main():
         print(f"holds nothing new for that chamber in {a.year} and the total")
         print("above is not the whole of it. This merges, so re-running when")
         print("the server answers loses nothing already fetched.")
-        raise SystemExit(1)
+        raise SystemExit(2 if refused else 1)
 
 
 if __name__ == "__main__":

@@ -41,10 +41,13 @@ Three things follow, and they are not negotiable:
    `fetch_town_clerks.py` is deliberately outside the set: it asks
    app.sos.nh.gov, the Secretary of State, and names gc.nh.gov only to say so.
 
-   What is still open is the other half: those ten consult a refusal but do
-   not `refusal.note()` one they meet themselves, so a refusal they run into
-   stops that run and nothing else. That is a genuinely useful first
-   contribution.
+   And each records a refusal it meets. One refusal, a second dropped
+   connection, or the firewall's block page served as a 200 -- as
+   `refusal.classify()` reads them -- goes on file with `refusal.note()`, and
+   the run stops with status 2, so every other fetch stops too. Fifteen
+   scripts consulted a refusal and recorded none until 7 October 2026, and
+   `preflight` fails a script that calls `refusal.check()` and never
+   `refusal.note()`.
 
 The eight `fetch_*_db.py` scripts are the exception worth knowing: they read
 the SQL host the General Court publishes credentials for at gc.nh.gov/downloads,
@@ -141,8 +144,9 @@ this. The short one:
   at the root only for one of those reasons.
 - **`src/fetch/<whose server>/`** for anything that asks another server:
   `gc_web/` for gc.nh.gov (it calls `refusal.check()` straight after its
-  arguments), `gc_db/` for the General Court's SQL host, `youtube/`, and
-  `other/` for everyone else. The folder is decided by whose server it asks.
+  arguments, and `refusal.note()` on a refusal it meets), `gc_db/` for the
+  General Court's SQL host, `youtube/`, and `other/` for everyone else. The
+  folder is decided by whose server it asks.
 - **`src/parse/`** if it decides a fact from what is on disk, **`src/towns/`**
   if that fact is about a town, a district, a county or their officials,
   **`src/hearings/`** if it is about a proceeding or its recording,

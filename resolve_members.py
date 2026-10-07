@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Put names to the members who voted but are missing from legislators.txt.
 
@@ -31,7 +31,6 @@ import csv
 import json
 import re
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 import refusal
@@ -221,6 +220,41 @@ def main():
     resolved, tried, fails, skipped, cached = {}, 0, {}, 0, 0
     cache = Path(a.cache)
     cache.mkdir(parents=True, exist_ok=True)
+    drops = 0
+
+    def ask(url):
+        """One roll-call page, or None for one that failed.
+
+        A REFUSAL ENDS THE RUN AND IS RECORDED (7 October 2026): one, the
+        second dropped connection, or the block page served as a 200, the
+        reading every fetcher shares (refusal.classify). Both loops counted a
+        403 among the failures and asked bill_status/legacy/bs2016/ -- the
+        path the General Court's IT office asked be requested lightly -- for
+        the next page, and a reset that was not a URLError ended the run
+        with a traceback. The pages already fetched are cached, so the run
+        after a person clears it starts where this one stopped.
+        """
+        nonlocal drops
+        try:
+            req = urllib.request.Request(url, headers=UA)
+            with urllib.request.urlopen(req, timeout=45) as r:
+                html = r.read().decode("utf-8", errors="replace")
+        except Exception as e:                       # noqa: BLE001
+            kind, why = refusal.classify(e), f"{type(e).__name__}: {e}"
+            drops += kind == "dropped"
+            if kind == "refused" or drops >= 2:
+                stop(why)
+            raise
+        if refusal.classify(body=html) == "refused":
+            stop("the firewall's block page, with a 200")
+        return html
+
+    def stop(why):
+        refusal.note("resolve_members", why)
+        print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds one for 24 "
+              "hours;\npython3 netcheck.py says what kind it is without making it "
+              "worse. The pages fetched are cached.", flush=True)
+        sys.exit(2)
 
     # Bound before either loop, because propagate() is defined inside the
     # first one: a run that fetches nothing at all reached the second loop
@@ -258,14 +292,12 @@ def main():
               try:
                 time.sleep(a.delay)
                 tried += 1
-                req = urllib.request.Request(BASE + "rc_yeahnay.aspx?" + q, headers=UA)
-                with urllib.request.urlopen(req, timeout=45) as r:
-                    html = r.read().decode("utf-8", errors="replace")
-                cpath.write_text(html, encoding="utf-8")
-              except (urllib.error.URLError, urllib.error.HTTPError) as e:
+                html = ask(BASE + "rc_yeahnay.aspx?" + q)
+              except Exception as e:                 # noqa: BLE001
                 fails[f"{type(e).__name__}: {e}"] = fails.get(
                     f"{type(e).__name__}: {e}", 0) + 1
                 continue
+              cpath.write_text(html, encoding="utf-8")
             pr = Rows()
             pr.feed(html)
             page[VOTE_COL[yn]] = {v["name"]: v for v in pr.found.values()}
@@ -357,13 +389,10 @@ def main():
                     try:
                         time.sleep(a.delay)
                         tried += 1
-                        req = urllib.request.Request(
-                            BASE + "rc_yeahnay.aspx?" + q, headers=UA)
-                        with urllib.request.urlopen(req, timeout=45) as r:
-                            html = r.read().decode("utf-8", errors="replace")
-                        cpath.write_text(html, encoding="utf-8")
-                    except (urllib.error.URLError, urllib.error.HTTPError):
+                        html = ask(BASE + "rc_yeahnay.aspx?" + q)
+                    except Exception:                # noqa: BLE001
                         continue
+                    cpath.write_text(html, encoding="utf-8")
                 pr = Rows()
                 pr.feed(html)
                 absent_names.update({v["name"]: v for v in pr.found.values()})

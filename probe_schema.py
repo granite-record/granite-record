@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Work out the shape of an NH data file without guessing.
 
@@ -129,6 +129,7 @@ def main():
     d = Path(a.dir)
     targets = [Path(a.file)] if a.file else [d / n for n in WANTED]
 
+    dropped = 0
     for t in targets:
         if not t.exists():
             if a.no_download:
@@ -139,7 +140,28 @@ def main():
                 urllib.request.urlretrieve(BASE + t.name, t)
             except Exception as e:
                 print(f"\ncould not fetch {t.name}: {e}")
+                # A REFUSAL IS RECORDED AND ENDS THE PROBE (7 October 2026):
+                # one, or the second dropped connection, as every fetcher
+                # reads them. This went on to ask for the next file.
+                kind = refusal.classify(e)
+                dropped += kind == "dropped"
+                if kind == "refused" or dropped >= 2:
+                    refusal.note("probe_schema", f"{type(e).__name__}: {e} on {t.name}")
+                    print("\nREFUSED. Stopping, and refusal.py now holds one for 24 hours;"
+                          "\npython3 netcheck.py says what kind it is without making it "
+                          "worse.")
+                    sys.exit(2)
                 continue
+            # The block page served as a 200 is a refusal too, and is not a
+            # data file: it is taken off rather than read as one.
+            with open(t, encoding="utf-8", errors="replace") as fh:
+                head = fh.read(4000)
+            if refusal.classify(body=head) == "refused":
+                t.unlink()
+                refusal.note("probe_schema", f"the firewall's block page, with a 200, on {t.name}")
+                print(f"\nREFUSED: the block page, served as {t.name}. Stopping, and "
+                      "refusal.py now holds one for 24 hours.")
+                sys.exit(2)
         try:
             probe(t)
         except Exception as e:

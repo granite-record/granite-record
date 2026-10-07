@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.6
+# GRANITE_VERSION: 2026-09-07.7
 """
 How the General Court's record changes shape as you go back through it.
 
@@ -202,7 +202,7 @@ def main():
 
     print(f"{len(todo)} sample bills across {len(years)} year(s); "
           f"cap {a.limit} requests, {a.delay}s apart")
-    fetched = cached = failed = 0
+    fetched = cached = failed = dropped = 0
     for y, bill, lsr in todo:
         d = OUT / y
         d.mkdir(exist_ok=True)
@@ -218,6 +218,21 @@ def main():
         time.sleep(a.delay)
         html_text, err = get(sample_url(y, bill, lsr), a.timeout)
         fetched += 1
+        # A REFUSAL IS RECORDED AND ENDS THE PROBE (7 October 2026): one, the
+        # second dropped connection, or the block page served as a 200, as
+        # every fetcher reads them. This printed a 403 and asked for the next
+        # sample; the block page was saved as a sample bill.
+        kind = (refusal.classify(err) if html_text is None
+                else refusal.classify(body=html_text))
+        dropped += kind == "dropped"
+        if kind == "refused" or dropped >= 2:
+            why = (f"{type(err).__name__}: {err}" if html_text is None
+                   else "the firewall's block page, with a 200") + f" on {y} {bill}"
+            refusal.note("probe_archive_shape", why)
+            print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds one for 24 "
+                  "hours;\npython3 netcheck.py says what kind it is without making it "
+                  "worse.")
+            return 2
         if html_text is None:
             failed += 1
             print(f"  {y} {bill}: {type(err).__name__} {err}")

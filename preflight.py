@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.398
+# GRANITE_VERSION: 2026-09-04.399
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43606,6 +43606,256 @@ def _every_fetcher_checks_refusal():
         + "\n  Add `import refusal` and `refusal.check(\"...\")` straight "
           "after the arguments are parsed (after an offline branch that asks nobody).")
     return "ok", f"{len(asks)} scripts ask gc.nh.gov; all call refusal.check()"
+
+
+# The page the General Court's firewall serves in place of the one asked for,
+# often with a 200; refusal.BLOCKED is what reads it.
+_BLOCK_PAGE = "<html><title>Web Page Blocked</title>Attack ID: 20000001</html>"
+
+
+@check("build", "every script that consults refusal.py records a refusal it meets, and stops")
+def _every_fetcher_notes_refusal():
+    """refusal.check() stops a fetch while a refusal is on file; refusal.note()
+    is what puts one there. Until 7 October 2026 fifteen of the twenty-five
+    scripts that check never noted: fetch_archive_bills, fetch_bill_status,
+    fetch_bill_text, fetch_committee_details, fetch_committee_reports,
+    fetch_journals, fetch_members, fetch_schedule, fetch_session,
+    fetch_testimony, resolve_members, check_civics_links and the three
+    probe_*.py that ask the web server. A 403 they met ended that run, or was
+    retried, or was counted and the next page asked for -- and in every case
+    the next fetch to start asked the same address again, which is the
+    behaviour refusal.py exists to stop. fetch_bill_status and fetch_bill_text
+    retried a 403 two and four times, on bill_status/legacy/bs2016/, the path
+    the General Court's IT office asked be requested lightly.
+
+    THE RULE, READ FROM THE CODE: a script that calls refusal.check() calls
+    refusal.note() too -- an ast.Call, with refusal imported, as the check
+    above reads refusal.check() -- so a new fetcher is held by it the day it is
+    written. A note in a comment or a string is not one.
+
+    AND WHAT IT DOES, for the fifteen: each is driven through its main() in a
+    temp folder on fake answers -- a 403, the block page served as a 200, and
+    two dropped connections where one does not end the run -- and must stop
+    with status 2, the refusal on file, after the one request that met it.
+    Nothing reaches the network: urlopen, urlretrieve and the opener
+    fetch_testimony keeps are fakes for the drive, and a socket opened past
+    them raises. refusal.MARK is the temp folder's, so no refusal is written
+    here and none is sent to the bucket (refusal._governing reads the folder
+    beside MARK).
+    """
+    import contextlib
+    import http.client
+    import importlib
+    import io
+    import socket
+    import time as _time
+    import types
+    import urllib.error
+    import urllib.request
+    import refusal
+
+    def calls(tree, attr):
+        imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import)
+                    for a in n.names}
+        return "refusal" in imported and any(
+            isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+            and n.func.attr == attr and isinstance(n.func.value, ast.Name)
+            and n.func.value.id == "refusal" for n in ast.walk(tree))
+
+    def read(src):
+        """(calls refusal.check(), calls refusal.note())."""
+        tree = ast.parse(src)
+        return calls(tree, "check"), calls(tree, "note")
+    probes = {
+        "a fetcher that checks and notes":
+            ('import refusal\nrefusal.check("x")\ntry:\n    ask()\nexcept Exception as e:\n'
+             '    refusal.note("x", str(e))\n    raise SystemExit(2)\n', (True, True)),
+        "a fetcher that checks and never notes":
+            ('import refusal\nrefusal.check("x")\nask()\n', (True, False)),
+        "a note that is only a comment and a string":
+            ('import refusal\nrefusal.check("x")\n# refusal.note("x", "403")\n'
+             'WHY = "refusal.note(\'x\', \'403\')"\n', (True, False)),
+        "a script that neither checks nor notes":
+            ('import refusal\nprint(refusal.MARK)\n', (False, False)),
+    }
+    for what, (src, want) in probes.items():
+        assert read(src) == want, f"the reader got {what} wrong: {read(src)}"
+
+    checkers, missing = [], []
+    for p in _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS):
+        if p.name == "preflight.py":
+            continue
+        try:
+            tree = _parsed(p)
+        except SyntaxError as e:
+            raise AssertionError(f"{p.name} will not parse, so whether it records a "
+                                 f"refusal cannot be read: {e}")
+        if calls(tree, "check"):
+            checkers.append(p.name)
+            if not calls(tree, "note"):
+                missing.append(p.name)
+    # The floor is the check above's: every script that asks gc.nh.gov calls
+    # refusal.check(), so as many call it as ask. Fewer is a code folder not read.
+    assert len(checkers) >= _ASKS_GC_FLOOR, (
+        f"{len(checkers)} scripts call refusal.check(); on 6 October {_ASKS_GC_FLOOR} did: "
+        "the code folders are not being read")
+    assert not missing, (
+        "these call refusal.check() and never refusal.note(), so a refusal they meet "
+        "stops that run and nothing else -- the next fetch asks the same address "
+        "again:\n    " + "\n    ".join(missing)
+        + "\n  Read the failure with refusal.classify(), and on \"refused\" (or a second "
+          "\"dropped\") call\n  refusal.note(\"<script>\", why) and stop with status 2, as "
+          "fetch_committees.py does.")
+
+    # ---- the fifteen, driven ------------------------------------------------
+    def files(**named):
+        def write(root):
+            for rel, text in named.items():
+                f = root / rel
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text(text if isinstance(text, str) else json.dumps(text),
+                             encoding="utf-8")
+        return write
+    two_bills = {"2025-2026": {"HB1": {"lsr_num": "0001", "lsr_year": "2025"},
+                               "HB2": {"lsr_num": "0002", "lsr_year": "2025"}}}
+    gc_links = [("a", "https://gc.nh.gov/a", "s"), ("b", "https://gc.nh.gov/b", "s")]
+    # script: (arguments, fixture, {answer: requests made before it stops});
+    # "drop" only where one dropped connection does not end the run.
+    drives = {
+        "fetch_archive_bills": (["--year", "2024"], None, {"403": 1, "block": 1}),
+        "fetch_bill_status": (["--delay", "0"], files(**{
+            "data/bills.json": two_bills, "data/sponsors.json": {"2025-2026": {}}}),
+            {"403": 1, "block": 1, "drop": 2}),
+        "fetch_bill_text": (["--delay", "0"], files(**{
+            "data/bills.json": two_bills,
+            "bill_status.json": {"2025-2026": {
+                "HB1": {"text_pdf": "https://gc.nh.gov/x?id=1"},
+                "HB2": {"text_pdf": "https://gc.nh.gov/x?id=2"}}}}),
+            {"403": 1, "block": 1, "drop": 2}),
+        "fetch_committee_details": (["--delay", "0"], files(**{"committees.json": {"H": [
+            {"code": "1", "name": "A", "url": "https://gc.nh.gov/h1"},
+            {"code": "2", "name": "B", "url": "https://gc.nh.gov/h2"}]}}),
+            {"403": 1, "block": 1, "drop": 2}),
+        "fetch_committee_reports": (["--year", "2026"], None, {"403": 1, "block": 1}),
+        "fetch_journals": (["--year", "2026", "--delay", "0"], None,
+                           {"403": 1, "block": 1, "drop": 2}),
+        "fetch_members": (["--delay", "0"], files(**{"data/legislators.json": [
+            {"id": "1", "name": "A"}, {"id": "2", "name": "B"}]}),
+            {"403": 1, "block": 1, "drop": 2}),
+        "fetch_schedule": ([], None, {"403": 1, "block": 1}),
+        "fetch_session": (["--year", "2020", "--max-lsr", "3", "--delay", "0"], None,
+                          {"403": 1, "block": 1, "drop": 2}),
+        "fetch_testimony": ([], None, {"403": 1, "block": 1}),
+        "resolve_members": (["--session", "2026", "--delay", "0"], files(**{
+            "data/legislators.json": [], "RollCallHistory.txt": "2026|H|1|99||x|Yea|x\n",
+            "RollCallSummary.txt": "2026|H|1|x|HB1\n", "Docket.txt": "x|0123|x|HB1|x\n"}),
+            {"403": 1, "block": 1, "drop": 2}),
+        # HEAD then GET for a dropped connection, so two links ask four times.
+        "check_civics_links": (["--delay", "0"], None, {"403": 1, "drop": 4}),
+        "probe_archive_shape": (["--delay", "0"], files(**{"archive_sample_ids.json": {
+            "2016": [{"bill": "HB1", "lsr": "1"}, {"bill": "HB2", "lsr": "2"}]}}),
+            {"403": 1, "block": 1, "drop": 2}),
+        "probe_calendars": ([], None, {"403": 1, "block": 1}),
+        "probe_schema": (["--dir", "."], None, {"403": 1, "block": 1, "drop": 2}),
+    }
+
+    class Page:
+        """An answer with a 200: the block page."""
+        def __init__(self, body):
+            self.body, self.status, self.headers = body.encode(), 200, http.client.HTTPMessage()
+
+        def read(self, n=-1):
+            out = self.body if n is None or n < 0 else self.body[:n]
+            self.body = self.body[len(out):]
+            return out
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def answer(how, url):
+        if how == "403":
+            raise urllib.error.HTTPError(url, 403, "Forbidden", http.client.HTTPMessage(),
+                                         io.BytesIO(b""))
+        if how == "drop":
+            raise http.client.RemoteDisconnected("Remote end closed connection without response")
+        return Page(_BLOCK_PAGE)
+
+    def no_socket(*a, **k):
+        raise AssertionError("a fetcher driven by preflight opened a socket")
+
+    here = os.getcwd()
+    saved = (urllib.request.urlopen, urllib.request.urlretrieve, socket.create_connection,
+             socket.socket.connect, _time.sleep, refusal.MARK, refusal.LOCK, sys.argv)
+    present = {n: v for n, v in drives.items() if _paths.locate(f"{n}.py").exists()}
+    mods = {n: importlib.import_module(n) for n in present}
+    wrong, runs = [], 0
+    try:
+        socket.create_connection, socket.socket.connect = no_socket, no_socket
+        _time.sleep = lambda s: None
+        for name, (argv, fixture, hows) in present.items():
+            M = mods[name]
+            for how, want in hows.items():
+                tmp = Path(tempfile.mkdtemp(prefix=f"gr-note-{name}-"))
+                asked = []
+
+                def fake_open(req, *a, **k):
+                    url = getattr(req, "full_url", req)
+                    asked.append(url)
+                    return answer(how, url)
+
+                def fake_retrieve(url, filename=None, *a, **k):
+                    asked.append(url)
+                    page = answer(how, url)
+                    Path(filename).write_bytes(page.read())
+                    return filename, page.headers
+                try:
+                    os.chdir(tmp)
+                    (tmp / "archive").mkdir()
+                    refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+                    urllib.request.urlopen, urllib.request.urlretrieve = fake_open, fake_retrieve
+                    if fixture:
+                        fixture(tmp)
+                    patched = {}
+                    if hasattr(M, "_OPENER"):
+                        patched["_OPENER"] = types.SimpleNamespace(open=fake_open)
+                    if name == "check_civics_links":
+                        patched["links"] = lambda: list(gc_links)
+                    old = {k: getattr(M, k) for k in patched}
+                    for k, v in patched.items():
+                        setattr(M, k, v)
+                    sys.argv = [f"{name}.py", *argv]
+                    out = io.StringIO()
+                    try:
+                        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                            rc = M.main()
+                    except SystemExit as e:
+                        rc = e.code
+                    finally:
+                        for k, v in old.items():
+                            setattr(M, k, v)
+                    runs += 1
+                    noted = refusal.MARK.exists()
+                    if not (rc == 2 and noted and len(asked) == want):
+                        wrong.append(f"{name} on {'two dropped connections' if how == 'drop' else how}: "
+                                     f"exit {rc!r}, {len(asked)} request(s) where {want} stop it, "
+                                     f"{'refusal recorded' if noted else 'NO REFUSAL RECORDED'} "
+                                     f"-- {out.getvalue().strip()[-160:]!r}")
+                finally:
+                    os.chdir(here)
+                    urllib.request.urlopen, urllib.request.urlretrieve = saved[0], saved[1]
+                    shutil.rmtree(tmp, ignore_errors=True)
+    finally:
+        os.chdir(here)
+        (urllib.request.urlopen, urllib.request.urlretrieve, socket.create_connection,
+         socket.socket.connect, _time.sleep, refusal.MARK, refusal.LOCK, sys.argv) = saved
+    assert not wrong, ("a fetcher did not record a refusal it met and stop:\n    "
+                       + "\n    ".join(wrong))
+    return "ok", (f"all {len(checkers)} scripts that call refusal.check() call refusal.note(); "
+                  f"{len(present)} driven on a 403, the block page and dropped connections "
+                  f"({runs} runs) record it and stop after the request that met it")
 
 
 @check("build", "a fetcher's offline mode is not stopped by a refusal or by GitHub's night, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 Do the civics pages' source links actually go anywhere?
 
@@ -9,7 +9,9 @@ Do the civics pages' source links actually go anywhere?
 MAKES REQUESTS. Not many -- there are fewer than twenty distinct addresses --
 but they go to gc.nh.gov and nh.gov, and gc.nh.gov has refused this project
 twice. So it is a separate script that has to be asked for, it is one request
-at a time with a long gap, and it stops at the second refusal.
+at a time with a long gap, and it stops at the second refusal -- and at the
+General Court's first, which it records (refusal.note) so that every fetch of
+theirs stops too.
 
 And it asks refusal.check() before its first request, as every script that
 asks gc.nh.gov does: a standing refusal stops it (exit 2), and on a
@@ -41,6 +43,7 @@ import _paths  # noqa: E402,F401
 import argparse
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import Counter
 
@@ -63,21 +66,28 @@ def links():
 
 
 def ask(url, timeout=30):
+    """(status, what went wrong, refusal.classify's reading of a failure)."""
     for method in ("HEAD", "GET"):
         try:
             req = urllib.request.Request(url, headers=UA, method=method)
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.status, ""
+                return r.status, "", None
         except urllib.error.HTTPError as e:
             # Some ASP.NET handlers refuse HEAD and answer a GET fine.
             if method == "HEAD" and e.code in (405, 501):
                 continue
-            return e.code, ""
+            return e.code, "", refusal.classify(e)
         except Exception as e:                              # noqa: BLE001
             if method == "HEAD":
                 continue
-            return None, f"{type(e).__name__}: {e}"[:120]
-    return None, "no answer"
+            return None, f"{type(e).__name__}: {e}"[:120], refusal.classify(e)
+    return None, "no answer", None
+
+
+def general_court(url):
+    """Is this the General Court's web server, whose refusal is recorded?"""
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    return host == "gc.nh.gov" or host.endswith(".gc.nh.gov")
 
 
 def main():
@@ -97,14 +107,27 @@ def main():
 
     refusal.check("The civics link check")
 
-    codes, bad, refused = Counter(), [], 0
+    codes, bad, refused, drops = Counter(), [], 0, 0
     for i, (label, url, slug) in enumerate(ls, 1):
-        code, err = ask(url)
+        code, err, kind = ask(url)
         codes[code] += 1
         mark = "ok " if code and 200 <= code < 400 else "BAD"
         print(f"  [{i}/{len(ls)}] {mark} {code or err}  {url}", flush=True)
         if not (code and 200 <= code < 400):
             bad.append((slug, label, url, code or err))
+            # THE GENERAL COURT'S REFUSAL IS RECORDED (7 October 2026): one, or
+            # a second dropped connection, as every fetcher reads them
+            # (refusal.classify), so every General Court fetch stops for 24
+            # hours and not only this check. Only gc.nh.gov's: a 403 from
+            # nh.gov is that server's, and stops nothing of the General Court's.
+            if general_court(url):
+                drops += kind == "dropped"
+                if kind == "refused" or drops >= 2:
+                    refusal.note("check_civics_links", f"{code or err} on {url}")
+                    print("\nREFUSED by the General Court. Stopping, and refusal.py now "
+                          "holds one for 24 hours;\npython3 netcheck.py says what kind "
+                          "it is without making it worse.")
+                    return 2
             if code is None or code in (403, 429):
                 refused += 1
                 if refused >= 2:

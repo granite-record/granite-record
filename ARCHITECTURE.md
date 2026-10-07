@@ -235,7 +235,9 @@ The contract has exceptions. `probe_archive_shape.py`, `probe_calendars.py`,
 `probe_legacy.py` did, and are in `obsolete/` since 6 October 2026), and
 each calls `refusal.check()` before its first request;
 `preflight._every_fetcher_checks_refusal` finds every script that
-asks, whatever its name, and fails one that does not check. `netcheck.py`
+asks, whatever its name, and fails one that does not check; and
+`preflight._every_fetcher_notes_refusal` fails one that checks and never
+records a refusal it meets with `refusal.note()`. `netcheck.py`
 asks gc.nh.gov and skips the check on purpose, because it is what a person
 runs to diagnose a refusal. `probe_db.py` queries the General Court's SQL
 host, the one the `fetch_*_db.py` scripts read.

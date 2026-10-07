@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.9
+# GRANITE_VERSION: 2026-09-08.10
 """
 What each committee is meeting about next, and which bills at what time.
 
@@ -110,18 +110,29 @@ TIME12 = re.compile(r"^(\d{1,2}):(\d{2})\s*([AP])M$", re.I)
 
 
 def get(url, timeout=45, tries=3, delay=3.0, headers=None):
-    """One request, with the retry this server has taught us it needs."""
-    last = None
+    """One request, with the retry this server has taught us it needs:
+    (page, None, None), or (None, what went wrong, refusal.classify's kind).
+
+    NOT FOR A REFUSAL (7 October 2026). A 403 was asked twice more, and a
+    dropped connection -- this address's usual way of saying no -- too. Both
+    come straight back now, as does the block page served as a 200, and the
+    caller records the refusal and stops."""
+    last, kind = None, None
     for n in range(tries):
         try:
             req = urllib.request.Request(url, headers=headers or UA)
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.read().decode("utf-8", "replace"), None
+                page = r.read().decode("utf-8", "replace")
+            if refusal.classify(body=page) == "refused":
+                return None, "the firewall's block page, with a 200", "refused"
+            return page, None, None
         except Exception as e:                      # noqa: BLE001
-            last = f"{type(e).__name__}: {e}"
+            last, kind = f"{type(e).__name__}: {e}", refusal.classify(e)
+            if kind in ("refused", "dropped"):
+                break
             if n + 1 < tries:
                 time.sleep(delay * (n + 2))
-    return None, last
+    return None, last, kind
 
 
 class Rows(HTMLParser):
@@ -223,8 +234,13 @@ def main():
         raw = listing.read_text(encoding="utf-8")
     else:
         print(f"asking {EVENTS}")
-        raw, err = get(EVENTS, headers=JSON_HEADERS)
+        raw, err, kind = get(EVENTS, headers=JSON_HEADERS)
         if err:
+            if kind == "refused":
+                refusal.note("fetch_schedule", f"{err} on {EVENTS}")
+                print(f"REFUSED: {err}. refusal.py now holds one for 24 hours; python3 "
+                      "netcheck.py says what kind it is without making it worse.")
+                sys.exit(2)
             sys.exit(f"the schedule did not answer: {err}")
         listing.write_text(raw, encoding="utf-8")
 
@@ -261,18 +277,29 @@ def main():
         return
 
     fetched = cached = failed = 0
-    run = 0
+    run = dropped = 0
+    refused = ""
     for i, rec in enumerate(todo[:a.limit], 1):
         path = CACHE / f"event_{rec['event']}.html"
         if path.exists():
             html = path.read_text(encoding="utf-8", errors="replace")
             cached += 1
         else:
-            html, err = get(rec["url"], delay=a.delay)
+            html, err, kind = get(rec["url"], delay=a.delay)
             if err:
                 failed += 1
                 run += 1
                 print(f"  [{i}/{len(todo)}] event {rec['event']}: {err[:90]}")
+                # ONE REFUSAL, OR A SECOND DROPPED CONNECTION, ENDS THE RUN AND
+                # IS RECORDED, so every General Court fetch stops for 24 hours.
+                dropped += kind == "dropped"
+                if kind == "refused" or dropped >= 2:
+                    refused = f"{err} on event {rec['event']}"
+                    refusal.note("fetch_schedule", refused)
+                    print(f"\nREFUSED: {refused}. Stopping, and refusal.py now holds "
+                          "one for 24 hours;\npython3 netcheck.py says what kind it is "
+                          "without making it worse. What was read is written below.")
+                    break
                 if run >= 3:
                     print("\nThree failures in a row. Stopping rather than "
                           "pushing at a server that is refusing.\n"
@@ -296,6 +323,8 @@ def main():
         print("\nEvery event page came back without a bill row. That is the "
               "shape having changed,\nnot an empty schedule -- look at one in "
               "schedule_pages/ before trusting this.")
+    if refused:
+        sys.exit(2)
 
 
 if __name__ == "__main__":

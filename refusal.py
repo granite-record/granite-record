@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.15
+# GRANITE_VERSION: 2026-09-09.16
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
-NOT, YET, EVERY FETCHER. Twelve of the thirty-two fetch_*.py scripts consult
-this module -- `grep -l refusal fetch_*.py` is the list -- and the rest,
-started by hand, would walk straight through a recorded refusal. build_all.py
-and watchers/gc_lane.py do honour it, which is what makes the scheduled path
-safe. Closing the gap is a small change to twenty files and has not been made.
+EVERY FETCHER, BOTH HALVES. Every script that asks gc.nh.gov calls check()
+straight after its arguments (preflight's _every_fetcher_checks_refusal), and
+since 7 October 2026 every one that calls check() also calls note() on a
+refusal it meets -- one, a second dropped connection, or the firewall's block
+page served as a 200, as classify() reads them -- and stops with status 2
+(_every_fetcher_notes_refusal, which reads that from the code and drives the
+fifteen that did not on fake answers). build_all.py and watchers/gc_lane.py
+honour it too, which is what makes the scheduled path safe.
 
     import refusal
     refusal.check("fetch_archive_docket")      # exits if the last run was refused

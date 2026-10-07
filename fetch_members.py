@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Pull each member's own page on gencourt: photo, district, towns, contact,
 committees and the position they hold on each.
@@ -171,14 +171,6 @@ def text_of(html):
     return WS.sub(" ", t).strip()
 
 
-# The General Court closes the connection without answering when it is being
-# asked for too much at once -- which is what a nightly run looks like from its
-# side. urllib reports that as RemoteDisconnected, whose message says nothing
-# about the cause, so it is named here instead of left to be puzzled over.
-REFUSED = ("remotedisconnected", "connection reset", "connection aborted",
-           "closed connection without response", "timed out")
-
-
 def busy_note():
     """Say the likely reason before the requests start, not after they fail."""
     if Path(".nightly.lock").exists():
@@ -186,37 +178,37 @@ def busy_note():
               "      connections from a second one. Wait for it to finish.\n")
 
 
-def refused(err):
-    return any(w in f"{type(err).__name__} {err}".lower() for w in REFUSED)
-
-
 def get(url, timeout=60, tries=5):
-    """Fetch, backing off properly when the far end is turning us away.
+    """(page, None, None), or (None, what went wrong, its kind):
+    refusal.classify's reading of the failure.
 
     Two seconds then four is the right shape for a blip and the wrong one for
-    throttling, which is what these failures were: six requests across three
-    scripts all refused at once while a nightly run held the connection budget.
-    Backing off 3, 9, 27 then 60 seconds gives a busy server time to mean it.
+    a busy server, so a failure is asked again after 3, 9, 27 then 60 seconds.
+
+    NOT A REFUSAL (7 October 2026). A reset was waited out the same way, as
+    another fetch holding the connection budget, and a 403 asked five times;
+    neither was recorded, so the next fetch to start asked again. refusal.hold()
+    has kept a second fetch away since 12 September, and a dropped connection
+    is this address's usual way of saying no. A refusal, a dropped connection
+    and the block page served as a 200 come straight back to the caller, which
+    records the refusal and stops.
     """
     last = None
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers=UA)
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.read().decode("utf-8", errors="replace"), None
+                page = r.read().decode("utf-8", errors="replace")
+            if refusal.classify(body=page) == "refused":
+                return None, "the firewall's block page, with a 200", "refused"
+            return page, None, None
         except Exception as e:
-            last = e
+            last, kind = e, refusal.classify(e)
+            if kind in ("refused", "dropped"):
+                return None, f"{type(e).__name__}: {e}", kind
             if i < tries - 1:
-                wait = min(60, 3 ** (i + 1)) + random.uniform(0, 1.5)
-                if refused(e):
-                    print(f"    refused, waiting {wait:.0f}s "
-                          f"({i + 1} of {tries - 1})")
-                time.sleep(wait)
-    if refused(last):
-        return None, (f"{last} -- the General Court refused the connection. "
-                      "This is\n  almost always another fetch running at the "
-                      "same time; nothing is wrong\n  with the address.")
-    return None, last
+                time.sleep(min(60, 3 ** (i + 1)) + random.uniform(0, 1.5))
+    return None, last, "failed"
 
 
 def parse(html, base=None):
@@ -398,8 +390,13 @@ def main():
         busy_note()
         m = by_id.get(str(a.probe), {})
         url = m.get("url") or member_url(m, a.probe)
-        html, err = get(url)
+        html, err, kind = get(url)
         if html is None:
+            if kind == "refused":
+                refusal.note("fetch_members", f"{err} on {url}")
+                print(f"REFUSED: {err}. refusal.py now holds one for 24 hours; python3 "
+                      "netcheck.py says what kind it is without making it worse.")
+                sys.exit(2)
             sys.exit(f"could not fetch: {err}")
         show(parse(html, url), url)
         print("\nIf a field above is wrong or missing, send this output and the "
@@ -418,7 +415,7 @@ def main():
         todo = todo[:a.limit]
     print(f"{len(todo):,} members to do\n")
 
-    fetched = cached = failed = 0
+    fetched = cached = failed = dropped = 0
     for n, (mid, m) in enumerate(todo, 1):
         cp = cache / f"{mid}.html"
         if cp.exists():
@@ -432,10 +429,21 @@ def main():
                 failed += 1
                 continue
             time.sleep(a.delay)
-            html, err = get(url)
+            html, err, kind = get(url)
             if html is None:
-                print(f"  {mid}: {type(err).__name__}")
+                print(f"  {mid}: {err if isinstance(err, str) else type(err).__name__}")
                 failed += 1
+                # ONE REFUSAL, OR A SECOND DROPPED CONNECTION, ENDS THE RUN AND
+                # IS RECORDED (refusal.note), so every General Court fetch
+                # stops for 24 hours. This went on to the next member.
+                dropped += kind == "dropped"
+                if kind == "refused" or dropped >= 2:
+                    refusal.note("fetch_members", f"{err} on {url}")
+                    op.write_text(json.dumps(out, indent=2), encoding="utf-8")
+                    print(f"\nREFUSED: {err}. Stopping, and refusal.py now holds one for "
+                          "24 hours.\nWhat was read is saved; python3 netcheck.py says "
+                          "what kind it is without making it worse.")
+                    sys.exit(2)
                 continue
             cp.write_text(html, encoding="utf-8")
             fetched += 1

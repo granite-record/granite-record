@@ -67,7 +67,7 @@ session's first commands -- or the person chose it. Everything else goes here:
   a district or a county. It gets one `Step()` in
   `build_all.plan()`, and a `cloud_kit.json` entry if the night needs what it
   saved. If it asks gc.nh.gov it calls `refusal.check()` straight after its
-  arguments.
+  arguments, and `refusal.note()` on a refusal it meets.
 - **A build step.** `parse/` if it decides a fact, `hearings/` if it is about
   a proceeding or a recording, `pages/` if it writes what a reader gets.
 - **A page.** `pages/build_<page>.py` on `shell.py`, plus a `Step()`.
