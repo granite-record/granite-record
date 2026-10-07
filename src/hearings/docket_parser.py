@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -848,7 +848,15 @@ def parse_rows(path):
                 "lsr": f"{parts[0]}-{parts[1]}",
                 "created": parts[2],
                 "bill": parts[3].strip(),
-                "body": parts[4].strip(),
+                # THE CHAMBER IN EITHER CASE (7 October 2026). 64 rows of
+                # 1999-2000 and one of 2001 give it as "s" or "h", and four of
+                # them are meetings -- SB 31's "Rescheduled Hearing, 4/9/99"
+                # (line 5490), SB 30's and HB 346's conferences, HB 506's
+                # hearing of 2 March 1999 -- which build_manifest, keeping
+                # rows whose chamber is "H" or "S", dropped, and whose
+                # committee was looked up under a chamber no referral is filed
+                # under. Read once here, every reader sees "S" and "H".
+                "body": parts[4].strip().upper(),
                 "desc": parts[5],
                 "updated": parts[6],
                 "lineno": lineno,

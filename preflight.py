@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.423
+# GRANITE_VERSION: 2026-09-04.424
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5193,6 +5193,72 @@ def _vacated_sb398_manifest():
             ("proceedings.csv", "Wildlife and Recreation")]
     assert got == want, f"SB 398's hearing of 15 March 2000 is filed as {got!r}"
     return "ok", "Wildlife and Recreation's, in the manifest and the table"
+
+
+# Real rows: Docket_db_1999-2000.txt 5488-5490 (SB 31 of 1999) and 2232-2234
+# (HB 506 of 1999), the chamber of the last of each in lower case as the
+# database gives it.
+_DOCKET_LOWER_CHAMBER_MANIFEST = [
+    "1999|0672|01/07/1999 04:14:22 PM|SB31|S|Introduction and referring to Ways & Means:  SJ 2, P 27|01/07/1999 04:14:22 PM",
+    "1999|0672|02/03/1999 04:09:34 PM|SB31|S|Hearings, 2/12/99, Room 103, SH, 10:00 a.m. Hearing Recessed|02/03/1999 04:09:34 PM",
+    "1999|0672|03/31/1999 10:42:26 AM|SB31|s|Rescheduled Hearing, 4/9/99, Room 103, SH, 1:00 p.m.|03/31/1999 10:42:26 AM",
+    "1999|0275|01/28/1999 05:31:34 PM|HB506|H|Introduced and ref to Elec Law; HJ18, p272|01/28/1999 05:31:34 PM",
+    "1999|0275|02/09/1999 05:29:15 PM|HB506|H|Copy to chairman on 2/9/1999   due on|02/09/1999 05:29:15 PM",
+    "1999|0275|02/11/1999 05:30:48 PM|HB506|h|Hearing  Mar 2  10:30  Rm308,LOB|02/11/1999 05:30:48 PM",
+]
+
+
+@check("build", "a docket row whose chamber is in lower case is a sitting of that chamber in the "
+                "manifest", needs=("build_manifest",))
+def _manifest_lower_case_chamber(BM):
+    """64 rows of 1999-2000 and one of 2001 give the chamber as "s" or "h",
+    four of them meetings: SB 31's "Rescheduled Hearing, 4/9/99" (line 5490),
+    HB 506's hearing of 2 March 1999, SB 30's and HB 346's conferences.
+    docket_parser read the Senate's pattern on them, and build_manifest, which
+    keeps the rows whose chamber its video indexes cover -- "H" and "S" --
+    dropped all four; HB 506's hearing was looked up under a chamber no
+    referral is filed under, so it named no committee. parse_rows reads the
+    chamber in either case."""
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-manifest-case-"))
+    head = ("video_id,title,title_parsed,parsed_committee,parsed_date,date_from,has_start_time,"
+            "start_eastern,actual_start_utc,actual_end_utc,duration_iso,published_at\n")
+    try:
+        for name, vid in (("videos_house_x.csv", "h1"), ("videos_senate_x.csv", "s1")):
+            (tmp / name).write_text(head + f"{vid},Finance,yes,Finance,2020-01-07,,,,,,,\n",
+                                    encoding="utf-8")
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_LOWER_CHAMBER_MANIFEST) + "\n", encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_manifest.py"), "--videos",
+                  "videos_house_x.csv", "videos_senate_x.csv", "--docket", "Docket.txt",
+                  "--out", "vm.csv"], cwd=tmp, capture_output=True, text=True, timeout=120,
+                 env=dict(os.environ, PYTHONPATH=str(here)))
+        assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
+        with (tmp / "vm.csv").open(encoding="utf-8", newline="") as fh:
+            got = sorted((x["bill"], x["body"], x["sched_date"], x["committee"])
+                         for x in csv.DictReader(fh))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    want = [("HB506", "H", "1999-03-02", "Elec Law"),
+            ("SB31", "S", "1999-02-12", ""), ("SB31", "S", "1999-04-09", "")]
+    assert got == want, f"the manifest holds {got!r}, not {want!r}"
+    return "ok", "SB 31's hearing of 9 April 1999 and HB 506's of 2 March 1999 are in the manifest"
+
+
+@check("data", "SB 31 of 1999's rescheduled hearing of 9 April, its chamber in lower case, is in "
+               "the 1999-2000 manifest")
+def _manifest_lower_case_chamber_on_disk():
+    """_manifest_lower_case_chamber, in the file on disk: a manifest built
+    before parse_rows read the chamber in either case has no row for SB 31's
+    hearing of 9 April 1999 or HB 506's of 2 March."""
+    f = Path("verification_manifest_1999-2000.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        have = {(r["bill"], r["body"], r["sched_date"]) for r in csv.DictReader(fh)}
+    want = {("SB31", "S", "1999-04-09"), ("HB506", "H", "1999-03-02"),
+            ("SB30", "S", "1999-06-23"), ("HB346", "S", "1999-11-30")}
+    assert want <= have, f"{f.name} has no row for {sorted(want - have)}"
+    return "ok", "SB 31, HB 506, SB 30 and HB 346 have their meetings in the 1999-2000 manifest"
 
 
 # Real rows: Docket_db_1999-2000.txt 2716-2717 (SB 39 of 1999) and 9481-9482
