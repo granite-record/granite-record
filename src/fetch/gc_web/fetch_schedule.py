@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.10
+# GRANITE_VERSION: 2026-09-08.11
 """
 What each committee is meeting about next, and which bills at what time.
 
-    python3 fetch_schedule.py --probe        # the event list only, one request
-    python3 fetch_schedule.py                # the list, then each event's bills
-    python3 fetch_schedule.py --reparse      # rebuild from the cache, no network
+    python3 src/fetch/gc_web/fetch_schedule.py --probe        # the event list only, one request
+    python3 src/fetch/gc_web/fetch_schedule.py                # the list, then each event's bills
+    python3 src/fetch/gc_web/fetch_schedule.py --reparse      # rebuild from the cache, no network
 
 Writes schedule.json and caches every event page under schedule_pages/.
 

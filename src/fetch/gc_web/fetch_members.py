@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Pull each member's own page on gencourt: photo, district, towns, contact,
 committees and the position they hold on each.
 
-    python3 fetch_members.py --probe 11286     # one page, print what it found
-    python3 fetch_members.py --limit 5         # try a handful
-    python3 fetch_members.py                   # the roster
+    python3 src/fetch/gc_web/fetch_members.py --probe 11286     # one page, print what it found
+    python3 src/fetch/gc_web/fetch_members.py --limit 5         # try a handful
+    python3 src/fetch/gc_web/fetch_members.py                   # the roster
 
 Writes member_details.json, keyed by the same member id as data/legislators.json.
 Pages are cached in member_pages/ and never refetched, so a parser change is
@@ -475,7 +475,7 @@ def main():
               "different shape\nand have never been read; these are probably "
               "them. Run --probe on one\nand send the output:")
         for i in bad[:5]:
-            print(f"  python3 fetch_members.py --probe {i}")
+            print(f"  python3 src/fetch/gc_web/fetch_members.py --probe {i}")
     print("\nPages are cached permanently, so --reparse re-applies a parser "
           "change\nwith no network at all.")
 

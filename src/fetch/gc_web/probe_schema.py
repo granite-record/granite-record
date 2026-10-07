@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Work out the shape of an NH data file without guessing.
 
@@ -9,8 +9,8 @@ tally columns mean different things in the House and Senate. Guessing produces
 confidently wrong output, which is worse than no output. So: run this, paste me
 what it prints, and I will write the parser against the real thing.
 
-    python3 probe_schema.py --dir .
-    python3 probe_schema.py --file legislators.txt
+    python3 src/fetch/gc_web/probe_schema.py --dir .
+    python3 src/fetch/gc_web/probe_schema.py --file legislators.txt
 
 Downloads the files it does not find locally. Standard library only.
 """

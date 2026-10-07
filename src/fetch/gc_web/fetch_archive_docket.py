@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.10
+# GRANITE_VERSION: 2026-09-07.11
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
-    python3 fetch_archive_docket.py --term 2023-2024 --limit 10   # try it
-    python3 fetch_archive_docket.py --term 2023-2024              # the term
-    python3 fetch_archive_docket.py --term 2023-2024 --reparse    # no network
+    python3 src/fetch/gc_web/fetch_archive_docket.py --term 2023-2024 --limit 10   # try it
+    python3 src/fetch/gc_web/fetch_archive_docket.py --term 2023-2024              # the term
+    python3 src/fetch/gc_web/fetch_archive_docket.py --term 2023-2024 --reparse    # no network
 
 WHY
 

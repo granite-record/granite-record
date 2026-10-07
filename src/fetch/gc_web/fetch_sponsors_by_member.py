@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.5
+# GRANITE_VERSION: 2026-09-10.6
 """Who sponsored what, asked one legislator at a time instead of one bill at a time.
 
-    python3 fetch_sponsors_by_member.py --plan        # no network at all
-    python3 fetch_sponsors_by_member.py --members     # the roster, 1 request
-    python3 fetch_sponsors_by_member.py --probe 6     # a handful, and score them
-    python3 fetch_sponsors_by_member.py --budget 200  # fetch, then stop
-    python3 fetch_sponsors_by_member.py --parse       # read the disk; no network
+    python3 src/fetch/gc_web/fetch_sponsors_by_member.py --plan        # no network at all
+    python3 src/fetch/gc_web/fetch_sponsors_by_member.py --members     # the roster, 1 request
+    python3 src/fetch/gc_web/fetch_sponsors_by_member.py --probe 6     # a handful, and score them
+    python3 src/fetch/gc_web/fetch_sponsors_by_member.py --budget 200  # fetch, then stop
+    python3 src/fetch/gc_web/fetch_sponsors_by_member.py --parse       # read the disk; no network
 
 WHY THIS AND NOT ONE PAGE PER BILL
 
@@ -540,7 +540,7 @@ def plan():
     people = roster()
     if not people:
         print(f"No {ROSTER} yet. The first request of all is the member "
-              f"list:\n  python3 fetch_sponsors_by_member.py --members")
+              f"list:\n  python3 src/fetch/gc_web/fetch_sponsors_by_member.py --members")
         print("\nThe survey counted 2,614 legislators, so a full sweep is "
               "about 5,228 requests -- at 15s apart, roughly 22 hours of "
               "asking, which belongs in the lane a run at a time.")
@@ -684,7 +684,7 @@ def main():
                       flush=True)
         print()
         print(", ".join(f"{v:,} {k}" for k, v in tally.most_common()))
-        print(f"-> {OUT}/   then: python3 fetch_sponsors_by_member.py --parse")
+        print(f"-> {OUT}/   then: python3 src/fetch/gc_web/fetch_sponsors_by_member.py --parse")
         if a.probe:
             score([p for p in people if page_path(p[0], "prime").exists()
                    or page_path(p[0], "co").exists()])

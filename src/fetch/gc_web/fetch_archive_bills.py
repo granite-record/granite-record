@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.6
+# GRANITE_VERSION: 2026-09-06.7
 """
 Every bill of an archived session year, from the General Court's own search.
 
-    python3 fetch_archive_bills.py --file archive_2024.html   # no network
-    python3 fetch_archive_bills.py --year 2024 --save
+    python3 src/fetch/gc_web/fetch_archive_bills.py --file archive_2024.html   # no network
+    python3 src/fetch/gc_web/fetch_archive_bills.py --year 2024 --save
 
 WHY THIS EXISTS
 

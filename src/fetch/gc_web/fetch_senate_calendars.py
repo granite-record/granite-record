@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 The Senate's calendars, for the veto messages the House's do not carry.
 
-    python3 fetch_senate_calendars.py --year 2026 --probe   # list, download nothing
-    python3 fetch_senate_calendars.py --year 2026           # list and download
+    python3 src/fetch/gc_web/fetch_senate_calendars.py --year 2026 --probe   # list, download nothing
+    python3 src/fetch/gc_web/fetch_senate_calendars.py --year 2026           # list and download
 
 WHY A SEPARATE SCRIPT
 

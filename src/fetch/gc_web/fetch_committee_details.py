@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.9
+# GRANITE_VERSION: 2026-09-07.10
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
-    python3 fetch_committee_details.py --probe --only H24 --raw   # ONE request
-    python3 fetch_committee_details.py                            # all of them
+    python3 src/fetch/gc_web/fetch_committee_details.py --probe --only H24 --raw   # ONE request
+    python3 src/fetch/gc_web/fetch_committee_details.py                            # all of them
 
 WHY THIS RATHER THAN THE LISTING PAGES
 

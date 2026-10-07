@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.4
+# GRANITE_VERSION: 2026-09-10.5
 """The party of everyone who voted before 2017, from one roll call a chamber a year.
 
-    python3 fetch_rollcall_parties.py --plan     # which votes, no network
-    python3 fetch_rollcall_parties.py --probe 4  # four of them, then report
-    python3 fetch_rollcall_parties.py --budget 60
-    python3 fetch_rollcall_parties.py --parse    # no network at all
+    python3 src/fetch/gc_web/fetch_rollcall_parties.py --plan     # which votes, no network
+    python3 src/fetch/gc_web/fetch_rollcall_parties.py --probe 4  # four of them, then report
+    python3 src/fetch/gc_web/fetch_rollcall_parties.py --budget 60
+    python3 src/fetch/gc_web/fetch_rollcall_parties.py --parse    # no network at all
 
 WHY
 

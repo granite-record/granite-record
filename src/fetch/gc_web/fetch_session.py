@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Fetch a whole past session from the legacy docket pages.
 
-    python3 fetch_session.py --year 2023 --probe        # look at one page first
-    python3 fetch_session.py --year 2023 --limit 25     # try a few
-    python3 fetch_session.py --year 2023                # the lot
+    python3 src/fetch/gc_web/fetch_session.py --year 2023 --probe        # look at one page first
+    python3 src/fetch/gc_web/fetch_session.py --year 2023 --limit 25     # try a few
+    python3 src/fetch/gc_web/fetch_session.py --year 2023                # the lot
 
 For any session before the current one there are no bulk files: no LSRs.txt, no
 RollCallSummary.txt, no roster. Everything comes from

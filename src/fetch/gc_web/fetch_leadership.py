@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Who holds a leadership role in each chamber.
 
-    python3 fetch_leadership.py --plan     # the five addresses and where each is linked; no request
-    python3 fetch_leadership.py            # save the five pages to archive/leadership/, 20 s apart
-    python3 fetch_leadership.py --parse    # read what is saved, write leadership.json; no request
+    python3 src/fetch/gc_web/fetch_leadership.py --plan     # the five addresses and where each is linked; no request
+    python3 src/fetch/gc_web/fetch_leadership.py            # save the five pages to archive/leadership/, 20 s apart
+    python3 src/fetch/gc_web/fetch_leadership.py --parse    # read what is saved, write leadership.json; no request
 
 FETCHING AND READING ARE TWO STEPS. The House pages have
 never been read, so the parser for them cannot be right the first time -- and
@@ -288,7 +288,7 @@ def parse(a):
                 print(f"    {ln[:110]}")
     if missing:
         print(f"\nNot saved yet: {', '.join(missing)}. "
-              "python3 fetch_leadership.py fetches them.")
+              "python3 src/fetch/gc_web/fetch_leadership.py fetches them.")
 
     print("\n" + "=" * 62)
     for x in found:
@@ -331,7 +331,7 @@ def main():
     with refusal.hold("fetch_leadership") as held:
         rc = fetch(held, delay=max(a.delay, 5))
     if rc == 0:
-        print("\nEvery page is saved. python3 fetch_leadership.py --parse reads "
+        print("\nEvery page is saved. python3 src/fetch/gc_web/fetch_leadership.py --parse reads "
               "them, and asks nothing.")
     return rc
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Read the calendar list instead of guessing at it.
 
-    python3 probe_calendars.py              # 2026, one request
-    python3 probe_calendars.py --year 2025  # two: one to load, one to switch
-    python3 probe_calendars.py --raw        # also save the HTML
+    python3 src/fetch/gc_web/probe_calendars.py              # 2026, one request
+    python3 src/fetch/gc_web/probe_calendars.py --year 2025  # two: one to load, one to switch
+    python3 src/fetch/gc_web/probe_calendars.py --raw        # also save the HTML
 
 Nothing is written except with --raw. Nothing else is touched.
 

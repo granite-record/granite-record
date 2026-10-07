@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.6
+# GRANITE_VERSION: 2026-09-08.7
 """
 Do the civics pages' source links actually go anywhere?
 
-    python3 check_civics_links.py --list     # print them, ask nothing
-    python3 check_civics_links.py            # one HEAD each, slowly
+    python3 src/fetch/gc_web/check_civics_links.py --list     # print them, ask nothing
+    python3 src/fetch/gc_web/check_civics_links.py            # one HEAD each, slowly
 
 MAKES REQUESTS. Not many -- there are fewer than twenty distinct addresses --
 but they go to gc.nh.gov and nh.gov, and gc.nh.gov has refused this project

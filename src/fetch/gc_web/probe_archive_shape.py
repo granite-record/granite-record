@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.7
+# GRANITE_VERSION: 2026-09-07.8
 """
 How the General Court's record changes shape as you go back through it.
 
-    python3 probe_archive_shape.py --ids archive_sample_ids.json --years 1989,2000,2016 --limit 6
-    python3 probe_archive_shape.py --ids archive_sample_ids.json          # every year on file
-    python3 probe_archive_shape.py --report                               # no network
+    python3 src/fetch/gc_web/probe_archive_shape.py --ids archive_sample_ids.json --years 1989,2000,2016 --limit 6
+    python3 src/fetch/gc_web/probe_archive_shape.py --ids archive_sample_ids.json          # every year on file
+    python3 src/fetch/gc_web/probe_archive_shape.py --report                               # no network
 
 WHY THIS EXISTS
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 The text of each bill, as text rather than as a link to a PDF.
 
-    python3 fetch_bill_text.py --probe HB1442   # one bill, report only, no write
-    python3 fetch_bill_text.py --probe HB1442 --raw   # dump the HTML to look at
-    python3 fetch_bill_text.py                  # every bill, cached
-    python3 fetch_bill_text.py --reparse        # re-extract from cache, no network
+    python3 src/fetch/gc_web/fetch_bill_text.py --probe HB1442   # one bill, report only, no write
+    python3 src/fetch/gc_web/fetch_bill_text.py --probe HB1442 --raw   # dump the HTML to look at
+    python3 src/fetch/gc_web/fetch_bill_text.py                  # every bill, cached
+    python3 src/fetch/gc_web/fetch_bill_text.py --reparse        # re-extract from cache, no network
 
 WHY THIS IS NOW POSSIBLE
 
