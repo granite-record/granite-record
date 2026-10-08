@@ -2,7 +2,7 @@
 
 A public record of the New Hampshire General Court, live at graniterecord.org.
 33,683 bills across 19 terms, 1989 to 2026; 406 sitting legislators and the
-2,192 people in `careers.json`, which is everyone with a recorded roll-call
+2,192 people in `generated/careers.json`, which is everyone with a recorded roll-call
 vote since 1999 rather than everyone who has served -- roll calls start in
 1999 and the bills start in 1989; hearings on record for all nineteen terms,
 each with its own `verification_manifest*.csv`; and for the recorded ones, the
@@ -22,9 +22,9 @@ that is static on purpose.
 ## Do this first, every session
 
 ```
-python3 inventory.py       # every file and its version
-python3 preflight.py       # the checks; builds the whole site on a fixture
-python3 handoff.py         # writes STATE.md with current counts
+python3 src/ops/inventory.py   # every file and its version
+python3 preflight.py           # the checks; builds the whole site on a fixture
+python3 src/ops/handoff.py     # writes STATE.md with current counts
 ```
 
 A couple of minutes, no network -- `preflight` is nearly all of it, and its
@@ -97,8 +97,8 @@ asking.
 
 **`publish`, and anything that changes `main`.** `publish` deploys to the live
 site from this machine. GitHub's nightly builds `main` and publishes it, so a
-merge to `main` goes live the next night. `cloud.py seed-kit` and
-`cloud.py push` change the private bucket the nightly builds from.
+merge to `main` goes live the next night. `src/ops/cloud.py seed-kit` and
+`src/ops/cloud.py push` change the private bucket the nightly builds from.
 
 Everything else — builds, checks, parsers, the site build — is fine to run
 freely.
@@ -114,7 +114,7 @@ predecessor was built from an assumption about how meetings run and scores 1m
 27s against the same hand-marked times. When tempted to write a parser from a
 description, open the file.
 
-**Measure against something you did not generate.** `ground_truth.csv` holds 35
+**Measure against something you did not generate.** `review/ground_truth.csv` holds 35
 proceedings a person timed by watching the video, and `review/checked.jsonl`
 holds whatever the bench has added since — `python3 src/checks/review.py`
 serves one sample at a time and appends a judgment. Any timestamp method is scored with:
@@ -157,18 +157,19 @@ day were found to silently exclude floor debates — each presenting as a
 different bug. **Do not add a sixth reader
 of the old files, and do not give it a `--term` flag.**
 
-**Some files are a person's and no generator writes them.** Among them
-`ground_truth.csv` (35 proceedings timed with a stopwatch),
-`review/checked.jsonl` (the bench's judgments, append-only), `bill_notes.json`
-(what a recurring bill number means — HB1 has been the budget since 1993),
-`officials.json` (offices filled by hand from four official sources) and
-`member_corrections.json` (a name or party a generator got wrong, with the
-evidence for the correction beside it).
+**Some files are a person's and no generator writes them.** They are in
+`corrections/` and `review/`. Among them `review/ground_truth.csv` (35
+proceedings timed with a stopwatch), `review/checked.jsonl` (the bench's
+judgments, append-only), `corrections/bill_notes.json` (what a recurring bill
+number means — HB1 has been the budget since 1993), `corrections/officials.json`
+(offices filled by hand from four official sources) and
+`corrections/member_corrections.json` (a name or party a generator got wrong,
+with the evidence for the correction beside it).
 `preflight` fails if any `build_*` or `fetch_*` script opens one for writing,
 and the check is named for the category rather than for one file, because while
 it named only `ground_truth.csv` three of the others had no guard at all. The
-list lives in `preflight.py`'s `HANDMADE`; read it there rather than here,
-because it has grown more than once.
+list is the two folders, which `preflight.py`'s `HANDMADE` reads as they
+stand; read them there rather than here, because it has grown more than once.
 
 **`build_all.py` is the pipeline.** `--local` skips the network steps,
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
@@ -189,7 +190,7 @@ deterministic rather than assume it.
 **Timestamps, in order of what they can claim.** A roll call's clock time from
 `RollCallSummary.txt` (no captions involved, hand-checked at 3–7 seconds, and
 House only — all 3,988 Senate rows across the current file and the 27 archived
-years in `rollcalls/` are stamped midnight, so this method places no Senate
+years in `records/rollcalls/` are stamped midnight, so this method places no Senate
 floor debate at all, while 5,363 of the 5,577 House rows carry a clock); a
 boundary the chair stated, found by `segment_markers.py`; the clustering model
 where neither fires. The page says which by what it does *not* qualify: a
@@ -228,7 +229,7 @@ and enacted chapter texts, documents that name none.
 **The bench.** `review.py` serves one sample at a time on the loopback
 address, takes a verdict and a note, and appends to `review/checked.jsonl`.
 `python3 src/hearings/probe_alignment.py --truth` reads the timed ones alongside
-`ground_truth.csv`'s 35, and `--no-bench` gives the number comparable with
+`review/ground_truth.csv`'s 35, and `--no-bench` gives the number comparable with
 anything recorded before the bench existed. **Take the counts from the
 command's own header**, not from a document.
 
@@ -249,7 +250,7 @@ per record: Cloudflare Pages Pro allows 100,000, and `check_site` warns at
 publishes it. Its machine starts empty. The code comes from a clone; everything
 else the build reads -- the General Court's day files, the database dump, the
 caption results, the logo and icons -- comes from a private Cloudflare R2
-bucket, through the list in `cloud_kit.json`, which `cloud.py` reads. Anything
+bucket, through the list in `cloud_kit.json`, which `src/ops/cloud.py` reads. Anything
 the build reads that git does not hold must be on that list.
 
 The logo and icons are not part of the open-source release and are not in the
@@ -268,7 +269,7 @@ caught three silently half-applied edits.
 edit.** The date is when the file was *created*, not last modified:
 `preflight.py` at `2026-09-04.190` had been edited a hundred and ninety times
 since 4 September. Increment the `.N`; leave the date alone. `python3
-inventory.py` prints the current stamp of every file; take one from there and
+src/ops/inventory.py` prints the current stamp of every file; take one from there and
 do not copy one into prose. A stamp quoted in a document goes stale, and then
 points at whichever other file has since grown into that number.
 

@@ -12,6 +12,7 @@ name or its subject: that is what decides what can go wrong. preflight holds
 the line both ways (`src/README.md`).
 
 Every fetcher moved into these folders in stages 1 to 4 (`src/README.md`).
-The entry points that ask too -- `nightly.py`, `livestreams.py`,
-`netcheck.py`, `cloud.py` -- stay at the root, because a workflow, a
-scheduler or the person names them there.
+The entry points that ask too stay outside them: `nightly.py` and
+`netcheck.py` at the root, because a workflow, a scheduler or the person
+names them there, and `livestreams.py` and `cloud.py` in `src/ops/`, which
+the workflows run by path.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 How much of the record is on this disk, and what is still missing.
 
@@ -137,7 +137,7 @@ def main():
 
     # ---- recordings ------------------------------------------------------
     print("\nRECORDINGS")
-    chan = _json("channel_index_full.json") or {}
+    chan = _json("collected/videos/channel_index_full.json") or {}
     total = sum(c.get("total", 0) for c in chan.values()) if chan else 0
     work = Path("work")
     caps = len([d for d in work.iterdir()

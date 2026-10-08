@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.5
+# GRANITE_VERSION: 2026-09-19.6
 """
 Turn repaired journal text into rows: one per member, per vote. No network.
 
@@ -15,7 +15,7 @@ Writes two files:
 WHO A MEMBER IS, WHEN THE GENERAL COURT HAS NO NUMBER FOR THEM
 
 Granite Record keys a legislator on the General Court's employee number.
-careers.json and rollcalls/RollCallHistory_<year>.txt are both built on it.
+generated/careers.json and records/rollcalls/RollCallHistory_<year>.txt are both built on it.
 That works back only as far as the General Court's own records reach:
 past_members.json covers a good deal of the 1990s, and the scanned journals
 run to 1881, so the further back this goes the more people there are who have

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.33
+# GRANITE_VERSION: 2026-09-08.34
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -458,7 +458,7 @@ def record_figures(site, root=Path(".")):
         # named beside it rather than typed. A page may state a figure only if
         # the site can produce it, which is the rule that keeps this section
         # worth believing.
-        "municipalities": len(_load(Path(root) / "town_officials.json", {})),
+        "municipalities": len(_load(Path(root) / "collected" / "town_officials.json", {})),
         "members_sitting": len(_load(Path(site) / "legislators.json", [])),
         "members_email": sum(1 for m in _load(Path(site) / "legislators.json", [])
                              if (m.get("email") or "").strip()),

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.8
+# GRANITE_VERSION: 2026-09-25.9
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and left where the build
 turns captions into timestamps.
 
-    python3 livestreams.py --since-state   the nightly step, before build_all
-    python3 livestreams.py --markers       build_all's step after the chair's
-                                           boundaries: this step's recordings
-    python3 livestreams.py --catch-up      on the laptop: the recordings the
-                                           nightly could not caption
-    python3 livestreams.py --status        what the state says; asks nothing
-    python3 livestreams.py --carry         the files carried between nights
+    python3 src/ops/livestreams.py --since-state   the nightly step, before build_all
+    python3 src/ops/livestreams.py --markers       build_all's step after the chair's
+                                                   boundaries: this step's recordings
+    python3 src/ops/livestreams.py --catch-up      on the laptop: the recordings the
+                                                   nightly could not caption
+    python3 src/ops/livestreams.py --status        what the state says; asks nothing
+    python3 src/ops/livestreams.py --carry         the files carried between nights
 
 WHAT IT ASKS, AND WHOM
 
@@ -165,11 +165,15 @@ the way they always have, through yt-dlp, and the key plays no part in it.
 WHAT IT WRITES, AND NOTHING ELSE
 
   videos_house_livestreams.csv    the video index's rows for recordings the
-  videos_senate_livestreams.csv   committed videos_*.csv do not carry, or carry
+  videos_senate_livestreams.csv   committed collected/videos/videos_*.csv do
+                                  not carry, or carry
                                   from before they aired. The twelve columns
                                   fetch_channel_index.py writes, made by its own
-                                  title parser. Every reader globs videos_*.csv
-                                  and takes the chamber from the file's name.
+                                  title parser. At the root, where the kit
+                                  carries them and git never does; every
+                                  reader takes these and the committed ones
+                                  (proceedings.video_indexes) and takes the
+                                  chamber from the file's name.
   work/<video>/captions*.json3    where segment_markers and caption_span look.
   archive/livestreams.json        what it has seen, what it waits for, and any
                                   refusal still in force.
@@ -231,7 +235,7 @@ YouTube often answers a data centre's address -- GitHub's among them -- with
 "Sign in to confirm you're not a bot". That is read as a refusal, not a
 failure: the recording waits for the laptop, its index row and the schedule's
 offsets still reach the site, nothing already published changes, and the
-night goes on. On the laptop, `python3 livestreams.py --catch-up` captions what
+night goes on. On the laptop, `python3 src/ops/livestreams.py --catch-up` captions what
 the nightly could not and reads it; the next night sees that the laptop has.
 
 EXIT STATUS
@@ -463,10 +467,13 @@ def chamber_of_path(p):
     return "senate" if "senate" in str(p).lower() else "house"
 
 
-def read_rows(pattern="videos_*.csv"):
-    """{video_id: [(file name, row), ...]} across every index on disk."""
+def read_rows(files=None):
+    """{video_id: [(file name, row), ...]} across every index on disk: the
+    committed ones in collected/videos/ and this step's own at the root
+    (proceedings.video_indexes), or `files`."""
+    import proceedings
     out = {}
-    for f in sorted(Path(".").glob(pattern)):
+    for f in (proceedings.video_indexes() if files is None else files):
         with open(f, encoding="utf-8-sig", newline="") as fh:
             for r in csv.DictReader(fh):
                 if r.get("video_id"):

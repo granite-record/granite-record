@@ -265,7 +265,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py state-down
+          python src/ops/cloud.py state-down
           exit $LASTEXITCODE
 
       - name: Bring the kit down from R2
@@ -276,7 +276,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py kit-down
+          python src/ops/cloud.py kit-down
           exit $LASTEXITCODE
 
       # YouTube, not the General Court. Before the build, which reads what it
@@ -293,11 +293,11 @@ jobs:
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
-          if (-not (Test-Path livestreams.py)) {
-            Write-Output "livestreams.py is not in this commit yet, so this step does nothing."
+          if (-not (Test-Path src/ops/livestreams.py)) {
+            Write-Output "src/ops/livestreams.py is not in this commit yet, so this step does nothing."
             exit 0
           }
-          python livestreams.py --since-state
+          python src/ops/livestreams.py --since-state
           $rc = $LASTEXITCODE
           if ($rc -eq 3) {
             Write-Output "livestreams.py exit 3: not set up. The night goes on, and fails at its end."
@@ -342,7 +342,7 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           Write-Output "A refusal is on file in archive/refused.json. It goes to R2's state/ now."
-          python cloud.py state-up
+          python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
       # A dry run's to its own address, dry-run.graniterecord.pages.dev, and
@@ -375,7 +375,7 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          python cloud.py site-up --run $env:RUN_ID
+          python src/ops/cloud.py site-up --run $env:RUN_ID
           exit $LASTEXITCODE
 
       # On a New term run what the night changed is HELD: it waits under
@@ -402,7 +402,7 @@ jobs:
         run: |
           $hold = @()
           if ($env:NEW_TERM -eq 'true') { $hold = @('--hold', $env:RUN_ID) }
-          python cloud.py kit-up @hold
+          python src/ops/cloud.py kit-up @hold
           exit $LASTEXITCODE
 
       - name: The night's verdict
@@ -426,7 +426,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py state-up
+          python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
       # Never for a dry run (the note above the first step).
@@ -505,7 +505,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py state-down
+          python src/ops/cloud.py state-down
           exit $LASTEXITCODE
 
       - name: This run's site and its night's verdict, from the private bucket
@@ -516,7 +516,7 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          python cloud.py site-down --run $env:RUN_ID
+          python src/ops/cloud.py site-down --run $env:RUN_ID
           exit $LASTEXITCODE
 
       - name: Deploy to production
@@ -543,9 +543,9 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          python cloud.py kit-release --run $env:RUN_ID
+          python src/ops/cloud.py kit-release --run $env:RUN_ID
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python cloud.py state-up
+          python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
   # GitHub switches a public repository's scheduled workflows off after 60

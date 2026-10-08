@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.37
+# GRANITE_VERSION: 2026-09-10.38
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -536,7 +536,7 @@ def repo_facts():
     return out
 
 
-def ballot_words(path=Path("ballot_results.json")):
+def ballot_words(path=Path("corrections/ballot_results.json")):
     """What the data page says ballot_results.json holds, and whose count it
     is, from the file's own rows: each row's source names whose its figures
     are (ballot_source.py). None where the file is not here, and the page

@@ -5,8 +5,8 @@ one table and then one site, what each part guarantees, and the rough edges
 that are known. It explains why things are shaped the way they are, so that a
 change can keep the shape.
 
-Where a number here disagrees with `STATE.md`, which `python3 handoff.py`
-writes, `STATE.md` is generated and this is not. The history of how the code
+Where a number here disagrees with `STATE.md`, which
+`python3 src/ops/handoff.py` writes, `STATE.md` is generated and this is not. The history of how the code
 got here -- the plans, the measurements taken along the way, and the order
 the work was done in -- is kept privately rather than in this repository.
 
@@ -45,11 +45,13 @@ name: a `refusal.check()` outside `fetch/gc_web/`, the SQL host outside
 `fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, or a request from any folder
 under `src/` outside `fetch/` -- `checks/` asking graniterecord.org is the one
 exception -- fails it. So `parse/`, `towns/`, `hearings/`, `pages/` and `lib/`
-ask nobody anything and are free to run. The entry points at the root that do
-ask -- `nightly.py`, `livestreams.py`, `netcheck.py` and `cloud.py` -- stay
-outside the folders, and every script that carries a gc.nh.gov address,
-wherever it sits, is held to `refusal.check()` but `netcheck.py`, which is what
-a person runs to diagnose a refusal.
+ask nobody anything and are free to run. The entry points that do ask stay
+outside `fetch/`: `nightly.py` and `netcheck.py` at the root, and
+`livestreams.py` and `cloud.py` in `src/ops/`, the night's livestream step
+being the one script outside `fetch/youtube/` allowed to ask YouTube. Every
+script that carries a gc.nh.gov address, wherever it sits, is held to
+`refusal.check()` but `netcheck.py`, which is what a person runs to diagnose
+a refusal.
 
 **Names are bare and unique.** Every import and every launch is by bare name:
 `_paths.py` puts each code folder on the import path, and whatever starts a
@@ -73,7 +75,7 @@ of the first four parts below, `cloud.py`'s of the morning and the kit, and
 08:17 UTC on an empty Windows machine, from the commit of the branch it was
 started on -- `main` on a schedule. Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
-looks for new livestreams (`livestreams.py --since-state`), and runs
+looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
 refusal is on file; the rebuild, `build_all.py --local --no-captions`, since
 that machine holds no caption files; and the gates -- `preflight.py --code`,
@@ -158,7 +160,7 @@ only, so before they turn over, the finished term's inputs are frozen:
 `db/term/<term>/`, and `--session` the day files as installed into
 `frozen/<term>/`, with the term's docket and manifest under the archived
 terms' names (`Docket_<term>.txt`, `verification_manifest_<term>.csv`) and
-its roll calls in `rollcalls/`. After the turn,
+its roll calls in `records/rollcalls/`. After the turn,
 `python3 src/parse/build_data.py --frozen-terms` builds that term
 from them every night, so a correction still reaches it. An ordinary night
 refuses files that name a newer term than the installed ones, whatever their
@@ -206,7 +208,7 @@ morning, holding back the words of any report the screen stops.
 and answers the laptop, so the exact start of a recording comes from there.
 `laptop_evening.py`, which Windows' Task Scheduler runs each evening, stops at
 the first step that fails: `cloud.py pull`, for the night's list of
-recordings waiting for captions; `livestreams.py --catch-up`, which captions
+recordings waiting for captions; `src/ops/livestreams.py --catch-up`, which captions
 up to twenty of them, oldest first, and reads the chair's boundaries out of
 them;
 `src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`,
@@ -253,7 +255,7 @@ bill that shares the shape. A model would give neither.
 by hand, and `python3 src/hearings/probe_alignment.py --truth --candidate` scores any method against
 them in a second. Nothing about timestamps should ever again be tuned without
 that number moving in the right direction. It is the single most valuable
-artefact in the repository, and it lives in `ground_truth.csv`, which no
+artefact in the repository, and it lives in `review/ground_truth.csv`, which no
 generator writes, after being lost twice as columns of a file that rebuilds
 overwrote.
 
@@ -269,9 +271,10 @@ dead-zone error once. Run it for the current count -- a number written here
 would be wrong within a day, and was.
 
 **A person can overrule a generator, in files the generators cannot touch.**
-The files that are a person's are listed in `preflight.py`'s `HANDMADE`;
-among them are `ground_truth.csv`, `review/checked.jsonl`,
-`bill_notes.json`, `officials.json` and `member_corrections.json`. The last
+The files that are a person's are in `corrections/` and `review/`, which
+`preflight.py`'s `HANDMADE` reads; among them are `review/ground_truth.csv`,
+`review/checked.jsonl`, `corrections/bill_notes.json`,
+`corrections/officials.json` and `corrections/member_corrections.json`. The last
 exists because a generated NAME can be
 wrong and nothing downstream can tell -- `resolve_members.py` deduces who a
 member id is by intersecting a saved roll call page with the ids that voted,
@@ -324,7 +327,7 @@ landed as hearings without video, as did every term before it, because the
 House streamed nothing until May 2020. 2019-2020 straddles that date:
 hearings across the whole term, with video on its rows from the 14th of May
 2020 onwards.
-Run `python3 handoff.py` for the row and recording counts.
+Run `python3 src/ops/handoff.py` for the row and recording counts.
 
 **A row is what the docket scheduled, which is not always a sitting.** The
 docket enters a meeting's notice ahead of the day, and a few bills never
@@ -372,10 +375,11 @@ PDFs, 984 with text.
 
 `build_manifest.py` needs `start_eastern` -- when the stream actually began --
 because the schedule offset is the scheduled time minus that. It reads it from
-`videos_*.csv`.
-`channel_index_full.json` carries `id`, `published` and `title` and nothing
-else, and `published` is not the start: a 09/09/2026 meeting is published the
-evening before.
+the video indexes, `collected/videos/videos_*.csv` and the night's
+`videos_*_livestreams.csv` at the root (`proceedings.video_indexes`).
+`collected/videos/channel_index_full.json` carries `id`, `published` and
+`title` and nothing else, and `published` is not the start: a 09/09/2026
+meeting is published the evening before.
 
 `fetch_channel_index.py` pulls `actualStartTime` from `liveStreamingDetails`,
 **fifty ids per call**. It needs a
@@ -388,7 +392,7 @@ than the General Court, and it takes minutes.
 `--docket` and `--out`, the docket carries the term, and that is the whole of
 term-awareness. Proved rather than argued:
 
-    python3 src/hearings/build_manifest.py --videos "videos_*.csv" \
+    python3 src/hearings/build_manifest.py --videos "collected/videos/videos_*.csv" \
         --docket Docket_2023-2024.txt --out verification_manifest_2023-2024.csv
 
     Wrote verification_manifest_2023-2024.csv: 7,019 rows
@@ -1105,7 +1109,7 @@ have given 2027's bills 2025-2026's sign-ins.
 the turn they stop holding the last one. `freeze_term.py` keeps its inputs --
 the day files as installed in `frozen/<term>/`, the database's views in
 `db/term/<term>/`, `Docket_<term>.txt` and `verification_manifest_<term>.csv`,
-the roll calls in `rollcalls/` -- and `python3 src/parse/build_data.py --frozen-terms` builds the
+the roll calls in `records/rollcalls/` -- and `python3 src/parse/build_data.py --frozen-terms` builds the
 term from them every night once the session's files are the next term's,
 whole, marked archived. Rows of a finished term that turn up in new files are
 counted and left out, never merged, in every reader that would otherwise
@@ -1147,7 +1151,7 @@ job.
 > bill is one file rather than two: its record travels inside its own page,
 > except for those over 100 KB which keep a file the page points at. A
 > current-term bill costs more: its text versions sit under `versions/`, and
-> one still moving has a feed. `STATE.md`, which `python3 handoff.py` writes,
+> one still moving has a feed. `STATE.md`, which `python3 src/ops/handoff.py` writes,
 > has the current count, and the nightly's gate line prints it on every run.
 
 **The site is on Cloudflare's Pro plan**, which raises the limit from
@@ -1454,7 +1458,7 @@ Each is described where it belongs; this is the list in one place.
 - **`python3 src/hearings/build_manifest.py --keep-marks` is not vestigial; its help text is.** Every manifest this
   writes carries `observed_start` and `observed_end` -- all nineteen on disk
   have both columns, and `verification_manifest.csv` has 35 rows filled, put
-  there from `ground_truth.csv`, which outranks anything in an old manifest
+  there from `review/ground_truth.csv`, which outranks anything in an old manifest
   (in `build_manifest.main`). The other eighteen carry the columns empty,
   because every mark names a current-term video. A flagless rebuild also falls
   back to the file it is about to overwrite, which is what makes forgetting the

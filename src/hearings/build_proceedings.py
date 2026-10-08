@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -486,9 +486,10 @@ def main():
     ap.add_argument("--floor", default="floor_index.json")
     # Not a source of proceedings -- a source of DATES, for the handful of
     # rows that reached here without one. See video_days.
-    ap.add_argument("--videos", nargs="+", default=["videos_*.csv"],
+    ap.add_argument("--videos", nargs="+", default=None,
                     help="video indexes, read only to date a row whose "
-                         "source gave it no date")
+                         "source gave it no date; every one by default "
+                         "(proceedings.video_indexes)")
     ap.add_argument("--out", default=str(P.PATH))
     ap.add_argument("--allow-shrink", action="store_true",
                     help="write even if this table, or one term's rows from "
@@ -543,7 +544,7 @@ def main():
     # Same globbing as the manifests above, and for the same reason: read
     # every index there is rather than one, so this never runs on a subset
     # of what it is correcting.
-    vfiles = manifest_paths(a.videos)
+    vfiles = manifest_paths(a.videos) if a.videos else P.video_indexes()
     stream, published, termless = recover_terms(rows, video_days(vfiles))
     if by_filename:
         print(f"  {by_filename:,} manifest rows had no date; took the term "
@@ -561,7 +562,7 @@ def main():
         print(f"  {len(termless):,} rows DROPPED: no date, so no term, so no "
               "page to reach"
               + ("" if vfiles else
-                 f" (and nothing matches {' '.join(a.videos)} here, so no "
+                 f" (and nothing matches {' '.join(a.videos or ['a video index'])} here, so no "
                  "recording could date them either)"))
         for r in termless[:10]:
             print(f"      {r['bill']:<9} {r['kind']:<26} {r['source']:<12} "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.23
+# GRANITE_VERSION: 2026-09-09.24
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -22,7 +22,7 @@ had never been shown.
 
 WHAT IS DERIVED AND WHAT IS DECLARED
 
-The districts are derived: districts/council.txt, congress.txt, senate.txt and
+The districts are derived: records/districts/council.txt, congress.txt, senate.txt and
 house.txt are the maps, and parse_districts.py turns them into a town-ward
 lookup that includes the floterial districts the General Court's own file
 leaves out.
@@ -1223,12 +1223,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--officials", default="officials.json")
-    ap.add_argument("--local", default="town_clerks.json",
+    ap.add_argument("--officials", default="corrections/officials.json")
+    ap.add_argument("--local", default="collected/town_clerks.json",
                     help="clerks and polling places, if parsed")
-    ap.add_argument("--offices", default="town_officials.json",
+    ap.add_argument("--offices", default="collected/town_officials.json",
                     help="the town's own officials, if parsed")
-    ap.add_argument("--boards", default="town_boards.json",
+    ap.add_argument("--boards", default="collected/town_boards.json",
                     help="select boards read off towns' own websites, "
                          "written by town_boards.py")
     a = ap.parse_args()

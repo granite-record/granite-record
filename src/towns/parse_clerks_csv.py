@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
     python3 src/towns/parse_clerks_csv.py --report    # say what it found, write nothing
-    python3 src/towns/parse_clerks_csv.py             # -> town_clerks.json
+    python3 src/towns/parse_clerks_csv.py             # -> collected/town_clerks.json
 
 THIS SUPERSEDES parse_clerks.py, AND THE REASON IS WORTH KEEPING.
 
@@ -68,9 +68,9 @@ import parse_officials
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
-CSV_IN = ROOT / "sources" / "sos-clerks-and-polling-places-2026-09-20.csv"
-OUT = ROOT / "town_clerks.json"
-CORRECTIONS = ROOT / "place_corrections.json"
+CSV_IN = ROOT / "records" / "sources" / "sos-clerks-and-polling-places-2026-09-20.csv"
+OUT = ROOT / "collected" / "town_clerks.json"
+CORRECTIONS = ROOT / "corrections" / "place_corrections.json"
 
 SOURCE_URL = "https://app.sos.nh.gov/statelistclerkandpolling"
 READ_ON = "2026-09-20"          # the export's own timestamp, D:20260920200437
@@ -133,7 +133,7 @@ def load_towns(site_dir):
     district files alone and needs no site build; site/districts.json is the
     fallback and says the same thing.
     """
-    p = ROOT / "places.json"
+    p = ROOT / "generated" / "places.json"
     if p.exists():
         places = json.loads(p.read_text(encoding="utf-8"))["places"]
         return {v["name"].upper(): (v["named_by"]["districts"]["wards"] or ["0"])
@@ -211,7 +211,7 @@ def main():
 
     src = pathlib.Path(a.csv)
     if not src.exists():
-        sys.exit(f"{src} is not there; the export lives in sources/")
+        sys.exit(f"{src} is not there; the export lives in records/sources/")
     towns = load_towns(a.site)
     fixes = json.loads(CORRECTIONS.read_text(encoding="utf-8")) \
         if CORRECTIONS.exists() else {}

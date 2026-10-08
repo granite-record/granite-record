@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.5
 """
 One record per person, across every term they served.
 
-    python3 src/parse/build_careers.py            # writes careers.json
+    python3 src/parse/build_careers.py            # writes generated/careers.json
     python3 src/parse/build_careers.py --check    # report only, writes nothing
 
 No network. Reads db/Legislators.psv, db/RollCallHistory.psv and
@@ -65,7 +65,7 @@ import json
 import proceedings as P
 
 DB = Path("db")
-OUT = Path("careers.json")
+OUT = Path("generated/careers.json")
 
 
 def columns():

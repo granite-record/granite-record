@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 NH GRANIT's district geometry, and whether it carries the districts we publish.
 
     python3 src/towns/parse_granit.py --report     # say what the layers hold, write nothing
-    python3 src/towns/parse_granit.py              # -> granit_layers.json
+    python3 src/towns/parse_granit.py              # -> collected/granit_layers.json
 
-WHAT IS HERE AND WHERE IT CAME FROM. Six shapefiles under `sources/gis/`,
+WHAT IS HERE AND WHERE IT CAME FROM. Six shapefiles under `records/sources/gis/`,
 fetched on 20 September 2026 from
 
     https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/
@@ -68,7 +68,7 @@ beside a civic record. `pyproj` is the tool and it is not installed; asking
 for it is a person's decision. Whenever that happens, the result must be
 proven against a known point rather than eyeballed on a map.
 
-WHAT THE CHECK IS FOR. `districts/house.txt` is now verified against the
+WHAT THE CHECK IS FOR. `records/districts/house.txt` is now verified against the
 Secretary of State's published table by `parse_sos_districts.py`. This adds a
 third, independent witness from a fourth direction -- a GIS office digitising
 boundaries rather than anybody transcribing a list -- and the three agree on
@@ -93,8 +93,8 @@ import parse_districts
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
-GIS = ROOT / "sources" / "gis"
-OUT = ROOT / "granit_layers.json"
+GIS = ROOT / "records" / "sources" / "gis"
+OUT = ROOT / "collected" / "granit_layers.json"
 
 BASE_URL = ("https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/"
             "Administrative_and_Political_Boundaries")
@@ -201,14 +201,14 @@ def survey():
 
 
 def house_codes():
-    """GRANIT's House codes against districts/house.txt."""
+    """GRANIT's House codes against records/districts/house.txt."""
     if not (GIS / "NHHouseDistricts2022_Base.zip").exists():
         return None
     _, base, _, _, _ = open_layer("NHHouseDistricts2022_Base.zip")
     _, flt, _, _, _ = open_layer("NHHouseDistricts2022_Float.zip")
     g_base = {split_code(r["BaseHse22"]) for r in base}
     g_flot = {split_code(r["FloatHse22"]) for r in flt if r["FloatHse22"].strip()}
-    h = parse_districts.parse_house(ROOT / "districts" / "house.txt")
+    h = parse_districts.parse_house(ROOT / "records" / "districts" / "house.txt")
     o_base = {(v["county"], int(v["district"])) for v in h.values()
               if not v["floterial"]}
     o_flot = {(v["county"], int(v["district"])) for v in h.values()
@@ -242,7 +242,7 @@ def main():
     layers, problems = survey()
     missing = [n for n, v in layers.items() if not v["present"]]
     if missing:
-        print(f"  not in sources/gis/: {', '.join(missing)}")
+        print(f"  not in records/sources/gis/: {', '.join(missing)}")
         print(f"  fetch them from {BASE_URL}")
         if len(missing) == len(LAYERS):
             return 0

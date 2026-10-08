@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.7
+# GRANITE_VERSION: 2026-09-12.8
 """
 What readers reported, compiled for a person and for the session that triages.
 
-    python3 compile_reports.py                  # pull new reports, write tonight's triage
-    python3 compile_reports.py --preview        # the same, from the preview database
-    python3 compile_reports.py --no-retention   # ... and delete nothing, here or in D1
-    python3 compile_reports.py --rows FILE      # compile rows from a JSON file; no network
-    python3 compile_reports.py --show ID        # one report's words, printed for a PERSON
-    python3 compile_reports.py --close ID --verdict fixed --why "the docket line..."
+    python3 src/ops/compile_reports.py                  # pull new reports, write tonight's triage
+    python3 src/ops/compile_reports.py --preview        # the same, from the preview database
+    python3 src/ops/compile_reports.py --no-retention   # ... and delete nothing, here or in D1
+    python3 src/ops/compile_reports.py --rows FILE      # compile rows from a JSON file; no network
+    python3 src/ops/compile_reports.py --show ID        # one report's words, printed for a PERSON
+    python3 src/ops/compile_reports.py --close ID --verdict fixed --why "the docket line..."
 
 WHERE REPORTS COME FROM
 
@@ -773,7 +773,7 @@ def compile_rows(rows, which, site, day, nonce=None, earlier_held=()):
 
     L += ["## Held for the person -- do not triage these", "",
           "Their words are not in this file, and are stored encoded. A person reads one with "
-          f"`python3 compile_reports.py{' --preview' if which == 'preview' else ''} --show ID`.", ""]
+          f"`python3 src/ops/compile_reports.py{' --preview' if which == 'preview' else ''} --show ID`.", ""]
     listed = [(r["id"], r["record"], r["field"], "; ".join(why)) for r, why in held]
     listed += [x for x in earlier_held if x[0] not in {y[0] for y in listed}]
     L += [f"- **#{i}** {rec} ({field}) -- {reasons}" for i, rec, field, reasons in listed] or ["None."]
@@ -814,7 +814,7 @@ def compile_rows(rows, which, site, day, nonce=None, earlier_held=()):
 
     L += ["## To close one", "",
           "```",
-          f"python3 compile_reports.py{' --preview' if which == 'preview' else ''} --close ID --verdict "
+          f"python3 src/ops/compile_reports.py{' --preview' if which == 'preview' else ''} --close ID --verdict "
           "{fixed|wontfix|notabug|upstream|unreproduced|held} --why \"your own words\"",
           "```", ""]
     counts = {"new": len(rows), "shown": len(shown), "held": len(held), "malformed": malformed}

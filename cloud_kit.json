@@ -161,7 +161,7 @@
       "paths": ["site/committees.json"]
     },
     {
-      "what": "The night's new livestreams: the index rows the committed videos_*.csv do not carry. Their state is archive/livestreams.json, in the state list below. Optional: none exists before the first night that finds a livestream. Never held: the state that says a recording has been seen goes up whatever happens, and a row held back from a night that was never published would be a recording the site never shows.",
+      "what": "The night's new livestreams: the index rows the committed collected/videos/videos_*.csv do not carry; they stay at the root, where the kit has always carried them. Their state is archive/livestreams.json, in the state list below. Optional: none exists before the first night that finds a livestream. Never held: the state that says a recording has been seen goes up whatever happens, and a row held back from a night that was never published would be a recording the site never shows.",
       "owner": "night",
       "optional": true,
       "held": false,

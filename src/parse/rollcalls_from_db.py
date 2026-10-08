@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.3
+# GRANITE_VERSION: 2026-09-10.4
 """db/RollCall*.psv -> the per-year files the parsers already read. No network.
 
     python3 src/parse/rollcalls_from_db.py --check 2023   # prove it against the live fetch
@@ -57,7 +57,7 @@ from datetime import datetime
 from fetch_rollcalls_db import VOTE_WORD
 
 DB = Path("db")
-OUT = Path("rollcalls")
+OUT = Path("records/rollcalls")
 IN_FMT = "%m/%d/%Y %H:%M:%S"
 
 
@@ -171,10 +171,10 @@ def check(year, ids):
 
 
 def years_present():
-    """Years already on disk -- in rollcalls/ AND in the bulk download.
+    """Years already on disk -- in records/rollcalls/ AND in the bulk download.
 
     The root RollCallSummary.txt is the current session's download, and
-    build_data reads it BESIDE every rollcalls/RollCallSummary_*.txt. Writing
+    build_data reads it BESIDE every records/rollcalls/RollCallSummary_*.txt. Writing
     a year that the root file already holds therefore does not replace it, it
     doubles it: 2026 would have arrived twice, 419 roll calls and 131,199
     member votes counted two apiece, and nothing would have raised. That is

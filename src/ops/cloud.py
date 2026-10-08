@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.17
+# GRANITE_VERSION: 2026-09-25.18
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
-    python3 cloud.py kit-list [--sizes]        the kit's paths, from cloud_kit.json
-    python3 cloud.py seed-kit [--dry-run]      the laptop sends the kit, the first time
-    python3 cloud.py kit-down                  an empty machine takes the kit
-    python3 cloud.py kit-up [--dry-run]        ... and sends back what its night changed,
-                                               with the night's logs and state
-    python3 cloud.py kit-up --hold RUN         a New term run's: what it changed waits
-                                               under nights/RUN/kit/, out of kit/
-    python3 cloud.py kit-up --dry-night        a dry run's: only what it fetched goes
-                                               back, and its logs, apart (state-up too)
-    python3 cloud.py kit-release --run RUN     ... and goes into kit/, once that
-                                               run's build has been published
-    python3 cloud.py state-down | state-up     the small state files only
-    python3 cloud.py clear-refusal             lift the refusal record the night
-                                               keeps in the bucket (a person's call)
-    python3 cloud.py site-up --run ID          the night's built site, as one archive,
-                                               with that night's own verdict
-    python3 cloud.py site-down --run ID        ... and back, for the publish job
-    python3 cloud.py backup [--dry-run] [--with-site]
-                                               everything git does not hold
-    python3 cloud.py pull [--dry-run] [--day YYYY-MM-DD] [--changes-only]
-                          [--take PATH ...]    the laptop takes back what the
-                                               nights changed: their files, logs,
-                                               change lists, verdicts and refusal
-    python3 cloud.py send-refusal [--dry-run]  a refusal met here, to the bucket,
-                                               when refusal.py could not send it
-                                               or it waited behind another
+    python3 src/ops/cloud.py kit-list [--sizes]        the kit's paths, from cloud_kit.json
+    python3 src/ops/cloud.py seed-kit [--dry-run]      the laptop sends the kit, the first time
+    python3 src/ops/cloud.py kit-down                  an empty machine takes the kit
+    python3 src/ops/cloud.py kit-up [--dry-run]        ... and sends back what its night changed,
+                                                       with the night's logs and state
+    python3 src/ops/cloud.py kit-up --hold RUN         a New term run's: what it changed waits
+                                                       under nights/RUN/kit/, out of kit/
+    python3 src/ops/cloud.py kit-up --dry-night        a dry run's: only what it fetched goes
+                                                       back, and its logs, apart (state-up too)
+    python3 src/ops/cloud.py kit-release --run RUN     ... and goes into kit/, once that
+                                                       run's build has been published
+    python3 src/ops/cloud.py state-down | state-up     the small state files only
+    python3 src/ops/cloud.py clear-refusal             lift the refusal record the night
+                                                       keeps in the bucket (a person's call)
+    python3 src/ops/cloud.py site-up --run ID          the night's built site, as one archive,
+                                                       with that night's own verdict
+    python3 src/ops/cloud.py site-down --run ID        ... and back, for the publish job
+    python3 src/ops/cloud.py backup [--dry-run] [--with-site]
+                                                       everything git does not hold
+    python3 src/ops/cloud.py pull [--dry-run] [--day YYYY-MM-DD] [--changes-only]
+                                  [--take PATH ...]    the laptop takes back what the
+                                                       nights changed: their files, logs,
+                                                       change lists, verdicts and refusal
+    python3 src/ops/cloud.py send-refusal [--dry-run]  a refusal met here, to the bucket,
+                                                       when refusal.py could not send it
+                                                       or it waited behind another
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -1760,7 +1760,7 @@ def unsent_after(bucket, root):
     if theirs is not None:
         say(f"  {UNSENT} stays: this machine's refusal ({_who(_refusal_doc(mine))}) waits "
             f"behind the one the bucket holds ({_who(_refusal_doc(theirs))}), which stops the "
-            "night until a person lifts it; then python3 cloud.py send-refusal sends this one")
+            "night until a person lifts it; then python3 src/ops/cloud.py send-refusal sends this one")
         return ""
     return (f"{UNSENT} says a refusal met here never reached the bucket, and the bucket "
             "still holds none, so GitHub's night would ask the General Court: python3 "
@@ -1859,7 +1859,7 @@ def cmd_clear_refusal(a, root):
             return
         say(f"  THIS MACHINE HOLDS A REFUSAL THE BUCKET DOES NOT ({_who(_refusal_doc(mine))}), "
             f"at {entry['path']}. Clearing the bucket's does not lift it, and GitHub's night "
-            f"will not stop at it until it is sent: python3 cloud.py send-refusal"
+            f"will not stop at it until it is sent: python3 src/ops/cloud.py send-refusal"
             + (" (this machine's is newer than the one cleared, and was waiting behind it)"
                if data is not None and float(_refusal_doc(mine).get("epoch") or 0)
                > float(_refusal_doc(data).get("epoch") or 0) else "")
@@ -1897,7 +1897,7 @@ def cmd_clear_refusal(a, root):
                          + (f" ({UNSENT} names it)" if marker else
                             ", is newer and still in force")
                          + ", is not in the bucket: GitHub's night would ask the address this "
-                           "machine was refused by. Send it: python3 cloud.py send-refusal "
+                           "machine was refused by. Send it: python3 src/ops/cloud.py send-refusal "
                            "(or python3 refusal.py --clear here, if a person has decided it "
                            "is over)")
 
@@ -1972,7 +1972,7 @@ def send_refusal(root, local_bucket=None, dry_run=False):
         t, m = _refusal_doc(theirs), _refusal_doc(data)
         older = float(t.get("epoch") or 0) <= float(m.get("epoch") or 0)
         why = (f"waiting behind the bucket's older refusal ({_who(t)}), which stops the night "
-               "until a person lifts it with python3 cloud.py clear-refusal; python3 cloud.py "
+               "until a person lifts it with python3 src/ops/cloud.py clear-refusal; python3 src/ops/cloud.py "
                "send-refusal then sends this one" if older else
                f"the bucket holds a newer refusal ({_who(t)}), which stops the night; python3 "
                "cloud.py pull takes it here and sets this one aside")
@@ -2577,21 +2577,21 @@ def pull_refusal(bucket, root, kit, dry, day):
             told = True
             bad.append(f"THIS LAPTOP'S REFUSAL ({_who(m)}, {entry['path']}) IS NOT IN THE BUCKET, "
                        f"which holds none, so GitHub's night would still ask the address this "
-                       f"laptop was refused by. python3 cloud.py send-refusal sends it (to the "
+                       f"laptop was refused by. python3 src/ops/cloud.py send-refusal sends it (to the "
                        f"bucket, not the General Court); python3 refusal.py --clear lifts it "
                        f"here, if a person has decided it is over")
         else:
             lines.append(f"{entry['path']} ({_who(m)}) is on file here and the bucket holds "
                          f"none. It is older than {refusal.QUIET_HOURS} hours, so hand fetches "
                          "here are not stopped by it; the lane here is, and GitHub's night "
-                         "never sees it: python3 cloud.py send-refusal sends it if it should "
+                         "never sees it: python3 src/ops/cloud.py send-refusal sends it if it should "
                          "stop the night too, and python3 refusal.py --clear lifts it here")
     elif mine is None:
         after = theirs                  # created here above, unless dry
         lines.append(f"THE BUCKET HOLDS A REFUSAL ({what}): "
                      f"{'it would go' if dry else 'it is now'} on file here too, as "
                      f"{entry['path']}. It is {refusal.force(t)}. Lifting it is a person's "
-                     "decision, after netcheck.py: python3 cloud.py clear-refusal lifts the "
+                     "decision, after netcheck.py: python3 src/ops/cloud.py clear-refusal lifts the "
                      "bucket's and python3 refusal.py --clear this one; lifting only this one "
                      "brings it back at the next pull")
     elif mine == theirs:
@@ -2611,7 +2611,7 @@ def pull_refusal(bucket, root, kit, dry, day):
         else:
             lines.append(f"this laptop's refusal ({_who(m)}) is newer than the bucket's ({what}) "
                          f"and stays. The bucket's is {refusal.force(t)}; this laptop's waits "
-                         "behind it, and when a person lifts the bucket's, python3 cloud.py "
+                         "behind it, and when a person lifts the bucket's, python3 src/ops/cloud.py "
                          "send-refusal sends this one")
     if marker.exists():
         lift = (after is None or (theirs is not None and after == theirs)
@@ -2631,7 +2631,7 @@ def pull_refusal(bucket, root, kit, dry, day):
         elif not told:
             bad.append(f"a refusal met on this laptop never reached the bucket ({UNSENT}), "
                        "which holds none, so GitHub's night would still ask the General "
-                       "Court: python3 cloud.py send-refusal")
+                       "Court: python3 src/ops/cloud.py send-refusal")
     return lines, bad, held
 
 
@@ -2958,12 +2958,12 @@ def full_pull_news(bucket, kit, rec, now):
     if not full.get("epoch"):
         return [f"NO FULL PULL has run here: the night's {len(night):,} files in the bucket's "
                 f"kit are not on this laptop as the nights left them ({len(newer):,} differ "
-                "from anything pull brought). python3 cloud.py pull brings them"]
+                "from anything pull brought). python3 src/ops/cloud.py pull brings them"]
     hours = (now.timestamp() - float(full["epoch"])) / 3600
     return [f"the last full pull was {hours:.0f} hours ago ({full.get('at') or '?'}); the "
             f"bucket's kit manifest has {len(newer):,} of the night's {len(night):,} files "
             "changed since"
-            + (": python3 cloud.py pull brings them" if newer else ", so nothing waits")
+            + (": python3 src/ops/cloud.py pull brings them" if newer else ", so nothing waits")
             + (". OLDER THAN 48 HOURS: preflight fails on it" if hours > 48 else "")]
 
 
@@ -3127,7 +3127,7 @@ def cmd_pull(a, root):
             f"them alone: {', '.join(clashes[:8])}. A night's file never goes back up from "
             "the laptop, so what changed here reaches nobody; a laptop build rewriting the "
             "carried outputs is the usual cause. To set this laptop's copies aside under "
-            f"{SET_ASIDE}/{day}/ and take the bucket's:\n  python3 cloud.py pull --take "
+            f"{SET_ASIDE}/{day}/ and take the bucket's:\n  python3 src/ops/cloud.py pull --take "
             + " ".join(clashes))
     if problems:
         raise Failed(" ".join(problems))

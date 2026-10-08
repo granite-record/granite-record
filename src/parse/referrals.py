@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.12
+# GRANITE_VERSION: 2026-09-10.13
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network
@@ -815,7 +815,7 @@ def _corpus(path=SRC, lo=1989, hi=2015):
     return seen
 
 
-ABBREV = Path("docket_abbrev.json")
+ABBREV = Path("records/docket_abbrev.json")
 
 
 def _key_names():

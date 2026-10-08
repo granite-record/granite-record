@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.12
+# GRANITE_VERSION: 2026-09-08.13
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -970,7 +970,7 @@ def main():
             "Listing the calendars and journals",
             "GitHub's nightly reads the General Court's two index pages now "
             f"(nightly.take_documents), and {QUEUE} reaches this machine from R2 "
-            "with python3 cloud.py pull. The drain still runs here, and keeps "
+            "with python3 src/ops/cloud.py pull. The drain still runs here, and keeps "
             f"what it fetches in {fetched_file()}.")
         refusal.check("The calendar and journal listing")
     if a.listing:

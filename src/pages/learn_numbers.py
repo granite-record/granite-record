@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.10
+# GRANITE_VERSION: 2026-09-14.11
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -994,7 +994,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                         vrows))
 
     # 14. Constitutional amendments sent to the voters.
-    ballot = _need(root / "ballot_results.json", "the amendments sent to the voters")
+    ballot = _need(root / "corrections" / "ballot_results.json", "the amendments sent to the voters")
     if ballot:
         shown, held, to_come = ballots(ballot.get("rows"))
         # A DECIDED ROW WITH NO SOURCE OR NO CITE is left off and said here,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.7
+# GRANITE_VERSION: 2026-09-16.8
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -531,7 +531,7 @@ def dataset():
 
 # ------------------------------------------------------------------ the answer
 
-CFG_PATH = REPO / "topic_model.json"
+CFG_PATH = REPO / "generated" / "topic_model.json"
 
 
 def config():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Step 1 of verification: pull the NH House/Senate YouTube video index.
 
@@ -221,7 +221,9 @@ def main():
     start = datetime.strptime(a.start, "%Y-%m-%d").date()
     end = datetime.strptime(a.end, "%Y-%m-%d").date()
     chan_id, chan_name = CHANNELS[a.chamber]
-    out = a.out or f"videos_{a.chamber}_{a.start}_to_{a.end}.csv"
+    # Into collected/videos/, where git keeps the channel indexes
+    # (proceedings.video_indexes).
+    out = a.out or f"collected/videos/videos_{a.chamber}_{a.start}_to_{a.end}.csv"
 
     print(f"Channel : {chan_name}")
     print(f"Window  : {start} to {end}\n")

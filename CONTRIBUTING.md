@@ -26,7 +26,7 @@ Three things follow, and they are not negotiable:
    24 hours and then resumes on its own; the lane, `build_all.py`'s General
    Court steps and the nightly test only whether a refusal is on file, so they
    stay stopped for as long as it is. Clearing it --
-   `python3 refusal.py --clear`, or `python3 cloud.py clear-refusal` for the
+   `python3 refusal.py --clear`, or `python3 src/ops/cloud.py clear-refusal` for the
    copy the nightly keeps in its bucket -- is the maintainer's decision, after
    `python3 netcheck.py` has said what kind of refusal it was.
 3. **Every fetcher that asks the General Court consults it.** All 17
@@ -126,7 +126,7 @@ to cause it. Those docstrings are the useful part; please write them.
 
 **Measure against something you did not generate.** The strongest results here
 came from opening real data first and scoring against a hand-made reference.
-`ground_truth.csv` holds 35 proceedings someone timed with a stopwatch, and:
+`review/ground_truth.csv` holds 35 proceedings someone timed with a stopwatch, and:
 
 ```bash
 python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json
@@ -192,10 +192,14 @@ tree, says what each folder is for, and is the longer version of this. The
 short one:
 
 - **The root** holds what something outside the repository runs by name -- a
-  workflow, Task Scheduler, `publish.bat`, the session's first commands
-  (`inventory`, `preflight`, `handoff`) -- and the few the maintainer chose to
-  keep there, with the front end, the config, the docs and all the data. A
-  new script goes at the root only for one of those reasons.
+  workflow, Task Scheduler, `publish.bat`, `preflight` -- and the few the
+  maintainer chose to keep there, with the config and the docs. A new script
+  goes at the root only for one of those reasons. The data git keeps is in
+  five folders beside it (README.md's "What's where").
+- **`src/ops/`** for a tool that keeps the site running rather than builds
+  it, run by its path by a workflow, the morning triage or a person: the
+  bucket (`cloud.py`), the night's livestreams, the reader reports and the
+  session's first commands (`inventory`, `handoff`).
 - **`src/fetch/<whose server>/`** for anything that asks another server:
   `gc_web/` for gc.nh.gov (it calls `refusal.check()` straight after its
   arguments, and `refusal.note()` on a refusal it meets), `gc_db/` for the
@@ -238,24 +242,29 @@ fails it.
 
 ## Files no generator may write
 
-These are a person's work, and `preflight` fails if any `build_*` or `fetch_*`
-script opens one for writing. Among them:
+These are a person's work, and they are in two folders: `corrections/`, what
+a person corrects or adds to the record by hand, and `review/`, a person's
+checks of the site's own work. `preflight` fails if any `build_*` or
+`fetch_*` script opens one of their files for writing or writes into either
+folder. Among them:
 
 | file | what it is |
 |---|---|
-| `ground_truth.csv` | 35 proceedings timed by watching the recording |
+| `review/ground_truth.csv` | 35 proceedings timed by watching the recording |
 | `review/checked.jsonl` | the bench's judgments, append-only |
-| `bill_notes.json` | what a recurring bill number means |
-| `officials.json` | offices filled by hand from official sources |
-| `member_corrections.json` | a name or party a generator got wrong, with the evidence |
-| `docket_corrections.json` | dates the docket states wrongly and rows it files under the wrong bill, with the evidence |
-| `place_corrections.json` | values the Secretary of State's clerk-and-polling list states wrongly, with the second source |
-| `ballot_results.json` | the statewide vote on each constitutional amendment, copied by hand from the source each row names |
+| `corrections/bill_notes.json` | what a recurring bill number means |
+| `corrections/officials.json` | offices filled by hand from official sources |
+| `corrections/member_corrections.json` | a name or party a generator got wrong, with the evidence |
+| `corrections/docket_corrections.json` | dates the docket states wrongly and rows it files under the wrong bill, with the evidence |
+| `corrections/place_corrections.json` | values the Secretary of State's clerk-and-polling list states wrongly, with the second source |
+| `corrections/ballot_results.json` | the statewide vote on each constitutional amendment, copied by hand from the source each row names |
+| `corrections/status/` | the state of the session and the Executive Council, which no published file carries |
 
-`preflight.py`'s `HANDMADE` is the authoritative list. Read it there rather
-than here — the same list in `CLAUDE.md` spent a day saying four after the
-fifth file was added, because it was a copy, and this table said five while
-the list held nine.
+The folders are the authoritative list: `preflight.py`'s `HANDMADE` reads
+them as they stand, so a file put in either is guarded the day it is put
+there. A copied list went stale twice -- `CLAUDE.md` spent a day saying four
+after the fifth file was added, and this table said five while the list held
+nine.
 
 ## What not to do
 

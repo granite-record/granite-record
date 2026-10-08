@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -29,7 +29,7 @@ Two things this handles that a naive parser gets wrong:
 
 3. A BILL NUMBER MEANS NOTHING WITHOUT A TERM.
    HB396 exists in every biennium. The download covers the current session
-   only, so that never came up; rollcalls/ holds a file per past year fetched
+   only, so that never came up; records/rollcalls/ holds a file per past year fetched
    from the General Court's database, and the moment 2023 sits beside 2025 a
    flat {bill: votes} map merges two different bills. The output is keyed on
    the TERM, not the year, because one bill is voted on in both years of its
@@ -310,7 +310,7 @@ def ballot(raw):
     return out
 
 
-def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):
+def ballot_counts(current="RollCallHistory.txt", extra_dir="records/rollcalls"):
     """{(year, body, number): Counter of ballot codes}, from the member ballots.
 
     WHO DID NOT VOTE, FROM THE BALLOTS. The summary's fields 7 and 8 were
@@ -358,7 +358,7 @@ def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):
 def parse_all(current, extra_dir):
     """Every roll call this machine has, the download and the archive both.
 
-    rollcalls/RollCallSummary_<year>.txt is written by fetch_rollcalls_db.py
+    records/rollcalls/RollCallSummary_<year>.txt is written by fetch_rollcalls_db.py
     from the General Court's database, one file per past session year. The
     download is the current session and is read first, so if a year somehow
     appears in both the download's row is the one kept -- it is the copy the
@@ -458,7 +458,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--file", default="RollCallSummary.txt",
                     help="the current session's bulk download")
-    ap.add_argument("--dir", default="rollcalls",
+    ap.add_argument("--dir", default="records/rollcalls",
                     help="a directory of RollCallSummary_<year>.txt files for "
                          "past sessions, from fetch_rollcalls_db.py")
     ap.add_argument("--bill")

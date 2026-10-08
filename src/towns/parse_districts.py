@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Turn the Senate and Executive Council district lists into a town lookup.
 
-    python3 src/towns/parse_districts.py --dir districts --out site/districts.json
+    python3 src/towns/parse_districts.py --dir records/districts --out site/districts.json
 
 The General Court's data files carry House districts only, so town lookup
 covered representatives and nothing else. These lists close that gap, and add
@@ -101,7 +101,7 @@ def parse(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default="districts")
+    ap.add_argument("--dir", default="records/districts")
     ap.add_argument("--towns", default="site/towns.json",
                     help="from build_data.py, used to check the names line up")
     ap.add_argument("--out", default="site/districts.json")

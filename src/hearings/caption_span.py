@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.4
+# GRANITE_VERSION: 2026-09-10.5
 """
 Whether a recording's captions reach the end of the recording.
 
@@ -7,7 +7,8 @@ Whether a recording's captions reach the end of the recording.
     python3 src/hearings/caption_span.py --write    # refresh caption_spans.json from work/
     python3 src/hearings/caption_span.py --check    # does caption_spans.json agree with work/?
 
-No network. Reads work/<video>/ and videos_*.csv; only --write writes, and
+No network. Reads work/<video>/ and the video indexes
+(proceedings.video_indexes); only --write writes, and
 only caption_spans.json.
 
 WHY THIS EXISTS
@@ -129,10 +130,12 @@ def seconds(iso):
     return d * 86400 + h * 3600 + mi * 60 + s
 
 
-def durations(pattern="videos_*.csv"):
-    """{video_id: seconds}, as YouTube published them in the channel index."""
+def durations(pattern=None):
+    """{video_id: seconds}, as YouTube published them in the channel index:
+    every video index (proceedings.video_indexes), or those `pattern` matches."""
+    import proceedings
     out = {}
-    for f in sorted(Path(".").glob(pattern)):
+    for f in (sorted(Path(".").glob(pattern)) if pattern else proceedings.video_indexes()):
         with open(f, encoding="utf-8", newline="") as fh:
             for r in csv.DictReader(fh):
                 s = seconds(r.get("duration_iso"))
