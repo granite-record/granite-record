@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.159
+// GRANITE_VERSION: 2026-09-07.160
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -53,8 +53,9 @@ const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
 // kind's. "Became law" is wrong for a resolution, which is adopted and is
 // not law: its chip is its own word, "Adopted by the House".
 // Interim Study and Tabled take their rail marks' inks (the person, 8 October
-// 2026): the orange of the "~" and the graphite of the pause. Tabled was the
-// amber of a stage still moving, which under protanopia is the orange's twin.
+// 2026): the orange of the "~" and the yellow of the pause, which is a stage
+// still moving's (graphite for a day). Under protanopia the yellow is near the
+// orange, so the chip's word and the rail's shape tell them apart.
 const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",
   "Tabled":"s-table","Vetoed":"s-veto","Withdrawn":"s-done"};
 const CHIPORDER=Object.keys(CHIPCLASS);
@@ -3364,7 +3365,7 @@ function rsaChapters(d){
 // list's own, so this list is where they open.
 // AND THE RAIL'S OWN TWO, BARE (the person, 8 October 2026): the line that
 // sent the bill to interim study takes the rail's orange "~", and the line
-// that laid a bill on the table it still lies on takes the graphite pause,
+// that laid a bill on the table it still lies on takes the yellow pause,
 // two bars the stylesheet draws (.jl .j-ontable .jg::after). A bill that died
 // on the table keeps its turning arrow on that line. The "~" is drawn rather
 // than typed, so it centres at any size, and here before the rail (RAILMARK)
@@ -5391,7 +5392,7 @@ function lsrCardHtml(b){
 // study is "s", an orange disc with a white "~", where it was the red cross
 // of a bill killed: the chamber decided, and the bill is parked, not dead.
 // A chamber whose table the bill lies on while the session still sits is
-// "t", a graphite disc with two white bars, the pause, where it was the ring
+// "t", a yellow disc with two white bars, the pause, where it was the ring
 // of a bill moving. A bill that died on the table keeps the cross.
 // build_site_v2.journey_rail gives a stop these, from the bill's chip, and
 // How it got here draws the same two bare (JMARK). Each is a filled disc of

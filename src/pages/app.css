@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.216 */
+/* GRANITE_VERSION: 2026-09-07.217 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -104,20 +104,22 @@
    legislature did not kill it, and the two are worth telling apart.
    Every pair holds at least 5.4:1 against its own chip, which is why the
    audit left them alone.
-   INTERIM STUDY'S ORANGE AND THE TABLE'S GRAPHITE (the person, 8 October
-   2026, from a sheet that measures them). The study ink was a
+   INTERIM STUDY'S ORANGE AND THE TABLE'S YELLOW (the person, 8 October
+   2026: first graphite, then "a yellow pause instead ... it would read a bit
+   better"). The table takes the yellow of a bill still moving -- a bill on
+   the table is alive and may be taken back up -- and its pause shape, not its
+   colour, tells it from a stage still moving. The study ink was a
    brown, #94500E, and is the orange of the rail's "~" now: 4.66:1 as chip
    text on its tint, 5.28:1 under the white wave on a card, 4.53:1 on the
    page. --st-table is a bill lying on the table while the session sits: the
-   rail's pause and the Tabled chip, which was the amber of a stage still
-   moving and under protanopia the orange's twin. Graphite is near no other
-   ink on the site: 34 (CIEDE2000) from the orange and 32 from the kill red,
-   30 and 24 under protanopia; 4.99:1 as chip text, 6.11:1 under the bars. */
+   rail's pause and the Tabled chip, in the yellow of a stage still moving;
+   under protanopia it is near the orange, so the two are told apart
+   by shape ("~" against two bars) and by the chip's word. */
 --st-active:#7A5A00;--st-active-bg:#FBF2D9;
 --st-law:#1E5B3C;--st-law-bg:#E3EFE7;
 --st-done:#9E2B25;--st-done-bg:#FAE7E5;
 --st-study:#B9420B;--st-study-bg:#FCEADB;
---st-table:#56616C;--st-table-bg:#E0E5EA;
+--st-table:#7A5A00;--st-table-bg:#FBF2D9;
 --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
 /* A MEETING'S KIND, in the General Court's own colours, because staff read
    its schedule by them: blue a hearing, green a work session, orange an
@@ -238,7 +240,7 @@ color-scheme:light}
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
 --st-study:#F59A55;--st-study-bg:#45280F;
---st-table:#B3BDC7;--st-table-bg:#2C3338;
+--st-table:#E3C46A;--st-table-bg:#3A3116;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
 --cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
 --cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
@@ -287,7 +289,7 @@ color-scheme:dark}
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
 --st-study:#F59A55;--st-study-bg:#45280F;
---st-table:#B3BDC7;--st-table-bg:#2C3338;
+--st-table:#E3C46A;--st-table-bg:#3A3116;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
 --cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
 --cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
@@ -1158,7 +1160,7 @@ line-height:1.1}
   --edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;
   --st-active:#7A5A00;--st-active-bg:#FBF2D9;--st-law:#1E5B3C;--st-law-bg:#E3EFE7;
   --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#B9420B;--st-study-bg:#FCEADB;
-  --st-table:#56616C;--st-table-bg:#E0E5EA;
+  --st-table:#7A5A00;--st-table-bg:#FBF2D9;
   --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
   --cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;--cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
   --cal-exec:#94500E;--cal-exec-bg:#FCEEDF;--cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
@@ -1536,7 +1538,7 @@ box-shadow:0 0 0 3px var(--pine-soft)}
 /* THE RAIL'S OWN TWO MARKS (the person, 8 October 2026, from a measured
    sheet of the marks). A chamber that held the bill for interim
    study is an orange disc with a white "~", and one whose table the bill
-   lies on while the session sits a graphite disc with two white bars: each a
+   lies on while the session sits a yellow disc with two white bars: each a
    filled disc of the check's and the cross's weight with a glyph of its own,
    so greyscale -- where the four discs sit within a few points of lightness
    -- still tells check, cross, wave and bars apart, and neither is ever the
@@ -1625,7 +1627,7 @@ letter-spacing:.01em}
 .s-done{background:var(--st-done-bg);color:var(--st-done)}
 .s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
 .s-study{background:var(--st-study-bg);color:var(--st-study)}
-/* The Tabled chip in its mark's graphite, as Interim Study is in its orange. */
+/* The Tabled chip in its mark's yellow, as Interim Study is in its orange. */
 .s-table{background:var(--st-table-bg);color:var(--st-table)}
 /* An adopted resolution succeeded, so it reads like a bill that became
    law -- but it did not become law, and saying so would be false. Same
@@ -2610,7 +2612,7 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .j-x .jg{color:var(--st-done)}
 .jl .j-h .jg{color:var(--pine)}
 /* The rail's own two marks, bare, as the check and the cross are here: an
-   orange wave on the line that sent the bill to interim study, two graphite
+   orange wave on the line that sent the bill to interim study, two yellow
    bars on the line that laid it on the table it still lies on. */
 .jl .j-istudy .jg{color:var(--st-study);display:flex;align-items:center;
 justify-content:center;align-self:start;height:1.5em}

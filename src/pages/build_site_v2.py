@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.183
+# GRANITE_VERSION: 2026-09-05.184
 """
 Generate the faceted site from real General Court data.
 
@@ -6231,7 +6231,7 @@ def journey_rail(intro, steps, rail, bid, status="", chip=""):
     where an Interim Study bill was held is the orange "~", "s", where
     `passage` says only that it stopped there; and where a Tabled bill lies
     on the table while the session still sits, its stop and the line of the
-    journey that laid it there are the graphite pause, "t", where `passage`
+    journey that laid it there are the yellow pause, "t", where `passage`
     has the ring of a bill still moving. A bill that died on the table is
     Died, and keeps its cross.
 

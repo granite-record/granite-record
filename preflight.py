@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.469
+# GRANITE_VERSION: 2026-09-04.470
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19924,7 +19924,7 @@ def _palette():
              ("pine", "surface"), ("pine", "paper")]
     # The rail's discs are graphics on the card and the page, and their white
     # glyph -- check, cross, "~", two bars -- is the card's own colour on them
-    # (8 October 2026: interim study's orange and the table's graphite).
+    # (8 October 2026: interim study's orange and the table's yellow).
     for st in ("law", "done", "study", "table"):
         BOUND += [(f"st-{st}", "surface"), (f"st-{st}", "paper")]
     # A meeting's kind: its ink is the chip's text on its tint, and it is also
@@ -24483,7 +24483,7 @@ _KILLED_THEN_STUDIED = [
 ]
 
 
-@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its graphite "
+@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its yellow "
                    "pause, a dead bill's cross kept; apart by shape, said aloud and drawn in forced "
                    "colours, and the two chips in the same inks",
        needs=("narrative", "build_site_v2"))
@@ -24499,7 +24499,7 @@ def _rail_study_and_table_marks(N, B):
         here line; a reader who hears the rail hears "sent to interim study".
       * HB 1043 of 2026, laid on the Senate's table on 7 May 2026, drawn as it
         stood while the session still sat (live, its chip Tabled), has a
-        graphite disc with two white bars there and on the line that laid it
+        yellow disc with two white bars there and on the line that laid it
         there, and is heard "on the table". Drawn as it stands, dead on the
         table when the session ended, it keeps the red cross and the line's
         turning arrow.
@@ -24508,7 +24508,7 @@ def _rail_study_and_table_marks(N, B):
         within a few points of lightness; forced colours keep the wave's disc
         and the pause's bars in the system's text colour; print keeps their
         ground; and the Interim Study and Tabled chips take the orange and the
-        graphite.
+        yellow.
     Built from the real rows through narrative.build, the journey, passage,
     chip_word and journey_rail, and drawn by app.js in node."""
     term = "2025-2026"
@@ -24638,7 +24638,7 @@ def _rail_study_and_table_marks(N, B):
     if not any(".stop.s-istudy b" in g and ".stop.s-ontable b" in g for g in pr):
         bad.append("on paper the \"~\" or the pause prints as an empty ring")
     # THE INKS, light and dark: the sheet's.
-    want = {"st-study": ("#B9420B", "#F59A55"), "st-table": ("#56616C", "#B3BDC7")}
+    want = {"st-study": ("#B9420B", "#F59A55"), "st-table": ("#7A5A00", "#E3C46A")}
     blocks = (css[css.index(":root{"):css.index("/* DARK:OS")],
               css[css.index("/* DARK:OS"):css.index("/* DARK:CHOSEN")],
               css[css.index("/* DARK:CHOSEN"):css.index("/* PALETTE END")])
@@ -24648,7 +24648,7 @@ def _rail_study_and_table_marks(N, B):
                 bad.append(f"--{tok} is not {hexv} where the sheet says")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("HB 561's House stop and line are the orange \"~\", HB 1043 on the table now "
-                  "the graphite pause, dead on the table the cross; check, cross, wave and bars; "
+                  "the yellow pause, dead on the table the cross; check, cross, wave and bars; "
                   f"forced colours, print and the two chips kept; {drew}")
 
 
@@ -38054,8 +38054,8 @@ def _chip_drawn():
     assert "threw" not in got, f"drawing the chips threw {got['threw']}"
     bad = []
     chips = re.findall(r'<span class="cstat ([^"]*)">([^<]*)</span>', got["list"])
-    # Tabled in the graphite of the rail's pause (8 October 2026), not the
-    # amber of a stage still moving.
+    # Tabled in the yellow of the rail's pause (8 October 2026: graphite at
+    # first, then the person's yellow), the same ink as a stage still moving.
     want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In committee"),
             ("s-done", "Withdrawn"), ("s-law", "Became Law"), ("s-veto", "Vetoed"),
             ("s-study", "Interim Study")}
