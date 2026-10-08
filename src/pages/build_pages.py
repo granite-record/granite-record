@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.165
+# GRANITE_VERSION: 2026-09-04.166
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -202,7 +202,7 @@ __MARK__
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
          '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600'
-         '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@500'
+         '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@500'
          '&display=swap" rel="stylesheet">')
 
 

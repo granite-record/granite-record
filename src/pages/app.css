@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.220 */
+/* GRANITE_VERSION: 2026-09-07.221 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -241,10 +241,11 @@
    elements on the home page, having measured no expanded card -- where the
    other four rules are. Two faces, clearly distinct, each with a job. */
 --serif:"Source Serif 4",Georgia,serif;
-/* The meta lines at the foot of the page -- "Updated 18 September 2026"
-   and "MIT Open Source Licensed" -- are IBM Plex Mono in the settled
-   footer. It is the only place the face is used, which is why it is
-   loaded at one weight. */
+/* The meta lines at the foot of the page -- "Data rebuilt October 8,
+   2026." and "MIT Open Source Licensed" -- are IBM Plex Mono in the settled
+   footer, and so is every <code> since 8 October 2026: an address, a
+   citation's BibTeX. Data rather than prose, which is why it is loaded at
+   one weight. */
 --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 /* Tells the browser which way round this is, so the scrollbars, the select
    menus and the search field's own furniture follow the page instead of
@@ -1153,7 +1154,13 @@ gap:var(--sp-3)}
   .flinks a{display:inline-flex;align-items:center;min-height:44px}
 }
 /* IBM Plex Mono, per the settled footer: these two are a build stamp and a
-   licence, which are data about the page rather than prose on it. */
+   licence, which are data about the page rather than prose on it. And every
+   <code> with them (8 October 2026, the polish plan's faces): a citation's
+   BibTeX, a feed's or a file's address, which took the system's monospace --
+   Consolas on Windows, a fourth face on the page -- wherever no rule of its
+   own named this one. The serif is loaded at 400 and 600 only since the same
+   day: no text on the site was drawn at its 700. */
+code{font-family:var(--mono)}
 footer .footdata,footer .footdata .lic{font-family:var(--mono);
 font-size:var(--t-sm);font-weight:500;letter-spacing:0}
 footer .footdata{margin:var(--sp-7) 0 0;padding-top:var(--sp-5);
