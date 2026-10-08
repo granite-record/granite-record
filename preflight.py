@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.454
+# GRANITE_VERSION: 2026-09-04.455
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2658,6 +2658,116 @@ def _died_on_the_floor(N):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 761 of 2025 dies on the House floor's table, said once; CACR 11 of 2019's bare "
                   "row keeps its note")
+
+
+# A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October
+# 2026, cause 15). Real rows: Docket.txt lines 661, 870 and 2399 (HB 519 of
+# 2025), 14215 and 14242 (HB 1300 of 2026), 12827 and 16958 (SB 425 of 2026),
+# 4636 (HB 555 of 2025), 6876, 7604 and 11467-11468 (HB 292 of 2025);
+# Docket_2015-2016.txt 6743, 6746-6747 and 6750 (SB 30 of 2015) and 7726-7727
+# (SB 242 of 2015).
+_DOCKET_NONGERMANE_HEARING = {
+    ("HB519", "2025-2026"): [
+        "2026|0391|1/14/2025 3:36:08 PM|HB519|H|  Introduced (in recess of) 01/09/2025 and referred to Finance  HJ 3  P. 14|2/18/2025 2:44:25 PM",
+        "2026|0391|1/15/2025 3:33:03 PM|HB519|H|Public Hearing: 01/23/2025 11:30 am LOB 210-211|1/15/2025 3:33:03 PM",
+        "2026|0391|2/5/2025 2:35:04 PM|HB519|H|  Public Hearing on non-germane Amendment # 2025-0102h: 02/11/2025 01:30 pm LOB 210-211|2/5/2025 2:35:04 PM"],
+    ("HB1300", "2025-2026"): [
+        "2026|2870|1/14/2026 3:51:54 PM|HB1300|H|Public Hearing: 01/20/2026 10:00 am GP 158|1/14/2026 3:51:54 PM",
+        "2026|2870|1/14/2026 3:53:40 PM|HB1300|H|  Public Hearing on non-germane Amendment # 2026-0093h: 01/20/2026 10:15 am GP 158|1/14/2026 3:53:47 PM"],
+    ("SB425", "2025-2026"): [
+        "2026|2253|12/10/2025 8:39:50 AM|SB425|S|  Hearing: 01/08/2026, Room 103, SH, 09:20 am;  SC 46|12/10/2025 8:39:50 AM",
+        "2026|2253|2/12/2026 10:14:43 AM|SB425|S|  Hearing: 02/18/2026, Room 103, SH, 09:00 am, on proposed non-germane amendment # 2026-0579s;  SC 6|2/12/2026 10:14:43 AM"],
+    ("HB555", "2025-2026"): [
+        "2025|0851|3/6/2025 8:01:38 AM|HB555|H|==CANCELLED== Public Hearing on non-germane Amendment # 2025-0707h: 03/10/2025 10:30 am LOB 205-207|3/6/2025 6:54:48 PM"],
+    ("HB292", "2025-2026"): [
+        "2026|0652|3/28/2025 7:49:58 AM|HB292|S|  Introduced 03/27/2025 and Referred to Education;  SJ 10|3/28/2025 7:49:58 AM",
+        "2026|0652|4/10/2025 6:33:16 AM|HB292|S| Hearing: 04/15/2025, Room 101, LOB, 10:00 am;  SC 17|4/10/2025 6:33:16 AM",
+        "2026|0652|10/2/2025 3:55:35 PM|HB292|S|  Joint Hearing with the House Education Funding Committee: 10/14/2025, Room 232, GP, 01:00 pm, on proposed nongermane amendment # 2025-2978s;  SC 37|10/2/2025 4:09:44 PM",
+        "2026|0652|10/3/2025 9:41:41 AM|HB292|H|  Public Hearing on non-germane Amendment # 2025-2978s: 10/14/2025 01:00 pm GP 232|10/3/2025 9:41:41 AM"],
+    ("SB30", "2015-2016"): [
+        "2015|0878|03/31/2015 10:24:00 AM|SB30|H|Introduced and Referred to Municipal and County Government (in recess of 3/25/2015); HJ 28, PG. 1298|03/31/2015 10:24:00 AM",
+        "2015|0878|04/15/2015 10:10:39 AM|SB30|H|Vacated and Referred to Finance; HJ 34, PG. 1534|04/15/2015 10:10:39 AM",
+        "2015|0878|04/15/2015 02:13:29 PM|SB30|H|Public Hearing: 4/21/2015 1:00 PM Representatives Hall; to include consideration of non-germane amendment #2015-1351h|04/15/2015 02:13:29 PM",
+        "2015|0878|04/21/2015 10:43:34 AM|SB30|H|==ROOM CHANGE== Public Hearing: 4/21/2015 1:00 PM LOB 210-211|04/21/2015 10:43:34 AM"],
+    ("SB242", "2015-2016"): [
+        "2015|0999|03/31/2015 11:16:49 AM|SB242|H|Introduced and Referred to Municipal and County Government (in recess of 3/25/2015); HJ 28, PG. 1299|03/31/2015 11:16:49 AM",
+        "2015|0999|03/31/2015 12:55:59 PM|SB242|H|Public Hearing: 4/21/2015 10:15 AM LOB 301; to include consideration of non-germane amendment #2015-1347h|03/31/2015 12:55:59 PM"],
+}
+# What houseRemoteTestify holds for those days, as fetch_testimony_db.py
+# writes it (testimony_db.json): HB 519's hearing on 0102h, and a figure for
+# HB 1300's own hearing of 20 January.
+_NONGERMANE_SIGNINS = {"2025-2026": {
+    "HB519": {"hearings": [{"date": "2025-02-11", "total": 16, "support": 13, "oppose": 2,
+                            "neutral": 1}]},
+    "HB1300": {"hearings": [{"date": "2026-01-20", "total": 9, "support": 4, "oppose": 5}]}}}
+
+
+@check("narrative", "a public hearing on a proposed non-germane amendment is told, on its own day, "
+                    "with the day's sign-ins where the bill had no other hearing that day",
+       needs=("narrative", "build_site_v2"))
+def _nongermane_hearing_told(N, B):
+    """The launch audit's cause 15: "Public Hearing on non-germane Amendment
+    # 2025-0102h: 02/11/2025 01:30 pm LOB 210-211" (HB 519 of 2025) and the
+    Senate's "Hearing: 02/18/2026, ..., on proposed non-germane amendment #
+    2026-0579s" (SB 425 of 2026) were read by no pattern: 65 hearings on 59
+    bills of 2025-2026 were in no history, and the House's were dated by the
+    day the row was entered (5 February for HB 519's). Each is now told, on
+    its own day, with the day's online sign-ins unless the bill's own hearing
+    that day carries them (HB 1300 of 2026, 20 January). A cancelled one is
+    not told and keeps the note a called-off meeting has; the two chambers'
+    joint hearing is told once, by the chamber whose row says it was joint
+    (HB 292 of 2025); and the bill's own hearing whose row takes the
+    amendment up too is told as both (SB 242 of 2015), and once where
+    another row of the docket enters the same hearing (SB 30 of 2015's room
+    change)."""
+    want = {
+        "HB519": ("2025-02-11", "The committee held a public hearing on February 11, 2025 on a "
+                  "proposed non-germane amendment (2025-0102h), with online testimony at 13 signed "
+                  "in support, 2 in opposition and 1 neutral."),
+        "HB1300": ("2026-01-20", "The committee held a public hearing on January 20, 2026 on a "
+                   "proposed non-germane amendment (2026-0093h)."),
+        "SB425": ("2026-02-18", "The committee held a public hearing on February 18, 2026 on a "
+                  "proposed non-germane amendment (2026-0579s)."),
+        "SB242": ("2015-04-21", "The committee held a public hearing on April 21, 2015, which "
+                  "included a proposed non-germane amendment (2015-1347h)."),
+        "HB292": ("2025-10-14", "The committee held a public hearing on October 14, 2025 on a "
+                  "proposed non-germane amendment (2025-2978s)."),
+    }
+    bad = []
+    keep = (N.MEMBERS, N.TESTIMONY)
+    try:
+        N.MEMBERS, N.TESTIMONY = {}, _NONGERMANE_SIGNINS
+        for (bill, term), rows in _DOCKET_NONGERMANE_HEARING.items():
+            # Read as the docket's own file is, so its marks are read.
+            rec = _told_from_rows(N, term, bill, rows)
+            told = " ".join(st["text"] for st in rec["stages"])
+            ng = [e for e in rec["events"] if e["type"] == "nongermane_hearing"]
+            if bill == "HB555":
+                if told or len(ng) != 1 or not ng[0]["cancelled"] or not B.called_off(ng[0]):
+                    bad.append(f"HB555 of 2025's cancelled hearing: {told!r}, {ng!r}")
+                continue
+            if bill == "SB30":
+                if told.count("held a public hearing on April 21, 2015") != 1:
+                    bad.append(f"SB30 of 2015 tells its hearing of 21 April other than once: "
+                               f"{told!r}")
+                continue
+            day, s = want[bill]
+            if told.count("non-germane amendment") != 1 or s not in told:
+                bad.append(f"{bill} of {term} does not tell {s!r} once: {told!r}")
+            if not ng or {e["date"] for e in ng} != {day}:
+                bad.append(f"{bill} of {term}'s non-germane hearing rows: {ng!r}")
+            if bill == "HB1300" and ("January 20, 2026, with online testimony at 4 signed in "
+                                     "support and 5 in opposition.") not in told:
+                bad.append(f"HB1300 of 2026's own hearing lost the day's sign-ins: {told!r}")
+            if bill == "HB292" and [st["label"] for st in rec["stages"]] != [
+                    "In Senate committee — Education"]:
+                bad.append(f"HB292 of 2025's joint hearing: {rec['stages']!r}")
+    finally:
+        N.MEMBERS, N.TESTIMONY = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 519, HB 1300, SB 425 and HB 292's hearings on non-germane amendments are told, "
+                  "with HB 519's sign-ins; HB 555's cancelled one is not; SB 242 of 2015's hearing "
+                  "takes in its amendment, and SB 30's is told once")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))

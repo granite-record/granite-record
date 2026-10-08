@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.99
+# GRANITE_VERSION: 2026-09-04.100
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -631,7 +631,8 @@ def _stated(m):
 def stated_day(ev, r):
     """Date a row no pattern reads by the day it states, where that is the
     day of what it records (STATES_ITS_DAY)."""
-    if ev.get("_type") not in ("other", "conf_report", "senate_rule_kill") or ev.get("date"):
+    if ev.get("_type") not in ("other", "conf_report", "senate_rule_kill",
+                               "nongermane_hearing") or ev.get("date"):
         return ev
     created = r.get("created")
     for kind, pat in STATES_ITS_DAY:
@@ -1365,6 +1366,38 @@ CONF_REPORT_RE = re.compile(
 SENATE_RULE_KILL_RE = re.compile(
     r"^Inexpedient\s+to\s+Legislate,?\s*(?:\d{4}\s+Adjournment,?\s*)?"
     r"Senate\s+Rule\s+3-23\b", re.I)
+# A PUBLIC HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7
+# October 2026, cause 15). The House: "Public Hearing on non-germane Amendment
+# # 2025-0102h: 02/11/2025 01:30 pm LOB 210-211" (HB 519 of 2025, which has
+# sign-ins that day), "Public Hearing on non-germane Amendment #2016-0081h
+# (NT): ...", "Public Hearing on Proposed Non-Germane Amendment ...", "...
+# Non-Germane AM ...". The Senate: "Hearing: 02/18/2026, Room 103, SH, 09:00
+# am, on proposed non-germane amendment # 2026-0579s" (SB 425 of 2026), and
+# "Hearing: 4/16/13, Room 103, LOB, 10:00 a.m. Proposed non-germane amendment
+# to HB 636 #2013-1233s". Read by no pattern: 65 hearings on 59 bills of
+# 2025-2026 were in no history, and the House's were dated by the day the
+# row was entered. Its own type, not "hearing": the meeting rules
+# (overtaken, voided_meetings, whole_day) are about the bill's own hearings,
+# and HB 1300 of 2026's of 10:00 and its hearing on 2026-0093h at 10:15 are
+# two hearings of one day. The Senate's rows state their day as a hearing
+# notice does, and keep it by stated_day ("notice"), as they did while they
+# were read by nothing. And the bill's own hearing whose row says it takes
+# the amendment up too, "Public Hearing: 4/21/2015 1:00 PM Representatives
+# Hall; to include consideration of non-germane amendment #2015-1351h" (SB 30
+# and SB 242 of 2015), which the hearing pattern could not read for what
+# follows its room ("incl").
+NONGERMANE_HEARING_HOUSE = re.compile(
+    r"^Public\s+Hearing\s+on\s+(?:Proposed\s+)?Non-?\s?Germane\s+(?:Amendment|AM)\b\.?\s*"
+    r"(?:#\s*)?(?P<num>(?:\d{4}-)?\d{3,4}[a-z])?\s*(?:\(NT\))?\s*:\s*"
+    r"(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)
+NONGERMANE_HEARING_SENATE = re.compile(
+    r"^(?P<joint>Joint\s+)?Hearing\b[^:;]{0,80}?:\s*(?P<sdate>\d{1,2}/\d{1,2}/\d{2,4})\b.*?"
+    r"\b(?:on\s+)?proposed\s+non-?\s?germane\s+amendment\b(?:\s+to\s+[A-Z]+\s*\d+)?\s*(?:#\s*)?"
+    r"(?P<num>(?:\d{4}-)?\d{3,4}[a-z])?", re.I)
+NONGERMANE_HEARING_WITH_BILL = re.compile(
+    r"^Public\s+Hearing\s*:\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})\b[^;]*;\s*"
+    r"(?P<incl>to\s+include\s+consideration\s+of)\s+non-?\s?germane\s+amendment\s*(?:#\s*)?"
+    r"(?P<num>(?:\d{4}-)?\d{3,4}[a-z])?", re.I)
 REREF_RE = re.compile(r"^Referred to\s+(?P<committee>[A-Z][A-Za-z,&\-\s]+?)\s+"
                       r"(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)
 
@@ -1506,6 +1539,9 @@ PATTERNS = [
         r"\s+and\s+[Rr]eferred to\s+(?P<committee>.+?)$", re.I)),
     ("vacated", re.compile(
         r"Vacated and Referred to\s+(?P<committee>.+?)\s*(?:\(|:)", re.I)),
+    ("nongermane_hearing", NONGERMANE_HEARING_HOUSE),
+    ("nongermane_hearing", NONGERMANE_HEARING_SENATE),
+    ("nongermane_hearing", NONGERMANE_HEARING_WITH_BILL),
     ("hearing", re.compile(
         r"(?P<kind>Public Hearing|Hearing)\s*:\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})"
         # "Room Map Room, SL" -- the room name can be words, not a number,
@@ -1688,6 +1724,19 @@ def classify(desc):
                              if vk else None)
                 d["y"], d["n"] = (tally.group(1), tally.group(2)) if tally else (None, None)
                 d["motion"] = "MA" if d["outcome"].lower() == "adopted" else "MF"
+            if name == "nongermane_hearing":
+                # The Senate's row states its day as a hearing notice does,
+                # and stated_day reads it; where the year is two digits
+                # ("Hearing: 4/10/13, Room 102, LOB, ..."), or the row is a
+                # joint hearing's ("Joint Hearing with the House Education
+                # Funding Committee: 10/14/2025, ..."), which it does not
+                # read, the day is the row's here, as the era reader gave it.
+                said = d.pop("sdate", None)
+                if said and not d.get("date"):
+                    mo, dy, yr = said.split("/")
+                    if len(yr) == 2 or d.get("joint"):
+                        yr = yr if len(yr) == 4 else f"{'20' if int(yr) < 50 else '19'}{yr}"
+                        d["date"] = f"{int(mo):02d}/{int(dy):02d}/{yr}"
             if name == "amendment":
                 # "FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162" is the
                 # House's floor amendment, and who offered it is in brackets.
@@ -3093,6 +3142,32 @@ def describe(ev, body, seen_intro=False):
     if t == "retained":
         return ("The committee retained the bill, holding it for further work rather "
                 "than reporting it out this year.")
+
+    if t == "nongermane_hearing":
+        # The hearing sentence above, of the amendment: "The committee held a
+        # public hearing on February 11, 2025 on a proposed non-germane
+        # amendment (2025-0102h), with online testimony at ...". The sign-ins
+        # are the day's (signins), and go with the bill's own hearing where
+        # it had one that day (_day_told, build()).
+        # And the bill's own hearing whose row takes the amendment up too is
+        # told by its other row of that day where it has one: SB 30 of 2015's
+        # "==ROOM CHANGE== Public Hearing: 4/21/2015 1:00 PM LOB 210-211" is
+        # the same hearing as its "...; to include consideration of
+        # non-germane amendment #2015-1351h".
+        if ev.get("_joint_told") or (ev.get("incl") and ev.get("_day_told")):
+            return None
+        num = f" ({ev['num']})" if ev.get("num") else ""
+        counts = "" if ev.get("_day_told") else signins(ev.get("_bill"), ev.get("date"))
+        if not ev.get("date"):
+            return f"The committee held a public hearing on a proposed non-germane amendment{num}."
+        if ahead(ev.get("date")):
+            return (f"A public hearing on a proposed non-germane amendment{num} is scheduled "
+                    f"for {fdate(ev['date'])}{counts}.")
+        if ev.get("incl"):
+            return (f"The committee held a public hearing on {fdate(ev['date'])}, which "
+                    f"included a proposed non-germane amendment{num}{counts}.")
+        return (f"The committee held a public hearing on {fdate(ev['date'])} on a proposed "
+                f"non-germane amendment{num}{counts}.")
 
     if t == "conf_report":
         # The floor sentence above -- "On May 23, 1989 the Senate adopted
@@ -4827,6 +4902,26 @@ def build(bill, rows, introduction=None):
     evs.sort(key=day_order)
     hold_in_order(evs)
     whose_amendment(evs)
+    # A hearing on a proposed non-germane amendment the day of the bill's own
+    # hearing: that one carries the day's sign-ins (SB 222 of 2025, 22 April
+    # 2025). And one the two chambers' committees held together is told once,
+    # by the chamber whose row says it was joint: "Joint Hearing with the
+    # House Education Funding Committee: 10/14/2025, ... on proposed
+    # nongermane amendment # 2025-2978s" is the Senate's row of HB 292 of
+    # 2025, and the House's row of the same hearing, told on its own, opened
+    # a House committee's stage in the middle of the Senate's.
+    for e in evs:
+        if e["_type"] == "nongermane_hearing":
+            e["_day_told"] = any(o["_type"] == "hearing" and not o["cancelled"]
+                                 and o.get("date") and o.get("date") == e.get("date")
+                                 for o in evs)
+            e["_joint_told"] = any(
+                o is not e and o["_type"] == "nongermane_hearing" and not o["cancelled"]
+                and o.get("joint") and not e.get("joint") and o["body"] != e["body"]
+                and o.get("date") == e.get("date")
+                and any(same_amendment(x, y) for x in amend_keys(o.get("num"))[:1]
+                        for y in amend_keys(e.get("num"))[:1])
+                for o in evs)
 
     # A BILL WITHDRAWN BEFORE THE DAY IT WAS TO BE INTRODUCED WAS NOT
     # INTRODUCED, AND WHAT WAS SCHEDULED FOR AFTER IT DID NOT HAPPEN. The

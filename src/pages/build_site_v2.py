@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.173
+# GRANITE_VERSION: 2026-09-05.174
 """
 Generate the faceted site from real General Court data.
 
@@ -8534,7 +8534,13 @@ CANCELLED_NOT_TOLD = ("A cancellation. The history does not tell a meeting the d
 # CANCELLED_ROW_NOT_TOLD beside them, which does not call them a meeting.
 CANCELLED_ROW_NOT_TOLD = ("A cancellation. The history does not tell a row the docket "
                           "marked cancelled.")
-CALLED_OFF_KINDS = ("hearing", "exec", "worksession", "conference_meeting", "other")
+CALLED_OFF_KINDS = ("hearing", "exec", "worksession", "conference_meeting", "other",
+                    # A hearing on a proposed non-germane amendment, which
+                    # narrative.py reads as a kind of its own (the launch
+                    # audit of 7 October 2026, cause 15): "==CANCELLED==
+                    # Public Hearing on non-germane Amendment # 2025-0707h"
+                    # (HB 555 of 2025) is a meeting called off.
+                    "nongermane_hearing")
 
 
 def called_off(e):
