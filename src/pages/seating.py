@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.13
+# GRANITE_VERSION: 2026-09-18.14
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -34,6 +34,18 @@ asserts it rather than leaving it in a comment.
 A sixth "division" holds one seat, 6002, and it is not on the floor at all: it
 is the Speaker's chair on the rostrum. It is drawn where the plan draws the
 Speaker, and it is a seat like the other 400 rather than a label.
+
+THE CHART IS THE PLAN TURNED HALF A CIRCLE (the person, 7 October 2026: "the
+seating chart diagram can be rotated 180 degrees so that the divisions can be
+listed in ascending order left to right since descending order is a bit
+confusing"). The plan puts the rostrum at the foot and runs the divisions 5,
+4, 3, 2, 1 from left to right, and everything below is still read off it in
+those terms -- ROWS, the bearings, which way a row runs. Only the last step,
+_point, turns each place about the Speaker, so the rostrum is at the top and
+the divisions run 1 to 5 from left to right. A turn and not a mirror: every
+seat keeps its neighbours and every row its direction round the hall. The
+words are not turned with it: the captions are laid on arcs that run left to
+right, so they read the right way up.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -45,10 +57,12 @@ import _paths  # noqa: E402,F401
 import argparse
 import math
 
-# The highest seat number in each division, read off the Clerk's plan. The
-# divisions run left to right across the hall as 5, 4, 3, 2, 1.
+# The highest seat number in each division, read off the Clerk's plan. On the
+# plan the divisions run left to right across the hall as 5, 4, 3, 2, 1; the
+# chart is the plan turned half a circle, so on the page they run 1 to 5.
 HIGHEST = {1: 43, 2: 101, 3: 119, 4: 99, 5: 43}
-LEFT_TO_RIGHT = [5, 4, 3, 2, 1]
+PLAN_LEFT_TO_RIGHT = [5, 4, 3, 2, 1]
+LEFT_TO_RIGHT = [1, 2, 3, 4, 5]
 
 # Thirteen is skipped in every division. This is not a vacancy and not a gap
 # in the data: the seat does not exist, and the row closes up over it.
@@ -57,7 +71,8 @@ SKIPPED = 13
 SPEAKER_SEAT = 6002
 
 # EVERY ROW, AS THE PLAN LABELS IT: (first seat, last seat) in the order the
-# row actually runs across the floor, left to right. Two facts live in each
+# row actually runs across the floor, left to right on the plan (and so right
+# to left on the chart, which is the plan turned). Two facts live in each
 # pair and a third in the order of the tuple.
 #
 # WHICH SEATS ARE IN THE ROW. Checked rather than eyed: a division's rows must
@@ -102,7 +117,7 @@ ROWS = {
 # centring every one of them was the thing that made the outer rows look
 # wrong. Keyed by (division, row index); the value is how far off centre the
 # row sits, as a fraction of the room it has spare. Positive is toward the
-# left of the drawing, which is the higher bearing.
+# left of the plan, which is the higher bearing (and the right of the chart).
 #
 # THE BACK ROWS HUG THE INNER EDGE -- the side facing the middle of the hall,
 # which is the corner the walls cut off. Every one of these was named:
@@ -111,7 +126,7 @@ ROWS = {
 # 1043-1042 against the edge nearest division 2.
 #
 # They are flush against it, not merely biased toward it, which is what 1.0
-# means here. Divisions on the left of the hall take the negative sign and
+# means here. Divisions on the left of the plan take the negative sign and
 # those on the right the positive, because the two halves mirror.
 ROW_ALIGN = {
     (5, 5): -1.0, (5, 6): -1.0,
@@ -167,8 +182,25 @@ STEP = SPACING * 1.36        # row to row, measured outward from the Speaker
 AISLE_SEATS = 2.4            # aisle width at the front row, in seat widths
 
 MARGIN = 48.0                # room for the seat radius and the division labels
-LABEL_OUT = 26.0             # how far beyond the last row a caption's arc sits
-LABEL_UP = 14.0              # how far the letters reach above that arc
+LABEL_OUT = 26.0             # how far beyond the last row a caption begins
+LABEL_UP = 14.0              # the room the caption takes beyond that
+LABEL_CAP = 9.0              # its capitals' height: where its baseline sits in that room
+SPEAKER_UP = 18.0            # the word "Speaker"'s baseline, above the Speaker's seat
+
+
+def _point(r, bearing):
+    """Where the place at radius r from the Speaker, on this bearing of the
+    plan, is drawn.
+
+    TURNED HALF A CIRCLE ABOUT THE SPEAKER. A bearing is measured as the plan
+    is drawn -- 0 to the right of the rostrum, 180 to its left, the floor
+    above it -- and every place the chart draws comes through here, which
+    turns it about the Speaker: the rostrum to the top, the floor below it,
+    Division 1 on the left and Division 5 on the right. Every place and no
+    word: the captions are laid along arcs, and label_paths runs those left
+    to right so the letters stand the right way up.
+    """
+    return (CX - r * math.cos(bearing), CY + r * math.sin(bearing))
 
 
 def plate(seat):
@@ -220,7 +252,7 @@ def _parts(division, k):
 
 
 def places(division, k, gap_units=None):
-    """Row k as [(offset in seat widths, seat number)], left to right.
+    """Row k as [(offset in seat widths, seat number)], left to right on the plan.
 
     The offset is what lets a row carry floor inside it: seats advance one
     unit each, a gap advances by however many seat widths it is worth, and
@@ -251,7 +283,7 @@ def _has_gap(division, k):
 
 
 def rows_of(division):
-    """The rows of a division, each a list of seat numbers left to right."""
+    """The rows of a division, each a list of seat numbers left to right on the plan."""
     return [[n for _, n in places(division, k)]
             for k in range(len(ROWS[division]))]
 
@@ -294,8 +326,8 @@ def _aisle(r0):
 
 
 def _total(r0):
-    return (sum(_wedge(d, r0) for d in LEFT_TO_RIGHT)
-            + _aisle(r0) * (len(LEFT_TO_RIGHT) - 1))
+    return (sum(_wedge(d, r0) for d in PLAN_LEFT_TO_RIGHT)
+            + _aisle(r0) * (len(PLAN_LEFT_TO_RIGHT) - 1))
 
 
 def _fit():
@@ -319,10 +351,10 @@ def _fit():
 
 
 def _wedges(r0):
-    """{division: (centre bearing, width)} in radians, left to right."""
+    """{division: (centre bearing, width)} in radians, left to right on the plan."""
     aisle = _aisle(r0)
     out, at = {}, math.radians(A_LEFT)
-    for i, d in enumerate(LEFT_TO_RIGHT):
+    for i, d in enumerate(PLAN_LEFT_TO_RIGHT):
         if i:
             at -= aisle
         w = _wedge(d, r0)
@@ -332,11 +364,12 @@ def _wedges(r0):
 
 
 def _unshifted():
-    """{seat: (x, y)} with the Speaker at the origin."""
+    """{seat: (x, y)} with the Speaker at the origin, as the chart draws them:
+    the plan turned half a circle (_point)."""
     r0 = _fit()
     mids = _wedges(r0)
     pos = {}
-    for d in LEFT_TO_RIGHT:
+    for d in PLAN_LEFT_TO_RIGHT:
         mid, wedge = mids[d]
         rad = _radii(d, r0)
         for k in range(len(ROWS[d])):
@@ -368,9 +401,7 @@ def _unshifted():
                     row_places = places(d, k, gap_units=max(0.0, want))
                     first = mid + wedge / 2
                     for off, seat in row_places:
-                        ang = first - step * off
-                        pos[d * 1000 + seat] = (CX + r * math.cos(ang),
-                                                CY - r * math.sin(ang))
+                        pos[d * 1000 + seat] = _point(r, first - step * off)
                     continue
                 step = wedge / span if span else 0.0
                 first = mid + wedge / 2
@@ -382,9 +413,7 @@ def _unshifted():
                 slack = max(0.0, wedge / step - span)
                 first = mid + step * (span / 2 + align * slack / 2)
             for off, seat in places(d, k):
-                ang = first - step * off
-                pos[d * 1000 + seat] = (CX + r * math.cos(ang),
-                                        CY - r * math.sin(ang))
+                pos[d * 1000 + seat] = _point(r, first - step * off)
     pos[SPEAKER_SEAT] = (CX, CY)
     return pos
 
@@ -403,11 +432,14 @@ def label_arcs():
     On an arc just beyond the last row they hug the block instead, and the
     ones at the flat ends run vertically, which is how the Clerk's plan prints
     them.
+
+    The radius is where the caption begins, LABEL_OUT beyond the last row; it
+    takes LABEL_UP beyond that, and label_paths sets its baseline in that room.
     """
     r0 = _fit()
     mids = _wedges(r0)
     out = {}
-    for d in LEFT_TO_RIGHT:
+    for d in PLAN_LEFT_TO_RIGHT:
         mid, w = mids[d]
         out[d] = (_radii(d, r0)[-1] + LABEL_OUT, mid + w / 2, mid - w / 2)
     return out
@@ -423,9 +455,7 @@ def _corners():
     pts = list(_unshifted().values())
     for r, hi, lo in label_arcs().values():
         for k in range(9):
-            a = lo + (hi - lo) * k / 8
-            out = r + LABEL_UP
-            pts.append((CX + out * math.cos(a), CY - out * math.sin(a)))
+            pts.append(_point(r + LABEL_UP, lo + (hi - lo) * k / 8))
     return pts
 
 
@@ -450,17 +480,27 @@ def extent():
 
 
 def label_paths():
-    """{division: "M x y A r r 0 0 1 x2 y2"} -- the shifted arc each caption runs on.
+    """{division: "M x y A r r 0 0 0 x2 y2"} -- the shifted arc each caption runs on.
 
-    High bearing to low, which is left to right across the drawing, so the
-    letters sit the right way up on the outside of the curve.
+    LEFT TO RIGHT ACROSS THE CHART, SO THE LETTERS STAND UP. A letter on a
+    path stands on the path's left-hand side as it runs, so a path run left
+    to right carries its word the right way up. On the plan that was high
+    bearing to low, over the top of a curve bowing upward, with the letters on
+    the outside of it. Turned, it is low bearing to high, along the bottom of
+    a curve bowing downward -- swept the other way, the last flag 0 where it
+    was 1 -- and the letters stand on the inside, toward the Speaker, from a
+    baseline LABEL_CAP beyond where the caption begins, so the gap between the
+    last row and the nearest letter is what it was. The two captions at the
+    flat ends read down the left side and up the right.
     """
     dx, dy = _shift()
     out = {}
     for d, (r, hi, lo) in label_arcs().items():
-        x1, y1 = CX + r * math.cos(hi) + dx, CY - r * math.sin(hi) + dy
-        x2, y2 = CX + r * math.cos(lo) + dx, CY - r * math.sin(lo) + dy
-        out[d] = f"M {x1:.1f} {y1:.1f} A {r:.1f} {r:.1f} 0 0 1 {x2:.1f} {y2:.1f}"
+        base = r + LABEL_CAP
+        x1, y1 = _point(base, lo)
+        x2, y2 = _point(base, hi)
+        out[d] = (f"M {x1 + dx:.1f} {y1 + dy:.1f} A {base:.1f} {base:.1f} 0 0 0 "
+                  f"{x2 + dx:.1f} {y2 + dy:.1f}")
     return out
 
 
@@ -497,11 +537,11 @@ def _front_aisles():
     mids = _wedges(r0)
     pos = _unshifted()
     ends = {}
-    for d in LEFT_TO_RIGHT:
+    for d in PLAN_LEFT_TO_RIGHT:
         row = rows_of(d)[0]
         ends[d] = [pos[d * 1000 + row[0]], pos[d * 1000 + row[-1]]]
     return [math.hypot(ends[a][1][0] - ends[b][0][0], ends[a][1][1] - ends[b][0][1])
-            for a, b in zip(LEFT_TO_RIGHT, LEFT_TO_RIGHT[1:])]
+            for a, b in zip(PLAN_LEFT_TO_RIGHT, PLAN_LEFT_TO_RIGHT[1:])]
 
 
 def check():
@@ -557,16 +597,35 @@ def check():
     # alone, and the two captions at the flat ends of the hall sit further out
     # sideways than any seat does, so "Division 5" was centred at x=16 in a
     # box starting at 0. It looked like a rendering quirk and was arithmetic.
+    dx, dy = _shift()
     for d, (r, hi, lo) in label_arcs().items():
         for k in range(9):
-            a = lo + (hi - lo) * k / 8
-            out = r + LABEL_UP
-            x = CX + out * math.cos(a) + _shift()[0]
-            y = CY - out * math.sin(a) + _shift()[1]
+            x, y = _point(r + LABEL_UP, lo + (hi - lo) * k / 8)
+            x, y = x + dx, y + dy
             assert 0 <= x <= w and 0 <= y <= h, (
                 f"division {d}'s caption leaves the drawing at ({x:.0f}, {y:.0f}) "
                 f"in a {w:.0f} by {h:.0f} box")
-    print(f"  captions inside the drawing                   : {len(label_arcs())}")
+    sy = pos[SPEAKER_SEAT][1]
+    assert sy - SPEAKER_UP - LABEL_CAP >= 0, "the word \"Speaker\" is cut off at the top"
+    print(f"  captions inside the drawing                   : {len(label_arcs())} + Speaker")
+
+    # DRAWN TURNED: the rostrum at the top and the divisions 1 to 5 from left
+    # to right (the person, 7 October 2026), each caption's arc run left to
+    # right so its word stands the right way up. Blocks overlap sideways --
+    # Division 2 reaches further left than Division 1's front rows -- so the
+    # order is of where each block's seats are on average.
+    assert all(sy < y for s, (x, y) in pos.items() if s != SPEAKER_SEAT), (
+        "a seat is drawn above the Speaker, so the rostrum is not at the top")
+    across = [sum(x for s, (x, _) in pos.items() if s // 1000 == d) / len(seats_in(d))
+              for d in LEFT_TO_RIGHT]
+    assert LEFT_TO_RIGHT == [1, 2, 3, 4, 5] and across == sorted(across), (
+        f"the divisions do not run 1 to 5 from left to right: {across}")
+    for d, path in label_paths().items():
+        n = [float(v) for v in path.replace("M", " ").replace("A", " ").split()]
+        assert n[0] < n[-2] and n[6] == 0, (
+            f"division {d}'s caption runs right to left or over the top of its "
+            f"arc, so its word is upside down: {path}")
+    print("  the rostrum at the top, divisions 1 to 5      : left to right, captions upright")
 
     # Every seated member openable from the chart, the Speaker included -- the
     # rostrum was once drawn as furniture and skipped over.
@@ -639,7 +698,8 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     # representative whose chair is on the rostrum -- 382 hold a seat and this
     # was the 382nd -- was on the chart as a label and could not be opened
     # from it. A seat like the others now, drawn where the plan draws the
-    # rostrum, with the word beneath it.
+    # rostrum, with the word on the far side of it from the floor: beneath it
+    # on the plan, and above it on the chart, which is the plan turned.
     sx, sy = pos[SPEAKER_SEAT]
     sp = by_seat.get(SPEAKER_SEAT)
     at = ""
@@ -653,7 +713,7 @@ def svg(by_seat=None, title="New Hampshire House seating"):
         f'<g class="rostrumgrp"{at}>'
         f'<circle class="seat rostrum p-{(sp or {}).get("party_code", "")}'
         f'{"" if sp else " vacant"}" cx="{sx:.1f}" cy="{sy:.1f}" r="{SEAT_R}"></circle>'
-        f'<text class="rostrumtext" x="{sx:.0f}" y="{sy + 27:.0f}" '
+        f'<text class="rostrumtext" x="{sx:.0f}" y="{sy - SPEAKER_UP:.0f}" '
         f'text-anchor="middle">Speaker</text>'
         f'<title>{inner}</title></g>')
     out.append("</svg>")

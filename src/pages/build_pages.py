@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.153
+# GRANITE_VERSION: 2026-09-04.157
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -636,19 +636,24 @@ def seat_columns(house, row):
     after them. Every row is still a .seatrow inside #seatlist, where the seat
     map's script finds them.
 
-    IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026). The divisions
-    run left to right across the hall as 5, 4, 3, 2, 1 (seating.HIGHEST), and
-    the chart directly above draws them so; the columns ran 1 to 5, so the
-    list was the chart's mirror image and Division 1's column stood under
-    Division 5. The markup is in the chart's order, so the reading order, the
-    keyboard's order and what the eye sees agree at every width: five
-    abreast, or one division under the next where five do not fit.
+    IN THE CHART'S ORDER, 1 TO 5 (the person, 7 October 2026: "rotated 180
+    degrees so that the divisions can be listed in ascending order left to
+    right since descending order is a bit confusing"). The chart above is the
+    Clerk's plan turned half a circle, the rostrum at the top and Division 1
+    on the left (seating.LEFT_TO_RIGHT), and the columns are taken from that
+    order rather than written out again, so each stands under its own
+    division and the two cannot come to disagree. It ran 5 to 1 while the
+    chart was drawn as the plan is. The markup is in the chart's
+    order, so the reading order, the keyboard's order and what the eye sees
+    agree at every width: five abreast, or one division under the next where
+    five do not fit.
     """
     divs = OrderedDict()
     for m in house:
         divs.setdefault(int(m["seat"]) // 1000 if m.get("seat") else 0, []).append(m)
     rostrum = divs.pop(seating.SPEAKER_SEAT // 1000, [])
     unseated = divs.pop(0, [])
+    across = {d: i for i, d in enumerate(seating.LEFT_TO_RIGHT)}
 
     def block(heading, ms, cls="sdiv"):
         return (f'<section class="{cls}"><h3>{heading}</h3><ol class="seatlist">'
@@ -656,7 +661,9 @@ def seat_columns(house, row):
     return ((block("The rostrum", rostrum, "sdiv srost") if rostrum else "")
             + ('<div class="seatdivs">' + "".join(
                 block(f"Division {d} &mdash; {len(ms)}", ms)
-                for d, ms in sorted(divs.items(), reverse=True)) + "</div>" if divs else "")
+                for d, ms in sorted(divs.items(),
+                                    key=lambda kv: (across.get(kv[0], len(across)), kv[0])))
+               + "</div>" if divs else "")
             + (block("No seat on file", unseated) if unseated else ""))
 
 
@@ -1702,10 +1709,16 @@ SEATING_JS = """
   // A seat and its row light together, whichever one the reader reached for,
   // so the answer to "where does my rep sit" and "who sits there" is one
   // gesture either way.
+  // The Speaker's circle carries no number: the <g> round it and the word
+  // "Speaker" does (seating.svg), so choosing the Speaker named him and lit
+  // his row and never his chair (the review of 7 October 2026). A circle
+  // with no number of its own takes its group's.
   function mark(seat){
     rows.forEach(function(r){r.classList.toggle("on",!!seat&&r.dataset.seat===seat);});
     if(svg)[].forEach.call(svg.querySelectorAll(".seat"),function(c){
-      c.classList.toggle("on",!!seat&&c.getAttribute("data-seat")===seat);});
+      var p=c.parentNode, n=c.getAttribute("data-seat")||
+        (p&&p.getAttribute?p.getAttribute("data-seat"):null);
+      c.classList.toggle("on",!!seat&&n===seat);});
   }
   // Built as nodes rather than markup: a member's name is theirs, and it is
   // not going through innerHTML on my say-so.
@@ -1795,6 +1808,7 @@ SEATING_JS = """
     var w=wrap?wrap.clientWidth:0;
     zoom=w?Math.max(1,Math.min(3.5,1100/w)):1;
     apply();
+    return !!w;
   }
   function step(by){ zoomAt(zoom*by); if(picked)centre(picked); }
 
@@ -1858,7 +1872,19 @@ SEATING_JS = """
   if(zi)zi.addEventListener("click",function(){step(1.35);});
   if(zo)zo.addEventListener("click",function(){step(1/1.35);});
   if(zf)zf.addEventListener("click",function(){zoomAt(1);});
-  fit();
+  /* A CHART IN A TAB NOT YET OPEN HAS NO WIDTH. The page opens on its Towns
+     tab, so the chart is hidden when this runs and fit() met a box 0px wide:
+     it left the zoom at 1, and a phone that went Legislators, then By seat,
+     was shown the whole floor with seats five pixels across, where the page
+     opened at #legislators was zoomed in to 315% (the review of 7 October
+     2026). So fit waits for the box to have a width, once, and then lets
+     go: after that the zoom is the reader's. */
+  if(!fit()&&wrap&&typeof ResizeObserver==="function"){
+    var sized=new ResizeObserver(function(){
+      if(wrap.clientWidth){sized.disconnect();fit();}
+    });
+    sized.observe(wrap);
+  }
 
   // A seat is a circle with a slug on it, not a link -- an <a> inside the SVG
   // would need its own focus and hit area. One handler on the map covers all
@@ -1888,8 +1914,10 @@ SEATING_JS = """
        2 October 2026, M22). seating.py writes every seat out of the Tab
        order now; this makes one of them the stop -- the first, until a seat
        is chosen or reached -- and the arrow keys walk the seats in the order
-       of their numbers, Home and End to the first and the last. Focus on a
-       seat names its member under the chart, as the pointer over it does. */
+       of their numbers, Home and End to the first and the last. That order
+       runs the way the chart is drawn: Division 1 on the left to Division 5
+       on the right, so Right goes on toward 5 (seating.LEFT_TO_RIGHT). Focus
+       on a seat names its member under the chart, as the pointer over it does. */
     var seats=[].slice.call(svg.querySelectorAll("[data-slug]"))
       .filter(function(c){return c.getAttribute("data-slug");});
     var stopAt=function(c){
@@ -2308,16 +2336,13 @@ function townRow(t){
   // A town without wards is a link straight to its page. A city cannot be:
   // there is no town/concord.html, only concord-ward-1 through 10. So it
   // opens its wards, one chip each, and the chip is the link.
-  // A city opened is one block with its wards, so the list's columns
-  // (the Towns tab's whole list) never put the wards at the head of the next.
   if(t.wards.length>1)
-    return (picked===t.town?`<div class="lmgrp">`:"")
-      + `<button type="button" class="lmrow${picked===t.town?" sel":""}"
+    return `<button type="button" class="lmrow${picked===t.town?" sel":""}"
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${t.wards.length} wards</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
           `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
-            >Ward ${esc(w)}</a>`).join("") + `</div></div>` : "");
+            >Ward ${esc(w)}</a>`).join("") + `</div>` : "");
   return `<a class="lmrow" href="town/${esc(t.slug)}.html"
     ><b>${esc(t.town)}</b></a>`;
 }
@@ -2359,10 +2384,6 @@ function render(){
   // Python string, where a backslash belongs to whichever one reads it
   // first. Python read one, dropped it, and left the JavaScript with an
   // unterminated string and the whole page with no script.
-  // THE WHOLE LIST, WHILE NOTHING IS TYPED, is the Towns tab's content (the
-  // look of 7 October 2026): every town A to Z, in columns down the page, not
-  // a 260px window over six of them. Typed, it is a ranked answer, one column.
-  out.classList.toggle("all",!n&&!mem.length);
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';

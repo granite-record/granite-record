@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.211 */
+/* GRANITE_VERSION: 2026-09-07.215 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4803,18 +4803,15 @@ text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
 text-transform:uppercase;color:var(--ink-2);padding:var(--sp-4) var(--sp-5) var(--sp-2);
 background:var(--paper);border-bottom:1px solid var(--rule)}
 :where(body.pg) .lmnone{font-size:var(--t-ui);color:var(--ink-2);padding:var(--sp-5) var(--sp-5)}
-/* THE TOWNS TAB IS THE TOWNS (F5, the look of 7 October 2026). The window
-   above was made for a finder sitting over the roster; as the whole of its
-   own tab it was a box and six towns over an empty page. There the list is
-   as long as it is, and while nothing is typed (.all) every town runs A to Z
-   down one column and on down the next, as the roster's alphabetical view
-   does, filling the width. A city opened with its wards is one block, so its
-   chips never start the next column. */
-:where(body.pg) #towns .lmatch{max-height:none;overflow:visible}
-:where(body.pg) #towns .lmatch.all{columns:200px;column-gap:0;column-rule:1px solid var(--rule)}
-:where(body.pg) #towns .lmatch.all .lmrow,:where(body.pg) #towns .lmatch .lmgrp{break-inside:avoid}
-/* Two on a phone, where one ran 11,000px; a long name takes two lines. */
-@media (max-width:480px){:where(body.pg) #towns .lmatch.all{columns:2}}
+/* THE TOWNS TAB IS THIS WINDOW, AS IT IS ON THE LIVE SITE (the person, 7
+   October 2026: "I didn't want the change to the town ordering to also make
+   it 5 columns wide"). For an afternoon the tab lifted the window and ran
+   every town A to Z in columns down the page, five abreast at full width;
+   asked how the towns should be listed instead, the person chose the live
+   site's way -- the box, and under it the 260px window above, one column --
+   with nothing below it, where the district map is to come. So nothing here
+   widens the window, lifts its height or sets it in columns, in the tab or
+   anywhere else. */
 /* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
    406 members in ten counties is a page nobody reads in order, and the
    counties were ten headings with everything under all of them open. Each
@@ -5280,7 +5277,8 @@ font-weight:600;color:var(--pine);text-decoration:none}
 :where(body.pg) .seatwrap{margin:var(--sp-4) 0 0;overflow:auto;
 touch-action:pan-x pan-y;cursor:grab;
 -webkit-overflow-scrolling:touch;max-height:78vh;
-border:1px solid var(--rule);border-radius:var(--r-in);background:var(--surface)}
+border:1px solid var(--rule);border-bottom:0;border-radius:var(--r-in) var(--r-in) 0 0;
+background:var(--surface)}
 /* NO MINIMUM WIDTH. It was 680px inside a sideways-scrolling box, which on a
    390px screen drew a seat about five pixels across -- under half the
    smallest thing a thumb reliably hits, and the whole floor visible is no use
@@ -5335,22 +5333,41 @@ justify-content:space-between;gap:var(--sp-3) var(--sp-5);margin-top:var(--sp-5)
    which on a phone put it off the top of the screen the moment a reader
    zoomed in and started moving about -- so the one thing a tap is for was
    the one thing they could not see. The stage holds the scrolling floor and
-   pins the readout across the bottom of it, out of the scroll. */
+   the readout is its last row, out of the scroll.
+
+   UNDER THE FLOOR, NOT ON IT. The readout was laid over the bottom of the
+   box, which was the rostrum while the chart was drawn as the plan is; with
+   the chart turned (7 October 2026) the bottom is Division 3's back rows and
+   its caption, and wherever the box is shorter than the drawing -- 1366 by
+   900, where 78vh is 702px and the floor 731px -- naming a member covered
+   "Division 3" (the review of 7 October 2026). So the box ends in a row of
+   its own, which is there when it is empty too, so that naming a member
+   moves nothing on the page -- one line high, padding and border included,
+   whether or not it names anyone -- and empty, it is the box's foot, with no
+   rule. */
 :where(body.pg) .seatstage{position:relative}
-:where(body.pg) .seatnote{position:absolute;left:0;right:0;bottom:0;
-margin:0;padding:var(--sp-3) var(--sp-5);min-height:1.5em;text-align:center;
-color:var(--ink-2);font-size:var(--t-ui);pointer-events:none;
-background:color-mix(in srgb, var(--surface) 88%, transparent);
-border-top:1px solid var(--rule);
+:where(body.pg) .seatnote{margin:0;padding:var(--sp-3) var(--sp-5);
+min-height:calc(1lh + 2 * var(--sp-3) + 2px);text-align:center;color:var(--ink-2);font-size:var(--t-ui);
+background:var(--surface);border:1px solid var(--rule);
 border-radius:0 0 var(--r-in) var(--r-in)}
-:where(body.pg) .seatnote:empty{display:none}
-:where(body.pg) .seatnote a{font-weight:600;color:var(--ink);pointer-events:auto}
+:where(body.pg) .seatnote:empty{border-top-color:var(--surface)}
+:where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
 :where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
 :where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
 min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;
 color:var(--ink-2);background:var(--surface);border:1px solid var(--edge);
 border-radius:var(--r-in)}
 :where(body.pg) .seatzoom button:hover{color:var(--ink);background:var(--wash)}
+/* ON PAPER, THE WHOLE FLOOR. The chart's width is the zoom's, written on the
+   element by the script, and a screen under 1100px opens zoomed in -- 113%
+   at 1024 -- so a page printed after loading there kept that width inside a
+   box that clips, and the sheet lost the right of the floor: Division 5 and
+   its caption (the review of 7 October 2026). Printed, the chart is the
+   width of the page, and its box neither scrolls nor clips. */
+@media print{
+  :where(body.pg) .seatmap{width:100% !important}
+  :where(body.pg) .seatwrap{overflow:visible;max-height:none}
+}
 
 /* THE ROSTER. Columns, because 382 names in one column is a very long page
    and the content should fill the width it has. */
@@ -5375,9 +5392,10 @@ grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:start}
 :where(body.pg) .pcol h3,:where(body.pg) .sdiv h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
 /* THE SEAT LIST, ONE COLUMN PER DIVISION (the person, 7 October 2026, F8):
-   five abreast at the page's full width, in the chart's order -- 5, 4, 3, 2,
-   1, as the hall runs left to right -- so each column stands under its own
-   division of the chart.
+   five abreast at the page's full width, in the chart's order -- 1, 2, 3, 4,
+   5 from left to right, the chart being the Clerk's plan turned so the
+   rostrum is at the top -- so each column stands under its own division of
+   the chart.
 
    WHERE FIVE DO NOT FIT, ONE DIVISION UNDER THE NEXT, each across the width
    with its own seats balanced into columns (the look of 7 October 2026). A

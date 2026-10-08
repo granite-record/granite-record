@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.444
+# GRANITE_VERSION: 2026-09-04.448
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35384,10 +35384,27 @@ def _review_of_audit_fixes(BP):
                    f"be there when Tab reaches it and gone when focus has left both: {seat}")
     if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
         bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
+    # A CHART IN A TAB NOT YET OPEN (the review of 7 October 2026): the
+    # legislators page opens on Towns, the chart's box is 0px wide when the
+    # script runs, and a phone that went Legislators, then By seat, got the
+    # whole floor at 100% with seats five pixels across.
+    hid = got.get("seatHidden") or {}
+    shown = str(hid.get("shown") or "")
+    if hid.get("zoom") != "100%" or hid.get("watching") != 1 or not shown.endswith("%") \
+            or abs(float(shown[:-1] or 0) - 1100 / 349 * 100) > 1e-6 or not hid.get("letGo"):
+        bad.append("a seat map drawn in a hidden tab does not wait for its box's width to "
+                   f"zoom a 349px phone in, and then stop watching: {hid}")
+    # THE SPEAKER'S CHAIR LIGHTS (the review of 7 October 2026): his number
+    # is on the group round the circle, and choosing him named him and lit his
+    # row but never the chair.
+    if got.get("speakerLit") != {"chair": True, "floor": False, "after": [False, True]}:
+        bad.append("choosing the Speaker does not light his chair, or choosing another seat "
+                   f"leaves it lit: {got.get('speakerLit')}")
     assert not bad, "; ".join(bad[:5])
     return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
                   "on a member's votes; Play and a long analysis move focus when clicked; the "
-                  "seat map's svg hears no focus and its note keeps its link; a marked box is a "
+                  "seat map's svg hears no focus, its note keeps its link, in a hidden tab "
+                  "it zooms once its box has a width and the Speaker's chair lights; a marked box is a "
                   "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
                   "rules of the stylesheet and the pages stand")
 
@@ -35550,6 +35567,45 @@ document.querySelectorAll = all;
   [svg, wrap].forEach(n => n.fire("focusin", {target: seats[3]}));
   seat.end = {focused: seats.findIndex(c => c.focused), stops: stops()};
   out.seat = seat;
+
+  // IN A TAB NOT YET OPEN the box is 0px wide when the script runs, as on the
+  // legislators page, which opens on Towns: the zoom waits for a width, once.
+  const watched = [];
+  globalThis.ResizeObserver = class { constructor(f) { this.f = f; this.off = false; watched.push(this); }
+    observe(n) { this.n = n; } disconnect() { this.off = true; } };
+  const svg2 = node("svg"), wrap2 = node("div");
+  wrap2.clientWidth = 0;
+  const doc2 = Object.assign({}, doc, {
+    getElementById: id => ({seatlist: node("div"), seatnote: node("p")})[id] || null,
+    querySelector: q => ({".seatmap": svg2, ".seatwrap": wrap2})[q] || null});
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc2, f => "/" + f);
+  const hidden = {zoom: svg2.style.width || null, watching: watched.filter(o => o.n === wrap2).length};
+  wrap2.clientWidth = 349;
+  watched.forEach(o => { if (!o.off) o.f([]); });
+  hidden.shown = svg2.style.width || null;
+  hidden.letGo = watched.every(o => o.off);
+  delete globalThis.ResizeObserver;
+  out.seatHidden = hidden;
+
+  // THE SPEAKER'S CHAIR, whose number is on the group round it and the word
+  // "Speaker", not on the circle: choosing him lights the circle.
+  const lit = c => { c.classList = {on: {}, toggle(k, v) { this.on[k] = !!v; }, add() {}, remove() {}};
+    return c; };
+  const grp = node("g", {"data-seat": "6002", "data-slug": "sp", "data-name": "Rep. Speaker"});
+  const chair = lit(node("circle", {})), floor1 = lit(node("circle",
+    {"data-seat": "1001", "data-slug": "m1", "data-name": "Rep. 1"}));
+  chair.parentNode = grp;
+  const svg3 = node("svg"), wrap3 = node("div");
+  svg3.querySelectorAll = q => q === ".seat" ? [floor1, chair] : q === "[data-slug]" ? [floor1, grp] : [];
+  const doc3 = Object.assign({}, doc, {
+    getElementById: id => ({seatlist: node("div"), seatnote: node("p")})[id] || null,
+    querySelector: q => ({".seatmap": svg3, ".seatwrap": wrap3})[q] || null});
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc3, f => "/" + f);
+  svg3.fire("click", {target: grp});
+  const speaker = {chair: !!chair.classList.on.on, floor: !!floor1.classList.on.on};
+  svg3.fire("click", {target: floor1});
+  speaker.after = [!!chair.classList.on.on, !!floor1.classList.on.on];
+  out.speakerLit = speaker;
 })();
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
@@ -46279,13 +46335,33 @@ def _legislators_page_tabs():
     lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
     assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
         "the finder's instruction is not in the Towns panel, over its box")
-    # The whole list of towns is the tab's content while nothing is typed: the
-    # finder marks it .all, and the panel's rules lift the 260px window.
-    assert 'out.classList.toggle("all"' in page, "the Towns list is never marked as the whole list"
+    # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
+    # didn't want the change to the town ordering to also make it 5 columns
+    # wide", and asked how it should list them, "Like the live site"): the
+    # box, and under it the list in its 260px window, one column, scrolling
+    # inside itself -- and nothing below the finder, where the district map is
+    # to come. For an afternoon the tab ran every town down the page in
+    # columns; nothing in the script or either stylesheet does that now.
+    rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
+    assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
+                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*</div>\s*', rest), (
+        "the Towns panel holds something after the finder and its list")
+    assert '.classList.toggle("all"' not in page, (
+        "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "style.css").read_text(encoding="utf-8")
-    for rule in (":where(body.pg) #towns .lmatch{max-height:none;overflow:visible}",
-                 ":where(body.pg) #towns .lmatch.all{columns:"):
-        assert rule in css, f"style.css has no {rule}: the Towns tab is a window over six towns"
+    for sheet, text in (("style.css", css), ("app.css", Path("app.css").read_text(encoding="utf-8"))):
+        rules = [(sel.strip(), body) for sel, body in re.findall(
+            r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
+        win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
+        assert len(win) == 1 and "max-height:260px" in win[0] and "overflow-y:auto" in win[0], (
+            f"{sheet} does not hold the finder's list in its 260px window")
+        # By its class, its id or an attribute naming either (the review of 7
+        # October 2026: a rule on #lmatch passed while this read the class).
+        lifted = [sel for sel, body in rules
+                  if re.search(r"\.lmatch\b|#lmatch\b|\[(?:id|class)[~|^$*]?=\W?lmatch", sel)
+                  and sel != ":where(body.pg) .lmatch"
+                  and re.search(r"max-height|overflow|columns|column-(?:count|width)", body)]
+        assert not lifted, f"{sheet} lifts or widens the finder's window: {lifted}"
     # And the roster's three arrangements are a view switch, not a second row
     # of underlined tabs under the page's own.
     assert re.search(r"\.rtabs \[role=tab\]\{[^}]*border:1px solid var\(--edge\)", css) \
@@ -46301,7 +46377,8 @@ def _legislators_page_tabs():
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
     return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
-                  "the town pages' script and drawn by the same rules in both stylesheets")
+                  "the town pages' script and drawn by the same rules in both stylesheets; "
+                  "the Towns tab the finder over its 260px window and nothing below it")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
@@ -46338,7 +46415,7 @@ def _seat_list_by_division():
     """"The House seating chart shows 3 columns for 5 sections" (the person, 7
     October 2026, F8). seat_columns is drawn over a House of every division
     and a Speaker, out of order of nothing -- the members come in seat order
-    as the roster sorts them -- and gives five columns headed Division 5 to 1,
+    as the roster sorts them -- and gives five columns headed Division 1 to 5,
     as the chart above them runs, each holding its own seats and counted, the
     Speaker above them and no division column for the rostrum; and the
     stylesheet puts five abreast only where five fit, and below that one
@@ -46349,11 +46426,14 @@ def _seat_list_by_division():
     house = [{"seat": str(s), "name": f"Member {s}"} for s in sorted(seats)]
     html = BP.seat_columns(house, lambda m: f'<li class="seatrow" data-seat="{m["seat"]}"></li>')
     heads = re.findall(r"<h3>([^<]*)</h3>", html)
-    # IN THE CHART'S ORDER, 5 TO 1 (the look of 7 October 2026): the hall runs
-    # 5, 4, 3, 2, 1 left to right and the chart above draws it so; 1 to 5 made
-    # the list the chart's mirror image.
-    assert heads == ["The rostrum", "Division 5 &mdash; 2", "Division 4 &mdash; 1",
-                     "Division 3 &mdash; 1", "Division 2 &mdash; 2", "Division 1 &mdash; 2"], (
+    # IN THE CHART'S ORDER, 1 TO 5 (the person, 7 October 2026: "rotated 180
+    # degrees so that the divisions can be listed in ascending order left to
+    # right"). The chart is the plan turned, Division 1 on the left, and the
+    # list follows it; it ran 5 to 1 while the chart was drawn as the plan is.
+    assert seating.LEFT_TO_RIGHT == [1, 2, 3, 4, 5], (
+        f"the chart runs its divisions {seating.LEFT_TO_RIGHT} from left to right")
+    assert heads == ["The rostrum", "Division 1 &mdash; 2", "Division 2 &mdash; 2",
+                     "Division 3 &mdash; 1", "Division 4 &mdash; 1", "Division 5 &mdash; 2"], (
         f"the seat list's columns are headed {heads}")
     cols = re.findall(r'<section class="sdiv"><h3>Division (\d) &mdash; \d+</h3>'
                       r'<ol class="seatlist">(.*?)</ol></section>', html)
@@ -46395,9 +46475,126 @@ def _seat_list_by_division():
     page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
     assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
         not in page, "the built page's seat list is not the columns"
-    return "ok", (f"five columns headed 5 to 1 as the chart runs, the Speaker above, five "
+    return "ok", (f"five columns headed 1 to 5 as the chart runs, the Speaker above, five "
                   f"abreast from {at}px at {col:.0f}px each and one division under the next "
                   "below it")
+
+
+@check("frontend", "the House seating chart is drawn with the rostrum at the top and Division 1 to 5 from left to right, every word upright")
+def _seat_chart_turned():
+    """"Maybe the seating chart diagram can be rotated 180 degrees so that the
+    divisions can be listed in ascending order left to right since descending
+    order is a bit confusing" (the person, 7 October 2026). seating.py reads
+    the Clerk's plan, which puts the rostrum at the foot and runs the
+    divisions 5 to 1, and turns every place it draws half a circle about the
+    Speaker (_point).
+
+    Held on the chart seating.svg draws and on the fixture's built page: the
+    Speaker above every seat on the floor; each division's seats, on average,
+    to the right of the one before, 1 to 5 -- on average, because the blocks
+    overlap sideways; the seats written in the order of their numbers, which
+    is the order the arrow keys walk, so Right goes on toward Division 5; and
+    every caption laid on an arc centred on the Speaker, run left to right
+    and swept under it, so its word stands the right way up rather than being
+    turned with the chart -- and "Speaker" above its seat, inside the
+    drawing."""
+    import seating
+    pos = seating.layout()
+    sy = pos[seating.SPEAKER_SEAT][1]
+    floor = {s: p for s, p in pos.items() if s != seating.SPEAKER_SEAT}
+    low = [s for s, (_x, y) in floor.items() if y <= sy]
+    assert not low, f"seats {sorted(low)[:5]} are drawn level with or above the Speaker"
+    mean = {d: sum(x for s, (x, _y) in floor.items() if s // 1000 == d)
+            / sum(1 for s in floor if s // 1000 == d) for d in sorted(seating.HIGHEST)}
+    order = sorted(mean, key=mean.get)
+    assert order == [1, 2, 3, 4, 5], (
+        f"the divisions run {order} from left to right on the chart")
+    who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
+           for s in seating.all_seats() + [seating.SPEAKER_SEAT]}
+    drawn = seating.svg(who)
+
+    def upright(svg):
+        bad = []
+        cx, cy = [float(v) for v in re.search(
+            r'<circle class="seat rostrum[^"]*" cx="([\d.]+)" cy="([\d.]+)"', svg).groups()]
+        for d, path in re.findall(r'<path id="divarc(\d)" d="([^"]+)"', svg):
+            x1, y1, r, _r, _rot, _big, sweep, x2, y2 = [
+                float(v) for v in re.findall(r"-?[\d.]+", path)]
+            # An arc about the Speaker, run left to right and swept below
+            # the rostrum: a letter stands on its path's left, which is up.
+            if not (x1 < x2 and sweep == 0 and abs(math.hypot(x1 - cx, y1 - cy) - r) < 1.5
+                    and min(y1, y2) > cy):
+                bad.append(f"Division {d}'s caption runs {path}")
+        sp = re.search(r'<text class="rostrumtext" x="[\d.]+" y="([\d.]+)"', svg)
+        if not (sp and 0 < float(sp.group(1)) < cy):
+            bad.append(f"\"Speaker\" is not above its seat at y={cy}")
+        return bad
+    bad = upright(drawn)
+    assert not bad, "; ".join(bad)
+    seen = [int(s) for s in re.findall(r'<circle class="seat[^"]*" [^>]*data-seat="(\d+)"', drawn)]
+    assert seen == sorted(seen) == seating.all_seats(), (
+        "the chart does not write its seats in the order of their numbers, which is the order "
+        "the arrow keys walk")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    svg = re.search(r'<svg viewBox="[^"]+" class="seatmap".*?</svg>', page, re.S)
+    assert svg, "the fixture's legislators page draws no seating chart"
+    bad = upright(svg.group(0))
+    assert not bad, "on the built page: " + "; ".join(bad)
+    # THE READOUT IS UNDER THE FLOOR, NOT ON IT (the review of 7 October
+    # 2026). Turned, the foot of the box is Division 3's back rows and its
+    # caption, and the strip that names a member was laid over it: wherever
+    # the box is shorter than the drawing -- 1366 by 900 -- it covered
+    # "Division 3". The note is the stage's last row, after the scrolling
+    # floor and in the flow, and it keeps its line when empty, so naming a
+    # member moves nothing on the page.
+    assert re.search(r'<div class="seatstage">\s*<div class="seatwrap"><svg [^>]*class="seatmap"'
+                     r'.*?</svg></div>\s*<p class="seatnote" id="seatnote"', page, re.S), (
+        "the readout is not the chart's stage's next row after its scrolling floor")
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    on_screen = re.sub(r"@media print\{(?:[^{}]*\{[^{}]*\})*\s*\}", "", css)
+    note = [(sel.strip(), body) for sel, body in re.findall(r"([^{}]*)\{([^{}]*)\}", on_screen)
+            if ".seatnote" in sel]
+    over = [sel for sel, body in note
+            if re.search(r"position:(absolute|fixed|sticky)|display:none|pointer-events:none", body)]
+    assert not over, f"the readout is laid over the floor or dropped when empty: {over}"
+    own = [body for sel, body in note if sel == ":where(body.pg) .seatnote"]
+    assert len(own) == 1 and "min-height:calc(1lh + 2 * var(--sp-3) + 2px)" in own[0], (
+        "the readout's row is not one line high whether or not it names anyone")
+    return "ok", ("the rostrum at the top, Division 1 to 5 from left to right at mean x "
+                  + ", ".join(f"{mean[d]:.0f}" for d in order)
+                  + ", the seats in number order for the arrow keys, five captions and "
+                    "\"Speaker\" upright, on the chart and on the built page, and the readout "
+                    "a row under the floor")
+
+
+@check("frontend", "the House seating chart prints whole, whatever the zoom on the screen it was loaded on")
+def _seat_chart_prints_whole():
+    """The chart's width is the zoom's, written on the <svg> by the seat
+    script, and a screen under 1100px opens zoomed in -- 113% at 1024. A page
+    printed after loading there kept that width inside a box that scrolls and
+    clips, and the sheet lost the right of the floor, which since the turn is
+    Division 5 and its caption (the review of 7 October 2026).
+
+    Held on app.css: a print block, after the box's own rule so that it wins
+    at the same weight, sets the chart to the page's width over the script's
+    inline width -- which only !important does -- and lets the box neither
+    clip nor stop at 78vh."""
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    box = css.find(":where(body.pg) .seatwrap{")
+    assert box >= 0, "app.css has no rule for the chart's box"
+    blocks = [(m.start(), m.group(1)) for m in re.finditer(
+        r"@media print\{((?:[^{}]*\{[^{}]*\})*)\s*\}", css)]
+    held = [(at, body) for at, body in blocks
+            if re.search(r"(?:^|\})\s*(?::where\(body\.pg\) )?\.seatmap\{width:100% !important\}", body)]
+    assert held, ("on paper the chart keeps the width the screen's zoom wrote on it, and its "
+                  "box clips the floor")
+    at, body = held[-1]
+    assert at > box, "the print rule for the chart comes before the box's own rule, which wins"
+    wrap = re.search(r"(?:^|\})\s*(?::where\(body\.pg\) )?\.seatwrap\{([^}]*)\}", body)
+    assert wrap and "overflow:visible" in wrap.group(1) and "max-height:none" in wrap.group(1), (
+        "on paper the chart's box still scrolls, clips or stops at 78vh")
+    return "ok", "printed, the chart is the page's width and its box neither clips nor scrolls"
 
 
 @check("frontend", "a note that stands for a section of the committees' pages takes the width it has")
