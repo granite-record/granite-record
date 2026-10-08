@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.468
+# GRANITE_VERSION: 2026-09-04.469
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20276,6 +20276,118 @@ def _type_floor():
                   f"rendered sweep measures), {inline} inline and {svg} SVG font-size attributes "
                   f"in the builders and scripts: none under {_FLOOR_PX}px, and {_FLOOR_PX}px "
                   "only in capitals")
+
+
+# The colours CSS knows by name, which are as much a colour written out as a hex.
+_CSS_NAMED = set("""aliceblue antiquewhite aqua aquamarine azure beige bisque black
+blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral
+cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey
+darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen
+darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray
+dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod
+gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush
+lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen
+lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey
+lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue
+mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise
+mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive
+olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip
+peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown
+salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow
+springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow
+yellowgreen""".split())
+
+
+def _colour_literals(value):
+    """The colours written in a value as themselves: a hex, a colour
+    function (not color-mix of tokens), a named colour. What is inside a
+    string, a url() or a var() name is not read."""
+    v = re.sub(r"\"[^\"]*\"|'[^']*'", '""', value)
+    v = re.sub(r"url\([^)]*\)", "url()", v)
+    v = re.sub(r"var\(\s*--[\w-]+", "var(", v)
+    found = re.findall(r"#[0-9A-Fa-f]{3,8}\b", v)
+    found += re.findall(r"(?<![\w-])(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\)?", v,
+                        re.I)
+    found += [w for w in re.findall(r"(?<![\w#-])[A-Za-z]+(?![\w-])", v) if w.lower() in _CSS_NAMED]
+    return found
+
+
+_THEME_COLOR = re.compile(r'<meta name="theme-color" content="([^"]*)"'
+                          r'(?: media="\(prefers-color-scheme: (light|dark)\)")?[^>]*>')
+
+
+@check("frontend", "every colour is the palette's: none is written outside it in app.css, a "
+                   "builder, app.js or find.js, and the theme-color a browser's bar takes is "
+                   "the palette's page colour",
+       expect_fail="the finder's shadow and scrim are tokens and the light theme-color is the "
+                   "page's own colour again")
+def _colours_from_palette():
+    """Each colour has one definition, in the palette, which is what lets
+    the dark theme, print and forced colours re-colour the site at all: a
+    colour written into a rule is the same in every one of them.
+
+    So a colour may be written as itself only as a token's definition, in
+    the palette or in the print block's copy of it (_print_is_light holds
+    that copy to the light values). An alpha mask's #000 is opacity, not a
+    colour, and is not read; nor are transparent, currentColor and the
+    system colours forced colours use. Outside app.css: every inline style
+    and SVG paint attribute in the builders, app.js and find.js, and any
+    string there that is a colour and nothing else.
+
+    A <meta name="theme-color"> cannot take a var(), so it is the one place
+    a colour is written out: it must be the palette's --paper for its theme,
+    or the browser's bar is a different grey from the page under it."""
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    pal = _css_palette(text)
+    end = text.find("/* PALETTE END")
+    end_line = _line_of(text, end) if end > 0 else 0
+    bad, read = [], 0
+    for ctx, sel, body, ln in _css_rules(text):
+        printing = any(c.startswith("@media print") for c in ctx)
+        for k, v in _css_decls(body):
+            read += 1
+            if k in ("mask-image", "-webkit-mask-image", "mask", "-webkit-mask"):
+                continue
+            lit = _colour_literals(v)
+            if not lit or (k.startswith("--") and (ln < end_line or printing)):
+                continue
+            bad.append(f"app.css:{ln} {sel[:40]} writes {k}: {', '.join(lit)}"
+                       + (" (a token defined outside the palette)" if k.startswith("--") else ""))
+    themed = 0
+    for name, src in _front_sources():
+        for m in _THEME_COLOR.finditer(src):
+            themed += 1
+            scheme = m.group(2) or "light"
+            want = pal[scheme].get("--paper", "")
+            if m.group(1).lower() != want.lower():
+                bad.append(f"{name}:{_line_of(src, m.start())} gives the browser's bar "
+                           f"{m.group(1)} in the {scheme} theme, and the page is {want} (--paper)")
+        rest = _THEME_COLOR.sub(lambda m: " " * len(m.group(0)), src)
+        for m in re.finditer(r"\bstyle\s*=\s*([\"'])(.*?)\1", rest, re.S):
+            lit = [x for k, v in _css_decls(m.group(2)) for x in _colour_literals(v)]
+            if lit:
+                bad.append(f"{name}:{_line_of(rest, m.start())} writes {', '.join(lit)} in an "
+                           "inline style")
+        for m in re.finditer(r"\b(fill|stroke|stop-color|flood-color|lighting-color)\s*=\s*"
+                             r"([\"'])(.*?)\2", rest):
+            lit = _colour_literals(m.group(3))
+            if lit:
+                bad.append(f"{name}:{_line_of(rest, m.start())} paints an SVG {m.group(1)} "
+                           f"{', '.join(lit)}")
+        for m in re.finditer(r"([\"'`])\s*(#[0-9A-Fa-f]{3,8}|(?:rgba?|hsla?)\([^)\"'`]*\))\s*\1",
+                             rest):
+            bad.append(f"{name}:{_line_of(rest, m.start())} holds the colour {m.group(2)} "
+                       "as a string")
+    assert themed >= 2, (f"only {themed} theme-color lines were found; bills.html and "
+                         "build_pages.py each write two, and this reads them")
+    assert not bad, (f"{len(bad)} colours outside the palette: " + "; ".join(bad[:12])
+                     + (f" (+{len(bad) - 12} more)" if len(bad) > 12 else ""))
+    return "ok", (f"{read} declarations of app.css and the inline styles, SVG paint and strings "
+                  f"of {len(_front_sources())} builders and scripts: every colour a token, and "
+                  f"the {themed} theme-colors the palette's page")
 
 
 @check("frontend", "a focus ring is not cut off by the box around its control, a text box's edge is "
