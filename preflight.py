@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.472
+# GRANITE_VERSION: 2026-09-04.473
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20148,15 +20148,13 @@ def _css_font_size(prop, value):
 
 # ---- the type floor and the palette's reach (8 October 2026) ------------------
 #
-# WRITTEN AHEAD OF THE CHANGE THEY HOLD. Every size on the site is a pixel
-# value, two of the type scale's tokens are under the 13px floor, and a few
-# sizes and colours are written outside app.css's tokens; the type scale in
-# rem and the colour tokens change that. Each check below says what is true
-# now in its own words and is marked as expected to fail (check(expect_fail=))
-# until its change lands, so that the day it does it becomes the guard, and
-# says so, rather than a note somebody must remember to write. These read
-# the files, which is all preflight may; src/checks/rendered_sweep.py
-# measures the drawn page.
+# WRITTEN AHEAD OF THE CHANGE THEY HOLD, and holding it since the polish's
+# foundation landed (8 October 2026): every size in rem, nothing under the
+# 13px floor, every colour a token, and the party and vote inks apart in
+# lightness. Each was committed marked as expected to fail
+# (check(expect_fail=)) and the mark came off in the commit that made it
+# pass. These read the files, which is all preflight may;
+# src/checks/rendered_sweep.py measures the drawn page.
 
 _FLOOR_PX = 13          # nothing smaller, and this size only in capitals
 
@@ -20384,9 +20382,7 @@ _THEME_COLOR = re.compile(r'<meta name="theme-color" content="([^"]*)"'
 
 @check("frontend", "every colour is the palette's: none is written outside it in app.css, a "
                    "builder, app.js or find.js, and the theme-color a browser's bar takes is "
-                   "the palette's page colour",
-       expect_fail="the finder's shadow and scrim are tokens and the light theme-color is the "
-                   "page's own colour again")
+                   "the palette's page colour")
 def _colours_from_palette():
     """Each colour has one definition, in the palette, which is what lets
     the dark theme, print and forced colours re-colour the site at all: a
@@ -20637,8 +20633,7 @@ def _token_pairs_measure():
 
 
 @check("frontend", "party and a vote's two sides are told apart by lightness as well as hue, in "
-                   "both themes: Republican and Democratic 1.7:1, yes and no 2:1",
-       expect_fail="the darker party inks and the dark theme's yes and no are in the palette")
+                   "both themes: Republican and Democratic 1.7:1, yes and no 2:1")
 def _inks_apart():
     """A seat on the chart and a district on the map are too small for a
     letter, and a print, a photocopy or a reader who cannot tell red from

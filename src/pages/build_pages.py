@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.162
+# GRANITE_VERSION: 2026-09-04.163
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1314,7 +1314,7 @@ def shell(title, current, body, wide=False, script="", desc="",
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#EAEBE7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#E9EAEC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171B1C" media="(prefers-color-scheme: dark)">
 <meta property="og:image" content="{_img}">
 <meta property="og:image:width" content="1200">
