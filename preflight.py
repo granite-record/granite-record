@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.457
+# GRANITE_VERSION: 2026-09-04.458
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3289,10 +3289,11 @@ _SENT_ON_HEADS = {
                              ["referred it on to the Senate Finance committee"], ["the Fi committee"]),
     ("HB613", "1993-1994"): (["In House committee — Health, Human Services and Elderly Affairs",
                               "On the House floor", "In House committee — Appropriations"],
-                             ["sent it on to the Appropriations committee"], []),
+                             ["referred it on to the House Appropriations committee"], []),
     ("SB58", "1989-1990"): (["In House committee — Public Works", "On the House floor",
                              "In House committee — Appropriations"],
-                            ["voted to pass it, then sent it on to the Appropriations committee"], []),
+                            ["voted to pass it, then referred it on to the House Appropriations "
+                             "committee"], []),
     ("HB1119", "2001-2002"): (["In Senate committee — Environment", "On the Senate floor",
                                "In Senate committee — Finance"],
                               ["on a voice vote, then referred it on to the Senate Finance committee"], []),
@@ -3309,11 +3310,12 @@ _SENT_ON_HEADS = {
                               "In House committee — Executive Departments and Administration",
                               "On the House floor",
                               "In House committee — Executive Departments and Administration"],
-                             ["then sent it on to the Executive Departments and Administration "
-                              "committee."], ["Administration committee under the chamber's rules"]),
+                             ["then referred it on to the House Executive Departments and "
+                              "Administration committee."],
+                             ["Administration committee under the chamber's rules"]),
     ("HB256", "1997-1998"): (["In House committee — Executive Departments and Administration",
                               "On the House floor", "In House committee — Finance"],
-                             ["on a roll call 248–8, then sent it on to the Finance committee"],
+                             ["on a roll call 248–8, then referred it on to the House Finance committee"],
                              ["Consent Cal committee"]),
     # Commerce's report, dated the 16th and entered on the 7th, before the
     # Senate sent the bill on to Finance on the 15th, is Commerce's, and is
@@ -3364,7 +3366,7 @@ _SENT_ON_HEADS = {
     # "REF TO FINANCE" before "PASSED WITH AM" on its row: Finance's amendment
     # adopted, then the bill passed. Not a passage, then a referral.
     ("SB173", "1995-1996"): (["In Senate committee — Education", "On the Senate floor"], [],
-                             ["sent it on to the Finance committee"]),
+                             ["referred it on to the"]),
     # A joint committee is no one of its members.
     ("HB1643", "2007-2008"): (["In House committee — a Joint Committee of Executive Departments and "
                                "Administration and Finance", "On the House floor",
@@ -3389,7 +3391,7 @@ _SENT_ON_HEADS = {
                               "In Senate committee — Finance", "On the Senate floor"], [], []),
     # "The Chair Rescinded Refer to Finance Rule 4-5", seven minutes on.
     ("SB91", "2013-2014"): (["In Senate committee — Commerce", "On the Senate floor"] * 3, [],
-                            ["sent it on to the Finance committee"]),
+                            ["referred it on to the"]),
     # The House's Finance is not carried past the crossing to a House row
     # entered three weeks after it, in the Senate's room.
     ("HB25", "1997-1998"): (["In House committee", "On the House floor", "In House committee — Finance",
@@ -3418,7 +3420,8 @@ _SENT_ON_HEADS = {
     # Sent on to Finance by suspending the rules, not under them.
     ("HB551", "1995-1996"): (["In House committee — Judiciary and Family Law", "On the House floor",
                               "In House committee — Finance"],
-                             ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+                             ["then referred it on to the House Finance committee."],
+                             ["under the chamber's rules"]),
     # A referral where no committee had the bill moves no heading, and is not
     # told: told, it was the one stage of a petition's history, and drew it a
     # rail.
@@ -3560,7 +3563,7 @@ _CONSENT_VOTE_TOLD = {
                              "adopted on a roll call 248–8.",
                              "Killed on the consent calendar, 248–8", "kill it on a roll call"),
     ("HB256", "1997-1998"): ("as part of its consent calendar, which it adopted on a roll call "
-                             "248–8, then sent it on to the Finance committee",
+                             "248–8, then referred it on to the House Finance committee",
                              "sent to Finance on the consent calendar, 248–8",
                              "changes on a roll call"),
     # Built alone, with no other row of its calendar to go by, the bill's
@@ -4245,7 +4248,7 @@ _REFERRAL_UNMADE_HEADS = {
                               "In Senate committee — Education"],
                              ["On January 26, 1995 the House voted to pass it. The House referred the "
                               "bill to the Finance committee, and the referral was declined."],
-                             ["sent it on to the Finance committee"]),
+                             ["referred it on to the House Finance committee"]),
     # Finance's Division I sat on it, and six weeks later the chair waived
     # the referral: the work stands, and the waiver is told after it.
     ("HB194", "2023-2024"): (["In House committee — Resources, Recreation and Development",
@@ -4275,16 +4278,20 @@ _REFERRAL_UNMADE_HEADS = {
     # the 2002 House's "on deadline for 2nd Comm" (HB 1231).
     ("SB173", "1995-1996"): (["In House committee — Education", "On the House floor",
                               "In House committee — Finance", "On the House floor"],
-                             ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+                             ["then referred it on to the House Finance committee."],
+                             ["under the chamber's rules"]),
     ("HB650", "1995-1996"): (["In House committee — Commerce, Small Business, Consumer Affairs and "
                               "Economic Development", "On the House floor", "In House committee — Finance"],
-                             ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+                             ["then referred it on to the House Finance committee."],
+                             ["under the chamber's rules"]),
     ("HB1633", "1995-1996"): (["In House committee — Environment and Agriculture", "On the House floor",
                                "In House committee — Finance"],
-                              ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+                              ["then referred it on to the House Finance committee."],
+                              ["under the chamber's rules"]),
     ("HB1231", "2001-2002"): (["In House committee — Education", "On the House floor",
                                "In House committee — Finance"],
-                              ["then sent it on to the Finance committee."], ["under the chamber's rules"]),
+                              ["then referred it on to the House Finance committee."],
+                              ["under the chamber's rules"]),
     # "Committee Refused Referral" that afternoon: the House Journal prints
     # "REFERRAL DECLINED" over SB 166, and Judiciary heads nothing.
     ("SB166", "2013-2014"): (["In House committee — Health, Human Services and Elderly Affairs",
@@ -4322,15 +4329,16 @@ _REFERRAL_UNMADE_HEADS = {
     ("HB1100", "2001-2002"): (["In House committee — Judiciary", "On the House floor",
                                "In House committee — Judiciary", "On the House floor",
                                "In House committee — Finance"],
-                              ["then sent it on to the Finance committee under the chamber's rules."], []),
+                              ["then referred it on to the House Finance committee under the chamber's "
+                               "rules."], []),
     # The rules no row on disk tests (_altered, above): each keeps what the
     # rows without the rule would lose.
-    ("HB650", "1995-1996", "lost"): (None, ["then sent it on to the Finance committee under the chamber's "
-                                            "rules."], []),
-    ("SB173", "1995-1996", "the Senate's"): (None, ["then sent it on to the Finance committee under the "
-                                                    "chamber's rules."], []),
-    ("HB1633", "1995-1996", "eight days"): (None, ["then sent it on to the Finance committee under the "
-                                                  "chamber's rules."], []),
+    ("HB650", "1995-1996", "lost"): (None, ["then referred it on to the House Finance committee under "
+                                            "the chamber's rules."], []),
+    ("SB173", "1995-1996", "the Senate's"): (None, ["then referred it on to the House Finance committee "
+                                                    "under the chamber's rules."], []),
+    ("HB1633", "1995-1996", "eight days"): (None, ["then referred it on to the House Finance committee "
+                                                  "under the chamber's rules."], []),
     ("HB1478", "2013-2014", "another chair"): (["In House committee — Children and Family Law",
                                                 "On the House floor", "In House committee — Judiciary"],
                                                [], ["the referral"]),
@@ -11229,8 +11237,9 @@ _NAMED_IN = (
     (re.compile(r"the bill was referred to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
     (re.compile(r"referred the bill to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
     (re.compile(r"sent it on to the (?P<c>.+?) committee(?: under the chamber's rules)?[.,]"), False),
-    # The Senate's, in the person's wording of 7 October 2026.
-    (re.compile(r"referred it on to the Senate (?P<c>.+?) committee[.,]"), False),
+    # The person's wording of 7 October 2026, the Senate's and the House's.
+    (re.compile(r"referred it on to the (?:House|Senate) (?P<c>.+?) committee"
+                r"(?: under the chamber's rules)?[.,]"), False),
 )
 _COMMITTEE_WORK = {"hearing", "exec", "worksession", "report", "retained", "interim_report"}
 # A piece of a word, or of a clause, that a reader once printed as a name:
@@ -11450,9 +11459,11 @@ _SUSPENDED_LOOSE = re.compile(
     r"(?:(?!\bnot\s+in\b|\bno\s+referral\b)[^;])*?(?:\bref|\b(?:2nd|second)\s+comm)", re.I)
 _SUSPENSION_LOST = re.compile(r"\b(?:ML|MF)\b|\bfail|\blost\b", re.I)
 # "then referred it on to the Senate Finance committee" is the Senate's (the
-# person's wording, 7 October 2026), and names no rule.
-_SENT_ON_SAID = re.compile(r"then (?:sent it on to the|referred it on to the Senate) (?P<c>.+?) committee"
-                           r"(?P<r> under the chamber's rules)?[.,]")
+# person's wording, 7 October 2026), and names no rule; the House's, "then
+# referred it on to the House Finance committee under the chamber's rules",
+# names one where the rules sent it.
+_SENT_ON_SAID = re.compile(r"then (?:sent it on to the|referred it on to the (?:House|Senate)) "
+                           r"(?P<c>.+?) committee(?P<r> under the chamber's rules)?[.,]")
 _REPORT_SAID = re.compile(r"^(?:The committee recommended|The majority|The minority|The committee's "
                           r"amendment|The committee reported|The committee made no recommendation)")
 _MOVED_AFTER = re.compile(r"Recommit|send it back|sent the bill to|referred the bill|Rerefer|Vacat", re.I)
@@ -11585,7 +11596,7 @@ def _referrals_unmade_on_disk(CN):
                 if c and day and not _WAIVER_TOLD.search(text) and re.search(
                         rf"On {re.escape(day)} the bill was referred to the {re.escape(c)} committee"
                         rf"|On {re.escape(day)} the {chamber} voted [^.]*then (?:sent it on to the"
-                        rf"|referred it on to the Senate) {re.escape(c)} committee"
+                        rf"|referred it on to the (?:House|Senate)) {re.escape(c)} committee"
                         rf"|The {chamber} referred the bill to the "
                         rf"{re.escape(c)} committee", text):
                     untold.append(f"{bill} of {term}")
@@ -11600,7 +11611,7 @@ def _referrals_unmade_on_disk(CN):
                         headed.append(f"{bill} of {term}: {s.get('label')}")
                 if (m.group("p") or m.group("s")) and day and re.search(
                         rf"On {re.escape(day)} the {chamber} voted [^.]*then (?:sent it on to the"
-                        rf"|referred it on to the Senate) {re.escape(c)} committee", text):
+                        rf"|referred it on to the (?:House|Senate)) {re.escape(c)} committee", text):
                     sent.append(f"{bill} of {term}: {day}")
             # 2 -- a first committee's report after the passage that sent the bill on
             for i, s in enumerate(stages):
@@ -11641,8 +11652,9 @@ def _referrals_unmade_on_disk(CN):
             # 3 -- a referral made by suspending the rules
             for s in stages:
                 for m in re.finditer(r"On (?P<d>[A-Z][a-z]+ \d{1,2}, \d{4}) the (?P<ch>House|Senate) "
-                                     r"voted [^.]*?then sent it on to the [^.]*? committee under the "
-                                     r"chamber's rules", s.get("text") or ""):
+                                     r"voted [^.]*?then (?:sent it on to the|referred it on to the "
+                                     r"House) [^.]*? committee under the chamber's rules",
+                                     s.get("text") or ""):
                     ch = m.group("ch")[0]
                     day = next((e.get("date")[:10] for e in evs
                                 if e.get("body") == ch and _when_said(e.get("date") or "") == m.group("d")),
@@ -28480,7 +28492,7 @@ def _docket_1999_questions(N, V, E, B):
         ("2000-01-05", "Ought to Pass", "MA", "RC", "181", "167")], (
         f"HB 239's passage of 5 January 2000 is told twice, or without its roll call: "
         f"{floor('HB239')}")
-    assert "voted to pass it on a roll call 181–167, then sent it on to the Finance " \
+    assert "voted to pass it on a roll call 181–167, then referred it on to the House Finance " \
         "committee" in told["HB239"], told["HB239"]
     # A finished row is an entry: it tells its last carried question and no more.
     assert floor("HB644")[0] == ("1999-05-13", "Inexpedient to Legislate", "MA", "RC",

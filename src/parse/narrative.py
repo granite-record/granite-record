@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.102
+# GRANITE_VERSION: 2026-09-04.103
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3003,14 +3003,16 @@ def describe(ev, body, seen_intro=False):
                      if (MONEY_COMMITTEE.match(to) or RULE_CITED.search(raw))
                      and not RULES_SUSPENDED.search(raw)
                      and not ev.get("_rules_suspended") else "")
-            if chamber == "Senate":
-                # The person's wording (7 October 2026): "the Senate voted to
-                # pass it on a voice vote, then referred it on to the Senate
-                # Finance committee."
-                named = to if to.lower().startswith("senate") else f"Senate {to}"
-                base += f", then referred it on to the {named}"
-            else:
-                base += f", then sent it on to the {to}{rules}"
+            # The person's wording (7 October 2026): "the Senate voted to
+            # pass it on a voice vote, then referred it on to the Senate
+            # Finance committee." AND THE HOUSE'S IN THE SAME WORDS (the
+            # launch audit's recheck): its referral on the passage's own row,
+            # "PASSED AND REF TO FINANCE" (1989-2006), read "then sent it on
+            # to the Finance committee", a sentence of its own for the same
+            # step; it is told as the Senate's is, with the House's own
+            # "under the chamber's rules" where the rules sent it (above).
+            named = to if to.lower().startswith(chamber.lower()) else f"{chamber} {to}"
+            base += f", then referred it on to the {named}" + (rules if chamber == "House" else "")
         return _stop(base + mover)
 
     if t == "amendment":
