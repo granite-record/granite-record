@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.106
+# GRANITE_VERSION: 2026-09-04.107
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2991,29 +2991,18 @@ def describe(ev, body, seen_intro=False):
         elif OT_RDG.search(ev.get("_raw", "")):
             base += " and ordered it to a third reading"
         if ev.get("refer"):
-            # "UNDER THE CHAMBER'S RULES" only where they are what sent it: a
-            # rule the row cites, or a finance committee, which the rules
-            # send a bill with money in it to. Not "PASSED AND REF TO ED&A"
-            # (HB 357 of 1996), and not a referral made by suspending them,
-            # "Susp Rules to ref to 2nd Comm" (HB 550 of 2002), whether on the
-            # passage's own row or on one of its own (build():
-            # _rules_suspended, REFERRAL_SUSPENSION).
-            to = _committee(ev, body, "refer")
-            raw = ev.get("_raw") or ""
-            rules = (" under the chamber's rules"
-                     if (MONEY_COMMITTEE.match(to) or RULE_CITED.search(raw))
-                     and not RULES_SUSPENDED.search(raw)
-                     and not ev.get("_rules_suspended") else "")
             # The person's wording (7 October 2026): "the Senate voted to
             # pass it on a voice vote, then referred it on to the Senate
             # Finance committee." AND THE HOUSE'S IN THE SAME WORDS (the
             # launch audit's recheck): its referral on the passage's own row,
             # "PASSED AND REF TO FINANCE" (1989-2006), read "then sent it on
             # to the Finance committee", a sentence of its own for the same
-            # step; it is told as the Senate's is, with the House's own
-            # "under the chamber's rules" where the rules sent it (above).
+            # step; it is told as the Senate's is. Exactly as the Senate's
+            # (the person, 8 October 2026): the House's no longer adds "under
+            # the chamber's rules" where the rules sent it.
+            to = _committee(ev, body, "refer")
             named = to if to.lower().startswith(chamber.lower()) else f"{chamber} {to}"
-            base += f", then referred it on to the {named}" + (rules if chamber == "House" else "")
+            base += f", then referred it on to the {named}"
         return _stop(base + mover)
 
     if t == "amendment":
@@ -4574,11 +4563,7 @@ def _sent_name(raw):
 PASSAGE = re.compile(r"^\s*(?:ought\s+to\s+pass|pass|adopt)", re.I)
 # The passage the referral follows, in the row's own words.
 PASSED_WORDS = re.compile(r"\bPASS(?:ED)?\b|\bADOPTED\b|\bOTP\b", re.I)
-# What a passage's referral is said to be sent on under (describe).
-MONEY_COMMITTEE = re.compile(r"(?:Finance|Fin|Appropriations|Ways|Capital Budget)\b")
-RULE_CITED = re.compile(r"\bRULE\s*\d", re.I)
 SUSPENDS_RULES = re.compile(r"\bSUSP\w*\.?\s+(?:OF\s+)?(?:THE\s+|ALL\s+)?(?:HOUSE\s+|SENATE\s+)?RULES?\b", re.I)
-RULES_SUSPENDED = re.compile(SUSPENDS_RULES.pattern + r"[^;]*?\bREF", re.I)
 # "The Chair Rescinded Refer to Finance Rule 4-5", "Sen. Daniels Waived
 # Referral to Finance", "Rescind Order to the Committee on Finance".
 REFERRAL_UNDONE = re.compile(
@@ -4603,17 +4588,6 @@ REFERRAL_WAIVED = re.compile(
     r"|\bREF(?:ERRAL)?\s+TO\s+(?P<c>[A-Z][A-Za-z&,'. ]*?)\s+DECLINED\b", re.I)
 WAIVED_BY_CHAIR = re.compile(r"\bChair(?:man)?\s+of\s+(?P<c>[A-Z][A-Za-z&,'. ]*?)\s+per\b", re.I)
 HOUSE_RULE_CITED = re.compile(r"\bHouse\s+Rule\s*(?P<n>\d+)\s*\(\s*(?P<p>[a-z])\s*\)", re.I)
-# A REFERRAL MADE BY SUSPENDING THE RULES, on a row of its own: "REPS A TORR &
-# BUCKLEY SUSP RULES FOR REF TO 2ND COMM, MA 2/3VV" (HB 650 of 1995), "Reps
-# Hess & Nordgren Susp Rules for late ref to Finance" (HB 785 of 2003), and
-# the 2002 House's "Susp Rules on deadline for 2nd Comm", which its journal
-# prints as rules "so far suspended as to permit referral to a second
-# committee beyond the deadline" (HJ 6 and HJ 8 of 2002). Not "Deadline on
-# Action for Bills Not in 2nd Comm", nor a suspension for an introduction
-# with "no referral to comm.", nor a motion that lost.
-REFERRAL_SUSPENSION = re.compile(
-    r"(?:" + SUSPENDS_RULES.pattern + r"|\bRULES?\s+SUSP\w*\.?)"
-    r"(?:(?!\bnot\s+in\b|\bno\s+referral\b)[^;])*?(?:\bREF|\b(?:2ND|SECOND)\s+COMM)", re.I)
 
 
 def waiver_said(w, referral=None):
@@ -5450,33 +5424,6 @@ def build(bill, rows, introduction=None):
         w["_waives"] = ("sent", r, f"The {CHAMBER.get(b, 'House')} referred the bill to the {to}")
         r["refer"] = ""
         r["_unsent"] = True
-
-    # "UNDER THE CHAMBER'S RULES" IS NOT SAID OF A REFERRAL MADE BY SUSPENDING
-    # THEM, on whichever row the suspension stands. describe() reads the
-    # passage's own row; the 1995 House voted "SUSP RULES FOR REF TO 2ND COMM"
-    # once, on page 943 of the day's journal, and passed each bill and sent it
-    # to Finance on its own row pages later (HB 650 of 1995), and the 2002
-    # House's suspension "on deadline for 2nd Comm" was a row of its own too.
-    # A suspension of that chamber on the day of the passage, or before it
-    # with no other passage that sent the bill on between them: HB 1633 of
-    # 1996 had its suspension on 5 March and was "MOVED TO MAR06 CALENDAR",
-    # passed and sent to Finance the next day. Within a week.
-    for i, s_ in enumerate(evs):
-        m = REFERRAL_SUSPENSION.search(s_["_raw"] or "")
-        if s_["cancelled"] or not m:
-            continue
-        a = (s_["_raw"] or "").rfind(";", 0, m.start()) + 1
-        z = (s_["_raw"] or "").find(";", m.end())
-        if _SEND_LOST.search(s_["_raw"][a:z if z >= 0 else len(s_["_raw"])]):
-            continue
-        day = s_["when"].date()
-        sent_on = [(j, e) for j, e in enumerate(evs)
-                   if e is not s_ and not e["cancelled"] and e["body"] == s_["body"]
-                   and e["_type"] == "floor" and e.get("refer")]
-        that_day = [e for _j, e in sent_on if e["when"].date() == day]
-        later = [e for j, e in sent_on if j > i][:1]
-        for e in that_day or [e for e in later if 0 < (e["when"].date() - day).days <= 7]:
-            e["_rules_suspended"] = True
 
     # A MOTION TO PASS ADOPTED AND THEN TABLED BEFORE THE STEP THAT PASSES THE
     # BILL (PASSAGE_PENDING) is told as the motion adopted, not the bill
