@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.213 */
+/* GRANITE_VERSION: 2026-09-07.214 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5350,6 +5350,16 @@ min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;
 color:var(--ink-2);background:var(--surface);border:1px solid var(--edge);
 border-radius:var(--r-in)}
 :where(body.pg) .seatzoom button:hover{color:var(--ink);background:var(--wash)}
+/* ON PAPER, THE WHOLE FLOOR. The chart's width is the zoom's, written on the
+   element by the script, and a screen under 1100px opens zoomed in -- 113%
+   at 1024 -- so a page printed after loading there kept that width inside a
+   box that clips, and the sheet lost the right of the floor: Division 5 and
+   its caption (the review of 7 October 2026). Printed, the chart is the
+   width of the page, and its box neither scrolls nor clips. */
+@media print{
+  :where(body.pg) .seatmap{width:100% !important}
+  :where(body.pg) .seatwrap{overflow:visible;max-height:none}
+}
 
 /* THE ROSTER. Columns, because 382 names in one column is a very long page
    and the content should fill the width it has. */

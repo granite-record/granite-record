@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.444
+# GRANITE_VERSION: 2026-09-04.445
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44674,6 +44674,35 @@ def _seat_chart_turned():
                   + ", the seats in number order for the arrow keys, five captions and "
                     "\"Speaker\" upright, on the chart and on the built page, and the readout "
                     "a row under the floor")
+
+
+@check("frontend", "the House seating chart prints whole, whatever the zoom on the screen it was loaded on")
+def _seat_chart_prints_whole():
+    """The chart's width is the zoom's, written on the <svg> by the seat
+    script, and a screen under 1100px opens zoomed in -- 113% at 1024. A page
+    printed after loading there kept that width inside a box that scrolls and
+    clips, and the sheet lost the right of the floor, which since the turn is
+    Division 5 and its caption (the review of 7 October 2026).
+
+    Held on app.css: a print block, after the box's own rule so that it wins
+    at the same weight, sets the chart to the page's width over the script's
+    inline width -- which only !important does -- and lets the box neither
+    clip nor stop at 78vh."""
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    box = css.find(":where(body.pg) .seatwrap{")
+    assert box >= 0, "app.css has no rule for the chart's box"
+    blocks = [(m.start(), m.group(1)) for m in re.finditer(
+        r"@media print\{((?:[^{}]*\{[^{}]*\})*)\s*\}", css)]
+    held = [(at, body) for at, body in blocks
+            if re.search(r"(?:^|\})\s*(?::where\(body\.pg\) )?\.seatmap\{width:100% !important\}", body)]
+    assert held, ("on paper the chart keeps the width the screen's zoom wrote on it, and its "
+                  "box clips the floor")
+    at, body = held[-1]
+    assert at > box, "the print rule for the chart comes before the box's own rule, which wins"
+    wrap = re.search(r"(?:^|\})\s*(?::where\(body\.pg\) )?\.seatwrap\{([^}]*)\}", body)
+    assert wrap and "overflow:visible" in wrap.group(1) and "max-height:none" in wrap.group(1), (
+        "on paper the chart's box still scrolls, clips or stops at 78vh")
+    return "ok", "printed, the chart is the page's width and its box neither clips nor scrolls"
 
 
 @check("frontend", "a note that stands for a section of the committees' pages takes the width it has")
