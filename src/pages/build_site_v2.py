@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.177
+# GRANITE_VERSION: 2026-09-05.178
 """
 Generate the faceted site from real General Court data.
 
@@ -175,7 +175,51 @@ FRONT = re.compile(
 EXPLANATION = re.compile(r"^\s*Explanation:.*$", re.M | re.I)
 
 
-def bill_text_block(rec):
+# THE AMENDMENTS A TEXT SAYS IT CARRIES, BY THEIR OWN NUMBERS (the polish
+# survey of 7 October 2026). The text prints them short, "20Mar2025 0103h",
+# and fetch_bill_text gives each the year of the session its page is of:
+# HB 68 of 2025-2026, carried over into 2026, read "includes 2026-0103h",
+# where its history and docket say 2025-0103h, adopted on 20 March 2025 -- 76
+# numbers on 54 bills. The number the bill's own docket gives with that
+# short form is the amendment's: as its amendment and report rows give it,
+# or, where they give none, as any of its rows does -- once, so that a
+# clerk's slip elsewhere ("House Concurs with Senate Amendment 2026-3030s"
+# on HB 126, whose amendment rows say 2025-3030s) does not choose. One the
+# docket does not name is left as the page gave it. And one the text lists
+# twice (HB 126's heading repeats its two) is listed once.
+def amendments_in_text(stamps, narr):
+    """The text's [{"date", "short", "num"}] with each num the bill's
+    docket's own where the docket names that short form once (above), and
+    each amendment once."""
+    own, anywhere = defaultdict(set), defaultdict(set)
+
+    def put(to, num):
+        m = re.fullmatch(r"\d{4}-0*(\d+)([a-z])", (num or "").strip())
+        if m:
+            to[(int(m.group(1)), m.group(2))].add(num.strip())
+
+    for e in (narr or {}).get("events", []):
+        if e.get("type") in ("amendment", "report"):
+            put(own, e.get("amendment"))
+        for num in AMEND_ANY.findall(e.get("raw") or ""):
+            put(anywhere, num)
+    out, seen = [], set()
+    for s in stamps or []:
+        s = dict(s)
+        m = re.fullmatch(r"0*(\d+)([a-z])", (s.get("short") or "").strip())
+        key = (int(m.group(1)), m.group(2)) if m else None
+        full = own.get(key) or anywhere.get(key)
+        if full and len(full) == 1:
+            s["num"] = next(iter(full))
+        key = s.get("num") or s.get("short")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(s)
+    return out
+
+
+def bill_text_block(rec, narr=None):
     """The analysis and the text itself, told apart."""
     if not rec:
         return None
@@ -207,7 +251,7 @@ def bill_text_block(rec):
             "analysis": analysis,
             **({"fiscal": note} if note else {}),
             "body": rest.strip(),
-            "in_text": rec.get("amendments_in_text") or [],
+            "in_text": amendments_in_text(rec.get("amendments_in_text"), narr),
             "chars": len(body)}
 
 
@@ -9205,7 +9249,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 docs.append({"label": _lab, "url": _url, "kind": "record"})
 
         bill_amds = bill_amendments(narr, amend_texts, claims.get(term, {}))
-        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
+        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed)

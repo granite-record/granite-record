@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.461
+# GRANITE_VERSION: 2026-09-04.462
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2994,6 +2994,55 @@ def _roll_call_named_by_count(N, B):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 1711 of 2024's roll call 196 is 1358h and 197 no amendment; HB 2 of 2025's 151 "
                   "and 152 are 1526h and 1560h; SB 133 of 2017's mistyped count keeps its name")
+
+
+# THE AMENDMENTS A BILL'S TEXT CARRIES, BY THEIR OWN YEAR (the polish survey of
+# 7 October 2026). Real rows: Docket.txt lines 2752, 3332-3333, 11622,
+# 13252-13253 and 21385 (HB 126 of 2025-2026); bill_text.json's
+# amendments_in_text of it, as fetch_bill_text read the text's heading.
+_DOCKET_TEXT_AMENDMENTS = [
+    "2026|0146|2/10/2025 3:03:35 PM|HB126|H| Committee Report: Ought to Pass with Amendment # 2025-0184h   02/05/2025 (Vote 17-0; CC)  HC 12  P. 7|2/18/2025 9:16:28 AM",
+    "2026|0146|2/20/2025 10:40:50 AM|HB126|H|Amendment # 2025-0184h: AA VV 02/20/2025  HJ 6  P. 8|4/1/2025 12:49:46 PM",
+    "2026|0146|2/20/2025 10:40:52 AM|HB126|H|Ought to Pass with Amendment 2025-0184h: MA VV 02/20/2025  HJ 6  P. 8|4/1/2025 12:49:51 PM",
+    "2026|0146|10/22/2025 2:39:34 PM|HB126|S|Committee Report: Ought to Pass with Amendment # 2025-3030s, 01/07/2026; Vote 5-0; CC;  SC 46|12/9/2025 2:06:26 PM",
+    "2026|0146|1/7/2026 11:34:09 AM|HB126|S|Committee Amendment # 2025-3030s, AA, VV; 01/07/2026;  SJ 1|1/7/2026 11:34:09 AM",
+    "2026|0146|1/7/2026 11:34:15 AM|HB126|S|Ought to Pass with Amendment #2025-3030s, MA, VV; OT3rdg; 01/07/2026;  SJ 1|1/7/2026 11:34:15 AM",
+    "2026|0146|4/9/2026 11:14:41 AM|HB126|H|House Concurs with Senate Amendment 2026-3030s (Rep. W. MacDonald): MA VV 04/09/2026  HJ 10  P. 8|6/26/2026 12:39:07 PM"]
+_TEXT_AMENDMENTS_SAID = [{"date": "20Feb2025", "short": "0184h", "num": "2026-0184h"},
+                         {"date": "01/07/2026", "short": "3030s", "num": "2026-3030s"},
+                         {"date": "20Feb2025", "short": "0184h", "num": "2026-0184h"},
+                         {"date": "01/07/2026", "short": "3030s", "num": "2026-3030s"},
+                         {"date": "01/07/2026", "short": "9999s", "num": "2026-9999s"}]
+
+
+@check("narrative", "the amendments a bill's text says it carries are named with the bill's own "
+                    "docket's numbers, each once",
+       needs=("narrative", "build_site_v2"))
+def _text_amendments_by_docket(N, B):
+    """The polish survey of 7 October 2026: fetch_bill_text gives each
+    amendment the text's heading lists ("20Feb2025 0184h") the year of the
+    session its page is of, so HB 126 of 2025-2026, carried over into 2026,
+    read "includes 2026-0184h, 2026-3030s, 2026-0184h, 2026-3030s" where its
+    docket says 2025-0184h and 2025-3030s -- 123 numbers on 102 bills, and the
+    heading's repeats listed again on 220. The docket's own number for that
+    short form is the one shown -- its amendment and report rows' first, so
+    a clerk's slip on another row ("House Concurs with Senate Amendment
+    2026-3030s") does not choose -- and each amendment once; one the docket
+    does not name keeps the page's."""
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        rec = _narrated(N, "2025-2026", "HB126", _DOCKET_TEXT_AMENDMENTS)
+    finally:
+        N.MEMBERS = keep
+    text = {"version": "FINAL VERSION", "title": "relative to the bill",
+            "text": "ANALYSIS\nThis bill does a thing.\n\nBe it Enacted by the Senate and House:\n"
+                    "1 Section. Words.", "amendments_in_text": _TEXT_AMENDMENTS_SAID}
+    got = [a["num"] for a in (B.bill_text_block(text, rec) or {}).get("in_text", [])]
+    want = ["2025-0184h", "2025-3030s", "2026-9999s"]
+    assert got == want, f"HB 126 of 2025-2026's text includes {got}, not {want}"
+    return "ok", ("HB 126 of 2025-2026's text includes 2025-0184h and 2025-3030s, once each, and a "
+                  "number its docket does not name as the page gave it")
 
 
 # A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October
