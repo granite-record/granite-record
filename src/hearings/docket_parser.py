@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -258,12 +258,13 @@ SENATE_MER = r"[ap]\s?\.?\s?m\.?"
 # other five, which each bill's history tells, had no row in the table at all.
 # HB 677's still has none: its day, "May 29 ,2001", with a space before the
 # comma, is a gap of _parse_date's own that this does not touch.
-# The Senate's and the rescheduling row's patterns state a meridiem after it,
-# and the legacy House line a room, which is what keeps "Sections 5;7;9" and
-# a calendar's "SC 6;10" from reading as a time. Every reader of the hour
-# reads it as the colon (_parse_time, _legacy_time).
+# The Senate's and the rescheduling row's patterns want a meridiem after it,
+# and the legacy House line a meeting word and a day right before it, which is
+# what keeps a chaptering row's "Sections 5;7;9;11" (HB 1817 of 2018,
+# Docket_2017-2018.txt line 7918) from reading as a time. Every reader of the
+# hour reads it as the colon (_parse_time, _legacy_time).
 CLOCK_SEP = r"[:;]"
-MONTH_WORD =(r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+MONTH_WORD = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
               r"[a-z]*\.?")
 
 SENATE_SCHED_RE = re.compile(
@@ -286,7 +287,7 @@ SENATE_SCHED_RE = re.compile(
     # half to go the engine backtracks and reads 9:00 as the start. It is only
     # five rows, and all five are the HB1 and HB2 budget hearings, which are
     # among the most-read pages on the site. A wrong time is worse than none.
-    # A SEMICOLON FOR THE COLON (CLOCK_SEP, below): "2;50 p.m.".
+    # A SEMICOLON FOR THE COLON (CLOCK_SEP, above): "2;50 p.m.".
     r"(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2})(?::\d{2})?\s*"
     r"(?:[-–]\s*\d{1,2}:\d{2}(?::\d{2})?\s*)?"
     r"(?P<mer>" + SENATE_MER + r")"
