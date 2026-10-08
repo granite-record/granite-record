@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.221 */
+/* GRANITE_VERSION: 2026-09-07.222 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1159,8 +1159,10 @@ gap:var(--sp-3)}
    BibTeX, a feed's or a file's address, which took the system's monospace --
    Consolas on Windows, a fourth face on the page -- wherever no rule of its
    own named this one. The serif is loaded at 400 and 600 only since the same
-   day: no text on the site was drawn at its 700. */
-code{font-family:var(--mono)}
+   day: no text on the site was drawn at its 700. An address in it breaks
+   where it must: the 404 page's own path stood 15px past a phone's edge at
+   the 24px text size (the rendered sweep, 8 October 2026). */
+code{font-family:var(--mono);overflow-wrap:anywhere}
 footer .footdata,footer .footdata .lic{font-family:var(--mono);
 font-size:var(--t-sm);font-weight:500;letter-spacing:0}
 footer .footdata{margin:var(--sp-7) 0 0;padding-top:var(--sp-5);
