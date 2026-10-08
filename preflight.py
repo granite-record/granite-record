@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.458
+# GRANITE_VERSION: 2026-09-04.459
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47082,6 +47082,26 @@ def _latest_activity_links_the_bill(BP, B):
     assert '"year": b.get("year") or ""' in inspect.getsource(B), (
         "home.json's recent rows do not carry the year their bill is filed under")
     return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
+
+
+@check("frontend", "an official's chip on a town page says the party in letters, as a "
+                   "legislator's does", needs=("build_town_pages",))
+def _official_party_letter(BT):
+    """The Governor's, the Executive Councillors' and the federal
+    delegation's chips on a town page carried their party by the colour of
+    the bar alone (the survey of 7 October 2026), where a legislator's chip
+    says "(R - Rock 16)". officials.json's own rows: Gov. Kelly Ayotte (R)
+    and Rep. Chris Pappas (D); an office whose holder this site was not told
+    shows no chip at all, and a party not given shows no letter."""
+    gov = BT.office_block("Governor", {"name": "Kelly Ayotte", "party": "R",
+                                       "official_url": "https://www.governor.nh.gov/"}, "")
+    assert ('<span class="mchip p-R"><a href="https://www.governor.nh.gov/" rel="noopener">'
+            'Kelly Ayotte <span class="mtag">(R)</span></a></span>') in gov, gov
+    us = BT.office_block("", {"name": "Chris Pappas", "party": "D"}, "")
+    assert '<span class="mchip p-D">Chris Pappas <span class="mtag">(D)</span></span>' in us, us
+    none = BT.office_block("", {"name": "A. Person"}, "")
+    assert '<span class="mchip p-X">A. Person</span>' in none, none
+    return "ok", "\"Kelly Ayotte (R)\", \"Chris Pappas (D)\"; no letter where no party is given"
 
 
 @check("data", "the member in the Speaker's chair is Speaker of the House in his own file, "
