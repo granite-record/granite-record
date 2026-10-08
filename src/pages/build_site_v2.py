@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.174
+# GRANITE_VERSION: 2026-09-05.175
 """
 Generate the faceted site from real General Court data.
 
@@ -8295,28 +8295,62 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     # which side sounded louder; a division records the count but not who
     # voted which way. Both decide bills, and leaving them off the votes tab
     # makes a bill look as though nothing happened on the floor.
+    #
+    # AND A DIVISION ON AN AMENDMENT, AND A VOTE ON A CONFERENCE REPORT (the
+    # launch audit of 7 October 2026, cause 16). "Amendment # 2025-2406h: AF
+    # DV 153-185" (SB 222 of 2025) and "FLAM # 2026-1971h(NT) ...: AA DV" are
+    # counted votes of the floor, and the tab took floor motions alone, so 105
+    # divisions on amendments of 2025-2026 had no card; nor did a chamber's
+    # voice or division vote on a conference report, which narrative.py now
+    # reads ("conf_report"). Asked in the roll call file's own words for the
+    # same questions, "Adopt Floor Amendment", "Adopt Committee Amendment",
+    # "Adopt Amendment", "Adopt Conference Committee Report", with the
+    # number beside it. An amendment's voice vote is not drawn: 1,508 of
+    # 2025-2026, most a committee's amendment adopted without a word; nor a
+    # vote on part of one, whose question is not the amendment's.
     VK = {"VV": ("voice vote", False), "DV": ("division vote", False)}
     for _i, e in enumerate((narr or {}).get("events", [])):
-        if e.get("type") != "floor" or e.get("cancelled"):
+        if e.get("cancelled"):
             continue
-        kind = VK.get(e.get("vote_kind"))
+        vk = "DV" if (e.get("vote_kind") or "").upper() in ("DV", "DIV") else e.get("vote_kind")
+        number = None
+        if e.get("type") == "amendment":
+            said = _amendment_said(e)
+            if (vk != "DV" or not (e.get("yeas") and e.get("nays")) or said is None
+                    or e.get("part") == "some"):
+                continue
+            k = (e.get("amend_kind") or "").lower()
+            question = ("Adopt Floor Amendment" if "floor" in k
+                        else "Adopt Committee Amendment" if "committee" in k
+                        else "Adopt Amendment")
+            passed, number = said, (e.get("amendment") or "").strip() or None
+        elif e.get("type") == "conf_report":
+            question = "Adopt Conference Committee Report"
+            passed, number = e.get("motion") == "MA", (e.get("amendment") or "").strip() or None
+        elif e.get("type") == "floor":
+            question = e.get("action") or "Floor action"
+            passed = e.get("motion") in ("MA", "AA")
+        else:
+            continue
+        kind = VK.get(vk)
         if not kind:
             continue          # RC is already covered by the roll call file
         label, _ = kind
         y, n = e.get("yeas"), e.get("nays")
         rc_out.append({
             "date": e["date"], "body": e.get("body"),
-            "question": e.get("action") or "Floor action",
+            "question": question,
             # Who made the motion, split off the question by narrative.py so
             # the Senate's "Sen. Abbas Moved Laid on Table" reads as a motion
             # to lay on the table, moved by Abbas. Roll calls from the roll
             # call file never carry one; the page prints it only when present.
             "mover": e.get("mover") or "",
             "yeas": int(y) if y else None, "nays": int(n) if n else None,
-            "passed": e.get("motion") in ("MA", "AA"),
-            "vote_kind": e.get("vote_kind"), "vote_kind_label": label,
+            "passed": passed,
+            "vote_kind": vk, "vote_kind_label": label,
             "threshold_note": None, "tally": {}, "members": [],
-            "amendment": None, "_ord": (e["date"], _i),
+            # The amendment's or the report's number, beside the question.
+            "amendment": number, "_ord": (e["date"], _i),
         })
     # By the docket's own sequence, not by the wording of the motion.
     rc_out.sort(key=lambda r: r["_ord"])

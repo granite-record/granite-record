@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.103
+# GRANITE_VERSION: 2026-09-04.104
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -6061,6 +6061,10 @@ def build(bill, rows, introduction=None):
                                        or (e.get("what") or "").strip()),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
+                        # And its count, for the Votes tab's card of a
+                        # division (build_site_v2.bill_rollcalls; the launch
+                        # audit of 7 October 2026, cause 16).
+                        "yeas": e.get("y"), "nays": e.get("n"),
                         "mover": (e.get("mover") or "").strip(),
                         # Decided again by a later clause of the same line
                         # (docket_vocab.questions): this outcome did not stand.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.458
+# GRANITE_VERSION: 2026-09-04.459
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2815,6 +2815,68 @@ def _committee_amendment_on_the_floor(N):
     assert not bad, "\n".join(bad)
     return "ok", ("SB 17, HB 658 and HB 154 of 2025 and HB 1384 of 2026 tell the committee's "
                   "amendment on the Senate floor, in order, once, and HB 1384's votes taken again")
+
+
+# A DIVISION ON AN AMENDMENT, AND A VOTE ON A CONFERENCE REPORT, ON THE VOTES
+# TAB (the launch audit of 7 October 2026, cause 16). Real rows: Docket.txt
+# lines 9527-9528, 9779 and 9785 (SB 222 of 2025), 10486 (SB 97 of 2025),
+# 6162 (HB 10 of 2025), 19735 (HB 1449 of 2026); HB 1300 of 2026's are
+# _DOCKET_CONF_REPORT's.
+_DOCKET_VOTES_TAB = {
+    ("SB222", "2025-2026"): [
+        "2025|0423|5/28/2025 3:13:59 PM|SB222|H|Majority Committee Report: Ought to Pass  05/27/2025 (Vote 10-8; RC)  HC 27  P. 20|5/30/2025 2:03:20 PM",
+        "2025|0423|5/28/2025 3:14:41 PM|SB222|H|Minority Committee Report: Ought to Pass with Amendment # 2025-2406h|5/28/2025 3:14:41 PM",
+        "2025|0423|6/5/2025 5:18:07 PM|SB222|H|Amendment # 2025-2406h: AF DV 153-185 06/05/2025  HJ 16  P. 131|7/14/2025 11:00:59 AM",
+        "2025|0423|6/5/2025 5:29:41 PM|SB222|H|Ought to Pass: MF DV 168-170 06/05/2025  HJ 16  P. 132|7/14/2025 11:01:24 AM"],
+    ("SB97", "2025-2026"): [
+        "2025|0989|6/26/2025 11:00:08 AM|SB97|H|Conference Committee Report 2025-2770c: Adopted, DV 207-163 06/26/2025  HJ 18  P. 16|10/21/2025 10:47:02 AM"],
+    ("HB10", "2025-2026"): [
+        "2025|0042|3/20/2025 11:19:24 AM|HB10|H|FLAM # 2025-1152h  (Rep. Raymond): AF DV 163-209 03/20/2025  HJ 9  P. 23|4/22/2025 9:24:05 AM"],
+    ("HB1449", "2025-2026"): [
+        "2026|2787|3/11/2026 5:51:02 PM|HB1449|H|Amendment # 2026-0989h: AA VV 03/11/2026  HJ 7  P. 190|6/23/2026 10:42:29 AM"],
+    ("HB1300", "2025-2026"): _DOCKET_CONF_REPORT[("HB1300", "2025-2026")],
+}
+
+
+@check("narrative", "the Votes tab draws a division on an amendment and a voice or division vote "
+                    "on a conference report, from the docket's own count",
+       needs=("narrative", "build_site_v2"))
+def _votes_tab_amendments(N, B):
+    """The launch audit's cause 16: the Votes tab drew voice and division
+    votes from floor motions alone, so "Amendment # 2025-2406h: AF DV 153-185"
+    (SB 222 of 2025, the vote that decided what the House voted on next) had
+    no card, nor any of 105 divisions on amendments of 2025-2026, nor a
+    chamber's voice or division vote on a conference report. Each is drawn,
+    asked in the roll call file's own words for the same questions, with its
+    number and the docket's count. A roll call is the roll call file's (HB
+    1300 of 2026's conference votes), and an amendment's voice vote is not
+    drawn (HB 1449 of 2026's committee amendment)."""
+    want = {
+        "SB222": [("2025-06-05", "H", "DV", "Adopt Amendment", "2025-2406h", False, 153, 185),
+                  ("2025-06-05", "H", "DV", "Ought to Pass", None, False, 168, 170)],
+        "SB97": [("2025-06-26", "H", "DV", "Adopt Conference Committee Report", "2025-2770c",
+                  True, 207, 163)],
+        "HB10": [("2025-03-20", "H", "DV", "Adopt Floor Amendment", "2025-1152h", False, 163, 209)],
+        "HB1449": [],
+        "HB1300": [],
+    }
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_VOTES_TAB.items():
+            rec = _narrated(N, term, bill, rows)
+            got = [(v["date"], v["body"], v["vote_kind"], v["question"], v["amendment"],
+                    v["passed"], v["yeas"], v["nays"])
+                   for v in B.bill_rollcalls(bill, term, [], rec, {}, [], {})]
+            if got != want[bill]:
+                bad.append(f"{bill} of {term}'s Votes tab: {got}, not {want[bill]}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 222's division on 2025-2406h, HB 10's on a floor amendment and SB 97's on "
+                  "its conference report have cards; HB 1300's roll calls and HB 1449's voice vote "
+                  "on an amendment do not")
 
 
 # A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October
