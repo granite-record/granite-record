@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.449
+# GRANITE_VERSION: 2026-09-04.450
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2286,6 +2286,109 @@ def _tabled_before_third_reading(N, B, SD):
                   "HB 726 of 2019 tabled before their third reading, and not passed; SB 210 "
                   "and HB 1601 of 2018 passed; HB 282 of 2025, SB 173 of 2024 and SB 144 of 2015 "
                   "passed on the day the pending order carried")
+
+
+# A CROSSING DATED BEFORE THE VOTE THAT SENT IT (the launch audit of 7 October
+# 2026, cause 7). Real rows: Docket.txt lines 12777, 13583, 13599,
+# 15625-15626, 16558, 16976, 17077, 19589, 19953 and 20582 (HB 1460 of 2026);
+# 40, 3090, 5373, 6083, 6411 and 6895 (HB 70 of 2025); Docket_2023-2024.txt
+# 15974-15992 and 15999 (SB 1 of 2023).
+_DOCKET_CROSSED_LATE = {
+    ("HB1460", "2025-2026"): [
+        "2026|3231|12/4/2025 4:06:28 PM|HB1460|H|  Introduced 01/07/2026 and referred to Children and Family Law  HJ 1  P. 21|3/25/2026 12:47:11 PM",
+        "2026|3231|1/8/2026 2:09:15 PM|HB1460|H|Public Hearing: 01/20/2026 01:00 pm GP 230|1/8/2026 2:09:15 PM",
+        "2026|3231|1/8/2026 2:11:21 PM|HB1460|H|Executive Session: 01/27/2026 10:00 am GP 230|1/8/2026 2:11:21 PM",
+        "2026|3231|2/2/2026 3:06:30 PM|HB1460|H|Majority Committee Report: Ought to Pass  01/27/2026 (Vote 9-7; RC)  HC 6  P. 10|2/6/2026 2:03:39 PM",
+        "2026|3231|2/2/2026 3:06:45 PM|HB1460|H|Minority Committee Report: Refer for Interim Study|2/2/2026 3:06:45 PM",
+        "2026|3231|2/12/2026 10:49:51 AM|HB1460|H|Referred to Finance 02/12/2026  HJ 4  P. 14|4/22/2026 9:55:26 AM",
+        "2026|3231|2/12/2026 10:49:45 AM|HB1460|H|Ought to Pass: MA RC 214-145 02/12/2026  HJ 4  P. 12|4/22/2026 9:55:14 AM",
+        "2026|3231|2/13/2026 1:53:41 PM|HB1460|S|  Introduced 02/05/2026 and Referred to Children and Family Law;  SJ 4|3/10/2026 2:40:33 PM",
+        "2026|3231|3/10/2026 2:37:27 PM|HB1460|H|Referral Waived by Committee Chair per House Rule 47(f) 02/12/2026  HJ 4  P. 62|4/22/2026 10:17:29 AM",
+        "2026|3231|3/12/2026 12:11:32 PM|HB1460|S|  Hearing: 03/19/2026, Room 100, SH, 10:00 am;  SC 10|3/12/2026 12:11:32 PM",
+        "2026|3231|3/23/2026 11:44:01 AM|HB1460|S|Committee Report: Ought to Pass, 04/09/2026; Vote 3-0; CC;  SC 13|4/1/2026 8:55:31 AM"],
+    ("HB70", "2025-2026"): [
+        "2025|0057|12/23/2024 3:28:21 PM|HB70|H|  Introduced 01/08/2025 and referred to Health, Human Services and Elderly Affairs  HJ 2  P. 4|1/21/2025 1:24:33 PM",
+        "2025|0057|2/13/2025 8:14:42 AM|HB70|H|Public Hearing: 02/19/2025 09:30 am LOB 202-204|2/13/2025 8:14:42 AM",
+        "2025|0057|3/13/2025 9:32:07 AM|HB70|H|Executive Session: 03/19/2025 09:30 am LOB 201|3/13/2025 9:32:07 AM",
+        "2025|0057|3/19/2025 2:56:53 PM|HB70|H| Committee Report: Ought to Pass  03/19/2025 (Vote 18-0; CC)  HC 17  P. 19|3/21/2025 10:17:57 AM",
+        "2025|0057|3/26/2025 11:02:34 AM|HB70|H|Ought to Pass: MA VV 03/26/2025  HJ 10  P. 32|5/13/2025 3:01:31 PM",
+        "2025|0057|3/28/2025 8:03:45 AM|HB70|S|  Introduced 03/27/2025 and Referred to Health and Human Services;  SJ 10|3/28/2025 8:03:45 AM"],
+    ("SB1", "2023-2024"): [
+        "2023|0931|1/4/2023 12:00:00 AM|SB1|S|Introduced 01/04/2023 and Referred to Judiciary; SJ 3|1/4/2023 12:00:00 AM",
+        "2023|0931|1/5/2023 12:00:00 AM|SB1|S|Hearing: 01/12/2023, Room 100, SH, 10:00 am; SC 5|1/5/2023 12:00:00 AM",
+        "2023|0931|1/17/2023 12:00:00 AM|SB1|S|Committee Report: Ought to Pass with Amendment #2023-0055s , 01/19/2023; SC 6A|1/17/2023 12:00:00 AM",
+        "2023|0931|1/19/2023 12:00:00 AM|SB1|S|Committee Amendment #2023-0055s , AA, VV; 01/19/2023; SJ 4|1/19/2023 12:00:00 AM",
+        "2023|0931|1/19/2023 12:00:00 AM|SB1|S|Ought to Pass with Amendment 2023-0055s, RC 22Y-2N, MA; Refer to Finance Rule 4-5; 01/19/2023; SJ 4|1/19/2023 12:00:00 AM",
+        "2023|0931|1/24/2023 12:00:00 AM|SB1|S|Committee Report: Ought to Pass with Amendment #2023-0124s , 01/26/2023; SC 7A|1/24/2023 12:00:00 AM",
+        "2023|0931|1/26/2023 12:00:00 AM|SB1|S|Committee Amendment #2023-0124s , AA, VV; 01/26/2023; SJ 5|1/26/2023 12:00:00 AM",
+        "2023|0931|1/26/2023 12:00:00 AM|SB1|S|Ought to Pass with Amendment 2023-0124s, MA, VV; OT3rdg; 01/26/2023; SJ 5|1/26/2023 12:00:00 AM",
+        "2023|0931|1/27/2023 12:00:00 AM|SB1|H|==CANCELLED== Public Hearing: 02/08/2023 10:00 am LOB 210-211|1/27/2023 12:00:00 AM",
+        "2023|0931|1/27/2023 12:00:00 AM|SB1|H|==CANCELLED== Executive Session: 02/08/2023 10:45 am LOB 210-211|1/27/2023 12:00:00 AM",
+        "2023|0931|2/2/2023 12:00:00 AM|SB1|H|Public Hearing: 02/09/2023 10:00 am LOB 210-211|2/2/2023 12:00:00 AM",
+        "2023|0931|2/2/2023 12:00:00 AM|SB1|H|Executive Session: 02/09/2023 01:30 pm LOB 210-211|2/2/2023 12:00:00 AM",
+        "2023|0931|2/2/2023 12:00:00 AM|SB1|H|Division Work Session: 02/09/2023 11:30 am LOB 210-211|2/2/2023 12:00:00 AM",
+        "2023|0931|2/9/2023 12:00:00 AM|SB1|H|Committee Report: Ought to Pass with Amendment #2023-0465h (NT) 02/09/2023 (Vote 23-0; RC) HC 11|2/9/2023 12:00:00 AM",
+        "2023|0931|2/14/2023 12:00:00 AM|SB1|H|Amendment #2023-0465h : AA VV 02/14/2023 HJ 5|2/14/2023 12:00:00 AM",
+        "2023|0931|2/14/2023 12:00:00 AM|SB1|H|Ought to Pass with Amendment 2023-0465h: MA VV 02/14/2023 HJ 5|2/14/2023 12:00:00 AM",
+        "2023|0931|2/14/2023 12:00:00 AM|SB1|H|Rules Suspension to allow for immediate third reading MA obtaining necessary 2/3 MA VV 02/14/2023 HJ 5 P. 14|2/14/2023 12:00:00 AM",
+        "2023|0931|2/14/2023 12:00:00 AM|SB1|H|Adopted and read a 3rd time MA VV 02/14/2023 HJ 5 P. 14|2/14/2023 12:00:00 AM",
+        "2023|0931|2/14/2023 12:00:00 AM|SB1|S|Sen. Carson Moved to Concur with the House Amendment, MA, VV; 02/14/2023; SJ 7|2/14/2023 12:00:00 AM",
+        "2023|0931|4/19/2023 12:00:00 AM|SB1|H|Introduced (in recess of) 01/05/2023 and referred to Finance HJ 3 P. 25|4/19/2023 12:00:00 AM"],
+}
+
+
+@check("narrative", "a chamber's introduction dated before the other chamber's vote that sent "
+                    "the bill is told after that vote, with the day the chamber gives it",
+       needs=("narrative",))
+def _crossed_after_passage(N):
+    """The launch audit's cause 7: the Senate introduces the House's bills in
+    recess and dates them by the session it is in recess of. HB 1460 of 2026
+    passed the House on 12 February; the Senate's row, entered on the 13th,
+    reads "Introduced 02/05/2026", and the history said it crossed to the
+    Senate on 5 February, before the House's vote -- on 51 histories of
+    2025-2026 and 1,387 older ones. It is now told after the vote that sent
+    it, the day kept as the Senate's own (narrative.crossing_order), and the
+    event, the docket list and the rail keep the row's day. Only the votes up
+    to the receiving chamber's next row: SB 1 of 2023's House introduction
+    was entered in April, after the Senate concurred on 14 February, and is
+    told after the Senate's passage of 26 January. A crossing dated after the
+    vote (HB 70 of 2025) is told as it was."""
+    want = {
+        "HB1460": ("On February 12, 2026 the House voted to pass it on a roll call 214–145.",
+                   "It crossed to the Senate and was referred to the Senate Children and Family "
+                   "Law committee; the Senate records the introduction under its session of "
+                   "February 5, 2026.", "The committee held a public hearing on March 19, 2026."),
+        "SB1": ("On January 26, 2023 the Senate voted to pass it with changes on a voice vote and "
+                "ordered it to a third reading.",
+                "It crossed to the House and was referred to the House Finance committee; the "
+                "House records the introduction under its session of January 5, 2023.",
+                "The committee held a public hearing on February 9, 2023."),
+        "HB70": ("On March 26, 2025 the House voted to pass it on a voice vote.",
+                 "It crossed to the Senate on March 27, 2025 and was referred to the Senate "
+                 "Health and Human Services committee.", ""),
+    }
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_CROSSED_LATE.items():
+            rec = _narrated(N, term, bill, rows)
+            told = rec.get("narrative") or ""
+            before, crossed, after = want[bill]
+            at = [told.find(s) for s in (before, crossed) + ((after,) if after else ())]
+            if -1 in at or at != sorted(at):
+                bad.append(f"{bill} of {term} does not tell {crossed!r} after {before!r}: "
+                           f"{told!r}")
+            intro = [e for e in rec["events"] if e["type"] == "introduced"]
+            if [e["date"] for e in intro][1:] != [{"HB1460": "2026-02-05", "SB1": "2023-01-05",
+                                                    "HB70": "2025-03-27"}[bill]]:
+                bad.append(f"{bill} of {term}'s introductions are dated "
+                           f"{[e['date'] for e in intro]}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, on the "
+                  "day the receiving chamber gives; HB 70 of 2025 as it was")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
@@ -9062,11 +9165,18 @@ def _introductions_read_from_the_journal(N, B):
         ("2005-2006", "HB1615"), ("2007-2008", "HB332"), ("2007-2008", "HR3"),
         ("2007-2008", "HR6"), ("2015-2016", "HB1"), ("2021-2022", "CACR21")], sorted(N.INTRODUCED_ON)
     # CACR 21's history opens with the House introducing it, and the Senate's
-    # row is the crossing it is; it was acted on in 2022 alone.
+    # row is the crossing it is, told after the House's vote of 10 March that
+    # sent it, with the day the Senate gives it (narrative.crossing_order); it
+    # was acted on in 2022 alone.
     c21 = narr[("2021-2022", "CACR21")]
+    crossed = ("It crossed to the Senate and was referred to the Senate Executive Departments "
+               "and Administration committee; the Senate records the introduction under its "
+               "session of February 24, 2022.")
     if not c21["narrative"].startswith(
             "It was introduced on January 5, 2022 and referred to the House Judiciary "
-            "committee.") or "It crossed to the Senate on February 24, 2022" not in c21["narrative"]:
+            "committee.") or crossed not in c21["narrative"] or not (
+            0 <= c21["narrative"].find("On March 10, 2022 the House voted to pass it")
+            < c21["narrative"].find(crossed)):
         bad.append("CACR21 of 2022 is told: " + c21["narrative"][:200])
     if c21["events"][0]["type"] != "introduced" or {
             d[:4] for d in B.action_dates(c21["events"])} != {"2022"}:

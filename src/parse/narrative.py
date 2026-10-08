@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.94
+# GRANITE_VERSION: 2026-09-04.95
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2698,6 +2698,12 @@ def describe(ev, body, seen_intro=False):
               else f"the {ev['committee']}"
               if re.match(r"Joint\s+(?:Legislative\s+)?Committee\s+on\b", ev.get("committee") or "")
               else f"the {chamber} {_committee(ev, body)}")
+        if seen_intro and ev.get("_crossed_late"):
+            # Told after the vote that sent it (crossing_order), and its day
+            # kept as the receiving chamber's own: the chamber introduced it in
+            # recess and dates it by the session it was in recess of.
+            return (f"It crossed to the {chamber} and was referred to {to}; the {chamber} "
+                    f"records the introduction under its session of {fdate(ev['date'])}.")
         if seen_intro:
             # Crossover: the second chamber records receipt as an introduction.
             return (f"It crossed to the {chamber} on {fdate(ev['date'])} and was "
@@ -3284,6 +3290,52 @@ def day_order(ev):
     defeat last -- which is how the bill's journey came to end in the House
     with a rejection, on a bill that became law."""
     return (ev["when"].date(), ev.get("_row", 0))
+
+
+# A CHAMBER INTRODUCES A BILL AFTER THE OTHER HAS SENT IT, WHATEVER DAY ITS
+# ROW GIVES (the launch audit of 7 October 2026, cause 7). The Senate
+# introduces the House's bills in recess and dates them by the session it is
+# in recess of: HB 1460 of 2026 passed the House on 12 February (Docket.txt
+# line 16976), and the Senate's row, entered on the 13th, reads "Introduced
+# 02/05/2026" (line 17077) -- Senate Journal 4 prints it under pages headed 5
+# February, "Adopted in recess". Told by its date, the history had it cross a
+# week before the House voted, on 51 bills of 2025-2026, and the House does
+# the same with Senate bills in every term since 1991 ("03/17/94 INTRODUCED
+# AND REF TO APPROP", SB 504 of 1994, entered on the 23rd after the Senate's
+# vote of the 22nd). So the receiving chamber's introduction, dated before a
+# vote of the sending chamber that was entered before it, is told after the
+# last such vote and the sending chamber's other rows of that day; its date,
+# the docket list and the rail are as they were. Only the votes up to the
+# receiving chamber's next row: SB 1 of 2023's House introduction was entered
+# in April, after the Senate concurred on 14 February, and the vote that sent
+# it was the Senate's of 26 January.
+def crossing_order(evs):
+    """The bill's events in the order its history tells them (above)."""
+    first, moves = None, []
+    for e in evs:
+        if e["cancelled"] or e["_type"] != "introduced":
+            continue
+        if first is None:
+            first = e
+            continue
+        day = e["when"].date()
+        limit = min((x["when"].date() for x in evs if x is not e and x["body"] == e["body"]
+                     and x["when"].date() > day), default=None)
+        sent = [f["when"].date() for f in evs
+                if f is not e and not f["cancelled"] and f["body"] != e["body"]
+                and f["_type"] == "floor" and _entered_before(f, e["_entered"])
+                and f["when"].date() > day and (limit is None or f["when"].date() <= limit)]
+        if sent:
+            moves.append((e, max(sent)))
+    out = list(evs)
+    for e, last in moves:
+        out = [x for x in out if x is not e]
+        sender = OTHER_CHAMBER.get(e["body"])
+        j = max((i for i, x in enumerate(out)
+                 if x["body"] == sender and x["when"].date() <= last), default=-1)
+        out.insert(j + 1, e)
+        e["_crossed_late"] = True
+    return out
 
 
 def notice_note(ev):
@@ -5153,7 +5205,7 @@ def build(bill, rows, introduction=None):
     # reconsidered, and nothing after. The repeat says "again", which is what
     # happened and is also what keeps it.
     told_on_line = set()
-    for ev in evs:
+    for ev in crossing_order(evs):
         if ev["cancelled"]:
             continue
         s = describe(ev, ev["body"], seen_intro)
