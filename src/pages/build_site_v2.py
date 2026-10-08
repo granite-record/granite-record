@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.175
+# GRANITE_VERSION: 2026-09-05.176
 """
 Generate the faceted site from real General Court data.
 
@@ -10193,7 +10193,10 @@ def main():
         for e in (narr or {}).get("events", []):
             if e.get("cancelled") or not e.get("date") or e["date"] > today:
                 continue
+            # The year the bill's own page is filed under (/bill/<year>/), which
+            # a link to it needs and the day of the action does not give.
             actions.append({"date": e["date"], "bill": b["id"], "n": b["n"],
+                            "year": b.get("year") or "",
                             "title": b["title"][:110], "what": e.get("raw", "")[:150]})
     actions.sort(key=lambda x: x["date"], reverse=True)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.457
+# GRANITE_VERSION: 2026-09-04.458
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47055,6 +47055,33 @@ def _speaker_page_says_so(B):
     assert '<p class="pmeta">House of Representatives &middot; District 16' in floor, (
         "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
     return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
+
+
+@check("frontend", "Latest activity on the home page links each bill to its own page",
+       needs=("build_pages", "build_site_v2"))
+def _latest_activity_links_the_bill(BP, B):
+    """Latest activity's "SB 256-FN" led to the search list, bills.html#SB256
+    (the survey of 7 October 2026), where any bill is a search away and a
+    number another term shares opens on whichever the list shows first. Each
+    row now carries the year its bill is filed under, and both renderers --
+    the static list build_pages writes and HOME_JS, which redraws it --
+    link /bill/<year>/<bill>.html."""
+    import inspect
+    assert BP.recent_href({"bill": "SB256", "year": 2025, "n": "SB 256-FN"}) == \
+        "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
+    assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
+    src = inspect.getsource(BP)
+    static = src[src.index("static_recent = ('<h2>Latest activity</h2>"):]
+    static = static[:static.index("RECENT_MORE")]
+    assert "recent_href(r)" in static and "bills.html#" not in static, (
+        "the static Latest activity still links the search list")
+    js = BP.HOME_JS[BP.HOME_JS.index('getElementById("recent")'):]
+    js = js[:js.index("</ul>")]
+    assert "bill/${r.year}/${String(r.bill).toLowerCase()}.html" in js and (
+        js.count("bills.html#") == 1), "HOME_JS's Latest activity still links the search list"
+    assert '"year": b.get("year") or ""' in inspect.getsource(B), (
+        "home.json's recent rows do not carry the year their bill is filed under")
+    return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
 
 
 @check("data", "the member in the Speaker's chair is Speaker of the House in his own file, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.158
+# GRANITE_VERSION: 2026-09-04.159
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -362,6 +362,16 @@ REPO = "https://github.com/granite-record/granite-record"
 RECENT_SHOWN = 5
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
+
+
+def recent_href(r):
+    """Where a Latest activity row's bill number leads: the bill's own page,
+    under the year it is filed in. It led to the search list, bills.html#SB256
+    (the survey of 7 October 2026), which opens on whichever SB 256 the list
+    shows first. A row from before home.json carried the year keeps that
+    address. HOME_JS draws the same."""
+    year, bid = str(r.get("year") or ""), str(r.get("bill") or "")
+    return f"bill/{year}/{bid.lower()}.html" if year and bid else f"bills.html#{bid}"
 
 # THE COLOURS ARE THE GENERAL COURT'S OWN, because staff already read its
 # schedule by them: blue a hearing, green a work session, orange an executive
@@ -2702,7 +2712,8 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
     <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
       `<li><span class="actd">${fd(r.date)}</span>
-       <span class="actb"><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
+       <span class="actb"><a href="${esc(r.year?`bill/${r.year}/${String(r.bill).toLowerCase()}.html`
+         :`bills.html#${r.bill}`)}">${esc(r.n)}</a>
        <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
        <span style="font-size:12px">${esc(r.what)}</span></span></li>`).join("")}
     </ul>
@@ -3437,7 +3448,7 @@ party or committee to find a member.</p>
         # row: the day, and what happened. HOME_JS draws the same markup.
         static_recent = ('<h2>Latest activity</h2><ul class="actlist">' + "".join(
             f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
-            f'<a href="bills.html#{esc(r.get("bill"))}">{esc(r.get("n"))}</a> '
+            f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
             f'{esc(r.get("title"))}<br><span style="font-size:12px">'
             f'{esc(r.get("what"))}</span></span></li>'
             for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
