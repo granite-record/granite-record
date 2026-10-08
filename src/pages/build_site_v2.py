@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.175
+# GRANITE_VERSION: 2026-09-05.176
 """
 Generate the faceted site from real General Court data.
 
@@ -3433,6 +3433,28 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
         # line again says nothing new.
         if e.get("side") and any(x.get("side") == e["side"]
                                  for r in recs for x in (r.get("reports") or [])):
+            continue
+        # A HOUSE REPORT ROW THE CLERK ENTERED WITH NO CALENDAR CITED is the
+        # calendar's written report of the same committee, recommendation and
+        # vote, printed within sixty days after the day the row says it was
+        # signed: "Committee Report: Inexpedient to Legislate 03/03/2025 (Vote
+        # 18-0; CC)" on HB 125 of 2025 is House Calendar 15's report of 7
+        # March, and was shown again below it saying its calendar had not been
+        # read (the launch audit of 7 October 2026: 180 bills of 2025-2026).
+        # Not SB 110 of 2025's Ways and Means report, 15-1 like Resources' a
+        # month before it.
+        signed_on = _mdy(e.get("report_date")) or e.get("date", "")
+        if (e.get("body") == "H" and not e.get("cite") and signed_on
+                and any((r.get("body") or "H") == "H" and r.get("date")
+                        and 0 <= _j_days(r["date"][:10], signed_on[:10]) <= 60
+                        and any(rec_key(r.get("minority_recommendation" if x.get("side") == "Minority"
+                                              else "majority_recommendation"))
+                                == rec_key(e.get("recommendation"))
+                                and x.get("committee") == e.get("committee")
+                                and str(x.get("vote_yeas")) == str(e.get("yeas"))
+                                and str(x.get("vote_nays")) == str(e.get("nays"))
+                                for x in (r.get("reports") or []))
+                        for r in out)):
             continue
         docket.append({
             "date": _mdy(e.get("report_date")) or e.get("date", ""),

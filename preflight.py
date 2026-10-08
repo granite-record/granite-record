@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.459
+# GRANITE_VERSION: 2026-09-04.460
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2877,6 +2877,62 @@ def _votes_tab_amendments(N, B):
     return "ok", ("SB 222's division on 2025-2406h, HB 10's on a floor amendment and SB 97's on "
                   "its conference report have cards; HB 1300's roll calls and HB 1449's voice vote "
                   "on an amendment do not")
+
+
+# A HOUSE REPORT SHOWN TWICE (the launch audit of 7 October 2026). Real rows:
+# Docket.txt lines 106 and 4580 (HB 125 of 2025); committee_reports.json's
+# House Calendar 15 report of it; calendars.json's address of that calendar.
+_DOCKET_REPORT_TWICE = [
+    "2025|0104|1/6/2025 8:34:22 AM|HB125|H|  Introduced 01/08/2025 and referred to Municipal and County Government  HJ 2  P. 7|1/21/2025 1:54:01 PM",
+    "2025|0104|3/5/2025 3:58:03 PM|HB125|H| Committee Report: Inexpedient to Legislate  03/03/2025 (Vote 18-0; CC)|3/5/2025 3:58:03 PM"]
+_REPORT_TWICE_WRITTEN = [{
+    "bill": "HB125", "title": "relative to electing Strafford county commissioners at-large",
+    "majority_recommendation": "INEXPEDIENT TO LEGISLATE", "minority_recommendation": None,
+    "reports": [{"side": "Committee", "author": "Rep. David Fracht",
+                 "committee": "Municipal and County Government", "vote_yeas": 18, "vote_nays": 0,
+                 "text": "This bill proposes to elect Strafford County Commissioners \"at large.\""}],
+    "source": "House Calendar 15, 2025"}]
+_REPORT_TWICE_SOURCES = {"HC 15 2025": "https://gc.nh.gov/house/calendars_journals/viewer.aspx?"
+                                       "fileName=calendars%5C2025%5CNo15%20March%2007%202025.pdf"}
+
+
+@check("narrative", "a House report row with no calendar cited is not listed a second time "
+                    "beside the calendar's written report of it",
+       needs=("narrative", "build_site_v2"))
+def _house_report_once(N, B):
+    """The launch audit's wording finding: " Committee Report: Inexpedient to
+    Legislate 03/03/2025 (Vote 18-0; CC)" (HB 125 of 2025) cites no calendar,
+    so committee_reports could not join it to House Calendar 15's written
+    report of the same committee, recommendation and vote, printed four days
+    later, and listed it again below it saying its calendar had not been read
+    -- "Reports (2)" on 180 bills of 2025-2026 and 302 of 2023-2024. A row is
+    that report where the written one is of the same committee,
+    recommendation and vote, printed within sixty days after the day the row
+    was signed; one with another vote, or printed too long after, is still
+    listed."""
+    keep = N.MEMBERS
+    bad = []
+    try:
+        N.MEMBERS = {}
+        rec = _narrated(N, "2025-2026", "HB125", _DOCKET_REPORT_TWICE)
+    finally:
+        N.MEMBERS = keep
+    written, docket, _ = B.committee_reports(_REPORT_TWICE_WRITTEN, rec, _REPORT_TWICE_SOURCES,
+                                             "Municipal and County Government", "")
+    if len(written) != 1 or docket:
+        bad.append(f"HB 125 of 2025's reports: {len(written)} written, docket {docket!r}")
+    # Another vote, and a calendar printed too long after: listed.
+    other = [dict(_REPORT_TWICE_WRITTEN[0], reports=[dict(_REPORT_TWICE_WRITTEN[0]["reports"][0],
+                                                          vote_yeas=17, vote_nays=1)])]
+    late = {"HC 15 2025": _REPORT_TWICE_SOURCES["HC 15 2025"].replace("March%2007", "June%2007")}
+    for name, recs, src in (("another vote", other, _REPORT_TWICE_SOURCES),
+                            ("a calendar of June", _REPORT_TWICE_WRITTEN, late)):
+        _w, docket, _ = B.committee_reports(recs, rec, src, "Municipal and County Government", "")
+        if len(docket) != 1:
+            bad.append(f"with {name}, HB 125's docket report is not listed: {docket!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 125 of 2025's report is listed once, as House Calendar 15 printed it; with "
+                  "another vote or a calendar months later the docket's row is listed too")
 
 
 # A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October
