@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.11
+# GRANITE_VERSION: 2026-09-13.12
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -389,7 +389,7 @@ def find_index(site, legs, towns):
             ("Bill search", "bills.html", "Every bill since 1989"),
             ("Legislators", "legislators.html", "The sitting roster, by town or name"),
             ("Committees", "committees.html", "Every committee and what it did"),
-            ("How New Hampshire works", "learn.html", "The Learn pages"),
+            ("Learn", "learn.html", "How New Hampshire's government works"),
             ("The data, as tables", "data.html", "Every table as CSV"),
             ("The whole record, as lists", "directory.html", "Plain lists of every page"),
             ("About this site", "about.html", "How it is made, and by whom")):
@@ -436,7 +436,7 @@ def main():
             f'<li><a href="{S.canon("directory/towns.html")}">Every town and ward</a> '
             f'<span class="dircount">{n_town}</span></li>',
             f'<li><a href="{S.canon("committees.html")}">Every committee</a></li>',
-            f'<li><a href="{S.canon("learn.html")}">How New Hampshire works</a></li>',
+            f'<li><a href="{S.canon("learn.html")}">Learn</a></li>',
             f'<li><a href="{S.canon("data.html")}">The data, as tables</a></li></ul>']
     if n_days:
         import build_session_pages as BSP

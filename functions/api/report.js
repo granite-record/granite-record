@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.6
+// GRANITE_VERSION: 2026-09-12.7
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -54,7 +54,8 @@ export const FIELDS = new Set(["date", "status", "sponsor", "vote", "hearing",
 // The tabs the pages render. compile_reports.TABS is the same list, and
 // preflight holds the two together.
 export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Videos", "Reports",
-  "Sponsors", "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions"]);
+  "Sponsors", "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions",
+  "Meetings"]);
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,

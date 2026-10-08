@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.162
+// GRANITE_VERSION: 2026-09-07.163
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5058,7 +5058,7 @@ const REPORT_TO="contact@graniterecord.org";
 // The tabs the pages render. The Function accepts no other value, so a tab
 // renamed here and not there sends "", rather than having the report dropped.
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Videos","Reports","Sponsors",
-  "Documents","Prime sponsored","Co-sponsored","Bills","Sessions"]);
+  "Documents","Prime sponsored","Co-sponsored","Bills","Sessions","Meetings"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){
@@ -6275,7 +6275,7 @@ function sessionHtml(s,si){
   // it changes when the term picker moves. The date does neither.
   return `<section class="cday" id="${esc(dayId(s.date))}">
     <h3><a class="daylink" href="#${esc(dayId(s.date))}"
-      title="A link to this sitting">${esc(dateWords(s.date))}</a></h3>
+      title="A link to this meeting">${esc(dateWords(s.date))}</a></h3>
     <p class="cnarr">${esc(s.narrative||"")}</p>
     ${player}
     <ul class="tl">${items.map(i=>{
@@ -6551,16 +6551,16 @@ function renderCommitteeUpcoming(c){
   // MOSTLY (the survey of 7 October 2026): both chambers sat until veto day,
   // 19 August, in 2026, and into the autumn in most years.
   if(!rows.length)
-    return `<section class="cal"><h2>Upcoming session</h2>
+    return `<section class="cal"><h2>Upcoming meeting</h2>
       <p class="note">Nothing is scheduled for this committee in the next two
       weeks. The General Court sits mostly from January to June.</p></section>`;
-  return calendarBlock(rows,"Upcoming session");
+  return calendarBlock(rows,"Upcoming meeting");
 }
 
 function renderCommittee(c){
   // Counted for the term the page is showing, not across every term. "Bills
   // (107)" over a list of 32 is the tab disagreeing with itself.
-  const tabs=[["Bills",cmteBills(c).length],["Sessions",cmteSessions(c).length]];
+  const tabs=[["Bills",cmteBills(c).length],["Meetings",cmteSessions(c).length]];
   const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c)][PAGE_TAB]
     ||(()=>"");
   // Who they are, then what is coming, then the record. The calendar sits

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.27
+# GRANITE_VERSION: 2026-09-18.28
 """
 The General Court's week, one page per week.
 
@@ -747,12 +747,12 @@ __DATEWORDS__
   function countLine(t,where){
     var line;
     if(t.shown===t.total)
-      line=(t.total?plural(t.total,"sitting"):"No sittings")+" "+where+".";
+      line=(t.total?plural(t.total,"meeting"):"No meetings")+" "+where+".";
     else if(!t.seen)
-      line=t.total===1 ? "The one sitting "+where+" does not match."
-                       : "None of the "+t.total+" sittings "+where+" match.";
+      line=t.total===1 ? "The one meeting "+where+" does not match."
+                       : "None of the "+t.total+" meetings "+where+" match.";
     else
-      line=t.shown+" of "+plural(t.total,"sitting")+" shown"
+      line=t.shown+" of "+plural(t.total,"meeting")+" shown"
         +(where==="this week"?"":" "+where)+".";
     // THE HIDDEN STUDY MEETINGS SAY SO. Study Committee starts unticked (the
     // person, 25 September), and 30 of the record's 103 weeks hold nothing
@@ -930,7 +930,7 @@ __DATEWORDS__
     if(!on){ cls.push("cmoff"); name+=", not on the calendar"; }
     else if(!day) name+=", loading";
     else{
-      name+=", "+(live?plural(live,"sitting"):"no sittings");
+      name+=", "+(live?plural(live,"meeting"):"no meetings");
       if(vis.length>live) name+=", "+(vis.length-live)+" cancelled";
     }
     return '<td role="gridcell" class="'+cls.join(" ")+'" data-d="'+d+'" tabindex="'
@@ -1174,7 +1174,7 @@ __DATEWORDS__
     // the build's, and said plainly where the week is not here to count.
     var k=weekKey(SEL), w=WEEKS[k], label=w?w.label:weekLabel(k);
     h1.textContent="The week of "+label;
-    if(lead) lead.textContent=broken()?"The sittings of this week could not be loaded here."
+    if(lead) lead.textContent=broken()?"The meetings of this week could not be loaded here."
                                       :w?w.lead:"";
     document.title="The week of "+label+" | Granite Record";
     rename(k,label);
@@ -1271,7 +1271,7 @@ __DATEWORDS__
     // NOT A COUNT OF DAYS THAT ARE NOT HERE: "No sittings this week", said
     // aloud by the live region while the week loaded or after it failed, was
     // a count of nothing.
-    var t=broken()?"The sittings could not be loaded."
+    var t=broken()?"The meetings could not be loaded."
       :gone().length?""
       :countLine(tally(list,S), S.v==="day"?"on "+dayWords(SEL):"this week");
     // Said once: a live region repeats whatever it is given.
@@ -1297,7 +1297,7 @@ __DATEWORDS__
     cols.forEach(function(d){ by[d]=visible(d); });
     var rows=weekRows(cols,by), any=dates.some(function(d){ return DAYS[d]&&DAYS[d].cards.length; });
     var h='<div class="wkgridwrap" role="region" tabindex="0" '
-      +'aria-label="The week at a glance, by the hour each sitting starts">'
+      +'aria-label="The week at a glance, by the hour each meeting starts">'
       +'<table class="wkgrid" style="--cols:'+cols.length+'"><thead><tr>'
       +'<th scope="col" class="wkhr"><span class="sr">Starts</span></th>'
       +cols.map(function(d){
@@ -1568,7 +1568,7 @@ __DATEWORDS__
     var date=m.getAttribute("data-date"), time=m.getAttribute("data-time");
     // A cancelled meeting is not offered for anybody's calendar.
     if(!date || m.hasAttribute("data-cancelled")) return null;
-    var cmte=(m.querySelector(".calcmte")||{}).textContent||"A sitting";
+    var cmte=(m.querySelector(".calcmte")||{}).textContent||"A meeting";
     var kinds=[].slice.call(m.querySelectorAll("summary .calkind"))
                  .map(function(k){return k.textContent;}).join(", ");
     var venue=m.getAttribute("data-venue")||"";
@@ -1626,7 +1626,7 @@ __DATEWORDS__
       var blob=new Blob([ics(d)],{type:"text/calendar"});
       var a=document.createElement("a");
       a.href=URL.createObjectURL(blob);
-      a.download=(m.getAttribute("data-date")||"sitting")+".ics";
+      a.download=(m.getAttribute("data-date")||"meeting")+".ics";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
     });
@@ -2469,7 +2469,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                       # WHAT THE PAGE HOLDS, and no more: it said "Every
                       # hearing..." while it held bill business only.
                       description=("Hearings, work sessions, executive sessions, "
-                                   "floor sittings"
+                                   "floor sessions"
                                    + (" and study and statutory committee meetings"
                                       if study else "")
                                    + f" of the New Hampshire General Court, {label}."),

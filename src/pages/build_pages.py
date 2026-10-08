@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.164
+# GRANITE_VERSION: 2026-09-04.165
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -761,7 +761,7 @@ def calendar_html(out, today=None, rows=None):
     # clock.
     if n_next:
         onward = (f"{n_next}{' more' if dates else ''} "
-                  f"sitting{'' if n_next == 1 else 's'} next week. ",
+                  f"meeting{'' if n_next == 1 else 's'} next week. ",
                   f"calendar/{nxt}.html", "See next week")
     else:
         onward = ("Nothing is on the calendar for next week yet. ",
@@ -1210,7 +1210,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
-                            f'This sitting on the {esc(cmte)} page</a></p>')
+                            f'This meeting on the {esc(cmte)} page</a></p>')
             html.append("</div></details>")
         html.append("</div>")
     return "".join(html), missing

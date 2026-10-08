@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.49
+# GRANITE_VERSION: 2026-09-07.50
 """
 A page's worth of data for every committee.
 
@@ -473,7 +473,7 @@ def committee_card(c, dated=False):
         counts.append(f"{c['n_bills']:,} bill"
                       + ("" if c["n_bills"] == 1 else "s"))
     if c["n_sessions"]:
-        counts.append(f"{c['n_sessions']:,} session"
+        counts.append(f"{c['n_sessions']:,} meeting"
                       + ("" if c["n_sessions"] == 1 else "s"))
     # EVERY TERM'S, AND SAID SO (the survey of 7 October 2026, C10).
     # Beside today's chair and members, "1,257 bills · 577 sessions" read
@@ -1113,7 +1113,7 @@ def main():
         # No committee is named as an example here: which ones land in this
         # list changes as bills are referred.
         # .fill: the note takes the width the cards under it take (F9).
-        body.append('<h2>No bills or sessions on record</h2>'
+        body.append('<h2>No bills or meetings on record</h2>'
                     '<p class="src fill">These committees have a roster, and in '
                     "some cases a chair, but no bill referred to them and no "
                     "session in the proceedings this site holds. Whether each "

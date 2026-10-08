@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.7
+# GRANITE_VERSION: 2026-09-12.8
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -128,7 +128,7 @@ PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|c
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors",
-        "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions")
+        "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions", "Meetings")
 BUILD = re.compile(r"^[0-9T:.+\-Z]{0,40}$")
 AT = re.compile(r"^\d{4}-\d\d-\d\dT[\d:.]+Z?$")
 

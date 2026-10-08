@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.25
+# GRANITE_VERSION: 2026-09-19.26
 """
 A page for every day the House sat.
 
@@ -1006,8 +1006,8 @@ def render(day, narrative, titles, years, members, esc):
             # only where the docket says it: a row placed by the journal it
             # cites may be one entered late from the sitting itself.
             if it.entered:
-                where = ("Done in the recess of this sitting" if it.recess
-                         else "Printed in the journal with this sitting")
+                where = ("Done in the recess of this session day" if it.recess
+                         else "Printed in the journal with this session day")
                 H.append(f'<p class="swho">{where}, '
                          "and entered in the docket on "
                          f"{esc(words(it.entered))}, the date the bill&rsquo;s "
@@ -1330,10 +1330,10 @@ def main():
         nav = []
         if prev_:
             nav.append(f'<a class="wkprev" href="{S.canon(f"session/{body}/{prev_}.html")}">'
-                       f"&lsaquo; The sitting before</a>")
+                       f"&lsaquo; The session day before</a>")
         if next_:
             nav.append(f'<a class="wknext" href="{S.canon(f"session/{body}/{next_}.html")}">'
-                       f"The sitting after &rsaquo;</a>")
+                       f"The session day after &rsaquo;</a>")
 
         # From the root, with its slash: the canonical link, the citation and
         # the sitemap are the domain joined to this.
@@ -1344,7 +1344,7 @@ def main():
                                    f"{words(date)}: every bill, motion and vote, "
                                    "in the order the journal records them."),
                       og_title=label, globals={"GR_STATIC": True}, noscript="",
-                      skip_label="Skip to the sitting", sr_title="",
+                      skip_label="Skip to the session day", sr_title="",
                       og_type="article", nav_current="calendar.html",
                       jsonld=LD.listing(label, lead, base, S.canon(path)))
         payload = json.dumps(payloads, separators=(",", ":"))
@@ -1369,9 +1369,9 @@ def main():
                 + f"<h1>{S.E(label)}</h1>"
                 + (f'<p class="src">{cite}. {S.E(lead)}</p>'
                    if day.journal else f'<p class="src">{S.E(lead)}</p>')
-                + f'<nav class="wknav" aria-label="Other sittings">{"".join(nav)}</nav>'
+                + f'<nav class="wknav" aria-label="Other session days">{"".join(nav)}</nav>'
                 + block
-                + f'<nav class="wknav wkfoot" aria-label="Other sittings">{"".join(nav)}</nav>'
+                + f'<nav class="wknav wkfoot" aria-label="Other session days">{"".join(nav)}</nav>'
                 + f'<script type="application/json" id="sessvotes">{payload}</script>'
                 "</div></div>")
         html = html.replace('<div id="results"></div>', full, 1)

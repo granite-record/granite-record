@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.35
+# GRANITE_VERSION: 2026-09-08.36
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -739,8 +739,11 @@ def hub(topics):
     # false -- on a page whose whole argument is that its figures come from
     # the record rather than from someone's memory.
     n = len(topics)
-    out = ['<h1>How New Hampshire works</h1>',
-           f'<p class="lead">{NUMBER_WORD.get(n, n)} short pages on the parts '
+    # THE SECTION IS "LEARN" wherever it is named, as the nav names it, with
+    # this standfirst under it (the person's D19, 8 October 2026).
+    out = ['<h1>Learn</h1>',
+           '<p class="lead">How New Hampshire&rsquo;s government works.</p>',
+           f'<p>{NUMBER_WORD.get(n, n)} short pages on the parts '
            'of state and local government, each one linked to where you can '
            'watch it happening in the record.</p>',
            # WHAT THIS IS FOR, SAID ONCE. The hub was a numbered list and
@@ -846,8 +849,8 @@ def main():
 
     # ---- the hub -------------------------------------------------------
     page = S.page(tmpl, path="/learn.html", base=a.base,
-                  title="How New Hampshire works | Granite Record",
-                  og_title="How New Hampshire works",
+                  title="Learn | Granite Record",
+                  og_title="Learn",
                   og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                   description=("Short, plain explanations of the parts of New "
                                "Hampshire state government, each linked to "
@@ -880,8 +883,8 @@ def main():
         # won on source order and took 24px of left padding off all 33,683
         # bill cards. preflight freezes the set of names both renderers use,
         # so the next one of these fails a check instead of shipping.
-        head = (f'<p class="crumb"><a href="learn.html">How New Hampshire '
-                f'works</a></p><h1>{E(t["title"])}</h1>'
+        head = (f'<p class="crumb"><a href="learn.html">Learn</a></p>'
+                f'<h1>{E(t["title"])}</h1>'
                 + (f'<p class="lead">{dashes(E(t["blurb"]))}</p>'
                    if t["blurb"] else ""))
         body = [fill(t["body"], figures)]
@@ -901,8 +904,7 @@ def main():
                    # did not look like it came from the same site. The section
                    # is worth naming, so it goes in front of the brand rather
                    # than instead of it.
-                   title=S.title_of(t["title"],
-                                    "How New Hampshire works"),
+                   title=S.title_of(t["title"], "Learn"),
                    og_title=t["title"], description=t["blurb"],
                    og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                    globals={"GR_STATIC": True}, noscript="",
@@ -931,7 +933,7 @@ def main():
     # after them under its own heading rather than in the sequence.
     path = "/learn/by-the-numbers.html"
     p = S.page(tmpl, path=path, base=a.base,
-               title=S.title_of("The record in numbers", "How New Hampshire works"),
+               title=S.title_of("The record in numbers", "Learn"),
                og_title="The record in numbers",
                description=("Statistics counted from the New Hampshire General Court's own "
                             "record: how bills end, committees' workloads and passage rates, "
@@ -961,7 +963,7 @@ def main():
     p = p.replace('<div id="results"></div>',
                   '<div id="results"><div class="lcols">'
                   '<header class="civhead"><p class="crumb"><a href="learn.html">'
-                  'How New Hampshire works</a></p>'
+                  'Learn</a></p>'
                   '<h1>The record in numbers</h1></header>'
                   '<div class="civics">' + nbody + '</div>'
                   f'<div class="lside">{contents(nsections, "by-the-numbers")}'
