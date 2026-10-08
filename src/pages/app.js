@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.159
+// GRANITE_VERSION: 2026-09-07.160
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2685,7 +2685,7 @@ function fgroup(key,label,vals,counts,searchable,paint){
       +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${counts[v]||0}</span></label>`).join("")
-        ||(sponsorFilter?`<p style="font-size:.78125rem;color:var(--ink-2)">No match</p>`:""));
+        ||(sponsorFilter?`<p class="fnone">No match</p>`:""));
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
@@ -3660,7 +3660,7 @@ function ballotRing(y,n,won){
     ${marker(a,R,"Two thirds of the votes cast","")}${yn(GAP,R,won)}
     <text x="86" y="89" text-anchor="middle" font-size="18" font-weight="${won?700:400}"
       fill="var(--ink)" font-variant-numeric="tabular-nums">${share(y,tot)}</text>
-    <text x="86" y="106" text-anchor="middle" font-size="12" fill="var(--ink-2)">yes</text></svg>
+    <text x="86" y="107" text-anchor="middle" font-size="14" fill="var(--ink-2)">yes</text></svg>
     <div class="legend">
       <div class="lrow"><span class="sw" style="background:var(--yes)"></span>
         <span>Yes${won?check:""}</span><span class="c">${thou(y)} · ${share(y,tot)}</span></div>
@@ -4270,7 +4270,7 @@ function renderReports(b,d,rsa){
              below is then the committee's filed copy, or there is none. */
           e.note?`<p class="note" style="margin:0 0 7px">${esc(e.note)}</p>`:""}
         ${(e.text||"").trim()
-          ? `<p style="font-family:var(--serif);font-size:1rem;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>`
+          ? `<p class="srwhy">${rsa(esc(e.text))}</p>`
           // 350 of the Senate's 1,446 reports carry no reasoning at all. That
           // is a fact about the report, not a gap in the site, and saying so
           // is better than an empty space under a heading. Not where a note

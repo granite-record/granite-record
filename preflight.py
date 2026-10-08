@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.471
+# GRANITE_VERSION: 2026-09-04.472
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20263,9 +20263,7 @@ def _sizes_follow_the_reader():
 
 @check("frontend", "no text is set under the 13px floor, and 13px only in capitals: not by a "
                    "token or a rule of app.css, an inline style of a builder, app.js or find.js, "
-                   "nor an SVG's font-size",
-       expect_fail="the type scale is set in rem with nothing under 13px, and the inline and "
-                   "SVG sizes move into the stylesheet")
+                   "nor an SVG's font-size")
 def _type_floor():
     """The floor of the type scale, read from every place a size is written.
 
@@ -37073,7 +37071,7 @@ def _calendar_documents():
         "beside the month: the button would stand past its box")
     stacked = _braced(mine, "@media (max-width:43.75em){")
     assert ".cdpick{grid-template-columns:minmax(0,1fr)" in stacked \
-        and ".cdf select{min-height:44px;font-size:var(--t-body)}" in stacked \
+        and ".cdf select{min-height:44px;font-size:var(--t-ui)}" in stacked \
         and ".cdopen{min-height:44px}" in stacked \
         and ".cdnow,.cdopen{grid-column:auto;grid-row:auto}" in stacked, (
         "at 700px and under the pickers do not stack 44px tall with 16px text, with the "
@@ -48865,7 +48863,7 @@ def _calendar_layout():
     assert need <= have, (f"a five-day week needs {need}px and the panel beside the month "
                           f"has {have}px at 1024: it would scroll on a desktop")
     for rule, size in ((".cmtitle{", "--t-lead"), (".cfhead h2{", "--t-lead"),
-                       (".calfs legend,.calside .wkfind{", "--t-body"), (".pkd{", "--t-body")):
+                       (".calfs legend,.calside .wkfind{", "--t-ui"), (".pkd{", "--t-h3")):
         assert f"font-size:var({size})" in _braced(block, rule), f"{rule} is not set at {size}"
     assert "font-size:var(--t-ui)" in _braced(block, ".calchk{"), "the boxes are not at the interface size"
     return "ok", (f"month beside the schedule and sticky, above it below 1024px; a week "
