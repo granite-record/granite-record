@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.452
+# GRANITE_VERSION: 2026-09-04.453
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46914,6 +46914,33 @@ def _committee_days_met(BCM):
         "a day still to come is said to have no recording on file")
     return "ok", ("a day after the build is marked and counted apart, on the tab, the index "
                   "and the description")
+
+
+@check("frontend", "the committees index says its counts of bills and sessions are every "
+                   "term's, beside today's chair and members", needs=("build_committees",))
+def _committee_card_counts(BCM):
+    """"Chaired by Ross Berry · 18 members · 1,257 bills · 577 sessions": the
+    chair and members are today's and the counts every term's since 1997,
+    unlabelled, and Election Law's own page says 144 bills this term (the
+    survey of 7 October 2026, C10). The counts now say since when; a card
+    the index dates by its years (a committee not on today's list) says it
+    there already and is unchanged."""
+    span = [f"{y}-{y + 1}" for y in range(1997, 2027, 2)]
+    live = BCM.committee_card({"code": "H36", "name": "Election Law", "chair": "Ross Berry",
+                               "n_members": 18, "n_bills": 1257, "n_sessions": 577,
+                               "span": span})
+    assert ("Chaired by Ross Berry &middot; 18 members &middot; 1,257 bills and 577 sessions "
+            "since 1997</span>") in live, live
+    one = BCM.committee_card({"code": "H63", "name": "Education Funding", "chair": "Rick Ladd",
+                              "n_members": 17, "n_bills": 92, "n_sessions": 0,
+                              "span": ["2023-2024", "2025-2026"]})
+    assert "17 members &middot; 92 bills since 2023</span>" in one, one
+    old = BCM.committee_card({"code": "H05", "name": "Education", "chair": "",
+                              "n_members": 0, "n_bills": 1530, "n_sessions": 600,
+                              "span": [f"{y}-{y + 1}" for y in range(1989, 2025, 2)]},
+                             dated=True)
+    assert "1,530 bills &middot; 600 sessions</span>" in old and "since" not in old, old
+    return "ok", "\"1,257 bills and 577 sessions since 1997\"; a dated card as it was"
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")
