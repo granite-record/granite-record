@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.100
+# GRANITE_VERSION: 2026-09-04.101
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1179,6 +1179,36 @@ AMEND_RE = re.compile(
     r"|(?P<y>\d+)\s*Y?\s*[-\u2013]\s*(?P<n>\d+)\s*N?)[,;]?\s*){0,4}"
     r"(?:\(?(?:in recess of|In recess)\)?\s*)?"
     r"(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
+
+# AN AMENDMENT NUMBER WITH NO YEAR, WITH ITS LETTER (the launch audit's
+# recheck of 7 October 2026): "Amendment # 0339h: AA VV 03/13/2025" (HB 179
+# of 2025, the committee's amendment), "FLAM # 1282h (Rep. Johnson): AF DV
+# 60-270 03/31/2022" (HB 1627 of 2022). AMEND_RE wants the year, and 3 rows of
+# 2025-2026 and 89 of 2021-2022 the House adopted or rejected were told by no
+# history and missing from the amendments list. Read in build() for the
+# dockets of 2017 on only: the database's of 1989-2016 have era readers of
+# their own for such rows ("Committee Amendment 1502s, Not Voted On"), and
+# AMEND_RE reading them first would take the rows from those readers. Told as
+# the clerk wrote it, with no year put to it: a bill carried over moves
+# amendments of the year before.
+AMEND_YEARLESS = re.compile(
+    AMEND_RE.pattern.replace(r"(?P<num>\d{4}-\d+[a-z]*)", r"(?P<num>\d{3,4}[a-z])", 1), re.I)
+
+
+def yearless_amendment(ev):
+    """The amendment event of a row AMEND_YEARLESS reads, in classify()'s
+    shape; else None."""
+    m = AMEND_YEARLESS.search(ev.get("_raw") or "")
+    if not m:
+        return None
+    d = m.groupdict()
+    by = (d.pop("by", None) or "").strip()
+    if (d.get("what") or "").upper() == "FLAM":
+        d["what"] = "Floor Amendment"
+        if by and not d.get("mover"):
+            d["mover"] = re.sub(r",\s*(?=[^,]+$)", " and ", by)
+    return {**d, "_type": "amendment", "_raw": ev["_raw"]}
+
 
 # WHAT BECAME OF AN AMENDMENT WHOSE ROW CARRIES NO MOTION THE PATTERN ABOVE
 # READS. A blank motion was written as "was rejected", and it is not one:
@@ -4798,8 +4828,9 @@ def build(bill, rows, introduction=None):
                       "committee": undated.group("committee"),
                       "date": r["created"].strftime("%m/%d/%Y")}
             else:
-                # A floor vote whose row states no date (VOLUME_DAYS).
-                ev = undated_floor(ev, r) or ev
+                # A floor vote whose row states no date (VOLUME_DAYS), or an
+                # amendment whose number states no year (AMEND_YEARLESS).
+                ev = undated_floor(ev, r) or yearless_amendment(ev) or ev
         # A resolution introduced and adopted in one motion (INTRODUCED_ADOPTED).
         if ev["_type"] == "other" and RESOLUTION.match(bill) and r["body"] not in passed:
             adopted = INTRODUCED_ADOPTED.match(ev["_raw"])

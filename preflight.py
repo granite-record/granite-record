@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.455
+# GRANITE_VERSION: 2026-09-04.456
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2658,6 +2658,66 @@ def _died_on_the_floor(N):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 761 of 2025 dies on the House floor's table, said once; CACR 11 of 2019's bare "
                   "row keeps its note")
+
+
+# AN AMENDMENT NUMBER WITH NO YEAR (the launch audit's recheck of 7 October
+# 2026). Real rows: Docket.txt lines 2904 and 3317-3318 (HB 179 of 2025);
+# Docket_2021-2022.txt 7096-7097 and 7102-7105 (HB 1627 of 2022);
+# Docket_db_2011-2012.txt's "Committee Amendment 1721s, Not Voted On" (HB 121
+# of 2011) is the era reader's, and is left to it.
+_DOCKET_YEARLESS_AMENDMENT = {
+    ("HB179", "2025-2026"): [
+        "2025|0160|2/12/2025 12:56:16 PM|HB179|H| Committee Report: Ought to Pass with Amendment # 2025-0339h   02/11/2025 (Vote 13-0; CC)  HC 12  P. 5|2/18/2025 9:11:56 AM",
+        "2025|0160|2/20/2025 10:29:38 AM|HB179|H|Amendment # 0339h: AA VV 02/20/2025  HJ 6  P. 5|4/1/2025 12:42:13 PM",
+        "2025|0160|2/20/2025 10:29:41 AM|HB179|H|Ought to Pass with Amendment 0339h: MA VV 02/20/2025  HJ 6  P. 6|4/1/2025 12:42:18 PM"],
+    ("HB1627", "2021-2022"): [
+        "2022|2818|3/24/2022 12:00:00 AM|HB1627|H|Committee Report: Ought to Pass with Amendment #2022-1163h (NT) (Vote 17-3; RC)|3/24/2022 12:00:00 AM",
+        "2022|2818|3/31/2022 12:00:00 AM|HB1627|H|Amendment #2022-1163h : AA DV 182-148 03/31/2022 HJ 9|3/31/2022 12:00:00 AM",
+        "2022|2818|4/1/2022 12:00:00 AM|HB1627|H|FLAM # 1252h (Rep. Prout): AF DV 89-241 03/31/2022 HJ 9|4/1/2022 12:00:00 AM",
+        "2022|2818|4/1/2022 12:00:00 AM|HB1627|H|FLAM # 1259h (Rep. Comtois): AF RC 76-258 03/31/2022 HJ 9|4/1/2022 12:00:00 AM",
+        "2022|2818|4/1/2022 12:00:00 AM|HB1627|H|FLAM # 1282h (Rep. Johnson): AF DV 60-270 03/31/2022 HJ 9|4/1/2022 12:00:00 AM",
+        "2022|2818|3/31/2022 12:00:00 AM|HB1627|H|Ought to Pass with Amendment 2022-1163h: MA RC 204-131 03/31/2022|3/31/2022 12:00:00 AM"],
+}
+
+
+@check("narrative", "an amendment row whose number gives no year is read, told and listed, in "
+                    "the dockets of 2017 on",
+       needs=("narrative", "build_site_v2"))
+def _yearless_amendment(N, B):
+    """The launch audit's recheck: AMEND_RE wants an amendment's year, and
+    "Amendment # 0339h: AA VV 02/20/2025" (HB 179 of 2025, the committee's
+    amendment its report names as 2025-0339h) and "FLAM # 1282h (Rep.
+    Johnson): AF DV 60-270" (HB 1627 of 2022) were read by nothing: 3 rows of
+    2025-2026 and 89 of 2021-2022 the House voted on were in no history and
+    no amendments list. They are read (narrative.AMEND_YEARLESS) in the
+    dockets of 2017 on, the number told as the clerk wrote it; the database's
+    dockets of 1989-2016 keep their era readers for such rows."""
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        rec = _narrated(N, "2025-2026", "HB179", _DOCKET_YEARLESS_AMENDMENT[("HB179", "2025-2026")])
+        s = ("The committee's amendment (0339h) was adopted on a voice vote on February 20, 2025, "
+             "changing the text of the bill.")
+        if s not in rec["narrative"]:
+            bad.append(f"HB179 of 2025 does not say {s!r}: {rec['narrative']!r}")
+        got = [(a["num"], a["kind"], a["adopted"]) for a in B.bill_amendments(rec, {}, None)]
+        if got != [("0339h", "Committee Amendment", True)]:
+            bad.append(f"HB179 of 2025's amendments: {got}")
+        rec = _narrated(N, "2021-2022", "HB1627", _DOCKET_YEARLESS_AMENDMENT[("HB1627", "2021-2022")])
+        for s in ("A floor amendment (1252h), offered by Rep. Prout, was rejected on a division "
+                  "vote 89–241 on March 31, 2022.",
+                  "A floor amendment (1282h), offered by Rep. Johnson, was rejected on a division "
+                  "vote 60–270 on March 31, 2022."):
+            if s not in rec["narrative"]:
+                bad.append(f"HB1627 of 2022 does not say {s!r}: {rec['narrative']!r}")
+        if rec.get("unrecognised"):
+            bad.append(f"HB1627 of 2022 leaves rows unread: {rec['unrecognised']}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 179 of 2025's committee amendment 0339h and HB 1627 of 2022's three FLAMs "
+                  "with no year are told and listed")
 
 
 # A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October
