@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.443
+# GRANITE_VERSION: 2026-09-04.444
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33521,10 +33521,21 @@ def _review_of_audit_fixes(BP):
                    f"be there when Tab reaches it and gone when focus has left both: {seat}")
     if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
         bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
+    # A CHART IN A TAB NOT YET OPEN (the review of 7 October 2026): the
+    # legislators page opens on Towns, the chart's box is 0px wide when the
+    # script runs, and a phone that went Legislators, then By seat, got the
+    # whole floor at 100% with seats five pixels across.
+    hid = got.get("seatHidden") or {}
+    shown = str(hid.get("shown") or "")
+    if hid.get("zoom") != "100%" or hid.get("watching") != 1 or not shown.endswith("%") \
+            or abs(float(shown[:-1] or 0) - 1100 / 349 * 100) > 1e-6 or not hid.get("letGo"):
+        bad.append("a seat map drawn in a hidden tab does not wait for its box's width to "
+                   f"zoom a 349px phone in, and then stop watching: {hid}")
     assert not bad, "; ".join(bad[:5])
     return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
                   "on a member's votes; Play and a long analysis move focus when clicked; the "
-                  "seat map's svg hears no focus and its note keeps its link; a marked box is a "
+                  "seat map's svg hears no focus, its note keeps its link and in a hidden tab "
+                  "it zooms once its box has a width; a marked box is a "
                   "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
                   "rules of the stylesheet and the pages stand")
 
@@ -33687,6 +33698,25 @@ document.querySelectorAll = all;
   [svg, wrap].forEach(n => n.fire("focusin", {target: seats[3]}));
   seat.end = {focused: seats.findIndex(c => c.focused), stops: stops()};
   out.seat = seat;
+
+  // IN A TAB NOT YET OPEN the box is 0px wide when the script runs, as on the
+  // legislators page, which opens on Towns: the zoom waits for a width, once.
+  const watched = [];
+  globalThis.ResizeObserver = class { constructor(f) { this.f = f; this.off = false; watched.push(this); }
+    observe(n) { this.n = n; } disconnect() { this.off = true; } };
+  const svg2 = node("svg"), wrap2 = node("div");
+  wrap2.clientWidth = 0;
+  const doc2 = Object.assign({}, doc, {
+    getElementById: id => ({seatlist: node("div"), seatnote: node("p")})[id] || null,
+    querySelector: q => ({".seatmap": svg2, ".seatwrap": wrap2})[q] || null});
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc2, f => "/" + f);
+  const hidden = {zoom: svg2.style.width || null, watching: watched.filter(o => o.n === wrap2).length};
+  wrap2.clientWidth = 349;
+  watched.forEach(o => { if (!o.off) o.f([]); });
+  hidden.shown = svg2.style.width || null;
+  hidden.letGo = watched.every(o => o.off);
+  delete globalThis.ResizeObserver;
+  out.seatHidden = hidden;
 })();
 process.stdout.write("\n@@" + JSON.stringify(out));
 """

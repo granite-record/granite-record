@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.155
+# GRANITE_VERSION: 2026-09-04.156
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1802,6 +1802,7 @@ SEATING_JS = """
     var w=wrap?wrap.clientWidth:0;
     zoom=w?Math.max(1,Math.min(3.5,1100/w)):1;
     apply();
+    return !!w;
   }
   function step(by){ zoomAt(zoom*by); if(picked)centre(picked); }
 
@@ -1865,7 +1866,19 @@ SEATING_JS = """
   if(zi)zi.addEventListener("click",function(){step(1.35);});
   if(zo)zo.addEventListener("click",function(){step(1/1.35);});
   if(zf)zf.addEventListener("click",function(){zoomAt(1);});
-  fit();
+  /* A CHART IN A TAB NOT YET OPEN HAS NO WIDTH. The page opens on its Towns
+     tab, so the chart is hidden when this runs and fit() met a box 0px wide:
+     it left the zoom at 1, and a phone that went Legislators, then By seat,
+     was shown the whole floor with seats five pixels across, where the page
+     opened at #legislators was zoomed in to 315% (the review of 7 October
+     2026). So fit waits for the box to have a width, once, and then lets
+     go: after that the zoom is the reader's. */
+  if(!fit()&&wrap&&typeof ResizeObserver==="function"){
+    var sized=new ResizeObserver(function(){
+      if(wrap.clientWidth){sized.disconnect();fit();}
+    });
+    sized.observe(wrap);
+  }
 
   // A seat is a circle with a slug on it, not a link -- an <a> inside the SVG
   // would need its own focus and hit area. One handler on the map covers all
