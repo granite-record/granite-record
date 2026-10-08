@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.156
+// GRANITE_VERSION: 2026-09-07.157
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -6512,10 +6512,12 @@ function billTitle(id){
 function renderCommitteeUpcoming(c){
   if(UPCOMING===null)return "";               // not asked yet: say nothing
   const rows=cmteUpcoming(c);
+  // MOSTLY (the survey of 7 October 2026): both chambers sat until veto day,
+  // 19 August, in 2026, and into the autumn in most years.
   if(!rows.length)
     return `<section class="cal"><h2>Upcoming session</h2>
       <p class="note">Nothing is scheduled for this committee in the next two
-      weeks. The General Court sits from January to June.</p></section>`;
+      weeks. The General Court sits mostly from January to June.</p></section>`;
   return calendarBlock(rows,"Upcoming session");
 }
 

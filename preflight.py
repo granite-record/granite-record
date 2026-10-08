@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.455
+# GRANITE_VERSION: 2026-09-04.456
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46998,6 +46998,30 @@ def _bills_filed_counts(civics, learn_numbers):
         "and resolutions")
     return "ok", ("the term's measures are \"bills and resolutions\"; By the numbers' are the "
                   "House and Senate bills, not counting constitutional amendments or resolutions")
+
+
+@check("frontend", "no empty state says the General Court sits only from January to June")
+def _sits_mostly_january_to_june():
+    """"The General Court sits from January to June", on a committee's empty
+    Upcoming session, the Calendar's empty week and the home page's empty
+    Coming up, while the home page said both chambers sat until veto day in
+    August (the survey of 7 October 2026). Both sat on 19 August 2026, and
+    the House into the autumn or winter in nine of the twelve years
+    2015-2026. It sits MOSTLY from January to June: every page's source that
+    says when it sits says that."""
+    files = [Path("app.js"), Path("find.js")] + sorted(_paths.code_files("build_*.py")) + [
+        _paths.locate("civics.py")]
+    said, bare = [], []
+    for f in files:
+        if not f or not Path(f).exists():
+            continue
+        flat = re.sub(r"\s+", " ", re.sub(r'"\s*\n\s*"', "", Path(f).read_text(encoding="utf-8")))
+        bare += [Path(f).name for _ in re.finditer(r"sits from January to June", flat)]
+        said += [Path(f).name for _ in re.finditer(r"sits mostly from January to June", flat)]
+    assert not bare, "these still say the General Court sits from January to June: " + ", ".join(bare)
+    assert sorted(said) == ["app.js", "build_calendar.py", "build_pages.py"], (
+        "the three empty states that say when the General Court sits are " + ", ".join(said))
+    return "ok", "the committee page, the Calendar's week and the home page say \"mostly\""
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")

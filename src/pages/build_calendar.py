@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.24
+# GRANITE_VERSION: 2026-09-18.25
 """
 The General Court's week, one page per week.
 
@@ -2237,9 +2237,11 @@ def week_facts(key, weeks, today):
         # In the tense of the week: a week that is over has nothing on the
         # record, and one still to come has nothing scheduled yet -- "yet",
         # because the study committees are read from a dated copy.
+        # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
+        # day, 19 August, in 2026, and into the autumn in most years.
         lead = (("No meetings are on the record for this week. " if last < today
                  else "No meetings are scheduled yet for this week. ")
-                + "The General Court sits from January to June, and committees "
+                + "The General Court sits mostly from January to June, and committees "
                 "meet on bills from the autumn filing period onwards.")
     return {"first": first, "last": last, "label": label, "days": days,
             "meets": meets, "n": n, "lead": lead}

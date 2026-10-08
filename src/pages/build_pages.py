@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.157
+# GRANITE_VERSION: 2026-09-04.158
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -763,7 +763,9 @@ def calendar_html(out, today=None, rows=None):
         # half the year.
         note = "Nothing is scheduled for the rest of this week."
         if not n_next:
-            note += (" The General Court sits from January to June, and "
+            # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
+            # day, 19 August, in 2026, and into the autumn in most years.
+            note += (" The General Court sits mostly from January to June, and "
                      "committees meet on bills from the autumn filing period "
                      "onwards.")
         return ('<section class="cal"><h2>Coming up</h2>'
