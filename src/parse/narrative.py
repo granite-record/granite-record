@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.105
+# GRANITE_VERSION: 2026-09-04.106
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3133,6 +3133,19 @@ def describe(ev, body, seen_intro=False):
     if t == "unsigned_law":
         when = f" on {fdate(ev['date'])}" if ev.get("date") else ""
         ch = f", as Chapter {_chapter_plain(ev)}" if ev.get("chapter") else ""
+        # OVER A VETO, where a chamber's override is among the bill's rows
+        # (build(), "A LAW THE CHAMBERS MADE OVER A VETO"): vetoed, then the
+        # override in each chamber, and Article 44 as what made it law. Both
+        # chambers are named from the rows where both are there; a law over a
+        # veto has had both, so with one on record it is "both chambers".
+        over = [CHAMBER[b] for b in ev.get("_overridden") or ()]
+        if over:
+            who = (f"the {over[0]} and the {over[1]} each" if len(over) > 1
+                   else "both chambers")
+            return (f"It became law over the governor's veto{when}{ch}. The governor "
+                    f"had vetoed it, and {who} overrode the veto by a two-thirds vote, "
+                    "which under Part II, Article 44 of the state constitution makes "
+                    "it law without the governor's signature.")
         return (f"It became law without the governor's signature{when}{ch}. The "
                 "governor neither signed it nor returned it, and the docket "
                 "records it as enacted under Part II, Article 44 of the state "
@@ -5581,6 +5594,29 @@ def build(bill, rows, introduction=None):
     # count, and with the second sentence dropped the history read passed,
     # reconsidered, and nothing after. The repeat says "again", which is what
     # happened and is also what keeps it.
+    # A LAW THE CHAMBERS MADE OVER A VETO IS NOT ONE THE GOVERNOR LET PASS
+    # (8 October 2026). Part II, Article 44 of the constitution is both: the
+    # bill not returned within five days, and the bill returned with
+    # objections that two thirds of each chamber pass anyway. So the docket
+    # records an override's enactment in the same words as a pocket law's --
+    # "Law Without Signature 08/19/2026; Chapter 344; ...; Art 44, Pt II, NH
+    # Constitution" (SB 468 of 2026), "Enacted in accordance with Article 44
+    # PartII ... without the signature of the governor" (HB 1102), "Became
+    # Law Without Signature on 7/12/2000" (SB 153 of 2000) -- and the
+    # sentence for it said "The governor neither signed it nor returned it"
+    # on 17 histories whose governor had returned the bill with a veto, 7 of
+    # them this term. The row is told as the end of the override where the
+    # bill's own rows have a chamber overriding the veto, with the chambers
+    # that did, in the order they did (describe, "unsigned_law").
+    overrode = list(dict.fromkeys(
+        e["body"] for e in evs
+        if e["_type"] == "veto_override" and not e["cancelled"]
+        and (e.get("outcome") or "").strip().lower() == "overridden"
+        and e["body"] in CHAMBER))
+    if overrode:
+        for e in evs:
+            if e["_type"] == "unsigned_law":
+                e["_overridden"] = overrode
     told_on_line = set()
     # {chamber: [the floor and amendment sentences told so far]} (told_again).
     told_floor = defaultdict(list)

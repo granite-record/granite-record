@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.179
+# GRANITE_VERSION: 2026-09-05.180
 """
 Generate the faceted site from real General Court data.
 
@@ -4446,15 +4446,22 @@ J_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
 # The glyph each decision is drawn with, which carries its state as well as
 # its colour: a check for a decision that moved the bill on, a cross for one
 # that stopped it, and a turning arrow for one that sent it round again --
-# tabled, back to committee, to interim study, the other chamber's amendment
-# refused.
+# tabled, back to committee, the other chamber's amendment refused.
+# INTERIM STUDY HAS ITS OWN MARK, "s" (the person, 8 October 2026: the
+# rail's marks): an orange "~", on the line that
+# sent the bill there and on the rail's stop where it was held, so the page
+# has one mark for the act. It was the turning arrow here and, on the rail,
+# the red cross of a bill killed. And a bill lying on the table while its
+# session still sits takes the pause, "t", on its stop and on the line that
+# laid it there (journey_rail); a bill that died on the table keeps the cross.
 J_MARK = {"passed": "p", "adopted": "p", "concurred": "p", "conf_adopted": "p",
           "override": "p", "signed": "p", "unsigned": "p", "law": "p",
           "ratified": "p",
           "killed": "x", "failed": "x", "postponed": "x", "died": "x",
           "conf_rejected": "x", "conf_refused": "x", "sustained": "x",
           "vetoed": "x", "not_ratified": "x",
-          "tabled": "h", "study": "h", "recommitted": "h", "referred": "h",
+          "study": "s",
+          "tabled": "h", "recommitted": "h", "referred": "h",
           "nonconcurred": "h"}
 # The chamber carried the bill on at this line.
 J_PASSING = {"passed", "adopted", "referred"}
@@ -6168,7 +6175,7 @@ def journey_state(steps, body):
     return mine[-1]["mark"] if mine else ""
 
 
-def journey_rail(intro, steps, rail, bid, status=""):
+def journey_rail(intro, steps, rail, bid, status="", chip=""):
     """The rail's stops for a bill's own view, dated from the journey.
 
     The marks are the index's -- the same `passage` the list card draws -- so
@@ -6178,7 +6185,46 @@ def journey_rail(intro, steps, rail, bid, status=""):
     the bill's route: a resolution of one chamber has that chamber; a
     concurrent resolution two chambers and no governor; a CACR goes to the
     voters instead of the governor, with the ring on Voters while it waits
-    for them."""
+    for them.
+
+    `chip` is the bill's chip (chip_word), which two marks of the rail's own
+    refine (RAIL_REFINES, the person, 8 October 2026): the chamber's stop
+    where an Interim Study bill was held is the orange "~", "s", where
+    `passage` says only that it stopped there; and where a Tabled bill lies
+    on the table while the session still sits, its stop and the line of the
+    journey that laid it there are the graphite pause, "t", where `passage`
+    has the ring of a bill still moving. A bill that died on the table is
+    Died, and keeps its cross."""
+    stops = _journey_rail(intro, steps, rail, bid, status)
+    now = RAIL_MARK_OF_CHIP.get(chip)
+    if not now:
+        return stops
+    was = RAIL_REFINES[now]
+    for st in stops:
+        if st["stop"] in ("House", "Senate") and st["mark"] == was:
+            st["mark"] = now
+            if st.get("say") == RAIL_SAY[was]:
+                st["say"] = RAIL_SAY[now]
+            if now == "t":
+                b = "H" if st["stop"] == "House" else "S"
+                line = next((s for s in reversed(steps)
+                             if s["body"] == b and s["act"] == "tabled"), None)
+                if line is not None:
+                    line["mark"] = "t"
+    return stops
+
+
+# The rail's own marks, which `passage` does not draw: the stop where a bill
+# was held for interim study, and the stop where it lies on the table now
+# (journey_rail). Each refines the passage letter it stands in for, which is
+# what the list card's and the page's rails are held to (_journey_story in
+# preflight).
+RAIL_MARK_OF_CHIP = {INTERIM_STUDY: "s", TABLED: "t"}
+RAIL_REFINES = {"s": "x", "t": "h"}
+
+
+def _journey_rail(intro, steps, rail, bid, status=""):
+    """journey_rail's stops with the marks `passage` gives them."""
     if not rail or rail[0] not in ("H", "S"):
         return []
     origin = rail[0]
@@ -6269,7 +6315,7 @@ def law_day(mark, law, stops, steps):
 # What a stop says when no line of the journey fills it -- the same words the
 # list card's rail uses.
 RAIL_SAY = {"p": "Passed", "h": "Is here now", "x": "Stopped here",
-            "-": "Never reached"}
+            "-": "Never reached", "s": "Sent to interim study", "t": "On the table"}
 
 # ONE RAIL, ALWAYS DETAILED (the person, 5 October 2026). A card in a list
 # drew the bare rail -- four glyphs from `passage` -- and the same card opened
@@ -9335,7 +9381,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             row["last_action"] = dates[-1] if dates else ""
             row["carried"] = bool(row["carried"]) and carried_over(dates, intro)
         index.append(row)
-        jrail = journey_rail(intro, jsteps, row["passage"], bid, status)
+        jrail = journey_rail(intro, jsteps, row["passage"], bid, status, chip=row.get("chip", ""))
         # The same stops on the list card, from the start (index_rail).
         if jrail:
             row["rail"] = index_rail(jrail)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.37
+# GRANITE_VERSION: 2026-09-10.38
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -687,7 +687,11 @@ def data_page(site, out, tables, base, cov=()):
       stop&#39;s letter &mdash; <code>I</code> introduced, <code>H</code>,
       <code>S</code>, <code>G</code> the Governor, <code>L</code> the statute
       book, <code>V</code> the voters &mdash; with its mark as in
-      <code>passage</code>, then the day and a word or two of how it went
+      <code>passage</code>, except that a chamber where the bill was held for
+      interim study is <code>s</code> where <code>passage</code> has
+      <code>x</code>, and one where it lies on the table while the session
+      still sits is <code>t</code> where <code>passage</code> has
+      <code>h</code>; then the day and a word or two of how it went
       where there are any. The card draws the day under each stop; the words
       are what its rail says to a reader who hears the page. It is not in
       bills.csv.</p>

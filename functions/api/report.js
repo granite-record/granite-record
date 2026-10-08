@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.6
+// GRANITE_VERSION: 2026-09-12.7
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -53,8 +53,13 @@ export const FIELDS = new Set(["date", "status", "sponsor", "vote", "hearing",
 
 // The tabs the pages render. compile_reports.TABS is the same list, and
 // preflight holds the two together.
-export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Videos", "Reports",
+export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Hearings", "Reports",
   "Sponsors", "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions"]);
+// A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026). A bill's Hearings tab
+// was Videos, and a page loaded before it was renamed still sends that; it is
+// stored under the name the tab has. compile_reports.RENAMED_TABS is the same
+// map, for the reports already stored under the old one.
+export const RENAMED_TABS = new Map([["Videos", "Hearings"]]);
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,
@@ -115,7 +120,8 @@ export function validate(body) {
   if (body.website) return null;                       // the honeypot
   const record = String(body.record ?? "");
   const url = String(body.url ?? "");
-  const tab = tabName(body.tab);
+  const sent = tabName(body.tab);
+  const tab = RENAMED_TABS.get(sent) ?? sent;
   const field = String(body.field ?? "");
   const build = String(body.build ?? "");
   const elapsed = Number(body.elapsed);
