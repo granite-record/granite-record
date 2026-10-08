@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.460
+# GRANITE_VERSION: 2026-09-04.461
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2933,6 +2933,67 @@ def _house_report_once(N, B):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 125 of 2025's report is listed once, as House Calendar 15 printed it; with "
                   "another vote or a calendar months later the docket's row is listed too")
+
+
+# A ROLL CALL NAMED BY THE ROW WHOSE COUNT IT IS (the launch audit's recheck of
+# 7 October 2026). Real rows: Docket_2023-2024.txt lines 9174-9178 (HB 1711
+# of 2024); Docket.txt 7660-7661 (HB 2 of 2025); Docket_2017-2018.txt
+# 14820-14821 (SB 133 of 2017); and rollcalls.json's roll calls of those days.
+_DOCKET_ROLL_CALL_NAMES = {
+    ("HB1711", "2023-2024"): [
+        "2024|3144|3/28/2024 12:00:00 AM|HB1711|H|Lay HB1711 on Table (Rep. Hoell): MF DV 150-205 03/28/2024 HJ 10 P. 214|3/28/2024 12:00:00 AM",
+        "2024|3144|3/28/2024 12:00:00 AM|HB1711|H|Amendment #2024-0431h : AA VV 03/28/2024 HJ 10 P. 213|3/28/2024 12:00:00 AM",
+        "2024|3144|3/28/2024 12:00:00 AM|HB1711|H|FLAM #2024-1350h (Rep. Comtois): AF VV 03/28/2024 HJ 10 P. 214|3/28/2024 12:00:00 AM",
+        "2024|3144|3/28/2024 12:00:00 AM|HB1711|H|Ought to Pass with Amendment 2024-0431h: MA RC 204-149 03/28/2024 HJ 10 P. 216|3/28/2024 12:00:00 AM",
+        "2024|3144|3/29/2024 12:00:00 AM|HB1711|H|FLAM #2024-1358h (Rep. Hoell): AF RC 101-252 03/28/2024 HJ 10 P. 215|3/29/2024 12:00:00 AM"],
+    ("HB2", "2025-2026"): [
+        "2025|1170|4/10/2025 3:22:32 PM|HB2|H|Amendment # 2025-1560h: AA RC 203-167 04/10/2025  HJ 12  P. 67|6/10/2025 11:39:44 AM",
+        "2025|1170|4/10/2025 3:24:35 PM|HB2|H|Amendment # 2025-1526h: AA RC 195-175 04/10/2025  HJ 12  P. 65|6/10/2025 11:39:30 AM"],
+    ("SB133", "2017-2018"): [
+        "2017|0769|3/31/2017 12:00:00 AM|SB133|S|Sen. Carson Floor Amendment #2017-1156s , RC 20Y-2N, AA; 03/30/2017; SJ 12|3/31/2017 12:00:00 AM",
+        "2017|0769|3/31/2017 12:00:00 AM|SB133|S|Ought to Pass with Amendment 2017-1156s, MA, VV; OT3rdg; 03/30/2017; SJ 12|3/31/2017 12:00:00 AM"],
+}
+_ROLL_CALLS_NAMED = {
+    "HB1711": [{"body": "H", "number": 196, "date": "2024-03-28", "yeas": 101, "nays": 252,
+                "question": "Adopt Floor Amendment", "year": "2024"},
+               {"body": "H", "number": 197, "date": "2024-03-28", "yeas": 204, "nays": 149,
+                "question": "Ought to Pass with Amendment", "year": "2024"}],
+    "HB2": [{"body": "H", "number": 151, "date": "2025-04-10", "yeas": 195, "nays": 175,
+             "question": "Adopt Floor Amendment", "year": "2025"},
+            {"body": "H", "number": 152, "date": "2025-04-10", "yeas": 203, "nays": 167,
+             "question": "Adopt Floor Amendment", "year": "2025"}],
+    "SB133": [{"body": "S", "number": 104, "date": "2017-03-30", "yeas": 21, "nays": 2,
+               "question": "Floor Amendment 1156s", "year": "2017"}],
+}
+
+
+@check("narrative", "a roll call is named for the amendment whose row states its count, not the "
+                    "row that happens to stand in its place in the docket's order",
+       needs=("narrative", "build_site_v2"))
+def _roll_call_named_by_count(N, B):
+    """The launch audit's recheck: vote_chronology paired a day's docket rows
+    with its roll calls in order, and named each amendment roll call from its
+    row. HB 1711 of 2024's floor amendment 2024-1358h was entered the day
+    after the passage it preceded, so roll call 197 -- the passage, 204-149 --
+    was named as that amendment; HB 2 of 2025's 1560h and 1526h were entered
+    in the other order from their votes, 203-167 and 195-175, and each roll
+    call carried the other's number: 38 days on 37 bills of 1999-2026 paired a
+    row whose count was not its roll call's. A pair whose counts disagree is
+    paired again by count and kind; one left over with one row of its kind
+    is that row (SB 133 of 2017's "RC 20Y-2N" for roll call 104's 21-2, a
+    count mistyped)."""
+    want = {"HB1711": {("H", 196): "2024-1358h"},
+            "HB2": {("H", 151): "2025-1526h", ("H", 152): "2025-1560h"},
+            "SB133": {("S", 104): "2017-1156s"}}
+    bad = []
+    for (bill, term), rows in _DOCKET_ROLL_CALL_NAMES.items():
+        rec = _narrated(N, term, bill, rows)
+        _order, names = B.vote_chronology(_ROLL_CALLS_NAMED[bill], rec)
+        if names != want[bill]:
+            bad.append(f"{bill} of {term}'s roll calls are named {names}, not {want[bill]}")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 1711 of 2024's roll call 196 is 1358h and 197 no amendment; HB 2 of 2025's 151 "
+                  "and 152 are 1526h and 1560h; SB 133 of 2017's mistyped count keeps its name")
 
 
 # A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October

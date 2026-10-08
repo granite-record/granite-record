@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.176
+# GRANITE_VERSION: 2026-09-05.177
 """
 Generate the faceted site from real General Court data.
 
@@ -385,6 +385,19 @@ def vote_chronology(rcs, narr):
     wrong vote -- so nothing is claimed and the votes fall back to their own
     numbering.
 
+    AND AN AMENDMENT IS NAMED BY THE ROW WHOSE COUNT IS ITS ROLL CALL'S (the
+    launch audit's recheck of 7 October 2026). The counts of a day can agree
+    and its order not: HB 1711 of 2024's floor amendment 2024-1358h, "FLAM #
+    2024-1358h ...: AF RC 101-252", was entered the day after the passage it
+    preceded, so the docket's order put it second, and roll call 197 -- the
+    passage, 204-149 -- was named as that amendment; HB 2 of 2025's 1526h and
+    1560h were entered in the other order from their votes, 195-175 and
+    203-167, and each roll call carried the other's number. On 38 days of 37
+    bills a row so paired states a count its roll call does not have. The
+    order is still the docket's sequence; the name is the row's whose count,
+    and kind (an amendment or not), the roll call carries (_paired_by_count),
+    and a row whose count no roll call of the day carries names nothing.
+
     Returns (order, names) keyed by (body, roll call number).
     """
     lines = defaultdict(list)
@@ -407,13 +420,70 @@ def vote_chronology(rcs, narr):
                       key=lambda r: int(r.get("number") or 0))
         if len(rc_lines) != len(mine):
             continue
-        for (i, raw), r in zip(rc_lines, mine):
+        said = _paired_by_count([raw for _i, raw in rc_lines], mine)
+        for j, ((i, raw), r) in enumerate(zip(rc_lines, mine)):
             k = (r.get("body"), r.get("number"))
             order[k] = i
-            am = AMEND_NUM.search(raw)
+            row = said.get(j)
+            am = AMEND_NUM.search(rc_lines[row][1]) if row is not None else None
             if am and "amendment" in (r.get("question") or "").lower():
                 names[k] = am.group(1)
     return order, names
+
+
+# A roll call's count as a docket row states it: "RC 171-162" (the House),
+# "RC 16Y-8N" (the Senate).
+RC_TALLY = re.compile(r"\bRC\s*\(?\s*(\d{1,3})\s*Y?\s*[-–]\s*(\d{1,3})\s*N?\b", re.I)
+AMENDMENT_ROW = re.compile(r"\b(?:FLAM|Amendment)\b", re.I)
+PASSAGE_Q = re.compile(r"^\s*(?:Ought\s+to\s+Pass|OTP)\b", re.I)
+
+
+def _paired_by_count(raws, mine):
+    """{position in mine: position in raws}: each roll call of a day (mine,
+    in their numbering) and the docket row (raws, in the docket's order) it
+    is. In order, except where a pair's counts disagree: those rows and roll
+    calls are paired again by count and kind -- an amendment, a passage or
+    another motion -- in order within each; one row and one roll call left
+    over, of one kind, are each other (a count mistyped); any other left over
+    is paired with nothing."""
+    def tally(raw):
+        m = RC_TALLY.search(raw or "")
+        return (int(m.group(1)), int(m.group(2))) if m else None
+
+    def kind(s, question=False):
+        s = s or ""
+        if PASSAGE_Q.match(s):
+            return "passage"
+        if ("amendment" in s.lower()) if question else AMENDMENT_ROW.search(s):
+            return "amendment"
+        return "other"
+
+    def counted(r):
+        try:
+            return (int(r.get("yeas")), int(r.get("nays")))
+        except (TypeError, ValueError):
+            return None
+
+    out = {j: j for j in range(min(len(raws), len(mine)))}
+    off = [j for j in out if tally(raws[j]) and counted(mine[j])
+           and tally(raws[j]) != counted(mine[j])]
+    if not off:
+        return out
+    for j in off:
+        out.pop(j)
+    rows, rcs = defaultdict(list), defaultdict(list)
+    for j in off:
+        rows[tally(raws[j]) + (kind(raws[j]),)].append(j)
+        rcs[counted(mine[j]) + (kind(mine[j].get("question"), True),)].append(j)
+    for key, idx in rows.items():
+        if len(rcs.get(key, ())) == len(idx):
+            out.update(zip(rcs[key], idx))
+    left_rows = [j for j in off if j not in out.values()]
+    left_rcs = [j for j in off if j not in out]
+    if (len(left_rows) == len(left_rcs) == 1
+            and kind(raws[left_rows[0]]) == kind(mine[left_rcs[0]].get("question"), True)):
+        out[left_rcs[0]] = left_rows[0]
+    return out
 
 
 # The year a published volume is from, out of the path in its own link. Two
