@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.448
+# GRANITE_VERSION: 2026-09-04.449
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69992,6 +69992,106 @@ def _past_flags(BD):
                   "bill with no flag set, one with a suffix, a journal record, another "
                   "number's LSR and the current term untouched; and nothing written "
                   "where the bill's own saved page prints another designation")
+
+
+# db/Legislation.psv's rows for HB 422, HB 664, HB 138 and SB 131 of 2025 and
+# HB 1442 of 2026, as dumped on 8 September 2026, cut after column 26 (the
+# Senate committee): the fill reads no further.
+_LEGISLATION_2025_ROWS = [
+    "0422|HB|2025|0182|increasing penalties for violations of the shoreland and water "
+    "quality protection act.|True|H|1|False|True|False|25-0182|ENC|HB  0422|HB422|"
+    "01/09/2025 12:30:00||R|H22|H22|01/09/2025 00:00:00|09||03/06/2025 00:00:00|"
+    "02/13/2025 00:00:00|0||",
+    "0664|HB|2025|0239|relative to childhood immunization requirements.|True|H|1|True|"
+    "False|False|25-0239|PMH|HB  0664|HB664|01/17/2025 11:53:00||R|H09|H09|"
+    "01/09/2025 00:00:00|09||03/20/2025 00:00:00|03/26/2025 00:00:00|0||",
+    "0138|HB|2025|0278|relative to tax impact notation on warrant articles with multi-year "
+    "tax impacts.|True|H|1|False|False|True|25-0278|MUN|HB  0138|HB138|"
+    "12/31/2024 16:18:00|144|R|H18|H18|01/08/2025 00:00:00|10||03/20/2025 00:00:00|"
+    "03/26/2025 00:00:00|0|S92",
+    "0131|SB|2025|1064|relative to long-term care eligibility and making an appropriation "
+    "therefor.|True|S|2|True|True|False|25-1064|PMH|SB  0131|SB131|01/21/2025 17:13:00||R"
+    "||||||||0|S26",
+    "1442|HB|2026|2729|(New Title) permitting classification of individuals based on "
+    "biological sex under certain limited circumstances.|True|H|1|False|True|False|"
+    "26-2729|DIS|HB  1442|HB1442|12/03/2025 08:56:00||R|H10|H10|01/07/2026 00:00:00|18||"
+    "03/05/2026 00:00:00|08/19/2026 00:00:00|1|S10"]
+
+
+@check("build", "a bill of the session's first year takes its -FN, -A and -LOCAL from "
+                "the Legislation view, where LSRs.txt does not carry it",
+       needs=("build_data",))
+def _first_year_designations(BD):
+    """build_data.fill_from_legislation, on real rows (the audit of 7 October
+    2026, cause 13). LSRs.txt lists session 2026 alone, so every bill of 2025
+    was a stub and 449 of them showed the bare number: "HB 422" for HB
+    422-FN, "SB 131" for SB 131-FN-A. The view's AppropriationCode,
+    FiscalImpactCode and LocalCode give them, in the order the bills print
+    them. A 2026 bill keeps what LSRs.txt gave it; a row of another term or
+    another LSR fills nothing."""
+    def stub(bid, year, lsr):
+        return {"bill": bid, "lsr": f"{year}-{lsr}", "lsr_year": year, "lsr_num": lsr,
+                "title": "", "chamber": bid[0], "subject_code": "", "subject": "",
+                "house_committee": "", "senate_committee": "", "hearing": "",
+                "hearing_room": "", "stub": True}
+    hb1442 = {**stub("HB1442", "2026", "2729"), "stub": False, "subject_code": "DIS",
+              "house_committee": "Judiciary", "senate_committee": "Judiciary",
+              "flags": {"a": False, "fn": True, "local": False}, "suffix": "-FN",
+              "designation": "HB 1442-FN"}
+    kept = json.loads(json.dumps(hb1442))
+    bills = {"HB422": stub("HB422", "2025", "0182"), "HB664": stub("HB664", "2025", "0239"),
+             "HB138": stub("HB138", "2025", "0278"), "SB131": stub("SB131", "2025", "1064"),
+             "HB1442": hb1442}
+    filled = BD.fill_from_legislation(bills, _LEGISLATION_2025_ROWS, {}, {})
+    got = {b: bills[b].get("designation") for b in ("HB422", "HB664", "HB138", "SB131")}
+    assert got == {"HB422": "HB 422-FN", "HB664": "HB 664-A", "HB138": "HB 138-LOCAL",
+                   "SB131": "SB 131-FN-A"}, f"the 2025 bills are designated {got}"
+    assert bills["SB131"]["flags"] == {"a": True, "fn": True, "local": False} and (
+        bills["SB131"]["suffix"] == "-FN-A"), bills["SB131"]
+    assert bills["HB1442"] == kept, f"a 2026 bill's LSRs.txt flags were changed: {bills['HB1442']}"
+    assert filled["designation"] == 4, dict(filled)
+    # A row of another LSR, and one of another term, fill nothing.
+    other = {"HB422": stub("HB422", "2025", "0999"), "HB664": stub("HB664", "2023", "0239")}
+    BD.fill_from_legislation(other, _LEGISLATION_2025_ROWS, {}, {})
+    assert not any("designation" in r for r in other.values()), other
+    # The LSRs.txt reading and this one write one form: -FN, -A, -LOCAL, in order.
+    assert BD.designation_of("HB1442", True, True, True)[1:] == ("-FN-A-LOCAL",
+                                                                 "HB 1442-FN-A-LOCAL")
+    return "ok", ("HB 422-FN, HB 664-A, HB 138-LOCAL and SB 131-FN-A from the view; HB "
+                  "1442 of 2026 as LSRs.txt gave it; another LSR's or term's row fills "
+                  "nothing")
+
+
+@check("data", "every bill of the session whose Legislation row sets a flag carries its "
+               "suffix in data/bills.json")
+def _session_designations_built():
+    """The built record against the view (the audit of 7 October 2026, cause
+    13): no bill of the current term whose row in db/Legislation.psv sets the
+    appropriation, fiscal-note or local flag is left with the bare number."""
+    bp, lp = Path("data/bills.json"), Path("db/Legislation.psv")
+    if not (bp.exists() and lp.exists()):
+        return "skip", "data/bills.json or db/Legislation.psv is not here"
+    built = json.loads(bp.read_text(encoding="utf-8"))
+    cur = built.get(max(built)) or {}
+    want, bare = 0, []
+    yes = lambda v: v.strip().lower() in ("1", "true")
+    with open(lp, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            f = line.rstrip("\r\n").split("|")
+            if len(f) < 27:
+                continue
+            r = cur.get(f[14].strip().upper())
+            if not r or str(r.get("lsr_year")) != f[2].strip() or \
+                    str(r.get("lsr_num") or "").lstrip("0") != f[3].strip().lstrip("0"):
+                continue
+            if any(yes(x) for x in f[8:11]):
+                want += 1
+                if "-" not in (r.get("designation") or ""):
+                    bare.append(f[14].strip())
+    assert not bare, (f"{len(bare)} bills whose Legislation row sets a flag show the bare "
+                      f"number in data/bills.json, e.g. {bare[:6]}: rebuild data/ "
+                      "(build_data.py)")
+    return "ok", f"all {want:,} flagged bills of the session's view carry their suffix"
 
 
 # The heads of four saved bill pages, as fetch_legislation.py saved them --
