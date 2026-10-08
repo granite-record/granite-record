@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.96
+# GRANITE_VERSION: 2026-09-04.97
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -631,7 +631,7 @@ def _stated(m):
 def stated_day(ev, r):
     """Date a row no pattern reads by the day it states, where that is the
     day of what it records (STATES_ITS_DAY)."""
-    if ev.get("_type") != "other" or ev.get("date"):
+    if ev.get("_type") not in ("other", "conf_report") or ev.get("date"):
         return ev
     created = r.get("created")
     for kind, pat in STATES_ITS_DAY:
@@ -1340,6 +1340,19 @@ CONF_MEET_RE = re.compile(
     r"^Conference Committee Meeting[:\s]+(?P<date>\d{1,2}/\d{1,2}/\d{4})"
     r"\s*(?P<time>\d{1,2}:\d{2}\s*[ap]m)?\s*(?P<venue>[A-Z].*)?$", re.I)
 DIED_RE = re.compile(r"^Died on Table[,;]?\s*Session ended\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
+# A CHAMBER'S VOTE ON A COMMITTEE OF CONFERENCE'S REPORT (the launch audit of
+# 7 October 2026, cause 10). "Conference Committee Report # 2026-2109c; RC
+# 15Y-8N, Adopted; 06/04/2026" (the Senate) and "Conference Committee Report
+# 2026-2109c: Adopted, RC 183-170 06/04/2026" (the House), HB 1300 of 2026:
+# read by no pattern, so no history of 2007-2026 said a conference report was
+# adopted, while the rail drew both votes. The number with its letter is
+# required, which leaves the 1999-2008 readers' "Conference Committee
+# Report{2206}" to them; a "Filed" row is the report arriving, not a vote on
+# it. No date is captured: the row is dated by stated_day ("conference
+# vote"), as it was while it was read by nothing.
+CONF_REPORT_RE = re.compile(
+    r"^Conference\s+Committee\s+Report\s*#?\s*(?P<num>(?:\d{4}-)?\d{3,4}[a-z])\b"
+    r"(?!.*\bFiled\b).*?\b(?P<outcome>Adopted|Failed)\b", re.I)
 REREF_RE = re.compile(r"^Referred to\s+(?P<committee>[A-Z][A-Za-z,&\-\s]+?)\s+"
                       r"(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)
 
@@ -1514,6 +1527,7 @@ PATTERNS = [
         r"(?P<rec>.*?)"
         r"(?=\s*(?:#|\d{1,2}/\d{1,2}/\d{4}|[,;(]|\bVote\b|$))"
         r"(?P<rest>.*)$", re.I)),
+    ("conf_report", CONF_REPORT_RE),
     ("veto_override", VETO_HOUSE_RE),
     ("veto_override", VETO_SENATE_RE),
     ("unsigned_law", UNSIGNED_RE),
@@ -1652,6 +1666,15 @@ def classify(desc):
             d = m.groupdict()
             if name == "report":
                 d.update(report_fields(d.pop("rest", "")))
+            if name == "conf_report":
+                # The vote kind and count, in either chamber's order, the way
+                # amendment_outcome reads them off an amendment row.
+                vk = AMEND_VOTE.search(c, m.end("num"))
+                tally = AMEND_TALLY.search(c, vk.end()) if vk else None
+                d["vote"] = ({"RC": "RC", "VV": "VV"}.get(vk.group(1).upper(), "DV")
+                             if vk else None)
+                d["y"], d["n"] = (tally.group(1), tally.group(2)) if tally else (None, None)
+                d["motion"] = "MA" if d["outcome"].lower() == "adopted" else "MF"
             if name == "amendment":
                 # "FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162" is the
                 # House's floor amendment, and who offered it is in brackets.
@@ -2346,7 +2369,11 @@ def stage_of(ev):
     if t in ("signed", "vetoed", "chaptered", "governor", "enrolled",
              "enrolled_amendment", "unsigned_law"):
         return ("G", "governor")
-    if t in ("conference", "conference_meeting", "conf_report"):
+    if t == "conf_report":
+        # Each chamber's own vote on the conferees' report, on its floor, as
+        # the 1989-2006 readers tell the same rows.
+        return (body, "floor")
+    if t in ("conference", "conference_meeting"):
         return ("C", "conference")
     if t == "introduced":
         return (body, "committee")
@@ -3045,6 +3072,28 @@ def describe(ev, body, seen_intro=False):
     if t == "retained":
         return ("The committee retained the bill, holding it for further work rather "
                 "than reporting it out this year.")
+
+    if t == "conf_report":
+        # The floor sentence above -- "On May 23, 1989 the Senate adopted
+        # “Conference Committee Report” on a voice vote." is how the 1989-2006
+        # readers' rows are told -- with what was adopted in the rail's words:
+        # "On June 4, 2026 the Senate adopted the conference report
+        # (2026-2109c) on a roll call 15–8." "On" a day only where the row
+        # states one (stated_day).
+        vk, _ = VOTE_KIND.get((ev.get("vote") or "").upper(), (None, None))
+        tally = f" {ev['y']}–{ev['n']}" if vk and ev.get("y") and ev.get("n") else ""
+        did = "adopted" if ev.get("motion") == "MA" else "rejected"
+        lead = f"On {fdate(ev['date'])} the {chamber}" if ev.get("date") else f"The {chamber}"
+        num = f" ({ev['num']})" if ev.get("num") else ""
+        # "Failed, RC 224-141 Lacking Necessary Three-Fifths Vote" (CACR 12 of
+        # 2012): a majority, short of what a constitutional amendment needs --
+        # the rail's words.
+        short = re.search(r"\blacking\s+(?:the\s+)?necessary\s+(two|three)\W+(thirds|fifths)",
+                          ev.get("_raw") or "", re.I)
+        return (f"{lead} {did} the conference report{num}"
+                + (f" on a {vk}{tally}" if vk else "")
+                + (f", short of {short.group(1).lower()} {short.group(2).lower()}"
+                   if short and did == "rejected" else "") + ".")
 
     if t == "died":
         when = f" when the session ended on {fdate(ev['date'])}" if ev.get("date") else " when the session ended"
@@ -5788,7 +5837,14 @@ def build(bill, rows, introduction=None):
                         "report_date": (e.get("date") or "").strip(),
                         "yeas": e.get("y"), "nays": e.get("n"),
                         "new_title": bool(e.get("new_title"))}
-                       if e["_type"] == "report" else {})}
+                       if e["_type"] == "report" else
+                       # A chamber's vote on the conferees' report: its number,
+                       # outcome, kind and count, for the Votes tab.
+                       {"amendment": (e.get("num") or "").strip(),
+                        "motion": e.get("motion") or "",
+                        "vote_kind": (e.get("vote") or "").upper(),
+                        "yeas": e.get("y"), "nays": e.get("n")}
+                       if e["_type"] == "conf_report" else {})}
                    for e in evs],
         "unrecognised": unknown,
         # Rows the docket files under this bill that belong to another

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.451
+# GRANITE_VERSION: 2026-09-04.452
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2466,6 +2466,82 @@ def _undated_floor_vote(N, B):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 1473 of 2026's undated kill is the House's vote of 5 March, on its Votes tab; "
                   "HB 1175 of 2022's tabling and SB 78 of 2025's withdrawal are left as they were")
+
+
+# A CHAMBER'S VOTE ON A CONFERENCE REPORT (the launch audit of 7 October 2026,
+# cause 10). Real rows: Docket.txt lines 24004, 24139 and 24225 (HB 1300 of
+# 2026), 10476, 10573, 10647 and 10653-10654 (HB 1 of 2025);
+# Docket_db_2011-2012.txt 9277-9279 (CACR 12 of 2012).
+_DOCKET_CONF_REPORT = {
+    ("HB1300", "2025-2026"): [
+        "2026|2870|5/28/2026 3:11:07 PM|HB1300|S|Conference Committee Report Filed, # 2026-2109c; 06/04/2026|5/28/2026 3:11:07 PM",
+        "2026|2870|6/4/2026 11:42:18 AM|HB1300|S|Conference Committee Report # 2026-2109c; RC 15Y-8N, Adopted; 06/04/2026;  SJ 14|6/4/2026 11:42:18 AM",
+        "2026|2870|6/4/2026 12:38:38 PM|HB1300|H|Conference Committee Report 2026-2109c: Adopted, RC 183-170 06/04/2026  HJ 15  P. 24|8/28/2026 2:10:00 PM"],
+    ("HB1", "2025-2026"): [
+        "2025|1165|6/19/2025 4:24:10 PM|HB1|S|Conference Committee Report Filed, # 2025-2865c; 06/26/2025|7/8/2025 8:06:55 AM",
+        "2025|1165|6/26/2025 2:55:47 PM|HB1|S|Conference Committee Report # 2025-2865c; RC 16Y-8N, Adopted; 06/26/2025;  SJ 17|7/8/2025 8:06:54 AM",
+        "2025|1165|6/26/2025 3:15:37 PM|HB1|H|Conference Committee Report 2025-2865c: Failed, RC 182-183 06/26/2025  HJ 18  P. 32|10/21/2025 11:24:03 AM",
+        "2025|1165|6/26/2025 3:40:30 PM|HB1|H|Reconsider HB1 (Rep. Taylor): MA RC 185-180 06/26/2025  HJ 18  P. 34|10/21/2025 11:34:01 AM",
+        "2025|1165|6/26/2025 3:41:14 PM|HB1|H|Conference Committee Report 2025-2865c: Adopted, RC 185-180 06/26/2025  HJ 18  P. 38|10/21/2025 11:34:41 AM"],
+    ("CACR12", "2011-2012"): [
+        "2012|0222|05/31/2012 03:52:41 PM|CACR12|S|Conference Committee Report #2012-2465c; House Amendment + New Amendment, Filed|05/31/2012 03:52:41 PM",
+        "2012|0222|06/06/2012 11:05:36 AM|CACR12|S|Conference Committee Report 2465c; 3/5 necessary, RC 17Y-6N, Adopted|06/06/2012 11:05:36 AM",
+        "2012|0222|06/06/2012 12:50:51 PM|CACR12|H|Conference Committee Report #2465c Failed, RC 224-144 Lacking Necessary Three-Fifths Vote; HJ 51, PG.2576-2578|06/06/2012 12:50:51 PM"],
+}
+
+
+@check("narrative", "a chamber's vote on a conference report is told on its floor, with its "
+                    "count, and carried for the Votes tab",
+       needs=("narrative",))
+def _conference_report_told(N):
+    """The launch audit's cause 10: "Conference Committee Report # 2026-2109c;
+    RC 15Y-8N, Adopted; 06/04/2026" (the Senate) and "Conference Committee
+    Report 2026-2109c: Adopted, RC 183-170 06/04/2026" (the House) were read
+    by no pattern, so no history of 2007-2026 said a conference report was
+    adopted -- 86 of 86 bills of 2025-2026 -- while the rail drew both votes.
+    Each is now its chamber's floor vote ("conf_report"), in the 1989-2006
+    readers' sentence with the rail's words for what was adopted: "On June
+    4, 2026 the Senate adopted the conference report (2026-2109c) on a roll
+    call 15–8." A rejection is said (HB 1 of 2025, 182-183, then adopted
+    185-180 on reconsideration), and one short of three fifths says so (CACR
+    12 of 2012). A "Filed" row is the report arriving, and stays unread."""
+    want = {
+        "HB1300": [("On the Senate floor", "On June 4, 2026 the Senate adopted the conference report "
+                    "(2026-2109c) on a roll call 15–8."),
+                   ("On the House floor", "On June 4, 2026 the House adopted the conference report "
+                    "(2026-2109c) on a roll call 183–170.")],
+        "HB1": [("On the House floor", "On June 26, 2025 the House rejected the conference report "
+                 "(2025-2865c) on a roll call 182–183."),
+                ("On the House floor", "On June 26, 2025 the House adopted the conference report "
+                 "(2025-2865c) on a roll call 185–180.")],
+        "CACR12": [("On the House floor", "rejected the conference report (2465c) on a roll call "
+                    "224–144, short of three fifths.")],
+    }
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_CONF_REPORT.items():
+            rec = _narrated(N, term, bill, rows)
+            for label, s in want[bill]:
+                if not any(s in st["text"] for st in rec["stages"] if st["label"] == label):
+                    bad.append(f"{bill} of {term} does not say under {label!r}: {s!r}; it says "
+                               f"{[(st['label'], st['text']) for st in rec['stages']]!r}")
+            filed = [e["type"] for e in rec["events"] if "Filed" in e["raw"]]
+            if filed != ["other"]:
+                bad.append(f"{bill} of {term}'s Filed row is read as {filed}")
+            if bill == "HB1300":
+                got = [(e["body"], e["type"], e.get("motion"), e.get("vote_kind"), e.get("yeas"),
+                        e.get("nays"), e.get("amendment"), e["date"])
+                       for e in rec["events"] if e["type"] == "conf_report"]
+                if got != [("S", "conf_report", "MA", "RC", "15", "8", "2026-2109c", "2026-06-04"),
+                           ("H", "conf_report", "MA", "RC", "183", "170", "2026-2109c", "2026-06-04")]:
+                    bad.append(f"HB1300 of 2026's conference votes are carried as {got}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 1300 of 2026's two adoptions, HB 1 of 2025's rejection and adoption, and CACR "
+                  "12 of 2012's rejection short of three fifths are told on their floors")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
