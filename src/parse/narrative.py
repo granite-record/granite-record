@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.101
+# GRANITE_VERSION: 2026-09-04.102
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2496,11 +2496,18 @@ def stage_of(ev):
         # An enrolled bill amendment comes after both chambers have passed the
         # bill and belongs with enrolling, which is already staged with the
         # governor.
+        # AND A COMMITTEE'S AMENDMENT IS VOTED ON THE FLOOR TOO (the launch
+        # audit of 7 October 2026). "Committee Amendment # 2025-0531s, AA,
+        # VV; 03/06/2025" (SB 17 of 2025) is the Senate adopting its
+        # committee's amendment, with the bill's passage the next row: Senate
+        # Journal 6 prints the vote on the floor. Staged with the committee
+        # by its word "Committee", it was told under "In Senate committee", a
+        # heading of its own between the floor's, on 484 histories of
+        # 2025-2026. Whose it is is the sentence's to say ("The committee's
+        # amendment").
         what = (ev.get("what") or "").lower()
         if "enrolled" in what:
             return ("G", "governor")
-        if "committee" in what:
-            return (body, "committee")
         return (body, "floor")
     if t in FLOOR_TYPES:
         return (body, "floor")
@@ -3575,6 +3582,77 @@ def undated_floor(ev, r):
     line = re.sub(r"\s*\[&\]\s*$", "", ev["_raw"])
     got = dict(PATTERNS)["floor"].search(f"{line} {created:%m/%d/%Y}")
     return {**got.groupdict(), "_type": "floor", "_raw": ev["_raw"]} if got else None
+
+
+# A COMMITTEE'S AMENDMENT IS VOTED AFTER THE REPORT THAT CARRIES IT, AND
+# BEFORE THE PASSAGE THAT TAKES IT. All three are dated the day of the floor's
+# vote, and told in the order the clerk entered them. HB 154 of 2025's
+# "Committee Amendment # 2025-1828s, AA, VV; 05/08/2025" carries an entry
+# stamp of 28 March (Docket.txt line 6880), a month before the Senate
+# committee's report of 30 April that recommends it; HB 658 of 2025's
+# "Committee Amendment # 2025-1642s, AA, VV; 05/01/2025" was entered two hours
+# after "Ought to Pass with Amendment #2025-1642s, MA, VV; Refer to Finance
+# Rule 4-5", and told on the floor after it the amendment read as adopted
+# once the bill had gone to Finance. In the order the history tells them, a
+# committee's amendment goes after its chamber's report of the same day
+# naming its number, and before its chamber's passage of that day naming it.
+def amendment_after_report(evs):
+    """The bill's events, each committee's amendment told between the report
+    that carries it and the passage that takes it (above)."""
+    out = list(evs)
+    for e in list(out):
+        if (e["cancelled"] or e["_type"] != "amendment"
+                or "committee" not in (e.get("what") or "").lower()):
+            continue
+        mine = amend_keys(e.get("num"))[:1]
+        if not mine:
+            continue
+
+        def names(r, key):
+            return any(same_amendment(mine[0], k) for k in amend_keys(r.get(key)))
+
+        i = out.index(e)
+        later = [j for j, r in enumerate(out) if j > i and r["_type"] == "report"
+                 and not r["cancelled"] and r["body"] == e["body"]
+                 and r["when"].date() == e["when"].date() and names(r, "amend")]
+        if later:
+            out.insert(max(later), out.pop(i))
+            continue
+        passed = [j for j, r in enumerate(out) if j < i and r["_type"] == "floor"
+                  and not r["cancelled"] and r["body"] == e["body"]
+                  and r["when"].date() == e["when"].date()
+                  and PASSAGE.match(split_mover(r.get("action"))[0]) and names(r, "_raw")]
+        if passed:
+            out.insert(min(passed), out.pop(i))
+    return out
+
+
+# A SENTENCE OF THE FLOOR TOLD AGAIN. collapse() drops a sentence a stage
+# repeats word for word, which is right for one action the clerk entered
+# twice -- HB 154 of 2025's committee amendment has two identical rows -- and
+# drops the second of two votes that happened: HB 1384 of 2026's Senate
+# adopted floor amendment 2026-1928s and passed the bill, reconsidered both,
+# and did each again, and the history told each once. Where the chamber told
+# something else in between, the repeat happened again and says so
+# (told_again); where it did not, it is the one action entered twice, and is
+# not told twice.
+AGAIN_AMENDMENT = re.compile(r" was (adopted|rejected|withdrawn|offered|proposed)\b")
+
+
+def told_again(s, ev, told, last):
+    """`s` as the history tells it, given `told`, the floor and amendment
+    sentences of ev's chamber told so far, and `last`, the history's last
+    sentence: None for a repeat of the last, "again" put in for a repeat of an
+    earlier one, else `s`. Not for an amendment the row gives no number: two
+    of those are not one told twice."""
+    if not s or s not in told or (ev["_type"] == "amendment" and not (ev.get("num") or "").strip()):
+        return s
+    if last == s:
+        return None
+    if ev["_type"] == "amendment":
+        return AGAIN_AMENDMENT.sub(r" was \1 again", s, count=1)
+    chamber = f"the {CHAMBER.get(ev['body'], 'House')} "
+    return s.replace(chamber, chamber + "again ", 1) if chamber in s else s
 
 
 def notice_note(ev):
@@ -5468,10 +5546,17 @@ def build(bill, rows, introduction=None):
     # reconsidered, and nothing after. The repeat says "again", which is what
     # happened and is also what keeps it.
     told_on_line = set()
-    for ev in crossing_order(evs):
+    # {chamber: [the floor and amendment sentences told so far]} (told_again).
+    told_floor = defaultdict(list)
+    for ev in amendment_after_report(crossing_order(evs)):
         if ev["cancelled"]:
             continue
         s = describe(ev, ev["body"], seen_intro)
+        if ev["_type"] in ("floor", "amendment") and not ev.get("_entry"):
+            plain = s
+            s = told_again(s, ev, told_floor[ev["body"]], sentences[-1] if sentences else None)
+            if plain:
+                told_floor[ev["body"]].append(plain)
         # A referral its committee's chair waived is told by the waiver
         # (REFERRAL_WAIVED, above), and heads no stage.
         if ev.get("_waived_by") and ev["_type"] == "rereferred":

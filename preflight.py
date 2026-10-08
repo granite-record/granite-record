@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.456
+# GRANITE_VERSION: 2026-09-04.457
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1809,8 +1809,10 @@ def _classify(narrative):
 
 @check("narrative", "amendments stage by what the line says", needs=("narrative",))
 def _amend_stage(narrative):
+    # A committee's amendment is voted on the floor, and told there (the
+    # launch audit of 7 October 2026: _committee_amendment_on_the_floor).
     cases = [("Amendment # 2026-0503h: AA VV 03/06/2026", "floor"),
-             ("Committee Amendment # 2026-0777h, AA, VV; 03/06/2026", "committee"),
+             ("Committee Amendment # 2026-0777h, AA, VV; 03/06/2026", "floor"),
              ("Enrolled Bill Amendment # 2026-2001e Adopted, VV, "
               "(In recess 06/26/2026)", "governor")]
     wrong = []
@@ -1821,7 +1823,7 @@ def _amend_stage(narrative):
         if got != want:
             wrong.append(f"{line[:26]}... -> {got}, wanted {want}")
     assert not wrong, "; ".join(wrong)
-    return "ok", "bare->floor, committee->committee, enrolled->governor"
+    return "ok", "bare->floor, committee->floor, enrolled->governor"
 
 
 @check("narrative", "an amendment row that states no rejection is not called rejected",
@@ -2720,6 +2722,101 @@ def _yearless_amendment(N, B):
                   "with no year are told and listed")
 
 
+# A COMMITTEE'S AMENDMENT VOTED ON THE FLOOR (the launch audit of 7 October
+# 2026). Real rows: Docket.txt lines 5926, 7349, 7926, 8250, 8509, 8912 and
+# 8984 (HB 658 of 2025); 6880, 8023, 8373, 8564 and 8741 (HB 154 of 2025);
+# 20190, 22239, 23127, 23364-23366 and 23376-23379 (HB 1384 of 2026); SB 17 of
+# 2025's are _DOCKET_TABLED_BEFORE_THIRD's.
+_DOCKET_COMMITTEE_AMENDMENT_FLOOR = {
+    ("HB658", "2025-2026"): [
+        "2025|0350|3/19/2025 8:54:02 AM|HB658|S|  Introduced 03/13/2025 and Referred to Ways and Means;  SJ 8|3/19/2025 8:54:02 AM",
+        "2025|0350|4/2/2025 4:33:30 PM|HB658|S| Hearing: 04/16/2025, Room 100, SH, 09:30 am;  SC 16|4/2/2025 4:33:30 PM",
+        "2025|0350|4/17/2025 1:39:42 PM|HB658|S|Committee Report: Ought to Pass with Amendment # 2025-1642s, 05/01/2025; Vote 5-0; CC;  SC 19|4/21/2025 12:06:12 PM",
+        "2025|0350|5/1/2025 1:54:48 PM|HB658|S|Ought to Pass with Amendment #2025-1642s, MA, VV; Refer to Finance Rule 4-5; 05/01/2025;  SJ 11|5/1/2025 3:51:19 PM",
+        "2025|0350|5/1/2025 3:51:15 PM|HB658|S|Committee Amendment # 2025-1642s, AA, VV; 05/01/2025;  SJ 11|5/1/2025 3:51:19 PM",
+        "2025|0350|5/12/2025 12:25:25 PM|HB658|S|Committee Report: Ought to Pass, 05/15/2025; Vote 8-0; CC;  SC 21A|5/14/2025 7:06:01 PM",
+        "2025|0350|5/15/2025 11:30:52 AM|HB658|S|Ought to Pass: MA, VV; OT3rdg; 05/15/2025;  SJ 13|5/15/2025 11:30:52 AM"],
+    ("HB154", "2025-2026"): [
+        "2025|0558|3/28/2025 7:58:36 AM|HB154|S|Committee Amendment # 2025-1828s, AA, VV; 05/08/2025;  SJ 12|5/8/2025 12:45:34 PM",
+        "2025|0558|4/23/2025 10:49:31 AM|HB154|S| Hearing: 04/29/2025, Room 103, LOB, 09:30 am;  SC 19|4/23/2025 10:49:31 AM",
+        "2025|0558|4/30/2025 1:37:41 PM|HB154|S|Committee Report: Ought to Pass with Amendment # 2025-1828s, 05/08/2025; Vote 5-0; CC;  SC 20|4/30/2025 1:37:41 PM",
+        "2025|0558|5/8/2025 10:41:58 AM|HB154|S|Ought to Pass with Amendment #2025-1828s, MA, VV; OT3rdg; 05/08/2025;  SJ 12|5/8/2025 10:41:58 AM",
+        "2025|0558|5/8/2025 10:41:02 AM|HB154|S|Committee Amendment # 2025-1828s, AA, VV; 05/08/2025;  SJ 12|5/8/2025 10:41:02 AM"],
+    ("HB1384", "2025-2026"): [
+        "2026|3174|3/17/2026 11:56:26 AM|HB1384|S|  Introduced 03/12/2026 and Referred to Judiciary;  SJ 7|3/17/2026 11:56:32 AM",
+        "2026|3174|4/24/2026 9:38:09 AM|HB1384|S| Hearing: 04/28/2026, Room 100, SH, 01:00 pm;  SC 17|4/24/2026 9:38:09 AM",
+        "2026|3174|5/12/2026 2:45:20 PM|HB1384|S|Committee Report: Ought to Pass with Amendment # 2026-1911s, 05/14/2026, Vote 3-2;  SC 18A|5/12/2026 2:45:20 PM",
+        "2026|3174|5/14/2026 7:52:42 PM|HB1384|S|Committee Amendment # 2026-1911s, AF, VV; 05/14/2026;  SJ 12|5/14/2026 7:52:42 PM",
+        "2026|3174|5/14/2026 7:53:02 PM|HB1384|S|Sen. Birdsell Floor Amendment # 2026-1928s, AA, VV; 05/14/2026;  SJ 12|5/14/2026 7:53:02 PM",
+        "2026|3174|5/14/2026 7:53:21 PM|HB1384|S|Ought to Pass with Amendment # 2026-1928s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|5/14/2026 7:53:21 PM",
+        "2026|3174|5/14/2026 8:35:29 PM|HB1384|S|Sen. Birdsell Moved to Reconsider the following action taken by this Body: Rescind Order to Third Reading; Reconsider the Vote on Ought to Pass with Amendment; Reconsider the Vote on Floor Amendment #2026-1928s; and Reconsider the Vote on Committee Amendment #2026-1911s, MA, VV; 05/14/2026;  SJ 12|5/14/2026 8:35:29 PM",
+        "2026|3174|5/14/2026 8:36:06 PM|HB1384|S|Committee Amendment # 2026-1911s, AA, VV; 05/14/2026;  SJ 12|5/15/2026 10:31:44 AM",
+        "2026|3174|5/14/2026 8:36:39 PM|HB1384|S|Sen. Birdsell Floor Amendment # 2026-1928s, AA, VV; 05/14/2026;  SJ 12|5/14/2026 8:36:39 PM",
+        "2026|3174|5/14/2026 8:37:05 PM|HB1384|S|Ought to Pass with Amendments #2026-1911s and #2026-1928s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|5/14/2026 8:37:05 PM"],
+    ("SB17", "2025-2026"): _DOCKET_TABLED_BEFORE_THIRD[("SB17", "2025-2026")],
+}
+
+
+@check("narrative", "a committee's amendment is told on the floor that voted on it, after the "
+                    "report that carried it and before the passage that took it, and a vote "
+                    "taken again is told again",
+       needs=("narrative",))
+def _committee_amendment_on_the_floor(N):
+    """The launch audit's wording finding: "Committee Amendment # 2025-0531s,
+    AA, VV; 03/06/2025" (SB 17 of 2025) is the Senate adopting its committee's
+    amendment on the floor, and stage_of filed it by its word "Committee"
+    under "In Senate committee", a heading of its own between the floor's, on
+    484 histories of 2025-2026. It is told on the floor, between the report
+    that carries it and the passage that takes it, whatever order the clerk
+    entered them in: HB 154 of 2025's first copy carries an entry stamp of 28
+    March, before the report, and HB 658's was entered after the passage
+    that sent the bill to Finance. A row the clerk entered twice is told once;
+    a vote taken again after a reconsideration is told again, and says so (HB
+    1384 of 2026's floor amendment 1928s and its passage)."""
+    want = {
+        "SB17": ["The committee's amendment (2025-0531s) was adopted on a voice vote on March 6, "
+                 "2025, changing the text of the bill. On March 6, 2025 the Senate adopted the "
+                 "motion that it ought to pass with an amendment"],
+        "HB658": ["The committee's amendment (2025-1642s) was adopted on a voice vote on May 1, "
+                  "2025, changing the text of the bill. On May 1, 2025 the Senate voted to pass it "
+                  "with changes on a voice vote, then referred it on to the Senate Finance "
+                  "committee."],
+        "HB154": ["The committee's amendment (2025-1828s) was adopted on a voice vote on May 8, "
+                  "2025, changing the text of the bill. On May 8, 2025 the Senate voted to pass it "
+                  "with changes on a voice vote and ordered it to a third reading."],
+        "HB1384": ["The committee's amendment (2026-1911s) was rejected on a voice vote on May 14, "
+                   "2026.",
+                   "The committee's amendment (2026-1911s) was adopted on a voice vote on May 14, "
+                   "2026, changing the text of the bill. A floor amendment (2026-1928s), offered by "
+                   "Sen. Birdsell, was adopted again on a voice vote on May 14, 2026, changing the "
+                   "text of the bill. On May 14, 2026 the Senate again voted to pass it with "
+                   "changes on a voice vote and ordered it to a third reading."],
+    }
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_COMMITTEE_AMENDMENT_FLOOR.items():
+            rec = _narrated(N, term, bill, rows)
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the Senate floor"]
+            for s in want[bill]:
+                if not any(s in t for t in floor):
+                    bad.append(f"{bill} of {term} does not say on the Senate floor {s!r}: "
+                               f"{[(st['label'], st['text']) for st in rec['stages']]!r}")
+            if any("committee's amendment (" in st["text"] or "floor amendment (" in st["text"]
+                   for st in rec["stages"] if st["label"].startswith("In Senate committee")):
+                bad.append(f"{bill} of {term} tells an amendment's vote under a committee's "
+                           f"heading: {rec['stages']!r}")
+            if bill == "HB154" and rec["narrative"].count("was adopted on a voice vote on May 8") != 1:
+                bad.append(f"HB154 of 2025 tells its one committee amendment twice: "
+                           f"{rec['narrative']!r}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 17, HB 658 and HB 154 of 2025 and HB 1384 of 2026 tell the committee's "
+                  "amendment on the Senate floor, in order, once, and HB 1384's votes taken again")
+
+
 # A HEARING ON A PROPOSED NON-GERMANE AMENDMENT (the launch audit of 7 October
 # 2026, cause 15). Real rows: Docket.txt lines 661, 870 and 2399 (HB 519 of
 # 2025), 14215 and 14242 (HB 1300 of 2026), 12827 and 16958 (SB 425 of 2026),
@@ -3273,9 +3370,10 @@ _SENT_ON_HEADS = {
                                "Administration and Finance", "On the House floor",
                                "In House committee — a Joint Committee of Executive Departments and "
                                "Administration and Finance", "On the House floor"], [], []),
-    ("HB442", "1993-1994"): (["In House committee", "On the House floor",
-                              "In House committee — Appropriations", "On the House floor",
-                              "In House committee"], [], []),
+    # Its first row is the floor's: "COMM AM<3943>, AA VV; COMM FL AM<4488>,
+    # AA VV; ...", the committee's amendment adopted on the floor.
+    ("HB442", "1993-1994"): (["On the House floor", "In House committee — Appropriations",
+                              "On the House floor", "In House committee"], [], []),
     # Re-referred twice on one row: where it says last.
     ("SB165", "1993-1994"): (["In Senate committee — Executive Departments and Administration",
                               "On the Senate floor", "In Senate committee — Wildlife and Recreation",
@@ -4159,7 +4257,8 @@ _REFERRAL_UNMADE_HEADS = {
     ("HB1138", "2023-2024"): (["In House committee — Transportation", "On the House floor"], [],
                               ["the referral"]),
     # Ways and Means' amendment, entered two hours after the passage that sent
-    # the bill to Finance, is told in Ways and Means' stage, before it.
+    # the bill to Finance, is told before it: after Ways and Means' report, on
+    # the floor that adopted it (narrative.amendment_after_report).
     ("HB658", "2025-2026"): (["In Senate committee — Ways and Means", "On the Senate floor",
                               "In Senate committee — Finance"],
                              ["(amendment 2025-1642s) unanimously, 5–0, and the report was placed on the "
@@ -28650,8 +28749,9 @@ def _docket_1999_clauses(N, V, E, B):
     assert [lab for lab, _t in stages["HR10"]] == ["On the House floor"] and \
         "The committee's amendment (4110) was adopted on a voice vote" in told["HR10"], (
         f"HR 10's Finance amendment of 13 April 2000 is under {stages['HR10']}")
-    # And still under the committee's where the committee's work comes first.
-    assert [lab for lab, _t in stages["SB324"]] == ["In House committee", "On the House floor"], (
+    # And under the floor's where the committee's amendment comes first on the
+    # line: it was voted on the floor (the launch audit of 7 October 2026).
+    assert [lab for lab, _t in stages["SB324"]] == ["On the House floor"], (
         stages["SB324"])
     return "ok", ("HB 999's amendment 2229 is adopted in two parts and listed adopted; SB 303's "
                   "section 5 claims nothing for 4383; HB 1548's veto, HB 763's concurrence, "
