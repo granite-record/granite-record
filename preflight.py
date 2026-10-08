@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.465
+# GRANITE_VERSION: 2026-09-04.466
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2344,8 +2344,8 @@ _DOCKET_CROSSED_LATE = {
 
 
 @check("narrative", "a chamber's introduction dated before the other chamber's vote that sent "
-                    "the bill is told after that vote, with the day the chamber gives it",
-       needs=("narrative",))
+                    "the bill is told after that vote, with no day, and its event keeps the day "
+                    "the chamber gives it", needs=("narrative",))
 def _crossed_after_passage(N):
     """The launch audit's cause 7: the Senate introduces the House's bills in
     recess and dates them by the session it is in recess of. HB 1460 of 2026
@@ -2353,21 +2353,21 @@ def _crossed_after_passage(N):
     reads "Introduced 02/05/2026", and the history said it crossed to the
     Senate on 5 February, before the House's vote -- on 51 histories of
     2025-2026 and 1,387 older ones. It is now told after the vote that sent
-    it, the day kept as the Senate's own (narrative.crossing_order), and the
-    event, the docket list and the rail keep the row's day. Only the votes up
-    to the receiving chamber's next row: SB 1 of 2023's House introduction
-    was entered in April, after the Senate concurred on 14 February, and is
-    told after the Senate's passage of 26 January. A crossing dated after the
-    vote (HB 70 of 2025) is told as it was."""
+    it (narrative.crossing_order), with no day -- the person's wording of 8
+    October 2026, "It crossed to the Senate and was referred to the Senate
+    Children and Family Law committee." -- and the event, the docket list and
+    the rail keep the row's day. Only the votes up to the receiving chamber's
+    next row: SB 1 of 2023's House introduction was entered in April, after
+    the Senate concurred on 14 February, and is told after the Senate's
+    passage of 26 January. A crossing dated after the vote (HB 70 of 2025) is
+    told as it was, with its day."""
     want = {
         "HB1460": ("On February 12, 2026 the House voted to pass it on a roll call 214–145.",
                    "It crossed to the Senate and was referred to the Senate Children and Family "
-                   "Law committee; the Senate records the introduction under its session of "
-                   "February 5, 2026.", "The committee held a public hearing on March 19, 2026."),
+                   "Law committee.", "The committee held a public hearing on March 19, 2026."),
         "SB1": ("On January 26, 2023 the Senate voted to pass it with changes on a voice vote and "
                 "ordered it to a third reading.",
-                "It crossed to the House and was referred to the House Finance committee; the "
-                "House records the introduction under its session of January 5, 2023.",
+                "It crossed to the House and was referred to the House Finance committee.",
                 "The committee held a public hearing on February 9, 2023."),
         "HB70": ("On March 26, 2025 the House voted to pass it on a voice vote.",
                  "It crossed to the Senate on March 27, 2025 and was referred to the Senate "
@@ -2393,8 +2393,8 @@ def _crossed_after_passage(N):
     finally:
         N.MEMBERS = keep
     assert not bad, "\n".join(bad)
-    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, on the "
-                  "day the receiving chamber gives; HB 70 of 2025 as it was")
+    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, with no "
+                  "day, their events on the day the receiving chamber gives; HB 70 of 2025 as it was")
 
 
 # A FLOOR VOTE WHOSE ROW STATES NO DATE (the launch audit of 7 October 2026,
@@ -10314,12 +10314,11 @@ def _introductions_read_from_the_journal(N, B):
         ("2007-2008", "HR6"), ("2015-2016", "HB1"), ("2021-2022", "CACR21")], sorted(N.INTRODUCED_ON)
     # CACR 21's history opens with the House introducing it, and the Senate's
     # row is the crossing it is, told after the House's vote of 10 March that
-    # sent it, with the day the Senate gives it (narrative.crossing_order); it
-    # was acted on in 2022 alone.
+    # sent it, with no day (narrative.crossing_order); it was acted on in 2022
+    # alone.
     c21 = narr[("2021-2022", "CACR21")]
     crossed = ("It crossed to the Senate and was referred to the Senate Executive Departments "
-               "and Administration committee; the Senate records the introduction under its "
-               "session of February 24, 2022.")
+               "and Administration committee.")
     if not c21["narrative"].startswith(
             "It was introduced on January 5, 2022 and referred to the House Judiciary "
             "committee.") or crossed not in c21["narrative"] or not (

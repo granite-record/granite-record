@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.105
+# GRANITE_VERSION: 2026-09-04.106
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2833,11 +2833,12 @@ def describe(ev, body, seen_intro=False):
               if re.match(r"Joint\s+(?:Legislative\s+)?Committee\s+on\b", ev.get("committee") or "")
               else f"the {chamber} {_committee(ev, body)}")
         if seen_intro and ev.get("_crossed_late"):
-            # Told after the vote that sent it (crossing_order), and its day
-            # kept as the receiving chamber's own: the chamber introduced it in
-            # recess and dates it by the session it was in recess of.
-            return (f"It crossed to the {chamber} and was referred to {to}; the {chamber} "
-                    f"records the introduction under its session of {fdate(ev['date'])}.")
+            # Told after the vote that sent it (crossing_order), and with no
+            # day: the chamber introduced it in recess and dates it by the
+            # session it was in recess of, a day before the vote. The event,
+            # the docket list and the rail keep that day; the sentence says
+            # only that it crossed (the person's wording, 8 October 2026).
+            return f"It crossed to the {chamber} and was referred to {to}."
         if seen_intro:
             # Crossover: the second chamber records receipt as an introduction.
             return (f"It crossed to the {chamber} on {fdate(ev['date'])} and was "
