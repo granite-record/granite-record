@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.453
+# GRANITE_VERSION: 2026-09-04.454
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46941,6 +46941,36 @@ def _committee_card_counts(BCM):
                              dated=True)
     assert "1,530 bills &middot; 600 sessions</span>" in old and "since" not in old, old
     return "ok", "\"1,257 bills and 577 sessions since 1997\"; a dated card as it was"
+
+
+@check("frontend", "Using this site names the bill page's tabs as the page draws them, and "
+                   "says the Votes tab shows the voice and division votes",
+       needs=("civics",))
+def _using_this_site_tabs(civics):
+    """"Using this site" listed a Videos tab, which the page calls Hearings,
+    and said voice and division votes "appear in the narrative but have no
+    member-by-member record to show", while the Votes tab draws each of them
+    as a card, a division with its count (the survey of 7 October 2026).
+    Every tab the list names is a tab app.js draws on a bill's page."""
+    body = civics.BODY_SITE
+    at = body.index("<h2>What a bill's page holds</h2>")
+    part = body[at:body.index("</ul>", at)]
+    named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
+        r", and <b>([^<]+)</b>", part)
+    app = Path("app.js").read_text(encoding="utf-8")
+    drawn = set(re.findall(r'role="tab" id="tab_\$\{b\.id\}_\d"[^>]*?data-t="\d">([A-Z][a-z]+'
+                           r'(?: [A-Z][a-z]+)?)', app, re.S))
+    assert drawn >= {"Summary", "Votes", "Hearings", "Reports", "Sponsors"}, (
+        f"the bill page's tabs read {sorted(drawn)} out of app.js")
+    missing = [t for t in named if t not in drawn and t != "Bill Text"]
+    assert not missing, (f"Using this site names tabs a bill's page does not have: {missing}; "
+                         f"it draws {sorted(drawn)}")
+    assert "Bill Text" not in named or "Bill Text${" in app, "app.js has no Bill Text tab"
+    votes = re.sub(r"\s+", " ", part[part.index("<b>Votes</b>"):])
+    votes = votes[:votes.index("</li>")]
+    assert "appear in the narrative" not in votes and "voice or division vote" in votes, (
+        "Using this site says the voice and division votes are not on the Votes tab: " + votes)
+    return "ok", f"names {', '.join(named)}, each a tab the page draws"
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")

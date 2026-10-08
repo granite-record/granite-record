@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.26
+# GRANITE_VERSION: 2026-09-08.27
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1792,11 +1792,12 @@ linked to the journal or calendar that recorded it.</li>
 <li><b>Bill Text</b> &mdash; the text and its amendments, where more than one
 was published.</li>
 <li><b>Votes</b> &mdash; every roll call this record holds, by member, from
-[[rollcall_first_year]] on. Voice and
-division votes appear in the narrative but have no member-by-member record to
-show, because none was made.</li>
-<li><b>Videos</b> &mdash; the hearing and floor recordings, opened at the
-moment the bill was taken up.</li>
+[[rollcall_first_year]] on, and each voice or division vote on the bill, a
+division with its count. A voice or division vote has no member-by-member
+record to show, because none was made.</li>
+<li><b>Hearings</b> &mdash; each sitting that took the bill up, with its day,
+time and room, and the recording where there is one, opened at the moment
+the bill was taken up.</li>
 <li><b>Reports</b> &mdash; what the committee recommended and why, in the
 committee's own words, and the Governor's message where a bill was
 vetoed.</li>
