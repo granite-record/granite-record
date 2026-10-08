@@ -1015,9 +1015,9 @@ order, not a design.
 > it refuses a table a fifth smaller than the last (in `main()`) and separately
 > refuses a rebuild that loses a fifth of any (term, source) holding at least
 > 100 rows (`shrunk_groups()`), both released only by `--allow-shrink`. The
-> hand-made files `preflight.py`'s
-> `HANDMADE` lists live where no generator writes, and `preflight` fails if a
-> `build_*` or `fetch_*` script opens one.
+> hand-made files live in `corrections/` and `review/`, where no generator
+> writes, and `preflight` fails if a `build_*` or `fetch_*` script opens one
+> for writing or writes into either folder.
 > Kept because the rule is only as good as the next writer somebody adds.
 
 `build_manifest.py` overwrote the manifest twice, taking the hand-marked times
