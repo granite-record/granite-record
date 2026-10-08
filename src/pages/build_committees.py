@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.45
+# GRANITE_VERSION: 2026-09-07.46
 """
 A page's worth of data for every committee.
 
@@ -1093,8 +1093,9 @@ def main():
         # meets is not something these files can say.
         # No committee is named as an example here: which ones land in this
         # list changes as bills are referred.
+        # .fill: the note takes the width the cards under it take (F9).
         body.append('<h2>No bills or sessions on record</h2>'
-                    '<p class="src">These committees have a roster, and in '
+                    '<p class="src fill">These committees have a roster, and in '
                     "some cases a chair, but no bill referred to them and no "
                     "session in the proceedings this site holds. Whether each "
                     "still meets is not something those records say."
@@ -1117,7 +1118,7 @@ def main():
                             + "".join(_card(c, dated=True) for c in rows_)
                             + "</div></section>")
         body.append('<h2 id="archived">Not on the General Court&rsquo;s list today</h2>'
-                    '<p class="src">Committees on this record that the General '
+                    '<p class="src fill">Committees on this record that the General '
                     "Court does not list among its committees now, with the "
                     "years their bills and sitting days cover. The records "
                     "show when a committee stops appearing, not why&thinsp;&mdash;&thinsp;it may "

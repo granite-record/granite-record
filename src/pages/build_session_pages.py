@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.23
+# GRANITE_VERSION: 2026-09-19.24
 """
 A page for every day the House sat.
 
@@ -1359,7 +1359,10 @@ def main():
         jurl = B2.journal_url(date, day.journal, journal_keys) if day.journal else ""
         if jurl:
             jlinked += 1
-        cite = (f'<a class="jpdf" href="{S.E(jurl)}" rel="noopener">'
+        # A journal PDF opens in a new tab, marked as going out, as the
+        # Calendar's do (the person, 7 October 2026, F12: "a calendar or
+        # journal PDF").
+        cite = (f'<a class="jpdf out" href="{S.E(jurl)}" target="_blank" rel="noopener">'
                 f'{S.E(day.journal)} (PDF)</a>' if jurl else S.E(day.journal))
         # The line up, above the heading, as a Learn article's is above its
         # own: where this page sits, as links.

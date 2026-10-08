@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.169
+# GRANITE_VERSION: 2026-09-05.173
 """
 Generate the faceted site from real General Court data.
 
@@ -47,6 +47,7 @@ import member_links as ML
 import names
 import re
 import archive_text as AT
+import ballot_source as BS
 import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
@@ -5057,6 +5058,14 @@ def _j_rows(evs):
     return out
 
 
+def _j_row_day(e, raw):
+    """The day a row states at its end ("; 03/27/2025"), else its event's.
+    A row no pattern reads is dated by its entry: SB 86 of 2025's "Pending
+    Motion OT3rdg; 03/27/2025" was entered on 4 June."""
+    m = J_ROW_DAY.search(raw or "")
+    return (_j_iso(*m.groups()) if m else "") or (e.get("date") or "")
+
+
 def _j_untold(e, seg, evs):
     """Whether the history tells nothing of the clause a decision was read
     from: the row is one no pattern reads (type "other"), or it is a line
@@ -5122,6 +5131,20 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
     # of the reconsideration, a motion it took up with no vote written beside
     # it or a suspension of the rules it refused.
     pending, voted, moved = {}, set(), {}
+    # A MOTION TO PASS ADOPTED AND THEN TABLED BEFORE THE STEP THAT PASSES THE
+    # BILL (narrative.passage_left_pending, the one reading the history and
+    # the sitting pages ask too). The Senate passes a bill by ordering it to a
+    # third reading -- "Ought to Pass: MA, VV; OT3rdg" -- or under its Rule 4-5
+    # sends it to Finance first; SB 131 of 2025 has "Ought to Pass: MA, VV",
+    # "Sen. Gray Moved Laid on Table, MA, VV" and "Pending Motion OT3rdg", all
+    # of 27 March (Senate Journal 9: the motion "Adopted." and the tabling, and
+    # no "bill ordered to Third Reading"), and died under Rule 3-23. Its rail
+    # read "Passed on a voice vote". The line is kept while the rows are read,
+    # so that a removal from the table, a reconsideration and the order to a
+    # third reading that carries it later each find what they would have, and
+    # is left out after, unless that order came.
+    unpassed = N.passage_left_pending(
+        [((e.get("body") or "").upper()[:1], _j_row_day(e, raw), raw) for e, raw in _j_rows(evs)])
     for e, raw in _j_rows(evs):
         body = (e.get("body") or "").upper()[:1]
         # THE JOURNAL A ROW CITES NAMES THE CHAMBER THAT ACTED. "PASSED VV;
@@ -5191,7 +5214,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 said = _j_outcome(seg, off.start())
                 if said is None:
                     said = bool(re.match(r"removed|taken", off.group(0), re.I))
-                mine = [i for i, s in enumerate(steps) if s["body"] == body]
+                # Not a line left out once the rows are read (`unpassed`):
+                # HB 282 of 2025's Ought to Pass row was entered after the
+                # tabling of 15 May that its removal of 26 June undid.
+                mine = [i for i, s in enumerate(steps)
+                        if s["body"] == body and not s.get("_unpassed")]
                 if said and mine and steps[mine[-1]]["act"] == "tabled":
                     steps.pop(mine[-1])
                 # And what the clause does next: "Sen D'Allesandro Moved
@@ -5238,6 +5265,17 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 continue
             _j_reconsidered(steps, body, date, seg,
                             body not in voted and moved.get(body) != date)
+            # THE PENDING ORDER, CARRIED LATER WITH NO CODE: "OT3rdg;
+            # 03/21/2024", the day SB 173 of 2024 came off the table, its
+            # Ought to Pass of 3 January left pending by the tabling; "OT3rdg"
+            # on SB 144 of 2015. The bill passed then, on the motion it had
+            # adopted.
+            if N.BARE_THIRD.match(raw) and (body, _j_row_day(e, raw)) not in unpassed:
+                waiting = next((s for s in reversed(steps)
+                                if s["body"] == body and s.get("_unpassed")), None)
+                if waiting:
+                    waiting["_unpassed"], waiting["date"] = False, date
+                    continue
             got = _j_decide(seg, bid, rcs, date, body)
             if (got is None or got == "amended") and not J_RECONSIDER.search(seg):
                 # A vote since the chamber's last decision, which a
@@ -5281,6 +5319,8 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 got = {**got, "act": act,
                        "amended": act == "passed" and bool(re.search(r"amend", rec, re.I))}
             st = {"date": date, "body": body, **got, "_untold": _j_untold(e, seg, evs)}
+            if got["act"] == "passed" and (body, _j_row_day(e, raw)) in unpassed:
+                st["_unpassed"] = True
             # A COUNT THAT IS THE CONSENT CALENDAR'S (decision 51,
             # narrative.CONSENT_VOTE): "PASSED WITH AM/CONSENT CAL RC(248-8)"
             # read "Passed with an amendment, 248-8", the calendar's roll call
@@ -5390,6 +5430,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
             steps.append(st)
         if failed >= 0 and rc and failed > rc.start():
             moved[body] = date
+    steps = [s for s in steps if not s.pop("_unpassed", False)]
     # AN AMENDMENT ADOPTED THAT DAY AMENDS THAT DAY'S PASSAGE, whether the
     # clerk entered it before the passage or after: "Sen. Fernald Moved Ought
     # to Pass, RC 22y - 1n, MA" and then "Sen. Francoeur Floor Amendment
@@ -5500,10 +5541,13 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
         # states none, or several, is left saying none.
         if eff and db_effective and eff != db_effective:
             eff = db_effective
+        # `effective` is the day the rail's Law stop is dated by (F13); the
+        # line itself stays undated, so How it got here does not print the
+        # day twice beside words that already say it.
         steps.append({"date": "", "body": "L", "act": "law",
                       "text": f"Chapter {chapter}" + (
                           f", in effect {_j_prose_date(eff)}" if eff else ""),
-                      "short": f"Chapter {chapter}"})
+                      "short": f"Chapter {chapter}", "effective": eff or ""})
     for e in evs:
         m = REFERENDUM.search(e.get("raw") or "")
         if m:
@@ -5929,12 +5973,34 @@ def journey_rail(intro, steps, rail, bid, status=""):
                   "date": g["date"] if g and gm in ("p", "x") else "",
                   "short": g["short"] if g and gm in ("p", "x") else "",
                   "say": g["text"] if g and gm in ("p", "x") else RAIL_SAY.get(gm, "")})
-    stops.append({"stop": "Law", "mark": lm, "date": "",
+    stops.append({"stop": "Law", "mark": lm, "date": law_day(lm, law, stops, steps),
                   "short": law["short"] if law and lm == "p" else "",
                   "say": (law["text"] if law and lm == "p"
                           else "Did not become law" if lm == "x"
                           else RAIL_SAY.get(lm, ""))})
     return stops
+
+
+def law_day(mark, law, stops, steps):
+    """The day under the rail's last stop, Law (the person, 7 October 2026,
+    F13): "under Law, the effective date when it became law; when killed, the
+    day it was killed under that last stop". The Law stop was the one stop
+    reached that carried no day.
+
+    A law: the day it took effect, where its lines state one day
+    (_j_effective) -- a law in effect on several dates, by section, states
+    none, and neither does its stop. A bill that did not become law: the day
+    it was stopped, which is the latest day of a decision that ended it, on
+    a stop or in the journey (a kill, a veto sustained, a conference report
+    rejected). A Law stop not reached -- a bill still moving, or held for
+    interim study -- has no day, as no stop not reached has."""
+    if mark == "p":
+        return (law or {}).get("effective", "") if law else ""
+    if mark != "x":
+        return ""
+    days = [s.get("date") or "" for s in stops if s.get("mark") == "x"]
+    days += [s.get("date") or "" for s in steps if s.get("mark") == "x"]
+    return max((d for d in days if d), default="")
 
 
 # What a stop says when no line of the journey fills it -- the same words the
@@ -6915,6 +6981,14 @@ def election_day(year):
 # eighteen, read off the source its rows name: a person's file, which no
 # build_ or fetch_ script writes (preflight's HANDMADE).
 #
+# WHOSE COUNT IT IS IS THE ROW'S OWN SOURCE (ballot_source.py). Since 7
+# October 2026 that is the Secretary of State for every amendment the voters
+# have decided -- its results from 2016, its Manual for the General Court
+# before -- with Ballotpedia's figures kept on each row as the cross-check,
+# and Ballotpedia for the one still to come. The card, How it got here and
+# the note where the docket's own count differs all name it from the row,
+# never in words of their own: they said "Ballotpedia" whatever the row said.
+#
 # THE OUTCOME IS WORKED OUT HERE, NOT READ. An amendment needs two thirds of
 # the votes cast on it (Part II, Article 100), and a majority is not that:
 # CACR 6 of 2024, the judicial retirement age, won 452,307 to 237,221 --
@@ -6977,13 +7051,6 @@ def load_ballots(path, bills):
     return out
 
 
-def ballot_source_name(row):
-    """The name of the place a ballot row's figures were read: "Ballotpedia"
-    for its list of New Hampshire ballot measures, the host otherwise."""
-    host = re.sub(r"^https://(?:www\.)?([^/]+).*$", r"\1", row.get("source") or "")
-    return {"ballotpedia.org": "Ballotpedia"}.get(host, host)
-
-
 # What status_source says of a CACR whose voters' answer is a ballot row's
 # figures against two thirds: the file the answer came from, which names its
 # source on every row.
@@ -6993,25 +7060,44 @@ BALLOT_SOURCE = "ballot_results.json"
 def ballot_step(row):
     """The voters' line of a CACR's journey, from its ballot row: the day of
     the election and its outcome, in the words a docket referendum line
-    gets -- and whose count it is. How it got here is the docket's list, and
-    this line is not the docket's: it stops at the second chamber for every
-    CACR this line is drawn for (the review of 5 October 2026)."""
+    gets -- and whose count it is, by the row's source: "(the Secretary of
+    State's count)". How it got here is the docket's list, and this line is
+    not the docket's: it stops at the second chamber for every CACR this
+    line is drawn for (the review of 5 October 2026)."""
     yes = ratified(row["yes"], row["no"])
     act = "ratified" if yes else "not_ratified"
     return {"date": row["election"], "body": "V", "act": act, "mark": J_MARK[act],
             "text": ("Ratified" if yes else "Not ratified")
-            + f", {row['yes']:,}–{row['no']:,} ({ballot_source_name(row)}'s count)",
+            + f", {row['yes']:,}–{row['no']:,} ({BS.whose(row)} count)",
             "short": "ratified" if yes else "not ratified"}
+
+
+def docket_count_differs(row):
+    """What the voters' line of How it got here adds where it is the docket's
+    referendum line and the docket's count is not the row's: whose the
+    docket's is, and whose the other is, by the row's source. CACR 22 of 1998
+    reads "Not ratified, 119,104–159,439 (the docket's count; the Secretary
+    of State's is 119,104–169,439)": the docket says 159,439, and the Manual
+    it cites prints 169,439."""
+    return f" (the docket's count; {BS.whose(row)} is {row['yes']:,}–{row['no']:,})"
 
 
 def ballot_card(row, narr, today=None):
     """What a CACR's Votes tab draws for the voters: the election, how the
     source lists it, the two counts and the outcome, or only the day where
     the election is still to come. Where the docket prints a referendum
-    tally of its own and it is not the source's -- CACR 7 of 1992 reads
-    "204,475" against the source's 204,457, and CACR 22 of 1998 "159,439"
-    against 169,439 -- the docket's pair goes with it, so the card can say
-    so rather than show one figure and print the other a tab away.
+    tally of its own and it is not the source's -- CACR 22 of 1998 reads
+    "159,439" against the Secretary of State's 169,439 -- the docket's pair
+    goes with it, so the card can say so rather than show one figure and
+    print the other a tab away. (CACR 7 of 1992 did too, until 7 October
+    2026: its 204,475 was the docket's and the Secretary of State's, and the
+    file's 204,457 was Ballotpedia's.)
+
+    WHOSE IT IS, FROM THE ROW (ballot_source.py): `by` begins the card's
+    citation, before the row's `cite` -- "Secretary of State, Manual for the
+    General Court 1993, p. 442 (NHPR's scan)" -- and `whose` says whose the
+    counts above a differing docket's are. app.js named Ballotpedia on every
+    card whatever the row's source was.
 
     AN ELECTION PAST WITH NO COUNT IN THE FILE is `over` as well as pending:
     the status turns to "went to the voters" the day after by itself
@@ -7019,7 +7105,9 @@ def ballot_card(row, narr, today=None):
     a person typed the counts in (the review of 5 October 2026). `today` is
     the build's day (build_date), as it is there."""
     card = {"date": row["election"], "label": row["label"],
-            "source": row["source"], "read": row["read"]}
+            "source": row["source"], "read": row["read"],
+            "by": BS.by(row), "whose": BS.whose(row),
+            **({"cite": row["cite"]} if row.get("cite") else {})}
     if row.get("yes") is None:
         over = (today or build_date.today()) > _date.fromisoformat(row["election"])
         return {**card, "pending": True, **({"over": True} if over else {})}
@@ -8441,8 +8529,11 @@ CANCELLED_NOT_TOLD = ("A cancellation. The history does not tell a meeting the d
 # SESSIONS", HB 321 of 1991). NOT A ROW OF ANOTHER KIND: the same mark on SB 38
 # of 2009's committee report ("=== CANCELLED === Committee Report; Ought to
 # Pass [1/28/09]; SC8", the report's day moved to 4 February) and on HB 1611 of
-# 2020's Senate introduction calls no meeting off, and those two rows stay off
-# the list as they were.
+# 2020's Senate introduction calls no meeting off. Those two are listed too
+# now, like every other cancelled row (the person, 7 October 2026), with
+# CANCELLED_ROW_NOT_TOLD beside them, which does not call them a meeting.
+CANCELLED_ROW_NOT_TOLD = ("A cancellation. The history does not tell a row the docket "
+                          "marked cancelled.")
 CALLED_OFF_KINDS = ("hearing", "exec", "worksession", "conference_meeting", "other")
 
 
@@ -8495,6 +8586,21 @@ def docket_line(e):
     return e.get("line") or e.get("raw") or ""
 
 
+def listed_line(e):
+    """The line as the bill's docket list prints it: docket_line, with the
+    clerk's cancel mark where the line carries one (narrative.marked_line's
+    `said`, the person's item of 7 October 2026). Only the list reads it;
+    everything that reads a line for what it says reads docket_line."""
+    return e.get("line") or e.get("said") or e.get("raw") or ""
+
+
+def marked_cancelled(e):
+    """A row the docket itself cancelled: narrative's "cancelled", and not a
+    notice told as one ("notice"). A meeting's (called_off) or, twice in the
+    record, another kind of row."""
+    return bool(e.get("cancelled")) and not e.get("notice")
+
+
 def docket_lines(narr):
     """The docket's own lines for the bill's page: its events, and the rows
     the docket files under it that belong to another bill, by date. Those
@@ -8514,13 +8620,14 @@ def docket_lines(narr):
 
     AND SO IS A ROW THAT CALLS A MEETING OFF (called_off, 7 October 2026),
     with CANCELLED_NOT_TOLD beside it: the docket keeps it, and only the
-    history leaves it out. A cancelled row of another kind -- a report or an
-    introduction the clerk marked cancelled -- is still not listed."""
+    history leaves it out. AND A CANCELLED ROW OF ANOTHER KIND (the same
+    day): SB 38 of 2009's committee report and HB 1611 of 2020's Senate
+    introduction, the only two, with CANCELLED_ROW_NOT_TOLD. So every row the
+    docket holds is listed, each cancelled one with the clerk's mark
+    (listed_line)."""
     evs = [e for e in (narr or {}).get("events", [])
-           if (not e.get("cancelled") or e.get("notice") or called_off(e))
-           and not e.get("in_line")]
-    away = [e for e in (narr or {}).get("misfiled", [])
-            if not e.get("cancelled") or called_off(e)]
+           if not e.get("in_line")]
+    away = list((narr or {}).get("misfiled", []))
     if not away:
         return evs
     return sorted(evs + away, key=lambda e: e.get("date") or "")
@@ -8870,13 +8977,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 and not any(s_["body"] == "V" for s_ in jsteps)):
             jsteps.append(ballot_step(ballot))
         # AND WHERE THE DOCKET'S OWN REFERENDUM COUNT IS NOT THE CARD'S, its
-        # line says whose it is: CACR 7 of 1992's How it got here read
-        # "249,759–204,475" a tab away from the Votes card's 204,457, with
-        # nothing to say which was which (the review of 5 October 2026).
+        # line says whose it is, and whose the card's is: CACR 7 of 1992's
+        # How it got here read "249,759–204,475" a tab away from the Votes
+        # card's 204,457, with nothing to say which was which (the review of
+        # 5 October 2026). Now CACR 22 of 1998: the docket's 159,439 against
+        # the Secretary of State's 169,439 (docket_count_differs).
         elif (voters or {}).get("docket"):
             for s_ in jsteps:
                 if s_["body"] == "V":
-                    s_["text"] += " (the docket's count)"
+                    s_["text"] += docket_count_differs(ballot)
         if carried:
             carried = carried_over(dates, intro)
         # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
@@ -8933,6 +9042,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             j_current.append(f"{bid}: {why}")
         for s_ in jsteps:
             s_.pop("short", None)
+            # The Law stop has taken its day (law_day); the line keeps its words.
+            s_.pop("effective", None)
         # NOR DO THE RECORD'S STOPS (RAIL_CODE): the rail draws a day and no
         # words, and the page says each stop in its own `say`. The index row
         # keeps its copy, the only one a card has to say before the record.
@@ -9116,7 +9227,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # A DATE A PERSON CORRECTED (docket_corrections.json) is shown on
             # the day it happened, beside the clerk's line, which still says
             # the other date -- so the line carries why, in plain words.
-            "events": [{"date": e["date"], "text": docket_line(e),
+            "events": [{"date": e["date"], "text": listed_line(e),
                         "routine": is_routine(docket_line(e)),
                         **({"date_as_recorded": e["date_as_recorded"],
                             "date_note": e.get("date_note") or (
@@ -9131,9 +9242,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                            if any(e is u for u in unenrolled) else {}),
                         # A row that calls a meeting off (called_off), which
                         # the history does not tell, with why; the feeds
-                        # leave it out by the same mark (build_feeds).
-                        **({"row_note": CANCELLED_NOT_TOLD, "called_off": True}
-                           if called_off(e) else {}),
+                        # leave it out by the same mark (build_feeds), as the
+                        # Documents tab does. A cancelled row of another kind
+                        # (marked_cancelled) carries the same mark, so it is
+                        # left out of both in the same way, and its own note.
+                        **({"row_note": CANCELLED_NOT_TOLD if called_off(e)
+                                        else CANCELLED_ROW_NOT_TOLD,
+                            "called_off": True}
+                           if marked_cancelled(e) else {}),
                         # A ROW FILED UNDER THE WRONG BILL (docket_corrections
                         # .json "misfiled") is listed here, with its note, and
                         # nowhere else on the page; the bill it belongs to
@@ -9146,7 +9262,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                         # The sign-ins belong to the hearing's notice, which
                         # carries them; a row calling it off does not repeat
                         # them.
-                        **({} if called_off(e) else hearing_testimony(
+                        **({} if marked_cancelled(e) else hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None)),
                         **_cite(e, sources,
                                 e.get("cite_year") or (e.get("date") or "")[:4])}

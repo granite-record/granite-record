@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.35
+# GRANITE_VERSION: 2026-09-10.37
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -38,6 +38,7 @@ import argparse
 import csv
 import json
 
+import ballot_source as BS
 import bill_order as BO
 import build_date
 import past_sponsors as PSP
@@ -535,6 +536,56 @@ def repo_facts():
     return out
 
 
+def ballot_words(path=Path("ballot_results.json")):
+    """What the data page says ballot_results.json holds, and whose count it
+    is, from the file's own rows: each row's source names whose its figures
+    are (ballot_source.py). None where the file is not here, and the page
+    then says only that each row names its source.
+
+    The page said "from Ballotpedia's list of New Hampshire ballot measures"
+    in words of its own, and on 7 October 2026 the person made the Secretary
+    of State the source of every amendment the voters have decided, keeping
+    Ballotpedia for the one still to come and its figures on each row as a
+    cross-check; written from the rows, the sentence follows the file."""
+    from collections import Counter
+    try:
+        rows = json.loads(Path(path).read_text(encoding="utf-8"))["rows"]
+    except Exception:
+        return None
+    done = [r for r in rows if r.get("yes") is not None]
+    to_come = [r for r in rows if r.get("yes") is None]
+    n_ = lambda k, one, many: f"{one if k == 1 else many}"
+    out = ""
+    if done:
+        whose = Counter(BS.whose(r) for r in done)
+        each = (f"each of the {len(done)} the voters have decided" if len(done) > 1
+                else "the one the voters have decided")
+        if len(whose) == 1:
+            out = (f"{next(iter(whose))} count of the statewide Yes and No votes on {each}, "
+                   "with where it is printed and the day it was read")
+        else:
+            out = (f"the statewide Yes and No votes on {each}, with where each count is "
+                   "printed and the day it was read: "
+                   + ", ".join(f"{w} for {k}" for w, k in whose.most_common()))
+        # BESIDE EACH ONLY WHERE EACH HAS ONE. A row the voters decide after
+        # 7 October 2026 takes the Secretary of State's count with no
+        # Ballotpedia figures beside it (preflight's _ballot_corrected_counts
+        # asks for none), and "beside each" would then be wrong of it.
+        also = Counter(BS.whose(r["ballotpedia"]) for r in done
+                       if isinstance(r.get("ballotpedia"), dict))
+        if also:
+            out += (", and " + " and ".join(
+                f"{w} figures beside "
+                + (n_(len(done), "it", "each") if k == len(done) else f"{k} of them")
+                for w, k in also.most_common()) + " as a cross-check")
+    if to_come:
+        whose = Counter(BS.whose(r) for r in to_come)
+        out += ("; for " + ("the one still to go to the voters" if len(to_come) == 1
+                            else f"the {len(to_come)} still to go to the voters")
+                + ", " + " and ".join(whose) + " listing of the question")
+    return out or None
+
+
 def data_page(site, out, tables, base, cov=()):
     """The downloads, described for somebody who has not read the code."""
     try:
@@ -565,6 +616,11 @@ def data_page(site, out, tables, base, cov=()):
         <td>{_pct(c["topic"], c["bills"])}</td>
         <td>{_pct(c["passage"], c["bills"])}</td></tr>''' for c in cov)
 
+    # Whose the voters' counts are, from ballot_results.json's own rows.
+    _bw = ballot_words()
+    _bw = E(_bw).replace("'", "&#39;") if _bw else (
+        "the statewide Yes and No votes on each, from the source each row "
+        "names, with the day they were read")
     _f = repo_facts()
     _rf = ""
     if _f.get("stamped") and _f.get("checks"):
@@ -639,9 +695,7 @@ def data_page(site, out, tables, base, cov=()):
       voters made of an amendment both chambers sent them is the
       docket&#39;s word where it records one, and otherwise
       <code>ballot_results.json</code>&#39;s, a file in the repository that
-      no script writes: the statewide Yes and No votes on each, from
-      Ballotpedia&#39;s list of New Hampshire ballot measures, with the day
-      they were read. An amendment needs two thirds of the votes cast on it,
+      no script writes: {_bw}. An amendment needs two thirds of the votes cast on it,
       so the <code>status</code> says ratified or not ratified by that
       measure and not by a majority, and a bill&#39;s own page shows the two
       counts beside it.</p>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.26
+# GRANITE_VERSION: 2026-09-19.27
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -856,6 +856,13 @@ def floor_items(bill, term, events):
         if nxt and not any(since < r <= nxt for r in reported[ch]):
             off_on.add((ch, nxt))
     pending, suspended_on = None, None
+    # AN OUGHT TO PASS THE CHAMBER TABLED BEFORE ITS THIRD READING did not
+    # carry the bill (narrative.PASSAGE_PENDING): the motion was adopted, and
+    # nothing is said of what it did to the bill. SB 131 of 2025, 27 March.
+    held = narrative.passage_left_pending(
+        [((x.get("body") or "").strip().upper(),
+          narrative.row_day(x.get("raw"), (x.get("date") or "")[:10]), x.get("raw") or "")
+         for x in events if not x.get("cancelled")])
     for n, e in enumerate(events):
         kind = e.get("type")
         raw = e.get("raw") or ""
@@ -869,6 +876,10 @@ def floor_items(bill, term, events):
         if not floor or e.get("cancelled"):
             continue
         it = Item(bill, term, e, 0)
+        if ((e.get("body") or "").strip().upper(),
+                narrative.row_day(raw, (e.get("date") or "")[:10])) in held \
+                and re.match(r"\s*ought\s+to\s+pass\b", it.action, re.I):
+            it.plain = True
         out.append((e, it))
         day = (e.get("date") or "")[:10]
         if (suspended_on and day != suspended_on) or came_off(raw):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.54
+# GRANITE_VERSION: 2026-09-04.56
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2062,14 +2062,37 @@ def main():
     # Rep. Kofalt...; Rep. Kuttab...; Rep. Lynn..." and the site credited
     # Rep. Debra DeSimone.
     #
-    # LsrsOnly is still better where it speaks. It is only where it says nothing
-    # about the prime that the other file is asked, and then only for WHICH of
-    # the sponsors already read is the prime -- never to add a row, which would
-    # duplicate what LsrsOnly supplied.
+    # And the prime is only the most visible of what LsrsOnly leaves out. It
+    # lists SITTING members only (dayfiles_from_db.lsrs_only_rows asks for
+    # Active), so every member who has left -- prime or not -- is in
+    # LsrSponsors.txt alone: 118 co-sponsorships of 2025-2026 on bills LsrsOnly
+    # covers, HB 1449's Rep. Morton among them, and 50 more on bills only
+    # LsrSponsors covers, where a member off the roster was dropped as unknown.
+    # Both files key a member by PersonID, so a bill's sponsors are their union
+    # by id: LsrsOnly's rows as it gives them, and any LsrSponsors row whose
+    # member it does not list, prime where LsrsOnly marked none. Such a row is
+    # in `departed`, and named below once `former` can (the roster cannot).
     lo_noprime = {b for b, v in sponsors.items()
                   if not any(x.get("prime") for x in v)}
-    lo_flagged_prime = {}
-    flags, cross, missing_member, missing_lsr = Counter(), Counter(), 0, 0
+    departed = []   # (bill, row) of members the roster does not hold, named below
+    flags, cross, missing_lsr = Counter(), Counter(), 0
+    # BUT NOT A MEMBER WHO NEVER SAT IN THE TERM. LsrSponsors.txt keeps every
+    # name on a request, and a request filed before the term began can carry a
+    # member who left before it did: HB 171 of 2025, retained into 2026, has
+    # Rep. Rochefort and Rep. Massimilla of Grafton 1 on its LSR, and its own
+    # text names Reps. Germana, Potenza, Haskins and King; HB 109's Rep. Stone
+    # is the same. All three cast their last ballot in 2024 (Rep. Rochefort
+    # sits in the Senate now). Every one of the 17 who left during 2025-2026
+    # voted in it, and their 165 sponsorships are on their bills' own text. So
+    # a member the roster does not hold is a sponsor of the term's bills only
+    # if they cast a ballot in the term (RollCallHistory, the session's file
+    # and rollcalls/ for its years); before the term's first roll call that
+    # is nobody, as it was before 7 October 2026.
+    _years = freeze_term.term_years(sess) if sess else set()
+    sat = {r[4] for f in [sd / "RollCallHistory.txt",
+                          *(d / "rollcalls" / f"RollCallHistory_{y}.txt" for y in sorted(_years))]
+           if f.exists() for r in rows(f, 8) if r[0] in _years and r[4]}
+    never_sat = Counter()
     # LsrsOnly.txt does not cover every bill -- HB197 and HB104 came back with
     # no sponsors at all. So fall back to LsrSponsors.txt per bill rather than
     # picking one file for everything.
@@ -2081,21 +2104,34 @@ def main():
         if not bill:
             missing_lsr += 1
             continue
+        if r[3] not in term_legs and r[3] not in sat:
+            never_sat[r[3]] += 1
+            continue
         if bill in lo_bills:
-            # Already covered, and better, by LsrsOnly -- except for the one
-            # thing LsrsOnly did not say. See lo_noprime above.
-            if bill in lo_noprime and r[4] == "1":
-                lo_flagged_prime[bill] = r[3]
+            # Covered, and better, by LsrsOnly -- for the SITTING members it
+            # lists. A member who has left is in this file alone, so that row
+            # is kept, and named below once `former` can.
+            if not any(x["member_id"] == r[3] for x in sponsors[bill]):
+                _p = r[4] == "1" and bill in lo_noprime
+                m = term_legs.get(r[3]) or {}
+                sponsors[bill].append({"member_id": r[3], "name": m.get("name", ""),
+                                       "party": m.get("party_code", ""),
+                                       "chamber": m.get("chamber", ""),
+                                       "label": m.get("label", ""),
+                                       "sequence": 0 if _p else 1, "prime": _p,
+                                       "role": "Prime" if _p else "Sponsor", "flag": r[4]})
+                departed.append((bill, sponsors[bill][-1]))
             continue
         m = term_legs.get(r[3])
         if not m:
-            missing_member += 1
-            # A PRIME dropped here is not just a missing name, it is a wrong
-            # byline: with no flagged row left, the block below falls back to
-            # sequence order and the next sponsor inherits the authorship. Keep
-            # the id so it can be restored once `former` can name it.
-            if r[4] == "1":
-                lo_flagged_prime.setdefault(bill, r[3])
+            # A member who has left. Kept, with its sequence and flag, so the
+            # block below reads its prime as it reads anyone's -- a prime
+            # dropped here was a wrong byline, the next sponsor inheriting the
+            # authorship -- and named below once `former` can.
+            sponsors[bill].append({"member_id": r[3], "name": "", "party": "",
+                                   "chamber": "", "label": "",
+                                   "sequence": int(r[2] or 0), "flag": r[4]})
+            departed.append((bill, sponsors[bill][-1]))
             continue
         flags[r[4]] += 1
         # Hypothesis: the flag marks a sponsor from the OTHER chamber.
@@ -2210,9 +2246,12 @@ def main():
                       f"{len(sponsors):,} bills; {noprime} bills have none flagged "
                       f"(sequence order used there); {disagree} where the flagged "
                       "sponsor was not first in sequence")
-    if missing_lsr or missing_member:
-        report.append(f"sponsor rows dropped: {missing_lsr} unknown LSR, "
-                      f"{missing_member} unknown member")
+    if missing_lsr:
+        report.append(f"sponsor rows dropped: {missing_lsr} unknown LSR")
+    if never_sat:
+        print(f"  {sum(never_sat.values()):,} LsrSponsors.txt row(s) of {len(never_sat):,} "
+              f"member(s) who cast no ballot in {sess or 'the term'} left out: "
+              + ", ".join(sorted(never_sat)[:8]))
 
     # ------------------------------------------------------- roll calls ---
     # Names for members who left mid-term, from resolve_members.py.
@@ -2449,53 +2488,59 @@ def main():
             _s["district"] = _f.get("district", "")
             placed += 1
 
-    # ------------------------- the prime sponsor who is not on the roster ---
+    # ------------------------------ the sponsors who are not on the roster ---
     #
     # HERE, AND NOT WHERE THE SPONSORS ARE READ, because up there nothing can
-    # put a name to the id. 27 bills of the current term show the wrong author,
-    # and the cause is not a missing flag -- it is a missing ROW. LsrSponsors
-    # .txt flags the prime, legislators.txt does not hold them (they have left
-    # office), so `legs.get(r[3])` comes back empty and the row is dropped
-    # before the flag is ever read. LsrsOnly.txt lists the others and marks none
-    # of them prime, so build_site_v2 falls back to sp_list[0] -- and since
-    # those rows all carry sequence 1 and sort on (sequence, name), that is the
-    # ALPHABETICALLY FIRST surviving sponsor.
+    # put a name to the id. The rows were kept there (`departed`) with their
+    # sequence and prime; this names them as a sitting member is named.
     #
-    # HB 1036 of 2026 is printed "Rep. Vose, Rock. 5; Rep. DeSimone, Rock. 18;
-    # Rep. Kofalt...; Rep. Kuttab...; Rep. Lynn..." and the site credited
-    # Rep. Debra DeSimone, who is simply first in the alphabet among those left.
+    # They used to be dropped there, and only a departed PRIME was put back
+    # here -- under the raw "Oppel, Thomas", a padded district and no chamber,
+    # because former_members.json carries none, so 34 bills listed their prime
+    # under "Chamber not on file". And a bill whose every sponsor had left
+    # reached the status-page fill above with no rows, took the prime by name
+    # from there (and an employee number from former_by_name), and then had
+    # the PersonID row added beside it: CACR 30 of 2026 listed Rep. Oppel
+    # twice, HB 728 Rep. Doucette.
     #
-    # By this line `former` has been assembled, so the missing member can be
-    # named. Where even that fails the row is still added, under the id alone:
-    # naming nobody is a smaller error than naming the wrong person, and it is
-    # visible rather than silent.
-    lo_added = 0
-    for _b, _mid in lo_flagged_prime.items():
-        _rows = sponsors.get(_b)
-        if not _rows or any(str(x.get("member_id")) == str(_mid) for x in _rows):
-            continue
-        _f = former.get(str(_mid)) or {}
-        _name = _f.get("name") or f"Former member #{_mid}"
-        for _x in _rows:
-            _x["prime"] = False
-            _x["sequence"] = 1
-        _rows.append({
-            "member_id": str(_mid), "name": _name,
-            "party": (_f.get("party") or "")[:1].upper(),
-            "chamber": _f.get("chamber", ""),
-            "label": _name,
-            "county": _f.get("county", ""), "district": _f.get("district", ""),
-            "sequence": 0, "prime": True, "role": "Prime", "flag": "1",
-        })
-        _rows.sort(key=lambda x: (x["sequence"], x["name"]))
-        lo_added += 1
-    if lo_added:
-        _named = sum(1 for b in lo_flagged_prime
-                     for x in sponsors.get(b, [])
-                     if x.get("prime") and not x["name"].startswith("Former member #"))
-        print(f"  {lo_added} bill(s) had their prime sponsor restored from "
-              f"LsrSponsors.txt, whom the roster does not hold; {_named} of "
-              f"them could be named")
+    # The chamber is the General Court's own, db/Legislators.psv's
+    # LegislativeBody by PersonID; the name, party, county and district are
+    # former's, with member_corrections.json already over them; the label is
+    # names.legislator's, as a sitting member's is. Where `former` cannot name
+    # the member the row stays, under the id alone: naming nobody is a smaller
+    # error than naming the wrong person, and it is visible rather than silent.
+    _body = {}
+    try:
+        import past_sponsors
+        _body = {x["PersonID"]: x["LegislativeBody"] for x in past_sponsors.read_legislators(
+            d / "db" / "Legislators.psv", d / "db" / "_columns.json")}
+    except (OSError, KeyError, ValueError) as e:
+        print(f"  sponsors who have left: no chamber from db/Legislators.psv ({e})")
+    _abbr = {c["name"]: c["abbr"] for c in counties.values()}
+    _unnamed = 0
+    for _b, _x in departed:
+        if _x["name"]:
+            continue    # a sitting member LsrsOnly did not list: named from the roster
+        _mid = _x["member_id"]
+        _f = former.get(_mid) or {}
+        _x["name"] = _f.get("name") or f"Former member #{_mid}"
+        _x["party"] = (_f.get("party") or "")[:1].upper()
+        _x["chamber"] = _body.get(_mid, "")
+        _x["county"] = _f.get("county", "")
+        _x["district"] = (_f.get("district") or "").lstrip("0")
+        _x["label"] = names.legislator({
+            "name": _x["name"], "chamber": _x["chamber"], "party_code": _x["party"],
+            "county_abbr": _abbr.get(_x["county"], ""), "district": _x["district"]}) \
+            if _f else _x["name"]
+        _unnamed += not _f
+    for _b in {b for b, _ in departed if b in lo_bills}:
+        sponsors[_b].sort(key=lambda x: (x["sequence"], x["name"]))
+    if departed:
+        print(f"  {len(departed):,} sponsor row(s) of members the roster does not hold, "
+              f"kept from LsrSponsors.txt on {len({b for b, _ in departed}):,} bill(s): "
+              f"{sum(1 for _, x in departed if x.get('prime'))} prime, "
+              f"{sum(1 for _, x in departed if not x['chamber'])} with no chamber, "
+              f"{_unnamed} unnamed")
     if placed:
         print(f"sponsors given a district from former_members.json: {placed:,}")
         report.append(

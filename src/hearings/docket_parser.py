@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.30
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -759,6 +759,15 @@ def _parse_date(s, written=None):
     s = re.sub(r"\s+", " ", (s or "").strip())
     if not s:
         return None
+    # A DOTTED MONTH (7 October 2026). The Senate of 1999-2000 abbreviates
+    # with a period -- "Hearing, Feb. 17, Room 104, LOB, 2:15 p.m." (SB 39),
+    # "Hearing, Feb.23, Room 105 A, SH" (HB 273) -- and so does 2010 twice,
+    # "Hearing:==RECONVENE==Mar. 3, 2010" (SB 483, SB 497). SENATE_SCHED_RE
+    # reads them; strptime's %b does not take the dot, so all 174 rows (172
+    # Jan. and Feb. of 1999-2000, 2 Mar. of 2010) came back None here and
+    # their hearings had no proceedings row. The dot is dropped and nothing
+    # else: a month the clerk misspelt stays unread.
+    s = re.sub(r"^([A-Za-z]{3,9})\.\s*", r"\1 ", s)
     for fmt in ("%m/%d/%Y", "%m/%d/%y", "%B %d, %Y", "%b %d, %Y",
                 "%B %d %Y", "%b %d %Y"):
         try:
@@ -839,7 +848,15 @@ def parse_rows(path):
                 "lsr": f"{parts[0]}-{parts[1]}",
                 "created": parts[2],
                 "bill": parts[3].strip(),
-                "body": parts[4].strip(),
+                # THE CHAMBER IN EITHER CASE (7 October 2026). 64 rows of
+                # 1999-2000 and one of 2001 give it as "s" or "h", and four of
+                # them are meetings -- SB 31's "Rescheduled Hearing, 4/9/99"
+                # (line 5490), SB 30's and HB 346's conferences, HB 506's
+                # hearing of 2 March 1999 -- which build_manifest, keeping
+                # rows whose chamber is "H" or "S", dropped, and whose
+                # committee was looked up under a chamber no referral is filed
+                # under. Read once here, every reader sees "S" and "H".
+                "body": parts[4].strip().upper(),
                 "desc": parts[5],
                 "updated": parts[6],
                 "lineno": lineno,
@@ -969,8 +986,15 @@ def reconvened_to(r):
 # TO 1:00 P.M." and the hearing at 1:00. The row merged for it said 9:00. A
 # later row of the same bill and chamber marked "NEW TIME" or "TIME CHANGE"
 # that names the same day gives the hour, the last such row entered winning.
-# Only for the rows rescheduled_proceeding reads; a notice SENATE_SCHED_RE
-# reads keeps the hour it states, as it did.
+#
+# AND A NOTICE SENATE_SCHED_RE READS, for the Senate of 1999-2006 (7 October
+# 2026). It kept the hour it stated: SB 139 of 2005's "Hearing; February 22,
+# 2005, Room 105-A, SH 1:30 p.m.; SC7" and then "Hearing; === TIME CHANGE ===
+# February 22, 2005, ... 2:00 p.m.; SC8" were two rows of one hearing, and
+# build_proceedings, folding them into one sitting, kept the first notice's
+# 1:30; SB 312 of 2000's "===TIME CHANGE=== Feb.23, ... 1:45 p.m." is a row
+# SENATE_SCHED_RE does not read at all, and the hearing kept 1:00. The later
+# row's hour is the meeting's.
 TIME_CHANGED_ROW = re.compile(r"\bTIME\s+CHANGE\b|\bNEW\s+TIME\b", re.I)
 
 
@@ -1063,8 +1087,22 @@ def build_referral_timeline(rows):
     is true; "House Capital Budget" was not.
     """
     timeline = defaultdict(list)
+    # Which bill numbers each LSR's rows carry (_carried_by), and a two-row
+    # vacate waiting for the row that names where it sent the bill
+    # (_senate_vacate), for the Senate of 1999-2006.
+    carried = defaultdict(lambda: defaultdict(int))
+    for r in rows:
+        carried[r.get("lsr")][r["bill"]] += 1
+    pending = {}
     for r in rows:
         _, clean = extract_flags(r["desc"])
+        era = _senate_era(r) and _carried_by(r, carried)
+        if era:
+            to = _senate_vacated_to(r, pending)
+            if to:
+                eff = _parse_date((r.get("created") or "").split(" ")[0]) or date.min
+                timeline[(r["bill"], r["body"])].append((eff, normalize_committee(to), "vacated"))
+                continue
         m_vac = VACATED_RE.search(clean)
         if m_vac:
             d = INTRODUCED_RE.search(clean)
@@ -1087,6 +1125,14 @@ def build_referral_timeline(rows):
             timeline[(r["bill"], r["body"])].append(
                 (eff, normalize_committee(m_from.group("committee")), "vacated"))
             continue
+        # The Senate of 1999-2006's other vacates, read as the bill's
+        # committee row reads them (_senate_vacate).
+        if era:
+            to = _senate_vacate(r, pending)
+            if to:
+                eff = _parse_date((r.get("created") or "").split(" ")[0]) or date.min
+                timeline[(r["bill"], r["body"])].append((eff, normalize_committee(to), "vacated"))
+                continue
         if "Vacated" in clean:
             continue
         m_ref = REFERRAL_RE.search(clean)
@@ -1110,6 +1156,21 @@ def build_referral_timeline(rows):
             eff = _parse_date(intro.group("date"))
             timeline[(r["bill"], r["body"])].append(
                 (eff, normalize_committee(m_ref.group("committee")), "introduced"))
+        # THE SENATE OF 1999-2006'S INTRODUCTION, IN ITS OWN WORDS (7 October
+        # 2026). "Introduction and referring to Education;  SJ 2, P 29" (SB 49
+        # of 1999) is how the Senate of 1999 wrote 615 of them, and
+        # "Introducing and referred to", "Introduction and referral to",
+        # "Introduced And Ref. to", "Introduced and Ref. Insurance" and
+        # "Introduced and Refered to" the rest; neither pattern above reads
+        # the verb, so 645 of the 998 Senate rows of the 1999-2000 manifest
+        # named no committee and reached no committee's page. Read as the
+        # bill's committee row reads them (_senate_introduction), dated by
+        # the row as an undated introduction is. Only the bill's own row
+        # (_carried_by), and the vacates that row reads too (_senate_vacate).
+        elif not intro and era and (named := _senate_introduction(r)):
+            eff = _parse_date((r.get("created") or "").split(" ")[0]) or date.min
+            timeline[(r["bill"], r["body"])].append(
+                (eff, normalize_committee(named), "introduced"))
         # THE SECOND REFERRAL, since 13 September. Only introductions and
         # vacates were read, so "Referred to Finance 03/13/2025" was not on the
         # timeline and a Finance executive session was filed under the policy
@@ -1143,6 +1204,96 @@ def build_referral_timeline(rows):
         # date, and among themselves keep the docket's row order.
         timeline[b].sort(key=lambda t: (t[0], 0 if t[2] == "introduced" else 1))
     return timeline
+
+
+def _senate_era(r):
+    """Whether a row is the Senate's, of 1999-2006: where _senate_introduction
+    and _senate_vacate read the clerk's words."""
+    head = (r.get("lsr") or "").split("-")[0]
+    return ((r.get("body") or "") == "S" and head.isdigit()
+            and RESCHEDULED_YEARS[0] <= int(head) <= RESCHEDULED_YEARS[1])
+
+
+def _carried_by(r, carried):
+    """Whether the row's bill is the one its LSR's rows carry, `carried` being
+    {lsr: {bill: rows}}.
+
+    THE DATABASE FILES A FEW ROWS UNDER ANOTHER BILL'S NUMBER (the review of 7
+    October 2026). LSR 0881 of 1999 is SB 26 on seventeen rows and SB 27 on
+    one, its introduction, "Introduction and referring to Judiciary"; LSR
+    0946 is CACR 18 on three and CACR 16 on one. Read as SB 27's and CACR
+    16's, the later row outranked each bill's own introduction (Banks,
+    Education) and their hearings were filed under Judiciary. referrals
+    (_own_rows) keeps such a row off the bill's committee row too. Two
+    measures under one number each carry their own LSR's rows, so both of
+    their introductions stand (SJR 1 of 1999 and of 2000)."""
+    n = carried.get(r.get("lsr")) or {}
+    return n.get(r["bill"], 0) >= max(n.values(), default=0)
+
+
+def _senate_introduction(r):
+    """The committee a Senate introduction of 1999-2006 names, read as
+    referrals reads the bill's committee row from it (referrals.INTRO,
+    referrals.committee), where the patterns build_referral_timeline tries
+    first do not read it; else "". The Senate's, and of those years, because
+    that is where the clerk's words are the era's: a House row or another
+    term's this does not read is the reach of a separate change."""
+    if not _senate_era(r):
+        return ""
+    try:
+        import referrals
+    except ImportError:
+        return ""
+    desc = r.get("desc") or ""
+    return referrals.committee(desc) if referrals.INTRO.match(desc) else ""
+
+
+def _senate_vacate(r, pending):
+    """The committee a Senate vacate of 1999-2006 sent the bill to, read as
+    the bill's committee row reads it (referrals.vacated, and a vacate written
+    over two rows, referrals' rule 1); else "". `pending` is
+    {(bill, chamber): whether the vacate row ended in "to"}, kept across the
+    rows.
+
+    THE VACATE, AS WELL AS THE INTRODUCTION (the review of 7 October 2026).
+    With the Senate's introductions read, SB 69 of 1999's hearing of 30 March
+    was filed under Executive Departments and Administration, which the
+    Senate had taken it from on 11 February -- "Sen. Cohen motion to Vacate
+    from Executive Departments and Administration" and, on the next row, "to
+    the Public Institutions, Health and Human Services Committee.  MA, VV." --
+    and HB 707's of 8 September 1999 under Finance, after "Sen. Hollingworth
+    Moved Vacate to Judiciary, MA, VV". The bill's committee row named the
+    committee each was sent to; these hearings had named none."""
+    try:
+        import referrals as R
+    except ImportError:
+        return ""
+    desc = r.get("desc") or ""
+    v = R.vacated(desc)
+    if v:
+        return v
+    if (R.VACATE_WORD.search(desc) and not R.VACATED.search(desc)
+            and not R.LOST.search(desc) and not R.NOT_TO_A_COMMITTEE.search(desc)):
+        pending[(r["bill"], r["body"])] = R.DANGLING.search(desc) is not None
+    return ""
+
+
+def _senate_vacated_to(r, pending):
+    """The committee the row after a two-row vacate names (_senate_vacate),
+    else "": the chamber's next row of the bill, whatever it is, settles the
+    vacate waiting in `pending`, as referrals._read_docket does."""
+    key = (r["bill"], r["body"])
+    if key not in pending:
+        return ""
+    dangling = pending.pop(key)
+    try:
+        import referrals as R
+    except ImportError:
+        return ""
+    desc = r.get("desc") or ""
+    m = None if dangling else R.VACATE_NEXT.match(desc)
+    return (R._destination(desc) if dangling and not R.HEARD.search(desc)
+            else R._destination(m.group("c")) if m else "")
 
 
 def committee_on(timeline, bill, when, body):
@@ -1420,6 +1571,18 @@ def parse_proceedings(rows, timeline):
             else:
                 _ht = m.group("time") if m.groupdict().get("time") else None
             t = _parse_time(_ht) if _ht else None
+            # The hour a later row marked TIME CHANGE or NEW TIME gave this
+            # notice's day, for the Senate of 1999-2006 (TIME_CHANGED_ROW).
+            head = (r.get("lsr") or "").split("-")[0]
+            if (senate and m.re is SENATE_SCHED_RE and head.isdigit()
+                    and RESCHEDULED_YEARS[0] <= int(head) <= RESCHEDULED_YEARS[1]):
+                if by_bill is None:
+                    by_bill = defaultdict(list)
+                    for o in rows:
+                        by_bill[(o["bill"], (o["body"] or "").strip().upper())].append(o)
+                moved = _time_changed_to(r, d, by_bill.get((r["bill"], "S")))
+                if moved:
+                    t = datetime.strptime(moved, "%H:%M").time()
 
         # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
         # -- which is a better answer than the referral timeline, because that

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.93
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1005,13 +1005,47 @@ except ImportError:                                         # pragma: no cover
     _VOCAB = None
 
 
-def clean(s):
-    # "== BILL KILLED ==" and "=== BILL KILLED ===". Two equals signs were
-    # allowed for and three were not, so 717 floor lines kept a flag in the
-    # middle and no pattern could read them.
-    s = re.sub(r"=={1,}\s*[A-Z][A-Z ]*?\s*=={1,}", " ", s)
+# "== BILL KILLED ==" and "=== BILL KILLED ===". Two equals signs were
+# allowed for and three were not, so 717 floor lines kept a flag in the
+# middle and no pattern could read them.
+FLAG_MARK = re.compile(r"=={1,}\s*[A-Z][A-Z ]*?\s*=={1,}")
+# The clerk's cancel mark among those flags, spelled with one L or two.
+CANCEL_WORD = re.compile(r"CANCELL?ED")
+
+
+def clean(s, keep_cancel=False):
+    """The docket line as every pattern here reads it: the clerk's flags
+    taken out, and a citation at its end. With keep_cancel, a cancel mark
+    stays where the clerk typed it (marked_line)."""
+    s = FLAG_MARK.sub(lambda m: m.group(0) if keep_cancel and CANCEL_WORD.search(m.group(0))
+                      else " ", s)
     s = re.sub(r"\s*(?:HJ|SJ|HC|SC)\s+\d+\b.*$", "", s)
     return re.sub(r"\s{2,}", " ", s).strip(" .;,")
+
+
+def marked_line(desc, raw):
+    """The line as the bill's docket list shows it where the clerk put a
+    cancel mark on it, or "" where the line carries none (the person, 7
+    October 2026: the list "shows the clerk's own cancel mark (for example
+    ==CANCELLED==) on the rows that carry one, as the official docket prints
+    it").
+
+    Every line is read with its flags taken out (clean), which is right for
+    reading it and took the one word a reader of the list most needs off a
+    meeting that never sat: "===CANCELLED=== Public Hearing: 1/15/2013 2:00
+    PM LOB 301" was listed as "Public Hearing: 1/15/2013 2:00 PM LOB 301".
+    `raw` is the line as read; where it is the clerk's line cleaned, the mark
+    goes back where the clerk typed it ("Hearing; === CANCELLED === January
+    22, 2009, ..."), and where an era's reader made the line otherwise, the
+    mark leads it, which is where the clerk typed it on nearly every row."""
+    plain = clean(desc)
+    kept = clean(desc, keep_cancel=True)
+    if kept == plain:
+        return ""
+    if plain == raw:
+        return kept
+    marks = [m.group(0) for m in FLAG_MARK.finditer(desc) if CANCEL_WORD.search(m.group(0))]
+    return " ".join(marks + [raw]) if raw else ""
 
 
 # --------------------------------------------------------------- classify
@@ -1022,6 +1056,65 @@ def clean(s):
 # "OT3rdg" = ordered to third reading, the procedural step after passage.
 OT_RDG = re.compile(r"\bOT(\d)rdg\b", re.I)
 
+# THE STEP AFTER OUGHT TO PASS, LEFT PENDING BY A TABLING (7 October 2026).
+# The Senate passes a bill by ordering it to a third reading, "Ought to Pass:
+# MA, VV; OT3rdg", or under its Rule 4-5 sends it to Finance first. A tabling
+# moved between the two leaves the docket saying which was interrupted: SB
+# 131 of 2025 has "Ought to Pass: MA, VV", "Sen. Gray Moved Laid on Table,
+# MA, VV" and "Pending Motion OT3rdg", all of 27 March -- Senate Journal 9
+# prints the motion "Adopted." and the tabling, and no "bill ordered to Third
+# Reading" -- and it died under Rule 3-23 in October. Its history said "the
+# Senate voted to pass it", and so did 62 others of the term. SB 476 of 2026
+# was ordered to a third reading and "The Chair rescinded OT3rdg" before the
+# tabling; SB 635 of 2026's "Pending Motion Refer to Finance Rule 4-5" is the
+# same a step earlier. build_site_v2.journey asks this too, so the rail and
+# the history are one reading.
+PASSAGE_PENDING = re.compile(
+    r"(?:^|;)\s*pending\s+motion\W*(?:(?P<third>OT\s?3\s?rd?g\b)|refer\w*\s+to\s+finance\b)",
+    re.I)
+OFF_TABLE = re.compile(r"\b(?:remov\w*|taken|take)\s+(?:\w+\s+){0,2}from\s+(?:the\s+)?table",
+                       re.I)
+# The pending order carried on a later day, with no code: "OT3rdg; 03/21/2024",
+# the day SB 173 of 2024 came off the table (its Ought to Pass was of 3
+# January), and "OT3rdg" on SB 144 of 2015.
+BARE_THIRD = re.compile(r"^\s*OT\s?3\s?r?d?g\s*(?:;\s*\d{1,2}/\d{1,2}/\d{2,4}\s*)?$", re.I)
+# The day a row states at its end. A row no pattern reads is dated by its
+# entry: SB 86 of 2025's "Pending Motion OT3rdg; 03/27/2025" was entered on 4
+# June.
+ROW_DAY = re.compile(r";\s*(\d{1,2}/\d{1,2}/\d{4})\s*$")
+
+
+def row_day(raw, fallback=""):
+    """"2025-03-27" from a row ending "; 03/27/2025", else `fallback`."""
+    m = ROW_DAY.search(raw or "")
+    if m:
+        try:
+            return datetime.strptime(m.group(1), "%m/%d/%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    return fallback or ""
+
+
+def passage_left_pending(rows):
+    """{(body, day): "third" | "finance"}: the sittings at which a chamber
+    tabled the bill with its third reading (or its referral to Finance)
+    pending, and did not take it off the table again later that day. `rows`
+    is [(body, day, raw)] in the docket's order. HB 1601 of 2018 was taken off
+    and ordered to a third reading the same day; HB 726 of 2019's motion to
+    take it off failed, 10-13, and it died on the table."""
+    held = {}
+    for body, day, raw in rows:
+        m = PASSAGE_PENDING.search(raw or "")
+        if m:
+            held[(body, day)] = "third" if m.group("third") else "finance"
+            continue
+        off = OFF_TABLE.search(raw or "") if held.get((body, day)) else None
+        if off and not re.search(r"\b(?:MF|ML)\b|\b(?:failed|lost)\b", raw[off.end():]):
+            if re.search(r"\bMA\b|\badopted\b", raw[off.end():]) or re.match(
+                    r"removed|taken", off.group(0), re.I):
+                held[(body, day)] = ""
+    return {k: v for k, v in held.items() if v}
+
 # "Committee Amendment # 2025-1234s, AA, VV; 03/06/2025"
 # "Amendment # 2025-1234h: AA VV 03/06/2025"
 # "Enrolled Bill Amendment # 2025-2001e Adopted, VV, (In recess 06/26/2025)"
@@ -1029,14 +1122,22 @@ OT_RDG = re.compile(r"\bOT(\d)rdg\b", re.I)
 # Senate puts the member who offered it in front, and the anchor meant 22 of
 # these were not read as amendments at all. The name is captured rather than
 # skipped, because who moved an amendment is worth a clause.
+# "FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162 05/14/2026" -- the
+# House's floor amendment, with its mover in brackets. No pattern read it,
+# and all 108 of 2025-2026 were told nowhere (classify gives "Floor
+# Amendment" and the mover).
 AMEND_RE = re.compile(
     # The name must not swallow the kind: "Sen. Birdsell Floor Amendment" is
     # a floor amendment offered by Birdsell, not an amendment by "Birdsell
     # Floor".
     r"^(?:(?P<mover>(?:Rep|Sen)\.\s+"
     r"(?:(?!Enrolled\b|Committee\b|Floor\b|Amendment\b)[A-Z][\w'\u2019.\-]*\s+){1,3}))?"
-    r"(?P<what>(?:Enrolled Bill |Committee |Floor )?Amendment)\s*#?\s*"
-    r"(?P<num>\d{4}-\d+[a-z]*)\s*[,:]?\s*"
+    r"(?P<what>(?:Enrolled Bill |Committee |Floor )?Amendment|FLAM\b)\s*#?\s*"
+    # Not a number the clerk split with a space, "FLAM # 2022-041 7h (Rep.
+    # Testerman): AF VV 02/16/2022" (HB 1598 of 2022): read as "2022-041", it
+    # lost its day and was told after the bill's referral of that day, inside
+    # Ways and Means' stage. It stays unread, as it was before FLAM was read.
+    r"(?P<num>\d{4}-\d+[a-z]*)(?![\da-z])(?!\s\d+[a-z]\b)\s*[,:]?\s*"
     # The motion, the vote kind and the tally, in whatever order and
     # punctuation the chamber uses, each at most once:
     #
@@ -1066,7 +1167,7 @@ AMEND_RE = re.compile(
     # rather than captured -- this pattern is read for what the chamber
     # DID, and a title change is not that.
     r"(?:(?:\(?(?:NT|New Title)\)?|-?EBA)[,;:]?\s*"
-    r"|\((?:Reps?|Sens?)\.?[^)]*\)[,;:]?\s*){0,3}"
+    r"|\((?P<by>(?:Reps?|Sens?)\.?[^)]*)\)[,;:]?\s*){0,3}"
     # DIV is the House's other spelling of a division, and "Failed" is the
     # spelled-out form of AF. The docket writes the outcome either way and
     # this had the abbreviation of both and the word for only one -- the
@@ -1174,6 +1275,32 @@ def same_amendment(a, b):
     the year and letter wherever both are written."""
     return a[1] == b[1] and all(x == z or not x or not z
                                 for x, z in ((a[0], b[0]), (a[2], b[2])))
+
+
+# WHOSE AMENDMENT AN AMENDMENT ROW MOVES, where the row's own word does not
+# say. The House adopts its committee's amendment on a bare row --
+# "Amendment # 2026-0989h: AA VV 03/11/2026" (HB 1449 of 2026), which House
+# Journal 7 prints as "Majority Amendment (0989h)" under the report -- and
+# enters an amendment a member offers as "FLAM # 2026-1971h(NT) (Rep.
+# Pauer)". A number one of the bill's own reports in that chamber names is
+# that report's amendment, the committee's or its minority's, whoever moved
+# it; any other is one offered on the floor.
+WHOSE_KIND = {"committee": "Committee Amendment", "minority": "Minority Amendment"}
+
+
+def whose_amendment(evs):
+    reported = [(k, report_side(e.get("side")), e["body"]) for e in evs
+                if e["_type"] == "report" and not e.get("cancelled")
+                for k in amend_keys(e.get("_raw"))]
+    for e in evs:
+        if e["_type"] != "amendment" or (e.get("what") or "").strip().lower() not in (
+                "amendment", "floor amendment"):
+            continue
+        mine = amend_keys(e.get("num"))[:1]
+        side = next((s for k, s, b in reported if mine and b == e["body"]
+                     and same_amendment(k, mine[0])), None)
+        if side is not None:
+            e["_whose"] = "minority" if side == "Minority" else "committee"
 
 
 # "Enrolled Adopted, VV, (In recess 06/26/2025)" / "Enrolled (in recess of) 06/26/2025"
@@ -1298,6 +1425,55 @@ TO_BE_INTRODUCED = re.compile(r"^\s*To\s+Be\s+Introduced\b", re.I)
 # last row, another measure's).
 INTRODUCED_UNDATED = re.compile(
     r"^\s*Introduced\s+and\s+referred\s+to\s+(?P<committee>[A-Z][^;:(]*?)\s*$", re.I)
+# A RESOLUTION INTRODUCED AND ADOPTED IN ONE MOTION (7 October 2026). On
+# Organization Day each chamber adopts its first resolutions -- its rules, its
+# officers -- as they are introduced, and the docket says so in one row:
+# "Introduced and Adopted VV 12/04/2024  HJ 1" (HR 1 to HR 5 of 2025),
+# "Introduced and Adopted, VV; 12/04/2024;  SJ 1" (SR 1 to SR 5), "Introduced
+# and adopted VV; HJ 3, p.24" (HR 1 of 2007). From 2007 nothing read the row --
+# 172 of them -- so those resolutions had no history and no sitting page was
+# drawn for 4 December 2024. The reader of 1999-2006 already reads the same
+# words as the chamber's adoption (docket_era_1999.WORDS: "Introduced and
+# adopted" is "Ought to Pass"), and the later rows are read the same way, and
+# told in the sentence every adopted resolution's passage has. Read in build(),
+# where the bill is known: only a resolution's, and only where its chamber
+# records no passage of its own -- for HR 16 of 2020, HJR 3 of 2019 and SJR 2
+# of 2020 the row is the motion to introduce, each passed on a row of its own
+# ("Ought to Pass : MA VV"), and for HB 3 of 2019 the House taking the bill up.
+# Not the row the floor pattern already reads, "Introduced and Adopted: MA RC
+# 314-25". A date in brackets, "[11/30/2011]" (HR 14 of 2011, entered on 4
+# January), is the sitting it was done in.
+INTRODUCED_ADOPTED = re.compile(
+    r"^\s*Introduced\s+and\s+Adopted\b(?!\s*(?:\([^)]*\)\s*)?:)\s*"
+    r"(?:\(without\s+objection\)\s*)?[,;\s]*"
+    r"(?:\[\s*(?P<asof>\d{1,2}/\d{1,2}/\d{4})\s*\]\s*[,;]?\s*)?"
+    r"(?:(?P<vote>VV|RC|DV)\b\s*(?:(?P<y>\d+)\s*Y?\s*-\s*(?P<n>\d+)\s*N?)?)?"
+    r"[,;\s]*(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
+RESOLUTION = re.compile(r"^[HS](?:C|J)?R\d+$", re.I)
+PASSAGE_ROW = re.compile(r"^\s*Ought\s+to\s+Pass\b", re.I)
+
+
+def _adopted_in_term(when, r, bill, session):
+    """Whether an "Introduced and Adopted" row's day can be the adoption's: a
+    day in the bill's own term, or one a person corrected the row to
+    (docket_corrections.json).
+
+    A DAY BEFORE THE TERM IS A SLIP, AND A SITTING NOBODY HELD (the review of
+    7 October 2026). HR 6 of 2021, memorializing Speaker Hinch, reads
+    "Introduced and Adopted VV 01/06/2020 HJ 2 P. 2", entered on 7 January
+    2021: House Journal 2 is the sitting of 6 January 2021, and read as
+    stated the row drew "The House, Monday 6 January 2020", a sitting of the
+    term before. Correcting the year is a person's (docket_corrections.json),
+    so until then the row is left as it was, unread, rather than drawn on a
+    day the House did not sit."""
+    try:
+        mo, dy, yr = (int(x) for x in str(when or "").split("/"))
+        year = int(str(r.get("session") or session)[:4])
+    except (TypeError, ValueError):
+        return True
+    if in_term(yr, mo, dy, year):
+        return True
+    return bool(CORRECTIONS) and corrected_date(r, bill)[0] is not None
 
 PATTERNS = [
     ("introduced", re.compile(
@@ -1476,6 +1652,14 @@ def classify(desc):
             d = m.groupdict()
             if name == "report":
                 d.update(report_fields(d.pop("rest", "")))
+            if name == "amendment":
+                # "FLAM # 2026-1971h(NT) (Rep. Pauer): AA RC 171-162" is the
+                # House's floor amendment, and who offered it is in brackets.
+                by = (d.pop("by", None) or "").strip()
+                if (d.get("what") or "").upper() == "FLAM":
+                    d["what"] = "Floor Amendment"
+                    if by and not d.get("mover"):
+                        d["mover"] = re.sub(r",\s*(?=[^,]+$)", " and ", by)
             d["_type"] = name
             d["_raw"] = c
             return d
@@ -2170,14 +2354,17 @@ def stage_of(ev):
         # An amendment's stage is not its type, and the fall-through below put
         # every one of them in committee.
         #
-        # A committee's own amendment is recorded inside the report line --
-        # "Committee Report: Ought to Pass with Amendment # 2026-0503h (Vote
-        # 10-0; CC)" -- so a standalone Amendment line with no other word in
-        # front of it is one offered on the floor. The dates say the same
-        # thing: a bare amendment line carries the floor vote's date, weeks
-        # after the executive session it was being filed beside. The House
-        # says it aloud the same way, announcing "floor amendment 1970H"
-        # against the clerk's "the majority committee amendment".
+        # A bare House amendment row is a vote ON THE FLOOR -- it carries the
+        # floor vote's date and journal page -- but it is not a floor
+        # amendment: it is how the House adopts or rejects the amendment its
+        # committee's report recommends, "Amendment # 2026-0989h: AA VV" (HB
+        # 1449 of 2026, "Majority Amendment (0989h)" in House Journal 7). A
+        # member's amendment is a FLAM row (2015 on) or a "Floor Amendment"
+        # row (2007-2014). Whose it is, is whose_amendment()'s to say; where
+        # it is told is here, and for a bare row that is the floor. This
+        # comment once read a bare row as a floor amendment, and 633 House
+        # committee amendments of 2025-2026 were told as floor amendments
+        # while the 108 FLAM rows were read by nothing.
         #
         # An enrolled bill amendment comes after both chambers have passed the
         # bill and belongs with enrolling, which is already staged with the
@@ -2606,6 +2793,11 @@ def describe(ev, body, seen_intro=False):
             return f"{who} made no recommendation{vote}."
         return f"{who} reported: {rec}{vote}."
 
+    if t == "ot3rdg":
+        # The order a tabling left pending, carried once the bill came off
+        # the table (build(): PASSAGE_PENDING).
+        return f"On {ev['when'].strftime(MONTH)} the {chamber} ordered it to a third reading."
+
     if t == "floor":
         action, who = split_mover(ev.get("action"))
         mover = f", on a motion by {expand_mover(who)}" if who else ""
@@ -2627,7 +2819,12 @@ def describe(ev, body, seen_intro=False):
         when = fdate(ev["date"]) if ev.get("date") else ""
         tally = (f" {ev['y']}\u2013{ev['n']}" if ev.get("y") and ev.get("n") else "")
 
-        if verb and motion == "adopted":
+        if verb and motion == "adopted" and ev.get("_unpassed"):
+            # Not a passage (PASSAGE_PENDING): the motion carried, and the
+            # step that passes the bill was left pending by a tabling.
+            base = (f"On {when} the {chamber} adopted the motion that it ought to pass"
+                    + (" with an amendment" if "with amendment" in low else ""))
+        elif verb and motion == "adopted":
             base = f"On {when} the {chamber} voted to {verb}"
         elif verb and motion == "failed":
             base = f"On {when} the {chamber} rejected a motion to {verb}"
@@ -2647,7 +2844,10 @@ def describe(ev, body, seen_intro=False):
                          f"{'adopted' if verb else 'approved'} on a {vk}{tally}")
         elif vk:
             base += f" on a {vk}{tally}"
-        if OT_RDG.search(ev.get("_raw", "")):
+        if ev.get("_unpassed"):
+            base += (", but its third reading was left pending" if ev["_unpassed"] == "third"
+                     else ", but its referral to the Finance committee was left pending")
+        elif OT_RDG.search(ev.get("_raw", "")):
             base += " and ordered it to a third reading"
         if ev.get("refer"):
             # "UNDER THE CHAMBER'S RULES" only where they are what sent it: a
@@ -2663,7 +2863,14 @@ def describe(ev, body, seen_intro=False):
                      if (MONEY_COMMITTEE.match(to) or RULE_CITED.search(raw))
                      and not RULES_SUSPENDED.search(raw)
                      and not ev.get("_rules_suspended") else "")
-            base += f", then sent it on to the {to}{rules}"
+            if chamber == "Senate":
+                # The person's wording (7 October 2026): "the Senate voted to
+                # pass it on a voice vote, then referred it on to the Senate
+                # Finance committee."
+                named = to if to.lower().startswith("senate") else f"Senate {to}"
+                base += f", then referred it on to the {named}"
+            else:
+                base += f", then sent it on to the {to}{rules}"
         return _stop(base + mover)
 
     if t == "amendment":
@@ -2701,17 +2908,17 @@ def describe(ev, body, seen_intro=False):
             return (f"An enrolled bill amendment ({num}) was "
                     f"{'adopted' if adopted else 'considered'}{how}{when}. These correct "
                     "technical errors found after passage.")
-        # THE SAME TEST stage_of USES, so the sentence and the heading over
-        # it cannot disagree. A bare "Amendment" line is one offered on the
-        # floor -- a committee's own amendment is recorded inside its report
-        # line -- and stage_of has filed them under "On the House floor" since
-        # it was written, while the sentence went on calling them "An
-        # amendment". The heading was already making the claim; this says it
-        # in the sentence too rather than leaving the reader to notice.
+        # WHOSE AMENDMENT IT IS, from the bill's own reports where the row's
+        # word does not say (whose_amendment): a bare House row, or a FLAM
+        # row, whose number a report of that chamber names is the committee's
+        # or its minority's; any other is one offered on the floor. A bare
+        # row was called "a floor amendment" here on the word of stage_of,
+        # and on 601 bills of 2025-2026 that was the committee's own.
         # And an amendment the committee's minority wrote is neither the
         # committee's nor any member's: the 1999-2006 reader's "Min Am{1208}"
         # (docket_era_1999.MINORITY_AMENDMENT), offered on the floor against
         # the majority's.
+        kind = WHOSE_KIND.get(ev.get("_whose")) or kind
         who = ("The committee's amendment" if "committee" in kind.lower()
                else "The committee minority's amendment"
                if kind.lower() == "minority amendment"
@@ -3457,22 +3664,56 @@ def _session_of_kind(ev):
     return ""
 
 
+def _time_changed_clock(e, evs):
+    """The hour, "HH:MM", that the last row of the bill in e's chamber entered
+    after it and marked TIME CHANGE or NEW TIME gives e's day; else "".
+
+    THE TABLE'S ROW CARRIES THAT HOUR (7 October 2026): docket_parser gives a
+    Senate notice of 1999-2006 the hour such a row gives its day
+    (TIME_CHANGED_ROW there), so a meeting this history voids is that hour in
+    proceedings.csv. SB 387 of 2000's hearing of 25 January, noticed for 3:40,
+    set for 3:25 by "==TIME CHANGE== Jan. 25", and moved to 15 February, is
+    voided at both. The day the row names is read as docket_parser reads it
+    (docket_era_1999.DTXT, full_date)."""
+    E = getattr(_VOCAB, "E1999", None)
+    if E is None:
+        return ""
+    day, best = e["_unheld_day"], None
+    for x in evs:
+        said = x.get("_said") or ""
+        if (x is e or x["body"] != e["body"] or not TIME_CHANGED.search(said)
+                or not _entered_before(e, x.get("_entered"))):
+            continue
+        m = re.search(E.DTXT, said, re.I)
+        named = E.full_date(m.group(0), x["_entered"], forward=True) if m else None
+        if not named or datetime.strptime(named, "%m/%d/%Y").date() != day:
+            continue
+        at = _clock({"_said": said[m.end():], "when": x["_entered"]})
+        if at and (best is None or x["_entered"] >= best[0]):
+            best = (x["_entered"], at)
+    return best[1] if best else ""
+
+
 def voided_meetings(evs):
     """[[day, chamber, kind, "HH:MM" or ""]], each meeting a later row of the
     docket cancelled or moved (overtaken) whose row in the table could be no
-    meeting the history tells (above), for proceedings.notice_only."""
+    meeting the history tells (above), for proceedings.notice_only -- at the
+    hour its notice states, and at the hour a later TIME CHANGE row gave it
+    (_time_changed_clock), which is the one the table's row carries."""
     told = [e for e in evs
             if not e["cancelled"] and not e.get("_void") and e["_type"] in ROW_MEETINGS]
     out = set()
     for e in evs:
         if not e.get("_unheld_day") or e["_type"] not in VOIDED_KIND:
             continue
-        day, at = e["_unheld_day"], _clock(e)
-        if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
-               and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
-               for t in told):
-            continue
-        out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
+        day, said = e["_unheld_day"], _clock(e)
+        moved = _time_changed_clock(e, evs) if said else ""
+        for at in [said] + ([moved] if moved and moved != said else []):
+            if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
+                   and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
+                   for t in told):
+                continue
+            out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
     return [list(x) for x in sorted(out)]
 
 
@@ -4193,6 +4434,10 @@ def build(bill, rows, introduction=None):
         rows = vocab.join_rows(rows, session)
     evs, elsewhere = [], []
     read_from_journal = set()
+    # The chambers that record a resolution's passage on a row of its own
+    # (INTRODUCED_ADOPTED).
+    passed = ({r["body"] for r in rows if PASSAGE_ROW.match(clean(r["desc"]))}
+              if RESOLUTION.match(bill) else set())
     for r in rows:
         # One question of a line docket_vocab.questions split comes with its
         # event already read ("event"): a clause is read by its era's clause
@@ -4207,6 +4452,19 @@ def build(bill, rows, introduction=None):
                 ev = {**ev, "_type": "introduced",
                       "committee": undated.group("committee"),
                       "date": r["created"].strftime("%m/%d/%Y")}
+        # A resolution introduced and adopted in one motion (INTRODUCED_ADOPTED).
+        if ev["_type"] == "other" and RESOLUTION.match(bill) and r["body"] not in passed:
+            adopted = INTRODUCED_ADOPTED.match(ev["_raw"])
+            if adopted:
+                when = adopted.group("asof") or adopted.group("date")
+                if not when and isinstance(r.get("created"), datetime) \
+                        and r["created"] != datetime.min:
+                    when = r["created"].strftime("%m/%d/%Y")
+                if _adopted_in_term(when, r, bill, session):
+                    ev = {**ev, "_type": "floor", "action": "Ought to Pass", "motion": "MA",
+                          "vote": (adopted.group("vote") or "").upper() or None,
+                          "y": adopted.group("y"), "n": adopted.group("n"), "refer": None,
+                          "date": when}
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
         # And a committee's name is the one it had in this term (committee_said).
@@ -4223,6 +4481,9 @@ def build(bill, rows, introduction=None):
         ev["recessed"] = "RECESSED" in r["flags"]
         # The row as the clerk typed it, marks and all, for overtaken().
         ev["_said"] = r["desc"]
+        # And as the bill's docket list shows it, with the clerk's cancel
+        # mark where the line carries one (marked_line).
+        ev["_marked"] = marked_line(r["desc"], ev.get("_raw") or "")
         # A line docket_vocab.join_rows put back together from rows the
         # database cut it into, which read one by one were more than one
         # floor action and which still tells one: how many, where its era
@@ -4279,6 +4540,7 @@ def build(bill, rows, introduction=None):
             elsewhere.append({"date": ev["when"].strftime("%Y-%m-%d"),
                               "type": ev["_type"], "body": ev["body"],
                               "cancelled": ev["cancelled"], "raw": ev["_raw"],
+                              **({"said": ev["_marked"]} if ev.get("_marked") else {}),
                               "cite": ev.get("cite", ""),
                               "cite_page": ev.get("cite_page", ""),
                               "belongs_to": away["belongs_to"],
@@ -4291,6 +4553,7 @@ def build(bill, rows, introduction=None):
     other_chambers_row(evs)
     evs.sort(key=day_order)
     hold_in_order(evs)
+    whose_amendment(evs)
 
     # A BILL WITHDRAWN BEFORE THE DAY IT WAS TO BE INTRODUCED WAS NOT
     # INTRODUCED, AND WHAT WAS SCHEDULED FOR AFTER IT DID NOT HAPPEN. The
@@ -4700,6 +4963,29 @@ def build(bill, rows, introduction=None):
         later = [e for j, e in sent_on if j > i][:1]
         for e in that_day or [e for e in later if 0 < (e["when"].date() - day).days <= 7]:
             e["_rules_suspended"] = True
+
+    # A MOTION TO PASS ADOPTED AND THEN TABLED BEFORE THE STEP THAT PASSES THE
+    # BILL (PASSAGE_PENDING) is told as the motion adopted, not the bill
+    # passed; and a later bare "OT3rdg" of that chamber, the pending order
+    # carried once the bill came off the table, is told as that order.
+    held = passage_left_pending([(e["body"], row_day(e["_raw"], e["when"].strftime("%Y-%m-%d")),
+                                  e["_raw"]) for e in evs if not e["cancelled"]])
+    # The order is read on a sitting that did not itself leave it pending,
+    # as build_site_v2.journey reads it.
+    waiting = {}
+    for e in evs:
+        if e["cancelled"]:
+            continue
+        sitting = (e["body"], row_day(e["_raw"], e["when"].strftime("%Y-%m-%d")))
+        why = held.get(sitting)
+        if (why and e["_type"] == "floor" and (e.get("motion") or "").upper() == "MA"
+                and re.match(r"\s*ought\s+to\s+pass\b", split_mover(e.get("action"))[0], re.I)):
+            e["_unpassed"] = why
+            waiting[e["body"]] = e
+        elif (e["_type"] == "other" and BARE_THIRD.match(e["_raw"]) and sitting not in held
+              and waiting.get(e["body"])):
+            e["_type"] = "ot3rdg"
+            waiting.pop(e["body"])
 
     sentences, notes, unknown = [], [], []
     # A note is said once per bill, however many rows repeat the action.
@@ -5207,6 +5493,10 @@ def build(bill, rows, introduction=None):
                     "body": e["body"],
                     "cancelled": e["cancelled"] or bool(e.get("_void")),
                     "raw": e["_raw"],
+                    # The line with the clerk's cancel mark, where it carries
+                    # one, for the bill's docket list alone (marked_line):
+                    # everything that reads the line reads `raw`.
+                    **({"said": e["_marked"]} if e.get("_marked") else {}),
                     # A withdrawal the row itself says came before the bill
                     # was introduced: "Withdrawn Prior to Introduction".
                     **({"before_introduction": True}
@@ -5273,7 +5563,8 @@ def build(bill, rows, introduction=None):
                        # which amendment a vote was on, and in what order they
                        # were taken up.
                        {"amendment": (e.get("num") or "").strip(),
-                        "amend_kind": (e.get("what") or "").strip(),
+                        "amend_kind": (WHOSE_KIND.get(e.get("_whose"))
+                                       or (e.get("what") or "").strip()),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
                         "mover": (e.get("mover") or "").strip(),

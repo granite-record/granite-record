@@ -86,18 +86,39 @@ whether it was clean, its warnings and its errors -- is written to
 A dry run's verdict is kept apart, in `archive/last-dry-run.json`
 (`state/last-dry-run.json`): it leaves the night's verdict, the census and
 the gate's records as the last real night left them, and its kit-up and
-state-up send back only what it fetched -- the day's files as the export
-served them and their archive, a refusal or a hold -- with its own verdict
-and its logs, the logs under `logs/<date>/dry-run/`, so nothing its branch's
-code made is read by `main`'s next night. The workflow's `DRY_RUN` says so to
-every step, and `nightly.py` and `cloud.py` read it themselves.
+state-up send back only what it fetched -- the archive's copy of each file
+the export served that night, sent only where its bytes are the sha256 its
+name says, and a refusal or a hold -- with its own verdict and its logs, the
+logs under `logs/<date>/dry-run/`, so nothing its branch's code made or
+chose is read by `main`'s next night: not the day's files it installed, and
+not the archive's index or day records, which `main`'s next night appends to. The workflow's `DRY_RUN` says so to
+every step, and `nightly.py` and `cloud.py` read it themselves. A dry run's
+preview goes to its own address, `dry-run.graniterecord.pages.dev`, and never
+to `nightly.graniterecord.pages.dev`, where a night waiting for approval is
+looked at before it is approved.
+Every run of a branch other than `main`, the nightly's or the weekly's, is a
+dry run whatever its boxes say (since 7 October 2026): `DRY_RUN` reads the
+ref and `nightly.py` and `cloud.py` read `GITHUB_REF` themselves -- comparing
+it with `refs/heads/main` exactly, so that a run naming no ref, or a branch
+named `Main`, which GitHub's case-blind expressions take for main, is a dry
+run too, sends nothing to production and pings nothing -- its title
+says "not main", the publish job runs only for `main`, a New term run there
+is refused, a dry weekly keeps its verdict apart in
+`archive/last-dry-weekly.json` and sends back none of the lists it took, and
+no dry run pings Healthchecks, whose check watches only the scheduled night,
+a real run by hand of `main` and a real week that failed. Every dry run of
+either workflow waits behind any other in a group of the workflows' own
+level, `dry-runs`, before its job joins `gc-night`, because GitHub keeps one
+waiting run per group and a second dry run queued there cancelled a
+scheduled night waiting behind the first.
 The rebuild also writes `/changes/`, what the email sender reads
 (`src/pages/follow_changes.py`, from the feeds' own items), deciding what is
 new by a first-seen ledger: `build_feeds.py` reads `archive/first-seen.json`
 and leaves its own beside it, and the night keeps that only where it writes
 the census -- a build the gates accept, or a New term run's once its deploy
 has landed, for which `site-up` carries it with the site -- so a stopped
-night, a dry run or a rejected switch changes nothing the next night reads.
+night, a dry run -- every run off `main` among them -- or a rejected switch
+changes nothing the next night reads.
 With no ledger it goes by the record's own dates for that night, and the
 verdict says so.
 The second job deploys to production. It sits behind GitHub's `production`
