@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.18
+# GRANITE_VERSION: 2026-09-25.19
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -1764,7 +1764,7 @@ def unsent_after(bucket, root):
         return ""
     return (f"{UNSENT} says a refusal met here never reached the bucket, and the bucket "
             "still holds none, so GitHub's night would ask the General Court: python3 "
-            "cloud.py send-refusal")
+            "src/ops/cloud.py send-refusal")
 
 
 def cmd_state_down(a, root):
@@ -1975,7 +1975,7 @@ def send_refusal(root, local_bucket=None, dry_run=False):
                "until a person lifts it with python3 src/ops/cloud.py clear-refusal; python3 src/ops/cloud.py "
                "send-refusal then sends this one" if older else
                f"the bucket holds a newer refusal ({_who(t)}), which stops the night; python3 "
-               "cloud.py pull takes it here and sets this one aside")
+               "src/ops/cloud.py pull takes it here and sets this one aside")
         if not dry_run:
             write_unsent(root, why)
         return False, (f"{bucket.describe()} holds another refusal at {obj}, so this one "

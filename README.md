@@ -104,8 +104,9 @@ which need the record described below, and takes longer.
 
 ### A clone has the code, not the record
 
-The repository is the Python scripts, the front end, the documents, and the
-files a person made by hand; `git ls-files` lists them. The General Court's
+The repository is the Python scripts, the front end, the documents, the
+files a person made by hand, and the data in the five folders of
+[What's where](#whats-where); `git ls-files` lists them. The General Court's
 **live** bulk dumps and everything derived from them are deliberately
 untracked — they are the state's, they are large, and they change daily, so
 tracking them would store a new copy of a 4.7 MB file every day.
@@ -113,7 +114,9 @@ tracking them would store a new copy of a 4.7 MB file every day.
 What does not change is tracked. `records/rollcalls/` carries the roll-call history
 since 1999 as the General Court published it, a summary and a history file
 for each year — about 100 MB, and most of the reason a clone weighs what it
-does rather than a few megabytes. The two small code tables are there too.
+does rather than a few megabytes. The General Court's two small code tables,
+`GeneralCodes.txt` and `BodyStatusCodes.txt`, are tracked too, at the root
+beside the day files the night installs there.
 `.gitignore` says which files and why.
 
 Four things are absent on purpose and are not missing:

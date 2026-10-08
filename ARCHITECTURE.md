@@ -15,13 +15,24 @@ the work was done in -- is kept privately rather than in this repository.
 ## Where the code lives
 
 The repository root holds only what something outside the repository runs by
-name: the pipeline (`build_all.py`), the night (`nightly.py`), the kit
-(`cloud.py`), the livestream index (`livestreams.py`), the laptop's evening
-job (`laptop_evening.py`), the pull of reader reports (`compile_reports.py`),
-the first commands of a working session (`inventory.py`, `preflight.py`,
-`handoff.py`), the refusal tools (`refusal.py`, `netcheck.py`) and the
-deploy (`publish.bat`); beside them `_paths.py`, the config and the data.
-Everything else is under `src/`, one folder per job: the front end
+name: the pipeline (`build_all.py`), the night (`nightly.py`), the laptop's
+evening job (`laptop_evening.py`), the checks (`preflight.py`), the refusal
+tools (`refusal.py`, `netcheck.py`) and the deploy (`publish.bat`); beside
+them `_paths.py`, the config and the documents, and, untracked, the day's
+files as the night installs them and what the build writes. The tools that
+keep the site running rather than build it are in `src/ops/`, run by their
+path: the kit (`cloud.py`), the livestream index (`livestreams.py`), the pull
+of reader reports (`compile_reports.py`) and a working session's first and
+third commands (`inventory.py`, `handoff.py`). The data git keeps is in five
+folders, each with a README saying what it holds and who writes it:
+`corrections/` (what a person corrects or adds by hand, which no script
+writes), `review/` (a person's checks: the stopwatch times and the bench),
+`records/` (official lists and documents as published: the past sessions'
+roll calls, the district lists, the Secretary of State's documents),
+`collected/` (what was gathered from outside sources: the channels' video
+indexes, the towns' clerks and officials) and `generated/` (what is computed
+ahead of time: careers, places, the topic model's settings, the timestamp
+scores). Everything else is under `src/`, one folder per job: the front end
 (`bills.html`, `app.js`, `find.js`, `app.css`) is in `src/pages/` beside the
 builders that read it, and the `dom_stub.js` that `preflight` loads it
 against is in `tests/`. `src/README.md` has the tree and the rule
@@ -37,6 +48,8 @@ for where a new file goes, and each folder's own README says what it holds:
     src/pages/           writes what a reader gets in site/
     src/checks/          looks at something and reports
     src/lib/             the few modules every stage shares
+    src/ops/             keeps the site running: the bucket, the livestreams,
+                         the reader reports, a session's first commands
 
 **The network boundary is a folder.** A fetcher sits in the folder of whose
 server it asks, because that is what decides what can go wrong, and

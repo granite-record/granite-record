@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.467
+# GRANITE_VERSION: 2026-09-04.468
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13920,6 +13920,69 @@ def _manifest_prefers_aired(build_manifest):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("pipeline", "every video index reaches the build: the channel indexes in "
+                   "collected/videos/ and the night's livestreams at the root, both, by "
+                   "file name", needs=("build_all", "proceedings"))
+def _video_indexes_both_places(build_all, proceedings):
+    """THE ROOT TIDY (8 October 2026) put the channel indexes git keeps in
+    collected/videos/ and left the night's videos_*_livestreams.csv at the
+    root, where the kit has always carried them, so that no bucket key
+    changed. proceedings.video_indexes() is how build_all, build_manifest's
+    message, build_proceedings, build_calendar, caption_span, livestreams and
+    these checks find both. A reader of one place alone would lose either
+    every committed recording or every recording the night found since, and
+    the manifest would come out shorter without an error. When the review of
+    the move took the root out of video_indexes(), checks of the livestreams
+    and the captions failed by their symptoms, and none named the cause. So
+    the function is held to a planted tree, build_all's plan to handing both
+    to the manifest and the floor index, and no other code file may glob for
+    a video index of its own."""
+    import io
+    import contextlib
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vids-"))
+    here = os.getcwd()
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    try:
+        _plant(tmp, {"collected/videos/videos_senate_2026-01-01_to_2026-12-31.csv": "x\n",
+                     "collected/videos/videos_house_2026-01-01_to_2026-06-30.csv": "x\n",
+                     "collected/videos/channel_index_full.json": "{}\n",
+                     "videos_house_livestreams.csv": "x\n",
+                     "videos_senate_livestreams.csv": "x\n",
+                     "elsewhere/videos_house_2025-01-01_to_2025-12-31.csv": "x\n"})
+        want = ["collected/videos/videos_house_2026-01-01_to_2026-06-30.csv",
+                "videos_house_livestreams.csv",
+                "collected/videos/videos_senate_2026-01-01_to_2026-12-31.csv",
+                "videos_senate_livestreams.csv"]
+        got = [p.relative_to(tmp).as_posix() for p in proceedings.video_indexes(tmp)]
+        assert got == want, f"proceedings.video_indexes read {got}, not {want}"
+        os.chdir(tmp)
+        with contextlib.redirect_stdout(io.StringIO()):
+            steps = build_all.plan(A())
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    for script in ("build_manifest.py", "build_floor_index.py"):
+        step = next((s for s in steps if s.args[:1] == [script]), None)
+        assert step is not None, f"build_all's plan has no {script} step"
+        handed = [a for a in step.args if a.endswith(".csv") and "videos_" in a]
+        assert handed == want, f"build_all hands {script} {handed}, not {want}"
+    own = [f"{f.relative_to(_paths.ROOT).as_posix()}"
+           for f in _paths.code_files("*.py")
+           if f.name not in ("proceedings.py", "preflight.py")
+           and re.search(r"""\.glob\(\s*f?["']videos_""",
+                         f.read_text(encoding="utf-8", errors="replace"))]
+    assert not own, ("these glob for a video index of their own rather than taking "
+                     "proceedings.video_indexes(): " + ", ".join(own))
+    return "ok", ("both places read, in file-name order, and handed to the manifest and the "
+                  "floor index; no other code file globs for an index")
+
+
 # ======================================================== code: livestreams ==
 
 def _ls_env():
@@ -21784,14 +21847,42 @@ def _record_untouched():
     INTO = re.compile(r'open\s*\([^)]*["\'](?:%s)(?:[/\\]|["\'])[^)]*["\']w|'
                       r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\'][^\n]{0,60}\.write_(?:text|bytes)'
                       % (dirs, dirs))
+    # ... or through a name a line of its own gives such a path, which is how
+    # most scripts here name what they write (OUT = ROOT / "corrections" /
+    # "x.json", and OUT.write_text(...) further down): written, opened for
+    # writing, or put there whole by a rename or a copy, the way a careful
+    # writer finishes (os.replace(tmp, OUT)). The review of 8 October 2026
+    # planted both shapes in a build_ script and the reader above passed them.
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*'
+                      r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\']' % dirs, re.M)
+
+    def writes_into(src):
+        if INTO.search(src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\.(?:replace|rename)\s*\(\s*%s\s*\)'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n, n), src):
+                return True
+        return False
+
     for text, writes in (('open("corrections/x.json", "w")', True),
                          ('open(ROOT / "corrections" / "x.json", "w", encoding="utf-8")', True),
                          ('Path("review/ground_truth.csv").write_text(t)', True),
                          ('(Path("review") / "a.csv").write_text(t)', True),
+                         ('OUT = ROOT / "corrections" / "x.json"\nOUT.write_text(t)', True),
+                         ('T = Path("review") / "a.csv"\nos.replace(tmp, T)', True),
+                         ('NOTES: Path = Path("corrections/n.json")\nwith NOTES.open("w") as fh:', True),
                          ('json.loads(Path("corrections/bill_notes.json").read_text())', False),
                          ('open(ROOT / "corrections" / "x.json", encoding="utf-8")', False),
+                         ('gt = Path("review/ground_truth.csv")\nrows = read_any(gt)\n'
+                          'with open(gt, encoding="ascii") as fh:', False),
                          ('Path("site/review.json").write_text(t)', False)):
-        assert bool(INTO.search(text)) == writes, (
+        assert writes_into(text) == writes, (
             f"the reader of writes into {' and '.join(HANDMADE_DIRS)}/ reads {text!r} as "
             + ("no write" if writes else "a write"))
     bad, names = [], []
@@ -21800,7 +21891,7 @@ def _record_untouched():
         src = f.read_text(encoding="utf-8", errors="replace")
         if "checked.jsonl" in src:
             names.append(f.name)
-        if INTO.search(src):
+        if writes_into(src):
             bad.append(f"{f.name} writes into {' or '.join(d + '/' for d in HANDMADE_DIRS)}")
         for name in HANDMADE:
             # Bounded on the left, so that status.txt is not bill_status.txt
@@ -64874,7 +64965,7 @@ def _refusal_reached_the_bucket():
         raise AssertionError(
             f"{p} says a refusal met on this laptop at {d.get('at', '?')} is not in the "
             f"bucket: {why}. The night is stopped by the bucket's for now. python3 "
-            "cloud.py pull says where things stand; python3 refusal.py --clear removes the "
+            "src/ops/cloud.py pull says where things stand; python3 refusal.py --clear removes the "
             "marker with the refusal, if a person has decided it is over.")
     raise AssertionError(
         f"{p} says a refusal met on this laptop at {d.get('at', '?')} never reached the "
@@ -75453,7 +75544,7 @@ def main():
             print(f"  {g}/{n}: {m}")
     if not bad:
         print("\nEverything that can be checked without the network is working.")
-        print("What is left needs real data: run inventory.py, then align_all,")
+        print("What is left needs real data: run src/ops/inventory.py, then align_all,")
         print("then src/hearings/segment_markers.py --all --data data, and score the result:")
         print("  src/hearings/probe_alignment.py --truth --candidate candidate_segments.json")
         print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")
