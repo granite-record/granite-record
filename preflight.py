@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.449
+# GRANITE_VERSION: 2026-09-04.450
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6063,6 +6063,90 @@ def _senate_room_change_manifests():
                 bad.append(f"{f.name} has {bill}'s Senate sitting of {day} in {got!r}, not {room!r}")
     assert not bad, "\n".join(bad)
     return "ok", f"{n} sittings in the room their latest change row gave them"
+
+
+# Real rows: Docket_2021-2022.txt 10218, 10231 and 10236-10242 (HB 355 of
+# 2022), and Docket_2023-2024.txt 12396-12397 (HB 417 of 2023).
+_DOCKET_CANCELLED_TWIN = [
+    "2022|0518|1/9/2021 12:00:00 AM|HB355|H|Introduced (in recess of) 01/06/2021 and referred to Ways and Means HJ 2 P. 44|1/9/2021 12:00:00 AM",
+    "2022|0518|1/18/2022 12:00:00 AM|HB355|S|Introduced 01/05/2022 and Referred to Ways and Means; SJ 2|1/18/2022 12:00:00 AM",
+    "2022|0518|5/10/2022 12:00:00 AM|HB355|H|House Non-Concurs with Senate Amendment 2022-1131s and Requests CofC (Reps. Abrami, Spilsbury, Janigian, Ames): MA VV 05/05/2022 HJ 12|5/10/2022 12:00:00 AM",
+    "2022|0518|5/12/2022 12:00:00 AM|HB355|S|Sen. Giuda Accedes to House Request for Committee of Conference, MA, VV; 05/12/2022; SJ 12|5/12/2022 12:00:00 AM",
+    "2022|0518|5/12/2022 12:00:00 AM|HB355|S|President Appoints: Senators Giuda, Daniels, D'Allesandro; 05/12/2022; SJ 12|5/12/2022 12:00:00 AM",
+    "2022|0518|5/16/2022 12:00:00 AM|HB355|H|Conference Committee Meeting: 05/16/2022 09:00 am LOB 202-204|5/16/2022 12:00:00 AM",
+    "2022|0518|5/16/2022 12:00:00 AM|HB355|H|==CANCELLED== Conference Committee Meeting: 05/16/2022 09:00 am LOB 202-204|5/16/2022 12:00:00 AM",
+    "2022|0518|5/17/2022 12:00:00 AM|HB355|H|==RECESSED== Conference Committee Meeting: 05/17/2022 11:00 am LOB 202-204|5/17/2022 12:00:00 AM",
+    "2022|0518|5/18/2022 12:00:00 AM|HB355|H|Conference Committee Meeting: 05/18/2022 12:00 pm LOB 202-204|5/18/2022 12:00:00 AM",
+]
+_DOCKET_TWIN_SET_AGAIN = [
+    "2023|0257|3/8/2023 12:00:00 AM|HB417|H|==CANCELLED== Executive Session: 03/15/2023 10:15 am LOB 305-307|3/8/2023 12:00:00 AM",
+    "2023|0257|3/13/2023 12:00:00 AM|HB417|H|Executive Session: 03/15/2023 10:15 am LOB 305-307|3/13/2023 12:00:00 AM",
+]
+
+
+@check("build", "a notice its own cancelled twin of one stamp follows is a meeting called off, in "
+                "the table and the history, and a twin entered before it is not",
+       needs=("docket_parser", "narrative"))
+def _cancelled_twin(D, N):
+    """The person's decision of 8 October 2026: a cancelled meeting is not
+    told. HB 355 of 2022's conference of 16 May is given twice at one stamp,
+    plain and then "==CANCELLED==", word for word. The plain row was a
+    conference drawn on the bill's page and the Calendar, which
+    proceedings.notice_only never hides, and the history said a committee of
+    conference "met on May 16, 2022, May 17, 2022 and May 18, 2022", since
+    overtaken() reads no conference and no row of a midnight stamp is entered
+    before another. HB 417 of 2023's executive session of 15 March was
+    cancelled on 8 March and set down again on the 13th, and sat."""
+    bad = []
+    for lines, bill, want in ((_DOCKET_CANCELLED_TWIN, "HB355",
+                               [("2022-05-17", "11:00"), ("2022-05-18", "12:00")]),
+                              (_DOCKET_TWIN_SET_AGAIN, "HB417", [("2023-03-15", "10:15")])):
+        tmp = Path(tempfile.mkdtemp(prefix="gr-twin-"))
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = D.parse_rows(str(tmp / "Docket.txt"))
+            procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+            D.build_sittings(procs)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        live = [(p.sched_date, p.sched_time) for p in procs
+                if p.confidence != "X-cancelled" and p.body == "H"]
+        if live != want:
+            bad.append(f"{bill}'s House meetings are read as {live!r}, not {want!r}")
+    narr = _told_from_rows(N, "2021-2022", "HB355", _DOCKET_CANCELLED_TWIN)
+    if "May 16, 2022" in narr["narrative"] or "May 17, 2022" not in narr["narrative"]:
+        bad.append("HB 355's history tells the conference of 16 May or not that of the 17th: "
+                   + narr["narrative"][narr["narrative"].find("committee of conference"):][:160])
+    plain = [e for e in narr["events"] if e["date"] == "2022-05-16"
+             and e["type"] == "conference_meeting"]
+    if len(plain) != 2 or not all(e["cancelled"] for e in plain) \
+            or not any(e.get("notice") and e.get("overtaken") == "cancelled" for e in plain):
+        bad.append(f"HB 355's rows of 16 May are carried as {plain!r}, not a notice its twin "
+                   "cancels beside the twin")
+    narr = _told_from_rows(N, "2023-2024", "HB417", _DOCKET_TWIN_SET_AGAIN)
+    if "March 15, 2023" not in narr["narrative"]:
+        bad.append("HB 417's executive session of 15 March 2023, set down again after its "
+                   "cancellation, is not told: " + narr["narrative"][:200])
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 355 of 2022's conference of 16 May called off by its twin, in the table and "
+                  "the history; HB 417 of 2023's executive session set down again and told")
+
+
+@check("data", "HB 355 of 2022's conference of 16 May, which its twin cancels, is not in the "
+               "2021-2022 manifest")
+def _cancelled_twin_manifest():
+    """_cancelled_twin, in the file on disk: a manifest built before it holds
+    the conference, and every page that reads the table draws it. A full
+    rebuild of the term's manifest takes it out and keeps the 17th and 18th."""
+    f = Path("verification_manifest_2021-2022.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = sorted((r["sched_date"], r["sched_time"]) for r in csv.DictReader(fh)
+                     if r["bill"] == "HB355" and r["proceeding"] == "committee of conference")
+    want = [("2022-05-17", "11:00"), ("2022-05-18", "12:00")]
+    assert got == want, f"{f.name} has HB 355's conferences as {got!r}, not {want!r}"
+    return "ok", "the 17th and the 18th, and not the 16th"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "

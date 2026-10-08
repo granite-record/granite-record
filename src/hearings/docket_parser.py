@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -1114,6 +1114,37 @@ def extract_flags(desc):
     return flags, clean
 
 
+# A NOTICE AND ITS OWN CANCELLED TWIN, ENTERED AT ONE MOMENT (the person's
+# decision of 8 October 2026: a cancelled meeting is not told). HB 355 of
+# 2022's docket gives its conference of 16 May twice, word for word, at the
+# same stamp: "Conference Committee Meeting: 05/16/2022 09:00 am LOB 202-204"
+# and, on the next row, "==CANCELLED== Conference Committee Meeting:
+# 05/16/2022 09:00 am LOB 202-204" (Docket_2021-2022.txt lines 10239-10240).
+# The first was read as a meeting held and drawn as one; nothing reads a
+# conference out as a notice later (proceedings.notice_only never hides one),
+# and a history cannot order two rows of one stamp. A row whose word-for-word
+# twin -- the same bill, chamber and words once the marks are read off, the
+# same marks but for the cancellation -- carries a cancellation, was entered
+# at the same moment, and follows it in the docket, is that notice called off.
+# Across every docket on this disk it is HB 355's alone: a notice cancelled by
+# a twin entered later is the history's to void (narrative.overtaken), and a
+# twin entered before it is a meeting set down again.
+def cancelled_twins(rows):
+    """{id(row)} of each row a later row of one stamp cancels word for word
+    (above)."""
+    plain, out = defaultdict(list), set()
+    for r in rows:
+        flags, clean = extract_flags(r.get("desc") or "")
+        off = [f for f in flags if "CANCEL" in f.upper()]
+        key = (r["bill"], r["body"], (r.get("created") or "").strip(), clean,
+               tuple(f for f in flags if "CANCEL" not in f.upper()))
+        if off:
+            out.update(id(x) for x in plain.get(key, ()))
+        elif not cancelled(r.get("desc") or ""):
+            plain[key].append(r)
+    return out
+
+
 def build_referral_timeline(rows):
     """(bill, body) -> sorted [(effective_date, committee, how)] from
     introductions, later referrals and vacate rows; `how` is "introduced",
@@ -1475,6 +1506,7 @@ def parse_proceedings(rows, timeline):
     out = []
     referred = None      # {(bill, chamber): [its referral committees]}, read at the first legacy hearing
     by_bill = None       # {(bill, chamber): its rows}, read at the first row rescheduled_to reads
+    twins = None         # cancelled_twins(rows), read at the first meeting row
     for r in rows:
         flags, clean = extract_flags(r["desc"])
         # .upper(), because the body code is not always upper case. 65 rows of
@@ -1570,6 +1602,12 @@ def parse_proceedings(rows, timeline):
         # sittings published as real meetings.
         if cancelled(r["desc"]) and not any("CANCEL" in str(f).upper()
                                             for f in flags) and moved_to is None:
+            flags = list(flags) + ["CANCELLED"]
+        # And a notice its own cancelled twin of one stamp calls off
+        # (cancelled_twins).
+        if twins is None:
+            twins = cancelled_twins(rows)
+        if id(r) in twins and not any("CANCEL" in str(f).upper() for f in flags):
             flags = list(flags) + ["CANCELLED"]
 
         if kind not in VIDEO_KINDS:
