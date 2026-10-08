@@ -126,7 +126,7 @@
     "parse_sos_districts.py": "2026-09-20.4",
     "past_members.py": "2026-09-10.3",
     "past_sponsors.py": "2026-09-26.6",
-    "preflight.py": "2026-09-04.466",
+    "preflight.py": "2026-09-04.467",
     "probe_alignment.py": "2026-09-05.64",
     "probe_archive_shape.py": "2026-09-07.8",
     "probe_calendars.py": "2026-09-04.9",
@@ -174,7 +174,9 @@
     "verify_batch.py": "2026-09-04.6",
     "wrangler.toml": "2026-09-12.2",
     "bill_blocks.py": "2026-09-20.7",
-    "_paths.py": "2026-10-06.4"
+    "_paths.py": "2026-10-06.4",
+    "rendered_sweep.py": "2026-10-08.1",
+    "sweep_browser.js": "2026-10-08.1"
   },
   "generated": "2026-09-04"
 }

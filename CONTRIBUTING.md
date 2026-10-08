@@ -156,7 +156,13 @@ Three steps, each catching what the one before cannot.
    rather than assume it. For a change meant to move the site, the same diff
    says exactly which files moved. Then `python3 src/checks/check_site.py` on the result,
    and `python3 src/hearings/probe_alignment.py --truth` wherever a timestamp
-   moved. `ARCHITECTURE.md` (*Comparing two builds*) has the detail.
+   moved. `ARCHITECTURE.md` (*Comparing two builds*) has the detail. For a
+   change to how pages look, `python3 src/checks/rendered_sweep.py` on the
+   build before and after (the second with `--compare` and the first's
+   report): it has headless Chrome draw a fixed list of page types at three
+   widths, in both themes, in forced colours and at a 24px browser text size,
+   measures every text's size and contrast and every sideways overflow, and
+   saves a screenshot of each. Look at the screenshots, not only the numbers.
 3. **A dry run of the nightly on `dev`.** In GitHub's Actions tab, "nightly",
    "Run workflow", choose `dev` and leave "Dry run" ticked: the same night
    GitHub runs on `main`, on an empty machine with the kit from R2, built and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.466
+# GRANITE_VERSION: 2026-09-04.467
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19914,6 +19914,115 @@ def _css_ratio(a, b):
         return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
     x, y = sorted((lum(a), lum(b)), reverse=True)
     return (x + 0.05) / (y + 0.05)
+
+
+@check("frontend", "the rendered sweep's browser reaches only the loopback address and Google "
+                   "Fonts, its server answers as the host does, and its report counts what its "
+                   "runs found", needs=("rendered_sweep",))
+def _sweep_sealed(RS):
+    """src/checks/rendered_sweep.py is run by a person before a front-end
+    release, never here: preflight has no browser. What can be held without
+    one is held here.
+
+    SEALED. sweep_browser.js starts Chrome with every host name resolving to
+    nothing but the loopback address and Google Fonts (HOST_RULES). A rule
+    added there -- the General Court's host, YouTube, the live site -- is a
+    request nobody expects from a check, so the rules are read and held to
+    those four names, and the launch must pass them. The driver must parse.
+
+    THE SERVER answers as Cloudflare Pages does, on 127.0.0.1 and nowhere
+    else: a page by its name with or without .html, 404.html with a 404 for
+    a path that is not there, and a script as JavaScript whatever the
+    Windows registry says .js is.
+
+    THE REPORT is what a person reads first, so its sums are held to runs
+    made up here: the share of text under 16px, the smallest size, the
+    contrast failures, the views that scroll sideways, whether the 24px runs
+    grew, and the 404 page's own answer kept out of the site's failures.
+    And a record page whose bill has changed kind is replaced by another of
+    its kind, and the report says so, rather than measuring the wrong page."""
+    import http.client
+    js = _paths.locate("sweep_browser.js")
+    assert js.is_file(), "src/checks/sweep_browser.js is not there"
+    src = js.read_text(encoding="utf-8")
+    m = re.search(r"const HOST_RULES = ((?:'[^']*'\s*\+?\s*)+);", src)
+    assert m, "sweep_browser.js no longer states HOST_RULES as a string this can read"
+    rules = [r.strip() for r in "".join(re.findall(r"'([^']*)'", m.group(1))).split(",")]
+    allowed = {"127.0.0.1", "localhost", "fonts.googleapis.com", "fonts.gstatic.com"}
+    assert rules[0] == "MAP * ~NOTFOUND", (
+        f"the sweep's browser resolves names by {rules[0]!r}, not MAP * ~NOTFOUND first")
+    extra = [r for r in rules[1:] if not (r.startswith("EXCLUDE ") and r[8:] in allowed)]
+    assert not extra, f"the sweep's browser may also reach {extra}"
+    assert "'--host-resolver-rules=' + HOST_RULES" in src, \
+        "sweep_browser.js no longer starts Chrome with HOST_RULES"
+    if shutil.which("node"):
+        r = _run(["node", "--check", str(js)], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, f"sweep_browser.js does not parse: {(r.stderr or '')[-300:]}"
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sweep-"))
+    srv = None
+    try:
+        _plant(tmp, {"index.html": "home", "a.html": "page a", "404.html": "not here",
+                     "x.js": "1", "idx/2025-2026.json": json.dumps([
+                         {"id": "HB1", "year": 2026, "n": "HB 1", "kind": "done", "status": "Killed",
+                          "nrc": 0},
+                         {"id": "HB2", "year": 2026, "n": "HB 2", "kind": "done", "status": "Killed",
+                          "nrc": 3}]),
+                     "bill/2026/hb1.html": "", "bill/2026/hb2.html": ""})
+        srv, base = RS.serve(tmp)
+        assert srv.server_address[0] == "127.0.0.1", f"the sweep serves on {srv.server_address[0]}"
+        port = srv.server_address[1]
+
+        def get(path):
+            c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            c.request("GET", path)
+            resp = c.getresponse()
+            out = (resp.status, resp.getheader("Content-Type") or "", resp.read().decode())
+            c.close()
+            return out
+        assert get("/a")[::2] == (200, "page a"), get("/a")
+        assert get("/a.html")[::2] == (200, "page a"), get("/a.html")
+        assert get("/nothing-here.html")[::2] == (404, "not here"), get("/nothing-here.html")
+        assert "javascript" in get("/x.js")[1], get("/x.js")
+        pages = {p["name"]: p for p in RS.resolve_pages(tmp)}
+        killed = pages["bill-killed"]
+        assert killed.get("path") == "bill/2026/hb2.html" and "HB1083" in killed.get("note", ""), \
+            f"a killed bill with roll calls was not found in its place: {killed}"
+        assert pages["bill-law"].get("missing_why") and pages["home"].get("path") == "index.html", \
+            (pages["bill-law"], pages["home"])
+    finally:
+        if srv:
+            srv.shutdown()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    def run(page, width, mode, sizes, fails=0, sideways=False, path="p.html"):
+        return {"id": f"{page}_{width}_{mode}", "page": page, "width": width, "mode": mode,
+                "path": path, "failed": [f"404 /{path}"] if page == "404" else [],
+                "m": {"text": {"sizes": sizes, "min": min(map(float, sizes)), "minAt": {
+                    "px": min(map(float, sizes)) * RS.MODES[mode] / 16, "sig": "p"},
+                    "mixedCase13": []},
+                    "contrast": {"measured": 10, "failures": fails, "fails": [], "lowest": {
+                        "ratio": 5.0, "need": 4.5}},
+                    "overflow": {"sideways": sideways, "poking": [], "clipped": [],
+                                 "placeholders": [], "scrollers": []},
+                    "headings": {"h1": [{"px": 30}], "rank": []},
+                    "lines": {"widest": [], "over80": 0}, "fontsFailed": []}}
+    s = RS.summarise([run("home", 1366, "light", {"11": 10, "16": 30}),
+                      run("home", 1366, "dark", {"12": 10, "16": 30}, fails=2),
+                      run("home", 375, "light", {"14": 20}, sideways=True),
+                      run("home", 1366, "text24", {"7.33": 10, "10.67": 30}),
+                      run("404", 1366, "light", {"16": 5}, path="no.html"),
+                      {"id": "x_375_dark", "page": "x", "width": 375, "mode": "dark",
+                       "error": "the browser never reported this view"}])
+    assert s["text"]["share_under_16px"] == 38.1 and s["text"]["smallest_px"] == 11.0, s["text"]
+    assert s["contrast"]["failures"] == 2 and s["overflow"]["sideways"] == ["home_375_light"], s
+    assert s["text_size_24px"]["views"] == 1 and s["text_size_24px"]["text_grew"] == 0, \
+        s["text_size_24px"]
+    assert s["errors"] == ["x_375_dark: the browser never reported this view"], s["errors"]
+    assert s["network"]["failed_on_the_site"] == [], s["network"]
+    return "ok", (f"Chrome resolves only {', '.join(sorted(allowed))}; the server is on the "
+                  f"loopback address and answers as the host does; the report's sums hold on "
+                  f"made-up runs; {len(RS.PAGES)} page types")
 
 
 @check("frontend", "a focus ring is not cut off by the box around its control, a text box's edge is "
