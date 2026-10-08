@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.174
+# GRANITE_VERSION: 2026-09-05.175
 """
 Generate the faceted site from real General Court data.
 
@@ -35,6 +35,8 @@ import committee_names as CN
 # Where the recordings this site links begin: one constant, which about.html
 # states in words and station_for_proceeding and station_for_floor split on.
 from about_figures import STREAM_START
+# The Speaker's chair, whose occupant's page names the office (member_office).
+from seating import SPEAKER_SEAT
 import narrative as N
 import fiscal
 import proceedings as P
@@ -2901,6 +2903,20 @@ def sponsored_in_order(rows):
                                        BO.bill_key(x["bill"])))
 
 
+def member_office(m):
+    """The office a sitting member holds that their page names, or "".
+
+    THE SPEAKER'S OWN PAGE SAID NOTHING OF IT (the survey of 7 October 2026).
+    Rep. Sherman Packard's page listed House Rules and his presiding counts,
+    and the seating chart labels the Speaker's chair, while nothing on his
+    page named the office. The chair is seat 6002, on the rostrum and in no
+    division (seating.SPEAKER_SEAT): the member the roster seats there is the
+    Speaker. A member who has left holds no seat, and no office here."""
+    if m.get("former") or m.get("chamber") != "H":
+        return ""
+    return "Speaker of the House" if str(m.get("seat") or "") == str(SPEAKER_SEAT) else ""
+
+
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
                       former=None):
@@ -2993,8 +3009,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # it. Only where there are two: everyone else's file is as it was.
         both = ({"member_ids": [mid, *joined], "service": ML.service(mv)}
                 if joined else {})
+        office = member_office(m)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
+            **({"office": office} if office else {}),
             # In the member's own file and nowhere else: not in the `row`
             # above, which is what the legislators page, the town pages and
             # every other listing read. It is a figure on their own page, not

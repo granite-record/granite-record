@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.157
+// GRANITE_VERSION: 2026-09-07.158
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5821,7 +5821,10 @@ function renderMemberHead(m){
   const titled = former ? formerName(m) : "";
   return `<div class="phead">
     <h1>${esc(titled||m.display_full||m.display||m.name||"")}</h1>
-    <p class="pmeta">${esc(m.chamber==="S"?"State Senate":"House of Representatives")}${
+    ${/* THE OFFICE, where the member holds one this record names: the
+         Speaker's page said nothing of it (the survey of 7 October 2026).
+         build_site_v2.member_office says why the chair is the evidence. */""}
+    <p class="pmeta">${esc(m.office||(m.chamber==="S"?"State Senate":"House of Representatives"))}${
       m.district?` &middot; District ${esc(m.district)}`:""}${
       m.county?` &middot; ${esc(m.county)} County`:""}</p>
     ${former?`<p class="pformer">${

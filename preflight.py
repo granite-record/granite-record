@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.456
+# GRANITE_VERSION: 2026-09-04.457
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47022,6 +47022,62 @@ def _sits_mostly_january_to_june():
     assert sorted(said) == ["app.js", "build_calendar.py", "build_pages.py"], (
         "the three empty states that say when the General Court sits are " + ", ".join(said))
     return "ok", "the committee page, the Calendar's week and the home page say \"mostly\""
+
+
+@check("frontend", "the Speaker's own page says he is Speaker", needs=("build_site_v2",))
+def _speaker_page_says_so(B):
+    """Rep. Sherman Packard's page listed House Rules and his presiding
+    counts, and the seating chart labels the Speaker's chair, while nothing
+    on his page named the office (the survey of 7 October 2026). The member
+    the roster seats in the Speaker's chair, seat 6002 on the rostrum, carries
+    "Speaker of the House" in his own file, and his page's line under his
+    name says it where it said "House of Representatives". A member who has
+    left, a senator, and a member of the floor carry no office."""
+    speaker = {"id": "425", "name": "Packard, Sherman", "chamber": "H", "seat": "6002",
+               "district": "16", "county": "Rockingham",
+               "display_full": "Rep. Sherman Packard (R - Rock 16)", "towns": ["Londonderry"]}
+    assert B.member_office(speaker) == "Speaker of the House", B.member_office(speaker)
+    for other in ({**speaker, "former": True}, {**speaker, "seat": "1002"},
+                  {**speaker, "chamber": "S", "seat": ""}):
+        assert B.member_office(other) == "", other
+    import inspect
+    assert '**({"office": office} if office else {})' in inspect.getsource(B.build_legislators), (
+        "build_legislators does not write a member's office into their own file")
+    got = _app_js("[scope.renderMemberHead(" + json.dumps({**speaker,
+                                                         "office": "Speaker of the House"})
+                  + "), scope.renderMemberHead(" + json.dumps({**speaker, "seat": "1002"}) + ")]",
+                  names=("renderMemberHead",))
+    if got is None:
+        return "ok", "seat 6002's member is Speaker of the House; node is not here to draw it"
+    head, floor = got
+    assert re.search(r'<p class="pmeta">Speaker of the House &middot; District 16', head), (
+        "the Speaker's page does not say he is Speaker: " + re.sub(r"\s+", " ", head)[:300])
+    assert '<p class="pmeta">House of Representatives &middot; District 16' in floor, (
+        "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
+    return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
+
+
+@check("data", "the member in the Speaker's chair is Speaker of the House in his own file, "
+               "and no other sitting member holds an office", needs=("build_site_v2",))
+def _speaker_page_built(B):
+    d, lp = Path("site/legislators"), Path("site/legislators.json")
+    if not (d.is_dir() and lp.exists()):
+        return "skip", "site/legislators is not here"
+    rows = json.loads(lp.read_text(encoding="utf-8"))
+    rows = rows if isinstance(rows, list) else list(rows.values())
+    chair = [r for r in rows if str(r.get("seat")) == str(B.SPEAKER_SEAT)]
+    assert len(chair) == 1, f"{len(chair)} sitting members are seated in the Speaker's chair"
+    offices = {}
+    for r in rows:
+        f = d / f"{r['id']}.json"
+        if f.exists():
+            o = json.loads(f.read_text(encoding="utf-8")).get("office")
+            if o:
+                offices[r["id"]] = o
+    assert offices == {str(chair[0]["id"]): "Speaker of the House"}, (
+        f"{chair[0].get('name')} sits in the Speaker's chair, and the offices on file are "
+        f"{offices}: rebuild the site data")
+    return "ok", f"{chair[0].get('name')}, in seat {B.SPEAKER_SEAT}, is Speaker of the House"
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")
