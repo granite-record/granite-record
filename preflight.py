@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.460
+# GRANITE_VERSION: 2026-09-04.461
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31640,6 +31640,58 @@ def _unprinted_report_filed(RC, B):
     # SB 118: its own HC 23 record untouched, its HC 27 majority still the
     # docket's line.
     assert reports[T]["SB118"] == [hc23]
+    # THE MINORITY GOES WITH ITS MAJORITY (the review of 8 October 2026). HB
+    # 34 of 2023's docket cites House Calendar 11 on the majority's row and
+    # none on the minority's after it; read by citation alone, the majority's
+    # reasoning was shown beside the minority's bare docket line. Both filed
+    # copies (PastCommitteeReports 19145 and 19149, cut after their
+    # statements) are shown together, and with the minority's copy missing,
+    # neither is.
+    T3 = "2023-2024"
+    maj = ev("2023-01-24", "Majority Committee Report: Inexpedient to Legislate 01/24/2023 "
+             "(Vote 8-7; RC)", "HC 11", "Majority", "Children and Family Law",
+             "Inexpedient to Legislate", "01/24/2023", "8", "7")
+    mino = {**ev("2023-01-27", "Minority Committee Report: Ought to Pass", "", "Minority",
+                 "Children and Family Law", "Ought to Pass", "", None, None)}
+    narr34 = {T3: {"HB34": {"events": [maj, mino]}}}
+    head = ("REGULAR CALENDAR January 24, 2023 HOUSE OF REPRESENTATIVES REPORT OF COMMITTEE "
+            "The {s} of the Committee on Children and Family Law to which was referred HB "
+            "34-FN, AN ACT relative to raising the age of marriage to eighteen. ")
+    form = ("{c} COMMITTEE REPORT Committee: Children and Family Law Bill Number: HB 34-FN "
+            "Title: relative to raising the age of marriage to eighteen. Date: January 24, "
+            "2023 Consent Calendar: REGULAR Recommendation: {r} STATEMENT OF INTENT ")
+    f_maj = filed_of(head.format(s="Majority") + "Having considered the same, report the "
+                     "same with the following resolution: RESOLVED, that it is INEXPEDIENT "
+                     "TO LEGISLATE. Rep. Jodi Nelson FOR THE MAJORITY OF THE COMMITTEE "
+                     + form.format(c="MAJORITY", r="INEXPEDIENT TO LEGISLATE")
+                     + "The majority of the committee supports a motion of Inexpedient to "
+                     "Legislate for the following reasons: The number of minors marrying per "
+                     "year in New Hampshire is very minimal, zero in the past two years. Vote "
+                     "8-7. Rep. Jodi Nelson FOR THE MAJORITY", "PastCommitteeReports 19145")
+    f_min = filed_of(head.format(s="Minority") + "Having considered the same, and being "
+                     "unable to agree with the Majority, report with the recommendation that "
+                     "the bill OUGHT TO PASS. Rep. Cassandra Levesque FOR THE MINORITY OF THE "
+                     "COMMITTEE " + form.format(c="MINORITY", r="OUGHT TO PASS")
+                     + "The minority of the committee sees the importance of this bill. Rep. "
+                     "Cassandra Levesque FOR THE MINORITY", "PastCommitteeReports 19149")
+    both, _ = RC.unprinted(narr34, {}, {(T3, "HB34"): [f_maj, f_min]}, {}, {})
+    got34 = [(c["source"], c["side"], c["author"], c["vote"], c["recommendation"])
+             for c in both.get(T3, {}).get("HB34", [])]
+    assert got34 == [("House Calendar 11, 2023", "Majority", "Rep. Jodi Nelson", [8, 7],
+                      "INEXPEDIENT TO LEGISLATE"),
+                     ("House Calendar 11, 2023", "Minority", "Rep. Cassandra Levesque", [],
+                      "OUGHT TO PASS")], f"HB 34 of 2023's divided report: {got34}"
+    r34 = {}
+    RC.apply(r34, both)
+    rec34 = r34[T3]["HB34"]
+    assert len(rec34) == 1 and (rec34[0]["majority_recommendation"],
+                                rec34[0]["minority_recommendation"]) == (
+        "INEXPEDIENT TO LEGISLATE", "OUGHT TO PASS") and \
+        "vote_yeas" not in rec34[0]["reports"][1], rec34
+    alone, _ = RC.unprinted(narr34, {}, {(T3, "HB34"): [f_maj]}, {}, {})
+    assert not alone.get(T3, {}).get("HB34"), (
+        "a majority was shown in its committee's words without its minority: "
+        + str(alone[T3]["HB34"]))
     # The step reads the histories and the list of calendars where they are.
     import inspect
     src = inspect.getsource(RC.main)

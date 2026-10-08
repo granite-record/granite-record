@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.7
+# GRANITE_VERSION: 2026-09-26.8
 """
 A House committee report printed under another bill, caught against the
 report the committee filed.
@@ -612,18 +612,37 @@ def unprinted(narratives, reports, filed, bills=None, calendars=None):
     SB 118's House Health and Human Services report of 30 April, against
     Finance's 18-7 of 29 May the docket cites in House Calendar 27 -- is not
     one. The record takes the calendar's citation, which is where the docket
-    says the House printed it."""
+    says the House printed it.
+
+    THE MINORITY GOES WITH ITS MAJORITY (the review of 8 October 2026). The
+    docket cites the calendar on the majority's row alone; the minority's
+    row after it, "Minority Committee Report: Inexpedient to Legislate",
+    names no calendar and no day. Read by citation alone, eleven majority
+    reports of 2023 were shown in their committee's words beside a minority
+    that was only the docket's line -- one side's reasoning without the
+    other's. Such a row is part of its majority's calendar, signed the same
+    day, and is matched as the rest are, without a vote, which a minority's
+    form does not carry; where it is not matched, neither is shown."""
     census, out = Counter(), defaultdict(lambda: defaultdict(list))
     for term, byb in (narratives or {}).items():
         for bid, narr in byb.items():
             have = {r.get("source") or "" for r in (reports.get(term) or {}).get(bid) or []}
             groups = defaultdict(list)
+            # The House report row before this one, and the calendar it was
+            # grouped under, for a minority row that names none.
+            prev, prev_src = None, None
             for e in (narr or {}).get("events") or []:
                 if e.get("type") != "report" or e.get("body") != "H" or e.get("cancelled"):
                     continue
                 m = HOUSE_CITE.match((e.get("cite") or "").strip())
                 if not m:
+                    if e.get("side") == "Minority" and prev_src and                             (prev or {}).get("side") == "Majority":
+                        groups[prev_src].append(
+                            {**e, "report_date": e.get("report_date")
+                             or prev.get("report_date")})
+                    prev, prev_src = e, None
                     continue
+                prev, prev_src = e, None
                 year = (e.get("date") or "")[:4]
                 num = f"{int(m.group(1))}{m.group(2).upper()}"
                 # The calendar's own year where the list of calendars knows
@@ -635,6 +654,7 @@ def unprinted(narratives, reports, filed, bills=None, calendars=None):
                 if src in have:
                     continue
                 groups[src].append(e)
+                prev_src = src
             for src, evs in groups.items():
                 census["cited calendars with no printing here"] += 1
                 mine = filed.get((term, bid)) or []
@@ -653,8 +673,12 @@ def unprinted(narratives, reports, filed, bills=None, calendars=None):
                                 e.get("recommendation")):
                             continue
                         v = FILED_VOTE.search(d.get("all") or "")
-                        if not v or (v.group(1), v.group(2)) != (str(e.get("yeas") or ""),
-                                                                 str(e.get("nays") or "")):
+                        # A minority's row and form carry no vote of their own.
+                        voteless = side == "Minority" and e.get("yeas") is None                             and e.get("nays") is None
+                        if voteless:
+                            v = None
+                        elif not v or (v.group(1), v.group(2)) != (
+                                str(e.get("yeas") or ""), str(e.get("nays") or "")):
                             continue
                         cm = FILED_COMMITTEE.search(d.get("all") or "")
                         if e.get("committee") and cm and _rec_words(cm.group(1)) != \
@@ -683,7 +707,7 @@ def unprinted(narratives, reports, filed, bills=None, calendars=None):
                         "source": src, "action": "unprinted", "side": d["side"],
                         "author": d["author"], "committee": cmte,
                         "recommendation": rec.upper(),
-                        "vote": [int(v.group(1)), int(v.group(2))],
+                        "vote": [int(v.group(1)), int(v.group(2))] if v else [],
                         "text": d["text"], "filed": d.get("source") or "",
                         "dated": d.get("dated") or "",
                         "title": re.sub(r"\.\s*$", "", bill_title(bills, term, bid)),
