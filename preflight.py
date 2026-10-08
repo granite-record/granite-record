@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.467
+# GRANITE_VERSION: 2026-09-04.468
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20023,6 +20023,259 @@ def _sweep_sealed(RS):
     return "ok", (f"Chrome resolves only {', '.join(sorted(allowed))}; the server is on the "
                   f"loopback address and answers as the host does; the report's sums hold on "
                   f"made-up runs; {len(RS.PAGES)} page types")
+
+
+# ---- the stylesheet, read as rules -------------------------------------------
+#
+# The checks below read app.css as rules rather than as text, because what
+# they ask -- which size a rule sets, which colour it writes, which two
+# tokens it draws together -- is a question about one declaration in one
+# block, and the block's at-rule (print, forced colours) decides how it is
+# read. Comments come out first; a block inside an at-rule carries it.
+
+def _css_rules(text):
+    """[(at-rules around it, selector, body, line)] for every block of
+    declarations in a stylesheet. An at-rule's own block is not one; the
+    rules inside it carry its prelude in their first field."""
+    t = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+    out, stack, mark, quote, line = [], [], 0, None, 1
+    for i, c in enumerate(t):
+        if c == "\n":
+            line += 1
+        if quote:
+            if c == quote:
+                quote = None
+            continue
+        if c in "\"'":
+            quote = c
+        elif c == "{":
+            stack.append((" ".join(t[mark:i].split()), i, line))
+            mark = i + 1
+        elif c == "}":
+            if stack:
+                prelude, at, at_line = stack.pop()
+                body = t[at + 1:i]
+                if not prelude.startswith("@") and "{" not in body:
+                    out.append((tuple(p for p, _, _ in stack), prelude, body, at_line))
+            mark = i + 1
+        elif c == ";" and (not stack or stack[-1][0].startswith("@")):
+            mark = i + 1
+    return out
+
+
+def _css_decls(body):
+    """[(property, value)] of a declaration block, split on the semicolons
+    that are not inside brackets or quotes; property names in lower case."""
+    out, cur, depth, quote = [], [], 0, None
+    for c in body + ";":
+        if quote:
+            cur.append(c)
+            if c == quote:
+                quote = None
+            continue
+        if c in "\"'":
+            quote = c
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        if c == ";" and depth == 0:
+            d = "".join(cur)
+            cur = []
+            if ":" in d:
+                k, v = d.split(":", 1)
+                out.append((k.strip().lower(), v.replace("!important", "").strip()))
+        else:
+            cur.append(c)
+    return out
+
+
+def _css_palette(text):
+    """{"light": {--token: value}, "dark": {...}}: every custom property of
+    app.css's palette, from its :root block and its DARK:OS block (which
+    _palette holds identical to DARK:CHOSEN)."""
+    end = text.find("/* PALETTE END")
+    light, dark = {}, {}
+    for ctx, sel, body, _ in _css_rules(text[:end] if end > 0 else text):
+        for k, v in _css_decls(body):
+            if not k.startswith("--"):
+                continue
+            if sel == ":root" and not ctx:
+                light[k] = v
+            elif sel == ':root:not([data-theme="light"])' and ctx:
+                dark[k] = v
+    return {"light": light, "dark": dark}
+
+
+def _css_px(value, tokens, seen=()):
+    """(pixels, how) for a font size, at the browser's default of 16px:
+    "px", "rem" or "pt" with the number; or None with "relative" (em, %, a
+    keyword: it depends on the parent, which the rendered sweep measures),
+    "undefined --x" (a var() nothing defines) or "unread"."""
+    v = value.strip()
+    m = re.fullmatch(r"var\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)", v)
+    if m:
+        name, fallback = m.group(1), m.group(2)
+        if name in tokens and name not in seen:
+            return _css_px(tokens[name], tokens, seen + (name,))
+        if fallback:
+            return _css_px(fallback, tokens, seen)
+        return None, f"undefined {name}"
+    m = re.fullmatch(r"(\d*\.?\d+)(px|rem|pt)", v)
+    if m:
+        return float(m.group(1)) * {"px": 1, "rem": 16, "pt": 4 / 3}[m.group(2)], m.group(2)
+    if re.fullmatch(r"(\d*\.?\d+)(em|%)|inherit|initial|unset|smaller|larger|[a-z-]*small|"
+                    r"[a-z-]*large|medium", v):
+        return None, "relative"
+    return None, "unread"
+
+
+def _css_font_size(prop, value):
+    """The size a declaration sets, as written, or None: font-size's value,
+    or the size inside a font shorthand ("600 12px var(--sans)")."""
+    if prop == "font-size":
+        return value.strip()
+    if prop != "font":
+        return None
+    for part in re.findall(r"var\([^)]*\)|\S+", value):
+        m = re.match(r"(\d*\.?\d+(?:px|rem|pt|em|%))(?:/\S*)?$", part)
+        if m:
+            return m.group(1)
+        if part.startswith("var(--t-"):
+            return part
+    return None
+
+
+# ---- the type floor and the palette's reach (8 October 2026) ------------------
+#
+# WRITTEN AHEAD OF THE CHANGE THEY HOLD. Every size on the site is a pixel
+# value, two of the type scale's tokens are under the 13px floor, and a few
+# sizes and colours are written outside app.css's tokens; the type scale in
+# rem and the colour tokens change that. Each check below says what is true
+# now in its own words and is marked as expected to fail (check(expect_fail=))
+# until its change lands, so that the day it does it becomes the guard, and
+# says so, rather than a note somebody must remember to write. These read
+# the files, which is all preflight may; src/checks/rendered_sweep.py
+# measures the drawn page.
+
+_FLOOR_PX = 13          # nothing smaller, and this size only in capitals
+
+# What a builder may write that is not the palette's, and why. A file named
+# with None is left out whole; with a string, from that string on.
+_FRONT_EXEMPT = {
+    "build_brand.py": None,     # the brand's own art: the icons, the manifest, the share images
+    "seating.py": "def main(",  # from here, the --svg preview a person opens; never published
+}
+
+
+def _front_sources(root="."):
+    """[(name, text)] of every file whose markup reaches a page besides
+    app.css: app.js, find.js, bills.html and every builder in src/pages/,
+    each cut where _FRONT_EXEMPT says."""
+    base = Path(root)
+    files = [base / "src/pages/app.js", base / "src/pages/find.js",
+             base / "src/pages/bills.html"] + sorted((base / "src/pages").glob("*.py"))
+    out = []
+    for f in files:
+        if not f.is_file():
+            continue
+        if f.name in _FRONT_EXEMPT and _FRONT_EXEMPT[f.name] is None:
+            continue
+        t = f.read_text(encoding="utf-8")
+        cut = _FRONT_EXEMPT.get(f.name)
+        if cut and cut in t:
+            t = t[:t.index(cut)]
+        out.append((f.name, t))
+    return out
+
+
+def _line_of(text, at):
+    return text.count("\n", 0, at) + 1
+
+
+@check("frontend", "no text is set under the 13px floor, and 13px only in capitals: not by a "
+                   "token or a rule of app.css, an inline style of a builder, app.js or find.js, "
+                   "nor an SVG's font-size",
+       expect_fail="the type scale is set in rem with nothing under 13px, and the inline and "
+                   "SVG sizes move into the stylesheet")
+def _type_floor():
+    """The floor of the type scale, read from every place a size is written.
+
+    A size is held to it at the browser's default of 16px: px as written,
+    rem at 16, pt at 4/3. A token is read through var() to its value, and a
+    rule that sets its size by a token under the floor is counted under the
+    token rather than listed. A size relative to its parent (em, %, a
+    keyword) cannot be read from a file and is left to the rendered sweep;
+    a var() nothing defines is a size this cannot vouch for, and fails (the
+    browser drops the declaration and the text takes its parent's size,
+    which is how --t-h3 went unnoticed). 13px is the floor for capitals
+    only, so a rule at 13px must set text-transform: uppercase itself.
+
+    Outside app.css: the inline styles of every builder in src/pages/, of
+    app.js and find.js, and the font-size attribute of SVG text, which no
+    stylesheet and no browser setting reaches (the vote rings' letters).
+    _FRONT_EXEMPT names what is left out and why."""
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    tokens = _css_palette(text)["light"]
+    low = {k: px for k, (px, _) in ((k, _css_px(v, tokens)) for k, v in tokens.items()
+                                     if k.startswith("--t-")) if px is not None and px < _FLOOR_PX}
+    bad, uses, read, relative = [], Counter(), 0, 0
+    for ctx, sel, body, ln in _css_rules(text):
+        ds = _css_decls(body)
+        caps = any(k == "text-transform" and "uppercase" in v for k, v in ds)
+        for k, v in ds:
+            size = _css_font_size(k, v)
+            if size is None:
+                continue
+            read += 1
+            px, how = _css_px(size, tokens)
+            if px is None:
+                if how.startswith("undefined"):
+                    bad.append(f"app.css:{ln} {sel[:48]} is sized by {size}, which nothing defines")
+                elif how == "relative":
+                    relative += 1
+                else:
+                    bad.append(f"app.css:{ln} {sel[:48]} is sized by {size}, which this cannot read")
+                continue
+            tok = re.fullmatch(r"var\(\s*(--[\w-]+).*\)", size)
+            if px < _FLOOR_PX and tok and tok.group(1) in low:
+                uses[tok.group(1)] += 1
+            elif px < _FLOOR_PX:
+                bad.append(f"app.css:{ln} {sel[:48]} is set at {px:g}px")
+            elif px < 14 and not caps:
+                bad.append(f"app.css:{ln} {sel[:48]} is {px:g}px in mixed case, and 13px is "
+                           "for capitals only")
+    bad[:0] = [f"{k} is {px:g}px and sizes {uses[k]} rules" for k, px in sorted(low.items())]
+    inline = svg = 0
+    for name, src in _front_sources():
+        for m in re.finditer(r"font-size\s*:\s*([^;\"'`}<>]+)", src):
+            px, how = _css_px(m.group(1).strip(), tokens)
+            inline += 1
+            if px is not None and px < _FLOOR_PX:
+                bad.append(f"{name}:{_line_of(src, m.start())} sets text at {px:g}px inline")
+            elif how.startswith("undefined"):
+                bad.append(f"{name}:{_line_of(src, m.start())} sizes text by "
+                           f"{m.group(1).strip()}, which nothing defines")
+        for m in re.finditer(r"\bstyle\s*=\s*([\"'])(.*?)\1", src, re.S):
+            for k, v in _css_decls(m.group(2)):
+                size = _css_font_size(k, v) if k == "font" else None
+                px = _css_px(size, tokens)[0] if size else None
+                if px is not None and px < _FLOOR_PX:
+                    bad.append(f"{name}:{_line_of(src, m.start())} sets text at {px:g}px inline")
+        for m in re.finditer(r"\bfont-size\s*=\s*[\"']\s*(\d*\.?\d+)\s*[\"']", src):
+            svg += 1
+            if float(m.group(1)) < _FLOOR_PX:
+                bad.append(f"{name}:{_line_of(src, m.start())} sets an SVG's text at "
+                           f"{float(m.group(1)):g} by its font-size attribute")
+    assert not bad, (f"{len(bad)} sizes under the {_FLOOR_PX}px floor or unread: "
+                     + "; ".join(bad[:16]) + (f" (+{len(bad) - 16} more)" if len(bad) > 16 else ""))
+    return "ok", (f"{read} sizes in app.css ({relative} relative to their parent, which the "
+                  f"rendered sweep measures), {inline} inline and {svg} SVG font-size attributes "
+                  f"in the builders and scripts: none under {_FLOOR_PX}px, and {_FLOOR_PX}px "
+                  "only in capitals")
 
 
 @check("frontend", "a focus ring is not cut off by the box around its control, a text box's edge is "

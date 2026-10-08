@@ -144,7 +144,11 @@ Three steps, each catching what the one before cannot.
 
 1. **`python3 preflight.py`**, before and after. `--code` alone needs no data
    on disk and takes a few minutes; with no flag it adds the checks that read
-   the record and the built site. The summary must end `0 failed`.
+   the record and the built site. The summary must end `0 failed`. A check
+   written ahead of the change that will make it pass is marked
+   `expect_fail` with that change named: it still runs and prints what it
+   found, it is counted apart (`N expected to fail`), and the run in which it
+   passes fails until the mark comes off.
 2. **A date-fixed build, compared file by file.** The day a build is made is
    in every page, so two builds made on different days differ everywhere.
    `GRANITE_BUILD_DATE=2026-10-02` (or a moment, `2026-10-02T01:22:13`) states
