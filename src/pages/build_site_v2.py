@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.176
+# GRANITE_VERSION: 2026-09-05.177
 """
 Generate the faceted site from real General Court data.
 
@@ -4890,6 +4890,12 @@ def _j_effective_parts(*lines):
             label = "the rest"
         elif re.match(r"RSA", what, re.I):
             label = re.sub(r"\s+", " ", what).strip(" .")
+            # A part that names an RSA and then more sections of the act --
+            # "IV. RSA 485-A:17,II(b) as inserted by Section 30 and Sections
+            # 50-51 Eff 01/01/08" (HB 2 of 2007) -- would lose the sections
+            # from its label and leave them to "the rest": states none.
+            if re.search(r"\band\s+sec", p[s.end():], re.I):
+                return ""
         else:
             label = _j_sections(s.group("nums") or "")
             if not label:
@@ -4970,15 +4976,16 @@ def _j_stated_day(text):
     return min(got)[1] if got else ""
 
 
-def _j_gov_more(evs, gov):
+def _j_gov_more(evs, gov, most=7):
     """The rows that carry a governor's row on -- "II. Remainder Eff.
-    08/12/2007" -- in the order they follow it."""
+    08/12/2007" -- in the order they follow it, at most `most` of them, or
+    every one where `most` is None."""
     try:
         i = next(k for k, x in enumerate(evs) if x is gov)
     except StopIteration:
         return []
     out = []
-    for x in evs[i + 1:i + 8]:
+    for x in evs[i + 1:None if most is None else i + 1 + most]:
         if x.get("type") not in ("other", "governor") or not J_EFF_MORE.match(x.get("raw") or ""):
             break
         out.append(x.get("raw") or "")
@@ -5224,7 +5231,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                        if CONF_UNABLE_RE.search(e.get("raw") or "")), default="")
                   if failed and failed[0] == "unable" else None)
     steps, amended = [], set()
-    gov_raw, gov_more = "", []
+    gov_raw, gov_more, gov_all = "", [], []
     reports = [e for e in evs if e.get("type") == "report"]
     # A second committee's chair can waive the referral, and the bill then
     # goes on as the chamber passed it: HB 243 of 2025, "Ought to Pass: MA
@@ -5514,6 +5521,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 st["body"] = "G"
                 gov_raw = raw
                 gov_more = _j_gov_more(evs, e)
+                gov_all = _j_gov_more(evs, e, None)
                 # THE DAY THE LINE GIVES, NOT THE DAY IT WAS ENTERED. "Signed
                 # by the Governor on 06/11/07" (HB 101 of 2007) was entered on
                 # the 12th, and 628 governor lines were dated by their entry.
@@ -5654,8 +5662,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
         if eff and db_effective and eff != db_effective:
             eff = db_effective
         # A law in effect on several dates says each, part by part, and its
-        # stop on the rail stays undated: there is no one day to draw.
-        parts = "" if eff else _j_effective_parts(gov_raw, *gov_more, law_line)
+        # stop on the rail stays undated: there is no one day to draw. Every
+        # row that carries the governor's on is read, not the first seven:
+        # HB 2 of 2007 runs to part XVI, and its first eight parts were
+        # stated as though they were all of it.
+        parts = "" if eff else _j_effective_parts(gov_raw, *gov_all, law_line)
         # `effective` is the day the rail's Law stop is dated by (F13); the
         # line itself stays undated, so How it got here does not print the
         # day twice beside words that already say it.

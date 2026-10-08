@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.459
+# GRANITE_VERSION: 2026-09-04.460
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21987,6 +21987,32 @@ def _journey_reads(build_site_v2):
     want(run("HB1584", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 328; "
                           "eff. I. Sec I eff 10/13/2026 II. Rem eff 01/01/2027", "governor"),
              chapter="328")[1][-1][3], "Chapter 328", "HB1584 2026")
+    # EVERY ROW THAT CARRIES THE GOVERNOR'S ON, not the first seven (the
+    # review of 8 October 2026). HB 2 of 2007's row and the fifteen after it
+    # in Docket_db_2007-2008.txt run to part XVI; read to part VIII, the stop
+    # stated eight parts as though they were all of it and left out the
+    # remainder's 1 Jul 2007. Part IV also names Sections 50-51 after its RSA,
+    # which a label of the RSA alone would have left to "the rest".
+    hb2 = ["II. Sections 14-22, 24, and 45-47 Eff 07/01/08",
+           "III. Sections 25, 67, and 112-116 Eff 06/30/07",
+           "IV. RSA 485-A:17,II(b) as inserted by Section 30 and Sections 50-51 Eff 01/01/08",
+           "V. Section 33 Eff 07/01/10", "VI. Section 37 Eff 07/01/09",
+           "VII. Sections 49, 65-66, and 117-119 Eff 06/29/07", "VIII. Section 48 Eff 07/01/18",
+           "IX. Section 98 Eff 06/30/11", "X. Section 123 Eff 07/01/11",
+           "XI. Sections 128, 131, 134, 137, 140, 143, 146, 150, and 154 Eff 07/06/07",
+           "XII. Sections 129, 132, 135, 138, 141, 144, 147, 151, and 155 Eff 01/04/08",
+           "XIII. Sections 130, 133, 136, 139, 142, 145, 148, 152, and 156 Eff 01/02/09",
+           "XIV. Section 166 Eff 04/01/08", "XV. Section 26 Eff 07/01/13",
+           "XVI. Remainder Eff 07/01/07"]
+    want(run("HB2", ev("H", "2007-07-05", "Signed by the Governor on 06/29/07; Chapter 0263; "
+                       "I. Section 5 Eff 07/01/09 at 12:01 a.m.", "governor"),
+             *[ev("H", "2007-07-05", x, "other") for x in hb2], chapter="263")[1][-1][3],
+         "Chapter 263", "HB2 2007")
+    want(run("HB2", ev("H", "2007-07-05", "Signed by the Governor on 06/29/07; Chapter 0263; "
+                       "I. Section 5 Eff 07/01/09 at 12:01 a.m.", "governor"),
+             ev("H", "2007-07-05", hb2[2], "other"),
+             ev("H", "2007-07-05", "II. Remainder Eff 07/01/07", "other"),
+             chapter="263")[1][-1][3], "Chapter 263", "HB2 2007, part IV")
     want(run("SB151", ev("S", "2025-07-15", "Signed by the Governor on 07/15/2025; Chapter 0238; "
                          "Effective 01/01/2026", "governor"), chapter="238")[1][-1][3],
          "Chapter 238, in effect 1 Jan 2026", "SB151 2025")
