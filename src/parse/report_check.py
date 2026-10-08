@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.6
+# GRANITE_VERSION: 2026-09-26.7
 """
 A House committee report printed under another bill, caught against the
 report the committee filed.
@@ -83,6 +83,17 @@ phantom, which this drops. And dropped by its heading: the record of 1999's
 SJR 1, on sulfur in gasoline, which the re-read put on 2000's SJR 1, another
 resolution of the same number (another_measure() says why only resolutions).
 
+A REPORT WHOSE CALENDAR IS NOT HERE (8 October 2026)
+
+  unprinted the docket cites a House Calendar for the report and this site
+            holds no printing of it -- House Calendar 27 of 2025 is not on
+            disk, its file a copy of 27A -- and the filed copy is that very
+            report: the same side, the day the docket says it was signed,
+            the same recommendation, vote and committee. It is shown as the
+            committee filed it, under the calendar's citation, and the page
+            says so (unprinted). It reads narratives.json for the citations
+            and calendars.json for the calendar's year.
+
 WHAT IT WRITES
 
 report_corrections.json, {term: {bill: [correction]}}, each correction naming
@@ -115,6 +126,10 @@ CANDH_COLUMNS = ["LegislationID", "DateTimeStamp", "CommitteeType",
                  "PDFImage_bytes", "ChamberCode", "HTMLText", "BillNbr",
                  "ReleaseDate"]
 OUT = Path("report_corrections.json")
+# The histories, for the docket's citation of each report (unprinted), and the
+# list of calendars, for the year a citation's calendar was printed in.
+NARRATIVES = Path("narratives.json")
+CALENDARS = Path("calendars.json")
 
 PAST_SIDES = {"Hse MAJ Committee Rpt": "Majority",
               "Hse MIN Committee Rpt": "Minority",
@@ -552,6 +567,130 @@ def kind_name(bid):
     return f"{m.group(1)} {m.group(2)}" if m else bid
 
 
+# What a filed House report says of itself, on the Clerk's form: "Committee:
+# Commerce and Consumer Affairs Bill Number: SB 85 ... Recommendation: OUGHT
+# TO PASS STATEMENT OF INTENT ... Vote 16-0."
+FILED_COMMITTEE = re.compile(r"\bCommittee:\s*(.+?)\s+Bill Number:", re.I)
+FILED_REC = re.compile(r"\bRecommendation:\s*([A-Z][A-Z ]+?)\s*(?=\d{4}-\d|STATEMENT\b|"
+                       r"Statement\b|Vote\b|$)")
+FILED_VOTE = re.compile(r"\bVote[:\s]\s*(\d{1,3})\s*[-–]\s*(\d{1,3})", re.I)
+HOUSE_CITE = re.compile(r"^HC\s*0*(\d+)([A-Z]?)$", re.I)
+
+
+def _rec_words(s):
+    return re.sub(r"[^a-z]", "", (s or "").lower())
+
+
+def _iso(mdy):
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", mdy or "")
+    return f"{m.group(3)}-{int(m.group(1)):02d}-{int(m.group(2)):02d}" if m else ""
+
+
+def unprinted(narratives, reports, filed, bills=None, calendars=None):
+    """{term: {bill: [correction]}}, action "unprinted", and a census: the
+    filed copy of each House committee report the docket cites in a House
+    Calendar whose printing of it is not in committee_reports.json.
+
+    HOUSE CALENDAR 27 OF 2025 IS NOT ON DISK (the audit of 7 October 2026,
+    cause 14). calendars/2025/HC027.pdf is HC027A.pdf byte for byte --
+    fetch_committee_reports.calendar_order read the House's "27a" as 27 --
+    and the 52 House reports of 49 Senate bills that cite it said "The
+    calendar carrying this report has not been read into the site yet". The
+    committees filed their reports with the Clerk, and the database's
+    CandH_Reports holds them: the same report, the recommendation, the vote,
+    the member who signed it and the statement of intent the calendar would
+    have printed. Fetching the calendar is a person's decision; until then,
+    the report is shown as the committee filed it, and says so.
+
+    ONLY WHERE THE FILED COPY IS THE DOCKET'S REPORT: the same side (a
+    report with no side is the committee's), the form's own date the day the
+    docket says the committee signed, the same recommendation and vote, the
+    same committee where the docket's history names one, a signer and some
+    reasoning; exactly one filed copy so; and every report the docket cites
+    in that calendar for the bill matched, so a majority report is never
+    shown without its minority. A filed copy that is a different report --
+    SB 118's House Health and Human Services report of 30 April, against
+    Finance's 18-7 of 29 May the docket cites in House Calendar 27 -- is not
+    one. The record takes the calendar's citation, which is where the docket
+    says the House printed it."""
+    census, out = Counter(), defaultdict(lambda: defaultdict(list))
+    for term, byb in (narratives or {}).items():
+        for bid, narr in byb.items():
+            have = {r.get("source") or "" for r in (reports.get(term) or {}).get(bid) or []}
+            groups = defaultdict(list)
+            for e in (narr or {}).get("events") or []:
+                if e.get("type") != "report" or e.get("body") != "H" or e.get("cancelled"):
+                    continue
+                m = HOUSE_CITE.match((e.get("cite") or "").strip())
+                if not m:
+                    continue
+                year = (e.get("date") or "")[:4]
+                num = f"{int(m.group(1))}{m.group(2).upper()}"
+                # The calendar's own year where the list of calendars knows
+                # it: a report signed in December can be printed in January.
+                if calendars and f"HC {num} {year}" not in calendars and year.isdigit() \
+                        and f"HC {num} {int(year) + 1}" in calendars:
+                    year = str(int(year) + 1)
+                src = f"House Calendar {num}, {year}"
+                if src in have:
+                    continue
+                groups[src].append(e)
+            for src, evs in groups.items():
+                census["cited calendars with no printing here"] += 1
+                mine = filed.get((term, bid)) or []
+                found = []
+                for e in evs:
+                    side = e.get("side") or "Committee"
+                    day = _iso(e.get("report_date"))
+                    hits = []
+                    for d in mine:
+                        if d.get("side") != side or not d.get("text") or not d.get("author"):
+                            continue
+                        if not day or d.get("dated") != day:
+                            continue
+                        rec = FILED_REC.search(d.get("all") or "")
+                        if not rec or _rec_words(rec.group(1)) != _rec_words(
+                                e.get("recommendation")):
+                            continue
+                        v = FILED_VOTE.search(d.get("all") or "")
+                        if not v or (v.group(1), v.group(2)) != (str(e.get("yeas") or ""),
+                                                                 str(e.get("nays") or "")):
+                            continue
+                        cm = FILED_COMMITTEE.search(d.get("all") or "")
+                        if e.get("committee") and cm and _rec_words(cm.group(1)) != \
+                                _rec_words(e["committee"]):
+                            continue
+                        hits.append((d, rec.group(1).strip(), v,
+                                     cm.group(1).strip() if cm else e.get("committee") or ""))
+                    found.append(hits[0] if len(hits) == 1 else None)
+                if not all(found):
+                    census["no filed copy that is the docket's report"] += 1
+                    continue
+                # NOR A REPORT PRINTED UNDER ANOTHER CITATION. The docket can
+                # cite one calendar and the House print the report in another:
+                # SB 498 of 2024's is cited in House Calendar 17 and printed,
+                # over Rep. Raymond's name, in 14. A record already carrying a
+                # report on that side by the same member is that report.
+                printed = {(e2.get("side"), signer(e2.get("author")))
+                           for r in (reports.get(term) or {}).get(bid) or []
+                           for e2 in r.get("reports") or []}
+                if any((d["side"], signer(d["author"])) in printed for d, *_ in found):
+                    census["printed under another citation"] += 1
+                    continue
+                census["shown as the committee filed them"] += 1
+                for d, rec, v, cmte in found:
+                    out[term][bid].append({
+                        "source": src, "action": "unprinted", "side": d["side"],
+                        "author": d["author"], "committee": cmte,
+                        "recommendation": rec.upper(),
+                        "vote": [int(v.group(1)), int(v.group(2))],
+                        "text": d["text"], "filed": d.get("source") or "",
+                        "dated": d.get("dated") or "",
+                        "title": re.sub(r"\.\s*$", "", bill_title(bills, term, bid)),
+                        "belongs_to": bid, "found_by": "the docket's citation"})
+    return {t: dict(v) for t, v in out.items()}, census
+
+
 MONTHS = ["January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December"]
 
@@ -567,14 +706,50 @@ def apply(reports, corrections):
     place. Returns how many reports it changed. A correction naming a record
     or a report no longer there changes nothing: the calendar was re-read and
     the misprint went with it, or it did not, and report_check says so next
-    run."""
+    run. An "unprinted" one adds a record under its calendar's citation, and
+    none where a record of that calendar is on file: once the calendar is
+    read, its own printing is the report."""
     n = 0
     for term, byb in (corrections or {}).items():
         for bid, fixes in byb.items():
+            # A report whose calendar is not here, as its committee filed it
+            # (unprinted): a record of its own under the calendar's citation,
+            # one per calendar, where no record of that calendar is on file.
+            added = {}
+            for c in fixes:
+                if c.get("action") != "unprinted":
+                    continue
+                recs = (reports.get(term) or {}).get(bid) or []
+                if any((r.get("source") or "") == c.get("source") for r in recs
+                       if id(r) not in added.values()):
+                    continue
+                rec = next((r for r in recs if id(r) == added.get(c["source"])), None)
+                if rec is None:
+                    recs = reports.setdefault(term, {}).setdefault(bid, [])
+                    rec = {"bill": bid, "title": c.get("title") or "",
+                           "majority_recommendation": None, "minority_recommendation": None,
+                           "reports": [], "source": c["source"]}
+                    recs.append(rec)
+                    added[c["source"]] = id(rec)
+                key = ("minority_recommendation" if c.get("side") == "Minority"
+                       else "majority_recommendation")
+                rec[key] = c.get("recommendation") or None
+                day = said_day(c.get("dated"))
+                y, nn = (c.get("vote") or [None, None])[:2]
+                rec["reports"].append({
+                    "side": c.get("side") or "Committee", "author": c.get("author") or "",
+                    "committee": c.get("committee") or "",
+                    **({"vote_yeas": y, "vote_nays": nn} if y is not None else {}),
+                    "text": c.get("text") or "",
+                    "note": ("This is the report as the committee filed it with the Clerk"
+                             + (f", dated {day}" if day else "") + ".")})
+                n += 1
             recs = (reports.get(term) or {}).get(bid)
             if not recs:
                 continue
             for c in fixes:
+                if c.get("action") == "unprinted":
+                    continue
                 for rec in list(recs):
                     if (rec.get("source") or "") != c.get("source"):
                         continue
@@ -658,6 +833,27 @@ def main():
                 print(f"  {term} {bid:7} {c['action']:8} {c['side']:9} {c['author']}: "
                       f"{kind_name(c['belongs_to'])}'s report ({c['found_by']}), "
                       f"{c['source']}")
+    # The reports the docket cites in a calendar this site holds no printing
+    # of, as their committees filed them (unprinted). Without the histories
+    # there is no citation to read, and that is said.
+    narratives = json.loads(NARRATIVES.read_text(encoding="utf-8")) \
+        if NARRATIVES.exists() else {}
+    calendars = json.loads(CALENDARS.read_text(encoding="utf-8")) \
+        if CALENDARS.exists() else {}
+    if not narratives:
+        print(f"\nNO HISTORIES: {NARRATIVES} is not here, so no report the docket cites "
+              "in a calendar this site has not read is looked for among the filed ones.")
+    more, mc = unprinted(narratives, reports, filed, bills, calendars)
+    for k, v in sorted(mc.items()):
+        print(f"  {v:>7,}  {k}")
+    per = Counter(t for t, byb in more.items() for cs in byb.values() for _ in cs)
+    for t in sorted(per):
+        eg = ", ".join(sorted(more[t])[:6])
+        print(f"  {t}: {per[t]:,} report(s) on {len(more[t]):,} bill(s) shown as filed, "
+              f"their calendar not here (e.g. {eg})")
+    for term, byb in more.items():
+        for bid, cs in byb.items():
+            got.setdefault(term, {}).setdefault(bid, []).extend(cs)
     if a.apply:
         OUT.write_text(json.dumps(got, indent=1), encoding="utf-8")
         print(f"\n-> {OUT}")

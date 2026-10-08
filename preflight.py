@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.450
+# GRANITE_VERSION: 2026-09-04.451
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31472,6 +31472,192 @@ def _calendar_misprint():
             "without a dump it names skips the tests that need none")
     return "ok", (f"{n} withheld in the fixture: a second report on one side, and "
                   "another bill's words over this bill's member; reuse left alone")
+
+
+# SB 85 of 2025's House report as the Commerce and Consumer Affairs committee
+# filed it, db/CandH_Reports.psv (LegislationID 1030, released 28 May 2025),
+# as report_check.text_of reads it; and SB 118's of 30 April, Health, Human
+# Services and Elderly Affairs (356), cut after its statement of intent.
+FILED_SB85 = (
+    "CONSENT CALENDAR May 27, 2025 HOUSE OF REPRESENTATIVES REPORT OF COMMITTEE The "
+    "Committee on Commerce and Consumer Affairs to which was referred SB 85, AN ACT "
+    "relative to chartered bank lending limits. Having considered the same, report the "
+    "same with the recommendation that the bill OUGHT TO PASS. Rep. John Hunt FOR THE "
+    "COMMITTEE COMMITTEE REPORT Committee: Commerce and Consumer Affairs Bill Number: SB 85 "
+    "Title: relative to chartered bank lending limits. Date: May 27, 2025 Consent Calendar: "
+    "CONSENT Recommendation: OUGHT TO PASS STATEMENT OF INTENT This bill makes two key "
+    "changes. First, it raises the legal lending limit for New Hampshire-chartered banks "
+    "from 15% to 20% of capital, with an option to increase it to 25% if the additional 5% "
+    "is fully secured. Currently, these banks may lend only up to 15% of their capital to "
+    "any single customer. This change brings New Hampshire’s standard more in line with "
+    "other jurisdictions, enhancing competitiveness while maintaining prudential "
+    "safeguards. The second change aligns New Hampshire’s de novo period with the FDIC "
+    "standard. The de novo period is the initial phase for newly chartered banks, during "
+    "which they undergo heightened regulatory oversight. Currently, New Hampshire's period "
+    "is five years; the FDIC’s is three. This bill reduces New Hampshire’s period to "
+    "three years to ensure consistency and remove unnecessary regulatory burden. Vote "
+    "16-0. Rep. John Hunt FOR THE COMMITTEE CONSENT CALENDAR Commerce and Consumer Affairs "
+    "SB 85, relative to chartered bank lending limits. OUGHT TO PASS. Rep. John Hunt for "
+    "Commerce and Consumer Affairs. This bill makes two key changes. Vote 16-0.")
+FILED_SB118 = (
+    "CONSENT CALENDAR April 30, 2025 HOUSE OF REPRESENTATIVES REPORT OF COMMITTEE The "
+    "Committee on Health, Human Services and Elderly Affairs to which was referred SB "
+    "118-FN, AN ACT (New Title) relative to the personal needs allowance of residents of "
+    "nursing homes. Having considered the same, report the same with the following "
+    "amendment, and the recommendation that the bill OUGHT TO PASS WITH AMENDMENT. Rep. "
+    "Yury Polozov FOR THE COMMITTEE COMMITTEE REPORT Committee: Health, Human Services and "
+    "Elderly Affairs Bill Number: SB 118-FN Title: (New Title) relative to the personal "
+    "needs allowance of residents of nursing homes. Date: April 30, 2025 Consent Calendar: "
+    "CONSENT Recommendation: OUGHT TO PASS WITH AMENDMENT 2025-1871h STATEMENT OF INTENT The "
+    "committee supports this bill, which adjusts the personal needs allowance for nursing "
+    "home residents annually, based on the consumer price index, instead of every five "
+    "years. Vote 18-0. Rep. Yury Polozov FOR THE COMMITTEE")
+
+
+@check("reports", "a House report whose calendar this site does not hold is shown as "
+                  "its committee filed it, and only where the filed copy is the "
+                  "docket's report", needs=("report_check", "build_site_v2"))
+def _unprinted_report_filed(RC, B):
+    """House Calendar 27 of 2025 is not on disk: calendars/2025/HC027.pdf is
+    HC027A.pdf byte for byte, because fetch_committee_reports read the
+    House's "27a" as 27, and the 52 House reports of 49 Senate bills that
+    cite it said "The calendar carrying this report has not been read into
+    the site yet" (the audit of 7 October 2026, cause 14). The committees
+    filed them with the Clerk, and db/CandH_Reports.psv holds 32 of them.
+    report_check.unprinted shows each such report as filed, under the
+    calendar's citation, where the filed copy is the docket's own report:
+    side, the day signed, recommendation, vote and committee.
+
+    Docket.txt's rows: SB 85's "Committee Report: Ought to Pass 05/27/2025
+    (Vote 16-0; CC) HC 27 P. 7" takes its filed copy; SB 118's Finance
+    majority of 29 May (18-7, HC 27) does not take Health and Human Services'
+    filed report of 30 April, printed in House Calendar 23; and a filed copy
+    already printed under another citation, by the same member, is not shown
+    twice. And the calendar key: "27a" is 27A, never 27."""
+    T = "2025-2026"
+
+    def ev(date, raw, cite, side, cmte, rec, rdate, y, n):
+        return {"date": date, "type": "report", "body": "H", "cancelled": False, "raw": raw,
+                "cite": cite, "cite_page": "", "side": side, "committee": cmte,
+                "recommendation": rec, "amendment": "", "report_date": rdate, "yeas": y,
+                "nays": n, "new_title": False}
+    sb85 = ev("2025-05-27", "Committee Report: Ought to Pass 05/27/2025 (Vote 16-0; CC)",
+              "HC 27", "", "Commerce and Consumer Affairs", "Ought to Pass", "05/27/2025",
+              "16", "0")
+    sb118 = [ev("2025-04-30", "Committee Report: Ought to Pass with Amendment # 2025-1871h "
+                "(NT) 04/30/2025 (Vote 18-0; CC)", "HC 23", "",
+                "Health, Human Services and Elderly Affairs", "Ought to Pass with Amendment",
+                "04/30/2025", "18", "0"),
+             ev("2025-05-29", "Majority Committee Report: Ought to Pass 05/29/2025 (Vote "
+                "18-7; RC)", "HC 27", "Majority", "Finance", "Ought to Pass", "05/29/2025",
+                "18", "7"),
+             ev("2025-05-29", "Minority Committee Report: Ought to Pass with Amendment # "
+                "2025-2345h", "", "Minority", "Finance", "Ought to Pass with Amendment", "",
+                None, None)]
+    narr = {T: {"SB85": {"events": [sb85]}, "SB118": {"events": sb118}}}
+
+    def filed_of(text, source):
+        d = RC.parse_filed(text)
+        d.update({"released": "", "source": source})
+        return d
+    filed = {(T, "SB85"): [filed_of(FILED_SB85, "CandH_Reports 1030")],
+             (T, "SB118"): [filed_of(FILED_SB118, "CandH_Reports 356")]}
+    hc23 = {"bill": "SB118", "title": "", "majority_recommendation":
+            "OUGHT TO PASS WITH AMENDMENT", "minority_recommendation": None,
+            "source": "House Calendar 23, 2025",
+            "reports": [{"side": "Committee", "author": "Rep. Yury Polozov",
+                         "committee": "Health, Human Services and Elderly Affairs",
+                         "vote_yeas": 18, "vote_nays": 0, "text": "The committee supports"}]}
+    reports = {T: {"SB118": [hc23]}}
+    bills = {T: {"SB85": {"title": "relative to chartered bank lending limits."}}}
+    cals = {"HC 27 2025": "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+                          "calendars%5C2025%5CNo27%20May%2030%202025.pdf",
+            "HC 23 2025": "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+                          "calendars%5C2025%5CNo23%20April%2030%202025.pdf"}
+    got, census = RC.unprinted(narr, reports, filed, bills, cals)
+    assert sorted(got.get(T, {})) == ["SB85"], (
+        "these were given a filed copy: " + str({b: [(c["source"], c["author"]) for c in v]
+                                                 for b, v in got.get(T, {}).items()}))
+    c = got[T]["SB85"][0]
+    assert (c["source"], c["side"], c["author"], c["vote"], c["recommendation"],
+            c["action"]) == ("House Calendar 27, 2025", "Committee", "Rep. John Hunt",
+                             [16, 0], "OUGHT TO PASS", "unprinted"), c
+    assert c["text"].startswith("This bill makes two key changes.") and (
+        "Vote 16-0" not in c["text"]), c["text"][-80:]
+    # The same report printed under another citation, by the same member: not
+    # shown twice.
+    twice = {T: {"SB85": [{**hc23, "bill": "SB85", "source": "House Calendar 26, 2025",
+                           "reports": [{"side": "Committee", "author": "Rep. John Hunt",
+                                        "text": "x"}]}]}}
+    again, _ = RC.unprinted(narr, twice, filed, bills, cals)
+    assert not again.get(T, {}).get("SB85"), again
+    # Applied: a record of its own under the calendar's citation, which the
+    # Reports tab dates by the docket's signature and links to the calendar;
+    # the docket's line for it is not repeated with "not read".
+    n = RC.apply(reports, got)
+    recs = reports[T]["SB85"]
+    assert n == 1 and len(recs) == 1 and recs[0]["source"] == "House Calendar 27, 2025" and (
+        recs[0]["majority_recommendation"] == "OUGHT TO PASS"), recs
+    e = recs[0]["reports"][0]
+    assert (e["side"], e["author"], e["vote_yeas"], e["vote_nays"], e["committee"]) == (
+        "Committee", "Rep. John Hunt", 16, 0, "Commerce and Consumer Affairs"), e
+    assert e["note"] == ("This is the report as the committee filed it with the Clerk, "
+                         "dated May 27, 2025."), e["note"]
+    assert RC.apply(reports, got) == 0 and len(reports[T]["SB85"]) == 1, (
+        "applied twice, the filed copy was added twice")
+    written, docket, _ = B.committee_reports(recs, narr[T]["SB85"], cals,
+                                             "Commerce and Consumer Affairs", "")
+    assert [(w["cite"], w["date"], w["dated"]) for w in written] == [
+        ("HC 27", "2025-05-27", "signed")] and "No27%20May" in written[0]["cite_url"], written
+    assert not [d for d in docket if d.get("cite") == "HC 27"], (
+        "the docket's line was shown again beside its filed report: " + str(docket))
+    # SB 118: its own HC 23 record untouched, its HC 27 majority still the
+    # docket's line.
+    assert reports[T]["SB118"] == [hc23]
+    # The step reads the histories and the list of calendars where they are.
+    import inspect
+    src = inspect.getsource(RC.main)
+    assert "unprinted(" in src and "NARRATIVES" in src, "report_check.main does not run unprinted"
+    # And the key the reports were lost to.
+    FC = imp("fetch_committee_reports")
+    assert FC is not None and hasattr(FC, "calendar_order"), (
+        "fetch_committee_reports.calendar_order is not there")
+    assert [FC.calendar_order(k) for k in ("27a", "27A", 27, "16a", 5)] == [
+        (27, "A"), (27, "A"), (27, ""), (16, "A"), (5, "")], (
+        "a calendar's key reads " + str([FC.calendar_order(k) for k in ("27a", 27)]))
+    assert sorted([27, "27A", "26A", 26], key=FC.calendar_order) == [26, "26A", 27, "27A"]
+    return "ok", ("SB 85's House Calendar 27 report as filed, dated as signed, under its "
+                  "citation and not repeated; SB 118's other report and a report printed "
+                  "under another citation left alone; \"27a\" is 27A")
+
+
+# THE CALENDARS ON DISK THAT ARE ANOTHER'S. A base calendar whose text is its
+# supplement's, word for word, is not that calendar: twelve such on 8 October
+# 2026, each a person's fetch to put right (fetch_committee_reports.py --year,
+# after the copy is moved aside). A new one is a fault; these are known.
+CALENDAR_COPIES = {
+    "2023": ["HC011", "HC014", "HC015", "HC018", "HC023", "HC024", "HC045"],
+    "2024": ["HC005", "HC015", "HC035"], "2025": ["HC016", "HC027"]}
+
+
+@check("data", "no House Calendar on disk is its own supplement's copy, but the twelve "
+               "known and waiting on a fetch")
+def _calendar_copies():
+    root = Path("calendars")
+    if not root.is_dir():
+        return "skip", "no calendars/ here"
+    found = {}
+    for base in sorted(root.glob("*/HC[0-9][0-9][0-9].txt")):
+        for sup in sorted(base.parent.glob(base.stem + "[A-Z].txt")):
+            if base.read_bytes() == sup.read_bytes():
+                found.setdefault(base.parent.name, []).append(base.stem)
+    new = sorted(f"{y}/{s}" for y, ss in found.items() for s in ss
+                 if s not in CALENDAR_COPIES.get(y, []))
+    assert not new, ("these base calendars are their supplement's text, word for word, "
+                     "and are not on the known list: " + ", ".join(new))
+    left = sum(len(v) for v in found.values())
+    return "ok", (f"{left} known base calendar(s) still their supplement's copy, waiting on a "
+                  "person's fetch" if left else "no base calendar is its supplement's copy")
 
 
 # The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's
@@ -64546,7 +64732,17 @@ def _committee_attribution():
         f = Path(name)
         if not f.exists():
             continue
-        for t, byb in json.loads(f.read_text(encoding="utf-8")).items():
+        src = json.loads(f.read_text(encoding="utf-8"))
+        # THE HOUSE'S AS THE PAGES READ THEM (8 October 2026): with
+        # report_check's corrections applied, as build_committees applies
+        # them, among them the reports shown as their committees filed them
+        # where the calendar is not here. Read raw, the 131 days those back
+        # were each said to claim a recommendation of no report of its own.
+        RC = imp("report_check")
+        cf = Path("report_corrections.json")
+        if name == "committee_reports.json" and RC is not None and cf.exists():
+            RC.apply(src, json.loads(cf.read_text(encoding="utf-8")))
+        for t, byb in src.items():
             for b, v in byb.items():
                 reps.setdefault(t, {}).setdefault(b, []).extend(
                     v if isinstance(v, list) else [v])
