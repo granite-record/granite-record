@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.46
+# GRANITE_VERSION: 2026-09-07.48
 """
 A page's worth of data for every committee.
 
@@ -155,6 +155,12 @@ def recommendation(reports, term, bill, committee=""):
     return "", "", ""
 
 
+def is_ahead(date):
+    """Whether a committee day is still to come on the day the site is built:
+    scheduled, not met."""
+    return str(date or "")[:10] > build_date.today().isoformat()
+
+
 def narrate(name, chamber, date, items, reports):
     """One committee day, in sentences, from the rows themselves."""
     by_kind = collections.defaultdict(list)
@@ -180,7 +186,7 @@ def narrate(name, chamber, date, items, reports):
     # ahead of time -- a committee's executive session booked for the end of
     # the month -- and the page said the committee "met" on a day seventeen
     # days off.
-    ahead = str(date)[:10] > build_date.today().isoformat()
+    ahead = is_ahead(date)
     met, held = (("is scheduled to meet", "It is also scheduled to hold") if ahead
                  else ("met", "It also held"))
     out.append(f"{who} {met} on {fdate(date)} for {art}{noun} on {bills}.")
@@ -452,6 +458,41 @@ def listing_groups(index, listed, current_term):
         else:
             archived.append(c)
     return live, idle, archived
+
+
+def committee_card(c, dated=False):
+    """One committee on the committees index: its name, and what the record
+    holds for it -- its years where `dated`, its earlier names, its chair,
+    members, and the bills and sessions of every term, said to be so."""
+    bits = []
+    if dated and c.get("span"):
+        bits.append(runs(c["span"]))
+    # The earlier name on the card too, so a reader scanning this page for
+    # "Corrections and Criminal Justice" finds where it went.
+    if c.get("formerly"):
+        bits.append("earlier " + S.E("; ".join(c["formerly"])))
+    if c["chair"]:
+        bits.append(f"Chaired by {S.E(c['chair'])}")
+    if c["n_members"]:
+        bits.append(f"{c['n_members']} member"
+                    + ("" if c["n_members"] == 1 else "s"))
+    counts = []
+    if c["n_bills"]:
+        counts.append(f"{c['n_bills']:,} bill"
+                      + ("" if c["n_bills"] == 1 else "s"))
+    if c["n_sessions"]:
+        counts.append(f"{c['n_sessions']:,} session"
+                      + ("" if c["n_sessions"] == 1 else "s"))
+    # EVERY TERM'S, AND SAID SO (the survey of 7 October 2026, C10).
+    # Beside today's chair and members, "1,257 bills · 577 sessions" read
+    # as this term's, and Election Law's page says 144 this term. A card
+    # already dated by its years says it there.
+    if counts and not dated and c.get("span"):
+        counts = [" and ".join(counts) + f" since {c['span'][0][:4]}"]
+    bits += counts
+    return (f'<a class="ccard" href="committee/{S.E(c["code"])}.html">'
+            f'<span class="cc-n">{S.E(c["name"])}</span>'
+            f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
 
 
 def feed_link(code, name):
@@ -898,7 +939,14 @@ def main():
                                   if i["video_id"]), ""),
                 "narrative": narrate(said, chamber, date, items, reports),
                 "items": items,
+                # A DAY STILL TO COME IS NOT A DAY IT MET (the survey of 7
+                # October 2026). The docket books sittings ahead of time, and
+                # Commerce's Sessions tab said "56 days this committee met in
+                # 2025-2026" over a 14 October 2026 still to come. The day is
+                # listed, told as scheduled (narrate), and counted apart.
+                **({"ahead": True} if is_ahead(date) else {}),
             })
+        met_days = sum(1 for s in sessions if not s.get("ahead"))
 
         # THE NAMES IT CARRIED BEFORE, with the years each covers on this
         # record. A reader who followed "Corrections and Criminal Justice" off
@@ -947,7 +995,7 @@ def main():
                 if code in retired and span_of[code] else "")
         desc = (f"The {chamber_word} Committee on {name}{when}. "
                 f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
-                f"referred and {len(sessions):,} sitting days, each with what "
+                f"referred and {met_days:,} sitting days, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
                 "own records.")
         nos = ('<noscript><div class="wrap" style="max-width:70ch;'
@@ -995,7 +1043,7 @@ def main():
             "code": code, "name": name, "chamber": chamber,
             "chair": rec["chair"], "n_members": len(members),
             "n_bills": sum(len(v) for v in rec["bills"].values()),
-            "n_sessions": len(sessions),
+            "n_sessions": met_days,
             "terms": sorted(rec["bills"]),
             **({"formerly": [n["name"] for n in formerly]} if formerly else {}),
         })
@@ -1004,28 +1052,7 @@ def main():
 
     # The way in. Committee pages were built, sitemapped and unreachable: no
     # link to one existed anywhere on the site.
-    def _card(c, dated=False):
-        bits = []
-        if dated and c.get("span"):
-            bits.append(runs(c["span"]))
-        # The earlier name on the card too, so a reader scanning this page for
-        # "Corrections and Criminal Justice" finds where it went.
-        if c.get("formerly"):
-            bits.append("earlier " + S.E("; ".join(c["formerly"])))
-        if c["chair"]:
-            bits.append(f"Chaired by {S.E(c['chair'])}")
-        if c["n_members"]:
-            bits.append(f"{c['n_members']} member"
-                        + ("" if c["n_members"] == 1 else "s"))
-        if c["n_bills"]:
-            bits.append(f"{c['n_bills']:,} bill"
-                        + ("" if c["n_bills"] == 1 else "s"))
-        if c["n_sessions"]:
-            bits.append(f"{c['n_sessions']:,} session"
-                        + ("" if c["n_sessions"] == 1 else "s"))
-        return (f'<a class="ccard" href="committee/{S.E(c["code"])}.html">'
-                f'<span class="cc-n">{S.E(c["name"])}</span>'
-                f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
+    _card = committee_card
 
     rows = [{**c, "span": span_of.get(c["code"], [])} for c in index]
     current_term = max((s[-1] for s in span_of.values() if s), default="")

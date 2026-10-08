@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.56
+# GRANITE_VERSION: 2026-09-04.57
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1387,6 +1387,67 @@ def status_for_session(raw, bills):
     return out, missing
 
 
+def designation_of(bill, a, fn, local):
+    """(flags, suffix, designation) for a bill number and its three flags:
+    the appropriation, the fiscal note and the local impact. The suffixes go
+    in the order the bills print them, "HB 1442-FN-A-LOCAL", whichever file
+    the flags were read from -- LSRs.txt's fields 5, 6 and 7, or the
+    Legislation view's AppropriationCode, FiscalImpactCode and LocalCode."""
+    flags = {"a": bool(a), "fn": bool(fn), "local": bool(local)}
+    suffix = "".join(x for x, on in (("-FN", flags["fn"]), ("-A", flags["a"]),
+                                     ("-LOCAL", flags["local"])) if on)
+    return flags, suffix, re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bill) + suffix
+
+
+def fill_from_legislation(bills, lines, committees, subjects):
+    """Fill the session's bills that LSRs.txt does not carry from the
+    database's Legislation view, given as its lines: the House and Senate
+    committees, the subject, and the designation's flags, each only where the
+    bill has none, and only for the bill whose LSR and term the row names.
+    Returns a Counter of what it filled.
+
+    THE FLAGS (audit of 7 October 2026, cause 13). LSRs.txt lists session
+    2026 alone, so the 847 bills of 2025 were stubs and 449 of them that
+    carry a fiscal note, an appropriation or a local impact read as the bare
+    number: "HB 422" for HB 422-FN, "SB 131" for SB 131-FN-A. The view's
+    columns 8, 9 and 10 -- AppropriationCode, FiscalImpactCode, LocalCode
+    (dayfiles_from_db.VIEWS) -- agree with LSRs.txt's fields 5, 6 and 7 on
+    all 1,387 bills of 2026 that both carry, and past_flags reads the same
+    three for the archive. A 2026 bill keeps the flags LSRs.txt gave it.
+    "-LOCAL", as the bills print it ("HB 138-LOCAL" heads its text), where
+    2025's journals abbreviate it "-L"."""
+    filled = Counter()
+    yes = lambda v: (v or "").strip().lower() in ("1", "true")
+    for line in lines:
+        f = line.rstrip("\r\n").split("|")
+        if len(f) < 27:
+            continue
+        rec = bills.get(f[14].strip().upper())
+        if not rec or str(rec.get("lsr_num") or "").lstrip("0") != \
+                f[3].strip().lstrip("0"):
+            continue
+        if P.term_of(f[2].strip()) != P.term_of(str(rec.get("lsr_year") or "")):
+            filled["another term's row, not taken"] += 1
+            continue
+        hc, sc, subj = f[18].strip(), f[26].strip(), f[12].strip()
+        if hc and not rec.get("house_committee"):
+            rec["house_committee"] = committees.get(hc, {}).get("name", hc)
+            filled["House committee"] += 1
+        if sc and not rec.get("senate_committee"):
+            rec["senate_committee"] = committees.get(sc, {}).get("name", sc)
+            filled["Senate committee"] += 1
+        if subj and not rec.get("subject_code"):
+            rec["subject_code"] = subj
+            rec["subject"] = subjects.get(subj, {}).get("name", "")
+            filled["subject"] += 1
+        if not rec.get("flags"):
+            rec["flags"], rec["suffix"], rec["designation"] = designation_of(
+                rec["bill"], yes(f[8]), yes(f[9]), yes(f[10]))
+            if rec["suffix"]:
+                filled["designation"] += 1
+    return filled
+
+
 # Rows of a finished term that the session's files still carried, counted and
 # left out by main(), with the bills they name: <out>/left_out.json, which the
 # nightly reads after the build and puts on the run's page (nightly.LEFT_OUT).
@@ -1850,10 +1911,7 @@ def main():
         # that order: "HB 1442-FN-A-LOCAL". Three undocumented booleans against
         # three suffixes is a strong fit, but the ORDER of the columns is a
         # guess and needs checking against a bill whose designation you know.
-        flags = {"a": r[5] == "1", "fn": r[6] == "1", "local": r[7] == "1"}
-        suffix = "".join(x for x, on in
-                         (("-FN", flags["fn"]), ("-A", flags["a"]),
-                          ("-LOCAL", flags["local"])) if on)
+        flags, suffix, _des = designation_of(bill, r[5] == "1", r[6] == "1", r[7] == "1")
         rec = {
             "bill": bill, "lsr": f"{r[0]}-{r[1]}", "lsr_year": r[0], "lsr_num": r[1],
             "title": r[2], "chamber": r[3],
@@ -1862,8 +1920,7 @@ def main():
             "house_committee": committees.get(hc, {}).get("name", hc),
             "senate_committee": committees.get(sc, {}).get("name", sc),
             "hearing": r[31] or "", "hearing_room": r[32] or "",
-            "suffix": suffix, "flags": flags,
-            "designation": re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bill) + suffix,
+            "suffix": suffix, "flags": flags, "designation": _des,
         }
         bills[bill] = rec
         by_lsr[(r[0], r[1])] = bill
@@ -1950,30 +2007,8 @@ def main():
     # 2025's. It changes nothing today: the view and the bills are one term.
     lp = (d / "db" / "term" / frozen if frozen else d / "db") / "Legislation.psv"
     if lp.exists():
-        leg_filled = Counter()
         with open(lp, encoding="utf-8", errors="replace") as fh:
-            for line in fh:
-                f = line.rstrip("\n").split("|")
-                if len(f) < 27:
-                    continue
-                rec = bills.get(f[14].strip().upper())
-                if not rec or str(rec.get("lsr_num") or "").lstrip("0") != \
-                        f[3].strip().lstrip("0"):
-                    continue
-                if P.term_of(f[2].strip()) != P.term_of(str(rec.get("lsr_year") or "")):
-                    leg_filled["another term's row, not taken"] += 1
-                    continue
-                hc, sc, subj = f[18].strip(), f[26].strip(), f[12].strip()
-                if hc and not rec.get("house_committee"):
-                    rec["house_committee"] = committees.get(hc, {}).get("name", hc)
-                    leg_filled["House committee"] += 1
-                if sc and not rec.get("senate_committee"):
-                    rec["senate_committee"] = committees.get(sc, {}).get("name", sc)
-                    leg_filled["Senate committee"] += 1
-                if subj and not rec.get("subject_code"):
-                    rec["subject_code"] = subj
-                    rec["subject"] = subjects.get(subj, {}).get("name", "")
-                    leg_filled["subject"] += 1
+            leg_filled = fill_from_legislation(bills, fh, committees, subjects)
         if leg_filled:
             print("db/Legislation.psv, for bills LSRs.txt does not carry: "
                   + ", ".join(f"{v:,} {k}" for k, v in leg_filled.items()))

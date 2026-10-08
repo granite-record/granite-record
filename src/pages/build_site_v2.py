@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.178
+# GRANITE_VERSION: 2026-09-05.179
 """
 Generate the faceted site from real General Court data.
 
@@ -35,6 +35,8 @@ import committee_names as CN
 # Where the recordings this site links begin: one constant, which about.html
 # states in words and station_for_proceeding and station_for_floor split on.
 from about_figures import STREAM_START
+# The Speaker's chair, whose occupant's page names the office (member_office).
+from seating import SPEAKER_SEAT
 import narrative as N
 import fiscal
 import proceedings as P
@@ -3015,6 +3017,20 @@ def sponsored_in_order(rows):
                                        BO.bill_key(x["bill"])))
 
 
+def member_office(m):
+    """The office a sitting member holds that their page names, or "".
+
+    THE SPEAKER'S OWN PAGE SAID NOTHING OF IT (the survey of 7 October 2026).
+    Rep. Sherman Packard's page listed House Rules and his presiding counts,
+    and the seating chart labels the Speaker's chair, while nothing on his
+    page named the office. The chair is seat 6002, on the rostrum and in no
+    division (seating.SPEAKER_SEAT): the member the roster seats there is the
+    Speaker. A member who has left holds no seat, and no office here."""
+    if m.get("former") or m.get("chamber") != "H":
+        return ""
+    return "Speaker of the House" if str(m.get("seat") or "") == str(SPEAKER_SEAT) else ""
+
+
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
                       former=None):
@@ -3107,8 +3123,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # it. Only where there are two: everyone else's file is as it was.
         both = ({"member_ids": [mid, *joined], "service": ML.service(mv)}
                 if joined else {})
+        office = member_office(m)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
+            **({"office": office} if office else {}),
             # In the member's own file and nowhere else: not in the `row`
             # above, which is what the legislators page, the town pages and
             # every other listing read. It is a figure on their own page, not
@@ -4930,9 +4948,109 @@ def _j_effective(*lines):
     # Each line's dates after its own "eff": HB 1256 of 2026's "Law Without
     # Signature 06/05/2026; Chapter 128; eff.Enacted in accordance with
     # Article 44" states no effective date at all.
-    days = {_j_iso(*d.groups()) for x in lines for m in [J_EFF_ANY.search(x)] if m
+    #
+    # OR THE DAY STRAIGHT AFTER THE CHAPTER, where the line has no "eff":
+    # "Signed by Governor Ayotte 06/02/2025; Chapter 59; 08/01/2025" (HB 227
+    # of 2025, and HB 2, HB 153 and HB 230), which the database's
+    # EffectiveDate agrees with on all four.
+    days = {_j_iso(*d.groups()) for x in lines
+            for m in [J_EFF_ANY.search(x) or J_CHAPTER_THEN_DAY.search(x)] if m
             for d in J_DAY.finditer(x, m.start())} - {""}
     return days.pop() if len(days) == 1 else ""
+
+
+# The day straight after the chapter, where the line has no "eff" word: the
+# row ends there, or a journal's citation follows.
+J_CHAPTER_THEN_DAY = re.compile(r"\bchapter\s*\d+\s*;\s*(?=\d{1,2}/\d{1,2}/\d{2,4}\s*"
+                                r"(?:$|\s+[HS][JC]\b))", re.I)
+
+# A LAW WITH MORE THAN ONE EFFECTIVE DATE, PART BY PART (the audit of 7
+# October 2026, cause 12). "eff. I. Sec 3 eff 01/01/2032 II. Rem eff
+# 09/01/2026" (HB 1300 of 2026), or the Senate's rows of their own, "I.
+# Section 24 Effective 07/01/2031" and "II. Remainder Effective 07/01/2026"
+# (SB 56): 92 of the term's 649 laws stated no date at all, because a law in
+# effect on several dates had no one date to state. Each part is read only
+# where it names what it covers and gives one date, or the section that
+# provides its date; anything else -- "I Sec 1-3-5", "Sec I", a line the
+# docket cut short, "eff.06/05/20256" -- states none, as before. The reason
+# for the old rule stands: no date is stated that the line does not give for
+# that part.
+J_EFF_PART = re.compile(r"(?:(?<=[\s.;,])|^)(?:I{1,3}|IV|VI{0,3})\s*\.?\s*"
+                        r"(?=(?:Secs?|Sections?|Rem\w*|RSA)\b)", re.I)
+J_EFF_PROVIDED = re.compile(r"\bas\s+(?:prov(?:ided)?\.?\s+(?:in\s+)?|in\s+)?"
+                            r"sec(?:tion)?s?\.?\s*(\d+)\b"
+                            r"|\beff\.?\s+prov(?:ided)?\.?\s+(?:in\s+)?sec(?:tion)?\.?\s*(\d+)",
+                            re.I)
+J_EFF_WHAT = re.compile(r"^\s*(?P<what>(?:Secs?|Sections?)\.?\s*(?P<nums>[\dI][\d\s,&+.\-and]*?)"
+                        r"|Rem\w*\.?|RSA\s+.+?)\s*(?:of\s+this\s+act\s+)?"
+                        r"(?=\beff|\bshall\b|\bas\s|\d{1,2}/|$)", re.I)
+
+
+def _j_sections(s):
+    """"1.2.5.6" -> "sections 1, 2, 5 and 6", "5-8" -> "sections 5 to 8",
+    "3" -> "section 3"; "" where it is not plainly a list of numbers."""
+    s = re.sub(r"\band\b", "&", s, flags=re.I).strip(" .")
+    if re.fullmatch(r"\d+\s*-\s*\d+", s):
+        a, b = re.split(r"\s*-\s*", s)
+        return f"sections {a} to {b}"
+    nums = [p for p in re.split(r"\s*[&+,.]\s*|\s+", s) if p]
+    if not nums or not all(re.fullmatch(r"\d+(?:-\d+)?", p) for p in nums):
+        return ""
+    if len(nums) == 1 and "-" not in nums[0]:
+        return f"section {nums[0]}"
+    nums = [p.replace("-", " to ") for p in nums]
+    return "sections " + (", ".join(nums[:-1]) + " and " + nums[-1] if len(nums) > 1
+                          else nums[0])
+
+
+def _j_effective_parts(*lines):
+    """A law in effect on several dates, part by part: "section 3 on 1 Jan
+    2032, the rest on 1 Sep 2026", or "" where any part does not say plainly
+    what it covers and when. `lines` are the governor's row, the rows that
+    carry it on and the chapter's line, each distinct line read once."""
+    tails = []
+    for x in dict.fromkeys(x.strip() for x in lines if x and x.strip()):
+        m = re.search(r"\bchapter\s*\d+\s*[;,.]?", x, re.I)
+        tails.append(x[m.end():] if m else x)
+    pieces = J_EFF_PART.split(" ".join(tails))
+    if len(pieces) < 3:
+        return ""
+    out = []
+    for p in pieces[1:]:
+        p = re.sub(r"\s+(?:HJ|SJ|HC|SC)\s*\d+.*$", "", p).strip()
+        s = J_EFF_WHAT.match(p)
+        if not s:
+            return ""
+        what = s.group("what")
+        if re.match(r"rem", what, re.I):
+            label = "the rest"
+        elif re.match(r"RSA", what, re.I):
+            label = re.sub(r"\s+", " ", what).strip(" .")
+            # A part that names an RSA and then more sections of the act --
+            # "IV. RSA 485-A:17,II(b) as inserted by Section 30 and Sections
+            # 50-51 Eff 01/01/08" (HB 2 of 2007) -- would lose the sections
+            # from its label and leave them to "the rest": states none.
+            if re.search(r"\band\s+sec", p[s.end():], re.I):
+                return ""
+        else:
+            label = _j_sections(s.group("nums") or "")
+            if not label:
+                return ""
+        rest = p[s.end():]
+        days = [d for d in (_j_iso(*x.groups()) for x in J_DAY.finditer(rest)) if d]
+        prov = J_EFF_PROVIDED.search(rest)
+        if len(days) == 1 and not prov:
+            out.append((label, "on " + _j_prose_date(days[0])))
+        elif not days and prov:
+            out.append((label, "as section " + (prov.group(1) or prov.group(2))
+                        + " provides"))
+        else:
+            return ""
+    out = list(dict.fromkeys(out))
+    if len({w for w, _ in out}) != len(out):
+        return ""
+    out.sort(key=lambda x: x[0] == "the rest")
+    return ", ".join(f"{w} {d}" for w, d in out)
 
 
 def _j_days(a, b):
@@ -4994,15 +5112,16 @@ def _j_stated_day(text):
     return min(got)[1] if got else ""
 
 
-def _j_gov_more(evs, gov):
+def _j_gov_more(evs, gov, most=7):
     """The rows that carry a governor's row on -- "II. Remainder Eff.
-    08/12/2007" -- in the order they follow it."""
+    08/12/2007" -- in the order they follow it, at most `most` of them, or
+    every one where `most` is None."""
     try:
         i = next(k for k, x in enumerate(evs) if x is gov)
     except StopIteration:
         return []
     out = []
-    for x in evs[i + 1:i + 8]:
+    for x in evs[i + 1:None if most is None else i + 1 + most]:
         if x.get("type") not in ("other", "governor") or not J_EFF_MORE.match(x.get("raw") or ""):
             break
         out.append(x.get("raw") or "")
@@ -5248,7 +5367,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                        if CONF_UNABLE_RE.search(e.get("raw") or "")), default="")
                   if failed and failed[0] == "unable" else None)
     steps, amended = [], set()
-    gov_raw, gov_more = "", []
+    gov_raw, gov_more, gov_all = "", [], []
     reports = [e for e in evs if e.get("type") == "report"]
     # A second committee's chair can waive the referral, and the bill then
     # goes on as the chamber passed it: HB 243 of 2025, "Ought to Pass: MA
@@ -5538,6 +5657,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
                 st["body"] = "G"
                 gov_raw = raw
                 gov_more = _j_gov_more(evs, e)
+                gov_all = _j_gov_more(evs, e, None)
                 # THE DAY THE LINE GIVES, NOT THE DAY IT WAS ENTERED. "Signed
                 # by the Governor on 06/11/07" (HB 101 of 2007) was entered on
                 # the 12th, and 628 governor lines were dated by their entry.
@@ -5677,12 +5797,19 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
         # states none, or several, is left saying none.
         if eff and db_effective and eff != db_effective:
             eff = db_effective
+        # A law in effect on several dates says each, part by part, and its
+        # stop on the rail stays undated: there is no one day to draw. Every
+        # row that carries the governor's on is read, not the first seven:
+        # HB 2 of 2007 runs to part XVI, and its first eight parts were
+        # stated as though they were all of it.
+        parts = "" if eff else _j_effective_parts(gov_raw, *gov_all, law_line)
         # `effective` is the day the rail's Law stop is dated by (F13); the
         # line itself stays undated, so How it got here does not print the
         # day twice beside words that already say it.
         steps.append({"date": "", "body": "L", "act": "law",
                       "text": f"Chapter {chapter}" + (
-                          f", in effect {_j_prose_date(eff)}" if eff else ""),
+                          f", in effect {_j_prose_date(eff)}" if eff else
+                          f", in effect in parts: {parts}" if parts else ""),
                       "short": f"Chapter {chapter}", "effective": eff or ""})
     for e in evs:
         m = REFERENDUM.search(e.get("raw") or "")
@@ -10253,7 +10380,10 @@ def main():
         for e in (narr or {}).get("events", []):
             if e.get("cancelled") or not e.get("date") or e["date"] > today:
                 continue
+            # The year the bill's own page is filed under (/bill/<year>/), which
+            # a link to it needs and the day of the action does not give.
             actions.append({"date": e["date"], "bill": b["id"], "n": b["n"],
+                            "year": b.get("year") or "",
                             "title": b["title"][:110], "what": e.get("raw", "")[:150]})
     actions.sort(key=lambda x: x["date"], reverse=True)
 

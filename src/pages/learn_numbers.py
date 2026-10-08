@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.9
+# GRANITE_VERSION: 2026-09-14.10
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -713,8 +713,12 @@ def body(site=Path("site"), root=Path("."), strict=True):
         n = c["filed"]
         orows.append([_t(t), f"{n:,}", _np(c["Became Law"], n), _np(c["Died"], n),
                       _np(c["Interim Study"], n), _np(c["other"], n)])
+    # NOT THE CONSTITUTIONAL AMENDMENTS OR RESOLUTIONS, AND SAID SO (the survey of
+    # 7 October 2026): 2,139 for 2025-2026 here and 2,243 bills and resolutions
+    # on How a bill becomes law, and neither page said what it counted.
     out.append("<h2>Bills filed, and how they ended</h2><p>Every House and Senate bill "
-               "given a number in each term, by the word its card on this site shows. "
+               "given a number in each term, not counting constitutional amendments or "
+               "resolutions, by the word its card on this site shows. "
                "Died covers a bill killed on the floor, left on the table, vetoed with the "
                "veto standing, lost between the two chambers, or still pending when its term "
                "ended; Other is a bill withdrawn, never introduced, or still before the "

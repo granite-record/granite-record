@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.22
+# GRANITE_VERSION: 2026-09-09.23
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -815,8 +815,14 @@ def office_block(title, holder, fallback_url, note=""):
     url = (holder.get("official_url") or "").strip() or fallback_url
     if name:
         p = (holder.get("party") or "X")[:1].upper()
-        link = (f'<a href="{E(url)}" rel="noopener">{E(name)}</a>'
-                if url else E(name))
+        # THE PARTY IN LETTERS AS WELL AS COLOUR, as a legislator's chip
+        # carries it in "(R - Rock 16)": the Governor's, the councillors' and
+        # the delegation's chips said it by the bar's colour alone (the survey
+        # of 7 October 2026), which a reader who cannot tell red from blue,
+        # or a screen reader, never gets.
+        said = f'{E(name)} <span class="mtag">({E(p)})</span>' if p != "X" else E(name)
+        link = (f'<a href="{E(url)}" rel="noopener">{said}</a>'
+                if url else said)
         who = f'<span class="mchip p-{E(p)}">{link}</span>'
         how = []
         if holder.get("phone"):

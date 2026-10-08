@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.463
+# GRANITE_VERSION: 2026-09-04.464
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -22965,14 +22965,77 @@ def _journey_reads(build_site_v2):
                                  "HJ30,P1078", "other"))[1]],
          [("referred", "Approved with an amendment and sent to Finance on a voice vote")],
          "HB1162 1996")
-    # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE.
+    # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE, and states
+    # each, part by part (the audit of 7 October 2026, cause 12): 92 of the
+    # 649 laws of 2025-2026 stated none at all.
     want(run("HB131", ev("H", "2026-07-02", "Signed by Governor Ayotte 07/02/2026; Chapter 205; "
                          "eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026", "governor"),
-             chapter="205")[1][-1][3], "Chapter 205", "HB131 2026")
+             chapter="205")[1][-1][3],
+         "Chapter 205, in effect in parts: section 3 on 1 Jan 2027, the rest on 1 Aug 2026",
+         "HB131 2026")
     want(run("HB337", ev("H", "2007-07-20", "Signed by the Governor on 07/13/07; Chapter 0296; "
                          "I. Sections 5 & 6 Eff. 07/01/2011", "governor"),
              ev("H", "2007-07-20", "II. Remainder Eff. 08/12/2007", "other"),
-             chapter="296")[1][-1][3], "Chapter 296", "HB337 2007")
+             chapter="296")[1][-1][3],
+         "Chapter 296, in effect in parts: sections 5 and 6 on 1 Jul 2011, the rest on 12 Aug "
+         "2007", "HB337 2007")
+    # Docket.txt's own rows: HB 1300's line, SB 56's three rows, and a part
+    # that waits on another section.
+    want(run("HB1300", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 324; "
+                          "eff. I. Sec 3 eff 01/01/2032 II. Rem eff 09/01/2026", "governor"),
+             chapter="324")[1][-1][3],
+         "Chapter 324, in effect in parts: section 3 on 1 Jan 2032, the rest on 1 Sep 2026",
+         "HB1300 2026")
+    want(run("SB56", ev("S", "2026-07-15", "Signed by the Governor on 07/15/2026; Chapter 335",
+                        "governor"),
+             ev("S", "2026-07-15", "I. Section 24 Effective 07/01/2031", "other"),
+             ev("S", "2026-07-15", "II. Remainder Effective 07/01/2026", "other"),
+             chapter="335")[1][-1][3],
+         "Chapter 335, in effect in parts: section 24 on 1 Jul 2031, the rest on 1 Jul 2026",
+         "SB56 2026")
+    want(run("HB557", ev("H", "2025-08-01", "Signed by Governor Ayotte 08/01/2025; Chapter 281; "
+                         "eff. I. Sec 1 & 2 eff as provided in Sec 3 II. Rem eff 08/01/2025",
+                         "governor"), chapter="281")[1][-1][3],
+         "Chapter 281, in effect in parts: sections 1 and 2 as section 3 provides, the rest on "
+         "1 Aug 2025", "HB557 2025")
+    # The day straight after the chapter, with no "eff" (HB 227 of 2025).
+    want(run("HB227", ev("H", "2025-06-02", "Signed by Governor Ayotte 06/02/2025; Chapter 59; "
+                         "08/01/2025", "governor"), chapter="59")[1][-1][3],
+         "Chapter 59, in effect 1 Aug 2025", "HB227 2025")
+    # A part that does not say plainly what it covers states none of them:
+    # "I Sec 1-3-5" (HB 655 of 2025) and "Sec I" (HB 1584 of 2026).
+    want(run("HB655", ev("H", "2025-07-15", "Signed by Governor Ayotte 07/15/2025; Chapter 202; "
+                         "eff. I Sec 1-3-5 eff 09/13/2025 II. Rem eff 07/15/2025  HJ 18",
+                         "governor"), chapter="202")[1][-1][3], "Chapter 202", "HB655 2025")
+    want(run("HB1584", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 328; "
+                          "eff. I. Sec I eff 10/13/2026 II. Rem eff 01/01/2027", "governor"),
+             chapter="328")[1][-1][3], "Chapter 328", "HB1584 2026")
+    # EVERY ROW THAT CARRIES THE GOVERNOR'S ON, not the first seven (the
+    # review of 8 October 2026). HB 2 of 2007's row and the fifteen after it
+    # in Docket_db_2007-2008.txt run to part XVI; read to part VIII, the stop
+    # stated eight parts as though they were all of it and left out the
+    # remainder's 1 Jul 2007. Part IV also names Sections 50-51 after its RSA,
+    # which a label of the RSA alone would have left to "the rest".
+    hb2 = ["II. Sections 14-22, 24, and 45-47 Eff 07/01/08",
+           "III. Sections 25, 67, and 112-116 Eff 06/30/07",
+           "IV. RSA 485-A:17,II(b) as inserted by Section 30 and Sections 50-51 Eff 01/01/08",
+           "V. Section 33 Eff 07/01/10", "VI. Section 37 Eff 07/01/09",
+           "VII. Sections 49, 65-66, and 117-119 Eff 06/29/07", "VIII. Section 48 Eff 07/01/18",
+           "IX. Section 98 Eff 06/30/11", "X. Section 123 Eff 07/01/11",
+           "XI. Sections 128, 131, 134, 137, 140, 143, 146, 150, and 154 Eff 07/06/07",
+           "XII. Sections 129, 132, 135, 138, 141, 144, 147, 151, and 155 Eff 01/04/08",
+           "XIII. Sections 130, 133, 136, 139, 142, 145, 148, 152, and 156 Eff 01/02/09",
+           "XIV. Section 166 Eff 04/01/08", "XV. Section 26 Eff 07/01/13",
+           "XVI. Remainder Eff 07/01/07"]
+    want(run("HB2", ev("H", "2007-07-05", "Signed by the Governor on 06/29/07; Chapter 0263; "
+                       "I. Section 5 Eff 07/01/09 at 12:01 a.m.", "governor"),
+             *[ev("H", "2007-07-05", x, "other") for x in hb2], chapter="263")[1][-1][3],
+         "Chapter 263", "HB2 2007")
+    want(run("HB2", ev("H", "2007-07-05", "Signed by the Governor on 06/29/07; Chapter 0263; "
+                       "I. Section 5 Eff 07/01/09 at 12:01 a.m.", "governor"),
+             ev("H", "2007-07-05", hb2[2], "other"),
+             ev("H", "2007-07-05", "II. Remainder Eff 07/01/07", "other"),
+             chapter="263")[1][-1][3], "Chapter 263", "HB2 2007, part IV")
     want(run("SB151", ev("S", "2025-07-15", "Signed by the Governor on 07/15/2025; Chapter 0238; "
                          "Effective 01/01/2026", "governor"), chapter="238")[1][-1][3],
          "Chapter 238, in effect 1 Jan 2026", "SB151 2025")
@@ -32464,6 +32527,244 @@ def _calendar_misprint():
             "without a dump it names skips the tests that need none")
     return "ok", (f"{n} withheld in the fixture: a second report on one side, and "
                   "another bill's words over this bill's member; reuse left alone")
+
+
+# SB 85 of 2025's House report as the Commerce and Consumer Affairs committee
+# filed it, db/CandH_Reports.psv (LegislationID 1030, released 28 May 2025),
+# as report_check.text_of reads it; and SB 118's of 30 April, Health, Human
+# Services and Elderly Affairs (356), cut after its statement of intent.
+FILED_SB85 = (
+    "CONSENT CALENDAR May 27, 2025 HOUSE OF REPRESENTATIVES REPORT OF COMMITTEE The "
+    "Committee on Commerce and Consumer Affairs to which was referred SB 85, AN ACT "
+    "relative to chartered bank lending limits. Having considered the same, report the "
+    "same with the recommendation that the bill OUGHT TO PASS. Rep. John Hunt FOR THE "
+    "COMMITTEE COMMITTEE REPORT Committee: Commerce and Consumer Affairs Bill Number: SB 85 "
+    "Title: relative to chartered bank lending limits. Date: May 27, 2025 Consent Calendar: "
+    "CONSENT Recommendation: OUGHT TO PASS STATEMENT OF INTENT This bill makes two key "
+    "changes. First, it raises the legal lending limit for New Hampshire-chartered banks "
+    "from 15% to 20% of capital, with an option to increase it to 25% if the additional 5% "
+    "is fully secured. Currently, these banks may lend only up to 15% of their capital to "
+    "any single customer. This change brings New Hampshire’s standard more in line with "
+    "other jurisdictions, enhancing competitiveness while maintaining prudential "
+    "safeguards. The second change aligns New Hampshire’s de novo period with the FDIC "
+    "standard. The de novo period is the initial phase for newly chartered banks, during "
+    "which they undergo heightened regulatory oversight. Currently, New Hampshire's period "
+    "is five years; the FDIC’s is three. This bill reduces New Hampshire’s period to "
+    "three years to ensure consistency and remove unnecessary regulatory burden. Vote "
+    "16-0. Rep. John Hunt FOR THE COMMITTEE CONSENT CALENDAR Commerce and Consumer Affairs "
+    "SB 85, relative to chartered bank lending limits. OUGHT TO PASS. Rep. John Hunt for "
+    "Commerce and Consumer Affairs. This bill makes two key changes. Vote 16-0.")
+FILED_SB118 = (
+    "CONSENT CALENDAR April 30, 2025 HOUSE OF REPRESENTATIVES REPORT OF COMMITTEE The "
+    "Committee on Health, Human Services and Elderly Affairs to which was referred SB "
+    "118-FN, AN ACT (New Title) relative to the personal needs allowance of residents of "
+    "nursing homes. Having considered the same, report the same with the following "
+    "amendment, and the recommendation that the bill OUGHT TO PASS WITH AMENDMENT. Rep. "
+    "Yury Polozov FOR THE COMMITTEE COMMITTEE REPORT Committee: Health, Human Services and "
+    "Elderly Affairs Bill Number: SB 118-FN Title: (New Title) relative to the personal "
+    "needs allowance of residents of nursing homes. Date: April 30, 2025 Consent Calendar: "
+    "CONSENT Recommendation: OUGHT TO PASS WITH AMENDMENT 2025-1871h STATEMENT OF INTENT The "
+    "committee supports this bill, which adjusts the personal needs allowance for nursing "
+    "home residents annually, based on the consumer price index, instead of every five "
+    "years. Vote 18-0. Rep. Yury Polozov FOR THE COMMITTEE")
+
+
+@check("reports", "a House report whose calendar this site does not hold is shown as "
+                  "its committee filed it, and only where the filed copy is the "
+                  "docket's report", needs=("report_check", "build_site_v2"))
+def _unprinted_report_filed(RC, B):
+    """House Calendar 27 of 2025 is not on disk: calendars/2025/HC027.pdf is
+    HC027A.pdf byte for byte, because fetch_committee_reports read the
+    House's "27a" as 27, and the 52 House reports of 49 Senate bills that
+    cite it said "The calendar carrying this report has not been read into
+    the site yet" (the audit of 7 October 2026, cause 14). The committees
+    filed them with the Clerk, and db/CandH_Reports.psv holds 32 of them.
+    report_check.unprinted shows each such report as filed, under the
+    calendar's citation, where the filed copy is the docket's own report:
+    side, the day signed, recommendation, vote and committee.
+
+    Docket.txt's rows: SB 85's "Committee Report: Ought to Pass 05/27/2025
+    (Vote 16-0; CC) HC 27 P. 7" takes its filed copy; SB 118's Finance
+    majority of 29 May (18-7, HC 27) does not take Health and Human Services'
+    filed report of 30 April, printed in House Calendar 23; and a filed copy
+    already printed under another citation, by the same member, is not shown
+    twice. And the calendar key: "27a" is 27A, never 27."""
+    T = "2025-2026"
+
+    def ev(date, raw, cite, side, cmte, rec, rdate, y, n):
+        return {"date": date, "type": "report", "body": "H", "cancelled": False, "raw": raw,
+                "cite": cite, "cite_page": "", "side": side, "committee": cmte,
+                "recommendation": rec, "amendment": "", "report_date": rdate, "yeas": y,
+                "nays": n, "new_title": False}
+    sb85 = ev("2025-05-27", "Committee Report: Ought to Pass 05/27/2025 (Vote 16-0; CC)",
+              "HC 27", "", "Commerce and Consumer Affairs", "Ought to Pass", "05/27/2025",
+              "16", "0")
+    sb118 = [ev("2025-04-30", "Committee Report: Ought to Pass with Amendment # 2025-1871h "
+                "(NT) 04/30/2025 (Vote 18-0; CC)", "HC 23", "",
+                "Health, Human Services and Elderly Affairs", "Ought to Pass with Amendment",
+                "04/30/2025", "18", "0"),
+             ev("2025-05-29", "Majority Committee Report: Ought to Pass 05/29/2025 (Vote "
+                "18-7; RC)", "HC 27", "Majority", "Finance", "Ought to Pass", "05/29/2025",
+                "18", "7"),
+             ev("2025-05-29", "Minority Committee Report: Ought to Pass with Amendment # "
+                "2025-2345h", "", "Minority", "Finance", "Ought to Pass with Amendment", "",
+                None, None)]
+    narr = {T: {"SB85": {"events": [sb85]}, "SB118": {"events": sb118}}}
+
+    def filed_of(text, source):
+        d = RC.parse_filed(text)
+        d.update({"released": "", "source": source})
+        return d
+    filed = {(T, "SB85"): [filed_of(FILED_SB85, "CandH_Reports 1030")],
+             (T, "SB118"): [filed_of(FILED_SB118, "CandH_Reports 356")]}
+    hc23 = {"bill": "SB118", "title": "", "majority_recommendation":
+            "OUGHT TO PASS WITH AMENDMENT", "minority_recommendation": None,
+            "source": "House Calendar 23, 2025",
+            "reports": [{"side": "Committee", "author": "Rep. Yury Polozov",
+                         "committee": "Health, Human Services and Elderly Affairs",
+                         "vote_yeas": 18, "vote_nays": 0, "text": "The committee supports"}]}
+    reports = {T: {"SB118": [hc23]}}
+    bills = {T: {"SB85": {"title": "relative to chartered bank lending limits."}}}
+    cals = {"HC 27 2025": "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+                          "calendars%5C2025%5CNo27%20May%2030%202025.pdf",
+            "HC 23 2025": "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+                          "calendars%5C2025%5CNo23%20April%2030%202025.pdf"}
+    got, census = RC.unprinted(narr, reports, filed, bills, cals)
+    assert sorted(got.get(T, {})) == ["SB85"], (
+        "these were given a filed copy: " + str({b: [(c["source"], c["author"]) for c in v]
+                                                 for b, v in got.get(T, {}).items()}))
+    c = got[T]["SB85"][0]
+    assert (c["source"], c["side"], c["author"], c["vote"], c["recommendation"],
+            c["action"]) == ("House Calendar 27, 2025", "Committee", "Rep. John Hunt",
+                             [16, 0], "OUGHT TO PASS", "unprinted"), c
+    assert c["text"].startswith("This bill makes two key changes.") and (
+        "Vote 16-0" not in c["text"]), c["text"][-80:]
+    # The same report printed under another citation, by the same member: not
+    # shown twice.
+    twice = {T: {"SB85": [{**hc23, "bill": "SB85", "source": "House Calendar 26, 2025",
+                           "reports": [{"side": "Committee", "author": "Rep. John Hunt",
+                                        "text": "x"}]}]}}
+    again, _ = RC.unprinted(narr, twice, filed, bills, cals)
+    assert not again.get(T, {}).get("SB85"), again
+    # Applied: a record of its own under the calendar's citation, which the
+    # Reports tab dates by the docket's signature and links to the calendar;
+    # the docket's line for it is not repeated with "not read".
+    n = RC.apply(reports, got)
+    recs = reports[T]["SB85"]
+    assert n == 1 and len(recs) == 1 and recs[0]["source"] == "House Calendar 27, 2025" and (
+        recs[0]["majority_recommendation"] == "OUGHT TO PASS"), recs
+    e = recs[0]["reports"][0]
+    assert (e["side"], e["author"], e["vote_yeas"], e["vote_nays"], e["committee"]) == (
+        "Committee", "Rep. John Hunt", 16, 0, "Commerce and Consumer Affairs"), e
+    assert e["note"] == ("This is the report as the committee filed it with the Clerk, "
+                         "dated May 27, 2025."), e["note"]
+    assert RC.apply(reports, got) == 0 and len(reports[T]["SB85"]) == 1, (
+        "applied twice, the filed copy was added twice")
+    written, docket, _ = B.committee_reports(recs, narr[T]["SB85"], cals,
+                                             "Commerce and Consumer Affairs", "")
+    assert [(w["cite"], w["date"], w["dated"]) for w in written] == [
+        ("HC 27", "2025-05-27", "signed")] and "No27%20May" in written[0]["cite_url"], written
+    assert not [d for d in docket if d.get("cite") == "HC 27"], (
+        "the docket's line was shown again beside its filed report: " + str(docket))
+    # SB 118: its own HC 23 record untouched, its HC 27 majority still the
+    # docket's line.
+    assert reports[T]["SB118"] == [hc23]
+    # THE MINORITY GOES WITH ITS MAJORITY (the review of 8 October 2026). HB
+    # 34 of 2023's docket cites House Calendar 11 on the majority's row and
+    # none on the minority's after it; read by citation alone, the majority's
+    # reasoning was shown beside the minority's bare docket line. Both filed
+    # copies (PastCommitteeReports 19145 and 19149, cut after their
+    # statements) are shown together, and with the minority's copy missing,
+    # neither is.
+    T3 = "2023-2024"
+    maj = ev("2023-01-24", "Majority Committee Report: Inexpedient to Legislate 01/24/2023 "
+             "(Vote 8-7; RC)", "HC 11", "Majority", "Children and Family Law",
+             "Inexpedient to Legislate", "01/24/2023", "8", "7")
+    mino = {**ev("2023-01-27", "Minority Committee Report: Ought to Pass", "", "Minority",
+                 "Children and Family Law", "Ought to Pass", "", None, None)}
+    narr34 = {T3: {"HB34": {"events": [maj, mino]}}}
+    head = ("REGULAR CALENDAR January 24, 2023 HOUSE OF REPRESENTATIVES REPORT OF COMMITTEE "
+            "The {s} of the Committee on Children and Family Law to which was referred HB "
+            "34-FN, AN ACT relative to raising the age of marriage to eighteen. ")
+    form = ("{c} COMMITTEE REPORT Committee: Children and Family Law Bill Number: HB 34-FN "
+            "Title: relative to raising the age of marriage to eighteen. Date: January 24, "
+            "2023 Consent Calendar: REGULAR Recommendation: {r} STATEMENT OF INTENT ")
+    f_maj = filed_of(head.format(s="Majority") + "Having considered the same, report the "
+                     "same with the following resolution: RESOLVED, that it is INEXPEDIENT "
+                     "TO LEGISLATE. Rep. Jodi Nelson FOR THE MAJORITY OF THE COMMITTEE "
+                     + form.format(c="MAJORITY", r="INEXPEDIENT TO LEGISLATE")
+                     + "The majority of the committee supports a motion of Inexpedient to "
+                     "Legislate for the following reasons: The number of minors marrying per "
+                     "year in New Hampshire is very minimal, zero in the past two years. Vote "
+                     "8-7. Rep. Jodi Nelson FOR THE MAJORITY", "PastCommitteeReports 19145")
+    f_min = filed_of(head.format(s="Minority") + "Having considered the same, and being "
+                     "unable to agree with the Majority, report with the recommendation that "
+                     "the bill OUGHT TO PASS. Rep. Cassandra Levesque FOR THE MINORITY OF THE "
+                     "COMMITTEE " + form.format(c="MINORITY", r="OUGHT TO PASS")
+                     + "The minority of the committee sees the importance of this bill. Rep. "
+                     "Cassandra Levesque FOR THE MINORITY", "PastCommitteeReports 19149")
+    both, _ = RC.unprinted(narr34, {}, {(T3, "HB34"): [f_maj, f_min]}, {}, {})
+    got34 = [(c["source"], c["side"], c["author"], c["vote"], c["recommendation"])
+             for c in both.get(T3, {}).get("HB34", [])]
+    assert got34 == [("House Calendar 11, 2023", "Majority", "Rep. Jodi Nelson", [8, 7],
+                      "INEXPEDIENT TO LEGISLATE"),
+                     ("House Calendar 11, 2023", "Minority", "Rep. Cassandra Levesque", [],
+                      "OUGHT TO PASS")], f"HB 34 of 2023's divided report: {got34}"
+    r34 = {}
+    RC.apply(r34, both)
+    rec34 = r34[T3]["HB34"]
+    assert len(rec34) == 1 and (rec34[0]["majority_recommendation"],
+                                rec34[0]["minority_recommendation"]) == (
+        "INEXPEDIENT TO LEGISLATE", "OUGHT TO PASS") and \
+        "vote_yeas" not in rec34[0]["reports"][1], rec34
+    alone, _ = RC.unprinted(narr34, {}, {(T3, "HB34"): [f_maj]}, {}, {})
+    assert not alone.get(T3, {}).get("HB34"), (
+        "a majority was shown in its committee's words without its minority: "
+        + str(alone[T3]["HB34"]))
+    # The step reads the histories and the list of calendars where they are.
+    import inspect
+    src = inspect.getsource(RC.main)
+    assert "unprinted(" in src and "NARRATIVES" in src, "report_check.main does not run unprinted"
+    # And the key the reports were lost to.
+    FC = imp("fetch_committee_reports")
+    assert FC is not None and hasattr(FC, "calendar_order"), (
+        "fetch_committee_reports.calendar_order is not there")
+    assert [FC.calendar_order(k) for k in ("27a", "27A", 27, "16a", 5)] == [
+        (27, "A"), (27, "A"), (27, ""), (16, "A"), (5, "")], (
+        "a calendar's key reads " + str([FC.calendar_order(k) for k in ("27a", 27)]))
+    assert sorted([27, "27A", "26A", 26], key=FC.calendar_order) == [26, "26A", 27, "27A"]
+    return "ok", ("SB 85's House Calendar 27 report as filed, dated as signed, under its "
+                  "citation and not repeated; SB 118's other report and a report printed "
+                  "under another citation left alone; \"27a\" is 27A")
+
+
+# THE CALENDARS ON DISK THAT ARE ANOTHER'S. A base calendar whose text is its
+# supplement's, word for word, is not that calendar: twelve such on 8 October
+# 2026, each a person's fetch to put right (fetch_committee_reports.py --year,
+# after the copy is moved aside). A new one is a fault; these are known.
+CALENDAR_COPIES = {
+    "2023": ["HC011", "HC014", "HC015", "HC018", "HC023", "HC024", "HC045"],
+    "2024": ["HC005", "HC015", "HC035"], "2025": ["HC016", "HC027"]}
+
+
+@check("data", "no House Calendar on disk is its own supplement's copy, but the twelve "
+               "known and waiting on a fetch")
+def _calendar_copies():
+    root = Path("calendars")
+    if not root.is_dir():
+        return "skip", "no calendars/ here"
+    found = {}
+    for base in sorted(root.glob("*/HC[0-9][0-9][0-9].txt")):
+        for sup in sorted(base.parent.glob(base.stem + "[A-Z].txt")):
+            if base.read_bytes() == sup.read_bytes():
+                found.setdefault(base.parent.name, []).append(base.stem)
+    new = sorted(f"{y}/{s}" for y, ss in found.items() for s in ss
+                 if s not in CALENDAR_COPIES.get(y, []))
+    assert not new, ("these base calendars are their supplement's text, word for word, "
+                     "and are not on the known list: " + ", ".join(new))
+    left = sum(len(v) for v in found.values())
+    return "ok", (f"{left} known base calendar(s) still their supplement's copy, waiting on a "
+                  "person's fetch" if left else "no base calendar is its supplement's copy")
 
 
 # The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's
@@ -48269,6 +48570,265 @@ def _committee_notes_fill():
         "a committee page's \"no day on record\" note is held to the measure")
     return "ok", ("the index's two section notes and a committee page's own fill the width "
                   "they have")
+
+
+@check("frontend", "a committee's Sessions tab counts the days it met, and a day still to "
+                   "come apart", needs=("build_committees",))
+def _committee_days_met(BCM):
+    """"56 days this committee met in 2025-2026" over a list whose first day,
+    14 October 2026, was still to come (the survey of 7 October 2026, on
+    Commerce and Consumer Affairs). The docket books sittings ahead of time;
+    the day's own sentence already said "is scheduled to meet", and the
+    count, the committees index and the page's description counted it as
+    met. build_committees marks a day after the build `ahead` and counts the
+    days met; app.js counts the two apart and gives a day to come no "No
+    recording of this day is on file"."""
+    import inspect
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    os.environ["GRANITE_BUILD_DATE"] = "2026-10-08"
+    try:
+        got = [BCM.is_ahead(d) for d in ("2026-10-14", "2026-10-08", "2026-09-30", "")]
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+    assert got == [True, False, False, False], f"days still to come read {got}"
+    src = inspect.getsource(BCM)
+    assert '**({"ahead": True} if is_ahead(date) else {})' in src, (
+        "build_committees does not mark a day still to come")
+    assert '"n_sessions": met_days' in src and "{met_days:,} sitting days" in src, (
+        "the committees index or the page's description counts days still to come as met")
+    day = lambda d, ahead, said: {
+        "date": d, "term": "2025-2026", "video_id": "", "narrative": said,
+        "items": [{"bill": "SB256", "n": "SB 256-FN", "year": 2025, "kind": "work session",
+                   "start": None, "state": ""}], **({"ahead": True} if ahead else {})}
+    sess = _app_js("scope.renderCommitteeSessions({sessions:" + json.dumps([
+        day("2026-10-14", True, "The Committee on Commerce and Consumer Affairs is scheduled "
+            "to meet on October 14, 2026 for a work session on SB 256-FN."),
+        day("2026-10-07", False, "The Committee on Commerce and Consumer Affairs met on "
+            "October 7, 2026 for a work session on SB 256-FN.")]) + "})",
+        names=("renderCommitteeSessions",))
+    if sess is None:
+        return "ok", "build_committees counts the days met; node is not here to draw the tab"
+    flat = re.sub(r"\s+", " ", sess)
+    assert "1 day this committee met in" in flat and "and 1 still to come, newest first" in flat, (
+        "the Sessions tab's count reads: " + flat[:200])
+    assert flat.count("No recording of this day is on file.") == 1, (
+        "a day still to come is said to have no recording on file")
+    return "ok", ("a day after the build is marked and counted apart, on the tab, the index "
+                  "and the description")
+
+
+@check("frontend", "the committees index says its counts of bills and sessions are every "
+                   "term's, beside today's chair and members", needs=("build_committees",))
+def _committee_card_counts(BCM):
+    """"Chaired by Ross Berry · 18 members · 1,257 bills · 577 sessions": the
+    chair and members are today's and the counts every term's since 1997,
+    unlabelled, and Election Law's own page says 144 bills this term (the
+    survey of 7 October 2026, C10). The counts now say since when; a card
+    the index dates by its years (a committee not on today's list) says it
+    there already and is unchanged."""
+    span = [f"{y}-{y + 1}" for y in range(1997, 2027, 2)]
+    live = BCM.committee_card({"code": "H36", "name": "Election Law", "chair": "Ross Berry",
+                               "n_members": 18, "n_bills": 1257, "n_sessions": 577,
+                               "span": span})
+    assert ("Chaired by Ross Berry &middot; 18 members &middot; 1,257 bills and 577 sessions "
+            "since 1997</span>") in live, live
+    one = BCM.committee_card({"code": "H63", "name": "Education Funding", "chair": "Rick Ladd",
+                              "n_members": 17, "n_bills": 92, "n_sessions": 0,
+                              "span": ["2023-2024", "2025-2026"]})
+    assert "17 members &middot; 92 bills since 2023</span>" in one, one
+    old = BCM.committee_card({"code": "H05", "name": "Education", "chair": "",
+                              "n_members": 0, "n_bills": 1530, "n_sessions": 600,
+                              "span": [f"{y}-{y + 1}" for y in range(1989, 2025, 2)]},
+                             dated=True)
+    assert "1,530 bills &middot; 600 sessions</span>" in old and "since" not in old, old
+    return "ok", "\"1,257 bills and 577 sessions since 1997\"; a dated card as it was"
+
+
+@check("frontend", "Using this site names the bill page's tabs as the page draws them, and "
+                   "says the Votes tab shows the voice and division votes",
+       needs=("civics",))
+def _using_this_site_tabs(civics):
+    """"Using this site" listed a Videos tab, which the page calls Hearings,
+    and said voice and division votes "appear in the narrative but have no
+    member-by-member record to show", while the Votes tab draws each of them
+    as a card, a division with its count (the survey of 7 October 2026).
+    Every tab the list names is a tab app.js draws on a bill's page."""
+    body = civics.BODY_SITE
+    at = body.index("<h2>What a bill's page holds</h2>")
+    part = body[at:body.index("</ul>", at)]
+    named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
+        r", and <b>([^<]+)</b>", part)
+    app = _paths.locate("app.js").read_text(encoding="utf-8")
+    drawn = set(re.findall(r'role="tab" id="tab_\$\{b\.id\}_\d"[^>]*?data-t="\d">([A-Z][a-z]+'
+                           r'(?: [A-Z][a-z]+)?)', app, re.S))
+    assert drawn >= {"Summary", "Votes", "Hearings", "Reports", "Sponsors"}, (
+        f"the bill page's tabs read {sorted(drawn)} out of app.js")
+    missing = [t for t in named if t not in drawn and t != "Bill Text"]
+    assert not missing, (f"Using this site names tabs a bill's page does not have: {missing}; "
+                         f"it draws {sorted(drawn)}")
+    assert "Bill Text" not in named or "Bill Text${" in app, "app.js has no Bill Text tab"
+    votes = re.sub(r"\s+", " ", part[part.index("<b>Votes</b>"):])
+    votes = votes[:votes.index("</li>")]
+    assert "appear in the narrative" not in votes and "voice or division vote" in votes, (
+        "Using this site says the voice and division votes are not on the Votes tab: " + votes)
+    return "ok", f"names {', '.join(named)}, each a tab the page draws"
+
+
+@check("frontend", "each count of bills filed in a term says what it counts: the bills and "
+                   "resolutions, or the House and Senate bills alone",
+       needs=("civics", "learn_numbers"))
+def _bills_filed_counts(civics, learn_numbers):
+    """Two counts of the bills filed in 2025-2026, 2,243 on How a bill
+    becomes law and The General Court and 2,139 on By the numbers, and
+    neither said what it counted (the survey of 7 October 2026): the first is
+    every measure of the term, its constitutional amendments and resolutions
+    among them, and the second the House and Senate bills alone. Each says
+    so now, wherever [[bills]] is counted as filed."""
+    import inspect
+    flat = re.sub(r"\s+", " ", inspect.getsource(civics))
+    bare = re.findall(r"\[\[bills\]\] bills(?! and resolutions)", flat)
+    assert not bare, (f"{len(bare)} of the pages' counts of [[bills]], every measure of the "
+                      "term, still call them bills alone")
+    for said in ("filed <b>[[bills]] bills and resolutions</b>",
+                 "Of the [[bills]] bills and resolutions filed in the [[term]] term"):
+        assert said in flat, f"civics no longer says \"{said}\""
+    src = re.sub(r'"\s*\n\s*"', "", inspect.getsource(learn_numbers.body))
+    assert ("Every House and Senate bill given a number in each term, not counting "
+            "constitutional amendments or resolutions") in src, (
+        "By the numbers' bills filed does not say it leaves out the constitutional amendments "
+        "and resolutions")
+    return "ok", ("the term's measures are \"bills and resolutions\"; By the numbers' are the "
+                  "House and Senate bills, not counting constitutional amendments or resolutions")
+
+
+@check("frontend", "no empty state says the General Court sits only from January to June")
+def _sits_mostly_january_to_june():
+    """"The General Court sits from January to June", on a committee's empty
+    Upcoming session, the Calendar's empty week and the home page's empty
+    Coming up, while the home page said both chambers sat until veto day in
+    August (the survey of 7 October 2026). Both sat on 19 August 2026, and
+    the House into the autumn or winter in nine of the twelve years
+    2015-2026. It sits MOSTLY from January to June: every page's source that
+    says when it sits says that."""
+    files = [_paths.locate("app.js"), _paths.locate("find.js")] + sorted(_paths.code_files("build_*.py")) + [
+        _paths.locate("civics.py")]
+    said, bare = [], []
+    for f in files:
+        if not f or not Path(f).exists():
+            continue
+        flat = re.sub(r"\s+", " ", re.sub(r'"\s*\n\s*"', "", Path(f).read_text(encoding="utf-8")))
+        bare += [Path(f).name for _ in re.finditer(r"sits from January to June", flat)]
+        said += [Path(f).name for _ in re.finditer(r"sits mostly from January to June", flat)]
+    assert not bare, "these still say the General Court sits from January to June: " + ", ".join(bare)
+    assert sorted(said) == ["app.js", "build_calendar.py", "build_pages.py"], (
+        "the three empty states that say when the General Court sits are " + ", ".join(said))
+    return "ok", "the committee page, the Calendar's week and the home page say \"mostly\""
+
+
+@check("frontend", "the Speaker's own page says he is Speaker", needs=("build_site_v2",))
+def _speaker_page_says_so(B):
+    """Rep. Sherman Packard's page listed House Rules and his presiding
+    counts, and the seating chart labels the Speaker's chair, while nothing
+    on his page named the office (the survey of 7 October 2026). The member
+    the roster seats in the Speaker's chair, seat 6002 on the rostrum, carries
+    "Speaker of the House" in his own file, and his page's line under his
+    name says it where it said "House of Representatives". A member who has
+    left, a senator, and a member of the floor carry no office."""
+    speaker = {"id": "425", "name": "Packard, Sherman", "chamber": "H", "seat": "6002",
+               "district": "16", "county": "Rockingham",
+               "display_full": "Rep. Sherman Packard (R - Rock 16)", "towns": ["Londonderry"]}
+    assert B.member_office(speaker) == "Speaker of the House", B.member_office(speaker)
+    for other in ({**speaker, "former": True}, {**speaker, "seat": "1002"},
+                  {**speaker, "chamber": "S", "seat": ""}):
+        assert B.member_office(other) == "", other
+    import inspect
+    assert '**({"office": office} if office else {})' in inspect.getsource(B.build_legislators), (
+        "build_legislators does not write a member's office into their own file")
+    got = _app_js("[scope.renderMemberHead(" + json.dumps({**speaker,
+                                                         "office": "Speaker of the House"})
+                  + "), scope.renderMemberHead(" + json.dumps({**speaker, "seat": "1002"}) + ")]",
+                  names=("renderMemberHead",))
+    if got is None:
+        return "ok", "seat 6002's member is Speaker of the House; node is not here to draw it"
+    head, floor = got
+    assert re.search(r'<p class="pmeta">Speaker of the House &middot; District 16', head), (
+        "the Speaker's page does not say he is Speaker: " + re.sub(r"\s+", " ", head)[:300])
+    assert '<p class="pmeta">House of Representatives &middot; District 16' in floor, (
+        "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
+    return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
+
+
+@check("frontend", "Latest activity on the home page links each bill to its own page",
+       needs=("build_pages", "build_site_v2"))
+def _latest_activity_links_the_bill(BP, B):
+    """Latest activity's "SB 256-FN" led to the search list, bills.html#SB256
+    (the survey of 7 October 2026), where any bill is a search away and a
+    number another term shares opens on whichever the list shows first. Each
+    row now carries the year its bill is filed under, and both renderers --
+    the static list build_pages writes and HOME_JS, which redraws it --
+    link /bill/<year>/<bill>.html."""
+    import inspect
+    assert BP.recent_href({"bill": "SB256", "year": 2025, "n": "SB 256-FN"}) == \
+        "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
+    assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
+    src = inspect.getsource(BP)
+    static = src[src.index("static_recent = ('<h2>Latest activity</h2>"):]
+    static = static[:static.index("RECENT_MORE")]
+    assert "recent_href(r)" in static and "bills.html#" not in static, (
+        "the static Latest activity still links the search list")
+    js = BP.HOME_JS[BP.HOME_JS.index('getElementById("recent")'):]
+    js = js[:js.index("</ul>")]
+    assert "bill/${r.year}/${String(r.bill).toLowerCase()}.html" in js and (
+        js.count("bills.html#") == 1), "HOME_JS's Latest activity still links the search list"
+    assert '"year": b.get("year") or ""' in inspect.getsource(B), (
+        "home.json's recent rows do not carry the year their bill is filed under")
+    return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
+
+
+@check("frontend", "an official's chip on a town page says the party in letters, as a "
+                   "legislator's does", needs=("build_town_pages",))
+def _official_party_letter(BT):
+    """The Governor's, the Executive Councillors' and the federal
+    delegation's chips on a town page carried their party by the colour of
+    the bar alone (the survey of 7 October 2026), where a legislator's chip
+    says "(R - Rock 16)". officials.json's own rows: Gov. Kelly Ayotte (R)
+    and Rep. Chris Pappas (D); an office whose holder this site was not told
+    shows no chip at all, and a party not given shows no letter."""
+    gov = BT.office_block("Governor", {"name": "Kelly Ayotte", "party": "R",
+                                       "official_url": "https://www.governor.nh.gov/"}, "")
+    assert ('<span class="mchip p-R"><a href="https://www.governor.nh.gov/" rel="noopener">'
+            'Kelly Ayotte <span class="mtag">(R)</span></a></span>') in gov, gov
+    us = BT.office_block("", {"name": "Chris Pappas", "party": "D"}, "")
+    assert '<span class="mchip p-D">Chris Pappas <span class="mtag">(D)</span></span>' in us, us
+    none = BT.office_block("", {"name": "A. Person"}, "")
+    assert '<span class="mchip p-X">A. Person</span>' in none, none
+    return "ok", "\"Kelly Ayotte (R)\", \"Chris Pappas (D)\"; no letter where no party is given"
+
+
+@check("data", "the member in the Speaker's chair is Speaker of the House in his own file, "
+               "and no other sitting member holds an office", needs=("build_site_v2",))
+def _speaker_page_built(B):
+    d, lp = Path("site/legislators"), Path("site/legislators.json")
+    if not (d.is_dir() and lp.exists()):
+        return "skip", "site/legislators is not here"
+    rows = json.loads(lp.read_text(encoding="utf-8"))
+    rows = rows if isinstance(rows, list) else list(rows.values())
+    chair = [r for r in rows if str(r.get("seat")) == str(B.SPEAKER_SEAT)]
+    assert len(chair) == 1, f"{len(chair)} sitting members are seated in the Speaker's chair"
+    offices = {}
+    for r in rows:
+        f = d / f"{r['id']}.json"
+        if f.exists():
+            o = json.loads(f.read_text(encoding="utf-8")).get("office")
+            if o:
+                offices[r["id"]] = o
+    assert offices == {str(chair[0]["id"]): "Speaker of the House"}, (
+        f"{chair[0].get('name')} sits in the Speaker's chair, and the offices on file are "
+        f"{offices}: rebuild the site data")
+    return "ok", f"{chair[0].get('name')}, in seat {B.SPEAKER_SEAT}, is Speaker of the House"
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")
@@ -66244,7 +66804,17 @@ def _committee_attribution():
         f = Path(name)
         if not f.exists():
             continue
-        for t, byb in json.loads(f.read_text(encoding="utf-8")).items():
+        src = json.loads(f.read_text(encoding="utf-8"))
+        # THE HOUSE'S AS THE PAGES READ THEM (8 October 2026): with
+        # report_check's corrections applied, as build_committees applies
+        # them, among them the reports shown as their committees filed them
+        # where the calendar is not here. Read raw, the 131 days those back
+        # were each said to claim a recommendation of no report of its own.
+        RC = imp("report_check")
+        cf = Path("report_corrections.json")
+        if name == "committee_reports.json" and RC is not None and cf.exists():
+            RC.apply(src, json.loads(cf.read_text(encoding="utf-8")))
+        for t, byb in src.items():
             for b, v in byb.items():
                 reps.setdefault(t, {}).setdefault(b, []).extend(
                     v if isinstance(v, list) else [v])
@@ -71727,6 +72297,106 @@ def _past_flags(BD):
                   "bill with no flag set, one with a suffix, a journal record, another "
                   "number's LSR and the current term untouched; and nothing written "
                   "where the bill's own saved page prints another designation")
+
+
+# db/Legislation.psv's rows for HB 422, HB 664, HB 138 and SB 131 of 2025 and
+# HB 1442 of 2026, as dumped on 8 September 2026, cut after column 26 (the
+# Senate committee): the fill reads no further.
+_LEGISLATION_2025_ROWS = [
+    "0422|HB|2025|0182|increasing penalties for violations of the shoreland and water "
+    "quality protection act.|True|H|1|False|True|False|25-0182|ENC|HB  0422|HB422|"
+    "01/09/2025 12:30:00||R|H22|H22|01/09/2025 00:00:00|09||03/06/2025 00:00:00|"
+    "02/13/2025 00:00:00|0||",
+    "0664|HB|2025|0239|relative to childhood immunization requirements.|True|H|1|True|"
+    "False|False|25-0239|PMH|HB  0664|HB664|01/17/2025 11:53:00||R|H09|H09|"
+    "01/09/2025 00:00:00|09||03/20/2025 00:00:00|03/26/2025 00:00:00|0||",
+    "0138|HB|2025|0278|relative to tax impact notation on warrant articles with multi-year "
+    "tax impacts.|True|H|1|False|False|True|25-0278|MUN|HB  0138|HB138|"
+    "12/31/2024 16:18:00|144|R|H18|H18|01/08/2025 00:00:00|10||03/20/2025 00:00:00|"
+    "03/26/2025 00:00:00|0|S92",
+    "0131|SB|2025|1064|relative to long-term care eligibility and making an appropriation "
+    "therefor.|True|S|2|True|True|False|25-1064|PMH|SB  0131|SB131|01/21/2025 17:13:00||R"
+    "||||||||0|S26",
+    "1442|HB|2026|2729|(New Title) permitting classification of individuals based on "
+    "biological sex under certain limited circumstances.|True|H|1|False|True|False|"
+    "26-2729|DIS|HB  1442|HB1442|12/03/2025 08:56:00||R|H10|H10|01/07/2026 00:00:00|18||"
+    "03/05/2026 00:00:00|08/19/2026 00:00:00|1|S10"]
+
+
+@check("build", "a bill of the session's first year takes its -FN, -A and -LOCAL from "
+                "the Legislation view, where LSRs.txt does not carry it",
+       needs=("build_data",))
+def _first_year_designations(BD):
+    """build_data.fill_from_legislation, on real rows (the audit of 7 October
+    2026, cause 13). LSRs.txt lists session 2026 alone, so every bill of 2025
+    was a stub and 449 of them showed the bare number: "HB 422" for HB
+    422-FN, "SB 131" for SB 131-FN-A. The view's AppropriationCode,
+    FiscalImpactCode and LocalCode give them, in the order the bills print
+    them. A 2026 bill keeps what LSRs.txt gave it; a row of another term or
+    another LSR fills nothing."""
+    def stub(bid, year, lsr):
+        return {"bill": bid, "lsr": f"{year}-{lsr}", "lsr_year": year, "lsr_num": lsr,
+                "title": "", "chamber": bid[0], "subject_code": "", "subject": "",
+                "house_committee": "", "senate_committee": "", "hearing": "",
+                "hearing_room": "", "stub": True}
+    hb1442 = {**stub("HB1442", "2026", "2729"), "stub": False, "subject_code": "DIS",
+              "house_committee": "Judiciary", "senate_committee": "Judiciary",
+              "flags": {"a": False, "fn": True, "local": False}, "suffix": "-FN",
+              "designation": "HB 1442-FN"}
+    kept = json.loads(json.dumps(hb1442))
+    bills = {"HB422": stub("HB422", "2025", "0182"), "HB664": stub("HB664", "2025", "0239"),
+             "HB138": stub("HB138", "2025", "0278"), "SB131": stub("SB131", "2025", "1064"),
+             "HB1442": hb1442}
+    filled = BD.fill_from_legislation(bills, _LEGISLATION_2025_ROWS, {}, {})
+    got = {b: bills[b].get("designation") for b in ("HB422", "HB664", "HB138", "SB131")}
+    assert got == {"HB422": "HB 422-FN", "HB664": "HB 664-A", "HB138": "HB 138-LOCAL",
+                   "SB131": "SB 131-FN-A"}, f"the 2025 bills are designated {got}"
+    assert bills["SB131"]["flags"] == {"a": True, "fn": True, "local": False} and (
+        bills["SB131"]["suffix"] == "-FN-A"), bills["SB131"]
+    assert bills["HB1442"] == kept, f"a 2026 bill's LSRs.txt flags were changed: {bills['HB1442']}"
+    assert filled["designation"] == 4, dict(filled)
+    # A row of another LSR, and one of another term, fill nothing.
+    other = {"HB422": stub("HB422", "2025", "0999"), "HB664": stub("HB664", "2023", "0239")}
+    BD.fill_from_legislation(other, _LEGISLATION_2025_ROWS, {}, {})
+    assert not any("designation" in r for r in other.values()), other
+    # The LSRs.txt reading and this one write one form: -FN, -A, -LOCAL, in order.
+    assert BD.designation_of("HB1442", True, True, True)[1:] == ("-FN-A-LOCAL",
+                                                                 "HB 1442-FN-A-LOCAL")
+    return "ok", ("HB 422-FN, HB 664-A, HB 138-LOCAL and SB 131-FN-A from the view; HB "
+                  "1442 of 2026 as LSRs.txt gave it; another LSR's or term's row fills "
+                  "nothing")
+
+
+@check("data", "every bill of the session whose Legislation row sets a flag carries its "
+               "suffix in data/bills.json")
+def _session_designations_built():
+    """The built record against the view (the audit of 7 October 2026, cause
+    13): no bill of the current term whose row in db/Legislation.psv sets the
+    appropriation, fiscal-note or local flag is left with the bare number."""
+    bp, lp = Path("data/bills.json"), Path("db/Legislation.psv")
+    if not (bp.exists() and lp.exists()):
+        return "skip", "data/bills.json or db/Legislation.psv is not here"
+    built = json.loads(bp.read_text(encoding="utf-8"))
+    cur = built.get(max(built)) or {}
+    want, bare = 0, []
+    yes = lambda v: v.strip().lower() in ("1", "true")
+    with open(lp, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            f = line.rstrip("\r\n").split("|")
+            if len(f) < 27:
+                continue
+            r = cur.get(f[14].strip().upper())
+            if not r or str(r.get("lsr_year")) != f[2].strip() or \
+                    str(r.get("lsr_num") or "").lstrip("0") != f[3].strip().lstrip("0"):
+                continue
+            if any(yes(x) for x in f[8:11]):
+                want += 1
+                if "-" not in (r.get("designation") or ""):
+                    bare.append(f[14].strip())
+    assert not bare, (f"{len(bare)} bills whose Legislation row sets a flag show the bare "
+                      f"number in data/bills.json, e.g. {bare[:6]}: rebuild data/ "
+                      "(build_data.py)")
+    return "ok", f"all {want:,} flagged bills of the session's view carry their suffix"
 
 
 # The heads of four saved bill pages, as fetch_legislation.py saved them --

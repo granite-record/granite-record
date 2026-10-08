@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -382,6 +382,22 @@ DOCNUM_RE = re.compile(r"\bNo\s*(\d+[A-Za-z]?)\b")
 WS = re.compile(r"\s+")
 
 
+def calendar_order(k):
+    """(number, letter) of a calendar's key: 27 -> (27, ""), "27A" or "27a"
+    -> (27, "A"). Base editions are ints and supplements strings, so they are
+    sorted on this, and a calendar is saved as HC<number><letter>.pdf.
+
+    THE LETTER IN EITHER CASE (8 October 2026). The House names its files in
+    lower case, "No27a May 30 2025.pdf", and this read [A-Z]* only: "27a" was
+    edition 27 with no letter, saved as HC027.pdf, and the House's list gives
+    27a before 27, so No. 27 itself was then skipped as already held. Twelve
+    base calendars of 2023-2025 on disk are their supplement byte for byte,
+    House Calendar 27 of 2025 among them, and 49 Senate bills' House reports
+    cite it."""
+    m = re.match(r"(\d+)([A-Za-z]*)", str(k))
+    return (int(m.group(1)), m.group(2).upper())
+
+
 def _attrs(s):
     return {k.lower(): v for k, v in ATTR_RE.findall(s or "")}
 
@@ -466,7 +482,10 @@ def calendar_urls(year, delay=2.0, rediscover=False):
         if not m:
             continue
         key = m.group(1)
-        key = int(key) if key.isdigit() else key
+        # "27a" is supplement 27A: the House names its files in lower case
+        # ("No27a May 30 2025.pdf"), and the letter is kept as the file on
+        # disk and the citation write it (calendar_order).
+        key = int(key) if key.isdigit() else key.upper()
         out[key] = (INDEX + "viewer.aspx?fileName="
                     + urllib.parse.quote(f"calendars\\{year}\\{value}"))
 
@@ -749,15 +768,9 @@ def main():
         print(f"  {len(urls)} editions found")
         if not urls:
             sys.exit("No calendar PDFs found. Check the year.")
-        # Base editions are ints, supplements are strings like "5A", so they
-        # cannot be compared directly. Sort on the numeric part, then the suffix.
-        def order(k):
-            m = re.match(r"(\d+)([A-Z]*)", str(k))
-            return (int(m.group(1)), m.group(2))
-
         targets, drops = [], 0
-        for num in sorted(urls, key=order):
-            n, suf = order(num)
+        for num in sorted(urls, key=calendar_order):
+            n, suf = calendar_order(num)
             local = cache / f"HC{n:03d}{suf}.pdf"
             if not local.exists():
                 # ONE REFUSAL, OR A SECOND DROPPED CONNECTION, ENDS THE RUN AND
