@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.180
+# GRANITE_VERSION: 2026-09-05.181
 """
 Generate the faceted site from real General Court data.
 
@@ -6194,7 +6194,17 @@ def journey_rail(intro, steps, rail, bid, status="", chip=""):
     on the table while the session still sits, its stop and the line of the
     journey that laid it there are the graphite pause, "t", where `passage`
     has the ring of a bill still moving. A bill that died on the table is
-    Died, and keeps its cross."""
+    Died, and keeps its cross.
+
+    THE STOP SAYS WHAT ITS MARK SAYS (the review of 8 October 2026). A
+    refined stop takes its day and its words from the chamber's last line of
+    the act its mark stands for (RAIL_ACT): the cross's stop was given the
+    chamber's last kill, so HB 1171 of 2000 -- killed by the Senate on 20
+    April 2000, the kill reconsidered, and sent to interim study on 18 May --
+    drew the "~" over "Killed on a voice vote, reconsidered on 18 May", dated
+    20 April, and HB 146 of 2002 the same. Where the chamber has no such line
+    (SB 225 of 2000, whose "Refer to Interim Study; SJ 2" no line reads), the
+    stop says the mark's own words and no day, as a stop with no line does."""
     stops = _journey_rail(intro, steps, rail, bid, status)
     now = RAIL_MARK_OF_CHIP.get(chip)
     if not now:
@@ -6203,14 +6213,13 @@ def journey_rail(intro, steps, rail, bid, status="", chip=""):
     for st in stops:
         if st["stop"] in ("House", "Senate") and st["mark"] == was:
             st["mark"] = now
-            if st.get("say") == RAIL_SAY[was]:
-                st["say"] = RAIL_SAY[now]
-            if now == "t":
-                b = "H" if st["stop"] == "House" else "S"
-                line = next((s for s in reversed(steps)
-                             if s["body"] == b and s["act"] == "tabled"), None)
-                if line is not None:
-                    line["mark"] = "t"
+            b = "H" if st["stop"] == "House" else "S"
+            line = next((s for s in reversed(steps)
+                         if s["body"] == b and s["act"] == RAIL_ACT[now]), None)
+            st.update(date=(line or {}).get("date", ""), short=(line or {}).get("short", ""),
+                      say=(line or {}).get("text", "") or RAIL_SAY[now])
+            if now == "t" and line is not None:
+                line["mark"] = "t"
     return stops
 
 
@@ -6221,6 +6230,8 @@ def journey_rail(intro, steps, rail, bid, status="", chip=""):
 # preflight).
 RAIL_MARK_OF_CHIP = {INTERIM_STUDY: "s", TABLED: "t"}
 RAIL_REFINES = {"s": "x", "t": "h"}
+# The journey's act each of them stands for, whose line dates and words the stop.
+RAIL_ACT = {"s": "study", "t": "tabled"}
 
 
 def _journey_rail(intro, steps, rail, bid, status=""):

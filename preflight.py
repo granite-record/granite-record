@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.466
+# GRANITE_VERSION: 2026-09-04.467
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24159,6 +24159,24 @@ _TABLED_ROWS = [
     "2026|2396|5/7/2026 9:37:04 AM|HB1043|S|Sen. Murphy Moved Laid on Table, MA, VV; 05/07/2026;  SJ 11|5/7/2026 9:37:04 AM",
     "2026|2396|5/7/2026 9:37:39 AM|HB1043|S|No Pending Motion; 05/07/2026  SJ 11|5/7/2026 9:37:39 AM",
 ]
+# Real rows: Docket_db_1999-2000.txt 16527-16539 (HB 1171 of 2000: passed by
+# the House, killed by the Senate on 20 April 2000, the kill reconsidered on
+# 18 May and the bill sent to interim study the same day).
+_KILLED_THEN_STUDIED = [
+    "2000|2440|01/05/2000 01:03:53 PM|HB1171|H|Introduced and ref to Judiciary;  HJ5, p89|01/05/2000 01:03:53 PM",
+    "2000|2440|01/05/2000 01:28:07 PM|HB1171|H|Copy to Chairman on   12/22/1999|01/05/2000 01:28:07 PM",
+    "2000|2440|01/05/2000 01:33:29 PM|HB1171|H|Hearing  Feb 8  11:00  RM208,LOB|01/05/2000 01:33:29 PM",
+    "2000|2440|02/22/2000 04:26:27 PM|HB1171|H|Maj Report   OTP   for   Mar  9      (vote 10-3;CC)|02/22/2000 04:26:27 PM",
+    "2000|2440|03/09/2000 11:04:31 AM|HB1171|H|Passed (Cons Cal by 2/3VV);  HJ22, p626 + 658|03/09/2000 11:04:31 AM",
+    "2000|2440|03/16/2000 10:54:22 AM|HB1171|S|Introduced and Ref. to Finance; SJ 6, Pg.195|03/16/2000 10:54:22 AM",
+    "2000|2440|03/22/2000 09:57:33 AM|HB1171|S|Hearing March 31, Room 103, SH, 1:30 p.m.., SC18, Pg.24|03/22/2000 09:57:33 AM",
+    "2000|2440|04/19/2000 04:02:24 PM|HB1171|S|Committee Report Inexpedient to Legislate, 4/20/2000 ; SC24|04/19/2000 04:02:24 PM",
+    "2000|2440|04/20/2000 01:01:59 PM|HB1171|S|Inexpedient to Legislate, MA, VV ==KILLED==; SJ 11, Pg.305|04/20/2000 01:01:59 PM",
+    "2000|2440|04/27/2000 10:45:31 AM|HB1171|S|Sen. J. King served notice of reconsideration; SJ 12, Pg.325|04/27/2000 10:45:31 AM",
+    "2000|2440|05/18/2000 01:01:14 PM|HB1171|S|Sen. Trombly Moved Reconsideration, MA, VV; Sen. J. King Ought to Pass, MA, VV; SJ 15, Pg.476|05/18/2000 01:01:14 PM",
+    "2000|2440|05/18/2000 01:02:55 PM|HB1171|S|Sen. J. King Floor Amendment{4465},[New Title],not voted on; SJ 15, Pg.476-477|05/18/2000 01:02:55 PM",
+    "2000|2440|05/18/2000 06:19:39 PM|HB1171|S|Sen. Franoueur Moved Interim Study, MA, VV; SJ 15, Pg.478|05/18/2000 06:19:39 PM",
+]
 
 
 @check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its graphite "
@@ -24228,6 +24246,25 @@ def _rail_study_and_table_marks(N, B):
             [c[0] for c in cases["table"]["cells"]][2] != "St":
         bad.append("the list card's stops do not carry the marks: "
                    f"{cases['study']['cells']} {cases['table']['cells']}")
+    # THE STOP SAYS WHAT ITS MARK SAYS (the review of 8 October 2026): HB 1171
+    # of 2000, killed by the Senate on 20 April 2000, the kill reconsidered,
+    # and sent to interim study on 18 May, drew the "~" over the kill's words
+    # and day. Its "~" is dated and worded from the interim study line.
+    narr = _narrated(N, "1999-2000", "HB1171", _KILLED_THEN_STUDIED)
+    intro, steps = B.journey(narr, "HB1171", [], "", "")
+    passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+    acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+    rail = B.passage(narr["stages"], "study", "Referred for interim study", "HB1171", passed, acted)
+    jrail = B.journey_rail(intro, steps, rail, "HB1171", "Referred for interim study",
+                           chip=B.chip_word("study", "Referred for interim study", False))
+    sen = next((s for s in jrail if s["stop"] == "Senate"), {})
+    if (sen.get("mark"), sen.get("date")) != ("s", "2000-05-18") or \
+            "interim study" not in (sen.get("say") or "").lower() or \
+            "killed" in (sen.get("say") or "").lower():
+        bad.append(f"HB 1171 of 2000's Senate stop is {sen!a}, not the \"~\" of 18 May 2000 in "
+                   "the interim study line's words")
+    if ["Ss", "2000-05-18"] != (B.index_rail(jrail)[2][:2] if len(jrail) > 2 else None):
+        bad.append(f"HB 1171 of 2000's list card reads {B.index_rail(jrail)!a}")
 
     data = json.dumps({k: {kk: c[kk] for kk in ("id", "passage", "chip", "cells", "steps", "jrail")}
                        for k, c in cases.items()})
@@ -49400,7 +49437,18 @@ def _using_this_site_tabs(civics):
     votes = votes[:votes.index("</li>")]
     assert "appear in the narrative" not in votes and "voice or division vote" in votes, (
         "Using this site says the voice and division votes are not on the Votes tab: " + votes)
-    return "ok", f"names {', '.join(named)}, each a tab the page draws"
+    # AND EVERY OTHER CIVICS PAGE (the review of 8 October 2026). Using this
+    # site was mended and two pages were not: State agencies said "the bill's
+    # Videos tab links the recording", and Testifying "the Videos tab links
+    # it", of a tab the page calls Hearings. Every "the bill's X tab" and "the
+    # X tab" in civics' prose names a tab app.js draws.
+    prose = " ".join(v for k, v in vars(civics).items()
+                     if k.startswith("BODY_") and isinstance(v, str))
+    said = set(re.findall(r"\bthe (?:bill's )?((?:[A-Z][a-z]+ )?[A-Z][a-z]+) tab\b", prose))
+    stale = sorted(t for t in said if t not in drawn and t != "Bill Text")
+    assert not stale, f"the civics pages name tabs a bill's page does not have: {stale}"
+    return "ok", (f"names {', '.join(named)}, each a tab the page draws, and the other civics "
+                  f"pages name {', '.join(sorted(said)) or 'no tab'}")
 
 
 @check("frontend", "each count of bills filed in a term says what it counts: the bills and "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.28
+# GRANITE_VERSION: 2026-09-08.29
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -994,7 +994,7 @@ legislature to block it by joint resolution; and if the committee takes no
 action within 60 days, the rule is treated as approved.</p>
 """ + SHOWS.format("""
 <p>Where a hearing was recorded &mdash; [[hearing_video_bills]]
-bills[[hearing_video_since]] &mdash; the bill's Videos tab links the
+bills[[hearing_video_since]] &mdash; the bill's Hearings tab links the
 recording, opened where the bill was taken up when that moment has been
 found. <a href="committees.html">Committee pages</a> list
 every day a committee met and what it heard.</p>""")
@@ -1688,7 +1688,7 @@ record.</p>
 <p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
 and the day. Every bill's page shows its own hearings. Where a hearing was
 recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]]
-&mdash; the Videos tab links it, opened where the bill
+&mdash; the bill's Hearings tab links it, opened where the bill
 was taken up when that moment has been found.
 <a href="committees.html">A committee's page</a> lists every day it met and
 what it heard.</p>
