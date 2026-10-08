@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.448
+# GRANITE_VERSION: 2026-09-04.449
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4707,6 +4707,136 @@ def _whole_day_not_silent(N):
     assert not bad, "\n".join(bad)
     return "ok", ("a meeting with no calendar for its term is said, and a calendar that will "
                   "not load stops the run")
+
+
+# A SESSION THE DOCKET MARKS AND MOVES (the launch audit of 7 October 2026,
+# cause 6). Real rows: Docket.txt lines 1109, 2388, 4099, 4481, 5319, 11527,
+# 11574, 11651, 11662, 12092 and 13051 (HB 729 of 2025); 14215, 14684 and
+# 18991-18992 (HB 1300 of 2026); Docket_2015-2016.txt 8484-8488 (HB 105 of
+# 2015).
+_DOCKET_SESSION_MOVED = {
+    ("HB729", "2025-2026"): [
+        "2026|0724|1/22/2025 8:12:52 AM|HB729|H|  Introduced (in recess of) 01/09/2025 and referred to Education Funding  HJ 3  P. 24|2/18/2025 3:35:42 PM",
+        "2026|0724|2/5/2025 3:05:26 PM|HB729|H|Public Hearing: 02/11/2025 11:20 am LOB 205-207|2/5/2025 3:05:26 PM",
+        "2026|0724|2/27/2025 2:38:37 PM|HB729|H|==CANCELLED== Executive Session: 03/11/2025 10:30 am LOB 205-207|2/27/2025 3:06:30 PM",
+        "2026|0724|3/5/2025 4:19:06 PM|HB729|H|Executive Session: 03/12/2025 10:30 am LOB 201|3/5/2025 4:19:06 PM",
+        "2026|0724|3/12/2025 2:34:22 PM|HB729|H|Retained in Committee|3/12/2025 2:34:22 PM",
+        "2026|0724|10/13/2025 10:51:31 AM|HB729|H| ==RESCHEDULED==  Full Committee Work Session: 11/04/2025 01:00 pm GP 232|10/15/2025 3:31:14 PM",
+        "2026|0724|10/15/2025 3:36:52 PM|HB729|H| ==RESCHEDULED== Executive Session: 11/04/2025 02:00 pm GP 232|10/15/2025 3:37:02 PM",
+        "2026|0724|10/28/2025 3:00:11 PM|HB729|H|   Full Committee Work Session: 11/13/2025 01:00 pm GP 232|10/28/2025 3:00:11 PM",
+        "2026|0724|10/28/2025 3:05:58 PM|HB729|H|  Executive Session: 11/13/2025 02:00 pm GP 232|10/28/2025 3:05:58 PM",
+        "2026|0724|11/20/2025 11:01:30 AM|HB729|H| Committee Report: Refer for Interim Study  11/18/2025 (Vote 18-0; CC)  HC 51  P. 7|12/19/2025 12:00:09 PM",
+        "2026|0724|1/7/2026 10:56:27 AM|HB729|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 49|3/27/2026 2:01:01 PM"],
+    ("HB1300", "2025-2026"): [
+        "2026|2870|1/14/2026 3:51:54 PM|HB1300|H|Public Hearing: 01/20/2026 10:00 am GP 158|1/14/2026 3:51:54 PM",
+        "2026|2870|1/22/2026 8:50:22 AM|HB1300|H| ==RESCHEDULED== Executive Session: 01/27/2026 10:10 am GP 158|1/29/2026 2:22:44 PM",
+        "2026|2870|3/4/2026 5:54:43 PM|HB1300|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0980h   03/03/2026 (Vote 9-8; RC)  HC 10  P. 42|3/16/2026 10:07:15 AM",
+        "2026|2870|3/4/2026 5:54:57 PM|HB1300|H|Minority Committee Report: Inexpedient to Legislate|3/4/2026 5:54:57 PM"],
+    ("HB105", "2015-2016"): [
+        "2016|0045|1/7/2015 12:00:00 AM|HB105|H|Introduced and Referred to Transportation; HJ 7 , PG. 117|1/7/2015 12:00:00 AM",
+        "2016|0045|1/14/2015 12:00:00 AM|HB105|H|Public Hearing: 1/20/2015 10:00 AM LOB 203|1/14/2015 12:00:00 AM",
+        "2016|0045|1/21/2015 12:00:00 AM|HB105|H|==POSTPONED== Executive Session: 1/27/2015 2:30 PM LOB 203|1/21/2015 12:00:00 AM",
+        "2016|0045|1/26/2015 12:00:00 AM|HB105|H|==RESCHEDULED== Executive Session: 1/28/2015 2:30 PM LOB 203|1/26/2015 12:00:00 AM",
+        "2016|0045|1/29/2015 12:00:00 AM|HB105|H|Retained in Committee|1/29/2015 12:00:00 AM"],
+}
+# What House Calendars 44 (24 October 2025) and 45 (31 October) print of
+# Education Funding, as calendar_meetings reads them (HC044.txt and
+# HC045.txt): Calendar 44 the sessions of 4 November, Calendar 45 no 4
+# November and the sessions of the 13th.
+_SESSION_MOVED_CALENDAR = [
+    {"committee": "Education Funding", "date": d, "time": t, "kind": k, "bill": b,
+     "noticed": n, "calendar": c, "body": "H"}
+    for c, n, d, t, k, b in (
+        ("2025/HC044", "2025-10-24", "2025-11-04", "13:00", "full committee work session", "HB729"),
+        ("2025/HC044", "2025-10-24", "2025-11-04", "14:00", "executive session", "HB112"),
+        ("2025/HC045", "2025-10-31", "2025-11-13", "13:00", "full committee work session", "HB729"),
+        ("2025/HC045", "2025-10-31", "2025-11-13", "14:00", "executive session", "HB112"),
+        ("2025/HC045", "2025-10-31", "2025-11-13", "14:00", "executive session", "HB295"))]
+
+
+@check("narrative", "an executive or work session the docket marks rescheduled and sets down for "
+                    "a later day is not told as held, where the clerk's word or the calendars "
+                    "say it did not sit",
+       needs=("narrative",))
+def _session_moved(N):
+    """The launch audit's cause 6: Education Funding's executive session and
+    work session of 4 November 2025 are "==RESCHEDULED==" on fourteen bills
+    and set down plainly for 13 November on 28 October; House Calendar 45 of
+    31 October has no 4 November and prints them on the 13th. HB 729's history
+    said the committee met on both days. The move rule read hearings only,
+    because sessions recur; a marked session is now moved where a later notice
+    of its kind was entered before its day and the calendars printed in
+    between show the later day and not this one -- or where the mark is
+    "==POSTPONED==", the clerk's word (HB 105 of 2015, the storm of 27 January).
+    Not where the mark sits on a session no later notice moves (HB 1300 of
+    2026's of 27 January, which sat), not where a calendar printed in between
+    still prints the day, and not in silence where no calendar was read: the
+    session is told as held and the run says so (MOVED_UNCHECKED)."""
+    bad = []
+    # The rule's own record of a session it could not hold to a calendar.
+    unchecked = getattr(N, "MOVED_UNCHECKED", set())
+    saved = (dict(N.CALENDAR_ROWS), dict(N.CALENDAR_UNREAD), set(unchecked))
+
+    def told(bill, term, calendar):
+        N.CALENDAR_ROWS.clear()
+        N.CALENDAR_UNREAD.clear()
+        unchecked.clear()
+        if calendar is not None:
+            N.CALENDAR_ROWS[("H", term)] = calendar
+        return _told_from_rows(N, term, bill, _DOCKET_SESSION_MOVED[(bill, term)])
+
+    def text(rec):
+        return " ".join(s["text"] for s in rec["stages"])
+
+    try:
+        rec = told("HB729", "2025-2026", _SESSION_MOVED_CALENDAR)
+        if "November 4, 2025" in text(rec) or "November 13, 2025" not in text(rec):
+            bad.append(f"HB 729 of 2025 does not tell 13 November alone: {text(rec)!r}")
+        rows = [e for e in rec["events"] if e["date"] == "2025-11-04"]
+        notes = sorted(e.get("row_note") or "" for e in rows)
+        if len(rows) != 2 or not all(e.get("notice") and e.get("overtaken") == "moved"
+                                     for e in rows) or notes != [
+                "A notice. A later row of the docket moves the executive session to another day.",
+                "A notice. A later row of the docket moves the work session to another day."]:
+            bad.append(f"HB 729's rows of 4 November are not kept as moved notices: {rows!r}")
+        for m in (["2025-11-04", "H", "executive session", "14:00"],
+                  ["2025-11-04", "H", "work session", "13:00"]):
+            if m not in (rec.get("voided") or []):
+                bad.append(f"HB 729's {m[2]} of 4 November is drawn as a sitting: "
+                           f"{rec.get('voided')!r}")
+        # A calendar printed in between that still prints the day.
+        still = _SESSION_MOVED_CALENDAR + [dict(_SESSION_MOVED_CALENDAR[1], noticed="2025-10-31",
+                                                calendar="2025/HC045")]
+        rec = told("HB729", "2025-2026", still)
+        if "November 4, 2025" not in text(rec):
+            bad.append(f"with Calendar 45 printing 4 November, HB 729 does not tell it: "
+                       f"{text(rec)!r}")
+        # No calendar for the term: told as held, and said.
+        rec = told("HB729", "2025-2026", [])
+        if "November 4, 2025" not in text(rec) or not any(
+                k[2] == "Education Funding" and k[3] == "2025-11-04" for k in unchecked):
+            bad.append(f"with no calendar, HB 729's 4 November is not told as held and said: "
+                       f"{text(rec)!r}, unchecked {sorted(unchecked)!r}")
+        rec = told("HB1300", "2025-2026", _SESSION_MOVED_CALENDAR)
+        if "January 27, 2026" not in text(rec):
+            bad.append(f"HB 1300 of 2026's session of 27 January, which sat, is not told: "
+                       f"{text(rec)!r}")
+        rec = told("HB105", "2015-2016", [])
+        if "January 27, 2015" in text(rec) or "January 28, 2015" not in text(rec) \
+                or unchecked:
+            bad.append(f"HB 105 of 2015's postponed session of 27 January: {text(rec)!r}, "
+                       f"unchecked {sorted(unchecked)!r}")
+    finally:
+        N.CALENDAR_ROWS.clear()
+        N.CALENDAR_ROWS.update(saved[0])
+        N.CALENDAR_UNREAD.clear()
+        N.CALENDAR_UNREAD.update(saved[1])
+        unchecked.clear()
+        unchecked.update(saved[2])
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 729 of 2025's sessions of 4 November, which Calendar 45 moves to the 13th, "
+                  "and HB 105 of 2015's postponed one are notices; HB 1300's of 27 January, a "
+                  "calendar still printing the day, and a term with no calendar keep them")
 
 
 @check("data", "the meetings decision 58 cancels for all their bills are told for none of them")

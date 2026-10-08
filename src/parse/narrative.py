@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.93
+# GRANITE_VERSION: 2026-09-04.94
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3315,7 +3315,8 @@ def notice_note(ev):
     if ev.get("_void") == "cancelled":
         return "A notice. A later row of the docket cancels the meeting it names."
     if ev.get("_void") == "moved":
-        return "A notice. A later row of the docket moves the hearing to another day."
+        return (f"A notice. A later row of the docket moves the "
+                f"{VOIDED_KIND.get(ev.get('_type'), 'hearing')} to another day.")
     return "A notice, for a bill that was never introduced."
 
 
@@ -3351,9 +3352,10 @@ def notice_note(ev):
 #     "RESCHEDULED HEARING 3/27/89" over HB 228's for the 22nd. Either mark,
 #     and a later notice for another day entered by the day the first one
 #     named. Not a continuation ("Continued", "RECONVENE", "RECESSED":
-#     the hearing sat and went on another day), and not an executive or work
-#     session: those recur, and a committee that meets every Tuesday notices
-#     the next Tuesday before this one (HB 607 of 2005).
+#     the hearing sat and went on another day). An executive or work session
+#     recurs -- a committee that meets every Tuesday notices the next Tuesday
+#     before this one (HB 607 of 2005) -- so it has a rule of its own
+#     (_session_moved_by, below), which asks the calendars.
 #
 #     AND ONLY A LATER NOTICE THAT IS ITSELF A MEETING, on the evidence of the
 #     rows (7 October 2026). A move now takes a hearing out of the history, so
@@ -3546,7 +3548,8 @@ def overtaken_by(ev, evs):
     if why is not None:
         return why, o
     if ev["_type"] != "hearing":
-        return "", None
+        o = _session_moved_by(ev, evs)
+        return ("moved", o) if o is not None else ("", None)
     day = ev["when"].date()
     for o in evs:
         if (o is ev or o["body"] != ev["body"] or o["_type"] != ev["_type"]
@@ -3615,6 +3618,87 @@ def overtaken(ev, evs):
     """"cancelled" or "moved" where a later row of the docket cancelled or
     moved the meeting this notice names (overtaken_by); else ""."""
     return overtaken_by(ev, evs)[0]
+
+
+# AN EXECUTIVE OR WORK SESSION THE DOCKET MARKS AND SETS DOWN FOR A LATER DAY
+# (the launch audit of 7 October 2026, cause 6). Education Funding's sessions
+# of 4 November 2025 are "==RESCHEDULED== Executive Session: 11/04/2025 02:00
+# pm GP 232" on fourteen bills (HB 729's is Docket.txt line 11574), and on 28
+# October the docket set each down plainly for 13 November (line 11662).
+# House Calendar 45 of 31 October has no Tuesday 4 November and prints the
+# sessions under Thursday 13 November; the histories said the committee met
+# on both days. A session is moved where
+#   - its own notice carries the mark (MOVED_MARK: the docket's own word);
+#   - a notice of the same chamber, kind and session for a LATER day, not
+#     itself cancelled, recessed or a continuation, was entered after it and
+#     before its day (not on the day: HB 1377 and HB 1643 of 2026's of 2
+#     March were re-noticed for the 3rd at 2:19 that afternoon, which leaves
+#     whether the 10:00 session sat to the docket's mark, as decision 57
+#     does for HB 1586 of 2014);
+#   - and the mark is "==POSTPONED==", the clerk's word that it did not sit
+#     (the storm of 27 January 2015), or the calendars say so.
+# "==RESCHEDULED==" alone is not enough: the House of 2007, of 2013-2016 and
+# of 2025-2026 also puts it on the notice that replaced another. Ways and
+# Means' "Casino & Gambling" subcommittee of 2007 had marked notices for 23 and
+# 30 October (Docket_db_2007-2008.txt lines 13964 and 13966), and House
+# Calendar 64 of 18 October prints both as "Rescheduled ... work session"; HB
+# 1300 of 2026's marked session of 27 January sat, and the recording shows
+# the chair open it. So a calendar printed after the later notice was entered
+# and before the day must print the committee's session of that kind on the
+# later day and none on this one -- at this hour, or for this bill
+# (_calendars_moved). Where no calendar was printed in between, the session is
+# told as held, as before.
+def _session_moved_by(ev, evs):
+    """The later notice an executive or work session was moved to by the
+    rule above, or None."""
+    if not MOVED_MARK.search(ev.get("_said") or ""):
+        return None
+    day = ev["when"].date()
+    for o in evs:
+        if (o is ev or o["body"] != ev["body"] or o["_type"] != ev["_type"]
+                or o["cancelled"] or o.get("recessed") or o["when"].date() <= day
+                or not _entered_before(ev, o["_entered"])
+                or not isinstance(o.get("_entered"), datetime)
+                or o["_entered"].date() >= day
+                or GOES_ON.search(o.get("_said") or o["_raw"])
+                or any(x and y and x != y for x, y in (
+                    (_session_of(ev), _session_of(o)),
+                    (_session_of_kind(ev), _session_of_kind(o))))):
+            continue
+        if POSTPONED_MARK.search(ev.get("_said") or "") or _calendars_moved(ev, o, evs):
+            return o
+    return None
+
+
+# A session the rule above asked the calendars about and could not, because no
+# calendar of its chamber and term was read: (term, chamber, committee, day).
+# main() says them, and stops where the calendars broke (CALENDAR_UNREAD), as
+# whole_day_unchecked() does: a rule that turns itself off says so.
+MOVED_UNCHECKED = set()
+
+
+def _calendars_moved(ev, o, evs):
+    """Do the calendars printed after `o` was entered and before the day `ev`
+    names print the committee's session of that kind on o's day, and none on
+    ev's at its hour or for this bill? False where none was printed then."""
+    term = ev.get("_term") or TERM
+    k = _meeting_key(ev, evs, term)
+    cmte = k[2] if k else ""
+    every = _calendar_rows(ev["body"], term)
+    if not every:
+        MOVED_UNCHECKED.add((term, ev["body"], cmte, ev["when"].date().isoformat()))
+        return False
+    kind = CALENDAR_KIND[ev["_type"]]
+    since, day = o["_entered"].date().isoformat(), ev["when"].date().isoformat()
+    bill, at = (ev.get("_bill") or "").upper(), _clock(ev)
+    rows = [r for r in every
+            if since < (r.get("noticed") or "") < day
+            and kind in (r.get("kind") or "").lower()
+            and ((cmte and r.get("committee") == cmte) or _calendar_bill(r.get("bill")) == bill)]
+    return (any(r["date"] == o["when"].date().isoformat() for r in rows)
+            and not any(r["date"] == day and (
+                _calendar_bill(r.get("bill")) == bill or not at or not r.get("time")
+                or P.same_minute(at, r.get("time"))) for r in rows))
 
 
 # WHAT A VOIDED NOTICE LEAVES OFF IS ITS MEETING, NOT ITS DAY (7 October 2026).
@@ -5734,6 +5818,7 @@ def main():
     results = defaultdict(dict)
     global TERM, CONSENT_COUNTS, WHOLE_DAY
     NOTICED.clear()
+    MOVED_UNCHECKED.clear()
     WHOLE_DAY = {}
     for b, rows in bills.items():
         TERM = P.term_of(rows[0].get("session", ""))
@@ -5801,6 +5886,21 @@ def main():
             print("  left out: " + ", ".join(f"{n:,} bill(s) of {t}" for t, n in sorted(other.items()))
                   + f" -- the session's docket is {session}'s, and another term's histories "
                   "come from that term's own docket (narrate_archive.py)")
+    # A SESSION THE CALENDARS COULD NOT BE ASKED ABOUT (_session_moved_by): a
+    # stop where they broke, a line where none is on this disk for the term.
+    broke = sorted({(c, t) for t, c, _k, _d in MOVED_UNCHECKED} & set(CALENDAR_UNREAD))
+    if broke:
+        sys.exit("narrative.py: the calendars could not be read for "
+                 + "; ".join(f"the {'House' if c == 'H' else 'Senate'} of {t} "
+                             f"({CALENDAR_UNREAD[(c, t)]})" for c, t in broke)
+                 + ", so the sessions the docket marks rescheduled there cannot be held "
+                   "to them (_session_moved_by)")
+    if MOVED_UNCHECKED:
+        print(f"  moved-session rule not applied: {len(MOVED_UNCHECKED)} session(s) the "
+              "docket marks rescheduled and sets down for a later day have no calendar on "
+              "this disk for their term, so they are told as held: "
+              + "; ".join(f"{k} ({'House' if c == 'H' else 'Senate'}), {d} of {t}"
+                          for t, c, k, d in sorted(MOVED_UNCHECKED)))
     report_corrections(results)
     n_sign = sum(1 for byb in results.values() for r in byb.values()
                  if "online testimony at" in (r["narrative"] or ""))
