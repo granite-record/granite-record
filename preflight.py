@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.450
+# GRANITE_VERSION: 2026-09-04.451
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2389,6 +2389,83 @@ def _crossed_after_passage(N):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, on the "
                   "day the receiving chamber gives; HB 70 of 2025 as it was")
+
+
+# A FLOOR VOTE WHOSE ROW STATES NO DATE (the launch audit of 7 October 2026,
+# cause 8). Real rows: Docket.txt lines 12789, 15887, 16783, 18223 and 18612
+# (HB 1473 of 2026), 18484 (HB 1036 of 2026), 8335 and 8553-8554 (SB 78 of
+# 2025); Docket_2021-2022.txt 2140, 2143 and 2145-2146 (HB 1175 of 2022) and
+# 81 (CACR 21 of 2022).
+_DOCKET_UNDATED_FLOOR = {
+    ("HB1473", "2025-2026"): [
+        "2026|2979|12/4/2025 4:15:56 PM|HB1473|H|  Introduced 01/07/2026 and referred to Municipal and County Government  HJ 1  P. 22|3/25/2026 12:51:09 PM",
+        "2026|2979|2/5/2026 8:27:11 AM|HB1473|H|Public Hearing: 02/10/2026 01:15 pm GP 154|2/5/2026 8:27:11 AM",
+        "2026|2979|2/11/2026 2:06:31 PM|HB1473|H|Executive Session: 02/17/2026 09:00 am GP 154|2/11/2026 2:06:31 PM",
+        "2026|2979|2/26/2026 8:47:12 AM|HB1473|H| Committee Report: Inexpedient to Legislate  02/17/2026 (Vote 17-0; CC)  HC 9  P. 24|3/3/2026 11:58:07 AM",
+        "2026|2979|3/5/2026 10:51:08 AM|HB1473|H|Inexpedient to Legislate: MA VV  HJ 6  P. 30|6/9/2026 2:13:45 PM"],
+    ("HB1036", "2025-2026"): [
+        "2026|2797|3/5/2026 9:23:44 AM|HB1036|H|Inexpedient to Legislate: MA VV 03/05/2026  HJ 6  P. 2|6/9/2026 1:21:57 PM"],
+    ("SB78", "2025-2026"): [
+        "2025|0304|4/30/2025 11:17:58 AM|SB78|H| Committee Report: Ought to Pass with Amendment # 2025-1713h   04/28/2025 (Vote 18-0; CC)  HC 23  P. 10|5/2/2025 11:47:53 AM",
+        "2025|0304|5/8/2025 10:59:49 AM|SB78|H|Persuant House Rule 39(e), Withdrawn: MF DV 2025-1713h  HJ 14  P. 12|6/17/2025 2:33:37 PM",
+        "2025|0304|5/8/2025 10:59:53 AM|SB78|H|Ought to Pass with Amendment 2025-1713h: MA VV 05/08/2025  HJ 14  P. 12|6/17/2025 2:33:42 PM"],
+    ("HB1175", "2021-2022"): [
+        "2022|2149|11/17/2021 12:00:00 AM|HB1175|H|Introduced 01/05/2022 and referred to Criminal Justice and Public Safety|11/17/2021 12:00:00 AM",
+        "2022|2149|2/8/2022 12:00:00 AM|HB1175|H|Majority Committee Report: Inexpedient to Legislate (Vote 17-3; RC)|2/8/2022 12:00:00 AM",
+        "2022|2149|3/11/2022 12:00:00 AM|HB1175|H|Lay HB1175 on Table (Rep. Abbas): MA VV HJ 5|3/11/2022 12:00:00 AM",
+        "2022|2149|3/11/2022 12:00:00 AM|HB1175|H|Remove from Table (Rep. Labranche): MF DV 50-288 03/10/2022 HJ 5|3/11/2022 12:00:00 AM"],
+    ("CACR21", "2021-2022"): [
+        "2022|2093|3/12/2022 12:00:00 AM|CACR21|H|Ought to Pass : MA DV 294-43 03/10/2022 HJ 5|3/12/2022 12:00:00 AM"],
+}
+
+
+@check("narrative", "a floor vote whose docket row states no date is dated by the day it was "
+                    "entered, where the dated rows citing its journal carry that day",
+       needs=("narrative", "build_site_v2"))
+def _undated_floor_vote(N, B):
+    """The launch audit's cause 8: "Inexpedient to Legislate: MA VV  HJ 6  P.
+    30" (HB 1473 of 2026) is the House killing the bill on 5 March 2026, and
+    the floor pattern, which ends at a date, read it as nothing -- the history
+    stopped at the committee and the Votes tab said there was no vote, on five
+    bills of 2025-2026 and eighteen of 2021-2024. It is dated by the moment it
+    was entered where the dated floor rows citing the same journal carry that
+    day (narrative.VOLUME_DAYS: HB 1036's "... 03/05/2026  HJ 6"). Not "Lay
+    HB1175 on Table (Rep. Abbas): MA VV HJ 5", entered on 11 March 2022 for a
+    journal whose rows are of the 10th, nor SB 78 of 2025's "Withdrawn: MF DV
+    2025-1713h", whose amendment number the lenient floor pattern would read
+    as a tally."""
+    bad = []
+    rows = {k: _docket_rows(v) for k, v in _DOCKET_UNDATED_FLOOR.items()}
+    keep = (getattr(N, "VOLUME_DAYS", None), N.MEMBERS)
+    try:
+        if keep[0] is not None:
+            N.VOLUME_DAYS = N.volume_days({k[0] + k[1]: v for k, v in rows.items()})
+        N.MEMBERS = {}
+        rec = _narrated(N, "2025-2026", "HB1473", _DOCKET_UNDATED_FLOOR[("HB1473", "2025-2026")])
+        last = rec["events"][-1]
+        if (last["type"], last["date"]) != ("floor", "2026-03-05"):
+            bad.append(f"HB 1473 of 2026's vote of 5 March is {last['type']} of {last['date']}")
+        if "On March 5, 2026 the House voted to kill it on a voice vote." not in rec["narrative"]:
+            bad.append(f"HB 1473 of 2026's history: {rec['narrative'][-300:]!r}")
+        if [st["label"] for st in rec["stages"]][-1:] != ["On the House floor"]:
+            bad.append(f"HB 1473's stages: {[st['label'] for st in rec['stages']]}")
+        votes = [(v.get("date"), v.get("vote_kind"), v.get("question"))
+                 for v in B.bill_rollcalls("HB1473", "2025-2026", [], rec, {}, [], {})]
+        if ("2026-03-05", "VV", "Inexpedient to Legislate") not in votes:
+            bad.append(f"HB 1473's Votes tab: {votes}")
+        for (bill, term), raw in ((("HB1175", "2021-2022"), "Lay HB1175 on Table (Rep. Abbas): MA VV"),
+                                  (("SB78", "2025-2026"), "Persuant House Rule 39(e), Withdrawn: MF DV 2025-1713h")):
+            got = [e["type"] for e in _narrated(N, term, bill, _DOCKET_UNDATED_FLOOR[(bill, term)])["events"]
+                   if e["raw"] == raw]
+            if got != ["other"]:
+                bad.append(f"{bill} of {term}'s {raw!r} is read as {got}")
+    finally:
+        if keep[0] is not None:
+            N.VOLUME_DAYS = keep[0]
+        N.MEMBERS = keep[1]
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 1473 of 2026's undated kill is the House's vote of 5 March, on its Votes tab; "
+                  "HB 1175 of 2022's tabling and SB 78 of 2025's withdrawal are left as they were")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))

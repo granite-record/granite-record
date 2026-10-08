@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.95
+# GRANITE_VERSION: 2026-09-04.96
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -3338,6 +3338,59 @@ def crossing_order(evs):
     return out
 
 
+# A FLOOR VOTE WHOSE ROW STATES NO DATE (the launch audit of 7 October 2026,
+# cause 8). "Inexpedient to Legislate: MA VV  HJ 6  P. 30" (HB 1473 of 2026,
+# Docket.txt line 18612) is the House killing the bill on 5 March 2026, and
+# the floor pattern, which ends at a date, read it as nothing: the history
+# stopped at the committee and the Votes tab said there was no vote. Five
+# bills of 2025-2026. The database's dockets of 1989-2016 already date such a
+# row by the moment it was entered (docket_vocab._ensure_date); from 2017 a
+# row that ends at its motion and vote is dated so too, but only where that
+# day is one the dated floor rows citing the same journal carry: the clerk
+# entered HB 1473's at 10:51 that morning, and HB 1036's "Inexpedient to
+# Legislate: MA VV 03/05/2026  HJ 6  P. 2" (line 18484) says HJ 6 is of the
+# 5th. "Lay HB1175 on Table (Rep. Abbas): MA VV HJ 5" was entered on 11 March
+# 2022 for a journal whose rows are of the 10th, and is left as it was. Not a
+# row the lenient floor pattern would misread: "... Withdrawn: MF DV
+# 2025-1713h" (SB 78 of 2025) or the garbled "MF DV 031126 [&]" (HB 1565).
+# {(chamber, "HJ 6", year): {day}}, over the whole docket main() reads.
+VOLUME_DAYS = {}
+FLOOR_UNDATED = re.compile(
+    r"^(?P<action>.+?)\s*:\s*(?P<motion>MA|MF|ML)\s+(?P<vote>VV|DV|RC)"
+    r"(?:\s+\d+\s*-\s*\d+)?\s*(?:\[&\])?$", re.I)
+
+
+def volume_days(bills):
+    """VOLUME_DAYS for {bill: [row]} (parse_docket)."""
+    floor = dict(PATTERNS)["floor"]
+    out = defaultdict(set)
+    for rows in bills.values():
+        for r in rows:
+            vol, _page = cite_of(r.get("desc"))
+            m = floor.search(clean(r.get("desc") or "")) if vol[:2] in ("HJ", "SJ") else None
+            try:
+                d = datetime.strptime(m.group("date"), "%m/%d/%Y").date() if m else None
+            except ValueError:
+                d = None
+            if d:
+                out[(r.get("body"), vol, d.year)].add(d)
+    return dict(out)
+
+
+def undated_floor(ev, r):
+    """The floor event of a row that ends at its motion and vote, dated by the
+    day it was entered where that is a day its journal covers; else None."""
+    created = r.get("created")
+    vol, _page = cite_of(r.get("desc"))
+    if (not FLOOR_UNDATED.match(ev["_raw"] or "") or not isinstance(created, datetime)
+            or created == datetime.min
+            or created.date() not in VOLUME_DAYS.get((r.get("body"), vol, created.year), ())):
+        return None
+    line = re.sub(r"\s*\[&\]\s*$", "", ev["_raw"])
+    got = dict(PATTERNS)["floor"].search(f"{line} {created:%m/%d/%Y}")
+    return {**got.groupdict(), "_type": "floor", "_raw": ev["_raw"]} if got else None
+
+
 def notice_note(ev):
     """What the bill's list of docket lines says beside a meeting row that
     build() tells as a notice and not as a meeting.
@@ -4588,6 +4641,9 @@ def build(bill, rows, introduction=None):
                 ev = {**ev, "_type": "introduced",
                       "committee": undated.group("committee"),
                       "date": r["created"].strftime("%m/%d/%Y")}
+            else:
+                # A floor vote whose row states no date (VOLUME_DAYS).
+                ev = undated_floor(ev, r) or ev
         # A resolution introduced and adopted in one motion (INTRODUCED_ADOPTED).
         if ev["_type"] == "other" and RESOLUTION.match(bill) and r["body"] not in passed:
             adopted = INTRODUCED_ADOPTED.match(ev["_raw"])
@@ -5868,7 +5924,9 @@ def main():
     # year -- all 2,233 of them, split 847 in 2025 and 1,386 in 2026 with no
     # bill in both -- so the first row settles which term the bill belongs to.
     results = defaultdict(dict)
-    global TERM, CONSENT_COUNTS, WHOLE_DAY
+    global TERM, CONSENT_COUNTS, WHOLE_DAY, VOLUME_DAYS
+    # Every row of the docket, also where one bill is asked for (undated_floor).
+    VOLUME_DAYS = volume_days(parse_docket(a.docket) if a.bill else bills)
     NOTICED.clear()
     MOVED_UNCHECKED.clear()
     WHOLE_DAY = {}
