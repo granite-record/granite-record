@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.16
+# GRANITE_VERSION: 2026-09-05.17
 """
 Write STATE.md from what is actually on disk.
 
@@ -234,11 +234,15 @@ def last_run():
 
 
 def tally(checks, data):
-    """"N passed, N failed, N skipped" over a record's data checks, or the rest."""
+    """"N passed, N failed, N skipped" over a record's data checks, or the
+    rest, and ", N expected to fail" where a check marked so (preflight's
+    check(expect_fail=)) failed as expected: counted, and never as passed."""
     mine = [c for c in checks if (c[0] == "data") == data]
+    xfail = sum(1 for c in mine if c[2] == "xfail")
     return (f"{sum(1 for c in mine if c[2] == 'ok')} passed, "
             f"{sum(1 for c in mine if c[2] in ('FAIL', 'ERROR'))} failed, "
-            f"{sum(1 for c in mine if c[2] == 'skip')} skipped")
+            f"{sum(1 for c in mine if c[2] == 'skip')} skipped"
+            + (f", {xfail} expected to fail" if xfail else ""))
 
 
 def n(x):

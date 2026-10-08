@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.465
+# GRANITE_VERSION: 2026-09-04.466
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -214,12 +214,38 @@ def _sealed_run(cmd, env=None, **kw):
         return seal.run(cmd, env=env, **kw)
 
 
-def check(group, name, needs=()):
-    """Register a check. `needs` names modules that must import for it to run."""
+def check(group, name, needs=(), expect_fail=None):
+    """Register a check. `needs` names modules that must import for it to run.
+
+    `expect_fail` is for a check written AHEAD of the change that makes it
+    pass, and says what that change is. Such a check runs every time; its
+    failure is reported as expected (xfail), with its message in full, and
+    counted on its own line of the summary rather than with the failures or
+    the skips. The day it passes it FAILS, and says to take the mark off: a
+    mark that outlived its change would excuse the next regression of what
+    the check now holds. An exception other than an assertion is an ERROR
+    either way, because a check that crashes has not found the failure it
+    expects. See _settle()."""
     def deco(fn):
-        CHECKS.append({"group": group, "name": name, "fn": fn, "needs": needs})
+        CHECKS.append({"group": group, "name": name, "fn": fn, "needs": needs,
+                       "expect_fail": expect_fail})
         return fn
     return deco
+
+
+def _settle(status, msg, expect_fail):
+    """(status, message) once a check's mark is read: what check() says of
+    expect_fail. "xfail" is a failure that was expected; an expected one
+    that passed is a FAIL."""
+    if not expect_fail:
+        return status, msg
+    if status == "FAIL":
+        return "xfail", f"expected to fail until {expect_fail}:\n{msg}"
+    if status == "ok":
+        return "FAIL", (f"this check was marked as expected to fail until {expect_fail}, and it "
+                        f"passes now: take the expect_fail mark off, so that it holds what it "
+                        f"found ({msg})")
+    return status, msg
 
 
 def imp(name):
@@ -21642,6 +21668,27 @@ def _clip(build_feeds):
     return "ok", out[-38:]
 
 
+@check("files", "a check marked as expected to fail is reported as one, and once it passes it "
+                "fails and says to take the mark off")
+def _expected_failures_settle():
+    """check(expect_fail=) and _settle(): a check written ahead of its change
+    is reported honestly -- run, its findings printed, counted apart from
+    the passes, the failures and the skips -- and cannot outlive the change,
+    because the run in which it passes is a failure that says so. A crash
+    stays an ERROR: it has not found the failure it expects."""
+    assert _settle("FAIL", "x", None) == ("FAIL", "x") and _settle("ok", "y", None) == ("ok", "y")
+    st, msg = _settle("FAIL", "found it", "the change lands")
+    assert st == "xfail" and "until the change lands" in msg and "found it" in msg, (st, msg)
+    st, msg = _settle("ok", "holds", "the change lands")
+    assert st == "FAIL" and "take the expect_fail mark off" in msg and "holds" in msg, (st, msg)
+    assert _settle("ERROR", "KeyError: x", "it lands") == ("ERROR", "KeyError: x")
+    assert _settle("skip", "not here", "it lands") == ("skip", "not here")
+    marked = [c for c in CHECKS if c.get("expect_fail")]
+    return "ok", (f"{len(marked)} checks marked as expected to fail"
+                  + (": " + "; ".join(f"{c['group']}/{c['name'][:50]}..." for c in marked)
+                     if marked else ""))
+
+
 @check("files", "every file's own stamp matches versions.json")
 def _stamps():
     """The stamp is what inventory.py compares, so a stale one is a lie.
@@ -41177,7 +41224,8 @@ def _handoff_reads_this_run(H):
                      "-c", "core.autocrlf=false", *args], capture_output=True, timeout=60)
     results = [("files", "one", "ok", ""), ("files", "two", "FAIL", "broken"),
                ("build", "three", "skip", "not here"), ("data", "four", "ok", ""),
-               ("data", "five", "ERROR", "KeyError")]
+               ("data", "five", "ERROR", "KeyError"),
+               ("frontend", "six", "xfail", "expected to fail until it lands")]
     started = []
 
     def run(cmd, **kw):
@@ -41219,9 +41267,9 @@ def _handoff_reads_this_run(H):
         rec, why = H.last_run()
         assert rec and not why and rec["commit"] == clean[0] and rec["mode"] == "all", (rec, why)
         said = section()
-        assert not started and "1 passed, 1 failed, 1 skipped" in said and \
-            "data checks: 1 passed, 1 failed, 0 skipped" in said and "- two" in said and \
-            "- five" in said and "did not run it again" in said, said
+        assert not started and "1 passed, 1 failed, 1 skipped, 1 expected to fail" in said \
+            and "data checks: 1 passed, 1 failed, 0 skipped." in said and "- two" in said \
+            and "- five" in said and "- six" not in said and "did not run it again" in said, said
 
         # An edit, and a second edit that git status prints the same way.
         Path("code.py").write_text("x = 2\n", encoding="utf-8")
@@ -75354,9 +75402,10 @@ def main():
                 status, msg = "ERROR", f"{type(e).__name__}: {e}"
                 if a.verbose:
                     traceback.print_exc()
+            status, msg = _settle(status, msg, c.get("expect_fail"))
         results.append((c["group"], c["name"], status, msg))
         mark = {"ok": "  ok  ", "skip": " skip ", "FAIL": " FAIL ",
-                "ERROR": "ERROR "}[status]
+                "ERROR": "ERROR ", "xfail": "xfail "}[status]
         print(f"  [{mark}] {c['name']}")
         if status != "ok" or a.verbose:
             for line in str(msg).splitlines():
@@ -75365,12 +75414,14 @@ def main():
     bad = [r for r in results if r[2] in ("FAIL", "ERROR")]
     skipped = [r for r in results if r[2] == "skip"]
     ok = [r for r in results if r[2] == "ok"]
+    expected = [r for r in results if r[2] == "xfail"]
     if handoff:
         handoff.record_run("code" if a.code else "data" if a.data else "all", results,
                            tree, _time.time() - began, data=data)
 
     print("\n" + "=" * 74)
-    print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped")
+    print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped"
+          + (f", {len(expected)} expected to fail" if expected else ""))
     if bad:
         print("\nWhat is broken:")
         for g, n, s, m in bad:
@@ -75382,8 +75433,15 @@ def main():
         print("\nSkipped, mostly because the file is not in this folder:")
         for g, n, s, m in skipped:
             print(f"  {g}/{n}: {m}")
+    if expected:
+        print("\nExpected to fail, each until the change it names lands (its findings are "
+              "above):")
+        for g, n, s, m in expected:
+            print(f"  {g}/{n}")
+            print(f"    {str(m).splitlines()[0][:150]}")
     if not bad:
-        print("\nEverything that can be checked without the network is working.")
+        print("\nEverything that can be checked without the network is working"
+              + (f", but for the {len(expected)} expected failures above." if expected else "."))
         print("What is left needs real data: run inventory.py, then align_all,")
         print("then src/hearings/segment_markers.py --all --data data, and score the result:")
         print("  src/hearings/probe_alignment.py --truth --candidate candidate_segments.json")
