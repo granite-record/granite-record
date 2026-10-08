@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.160
+# GRANITE_VERSION: 2026-09-04.161
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2719,7 +2719,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
        <span class="actb"><a href="${esc(r.year?`bill/${r.year}/${String(r.bill).toLowerCase()}.html`
          :`bills.html#${r.bill}`)}">${esc(r.n)}</a>
        <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
-       <span style="font-size:12px">${esc(r.what)}</span></span></li>`).join("")}
+       <span style="font-size:.75rem">${esc(r.what)}</span></span></li>`).join("")}
     </ul>
     <p class="actmore"><a class="morebtn" href="/bills?sort=recent">See all
     recent activity &rarr;</a></p>`;
@@ -2733,7 +2733,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       `<tr><td style="width:86px"><b>${v.y}\u2013${v.nn}</b></td>
        <td><a href="bills.html#${esc(v.bill)}">${esc(v.n)}</a>
        <span style="color:var(--ink-2)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
-       <span style="font-size:12px">${esc(v.title)}</span></td></tr>`).join("")}
+       <span style="font-size:.75rem">${esc(v.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}
      ${co.length?`<h2>Most contested</h2>
        <p class="note">Bills that took the most recorded floor votes to settle.
@@ -2767,7 +2767,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // sitting's page where one is built.
   sess.innerHTML=ls.length
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
-      `<div><p class="sesstitle" style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")} Session</b>
+      `<div><p class="sesstitle" style="margin:0 0 6px;font-size:.875rem"><b>${esc(v.chamber||"")} Session</b>
         (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
           data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
@@ -3453,7 +3453,7 @@ party or committee to find a member.</p>
         static_recent = ('<h2>Latest activity</h2><ul class="actlist">' + "".join(
             f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
             f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
-            f'{esc(r.get("title"))}<br><span style="font-size:12px">'
+            f'{esc(r.get("title"))}<br><span style="font-size:.75rem">'
             f'{esc(r.get("what"))}</span></span></li>'
             for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
                          + RECENT_MORE)

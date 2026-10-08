@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.470
+# GRANITE_VERSION: 2026-09-04.471
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20193,6 +20193,74 @@ def _line_of(text, at):
     return text.count("\n", 0, at) + 1
 
 
+def _em(px):
+    """A width in px as app.css writes it in a media query: em at the
+    browser's default of 16px, with no trailing zeros (720 -> "45em")."""
+    s = f"{px / 16:.6f}".rstrip("0").rstrip(".")
+    return (s[1:] if s.startswith("0.") else s) + "em"
+
+
+@check("frontend", "every text size is set in rem and every breakpoint in em, so the text size a "
+                   "reader sets in the browser reaches every element and the layout it needs")
+def _sizes_follow_the_reader():
+    """The browser's own text size -- the setting older readers are told to
+    change -- reaches a size written in rem and none written in px: before
+    8 October 2026 every size on the site was px, and at a 24px setting the
+    rendered sweep found 0 of 63 views drew a character larger. So no font
+    size in px or pt, in app.css's tokens and rules, the inline styles of the
+    builders, app.js and find.js; and no media or container query, nor a
+    script's matchMedia, in px, because a breakpoint in em moves with the
+    same setting and hands larger text the narrower layout it needs instead
+    of crowding the wide one. --measure, which holds a line to a number of
+    characters, is in rem for the same reason.
+
+    The vote rings write their words into the SVG in the ring's own units
+    (the font-size attribute), which follow the setting only because the
+    ring's box is sized in rem; that is held here too."""
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    bad, sizes, queries = [], 0, 0
+    for ctx, sel, body, ln in _css_rules(text):
+        for k, v in _css_decls(body):
+            size = _css_font_size(k, v) if not k.startswith("--t-") else v
+            if size is None:
+                continue
+            sizes += 1
+            if re.search(r"\d(px|pt)\b", size):
+                bad.append(f"app.css:{ln} {sel[:40]} sets {k} in {re.search(r'(px|pt)', size).group(1)}")
+    for m in re.finditer(r"@(media|container)([^{]*)\{", re.sub(r"/\*.*?\*/", "", text, flags=re.S)):
+        if re.search(r"(?:min|max)-(?:width|height)", m.group(2)):
+            queries += 1
+            if re.search(r"(?:min|max)-(?:width|height)\s*:\s*[\d.]+px", m.group(2)):
+                bad.append(f"@{m.group(1)}{m.group(2).rstrip()} is in px")
+    meas = _css_palette(text)["light"].get("--measure", "")
+    if not meas.endswith("rem"):
+        bad.append(f"--measure is {meas or 'not defined'}, not rem")
+    donut = re.search(r"(?:^|[}\s])\.donut\{([^}]*)\}", text)
+    if not donut or not re.search(r"width:[\d.]+rem", donut.group(1)):
+        bad.append("the vote ring's box is not sized in rem, so the words written in its own "
+                   "units do not follow the reader's text size")
+    inline = 0
+    for name, src in _front_sources():
+        for m in re.finditer(r"font-size\s*:\s*([^;\"'`}<>]+)", src):
+            inline += 1
+            if re.search(r"\d(px|pt)\b", m.group(1)):
+                bad.append(f"{name}:{_line_of(src, m.start())} sets text in px inline")
+        for m in re.finditer(r"matchMedia\(\s*[\"'`]([^\"'`]*)", src):
+            if re.search(r"(?:min|max)-width\s*:\s*[\d.]+px", m.group(1)):
+                bad.append(f"{name}:{_line_of(src, m.start())} asks matchMedia({m.group(1)}) in px")
+    assert sizes > 300 and queries > 40, (
+        f"only {sizes} sizes and {queries} width queries were read in app.css; there were "
+        "445 and 59 on 8 October 2026, so the reader has stopped reading")
+    assert not bad, f"{len(bad)} sizes or breakpoints in px: " + "; ".join(bad[:12]) + (
+        f" (+{len(bad) - 12} more)" if len(bad) > 12 else "")
+    return "ok", (f"{sizes} sizes and {queries} width queries in app.css, {inline} inline sizes "
+                  "in the builders and scripts: every size in rem, every breakpoint in em, the "
+                  "measure and the vote ring's box in rem")
+
+
 @check("frontend", "no text is set under the 13px floor, and 13px only in capitals: not by a "
                    "token or a rule of app.css, an inline style of a builder, app.js or find.js, "
                    "nor an SVG's font-size",
@@ -20840,7 +20908,7 @@ def _audit_minor(BSP, seating, BP):
                    "the line of the name can be pressed")
     elif re.findall(r"calc\(-1 \* (var\(--sp-\d+\))\)", link.group(2)) != chip.group(1).split():
         bad.append("a chip's link does not give its padding back as margin, so the chip grows")
-    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:720px\)\{(.*?)\n\}\n",
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:45em\)\{(.*?)\n\}\n",
                       css, re.S)
     if not phone:
         bad.append("the block that makes a phone's controls 44px is gone")
@@ -36723,13 +36791,14 @@ def _header_mark():
     assert BB.HEADER_MARK == BP.HEADER_MARK and BB.MARK_SCALE >= 2, (
         "build_brand.py writes the mark under another name than build_pages.py "
         "places, or at less than twice its box")
-    strip = re.search(r"@media \(min-width:(\d+)px\)\{\s*nav\.top \.in\{position:relative\}",
+    strip = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*nav\.top \.in\{position:relative\}",
                       css)
     assert strip, "app.css no longer takes the tab strip out of the flow at a min-width"
-    assert (f"@media (max-width:{int(strip.group(1)) - 1}.98px)"
+    at_px = float(strip.group(1)) * 16
+    assert (f"@media (max-width:{_em(at_px - 0.02)})"
             "{nav.top .brand{padding-left:0;padding-right:0}}") in rule, (
         "with the mark drawn, the brand must give up its side padding below "
-        f"{strip.group(1)}px, where the strip is in the flow: the mark is 18px "
+        f"{at_px:g}px, where the strip is in the flow: the mark is 18px "
         "wider than the row had, and a 360px phone wraps its menu button "
         "without them")
 
@@ -37002,7 +37071,7 @@ def _calendar_documents():
     assert need <= have, (
         f"the pickers' row needs {need}px and the schedule's column has {have}px at 1024px, "
         "beside the month: the button would stand past its box")
-    stacked = _braced(mine, "@media (max-width:700px){")
+    stacked = _braced(mine, "@media (max-width:43.75em){")
     assert ".cdpick{grid-template-columns:minmax(0,1fr)" in stacked \
         and ".cdf select{min-height:44px;font-size:var(--t-body)}" in stacked \
         and ".cdopen{min-height:44px}" in stacked \
@@ -38183,7 +38252,7 @@ def _review_of_audit_fixes(BP):
     if not m or m.group(1).split()[0] in ("0", "0px"):
         bad.append("the line above a sitting's heading has no space above it, so its "
                    "letters lie under the row of \"Cite this page\"")
-    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:720px\)\{(.*?)\n\}\n",
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:45em\)\{(.*?)\n\}\n",
                       css, re.S)
     crumb = re.sub(r"/\*.*?\*/", "", phone.group(1), flags=re.S) if phone else ""
     link = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a\{([^}]*)\}", crumb)
@@ -38200,22 +38269,24 @@ def _review_of_audit_fixes(BP):
             bad.append("what can be pressed on the line above a heading must reach 14px below "
                        "its words and no higher than the row above it, which is drawn over it: "
                        + over.group(1))
-    out_of_flow = re.search(r"@media \(min-width:(\d+)px\)\{\s*nav\.top \.in\{position:relative\}\s*"
+    out_of_flow = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*nav\.top \.in\{position:relative\}\s*"
                             r"\.navtabs\{position:absolute", bare)
-    padded = re.search(r"@media \(max-width:([\d.]+)px\)\{nav\.top \.brand\{padding-left:0;padding-right:0\}\}",
+    padded = re.search(r"@media \(max-width:([\d.]+)em\)\{nav\.top \.brand\{padding-left:0;padding-right:0\}\}",
                        bare)
     if not (out_of_flow and padded):
         bad.append("the header's two width rules are not where this check reads them")
     else:
-        at = int(out_of_flow.group(1))
-        if abs(float(padded.group(1)) - (at - 0.02)) > 1e-9:
+        # In em since 8 October 2026: at the browser's default of 16px, which
+        # is the width the numbers below were measured at.
+        at = round(float(out_of_flow.group(1)) * 16)
+        if abs(float(padded.group(1)) * 16 - (at - 0.02)) > 1e-6:
             bad.append(f"the tab strip leaves the header's flow at {at}px and the brand's "
-                       f"padding changes at {padded.group(1)}px: the two are one width")
+                       f"padding changes at {float(padded.group(1)) * 16:g}px: the two are one width")
         if at < 1100:
             bad.append(f"the tab strip is centred on the bar from {at}px: with five tabs and the "
                        "drawing beside the name it lies under the brand below 1034px, and at "
                        "980 it wraps")
-    if not re.search(r"@media \(max-width:720px\)\{[^@]*?\.flinks a\{[^}]*min-height:44px", bare, re.S):
+    if not re.search(r"@media \(max-width:45em\)\{[^@]*?\.flinks a\{[^}]*min-height:44px", bare, re.S):
         bad.append("a phone's footer links are not held to 44px")
     if ".navdrop .navtabs a:focus-visible,.navdrop .themer:focus-visible{outline-offset:-2px}" not in bare:
         bad.append("the menu's rows draw their focus ring outside the panel, which clips it")
@@ -48674,7 +48745,7 @@ def _calendar_layout():
     sticky = _braced(block, ".calapp.on > .calside{")
     assert "position:sticky" in sticky and "overflow-y:auto" in sticky, (
         "the month does not stay in view while the schedule scrolls")
-    narrow = _braced(block, "@media (max-width:1023px){")
+    narrow = _braced(block, "@media (max-width:63.9375em){")
     assert 'grid-template-areas:"head" "side" "main"' in narrow, "below 1024px the month is not above the schedule"
     assert ".calside.folded .cmgrid tbody tr:not(.cmsel){display:none}" in narrow, (
         "a folded month does not keep the selected week")
@@ -48715,7 +48786,7 @@ def _calendar_layout():
     # a scrolling block at 720px and below; the month then shrank to 26px days
     # and the week became a scroller inside its frame, its sticky hours
     # sliding off the screen with it.
-    assert re.search(r"@media \(max-width: ?720px\)\{[^@]*?\btable\{display:block", css), (
+    assert re.search(r"@media \(max-width: ?45em\)\{[^@]*?\btable\{display:block", css), (
         "the narrow-screen table rule this answers has moved; recheck the calendar against it")
     keep = re.search(r"\.calapp table\{([^}]*)\}", block)
     assert keep and "display:table" in keep.group(1) and "overflow:visible" in keep.group(1), (
@@ -49299,7 +49370,7 @@ def _home_finder_suggests_towns():
     # AND IN THE THREE COLUMNS (the look of 7 October 2026): from 1180px the
     # finder is a 290px column, where beside its button the box was 170px
     # and read "Your town, or a leg". The same media block covers both.
-    m = re.search(r"@media \(max-width:480px\),\(min-width:1180px\)\{\s*"
+    m = re.search(r"@media \(max-width:30em\),\(min-width:73\.75em\)\{\s*"
                   r":where\(body\.pg\) \.hfind\{[^}]*\}\s*"
                   r":where\(body\.pg\) \.hfrow\{flex-wrap:wrap\}\s*"
                   r":where\(body\.pg\) \.hfrow input\{flex:1 1 100%\}\s*"
@@ -49480,11 +49551,11 @@ def _seat_list_by_division():
     # Division 1 began 7,400px down under a column that had ended 4,600px
     # earlier. So the five-column grid is only at the width that holds five,
     # and under it each division takes the width with its seats in columns.
-    m = re.search(r"@media \(min-width:(\d+)px\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
+    m = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
                   r"gap:var\(--sp-(\d+)\);\s*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)", css)
     assert m, "app.css lays the divisions out five abreast at no width"
     sp = dict(re.findall(r"--sp-(\d+):(\d+)px", css))
-    at, gap = int(m.group(1)), int(sp[m.group(2)])
+    at, gap = round(float(m.group(1)) * 16), int(sp[m.group(2)])
     assert at >= 1180, f"five divisions abreast from {at}px, where the page has not the room"
     # The page's full width at 1180px is .wrap.wide's less its gutters.
     col = ((at - 2 * 24) - 4 * gap) / 5

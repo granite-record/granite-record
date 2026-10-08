@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.158
+// GRANITE_VERSION: 2026-09-07.159
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2251,7 +2251,7 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),chip:new Set(),
 // so between those two widths the panel stacked ABOVE the results with its
 // longest group open -- fourteen committees before the first bill.
 const wideEnough=typeof matchMedia==="function"
-  && matchMedia("(min-width:861px)").matches;
+  && matchMedia("(min-width:53.8125em)").matches;
 const openGroups=new Set(wideEnough?["committee"]:[]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
@@ -2489,7 +2489,7 @@ need("meta.json")
    // the clause about commas, which is the only place that feature is
    // explained, was the part that fell off the end. Two strings, and the
    // narrow one says what to type rather than everything you may type.
-   if(matchMedia("(max-width:720px)").matches)
+   if(matchMedia("(max-width:45em)").matches)
      $("#q").placeholder="Bill number, or a few words";
    // The button next to it does the same job on the focused view, so it waits
    // for the same data.
@@ -2685,7 +2685,7 @@ function fgroup(key,label,vals,counts,searchable,paint){
       +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${counts[v]||0}</span></label>`).join("")
-        ||(sponsorFilter?`<p style="font-size:12.5px;color:var(--ink-2)">No match</p>`:""));
+        ||(sponsorFilter?`<p style="font-size:.78125rem;color:var(--ink-2)">No match</p>`:""));
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
@@ -4270,7 +4270,7 @@ function renderReports(b,d,rsa){
              below is then the committee's filed copy, or there is none. */
           e.note?`<p class="note" style="margin:0 0 7px">${esc(e.note)}</p>`:""}
         ${(e.text||"").trim()
-          ? `<p style="font-family:var(--serif);font-size:16px;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>`
+          ? `<p style="font-family:var(--serif);font-size:1rem;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>`
           // 350 of the Senate's 1,446 reports carry no reasoning at all. That
           // is a fact about the report, not a gap in the site, and saying so
           // is better than an empty space under a heading. Not where a note

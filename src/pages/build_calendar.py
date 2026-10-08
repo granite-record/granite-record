@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.25
+# GRANITE_VERSION: 2026-09-18.26
 """
 The General Court's week, one page per week.
 
@@ -1651,9 +1651,9 @@ WEEK_JS = r"""
   // reader's own choice about the month is remembered in this browser.
   var folded=null;
   try{ folded=localStorage.getItem("gr.calendar.fold"); }catch(e){}
-  var narrow=!!(window.matchMedia&&window.matchMedia("(max-width:640px)").matches);
+  var narrow=!!(window.matchMedia&&window.matchMedia("(max-width:40em)").matches);
   setFold(folded===null?narrow:folded==="1");
-  setFilterFold(!!(window.matchMedia&&window.matchMedia("(max-width:1023px)").matches)&&!sideOn(S));
+  setFilterFold(!!(window.matchMedia&&window.matchMedia("(max-width:63.9375em)").matches)&&!sideOn(S));
   need(); drawAll();
   // An address from before 25 September is written again as the one the
   // calendar uses now, and a query in its own spelling -- keeping a fragment
