@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.5
+# GRANITE_VERSION: 2026-09-11.6
 """
 The 2007-2016 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -164,6 +164,34 @@ ERA = [
         r"\s+(?:Become\s+Law|Pass)|Shall\s+[A-Z]+\s*\d+\s+Become\s+Law|Governor[\u2019']?s(?=\s+Veto))"
         r".*?\bVeto\s+(?P<outcome>Sustained|Overridden)\b", re.I)),
 ]
+
+
+# "VETO OVERRIDEN", A SLIP OF THE CLERK'S, READ AS WHAT IT PLAINLY MEANS (7
+# October 2026, under the person's rule of 18 September for a source typo, and
+# docket_era_1999.SLIPS's shape). Nine House rows of 2011-2015 record an
+# override vote with one D -- "Veto Overriden: RC 248-123 By Required
+# Two-Thirds Vote, [done during 1/4/2012 morning veto session]" (SB 57 of
+# 2011), "Shall HB 1679 Become Law: Veto Overriden, RC 240-118 By Necessary
+# Two-Thirds Vote" (HB 1679, HB 1607, SB 289, SB 318, SB 326, SB 372 and SB
+# 406 of 2012), "Veto Overriden: RC 236-95" (HB 122 of 2015) -- and read as
+# typed each was no vote at all, so a carried override was missing from its
+# bill's history. The patterns refused a word that is no word; the roll call
+# beside it says what was decided. Only where a roll call follows the word:
+# "Veto Overriden 09/13/2018; Chapter 0379" (SB 365 of 2018) and "Veto
+# Overriden 05/30/2019: Eff: 05/30/2019; Chapter 42" (HB 455 of 2019) are the
+# chaptering row "Veto Override 06/24/2015; Effective ...; Chapter 0157" of
+# other bills, not a vote, and the modern reader's. The docket line keeps
+# what the clerk typed (docket_vocab.classify).
+SLIPS = [
+    (re.compile(r"\bVeto\s+Overriden\b(?=\s*[,:;]?\s*RC\b)"), "Veto Overridden"),
+]
+
+
+def mend(desc):
+    """The row with a slip in SLIPS read as what it means; else the row."""
+    for pat, rep in SLIPS:
+        desc = pat.sub(rep, desc or "")
+    return desc
 
 
 # -------------------------------------------------------------- joining

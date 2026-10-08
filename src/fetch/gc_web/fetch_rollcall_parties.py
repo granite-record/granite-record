@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.5
+# GRANITE_VERSION: 2026-09-10.6
 """The party of everyone who voted before 2017, from one roll call a chamber a year.
 
     python3 src/fetch/gc_web/fetch_rollcall_parties.py --plan     # which votes, no network
@@ -49,8 +49,10 @@ sits in Hillsborough 02 and Hillsborough 31 in the same chamber.
 
 GENTLE, AND IT STOPS
 
-15 seconds apart, --budget, two refusals ends it, refusal.py holds one for 24
-hours, and every answer is saved gzipped and never asked for twice.
+15 seconds apart, --budget, and the first refusal ends it -- a 403, 429 or
+503, the firewall's block page, or a second dropped connection, as
+refusal.classify reads them -- with refusal.py holding it for 24 hours; every
+answer is saved gzipped and never asked for twice.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -161,13 +163,22 @@ def fetch(year, body, vs, delay):
         req = urllib.request.Request(url, headers=UA)
         with urllib.request.urlopen(req, timeout=60) as r:
             page = r.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        if e.code in (403, 429):
-            refusal.note("fetch_rollcall_parties", f"HTTP {e.code} on {url}")
+    except Exception as e:                              # noqa: BLE001
+        # ONE READING OF AN ANSWER, the one every other fetcher uses
+        # (refusal.classify), since 7 October 2026. A 403 or 429 was the only
+        # refusal this knew: a 503, a Retry-After and a dropped connection --
+        # this address's usual way of saying no -- were read as a page that
+        # is not there, and the next roll call was asked for.
+        kind = refusal.classify(e)
+        if kind == "refused":
+            refusal.note("fetch_rollcall_parties", f"{type(e).__name__}: {e} on {url}")
             return "refused"
-        return "missing"
-    except (urllib.error.URLError, TimeoutError):
-        return "missing"
+        return "dropped" if kind == "dropped" else "missing"
+    # The firewall's block page comes with a 200, and read as a page it was
+    # one with "no ballots".
+    if refusal.classify(body=page[:4000]) == "refused":
+        refusal.note("fetch_rollcall_parties", f"the firewall's block page, served as 200, on {url}")
+        return "refused"
     if ERROR_PAGE.search(page[:6000]):
         return "error page"
     if not parse(page):
@@ -389,7 +400,6 @@ def main():
     ap.add_argument("--each", type=int, default=1,
                     help="roll calls per (year, chamber)")
     ap.add_argument("--delay", type=float, default=15.0)
-    ap.add_argument("--stop-refused", type=int, default=2)
     ap.add_argument("--parse", action="store_true")
     ap.add_argument("--solve", action="store_true",
                     help="pin the printed rows the join misses; no network")
@@ -432,7 +442,10 @@ def main():
         todo = todo[:a.probe]
     budget = a.budget or len(todo)
     print(f"{len(todo)} roll calls, {budget} requests this run, {a.delay:g}s apart")
-    tally, refused, spent = collections.Counter(), 0, 0
+    # THE FIRST REFUSAL ENDS IT, and a second dropped connection is one (7
+    # October 2026), as for every other fetcher of the General Court. This took
+    # a --stop-refused of 2 and so asked once more after a 403.
+    tally, dropped, spent = collections.Counter(), 0, 0
     for year, body, vs, _voters in todo:
         if spent >= budget:
             break
@@ -441,12 +454,16 @@ def main():
         if what != "cached":
             spent += 1
         print(f"  {year} {body} {vs}: {what}")
+        if what == "dropped":
+            dropped += 1
+            if dropped >= 2:
+                refusal.note("fetch_rollcall_parties",
+                             f"a second dropped connection, at {year} {body} vote {vs}")
+                what = "refused"
         if what == "refused":
-            refused += 1
-            if refused >= a.stop_refused:
-                print(f"\n{refused} refusals. Stopping; refusal.py holds one "
-                      "for 24 hours. netcheck.py says what kind it is.")
-                return 2
+            print("\nREFUSED. Stopping; refusal.py now holds one for 24 hours. "
+                  "netcheck.py says what kind it is.")
+            return 2
     print()
     print(", ".join(f"{v} {k}" for k, v in tally.most_common()))
     return report()

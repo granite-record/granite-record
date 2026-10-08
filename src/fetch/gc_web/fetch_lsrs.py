@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.7
+# GRANITE_VERSION: 2026-09-18.8
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -93,25 +93,34 @@ ROW = re.compile(
 LSR_NO = re.compile(r"^\s*(\d{4})-(\d{3,4})\s*$")
 
 
+def refused(why):
+    """Record a refusal and stop with status 2, as every fetcher of the
+    General Court does (refusal.note)."""
+    refusal.note("fetch_lsrs", why)
+    print(f"  REFUSED: {why}. refusal.py now holds the lane; netcheck.py says what "
+          "kind of refusal it was.")
+    sys.exit(2)
+
+
 def get(url, timeout=60):
-    """One request, identified, with a refusal classified rather than guessed."""
+    """One request, identified, with a refusal classified rather than guessed.
+
+    AND THE BLOCK PAGE (7 October 2026). The firewall serves its page with a
+    200, which this returned as the search page: "nothing on that page offers
+    a CSV", and no refusal on file for the next fetch to read. Read as
+    refusal.classify reads it, and a refusal ends the run with status 2 where
+    it ended with 1."""
     req = urllib.request.Request(url, headers=UA)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read(), r.headers.get_content_charset() or "utf-8"
-    except urllib.error.HTTPError as e:
-        kind = refusal.classify(e)
-        if kind == "refused":
-            refusal.note("fetch_lsrs", f"HTTP {e.code} from {url}")
-            sys.exit(f"  HTTP {e.code}. refusal.py now holds the lane; "
-                     "netcheck.py says what kind of refusal it was.")
-        sys.exit(f"  HTTP {e.code} from {url}")
-    except urllib.error.URLError as e:
-        kind = refusal.classify(e)
-        if kind == "refused":
-            refusal.note("fetch_lsrs", f"{e.reason} from {url}")
-            sys.exit(f"  {e.reason}. refusal.py now holds the lane.")
-        sys.exit(f"  {e.reason} from {url}")
+            body, enc = r.read(), r.headers.get_content_charset() or "utf-8"
+    except Exception as e:                              # noqa: BLE001
+        if refusal.classify(e) == "refused":
+            refused(f"{type(e).__name__}: {e} from {url}")
+        sys.exit(f"  {type(e).__name__}: {e} from {url}")
+    if refusal.classify(body=body[:4000].decode(enc, "replace")) == "refused":
+        refused(f"the firewall's block page, served as 200, from {url}")
+    return body, enc
 
 
 def find_csv(html):
@@ -143,19 +152,18 @@ def post(url, fields, timeout=90):
         "Referer": url})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return (r.read(), r.headers.get_content_charset() or "utf-8",
-                    r.headers.get("Content-Type", ""),
-                    r.headers.get("Content-Disposition", ""))
-    except urllib.error.HTTPError as e:
+            got = (r.read(), r.headers.get_content_charset() or "utf-8",
+                   r.headers.get("Content-Type", ""),
+                   r.headers.get("Content-Disposition", ""))
+    except Exception as e:                              # noqa: BLE001
         if refusal.classify(e) == "refused":
-            refusal.note("fetch_lsrs", f"HTTP {e.code} posting to {url}")
-            sys.exit(f"  HTTP {e.code}. refusal.py now holds the lane.")
-        sys.exit(f"  HTTP {e.code} posting to {url}")
-    except urllib.error.URLError as e:
-        if refusal.classify(e) == "refused":
-            refusal.note("fetch_lsrs", f"{e.reason} posting to {url}")
-            sys.exit(f"  {e.reason}. refusal.py now holds the lane.")
-        sys.exit(f"  {e.reason} posting to {url}")
+            refused(f"{type(e).__name__}: {e} posting to {url}")
+        sys.exit(f"  {type(e).__name__}: {e} posting to {url}")
+    # The block page answering the postback was read as "the postback did not
+    # return a file", and the results page asked for next (get's note).
+    if refusal.classify(body=got[0][:4000].decode(got[1], "replace")) == "refused":
+        refused(f"the firewall's block page, served as 200, posting to {url}")
+    return got
 
 
 def parse_results_html(html):

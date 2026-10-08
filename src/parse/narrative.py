@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.92
+# GRANITE_VERSION: 2026-09-04.93
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1425,6 +1425,55 @@ TO_BE_INTRODUCED = re.compile(r"^\s*To\s+Be\s+Introduced\b", re.I)
 # last row, another measure's).
 INTRODUCED_UNDATED = re.compile(
     r"^\s*Introduced\s+and\s+referred\s+to\s+(?P<committee>[A-Z][^;:(]*?)\s*$", re.I)
+# A RESOLUTION INTRODUCED AND ADOPTED IN ONE MOTION (7 October 2026). On
+# Organization Day each chamber adopts its first resolutions -- its rules, its
+# officers -- as they are introduced, and the docket says so in one row:
+# "Introduced and Adopted VV 12/04/2024  HJ 1" (HR 1 to HR 5 of 2025),
+# "Introduced and Adopted, VV; 12/04/2024;  SJ 1" (SR 1 to SR 5), "Introduced
+# and adopted VV; HJ 3, p.24" (HR 1 of 2007). From 2007 nothing read the row --
+# 172 of them -- so those resolutions had no history and no sitting page was
+# drawn for 4 December 2024. The reader of 1999-2006 already reads the same
+# words as the chamber's adoption (docket_era_1999.WORDS: "Introduced and
+# adopted" is "Ought to Pass"), and the later rows are read the same way, and
+# told in the sentence every adopted resolution's passage has. Read in build(),
+# where the bill is known: only a resolution's, and only where its chamber
+# records no passage of its own -- for HR 16 of 2020, HJR 3 of 2019 and SJR 2
+# of 2020 the row is the motion to introduce, each passed on a row of its own
+# ("Ought to Pass : MA VV"), and for HB 3 of 2019 the House taking the bill up.
+# Not the row the floor pattern already reads, "Introduced and Adopted: MA RC
+# 314-25". A date in brackets, "[11/30/2011]" (HR 14 of 2011, entered on 4
+# January), is the sitting it was done in.
+INTRODUCED_ADOPTED = re.compile(
+    r"^\s*Introduced\s+and\s+Adopted\b(?!\s*(?:\([^)]*\)\s*)?:)\s*"
+    r"(?:\(without\s+objection\)\s*)?[,;\s]*"
+    r"(?:\[\s*(?P<asof>\d{1,2}/\d{1,2}/\d{4})\s*\]\s*[,;]?\s*)?"
+    r"(?:(?P<vote>VV|RC|DV)\b\s*(?:(?P<y>\d+)\s*Y?\s*-\s*(?P<n>\d+)\s*N?)?)?"
+    r"[,;\s]*(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
+RESOLUTION = re.compile(r"^[HS](?:C|J)?R\d+$", re.I)
+PASSAGE_ROW = re.compile(r"^\s*Ought\s+to\s+Pass\b", re.I)
+
+
+def _adopted_in_term(when, r, bill, session):
+    """Whether an "Introduced and Adopted" row's day can be the adoption's: a
+    day in the bill's own term, or one a person corrected the row to
+    (docket_corrections.json).
+
+    A DAY BEFORE THE TERM IS A SLIP, AND A SITTING NOBODY HELD (the review of
+    7 October 2026). HR 6 of 2021, memorializing Speaker Hinch, reads
+    "Introduced and Adopted VV 01/06/2020 HJ 2 P. 2", entered on 7 January
+    2021: House Journal 2 is the sitting of 6 January 2021, and read as
+    stated the row drew "The House, Monday 6 January 2020", a sitting of the
+    term before. Correcting the year is a person's (docket_corrections.json),
+    so until then the row is left as it was, unread, rather than drawn on a
+    day the House did not sit."""
+    try:
+        mo, dy, yr = (int(x) for x in str(when or "").split("/"))
+        year = int(str(r.get("session") or session)[:4])
+    except (TypeError, ValueError):
+        return True
+    if in_term(yr, mo, dy, year):
+        return True
+    return bool(CORRECTIONS) and corrected_date(r, bill)[0] is not None
 
 PATTERNS = [
     ("introduced", re.compile(
@@ -3615,22 +3664,56 @@ def _session_of_kind(ev):
     return ""
 
 
+def _time_changed_clock(e, evs):
+    """The hour, "HH:MM", that the last row of the bill in e's chamber entered
+    after it and marked TIME CHANGE or NEW TIME gives e's day; else "".
+
+    THE TABLE'S ROW CARRIES THAT HOUR (7 October 2026): docket_parser gives a
+    Senate notice of 1999-2006 the hour such a row gives its day
+    (TIME_CHANGED_ROW there), so a meeting this history voids is that hour in
+    proceedings.csv. SB 387 of 2000's hearing of 25 January, noticed for 3:40,
+    set for 3:25 by "==TIME CHANGE== Jan. 25", and moved to 15 February, is
+    voided at both. The day the row names is read as docket_parser reads it
+    (docket_era_1999.DTXT, full_date)."""
+    E = getattr(_VOCAB, "E1999", None)
+    if E is None:
+        return ""
+    day, best = e["_unheld_day"], None
+    for x in evs:
+        said = x.get("_said") or ""
+        if (x is e or x["body"] != e["body"] or not TIME_CHANGED.search(said)
+                or not _entered_before(e, x.get("_entered"))):
+            continue
+        m = re.search(E.DTXT, said, re.I)
+        named = E.full_date(m.group(0), x["_entered"], forward=True) if m else None
+        if not named or datetime.strptime(named, "%m/%d/%Y").date() != day:
+            continue
+        at = _clock({"_said": said[m.end():], "when": x["_entered"]})
+        if at and (best is None or x["_entered"] >= best[0]):
+            best = (x["_entered"], at)
+    return best[1] if best else ""
+
+
 def voided_meetings(evs):
     """[[day, chamber, kind, "HH:MM" or ""]], each meeting a later row of the
     docket cancelled or moved (overtaken) whose row in the table could be no
-    meeting the history tells (above), for proceedings.notice_only."""
+    meeting the history tells (above), for proceedings.notice_only -- at the
+    hour its notice states, and at the hour a later TIME CHANGE row gave it
+    (_time_changed_clock), which is the one the table's row carries."""
     told = [e for e in evs
             if not e["cancelled"] and not e.get("_void") and e["_type"] in ROW_MEETINGS]
     out = set()
     for e in evs:
         if not e.get("_unheld_day") or e["_type"] not in VOIDED_KIND:
             continue
-        day, at = e["_unheld_day"], _clock(e)
-        if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
-               and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
-               for t in told):
-            continue
-        out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
+        day, said = e["_unheld_day"], _clock(e)
+        moved = _time_changed_clock(e, evs) if said else ""
+        for at in [said] + ([moved] if moved and moved != said else []):
+            if any(t["when"].date() == day and t["body"] == e["body"] and t["_type"] == e["_type"]
+                   and (P.same_minute(at, _clock(t)) or _session_of_kind(t) == _session_of_kind(e))
+                   for t in told):
+                continue
+            out.add((day.isoformat(), e["body"], VOIDED_KIND[e["_type"]], at))
     return [list(x) for x in sorted(out)]
 
 
@@ -4351,6 +4434,10 @@ def build(bill, rows, introduction=None):
         rows = vocab.join_rows(rows, session)
     evs, elsewhere = [], []
     read_from_journal = set()
+    # The chambers that record a resolution's passage on a row of its own
+    # (INTRODUCED_ADOPTED).
+    passed = ({r["body"] for r in rows if PASSAGE_ROW.match(clean(r["desc"]))}
+              if RESOLUTION.match(bill) else set())
     for r in rows:
         # One question of a line docket_vocab.questions split comes with its
         # event already read ("event"): a clause is read by its era's clause
@@ -4365,6 +4452,19 @@ def build(bill, rows, introduction=None):
                 ev = {**ev, "_type": "introduced",
                       "committee": undated.group("committee"),
                       "date": r["created"].strftime("%m/%d/%Y")}
+        # A resolution introduced and adopted in one motion (INTRODUCED_ADOPTED).
+        if ev["_type"] == "other" and RESOLUTION.match(bill) and r["body"] not in passed:
+            adopted = INTRODUCED_ADOPTED.match(ev["_raw"])
+            if adopted:
+                when = adopted.group("asof") or adopted.group("date")
+                if not when and isinstance(r.get("created"), datetime) \
+                        and r["created"] != datetime.min:
+                    when = r["created"].strftime("%m/%d/%Y")
+                if _adopted_in_term(when, r, bill, session):
+                    ev = {**ev, "_type": "floor", "action": "Ought to Pass", "motion": "MA",
+                          "vote": (adopted.group("vote") or "").upper() or None,
+                          "y": adopted.group("y"), "n": adopted.group("n"), "refer": None,
+                          "date": when}
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
         # And a committee's name is the one it had in this term (committee_said).

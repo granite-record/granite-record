@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.443
+# GRANITE_VERSION: 2026-09-04.444
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4954,9 +4954,10 @@ _DOCKET_RECONVENED = {
 }
 _RECONVENED_TOLD = {("SB370", "1999-2000"): ["2000-01-19", "2000-02-09"],
                     ("SB189", "2001-2002"): ["2001-03-28", "2001-04-11"]}
-# What proceedings.csv reads of them: SB 370's notice "Hearing, Jan. 19" is a
-# date docket_parser does not read (the month with a full stop), as before.
-_RECONVENED_SITTINGS = {("SB370", "1999-2000"): ["2000-02-09"],
+# What proceedings.csv reads of them: both days the history tells. SB 370's
+# notice "Hearing, Jan. 19" was a date docket_parser did not read, the month
+# with a full stop, until _docket_dotted_month.
+_RECONVENED_SITTINGS = {("SB370", "1999-2000"): ["2000-01-19", "2000-02-09"],
                         ("SB189", "2001-2002"): ["2001-03-28", "2001-04-11"]}
 
 
@@ -5122,6 +5123,144 @@ def _clerk_slips_read(N, D):
         bad.append(f"proceedings.csv reads SB 393's sittings as {live!r}")
     assert not bad, "\n".join(bad)
     return "ok", "two slips read on their own rows; SB 393 of 2000 heard on 8 February, as typed on its docket"
+
+
+# Real rows: Docket_db_2011-2012.txt 6972 (SB 57 of 2011), 15630 (HB 1679 of
+# 2012) and 21964 (SB 326 of 2012, whose question names SB 318 and whose roll
+# call, 313 of 2012, is SB 326's); Docket_2015-2016.txt 1980-1983 (HB 122 of
+# 2015); Docket_2017-2018.txt 17637 (SB 365 of 2018) and Docket_2019-2020.txt
+# 9958 (HB 455 of 2019).
+_DOCKET_OVERRIDEN = [
+    ("2011", "11/30/2011 10:48:20 AM", "Veto Overriden: RC 248-123 By Required Two-Thirds Vote, [done during 1/4/2012 morning veto session]; HJ 76, PG.2302-2305",
+     ("RC", "248", "123", "01/04/2012")),
+    ("2012", "06/27/2012 11:03:13 AM", "Shall HB 1679 Become Law: Veto Overriden, RC 240-118 By Necessary Two-Thirds Vote; HJ 53, PG.2625-2628",
+     ("RC", "240", "118", "06/27/2012")),
+    ("2012", "06/27/2012 04:21:09 PM", "Shall SB 318 Become Law: Veto Overriden, RC 312-18 By Necessary Two-Thirds Vote; HJ 53, PG.2652-2654",
+     ("RC", "312", "18", "06/27/2012")),
+    ("2015", "06/11/2015 11:11:21 AM", "Veto Overriden: RC 236-95 By Required Two-Thirds Vote; HJ 46, PG. 1981-1983",
+     ("RC", "236", "95", "06/11/2015")),
+    ("2018", "9/17/2018 12:00:00 AM", "Veto Overriden 09/13/2018; Chapter 0379; Effective 09/03/2018", None),
+    ("2019", "5/30/2019 12:00:00 AM", "Veto Overriden 05/30/2019: Eff: 05/30/2019; Chapter 42", None),
+]
+_DOCKET_OVERRIDEN_HB122 = [
+    "2015|0254|06/03/2015 04:28:44 PM|HB122|H|Vetoed by the Governor on 6/2/2015; HJ 46, PG. 1981|06/03/2015 04:28:44 PM",
+    "2015|0254|06/11/2015 11:11:21 AM|HB122|H|Veto Overriden: RC 236-95 By Required Two-Thirds Vote; HJ 46, PG. 1981-1983|06/11/2015 11:11:21 AM",
+    "2015|0254|06/24/2015 03:51:36 PM|HB122|S|Notwithstanding the Governor’s Veto, Shall HB 122 Become Law:  RC 18Y-6N, Veto Overridden by required two-thirds vote|06/24/2015 03:51:36 PM",
+    "2015|0254|06/25/2015 11:14:25 AM|HB122|H|Veto Override 06/24/2015; Effective 08/23/2015; Chapter 0157|06/25/2015 11:14:25 AM",
+]
+
+
+@check("narrative", "a House override the clerk spelt \"Overriden\" is read as the override it "
+                    "records, and the docket line keeps the clerk's word",
+       needs=("narrative", "docket_vocab"))
+def _veto_overriden_read(N, V):
+    """Nine House rows of 2011-2015 record an override vote as "Veto
+    Overriden" -- SB 57 of 2011, seven bills on 27 June 2012, HB 122 of 2015
+    -- and the reader typed each no vote at all, so a carried override was
+    missing from the history (docket_era_2007.SLIPS). Read where a roll call
+    follows the word and nowhere else: SB 365 of 2018's and HB 455 of 2019's
+    "Veto Overriden <date>; ... Chapter" rows are the chaptering row, not a
+    vote, and stay as they were. And the list of the era's slips is this one,
+    so a second is a decision with its evidence and not a widening."""
+    import datetime as _dt
+    import docket_era_2007 as E7
+    bad = []
+    if len(getattr(E7, "SLIPS", ())) != 1:
+        bad.append(f"docket_era_2007.SLIPS holds {len(getattr(E7, 'SLIPS', ()))} slips; a new one is a person's "
+                   "decision, with its evidence, and this check is changed with it")
+    for year, at, desc, want in _DOCKET_OVERRIDEN:
+        when = _dt.datetime.strptime(at, "%m/%d/%Y %I:%M:%S %p")
+        ev = V.classify(desc, when, year) or N.classify(desc)
+        got = ((ev.get("vote"), ev.get("y"), ev.get("n"), ev.get("date"))
+               if ev.get("_type") == "veto_override" and ev.get("outcome") == "Overridden" else None)
+        if got != want:
+            bad.append(f"{desc[:60]!r} of {year} is read as {ev.get('_type')} {got!r}, not {want!r}")
+        if "Overriden" not in (ev.get("_raw") or ""):
+            bad.append(f"{desc[:40]!r}'s docket line no longer says what the clerk typed: {ev.get('_raw')!r}")
+    n = _told_from_rows(N, "2015-2016", "HB122", _DOCKET_OVERRIDEN_HB122)
+    said = n.get("narrative") or ""
+    if ("June 11, 2015 the House voted 236–95 to override" not in said
+            or "June 24, 2015 the Senate voted 18–6 to override" not in said):
+        bad.append(f"HB 122 of 2015's history does not tell both overrides: {said!r}")
+    if not any("Overriden" in e["raw"] for e in n["events"]):
+        bad.append("HB 122's docket line does not keep the clerk's \"Overriden\"")
+    assert not bad, "\n".join(bad)
+    return "ok", ("nine override votes spelt \"Overriden\" read as overrides with their roll calls, "
+                  "the two chaptering rows left as they were, and HB 122 of 2015 tells both chambers'")
+
+
+# Real rows: Docket.txt lines 8 and 13 (HR 1 of 2025) and 1 (SR 1 of 2025);
+# Docket_db_2007-2008.txt 6757 (HR 1 of 2007); Docket_2019-2020.txt
+# 14093-14096 (HR 16 of 2020).
+_DOCKET_INTRODUCED_ADOPTED = [
+    ("2025-2026", "HR1", [
+        "2025|0939|12/4/2024 12:59:53 PM|HR1|H|Introduced and Adopted VV 12/04/2024  HJ 1|12/4/2024 12:59:56 PM",
+        "2025|0939|12/4/2024 12:59:44 PM|HR1|H|Amendment: AA VV 12/04/2024  HJ 1|12/4/2024 12:59:56 PM"],
+     "On December 4, 2024 the House voted to pass it on a voice vote."),
+    ("2025-2026", "SR1", [
+        "2025|0173|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV; 12/04/2024;  SJ 1|12/4/2024 10:44:26 AM"],
+     "On December 4, 2024 the Senate voted to pass it on a voice vote."),
+    ("2007-2008", "HR1", [
+        "2007|0829|12/06/2006 03:43:31 PM|HR1|H|Introduced and adopted VV; HJ 3, p.24|12/06/2006 03:43:31 PM"],
+     "On December 6, 2006 the House voted to pass it on a voice vote."),
+    ("2019-2020", "HR16", [
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Late Drafting and Introduction Approved by House by the Necessary 2/3 MA 308-13 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM",
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Introduced and Adopted 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM",
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Ought to Pass : MA DV 316-10 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM",
+        "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Lay on Table (Rep. Almy): MA VV 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM"],
+     None),
+]
+
+
+@check("narrative", "a resolution introduced and adopted in one motion is told as adopted that day, "
+                    "and its chamber's sitting is drawn", needs=("narrative", "session_days"))
+def _introduced_and_adopted(N, SD):
+    """From 2007 the docket's "Introduced and Adopted VV 12/04/2024" -- HR 1
+    to HR 5 and SR 1 to SR 5 of each Organization Day, 172 rows -- was read as
+    nothing, so those resolutions had no history and no sitting page was drawn
+    for 4 December 2024. Read as the reader of 1999-2006 reads the same words,
+    the chamber adopting it, and told in the sentence every adopted
+    resolution's passage has. Not where the chamber passes it on a row of its
+    own: HR 16 of 2020's row is the motion to introduce, and its passage is
+    "Ought to Pass : MA DV 316-10", told once, as before."""
+    bad, narr = [], {}
+    for term, bill, lines, want in _DOCKET_INTRODUCED_ADOPTED:
+        n = _told_from_rows(N, term, bill, lines)
+        said = n.get("narrative") or ""
+        if want is not None and said != want:
+            bad.append(f"{bill} of {term} is told {said!r}, not {want!r}")
+        if want is None and (said.count("voted to pass it") != 1
+                             or any(e["type"] == "floor" and "Introduced and Adopted" in e["raw"]
+                                    for e in n["events"])):
+            bad.append(f"{bill} of {term}'s motion to introduce is told as its passage: {said!r}")
+        narr.setdefault(term, {})[bill] = n["events"]
+    try:
+        days = _sitting_fixture(SD, {"2025-2026": narr["2025-2026"]}, {})
+    except (AssertionError, SystemExit) as e:
+        days = {}
+        bad.append(f"no sitting is drawn from 2025's resolutions: {e}")
+    for body, bill in (("H", "HR1"), ("S", "SR1")):
+        day = days.get((body, "2024-12-04"))
+        if day is None or not any(i.bill == bill for i in day.items):
+            bad.append(f"no {body} sitting of 4 December 2024 draws {bill}: {sorted(days)}")
+    # A day before the bill's term is the clerk's slip, not a sitting
+    # (narrative._adopted_in_term): HR 6 of 2021, Docket_2021-2022.txt line
+    # 13807, adopted on 6 January 2021 and typed 2020.
+    n = _told_from_rows(N, "2021-2022", "HR6", [
+        "2021|1064|1/7/2021 12:00:00 AM|HR6|H|Introduced and Adopted VV 01/06/2020 HJ 2 P. 2|1/7/2021 12:00:00 AM"])
+    if any(e["type"] == "floor" for e in n["events"]):
+        bad.append(f"HR 6 of 2021's row dated 6 January 2020 is told as a sitting's: {n['events']!r}")
+    else:
+        try:
+            gone = _sitting_fixture(SD, {"2021-2022": {"HR6": n["events"]}}, {})
+        except (AssertionError, SystemExit):
+            gone = {}
+        if ("H", "2020-01-06") in gone:
+            bad.append("a House sitting of 6 January 2020 is drawn from HR 6 of 2021")
+    assert not bad, "\n".join(bad)
+    return "ok", ("HR 1 and SR 1 of 2025 and HR 1 of 2007 told as adopted, both chambers' sittings "
+                  "of 4 December 2024 drawn, HR 16 of 2020's motion to introduce left as it was, "
+                  "and HR 6 of 2021's row typed 2020 drawn on no sitting")
 
 
 # Real rows: Docket_2015-2016.txt (HB 564 of 2015).
@@ -5342,8 +5481,8 @@ _DOCKET_NEW_TIME = [
 
 @check("build", "a Senate hearing's new day takes the hour a later row gave it and the committee "
                 "the bill was vacated to, and --merge --refresh replaces the one row it names",
-       needs=("docket_parser", "build_manifest"))
-def _rescheduled_row_new_time(D, M):
+       needs=("docket_parser", "build_manifest", "narrative", "proceedings"))
+def _rescheduled_row_new_time(D, M, N, P):
     """The review of decision 60: SB 411 of 2000's row merged into the
     1999-2000 manifest put its Senate hearing of 10 February at 9:00 before
     Ways and Means, the hour and committee of "==RESCHEDULED== Feb.10, Room
@@ -5355,7 +5494,13 @@ def _rescheduled_row_new_time(D, M):
     Senate Ways and Means' page, which said the committee met that day for a
     hearing on SB 411, took both from the row. --merge keeps a row it has byte
     for byte, so --refresh replaces the row of a meeting --only names by day,
-    and refuses a row with a hand-marked time or an --only without a day."""
+    and refuses a row with a hand-marked time or an --only without a day.
+
+    The notice of 4 February, "Hearing, Feb. 4", is the docket's and the table
+    holds it since _docket_dotted_month reads the dotted month; the history
+    voids it, cancelled by the row "==CANCELLED==; SC2, Pg.17", so
+    proceedings.notice_only leaves it off every page and the one sitting
+    drawn is the 10th's."""
     bad = []
     tmp = Path(tempfile.mkdtemp(prefix="gr-new-time-"))
     try:
@@ -5365,9 +5510,16 @@ def _rescheduled_row_new_time(D, M):
         D.build_sittings(procs)
         live = [(p.sched_date, p.sched_time, p.committee) for p in procs
                 if p.confidence != "X-cancelled"]
-        if live != [("2000-02-10", "13:00", "Environment")]:
-            bad.append(f"SB 411's sittings are read as {live!r}, not Environment's hearing at 1:00 "
-                       "on 10 February")
+        if live != [("2000-02-04", "10:00", "Environment"), ("2000-02-10", "13:00", "Environment")]:
+            bad.append(f"SB 411's sittings are read as {live!r}, not the notice of 4 February at "
+                       "10:00 and Environment's hearing at 1:00 on 10 February")
+        narr = _told_from_rows(N, "1999-2000", "SB411", _DOCKET_NEW_TIME)
+        drawn = [(p.sched_date, p.sched_time) for p in procs if p.confidence != "X-cancelled"
+                 and not P.notice_only({"date": p.sched_date, "kind": p.kind, "body": p.body,
+                                        "time": p.sched_time or ""}, narr)]
+        if drawn != [("2000-02-10", "13:00")]:
+            bad.append(f"SB 411's history leaves {drawn!r} drawn, not the hearing of 10 February "
+                       f"alone (voided {narr.get('voided')!r})")
         cols = M.MANIFEST_COLUMNS
         line = lambda b, c, d, t, mark="": (",".join([b, "S", c, "hearing", d, t, "LOB 104",
                                                       "A-unique-slot", "1", "no video found"]
@@ -5426,6 +5578,379 @@ def _sb411_manifest_row():
     assert got == [("Environment", "13:00")], (
         f"{f.name} has SB 411's Senate rows of 10 February 2000 as {got!r}")
     return "ok", "SB 411 of 2000 heard by Environment at 1:00 on 10 February"
+
+
+# Real rows: Docket_db_1999-2000.txt 17032-17037 (SB 398 of 2000).
+_DOCKET_VACATED_SB398 = [
+    "2000|2486|01/05/2000 09:56:03 AM|SB398|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 12|01/05/2000 09:56:03 AM",
+    "2000|2486|01/05/2000 03:17:52 PM|SB398|S|Hearing, Jan. 11, 3:45 p.m., Room 102, LOB; SC1, Pg. 3 ==CANCELLED==|01/05/2000 03:17:52 PM",
+    "2000|2486|01/05/2000 03:18:43 PM|SB398|S|Vacated from Transportation to Wildlife and Recreation, MA, VV; SJ Convening Day, Pg. 6|01/05/2000 03:18:43 PM",
+    "2000|2486|03/09/2000 08:48:04 AM|SB398|S|Hearing March 15, Room 101, LOB, 2:45 p.m.; SC16|03/09/2000 08:48:04 AM",
+    "2000|2486|03/22/2000 09:00:23 AM|SB398|S|Committee Report Inexpedient to Legislate; 3/23/2000, SC18|03/22/2000 09:00:23 AM",
+    "2000|2486|03/23/2000 04:29:52 PM|SB398|S|Inexpedient to Legislate, MA, VV  ==KILLED==; SJ 7, Pg. 224|03/23/2000 04:29:52 PM",
+]
+
+
+@check("build", "SB 398 of 2000's hearing is the committee's the Senate vacated the bill to, as "
+                "its committee row and history say", needs=("docket_parser",))
+def _vacated_sb398(D):
+    """SB 398 of 2000 was introduced to Transportation and, the same
+    afternoon, "Vacated from Transportation to Wildlife and Recreation";
+    Wildlife and Recreation heard it on 15 March. The bill's committee row
+    (referrals.vacated, data/bills.json) and its history named Wildlife and
+    Recreation, and the 1999-2000 manifest, merged before docket_parser read
+    the Senate's "Vacated from X to Y" (VACATED_FROM_TO_RE, the review of
+    decision 60), filed the hearing under Transportation -- the station on
+    the bill's page and Senate Transportation's day. The parser reads it;
+    _vacated_sb398_manifest holds the files on disk to it."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vacated-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_VACATED_SB398) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    live = [(p.sched_date, p.committee) for p in procs if p.confidence != "X-cancelled"]
+    assert live == [("2000-03-15", "Wildlife and Recreation")], (
+        f"SB 398's sittings are read as {live!r}, not Wildlife and Recreation's hearing of 15 March")
+    return "ok", "SB 398 of 2000 heard by Wildlife and Recreation on 15 March"
+
+
+@check("data", "SB 398 of 2000's hearing of 15 March is Wildlife and Recreation's in the 1999-2000 "
+               "manifest and proceedings.csv")
+def _vacated_sb398_manifest():
+    """_vacated_sb398, in the files on disk: a manifest merged before
+    docket_parser read the vacate, or a table built from one, files the
+    hearing under Transportation, the committee the Senate took the bill
+    from. A full rebuild of the term's manifest puts it right."""
+    got = []
+    for f, bill, body, day, cmte in (
+            (Path("verification_manifest_1999-2000.csv"), "bill", "body", "sched_date", "committee"),
+            (Path("proceedings.csv"), "bill", "body", "date", "committee")):
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            got += [(f.name, r[cmte]) for r in csv.DictReader(fh)
+                    if r[bill] == "SB398" and r[body].upper() == "S" and r[day] == "2000-03-15"]
+    want = [("verification_manifest_1999-2000.csv", "Wildlife and Recreation"),
+            ("proceedings.csv", "Wildlife and Recreation")]
+    assert got == want, f"SB 398's hearing of 15 March 2000 is filed as {got!r}"
+    return "ok", "Wildlife and Recreation's, in the manifest and the table"
+
+
+# Real rows: Docket_db_1999-2000.txt 5488-5490 (SB 31 of 1999) and 2232-2234
+# (HB 506 of 1999), the chamber of the last of each in lower case as the
+# database gives it.
+_DOCKET_LOWER_CHAMBER_MANIFEST = [
+    "1999|0672|01/07/1999 04:14:22 PM|SB31|S|Introduction and referring to Ways & Means:  SJ 2, P 27|01/07/1999 04:14:22 PM",
+    "1999|0672|02/03/1999 04:09:34 PM|SB31|S|Hearings, 2/12/99, Room 103, SH, 10:00 a.m. Hearing Recessed|02/03/1999 04:09:34 PM",
+    "1999|0672|03/31/1999 10:42:26 AM|SB31|s|Rescheduled Hearing, 4/9/99, Room 103, SH, 1:00 p.m.|03/31/1999 10:42:26 AM",
+    "1999|0275|01/28/1999 05:31:34 PM|HB506|H|Introduced and ref to Elec Law; HJ18, p272|01/28/1999 05:31:34 PM",
+    "1999|0275|02/09/1999 05:29:15 PM|HB506|H|Copy to chairman on 2/9/1999   due on|02/09/1999 05:29:15 PM",
+    "1999|0275|02/11/1999 05:30:48 PM|HB506|h|Hearing  Mar 2  10:30  Rm308,LOB|02/11/1999 05:30:48 PM",
+]
+
+
+@check("build", "a docket row whose chamber is in lower case is a sitting of that chamber in the "
+                "manifest", needs=("build_manifest",))
+def _manifest_lower_case_chamber(BM):
+    """64 rows of 1999-2000 and one of 2001 give the chamber as "s" or "h",
+    four of them meetings: SB 31's "Rescheduled Hearing, 4/9/99" (line 5490),
+    HB 506's hearing of 2 March 1999, SB 30's and HB 346's conferences.
+    docket_parser read the Senate's pattern on them, and build_manifest, which
+    keeps the rows whose chamber its video indexes cover -- "H" and "S" --
+    dropped all four; HB 506's hearing was looked up under a chamber no
+    referral is filed under, so it named no committee. parse_rows reads the
+    chamber in either case."""
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-manifest-case-"))
+    head = ("video_id,title,title_parsed,parsed_committee,parsed_date,date_from,has_start_time,"
+            "start_eastern,actual_start_utc,actual_end_utc,duration_iso,published_at\n")
+    try:
+        for name, vid in (("videos_house_x.csv", "h1"), ("videos_senate_x.csv", "s1")):
+            (tmp / name).write_text(head + f"{vid},Finance,yes,Finance,2020-01-07,,,,,,,\n",
+                                    encoding="utf-8")
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_LOWER_CHAMBER_MANIFEST) + "\n", encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_manifest.py"), "--videos",
+                  "videos_house_x.csv", "videos_senate_x.csv", "--docket", "Docket.txt",
+                  "--out", "vm.csv"], cwd=tmp, capture_output=True, text=True, timeout=120,
+                 env=dict(os.environ, PYTHONPATH=str(here)))
+        assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
+        with (tmp / "vm.csv").open(encoding="utf-8", newline="") as fh:
+            got = sorted((x["bill"], x["body"], x["sched_date"], x["committee"])
+                         for x in csv.DictReader(fh))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    want = [("HB506", "H", "1999-03-02", "Elec Law"),
+            ("SB31", "S", "1999-02-12", "Ways and Means"), ("SB31", "S", "1999-04-09", "Ways and Means")]
+    assert got == want, f"the manifest holds {got!r}, not {want!r}"
+    return "ok", "SB 31's hearing of 9 April 1999 and HB 506's of 2 March 1999 are in the manifest"
+
+
+@check("data", "SB 31 of 1999's rescheduled hearing of 9 April, its chamber in lower case, is in "
+               "the 1999-2000 manifest")
+def _manifest_lower_case_chamber_on_disk():
+    """_manifest_lower_case_chamber, in the file on disk: a manifest built
+    before parse_rows read the chamber in either case has no row for SB 31's
+    hearing of 9 April 1999 or HB 506's of 2 March."""
+    f = Path("verification_manifest_1999-2000.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        have = {(r["bill"], r["body"], r["sched_date"]) for r in csv.DictReader(fh)}
+    want = {("SB31", "S", "1999-04-09"), ("HB506", "H", "1999-03-02"),
+            ("SB30", "S", "1999-06-23"), ("HB346", "S", "1999-11-30")}
+    assert want <= have, f"{f.name} has no row for {sorted(want - have)}"
+    return "ok", "SB 31, HB 506, SB 30 and HB 346 have their meetings in the 1999-2000 manifest"
+
+
+# Real rows: Docket_db_1999-2000.txt 8644-8645 (SB 49), 2044-2045 (SB 12),
+# 8137-8138 (SB 48), 16092-16093 (HB 1471 in the Senate), 12195-12196 (SB 79)
+# and 15318-15319 (SB 393, "Hearning" read by SENATE_SCHED_RE's kind).
+_DOCKET_SENATE_INTRODUCTION = [
+    ("SB49", "Education", [
+        "1999|1007|01/07/1999 03:58:12 PM|SB49|S|Introduction and referring to Education;  SJ 2, P 29|01/07/1999 03:58:12 PM",
+        "1999|1007|01/28/1999 03:58:48 PM|SB49|S|Hearing, 2/3/99, Room 105-A, SH, 8:30 a.m.|01/28/1999 03:58:48 PM"]),
+    ("SB12", "Public Affairs", [
+        "1999|0253|01/07/1999 09:45:37 AM|SB12|S|Introducing and referred to Public Affairs; SJ 2, P 26|01/07/1999 09:45:37 AM",
+        "1999|0253|01/28/1999 02:51:58 PM|SB12|S|Hearing, Feb. 17, 1:00 p.m., Room 104, LOB|01/28/1999 02:51:58 PM"]),
+    ("SB48", "Education", [
+        "1999|0948|01/07/1999 03:54:54 PM|SB48|S|Introduction and referred to Education; SJ 2, P 29|01/07/1999 03:54:54 PM",
+        "1999|0948|01/28/1999 03:55:24 PM|SB48|S|Hearing, 2/4/99, Room 105-A, SH, 8:30 a.m.|01/28/1999 03:55:24 PM"]),
+    ("HB1471", "Capital Budget", [
+        "2000|2397|02/03/2000 12:48:47 PM|HB1471|S|Introduced And Ref. to Capital Budget; SJ 2, Pg.86|02/03/2000 12:48:47 PM",
+        "2000|2397|03/01/2000 02:22:26 PM|HB1471|S|Hearing March 10, Room 103, SH, 1:00 p.m.; SC14, Pg.3|03/01/2000 02:22:26 PM"]),
+    ("SB79", "Banks", [
+        "2000|0923|01/28/1999 10:39:54 AM|SB79|S|Introduction and referring to Banks 1/28/99;  SJ 3, P 34|01/28/1999 10:39:54 AM",
+        "2000|0923|03/05/1999 09:33:07 AM|SB79|S|Hearing, 3/17/99, Room 103, LOB, 9:00 a.m.|03/05/1999 09:33:07 AM"]),
+    ("SB393", "Insurance", [
+        "2000|2307|01/05/2000 09:45:06 AM|SB393|S|Introduced and Ref. Insurance; SJ Convening Day, Pg.12|01/05/2000 09:45:06 AM",
+        "2000|2307|01/06/2000 04:12:07 PM|SB393|S|Hearning, Feb. 15, Room 103, SH, 10:40 a.m.; SC1, Pg.8|01/06/2000 04:12:07 PM"]),
+    # The review of 7 October 2026: Docket_db_1999-2000.txt 7125-7126 and
+    # 7434-7436 (SB 27, and LSR 0881's introduction filed under SB 27 among
+    # SB 26's rows), 7874-7877 (SB 69, a vacate over two rows) and 3807,
+    # 3809-3810 (HB 707, "Moved Vacate to").
+    ("SB27", "Banks", [
+        "1999|0858|01/07/1999 04:21:20 PM|SB27|S|Introduction and referring to Banks:  SJ 2, P 27|01/07/1999 04:21:20 PM",
+        "1999|0858|02/17/1999 01:50:06 PM|SB27|S|Hearing, 3/10/99, Room 103, LOB, 9:30 a.m.|02/17/1999 01:50:06 PM",
+        "1999|0881|01/07/1999 04:23:15 PM|SB27|S|Introduction and referring to Judiciary:  SJ 2, P 27|01/07/1999 04:23:15 PM",
+        "1999|0881|02/03/1999 03:37:40 PM|SB26|S|Hearing, 2/17/99, Room 102, LOB, 10:30 a.m.|02/03/1999 03:37:40 PM",
+        "1999|0881|03/03/1999 11:32:04 AM|SB26|S|Committee Report, Ought to Pass, March 4|03/03/1999 11:32:04 AM"]),
+    ("SB69", "Public Institutions, Health and Human Services", [
+        "1999|0924|01/28/1999 10:19:52 AM|SB69|S|Introduction and referring to Executive Departments and Administration;   SJ 3,  P 33|01/28/1999 10:19:52 AM",
+        "1999|0924|02/11/1999 11:15:50 AM|SB69|S|Sen. Cohen motion to Vacate from Executive Departments and Administration|02/11/1999 11:15:50 AM",
+        "1999|0924|02/11/1999 11:23:26 AM|SB69|S|to the Public Institutions, Health and Human Services Committee.  MA, VV.|02/11/1999 11:23:26 AM",
+        "1999|0924|02/25/1999 08:51:28 AM|SB69|S|Hearing, 3/30/99, Room 102, LOB, 1:45 p.m.|02/25/1999 08:51:28 AM"]),
+    ("HB707", "Judiciary", [
+        "1999|0473|06/29/1999 03:11:11 PM|HB707|S|Introduction and referring to Finance;  SJ 26, P 718.|06/29/1999 03:11:11 PM",
+        "1999|0473|07/01/1999 03:47:29 PM|HB707|S|Sen. Hollingworth Moved Vacate to Judiciary, MA, VV; SJ 742-743|07/01/1999 03:47:29 PM",
+        "1999|0473|08/18/1999 08:40:09 AM|HB707|S|Hearing, 9/8/99, Room 102, LOB, 10:30 a.m.|08/18/1999 08:40:09 AM"]),
+]
+
+
+@check("build", "a Senate hearing of 1999-2006 names the committee the Senate's own words "
+                "introduced the bill to, or vacated it to, and never another bill's", needs=("docket_parser",))
+def _senate_introduction_committee(D):
+    """The Senate of 1999 wrote "Introduction and referring to Education" (615
+    rows of the 1999-2000 docket), "Introducing and referred to", "Introduced
+    And Ref. to", "Introduced and Ref. Insurance", and docket_parser's
+    referral patterns read none of them, so 645 of the 998 Senate rows of the
+    1999-2000 manifest named no committee and reached no committee's page.
+    They are read as the bill's committee row reads them (referrals), the
+    date after the name dropped: "referring to Banks 1/28/99" is Banks.
+
+    AND AS IT READS THEM IN FULL (the review of 7 October 2026). Read alone,
+    the introduction put six hearings under a committee the bill's own row
+    does not name: SB 27's three under Judiciary, from LSR 0881's
+    introduction of SB 26 filed under SB 27's number, and SB 69's and HB
+    707's under the committee the Senate had vacated them from. Only the
+    bill's own LSR's row, and the vacate after it, one row or two."""
+    bad = []
+    for bill, want, lines in _DOCKET_SENATE_INTRODUCTION:
+        tmp = Path(tempfile.mkdtemp(prefix="gr-senate-intro-"))
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = D.parse_rows(str(tmp / "Docket.txt"))
+            procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        got = [p.committee for p in procs if p.bill == bill]
+        if got != [want]:
+            bad.append(f"{bill}'s Senate hearing is filed under {got!r}, not {want!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_DOCKET_SENATE_INTRODUCTION)} Senate hearings of 1999-2000 name the "
+                  "committee their introduction, or the vacate after it, gave")
+
+
+@check("data", "the 1999-2000 manifest's Senate rows name a committee, but for the bills whose "
+               "docket names none")
+def _senate_introduction_committee_on_disk():
+    """_senate_introduction_committee, in the file on disk: 645 of 998 Senate
+    rows named no committee. What is left are bills the Senate's docket gives
+    no introduction for, or gives one in words no reader of this project
+    takes (the scratch notes of 7 October 2026 list them); a manifest built
+    before reads hundreds. And the six hearings the introduction alone put
+    under the wrong committee (_senate_introduction_committee) are their
+    own committee's."""
+    f = Path("verification_manifest_1999-2000.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        sen = [r for r in csv.DictReader(fh) if r["body"].upper() == "S"]
+    none = sorted({r["bill"] for r in sen if not r["committee"]})
+    assert len(none) <= 13, (f"{len(none)} Senate bills of 1999-2000 have a manifest row with no "
+                             f"committee: {', '.join(none[:12])}")
+    want = {("SB27", "1999-03-10"): "Banks", ("SB27", "1999-03-17"): "Banks",
+            ("SB27", "1999-03-24"): "Banks", ("CACR16", "1999-02-17"): "Education",
+            ("SB69", "1999-03-30"): "Public Institutions, Health and Human Services",
+            ("HB707", "1999-09-08"): "Judiciary"}
+    got = {(r["bill"], r["sched_date"]): r["committee"] for r in sen
+           if (r["bill"], r["sched_date"]) in want}
+    assert got == want, f"{f.name} files {sorted(set(got.items()) - set(want.items()))}"
+    return "ok", (f"{sum(1 for r in sen if not r['committee'])} of {len(sen)} Senate rows name no "
+                  f"committee, on {len(none)} bills whose docket names none it can read")
+
+
+# Real rows: Docket_db_1999-2000.txt 2716-2717 (SB 39 of 1999) and 9481-9482
+# (HB 273 of 2000); Docket_db_2009-2010.txt 21776 and 21779 (SB 483 of 2010).
+_DOCKET_DOTTED_MONTH = [
+    '1999|0331|01/07/1999 11:18:50 AM|SB39|S|Introduction and referring to Public Affairs:  SJ 2, P 28|01/07/1999 11:18:50 AM',
+    '1999|0331|01/28/1999 03:59:04 PM|SB39|S|Hearing, Feb. 17, Room 104, LOB, 2:15 p.m.|01/28/1999 03:59:04 PM',
+    '2000|0122|01/13/2000 09:24:18 AM|HB273|S|Introduced and Ref. to Education ; SJ 1, Pg.35|01/13/2000 09:24:18 AM',
+    '2000|0122|02/16/2000 04:03:48 PM|HB273|S|Hearing, Feb.23, Room 105 A, SH, 9:10 a.m ; SC12, Pg.9|02/16/2000 04:03:48 PM',
+    '2010|2791|01/21/2010 10:52:51 AM|SB483|S|Introduced and Referred to Ways & Means; SJ 3, Pg.46|01/21/2010 10:52:51 AM',
+    '2010|2791|02/25/2010 09:59:02 AM|SB483|S|Hearing:==RECONVENE==Mar. 3, 2010, Rm 100, SH, 1:30 p.m. or immediately following session, SC9|02/25/2010 09:59:02 AM',
+]
+
+
+@check("build", "a Senate hearing whose month the clerk dotted (\"Feb. 17\", \"Feb.23\", \"Mar. 3, "
+                "2010\") is a proceeding on that day", needs=("docket_parser",))
+def _docket_dotted_month(D):
+    """The Senate of 1999-2000 wrote "Hearing, Feb. 17, Room 104, LOB, 2:15
+    p.m." and 2010 twice "Hearing:==RECONVENE==Mar. 3, 2010". SENATE_SCHED_RE
+    read the line and _parse_date did not read the date, because strptime's
+    %b takes no dot, so the row was dropped and 174 hearings had no
+    proceedings row: SB 39's of 17 February 1999, HB 273's of 23 February
+    2000, SB 483's reconvened sitting of 3 March 2010."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dotted-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_DOTTED_MONTH) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = sorted((p.bill, p.sched_date, p.sched_time, p.venue) for p in procs)
+    want = [("HB273", "2000-02-23", "09:10", "SH 105 A"),
+            ("SB39", "1999-02-17", "14:15", "LOB 104"),
+            ("SB483", "2010-03-03", "13:30", "SH 100")]
+    assert got == want, f"the dotted months' hearings are read as {got!r}, not {want!r}"
+    return "ok", "SB 39 on 17 February 1999, HB 273 on 23 February 2000, SB 483 on 3 March 2010"
+
+
+@check("data", "no Senate meeting line on disk whose month the clerk dotted is left without a day")
+def _docket_dotted_month_on_disk():
+    """_docket_dotted_month over every docket on this disk: a Senate line
+    SENATE_SCHED_RE reads whose date opens with a dotted month ("Jan. 11",
+    "Feb.23", "Mar. 3, 2010") must give _parse_date a day. 174 did not, 172
+    of 1999-2000 and 2 of 2009-2010."""
+    D = imp("docket_parser")
+    if D is None:
+        return "skip", "docket_parser.py will not import"
+    files = sorted(Path(".").glob("Docket_db_*.txt")) + sorted(Path(".").glob("Docket_[0-9]*.txt"))
+    if not files:
+        return "skip", "no docket on this disk"
+    seen, bad = 0, []
+    for f in files:
+        for r in D.parse_rows(str(f)):
+            if (r["body"] or "").strip().upper() != "S":
+                continue
+            m = D.SENATE_SCHED_RE.search(D.extract_flags(r["desc"])[1])
+            if not m or not re.match(r"[A-Za-z]{3,9}\.", m.group("date")):
+                continue
+            seen += 1
+            if D._parse_date(m.group("date"), D._created(r)) is None:
+                bad.append(f"{f.name}:{r['lineno']} {r['bill']} {m.group('date')!r}")
+    assert not bad, f"{len(bad)} dotted Senate dates read as no day: " + "; ".join(bad[:6])
+    return "ok", f"{seen:,} Senate meeting lines with a dotted month, every one dated"
+
+
+# Real rows: Docket_db_2005-2006.txt 2119-2121 (SB 139 of 2005) and
+# Docket_db_1999-2000.txt 18606-18608 (SB 312 of 2000) and 13072-13075 (SB 387
+# of 2000).
+_DOCKET_TIME_CHANGE = [
+    '2005|0330|01/06/2005 11:02:19 AM|SB139|S|Introduced and Referred to Judiciary; SJ 2, Pg.29|01/06/2005 11:02:19 AM',
+    '2005|0330|02/10/2005 02:03:07 PM|SB139|S|Hearing; February 22, 2005, Room 105-A, SH 1:30 p.m.; SC7|02/10/2005 02:03:07 PM',
+    '2005|0330|02/16/2005 02:34:11 PM|SB139|S|Hearing; === TIME CHANGE === February 22, 2005, Room 105-A, SH, 2:00 p.m.; SC8|02/16/2005 02:34:11 PM',
+    '2000|2641|01/05/2000 10:25:17 AM|SB312|S|Introduced and Ref. to Public Affairs; SJ Convening Day, Pg.7|01/05/2000 10:25:17 AM',
+    '2000|2641|01/06/2000 04:13:15 PM|SB312|S|Hearing, 2/23/00, Room 104, LOB, 1:00 p.m.; SC1, Pg.9|01/06/2000 04:13:15 PM',
+    '2000|2641|02/16/2000 03:43:03 PM|SB312|S|===TIME CHANGE=== Feb.23, Room 104, LOB, 1:45 p.m.; SC 12, Pg.9|02/16/2000 03:43:03 PM',
+    '2000|2068|01/05/2000 09:25:22 AM|SB387|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 11|01/05/2000 09:25:22 AM',
+    '2000|2068|01/06/2000 01:40:01 PM|SB387|S|Hearing, Jan. 25 , Room 104 , LOB ,3:40 p.m.;SC1, Pg.6|01/06/2000 01:40:01 PM',
+    '2000|2068|01/19/2000 03:50:53 PM|SB387|S|==TIME CHANGE== Jan. 25, Room 104, LOB, 3:25 p.m.; SC 5, Pg.3|01/19/2000 03:50:53 PM',
+    '2000|2068|01/26/2000 04:05:34 PM|SB387|S|==RESCHEDULED==Feb.15,Room 104,LOB,3:30 p.m.; SC 6,Pg.6|01/26/2000 04:05:34 PM',
+]
+
+
+@check("build", "a Senate hearing of 1999-2006 sits at the hour a later TIME CHANGE row gave its "
+                "day, not the first notice's, and a history that voids it voids that hour",
+       needs=("docket_parser", "narrative", "proceedings"))
+def _senate_time_change(D, N, P):
+    """SB 139 of 2005 was noticed for 1:30 on 22 February and moved to 2:00 by
+    "Hearing; === TIME CHANGE === February 22, 2005"; SB 312 of 2000 for 1:00
+    on 23 February and moved to 1:45 by "===TIME CHANGE=== Feb.23". A notice
+    SENATE_SCHED_RE read kept the hour it stated, so proceedings.csv, which
+    folds the two rows of one hearing into the one with the earlier hour, gave
+    91 Senate sittings of 1999-2006 the first notice's hour. Every row of each
+    hearing now carries the later hour.
+
+    And SB 387 of 2000's hearing of 25 January, noticed for 3:40 and set for
+    3:25 by "==TIME CHANGE== Jan. 25", was moved to 15 February: its history
+    voided it at 3:40 alone, so the table's row, at 3:25, would have been drawn
+    as a hearing that never sat (narrative._time_changed_clock)."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-time-change-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_TIME_CHANGE) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad = []
+    got = sorted((p.bill, p.sched_date, p.sched_time) for p in procs)
+    want = [("SB139", "2005-02-22", "14:00"), ("SB139", "2005-02-22", "14:00"),
+            ("SB312", "2000-02-23", "13:45"),
+            ("SB387", "2000-01-25", "15:25"), ("SB387", "2000-02-15", "15:30")]
+    if got != want:
+        bad.append(f"the hearings are read as {got!r}, not {want!r}")
+    narr = _told_from_rows(N, "1999-2000", "SB387",
+                           [x for x in _DOCKET_TIME_CHANGE if "|SB387|" in x])
+    drawn = [(p.sched_date, p.sched_time) for p in procs if p.bill == "SB387"
+             and not P.notice_only({"date": p.sched_date, "kind": p.kind, "body": p.body,
+                                    "time": p.sched_time or ""}, narr)]
+    if drawn != [("2000-02-15", "15:30")]:
+        bad.append(f"SB 387 of 2000 has {drawn!r} drawn, not its hearing of 15 February alone "
+                   f"(voided {narr.get('voided')!r})")
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 139 of 2005 at 2:00 on 22 February, SB 312 of 2000 at 1:45 on 23 February; "
+                  "SB 387 of 2000's hearing of 25 January, at 3:25, left off as moved")
+
+
+@check("data", "SB 139 of 2005 and SB 312 of 2000 sit in proceedings.csv at the hour their TIME "
+               "CHANGE row gave them")
+def _senate_time_change_table():
+    """_senate_time_change, in the table on disk: a proceedings.csv built
+    before it, or from a manifest that was, gives these two hearings 1:30 and
+    1:00."""
+    f = Path("proceedings.csv")
+    if not f.exists():
+        return "skip", "no proceedings.csv here"
+    want = {("2005-2006", "SB139", "2005-02-22"): "14:00", ("1999-2000", "SB312", "2000-02-23"): "13:45"}
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = {(r["term"], r["bill"], r["date"]): r["time"] for r in csv.DictReader(fh)
+               if (r["term"], r["bill"], r["date"]) in want and r["body"] == "S"
+               and r["kind"] == "hearing"}
+    assert got == want, f"proceedings.csv gives {got!r}, not {want!r}"
+    return "ok", "2:00 on 22 February 2005 and 1:45 on 23 February 2000"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "
@@ -28097,7 +28622,14 @@ def _organization_day_votes(P, BD, SD, BSP):
     its ballots tallied with that term's members and linked to its bills. No
     roll call file holds one yet (0 of 9,565), so this holds the rule on a
     fixture: proceedings.vote_term, rollcall_parser's terms, the frozen term's
-    files, and a sitting page drawn for a vote on no bill."""
+    files, and a sitting page drawn for a vote on no bill.
+
+    AND careers.json (7 October 2026): build_careers credited a ballot to
+    its session year, so a member whose first vote was the Speaker's election
+    of 2 December 2026, filed under 2026, would have served in 2025-2026. It
+    reads the roll call's VoteDate now, and stops on a (year, chamber, number)
+    that names votes of two terms -- December's numbered from 1 again under
+    2026 -- whose ballots could not say which vote they are."""
     import datetime as _dt
     import html as _html
     bad = []
@@ -28180,6 +28712,49 @@ def _organization_day_votes(P, BD, SD, BSP):
                 bad.append(f"Organization Day's roll call is in 2025-2026's record of {name}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    # careers.json, from the database's roll calls: the day's ballot is the
+    # next term's service, and a key that names two terms' votes stops it.
+    careers_cols = {
+        "Legislators": ["Employeeno", "FirstName", "LastName", "party", "LegislativeBody",
+                        "countycode", "PersonID"],
+        "RollCallHistory": ["EmployeeNumber", "SessionYear", "LegislativeBody",
+                            "VoteSequenceNumber", "CondensedBillNo", "Vote", "UserName",
+                            "DateModified", "CalendarItemID"],
+        "RollCallSummary": ["SessionYear", "LegislativeBody", "VoteSequenceNumber", "VoteDate",
+                            "CondensedBillNo", "Yeas", "Nays", "Present", "Absent",
+                            "AbbreviatedTitle1", "AbbreviatedTitle2", "Question_Motion", "Title1",
+                            "Title2", "UserName", "DateModified", "Verified", "CalendarItemID"]}
+    summary_rows = ["2026|H|300|08/19/2026 14:58:41|SB434|165|140|0|95|||Override|||x|x|True|",
+                    "2026|H|400|12/02/2026 10:31:07||210|180|0|10|||Election of Speaker|||x|x|True|"]
+    for clashing in (False, True):
+        tmp = Path(tempfile.mkdtemp(prefix="gr-orgday-careers-"))
+        try:
+            (tmp / "db").mkdir()
+            (tmp / "db" / "_columns.json").write_text(json.dumps(careers_cols), encoding="utf-8")
+            (tmp / "db" / "Legislators.psv").write_text(
+                "111111|Pat|Old|R|H|06|1\n222222|Sam|New|D|H|06|2\n", encoding="utf-8")
+            (tmp / "db" / "RollCallSummary.psv").write_text("\n".join(summary_rows + (
+                ["2026|H|1|01/07/2026 10:15:33||321|2|34|38|||Call of the Roll|||x|x|True|",
+                 "2026|H|1|12/02/2026 10:05:00||390|0|0|10|||Call of the Roll|||x|x|True|"]
+                if clashing else [])) + "\n", encoding="utf-8")
+            (tmp / "db" / "RollCallHistory.psv").write_text(
+                "111111|2026|H|300|SB434|1|x|x|\n111111|2026|H|400||1|x|x|\n"
+                "222222|2026|H|400||1|x|x|\n", encoding="utf-8")
+            r = _run([sys.executable, _paths.script("build_careers.py"), "--out", "careers.json"],
+                     cwd=str(tmp), capture_output=True, text=True, timeout=120)
+            said = (r.stdout or "") + (r.stderr or "")
+            if clashing:
+                if r.returncode == 0 or "2026 H 1" not in said:
+                    bad.append("build_careers built careers.json over two terms' votes under one key "
+                               f"(2026 H 1): exit {r.returncode}, {said.strip()[-200:]!r}")
+            else:
+                got = json.loads((tmp / "careers.json").read_text(encoding="utf-8")) \
+                    if (tmp / "careers.json").exists() else {}
+                terms = {k: v.get("terms") for k, v in got.items()}
+                if terms != {"111111": ["2025-2026", "2027-2028"], "222222": ["2027-2028"]}:
+                    bad.append(f"careers.json gives the terms {terms} ({said.strip()[-200:]!r})")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     # A sitting of the day, for the next term's resolution and a vote on no bill.
     narr = {"2027-2028": {"HR1": [{"type": "floor", "date": "2026-12-02", "body": "H",
                                    "raw": "Ought to Pass: MA VV 12/02/2026  HJ 1",
@@ -28206,7 +28781,8 @@ def _organization_day_votes(P, BD, SD, BSP):
     assert not bad, "\n".join(bad)
     return "ok", ("Organization Day's roll calls are the next term's, filed under either year: "
                   "kept beside the frozen term's files and out of its record, keyed 2027-2028 "
-                  "in rollcalls.json, and drawn with a vote on no bill on the day's sitting")
+                  "in rollcalls.json and careers.json, and drawn with a vote on no bill on the "
+                  "day's sitting; a key naming two terms' votes stops careers.json")
 
 
 @check("session", "a veto override the other chamber carried too says the bill became law, on "
@@ -46562,6 +47138,12 @@ def _every_fetcher_notes_refusal():
     record a refusal; nor may one that stops at its first failure record a
     single dropped connection, which is not one; nor check_civics_links a 403
     from nh.gov, which is that server's.
+
+    AND TWO THAT NOTED AND WENT ON (7 October 2026): fetch_rollcall_parties
+    stopped only at its second refusal and read a 503, the block page and a
+    dropped connection as a page not there, and fetch_lsrs did not notice the
+    block page and stopped on a refusal with status 1. Both are driven here,
+    and on a 503 too, never run against the address.
     """
     import contextlib
     import http.client
@@ -46678,6 +47260,16 @@ def _every_fetcher_notes_refusal():
             {"403": 1, "block": 1, "drop": 2}),
         "probe_calendars": ([], None, {"403": 1, "block": 1}),
         "probe_schema": (["--dir", "."], None, {"403": 1, "block": 1, "drop": 2}),
+        # AND TWO THAT NOTED BUT DID NOT STOP (7 October 2026). The roll call
+        # party fetch asked once more after a 403 (--stop-refused 2) and read
+        # a 503, the block page and a dropped connection as a missing page;
+        # the LSR fetch did not notice the block page, and on its postback
+        # asked for the results page next. Two roll calls, a chamber each.
+        "fetch_rollcall_parties": (["--budget", "5", "--delay", "0"], files(**{
+            "rollcalls/RollCallSummary_2004.txt":
+                "2004|H|46|x|HB1|200|150|0|50|x\n2004|S|12|x|SB1|20|4|0|0|x\n"}),
+            {"403": 1, "503": 1, "block": 1, "drop": 2}),
+        "fetch_lsrs": ([], None, {"403": 1, "503": 1, "block": 1}),
     }
 
     class Page:
@@ -46697,8 +47289,9 @@ def _every_fetcher_notes_refusal():
             return False
 
     def answer(how, url):
-        if how in ("403", "404"):
-            raise urllib.error.HTTPError(url, int(how), "Forbidden" if how == "403" else "Not Found",
+        if how in ("403", "404", "503"):
+            raise urllib.error.HTTPError(url, int(how), {"403": "Forbidden", "404": "Not Found",
+                                                         "503": "Service Unavailable"}[how],
                                          http.client.HTTPMessage(), io.BytesIO(b""))
         if how == "drop":
             raise http.client.RemoteDisconnected("Remote end closed connection without response")
@@ -46731,6 +47324,12 @@ def _every_fetcher_notes_refusal():
                  '<option value="HC2.pdf">No 2 January 9 2026</option></select>')
         plan.append(("fetch_committee_reports", "its calendar PDFs", ["--year", "2026"], None,
                      {"403": 2, "block": 2, "drop": 3}, (index,), None))
+    if "fetch_lsrs" in present:
+        # The search page, answered with its CSV link, leads to the postback.
+        search = ('<a href="javascript:__doPostBack(&#39;ctl00$pageBody$lnkCVS&#39;,&#39;&#39;)">'
+                  'Download CSV File</a>')
+        plan.append(("fetch_lsrs", "its postback", [], None,
+                     {"403": 2, "503": 2, "block": 2}, (search,), None))
     for name, what, argv, hows in (
             ("fetch_bill_status", "--bill", ["--bill", "HB1"], {"403": 1, "block": 1}),
             ("fetch_bill_text", "--probe", ["--probe", "HB1"], {"403": 1, "block": 1}),
@@ -46801,7 +47400,8 @@ def _every_fetcher_notes_refusal():
                             setattr(M, k, v)
                     runs += 1
                     noted = refusal.MARK.exists()
-                    said = {"403": "a 403", "404": "a 404 everywhere", "block": "the block page",
+                    said = {"403": "a 403", "503": "a 503", "404": "a 404 everywhere",
+                            "block": "the block page",
                             "drop": ("two dropped connections" if want is not None
                                      else "a dropped connection")}[how]
                     if links and how in ("403", "drop"):
