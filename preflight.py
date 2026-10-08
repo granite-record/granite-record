@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.454
+# GRANITE_VERSION: 2026-09-04.455
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46971,6 +46971,33 @@ def _using_this_site_tabs(civics):
     assert "appear in the narrative" not in votes and "voice or division vote" in votes, (
         "Using this site says the voice and division votes are not on the Votes tab: " + votes)
     return "ok", f"names {', '.join(named)}, each a tab the page draws"
+
+
+@check("frontend", "each count of bills filed in a term says what it counts: the bills and "
+                   "resolutions, or the House and Senate bills alone",
+       needs=("civics", "learn_numbers"))
+def _bills_filed_counts(civics, learn_numbers):
+    """Two counts of the bills filed in 2025-2026, 2,243 on How a bill
+    becomes law and The General Court and 2,139 on By the numbers, and
+    neither said what it counted (the survey of 7 October 2026): the first is
+    every measure of the term, its constitutional amendments and resolutions
+    among them, and the second the House and Senate bills alone. Each says
+    so now, wherever [[bills]] is counted as filed."""
+    import inspect
+    flat = re.sub(r"\s+", " ", inspect.getsource(civics))
+    bare = re.findall(r"\[\[bills\]\] bills(?! and resolutions)", flat)
+    assert not bare, (f"{len(bare)} of the pages' counts of [[bills]], every measure of the "
+                      "term, still call them bills alone")
+    for said in ("filed <b>[[bills]] bills and resolutions</b>",
+                 "Of the [[bills]] bills and resolutions filed in the [[term]] term"):
+        assert said in flat, f"civics no longer says \"{said}\""
+    src = re.sub(r'"\s*\n\s*"', "", inspect.getsource(learn_numbers.body))
+    assert ("Every House and Senate bill given a number in each term, not counting "
+            "constitutional amendments or resolutions") in src, (
+        "By the numbers' bills filed does not say it leaves out the constitutional amendments "
+        "and resolutions")
+    return "ok", ("the term's measures are \"bills and resolutions\"; By the numbers' are the "
+                  "House and Senate bills, not counting constitutional amendments or resolutions")
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")

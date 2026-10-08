@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.27
+# GRANITE_VERSION: 2026-09-08.28
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -691,8 +691,8 @@ bill dies with the term</td></tr>
 year only, and it returns in the second</td></tr>
 </tbody></table>
 """ + SHOWS.format("""
-<p>The [[term]] term filed <b>[[bills]] bills</b>: [[hb]] House bills, [[sb]]
-Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
+<p>The [[term]] term filed <b>[[bills]] bills and resolutions</b>: [[hb]] House
+bills, [[sb]] Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
 <p>The House is <b>[[house_seats]] seats and [[house_sitting]] sitting members</b> as
 the record stands, with [[house_vacant]] vacant. The record shows that moving:
 roll calls this term were taken with as many as [[seated_most]] members seated
@@ -730,8 +730,8 @@ at each, and
 Council</a> for the last stage.</p>
 
 <h2>How most bills end</h2>
-<p>Of the [[bills]] bills filed in the [[term]] term, <b>[[killed]] were
-killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and
+<p>Of the [[bills]] bills and resolutions filed in the [[term]] term,
+<b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and
 <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent
 for interim study, [[tabled]] died on the table, and [[session_end]] died when
 the session ended without a final vote. Dying is the ordinary outcome, not a
@@ -1008,8 +1008,8 @@ statute. Rules are made under RSA 541-A, the Administrative Procedure Act.</p>
 deadline, the licence conditions &mdash; is left to the rule, and an
 <a href="learn/state-agencies.html">agency</a> writes it, not the legislature.
 A bill often says so in as many words: "the department shall adopt rules under
-RSA 541-A". [[rules_delegated]] of the [[bills]] bills filed in the [[term]]
-term carry a sentence of that kind.</p>
+RSA 541-A". [[rules_delegated]] of the [[bills]] bills and resolutions filed in the
+[[term]] term carry a sentence of that kind.</p>
 
 <h2>How a rule is made</h2>
 <p>RSA 541-A:3 sets out the course, and the deadlines below come from the
