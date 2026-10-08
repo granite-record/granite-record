@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.448
+# GRANITE_VERSION: 2026-09-04.449
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5951,6 +5951,118 @@ def _senate_time_change_table():
                and r["kind"] == "hearing"}
     assert got == want, f"proceedings.csv gives {got!r}, not {want!r}"
     return "ok", "2:00 on 22 February 2005 and 1:45 on 23 February 2000"
+
+
+# Real rows: Docket_db_2003-2004.txt 16476-16478 (SB 339 of 2004) and
+# 16830-16834 (SB 427 of 2004), Docket_db_2005-2006.txt 17879-17882 (SB 342 of
+# 2006), Docket_db_2001-2002.txt 6354 and 6373-6376 (SB 164 of 2001) and
+# 10049-10051 (SB 146 of 2001), Docket_db_1999-2000.txt 14367-14370 (HB 1548 of
+# 2000).
+_DOCKET_ROOM_CHANGE = [
+    '2004|3037|01/07/2004 05:22:48 PM|SB339|S|Introduced and Referred to Judiciary; SJ 1, Pg.3|01/07/2004 05:22:48 PM',
+    '2004|3037|01/08/2004 10:46:19 AM|SB339|S|Hearing; January 13, 2004, Room 105-A, SH, 10:15 a.m.; SC2|01/08/2004 10:46:19 AM',
+    '2004|3037|01/12/2004 03:08:59 PM|SB339|S|Hearing; === ROOM CHANGE === January 13, 2004, Room 102, LOB, 10:15 a.m.|01/12/2004 03:08:59 PM',
+    '2004|3066|01/07/2004 06:17:19 PM|SB427|S|Introduced and Referred to Public Institutions, Health & Human Services; SJ 1, Pg.8|01/07/2004 06:17:19 PM',
+    '2004|3066|02/02/2004 03:54:42 PM|SB427|S|Hearing; February 17, 2004, Room 103, SH, 3:30 p.m.; SC6|02/02/2004 03:54:42 PM',
+    '2004|3066|02/11/2004 04:39:40 PM|SB427|S|Hearing; === TIME CHANGE === February 17, 2004, Room 103, SH, 1:00 p.m.; SC7|02/11/2004 04:39:40 PM',
+    '2004|3066|02/12/2004 12:45:27 PM|SB427|S|Hearing; === ROOM CHANGE === February 17, 2004, Room 100, SH, 1:00 p.m.; SC7|02/12/2004 12:45:27 PM',
+    '2004|3066|02/13/2004 02:35:24 PM|SB427|S|Hearing; === ROOM CHANGE === February 17, 2004, Rooms 205-207, LOB 1:00 p.m.|02/13/2004 02:35:24 PM',
+    '2006|2717|01/04/2006 12:18:47 PM|SB342|S|Introduced and Referred to Executive Departments and Administration; SJ 1, Pg.12|01/04/2006 12:18:47 PM',
+    '2006|2717|01/04/2006 01:47:17 PM|SB342|S|Hearing; January 18, 2006, Room 102, LOB, 2:10 p.m.|01/04/2006 01:47:17 PM',
+    '2006|2717|01/04/2006 02:54:29 PM|SB342|S|Hearing; === RESCHEDULED === January 19, 2006, Room 102, LOB, 2:10 p.m.; SC1A|01/04/2006 02:54:29 PM',
+    '2006|2717|01/12/2006 12:39:12 PM|SB342|S|Hearing; === TIME CHANGE === ROOM CHANGE === January 19, 2006, Room 100, LOB, 1:30 p.m.; SC2|01/12/2006 12:39:12 PM',
+    '2001|0824|02/22/2001 02:46:22 PM|SB164|S|Introduced and Ref. to Education; SJ 5, Pg.57|02/22/2001 02:46:22 PM',
+    '2001|0824|06/14/2001 06:16:09 PM|SB164|S|Conference Committee Meeting; June 18, 2001, Room 105-A, SH, 10:00 a.m.|06/14/2001 06:16:09 PM',
+    '2001|0824|06/19/2001 04:02:00 PM|SB164|S|Conference Committee Meeting; June 20, 2001, Room 103, SH, 9:00 a.m.|06/19/2001 04:02:00 PM',
+    '2001|0824|06/20/2001 09:47:45 AM|SB164|S|Conference  Committe === ROOM AND TIME CHANGE === Meeting June 20, 2001, Room 207, LOB, 11:00 a.m|06/20/2001 09:47:45 AM',
+    '2001|0824|06/20/2001 04:24:53 PM|SB164|S|Conference Committee Meeting; June 21, 2001, Room 207, LOB, 10:00 a.m.|06/20/2001 04:24:53 PM',
+    '2002|0430|02/15/2001 11:37:29 AM|SB146|S|Introduced and Ref. to Wildlife & Recreation; SJ 4, Pg.46|02/15/2001 11:37:29 AM',
+    '2002|0430|02/21/2001 06:07:59 PM|SB146|S|Hearing; March 6, 2001, Room 101, LOB, 10:15 a.m.; SC9|02/21/2001 06:07:59 PM',
+    '2002|0430|02/28/2001 01:57:59 PM|SB146|S|Hearing; ===== ROOM CHANGE===== March 6, 2001, Representatives Hall, SH, 10:15 a.m.; SC10|02/28/2001 01:57:59 PM',
+    '2000|2203|03/16/2000 11:33:33 AM|HB1548|S|Introduced and Ref. to Judiciary; SJ 6, Pg.196|03/16/2000 11:33:33 AM',
+    '2000|2203|03/27/2000 05:08:28 PM|HB1548|S|Hearing ==CANCELLED==  April 17, Rooms 306 -- 308, LOB, 10:00 a.m.; SC19,|03/27/2000 05:08:28 PM',
+    '2000|2203|03/31/2000 03:28:07 PM|HB1548|S|Hearing  == RESCHEDULED ==  April 24, Room Change  305 - 307, LOB, 10:00 a.m.; SC21, Pg.13|03/31/2000 03:28:07 PM',
+    '2000|2203|04/19/2000 03:48:44 PM|HB1548|S|Hearing  April 24  == ROOM CHANGE  201-203, LOB == 10:00 a.m.; SC24|04/19/2000 03:48:44 PM',
+]
+
+# The sittings _senate_room_change reads, with the room each was moved to.
+_ROOM_CHANGED = {("2003-2004", "SB339", "2004-01-13"): "LOB 102",
+                 ("2003-2004", "SB427", "2004-02-17"): "LOB 205-207",
+                 ("2005-2006", "SB342", "2006-01-19"): "LOB 100",
+                 ("2001-2002", "SB164", "2001-06-20"): "LOB 207",
+                 ("2001-2002", "SB146", "2001-03-06"): "Representatives Hall",
+                 ("1999-2000", "HB1548", "2000-04-24"): "LOB 201-203"}
+
+
+@check("build", "a Senate sitting of 1999-2006 is in the room the latest ROOM CHANGE or TIME "
+                "CHANGE row gave its day, on every row of it",
+       needs=("docket_parser",))
+def _senate_room_change(D):
+    """The person's decision of 8 October 2026, on the review of the archived
+    manifests. SB 339 of 2004 was noticed for SH 105-A on 13 January and moved
+    by "Hearing; === ROOM CHANGE === January 13, 2004, Room 102, LOB"; SB 342
+    of 2006 by "=== TIME CHANGE === ROOM CHANGE === January 19, 2006, Room 100,
+    LOB, 1:30 p.m.", whose hour its notice took and whose room it did not.
+    build_proceedings folds a sitting's rows into the first it reads, the
+    notice, so 32 Senate sittings of 2001-2006 were in the room their notice
+    gave. Every row of each now carries the room of the last such row, two
+    room changes in a row (SB 427 of 2004) the second, a conference (SB 164 of
+    2001) as well as a hearing, a hall (SB 146 of 2001) as well as a room, and
+    the marks read off before the room is: HB 1548 of 2000's "== ROOM CHANGE
+    201-203, LOB ==" was the room "LOB CHANGE 201-203"."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-room-change-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_ROOM_CHANGE) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    live = [p for p in procs if p.confidence != "X-cancelled"]
+    bad = []
+    for (_, bill, day), room in _ROOM_CHANGED.items():
+        got = [p.venue for p in live if p.bill == bill and p.sched_date == day]
+        if len(got) < 2 or set(got) != {room}:
+            bad.append(f"{bill}'s sitting of {day} is read in {got!r}, not {room!r} on every row")
+    hours = {(p.bill, p.sched_date): p.sched_time for p in live}
+    for k, want in ((("SB342", "2006-01-19"), "13:30"), (("SB164", "2001-06-20"), "11:00"),
+                    (("SB427", "2004-02-17"), "13:00")):
+        if hours.get(k) != want:
+            bad.append(f"{k[0]}'s sitting of {k[1]} is at {hours.get(k)!r}, not {want}")
+    # The sittings no change row names keep their notice's room.
+    for bill, day, room in (("SB342", "2006-01-18", "LOB 102"), ("SB164", "2001-06-18", "SH 105-A"),
+                            ("SB164", "2001-06-21", "LOB 207")):
+        got = [p.venue for p in live if p.bill == bill and p.sched_date == day]
+        if got != [room]:
+            bad.append(f"{bill}'s sitting of {day} is read in {got!r}, not {room!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_ROOM_CHANGED)} sittings in the room their latest change row gave them, "
+                  "on every row")
+
+
+@check("data", "the Senate sittings of 1999-2006 a ROOM CHANGE or TIME CHANGE row moved are in "
+               "that room in their term's manifest")
+def _senate_room_change_manifests():
+    """_senate_room_change, in the files on disk: a manifest built before it
+    keeps each sitting's notice row in the room the notice gave, and
+    build_proceedings, keeping the first row, puts the hearing there. A full
+    rebuild of the term's manifest puts it right."""
+    bad, n = [], 0
+    for term in sorted({t for t, _, _ in _ROOM_CHANGED}):
+        f = Path(f"verification_manifest_{term}.csv")
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            rows = [r for r in csv.DictReader(fh) if r["body"].upper() == "S"]
+        for (t, bill, day), room in _ROOM_CHANGED.items():
+            if t != term:
+                continue
+            n += 1
+            got = sorted({r["venue"] for r in rows if r["bill"] == bill and r["sched_date"] == day})
+            if got != [room]:
+                bad.append(f"{f.name} has {bill}'s Senate sitting of {day} in {got!r}, not {room!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", f"{n} sittings in the room their latest change row gave them"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "

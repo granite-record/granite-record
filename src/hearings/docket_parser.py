@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -997,6 +997,27 @@ def reconvened_to(r):
 # row's hour is the meeting's.
 TIME_CHANGED_ROW = re.compile(r"\bTIME\s+CHANGE\b|\bNEW\s+TIME\b", re.I)
 
+# AND THE ROOM THE LATEST ROOM CHANGE OR TIME CHANGE ROW GAVE IT (the person's
+# decision of 8 October 2026, on the review of the archived manifests). SB 339
+# of 2004 was noticed for SH 105-A on 13 January and moved the day before by
+# "Hearing; === ROOM CHANGE === January 13, 2004, Room 102, LOB, 10:15 a.m.";
+# SB 342 of 2006 for LOB 102 on 19 January, and moved by "Hearing; === TIME
+# CHANGE === ROOM CHANGE === January 19, 2006, Room 100, LOB, 1:30 p.m.".
+# build_proceedings folds a hearing's rows into one and keeps the first it
+# reads, which is the notice, so 32 Senate sittings of 2001-2006 were in the
+# room their notice gave and not the one the docket moved them to, and SB
+# 342's, once its notice took the later row's hour, became one of them. Every
+# row of the sitting now carries the room of the last row entered -- the row
+# itself or a later one of the same bill and chamber -- that is marked ROOM
+# CHANGE, TIME CHANGE or NEW TIME, names the day, states a room, and is not a
+# cancellation. The marks themselves are read off before the room is: "Hearing
+# April 24 == ROOM CHANGE 201-203, LOB == 10:00 a.m." (HB 1548 of 2000) is LOB
+# 201-203, where senate_venue read "LOB CHANGE 201-203".
+ROOM_CHANGED_ROW = re.compile(r"\bROOM\s+(?:AND\s+TIME\s+)?CHANGE\b", re.I)
+CHANGE_WORDS = re.compile(
+    r"(?:\bPLEASE\s+)?(?:\bNOTE\s+)?\b(?:ROOM\s+(?:AND\s+TIME\s+)?|TIME\s+)CHANGE\b"
+    r"|\bNEW\s+TIME\b", re.I)
+
 
 def _created(r):
     try:
@@ -1030,6 +1051,36 @@ def _time_changed_to(r, day, later_rows):
     return best[1] if best else None
 
 
+def _room_changed_to(r, day, rows):
+    """The room the last row of `rows` -- the same bill's rows in the same
+    chamber -- that is `r` or was entered after it, is marked ROOM CHANGE,
+    TIME CHANGE or NEW TIME, names `day`, states a room and calls nothing off,
+    gives that day's sitting (ROOM_CHANGED_ROW, above); else None."""
+    if _E1999 is None or not hasattr(_E1999, "DTXT"):
+        return None
+    mine, best = _created(r), None
+    if mine is None:
+        return None
+    for o in rows or ():
+        when = _created(o)
+        desc = o.get("desc") or ""
+        if (when is None or (o is not r and when <= mine)
+                or not (ROOM_CHANGED_ROW.search(desc) or TIME_CHANGED_ROW.search(desc))
+                or cancelled(desc)):
+            continue
+        m = re.search(_E1999.DTXT, desc, re.I)
+        named = _E1999.full_date(m.group(0), when, forward=True) if m else None
+        if not named or datetime.strptime(named, "%m/%d/%Y").date() != day:
+            continue
+        said = re.sub(r"\s{2,}", " ", CHANGE_WORDS.sub(" ", extract_flags(desc[m.end():])[1]))
+        at = RESCHEDULED_TIME.search(said)
+        room = (senate_venue(said[:at.start()], said[at.end():]) if at
+                else senate_venue(said, ""))
+        if room and (best is None or (when, o.get("lineno") or 0) >= best[0]):
+            best = ((when, o.get("lineno") or 0), room)
+    return best[1] if best else None
+
+
 def rescheduled_proceeding(r, flags, day, timeline, later_rows=None):
     """The Senate hearing a row read by rescheduled_to gives notice of: its
     day, and the hour and room the row states after it -- or the hour a later
@@ -1050,7 +1101,7 @@ def rescheduled_proceeding(r, flags, day, timeline, later_rows=None):
     return Proceeding(
         bill=r["bill"], body=r["body"], lsr=r["lsr"], kind="hearing",
         sched_date=day.isoformat(), sched_time=t.strftime("%H:%M") if t else None,
-        venue=senate_venue(between, after),
+        venue=_room_changed_to(r, day, later_rows) or senate_venue(between, after),
         flags=[f for f in flags if "CANCEL" not in str(f).upper()],
         committee=committee_on(timeline, r["bill"], day, r["body"]),
         raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"])
@@ -1583,6 +1634,9 @@ def parse_proceedings(rows, timeline):
                 moved = _time_changed_to(r, d, by_bill.get((r["bill"], "S")))
                 if moved:
                     t = datetime.strptime(moved, "%H:%M").time()
+                # And the room the latest ROOM CHANGE or TIME CHANGE row gave
+                # it (ROOM_CHANGED_ROW).
+                venue = _room_changed_to(r, d, by_bill.get((r["bill"], "S"))) or venue
 
         # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
         # -- which is a better answer than the referral timeline, because that
