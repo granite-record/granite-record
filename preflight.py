@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.450
+# GRANITE_VERSION: 2026-09-04.451
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6147,6 +6147,82 @@ def _cancelled_twin_manifest():
     want = [("2022-05-17", "11:00"), ("2022-05-18", "12:00")]
     assert got == want, f"{f.name} has HB 355's conferences as {got!r}, not {want!r}"
     return "ok", "the 17th and the 18th, and not the 16th"
+
+
+# Real rows: Docket_db_1999-2000.txt 18729-18731 (SB 362 of 2000), 13023-13024
+# (HB 1337 of 2000) and 2267 and 2269 (HB 452 of 1999), Docket_db_2003-2004.txt
+# 9175-9176 (SB 171 of 2003) and Docket_db_2005-2006.txt 4415-4416 (HB 199 of
+# 2005).
+_DOCKET_CLOCK_SEMICOLON = [
+    "2000|2650|01/05/2000 12:10:17 PM|SB362|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 10|01/05/2000 12:10:17 PM",
+    "2000|2650|01/06/2000 03:23:09 PM|SB362|S|Hearing , Feb. 8 , Room 104 , LOB , 3:00 p.m.; SC1, Pg.8|01/06/2000 03:23:09 PM",
+    "2000|2650|01/28/2000 12:55:52 PM|SB362|S|==TIME CHANGE== Hearing, Feb. 8, Room 104, LOB, 2;50 p.m.; SC6, Pg.4|01/28/2000 12:55:52 PM",
+    "2000|2061|02/03/2000 11:47:25 AM|HB1337|S|Introduced and Ref. to Public Institutions, Health & Human Services; SJ 2, [ See Perm. Journal ]|02/03/2000 11:47:25 AM",
+    "2000|2061|02/23/2000 02:19:41 PM|HB1337|S|Hearing  April 4, Room 102, LOB, 2;00 p.m.; SC13, Pg.4|02/23/2000 02:19:41 PM",
+    "1999|0278|01/28/1999 09:05:54 AM|HB452|H|Introduced and ref to Health HS&EA;  HJ18, p270|01/28/1999 09:05:54 AM",
+    "1999|0278|02/04/1999 02:08:03 PM|HB452|H|Hearing  Feb 9  2;00  Rm205,LOB|02/04/1999 02:08:03 PM",
+    "2003|1139|01/30/2003 10:18:09 AM|SB171|S|Introduced and Ref. to Wildlife & Recreation; SJ 3, Pg.39|01/30/2003 10:18:09 AM",
+    "2003|1139|02/07/2003 02:55:07 PM|SB171|S|Hearing; February 18, 2003, Room 104, LOB, 1;30 p.m.; SC9|02/07/2003 02:55:07 PM",
+    "2005|0607|03/17/2005 10:44:32 AM|HB199|S|Introduced and Referred to Environment and Wildlife; SJ 9, Pg.139|03/17/2005 10:44:32 AM",
+    "2005|0607|03/29/2005 08:04:39 AM|HB199|S|Hearing; April 5, 2005, Room 103, LOB, 2;20 p.m.; SC14|03/29/2005 08:04:39 AM",
+]
+
+# The hearings _clock_semicolon reads: (term, bill, chamber, day) -> the hour.
+_CLOCK_SEMICOLON = {("1999-2000", "SB362", "S", "2000-02-08"): "14:50",
+                    ("1999-2000", "HB1337", "S", "2000-04-04"): "14:00",
+                    ("1999-2000", "HB452", "H", "1999-02-09"): "14:00",
+                    ("2003-2004", "SB171", "S", "2003-02-18"): "13:30",
+                    ("2005-2006", "HB199", "S", "2005-04-05"): "14:20"}
+
+
+@check("build", "a meeting's hour typed with a semicolon for the colon is read, and the hearing "
+                "it sets is in the table at that hour", needs=("docket_parser",))
+def _clock_semicolon(D):
+    """The person's decision of 8 October 2026, on the review of the archived
+    manifests. "==TIME CHANGE== Hearing, Feb. 8, Room 104, LOB, 2;50 p.m."
+    (SB 362 of 2000) was read by no pattern, so the hearing kept its notice's
+    3:00; HB 1337 of 2000's "2;00 p.m.", SB 171 of 2003's "1;30 p.m.", HB 199
+    of 2005's "2;20 p.m." and HB 452 of 1999's House "Hearing  Feb 9  2;00
+    Rm205,LOB" were hearings each bill's history tells and the table had no
+    row for. Every row of each now gives the hour as the colon would."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-semicolon-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_CLOCK_SEMICOLON) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = sorted({(p.bill, p.body, p.sched_date, p.sched_time) for p in procs
+                  if p.confidence != "X-cancelled"})
+    want = sorted((b, ch, d, t) for (_, b, ch, d), t in _CLOCK_SEMICOLON.items())
+    assert got == want, f"the hearings are read as {got!r}, not {want!r}"
+    return "ok", f"{len(want)} hearings at the hour their semicolon gives"
+
+
+@check("data", "the hearings whose hour the clerk typed with a semicolon are in their term's "
+               "manifest at that hour")
+def _clock_semicolon_manifests():
+    """_clock_semicolon, in the files on disk: a manifest built before it has
+    SB 362 of 2000's hearing at 3:00 and no row for the other four. A full
+    rebuild of the term's manifest puts them in."""
+    bad = []
+    for term in sorted({t for t, _, _, _ in _CLOCK_SEMICOLON}):
+        f = Path(f"verification_manifest_{term}.csv")
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+        for (t, bill, ch, day), hour in _CLOCK_SEMICOLON.items():
+            if t != term:
+                continue
+            got = sorted({r["sched_time"] for r in rows if r["bill"] == bill
+                          and r["body"].upper() == ch and r["sched_date"] == day
+                          and r["proceeding"] == "hearing"})
+            if got != [hour]:
+                bad.append(f"{f.name} has {bill}'s hearing of {day} at {got!r}, not {hour}")
+    assert not bad, "\n".join(bad)
+    return "ok", f"{len(_CLOCK_SEMICOLON)} hearings at the hour their semicolon gives"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "

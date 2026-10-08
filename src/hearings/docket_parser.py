@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -245,7 +245,25 @@ def house_time(m):
 # to another. All 47 distinct values it takes were printed and read; every one
 # is punctuation or a flag residue, none is a fact.
 SENATE_MER = r"[ap]\s?\.?\s?m\.?"
-MONTH_WORD = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+# THE CLERK'S "2;50" (the person's decision of 8 October 2026, on the review of
+# the archived manifests). A semicolon typed for the colon of a clock time, on
+# six meeting lines of 1999-2005 and nowhere else a meeting is set:
+#   "==TIME CHANGE== Hearing, Feb. 8, Room 104, LOB, 2;50 p.m."  SB 362 of 2000
+#   "Hearing  April 4, Room 102, LOB, 2;00 p.m."                 HB 1337 of 2000
+#   "Hearing; May 29 ,2001, Room 105-A, SH, 2;30 p.m."           HB 677 of 2001
+#   "Hearing; February 18, 2003, Room 104, LOB, 1;30 p.m."       SB 171 of 2003
+#   "Hearing; April 5, 2005, Room 103, LOB, 2;20 p.m."           HB 199 of 2005
+#   "Hearing  Feb 9  2;00  Rm205,LOB"                            HB 452 of 1999
+# No pattern read the hour, so SB 362's hearing kept its notice's 3:00 and the
+# other five, which each bill's history tells, had no row in the table at all.
+# HB 677's still has none: its day, "May 29 ,2001", with a space before the
+# comma, is a gap of _parse_date's own that this does not touch.
+# The Senate's and the rescheduling row's patterns state a meridiem after it,
+# and the legacy House line a room, which is what keeps "Sections 5;7;9" and
+# a calendar's "SC 6;10" from reading as a time. Every reader of the hour
+# reads it as the colon (_parse_time, _legacy_time).
+CLOCK_SEP = r"[:;]"
+MONTH_WORD =(r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
               r"[a-z]*\.?")
 
 SENATE_SCHED_RE = re.compile(
@@ -268,7 +286,8 @@ SENATE_SCHED_RE = re.compile(
     # half to go the engine backtracks and reads 9:00 as the start. It is only
     # five rows, and all five are the HB1 and HB2 budget hearings, which are
     # among the most-read pages on the site. A wrong time is worse than none.
-    r"(?P<time>\d{1,2}:\d{2})(?::\d{2})?\s*"
+    # A SEMICOLON FOR THE COLON (CLOCK_SEP, below): "2;50 p.m.".
+    r"(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2})(?::\d{2})?\s*"
     r"(?:[-–]\s*\d{1,2}:\d{2}(?::\d{2})?\s*)?"
     r"(?P<mer>" + SENATE_MER + r")"
     r"(?P<rest>.*)$",
@@ -411,7 +430,7 @@ LEGACY_SCHED_RE = re.compile(
     r"|\d{1,2}\s*/\s*\d{1,2}|[A-Za-z]{3,9}\.?\s*\d{1,2})"
     r"(?=\D|\d{1,2}:\d{2}|$)"
     # NOON is a time. It is written 39 times and means exactly midday.
-    r"\s{0,8}(?P<time>\d{1,2}:\d{2}|NOON)"
+    r"\s{0,8}(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2}|NOON)"
     # AND NOT A MERIDIEM AFTER IT, which is what keeps this pattern to the era
     # it is for. Tried first -- and it has to be tried first, or it loses
     # 1989-1990 its times, rooms and committees -- a widened kind list makes
@@ -539,7 +558,7 @@ def _legacy_time(s):
     if (s or "").strip().upper() == "NOON":
         return time(12, 0)
     try:
-        h, mi = (int(x) for x in s.split(":"))
+        h, mi = (int(x) for x in s.replace(";", ":").split(":"))
     except (ValueError, AttributeError):
         return None
     if not (0 <= mi < 60):
@@ -680,7 +699,7 @@ def _parse_time(s):
     # spaces left every one of them returning None. A rescued hearing would
     # then publish a date and no time, which is the D-no-time confidence band
     # and cannot be aligned against a recording at all.
-    s = s.strip().replace(" ", "").replace(".", "").upper()
+    s = s.strip().replace(" ", "").replace(".", "").replace(";", ":").upper()
     try:
         got = datetime.strptime(s, "%I:%M%p").time()
     except ValueError:
@@ -923,7 +942,8 @@ def cancelled(desc):
 CANCELLED_AND_RESCHEDULED = re.compile(
     r"=+\s*CANCELL?ED\s*=+\s*RESCHEDULED\s*=+\s*(?=[A-Z][a-z]+\.?\s+\d|\d{1,2}/\d)", re.I)
 RESCHEDULED_YEARS = (1999, 2006)
-RESCHEDULED_TIME = re.compile(r"(?P<time>\d{1,2}:\d{2})\s*(?P<mer>" + r"[ap]\s?\.?\s?m\.?" + r")",
+RESCHEDULED_TIME = re.compile(r"(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2})\s*(?P<mer>"
+                              + r"[ap]\s?\.?\s?m\.?" + r")",
                               re.I)
 try:
     import docket_era_1999 as _E1999
